@@ -11,8 +11,8 @@ import {
   fetchIntercomTeams,
 } from "@connectors/connectors/intercom/lib/intercom_api";
 import {
-  getAllConversationsInternalId,
   getTeamInternalId,
+  getTeamsInternalId,
 } from "@connectors/connectors/intercom/lib/utils";
 import {
   IntercomTeam,
@@ -112,7 +112,7 @@ export async function retrieveIntercomConversationsPermissions({
 
   const isReadPermissionsOnly = filterPermission === "read";
   const isRootLevel = !parentInternalId;
-  const allConvosInternalId = getAllConversationsInternalId(connectorId);
+  const allTeamsInternalId = getTeamsInternalId(connectorId);
   const nodes: ContentNode[] = [];
 
   const teamsWithReadPermission = await IntercomTeam.findAll({
@@ -135,7 +135,7 @@ export async function retrieveIntercomConversationsPermissions({
     if (isRootLevel && isAllConversationsSynced) {
       nodes.push({
         provider: "intercom",
-        internalId: allConvosInternalId,
+        internalId: allTeamsInternalId,
         parentInternalId: null,
         type: "channel",
         title: `All closed conversations from the past ${conversationsSlidingWindow} days`,
@@ -149,7 +149,7 @@ export async function retrieveIntercomConversationsPermissions({
     } else if (isRootLevel && hasTeamsWithReadPermission) {
       nodes.push({
         provider: "intercom",
-        internalId: allConvosInternalId,
+        internalId: allTeamsInternalId,
         parentInternalId: null,
         type: "channel",
         title: `Closed conversations from the past ${conversationsSlidingWindow} days for the selected Teams`,
@@ -162,12 +162,12 @@ export async function retrieveIntercomConversationsPermissions({
       });
     }
 
-    if (parentInternalId === allConvosInternalId) {
+    if (parentInternalId === allTeamsInternalId) {
       teamsWithReadPermission.forEach((team) => {
         nodes.push({
           provider: connector.type,
           internalId: getTeamInternalId(connectorId, team.teamId),
-          parentInternalId: allConvosInternalId,
+          parentInternalId: allTeamsInternalId,
           type: "folder",
           title: team.name,
           sourceUrl: null,
@@ -184,7 +184,7 @@ export async function retrieveIntercomConversationsPermissions({
     if (isRootLevel) {
       nodes.push({
         provider: "intercom",
-        internalId: allConvosInternalId,
+        internalId: allTeamsInternalId,
         parentInternalId: null,
         type: "channel",
         title: "Conversations",
@@ -196,7 +196,7 @@ export async function retrieveIntercomConversationsPermissions({
         lastUpdatedAt: null,
       });
     }
-    if (parentInternalId === allConvosInternalId) {
+    if (parentInternalId === allTeamsInternalId) {
       teams.forEach((team) => {
         const isTeamInDb = teamsWithReadPermission.some((teamFromDb) => {
           return teamFromDb.teamId === team.id;
@@ -204,7 +204,7 @@ export async function retrieveIntercomConversationsPermissions({
         nodes.push({
           provider: connector.type,
           internalId: getTeamInternalId(connectorId, team.id),
-          parentInternalId: allConvosInternalId,
+          parentInternalId: allTeamsInternalId,
           type: "folder",
           title: team.name,
           sourceUrl: null,

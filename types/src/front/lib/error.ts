@@ -1,4 +1,5 @@
 import { ConnectorsAPIError } from "../../connectors/api";
+import { ConversationErrorType } from "../assistant/conversation";
 import { CoreAPIError } from "./core_api";
 
 export type InternalErrorWithStatusCode = {
@@ -9,11 +10,15 @@ export type APIErrorType =
   | "not_authenticated"
   | "missing_authorization_header_error"
   | "malformed_authorization_header_error"
+  | "invalid_basic_authorization_error"
+  | "invalid_oauth_token_error"
+  | "expired_oauth_token_error"
   | "invalid_api_key_error"
   | "internal_server_error"
   | "invalid_request_error"
   | "invalid_rows_request_error"
   | "user_not_found"
+  | "content_too_large"
   | "data_source_error"
   | "data_source_not_found"
   | "data_source_view_not_found"
@@ -45,7 +50,7 @@ export type APIErrorType =
   | "connector_update_unauthorized"
   | "connector_oauth_target_mismatch"
   | "connector_provider_not_supported"
-  | "conversation_not_found"
+  | "connector_credentials_error"
   | "agent_configuration_not_found"
   | "agent_message_error"
   | "message_not_found"
@@ -86,13 +91,19 @@ export type APIErrorType =
   | "file_not_found"
   | "file_too_large"
   | "file_type_not_supported"
+  | "file_is_empty"
   // Runs:
   | "run_not_found"
-  // Vaults:
-  | "vault_already_exists"
-  | "vault_not_found"
+  // Spaces:
+  | "space_already_exists"
+  | "space_not_found"
   // Groups:
-  | "group_not_found";
+  | "group_not_found"
+  // Conversations:
+  | ConversationErrorType
+  // Plugins:
+  | "plugin_not_found"
+  | "plugin_execution_failed";
 
 export type APIError = {
   type: APIErrorType;
@@ -103,7 +114,7 @@ export type APIError = {
   connectors_error?: ConnectorsAPIError;
 };
 
-export function isAPIError(obj: unknown): obj is APIError {
+function isAPIError(obj: unknown): obj is APIError {
   return (
     typeof obj === "object" &&
     obj !== null &&

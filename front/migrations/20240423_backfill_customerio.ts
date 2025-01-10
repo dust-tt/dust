@@ -1,14 +1,13 @@
 import * as _ from "lodash";
 
-import { User } from "@app/lib/models/user";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { AmplitudeServerSideTracking } from "@app/lib/tracking/amplitude/server";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 
 const backfillCustomerIo = async (execute: boolean) => {
-  const allUserModels = await User.findAll();
+  const allUserModels = await UserModel.findAll();
   const users = allUserModels.map((u) => u);
   const chunks = _.chunk(users, 16);
   for (const [i, c] of chunks.entries()) {
@@ -38,14 +37,6 @@ const backfillCustomerIo = async (execute: boolean) => {
                     { userId: user.sId, err },
                     "Failed to backfill user on Customer.io"
                   );
-                }),
-                AmplitudeServerSideTracking._identifyUser({
-                  user: {
-                    ...user.toJSON(),
-                    fullName: `${user.firstName} ${user.lastName}`,
-                    image: user.imageUrl,
-                    createdAt: user.createdAt.getTime(),
-                  },
                 }),
               ]);
             } catch (err) {

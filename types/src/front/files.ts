@@ -1,130 +1,20 @@
-import * as t from "io-ts";
-
-// File upload form validation.
-
-export const FileUploadUrlRequestSchema = t.type({
-  contentType: t.string,
-  fileName: t.string,
-  fileSize: t.number,
-  useCase: t.union([t.literal("conversation"), t.literal("avatar")]),
-});
-
-export type FileUploadUrlRequestType = t.TypeOf<
-  typeof FileUploadUrlRequestSchema
->;
-
-export interface FileUploadRequestResponseBody {
-  file: FileTypeWithUploadUrl;
-}
-
-export interface FileUploadedRequestResponseBody {
-  file: FileType;
-}
-
-// Define max sizes for each category.
-export const MAX_FILE_SIZES: Record<"plainText" | "image", number> = {
-  plainText: 30 * 1024 * 1024, // 30MB.
-  image: 5 * 1024 * 1024, // 5 MB
-};
-
-export const MAX_FILE_LENGTH = 50_000_000;
-export const BIG_FILE_SIZE = 5_000_000;
-
-// Function to ensure file size is within max limit for given content type.
-export function ensureFileSize(
-  contentType: SupportedFileContentType,
-  fileSize: number
-): boolean {
-  if (isSupportedPlainTextContentType(contentType)) {
-    return fileSize <= MAX_FILE_SIZES.plainText;
-  }
-
-  if (isSupportedImageContentType(contentType)) {
-    return fileSize <= MAX_FILE_SIZES.image;
-  }
-
-  return false;
-}
-
-// Supported content types for plain text.
-const supportedPlainText = {
-  "application/msword": [".doc", ".docx"],
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [
-    ".doc",
-    ".docx",
-  ],
-  "application/pdf": [".pdf"],
-  "text/comma-separated-values": [".csv"],
-  "text/csv": [".csv"],
-  "text/markdown": [".md", ".markdown"],
-  "text/plain": [".txt"],
-  "text/tab-separated-values": [".tsv"],
-  "text/tsv": [".tsv"],
-} as const;
-
-// Supported content types for images.
-const supportedImage = {
-  "image/jpeg": [".jpg", ".jpeg"],
-  "image/png": [".png"],
-} as const;
+// Types.
+import { removeNulls } from "../shared/utils/general";
 
 const uniq = <T>(arr: T[]): T[] => Array.from(new Set(arr));
 
-export const supportedPlainTextExtensions = uniq(
-  Object.values(supportedPlainText).flat()
-);
-
-export const supportedImageExtensions = uniq(
-  Object.values(supportedImage).flat()
-);
-
-export const supportedFileExtensions = uniq([
-  ...supportedPlainTextExtensions,
-  ...supportedImageExtensions,
-]);
-
-export const supportedPlainTextContentTypes = Object.keys(supportedPlainText);
-export const supportedImageContentTypes = Object.keys(supportedImage);
-
-export const supportedUploadableContentType = [
-  ...supportedPlainTextContentTypes,
-  ...supportedImageContentTypes,
-];
-
-// Infer types from the arrays.
-export type PlainTextContentType = keyof typeof supportedPlainText;
-export type ImageContentType = keyof typeof supportedImage;
-
-// Union type for all supported content types.
-export type SupportedFileContentType = PlainTextContentType | ImageContentType;
-
-export function isSupportedFileContentType(
-  contentType: string
-): contentType is SupportedFileContentType {
-  return supportedUploadableContentType.includes(
-    contentType as SupportedFileContentType
-  );
-}
-
-export function isSupportedPlainTextContentType(
-  contentType: string
-): contentType is PlainTextContentType {
-  return supportedPlainTextContentTypes.includes(
-    contentType as PlainTextContentType
-  );
-}
-
-export function isSupportedImageContentType(
-  contentType: string
-): contentType is ImageContentType {
-  return supportedImageContentTypes.includes(contentType as ImageContentType);
-}
-
-// Types.
-
 export type FileStatus = "created" | "failed" | "ready";
 
-export type FileUseCase = "conversation" | "avatar";
+export type FileUseCase =
+  | "conversation"
+  | "avatar"
+  | "tool_output"
+  | "folder_document"
+  | "folder_table";
+
+export type FileUseCaseMetadata = {
+  conversationId: string;
+};
 
 export interface FileType {
   contentType: SupportedFileContentType;
@@ -140,17 +30,215 @@ export interface FileType {
 
 export type FileTypeWithUploadUrl = FileType & { uploadUrl: string };
 
-export function ensureContentTypeForUseCase(
-  contentType: SupportedFileContentType,
-  useCase: FileUseCase
-) {
-  if (useCase === "conversation") {
-    return isSupportedFileContentType(contentType);
+export type FileFormatCategory = "image" | "data" | "code" | "delimited";
+
+// Define max sizes for each category.
+export const MAX_FILE_SIZES: Record<FileFormatCategory, number> = {
+  data: 30 * 1024 * 1024, // 30MB.
+  code: 30 * 1024 * 1024, // 30MB.
+  delimited: 30 * 1024 * 1024, // 30MB.
+  image: 5 * 1024 * 1024, // 5 MB
+};
+
+export function maxFileSizeToHumanReadable(size: number) {
+  if (size < 1024) {
+    return `${size} B`;
   }
 
-  if (useCase === "avatar") {
-    return isSupportedImageContentType(contentType);
+  if (size < 1024 * 1024) {
+    return `${size / 1024} KB`;
+  }
+
+  return `${size / (1024 * 1024)} MB`;
+}
+
+const BIG_FILE_SIZE = 5_000_000;
+
+export function isBigFileSize(size: number) {
+  return size > BIG_FILE_SIZE;
+}
+
+// Function to ensure file size is within max limit for given content type.
+export function ensureFileSize(
+  contentType: SupportedFileContentType,
+  fileSize: number
+): boolean {
+  const format = getFileFormat(contentType);
+
+  if (format) {
+    return fileSize <= MAX_FILE_SIZES[format.cat];
   }
 
   return false;
+}
+
+type FileFormat = {
+  cat: FileFormatCategory;
+  exts: string[];
+};
+
+// NOTE: if we add more content types, we need to update the public api package. (but the typechecker should catch it)
+const FILE_FORMATS = {
+  // Images
+  "image/jpeg": { cat: "image", exts: [".jpg", ".jpeg"] },
+  "image/png": { cat: "image", exts: [".png"] },
+  "image/gif": { cat: "image", exts: [".gif"] },
+  "image/webp": { cat: "image", exts: [".webp"] },
+
+  // Structured
+  "text/csv": { cat: "delimited", exts: [".csv"] },
+  "text/comma-separated-values": { cat: "delimited", exts: [".csv"] },
+  "text/tsv": { cat: "delimited", exts: [".tsv"] },
+  "text/tab-separated-values": { cat: "delimited", exts: [".tsv"] },
+
+  // Data
+  "text/plain": { cat: "data", exts: [".txt"] },
+  "text/markdown": { cat: "data", exts: [".md", ".markdown"] },
+  "text/vnd.dust.attachment.slack.thread": { cat: "data", exts: [".txt"] },
+  "text/calendar": { cat: "data", exts: [".ics"] },
+  "application/json": { cat: "data", exts: [".json"] },
+  "application/msword": { cat: "data", exts: [".doc", ".docx"] },
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {
+    cat: "data",
+    exts: [".doc", ".docx"],
+  },
+  "application/pdf": { cat: "data", exts: [".pdf"] },
+
+  // Code
+  "text/xml": { cat: "data", exts: [".xml"] },
+  "application/xml": { cat: "data", exts: [".xml"] },
+  "text/html": { cat: "data", exts: [".html", ".htm", ".xhtml", ".xhtml+xml"] },
+  "text/css": { cat: "code", exts: [".css"] },
+  "text/javascript": { cat: "code", exts: [".js", ".mjs"] },
+  "application/x-sh": { cat: "code", exts: [".sh"] },
+  "text/x-sh": { cat: "code", exts: [".sh"] },
+  // declare type here using satisfies to allow flexible typing for keys, FileFormat type for values and yet infer the keys of FILE_FORMATS correctly below
+} as const satisfies Record<string, FileFormat>;
+
+// Define a type that is the list of all keys from FILE_FORMATS.
+export type SupportedFileContentType = keyof typeof FILE_FORMATS;
+
+export type SupportedImageContentType = {
+  [K in keyof typeof FILE_FORMATS]: (typeof FILE_FORMATS)[K] extends {
+    cat: "image";
+  }
+    ? K
+    : never;
+}[keyof typeof FILE_FORMATS];
+
+export type SupportedDelimitedTextContentType = {
+  [K in keyof typeof FILE_FORMATS]: (typeof FILE_FORMATS)[K] extends {
+    cat: "delimited";
+  }
+    ? K
+    : never;
+}[keyof typeof FILE_FORMATS];
+
+export type SupportedNonImageContentType = {
+  [K in keyof typeof FILE_FORMATS]: (typeof FILE_FORMATS)[K] extends {
+    cat: "image";
+  }
+    ? never
+    : K;
+}[keyof typeof FILE_FORMATS];
+
+// All the ones listed above
+export const supportedUploadableContentType = Object.keys(FILE_FORMATS);
+
+export function isSupportedFileContentType(
+  contentType: string
+): contentType is SupportedFileContentType {
+  return !!FILE_FORMATS[contentType as SupportedFileContentType];
+}
+
+export function isSupportedImageContentType(
+  contentType: string
+): contentType is SupportedImageContentType {
+  const format = getFileFormat(contentType);
+
+  if (format) {
+    return format.cat === "image";
+  }
+
+  return false;
+}
+
+export function isSupportedDelimitedTextContentType(
+  contentType: string
+): contentType is SupportedDelimitedTextContentType {
+  const format = getFileFormat(contentType);
+
+  if (format) {
+    return format.cat === "delimited";
+  }
+
+  return false;
+}
+
+export function getFileFormatCategory(
+  contentType: string
+): FileFormatCategory | null {
+  const format = getFileFormat(contentType);
+
+  if (format) {
+    return format.cat;
+  }
+
+  return null;
+}
+
+function getFileFormat(contentType: string): FileFormat | null {
+  if (isSupportedFileContentType(contentType)) {
+    const format = FILE_FORMATS[contentType];
+
+    if (format) {
+      return format;
+    }
+  }
+
+  return null;
+}
+
+export function extensionsForContentType(
+  contentType: SupportedFileContentType
+): string[] {
+  const format = getFileFormat(contentType);
+
+  if (format) {
+    return format.exts;
+  }
+
+  return [];
+}
+
+export function getSupportedFileExtensions(
+  cat: FileFormatCategory | undefined = undefined
+) {
+  return uniq(
+    removeNulls(
+      Object.values(FILE_FORMATS).flatMap((format) =>
+        !cat || format.cat === cat ? format.exts : []
+      )
+    )
+  );
+}
+
+export function getSupportedNonImageFileExtensions() {
+  return uniq(
+    removeNulls(
+      Object.values(FILE_FORMATS).flatMap((format) =>
+        format.cat !== "image" ? format.exts : []
+      )
+    )
+  );
+}
+
+export function getSupportedNonImageMimeTypes() {
+  return uniq(
+    removeNulls(
+      Object.entries(FILE_FORMATS).map(([key, value]) =>
+        value.cat !== "image" ? (key as SupportedNonImageContentType) : null
+      )
+    )
+  );
 }

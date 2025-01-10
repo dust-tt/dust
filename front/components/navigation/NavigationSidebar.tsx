@@ -1,14 +1,21 @@
-import { CollapseButton, Item, Logo, Tab } from "@dust-tt/sparkle";
+import {
+  CollapseButton,
+  NavigationList,
+  NavigationListItem,
+  NavigationListLabel,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@dust-tt/sparkle";
 import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
-import type {
-  AppLayoutNavigation,
-  SidebarNavigation,
-} from "@app/components/navigation/config";
+import type { SidebarNavigation } from "@app/components/navigation/config";
 import { getTopNavigationTabs } from "@app/components/navigation/config";
+import { HelpDropdown } from "@app/components/navigation/HelpDropdown";
 import { UserMenu } from "@app/components/UserMenu";
 import WorkspacePicker from "@app/components/WorkspacePicker";
 import { useAppStatus } from "@app/lib/swr/useAppStatus";
@@ -31,171 +38,161 @@ export const NavigationSidebar = React.forwardRef<
 ) {
   const router = useRouter();
   const { user } = useUser();
-
   const [activePath, setActivePath] = useState("");
 
   useEffect(() => {
     if (router.isReady && router.route) {
-      // Update activePath once router is ready.
       setActivePath(router.route);
     }
   }, [router.route, router.isReady]);
 
-  const nav = useMemo(() => getTopNavigationTabs(owner), [owner]);
-
-  const [navs, setNavs] = useState<AppLayoutNavigation[]>([]);
-
-  // TODO(2024-06-19 flav): Fix issue with AppLayout changing between pages
-  useEffect(() => {
-    setNavs((prevNavs) => {
-      const newNavs = nav.map((n) => {
-        const current = n.isCurrent(activePath);
-        return { ...n, current };
-      });
-
-      // Only update navs if the current tab actually changes to prevent blinking effect.
-      const isSameCurrent =
-        prevNavs.length === newNavs.length &&
-        prevNavs.every((prevNav, index) => {
-          return prevNav.current === newNavs[index].current;
-        });
-
-      return isSameCurrent ? prevNavs : newNavs;
-    });
-  }, [nav, activePath]);
+  // TODO(2024-06-19 flav): Fix issue with AppLayout changing between pagesg
+  const navs = useMemo(() => getTopNavigationTabs(owner), [owner]);
+  const currentTab = useMemo(
+    () => navs.find((n) => n.isCurrent(activePath)),
+    [navs, activePath]
+  );
 
   return (
-    <div
-      ref={ref}
-      className="flex min-w-0 grow flex-col border-r border-structure-200 bg-structure-50"
-    >
+    <div ref={ref} className="flex min-w-0 grow flex-col bg-structure-50">
       <div className="flex flex-col">
-        <div className="flex flex-row justify-between p-3">
-          <div className="flex flex-col gap-2">
-            <div className="pt-3">
-              <Link
-                href={`/w/${owner.sId}/assistant/new`}
-                className="inline-flex"
-              >
-                <Logo className="h-4 w-16" />
-              </Link>
-            </div>
-            {user && user.workspaces.length > 1 ? (
-              <div className="flex flex-row gap-2">
-                <div className="text-sm text-slate-500">Workspace:</div>
-                <WorkspacePicker
-                  user={user}
-                  workspace={owner}
-                  readOnly={false}
-                  displayDropDownOrigin="topLeft"
-                  onWorkspaceUpdate={(workspace) => {
-                    const assistantRoute = `/w/${workspace.sId}/assistant/new`;
-                    if (workspace.id !== owner.id) {
-                      void router
-                        .push(assistantRoute)
-                        .then(() => router.reload());
-                    }
-                  }}
-                />
-              </div>
-            ) : null}
-          </div>
-          {user && <UserMenu user={user} owner={owner} />}
-        </div>
+        {user && user.workspaces.length > 1 ? (
+          <WorkspacePicker
+            user={user}
+            workspace={owner}
+            onWorkspaceUpdate={async (workspace) => {
+              const assistantRoute = `/w/${workspace.sId}/assistant/new`;
+              if (workspace.id !== owner.id) {
+                await router.push(assistantRoute).then(() => router.reload());
+              }
+            }}
+          />
+        ) : null}
 
         <AppStatusBanner />
         {subscription.endDate && (
           <SubscriptionEndBanner endDate={subscription.endDate} />
         )}
         {subscription.paymentFailingSince && <SubscriptionPastDueBanner />}
-        {nav.length > 1 && (
+        {navs.length > 1 && (
           <div className="pt-2">
-            <Tab tabs={navs} />
-          </div>
-        )}
-        {subNavigation && (
-          <div className="pt-3">
-            {subNavigation.map((nav) => {
-              return (
-                <div key={nav.id} className="grow py-1 pl-4 pr-3">
-                  <Item.List>
-                    {nav.label && (
-                      <Item.SectionHeader
-                        label={nav.label}
-                        variant={nav.variant}
-                        className="!pt-4"
-                      />
-                    )}
-                    {nav.menus.map((menu) => {
-                      return (
-                        <React.Fragment key={menu.id}>
-                          <Item.Navigation
-                            selected={menu.current}
-                            label={menu.label}
-                            icon={menu.icon}
-                            link={
-                              menu.href
-                                ? { href: menu.href, target: menu.target }
-                                : undefined
-                            }
-                          />
-                          {menu.subMenuLabel && (
-                            <div className="grow pb-3 pl-14 pr-4 pt-2 text-sm text-xs uppercase text-slate-400">
-                              {menu.subMenuLabel}
-                            </div>
-                          )}
-                          {menu.subMenu && (
-                            <div className="mb-2 flex flex-col">
-                              {menu.subMenu.map((nav) => {
-                                return (
-                                  <div key={nav.id} className="flex grow">
-                                    <Item.Entry
-                                      selected={nav.current}
-                                      label={nav.label}
-                                      icon={nav.icon}
-                                      className="TEST grow pl-14 pr-4"
-                                      link={
-                                        nav.href
-                                          ? {
-                                              href: nav.href,
-                                            }
-                                          : undefined
-                                      }
-                                    />
+            <Tabs value={currentTab?.id ?? "conversations"}>
+              <TabsList className="px-2">
+                {navs.map((tab) => (
+                  <TabsTrigger
+                    key={tab.id}
+                    value={tab.id}
+                    label={tab.hideLabel ? undefined : tab.label}
+                    tooltip={tab.hideLabel ? tab.label : undefined}
+                    icon={tab.icon}
+                    onClick={() => {
+                      if (tab.href) {
+                        void router.push(tab.href);
+                      }
+                    }}
+                  />
+                ))}
+              </TabsList>
+              <NavigationList className="px-2">
+                {navs.map((tab) => (
+                  <TabsContent key={tab.id} value={tab.id}>
+                    {subNavigation && tab.isCurrent(activePath) && (
+                      <>
+                        {subNavigation.map((nav) => (
+                          <div key={nav.id}>
+                            {nav.label && (
+                              <NavigationListLabel
+                                label={nav.label}
+                                variant={nav.variant}
+                              />
+                            )}
+                            {nav.menus.map((menu) => (
+                              <React.Fragment key={menu.id}>
+                                <NavigationListItem
+                                  selected={menu.current}
+                                  label={menu.label}
+                                  icon={menu.icon}
+                                  href={menu.href}
+                                  target={menu.target}
+                                />
+                                {menu.subMenuLabel && (
+                                  <div className="grow pb-3 pl-14 pr-4 pt-2 text-sm uppercase text-slate-400">
+                                    {menu.subMenuLabel}
                                   </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </React.Fragment>
-                      );
-                    })}
-                  </Item.List>
-                </div>
-              );
-            })}
+                                )}
+                                {menu.subMenu && (
+                                  <div className="mb-2 flex flex-col">
+                                    {menu.subMenu.map((nav) => (
+                                      <NavigationListItem
+                                        key={nav.id}
+                                        selected={nav.current}
+                                        label={nav.label}
+                                        icon={nav.icon}
+                                        className="grow pl-14 pr-4"
+                                        href={nav.href ? nav.href : undefined}
+                                      />
+                                    ))}
+                                  </div>
+                                )}
+                              </React.Fragment>
+                            ))}
+                          </div>
+                        ))}
+                      </>
+                    )}
+                  </TabsContent>
+                ))}
+              </NavigationList>
+            </Tabs>
           </div>
         )}
       </div>
       <div className="flex grow flex-col">{children}</div>
+      {user && (
+        <div className="flex items-center gap-2 border-t border-border-dark p-2">
+          <UserMenu user={user} owner={owner} />
+          <div className="flex-grow" />
+          <HelpDropdown owner={owner} user={user} />
+        </div>
+      )}
     </div>
   );
 });
 
 function AppStatusBanner() {
   const { appStatus } = useAppStatus();
-  const { providerStatus } = appStatus ?? {};
 
-  if (!appStatus || !providerStatus) {
+  if (!appStatus) {
     return null;
   }
 
-  return (
-    <div className="space-y-2 border-y border-pink-200 bg-pink-100 px-3 py-3 text-xs text-pink-900">
-      <div className="font-bold">{providerStatus.name}</div>
-      <div className="font-normal">{providerStatus.description}</div>
-    </div>
-  );
+  const { providersStatus, dustStatus } = appStatus;
+
+  if (dustStatus) {
+    return (
+      <div className="space-y-2 border-y border-pink-200 bg-pink-100 px-3 py-3 text-xs text-pink-900">
+        <div className="font-bold">{dustStatus.name}</div>
+        <div className="font-normal">{dustStatus.description}</div>
+        <div>
+          Check our{" "}
+          <Link href={dustStatus.link} target="_blank" className="underline">
+            status page
+          </Link>{" "}
+          for updates.
+        </div>
+      </div>
+    );
+  }
+  if (providersStatus) {
+    return (
+      <div className="space-y-2 border-y border-pink-200 bg-pink-100 px-3 py-3 text-xs text-pink-900">
+        <div className="font-bold">{providersStatus.name}</div>
+        <div className="font-normal">{providersStatus.description}</div>
+      </div>
+    );
+  }
+
+  return null;
 }
 
 function SubscriptionEndBanner({ endDate }: { endDate: number }) {

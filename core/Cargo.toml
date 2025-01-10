@@ -3,33 +3,72 @@ name = "dust"
 version = "0.1.0"
 edition = "2021"
 
-[[bin]]
-name = "dust-api"
-path = "bin/dust_api.rs"
+# SERVICES
 
 [[bin]]
-name = "qdrant_migrator"
-path = "bin/qdrant/migrator.rs"
-
-[[bin]]
-name = "qdrant_migrate_embedder"
-path = "bin/qdrant/migrate_embedder.rs"
-
-[[bin]]
-name = "qdrant_create_collection"
-path = "bin/qdrant/create_collection.rs"
-
-[[bin]]
-name = "sqlite-worker"
-path = "bin/sqlite_worker.rs"
+name = "core-api"
+path = "bin/core_api.rs"
 
 [[bin]]
 name = "oauth"
 path = "bin/oauth.rs"
 
 [[bin]]
-name = "oauth_generate_key"
-path = "bin/oauth_generate_key.rs"
+name = "sqlite-worker"
+path = "bin/sqlite_worker.rs"
+
+# UTILS
+
+[[bin]]
+name = "init_db"
+path = "bin/init_db.rs"
+
+[[bin]]
+name = "elasticsearch_create_index"
+path = "bin/elasticsearch/create_index.rs"
+
+[[bin]]
+name = "elasticsearch_backfill_index"
+path = "bin/elasticsearch/backfill_index.rs"
+
+[[bin]]
+name = "qdrant_create_collection"
+path = "bin/qdrant/create_collection.rs"
+
+# [[bin]]
+# name = "qdrant_migrator"
+# path = "bin/qdrant/migrator.rs"
+
+# [[bin]]
+# name = "qdrant_migrate_embedder"
+# path = "bin/qdrant/migrate_embedder.rs"
+
+[[bin]]
+name = "qdrant_delete_orphaned_points"
+path = "bin/qdrant/delete_orphaned_points.rs"
+
+
+# [[bin]]
+# name = "oauth_generate_key"
+# path = "bin/oauth_generate_key.rs"
+
+# MIGRATIONS
+
+[[bin]]
+name = "create_nodes"
+path = "bin/migrations/20241204_create_nodes.rs"
+
+[[bin]]
+name = "fix_created_dsdocs"
+path = "bin/migrations/20241203_fix_created_dsdocs.rs"
+
+[[test]]
+name = "oauth_connections_test"
+path = "src/oauth/tests/functional_connections.rs"
+
+[[test]]
+name = "oauth_credentials_test"
+path = "src/oauth/tests/functional_credentials.rs"
 
 [dependencies]
 anyhow = "1.0"
@@ -67,7 +106,7 @@ rustc-hash = "1.1"
 bstr = "1.9"
 base64 = "0.22"
 cloud-storage = { version = "0.11", features = ["global-client"] }
-qdrant-client = "=1.9.0"
+qdrant-client = "1.11"
 tower-http = {version = "0.5", features = ["full"]}
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
@@ -85,3 +124,8 @@ sqids = "0.4.1"
 ring = "0.17.8"
 jsonwebtoken = "9.3.0"
 rslock = { version = "0.4.0", default-features = false, features = ["tokio-comp"] }
+snowflake-connector-rs = { git = "https://github.com/dust-tt/snowflake-connector-rs", rev = "5a16356" }
+axum-test = "16.0.0"
+csv = "1.3.0"
+tikv-jemallocator = "0.6"
+elasticsearch = "8.15.0-alpha.1"

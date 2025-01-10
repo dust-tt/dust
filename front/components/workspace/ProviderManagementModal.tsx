@@ -2,24 +2,28 @@ import {
   Button,
   ContextItem,
   DropdownMenu,
-  Modal,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
   SliderToggle,
-  Tooltip,
+  useSendNotification,
 } from "@dust-tt/sparkle";
 import type { ModelProviderIdType, WorkspaceType } from "@dust-tt/types";
-import { EMBEDDING_PROVIDER_IDS } from "@dust-tt/types";
-import { MODEL_PROVIDER_IDS, SUPPORTED_MODEL_CONFIGS } from "@dust-tt/types";
+import { EMBEDDING_PROVIDER_IDS, MODEL_PROVIDER_IDS } from "@dust-tt/types";
 import { isEqual } from "lodash";
-import { useCallback, useContext, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
-import { MODEL_PROVIDER_LOGOS } from "@app/components/providers/types";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-
-interface ProviderManagementModalProps {
-  owner: WorkspaceType;
-  showProviderModal: boolean;
-  onClose: () => void;
-}
+import {
+  MODEL_PROVIDER_LOGOS,
+  USED_MODEL_CONFIGS,
+} from "@app/components/providers/types";
 
 type ProviderStates = Record<ModelProviderIdType, boolean>;
 
@@ -28,10 +32,12 @@ const prettyfiedProviderNames: { [key in ModelProviderIdType]: string } = {
   anthropic: "Anthropic",
   mistral: "Mistral AI",
   google_ai_studio: "Google",
+  togetherai: "TogetherAI",
+  deepseek: "Deepseek",
 };
 
 const modelProviders: Record<ModelProviderIdType, string[]> =
-  SUPPORTED_MODEL_CONFIGS.reduce(
+  USED_MODEL_CONFIGS.reduce(
     (acc, model) => {
       if (!model.isLegacy) {
         acc[model.providerId] = acc[model.providerId] || [];
@@ -42,12 +48,14 @@ const modelProviders: Record<ModelProviderIdType, string[]> =
     {} as Record<ModelProviderIdType, string[]>
   );
 
+interface ProviderManagementModalProps {
+  owner: WorkspaceType;
+}
+
 export function ProviderManagementModal({
   owner,
-  showProviderModal,
-  onClose,
 }: ProviderManagementModalProps) {
-  const sendNotifications = useContext(SendNotificationsContext);
+  const sendNotifications = useSendNotification();
 
   const initialProviderStates: ProviderStates = useMemo(() => {
     const enabledProviders: ModelProviderIdType[] =
@@ -117,7 +125,6 @@ export function ProviderManagementModal({
           title: "Providers Updated",
           description: "The list of providers has been successfully updated.",
         });
-        onClose();
       } catch (error) {
         sendNotifications({
           type: "error",
@@ -128,102 +135,118 @@ export function ProviderManagementModal({
     }
   };
 
+  const hasChanges =
+    !isEqual(providerStates, initialProviderStates) ||
+    embeddingProvider !== owner.defaultEmbeddingProvider;
+
   return (
-    <Modal
-      isOpen={showProviderModal}
-      onClose={onClose}
-      hasChanged={
-        !isEqual(providerStates, initialProviderStates) ||
-        embeddingProvider !== owner.defaultEmbeddingProvider
-      }
-      title="Manage Providers"
-      saveLabel="Update providers"
-      onSave={handleSave}
-    >
-      <div className="mt-8 divide-y divide-gray-200">
-        <div className="flex items-center justify-between px-4 pb-4">
-          <span className="text-left font-bold text-element-900">
-            Make all providers available
-          </span>
-          <SliderToggle
-            size="sm"
-            selected={allToggleEnabled}
-            disabled={masterToggleDisabled}
-            onClick={() => {
-              setProviderStates(
-                MODEL_PROVIDER_IDS.reduce((acc, provider) => {
-                  acc[provider] = !allToggleEnabled;
-                  return acc;
-                }, {} as ProviderStates)
-              );
-            }}
-          />
-        </div>
-      </div>
-      <div className="flex flex-col gap-4">
-        <ContextItem.List>
-          {MODEL_PROVIDER_IDS.map((provider) => {
-            const LogoComponent = MODEL_PROVIDER_LOGOS[provider];
-            return (
-              <ContextItem
-                key={provider}
-                title={prettyfiedProviderNames[provider]}
-                visual={<LogoComponent />}
-                action={
-                  <SliderToggle
-                    size="sm"
-                    selected={providerStates[provider]}
-                    onClick={() => handleToggleChange(provider)}
-                  />
-                }
-              >
-                <ContextItem.Description>
-                  <span className="text-sm text-element-700">
-                    {modelProviders[provider].join(", ")}
-                  </span>
-                </ContextItem.Description>
-              </ContextItem>
-            );
-          })}
-        </ContextItem.List>
-      </div>
-      <div className="flex flex-row items-center gap-4 px-4 pt-4">
-        <div className="s-text-sm font-semibold">Embedding Provider:</div>
-        <DropdownMenu>
-          <DropdownMenu.Button>
-            <Tooltip label="Please contact us if you are willing to change this setting.">
-              <Button
-                type="select"
-                labelVisible={true}
-                label={
-                  embeddingProvider
-                    ? prettyfiedProviderNames[embeddingProvider]
-                    : prettyfiedProviderNames["openai"]
-                }
-                variant="secondary"
-                hasMagnifying={false}
+    <Sheet>
+      <SheetTrigger asChild>
+        <Button variant="primary" label="Manage providers" className="grow-0" />
+      </SheetTrigger>
+      <SheetContent size="lg">
+        <SheetHeader hideButton>
+          <SheetTitle>Manage Providers</SheetTitle>
+        </SheetHeader>
+        <SheetContainer>
+          <div className="mt-8 divide-y divide-gray-200">
+            <div className="flex items-center justify-between px-4 pb-4">
+              <span className="text-left font-bold text-foreground">
+                Make all providers available
+              </span>
+              <SliderToggle
                 size="sm"
-                disabled={true}
-              />
-            </Tooltip>
-          </DropdownMenu.Button>
-          <DropdownMenu.Items origin="topRight">
-            {EMBEDDING_PROVIDER_IDS.map((provider) => (
-              <DropdownMenu.Item
-                key={provider}
-                label={prettyfiedProviderNames[provider]}
+                selected={allToggleEnabled}
+                disabled={masterToggleDisabled}
                 onClick={() => {
-                  setDefaultEmbeddingProvider(provider);
+                  setProviderStates(
+                    MODEL_PROVIDER_IDS.reduce((acc, provider) => {
+                      acc[provider] = !allToggleEnabled;
+                      return acc;
+                    }, {} as ProviderStates)
+                  );
                 }}
               />
-            ))}
-          </DropdownMenu.Items>
-        </DropdownMenu>
-      </div>
-      <div className="px-4 pt-2 text-sm text-gray-500">
-        Embedding models are used to create numerical representations of your
-        data powering the semantic search capabilities of your assistants.
-      </div>
-    </Modal>
+            </div>
+          </div>
+          <div className="flex flex-col gap-4">
+            <ContextItem.List>
+              {MODEL_PROVIDER_IDS.map((provider) => {
+                const LogoComponent = MODEL_PROVIDER_LOGOS[provider];
+                if (!modelProviders[provider]) {
+                  return null;
+                }
+                return (
+                  <ContextItem
+                    key={provider}
+                    title={prettyfiedProviderNames[provider]}
+                    visual={<LogoComponent />}
+                    action={
+                      <SliderToggle
+                        size="sm"
+                        selected={providerStates[provider]}
+                        onClick={() => handleToggleChange(provider)}
+                      />
+                    }
+                  >
+                    <ContextItem.Description>
+                      <span className="text-sm text-element-700">
+                        {modelProviders[provider].join(", ")}
+                      </span>
+                    </ContextItem.Description>
+                  </ContextItem>
+                );
+              })}
+            </ContextItem.List>
+          </div>
+          <div className="flex flex-row items-center gap-4 px-4 pt-4">
+            <div className="text-sm font-semibold">Embedding Provider:</div>
+            <DropdownMenu>
+              <DropdownMenuTrigger disabled>
+                <Button
+                  disabled
+                  tooltip="Please contact us if you are willing to change this setting."
+                  isSelect
+                  label={
+                    embeddingProvider
+                      ? prettyfiedProviderNames[embeddingProvider]
+                      : prettyfiedProviderNames["openai"]
+                  }
+                  variant="outline"
+                  size="sm"
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                {EMBEDDING_PROVIDER_IDS.map((provider) => (
+                  <DropdownMenuItem
+                    key={provider}
+                    label={prettyfiedProviderNames[provider]}
+                    onClick={() => {
+                      setDefaultEmbeddingProvider(provider);
+                    }}
+                  />
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+          <div className="px-4 pt-2 text-sm text-gray-500">
+            Embedding models are used to create numerical representations of
+            your data powering the semantic search capabilities of your
+            assistants.
+          </div>
+        </SheetContainer>
+        <SheetFooter
+          leftButtonProps={{
+            label: "Cancel",
+            variant: "outline",
+          }}
+          rightButtonProps={{
+            label: "Update providers",
+            onClick: handleSave,
+            disabled: !hasChanges,
+          }}
+        />
+      </SheetContent>
+    </Sheet>
   );
 }

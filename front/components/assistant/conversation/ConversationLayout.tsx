@@ -1,23 +1,26 @@
 import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
 import { useRouter } from "next/router";
-import React, { useCallback, useContext, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 
 import RootLayout from "@app/components/app/RootLayout";
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
+import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
+import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { ConversationTitle } from "@app/components/assistant/conversation/ConversationTitle";
 import { FileDropProvider } from "@app/components/assistant/conversation/FileUploaderContext";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBarProvider } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import { deleteConversation } from "@app/components/assistant/conversation/lib";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { useConversation, useConversations } from "@app/lib/swr/conversations";
+import { useURLSheet } from "@app/hooks/useURLSheet";
+import {
+  useConversation,
+  useDeleteConversation,
+} from "@app/lib/swr/conversations";
 
 export interface ConversationLayoutProps {
   baseUrl: string;
   conversationId: string | null;
-  gaTrackingId: string;
   owner: WorkspaceType;
   subscription: SubscriptionType;
 }
@@ -29,29 +32,17 @@ export default function ConversationLayout({
   children: React.ReactNode;
   pageProps: ConversationLayoutProps;
 }) {
-  const { baseUrl, conversationId, gaTrackingId, owner, subscription } =
-    pageProps;
+  const { baseUrl, conversationId, owner, subscription } = pageProps;
 
   const router = useRouter();
-  const sendNotification = useContext(SendNotificationsContext);
 
   const [detailViewContent, setDetailViewContent] = useState("");
   const [activeConversationId, setActiveConversationId] = useState(
     conversationId !== "new" ? conversationId : null
   );
 
-  const handleCloseModal = () => {
-    const currentPathname = router.pathname;
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { assistantDetails, ...restQuery } = router.query;
-    void router.push(
-      { pathname: currentPathname, query: restQuery },
-      undefined,
-      {
-        shallow: true,
-      }
-    );
-  };
+  const { onOpenChange: onOpenChangeAssistantModal } =
+    useURLSheet("assistantDetails");
 
   useEffect(() => {
     const handleRouteChange = () => {
@@ -91,81 +82,66 @@ export default function ConversationLayout({
     activeConversationId,
   ]);
 
-  const { conversations, isConversationsError, mutateConversations } =
-    useConversations({
-      workspaceId: owner.sId,
-    });
-
-  const { conversation } = useConversation({
+  const { conversation, conversationError } = useConversation({
     conversationId: activeConversationId,
     workspaceId: owner.sId,
   });
 
-  const onDeleteConversation = useCallback(
-    async (conversationId: string) => {
-      await deleteConversation({
-        workspaceId: owner.sId,
-        conversationId: conversationId,
-        sendNotification,
-      });
+  const doDelete = useDeleteConversation(owner);
 
-      await mutateConversations((prevState) => {
-        return {
-          ...prevState,
-          conversations:
-            prevState?.conversations.filter(
-              (conversation) => conversation.sId !== conversationId
-            ) ?? [],
-        };
-      });
-
+  const onDeleteConversation = useCallback(async () => {
+    const res = await doDelete(conversation);
+    if (res) {
       void router.push(`/w/${owner.sId}/assistant/new`);
-    },
-    [mutateConversations, owner.sId, router, sendNotification]
-  );
+    }
+  }, [conversation, doDelete, owner.sId, router]);
 
   return (
     <RootLayout>
-      <InputBarProvider>
-        <AppLayout
-          subscription={subscription}
-          owner={owner}
-          isWideMode
-          pageTitle={
-            conversation?.title
-              ? `Dust - ${conversation?.title}`
-              : `Dust - New Conversation`
-          }
-          gaTrackingId={gaTrackingId}
-          titleChildren={
-            // TODO: Improve so we don't re-render everytime.
-            conversation && (
-              <ConversationTitle
-                owner={owner}
-                conversation={conversation}
-                shareLink={`${baseUrl}/w/${owner.sId}/assistant/${activeConversationId}`}
-                onDelete={onDeleteConversation}
-              />
-            )
-          }
-          navChildren={
-            <AssistantSidebarMenu
-              owner={owner}
-              conversations={conversations}
-              isConversationsError={isConversationsError}
-            />
-          }
-        >
-          <AssistantDetails
+      <ConversationsNavigationProvider>
+        <InputBarProvider>
+          <AppLayout
+            subscription={subscription}
             owner={owner}
-            assistantId={detailViewContent || null}
-            onClose={handleCloseModal}
-          />
-          <FileDropProvider>
-            <GenerationContextProvider>{children}</GenerationContextProvider>
-          </FileDropProvider>
-        </AppLayout>
-      </InputBarProvider>
+            isWideMode
+            pageTitle={
+              conversation?.title
+                ? `Dust - ${conversation?.title}`
+                : `Dust - New Conversation`
+            }
+            titleChildren={
+              // TODO: Improve so we don't re-render everytime.
+              activeConversationId && (
+                <ConversationTitle
+                  owner={owner}
+                  conversationId={activeConversationId}
+                  conversation={conversation}
+                  shareLink={`${baseUrl}/w/${owner.sId}/assistant/${activeConversationId}`}
+                  onDelete={onDeleteConversation}
+                />
+              )
+            }
+            navChildren={<AssistantSidebarMenu owner={owner} />}
+          >
+            {conversationError ? (
+              <ConversationErrorDisplay error={conversationError} />
+            ) : (
+              <>
+                <AssistantDetails
+                  owner={owner}
+                  assistantId={detailViewContent || null}
+                  onClose={() => onOpenChangeAssistantModal(false)}
+                />
+                <FileDropProvider>
+                  <GenerationContextProvider>
+                    {children}
+                  </GenerationContextProvider>
+                </FileDropProvider>
+              </>
+            )}
+          </AppLayout>
+        </InputBarProvider>
+      </ConversationsNavigationProvider>
     </RootLayout>
   );
 }

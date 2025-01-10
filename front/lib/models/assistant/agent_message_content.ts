@@ -1,19 +1,11 @@
-import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional, ForeignKey } from "sequelize";
+import { DataTypes } from "sequelize";
 
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { BaseModel } from "@app/lib/resources/storage/wrappers";
 
-export class AgentMessageContent extends Model<
-  InferAttributes<AgentMessageContent>,
-  InferCreationAttributes<AgentMessageContent>
-> {
-  declare id: CreationOptional<number>;
+export class AgentMessageContent extends BaseModel<AgentMessageContent> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -25,11 +17,6 @@ export class AgentMessageContent extends Model<
 
 AgentMessageContent.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -71,7 +58,8 @@ AgentMessageContent.belongsTo(AgentMessage, {
     name: "agentMessageId",
     allowNull: false,
   },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
+  onUpdate: "RESTRICT",
 });
 
 AgentMessage.hasMany(AgentMessageContent, {
@@ -80,5 +68,6 @@ AgentMessage.hasMany(AgentMessageContent, {
     name: "agentMessageId",
     allowNull: false,
   },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
+  onUpdate: "RESTRICT",
 });

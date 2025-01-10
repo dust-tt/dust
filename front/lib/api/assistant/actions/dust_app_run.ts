@@ -1,3 +1,4 @@
+import { DustAPI } from "@dust-tt/client";
 import type {
   DustAppRunBlockEvent,
   DustAppRunConfigurationType,
@@ -13,10 +14,9 @@ import type { AgentActionSpecification } from "@dust-tt/types";
 import type { SpecificationType } from "@dust-tt/types";
 import type { DatasetSchema } from "@dust-tt/types";
 import type { Result } from "@dust-tt/types";
-import { BaseAction, DustAPI } from "@dust-tt/types";
+import { BaseAction, getHeaderFromGroupIds } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 
-import { getApp } from "@app/lib/api/app";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
 import config from "@app/lib/api/config";
@@ -25,6 +25,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { extractConfig } from "@app/lib/config";
 import { AgentDustAppRunAction } from "@app/lib/models/assistant/actions/dust_app_run";
+import { AppResource } from "@app/lib/resources/app_resource";
 import { sanitizeJSONOutput } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
@@ -86,7 +87,7 @@ export class DustAppRunAction extends BaseAction {
     };
   }
 
-  renderForMultiActionsModel(): FunctionMessageTypeModel {
+  async renderForMultiActionsModel(): Promise<FunctionMessageTypeModel> {
     let content = "";
 
     // Note action.output can be any valid JSON including null.
@@ -127,7 +128,7 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
       );
     }
 
-    const app = await getApp(auth, actionConfiguration.appId);
+    const app = await AppResource.fetchById(auth, actionConfiguration.appId);
     if (!app) {
       return new Err(
         new Error(
@@ -178,17 +179,12 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
     });
   }
 
-  // DustAppRun does not use citations.
-  getCitationsCount(): number {
-    return 0;
-  }
-
   // This method is in charge of running a dust app and creating an AgentDustAppRunAction object in
   // the database. It does not create any generic model related to the conversation. It is possible
-  // for an AgentDustAppRunAction to be stored (once the params are infered) but for the dust app run
-  // to fail, in which case an error event will be emitted and the AgentDustAppRunAction won't have
-  // any output associated. The error is expected to be stored by the caller on the parent agent
-  // message.
+  // for an AgentDustAppRunAction to be stored (once the params are infered) but for the dust app
+  // run to fail, in which case an error event will be emitted and the AgentDustAppRunAction won't
+  // have any output associated. The error is expected to be stored by the caller on the parent
+  // agent message.
   async *run(
     auth: Authenticator,
     {
@@ -218,7 +214,7 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
 
     const { actionConfiguration } = this;
 
-    const app = await getApp(auth, actionConfiguration.appId);
+    const app = await AppResource.fetchById(auth, actionConfiguration.appId);
     if (!app) {
       yield {
         type: "dust_app_run_error",
@@ -241,7 +237,7 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
     const params: DustAppParameters = {};
 
     for (const k of spec.inputs) {
-      if (rawInputs[k.name] && typeof rawInputs[k.name] === k.type) {
+      if (k.name in rawInputs && typeof rawInputs[k.name] === k.type) {
         // As defined in dustAppRunActionSpecification, type is either "string", "number" or "boolean"
         params[k.name] = rawInputs[k.name] as string | number | boolean;
       } else {
@@ -304,13 +300,15 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
       useLocalInDev: true,
     });
     const requestedGroupIds = auth.groups().map((g) => g.sId);
+    const apiConfig = config.getDustAPIConfig();
     const api = new DustAPI(
-      config.getDustAPIConfig(),
-      { ...prodCredentials, groupIds: requestedGroupIds },
-      logger,
+      apiConfig,
       {
-        useLocalInDev: true,
-      }
+        ...prodCredentials,
+        extraHeaders: getHeaderFromGroupIds(requestedGroupIds),
+      },
+      logger,
+      apiConfig.nodeEnv === "development" ? "http://localhost:3000" : null
     );
 
     // As we run the app (using a system API key here), we do force using the workspace credentials so
@@ -319,6 +317,7 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
       {
         workspaceId: actionConfiguration.appWorkspaceId,
         appId: actionConfiguration.appId,
+        appSpaceId: app.space.sId,
         appHash: "latest",
       },
       appConfig,
@@ -334,7 +333,7 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
         messageId: agentMessage.sId,
         error: {
           code: "dust_app_run_error",
-          message: `Error running Dust app: ${runRes.error.message}`,
+          message: `Dust App ${app.name}: ${runRes.error.message}`,
         },
       };
       return;

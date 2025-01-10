@@ -5,10 +5,10 @@ import type {
 import { assertNever, isMembershipRoleType } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getUserForWorkspace } from "@app/lib/api/user";
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { canForceUserRole } from "@app/lib/development";
+import { showDebugTools } from "@app/lib/development";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { apiError } from "@app/logger/withlogging";
@@ -27,7 +27,7 @@ async function handler(
 
   // Allow Dust Super User to force role for testing
   const allowForSuperUserTesting =
-    canForceUserRole(owner) &&
+    showDebugTools(owner) &&
     auth.isDustSuperUser() &&
     req.body.force === "true";
 

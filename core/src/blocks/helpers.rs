@@ -20,7 +20,9 @@ pub async fn get_data_source_project_and_view_filter(
     workspace_id: &String,
     data_source_id: &String,
     env: &Env,
-    origin: &str,
+    // true for our packaged dust-apps called internally, see
+    // https://github.com/dust-tt/tasks/issues/1658
+    is_system_run: bool,
 ) -> Result<(Project, Option<SearchFilter>, String)> {
     let dust_workspace_id = match env.credentials.get("DUST_WORKSPACE_ID") {
         None => Err(anyhow!(
@@ -48,11 +50,13 @@ pub async fn get_data_source_project_and_view_filter(
     };
 
     let url = format!(
-        "{}/api/registry/data_sources/lookup?workspace_id={}&data_source_id={}",
+        "{}/api/registry/data_sources/lookup?workspace_id={}&data_source_id={}&is_system_run={}",
         front_api.as_str(),
         encode(&workspace_id),
         encode(&data_source_id),
+        is_system_run.to_string(),
     );
+
     let parsed_url = Url::parse(url.as_str())?;
 
     let res = reqwest::Client::new()
@@ -63,7 +67,6 @@ pub async fn get_data_source_project_and_view_filter(
         )
         .header("X-Dust-Workspace-Id", dust_workspace_id)
         .header("X-Dust-Group-Ids", dust_group_ids)
-        .header("X-Dust-Origin", origin)
         .send()
         .await?;
 

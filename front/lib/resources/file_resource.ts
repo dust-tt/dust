@@ -4,6 +4,7 @@
 import type {
   FileType,
   FileTypeWithUploadUrl,
+  FileUseCaseMetadata,
   LightWorkspaceType,
   ModelId,
   Result,
@@ -29,7 +30,7 @@ import { FileModel } from "@app/lib/resources/storage/models/files";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 
-type FileVersion = "processed" | "original" | "public" | "snippet";
+export type FileVersion = "processed" | "original" | "public" | "snippet";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface FileResource extends ReadonlyAttributesType<FileModel> {}
@@ -56,8 +57,8 @@ export class FileResource extends BaseResource<FileModel> {
     auth: Authenticator,
     id: string
   ): Promise<FileResource | null> {
-    // TODO(2024-07-01 flav) Remove once we introduce AuthenticatorWithWorkspace.
     const res = await FileResource.fetchByIds(auth, [id]);
+
     return res.length > 0 ? res[0] : null;
   }
 
@@ -181,14 +182,19 @@ export class FileResource extends BaseResource<FileModel> {
 
   // Cloud storage logic.
 
-  getPublicUrl(auth: Authenticator): string {
-    // TODO(2024-07-01 flav) Remove once we introduce AuthenticatorWithWorkspace.
+  getPrivateUrl(auth: Authenticator): string {
     const owner = auth.getNonNullableWorkspace();
+
     return `${config.getClientFacingUrl()}/api/w/${owner.sId}/files/${this.sId}`;
   }
 
+  getPublicUrl(auth: Authenticator): string {
+    const owner = auth.getNonNullableWorkspace();
+
+    return `${config.getClientFacingUrl()}/api/v1/w/${owner.sId}/files/${this.sId}`;
+  }
+
   getCloudStoragePath(auth: Authenticator, version: FileVersion): string {
-    // TODO(2024-07-01 flav) Remove once we introduce AuthenticatorWithWorkspace.
     const owner = auth.getNonNullableWorkspace();
 
     return FileResource.getCloudStoragePathForId({
@@ -279,6 +285,14 @@ export class FileResource extends BaseResource<FileModel> {
     }
   }
 
+  setUseCaseMetadata(metadata: FileUseCaseMetadata) {
+    return this.update({ useCaseMetadata: metadata });
+  }
+
+  setSnippet(snippet: string) {
+    return this.update({ snippet });
+  }
+
   // Serialization logic.
 
   toJSON(auth: Authenticator): FileType {
@@ -292,7 +306,7 @@ export class FileResource extends BaseResource<FileModel> {
     };
 
     if (this.isReady) {
-      blob.downloadUrl = this.getPublicUrl(auth);
+      blob.downloadUrl = this.getPrivateUrl(auth);
     }
 
     if (this.useCase === "avatar") {
@@ -304,6 +318,37 @@ export class FileResource extends BaseResource<FileModel> {
 
   toJSONWithUploadUrl(auth: Authenticator): FileTypeWithUploadUrl {
     const blob = this.toJSON(auth);
+
+    return {
+      ...blob,
+      uploadUrl: this.getPrivateUrl(auth),
+    };
+  }
+
+  toPublicJSON(auth: Authenticator): FileType {
+    const blob: FileType = {
+      contentType: this.contentType,
+      fileName: this.fileName,
+      fileSize: this.fileSize,
+      id: this.sId,
+      status: this.status,
+      useCase: this.useCase,
+    };
+
+    if (this.isReady) {
+      // TODO(thomas): This should be a public URL, need to solve authorization
+      blob.downloadUrl = this.getPrivateUrl(auth);
+    }
+
+    if (this.useCase === "avatar") {
+      blob.publicUrl = this.getPublicUrlForDownload(auth);
+    }
+
+    return blob;
+  }
+
+  toPublicJSONWithUploadUrl(auth: Authenticator): FileTypeWithUploadUrl {
+    const blob = this.toPublicJSON(auth);
 
     return {
       ...blob,

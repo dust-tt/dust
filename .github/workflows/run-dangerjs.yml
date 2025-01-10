@@ -2,8 +2,8 @@ name: Run DangerJS
 
 on:
   pull_request:
-    branches: [ main ]
-    types: [ edited, labeled, opened, pushed, reopened, synchronize ]
+    branches: [main]
+    types: [edited, labeled, opened, pushed, reopened, synchronize]
 
 jobs:
   danger-front:
@@ -37,7 +37,7 @@ jobs:
         if: ${{ steps.file_changes.outputs.run_danger == 'true' }}
         uses: actions/setup-node@v3
         with:
-          node-version: "18"
+          node-version: "20"
 
       - name: Install dependencies
         if: ${{ steps.file_changes.outputs.run_danger == 'true' }}

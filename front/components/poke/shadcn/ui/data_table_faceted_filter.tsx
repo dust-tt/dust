@@ -1,4 +1,10 @@
-import { CheckIcon, PlusCircleIcon } from "@dust-tt/sparkle";
+import {
+  CheckIcon,
+  PlusCircleIcon,
+  PopoverContent,
+  PopoverRoot,
+  PopoverTrigger,
+} from "@dust-tt/sparkle";
 import { Separator } from "@radix-ui/react-select";
 import type { Column } from "@tanstack/react-table";
 import * as React from "react";
@@ -13,11 +19,6 @@ import {
   PokeCommandList,
   PokeCommandSeparator,
 } from "@app/components/poke/shadcn/ui/command";
-import {
-  PokePopover,
-  PokePopoverContent,
-  PokePopoverTrigger,
-} from "@app/components/poke/shadcn/ui/popover";
 
 interface PokeDataTableFacetedFilterProps<TData, TValue> {
   column?: Column<TData, TValue>;
@@ -38,8 +39,8 @@ export function PokeDataTableFacetedFilter<TData, TValue>({
   const selectedValues = new Set(column?.getFilterValue() as string[]);
 
   return (
-    <PokePopover>
-      <PokePopoverTrigger asChild>
+    <PopoverRoot>
+      <PopoverTrigger asChild>
         <PokeButton variant="outline" size="sm" className="h-8 border-dashed">
           <PlusCircleIcon className="mr-2 h-4 w-4" />
           {title}
@@ -77,11 +78,8 @@ export function PokeDataTableFacetedFilter<TData, TValue>({
             </>
           )}
         </PokeButton>
-      </PokePopoverTrigger>
-      <PokePopoverContent
-        className="w-[200px] bg-structure-100 p-0"
-        align="start"
-      >
+      </PopoverTrigger>
+      <PopoverContent className="w-[200px] bg-structure-100 p-0" align="start">
         <PokeCommand>
           <PokeCommandList>
             <PokeCommandGroup>
@@ -106,16 +104,16 @@ export function PokeDataTableFacetedFilter<TData, TValue>({
                   >
                     <div
                       className={cn(
-                        "border-primary mr-2 flex h-4 w-4 items-center justify-center rounded-sm border",
+                        "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
                         isSelected
-                          ? "bg-primary text-primary-foreground"
+                          ? "text-primary-foreground bg-primary"
                           : "[&_svg]:invisible"
                       )}
                     >
                       <CheckIcon className={cn("h-4 w-4")} />
                     </div>
                     {option.icon && (
-                      <option.icon className="text-muted-foreground mr-2 h-4 w-4" />
+                      <option.icon className="mr-2 h-4 w-4 text-muted-foreground" />
                     )}
                     <span>{option.label}</span>
                     {facets?.get(option.value) && (
@@ -142,7 +140,7 @@ export function PokeDataTableFacetedFilter<TData, TValue>({
             )}
           </PokeCommandList>
         </PokeCommand>
-      </PokePopoverContent>
-    </PokePopover>
+      </PopoverContent>
+    </PopoverRoot>
   );
 }

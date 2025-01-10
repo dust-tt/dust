@@ -1,13 +1,13 @@
+import type { GetContentToDownloadFunction } from "@dust-tt/sparkle";
 import { Chip, Collapsible, ScanIcon, Tooltip } from "@dust-tt/sparkle";
+import { CodeBlock } from "@dust-tt/sparkle";
+import { ContentBlockWrapper } from "@dust-tt/sparkle";
 import type { ProcessActionType } from "@dust-tt/types";
 import { PROCESS_ACTION_TOP_K } from "@dust-tt/types";
 import { useMemo } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
-import { CodeBlock } from "@app/components/assistant/RenderMessageMarkdown";
-import type { GetContentToDownloadFunction } from "@app/components/misc/ContentBlockWrapper";
-import { ContentBlockWrapper } from "@app/components/misc/ContentBlockWrapper";
 
 export function ProcessActionDetails({
   action,
@@ -21,13 +21,15 @@ export function ProcessActionDetails({
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">
         <div className="flex flex-col gap-1">
-          <span className="text-sm font-bold text-slate-900">Query</span>
+          <span className="text-sm font-semibold text-foreground">Query</span>
           <ProcessActionQuery action={action} />
         </div>
         <div>
           <Collapsible defaultOpen={defaultOpen}>
             <Collapsible.Button>
-              <span className="text-sm font-bold text-slate-900">Results</span>
+              <span className="text-sm font-semibold text-foreground">
+                Results
+              </span>
             </Collapsible.Button>
             <Collapsible.Panel>
               <ProcessActionOutputDetails action={action} />
@@ -55,18 +57,21 @@ function ProcessActionQuery({ action }: { action: ProcessActionType }) {
 
   return (
     <div className="flex flex-col gap-1">
-      <p className="text-sm font-normal text-slate-500">
+      <p className="text-sm font-normal text-muted-foreground">
         {makeQueryDescription(action)}
       </p>
       {overflow && (
-        <Tooltip
-          label={`Too much data to process over time frame. Processed ${action.outputs?.total_documents} documents (for a total of ${action.outputs?.total_tokens} tokens) up to to ${minProcessingDateAsString}.`}
-        >
-          <Chip
-            color="warning"
-            label={`Limited processing (up to ${minProcessingDateAsString})`}
+        <div>
+          <Tooltip
+            label={`Too much data to process over time frame. Processed ${action.outputs?.total_documents} documents (for a total of ${action.outputs?.total_tokens} tokens) up to to ${minProcessingDateAsString}.`}
+            trigger={
+              <Chip
+                color="warning"
+                label={`Limited processing (up to ${minProcessingDateAsString})`}
+              />
+            }
           />
-        </Tooltip>
+        </div>
       )}
     </div>
   );
@@ -82,7 +87,11 @@ function makeQueryDescription(action: ProcessActionType) {
         : `${relativeTimeFrame.unit}`)
     : "all time";
 
-  return `Extracted from ${action.outputs?.total_documents} documents over ${timeFrameAsString}.`;
+  if (action.outputs?.total_documents) {
+    return `Extracted from ${action.outputs?.total_documents} documents over ${timeFrameAsString}.`;
+  } else {
+    return `Extracted from documents over ${timeFrameAsString}.`;
+  }
 }
 
 function ProcessActionOutputDetails({ action }: { action: ProcessActionType }) {

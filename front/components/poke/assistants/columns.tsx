@@ -1,11 +1,12 @@
-import { EmotionLaughIcon, IconButton, TrashIcon } from "@dust-tt/sparkle";
-import type {
-  LightAgentConfigurationType,
-  WorkspaceType,
-} from "@dust-tt/types";
+import {
+  EmotionLaughIcon,
+  IconButton,
+  LinkWrapper,
+  TrashIcon,
+} from "@dust-tt/sparkle";
+import type { LightWorkspaceType } from "@dust-tt/types";
 import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
-import Link from "next/link";
 
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 
@@ -20,8 +21,7 @@ type AgentConfigurationDisplayType = {
 };
 
 export function makeColumnsForAssistants(
-  owner: WorkspaceType,
-  agentConfigurations: LightAgentConfigurationType[],
+  owner: LightWorkspaceType,
   reload: () => void
 ): ColumnDef<AgentConfigurationDisplayType>[] {
   return [
@@ -31,12 +31,9 @@ export function makeColumnsForAssistants(
         const sId: string = row.getValue("sId");
 
         return (
-          <Link
-            className="font-bold hover:underline"
-            href={`/poke/${owner.sId}/assistants/${sId}`}
-          >
+          <LinkWrapper href={`/poke/${owner.sId}/assistants/${sId}`}>
             {sId}
-          </Link>
+          </LinkWrapper>
         );
       },
       header: ({ column }) => {
@@ -44,7 +41,7 @@ export function makeColumnsForAssistants(
           <div className="flex space-x-2">
             <p>Id</p>
             <IconButton
-              variant="tertiary"
+              variant="outline"
               icon={ArrowsUpDownIcon}
               onClick={() =>
                 column.toggleSorting(column.getIsSorted() === "asc")
@@ -61,7 +58,7 @@ export function makeColumnsForAssistants(
           <div className="flex space-x-2">
             <p>Name</p>
             <IconButton
-              variant="tertiary"
+              variant="outline"
               icon={ArrowsUpDownIcon}
               onClick={() =>
                 column.toggleSorting(column.getIsSorted() === "asc")
@@ -103,7 +100,7 @@ export function makeColumnsForAssistants(
               assistant.status !== "archived" ? TrashIcon : EmotionLaughIcon
             }
             size="xs"
-            variant="tertiary"
+            variant="outline"
             onClick={async () => {
               await (assistant.status !== "archived"
                 ? archiveAssistant(owner, reload, assistant)
@@ -117,7 +114,7 @@ export function makeColumnsForAssistants(
 }
 
 async function archiveAssistant(
-  owner: WorkspaceType,
+  owner: LightWorkspaceType,
   reload: () => void,
   agentConfiguration: AgentConfigurationDisplayType
 ) {
@@ -151,7 +148,7 @@ async function archiveAssistant(
 }
 
 async function restoreAssistant(
-  owner: WorkspaceType,
+  owner: LightWorkspaceType,
   reload: () => void,
   agentConfiguration: AgentConfigurationDisplayType
 ) {

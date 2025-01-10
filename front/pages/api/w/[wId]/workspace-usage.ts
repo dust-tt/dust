@@ -1,3 +1,4 @@
+import type { WorkspaceType } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import { endOfMonth } from "date-fns/endOfMonth";
 import { isLeft } from "fp-ts/lib/Either";
@@ -6,11 +7,12 @@ import * as reporter from "io-ts-reporters";
 import JSZip from "jszip";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import {
   getAssistantsUsageData,
   getBuildersUsageData,
+  getFeedbacksUsageData,
   getMessageUsageData,
   getUserUsageData,
 } from "@app/lib/workspace_usage";
@@ -22,16 +24,17 @@ const MonthSchema = t.refinement(
   "YYYY-MM"
 );
 
-export const usageTables = [
+const usageTables = [
   "users",
   "assistant_messages",
   "builders",
   "assistants",
+  "feedbacks",
   "all",
 ];
 type usageTableType = (typeof usageTables)[number];
 
-export function getSupportedUsageTablesCodec(): t.Mixed {
+function getSupportedUsageTablesCodec(): t.Mixed {
   const [first, second, ...rest] = usageTables;
   return t.union([
     t.literal(first),
@@ -100,7 +103,7 @@ async function handler(
         table: query.table,
         start: startDate,
         end: endDate,
-        workspaceId: owner.sId,
+        workspace: owner,
       });
       if (query.table === "all") {
         const zip = new JSZip();
@@ -171,33 +174,38 @@ async function fetchUsageData({
   table,
   start,
   end,
-  workspaceId,
+  workspace,
 }: {
   table: usageTableType;
   start: Date;
   end: Date;
-  workspaceId: string;
+  workspace: WorkspaceType;
 }): Promise<Partial<Record<usageTableType, string>>> {
   switch (table) {
     case "users":
-      return { users: await getUserUsageData(start, end, workspaceId) };
+      return { users: await getUserUsageData(start, end, workspace) };
     case "assistant_messages":
-      return { mentions: await getMessageUsageData(start, end, workspaceId) };
+      return { mentions: await getMessageUsageData(start, end, workspace) };
     case "builders":
-      return { builders: await getBuildersUsageData(start, end, workspaceId) };
+      return { builders: await getBuildersUsageData(start, end, workspace) };
+    case "feedbacks":
+      return {
+        feedbacks: await getFeedbacksUsageData(start, end, workspace),
+      };
     case "assistants":
       return {
-        assistants: await getAssistantsUsageData(start, end, workspaceId),
+        assistants: await getAssistantsUsageData(start, end, workspace),
       };
     case "all":
-      const [users, assistant_messages, builders, assistants] =
+      const [users, assistant_messages, builders, assistants, feedbacks] =
         await Promise.all([
-          getUserUsageData(start, end, workspaceId),
-          getMessageUsageData(start, end, workspaceId),
-          getBuildersUsageData(start, end, workspaceId),
-          getAssistantsUsageData(start, end, workspaceId),
+          getUserUsageData(start, end, workspace),
+          getMessageUsageData(start, end, workspace),
+          getBuildersUsageData(start, end, workspace),
+          getAssistantsUsageData(start, end, workspace),
+          getFeedbacksUsageData(start, end, workspace),
         ]);
-      return { users, assistant_messages, builders, assistants };
+      return { users, assistant_messages, builders, assistants, feedbacks };
     default:
       return {};
   }

@@ -83,7 +83,6 @@ impl Block for Map {
         _name: &str,
         env: &Env,
         _event_sender: Option<UnboundedSender<Value>>,
-        _project_id: i64,
     ) -> Result<BlockResult> {
         match env.state.get(&self.from) {
             None => Err(anyhow::anyhow!(

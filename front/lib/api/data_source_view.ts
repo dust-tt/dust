@@ -3,6 +3,7 @@ import type {
   CoreAPIError,
   DataSourceViewContentNode,
   DataSourceViewType,
+  PatchDataSourceViewType,
   Result,
 } from "@dust-tt/types";
 import { ConnectorsAPI, CoreAPI, Err, Ok, removeNulls } from "@dust-tt/types";
@@ -11,8 +12,12 @@ import assert from "assert";
 import config from "@app/lib/api/config";
 import { getContentNodeInternalIdFromTableId } from "@app/lib/api/content_nodes";
 import type { OffsetPaginationParams } from "@app/lib/api/pagination";
+import type { Authenticator } from "@app/lib/auth";
+import type { DustError } from "@app/lib/error";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
+
+const DEFAULT_STATIC_DATA_SOURCE_PAGINATION_LIMIT = 10_000;
 
 export function filterAndCropContentNodesByView(
   dataSourceView: DataSourceViewResource,
@@ -58,8 +63,8 @@ export function filterAndCropContentNodesByView(
 
 // If `internalIds` is not provided, it means that the request is for all the content nodes in the view.
 interface GetContentNodesForDataSourceViewParams {
-  includeChildren: boolean;
   internalIds?: string[];
+  parentId?: string;
   pagination?: OffsetPaginationParams;
   viewType: ContentNodesViewType;
   // If onlyCoreAPI is true, the function will only use the Core API to fetch the content nodes.
@@ -71,13 +76,9 @@ interface GetContentNodesForDataSourceViewResult {
   total: number;
 }
 
-export async function getContentNodesForManagedDataSourceView(
+async function getContentNodesForManagedDataSourceView(
   dataSourceView: DataSourceViewResource | DataSourceViewType,
-  {
-    includeChildren,
-    internalIds,
-    viewType,
-  }: GetContentNodesForDataSourceViewParams
+  { internalIds, parentId, viewType }: GetContentNodesForDataSourceViewParams
 ): Promise<Result<GetContentNodesForDataSourceViewResult, Error>> {
   const { dataSource } = dataSourceView;
 
@@ -91,20 +92,31 @@ export async function getContentNodesForManagedDataSourceView(
     "Connector ID is required for managed data sources."
   );
 
-  // If the request is for children, we need to fetch the children of the internal ids.
-  if (includeChildren) {
-    const [parentInternalId] = internalIds || [];
+  // If no internalIds nor parentIds are provided, get the root nodes of the data source view.
+  if (!internalIds && !parentId && dataSourceView.parentsIn) {
+    internalIds = dataSourceView.parentsIn;
+  }
 
+  // If no internalIds are provided, fetch the children of the parent node, or root nodes of data source.
+  if (!internalIds) {
     const connectorsRes = await connectorsAPI.getConnectorPermissions({
       connectorId: dataSource.connectorId,
       filterPermission: "read",
       includeParents: true,
       // Passing an undefined parentInternalId will fetch the root nodes.
-      parentId: parentInternalId ?? undefined,
+      parentId,
       viewType,
     });
 
     if (connectorsRes.isErr()) {
+      if (
+        [
+          "connector_rate_limit_error",
+          "connector_authorization_error",
+        ].includes(connectorsRes.error.type)
+      ) {
+        return new Err(new Error(connectorsRes.error.message));
+      }
       return new Err(
         new Error(
           "An error occurred while fetching the resources' children content nodes."
@@ -121,7 +133,7 @@ export async function getContentNodesForManagedDataSourceView(
     const connectorsRes = await connectorsAPI.getContentNodes({
       connectorId: dataSource.connectorId,
       includeParents: true,
-      internalIds: internalIds ?? [],
+      internalIds,
       viewType,
     });
     if (connectorsRes.isErr()) {
@@ -131,7 +143,6 @@ export async function getContentNodesForManagedDataSourceView(
         )
       );
     }
-
     return new Ok({
       nodes: connectorsRes.value.nodes,
       // Connectors API does not support pagination yet, so the total is the length of the nodes.
@@ -142,13 +153,20 @@ export async function getContentNodesForManagedDataSourceView(
 
 // Static data sources are data sources that are not managed by a connector.
 // They are flat and do not have a hierarchy.
-export async function getContentNodesForStaticDataSourceView(
+async function getContentNodesForStaticDataSourceView(
   dataSourceView: DataSourceViewResource,
   { internalIds, pagination, viewType }: GetContentNodesForDataSourceViewParams
 ): Promise<
   Result<GetContentNodesForDataSourceViewResult, Error | CoreAPIError>
 > {
   const { dataSource } = dataSourceView;
+
+  // Use a high pagination limit since the product UI doesn't support pagination yet,
+  // even though static data sources can contain many documents via API ingestion.
+  const paginationParams = pagination ?? {
+    limit: DEFAULT_STATIC_DATA_SOURCE_PAGINATION_LIMIT,
+    offset: 0,
+  };
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
@@ -168,7 +186,7 @@ export async function getContentNodesForStaticDataSourceView(
         projectId: dataSource.dustAPIProjectId,
         viewFilter: dataSourceView.toViewFilter(),
       },
-      pagination
+      paginationParams
     );
 
     if (documentsRes.isErr()) {
@@ -176,19 +194,28 @@ export async function getContentNodesForStaticDataSourceView(
     }
 
     const documentsAsContentNodes: DataSourceViewContentNode[] =
-      documentsRes.value.documents.map((doc) => ({
-        dustDocumentId: doc.document_id,
-        expandable: false,
-        internalId: doc.document_id,
-        lastUpdatedAt: doc.timestamp,
-        parentInternalId: null,
-        parentInternalIds: [],
-        permission: "read",
-        preventSelection: false,
-        sourceUrl: doc.source_url ?? null,
-        title: doc.document_id,
-        type: "file",
-      }));
+      documentsRes.value.documents.map((doc) => {
+        let title = doc.document_id;
+        for (const t of doc.tags) {
+          if (t.startsWith("title:")) {
+            title = t.slice(6);
+            break;
+          }
+        }
+        return {
+          dustDocumentId: doc.document_id,
+          expandable: false,
+          internalId: doc.document_id,
+          lastUpdatedAt: doc.timestamp,
+          parentInternalId: null,
+          parentInternalIds: [],
+          permission: "read",
+          preventSelection: false,
+          sourceUrl: doc.source_url ?? null,
+          title,
+          type: "file",
+        };
+      });
 
     return new Ok({
       nodes: documentsAsContentNodes,
@@ -202,7 +229,7 @@ export async function getContentNodesForStaticDataSourceView(
         tableIds: internalIds,
         viewFilter: dataSourceView.toViewFilter(),
       },
-      pagination
+      paginationParams
     );
 
     if (tablesRes.isErr()) {
@@ -213,7 +240,10 @@ export async function getContentNodesForStaticDataSourceView(
       tablesRes.value.tables.map((table) => ({
         dustDocumentId: table.table_id,
         expandable: false,
-        internalId: getContentNodeInternalIdFromTableId(dataSourceView, table),
+        internalId: getContentNodeInternalIdFromTableId(
+          dataSourceView,
+          table.table_id
+        ),
         lastUpdatedAt: table.timestamp,
         parentInternalId: null,
         parentInternalIds: table.parents,
@@ -274,4 +304,53 @@ export async function getContentNodesForDataSourceView(
     nodes: contentNodesInView,
     total: contentNodesResult.total,
   });
+}
+
+export async function handlePatchDataSourceView(
+  auth: Authenticator,
+  patchBody: PatchDataSourceViewType,
+  dataSourceView: DataSourceViewResource
+): Promise<
+  Result<
+    DataSourceViewResource,
+    Omit<DustError, "code"> & {
+      code: "unauthorized" | "internal_error";
+    }
+  >
+> {
+  if (!dataSourceView.canAdministrate(auth)) {
+    return new Err({
+      name: "dust_error",
+      code: "unauthorized",
+      message: "Only admins can update data source views.",
+    });
+  }
+
+  let updateResultRes;
+  if ("parentsIn" in patchBody) {
+    const { parentsIn } = patchBody;
+    updateResultRes = await dataSourceView.setParents(parentsIn ?? []);
+  } else {
+    const parentsToAdd =
+      "parentsToAdd" in patchBody ? patchBody.parentsToAdd : [];
+    const parentsToRemove =
+      "parentsToRemove" in patchBody ? patchBody.parentsToRemove : [];
+
+    updateResultRes = await dataSourceView.updateParents(
+      parentsToAdd,
+      parentsToRemove
+    );
+  }
+
+  if (updateResultRes.isErr()) {
+    return new Err({
+      name: "dust_error",
+      code: "internal_error",
+      message: updateResultRes.error.message,
+    });
+  }
+
+  await dataSourceView.setEditedBy(auth);
+
+  return new Ok(dataSourceView);
 }

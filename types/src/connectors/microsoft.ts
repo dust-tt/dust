@@ -9,3 +9,7 @@ export function getMicrosoftSheetContentNodeInternalIdFromTableId(
 ): string {
   return tableId;
 }
+
+export function microsoftGarbageCollectionWorkflowId(connectorId: ModelId) {
+  return `microsoft-garbageCollection-${connectorId}`;
+}

@@ -1,35 +1,49 @@
-import { parse } from "csv-parse";
+import { CsvError, parse } from "csv-parse";
 import { stringify } from "csv-stringify";
 
+import { Err, Ok, Result } from "../result";
 import { slugify } from "./string_utils";
 
 export class InvalidStructuredDataHeaderError extends Error {}
 class ParsingCsvError extends Error {}
 
-export function getSanitizedHeaders(rawHeaders: string[]) {
-  return rawHeaders.reduce<string[]>((acc, curr) => {
-    const slugifiedName = slugify(curr);
+export function getSanitizedHeaders(
+  rawHeaders: string[]
+): Result<string[], Error> {
+  try {
+    const value = rawHeaders.reduce<string[]>((acc, curr) => {
+      // Special case for __dust_id, which is a reserved header name that we use
+      // to assign unique row_id to make incremental row updates possible.
+      const slugifiedName = curr === "__dust_id" ? curr : slugify(curr);
 
-    if (!acc.includes(slugifiedName) || !slugifiedName.length) {
-      acc.push(slugifiedName);
-    } else {
-      let conflictResolved = false;
-      for (let i = 2; i < 64; i++) {
-        if (!acc.includes(slugify(`${slugifiedName}_${i}`))) {
-          acc.push(slugify(`${slugifiedName}_${i}`));
-          conflictResolved = true;
-          break;
+      if (!acc.includes(slugifiedName) || !slugifiedName.length) {
+        acc.push(slugifiedName);
+      } else {
+        let conflictResolved = false;
+        for (let i = 2; i < 64; i++) {
+          if (!acc.includes(slugify(`${slugifiedName}_${i}`))) {
+            acc.push(slugify(`${slugifiedName}_${i}`));
+            conflictResolved = true;
+            break;
+          }
+        }
+
+        if (!conflictResolved) {
+          throw new InvalidStructuredDataHeaderError(
+            `Failed to generate unique slugified name for header "${curr}" after multiple attempts.`
+          );
         }
       }
-
-      if (!conflictResolved) {
-        throw new InvalidStructuredDataHeaderError(
-          `Failed to generate unique slugified name for header "${curr}" after multiple attempts.`
-        );
-      }
+      return acc;
+    }, []);
+    return new Ok(value);
+  } catch (e) {
+    if (e instanceof Error) {
+      return new Err(e);
+    } else {
+      return new Err(new Error("An unknown error occurred"));
     }
-    return acc;
-  }, []);
+  }
 }
 
 export async function guessDelimiter(csv: string): Promise<string | undefined> {
@@ -77,14 +91,18 @@ export async function parseAndStringifyCsv(tableCsv: string): Promise<string> {
   try {
     const parser = parse(tableCsv, {
       delimiter,
-      columns: (c) => getSanitizedHeaders(c),
+      columns: (c) => c,
     });
 
     for await (const record of parser) {
       records.push(record);
     }
   } catch (err) {
-    throw new ParsingCsvError("Unable to parse CSV string");
+    throw new ParsingCsvError(
+      err instanceof CsvError
+        ? `Unable to parse CSV string : ${err.message}`
+        : "Unable to parse CSV string"
+    );
   }
 
   return new Promise((resolve, reject) => {

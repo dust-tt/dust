@@ -6,8 +6,8 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
@@ -18,7 +18,7 @@ export type PatchLinkedSlackChannelsResponseBody = {
 };
 
 export const PatchLinkedSlackChannelsRequestBodySchema = t.type({
-  slack_channel_ids: t.array(t.string),
+  slack_channel_internal_ids: t.array(t.string),
 });
 
 async function handler(
@@ -101,7 +101,8 @@ async function handler(
       const connectorsApiRes = await connectorsAPI.linkSlackChannelsWithAgent({
         connectorId: connectorId.toString(),
         agentConfigurationId: agentConfiguration.sId,
-        slackChannelIds: bodyValidation.right.slack_channel_ids,
+        slackChannelInternalIds:
+          bodyValidation.right.slack_channel_internal_ids,
       });
 
       if (connectorsApiRes.isErr()) {

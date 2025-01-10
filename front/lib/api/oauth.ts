@@ -4,7 +4,7 @@ import type {
   Result,
 } from "@dust-tt/types";
 import type { OAuthProvider, OAuthUseCase } from "@dust-tt/types";
-import { Err, OAuthAPI, Ok } from "@dust-tt/types";
+import { Err, isValidZendeskSubdomain, OAuthAPI, Ok } from "@dust-tt/types";
 import type { ParsedUrlQuery } from "querystring";
 import querystring from "querystring";
 
@@ -42,6 +42,7 @@ const PROVIDER_STRATEGIES: Record<
     ) => string;
     codeFromQuery: (query: ParsedUrlQuery) => string | null;
     connectionIdFromQuery: (query: ParsedUrlQuery) => string | null;
+    isExtraConfigValid: (extraConfig: Record<string, string>) => boolean;
   }
 > = {
   github: {
@@ -63,6 +64,9 @@ const PROVIDER_STRATEGIES: Record<
     },
     connectionIdFromQuery: (query) => {
       return getStringFromQuery(query, "state");
+    },
+    isExtraConfigValid: (extraConfig) => {
+      return Object.keys(extraConfig).length === 0;
     },
   },
   google_drive: {
@@ -91,6 +95,9 @@ const PROVIDER_STRATEGIES: Record<
     connectionIdFromQuery: (query) => {
       return getStringFromQuery(query, "state");
     },
+    isExtraConfigValid: (extraConfig) => {
+      return Object.keys(extraConfig).length === 0;
+    },
   },
   notion: {
     setupUri: (connection) => {
@@ -111,6 +118,9 @@ const PROVIDER_STRATEGIES: Record<
     },
     connectionIdFromQuery: (query) => {
       return getStringFromQuery(query, "state");
+    },
+    isExtraConfigValid: (extraConfig) => {
+      return Object.keys(extraConfig).length === 0;
     },
   },
   slack: {
@@ -144,6 +154,9 @@ const PROVIDER_STRATEGIES: Record<
     },
     connectionIdFromQuery: (query) => {
       return getStringFromQuery(query, "state");
+    },
+    isExtraConfigValid: (extraConfig) => {
+      return Object.keys(extraConfig).length === 0;
     },
   },
   confluence: {
@@ -181,6 +194,9 @@ const PROVIDER_STRATEGIES: Record<
     connectionIdFromQuery: (query) => {
       return getStringFromQuery(query, "state");
     },
+    isExtraConfigValid: (extraConfig) => {
+      return Object.keys(extraConfig).length === 0;
+    },
   },
   intercom: {
     setupUri: (connection) => {
@@ -196,6 +212,9 @@ const PROVIDER_STRATEGIES: Record<
     },
     connectionIdFromQuery: (connection) => {
       return getStringFromQuery(connection, "state");
+    },
+    isExtraConfigValid: (extraConfig) => {
+      return Object.keys(extraConfig).length === 0;
     },
   },
   gong: {
@@ -220,6 +239,9 @@ const PROVIDER_STRATEGIES: Record<
     },
     connectionIdFromQuery: (query) => {
       return getStringFromQuery(query, "state");
+    },
+    isExtraConfigValid: (extraConfig) => {
+      return Object.keys(extraConfig).length === 0;
     },
   },
   microsoft: {
@@ -249,23 +271,70 @@ const PROVIDER_STRATEGIES: Record<
     connectionIdFromQuery: (query) => {
       return getStringFromQuery(query, "state");
     },
+    isExtraConfigValid: (extraConfig) => {
+      return Object.keys(extraConfig).length === 0;
+    },
+  },
+  zendesk: {
+    setupUri: (connection) => {
+      const scopes = ["read"];
+      if (!isValidZendeskSubdomain(connection.metadata.zendesk_subdomain)) {
+        throw "Invalid Zendesk subdomain";
+      }
+      return (
+        `https://${connection.metadata.zendesk_subdomain}.zendesk.com/oauth/authorizations/new?` +
+        `client_id=${config.getOAuthZendeskClientId()}` +
+        `&scope=${encodeURIComponent(scopes.join(" "))}` +
+        `&response_type=code` +
+        `&state=${connection.connection_id}` +
+        `&redirect_uri=${encodeURIComponent(finalizeUriForProvider("zendesk"))}`
+      );
+    },
+    codeFromQuery: (query) => {
+      return getStringFromQuery(query, "code");
+    },
+    connectionIdFromQuery: (query) => {
+      return getStringFromQuery(query, "state");
+    },
+    isExtraConfigValid: (extraConfig) => {
+      if (Object.keys(extraConfig).length !== 1) {
+        return false;
+      }
+      // Ensure the string is less than 63 characters.
+      return isValidZendeskSubdomain(extraConfig.zendesk_subdomain);
+    },
   },
 };
 
 export async function createConnectionAndGetSetupUrl(
   auth: Authenticator,
   provider: OAuthProvider,
-  useCase: OAuthUseCase
+  useCase: OAuthUseCase,
+  extraConfig: Record<string, string>
 ): Promise<Result<string, OAuthError>> {
   const api = new OAuthAPI(config.getOAuthAPIConfig(), logger);
 
+  if (!PROVIDER_STRATEGIES[provider].isExtraConfigValid(extraConfig)) {
+    logger.error(
+      { provider, useCase, extraConfig },
+      "OAuth: Invalid extraConfig"
+    );
+    return new Err({
+      code: "connection_creation_failed",
+      message: "Invalid OAuth connection extraConfig for provider",
+    });
+  }
+
+  const metadata: Record<string, string> = {
+    use_case: useCase,
+    workspace_id: auth.getNonNullableWorkspace().sId,
+    user_id: auth.getNonNullableUser().sId,
+    ...extraConfig,
+  };
+
   const cRes = await api.createConnection({
     provider,
-    metadata: {
-      use_case: useCase,
-      workspace_id: auth.getNonNullableWorkspace().sId,
-      user_id: auth.getNonNullableUser().sId,
-    },
+    metadata,
   });
   if (cRes.isErr()) {
     logger.error({ provider, useCase }, "OAuth: Failed to create connection");

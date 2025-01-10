@@ -1,9 +1,9 @@
 import { getNotionWorkflowId } from "@dust-tt/types";
-import type { Client, WorkflowHandle } from "@temporalio/client";
+import type { Client } from "@temporalio/client";
 import { QueryTypes } from "sequelize";
 
 import type { CheckFunction } from "@app/lib/production_checks/types";
-import { getConnectorReplicaDbConnection } from "@app/lib/production_checks/utils";
+import { getConnectorsPrimaryDbConnection } from "@app/lib/production_checks/utils";
 import { getTemporalConnectorsNamespaceConnection } from "@app/lib/temporal";
 import { withRetries } from "@app/lib/utils/retries";
 
@@ -15,9 +15,9 @@ interface NotionConnector {
 }
 
 async function listAllNotionConnectors() {
-  const connectorsReplica = getConnectorReplicaDbConnection();
+  const connectorsDb = getConnectorsPrimaryDbConnection();
 
-  const notionConnectors: NotionConnector[] = await connectorsReplica.query(
+  const notionConnectors: NotionConnector[] = await connectorsDb.query(
     `SELECT id, "dataSourceId", "workspaceId", "pausedAt" FROM connectors WHERE "type" = 'notion' and  "errorType" IS NULL`,
     {
       type: QueryTypes.SELECT,
@@ -34,11 +34,11 @@ async function getDescriptionsAndHistories({
   client: Client;
   notionConnector: NotionConnector;
 }) {
-  const incrementalSyncHandle: WorkflowHandle = client.workflow.getHandle(
-    getNotionWorkflowId(notionConnector.id, "never")
+  const incrementalSyncHandle = client.workflow.getHandle(
+    getNotionWorkflowId(notionConnector.id, false)
   );
-  const garbageCollectorHandle: WorkflowHandle = client.workflow.getHandle(
-    getNotionWorkflowId(notionConnector.id, "always")
+  const garbageCollectorHandle = client.workflow.getHandle(
+    getNotionWorkflowId(notionConnector.id, true)
   );
 
   const descriptions = await Promise.all([

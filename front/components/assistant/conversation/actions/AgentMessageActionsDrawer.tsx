@@ -1,20 +1,22 @@
 import { Modal, Page, Spinner } from "@dust-tt/sparkle";
-import type { AgentActionType } from "@dust-tt/types";
+import type { AgentActionType, LightWorkspaceType } from "@dust-tt/types";
 
 import { getActionSpecification } from "@app/components/actions/types";
 
 interface AgentMessageActionsDrawerProps {
   actions: AgentActionType[];
   isOpened: boolean;
-  isStreaming: boolean;
+  isActing: boolean;
   onClose: () => void;
+  owner: LightWorkspaceType;
 }
 
 export function AgentMessageActionsDrawer({
   actions,
   isOpened,
-  isStreaming,
+  isActing,
   onClose,
+  owner,
 }: AgentMessageActionsDrawerProps) {
   const groupedActionsByStep = actions.reduce(
     (acc, current) => {
@@ -45,7 +47,7 @@ export function AgentMessageActionsDrawer({
                   className="flex flex-col gap-4 pb-4 duration-1000 animate-in fade-in"
                   key={step}
                 >
-                  <p className="text-xl font-bold text-slate-900">
+                  <p className="text-xl font-bold text-foreground">
                     Step {step}
                   </p>
                   {actions.map((action, idx) => {
@@ -61,6 +63,7 @@ export function AgentMessageActionsDrawer({
                         <ActionDetailsComponent
                           action={action}
                           defaultOpen={idx === 0 && step === "1"}
+                          owner={owner}
                         />
                       </div>
                     );
@@ -68,7 +71,7 @@ export function AgentMessageActionsDrawer({
                 </div>
               );
             })}
-            {isStreaming && (
+            {isActing && (
               <div className="flex justify-center">
                 <Spinner variant="color" />
               </div>

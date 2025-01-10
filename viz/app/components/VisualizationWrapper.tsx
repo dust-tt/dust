@@ -6,14 +6,15 @@ import type {
   VisualizationRPCRequestMap,
 } from "@dust-tt/types";
 import { Spinner } from "@viz/app/components/Components";
+import { ErrorBoundary } from "@viz/app/components/ErrorBoundary";
+import { toBlob } from "html-to-image";
+import { Download, SquareTerminal } from "lucide-react";
 import * as papaparseAll from "papaparse";
 import * as reactAll from "react";
-import React, { useCallback, useMemo } from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useResizeDetector } from "react-resize-detector";
 import { importCode, Runner } from "react-runner";
 import * as rechartsAll from "recharts";
-import { useResizeDetector } from "react-resize-detector";
-import { ErrorBoundary } from "@viz/app/components/ErrorBoundary";
 
 export function useVisualizationAPI(
   sendCrossDocumentMessage: ReturnType<typeof makeSendCrossDocumentMessage>
@@ -74,7 +75,25 @@ export function useVisualizationAPI(
     [sendCrossDocumentMessage]
   );
 
-  return { fetchCode, fetchFile, error, sendHeightToParent };
+  const downloadFile = useCallback(
+    async (blob: Blob, filename?: string) => {
+      await sendCrossDocumentMessage("downloadFileRequest", { blob, filename });
+    },
+    [sendCrossDocumentMessage]
+  );
+
+  const displayCode = useCallback(async () => {
+    await sendCrossDocumentMessage("displayCode", null);
+  }, [sendCrossDocumentMessage]);
+
+  return {
+    error,
+    fetchCode,
+    fetchFile,
+    sendHeightToParent,
+    downloadFile,
+    displayCode,
+  };
 }
 
 const useFile = (
@@ -101,6 +120,24 @@ const useFile = (
   return file;
 };
 
+function useDownloadFileCallback(
+  downloadFile: (blob: Blob, filename?: string) => Promise<void>
+) {
+  return useCallback(
+    async ({
+      content,
+      filename,
+    }: {
+      content: string | Blob;
+      filename?: string;
+    }) => {
+      const blob = typeof content === "string" ? new Blob([content]) : content;
+      await downloadFile(blob, filename);
+    },
+    [downloadFile]
+  );
+}
+
 interface RunnerParams {
   code: string;
   scope: Record<string, unknown>;
@@ -125,11 +162,13 @@ export function VisualizationWrapperWithErrorBoundary({
 
   return (
     <ErrorBoundary
-      onErrored={() => {
-        sendCrossDocumentMessage("setErrored", undefined);
+      onErrored={(e) => {
+        sendCrossDocumentMessage("setErrorMessage", {
+          errorMessage: e instanceof Error ? e.message : `${e}`,
+        });
       }}
     >
-      <VisualizationWrapper api={api} />
+      <VisualizationWrapper api={api} identifier={identifier} />
     </ErrorBoundary>
   );
 }
@@ -138,21 +177,32 @@ export function VisualizationWrapperWithErrorBoundary({
 // It gets the generated code via message passing to the host window.
 export function VisualizationWrapper({
   api,
+  identifier,
 }: {
   api: ReturnType<typeof useVisualizationAPI>;
+  identifier: string;
 }) {
   const [runnerParams, setRunnerParams] = useState<RunnerParams | null>(null);
 
-  const [errored, setErrored] = useState<Error | null>(null);
+  const [errored, setErrorMessage] = useState<Error | null>(null);
 
-  const { fetchCode, fetchFile, error, sendHeightToParent } = api;
+  const {
+    fetchCode,
+    fetchFile,
+    error,
+    sendHeightToParent,
+    downloadFile,
+    displayCode,
+  } = api;
+
+  const memoizedDownloadFile = useDownloadFileCallback(downloadFile);
 
   useEffect(() => {
     const loadCode = async () => {
       try {
         const fetchedCode = await fetchCode();
         if (!fetchedCode) {
-          setErrored(new Error("No visualization code found"));
+          setErrorMessage(new Error("No visualization code found"));
         } else {
           setRunnerParams({
             code: "() => {import Comp from '@dust/generated-code'; return (<Comp />);}",
@@ -167,6 +217,7 @@ export function VisualizationWrapper({
                     papaparse: papaparseAll,
                     "@dust/react-hooks": {
                       useFile: (fileId: string) => useFile(fileId, fetchFile),
+                      triggerUserFileDownload: memoizedDownloadFile,
                     },
                   },
                 }),
@@ -175,7 +226,7 @@ export function VisualizationWrapper({
           });
         }
       } catch (error) {
-        setErrored(
+        setErrorMessage(
           error instanceof Error
             ? error
             : new Error("Failed to fetch visualization code")
@@ -193,9 +244,29 @@ export function VisualizationWrapper({
     onResize: sendHeightToParent,
   });
 
+  const handleScreenshotDownload = useCallback(async () => {
+    if (ref.current) {
+      try {
+        const blob = await toBlob(ref.current, {
+          // Skip embedding fonts in the Blob since we cannot access cssRules from the iframe.
+          skipFonts: true,
+        });
+        if (blob) {
+          await downloadFile(blob, `visualization-${identifier}.png`);
+        }
+      } catch (err) {
+        console.error("Failed to convert to Blob", err);
+      }
+    }
+  }, [ref, downloadFile]);
+
+  const handleDisplayCode = useCallback(async () => {
+    await displayCode();
+  }, [displayCode]);
+
   useEffect(() => {
     if (error) {
-      setErrored(error);
+      setErrorMessage(error);
     }
   }, [error]);
 
@@ -209,16 +280,32 @@ export function VisualizationWrapper({
   }
 
   return (
-    <div ref={ref}>
-      <Runner
-        code={runnerParams.code}
-        scope={runnerParams.scope}
-        onRendered={(error) => {
-          if (error) {
-            setErrored(error);
-          }
-        }}
-      />
+    <div className="relative font-sans group/viz">
+      <div className="flex flex-row gap-2 absolute top-2 right-2 bg-white rounded transition opacity-0 group-hover/viz:opacity-100 z-50">
+        <button
+          onClick={handleScreenshotDownload}
+          className="hover:bg-slate-200 rounded p-2 border border-slate-200"
+        >
+          <Download size={20} />
+        </button>
+        <button
+          className="hover:bg-slate-200 rounded p-2 border border-slate-200"
+          onClick={handleDisplayCode}
+        >
+          <SquareTerminal size={20} />
+        </button>
+      </div>
+      <div ref={ref}>
+        <Runner
+          code={runnerParams.code}
+          scope={runnerParams.scope}
+          onRendered={(error) => {
+            if (error) {
+              setErrorMessage(error);
+            }
+          }}
+        />
+      </div>
     </div>
   );
 }

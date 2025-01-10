@@ -15,6 +15,9 @@ use std::fmt;
 use std::str::FromStr;
 use std::time::Duration;
 
+use super::deepseek::DeepseekProvider;
+use super::togetherai::TogetherAIProvider;
+
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, ValueEnum, Deserialize)]
 #[serde(rename_all = "lowercase")]
 #[clap(rename_all = "lowercase")]
@@ -26,6 +29,8 @@ pub enum ProviderID {
     Mistral,
     #[serde(rename = "google_ai_studio")]
     GoogleAiStudio,
+    TogetherAI,
+    Deepseek,
 }
 
 impl fmt::Display for ProviderID {
@@ -36,6 +41,8 @@ impl fmt::Display for ProviderID {
             ProviderID::Anthropic => write!(f, "anthropic"),
             ProviderID::Mistral => write!(f, "mistral"),
             ProviderID::GoogleAiStudio => write!(f, "google_ai_studio"),
+            ProviderID::TogetherAI => write!(f, "togetherai"),
+            ProviderID::Deepseek => write!(f, "deepseek"),
         }
     }
 }
@@ -49,6 +56,8 @@ impl FromStr for ProviderID {
             "anthropic" => Ok(ProviderID::Anthropic),
             "mistral" => Ok(ProviderID::Mistral),
             "google_ai_studio" => Ok(ProviderID::GoogleAiStudio),
+            "togetherai" => Ok(ProviderID::TogetherAI),
+            "deepseek" => Ok(ProviderID::Deepseek),
             _ => Err(ParseError::with_message(
                 "Unknown provider ID \
                  (possible values: openai, azure_openai, anthropic, mistral, google_ai_studio)",
@@ -151,5 +160,7 @@ pub fn provider(t: ProviderID) -> Box<dyn Provider + Sync + Send> {
         ProviderID::GoogleAiStudio => Box::new(GoogleAiStudioProvider::new()),
         ProviderID::Mistral => Box::new(MistralProvider::new()),
         ProviderID::OpenAI => Box::new(OpenAIProvider::new()),
+        ProviderID::TogetherAI => Box::new(TogetherAIProvider::new()),
+        ProviderID::Deepseek => Box::new(DeepseekProvider::new()),
     }
 }

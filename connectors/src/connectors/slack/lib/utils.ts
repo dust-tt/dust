@@ -1,3 +1,5 @@
+import _ from "lodash";
+
 export function getWeekStart(date: Date): Date {
   const dateCopy = new Date(date);
 
@@ -48,3 +50,82 @@ export const timeAgoFrom = (millisSinceEpoch: number) => {
   }
   return seconds + "s";
 };
+
+export type SlackChannelInternalId = string;
+export type SlackThreadInternalId = string;
+export type SlackNonThreadedMessagesInternalId = string;
+
+export function isSlackChannelInternalId(
+  internalId: string
+): internalId is SlackChannelInternalId {
+  return internalId.startsWith("slack-channel-");
+}
+
+export function isSlackThreadInternalId(
+  internalId: string
+): internalId is SlackThreadInternalId {
+  return internalId.startsWith("slack-") && internalId.includes("-thread-");
+}
+
+export function isSlackNonThreadedMessagesInternalId(
+  internalId: string
+): internalId is SlackNonThreadedMessagesInternalId {
+  return internalId.startsWith("slack-") && internalId.includes("-messages-");
+}
+
+export function slackChannelInternalIdFromSlackChannelId(
+  channel: string
+): SlackChannelInternalId {
+  return `slack-channel-${_.last(channel.split("slack-channel-"))!}`;
+}
+
+export function slackChannelIdFromInternalId(nodeId: SlackChannelInternalId) {
+  return _.last(nodeId.split("slack-channel-"))!;
+}
+
+export type SlackThreadIdentifier = {
+  channelId: string;
+  threadTs: string;
+};
+
+export function slackThreadInternalIdFromSlackThreadIdentifier({
+  channelId,
+  threadTs,
+}: SlackThreadIdentifier): SlackThreadInternalId {
+  return `slack-${channelId}-thread-${threadTs}`;
+}
+
+export function slackThreadIdentifierFromSlackThreadInternalId(
+  internalId: SlackThreadInternalId
+): SlackThreadIdentifier {
+  const parts = internalId.split("-thread-");
+  const channelId = _.last(parts[0]!.split("slack-"))!;
+  const threadTs = parts[1];
+  return {
+    channelId,
+    threadTs: threadTs!,
+  };
+}
+
+export type SlackNonThreadedMessagesIdentifier = {
+  channelId: string;
+  startDate: Date;
+  endDate: Date;
+};
+
+export function slackNonThreadedMessagesInternalIdFromSlackNonThreadedMessagesIdentifier({
+  channelId,
+  startDate,
+  endDate,
+}: SlackNonThreadedMessagesIdentifier): SlackNonThreadedMessagesInternalId {
+  const startDateStr = `${startDate.getFullYear()}-${startDate.getMonth()}-${startDate.getDate()}`;
+  const endDateStr = `${endDate.getFullYear()}-${endDate.getMonth()}-${endDate.getDate()}`;
+  return `slack-${channelId}-messages-${startDateStr}-${endDateStr}`;
+}
+
+export function slackChannelIdFromSlackNonThreadedMessagesInternalId(
+  internalId: SlackNonThreadedMessagesInternalId
+): string {
+  const parts = internalId.split("-messages-");
+  return _.last(parts[0]!.split("slack-"))!;
+}

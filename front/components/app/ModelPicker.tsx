@@ -12,6 +12,7 @@ export default function ModelPicker({
   owner,
   model,
   readOnly,
+  isAdmin,
   onModelUpdate,
   chatOnly,
   embedOnly,
@@ -22,6 +23,7 @@ export default function ModelPicker({
     model_id: string;
   };
   readOnly: boolean;
+  isAdmin: boolean;
   onModelUpdate: (model: { provider_id: string; model_id: string }) => void;
   chatOnly?: boolean;
   embedOnly?: boolean;
@@ -95,21 +97,33 @@ export default function ModelPicker({
             {modelProviders.length == 0 &&
             !(model.provider_id && model.provider_id.length > 0) &&
             !readOnly ? (
-              <Link
-                href={`/w/${owner.sId}/a`}
-                className={classNames(
-                  "inline-flex items-center rounded-md py-1 text-sm font-bold",
-                  model.provider_id && model.provider_id.length > 0
-                    ? "px-1"
-                    : "border px-3",
-                  readOnly
-                    ? "border-white text-gray-300"
-                    : "border-orange-400 text-gray-700",
-                  "focus:outline-none focus:ring-0"
-                )}
-              >
-                {isProvidersLoading ? "Loading..." : "Setup provider"}
-              </Link>
+              isAdmin ? (
+                <Link
+                  href={`/w/${owner.sId}/developers/providers`}
+                  className={classNames(
+                    "inline-flex items-center rounded-md py-1 text-sm font-bold",
+                    model.provider_id && model.provider_id.length > 0
+                      ? "px-1"
+                      : "border px-3",
+                    readOnly
+                      ? "border-white text-gray-300"
+                      : "border-orange-400 text-gray-700",
+                    "focus:outline-none focus:ring-0"
+                  )}
+                >
+                  {isProvidersLoading ? "Loading..." : "Setup provider"}
+                </Link>
+              ) : (
+                <div
+                  className={classNames(
+                    "inline-flex items-center rounded-md py-1 text-sm font-normal",
+                    "border px-3",
+                    "border-white text-gray-300"
+                  )}
+                >
+                  No Provider available
+                </div>
+              )
             ) : readOnly ? (
               <div className="text-sm font-bold text-gray-700">
                 {model.provider_id && model.provider_id.length > 0

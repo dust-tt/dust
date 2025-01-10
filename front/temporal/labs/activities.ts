@@ -1,7 +1,12 @@
 import type { AgentMessageType, ModelId } from "@dust-tt/types";
-import { assertNever, isEmptyString, minTranscriptsSize } from "@dust-tt/types";
+import {
+  assertNever,
+  dustManagedCredentials,
+  isEmptyString,
+} from "@dust-tt/types";
 import { Err } from "@dust-tt/types";
-import marked from "marked";
+import { CoreAPI } from "@dust-tt/types";
+import { marked } from "marked";
 import sanitizeHtml from "sanitize-html";
 import { UniqueConstraintError } from "sequelize";
 
@@ -11,10 +16,14 @@ import {
   getConversation,
   postNewContentFragment,
 } from "@app/lib/api/assistant/conversation";
+import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
+import { default as apiConfig } from "@app/lib/api/config";
+import { sendEmailWithTemplate } from "@app/lib/api/email";
 import { Authenticator } from "@app/lib/auth";
-import { sendEmail } from "@app/lib/email";
+import { getFeatureFlags } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models/workspace";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import mainLogger from "@app/logger/logger";
@@ -27,6 +36,10 @@ import {
   retrieveGoogleTranscriptContent,
   retrieveGoogleTranscripts,
 } from "@app/temporal/labs/utils/google";
+import {
+  retrieveModjoTranscriptContent,
+  retrieveModjoTranscripts,
+} from "@app/temporal/labs/utils/modjo";
 
 export async function retrieveNewTranscriptsActivity(
   transcriptsConfigurationId: ModelId
@@ -61,7 +74,7 @@ export async function retrieveNewTranscriptsActivity(
     );
   }
 
-  const auth = await Authenticator.internalBuilderForWorkspace(workspace.sId);
+  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
   if (!auth.workspace()) {
     await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
@@ -91,6 +104,15 @@ export async function retrieveNewTranscriptsActivity(
         localLogger
       );
       transcriptsIdsToProcess.push(...gongTranscriptsIds);
+      break;
+
+    case "modjo":
+      const modjoTranscriptsIds = await retrieveModjoTranscripts(
+        auth,
+        transcriptsConfiguration,
+        localLogger
+      );
+      transcriptsIdsToProcess.push(...modjoTranscriptsIds);
       break;
 
     default:
@@ -183,6 +205,7 @@ export async function processTranscriptActivity(
 
   let transcriptTitle = "";
   let transcriptContent = "";
+  let userParticipated = true;
 
   localLogger.info(
     {},
@@ -208,8 +231,39 @@ export async function processTranscriptActivity(
         fileId,
         localLogger
       );
-      transcriptTitle = gongResult?.transcriptTitle || "";
-      transcriptContent = gongResult?.transcriptContent || "";
+      if (!gongResult) {
+        localLogger.info(
+          {
+            fileId,
+          },
+          "[processTranscriptActivity] No Gong result found. Stopping."
+        );
+        return;
+      }
+      transcriptTitle = gongResult.transcriptTitle || "";
+      transcriptContent = gongResult.transcriptContent || "";
+      userParticipated = gongResult.userParticipated;
+      break;
+
+    case "modjo":
+      const modjoResult = await retrieveModjoTranscriptContent(
+        auth,
+        transcriptsConfiguration,
+        fileId,
+        localLogger
+      );
+      if (!modjoResult) {
+        localLogger.info(
+          {
+            fileId,
+          },
+          "[processTranscriptActivity] No Gong result found. Stopping."
+        );
+        return;
+      }
+      transcriptTitle = modjoResult.transcriptTitle || "";
+      transcriptContent = modjoResult.transcriptContent || "";
+      userParticipated = modjoResult.userParticipated;
       break;
 
     default:
@@ -217,57 +271,6 @@ export async function processTranscriptActivity(
   }
 
   const tooShortToProcess = transcriptContent.length < minTranscriptsSize;
-
-  // Short transcripts are likely not useful to process.
-  if (tooShortToProcess) {
-    localLogger.info(
-      { contentLength: transcriptContent.length, tooShortToProcess },
-      "[processTranscriptActivity] Transcript content too short or empty. Skipping."
-    );
-    await transcriptsConfiguration.recordHistory({
-      configurationId: transcriptsConfiguration.id,
-      fileId,
-      fileName: "[tooShortToProcess] " + transcriptTitle,
-      conversationId: null,
-    });
-    const msg = {
-      from: {
-        name: "Dust team",
-        email: "team@dust.help",
-      },
-      subject: `[DUST] - Unable to Generate Your Meeting Transcript Summary`,
-      html: `<p>Dear ${user.fullName()},</p>
-        <p>We encountered an issue while trying to generate a summary for your recent Google Meet session. Unfortunately, the transcript provided by Google was either too short or empty, which prevented us from creating a meaningful summary.</p>
-        <p>What you can do:</p>
-        <ul>
-        <li>Check your Google Meet settings to ensure transcription is properly enabled;</li>
-        <li>If this issue persists, you may want to contact Google Meet support for assistance with their transcription service.</li>
-        </ul>
-        <p>We apologize for any inconvenience this may have caused. If you have any questions or need further assistance, please don't hesitate to reach out to our support team at <a href="mailto:support@dust.tt">support@dust.tt</a>.</p>
-        <p>Thank you for your understanding,</p>
-        <p>Best regards,</p>
-        <p>The Team at Dust</p>`,
-    };
-    await sendEmail(user.email, msg);
-    return;
-  }
-
-  try {
-    await transcriptsConfiguration.recordHistory({
-      configurationId: transcriptsConfiguration.id,
-      fileId,
-      fileName: transcriptTitle,
-    });
-  } catch (error) {
-    if (error instanceof UniqueConstraintError) {
-      localLogger.info(
-        {},
-        "[processTranscriptActivity] History record already exists. Stopping."
-      );
-      return;
-    }
-    throw error;
-  }
 
   const owner = auth.workspace();
 
@@ -280,159 +283,351 @@ export async function processTranscriptActivity(
     return;
   }
 
-  const { agentConfigurationId } = transcriptsConfiguration;
-
-  if (!agentConfigurationId) {
-    await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
-    localLogger.error(
-      {},
-      "[processTranscriptActivity] No agent configuration id found. Stopping."
+  // labs_transcripts_gong_full_storage FF enables storing all Gong transcripts in a single datasource view
+  let gongFullStorageFF = false;
+  let gongFullStorageDataSourceViewId = null;
+  if (transcriptsConfiguration.provider === "gong") {
+    const featureFlags = await getFeatureFlags(owner);
+    gongFullStorageFF = featureFlags.includes(
+      "labs_transcripts_gong_full_storage"
     );
-    return;
+
+    if (gongFullStorageFF) {
+      const defaultGongTranscriptsStorageConfiguration =
+        await LabsTranscriptsConfigurationResource.fetchDefaultFullStorageConfigurationForWorkspace(
+          auth
+        );
+
+      gongFullStorageDataSourceViewId =
+        defaultGongTranscriptsStorageConfiguration?.dataSourceViewId;
+    }
   }
 
-  const agent = await getAgentConfiguration(auth, agentConfigurationId);
+  // Decide to store transcript or not (user might not have participated)
+  const shouldStoreTranscript =
+    (userParticipated && !!transcriptsConfiguration.dataSourceViewId) ||
+    (gongFullStorageFF && !!gongFullStorageDataSourceViewId);
 
-  if (!agent) {
-    await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
-    localLogger.error(
-      {},
-      "[processTranscriptActivity] Agent configuration not found. Stopping."
-    );
-    return;
-  }
-
-  if (isEmptyString(user.username)) {
-    return new Err(new Error("username must be a non-empty string"));
-  }
-
-  const initialConversation = await createConversation(auth, {
-    title: transcriptTitle,
-    visibility: "workspace",
-  });
-
-  const baseContext = {
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
-    username: user.username,
-    fullName: user.fullName(),
-    email: user.email,
-    profilePictureUrl: user.imageUrl,
-    origin: null,
-  };
-
-  const contentFragmentData = {
-    title: transcriptTitle,
-    content: transcriptContent.toString(),
-    url: null,
-    contentType: "text/plain",
-    baseContext,
-  };
-
-  const contentFragmentRes = await postNewContentFragment(
-    auth,
-    initialConversation,
-    contentFragmentData,
-    baseContext
-  );
-
-  if (contentFragmentRes.isErr()) {
-    localLogger.error(
-      {
-        agentConfigurationId,
-        conversationSid: initialConversation.sId,
-        error: contentFragmentRes.error,
-      },
-      "[processTranscriptActivity] Error creating content fragment. Stopping."
-    );
-    return;
-  }
-
-  // Initial conversation is stale, so we need to reload it.
-  let conversation = await getConversation(auth, initialConversation.sId);
-
-  if (!conversation) {
-    localLogger.error(
-      {
-        agentConfigurationId,
-        conversationSid: initialConversation.sId,
-        panic: true,
-      },
-      "[processTranscriptActivity] Unreachable: Error getting conversation after creation."
-    );
-    return;
-  }
-
-  const messageRes = await postUserMessageWithPubSub(
-    auth,
-    {
-      conversation,
-      content: `Transcript: ${transcriptTitle}`,
-      mentions: [{ configurationId: agentConfigurationId }],
-      context: baseContext,
-    },
-    { resolveAfterFullGeneration: true }
-  );
-
-  if (messageRes.isErr()) {
-    localLogger.error(
-      {
-        agentConfigurationId,
-        conversationSid: conversation.sId,
-        error: messageRes.error,
-      },
-      "[processTranscriptActivity] Error creating message. Stopping."
-    );
-    return;
-  }
-
-  const updated = await getConversation(auth, conversation.sId);
-
-  if (!updated) {
-    localLogger.error(
-      {
-        agentConfigurationId,
-        conversationSid: conversation.sId,
-      },
-      "[processTranscriptActivity] Error getting conversation after creation. Stopping."
-    );
-    return;
-  }
-
-  conversation = updated;
+  // Decide to process transcript or not (user needs to have participated)
+  const shouldProcessTranscript =
+    transcriptsConfiguration.isActive && userParticipated;
 
   localLogger.info(
     {
-      agentConfigurationId,
-      conservationSid: conversation.sId,
+      fileId,
+      userParticipated,
+      transcriptsConfigurationDataSourceViewId:
+        transcriptsConfiguration.dataSourceViewId,
+      gongFullStorageFF,
+      gongFullStorageDataSourceViewId,
+      shouldStoreTranscript,
+      shouldProcessTranscript,
     },
-    "[processTranscriptActivity] Created conversation."
+    "[processTranscriptActivity] Deciding to store and/or process transcript."
   );
 
-  // Get first from array with type='agent_message' in conversation.content;
-  const agentMessage = <AgentMessageType[]>conversation.content.find(
-    (innerArray) => {
-      return innerArray.find((item) => item.type === "agent_message");
+  if (shouldStoreTranscript) {
+    localLogger.info(
+      {
+        dataSourceViewId: transcriptsConfiguration.dataSourceViewId,
+        gongFullStorageFF,
+        gongFullStorageDataSourceViewId,
+        transcriptsConfiguration,
+        transcriptTitle,
+        transcriptContentLength: transcriptContent.length,
+      },
+      "[processTranscriptActivity] Storing transcript to Datasource."
+    );
+
+    const dataSourceViewId =
+      gongFullStorageDataSourceViewId ||
+      transcriptsConfiguration.dataSourceViewId;
+
+    if (!dataSourceViewId) {
+      localLogger.error(
+        {},
+        "[processTranscriptActivity] No datasource view id found. Stopping."
+      );
+      await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
+      return;
     }
-  );
-  const markDownAnswer =
-    agentMessage && agentMessage[0].content ? agentMessage[0].content : "";
-  const htmlAnswer = sanitizeHtml(await marked.parse(markDownAnswer), {
-    allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img"]), // Allow images on top of all defaults from https://www.npmjs.com/package/sanitize-html
-  });
 
-  await transcriptsConfiguration.setConversationHistory(
-    fileId,
-    conversation.sId
-  );
+    localLogger.info(
+      {
+        datasourceViewId: transcriptsConfiguration.dataSourceViewId,
+      },
+      "[processTranscriptActivity] Storing transcript to Datasource."
+    );
 
-  const msg = {
-    from: {
-      name: "Dust team",
-      email: "team@dust.help",
-    },
-    subject: `[DUST] Meeting summary - ${transcriptTitle}`,
-    html: `<a href="https://dust.tt/w/${owner.sId}/assistant/${conversation.sId}">Open this conversation in Dust</a><br /><br /> ${htmlAnswer}<br /><br />The team at <a href="https://dust.tt">Dust.tt</a>`,
-  };
+    const [datasourceView] = await DataSourceViewResource.fetchByModelIds(
+      auth,
+      [dataSourceViewId]
+    );
 
-  await sendEmail(user.email, msg);
+    if (!datasourceView) {
+      localLogger.error(
+        {},
+        "[processTranscriptActivity] No datasource view found. Stopping."
+      );
+      await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
+      return;
+    }
+
+    const dataSource = datasourceView.dataSource;
+
+    if (!dataSource) {
+      localLogger.error(
+        {},
+        "[processTranscriptActivity] No datasource found. Stopping."
+      );
+      await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
+      return;
+    }
+
+    const credentials = dustManagedCredentials();
+
+    const coreAPI = new CoreAPI(apiConfig.getCoreAPIConfig(), localLogger);
+    const upsertRes = await coreAPI.upsertDataSourceDocument({
+      projectId: dataSource.dustAPIProjectId,
+      dataSourceId: dataSource.dustAPIDataSourceId,
+      documentId: transcriptTitle,
+      tags: ["transcript", transcriptsConfiguration.provider],
+      parentId: null,
+      parents: [transcriptTitle],
+      sourceUrl: null,
+      timestamp: null,
+      section: {
+        prefix: transcriptTitle,
+        content: transcriptContent,
+        sections: [],
+      },
+      credentials,
+      lightDocumentOutput: true,
+      title: transcriptTitle,
+      mimeType: "text/plain",
+    });
+
+    if (upsertRes.isErr()) {
+      localLogger.error(
+        {
+          dataSourceViewId: transcriptsConfiguration.dataSourceViewId,
+          error: upsertRes.error,
+        },
+        "[processTranscriptActivity] Error storing transcript to Datasource. Keep going to process."
+      );
+    }
+
+    localLogger.info(
+      {
+        dataSourceViewId: transcriptsConfiguration.dataSourceViewId,
+        transcriptTitle,
+        transcriptContentLength: transcriptContent.length,
+      },
+      "[processTranscriptActivity] Stored transcript to Datasource."
+    );
+  }
+
+  if (shouldProcessTranscript) {
+    localLogger.info(
+      {
+        transcriptTitle,
+        transcriptContentLength: transcriptContent.length,
+      },
+      "[processTranscriptActivity] Processing transcript content."
+    );
+
+    const { agentConfigurationId } = transcriptsConfiguration;
+
+    if (!agentConfigurationId) {
+      await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
+      localLogger.error(
+        {},
+        "[processTranscriptActivity] No agent configuration id found. Stopping."
+      );
+      return;
+    }
+
+    const agent = await getAgentConfiguration(auth, agentConfigurationId);
+
+    if (!agent) {
+      await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
+      localLogger.error(
+        {},
+        "[processTranscriptActivity] Agent configuration not found. Stopping."
+      );
+      return;
+    }
+
+    if (isEmptyString(user.username)) {
+      return new Err(new Error("username must be a non-empty string"));
+    }
+
+    const initialConversation = await createConversation(auth, {
+      title: transcriptTitle,
+      visibility: "workspace",
+    });
+
+    const baseContext = {
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
+      username: user.username,
+      fullName: user.fullName(),
+      email: user.email,
+      profilePictureUrl: user.imageUrl,
+      origin: null,
+    };
+
+    const cfRes = await toFileContentFragment(auth, {
+      contentFragment: {
+        title: transcriptTitle,
+        content: transcriptContent,
+        contentType: "text/plain",
+        url: null,
+      },
+      fileName: `${transcriptTitle}.txt`,
+    });
+    if (cfRes.isErr()) {
+      localLogger.error(
+        {
+          conversationSid: initialConversation.sId,
+          error: cfRes.error,
+        },
+        "[processTranscriptActivity] Error creating file for content fragment. Stopping."
+      );
+      return;
+    }
+
+    const contentFragmentRes = await postNewContentFragment(
+      auth,
+      initialConversation,
+      cfRes.value,
+      baseContext
+    );
+
+    if (contentFragmentRes.isErr()) {
+      localLogger.error(
+        {
+          agentConfigurationId,
+          conversationSid: initialConversation.sId,
+          error: contentFragmentRes.error,
+        },
+        "[processTranscriptActivity] Error creating content fragment. Stopping."
+      );
+      return;
+    }
+
+    // Initial conversation is stale, so we need to reload it.
+    const conversationRes = await getConversation(
+      auth,
+      initialConversation.sId
+    );
+
+    if (conversationRes.isErr()) {
+      localLogger.error(
+        {
+          agentConfigurationId,
+          conversationSid: initialConversation.sId,
+          panic: true,
+          error: conversationRes.error,
+        },
+        "[processTranscriptActivity] Unreachable: Error getting conversation after creation."
+      );
+
+      return;
+    }
+
+    let conversation = conversationRes.value;
+
+    const messageRes = await postUserMessageWithPubSub(
+      auth,
+      {
+        conversation,
+        content: `Transcript: ${transcriptTitle}`,
+        mentions: [{ configurationId: agentConfigurationId }],
+        context: baseContext,
+      },
+      { resolveAfterFullGeneration: true }
+    );
+
+    if (messageRes.isErr()) {
+      localLogger.error(
+        {
+          agentConfigurationId,
+          conversationSid: conversation.sId,
+          error: messageRes.error,
+        },
+        "[processTranscriptActivity] Error creating message. Stopping."
+      );
+      return;
+    }
+
+    const updatedRes = await getConversation(auth, conversation.sId);
+
+    if (updatedRes.isErr()) {
+      localLogger.error(
+        {
+          agentConfigurationId,
+          conversationSid: conversation.sId,
+          error: updatedRes.error,
+        },
+        "[processTranscriptActivity] Error getting conversation after creation. Stopping."
+      );
+      return;
+    }
+
+    conversation = updatedRes.value;
+
+    localLogger.info(
+      {
+        agentConfigurationId,
+        conservationSid: conversation.sId,
+      },
+      "[processTranscriptActivity] Created conversation."
+    );
+
+    // Get first from array with type='agent_message' in conversation.content;
+    const agentMessage = <AgentMessageType[]>conversation.content.find(
+      (innerArray) => {
+        return innerArray.find((item) => item.type === "agent_message");
+      }
+    );
+    const markDownAnswer =
+      agentMessage && agentMessage[0].content ? agentMessage[0].content : "";
+    const htmlAnswer = sanitizeHtml(await marked.parse(markDownAnswer), {
+      allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img"]), // Allow images on top of all defaults from https://www.npmjs.com/package/sanitize-html
+    });
+
+    await transcriptsConfiguration.setConversationHistory(
+      fileId,
+      conversation.sId
+    );
+
+    await sendEmailWithTemplate({
+      to: user.email,
+      from: {
+        name: "Dust team",
+        email: "support@dust.help",
+      },
+      subject: `[DUST] Meeting summary - ${transcriptTitle}`,
+      body: `${htmlAnswer}<div style="text-align: center; margin-top: 20px;">
+    <a href="https://dust.tt/w/${owner.sId}/assistant/${conversation.sId}" 
+      style="display: inline-block; 
+              padding: 10px 20px; 
+              background-color: #000000; 
+              color: #ffffff; 
+              text-decoration: none; 
+              border-radius: 0.75rem; 
+              font-weight: bold;">
+      Open this conversation in Dust
+    </a>
+  </div>`,
+    });
+
+    localLogger.info(
+      {
+        agentConfigurationId,
+        conversationSid: conversation.sId,
+      },
+      "[processTranscriptActivity] Sent processed transcript email."
+    );
+  }
 }

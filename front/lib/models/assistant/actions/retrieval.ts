@@ -1,21 +1,14 @@
 import type { TimeframeUnit } from "@dust-tt/types";
-import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import { DataTypes } from "sequelize";
 
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
+import { BaseModel } from "@app/lib/resources/storage/wrappers";
 
-export class AgentRetrievalConfiguration extends Model<
-  InferAttributes<AgentRetrievalConfiguration>,
-  InferCreationAttributes<AgentRetrievalConfiguration>
-> {
-  declare id: CreationOptional<number>;
+export class AgentRetrievalConfiguration extends BaseModel<AgentRetrievalConfiguration> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -36,11 +29,6 @@ export class AgentRetrievalConfiguration extends Model<
 
 AgentRetrievalConfiguration.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -142,11 +130,7 @@ AgentRetrievalConfiguration.belongsTo(AgentConfiguration, {
 /**
  * Retrieval Action
  */
-export class AgentRetrievalAction extends Model<
-  InferAttributes<AgentRetrievalAction>,
-  InferCreationAttributes<AgentRetrievalAction>
-> {
-  declare id: CreationOptional<number>;
+export class AgentRetrievalAction extends BaseModel<AgentRetrievalAction> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare runId: string | null;
@@ -166,11 +150,6 @@ export class AgentRetrievalAction extends Model<
 }
 AgentRetrievalAction.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -251,16 +230,10 @@ AgentMessage.hasMany(AgentRetrievalAction, {
   foreignKey: { name: "agentMessageId", allowNull: false },
 });
 
-export class RetrievalDocument extends Model<
-  InferAttributes<RetrievalDocument>,
-  InferCreationAttributes<RetrievalDocument>
-> {
-  declare id: CreationOptional<number>;
+export class RetrievalDocument extends BaseModel<RetrievalDocument> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare dataSourceWorkspaceId: string;
-  declare dataSourceId: string;
   declare sourceUrl: string | null;
   declare documentId: string;
   declare reference: string;
@@ -268,16 +241,16 @@ export class RetrievalDocument extends Model<
   declare tags: string[];
   declare score: number | null;
 
-  declare retrievalActionId: ForeignKey<AgentRetrievalAction["id"]>;
+  // This is nullable as it has to be set null when data sources are deleted.
+  declare dataSourceViewId: ForeignKey<DataSourceViewModel["id"]> | null;
+  declare retrievalActionId: ForeignKey<AgentRetrievalAction["id"]> | null;
+
+  declare chunks: NonAttribute<RetrievalDocumentChunk[]>;
+  declare dataSourceView: NonAttribute<DataSourceViewModel>;
 }
 
 RetrievalDocument.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -287,14 +260,6 @@ RetrievalDocument.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
-    },
-    dataSourceWorkspaceId: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    dataSourceId: {
-      type: DataTypes.STRING,
-      allowNull: false,
     },
     sourceUrl: {
       type: DataTypes.TEXT,
@@ -324,23 +289,31 @@ RetrievalDocument.init(
   {
     modelName: "retrieval_document",
     sequelize: frontSequelize,
-    indexes: [{ fields: ["retrievalActionId"] }],
+    indexes: [
+      { fields: ["retrievalActionId"] },
+      { fields: ["dataSourceViewId"] },
+    ],
   }
 );
 
 AgentRetrievalAction.hasMany(RetrievalDocument, {
-  foreignKey: { name: "retrievalActionId", allowNull: false },
-  onDelete: "CASCADE",
+  foreignKey: { name: "retrievalActionId", allowNull: true },
+  onDelete: "SET NULL",
 });
 RetrievalDocument.belongsTo(AgentRetrievalAction, {
-  foreignKey: { name: "retrievalActionId", allowNull: false },
+  foreignKey: { name: "retrievalActionId", allowNull: true },
 });
 
-export class RetrievalDocumentChunk extends Model<
-  InferAttributes<RetrievalDocumentChunk>,
-  InferCreationAttributes<RetrievalDocumentChunk>
-> {
-  declare id: CreationOptional<number>;
+DataSourceViewModel.hasMany(RetrievalDocument, {
+  foreignKey: { allowNull: true },
+  onDelete: "SET NULL",
+});
+RetrievalDocument.belongsTo(DataSourceViewModel, {
+  as: "dataSourceView",
+  foreignKey: { allowNull: true },
+});
+
+export class RetrievalDocumentChunk extends BaseModel<RetrievalDocumentChunk> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -353,11 +326,6 @@ export class RetrievalDocumentChunk extends Model<
 
 RetrievalDocumentChunk.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -391,6 +359,7 @@ RetrievalDocumentChunk.init(
 RetrievalDocument.hasMany(RetrievalDocumentChunk, {
   foreignKey: { name: "retrievalDocumentId", allowNull: false },
   onDelete: "CASCADE",
+  as: "chunks",
 });
 RetrievalDocumentChunk.belongsTo(RetrievalDocument, {
   foreignKey: { name: "retrievalDocumentId", allowNull: false },

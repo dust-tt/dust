@@ -4,9 +4,10 @@ import type {
 } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation";
+import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
+import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation/without_content";
 import { getMessageReactions } from "@app/lib/api/assistant/reaction";
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 
@@ -28,23 +29,26 @@ async function handler(
   }
 
   const conversationId = req.query.cId;
-  const conversation = await getConversationWithoutContent(
+  const conversationRes = await getConversationWithoutContent(
     auth,
     conversationId
   );
-  if (!conversation) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "conversation_not_found",
-        message: "Conversation not found.",
-      },
-    });
+
+  if (conversationRes.isErr()) {
+    return apiErrorForConversation(req, res, conversationRes.error);
   }
+
+  const conversation = conversationRes.value;
 
   switch (req.method) {
     case "GET":
-      const reactions = await getMessageReactions(auth, conversation);
+      const reactionsRes = await getMessageReactions(auth, conversation);
+
+      if (reactionsRes.isErr()) {
+        return apiErrorForConversation(req, res, reactionsRes.error);
+      }
+
+      const reactions = reactionsRes.value;
 
       res.status(200).json({ reactions });
       return;

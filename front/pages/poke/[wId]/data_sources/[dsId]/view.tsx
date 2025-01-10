@@ -1,19 +1,28 @@
-import { Input, Page } from "@dust-tt/sparkle";
+import { Input, Page, TextArea } from "@dust-tt/sparkle";
 import type { CoreAPIDocument } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import config from "@app/lib/api/config";
-import { getDataSource } from "@app/lib/api/data_sources";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { classNames } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   document: CoreAPIDocument;
 }>(async (context, auth) => {
-  const dataSource = await getDataSource(auth, context.params?.dsId as string);
+  const { dsId } = context.params || {};
+  if (typeof dsId !== "string") {
+    return {
+      notFound: true,
+    };
+  }
+
+  const dataSource = await DataSourceResource.fetchById(auth, dsId, {
+    includeEditedBy: true,
+  });
   if (!dataSource) {
     return {
       notFound: true,
@@ -76,7 +85,7 @@ export default function DataSourceUpsert({
             <div className="pt-4">
               <Page.SectionHeader title="Text content" />
               <div className="pt-4">
-                <textarea
+                <TextArea
                   name="text"
                   id="text"
                   rows={20}

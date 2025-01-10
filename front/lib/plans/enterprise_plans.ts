@@ -24,6 +24,7 @@ export const ENT_PLAN_FAKE_DATA: PlanAttributes = {
   maxMessages: -1,
   maxMessagesTimeframe: "lifetime",
   maxUsersInWorkspace: -1,
+  maxVaultsInWorkspace: -1,
   isSlackbotAllowed: true,
   isManagedConfluenceAllowed: true,
   isManagedSlackAllowed: true,

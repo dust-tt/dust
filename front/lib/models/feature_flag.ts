@@ -1,20 +1,12 @@
 import type { WhitelistableFeature } from "@dust-tt/types";
-import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional, ForeignKey } from "sequelize";
+import { DataTypes } from "sequelize";
 
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { BaseModel } from "@app/lib/resources/storage/wrappers";
 
-export class FeatureFlag extends Model<
-  InferAttributes<FeatureFlag>,
-  InferCreationAttributes<FeatureFlag>
-> {
-  declare id: CreationOptional<number>;
+export class FeatureFlag extends BaseModel<FeatureFlag> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -25,11 +17,6 @@ export class FeatureFlag extends Model<
 
 FeatureFlag.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -62,6 +49,6 @@ FeatureFlag.init(
 
 Workspace.hasMany(FeatureFlag, {
   foreignKey: { allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 FeatureFlag.belongsTo(Workspace);

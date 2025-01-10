@@ -1,8 +1,9 @@
+import type { ContentNode } from "@dust-tt/types";
 import type {
   ConnectorPermission,
   WithConnectorsAPIErrorReponse,
 } from "@dust-tt/types";
-import type { ContentNode } from "@dust-tt/types";
+import { assertNever } from "@dust-tt/types";
 import type { Request, Response } from "express";
 
 import { getConnectorManager } from "@connectors/connectors";
@@ -85,13 +86,43 @@ const _getConnectorPermissions = async (
   });
 
   if (pRes.isErr()) {
-    return apiError(req, res, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message: pRes.error.message,
-      },
-    });
+    switch (pRes.error.code) {
+      case "INVALID_PARENT_INTERNAL_ID":
+      case "INVALID_FILTER_PERMISSION":
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: pRes.error.message,
+          },
+        });
+      case "CONNECTOR_NOT_FOUND":
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "connector_not_found",
+            message: pRes.error.message,
+          },
+        });
+      case "EXTERNAL_OAUTH_TOKEN_ERROR":
+        return apiError(req, res, {
+          status_code: 401,
+          api_error: {
+            type: "connector_authorization_error",
+            message: pRes.error.message,
+          },
+        });
+      case "RATE_LIMIT_ERROR":
+        return apiError(req, res, {
+          status_code: 429,
+          api_error: {
+            type: "connector_rate_limit_error",
+            message: pRes.error.message,
+          },
+        });
+      default:
+        assertNever(pRes.error.code);
+    }
   }
 
   if (includeParents) {

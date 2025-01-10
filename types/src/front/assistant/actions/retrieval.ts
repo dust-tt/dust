@@ -2,10 +2,11 @@
  * Data Source configuration
  */
 
-import { BaseAction } from "../../../front/lib/api/assistant/actions/index";
+import { BaseAction } from "../../../front/assistant/actions/index";
+import { ConnectorProvider } from "../../../front/data_source";
+import { DataSourceViewType } from "../../../front/data_source_view";
 import { ModelId } from "../../../shared/model_id";
 import { ioTsEnum } from "../../../shared/utils/iots_utils";
-import { ConnectorProvider } from "../../data_source";
 
 export const TIME_FRAME_UNITS = [
   "hour",
@@ -34,7 +35,6 @@ export type DataSourceFilter = {
 
 export type DataSourceConfiguration = {
   workspaceId: string;
-  dataSourceId: string;
   dataSourceViewId: string;
   filter: DataSourceFilter;
 };
@@ -72,47 +72,37 @@ export type RetrievalConfigurationType = {
  * Retrieval action
  */
 
-export type RetrievalDocumentType = {
-  id: ModelId;
-  dataSourceWorkspaceId: string;
-  dataSourceId: string;
-  sourceUrl: string | null;
-  documentId: string;
-  reference: string; // Short random string so that the model can refer to the document.
-  timestamp: number;
-  tags: string[];
+export interface RetrievalDocumentChunkType {
+  offset: number;
   score: number | null;
-  chunks: {
-    text: string;
-    offset: number;
-    score: number | null;
-  }[];
-};
+  text: string;
+}
+
+export interface RetrievalDocumentType {
+  chunks: RetrievalDocumentChunkType[];
+  documentId: string;
+  dataSourceView: DataSourceViewType | null;
+  id: ModelId;
+  reference: string; // Short random string so that the model can refer to the document.
+  score: number | null;
+  sourceUrl: string | null;
+  tags: string[];
+  timestamp: number;
+}
 
 type ConnectorProviderDocumentType =
   | Exclude<ConnectorProvider, "webcrawler">
   | "document";
 
-const providerMap: Record<string, ConnectorProviderDocumentType> = {
-  "managed-slack": "slack",
-  "managed-notion": "notion",
-  "managed-google_drive": "google_drive",
-  "managed-github": "github",
-  "managed-confluence": "confluence",
-  "managed-microsoft": "microsoft",
-  "managed-intercom": "intercom",
-};
-
-const providerRegex = new RegExp(`^(${Object.keys(providerMap).join("|")})`);
-
 export function getProviderFromRetrievedDocument(
   document: RetrievalDocumentType
 ): ConnectorProviderDocumentType {
-  const match = document.dataSourceId.match(providerRegex);
-  if (match && match[1]) {
-    return providerMap[match[1]];
+  if (document.dataSourceView) {
+    if (document.dataSourceView.dataSource.connectorProvider === "webcrawler") {
+      return "document";
+    }
+    return document.dataSourceView.dataSource.connectorProvider || "document";
   }
-
   return "document";
 }
 
@@ -135,10 +125,6 @@ export function getTitleFromRetrievedDocument(
     }
   }
 
-  if (provider === "document") {
-    return `[${document.dataSourceId}] ${document.documentId}`;
-  }
-
   return document.documentId;
 }
 
@@ -157,3 +143,36 @@ export interface RetrievalActionType extends BaseAction {
   step: number;
   type: "retrieval_action";
 }
+
+/**
+ * Retrieval Action Events
+ */
+
+// Event sent during retrieval with the finalized query used to retrieve documents.
+export type RetrievalParamsEvent = {
+  type: "retrieval_params";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  dataSources: DataSourceConfiguration[];
+  action: RetrievalActionType;
+};
+
+export type RetrievalErrorEvent = {
+  type: "retrieval_error";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  error: {
+    code: string;
+    message: string;
+  };
+};
+
+export type RetrievalSuccessEvent = {
+  type: "retrieval_success";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  action: RetrievalActionType;
+};

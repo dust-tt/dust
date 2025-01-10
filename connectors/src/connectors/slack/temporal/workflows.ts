@@ -15,8 +15,6 @@ import { newWebhookSignal, syncChannelSignal } from "./signals";
 
 const {
   getChannel,
-  syncThread,
-  syncNonThreaded,
   syncChannel,
   fetchUsers,
   saveSuccessSyncActivity,
@@ -29,7 +27,16 @@ const {
   startToCloseTimeout: "10 minutes",
 });
 
+const { syncThread, syncNonThreaded } = proxyActivities<typeof activities>({
+  startToCloseTimeout: "30 minutes",
+});
+
 /**
+ * This workflow is in charge of synchronizing all the content of the Slack channels selected by the user.
+ * The channel IDs are sent via Temporal signals.
+ * For each channel id, we start a new child workflow, one after the other, with a concurrency of 1.
+ * At the end, we start the garbage collector workflow.
+ *
  * - Concurrency model:
  * One child workflow per Slack channel is triggered
  * For one channel:
@@ -84,6 +91,11 @@ export async function workspaceFullSync(
   console.log(`Workspace sync done for connector ${connectorId}`);
 }
 
+/**
+ * This workflow is in charge of synchronizing all the content of a Slack channel.
+ * A thread with more than one message is indexed as one document, and a the non threaded message of a channel are indexed
+ * as a document per week.
+ */
 export async function syncOneChannel(
   connectorId: ModelId,
   channelId: string,
@@ -196,6 +208,11 @@ export async function syncOneMessageDebounced(
   // call here, which will allow the signal handler to be executed by the nodejs event loop. /!\
 }
 
+/**
+ * This workflow is in charge of cleaning up the connector's database and the data source.
+ * It finds all the channels that are still indexed in our database but not selected in the connector's configuration,
+ * and deletes them.
+ */
 export async function slackGarbageCollectorWorkflow(
   connectorId: ModelId
 ): Promise<void> {

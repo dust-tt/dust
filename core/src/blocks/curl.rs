@@ -1,6 +1,5 @@
 use crate::blocks::block::{
-    parse_pair, replace_secrets_in_string, replace_variables_in_string, Block, BlockResult,
-    BlockType, Env,
+    parse_pair, replace_variables_in_string, Block, BlockResult, BlockType, Env,
 };
 use crate::deno::js_executor::JSExecutor;
 use crate::http::request::HttpRequest;
@@ -99,7 +98,6 @@ impl Block for Curl {
         name: &str,
         env: &Env,
         _event_sender: Option<UnboundedSender<Value>>,
-        _project_id: i64,
     ) -> Result<BlockResult> {
         let config = env.config.config_for_block(name);
 
@@ -126,15 +124,19 @@ impl Block for Curl {
             .await
             .map_err(|e| anyhow!("Error in `headers_code`: {}", e))?;
 
-        let e = env.clone_with_unredacted_secrets();
+        let mut e = env.clone_with_unredacted_secrets();
         let body_code = self.body_code.clone();
         let (body_value, body_logs): (Value, Vec<Value>) = JSExecutor::client()?
             .exec(&body_code, "_fun", &e, std::time::Duration::from_secs(10))
             .await
             .map_err(|e| anyhow!("Error in `body_code`: {}", e))?;
 
-        let mut url = replace_variables_in_string(&self.url, "url", env)?;
-        url = replace_secrets_in_string(&url, "url", env)?;
+        // adding secrets so they can be used in URL replacement
+        let secrets_value = serde_json::to_value(&e.secrets.secrets)
+            .map_err(|e| anyhow!("Failed to convert secrets to JSON: {}", e))?;
+        e.state.insert(String::from("secrets"), secrets_value);
+
+        let url = replace_variables_in_string(&self.url, "url", &e)?;
 
         if url.contains("https://dust.tt") || url.contains("https://www.dust.tt") {
             Err(anyhow!(

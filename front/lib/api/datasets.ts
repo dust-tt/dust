@@ -2,11 +2,11 @@ import type { AppType } from "@dust-tt/types";
 import type { DatasetSchema, DatasetType } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 
+import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
+import type { AppResource } from "@app/lib/resources/app_resource";
 import { Dataset } from "@app/lib/resources/storage/models/apps";
 import logger from "@app/logger/logger";
-
-import config from "./config";
 
 export async function getDatasets(
   auth: Authenticator,
@@ -34,39 +34,9 @@ export async function getDatasets(
   }));
 }
 
-export async function getDataset(
-  auth: Authenticator,
-  app: AppType,
-  name: string
-): Promise<DatasetType | null> {
-  const owner = auth.workspace();
-  if (!owner) {
-    return null;
-  }
-
-  const dataset = await Dataset.findOne({
-    where: {
-      workspaceId: owner.id,
-      appId: app.id,
-      name,
-    },
-  });
-
-  if (!dataset) {
-    return null;
-  }
-
-  return {
-    name: dataset.name,
-    description: dataset.description,
-    data: null,
-    schema: dataset.schema,
-  };
-}
-
 export async function getDatasetSchema(
   auth: Authenticator,
-  app: AppType,
+  app: AppResource,
   name: string
 ): Promise<DatasetSchema | null> {
   const owner = auth.workspace();
@@ -91,7 +61,7 @@ export async function getDatasetSchema(
 
 export async function getDatasetHash(
   auth: Authenticator,
-  app: AppType,
+  app: AppResource,
   name: string,
   hash: string
 ): Promise<DatasetType | null> {

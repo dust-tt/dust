@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - types/**
+      - sdks/js/**
       - front/**
       - .github/workflows/build-and-lint-front.yml
 
@@ -18,6 +19,8 @@ jobs:
           cache: "npm"
           cache-dependency-path: ./front/package-lock.json
       - working-directory: types
+        run: npm install && npm run build
+      - working-directory: sdks/js
         run: npm install && npm run build
       - working-directory: front
         run: npm install && npm run tsc && npm run lint && npm run format:check && npm run docs:check

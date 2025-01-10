@@ -24,6 +24,7 @@ export default function Browser({
   status,
   running,
   readOnly,
+  isAdmin,
   showOutputs,
   onBlockUpdate,
   onBlockDelete,
@@ -39,6 +40,7 @@ export default function Browser({
   status: any;
   running: boolean;
   readOnly: boolean;
+  isAdmin: boolean;
   showOutputs: boolean;
   onBlockUpdate: (block: SpecificationBlockType) => void;
   onBlockDelete: () => void;
@@ -251,19 +253,31 @@ export default function Browser({
             </div>
             {!isProvidersLoading && !browserlessAPIProvider && !readOnly ? (
               <div className="px-2">
-                <Link
-                  href={`/w/${owner.sId}/a`}
-                  className={classNames(
-                    "inline-flex items-center rounded-md py-1 text-sm font-normal",
-                    "border px-3",
-                    readOnly
-                      ? "border-white text-gray-300"
-                      : "border-orange-400 text-gray-700",
-                    "focus:outline-none focus:ring-0"
-                  )}
-                >
-                  Setup Browserless API
-                </Link>
+                {isAdmin ? (
+                  <Link
+                    href={`/w/${owner.sId}/developers/providers`}
+                    className={classNames(
+                      "inline-flex items-center rounded-md py-1 text-sm font-normal",
+                      "border px-3",
+                      readOnly
+                        ? "border-white text-gray-300"
+                        : "border-orange-400 text-gray-700",
+                      "focus:outline-none focus:ring-0"
+                    )}
+                  >
+                    Setup Browserless API
+                  </Link>
+                ) : (
+                  <div
+                    className={classNames(
+                      "inline-flex items-center rounded-md py-1 text-sm font-normal",
+                      "border px-3",
+                      "border-white text-gray-300"
+                    )}
+                  >
+                    Browserless API not available
+                  </div>
+                )}
               </div>
             ) : null}
           </div>

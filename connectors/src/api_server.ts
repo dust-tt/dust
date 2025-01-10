@@ -32,6 +32,7 @@ import {
   webhookIntercomUninstallAPIHandler,
 } from "@connectors/api/webhooks/webhook_intercom";
 import { webhookSlackAPIHandler } from "@connectors/api/webhooks/webhook_slack";
+import { webhookSlackInteractionsAPIHandler } from "@connectors/api/webhooks/webhook_slack_interaction";
 import logger from "@connectors/logger/logger";
 import { authMiddleware } from "@connectors/middleware/auth";
 
@@ -66,29 +67,36 @@ export function startServer(port: number) {
   );
 
   app.use(async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const clientIp = req.ip;
-      const remainingRequests = await rateLimiter({
-        key: `rate_limit:${clientIp}`,
-        maxPerTimeframe: 1000,
-        timeframeSeconds: 60,
-        logger: logger,
-      });
-      if (remainingRequests > 0) {
-        next();
-      } else {
-        logger.info(
-          { clientIp, url: req.originalUrl },
-          "Connector query rate limited."
-        );
-        res.status(429).send("Too many requests");
+    // Apply rate limiting to webhook endpoints only
+    // Other endpoints are protected by authMiddleware
+    if (req.path.startsWith("/webhooks")) {
+      try {
+        const clientIp = req.ip;
+        const remainingRequests = await rateLimiter({
+          key: `rate_limit:${clientIp}`,
+          maxPerTimeframe: 1000,
+          timeframeSeconds: 60,
+          logger: logger,
+        });
+        if (remainingRequests > 0) {
+          next();
+        } else {
+          logger.info(
+            { clientIp, url: req.originalUrl },
+            "Connector query rate limited."
+          );
+          res.status(429).send("Too many requests");
+        }
+      } catch (error) {
+        next(error);
       }
-    } catch (error) {
-      next(error);
+    } else {
+      next();
     }
   });
 
   app.use(authMiddleware);
+  app.use(express.urlencoded({ extended: true })); // support encoded bodies
 
   app.post("/connectors/create/:connector_provider", createConnectorAPIHandler);
   app.post("/connectors/update/:connector_id/", postConnectorUpdateAPIHandler);
@@ -129,7 +137,10 @@ export function startServer(port: number) {
   );
 
   app.post("/webhooks/:webhook_secret/slack", webhookSlackAPIHandler);
-
+  app.post(
+    "/webhooks/:webhook_secret/slack_interaction",
+    webhookSlackInteractionsAPIHandler
+  );
   app.post(
     "/webhooks/:webhooks_secret/github",
     bodyParser.raw({ type: "application/json" }),

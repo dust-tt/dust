@@ -12,7 +12,7 @@ import { spaceUpdatesSignal } from "@connectors/connectors/confluence/temporal/s
 import {
   makeConfluencePersonalDataWorkflowId,
   makeConfluenceRemoveSpacesWorkflowId,
-} from "@connectors/connectors/confluence/temporal/utils";
+} from "@connectors/connectors/confluence/temporal/workflow_ids";
 import {
   confluencePersonalDataReportingWorkflow,
   confluenceRemoveSpacesWorkflow,
@@ -50,6 +50,9 @@ export async function launchConfluenceSyncWorkflow(
 
   const workflowId = makeConfluenceSyncWorkflowId(connector.id);
 
+  const minute = connector.id % 60; // Spread workflows across the hour.
+  const oddOrEvenHour = connector.id % 120 >= 60 ? 1 : 0; // Spread workflows on even or odd hours.
+
   // When the workflow is inactive, we omit passing spaceIds as they are only used to signal modifications within a currently active full sync workflow.
   try {
     await client.workflow.signalWithStart(confluenceSyncWorkflow, {
@@ -68,7 +71,7 @@ export async function launchConfluenceSyncWorkflow(
       memo: {
         connectorId,
       },
-      cronSchedule: "0 * * * *", // Every hour.
+      cronSchedule: `${minute} ${oddOrEvenHour}/2 * * *`, // Every 2 hours at minute `minute`.
     });
   } catch (err) {
     return new Err(err as Error);

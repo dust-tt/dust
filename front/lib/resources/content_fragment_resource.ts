@@ -1,13 +1,15 @@
 import type {
   ContentFragmentMessageTypeModel,
   ContentFragmentType,
+  ContentFragmentVersion,
   ConversationType,
   ModelConfigurationType,
   ModelId,
   Result,
+  SupportedContentFragmentType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { Err, isSupportedImageContentFragmentType, Ok } from "@dust-tt/types";
+import { Err, isSupportedImageContentType, Ok } from "@dust-tt/types";
 import type {
   Attributes,
   CreationAttributes,
@@ -21,10 +23,14 @@ import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { Message } from "@app/lib/models/assistant/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 
+export const CONTENT_OUTDATED_MSG =
+  "Content is outdated. Please refer to the latest version of this content.";
 const MAX_BYTE_SIZE_CSV_RENDER_FULL_CONTENT = 500 * 1024; // 500 KB
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -45,12 +51,14 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
   }
 
   static async makeNew(
-    blob: CreationAttributes<ContentFragmentModel>,
+    blob: Omit<CreationAttributes<ContentFragmentModel>, "sId" | "version">,
     transaction?: Transaction
   ) {
     const contentFragment = await ContentFragmentModel.create(
       {
         ...blob,
+        sId: generateRandomModelSId("cf"),
+        version: "latest",
       },
       {
         transaction,
@@ -58,6 +66,50 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
     );
 
     return new this(ContentFragmentModel, contentFragment.get());
+  }
+
+  static async makeNewVersion(
+    sId: string,
+    blob: Omit<CreationAttributes<ContentFragmentModel>, "sId" | "version">,
+    transaction?: Transaction
+  ): Promise<ContentFragmentResource> {
+    const t = transaction ?? (await frontSequelize.transaction());
+
+    try {
+      // First, mark all existing content fragments with this sId as superseded
+      await ContentFragmentModel.update(
+        { version: "superseded" },
+        {
+          where: { sId },
+          transaction: t,
+        }
+      );
+
+      // Create new content fragment with "latest" version
+      const contentFragment = await ContentFragmentModel.create(
+        {
+          ...blob,
+          sId,
+          version: "latest",
+        },
+        {
+          transaction: t,
+        }
+      );
+
+      // If we created our own transaction, commit it
+      if (!transaction) {
+        await t.commit();
+      }
+
+      return new this(ContentFragmentModel, contentFragment.get());
+    } catch (error) {
+      // If we created our own transaction, roll it back
+      if (!transaction) {
+        await t.rollback();
+      }
+      throw error;
+    }
   }
 
   static fromMessage(
@@ -86,7 +138,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
     return ContentFragmentResource.fromMessage(message);
   }
 
-  static async fetchMany(ids: Array<ModelId>) {
+  static async fetchManyByModelIds(ids: Array<ModelId>) {
     const blobs = await ContentFragmentResource.model.findAll({
       where: {
         id: ids,
@@ -104,12 +156,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
    * Temporary workaround until we can call this method from the MessageResource.
    * @deprecated use the destroy method.
    */
-  delete(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    auth: Authenticator,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    transaction?: Transaction
-  ): Promise<Result<undefined, Error>> {
+  delete(): Promise<Result<undefined, Error>> {
     throw new Error("Method not implemented.");
   }
 
@@ -160,7 +207,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
     return this.update({ sourceUrl });
   }
 
-  renderFromMessage({
+  async renderFromMessage({
     auth,
     conversationId,
     message,
@@ -168,7 +215,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
     auth: Authenticator;
     conversationId: string;
     message: Message;
-  }): ContentFragmentType {
+  }): Promise<ContentFragmentType> {
     const owner = auth.workspace();
     if (!owner) {
       throw new Error(
@@ -183,11 +230,23 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       contentFormat: "text",
     });
 
+    let fileSid: string | null = null;
+    let snippet: string | null = null;
+
+    if (this.fileId) {
+      const file = await FileResource.fetchByModelId(this.fileId);
+      fileSid = file?.sId ?? null;
+
+      // Note: For CSV files outputted by tools, we have a "snippet" version of the output with the
+      // first rows stored in GCP, maybe it's better than our "summary" snippet stored on File.
+      // Need more testing, for now we are using the "summary" snippet.
+      snippet = file?.snippet ?? null;
+    }
+
     return {
       id: message.id,
-      fileId: this.fileId
-        ? FileResource.modelIdToSId({ id: this.fileId, workspaceId: owner.id })
-        : null,
+      fileId: fileSid,
+      snippet: snippet,
       sId: message.sId,
       created: message.createdAt.getTime(),
       type: "content_fragment",
@@ -204,6 +263,8 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
         email: this.userContextEmail,
         username: this.userContextUsername,
       },
+      contentFragmentId: this.sId,
+      contentFragmentVersion: this.version,
     };
   }
 }
@@ -224,42 +285,9 @@ export function fileAttachmentLocation({
   const filePath = `content_fragments/w/${workspaceId}/assistant/conversations/${conversationId}/content_fragment/${messageId}/${contentFormat}`;
   return {
     filePath,
-    internalUrl: `https://storage.googleapis.com/${
-      getPrivateUploadBucket().name
-    }/${filePath}`,
+    internalUrl: `https://storage.googleapis.com/${getPrivateUploadBucket().name}/${filePath}`,
     downloadUrl: `${appConfig.getClientFacingUrl()}/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${messageId}/raw_content_fragment?format=${contentFormat}`,
   };
-}
-
-export async function storeContentFragmentText({
-  workspaceId,
-  conversationId,
-  messageId,
-  content,
-}: {
-  workspaceId: string;
-  conversationId: string;
-  messageId: string;
-  content: string;
-}): Promise<number | null> {
-  if (content === "") {
-    return null;
-  }
-
-  const { filePath } = fileAttachmentLocation({
-    workspaceId,
-    conversationId,
-    messageId,
-    contentFormat: "text",
-  });
-
-  await getPrivateUploadBucket().uploadRawContentToBucket({
-    content,
-    contentType: "text/plain",
-    filePath,
-  });
-
-  return Buffer.byteLength(content);
 }
 
 export async function getContentFragmentText({
@@ -320,25 +348,29 @@ async function getSignedUrlForProcessedContent(
   return getPrivateUploadBucket().getSignedUrl(fileCloudStoragePath);
 }
 
-async function renderFromFileId(
+export async function renderFromFileId(
   workspace: WorkspaceType,
   {
     contentType,
     excludeImages,
     fileId,
+    forceFullCSVInclude,
     model,
     title,
     textBytes,
+    contentFragmentVersion,
   }: {
-    contentType: string;
+    contentType: SupportedContentFragmentType;
     excludeImages: boolean;
     fileId: string;
+    forceFullCSVInclude: boolean;
     model: ModelConfigurationType;
     title: string;
     textBytes: number | null;
+    contentFragmentVersion: ContentFragmentVersion;
   }
 ): Promise<Result<ContentFragmentMessageTypeModel, Error>> {
-  if (isSupportedImageContentFragmentType(contentType)) {
+  if (isSupportedImageContentType(contentType)) {
     if (excludeImages || !model.supportsVision) {
       return new Ok({
         role: "content_fragment",
@@ -346,7 +378,15 @@ async function renderFromFileId(
         content: [
           {
             type: "text",
-            text: `<attachment id="${fileId}" type="${contentType} title="${title}">[Image content interpreted by a vision-enabled model. Description not available in this context.]</attachment>`,
+            text: renderContentFragmentXml({
+              fileId: null,
+              contentType,
+              title,
+              version: contentFragmentVersion,
+              content:
+                "[Image content interpreted by a vision-enabled model. " +
+                "Description not available in this context.]",
+            }),
           },
         ],
       });
@@ -369,6 +409,7 @@ async function renderFromFileId(
   } else {
     const shouldRetrieveSnippetVersion =
       contentType === "text/csv" &&
+      !forceFullCSVInclude &&
       textBytes &&
       textBytes > MAX_BYTE_SIZE_CSV_RENDER_FULL_CONTENT;
 
@@ -382,11 +423,90 @@ async function renderFromFileId(
       content: [
         {
           type: "text",
-          text: `<attachment id="${fileId}" type="${contentType}" title="${title}">\n${content}\n</attachment>`,
+          text: renderContentFragmentXml({
+            fileId,
+            contentType,
+            title,
+            version: contentFragmentVersion,
+            content,
+          }),
         },
       ],
     });
   }
+}
+
+// Render only a tag to specifiy that a content fragment was injected at a given position except for
+// images when the model support them.
+export async function renderLightContentFragmentForModel(
+  message: ContentFragmentType,
+  conversation: ConversationType,
+  model: ModelConfigurationType,
+  {
+    excludeImages,
+  }: {
+    excludeImages: boolean;
+  }
+): Promise<ContentFragmentMessageTypeModel> {
+  const { contentType, fileId, title, contentFragmentVersion } = message;
+
+  if (fileId && isSupportedImageContentType(contentType)) {
+    if (excludeImages || !model.supportsVision) {
+      return {
+        role: "content_fragment",
+        name: `inject_${contentType}`,
+        content: [
+          {
+            type: "text",
+            text: renderContentFragmentXml({
+              fileId: null,
+              contentType,
+              title,
+              version: contentFragmentVersion,
+              content:
+                "[Image content interpreted by a vision-enabled model. " +
+                "Description not available in this context.]",
+            }),
+          },
+        ],
+      };
+    }
+
+    const signedUrl = await getSignedUrlForProcessedContent(
+      conversation.owner,
+      fileId
+    );
+
+    return {
+      role: "content_fragment",
+      name: `inject_${contentType}`,
+      content: [
+        {
+          type: "image_url",
+          image_url: {
+            url: signedUrl,
+          },
+        },
+      ],
+    };
+  }
+
+  return {
+    role: "content_fragment",
+    name: `attach_${contentType}`,
+    content: [
+      {
+        type: "text",
+        text: renderContentFragmentXml({
+          fileId,
+          contentType,
+          title,
+          version: contentFragmentVersion,
+          content: null,
+        }),
+      },
+    ],
+  };
 }
 
 export async function renderContentFragmentForModel(
@@ -399,20 +519,44 @@ export async function renderContentFragmentForModel(
     excludeImages: boolean;
   }
 ): Promise<Result<ContentFragmentMessageTypeModel, Error>> {
-  const { contentType, fileId, sId, title, textBytes } = message;
+  const { contentType, fileId, sId, title, textBytes, contentFragmentVersion } =
+    message;
 
   try {
     // Render content based on fragment type:
-    // - If the fragment is a file, render it from the file. For large CSV files, render a snippet version (CSV schema).
+    // - If the fragment is superseded by another content fragment, don't render the content.
+    // - If the fragment is a file, render it from the file. For large CSV files, render a snippet
+    //   version (CSV schema).
     // - If the fragment is not a file (public API), always render the full content.
+    if (message.contentFragmentVersion === "superseded") {
+      return new Ok({
+        role: "content_fragment",
+        name: `inject_${contentType}`,
+        content: [
+          {
+            type: "text",
+            text: renderContentFragmentXml({
+              fileId,
+              contentType,
+              title,
+              version: contentFragmentVersion,
+              content: CONTENT_OUTDATED_MSG,
+            }),
+          },
+        ],
+      });
+    }
+
     if (fileId) {
       return await renderFromFileId(conversation.owner, {
         contentType,
         excludeImages,
         fileId,
+        forceFullCSVInclude: false,
         model,
         title,
         textBytes,
+        contentFragmentVersion,
       });
     } else {
       const content = await getContentFragmentText({
@@ -427,7 +571,13 @@ export async function renderContentFragmentForModel(
         content: [
           {
             type: "text",
-            text: `<attachment id="${fileId}" type="${contentType}" title="${title}">\n${content}\n</attachment>`,
+            text: renderContentFragmentXml({
+              fileId: null,
+              contentType,
+              title,
+              version: contentFragmentVersion,
+              content,
+            }),
           },
         ],
       });
@@ -445,4 +595,26 @@ export async function renderContentFragmentForModel(
 
     return new Err(new Error("Failed to retrieve content fragment text"));
   }
+}
+
+function renderContentFragmentXml({
+  fileId,
+  contentType,
+  title,
+  version,
+  content,
+}: {
+  fileId: string | null;
+  contentType: string;
+  title: string;
+  version: ContentFragmentVersion;
+  content: string | null;
+}) {
+  let tag = `<attachment id="${fileId}" type="${contentType}" title="${title}" version="${version}"`;
+  if (content) {
+    tag += `>\n${content}\n</attachment>`;
+  } else {
+    tag += "/>";
+  }
+  return tag;
 }

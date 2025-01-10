@@ -1,19 +1,11 @@
-import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional, ForeignKey } from "sequelize";
+import { DataTypes } from "sequelize";
 
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import { BaseModel } from "@connectors/resources/storage/wrappers";
 
-export class GithubConnectorState extends Model<
-  InferAttributes<GithubConnectorState>,
-  InferCreationAttributes<GithubConnectorState>
-> {
-  declare id: CreationOptional<number>;
+export class GithubConnectorState extends BaseModel<GithubConnectorState> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -25,11 +17,6 @@ export class GithubConnectorState extends Model<
 }
 GithubConnectorState.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -65,13 +52,11 @@ GithubConnectorState.init(
 );
 ConnectorModel.hasOne(GithubConnectorState);
 
-export class GithubIssue extends Model<
-  InferAttributes<GithubIssue>,
-  InferCreationAttributes<GithubIssue>
-> {
-  declare id: CreationOptional<number>;
+export class GithubIssue extends BaseModel<GithubIssue> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
+
+  declare skipReason: string | null;
 
   declare repoId: string;
   declare issueNumber: number;
@@ -80,11 +65,6 @@ export class GithubIssue extends Model<
 }
 GithubIssue.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -94,6 +74,10 @@ GithubIssue.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    skipReason: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     repoId: {
       type: DataTypes.STRING,
@@ -116,11 +100,7 @@ GithubIssue.init(
 );
 ConnectorModel.hasMany(GithubIssue);
 
-export class GithubDiscussion extends Model<
-  InferAttributes<GithubDiscussion>,
-  InferCreationAttributes<GithubDiscussion>
-> {
-  declare id: CreationOptional<number>;
+export class GithubDiscussion extends BaseModel<GithubDiscussion> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -131,11 +111,6 @@ export class GithubDiscussion extends Model<
 }
 GithubDiscussion.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -167,11 +142,7 @@ GithubDiscussion.init(
 );
 ConnectorModel.hasMany(GithubDiscussion);
 
-export class GithubCodeRepository extends Model<
-  InferAttributes<GithubCodeRepository>,
-  InferCreationAttributes<GithubCodeRepository>
-> {
-  declare id: CreationOptional<number>;
+export class GithubCodeRepository extends BaseModel<GithubCodeRepository> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare lastSeenAt: CreationOptional<Date>;
@@ -188,11 +159,6 @@ export class GithubCodeRepository extends Model<
 }
 GithubCodeRepository.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -243,11 +209,7 @@ GithubCodeRepository.init(
 );
 ConnectorModel.hasMany(GithubCodeRepository);
 
-export class GithubCodeFile extends Model<
-  InferAttributes<GithubCodeFile>,
-  InferCreationAttributes<GithubCodeFile>
-> {
-  declare id: CreationOptional<number>;
+export class GithubCodeFile extends BaseModel<GithubCodeFile> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare lastSeenAt: CreationOptional<Date>;
@@ -265,11 +227,6 @@ export class GithubCodeFile extends Model<
 }
 GithubCodeFile.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -326,11 +283,7 @@ GithubCodeFile.init(
 );
 ConnectorModel.hasMany(GithubCodeFile);
 
-export class GithubCodeDirectory extends Model<
-  InferAttributes<GithubCodeDirectory>,
-  InferCreationAttributes<GithubCodeDirectory>
-> {
-  declare id: CreationOptional<number>;
+export class GithubCodeDirectory extends BaseModel<GithubCodeDirectory> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare lastSeenAt: CreationOptional<Date>;
@@ -347,11 +300,6 @@ export class GithubCodeDirectory extends Model<
 }
 GithubCodeDirectory.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,

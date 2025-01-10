@@ -1,4 +1,4 @@
-FROM rust:1.79.0 as core
+FROM rust:1.79.0 AS core
 
 RUN apt-get update && apt-get install -y vim redis-tools postgresql-client htop cmake
 
@@ -6,9 +6,9 @@ WORKDIR /app
 
 COPY . .
 
-RUN cargo build --release --bin dust-api --bin sqlite-worker
+RUN cargo build --release --bin core-api --bin sqlite-worker
 
 EXPOSE 3001
 
 # Set a default command, it will start the API service if no command is provided
-CMD ["cargo", "run", "--release", "--bin", "dust-api"]
+CMD ["cargo", "run", "--release", "--bin", "core-api"]

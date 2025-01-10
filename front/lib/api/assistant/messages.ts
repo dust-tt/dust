@@ -1,15 +1,14 @@
 import type {
   AgentActionType,
-  MessageWithRankType,
-  ModelId,
-  Result,
-} from "@dust-tt/types";
-import type {
   AgentMessageType,
   ContentFragmentType,
   LightAgentConfigurationType,
+  MessageWithRankType,
+  ModelId,
+  Result,
   UserMessageType,
 } from "@dust-tt/types";
+import { ConversationError } from "@dust-tt/types";
 import { Err, Ok, removeNulls } from "@dust-tt/types";
 import type { WhereOptions } from "sequelize";
 import { Op, Sequelize } from "sequelize";
@@ -24,7 +23,7 @@ import {
 } from "@app/lib/api/assistant/agent_message_content_parser";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import type { PaginationParams } from "@app/lib/api/pagination";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import {
   AgentMessage,
@@ -37,10 +36,11 @@ import { ContentFragmentResource } from "@app/lib/resources/content_fragment_res
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { UserResource } from "@app/lib/resources/user_resource";
 
+import { conversationIncludeFileTypesFromAgentMessageIds } from "./actions/conversation/include_file";
 import { processActionTypesFromAgentMessageIds } from "./actions/process";
 import { retrievalActionTypesFromAgentMessageIds } from "./actions/retrieval";
 
-export async function batchRenderUserMessages(
+async function batchRenderUserMessages(
   messages: Message[]
 ): Promise<{ m: UserMessageType; rank: number; version: number }[]> {
   const userMessages = messages.filter(
@@ -103,7 +103,7 @@ export async function batchRenderUserMessages(
   });
 }
 
-export async function batchRenderAgentMessages(
+async function batchRenderAgentMessages(
   auth: Authenticator,
   messages: Message[]
 ): Promise<{ m: AgentMessageType; rank: number; version: number }[]> {
@@ -112,7 +112,6 @@ export async function batchRenderAgentMessages(
     agentMessages.map((m) => m.agentMessageId || null)
   );
 
-  // TODO(pr) refactor to loop on all actions rather than manually add new actions here
   const [
     agentConfigurations,
     agentRetrievalActions,
@@ -121,6 +120,7 @@ export async function batchRenderAgentMessages(
     agentProcessActions,
     agentWebsearchActions,
     agentBrowseActions,
+    agentConversationIncludeFileActions,
   ] = await Promise.all([
     (async () => {
       const agentConfigurationIds: string[] = agentMessages.reduce(
@@ -142,12 +142,15 @@ export async function batchRenderAgentMessages(
       ).filter((a) => a !== null) as LightAgentConfigurationType[];
       return agents;
     })(),
-    (async () => retrievalActionTypesFromAgentMessageIds(agentMessageIds))(),
+    (async () =>
+      retrievalActionTypesFromAgentMessageIds(auth, agentMessageIds))(),
     (async () => dustAppRunTypesFromAgentMessageIds(agentMessageIds))(),
-    (async () => tableQueryTypesFromAgentMessageIds(agentMessageIds))(),
+    (async () => tableQueryTypesFromAgentMessageIds(auth, agentMessageIds))(),
     (async () => processActionTypesFromAgentMessageIds(agentMessageIds))(),
     (async () => websearchActionTypesFromAgentMessageIds(agentMessageIds))(),
     (async () => browseActionTypesFromAgentMessageIds(agentMessageIds))(),
+    (async () =>
+      conversationIncludeFileTypesFromAgentMessageIds(agentMessageIds))(),
   ]);
 
   // The only async part here is the content parsing, but it's "fake async" as the content parsing is not doing
@@ -168,6 +171,7 @@ export async function batchRenderAgentMessages(
         agentProcessActions,
         agentWebsearchActions,
         agentBrowseActions,
+        agentConversationIncludeFileActions,
       ]
         .flat()
         .filter((a) => a.agentMessageId === agentMessage.id)
@@ -241,7 +245,7 @@ export async function batchRenderAgentMessages(
   );
 }
 
-export async function batchRenderContentFragment(
+async function batchRenderContentFragment(
   auth: Authenticator,
   conversationId: string,
   messages: Message[]
@@ -255,15 +259,22 @@ export async function batchRenderContentFragment(
     );
   }
 
-  return messagesWithContentFragment.map((message: Message) => {
-    const contentFragment = ContentFragmentResource.fromMessage(message);
+  return Promise.all(
+    messagesWithContentFragment.map(async (message: Message) => {
+      const contentFragment = ContentFragmentResource.fromMessage(message);
+      const render = await contentFragment.renderFromMessage({
+        auth,
+        conversationId,
+        message,
+      });
 
-    return {
-      m: contentFragment.renderFromMessage({ auth, conversationId, message }),
-      rank: message.rank,
-      version: message.version,
-    };
-  });
+      return {
+        m: render,
+        rank: message.rank,
+        version: message.version,
+      };
+    })
+  );
 }
 
 /**
@@ -358,21 +369,26 @@ async function fetchMessagesForPage(
   };
 }
 
-async function batchRenderMessages(
+export async function batchRenderMessages(
   auth: Authenticator,
   conversationId: string,
   messages: Message[]
-): Promise<MessageWithRankType[]> {
+): Promise<Result<MessageWithRankType[], ConversationError>> {
   const [userMessages, agentMessages, contentFragments] = await Promise.all([
     batchRenderUserMessages(messages),
     batchRenderAgentMessages(auth, messages),
     batchRenderContentFragment(auth, conversationId, messages),
   ]);
-  const render = [...userMessages, ...agentMessages, ...contentFragments].sort(
-    (a, b) => a.rank - b.rank
-  );
 
-  return render.map((r) => ({ ...r.m, rank: r.rank }));
+  if (agentMessages.some((m) => !canReadMessage(auth, m.m))) {
+    return new Err(new ConversationError("conversation_access_restricted"));
+  }
+
+  return new Ok(
+    [...userMessages, ...agentMessages, ...contentFragments]
+      .sort((a, b) => a.rank - b.rank || a.version - b.version)
+      .map(({ m, rank }) => ({ ...m, rank }))
+  );
 }
 
 export interface FetchConversationMessagesResponse {
@@ -398,8 +414,9 @@ export async function fetchConversationMessages(
       visibility: { [Op.ne]: "deleted" },
     },
   });
+
   if (!conversation) {
-    return new Err(new Error("Conversation not found."));
+    return new Err(new ConversationError("conversation_not_found"));
   }
 
   const { hasMore, messages } = await fetchMessagesForPage(
@@ -407,15 +424,29 @@ export async function fetchConversationMessages(
     paginationParams
   );
 
-  const renderedMessages = await batchRenderMessages(
+  const renderedMessagesRes = await batchRenderMessages(
     auth,
     conversationId,
     messages
   );
+
+  if (renderedMessagesRes.isErr()) {
+    return renderedMessagesRes;
+  }
+
+  const renderedMessages = renderedMessagesRes.value;
 
   return new Ok({
     hasMore,
     lastValue: renderedMessages.at(0)?.rank ?? null,
     messages: renderedMessages,
   });
+}
+
+export function canReadMessage(auth: Authenticator, message: AgentMessageType) {
+  return auth.canRead(
+    Authenticator.createResourcePermissionsFromGroupIds(
+      message.configuration.requestedGroupIds
+    )
+  );
 }

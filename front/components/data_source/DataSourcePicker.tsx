@@ -1,26 +1,33 @@
-import { Input } from "@dust-tt/sparkle";
+import {
+  Button,
+  PopoverContent,
+  PopoverRoot,
+  PopoverTrigger,
+  ScrollArea,
+  SearchInput,
+} from "@dust-tt/sparkle";
 import type {
   DataSourceViewType,
-  VaultType,
+  SpaceType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { Menu } from "@headlessui/react";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { useVaultDataSourceViews } from "@app/lib/swr/vaults";
+import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
 import { classNames } from "@app/lib/utils";
 
 export default function DataSourcePicker({
   owner,
-  vault,
+  space,
   currentDataSources, // [{ workspace_id, data_source_id }]
   readOnly,
   onDataSourcesUpdate,
+  linksDisabled,
 }: {
   owner: WorkspaceType;
-  vault: VaultType;
+  space: SpaceType;
   currentDataSources: {
     workspace_id: string;
     data_source_id: string;
@@ -29,6 +36,7 @@ export default function DataSourcePicker({
   onDataSourcesUpdate: (
     dataSources: { workspace_id: string; data_source_id: string }[]
   ) => void;
+  linksDisabled?: boolean;
 }) {
   const hasDataSourceView =
     currentDataSources.length > 0 &&
@@ -38,45 +46,39 @@ export default function DataSourcePicker({
     currentDataSources[0].data_source_id.length > 0;
 
   const {
-    vaultDataSourceViews,
-    isVaultDataSourceViewsLoading,
-    isVaultDataSourceViewsError,
-  } = useVaultDataSourceViews({
-    vaultId: vault.sId,
+    spaceDataSourceViews,
+    isSpaceDataSourceViewsLoading,
+    isSpaceDataSourceViewsError,
+  } = useSpaceDataSourceViews({
+    spaceId: space.sId,
     workspaceId: owner.sId,
   });
 
   const [searchFilter, setSearchFilter] = useState("");
   const [filteredDataSourceViews, setFilteredDataSourceViews] =
-    useState(vaultDataSourceViews);
+    useState(spaceDataSourceViews);
 
+  // Look for the selected data source view in the list - data_source_id can is dsv sId or
+  // dataSource name, try to find a match
   const selectedDataSourceView = hasDataSourceView
-    ? vaultDataSourceViews.find(
+    ? spaceDataSourceViews.find(
         (dsv) =>
           dsv.sId === currentDataSources[0].data_source_id ||
+          // Legacy behavior
           dsv.dataSource.name === currentDataSources[0].data_source_id
       )
     : undefined;
 
   useEffect(() => {
     if (
-      !isVaultDataSourceViewsLoading &&
-      !isVaultDataSourceViewsError &&
+      !isSpaceDataSourceViewsLoading &&
+      !isSpaceDataSourceViewsError &&
       !readOnly &&
       hasDataSourceView
     ) {
       if (!selectedDataSourceView) {
+        // If the selected data source view is not found in the list, reset the config
         onDataSourcesUpdate([]);
-      } else if (
-        selectedDataSourceView.sId !== currentDataSources[0].data_source_id
-      ) {
-        // Update config with data_source_view id instead of data_source name
-        onDataSourcesUpdate([
-          {
-            workspace_id: owner.sId,
-            data_source_id: selectedDataSourceView.sId,
-          },
-        ]);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -84,129 +86,127 @@ export default function DataSourcePicker({
     hasDataSourceView,
     selectedDataSourceView,
     readOnly,
-    isVaultDataSourceViewsLoading,
-    isVaultDataSourceViewsError,
-    vaultDataSourceViews,
+    isSpaceDataSourceViewsLoading,
+    isSpaceDataSourceViewsError,
+    spaceDataSourceViews,
   ]);
 
   const getEditLink = (dsv: DataSourceViewType) => {
-    return owner.flags.includes("data_vaults_feature")
-      ? `/w/${owner.sId}/data-sources/vaults/${dsv.vaultId}/categories/${dsv.category}/data_source_views/${dsv.sId}`
-      : `/w/${owner.sId}/builder/data-sources/${dsv.dataSource.name}`;
+    return `/w/${owner.sId}/spaces/${dsv.spaceId}/categories/${dsv.category}/data_source_views/${dsv.sId}`;
+  };
+
+  const MaybeLink = ({
+    children,
+    href,
+  }: {
+    children: React.ReactNode;
+    href: string;
+  }) => {
+    if (linksDisabled) {
+      return <div>{children}</div>;
+    }
+    return <Link href={href}>{children}</Link>;
   };
 
   useEffect(() => {
     const newDataSources = searchFilter
-      ? vaultDataSourceViews.filter((t) =>
+      ? spaceDataSourceViews.filter((t) =>
           t.dataSource.name.toLowerCase().includes(searchFilter.toLowerCase())
         )
-      : vaultDataSourceViews;
+      : spaceDataSourceViews;
     setFilteredDataSourceViews(newDataSources.slice(0, 30));
-  }, [vaultDataSourceViews, searchFilter]);
+  }, [spaceDataSourceViews, searchFilter]);
+
+  const [open, setOpen] = useState(false);
 
   return (
     <div className="flex items-center">
       <div className="flex items-center">
         {readOnly ? (
           selectedDataSourceView ? (
-            <Link href={getEditLink(selectedDataSourceView)}>
-              <div className="text-sm font-bold text-action-500">
+            <MaybeLink href={getEditLink(selectedDataSourceView)}>
+              <div className="max-w-20 mr-1 truncate text-sm font-bold text-action-500">
                 {selectedDataSourceView.dataSource.name}
               </div>
-            </Link>
+            </MaybeLink>
           ) : (
             "No DataSource"
           )
         ) : (
-          <Menu as="div" className="relative inline-block text-left">
-            <div>
-              <Menu.Button
-                className={classNames(
-                  "inline-flex items-center rounded-md py-1 text-sm font-normal text-gray-700",
-                  selectedDataSourceView ? "px-0" : "border px-3",
-                  readOnly
-                    ? "border-white text-gray-300"
-                    : "border-orange-400 text-gray-700",
-                  "focus:outline-none focus:ring-0"
-                )}
-              >
-                {selectedDataSourceView ? (
-                  <>
-                    <Link href={getEditLink(selectedDataSourceView)}>
-                      <div className="mr-1 text-sm font-bold text-action-500">
-                        {selectedDataSourceView.dataSource.name}
-                      </div>
-                    </Link>
-                    <ChevronDownIcon className="mt-0.5 h-4 w-4 hover:text-gray-700" />
-                  </>
-                ) : vaultDataSourceViews && vaultDataSourceViews.length > 0 ? (
-                  "Select DataSource"
-                ) : (
-                  <Link
-                    href={`/w/${owner.sId}/data-sources/vaults`}
-                    className={classNames(
-                      readOnly
-                        ? "border-white text-gray-300"
-                        : "border-orange-400 text-gray-700"
-                    )}
-                  >
-                    Create DataSource
-                  </Link>
-                )}
-              </Menu.Button>
-            </div>
+          <PopoverRoot open={open} onOpenChange={setOpen}>
+            <PopoverTrigger>
+              {selectedDataSourceView ? (
+                <div
+                  className={classNames(
+                    "inline-flex items-center rounded-md py-1 text-sm font-normal",
+                    readOnly ? "text-gray-300" : "text-gray-700",
+                    "focus:outline-none focus:ring-0"
+                  )}
+                >
+                  <MaybeLink href={getEditLink(selectedDataSourceView)}>
+                    <div className="mr-1 max-w-xs truncate text-sm font-bold text-action-500">
+                      {selectedDataSourceView.dataSource.name}
+                    </div>
+                  </MaybeLink>
+                  <ChevronDownIcon className="mt-0.5 h-4 w-4 hover:text-gray-700" />
+                </div>
+              ) : spaceDataSourceViews && spaceDataSourceViews.length > 0 ? (
+                <Button
+                  variant="outline"
+                  label="Select DataSource"
+                  isSelect
+                  size="xs"
+                />
+              ) : (
+                <Link
+                  href={`/w/${owner.sId}/spaces/${space.sId}`}
+                  className={classNames(
+                    readOnly ? "text-gray-300" : "text-gray-700"
+                  )}
+                >
+                  Create DataSource
+                </Link>
+              )}
+            </PopoverTrigger>
 
-            {(vaultDataSourceViews || []).length > 0 ? (
-              <Menu.Items
-                className={classNames(
-                  "absolute z-10 mt-1 w-max origin-top-left rounded-md bg-white shadow-sm ring-1 ring-black ring-opacity-5 focus:outline-none",
-                  selectedDataSourceView ? "-left-4" : "left-1"
-                )}
-              >
-                <Input
+            {(spaceDataSourceViews || []).length > 0 && (
+              <PopoverContent className="mr-2 p-4">
+                <SearchInput
                   name="search"
                   placeholder="Search"
                   value={searchFilter}
-                  onChange={(value) => setSearchFilter(value)}
-                  className="w-48"
+                  onChange={(e) => setSearchFilter(e)}
                 />
-                <div className="py-1">
-                  {(filteredDataSourceViews || []).map((dsv) => {
-                    return (
-                      <Menu.Item key={dsv.sId}>
-                        {({ active }) => (
-                          <span
-                            className={classNames(
-                              active
-                                ? "bg-gray-50 text-gray-900"
-                                : "text-gray-700",
-                              "block cursor-pointer px-4 py-2 text-sm"
-                            )}
-                            onClick={() => {
-                              onDataSourcesUpdate([
-                                {
-                                  workspace_id: owner.sId,
-                                  data_source_id: dsv.sId,
-                                },
-                              ]);
-                              setSearchFilter("");
-                            }}
-                          >
-                            {dsv.dataSource.name}
-                          </span>
-                        )}
-                      </Menu.Item>
-                    );
-                  })}
+                <ScrollArea className="flex max-h-[300px] flex-col">
+                  {(filteredDataSourceViews || []).map((dsv) => (
+                    <div
+                      key={dsv.sId}
+                      className="flex cursor-pointer flex-col items-start hover:opacity-80"
+                      onClick={() => {
+                        onDataSourcesUpdate([
+                          {
+                            workspace_id: owner.sId,
+                            data_source_id: dsv.sId,
+                          },
+                        ]);
+                        setSearchFilter("");
+                        setOpen(false);
+                      }}
+                    >
+                      <div className="my-1">
+                        <div className="text-sm">{dsv.dataSource.name}</div>
+                      </div>
+                    </div>
+                  ))}
                   {filteredDataSourceViews.length === 0 && (
                     <span className="block px-4 py-2 text-sm text-gray-700">
                       No datasources found
                     </span>
                   )}
-                </div>
-              </Menu.Items>
-            ) : null}
-          </Menu>
+                </ScrollArea>
+              </PopoverContent>
+            )}
+          </PopoverRoot>
         )}
       </div>
     </div>

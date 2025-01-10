@@ -4,6 +4,7 @@ use crate::providers::embedder::{Embedder, EmbedderVector};
 use crate::providers::llm::ChatFunction;
 use crate::providers::llm::Tokens;
 use crate::providers::llm::{LLMChatGeneration, LLMGeneration, LLMTokenUsage, LLM};
+use crate::providers::openai::logprobs_from_choices;
 use crate::providers::openai::{
     chat_completion, completion, embed, streamed_chat_completion, streamed_completion,
     to_openai_messages, OpenAILLM, OpenAITool, OpenAIToolChoice,
@@ -438,6 +439,8 @@ impl LLM for AzureOpenAILLM {
         mut max_tokens: Option<i32>,
         presence_penalty: Option<f32>,
         frequency_penalty: Option<f32>,
+        logprobs: Option<bool>,
+        top_logprobs: Option<i32>,
         extras: Option<Value>,
         event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMChatGeneration> {
@@ -447,8 +450,8 @@ impl LLM for AzureOpenAILLM {
             }
         }
 
-        let (openai_user, response_format) = match &extras {
-            None => (None, None),
+        let (openai_user, response_format, reasoning_effort) = match &extras {
+            None => (None, None, None),
             Some(v) => (
                 match v.get("openai_user") {
                     Some(Value::String(u)) => Some(u.to_string()),
@@ -456,6 +459,10 @@ impl LLM for AzureOpenAILLM {
                 },
                 match v.get("response_format") {
                     Some(Value::String(f)) => Some(f.to_string()),
+                    _ => None,
+                },
+                match v.get("reasoning_effort") {
+                    Some(Value::String(r)) => Some(r.to_string()),
                     _ => None,
                 },
             ),
@@ -471,7 +478,7 @@ impl LLM for AzureOpenAILLM {
             .map(OpenAITool::try_from)
             .collect::<Result<Vec<OpenAITool>, _>>()?;
 
-        let openai_messages = to_openai_messages(messages)?;
+        let openai_messages = to_openai_messages(messages, &self.model_id.clone().unwrap())?;
 
         let (c, request_id) = match event_sender {
             Some(_) => {
@@ -500,6 +507,9 @@ impl LLM for AzureOpenAILLM {
                         None => 0.0,
                     },
                     response_format,
+                    reasoning_effort,
+                    logprobs,
+                    top_logprobs,
                     openai_user,
                     event_sender,
                 )
@@ -531,6 +541,9 @@ impl LLM for AzureOpenAILLM {
                         None => 0.0,
                     },
                     response_format,
+                    reasoning_effort,
+                    logprobs,
+                    top_logprobs,
                     openai_user,
                 )
                 .await?
@@ -555,6 +568,7 @@ impl LLM for AzureOpenAILLM {
                 completion_tokens: usage.completion_tokens.unwrap_or(0),
             }),
             provider_request_id: request_id,
+            logprobs: logprobs_from_choices(&c.choices),
         })
     }
 }

@@ -1,6 +1,9 @@
 import {
   Button,
   DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Hoverable,
   IconButton,
   Input,
@@ -8,24 +11,27 @@ import {
   SparklesIcon,
   Spinner,
   TextArea,
-  Tooltip,
   XCircleIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type { Result, TimeframeUnit, VaultType } from "@dust-tt/types";
-import type { ProcessSchemaPropertyType, WorkspaceType } from "@dust-tt/types";
+import { useSendNotification } from "@dust-tt/sparkle";
+import type {
+  ProcessSchemaPropertyType,
+  Result,
+  SpaceType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
-import React, { useContext, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 
+import { TimeUnitDropdown } from "@app/components/assistant_builder/actions/TimeDropdown";
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
 import DataSourceSelectionSection from "@app/components/assistant_builder/DataSourceSelectionSection";
-import { TIME_FRAME_UNIT_TO_LABEL } from "@app/components/assistant_builder/shared";
 import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderProcessConfiguration,
 } from "@app/components/assistant_builder/types";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { classNames } from "@app/lib/utils";
 
 export function hasErrorActionProcess(
@@ -160,14 +166,13 @@ function PropertiesFields({
                 <div className="col-span-2">
                   <Input
                     placeholder="Name"
-                    size="sm"
                     name={`name-${index}`}
                     value={prop["name"]}
-                    onChange={(v) => {
-                      handlePropertyChange(index, "name", v);
+                    onChange={(e) => {
+                      handlePropertyChange(index, "name", e.target.value);
                     }}
                     disabled={readOnly}
-                    error={
+                    message={
                       prop["name"].length === 0
                         ? "Name is required"
                         : properties.find(
@@ -176,41 +181,45 @@ function PropertiesFields({
                           ? "Name must be unique"
                           : undefined
                     }
+                    messageStatus="error"
                   />
                 </div>
 
                 <div className="col-span-7">
                   <Input
                     placeholder="Description"
-                    size="sm"
                     name={`description-${index}`}
                     value={prop["description"]}
-                    onChange={(v) => {
-                      handlePropertyChange(index, "description", v);
+                    onChange={(e) => {
+                      handlePropertyChange(
+                        index,
+                        "description",
+                        e.target.value
+                      );
                     }}
                     disabled={readOnly}
-                    error={
+                    message={
                       prop["description"].length === 0
                         ? "Description is required"
                         : undefined
                     }
+                    messageStatus="error"
                   />
                 </div>
 
                 <div className="col-span-2">
                   <DropdownMenu>
-                    <DropdownMenu.Button tooltipPosition="above">
+                    <DropdownMenuTrigger asChild>
                       <Button
-                        type="select"
-                        labelVisible={true}
+                        isSelect
                         label={prop["type"]}
-                        variant="tertiary"
+                        variant="ghost"
                         size="sm"
                       />
-                    </DropdownMenu.Button>
-                    <DropdownMenu.Items origin="bottomLeft">
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
                       {["string", "number", "boolean"].map((value, i) => (
-                        <DropdownMenu.Item
+                        <DropdownMenuItem
                           key={`${value}-${i}`}
                           label={value}
                           onClick={() => {
@@ -221,7 +230,7 @@ function PropertiesFields({
                           }}
                         />
                       ))}
-                    </DropdownMenu.Items>
+                    </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
 
@@ -229,7 +238,7 @@ function PropertiesFields({
                   <IconButton
                     icon={XMarkIcon}
                     tooltip="Remove Property"
-                    variant="tertiary"
+                    variant="outline"
                     onClick={async () => {
                       handleRemoveProperty(index);
                     }}
@@ -242,9 +251,9 @@ function PropertiesFields({
       )}
       <div className="col-span-12">
         <Button
-          label={"Add a field"}
+          label="Add a field"
           size="sm"
-          variant="secondary"
+          variant="outline"
           icon={PlusIcon}
           onClick={handleAddProperty}
           disabled={readOnly}
@@ -258,7 +267,7 @@ type ActionProcessProps = {
   owner: WorkspaceType;
   instructions: string | null;
   actionConfiguration: AssistantBuilderProcessConfiguration | null;
-  allowedVaults: VaultType[];
+  allowedSpaces: SpaceType[];
   updateAction: (
     setNewAction: (
       previousAction: AssistantBuilderProcessConfiguration
@@ -273,7 +282,7 @@ export function ActionProcess({
   owner,
   instructions,
   actionConfiguration,
-  allowedVaults,
+  allowedSpaces,
   updateAction,
   setEdited,
   description,
@@ -292,7 +301,7 @@ export function ActionProcess({
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
   const [timeFrameError, setTimeFrameError] = useState<string | null>(null);
   const [isGeneratingSchema, setIsGeneratingSchema] = useState(false);
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
 
   useEffect(() => {
     if (actionConfiguration) {
@@ -382,7 +391,7 @@ export function ActionProcess({
         initialDataSourceConfigurations={
           actionConfiguration.dataSourceConfigurations
         }
-        allowedVaults={allowedVaults}
+        allowedSpaces={allowedSpaces}
         viewType="documents"
       />
 
@@ -415,13 +424,13 @@ export function ActionProcess({
         (actionConfiguration.tagsFilter?.in || []).length > 0) && (
         <div className="flex flex-col">
           <div className="flex flex-row items-center gap-4 pb-4">
-            <div className="text-sm font-semibold text-element-900">
+            <div className="text-sm font-semibold text-foreground">
               Folder tags filtering
             </div>
             <div>
               <Button
-                label={"Add tag filter"}
-                variant="tertiary"
+                label="Add tag filter"
+                variant="ghost"
                 size="xs"
                 onClick={() => {
                   setEdited(true);
@@ -449,14 +458,13 @@ export function ActionProcess({
                 <div className="flex">
                   <Input
                     placeholder="Enter tag"
-                    size="sm"
                     name="tags"
                     value={t}
-                    onChange={(v) => {
+                    onChange={(e) => {
                       setEdited(true);
                       updateAction((previousAction) => {
                         const tags = [...(previousAction.tagsFilter?.in || [])];
-                        tags[i] = v;
+                        tags[i] = e.target.value;
 
                         return {
                           ...previousAction,
@@ -466,7 +474,7 @@ export function ActionProcess({
                         };
                       });
                     }}
-                    error={
+                    message={
                       t.length === 0
                         ? "Tag is required"
                         : (actionConfiguration.tagsFilter?.in || []).filter(
@@ -475,13 +483,14 @@ export function ActionProcess({
                           ? "Tag must be unique"
                           : undefined
                     }
+                    messageStatus="error"
                   />
                 </div>
                 <div className="flex items-end pb-2">
                   <IconButton
                     icon={XCircleIcon}
                     tooltip="Remove Property"
-                    variant="tertiary"
+                    variant="ghost"
                     onClick={async () => {
                       setEdited(true);
                       updateAction((previousAction) => {
@@ -524,13 +533,13 @@ export function ActionProcess({
           <TextArea
             placeholder={"Extract the list of…"}
             value={description}
-            onChange={onDescriptionChange}
+            onChange={(e) => onDescriptionChange(e.target.value)}
           />
         </div>
       )}
 
       <div className={"flex flex-row items-center gap-4 pb-4"}>
-        <div className="text-sm font-semibold text-element-900">
+        <div className="text-sm font-semibold text-foreground">
           Process data from the last
         </div>
         <input
@@ -557,60 +566,29 @@ export function ActionProcess({
             }
           }}
         />
-        <DropdownMenu>
-          <DropdownMenu.Button tooltipPosition="above">
-            <Button
-              type="select"
-              labelVisible={true}
-              label={
-                TIME_FRAME_UNIT_TO_LABEL[actionConfiguration.timeFrame.unit]
-              }
-              variant="secondary"
-              size="sm"
-            />
-          </DropdownMenu.Button>
-          <DropdownMenu.Items origin="bottomLeft">
-            {Object.entries(TIME_FRAME_UNIT_TO_LABEL).map(([key, value]) => (
-              <DropdownMenu.Item
-                key={key}
-                label={value}
-                onClick={() => {
-                  setEdited(true);
-                  updateAction((previousAction) => ({
-                    ...previousAction,
-                    timeFrame: {
-                      value: previousAction.timeFrame.value,
-                      unit: key as TimeframeUnit,
-                    },
-                  }));
-                }}
-              />
-            ))}
-          </DropdownMenu.Items>
-        </DropdownMenu>
+        <TimeUnitDropdown
+          timeFrame={actionConfiguration.timeFrame}
+          updateAction={updateAction}
+          onEdit={() => setEdited(true)}
+        />
       </div>
 
       <div className="flex flex-col">
         <div className="flex flex-row items-start">
-          <div className="flex-grow pb-2 text-sm font-semibold text-element-900">
+          <div className="flex-grow pb-2 text-sm font-semibold text-foreground">
             Schema
           </div>
           {actionConfiguration.schema.length > 0 && !isGeneratingSchema && (
             <div>
-              <Tooltip
-                label={
-                  "Automatically re-generate the extraction schema based on Instructions"
-                }
-              >
-                <Button
-                  label={"Re-generate from Instructions"}
-                  variant="tertiary"
-                  icon={SparklesIcon}
-                  size="xs"
-                  disabled={isGeneratingSchema}
-                  onClick={generateSchemaFromInstructions}
-                />
-              </Tooltip>
+              <Button
+                tooltip="Automatically re-generate the extraction schema based on Instructions"
+                label="Re-generate from Instructions"
+                variant="ghost"
+                icon={SparklesIcon}
+                size="xs"
+                disabled={isGeneratingSchema}
+                onClick={generateSchemaFromInstructions}
+              />
             </div>
           )}
         </div>

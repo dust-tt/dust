@@ -1,0 +1,36 @@
+{
+  "dynamic": "strict",
+  "properties": {
+    "data_source_id": {
+      "type": "keyword"
+    },
+    "timestamp": {
+      "type": "date"
+    },
+    "node_type": {
+      "type": "keyword"
+    },
+    "node_id": {
+      "type": "keyword"
+    },
+    "title": {
+      "type": "text",
+      "analyzer": "standard",
+      "fields": {
+        "edge": {
+          "type": "text",
+          "analyzer": "edge_analyzer"
+        }
+      }
+    },
+    "parents": {
+      "type": "keyword"
+    },
+    "parent_id": {
+      "type": "keyword"
+    },
+    "mime_type": {
+      "type": "keyword"
+    }
+  }
+}

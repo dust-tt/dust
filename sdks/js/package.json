@@ -1,0 +1,53 @@
+{
+  "name": "@dust-tt/client",
+  "version": "1.0.22",
+  "description": "Client for Dust API",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dust/dust-tt.git"
+  },
+  "author": "Dust (Permutation Labs SAS)",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/dust/dust-tt/issues"
+  },
+  "homepage": "https://github.com/dust-tt/dust-sdk-js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "module": "dist/client.esm.js",
+  "typings": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "dts build",
+    "lint": "dts lint",
+    "format": "dts lint --fix",
+    "start": "dts watch",
+    "tsc": "tsc"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@tsconfig/recommended": "^1.0.3",
+    "@types/node": "^22.7.5",
+    "@types/uuid": "^9.0.7",
+    "dts-cli": "^2.0.5",
+    "eslint-plugin-simple-import-sort": "^12.1.0",
+    "tslib": "^2.6.2",
+    "typescript": "^5.4.5"
+  },
+  "dependencies": {
+    "axios": "^1.7.9",
+    "eventsource-parser": "^1.1.1",
+    "moment-timezone": "^0.5.46",
+    "zod": "^3.23.8"
+  },
+  "browser": {
+    "tls": false,
+    "net": false,
+    "hot-shots": false
+  }
+}

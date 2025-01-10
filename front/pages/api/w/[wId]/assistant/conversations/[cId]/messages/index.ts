@@ -5,11 +5,12 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
+import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
 import { fetchConversationMessages } from "@app/lib/api/assistant/messages";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getPaginationParams } from "@app/lib/api/pagination";
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 
@@ -66,13 +67,7 @@ async function handler(
       );
 
       if (messagesRes.isErr()) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "conversation_not_found",
-            message: "Conversation not found",
-          },
-        });
+        return apiErrorForConversation(req, res, messagesRes.error);
       }
 
       res.status(200).json(messagesRes.value);
@@ -97,16 +92,13 @@ async function handler(
 
       const { content, context, mentions } = bodyValidation.right;
 
-      const conversation = await getConversation(auth, conversationId);
-      if (!conversation) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "conversation_not_found",
-            message: "Conversation not found.",
-          },
-        });
+      const conversationRes = await getConversation(auth, conversationId);
+
+      if (conversationRes.isErr()) {
+        return apiErrorForConversation(req, res, conversationRes.error);
       }
+
+      const conversation = conversationRes.value;
 
       /* postUserMessageWithPubSub returns swiftly since it only waits for the
         initial message creation event (or error) */

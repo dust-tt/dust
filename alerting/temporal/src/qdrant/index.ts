@@ -53,8 +53,15 @@ const NODE_AND_CLUSTER_REGEXP = /https:\/\/(node-\d+)-(.+)\:\d+/;
  */
 
 // Example: "grpc_responses_max_duration_seconds{endpoint="/qdrant.Points/Search"} 3.701747".
-const prometheusMetricsRegexp = /(\w+)(?:\{([^}]*)\})? (\d+(\.\d+)?)/;
-const supportedPrometheusLabels = ["endpoint", "le"] as const;
+// Support nested curly braces in labels.
+const prometheusMetricsRegexp =
+  /(\w+)(?:\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\})? (\d+(?:\.\d+)?)/;
+const supportedPrometheusLabels = [
+  "endpoint",
+  "le",
+  "method",
+  "status",
+] as const;
 type SupportedPrometheusLabels = (typeof supportedPrometheusLabels)[number];
 
 function isSupportedPrometheusLabel(
@@ -82,6 +89,7 @@ function extractMetricDetails(line: string) {
 
     return { name, labels, value };
   }
+
   return null;
 }
 

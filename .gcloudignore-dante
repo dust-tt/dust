@@ -1,0 +1,8 @@
+# Default .gcloudignore file is:
+# .gcloudignore
+# .git
+# .gitignore
+# End
+
+.gcloudignore
+.gitignore

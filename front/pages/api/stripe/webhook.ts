@@ -7,13 +7,13 @@ import { promisify } from "util";
 
 import apiConfig from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
-import { getMembers } from "@app/lib/api/workspace";
-import { Authenticator } from "@app/lib/auth";
 import {
   sendAdminSubscriptionPaymentFailedEmail,
   sendCancelSubscriptionEmail,
   sendReactivateSubscriptionEmail,
-} from "@app/lib/email";
+} from "@app/lib/api/email";
+import { getMembers } from "@app/lib/api/workspace";
+import { Authenticator } from "@app/lib/auth";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import { Workspace } from "@app/lib/models/workspace";
 import {
@@ -24,7 +24,7 @@ import {
 import { maybeCancelInactiveTrials } from "@app/lib/plans/subscription";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -76,7 +76,10 @@ async function handler(
           apiConfig.getStripeSecretWebhookKey()
         );
       } catch (error) {
-        logger.error({ error }, "Error constructing Stripe event in Webhook.");
+        logger.error(
+          { error, stripeError: true },
+          "Error constructing Stripe event in Webhook."
+        );
       }
 
       if (!event) {
@@ -122,6 +125,7 @@ async function handler(
                 workspaceId,
                 stripeSubscriptionId,
                 planCode,
+                stripeError: true,
               },
               `[Stripe Webhook] Received checkout.session.completed with unkown status "${session.status}". Ignoring event.`
             );
@@ -171,6 +175,7 @@ async function handler(
                     workspaceId,
                     stripeSubscriptionId,
                     planCode,
+                    stripeError: true,
                   },
                   "[Stripe Webhook] Received checkout.session.completed when we already have a subscription for this plan on the workspace. Check on Stripe dashboard."
                 );
@@ -192,6 +197,7 @@ async function handler(
                     workspaceId,
                     stripeSubscriptionId,
                     planCode,
+                    stripeError: true,
                   },
                   "[Stripe Webhook] Received checkout.session.completed when we already have a paid subscription on the workspace. Check on Stripe dashboard."
                 );
@@ -217,7 +223,7 @@ async function handler(
 
               await Subscription.create(
                 {
-                  sId: generateLegacyModelSId(),
+                  sId: generateRandomModelSId(),
                   workspaceId: workspace.id,
                   planId: plan.id,
                   status: "active",
@@ -241,7 +247,7 @@ async function handler(
               });
             }
             await unpauseAllConnectorsAndCancelScrub(
-              await Authenticator.internalBuilderForWorkspace(workspace.sId)
+              await Authenticator.internalAdminForWorkspace(workspace.sId)
             );
             return res.status(200).json({ success: true });
           } catch (error) {
@@ -251,6 +257,7 @@ async function handler(
                 workspaceId,
                 stripeSubscriptionId,
                 planCode,
+                stripeError: true,
               },
               "Error creating subscription."
             );
@@ -376,8 +383,8 @@ async function handler(
           break;
         case "charge.dispute.created":
           const dispute = event.data.object as Stripe.Dispute;
-          logger.error(
-            { dispute },
+          logger.warn(
+            { dispute, stripeError: true },
             "[Stripe Webhook] Received charge.dispute.created event. Please make sure the subscription is now marked as 'ended' in our database and canceled on Stripe."
           );
           break;
@@ -390,7 +397,7 @@ async function handler(
           if (validStatus.isErr()) {
             logger.error(
               {
-                panic: true,
+                stripeError: true,
                 event,
                 stripeSubscriptionId: stripeSubscription.id,
                 invalidity_message: validStatus.error.invalidity_message,
@@ -448,7 +455,7 @@ async function handler(
               // If the subscription is reactivated, we unset the requestCancelAt date.
               requestCancelAt: endDate ? now : null,
             });
-            const auth = await Authenticator.internalBuilderForWorkspace(
+            const auth = await Authenticator.internalAdminForWorkspace(
               subscription.workspace.sId
             );
             if (!endDate) {
@@ -464,6 +471,7 @@ async function handler(
                   {
                     error: e,
                     workspaceId: subscription.workspace.sId,
+                    stripeError: true,
                   },
                   "Error tracking subscription reactivated."
                 );
@@ -479,6 +487,7 @@ async function handler(
                   {
                     error: e,
                     workspaceId: subscription.workspace.sId,
+                    stripeError: true,
                   },
                   "Error tracking subscription request cancel."
                 );
@@ -535,7 +544,7 @@ async function handler(
           if (validStatus.isErr()) {
             logger.error(
               {
-                panic: true,
+                stripeError: true,
                 event,
                 stripeSubscriptionId: stripeSubscription.id,
                 invalidity_message: validStatus.error.invalidity_message,
@@ -616,7 +625,7 @@ async function handler(
                 });
               if (scheduleScrubRes.isErr()) {
                 logger.error(
-                  { panic: true, error: scheduleScrubRes.error },
+                  { stripeError: true, error: scheduleScrubRes.error },
                   "Error launching scrub workspace workflow"
                 );
                 return apiError(req, res, {
@@ -709,7 +718,7 @@ async function unpauseAllConnectorsAndCancelScrub(auth: Authenticator) {
   });
   if (scrubCancelRes.isErr()) {
     logger.error(
-      { panic: true, error: scrubCancelRes.error },
+      { stripeError: true, error: scrubCancelRes.error },
       "Error terminating scrub workspace workflow."
     );
   }
@@ -723,7 +732,7 @@ async function unpauseAllConnectorsAndCancelScrub(auth: Authenticator) {
     const r = await connectorsApi.unpauseConnector(connectorId);
     if (r.isErr()) {
       logger.error(
-        { panic: true, error: r.error },
+        { connectorId, stripeError: true, error: r.error },
         "Error unpausing connector after subscription reactivation."
       );
     }

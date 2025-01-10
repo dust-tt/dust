@@ -107,6 +107,38 @@ pub fn cl100k_base() -> Result<CoreBPE> {
     )
 }
 
+pub fn o200k_base() -> Result<CoreBPE> {
+    //  From https://openaipublic.blob.core.windows.net/encodings/o200k_base.tiktoken
+    let o200k_base = include_str!("o200k_base.tiktoken");
+
+    let mut encoder = HashMap::default();
+    for line in o200k_base.lines() {
+        let mut parts = line.split(' ');
+        let raw = parts.next().unwrap();
+        let token = &general_purpose::STANDARD.decode(raw)?;
+        let rank: usize = parts.next().unwrap().parse().unwrap();
+        encoder.insert(token.clone(), rank);
+    }
+
+    // Special tokens from https://github.com/openai/tiktoken/blob/main/tiktoken_ext/openai_public.py
+    let mut special_tokens = HashMap::default();
+    special_tokens.insert(String::from("<|endoftext|>"), 199999);
+    special_tokens.insert(String::from("<|endofprompt|>"), 200018);
+
+    let pat_str =   [
+            "[^\\r\\n\\p{L}\\p{N}]?[\\p{Lu}\\p{Lt}\\p{Lm}\\p{Lo}\\p{M}]*[\\p{Ll}\\p{Lm}\\p{Lo}\\p{M}]+(?i:'s|'t|'re|'ve|'m|'ll|'d)?",
+            "[^\\r\\n\\p{L}\\p{N}]?[\\p{Lu}\\p{Lt}\\p{Lm}\\p{Lo}\\p{M}]+[\\p{Ll}\\p{Lm}\\p{Lo}\\p{M}]*(?i:'s|'t|'re|'ve|'m|'ll|'d)?",
+            "\\p{N}{1,3}",
+            " ?[^\\s\\p{L}\\p{N}]+[\\r\\n/]*",
+            "\\s*[\\r\\n]+",
+            "\\s+(?!\\S)",
+            "\\s+",
+        ]
+        .join("|");
+
+    CoreBPE::new(encoder, special_tokens, &pat_str)
+}
+
 pub fn anthropic_base_singleton() -> Arc<RwLock<CoreBPE>> {
     lazy_static! {
         static ref ANTHROPIC_BASE: Arc<RwLock<CoreBPE>> =
@@ -137,6 +169,13 @@ pub fn cl100k_base_singleton() -> Arc<RwLock<CoreBPE>> {
     CL100K_BASE.clone()
 }
 
+pub fn o200k_base_singleton() -> Arc<RwLock<CoreBPE>> {
+    lazy_static! {
+        static ref O200K_BASE: Arc<RwLock<CoreBPE>> = Arc::new(RwLock::new(o200k_base().unwrap()));
+    }
+    O200K_BASE.clone()
+}
+
 pub async fn decode_async(bpe: Arc<RwLock<CoreBPE>>, tokens: Vec<usize>) -> Result<String> {
     task::spawn_blocking(move || bpe.read().decode(tokens)).await?
 }
@@ -147,10 +186,11 @@ pub async fn encode_async(bpe: Arc<RwLock<CoreBPE>>, text: &str) -> Result<Vec<u
     Ok(r)
 }
 
-// We use the Rayon thread pool to parallelize the tokenization of multiple texts (which is a CPU bound task)
-// Rayon is a better fit than Tokio spawn_blocking because it is optimized for CPU-bound tasks (Tokio's blocking pool has a large number
-// of threads, making it less efficient for CPU-bound tasks).
-// We still need to use spawn_blocking at the top level to avoid blocking the Tokio event loop.
+// We use the Rayon thread pool to parallelize the tokenization of multiple texts (which is a CPU
+// bound task) Rayon is a better fit than Tokio spawn_blocking because it is optimized for
+// CPU-bound tasks (Tokio's blocking pool has a large number of threads, making it less efficient
+// for CPU-bound tasks). We still need to use spawn_blocking at the top level to avoid blocking
+// the Tokio event loop.
 pub async fn batch_tokenize_async(
     bpe: Arc<RwLock<CoreBPE>>,
     texts: Vec<String>,

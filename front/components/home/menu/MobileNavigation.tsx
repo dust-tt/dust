@@ -17,7 +17,7 @@ export function MobileNavigation() {
   const [open, setOpen] = React.useState(false);
 
   return (
-    <div className="flex md:hidden">
+    <div className="flex xl:hidden">
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger asChild>
           <IconButton size="md" icon={MenuIcon} className="text-slate-100" />
@@ -56,7 +56,7 @@ export function MobileNavigation() {
                             onOpenChange={setOpen}
                             isExternal={item.isExternal}
                           >
-                            <ChevronRightIcon className="h-5 w-5 text-slate-500" />{" "}
+                            <ChevronRightIcon className="h-5 w-5 text-muted-foreground" />{" "}
                             {item.title}
                           </MobileLink>
                         ) : (
@@ -100,7 +100,7 @@ function MobileLink({
       target={isExternal ? "_blank" : undefined}
       className={classNames(
         "flex select-none items-center gap-1 rounded-md py-3 font-semibold leading-none text-slate-50 no-underline outline-none transition-colors",
-        "hover:bg-accent focus:bg-accent hover:text-slate-100 hover:underline hover:underline-offset-4 focus:text-slate-100 active:text-slate-500"
+        "hover:bg-accent focus:bg-accent hover:text-slate-100 hover:underline hover:underline-offset-4 focus:text-slate-100 active:text-muted-foreground"
       )}
       {...props}
     >

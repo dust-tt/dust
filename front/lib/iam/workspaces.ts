@@ -1,14 +1,11 @@
-import { sendUserOperationMessage } from "@dust-tt/types";
-
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { Workspace, WorkspaceHasDomain } from "@app/lib/models/workspace";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
-import { VaultResource } from "@app/lib/resources/vault_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
-import logger from "@app/logger/logger";
 
 export async function createWorkspace(session: SessionWithUser) {
   const { user: externalUser } = session;
@@ -36,8 +33,8 @@ export async function createWorkspaceInternal({
     isVerified && !isDisposableEmailDomain(emailDomain) ? emailDomain : null;
 
   const workspace = await Workspace.create({
-    sId: generateLegacyModelSId(),
-    name: name,
+    sId: generateRandomModelSId(),
+    name,
   });
 
   const lightWorkspace = renderLightWorkspaceType({ workspace });
@@ -48,20 +45,9 @@ export async function createWorkspaceInternal({
   const auth = await Authenticator.internalAdminForWorkspace(
     lightWorkspace.sId
   );
-  await VaultResource.makeDefaultsForWorkspace(auth, {
+  await SpaceResource.makeDefaultsForWorkspace(auth, {
     systemGroup,
     globalGroup,
-  });
-
-  sendUserOperationMessage({
-    message: `<@U055XEGPR4L> +signupRadar User ${email} has created a new workspace.`,
-    logger,
-    channel: "C075LJ6PUFQ",
-  }).catch((err) => {
-    logger.error(
-      { error: err },
-      "Failed to send user operation message to Slack (signup)."
-    );
   });
 
   if (verifiedDomain) {
@@ -80,11 +66,10 @@ export async function createWorkspaceInternal({
   return workspace;
 }
 
-export async function findWorkspaceWithVerifiedDomain(
-  session: SessionWithUser
-): Promise<WorkspaceHasDomain | null> {
-  const { user } = session;
-
+export async function findWorkspaceWithVerifiedDomain(user: {
+  email: string;
+  email_verified: boolean;
+}): Promise<WorkspaceHasDomain | null> {
   if (!user.email_verified) {
     return null;
   }

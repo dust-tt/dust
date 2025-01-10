@@ -7,7 +7,6 @@ const safeColorsArray = [
   "blue",
   "cyan",
   "emerald",
-  "emerald",
   "fuchsia",
   "gray",
   "green",
@@ -15,15 +14,11 @@ const safeColorsArray = [
   "lime",
   "orange",
   "pink",
-  "pink",
   "purple",
-  "purple",
-  "red",
   "red",
   "rose",
   "sky",
   "slate",
-  "stone",
   "teal",
   "violet",
   "warning",
@@ -33,19 +28,41 @@ const safeColorsArray = [
 const safeColorlist = safeColorsArray.flatMap((color) => [
   // Whitelist all bg colors from shade 100 t0 800.
   ...Array.from({ length: 8 }, (_, i) => `s-bg-${color}-${(i + 1) * 100}`),
+  `s-border-${color}-100`,
   `s-border-${color}-200`,
+  `s-border-${color}-300`,
+  `s-text-${color}-500`,
   `s-text-${color}-800`,
   `s-text-${color}-900`,
   `s-text-${color}-950`,
 ]);
-
 module.exports = {
   theme: {
+    screens: {
+      xxs: "384px",
+      xs: "512px",
+      sm: "640px",
+      md: "768px",
+      lg: "1024px",
+      xl: "1280px",
+      "2xl": "1536px",
+    },
     fontFamily: {
       sans: ["'darkmode-off-cc'", "sans-serif"],
       objektiv: ["'objektiv-mk1'", "sans-serif"],
     },
     extend: {
+      borderRadius: {
+        "4xl": "2rem",
+      },
+      containers: {
+        xxs: "24rem",
+        xs: "32rem",
+        sm: "40rem",
+        md: "48rem",
+        lg: "64rem",
+        xl: "80rem",
+      },
       scale: {
         99: ".99",
       },
@@ -63,6 +80,9 @@ module.exports = {
         lg: "0 10px 20px rgba(15, 23, 42, 0.12)",
         xl: "0 20px 25px rgba(15, 23, 42, 0.12)",
         "2xl": "0 25px 50px rgba(15, 23, 42, 0.12)",
+        "inner-border": "inset 0px -2px 0px 0px #1E293B",
+        tale: "0px 0px 12px 12px #F6F8FB",
+        "tale-white": "0px 0px 12px 12px #FFF",
       },
       zIndex: {
         60: "60",
@@ -70,7 +90,22 @@ module.exports = {
       minHeight: (theme) => ({
         ...theme("spacing"),
       }),
+      backgroundImage: {
+        "rainbow-gradient": `linear-gradient(90deg, ${colors.sky[300]}, ${colors.purple[700]}, ${colors.blue[500]}, ${colors.indigo[300]}, ${colors.sky[600]}, ${colors.blue[500]}, ${colors.purple[300]})`,
+      },
       keyframes: {
+        pulse: {
+          "0%, 100%": { boxShadow: "0 0 0 0 var(--pulse-color)" },
+          "50%": { boxShadow: "0 0 0 6px var(--pulse-color)" },
+        },
+        "opacity-pulse": {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0.5" },
+        },
+        "background-position-spin": {
+          "0%": { backgroundPosition: "top center" },
+          "100%": { backgroundPosition: "bottom center" },
+        },
         "move-square": {
           "0%": {
             paddingLeft: "0",
@@ -145,57 +180,146 @@ module.exports = {
             transform: "scale(0.95)",
           },
         },
+        "cursor-blink": {
+          "0%": {
+            opacity: 1,
+          },
+          "90%": {
+            opacity: 1,
+          },
+          "100%": {
+            opacity: 0,
+          },
+        },
+        "shiny-text": {
+          "0%": {
+            "background-position": "calc(-200%) 0",
+          },
+          "100%": {
+            "background-position": "calc(200%) 0",
+          },
+        },
+        rainbow: {
+          "0%": { "background-position": "0%" },
+          "100%": { "background-position": "200%" },
+        },
       },
       animation: {
+        "shiny-text": "shiny-text 2s infinite",
+        pulse: "pulse var(--duration) ease-out infinite",
+        "opacity-pulse": "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+        "background-position-spin":
+          "background-position-spin 2000ms infinite alternate",
         breathing: "breathing 3s infinite ease-in-out",
         "breathing-scale": "breathing-scale 3s infinite ease-in-out",
+        "cursor-blink": "cursor-blink 0.9s infinite;",
         "move-square": "move-square 3s ease-out infinite",
+        rainbow: "rainbow var(--speed, 6s) infinite linear",
       },
       colors: {
         brand: {
           DEFAULT: colors.emerald[500],
           dark: colors.emerald[500],
         },
-        action: {
+        border: {
+          DEFAULT: { DEFAULT: colors.slate[100], dark: colors.slate[900] },
+          dark: { DEFAULT: colors.slate[200], dark: colors.slate[800] },
+          darker: { DEFAULT: colors.slate[400], dark: colors.slate[6800] },
+          focus: {
+            DEFAULT: colors.blue[400],
+            dark: colors.slate[600],
+          },
+          warning: {
+            DEFAULT: colors.red[300],
+            dark: colors.slate[800],
+          },
+        },
+        separator: { DEFAULT: colors.slate[200], dark: colors.slate[800] },
+        ring: {
+          DEFAULT: colors.blue[200],
+          dark: colors.slate[700],
+          warning: {
+            DEFAULT: colors.red[300],
+            dark: colors.red[700],
+          },
+        },
+        background: { DEFAULT: colors.white, dark: colors.slate[950] },
+        foreground: {
+          DEFAULT: colors.slate[950],
+          dark: colors.white,
+          warning: {
+            DEFAULT: colors.red[500],
+            dark: colors.red[500],
+          },
+        },
+        muted: {
+          DEFAULT: { DEFAULT: colors.slate[100], dark: colors.slate[900] },
+          foreground: {
+            DEFAULT: colors.slate[500],
+            dark: colors.slate[500],
+          },
+          background: {
+            DEFAULT: colors.slate[50],
+            dark: colors.slate[900],
+          },
+        },
+        highlight: {
+          DEFAULT: colors.blue[500],
+          light: { DEFAULT: colors.blue[400], dark: colors.blue[600] },
+          dark: { DEFAULT: colors.blue[600], dark: colors.blue[400] },
+          muted: { DEFAULT: "#AFCDEF", dark: "#284896" },
           950: { DEFAULT: colors.blue[950], dark: colors.blue[50] },
           900: { DEFAULT: colors.blue[900], dark: colors.blue[100] },
           800: { DEFAULT: colors.blue[800], dark: colors.blue[200] },
           700: { DEFAULT: colors.blue[700], dark: colors.blue[300] },
           600: { DEFAULT: colors.blue[600], dark: colors.blue[400] },
-          500: { DEFAULT: colors.blue[500], dark: colors.blue[500] },
+          500: colors.blue[500],
           400: { DEFAULT: colors.blue[400], dark: colors.blue[600] },
-          200: { DEFAULT: colors.blue[200], dark: colors.blue[800] },
           300: { DEFAULT: colors.blue[300], dark: colors.blue[700] },
+          200: { DEFAULT: colors.blue[200], dark: colors.blue[800] },
           100: { DEFAULT: colors.blue[100], dark: colors.blue[900] },
           50: { DEFAULT: colors.blue[50], dark: colors.blue[950] },
         },
-        warning: {
-          500: { DEFAULT: colors.red[500], dark: colors.red[500] },
-          400: { DEFAULT: colors.red[400], dark: colors.red[600] },
-          200: { DEFAULT: colors.red[200], dark: colors.red[800] },
-          300: { DEFAULT: colors.red[300], dark: colors.red[700] },
-          100: { DEFAULT: colors.red[100], dark: colors.red[900] },
-          600: { DEFAULT: colors.red[600], dark: colors.red[400] },
-          700: { DEFAULT: colors.red[700], dark: colors.red[300] },
-          800: { DEFAULT: colors.red[800], dark: colors.red[200] },
-          900: { DEFAULT: colors.red[900], dark: colors.red[100] },
-          950: { DEFAULT: colors.red[950], dark: colors.red[50] },
-          50: { DEFAULT: colors.red[50], dark: colors.red[950] },
+        primary: {
+          DEFAULT: colors.slate[800],
+          light: { DEFAULT: colors.slate[600], dark: colors.slate[300] },
+          dark: { DEFAULT: colors.slate[950], dark: colors.slate[50] },
+          muted: { DEFAULT: colors.slate[400], dark: colors.slate[600] },
+          950: { DEFAULT: colors.slate[950], dark: colors.slate[50] },
+          900: { DEFAULT: colors.slate[900], dark: colors.slate[100] },
+          800: { DEFAULT: colors.slate[800], dark: colors.slate[200] },
+          700: { DEFAULT: colors.slate[700], dark: colors.slate[300] },
+          600: { DEFAULT: colors.slate[600], dark: colors.slate[400] },
+          500: { DEFAULT: colors.slate[500], dark: colors.slate[500] },
+          400: { DEFAULT: colors.slate[400], dark: colors.slate[600] },
+          300: { DEFAULT: colors.slate[300], dark: colors.slate[700] },
+          200: { DEFAULT: colors.slate[200], dark: colors.slate[800] },
+          150: { DEFAULT: "#E9EFF5", dark: "#172033" },
+          100: { DEFAULT: colors.slate[100], dark: colors.slate[900] },
+          50: { DEFAULT: colors.slate[50], dark: colors.slate[950] },
         },
-        red: {
+        warning: {
+          DEFAULT: colors.red[500],
+          light: { DEFAULT: colors.red[400], dark: colors.red[600] },
+          dark: { DEFAULT: colors.red[600], dark: colors.red[400] },
+          muted: { DEFAULT: "#E3BDC3", dark: "#762F39" },
+          950: { DEFAULT: colors.red[950], dark: colors.red[50] },
+          900: { DEFAULT: colors.red[900], dark: colors.red[100] },
+          800: { DEFAULT: colors.red[800], dark: colors.red[200] },
+          700: { DEFAULT: colors.red[700], dark: colors.red[300] },
+          600: { DEFAULT: colors.red[600], dark: colors.red[400] },
           500: { DEFAULT: colors.red[500], dark: colors.red[500] },
           400: { DEFAULT: colors.red[400], dark: colors.red[600] },
           200: { DEFAULT: colors.red[200], dark: colors.red[800] },
           300: { DEFAULT: colors.red[300], dark: colors.red[700] },
           100: { DEFAULT: colors.red[100], dark: colors.red[900] },
-          600: { DEFAULT: colors.red[600], dark: colors.red[400] },
-          700: { DEFAULT: colors.red[700], dark: colors.red[300] },
-          800: { DEFAULT: colors.red[800], dark: colors.red[200] },
-          900: { DEFAULT: colors.red[900], dark: colors.red[100] },
-          950: { DEFAULT: colors.red[950], dark: colors.red[50] },
           50: { DEFAULT: colors.red[50], dark: colors.red[950] },
         },
         success: {
+          DEFAULT: colors.emerald[500],
+          light: { DEFAULT: colors.emerald[400], dark: colors.emerald[600] },
+          dark: { DEFAULT: colors.emerald[600], dark: colors.emerald[400] },
+          muted: { DEFAULT: "#9CDECC", dark: "#1C5D56" },
           500: { DEFAULT: colors.emerald[500], dark: colors.emerald[500] },
           400: { DEFAULT: colors.emerald[400], dark: colors.emerald[600] },
           200: { DEFAULT: colors.emerald[200], dark: colors.emerald[800] },
@@ -208,15 +332,30 @@ module.exports = {
           950: { DEFAULT: colors.emerald[950], dark: colors.emerald[50] },
           50: { DEFAULT: colors.emerald[50], dark: colors.emerald[950] },
         },
+        action: {
+          950: { DEFAULT: colors.blue[950], dark: colors.blue[50] },
+          900: { DEFAULT: colors.blue[900], dark: colors.blue[100] },
+          800: { DEFAULT: colors.blue[800], dark: colors.blue[200] },
+          700: { DEFAULT: colors.blue[700], dark: colors.blue[300] },
+          600: { DEFAULT: colors.blue[600], dark: colors.blue[400] },
+          500: { DEFAULT: colors.blue[500], dark: colors.blue[500] },
+          400: { DEFAULT: colors.blue[400], dark: colors.blue[600] },
+          300: { DEFAULT: colors.blue[300], dark: colors.blue[700] },
+          200: { DEFAULT: colors.blue[200], dark: colors.blue[800] },
+          100: { DEFAULT: colors.blue[100], dark: colors.blue[900] },
+          50: { DEFAULT: colors.blue[50], dark: colors.blue[950] },
+        },
         structure: {
           0: { DEFAULT: colors.white, dark: colors.black },
           50: { DEFAULT: colors.slate[50], dark: colors.slate[900] },
           100: { DEFAULT: colors.slate[100], dark: colors.slate[800] },
+          150: { DEFAULT: "#E9EFF5", dark: "#172033" },
           200: { DEFAULT: colors.slate[200], dark: colors.slate[700] },
           300: { DEFAULT: colors.slate[300], dark: colors.slate[600] },
         },
         element: {
-          900: { DEFAULT: colors.slate[900], dark: colors.slate[50] },
+          950: { DEFAULT: colors.slate[950], dark: colors.slate[50] },
+          900: { DEFAULT: colors.slate[900], dark: colors.slate[100] },
           800: { DEFAULT: colors.slate[700], dark: colors.slate[200] },
           700: { DEFAULT: colors.slate[500], dark: colors.slate[300] },
           600: { DEFAULT: colors.slate[400], dark: colors.slate[400] },
@@ -231,7 +370,12 @@ module.exports = {
       backgroundColor: ["dark"],
     },
   },
-  plugins: [require("@tailwindcss/forms"), require("tailwind-scrollbar-hide")],
+  plugins: [
+    require("@tailwindcss/forms"),
+    require("tailwind-scrollbar-hide"),
+    require("tailwindcss-animate"),
+    require("@tailwindcss/container-queries"),
+  ],
   prefix: "s-",
   content: ["./src/**/*.{html,js,ts,jsx,tsx}"],
   safelist: [

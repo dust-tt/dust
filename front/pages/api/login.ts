@@ -3,9 +3,11 @@ import type {
   Result,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import { Err, isDevelopment, Ok } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import config from "@app/lib/api/config";
+import { getTokenFromMembershipInvitationUrl } from "@app/lib/api/invitation";
 import { evaluateWorkspaceSeatAvailability } from "@app/lib/api/workspace";
 import { getSession } from "@app/lib/auth";
 import { AuthFlowError, SSOEnforcedError } from "@app/lib/iam/errors";
@@ -24,11 +26,18 @@ import {
 } from "@app/lib/iam/workspaces";
 import type { MembershipInvitation } from "@app/lib/models/workspace";
 import { Workspace } from "@app/lib/models/workspace";
+import {
+  config as multiRegionConfig,
+  isMultiRegions,
+} from "@app/lib/multi_regions/config";
+import { RegionLookupClient } from "@app/lib/multi_regions/region_lookup_client";
 import { subscriptionForWorkspace } from "@app/lib/plans/subscription";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { getSignUpUrl } from "@app/lib/signup";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
+import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
 
@@ -47,7 +56,16 @@ async function handleMembershipInvite(
     AuthFlowError | SSOEnforcedError
   >
 > {
-  if (membershipInvite.inviteEmail !== user.email) {
+  if (membershipInvite.inviteEmail.toLowerCase() !== user.email.toLowerCase()) {
+    logger.error(
+      {
+        inviteEmail: membershipInvite.inviteEmail,
+        workspaceId: membershipInvite.workspaceId,
+        user: user.toJSON(),
+      },
+      "Invitation token email mismatch"
+    );
+
     return new Err(
       new AuthFlowError(
         "invitation_token_email_mismatch",
@@ -233,8 +251,9 @@ async function handleRegularSignupFlow(
     });
   }
 
-  const workspaceWithVerifiedDomain =
-    await findWorkspaceWithVerifiedDomain(session);
+  const workspaceWithVerifiedDomain = await findWorkspaceWithVerifiedDomain(
+    session.user
+  );
   const { workspace: existingWorkspace } = workspaceWithVerifiedDomain ?? {};
 
   // Verify that the user is allowed to join the specified workspace.
@@ -332,6 +351,31 @@ async function handler(
     });
   }
 
+  if (
+    isMultiRegions() &&
+    (isDevelopment() ||
+      multiRegionConfig.getCurrentRegion() === "europe-west1" ||
+      config.getClientFacingUrl() === "https://front-edge.dust.tt")
+  ) {
+    // Check if the user should be redirect to another region.
+    const regionLookupClient = new RegionLookupClient();
+    const r = await regionLookupClient.lookupUser(session.user);
+    for (const [region, result] of r) {
+      if (result.response.exists) {
+        if (!result.isCurrentRegion) {
+          //TODO(multi-regions): keep the querystring when redirecting
+          res.redirect(`${result.regionUrl}/api/login`);
+          // Skip the rest of the handler
+          return;
+        } else {
+          console.log(
+            `User ${session.user.email} is already in the correct region ${region} (${result.regionUrl}).`
+          );
+        }
+      }
+    }
+  }
+
   const { inviteToken, wId } = req.query;
   const targetWorkspaceId = typeof wId === "string" ? wId : undefined;
   // Auth0 flow augments token with a claim for workspace id linked to the enterprise connection.
@@ -378,14 +422,20 @@ async function handler(
     targetWorkspace = workspace;
   } else {
     if (userCreated) {
-      // If user is newly created, check if there is a pending invitation for the user.
-      // If present, redirect to the workspace join page.
+      // When user is just created, check whether they have a pending
+      // invitation. If they do, it is assumed they are coming from the
+      // invitation link and have seen the join page; we redirect (after auth0
+      // login) to this URL with inviteToken appended. The user will then end up
+      // on the workspace's welcome page (see comment's PR)
       const pendingInvitationAndWorkspace =
         await getPendingMembershipInvitationWithWorkspaceForEmail(user.email);
       if (pendingInvitationAndWorkspace) {
         const { invitation: pendingInvitation } = pendingInvitationAndWorkspace;
-
-        res.redirect(pendingInvitation.inviteLink);
+        const signUpUrl = getSignUpUrl({
+          signupCallbackUrl: `/api/login?inviteToken=${getTokenFromMembershipInvitationUrl(pendingInvitation.inviteLink)}`,
+          invitationEmail: pendingInvitation.inviteEmail,
+        });
+        res.redirect(signUpUrl);
         return;
       }
     }
@@ -399,6 +449,12 @@ async function handler(
       const { error } = result;
 
       if (error instanceof AuthFlowError) {
+        logger.error(
+          {
+            error,
+          },
+          "Error during login flow."
+        );
         res.redirect(
           `/api/auth/logout?returnTo=/login-error?reason=${error.code}`
         );

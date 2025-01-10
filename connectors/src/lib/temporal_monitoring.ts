@@ -16,6 +16,8 @@ import { DustConnectorWorkflowError, ExternalOAuthTokenError } from "./error";
 import { syncFailed } from "./sync_status";
 import { getConnectorId } from "./temporal";
 
+const TRACK_SUCCESSFUL_ACTIVITIES_FOR_CONNECTOR_IDS = [145];
+
 /** An Activity Context with an attached logger */
 export interface ContextWithLogger extends Context {
   logger: typeof logger;
@@ -142,10 +144,13 @@ export class ActivityInboundLogInterceptor
           });
 
           if (connectorManager) {
-            await connectorManager.stop();
+            await connectorManager.pause();
           } else {
             this.logger.error(
-              `Connector manager not found for connector ${connector.id}`
+              {
+                connectorId: connector.id,
+              },
+              `Connector manager not found for connector`
             );
           }
         }
@@ -185,6 +190,18 @@ export class ActivityInboundLogInterceptor
         tags.push(`error_type:${errorType}`);
         statsDClient.increment("activity_failed.count", 1, tags);
       } else {
+        const connectorId = await getConnectorId(
+          this.context.info.workflowExecution.workflowId
+        );
+        if (
+          connectorId &&
+          TRACK_SUCCESSFUL_ACTIVITIES_FOR_CONNECTOR_IDS.includes(connectorId)
+        ) {
+          statsDClient.increment("activities_success_for_connector.count", 1, [
+            ...tags,
+            `connector_id:${connectorId}`,
+          ]);
+        }
         statsDClient.increment("activities_success.count", 1, tags);
       }
     }

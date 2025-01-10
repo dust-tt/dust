@@ -31,11 +31,10 @@ export function assistantUsageMessage({
 
   if (usage) {
     const days = usage.timePeriodSec / (60 * 60 * 24);
+    const nb = usage.messageCount || 0;
 
     if (shortVersion) {
-      const messageCount = boldIfRequested(
-        `${usage.messageCount} message${pluralize(usage.messageCount)}`
-      );
+      const messageCount = boldIfRequested(`${nb} message${pluralize(nb)}`);
 
       return (
         <>
@@ -43,9 +42,7 @@ export function assistantUsageMessage({
         </>
       );
     }
-    const messageCount = boldIfRequested(
-      `${usage.messageCount} time${pluralize(usage.messageCount)}`
-    );
+    const messageCount = boldIfRequested(`${nb} time${pluralize(nb)}`);
 
     return (
       <>

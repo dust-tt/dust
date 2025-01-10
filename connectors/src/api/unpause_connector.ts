@@ -15,10 +15,9 @@ const _unpauseConnectorAPIHandler = async (
   req: Request<{ connector_id: string }, ConnectorUnpauseResBody>,
   res: Response<ConnectorUnpauseResBody>
 ) => {
+  let connector: ConnectorResource | null = null;
   try {
-    const connector = await ConnectorResource.fetchById(
-      req.params.connector_id
-    );
+    connector = await ConnectorResource.fetchById(req.params.connector_id);
     if (!connector) {
       return apiError(req, res, {
         api_error: {
@@ -55,7 +54,10 @@ const _unpauseConnectorAPIHandler = async (
 
     return res.sendStatus(204);
   } catch (e) {
-    logger.error(errorFromAny(e), "Failed to unpause the connector");
+    logger.error(
+      { error: errorFromAny(e), connectorId: connector?.id },
+      "Failed to unpause the connector"
+    );
     return apiError(req, res, {
       status_code: 500,
       api_error: {

@@ -1,5 +1,5 @@
 import { Chip, Tooltip } from "@dust-tt/sparkle";
-import type { ConnectorType } from "@dust-tt/types";
+import type { ConnectorType, DataSourceType } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
@@ -8,11 +8,11 @@ import { timeAgoFrom } from "@app/lib/utils";
 
 export default function ConnectorSyncingChip({
   workspaceId,
-  dataSourceId,
+  dataSource,
   initialState,
 }: {
   workspaceId: string;
-  dataSourceId: string;
+  dataSource: DataSourceType;
   initialState: ConnectorType;
 }) {
   const {
@@ -21,7 +21,7 @@ export default function ConnectorSyncingChip({
     isConnectorError,
   } = useConnector({
     workspaceId,
-    dataSourceId,
+    dataSource,
   });
 
   const connector = refreshedConnector || initialState;
@@ -50,9 +50,8 @@ export default function ConnectorSyncingChip({
             label={
               "Our access to your account has been revoked. Re-authorize to keep the connection up-to-date."
             }
-          >
-            <Chip color="warning">Re-authorization required</Chip>
-          </Tooltip>
+            trigger={<Chip color="warning">Re-authorization required</Chip>}
+          />
         );
       case "third_party_internal_error":
         return (
@@ -61,21 +60,68 @@ export default function ConnectorSyncingChip({
               `We have encountered an error with ${CONNECTOR_CONFIGURATIONS[connector.type].name}. ` +
               "We sent you an email to resolve the issue."
             }
-          >
-            <Chip color="warning">Synchronization failed</Chip>
-          </Tooltip>
+            trigger={<Chip color="warning">Synchronization failed</Chip>}
+          />
         );
-      case "webcrawling_error":
+      case "webcrawling_error_content_too_large":
         return (
           <Tooltip
             label={
-              "We were unable to extract data from your site's pages using our webcrawler." +
-              " This problem commonly occurs with JavaScript-based websites," +
-              " as our current crawler cannot process JavaScript."
+              "The synchronization failed because too many excessively large pages were found."
             }
-          >
-            <Chip color="warning">Synchronization failed</Chip>
-          </Tooltip>
+            className="max-w-md"
+            trigger={<Chip color="warning">Pages too large</Chip>}
+          />
+        );
+      case "webcrawling_error_empty_content":
+        return (
+          <Tooltip
+            label={"The synchronization failed to retrieve any content."}
+            className="max-w-md"
+            trigger={<Chip color="warning">Empty content</Chip>}
+          />
+        );
+      case "webcrawling_error_blocked":
+        return (
+          <Tooltip
+            label={
+              "The synchronization failed because the websites blocks automated visits."
+            }
+            className="max-w-md"
+            trigger={<Chip color="warning">Access blocked</Chip>}
+          />
+        );
+      case "webcrawling_synchronization_limit_reached":
+        return (
+          <Tooltip
+            label={
+              "The website synchronization reached the maximum page limit."
+            }
+            className="max-w-md"
+            trigger={<Chip color="warning">Limit reached</Chip>}
+          />
+        );
+      case "webcrawling_error":
+        return <Chip color="warning">Synchronization failed</Chip>;
+      case "remote_database_connection_not_readonly":
+        return (
+          <Tooltip
+            label={
+              "We need read-only access to your database to synchronize data." +
+              " Please update the permissions and try again."
+            }
+            trigger={<Chip color="warning">Synchronization failed</Chip>}
+          />
+        );
+      case "remote_database_network_error":
+        return (
+          <Tooltip
+            label={
+              "We encountered a network error while trying to connect to your database." +
+              "Please check your network connection and try again."
+            }
+            trigger={<Chip color="warning">Synchronization failed</Chip>}
+          />
         );
       default:
         assertNever(connector.errorType);

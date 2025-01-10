@@ -1,7 +1,6 @@
 import type {
   AgentActionConfigurationType,
   AgentConfigurationType,
-  AppType,
   DataSourceViewSelectionConfiguration,
   DataSourceViewSelectionConfigurations,
   DustAppRunConfigurationType,
@@ -30,24 +29,27 @@ import {
   getDefaultTablesQueryActionConfiguration,
   getDefaultWebsearchActionConfiguration,
 } from "@app/components/assistant_builder/types";
-import { getApps } from "@app/lib/api/app";
 import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
 import type { Authenticator } from "@app/lib/auth";
+import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { VaultResource } from "@app/lib/resources/vault_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
+import logger from "@app/logger/logger";
 
 export const getAccessibleSourcesAndApps = async (auth: Authenticator) => {
-  const accessibleVaults = (
-    await VaultResource.listWorkspaceVaults(auth)
-  ).filter((vault) => !vault.isSystem());
+  const accessibleSpaces = (
+    await SpaceResource.listWorkspaceSpaces(auth)
+  ).filter((space) => !space.isSystem() && space.canRead(auth));
 
   const [dsViews, allDustApps] = await Promise.all([
-    DataSourceViewResource.listByVaults(auth, accessibleVaults),
-    getApps(auth),
+    DataSourceViewResource.listBySpaces(auth, accessibleSpaces, {
+      includeEditedBy: true,
+    }),
+    AppResource.listByWorkspace(auth),
   ]);
 
   return {
-    vaults: accessibleVaults,
+    spaces: accessibleSpaces,
     dataSourceViews: dsViews,
     dustApps: allDustApps,
   };
@@ -59,7 +61,7 @@ export async function buildInitialActions({
   configuration,
 }: {
   dataSourceViews: DataSourceViewResource[];
-  dustApps: AppType[];
+  dustApps: AppResource[];
   configuration: AgentConfigurationType | TemplateAgentConfigurationType;
 }): Promise<AssistantBuilderActionConfiguration[]> {
   const builderActions: AssistantBuilderActionConfiguration[] = [];
@@ -89,7 +91,7 @@ export async function buildInitialActions({
 async function initializeBuilderAction(
   action: AgentActionConfigurationType,
   dataSourceViews: DataSourceViewResource[],
-  dustApps: AppType[]
+  dustApps: AppResource[]
 ): Promise<AssistantBuilderActionConfiguration | null> {
   if (isRetrievalConfiguration(action)) {
     return getRetrievalActionConfiguration(action, dataSourceViews);
@@ -117,6 +119,7 @@ async function getRetrievalActionConfiguration(
       ? getDefaultRetrievalSearchActionConfiguration()
       : getDefaultRetrievalExhaustiveActionConfiguration();
   if (
+    "timeFrame" in retrievalConfiguration.configuration &&
     action.relativeTimeFrame !== "auto" &&
     action.relativeTimeFrame !== "none"
   ) {
@@ -134,13 +137,13 @@ async function getRetrievalActionConfiguration(
 
 async function getDustAppRunActionConfiguration(
   action: DustAppRunConfigurationType,
-  dustApps: AppType[]
+  dustApps: AppResource[]
 ): Promise<AssistantBuilderActionConfiguration> {
   const dustAppConfiguration = getDefaultDustAppRunActionConfiguration();
   const app = dustApps.find((app) => app.sId === action.appId);
 
   if (app) {
-    dustAppConfiguration.configuration.app = app;
+    dustAppConfiguration.configuration.app = app.toJSON();
     dustAppConfiguration.name = slugify(app.name);
     dustAppConfiguration.description = app.description ?? "";
   }
@@ -217,14 +220,33 @@ async function renderDataSourcesConfigurations(
       const contentNodesRes = await getContentNodesForDataSourceView(
         dataSourceView,
         {
-          includeChildren: false,
           internalIds: sr.resources,
           viewType: "documents",
         }
       );
 
       if (contentNodesRes.isErr()) {
-        throw contentNodesRes.error;
+        logger.error(
+          {
+            action: {
+              id: action.id,
+              type: action.type,
+            },
+            dataSourceView: dataSourceView.toTraceJSON(),
+            error: contentNodesRes.error,
+            internalIds: sr.resources,
+            workspace: {
+              id: dataSourceView.workspaceId,
+            },
+          },
+          "Assistant Builder: Error fetching content nodes for documents."
+        );
+
+        return {
+          dataSourceView: serializedDataSourceView,
+          selectedResources: [],
+          isSelectAll: sr.isSelectAll,
+        };
       }
 
       return {
@@ -272,7 +294,6 @@ async function renderTableDataSourcesConfigurations(
         const contentNodesRes = await getContentNodesForDataSourceView(
           dataSourceView,
           {
-            includeChildren: false,
             internalIds: sr.resources,
             // We only want to fetch tables from the core API.
             onlyCoreAPI: true,
@@ -281,7 +302,27 @@ async function renderTableDataSourcesConfigurations(
         );
 
         if (contentNodesRes.isErr()) {
-          throw contentNodesRes.error;
+          logger.error(
+            {
+              action: {
+                id: action.id,
+                type: action.type,
+              },
+              dataSourceView: dataSourceView.toTraceJSON(),
+              error: contentNodesRes.error,
+              internalIds: sr.resources,
+              workspace: {
+                id: dataSourceView.workspaceId,
+              },
+            },
+            "Assistant Builder: Error fetching content nodes for tables."
+          );
+
+          return {
+            dataSourceView: serializedDataSourceView,
+            selectedResources: [],
+            isSelectAll: sr.isSelectAll,
+          };
         }
 
         return {

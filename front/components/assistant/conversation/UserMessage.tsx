@@ -1,68 +1,73 @@
-import type {
-  ContentFragmentType,
-  UserType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import type { MessageReactionType, UserMessageType } from "@dust-tt/types";
+import type { ConversationMessageSizeType } from "@dust-tt/sparkle";
+import { ConversationMessage, Markdown } from "@dust-tt/sparkle";
+import type { UserMessageType, WorkspaceType } from "@dust-tt/types";
+import { useMemo } from "react";
+import type { Components } from "react-markdown";
+import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSuggestion";
-import type { MessageSizeType } from "@app/components/assistant/conversation/ConversationMessage";
-import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
-import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
+import {
+  CiteBlock,
+  getCiteDirective,
+} from "@app/components/markdown/CiteBlock";
+import {
+  MentionBlock,
+  mentionDirective,
+} from "@app/components/markdown/MentionBlock";
 
 interface UserMessageProps {
+  citations?: React.ReactElement[];
   conversationId: string;
-  hideReactions?: boolean;
   isLastMessage: boolean;
   message: UserMessageType;
   owner: WorkspaceType;
-  reactions: MessageReactionType[];
-  user: UserType;
-  contentFragments?: ContentFragmentType[];
-  size: MessageSizeType;
+  size: ConversationMessageSizeType;
 }
 
 export function UserMessage({
+  citations,
   conversationId,
-  hideReactions,
   isLastMessage,
   message,
   owner,
-  reactions,
-  user,
-  contentFragments,
   size,
 }: UserMessageProps) {
+  const additionalMarkdownComponents: Components = useMemo(
+    () => ({
+      sup: CiteBlock,
+      mention: MentionBlock,
+    }),
+    []
+  );
+
+  const additionalMarkdownPlugins: PluggableList = useMemo(
+    () => [getCiteDirective(), mentionDirective],
+    []
+  );
+
   return (
     <ConversationMessage
-      owner={owner}
-      user={user}
-      conversationId={conversationId}
-      messageId={message.sId}
       pictureUrl={message.user?.image || message.context.profilePictureUrl}
       name={message.context.fullName}
-      reactions={reactions}
-      enableEmojis={!hideReactions}
       renderName={(name) => <div className="text-base font-medium">{name}</div>}
       type="user"
-      citations={contentFragments}
+      citations={citations}
       size={size}
     >
-      <div className="flex flex-col gap-4">
-        <div>
-          <RenderMessageMarkdown
-            content={message.content}
-            isStreaming={false}
-          />
-        </div>
-        {message.mentions.length === 0 && isLastMessage && (
-          <AgentSuggestion
-            conversationId={conversationId}
-            owner={owner}
-            userMessage={message}
-          />
-        )}
-      </div>
+      <Markdown
+        content={message.content}
+        isStreaming={false}
+        isLastMessage={isLastMessage}
+        additionalMarkdownComponents={additionalMarkdownComponents}
+        additionalMarkdownPlugins={additionalMarkdownPlugins}
+      />
+      {message.mentions.length === 0 && isLastMessage && (
+        <AgentSuggestion
+          conversationId={conversationId}
+          owner={owner}
+          userMessage={message}
+        />
+      )}
     </ConversationMessage>
   );
 }

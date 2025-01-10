@@ -1,3 +1,4 @@
+import { Input } from "@dust-tt/sparkle";
 import type {
   ColumnDef,
   ColumnFiltersState,
@@ -16,7 +17,6 @@ import {
 import { useState } from "react";
 
 import { PokeDataTableFacetedFilter } from "@app/components/poke/shadcn/ui/data_table_faceted_filter";
-import { PokeInput } from "@app/components/poke/shadcn/ui/input";
 import { PokeDataTablePagination } from "@app/components/poke/shadcn/ui/pagination";
 import {
   PokeTable,
@@ -49,7 +49,7 @@ interface DataTableProps<TData, TValue> {
 export function PokeDataTable<TData, TValue>({
   data,
   columns,
-  defaultFilterColumn = "name",
+  defaultFilterColumn,
   facets,
   isLoading,
   pageSize = 10,
@@ -68,11 +68,13 @@ export function PokeDataTable<TData, TValue>({
     getSortedRowModel: getSortedRowModel(),
     onColumnFiltersChange: setColumnFilters,
     onSortingChange: setSorting,
+    globalFilterFn: "includesString", // built-in filter function
     state: {
       columnFilters,
       sorting,
     },
     initialState: {
+      globalFilter: "",
       pagination: {
         pageSize,
       },
@@ -86,16 +88,22 @@ export function PokeDataTable<TData, TValue>({
   return (
     <div className="w-full space-y-2">
       <div className="flex items-center gap-4">
-        <PokeInput
+        <Input
           name="filter"
           placeholder="Filter ..."
           value={
-            (table
-              .getColumn(defaultFilterColumn)
-              ?.getFilterValue() as string) ?? ""
+            defaultFilterColumn
+              ? (table
+                  .getColumn(defaultFilterColumn)
+                  ?.getFilterValue() as string)
+              : table.getState().globalFilter
           }
           onChange={(e) =>
-            table.getColumn(defaultFilterColumn)?.setFilterValue(e.target.value)
+            defaultFilterColumn
+              ? table
+                  .getColumn(defaultFilterColumn)
+                  ?.setFilterValue(e.target.value)
+              : table.setGlobalFilter(e.target.value)
           }
           className="max-w-sm"
         />

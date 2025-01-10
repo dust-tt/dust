@@ -1,41 +1,33 @@
 import type { DataSourceViewKind } from "@dust-tt/types";
-import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-  NonAttribute,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import { DataTypes } from "sequelize";
 
-import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { DataSource } from "@app/lib/resources/storage/models/data_source";
-import { VaultModel } from "@app/lib/resources/storage/models/vaults";
+import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
+import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
+import { UserModel } from "@app/lib/resources/storage/models/user";
+import { SoftDeletableModel } from "@app/lib/resources/storage/wrappers";
 
-export class DataSourceViewModel extends Model<
-  InferAttributes<DataSourceViewModel>,
-  InferCreationAttributes<DataSourceViewModel>
-> {
+export class DataSourceViewModel extends SoftDeletableModel<DataSourceViewModel> {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
   // Corresponds to the ID of the last user to configure the connection.
-  declare editedByUserId: ForeignKey<User["id"]>;
-  declare editedAt: CreationOptional<Date>;
+  declare editedByUserId: ForeignKey<UserModel["id"]> | null;
+  declare editedAt: Date;
 
   declare kind: DataSourceViewKind;
   declare parentsIn: string[] | null;
 
-  declare dataSourceId: ForeignKey<DataSource["id"]>;
-  declare vaultId: ForeignKey<VaultModel["id"]>;
+  declare dataSourceId: ForeignKey<DataSourceModel["id"]>;
+  declare vaultId: ForeignKey<SpaceModel["id"]>;
   declare workspaceId: ForeignKey<Workspace["id"]>;
 
-  declare dataSourceForView: NonAttribute<DataSource>;
-  declare editedByUser: NonAttribute<User>;
-  declare vault: NonAttribute<VaultModel>;
+  declare dataSourceForView: NonAttribute<DataSourceModel>;
+  declare editedByUser: NonAttribute<UserModel>;
+  declare space: NonAttribute<SpaceModel>;
   declare workspace: NonAttribute<Workspace>;
 }
 DataSourceViewModel.init(
@@ -50,11 +42,12 @@ DataSourceViewModel.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
+    deletedAt: {
+      type: DataTypes.DATE,
+    },
     editedAt: {
       type: DataTypes.DATE,
-      // TODO(2024-08-28 (thomas) Set `allowNull` to `false` once backfilled.
-      allowNull: true,
-      defaultValue: DataTypes.NOW,
+      allowNull: false,
     },
     kind: {
       type: DataTypes.STRING,
@@ -77,7 +70,11 @@ DataSourceViewModel.init(
     indexes: [
       { fields: ["workspaceId", "id"] },
       { fields: ["workspaceId", "vaultId"] },
-      { fields: ["workspaceId", "dataSourceId", "vaultId"], unique: true },
+      {
+        fields: ["workspaceId", "dataSourceId", "vaultId", "deletedAt"],
+        unique: true,
+        name: "data_source_view_workspace_data_source_vault_deleted_at_unique",
+      },
     ],
   }
 );
@@ -87,24 +84,25 @@ Workspace.hasMany(DataSourceViewModel, {
 });
 DataSourceViewModel.belongsTo(Workspace);
 
-VaultModel.hasMany(DataSourceViewModel, {
-  foreignKey: { allowNull: false },
+SpaceModel.hasMany(DataSourceViewModel, {
+  foreignKey: { allowNull: false, name: "vaultId" },
   onDelete: "RESTRICT",
 });
-DataSourceViewModel.belongsTo(VaultModel);
+DataSourceViewModel.belongsTo(SpaceModel, {
+  foreignKey: { allowNull: false, name: "vaultId" },
+});
 
-DataSource.hasMany(DataSourceViewModel, {
+DataSourceModel.hasMany(DataSourceViewModel, {
   as: "dataSourceForView",
   foreignKey: { name: "dataSourceId", allowNull: false },
   onDelete: "RESTRICT",
 });
-DataSourceViewModel.belongsTo(DataSource, {
+DataSourceViewModel.belongsTo(DataSourceModel, {
   as: "dataSourceForView",
   foreignKey: { name: "dataSourceId", allowNull: false },
 });
 
-DataSourceViewModel.belongsTo(User, {
+DataSourceViewModel.belongsTo(UserModel, {
   as: "editedByUser",
-  // TODO(2024-08-28 (thomas) Set `allowNull` to `false` once backfilled.
   foreignKey: { name: "editedByUserId", allowNull: true },
 });

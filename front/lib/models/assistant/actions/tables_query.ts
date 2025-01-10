@@ -1,22 +1,15 @@
-import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-  NonAttribute,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import { DataTypes } from "sequelize";
 
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
+import { FileModel } from "@app/lib/resources/storage/models/files";
+import { BaseModel } from "@app/lib/resources/storage/wrappers";
 
-export class AgentTablesQueryConfiguration extends Model<
-  InferAttributes<AgentTablesQueryConfiguration>,
-  InferCreationAttributes<AgentTablesQueryConfiguration>
-> {
-  declare id: CreationOptional<number>;
+export class AgentTablesQueryConfiguration extends BaseModel<AgentTablesQueryConfiguration> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -30,11 +23,6 @@ export class AgentTablesQueryConfiguration extends Model<
 
 AgentTablesQueryConfiguration.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -82,34 +70,24 @@ AgentTablesQueryConfiguration.belongsTo(AgentConfiguration, {
   foreignKey: { name: "agentConfigurationId", allowNull: false },
 });
 
-export class AgentTablesQueryConfigurationTable extends Model<
-  InferAttributes<AgentTablesQueryConfigurationTable>,
-  InferCreationAttributes<AgentTablesQueryConfigurationTable>
-> {
-  declare id: CreationOptional<number>;
+export class AgentTablesQueryConfigurationTable extends BaseModel<AgentTablesQueryConfigurationTable> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare dataSourceWorkspaceId: string;
-  // TODO:(GROUPS_INFRA): `dataSourceId` should be a foreign key to `DataSource` model.
-  declare dataSourceId: string;
   declare tableId: string;
 
+  declare dataSourceId: ForeignKey<DataSourceModel["id"]> | null;
   declare dataSourceViewId: ForeignKey<DataSourceViewModel["id"]>;
   declare tablesQueryConfigurationId: ForeignKey<
     AgentTablesQueryConfiguration["id"]
   >;
 
+  declare dataSource: NonAttribute<DataSourceModel>;
   declare dataSourceView: NonAttribute<DataSourceViewModel>;
 }
 
 AgentTablesQueryConfigurationTable.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -119,15 +97,6 @@ AgentTablesQueryConfigurationTable.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
-    },
-
-    dataSourceWorkspaceId: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    dataSourceId: {
-      type: DataTypes.STRING,
-      allowNull: false,
     },
     tableId: {
       type: DataTypes.STRING(512),
@@ -139,14 +108,11 @@ AgentTablesQueryConfigurationTable.init(
     indexes: [
       {
         unique: true,
-        fields: [
-          "dataSourceWorkspaceId",
-          "dataSourceId",
-          "tableId",
-          "tablesQueryConfigurationId",
-        ],
-        name: "agent_tables_query_configuration_table_unique",
+        fields: ["dataSourceViewId", "tableId", "tablesQueryConfigurationId"],
+        name: "agent_tables_query_configuration_table_unique_dsv",
       },
+      { fields: ["dataSourceId"] },
+      { fields: ["dataSourceViewId"] },
     ],
     sequelize: frontSequelize,
   }
@@ -154,16 +120,26 @@ AgentTablesQueryConfigurationTable.init(
 
 AgentTablesQueryConfiguration.hasMany(AgentTablesQueryConfigurationTable, {
   foreignKey: { name: "tablesQueryConfigurationId", allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 AgentTablesQueryConfigurationTable.belongsTo(AgentTablesQueryConfiguration, {
   foreignKey: { name: "tablesQueryConfigurationId", allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
+});
+
+// Config <> Data source.
+DataSourceModel.hasMany(AgentTablesQueryConfigurationTable, {
+  foreignKey: { allowNull: false, name: "dataSourceId" },
+  onDelete: "RESTRICT",
+});
+AgentTablesQueryConfigurationTable.belongsTo(DataSourceModel, {
+  as: "dataSource",
+  foreignKey: { allowNull: false, name: "dataSourceId" },
 });
 
 // Config <> Data source view.
 DataSourceViewModel.hasMany(AgentTablesQueryConfigurationTable, {
-  foreignKey: { allowNull: true },
+  foreignKey: { allowNull: false },
   onDelete: "RESTRICT",
 });
 AgentTablesQueryConfigurationTable.belongsTo(DataSourceViewModel, {
@@ -171,11 +147,7 @@ AgentTablesQueryConfigurationTable.belongsTo(DataSourceViewModel, {
   foreignKey: { allowNull: false },
 });
 
-export class AgentTablesQueryAction extends Model<
-  InferAttributes<AgentTablesQueryAction>,
-  InferCreationAttributes<AgentTablesQueryAction>
-> {
-  declare id: CreationOptional<number>;
+export class AgentTablesQueryAction extends BaseModel<AgentTablesQueryAction> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare runId: string | null;
@@ -184,21 +156,21 @@ export class AgentTablesQueryAction extends Model<
 
   declare params: unknown | null;
   declare output: unknown | null;
+  declare resultsFileSnippet: string | null;
+
   declare functionCallId: string | null;
   declare functionCallName: string | null;
 
   declare agentMessageId: ForeignKey<AgentMessage["id"]>;
 
   declare step: number;
+  declare resultsFileId: ForeignKey<FileModel["id"]> | null;
+
+  declare resultsFile: NonAttribute<FileModel>;
 }
 
 AgentTablesQueryAction.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -227,6 +199,10 @@ AgentTablesQueryAction.init(
       type: DataTypes.JSONB,
       allowNull: true,
     },
+    resultsFileSnippet: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
     functionCallId: {
       type: DataTypes.STRING,
       allowNull: true,
@@ -248,6 +224,10 @@ AgentTablesQueryAction.init(
         fields: ["agentMessageId"],
         concurrently: true,
       },
+      {
+        fields: ["resultsFileId"],
+        concurrently: true,
+      },
     ],
   }
 );
@@ -258,4 +238,14 @@ AgentTablesQueryAction.belongsTo(AgentMessage, {
 
 AgentMessage.hasMany(AgentTablesQueryAction, {
   foreignKey: { name: "agentMessageId", allowNull: false },
+});
+
+FileModel.hasMany(AgentTablesQueryAction, {
+  foreignKey: { name: "resultsFileId", allowNull: true },
+  onDelete: "SET NULL",
+});
+AgentTablesQueryAction.belongsTo(FileModel, {
+  as: "resultsFile",
+  foreignKey: { name: "resultsFileId", allowNull: true },
+  onDelete: "SET NULL",
 });

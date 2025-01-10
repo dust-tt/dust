@@ -22,27 +22,74 @@ export const TextAreaExample = () => {
       <div className="s-grid s-grid-cols-3 s-gap-4">
         <TextArea
           placeholder="placeholder"
-          value={textValues[0]}
-          onChange={(v) =>
-            setTextValues([v, textValues[1], textValues[2], textValues[3]])
-          }
+          onChange={(e) => {
+            console.log(e.target.value);
+            setTextValues([
+              e.target.value,
+              textValues[1],
+              textValues[2],
+              textValues[3],
+            ]);
+          }}
+          minRows={2}
+          defaultValue={textValues[0]}
         />
         <TextArea
           placeholder="placeholder"
-          value={textValues[1]}
+          defaultValue={textValues[1]}
           error={"errored because blah"}
-          onChange={(v) =>
-            setTextValues([textValues[0], v, textValues[2], textValues[3]])
+          onChange={(e) =>
+            setTextValues([
+              textValues[0],
+              e.target.value,
+              textValues[2],
+              textValues[3],
+            ])
           }
           showErrorLabel
         />
         <TextArea
           placeholder="placeholder"
-          value={textValues[2]}
-          onChange={(v) =>
-            setTextValues([textValues[0], textValues[1], v, textValues[3]])
+          defaultValue={textValues[2]}
+          onChange={(e) =>
+            setTextValues([
+              textValues[0],
+              textValues[1],
+              e.target.value,
+              textValues[3],
+            ])
           }
-          error={"errored because blah"}
+        />
+        <TextArea
+          placeholder="placeholder"
+          disabled
+          value={
+            "I want you to act as a professional coder for html emails. We are currently using Sendgrid as our main way to handle emails. Make concise answers, always output the code in a Code Block."
+          }
+          onChange={(e) =>
+            setTextValues([
+              textValues[0],
+              textValues[1],
+              e.target.value,
+              textValues[3],
+            ])
+          }
+        />
+        <TextArea
+          placeholder="placeholder"
+          disabled
+          isDisplay
+          value={
+            "I want you to act as a professional coder for html emails. We are currently using Sendgrid as our main way to handle emails. Make concise answers, always output the code in a Code Block."
+          }
+          onChange={(e) =>
+            setTextValues([
+              textValues[0],
+              textValues[1],
+              e.target.value,
+              textValues[3],
+            ])
+          }
         />
       </div>
     </div>

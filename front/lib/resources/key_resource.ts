@@ -11,12 +11,14 @@ import type {
   ModelStatic,
   Transaction,
 } from "sequelize";
+import { Op } from "sequelize";
 import { v4 as uuidv4 } from "uuid";
 
-import { User } from "@app/lib/models/user";
+import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 
 export interface KeyAuthType {
@@ -25,13 +27,15 @@ export interface KeyAuthType {
   isSystem: boolean;
 }
 
+export const SECRET_KEY_PREFIX = "sk-";
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface KeyResource extends ReadonlyAttributesType<KeyModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class KeyResource extends BaseResource<KeyModel> {
   static model: ModelStatic<KeyModel> = KeyModel;
 
-  private user?: User;
+  private user?: UserModel;
 
   constructor(model: ModelStatic<KeyModel>, blob: Attributes<KeyModel>) {
     super(KeyModel, blob);
@@ -42,7 +46,7 @@ export class KeyResource extends BaseResource<KeyModel> {
     group: GroupResource
   ) {
     const new_id = Buffer.from(blake3(uuidv4())).toString("hex");
-    const secret = `sk-${new_id.slice(0, 32)}`;
+    const secret = `${SECRET_KEY_PREFIX}${new_id.slice(0, 32)}`;
 
     const key = await KeyResource.model.create({
       ...blob,
@@ -110,25 +114,13 @@ export class KeyResource extends BaseResource<KeyModel> {
         {
           as: "user",
           attributes: ["firstName", "lastName"],
-          model: User,
+          model: UserModel,
           required: false,
         },
       ],
     });
 
     return keys.map((key) => new this(KeyResource.model, key.get()));
-  }
-
-  static async deleteAllForWorkspace(
-    workspace: LightWorkspaceType,
-    transaction?: Transaction
-  ) {
-    return this.model.destroy({
-      where: {
-        workspaceId: workspace.id,
-      },
-      transaction,
-    });
   }
 
   async markAsUsed() {
@@ -153,8 +145,37 @@ export class KeyResource extends BaseResource<KeyModel> {
     );
   }
 
+  static async countActiveForGroups(
+    auth: Authenticator,
+    groups: GroupResource[]
+  ) {
+    return this.model.count({
+      where: {
+        groupId: {
+          [Op.in]: groups.map((g) => g.id),
+        },
+        status: "active",
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+  }
+
+  // Deletion.
+
   delete(): Promise<Result<undefined, Error>> {
     throw new Error("Method not implemented.");
+  }
+
+  static async deleteAllForWorkspace(
+    workspace: LightWorkspaceType,
+    transaction?: Transaction
+  ) {
+    return this.model.destroy({
+      where: {
+        workspaceId: workspace.id,
+      },
+      transaction,
+    });
   }
 
   toJSON(): KeyType {
@@ -176,6 +197,7 @@ export class KeyResource extends BaseResource<KeyModel> {
       name: this.name,
       secret,
       status: this.status,
+      groupId: this.groupId,
     };
   }
 

@@ -1,6 +1,5 @@
 import type {
   ConnectorPermission,
-  ConnectorsAPIError,
   ContentNode,
   ContentNodesViewType,
   Result,
@@ -15,7 +14,15 @@ import {
   WebCrawlerHeaderRedactedValue,
 } from "@dust-tt/types";
 
+import type {
+  CreateConnectorErrorCode,
+  RetrievePermissionsErrorCode,
+  UpdateConnectorErrorCode,
+} from "@connectors/connectors/interface";
+import { ConnectorManagerError } from "@connectors/connectors/interface";
+import { BaseConnectorManager } from "@connectors/connectors/interface";
 import {
+  getDisplayNameForFolder,
   getDisplayNameForPage,
   normalizeFolderUrl,
   stableIdForUrl,
@@ -29,7 +36,6 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { WebCrawlerConfigurationResource } from "@connectors/resources/webcrawler_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
 
-import { BaseConnectorManager } from "../interface";
 import {
   launchCrawlWebsiteWorkflow,
   stopCrawlWebsiteWorkflow,
@@ -43,18 +49,16 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
     dataSourceConfig: DataSourceConfig;
     connectionId: string;
     configuration: WebCrawlerConfigurationType;
-  }): Promise<Result<string, Error>> {
+  }): Promise<Result<string, ConnectorManagerError<CreateConnectorErrorCode>>> {
     if (!configuration) {
       throw new Error("Configuration is required");
     }
     const depth = configuration.depth;
     if (!isDepthOption(depth)) {
-      return new Err(new Error("Invalid depth option"));
+      throw new Error("Invalid depth option");
     }
     if (configuration.maxPageToCrawl > WEBCRAWLER_MAX_PAGES) {
-      return new Err(
-        new Error(`Maximum value for Max Page is ${WEBCRAWLER_MAX_PAGES}`)
-      );
+      throw new Error(`Maximum value for Max Page is ${WEBCRAWLER_MAX_PAGES}`);
     }
     const url = configuration.url.trim();
     const webCrawlerConfigurationBlob = {
@@ -80,7 +84,7 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
 
     const workflowRes = await launchCrawlWebsiteWorkflow(connector.id);
     if (workflowRes.isErr()) {
-      return workflowRes;
+      throw workflowRes.error;
     }
     logger.info(
       { connectorId: connector.id },
@@ -127,17 +131,21 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
     parentInternalId: string | null;
     filterPermission: ConnectorPermission | null;
     viewType: ContentNodesViewType;
-  }): Promise<Result<ContentNode[], Error>> {
+  }): Promise<
+    Result<ContentNode[], ConnectorManagerError<RetrievePermissionsErrorCode>>
+  > {
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
-      return new Err(new Error("Connector not found"));
+      return new Err(
+        new ConnectorManagerError("CONNECTOR_NOT_FOUND", "Connector not found")
+      );
     }
 
     const webCrawlerConfig =
       await WebCrawlerConfigurationResource.fetchByConnectorId(connector.id);
 
     if (!webCrawlerConfig) {
-      return new Err(new Error("Webcrawler configuration not found"));
+      throw new Error("Webcrawler configuration not found");
     }
     let parentUrl: string | null = null;
     if (parentInternalId) {
@@ -149,7 +157,14 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
         },
       });
       if (!parent) {
-        return new Err(new Error("Parent not found"));
+        logger.error(
+          {
+            connectorId: connector.id,
+            parentInternalId,
+          },
+          "Webcrawler: Parent not found"
+        );
+        return new Ok([]);
       }
       parentUrl = parent.url;
     }
@@ -192,11 +207,7 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
                   ressourceType: "folder",
                 })
               : null,
-            title:
-              new URL(folder.url).pathname
-                .split("/")
-                .filter((x) => x)
-                .pop() || folder.url,
+            title: getDisplayNameForFolder(folder),
             sourceUrl: null,
             expandable: true,
             permission: "read",
@@ -250,7 +261,7 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
       WebCrawlerFolder.findAll({
         where: {
           connectorId: this.connectorId,
-          url: internalIds,
+          internalId: internalIds,
         },
       }),
       WebCrawlerPage.findAll({
@@ -266,7 +277,7 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
         provider: "webcrawler",
         internalId: folder.internalId,
         parentInternalId: folder.parentUrl,
-        title: folder.url,
+        title: getDisplayNameForFolder(folder),
         sourceUrl: folder.url,
         expandable: true,
         permission: "read",
@@ -299,7 +310,7 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
     internalId: string;
     memoizationKey?: string;
   }): Promise<Result<string[], Error>> {
-    const parents: string[] = [];
+    const parents: string[] = [internalId];
     let parentUrl: string | null = null;
 
     // First we get the Page or Folder for which we want to retrieve the parents
@@ -325,7 +336,7 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
 
     // If the Page or Folder has no parentUrl, we return an empty array
     if (!parentUrl) {
-      return new Ok([]);
+      return new Ok(parents);
     }
 
     // Otherwise we loop on the parentUrl to retrieve all the parents
@@ -384,10 +395,11 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
     }
     await connector.markAsUnpaused();
 
-    const startRes = await launchCrawlWebsiteWorkflow(this.connectorId);
-    if (startRes.isErr()) {
-      return startRes;
+    const r = await this.resume();
+    if (r.isErr()) {
+      return r;
     }
+
     return new Ok(undefined);
   }
 
@@ -460,12 +472,23 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
     return new Ok(undefined);
   }
 
-  async update(): Promise<Result<string, ConnectorsAPIError>> {
+  async update(): Promise<
+    Result<string, ConnectorManagerError<UpdateConnectorErrorCode>>
+  > {
     throw new Error("Method not implemented.");
   }
 
   async resume(): Promise<Result<undefined, Error>> {
-    throw new Error("Method not implemented.");
+    const connector = await ConnectorResource.fetchById(this.connectorId);
+    if (!connector) {
+      throw new Error("Connector not found.");
+    }
+
+    const startRes = await launchCrawlWebsiteWorkflow(this.connectorId);
+    if (startRes.isErr()) {
+      return startRes;
+    }
+    return new Ok(undefined);
   }
 
   async setPermissions(): Promise<Result<void, Error>> {

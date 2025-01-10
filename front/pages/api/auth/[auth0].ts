@@ -12,6 +12,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import config from "@app/lib/api/config";
 import { isEmailValid } from "@app/lib/utils";
 import logger from "@app/logger/logger";
+import { statsDClient } from "@app/logger/withlogging";
 
 const isString = (value: unknown): value is string => typeof value === "string";
 
@@ -47,7 +48,7 @@ export default handleAuth({
 
     return {
       authorizationParams: defaultAuthorizationParams,
-      returnTo: "/api/login",
+      returnTo: "/api/login", // Note from seb, I think this is not used
     };
   }),
   callback: async (req: NextApiRequest, res: NextApiResponse) => {
@@ -71,8 +72,14 @@ export default handleAuth({
           "login error in auth0 callback"
         );
 
+        statsDClient.increment("login.callback.error", 1, [
+          `error:${error.cause?.message}`,
+        ]);
+
         return res.redirect(`/login-error?reason=${reason}`);
       }
+
+      statsDClient.increment("login.callback.error", 1, ["error:unknow"]);
 
       return res.redirect("/login-error");
     }

@@ -7,7 +7,7 @@ import { Authenticator } from "@app/lib/auth";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { VaultResource } from "@app/lib/resources/vault_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { Logger } from "@app/logger/logger";
 import { makeScript, runOnAllWorkspaces } from "@app/scripts/helpers";
 
@@ -25,11 +25,11 @@ async function backfillViewsInAgentTableQueryConfigurationForWorkspace(
     `Found ${dataSources.length} data sources for workspace(${workspace.sId}).`
   );
 
-  const globalVault = await VaultResource.fetchWorkspaceGlobalVault(auth);
+  const globalVault = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
 
   // Retrieve data source views for data sources.
   const dataSourceViews =
-    await DataSourceViewResource.listForDataSourcesInVault(
+    await DataSourceViewResource.listForDataSourcesInSpace(
       auth,
       dataSources,
       globalVault
@@ -38,10 +38,9 @@ async function backfillViewsInAgentTableQueryConfigurationForWorkspace(
   // Count agent tables query configurations that uses those data sources and have no dataSourceViewId.
   const agentTablesQueryConfigurationsCount: GroupedCountResultItem[] =
     await AgentTablesQueryConfigurationTable.count({
-      // @ts-expect-error `dataSourceViewId` was nullable at some point.
+      // @ts-expect-error `dataSourceViewId` is not nullable.
       where: {
-        // /!\ `dataSourceId` is the data source's name, not the id.
-        dataSourceId: dataSources.map((ds) => ds.name),
+        dataSourceId: dataSources.map((ds) => ds.id),
         dataSourceViewId: {
           [Op.is]: null,
         },
@@ -69,8 +68,7 @@ async function backfillViewsInAgentTableQueryConfigurationForWorkspace(
       { dataSourceViewId: dataSourceView.id },
       {
         where: {
-          // /!\ `dataSourceId` is the data source's name, not the id.
-          dataSourceId: ds.name,
+          dataSourceId: ds.id,
         },
       }
     );

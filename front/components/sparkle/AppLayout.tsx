@@ -1,24 +1,15 @@
-import { Banner } from "@dust-tt/sparkle";
 import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
 import Head from "next/head";
 import type { NextRouter } from "next/router";
-import { useRouter } from "next/router";
 import Script from "next/script";
 import React, { useEffect, useState } from "react";
 
-import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
-import { HelpAndQuickGuideWrapper } from "@app/components/assistant/conversation/HelpAndQuickGuideWrapper";
 import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
 import type { SidebarNavigation } from "@app/components/navigation/config";
 import { Navigation } from "@app/components/navigation/Navigation";
-import { useUser } from "@app/lib/swr/user";
-import { ClientSideTracking } from "@app/lib/tracking/client";
+import { QuickStartGuide } from "@app/components/QuickStartGuide";
+import { useAppKeyboardShortcuts } from "@app/hooks/useAppKeyboardShortcuts";
 import { classNames } from "@app/lib/utils";
-
-/* Set to true when there is an incident, to show the banner (customize
- * IncidentBanner component at bottom of the page)
- */
-const SHOW_INCIDENT_BANNER = false;
 
 // This function is used to navigate back to the previous page (eg modal like page close) and
 // fallback to the landing if we linked directly to that modal.
@@ -43,9 +34,9 @@ export default function AppLayout({
   hideSidebar = false,
   subNavigation,
   pageTitle,
-  gaTrackingId,
   navChildren,
   titleChildren,
+  hasTopPadding,
   children,
 }: {
   owner: WorkspaceType;
@@ -54,26 +45,19 @@ export default function AppLayout({
   hideSidebar?: boolean;
   subNavigation?: SidebarNavigation[] | null;
   pageTitle?: string;
-  gaTrackingId: string;
   navChildren?: React.ReactNode;
   titleChildren?: React.ReactNode;
   children: React.ReactNode;
+  hasTopPadding?: boolean;
 }) {
   const [loaded, setLoaded] = useState(false);
-  const router = useRouter();
-  const user = useUser();
+
+  const { isNavigationBarOpen, setIsNavigationBarOpen } =
+    useAppKeyboardShortcuts(owner);
 
   useEffect(() => {
     setLoaded(true);
   }, []);
-
-  useEffect(() => {
-    ClientSideTracking.trackPageView({
-      user: user?.user ?? undefined,
-      workspaceId: owner.sId,
-      pathname: router.pathname,
-    });
-  }, [owner.sId, router.pathname, user?.user]);
 
   return (
     <>
@@ -132,26 +116,24 @@ export default function AppLayout({
       <div className="light flex h-full flex-row">
         <Navigation
           hideSidebar={hideSidebar}
+          isNavigationBarOpen={isNavigationBarOpen}
+          setNavigationBarOpen={setIsNavigationBarOpen}
           owner={owner}
           subscription={subscription}
           navChildren={navChildren}
           subNavigation={subNavigation}
         />
         <div className="relative h-full w-full flex-1 flex-col overflow-x-hidden overflow-y-hidden">
-          {!titleChildren && SHOW_INCIDENT_BANNER && (
-            <IncidentBanner className="relative" />
-          )}
           <main
             id={CONVERSATION_PARENT_SCROLL_DIV_ID.page}
             className={classNames(
               "flex h-full w-full flex-col items-center overflow-y-auto",
-              titleChildren ? "" : "lg:pt-8"
+              hasTopPadding ?? !titleChildren ? "lg:pt-8" : ""
             )}
           >
-            {/* TODO: This should be moved to a TopBar component. */}
             <div
               className={classNames(
-                "sticky left-0 top-0 z-30 mb-4 flex w-full flex-col pl-12 lg:pl-0",
+                "flex w-full flex-col border-b border-primary-50 pl-12 lg:pl-0",
                 !hideSidebar
                   ? "border-b border-structure-300/30 bg-white/80 backdrop-blur"
                   : "",
@@ -161,28 +143,24 @@ export default function AppLayout({
               <div className="h-16 grow px-6">
                 {loaded && titleChildren && titleChildren}
               </div>
-              {titleChildren && SHOW_INCIDENT_BANNER && <IncidentBanner />}
             </div>
 
-            <div
-              className={classNames(
-                "flex h-[calc(100%-5rem)] w-full flex-col",
-                isWideMode ? "items-center" : "max-w-4xl px-6"
+            <div className="flex h-full w-full flex-col items-center overflow-y-auto px-4 sm:px-8">
+              {isWideMode ? (
+                loaded && children
+              ) : (
+                <div className="flex w-full max-w-4xl grow flex-col">
+                  {loaded && children}
+                </div>
               )}
-            >
-              {loaded && children}
             </div>
           </main>
         </div>
       </div>
-      {user.user && (
-        <GenerationContextProvider>
-          <HelpAndQuickGuideWrapper owner={owner} user={user.user} />
-        </GenerationContextProvider>
-      )}
+      <QuickStartGuide />
       <>
         <Script
-          src={`https://www.googletagmanager.com/gtag/js?id=${gaTrackingId}`}
+          src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GA_TRACKING_ID}`}
           strategy="afterInteractive"
         />
         <Script id="google-analytics" strategy="afterInteractive">
@@ -191,41 +169,10 @@ export default function AppLayout({
           function gtag(){window.dataLayer.push(arguments);}
           gtag('js', new Date());
 
-          gtag('config', '${gaTrackingId}');
+          gtag('config', '${process.env.NEXT_PUBLIC_GA_TRACKING_ID}');
           `}
         </Script>
       </>
     </>
-  );
-}
-
-function IncidentBanner({ className = "" }: { className?: string }) {
-  return (
-    <Banner className={className} variant="incident">
-      <div>
-        <span className="font-bold">
-          OpenAI APIs are encountering a{" "}
-          <a
-            href="https://status.openai.com/"
-            target="_blank"
-            className="underline"
-          >
-            partial outage.
-          </a>
-        </span>
-        <span>
-          It may cause slowness and errors from assistants using GPT or data
-          retrieval. We are monitoring the situation{" "}
-          <a
-            href="http://status.dust.tt/"
-            target="_blank"
-            className="underline"
-          >
-            here
-          </a>
-          .
-        </span>
-      </div>
-    </Banner>
   );
 }

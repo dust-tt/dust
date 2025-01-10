@@ -1,7 +1,7 @@
 import type { BrowseConfigurationType, ModelId } from "@dust-tt/types";
 import { Op } from "sequelize";
 
-import { DEFAULT_BROWSE_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
+import { DEFAULT_BROWSE_ACTION_NAME } from "@app/lib/api/assistant/actions/constants";
 import { AgentBrowseConfiguration } from "@app/lib/models/assistant/actions/browse";
 
 export async function fetchBrowseActionConfigurations({

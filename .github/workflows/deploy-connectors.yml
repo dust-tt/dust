@@ -2,68 +2,36 @@ name: Deploy Connectors
 
 on:
   workflow_dispatch:
+    inputs:
+      regions:
+        description: "Regions to deploy to"
+        required: true
+        default: "us-central1"
+        type: choice
+        options:
+          - "us-central1"
+          - "europe-west1"
+          - "all"
+      check_deployment_blocked:
+        description: "Check #deployment locks or force deploy"
+        required: true
+        default: "check"
+        type: choice
+        options:
+          - "check"
+          - "force (dangerous)"
 
 concurrency:
   group: deploy_connectors
   cancel-in-progress: false
 
-env:
-  GCLOUD_PROJECT_ID: ${{ secrets.GCLOUD_PROJECT_ID }}
-
 jobs:
-  build-and-deploy:
-    runs-on: ubuntu-latest
-
-    if: github.ref == 'refs/heads/main'
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Get short sha
-        id: short_sha
-        run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-
-      - name: "Authenticate with Google Cloud"
-        uses: "google-github-actions/auth@v1"
-        with:
-          credentials_json: "${{ secrets.GCLOUD_SA_KEY }}"
-
-      - name: "Set up Cloud SDK"
-        uses: "google-github-actions/setup-gcloud@v1"
-
-      - name: Install gke-gcloud-auth-plugin
-        run: |
-          gcloud components install gke-gcloud-auth-plugin
-
-      - name: Setup kubectl
-        run: |
-          gcloud container clusters get-credentials dust-kube --region us-central1
-
-      - name: Build the image on Cloud Build
-        run: |
-          chmod +x ./k8s/cloud-build.sh
-          ./k8s/cloud-build.sh connectors ./connectors/Dockerfile ./
-
-      - name: Deploy the image on Kubernetes
-        run: |
-          chmod +x ./k8s/deploy-image.sh
-
-          ./k8s/deploy-image.sh gcr.io/$GCLOUD_PROJECT_ID/connectors-image:${{ steps.short_sha.outputs.short_sha }} connectors-deployment
-          ./k8s/deploy-image.sh gcr.io/$GCLOUD_PROJECT_ID/connectors-image:${{ steps.short_sha.outputs.short_sha }} connectors-worker-deployment
-          ./k8s/deploy-image.sh gcr.io/$GCLOUD_PROJECT_ID/connectors-image:${{ steps.short_sha.outputs.short_sha }} connectors-worker-notion-deployment
-          ./k8s/deploy-image.sh gcr.io/$GCLOUD_PROJECT_ID/connectors-image:${{ steps.short_sha.outputs.short_sha }} connectors-worker-webcrawler-deployment
-          ./k8s/deploy-image.sh gcr.io/$GCLOUD_PROJECT_ID/connectors-image:${{ steps.short_sha.outputs.short_sha }} connectors-worker-google-drive-deployment
-
-      - name: Wait for rollout to complete
-        run: |
-          echo "Waiting for rollout to complete (web)"
-          kubectl rollout status deployment/connectors-deployment --timeout=10m
-          echo "Waiting for rollout to complete (worker)"
-          kubectl rollout status deployment/connectors-worker-deployment --timeout=10m
-          echo "Waiting for rollout to complete (notion worker)"
-          kubectl rollout status deployment/connectors-worker-notion-deployment --timeout=10m
-          echo "Waiting for rollout to complete (webcrawler worker)"
-          kubectl rollout status deployment/connectors-worker-webcrawler-deployment --timeout=10m
-          echo "Waiting for rollout to complete (google_drive worker)"
-          kubectl rollout status deployment/connectors-worker-google-drive-deployment --timeout=10m
+  deploy:
+    uses: ./.github/workflows/reusable-deploy.yml
+    with:
+      check_deployment_blocked: ${{ github.event.inputs.check_deployment_blocked == 'check' }}
+      component: connectors
+      dockerfile_path: ./connectors/Dockerfile
+      regions: ${{ github.event.inputs.regions }}
+      working_dir: ./
+    secrets: inherit

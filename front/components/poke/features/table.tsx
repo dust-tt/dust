@@ -1,10 +1,10 @@
+import { useSendNotification } from "@dust-tt/sparkle";
 import type { WhitelistableFeature, WorkspaceType } from "@dust-tt/types";
 import { useRouter } from "next/router";
-import { useContext } from "react";
 
 import { makeColumnsForFeatureFlags } from "@app/components/poke/features/columns";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import { usePokeFeatureFlags } from "@app/lib/swr/poke";
 
 interface FeatureFlagsDataTableProps {
   owner: WorkspaceType;
@@ -12,11 +12,11 @@ interface FeatureFlagsDataTableProps {
 }
 
 function prepareFeatureFlagsForDisplay(
-  owner: WorkspaceType,
+  workspaceFlags: WhitelistableFeature[],
   whitelistableFeatures: WhitelistableFeature[]
 ) {
   return whitelistableFeatures.map((ff) => {
-    const isEnabledForWorkspace = owner.flags.some((f) => f === ff);
+    const isEnabledForWorkspace = workspaceFlags.some((f) => f === ff);
 
     return {
       name: ff,
@@ -30,7 +30,8 @@ export function FeatureFlagsDataTable({
   whitelistableFeatures,
 }: FeatureFlagsDataTableProps) {
   const router = useRouter();
-  const sendNotification = useContext(SendNotificationsContext);
+  const { featureFlags } = usePokeFeatureFlags({ workspaceId: owner.sId });
+  const sendNotification = useSendNotification();
 
   return (
     <div className="border-material-200 my-4 flex flex-col rounded-lg border p-4">
@@ -41,7 +42,10 @@ export function FeatureFlagsDataTable({
           router.reload,
           sendNotification
         )}
-        data={prepareFeatureFlagsForDisplay(owner, whitelistableFeatures)}
+        data={prepareFeatureFlagsForDisplay(
+          featureFlags,
+          whitelistableFeatures
+        )}
       />
     </div>
   );

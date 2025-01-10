@@ -1,6 +1,5 @@
 import type { Result } from "@dust-tt/types";
 import { Err, getOAuthConnectionAccessToken, Ok } from "@dust-tt/types";
-import { hash as blake3 } from "blake3";
 import { isLeft } from "fp-ts/lib/Either";
 import { createWriteStream } from "fs";
 import { mkdtemp, readdir, rm } from "fs/promises";
@@ -11,9 +10,11 @@ import { tmpdir } from "os";
 import { basename, extname, join, resolve } from "path";
 import type { Readable } from "stream";
 import { pipeline } from "stream/promises";
+import type { ReadEntry } from "tar";
 import { extract } from "tar";
 
 import {
+  isBadCredentials,
   isGithubRequestErrorNotFound,
   isGithubRequestRedirectCountExceededError,
 } from "@connectors/connectors/github/lib/errors";
@@ -28,9 +29,17 @@ import {
   GetDiscussionPayloadSchema,
   GetRepoDiscussionsPayloadSchema,
 } from "@connectors/connectors/github/lib/github_graphql";
+import {
+  getCodeDirInternalId,
+  getCodeFileInternalId,
+} from "@connectors/connectors/github/lib/utils";
 import { apiConfig } from "@connectors/lib/api/config";
-import { ExternalOAuthTokenError } from "@connectors/lib/error";
+import {
+  ExternalOAuthTokenError,
+  ProviderWorkflowError,
+} from "@connectors/lib/error";
 import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
+import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
 
 const API_PAGE_SIZE = 100;
@@ -137,26 +146,34 @@ export async function getReposPage(
 export async function getRepo(
   connectionId: string,
   repoId: number
-): Promise<GithubRepo> {
+): Promise<Result<GithubRepo, ExternalOAuthTokenError>> {
   const octokit = await getOctokit(connectionId);
 
-  const { data: r } = await octokit.request(`GET /repositories/:repo_id`, {
-    repo_id: repoId,
-  });
+  try {
+    const { data: r } = await octokit.request(`GET /repositories/:repo_id`, {
+      repo_id: repoId,
+    });
 
-  return {
-    id: r.id,
-    name: r.name,
-    private: r.private,
-    url: r.html_url,
-    createdAt: r.created_at ? new Date(r.created_at) : null,
-    updatedAt: r.updated_at ? new Date(r.updated_at) : null,
-    description: r.description,
-    owner: {
-      id: r.owner.id,
-      login: r.owner.login,
-    },
-  };
+    return new Ok({
+      id: r.id,
+      name: r.name,
+      private: r.private,
+      url: r.html_url,
+      createdAt: r.created_at ? new Date(r.created_at) : null,
+      updatedAt: r.updated_at ? new Date(r.updated_at) : null,
+      description: r.description,
+      owner: {
+        id: r.owner.id,
+        login: r.owner.login,
+      },
+    });
+  } catch (err) {
+    if (isGithubRequestErrorNotFound(err)) {
+      return new Err(new ExternalOAuthTokenError(err));
+    }
+
+    throw err;
+  }
 }
 
 export async function getRepoIssuesPage(
@@ -165,34 +182,46 @@ export async function getRepoIssuesPage(
   login: string,
   page: number
 ): Promise<GithubIssue[]> {
-  const octokit = await getOctokit(connectionId);
+  try {
+    const octokit = await getOctokit(connectionId);
 
-  const issues = (
-    await octokit.rest.issues.listForRepo({
-      owner: login,
-      repo: repoName,
-      per_page: API_PAGE_SIZE,
-      page: page,
-      state: "all",
-    })
-  ).data;
+    const issues = (
+      await octokit.rest.issues.listForRepo({
+        owner: login,
+        repo: repoName,
+        per_page: API_PAGE_SIZE,
+        page: page,
+        state: "all",
+      })
+    ).data;
 
-  return issues.map((i) => ({
-    id: i.id,
-    number: i.number,
-    title: i.title,
-    url: i.html_url,
-    creator: i.user
-      ? {
-          id: i.user.id,
-          login: i.user.login,
-        }
-      : null,
-    createdAt: new Date(i.created_at),
-    updatedAt: new Date(i.updated_at),
-    body: i.body,
-    isPullRequest: !!i.pull_request,
-  }));
+    return issues.map((i) => ({
+      id: i.id,
+      number: i.number,
+      title: i.title,
+      url: i.html_url,
+      creator: i.user
+        ? {
+            id: i.user.id,
+            login: i.user.login,
+          }
+        : null,
+      createdAt: new Date(i.created_at),
+      updatedAt: new Date(i.updated_at),
+      body: i.body,
+      isPullRequest: !!i.pull_request,
+    }));
+  } catch (err) {
+    if (isBadCredentials(err)) {
+      throw new ProviderWorkflowError(
+        "github",
+        `401 - Transient BadCredentialErrror`,
+        "transient_upstream_activity_error"
+      );
+    }
+
+    throw err;
+  }
 }
 
 export async function getIssue(
@@ -200,11 +229,11 @@ export async function getIssue(
   repoName: string,
   login: string,
   issueNumber: number,
-  loggerArgs: Record<string, string | number>
+  logger: Logger
 ): Promise<GithubIssue | null> {
-  const octokit = await getOctokit(connectionId);
-
   try {
+    const octokit = await getOctokit(connectionId);
+
     const issue = (
       await octokit.rest.issues.get({
         owner: login,
@@ -236,9 +265,17 @@ export async function getIssue(
       isGithubRequestRedirectCountExceededError(err) ||
       isGithubRequestErrorNotFound(err)
     ) {
-      logger.info({ ...loggerArgs, err: err.message }, "Failed to get issue.");
+      logger.info({ err: err.message }, "Failed to get issue.");
 
       return null;
+    }
+
+    if (isBadCredentials(err)) {
+      throw new ProviderWorkflowError(
+        "github",
+        `401 - Transient BadCredentialErrror`,
+        "transient_upstream_activity_error"
+      );
     }
 
     throw err;
@@ -556,36 +593,96 @@ export async function getOctokit(connectionId: string): Promise<Octokit> {
 // Repository processing
 
 const EXTENSION_WHITELIST = [
+  // Programming Languages - General Purpose
   ".js",
   ".ts",
   ".tsx",
   ".jsx",
-  ".rb",
   ".py",
+  ".rb",
   ".rs",
   ".go",
   ".swift",
-  ".css",
-  ".html",
-  ".less",
-  ".sass",
-  ".scss",
-  ".php",
   ".java",
-  ".yaml",
-  ".yml",
-  ".md",
   ".c",
   ".h",
   ".cc",
   ".cpp",
   ".hpp",
+  ".php",
+
+  // .NET Ecosystem
+  ".cs",
+  ".csproj", // XML-based
+  ".sln", // Text-based solution file
+  ".cshtml", // Razor template
+  ".razor", // Razor component
+  ".resx", // XML-based resource
+  ".vb", // Visual Basic
+  ".fs", // F#
+  ".fsproj", // XML-based F# project
+  ".props", // MSBuild properties (XML)
+  ".targets", // MSBuild targets (XML)
+  ".nuspec", // NuGet specification (XML)
+
+  // Web Technologies
+  ".html",
+  ".htm",
+  ".css",
+  ".scss",
+  ".sass",
+  ".less",
+
+  // Data & Configuration
+  ".json",
+  ".yaml",
+  ".yml",
+  ".toml",
+  ".ini",
+  ".env",
+  ".conf",
+  ".config",
+
+  // Build & Dependencies
+  ".gradle",
+  ".lock", // Text-based lock files
+  ".mk", // Makefile
+  ".just", // Justfile
+  ".dockerfile",
+  ".editorconfig",
+
+  // Infrastructure as Code
+  ".tf", // Terraform
+  ".hcl", // HashiCorp Configuration Language
+  ".nix", // Nix expressions
+
+  // Documentation
+  ".md", // Markdown
+  ".mdx", // Markdown with JSX
+  ".rst", // ReStructured Text
+  ".adoc", // AsciiDoc
+  ".tex", // LaTeX
+  ".txt",
+
+  // Shell & Scripts
   ".sh",
   ".sql",
-  ".kt",
-  ".kts",
-  ".gradle",
-  ".xml",
+  ".kt", // Kotlin
+  ".kts", // Kotlin script
+
+  // Version Control
+  ".gitignore",
+  ".dockerignore",
+
+  // Testing
+  ".test.cs",
+  ".spec.cs",
+  ".tests.cs",
+
+  // Templates
+  ".liquid",
+  ".mustache",
+  ".handlebars",
 ];
 
 const SUFFIX_BLACKLIST = [".min.js", ".min.css"];
@@ -640,15 +737,16 @@ export async function processRepository({
   repoLogin,
   repoName,
   repoId,
-  loggerArgs,
+  onEntry,
+  logger,
 }: {
   connectionId: string;
   repoLogin: string;
   repoName: string;
   repoId: number;
-  loggerArgs: Record<string, string | number>;
+  onEntry: (entry: ReadEntry) => void;
+  logger: Logger;
 }) {
-  const localLogger = logger.child(loggerArgs);
   const octokit = await getOctokit(connectionId);
 
   const { data } = await octokit.rest.repos.get({
@@ -657,10 +755,7 @@ export async function processRepository({
   });
   const defaultBranch = data.default_branch;
 
-  localLogger.info(
-    { defaultBranch, size: data.size },
-    "Retrieved repository info"
-  );
+  logger.info({ defaultBranch, size: data.size }, "Retrieved repository info");
 
   // `data.size` is the whole repo size in KB, we use it to filter repos > 10GB download size. There
   // is further filtering by file type + for "extracted size" per file to 1MB.
@@ -705,19 +800,45 @@ export async function processRepository({
   try {
     const tarPath = resolve(tempDir, "repo.tar.gz");
 
-    localLogger.info({ tempDir, tarPath }, "Starting download of tarball");
+    logger.info({ tempDir, tarPath }, "Starting download of tarball");
 
     // Save the tarball to the temp directory.
     await pipeline(tarballStream, createWriteStream(tarPath));
 
     const { size } = await fs.stat(tarPath);
 
-    localLogger.info({ tarSize: size, tarPath }, "Finished tarball download");
+    logger.info({ tarSize: size, tarPath }, "Finished tarball download");
 
     // Extract the tarball.
     await extract({
       file: tarPath,
       cwd: tempDir,
+      // Filter before extraction to avoid extracting files we don't want.
+      filter: (path, stat) => {
+        if (path.endsWith("/")) {
+          return true;
+        }
+
+        const isUnderLimit = stat.size < 1024 * 1024;
+
+        if (!isUnderLimit) {
+          logger.info({ path, size }, "File is over the size limit, skipping.");
+          return false;
+        }
+        const ext = extname(path).toLowerCase();
+
+        const isWithelisted =
+          (EXTENSION_WHITELIST.includes(ext) ||
+            FILENAME_WHITELIST.includes(path)) &&
+          !SUFFIX_BLACKLIST.some((suffix) => path.endsWith(suffix));
+
+        if (!isWithelisted) {
+          return false;
+        }
+
+        return true;
+      },
+      onentry: onEntry,
     });
 
     // Delete the tarball.
@@ -745,37 +866,6 @@ export async function processRepository({
 
     // Iterate over the files in the temp directory.
     for await (const file of getFiles(tempDir)) {
-      const ext = extname(file).toLowerCase();
-
-      const isWithelisted =
-        (EXTENSION_WHITELIST.includes(ext) ||
-          FILENAME_WHITELIST.includes(file)) &&
-        !SUFFIX_BLACKLIST.some((suffix) => file.endsWith(suffix));
-
-      if (!isWithelisted) {
-        continue;
-      }
-
-      try {
-        const { size } = await fs.stat(file);
-
-        const isUnderLimit = size < 1024 * 1024;
-
-        if (!isUnderLimit) {
-          localLogger.info(
-            { file, size },
-            "File is over the size limit, skipping."
-          );
-          continue;
-        }
-      } catch (e) {
-        localLogger.info(
-          { error: e, file },
-          "Caught exception while stating file, skipping."
-        );
-        continue;
-      }
-
       const path = file
         .substring(tempDir.length + 1)
         .split("/")
@@ -783,28 +873,24 @@ export async function processRepository({
       const fileName = basename(file);
 
       const parents = [];
-      for (let i = 0; i < path.length; i++) {
-        const p = `github-code-${repoId}-dir-${path.slice(0, i + 1).join("/")}`;
-        const pathInternalId = `github-code-${repoId}-dir-${blake3(p)
-          .toString("hex")
-          .substring(0, 16)}`;
+      // we order parents bottom to top, so we take paths in the opposite order
+      for (let i = path.length - 1; i >= 0; i--) {
         parents.push({
-          internalId: pathInternalId,
+          internalId: getCodeDirInternalId(
+            repoId,
+            path.slice(0, i + 1).join("/")
+          ),
           dirName: path[i] as string,
           dirPath: path.slice(0, i),
         });
       }
 
-      const documentId = `github-code-${repoId}-file-${blake3(
-        `github-code-${repoId}-file-${path.join("/")}/${fileName}`
-      )
-        .toString("hex")
-        .substring(0, 16)}`;
+      const documentId = getCodeFileInternalId(
+        repoId,
+        `${path.join("/")}/${fileName}`
+      );
 
-      const parentInternalId =
-        parents.length === 0
-          ? null
-          : (parents[parents.length - 1]?.internalId as string);
+      const parentInternalId = parents[0]?.internalId ?? null;
 
       // Files
       files.push({
@@ -827,7 +913,7 @@ export async function processRepository({
         if (p && !seenDirs[p.internalId]) {
           seenDirs[p.internalId] = true;
 
-          const dirParent = parents[i - 1];
+          const dirParent = parents[i + 1];
           const dirParentInternalId = dirParent ? dirParent.internalId : null;
 
           directories.push({
@@ -839,7 +925,7 @@ export async function processRepository({
             )}`,
             internalId: p.internalId,
             parentInternalId: dirParentInternalId,
-            parents: parents.slice(0, i).map((p) => p.internalId),
+            parents: parents.slice(i).map((p) => p.internalId),
           });
         }
       }
@@ -851,7 +937,7 @@ export async function processRepository({
       directories,
     });
   } catch (e) {
-    localLogger.info(
+    logger.info(
       { error: e },
       "Caught exception while processing repository, cleaning up"
     );

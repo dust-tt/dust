@@ -1,18 +1,19 @@
 import type { WithAPIErrorResponse } from "@dust-tt/types";
-import { ActiveRoleSchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { handleMembershipInvitations } from "@app/lib/api/invitation";
-import { withSessionAuthentication } from "@app/lib/api/wrappers";
+import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
+import {
+  getPendingInvitations,
+  updateInvitationStatusAndRole,
+} from "@app/lib/api/invitation";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 
-const PokePostInvitationRequestBodySchema = t.type({
+const PokeDeleteInvitationRequestBodySchema = t.type({
   email: t.string,
-  role: ActiveRoleSchema,
 });
 
 type PokePostInvitationResponseBody = {
@@ -43,21 +44,9 @@ async function handler(
     });
   }
 
-  const subscription = auth.subscription();
-  const plan = auth.plan();
-  if (!subscription || !plan) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "workspace_auth_error",
-        message: "The subscription was not found.",
-      },
-    });
-  }
-
   switch (req.method) {
-    case "POST":
-      const bodyValidation = PokePostInvitationRequestBodySchema.decode(
+    case "DELETE": {
+      const bodyValidation = PokeDeleteInvitationRequestBodySchema.decode(
         req.body
       );
       if (isLeft(bodyValidation)) {
@@ -71,18 +60,7 @@ async function handler(
         });
       }
 
-      if (subscription.paymentFailingSince) {
-        return apiError(req, res, {
-          status_code: 402,
-          api_error: {
-            type: "subscription_payment_failed",
-            message:
-              "The subscription payment has failed, impossible to add new members.",
-          },
-        });
-      }
-
-      // To send the invitations, we need to auth as admin of the workspace
+      const { email } = bodyValidation.right;
 
       // !! this is ok because we're in Poke as dust super user, do not copy paste
       // this mindlessly !!
@@ -90,24 +68,32 @@ async function handler(
         owner.sId
       );
 
-      const invitationRes = await handleMembershipInvitations(
-        workspaceAdminAuth,
-        {
-          owner,
-          user,
-          subscription,
-          invitationRequests: [bodyValidation.right],
-        }
+      const pendingInvitations =
+        await getPendingInvitations(workspaceAdminAuth);
+
+      const invitation = pendingInvitations.find(
+        (inv) => inv.inviteEmail === email
       );
 
-      if (invitationRes.isErr()) {
-        return apiError(req, res, invitationRes.error);
+      if (!invitation) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "invitation_not_found",
+            message: "The invitation was not found.",
+          },
+        });
       }
 
-      const [result] = invitationRes.value;
+      await updateInvitationStatusAndRole(workspaceAdminAuth, {
+        invitation,
+        status: "revoked",
+        role: invitation.initialRole,
+      });
 
-      res.status(200).json(result);
+      res.status(200).json({ success: true, email });
       return;
+    }
 
     default:
       return apiError(req, res, {
@@ -115,7 +101,7 @@ async function handler(
         api_error: {
           type: "method_not_supported_error",
           message:
-            "The method passed is not supported, GET or POST are expected.",
+            "The method passed is not supported, POST or DELETE are expected.",
         },
       });
   }

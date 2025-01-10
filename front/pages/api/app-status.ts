@@ -1,13 +1,21 @@
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getProviderStatusMemoized } from "@app/lib/api/status";
-import { withSessionAuthentication } from "@app/lib/api/wrappers";
+import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
+import {
+  getDustStatusMemoized,
+  getProviderStatusMemoized,
+} from "@app/lib/api/status";
 import { getSession } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 
 export interface GetAppStatusResponseBody {
-  providerStatus: {
+  dustStatus: {
+    description: string;
+    link: string;
+    name: string;
+  } | null;
+  providersStatus: {
     description: string;
     link: string;
     name: string;
@@ -34,9 +42,12 @@ async function handler(
     });
   }
 
-  const providerStatus = await getProviderStatusMemoized();
+  const [providersStatus, dustStatus] = await Promise.all([
+    getProviderStatusMemoized(),
+    getDustStatusMemoized(),
+  ]);
 
-  res.status(200).json({ providerStatus });
+  res.status(200).json({ providersStatus, dustStatus });
 }
 
 export default withSessionAuthentication(handler);

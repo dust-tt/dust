@@ -1,4 +1,9 @@
-import type { AgentConfigurationType } from "@dust-tt/types";
+import type {
+  AgentConfigurationType,
+  LightAgentConfigurationType,
+  LightWorkspaceType,
+} from "@dust-tt/types";
+import _ from "lodash";
 import type { RedisClientType } from "redis";
 import { literal, Op, Sequelize } from "sequelize";
 
@@ -8,14 +13,16 @@ import {
   Conversation,
   Mention,
   Message,
+  UserMessage,
 } from "@app/lib/models/assistant/conversation";
 import { Workspace } from "@app/lib/models/workspace";
+import { getAssistantUsageData } from "@app/lib/workspace_usage";
 import { launchMentionsCountWorkflow } from "@app/temporal/mentions_count_queue/client";
 
-// Ranking of agents is done over a 7 days period.
-const rankingTimeframeSec = 60 * 60 * 24 * 7; // 7 days
+// Ranking of agents is done over a 30 days period.
+const RANKING_USAGE_DAYS = 30;
+const RANKING_TIMEFRAME_SEC = 60 * 60 * 24 * RANKING_USAGE_DAYS;
 
-//
 const MENTION_COUNT_TTL = 60 * 60 * 24 * 7; // 7 days
 
 // Computing agent mention count over a 4h period
@@ -30,9 +37,10 @@ type AgentUsageCount = {
   timePeriodSec: number;
 };
 
-type mentionCount = {
+type MentionCount = {
   agentId: string;
   count: number;
+  conversationCount: number;
   timePeriodSec: number;
 };
 
@@ -60,7 +68,7 @@ export async function getAgentsUsage({
 
   const agentMessageCountKey = _getUsageKey(workspaceId);
 
-  redis = providedRedis ?? (await getRedisClient());
+  redis = providedRedis ?? (await getRedisClient({ origin: "agent_usage" }));
   const agentMessageCountTTL = await redis.ttl(agentMessageCountKey);
 
   // agent mention count doesn't exist or wasn't set to expire
@@ -84,7 +92,7 @@ export async function getAgentsUsage({
     .map(([agentId, count]) => ({
       agentId,
       messageCount: parseInt(count),
-      timePeriodSec: rankingTimeframeSec,
+      timePeriodSec: RANKING_TIMEFRAME_SEC,
     }))
     .sort((a, b) => b.messageCount - a.messageCount)
     .slice(0, limit);
@@ -95,11 +103,12 @@ export async function getAgentUsage(
   {
     workspaceId,
     agentConfiguration,
-    providedRedis,
+    rankingUsageDays = RANKING_USAGE_DAYS,
   }: {
     workspaceId: string;
     agentConfiguration: AgentConfigurationType;
     providedRedis?: RedisClientType;
+    rankingUsageDays?: number;
   }
 ): Promise<AgentUsageCount | null> {
   const owner = auth.workspace();
@@ -110,29 +119,31 @@ export async function getAgentUsage(
     throw new Error("Provided workspace and owner workspace do not match.");
   }
 
-  let redis: RedisClientType | null = null;
-  const { sId: agentConfigurationId } = agentConfiguration;
+  const end = new Date();
+  const start = new Date();
+  start.setDate(end.getDate() - rankingUsageDays);
 
-  const agentMessageCountKey = _getUsageKey(workspaceId);
-
-  redis = providedRedis ?? (await getRedisClient());
-
-  const agentUsage = await redis.hGet(
-    agentMessageCountKey,
-    agentConfigurationId
+  const agentUsage = await getAssistantUsageData(
+    start,
+    end,
+    owner,
+    agentConfiguration
   );
+
   return agentUsage
     ? {
-        agentId: agentConfigurationId,
-        messageCount: parseInt(agentUsage, 10),
-        timePeriodSec: rankingTimeframeSec,
+        agentId: agentConfiguration.sId,
+        messageCount: agentUsage,
+        timePeriodSec: RANKING_TIMEFRAME_SEC,
       }
     : null;
 }
 
 export async function agentMentionsCount(
-  workspaceId: number
-): Promise<mentionCount[]> {
+  workspaceId: number,
+  agentConfiguration?: LightAgentConfigurationType,
+  rankingUsageDays: number = RANKING_USAGE_DAYS
+): Promise<MentionCount[]> {
   // We retrieve mentions from conversations in order to optimize the query
   // Since we need to filter out by workspace id, retrieving mentions first
   // would lead to retrieve every single messages
@@ -146,6 +157,10 @@ export async function agentMentionsCount(
         Sequelize.fn("COUNT", Sequelize.literal('"messages->mentions"."id"')),
         "count",
       ],
+      [
+        Sequelize.fn("COUNT", Sequelize.literal("DISTINCT conversation.id")),
+        "conversationCount",
+      ],
     ],
     where: {
       workspaceId,
@@ -155,17 +170,20 @@ export async function agentMentionsCount(
         model: Message,
         required: true,
         attributes: [],
-        where: {
-          createdAt: {
-            [Op.gt]: literal("NOW() - INTERVAL '30 days'"),
-          },
-        },
         include: [
           {
             model: Mention,
             as: "mentions",
             required: true,
             attributes: [],
+            where: {
+              ...(agentConfiguration
+                ? { agentConfigurationId: agentConfiguration.sId }
+                : {}),
+              createdAt: {
+                [Op.gt]: literal(`NOW() - INTERVAL '${rankingUsageDays} days'`),
+              },
+            },
           },
         ],
       },
@@ -174,30 +192,52 @@ export async function agentMentionsCount(
     group: ['"messages->mentions"."agentConfigurationId"'],
     raw: true,
   });
+
   return mentions.map((mention) => {
     const castMention = mention as unknown as {
       agentConfigurationId: string;
       count: number;
+      conversationCount: number;
     };
     return {
       agentId: castMention.agentConfigurationId,
       count: castMention.count,
-      timePeriodSec: rankingTimeframeSec,
+      conversationCount: castMention.conversationCount,
+      timePeriodSec: rankingUsageDays * 24 * 60 * 60,
     };
   });
 }
 
 export async function storeCountsInRedis(
   workspaceId: string,
-  agentMessageCounts: mentionCount[],
+  agentMessageCounts: MentionCount[],
   redis: RedisClientType
 ) {
-  const transaction = redis.multi();
   const agentMessageCountKey = _getUsageKey(workspaceId);
 
-  agentMessageCounts.forEach(({ agentId, count }) => {
+  // get agent keys that are not in the agentMessageCounts
+  const agentKeys = await redis.hKeys(agentMessageCountKey);
+
+  // fill in the missing agent ids, avoiding n^2 complexity
+  const amcByAgentId = _.keyBy(agentMessageCounts, "agentId");
+
+  for (const agentId of agentKeys) {
+    if (!amcByAgentId[agentId]) {
+      amcByAgentId[agentId] = {
+        agentId,
+        count: 0,
+        conversationCount: 0,
+        timePeriodSec: RANKING_TIMEFRAME_SEC,
+      };
+    }
+  }
+
+  const transaction = redis.multi();
+
+  Object.values(amcByAgentId).forEach(({ agentId, count }) => {
     transaction.hSet(agentMessageCountKey, agentId, count);
   });
+
   transaction.expire(agentMessageCountKey, MENTION_COUNT_TTL);
 
   const results = await transaction.exec();
@@ -215,7 +255,7 @@ export async function signalAgentUsage({
 }) {
   let redis: RedisClientType | null = null;
 
-  redis = await getRedisClient();
+  redis = await getRedisClient({ origin: "agent_usage" });
   const agentMessageCountKey = _getUsageKey(workspaceId);
   const agentMessageCountTTL = await redis.ttl(agentMessageCountKey);
 
@@ -223,4 +263,73 @@ export async function signalAgentUsage({
     // We only want to increment if the counts have already been computed
     await redis.hIncrBy(agentMessageCountKey, agentConfigurationId, 1);
   }
+}
+
+type UsersUsageCount = {
+  userId: number;
+  messageCount: number;
+  timePeriodSec: number;
+};
+
+export async function getAgentUsers(
+  owner: LightWorkspaceType,
+  agentConfiguration?: LightAgentConfigurationType,
+  rankingUsageDays: number = RANKING_USAGE_DAYS
+): Promise<UsersUsageCount[]> {
+  const mentions = await Conversation.findAll({
+    attributes: [
+      [Sequelize.literal('"messages->userMessage"."userId"'), "userId"],
+      [
+        Sequelize.fn("COUNT", Sequelize.literal('"messages->mentions"."id"')),
+        "count",
+      ],
+    ],
+    where: {
+      workspaceId: owner.id,
+    },
+    include: [
+      {
+        model: Message,
+        required: true,
+        attributes: [],
+        include: [
+          {
+            model: Mention,
+            as: "mentions",
+            required: true,
+            attributes: [],
+            where: {
+              ...(agentConfiguration
+                ? { agentConfigurationId: agentConfiguration.sId }
+                : {}),
+              createdAt: {
+                [Op.gt]: literal(`NOW() - INTERVAL '${rankingUsageDays} days'`),
+              },
+            },
+          },
+          {
+            model: UserMessage,
+            as: "userMessage",
+            required: true,
+            attributes: [],
+          },
+        ],
+      },
+    ],
+    order: [["count", "DESC"]],
+    group: ['"messages->userMessage"."userId"'],
+    raw: true,
+  });
+
+  return mentions.map((mention) => {
+    const castMention = mention as unknown as {
+      userId: number;
+      count: number;
+    };
+    return {
+      userId: castMention.userId,
+      messageCount: castMention.count,
+      timePeriodSec: rankingUsageDays * 24 * 60 * 60,
+    };
+  });
 }

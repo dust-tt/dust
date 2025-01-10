@@ -5,7 +5,6 @@ import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import React, { useEffect } from "react";
 
-import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
 
@@ -39,7 +38,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     props: {
       owner,
       subscription,
-      gaTrackingId: config.getGaTrackingId(),
       user,
     },
   };

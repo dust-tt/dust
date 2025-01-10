@@ -1,20 +1,27 @@
 import type {
+  UpsertDatabaseTableRequestType,
+  UpsertTableFromCsvRequestType,
+} from "@dust-tt/client";
+import { DustAPI } from "@dust-tt/client";
+import type {
   CoreAPIDataSourceDocumentSection,
+  CoreAPIDocument,
+  CoreAPIFolder,
   CoreAPITable,
   PostDataSourceDocumentRequestBody,
 } from "@dust-tt/types";
 import {
-  DustAPI,
   isValidDate,
+  MAX_CHUNK_SIZE,
   safeSubstring,
   sectionFullText,
 } from "@dust-tt/types";
-import { MAX_CHUNK_SIZE } from "@dust-tt/types";
 import type { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 import axios from "axios";
 import tracer from "dd-trace";
 import http from "http";
 import https from "https";
+import type { Branded, IntBrand } from "io-ts";
 import { fromMarkdown } from "mdast-util-from-markdown";
 import { gfmFromMarkdown, gfmToMarkdown } from "mdast-util-gfm";
 import { toMarkdown } from "mdast-util-to-markdown";
@@ -22,13 +29,12 @@ import { gfm } from "micromark-extension-gfm";
 
 import { apiConfig } from "@connectors/lib/api/config";
 import { withRetries } from "@connectors/lib/dust_front_api_helpers";
-import {
-  DustConnectorWorkflowError,
-  InvalidRowsRequestError,
-} from "@connectors/lib/error";
+import { DustConnectorWorkflowError, TablesError } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
+
+const MAX_CSV_SIZE = 50 * 1024 * 1024;
 
 const axiosWithTimeout = axios.create({
   timeout: 60000,
@@ -38,11 +44,6 @@ const axiosWithTimeout = axios.create({
   httpsAgent: new https.Agent({ keepAlive: false }),
 });
 
-const { DUST_FRONT_API } = process.env;
-if (!DUST_FRONT_API) {
-  throw new Error("FRONT_API not set");
-}
-
 // We limit the document size we support. Beyond a certain size, upsert is simply too slow (>300s)
 // and large files are generally less useful anyway.
 export const MAX_DOCUMENT_TXT_LEN = 750000;
@@ -50,14 +51,13 @@ export const MAX_DOCUMENT_TXT_LEN = 750000;
 export const MAX_SMALL_DOCUMENT_TXT_LEN = 500000;
 // For some data sources we allow large documents (5mb) to be processed (behind flag).
 export const MAX_LARGE_DOCUMENT_TXT_LEN = 5000000;
-
 export const MAX_FILE_SIZE_TO_DOWNLOAD = 128 * 1024 * 1024;
 
 type UpsertContext = {
   sync_type: "batch" | "incremental";
 };
 
-type UpsertToDataSourceParams = {
+export type UpsertDataSourceDocumentParams = {
   dataSourceConfig: DataSourceConfig;
   documentId: string;
   documentContent: CoreAPIDataSourceDocumentSection;
@@ -65,14 +65,33 @@ type UpsertToDataSourceParams = {
   timestampMs?: number;
   tags?: string[];
   parents: string[];
+  parentId: string | null;
   loggerArgs?: Record<string, string | number>;
   upsertContext: UpsertContext;
+  title: string;
+  mimeType: string;
   async: boolean;
 };
 
-export const upsertToDatasource = withRetries(_upsertToDatasource);
+export function getDustAPI(dataSourceConfig: DataSourceConfig) {
+  const config = apiConfig.getDustAPIConfig();
 
-async function _upsertToDatasource({
+  return new DustAPI(
+    config,
+    {
+      apiKey: dataSourceConfig.workspaceAPIKey,
+      workspaceId: dataSourceConfig.workspaceId,
+    },
+    logger,
+    config.nodeEnv === "development" ? "http://localhost:3000" : null
+  );
+}
+
+export const upsertDataSourceDocument = withRetries(_upsertDataSourceDocument, {
+  retries: 3,
+});
+
+async function _upsertDataSourceDocument({
   dataSourceConfig,
   documentId,
   documentContent,
@@ -82,8 +101,11 @@ async function _upsertToDatasource({
   parents,
   loggerArgs = {},
   upsertContext,
+  title,
+  mimeType,
   async,
-}: UpsertToDataSourceParams) {
+  parentId,
+}: UpsertDataSourceDocumentParams) {
   return tracer.trace(
     `connectors`,
     {
@@ -96,6 +118,10 @@ async function _upsertToDatasource({
         span?.setTag(key, loggerArgs[key]);
       });
 
+      const endpoint =
+        `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
+        `/data_sources/${dataSourceConfig.dataSourceId}/documents/${documentId}`;
+
       const localLogger = logger.child({
         ...loggerArgs,
         documentId,
@@ -103,6 +129,7 @@ async function _upsertToDatasource({
         documentLength: sectionFullText(documentContent).length,
         workspaceId: dataSourceConfig.workspaceId,
         dataSourceId: dataSourceConfig.dataSourceId,
+        endpoint,
         parents,
       });
       const statsDTags = [
@@ -119,15 +146,19 @@ async function _upsertToDatasource({
 
       const now = new Date();
 
-      const endpoint =
-        `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}` +
-        `/data_sources/${dataSourceConfig.dataSourceId}/documents/${documentId}`;
+      const timestamp = timestampMs
+        ? (Math.floor(timestampMs) as Branded<number, IntBrand>)
+        : null;
+
       const dustRequestPayload: PostDataSourceDocumentRequestBody = {
         text: null,
         section: documentContent,
         source_url: documentUrl,
-        timestamp: timestampMs,
-        tags: tags?.map((tag) => tag.substring(0, 512)),
+        timestamp,
+        title,
+        mime_type: mimeType,
+        tags: tags?.map((tag) => safeSubstring(tag, 0, 512)),
+        parent_id: parentId,
         parents,
         light_document_output: true,
         upsert_context: upsertContext,
@@ -210,7 +241,42 @@ async function _upsertToDatasource({
   );
 }
 
-export async function deleteFromDataSource(
+export async function getDataSourceDocument({
+  dataSourceConfig,
+  documentId,
+}: {
+  dataSourceConfig: DataSourceConfig;
+  documentId: string;
+}): Promise<CoreAPIDocument | undefined> {
+  const localLogger = logger.child({
+    documentId,
+  });
+
+  const endpoint =
+    `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `/data_sources/${dataSourceConfig.dataSourceId}/documents?document_ids=${documentId}`;
+  const dustRequestConfig: AxiosRequestConfig = {
+    headers: {
+      Authorization: `Bearer ${dataSourceConfig.workspaceAPIKey}`,
+    },
+  };
+
+  let dustRequestResult: AxiosResponse;
+  try {
+    dustRequestResult = await axiosWithTimeout.get(endpoint, dustRequestConfig);
+  } catch (e) {
+    localLogger.error({ error: e }, "Error getting document from Dust.");
+    throw e;
+  }
+  if (dustRequestResult.data.documents.length === 0) {
+    localLogger.info("Document doesn't exist on Dust. Ignoring.");
+    return;
+  }
+
+  return dustRequestResult.data.documents[0];
+}
+
+export async function deleteDataSourceDocument(
   dataSourceConfig: DataSourceConfig,
   documentId: string,
   loggerArgs: Record<string, string | number> = {}
@@ -218,7 +284,7 @@ export async function deleteFromDataSource(
   const localLogger = logger.child({ ...loggerArgs, documentId });
 
   const endpoint =
-    `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
     `/data_sources/${dataSourceConfig.dataSourceId}/documents/${documentId}`;
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
@@ -250,17 +316,19 @@ export async function deleteFromDataSource(
   }
 }
 
-export const updateDocumentParentsField = withRetries(
-  _updateDocumentParentsField
+export const updateDataSourceDocumentParents = withRetries(
+  _updateDataSourceDocumentParents,
+  { retries: 3 }
 );
 
-async function _updateDocumentParentsField({
+async function _updateDataSourceDocumentParents({
   documentId,
   ...params
 }: {
   dataSourceConfig: DataSourceConfig;
   documentId: string;
   parents: string[];
+  parentId: string | null;
   loggerArgs?: Record<string, string | number>;
 }) {
   return _updateDocumentOrTableParentsField({
@@ -270,15 +338,19 @@ async function _updateDocumentParentsField({
   });
 }
 
-export const updateTableParentsField = withRetries(_updateTableParentsField);
+export const updateDataSourceTableParents = withRetries(
+  _updateDataSourceTableParents,
+  { retries: 3 }
+);
 
-async function _updateTableParentsField({
+async function _updateDataSourceTableParents({
   tableId,
   ...params
 }: {
   dataSourceConfig: DataSourceConfig;
   tableId: string;
   parents: string[];
+  parentId: string | null;
   loggerArgs?: Record<string, string | number>;
 }) {
   return _updateDocumentOrTableParentsField({
@@ -292,12 +364,14 @@ async function _updateDocumentOrTableParentsField({
   dataSourceConfig,
   id,
   parents,
+  parentId,
   loggerArgs = {},
   tableOrDocument,
 }: {
   dataSourceConfig: DataSourceConfig;
   id: string;
   parents: string[];
+  parentId: string | null;
   loggerArgs?: Record<string, string | number>;
   tableOrDocument: "document" | "table";
 }) {
@@ -306,7 +380,7 @@ async function _updateDocumentOrTableParentsField({
       ? logger.child({ ...loggerArgs, documentId: id })
       : logger.child({ ...loggerArgs, tableId: id });
   const endpoint =
-    `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
     `/data_sources/${dataSourceConfig.dataSourceId}/${tableOrDocument}s/${id}/parents`;
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
@@ -320,6 +394,7 @@ async function _updateDocumentOrTableParentsField({
       endpoint,
       {
         parents: parents,
+        parent_id: parentId,
       },
       dustRequestConfig
     );
@@ -401,16 +476,7 @@ export async function renderPrefixSection({
 }
 
 async function tokenize(text: string, ds: DataSourceConfig) {
-  const dustAPI = new DustAPI(
-    apiConfig.getDustAPIConfig(),
-    {
-      apiKey: ds.workspaceAPIKey,
-      workspaceId: ds.workspaceId,
-    },
-    logger,
-    { useLocalInDev: true }
-  );
-  const tokensRes = await dustAPI.tokenize(text, ds.dataSourceId);
+  const tokensRes = await getDustAPI(ds).tokenize(text, ds.dataSourceId);
   if (tokensRes.isErr()) {
     logger.error(
       { error: tokensRes.error },
@@ -512,7 +578,7 @@ export async function renderDocumentTitleAndContent({
     ? safeSubstring(lastEditor, 0, MAX_AUTHOR_CHAR_LENGTH)
     : undefined;
   if (title && title.trim()) {
-    title = `$title: ${title}\n`;
+    title = `$title: ${safeSubstring(title, 0)}\n`;
   } else {
     title = null;
   }
@@ -525,13 +591,13 @@ export async function renderDocumentTitleAndContent({
     metaPrefix += `$updatedAt: ${updatedAt.toISOString()}\n`;
   }
   if (author && lastEditor && author === lastEditor) {
-    metaPrefix += `$author: ${author}\n`;
+    metaPrefix += `$author: ${safeSubstring(author, 0)}\n`;
   } else {
     if (author) {
-      metaPrefix += `$author: ${author}\n`;
+      metaPrefix += `$author: ${safeSubstring(author, 0)}\n`;
     }
     if (lastEditor) {
-      metaPrefix += `$lastEditor: ${lastEditor}\n`;
+      metaPrefix += `$lastEditor: ${safeSubstring(lastEditor, 0)}\n`;
     }
   }
   if (metaPrefix) {
@@ -554,7 +620,158 @@ export function sectionLength(
   );
 }
 
-export async function upsertTableFromCsv({
+export async function upsertDataSourceRemoteTable({
+  dataSourceConfig,
+  tableId,
+  tableName,
+  tableDescription,
+  remoteDatabaseTableId,
+  remoteDatabaseSecretId,
+  loggerArgs,
+  parents,
+  parentId,
+  title,
+  mimeType,
+}: {
+  dataSourceConfig: DataSourceConfig;
+  tableId: string;
+  tableName: string;
+  tableDescription: string;
+  remoteDatabaseTableId: string | null;
+  remoteDatabaseSecretId: string | null;
+  loggerArgs?: Record<string, string | number>;
+  parents: string[];
+  parentId: string | null;
+  title: string;
+  mimeType: string;
+}) {
+  const localLogger = logger.child({ ...loggerArgs, tableId, tableName });
+  const statsDTags = [
+    `data_source_id:${dataSourceConfig.dataSourceId}`,
+    `workspace_id:${dataSourceConfig.workspaceId}`,
+  ];
+
+  localLogger.info("Attempting to upsert table to Dust.");
+  statsDClient.increment(
+    "data_source_table_upserts_attempt.count",
+    1,
+    statsDTags
+  );
+
+  const now = new Date();
+
+  const endpoint =
+    `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `/data_sources/${dataSourceConfig.dataSourceId}/tables`;
+  const dustRequestPayload: UpsertDatabaseTableRequestType = {
+    name: tableName,
+    parents,
+    parent_id: parentId,
+    description: tableDescription,
+    table_id: tableId,
+    remote_database_table_id: remoteDatabaseTableId,
+    remote_database_secret_id: remoteDatabaseSecretId,
+    title,
+    mime_type: mimeType,
+  };
+  const dustRequestConfig: AxiosRequestConfig = {
+    headers: {
+      Authorization: `Bearer ${dataSourceConfig.workspaceAPIKey}`,
+    },
+    validateStatus: null,
+  };
+
+  let dustRequestResult: AxiosResponse;
+  try {
+    dustRequestResult = await axiosWithTimeout.post(
+      endpoint,
+      dustRequestPayload,
+      dustRequestConfig
+    );
+  } catch (e) {
+    const elapsed = new Date().getTime() - now.getTime();
+    statsDClient.increment(
+      "data_source_table_upserts_error.count",
+      1,
+      statsDTags
+    );
+    statsDClient.distribution(
+      "data_source_table_upserts_error.duration.distribution",
+      elapsed,
+      statsDTags
+    );
+    if (axios.isAxiosError(e)) {
+      const sanitizedError = {
+        ...e,
+        config: { ...e.config, data: undefined },
+      };
+      localLogger.error(
+        {
+          error: sanitizedError,
+          payload: {
+            ...dustRequestPayload,
+          },
+        },
+        "Axios error upserting table to Dust."
+      );
+    } else if (e instanceof Error) {
+      localLogger.error(
+        {
+          error: e.message,
+          payload: {
+            ...dustRequestPayload,
+          },
+        },
+        "Error upserting table to Dust."
+      );
+    } else {
+      localLogger.error("Unknown error upserting table to Dust.");
+    }
+
+    throw new Error("Error upserting table to Dust.");
+  }
+
+  const elapsed = new Date().getTime() - now.getTime();
+
+  if (dustRequestResult.status >= 200 && dustRequestResult.status < 300) {
+    statsDClient.increment(
+      "data_source_table_upserts_success.count",
+      1,
+      statsDTags
+    );
+    statsDClient.distribution(
+      "data_source_table_upserts_success.duration.distribution",
+      elapsed,
+      statsDTags
+    );
+    localLogger.info("Successfully uploaded table to Dust.");
+  } else {
+    statsDClient.increment(
+      "data_source_table_upserts_error.count",
+      1,
+      statsDTags
+    );
+    statsDClient.distribution(
+      "data_source_table_upserts_error.duration.distribution",
+      elapsed,
+      statsDTags
+    );
+    localLogger.error(
+      {
+        status: dustRequestResult.status,
+        elapsed,
+      },
+      "Error upserting table to Dust."
+    );
+    throw new Error(
+      `Error uploading to dust, got ${
+        dustRequestResult.status
+      }: ${JSON.stringify(dustRequestResult.data, null, 2)}`
+    );
+  }
+}
+
+export async function upsertDataSourceTableFromCsv({
   dataSourceConfig,
   tableId,
   tableName,
@@ -563,6 +780,10 @@ export async function upsertTableFromCsv({
   loggerArgs,
   truncate,
   parents,
+  parentId,
+  useAppForHeaderDetection,
+  title,
+  mimeType,
 }: {
   dataSourceConfig: DataSourceConfig;
   tableId: string;
@@ -572,6 +793,10 @@ export async function upsertTableFromCsv({
   loggerArgs?: Record<string, string | number>;
   truncate: boolean;
   parents: string[];
+  parentId: string | null;
+  useAppForHeaderDetection?: boolean;
+  title: string;
+  mimeType: string;
 }) {
   const localLogger = logger.child({ ...loggerArgs, tableId, tableName });
   const statsDTags = [
@@ -588,17 +813,30 @@ export async function upsertTableFromCsv({
 
   const now = new Date();
 
+  if (new Blob([tableCsv]).size > MAX_CSV_SIZE) {
+    throw new TablesError(
+      "file_too_large",
+      "The file is too large to be processed."
+    );
+  }
+
   const endpoint =
-    `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
     `/data_sources/${dataSourceConfig.dataSourceId}/tables/csv`;
-  const dustRequestPayload = {
+  const dustRequestPayload: UpsertTableFromCsvRequestType = {
     name: tableName,
+    parentId,
     parents,
     description: tableDescription,
     csv: tableCsv,
     tableId,
     truncate,
     async: true,
+    useAppForHeaderDetection,
+    title,
+    mimeType,
+    timestamp: null,
+    tags: null,
   };
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
@@ -636,7 +874,7 @@ export async function upsertTableFromCsv({
           error: sanitizedError,
           payload: {
             ...dustRequestPayload,
-            csv: dustRequestPayload.csv.substring(0, 100),
+            csv: tableCsv.substring(0, 100),
           },
         },
         "Axios error uploading table to Dust."
@@ -647,7 +885,7 @@ export async function upsertTableFromCsv({
           error: e.message,
           payload: {
             ...dustRequestPayload,
-            csv: dustRequestPayload.csv.substring(0, 100),
+            csv: tableCsv.substring(0, 100),
           },
         },
         "Error uploading table to Dust."
@@ -695,7 +933,17 @@ export async function upsertTableFromCsv({
       dustRequestResult.status === 400 &&
       dustRequestResult.data.error?.type === "invalid_rows_request_error"
     ) {
-      throw new InvalidRowsRequestError(dustRequestResult.data.error.message);
+      throw new TablesError(
+        "invalid_headers",
+        dustRequestResult.data.error.message
+      );
+    }
+    if (dustRequestResult.status === 413) {
+      throw new TablesError(
+        "file_too_large",
+        dustRequestResult.data.error?.message ||
+          "File size exceeds the maximum limit"
+      );
     }
     throw new Error(
       `Error uploading to dust, got ${
@@ -705,7 +953,7 @@ export async function upsertTableFromCsv({
   }
 }
 
-export async function deleteTableRow({
+export async function deleteDataSourceTableRow({
   dataSourceConfig,
   tableId,
   rowId,
@@ -736,7 +984,7 @@ export async function deleteTableRow({
   const now = new Date();
 
   const endpoint =
-    `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
     `/data_sources/${dataSourceConfig.dataSourceId}/tables/${tableId}/rows/${rowId}`;
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
@@ -804,7 +1052,11 @@ export async function deleteTableRow({
   }
 }
 
-export async function getTable({
+export const getDataSourceTable = withRetries(_getDataSourceTable, {
+  retries: 3,
+});
+
+export async function _getDataSourceTable({
   dataSourceConfig,
   tableId,
 }: {
@@ -816,7 +1068,7 @@ export async function getTable({
   });
 
   const endpoint =
-    `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
     `/data_sources/${dataSourceConfig.dataSourceId}/tables/${tableId}`;
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
@@ -840,7 +1092,7 @@ export async function getTable({
   return dustRequestResult.data.table;
 }
 
-export async function deleteTable({
+export async function deleteDataSourceTable({
   dataSourceConfig,
   tableId,
   loggerArgs,
@@ -868,7 +1120,7 @@ export async function deleteTable({
   const now = new Date();
 
   const endpoint =
-    `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
     `/data_sources/${dataSourceConfig.dataSourceId}/tables/${tableId}`;
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
@@ -933,5 +1185,101 @@ export async function deleteTable({
       "Error deleting table from Dust."
     );
     throw new Error(`Error deleting from dust: ${dustRequestResult}`);
+  }
+}
+
+export const getDataSourceFolder = withRetries(_getDataSourceFolder, {
+  retries: 3,
+});
+
+export async function _getDataSourceFolder({
+  dataSourceConfig,
+  folderId,
+}: {
+  dataSourceConfig: DataSourceConfig;
+  folderId: string;
+}): Promise<CoreAPIFolder | undefined> {
+  const localLogger = logger.child({
+    folderId,
+  });
+
+  const endpoint =
+    `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `/data_sources/${dataSourceConfig.dataSourceId}/folders/${folderId}`;
+  const dustRequestConfig: AxiosRequestConfig = {
+    headers: {
+      Authorization: `Bearer ${dataSourceConfig.workspaceAPIKey}`,
+    },
+  };
+
+  let dustRequestResult: AxiosResponse;
+  try {
+    dustRequestResult = await axiosWithTimeout.get(endpoint, dustRequestConfig);
+  } catch (e) {
+    const axiosError = e as AxiosError;
+    if (axiosError?.response?.status === 404) {
+      localLogger.info("Folder doesn't exist on Dust. Ignoring.");
+      return;
+    }
+    localLogger.error({ error: e }, "Error getting folder from Dust.");
+    throw e;
+  }
+
+  return dustRequestResult.data.folder;
+}
+
+export const upsertDataSourceFolder = withRetries(_upsertDataSourceFolder, {
+  retries: 3,
+});
+
+export async function _upsertDataSourceFolder({
+  dataSourceConfig,
+  folderId,
+  timestampMs,
+  parents,
+  parentId,
+  title,
+  mimeType,
+}: {
+  dataSourceConfig: DataSourceConfig;
+  folderId: string;
+  timestampMs?: number;
+  parents: string[];
+  parentId: string | null;
+  title: string;
+  mimeType: string;
+}) {
+  const now = new Date();
+
+  const r = await getDustAPI(dataSourceConfig).upsertFolder({
+    dataSourceId: dataSourceConfig.dataSourceId,
+    folderId,
+    timestamp: timestampMs ? timestampMs : now.getTime(),
+    title,
+    parentId,
+    parents,
+    mimeType,
+  });
+
+  if (r.isErr()) {
+    throw r.error;
+  }
+}
+
+export async function deleteDataSourceFolder({
+  dataSourceConfig,
+  folderId,
+}: {
+  dataSourceConfig: DataSourceConfig;
+  folderId: string;
+  loggerArgs?: Record<string, string | number>;
+}) {
+  const r = await getDustAPI(dataSourceConfig).deleteFolder({
+    dataSourceId: dataSourceConfig.dataSourceId,
+    folderId,
+  });
+
+  if (r.isErr()) {
+    throw r.error;
   }
 }

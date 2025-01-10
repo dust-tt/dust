@@ -8,20 +8,17 @@ import {
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 
-import config from "@app/lib/api/config";
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
 
 export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   requireUserPrivilege: "none",
 })<{
   domain: string | null;
-  gaTrackingId: string;
   reason: string | null;
 }>(async (context) => {
   return {
     props: {
       domain: (context.query.domain as string) ?? null,
-      gaTrackingId: config.getGaTrackingId(),
       reason: (context.query.reason as string) ?? null,
     },
   };
@@ -67,6 +64,20 @@ function getErrorMessage(domain: string | null, reason: string | null) {
         </>
       );
 
+    case "blacklisted_domain":
+      // Deliberately shady message, to avoid frauders to know they are
+      // blacklisted and try another domain
+      return (
+        <>
+          {headerNode}
+          <p className={defaultErrorMessageClassName}>
+            Unfortunately, we cannot provide access to Dust at this time.
+            <br />
+            Have a nice day.
+          </p>
+        </>
+      );
+
     case "email_not_verified":
       return (
         <>
@@ -91,7 +102,7 @@ function getErrorMessage(domain: string | null, reason: string | null) {
           </p>
 
           <Button
-            variant="tertiary"
+            variant="outline"
             size="sm"
             label="Sign in"
             icon={LoginIcon}

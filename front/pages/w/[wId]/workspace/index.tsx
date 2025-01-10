@@ -1,4 +1,4 @@
-import { Button, Input, Page, PlanetIcon } from "@dust-tt/sparkle";
+import { Button, CompanyIcon, Input, Page } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
@@ -9,13 +9,12 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { ActivityReport } from "@app/components/workspace/ActivityReport";
 import { QuickInsights } from "@app/components/workspace/Analytics";
 import { ProviderManagementModal } from "@app/components/workspace/ProviderManagementModal";
-import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { useWorkspaceSubscriptions } from "@app/lib/swr/workspaces";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
-  gaTrackingId: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
@@ -29,7 +28,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     props: {
       owner,
       subscription,
-      gaTrackingId: config.getGaTrackingId(),
     },
   };
 });
@@ -37,7 +35,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 export default function WorkspaceAdmin({
   owner,
   subscription,
-  gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [disable, setDisabled] = useState(true);
   const [updating, setUpdating] = useState(false);
@@ -46,7 +43,10 @@ export default function WorkspaceAdmin({
   const [workspaceNameError, setWorkspaceNameError] = useState<string>("");
 
   const [isDownloadingData, setIsDownloadingData] = useState(false);
-  const [showProviderModal, setShowProviderModal] = useState(false);
+
+  const { subscriptions } = useWorkspaceSubscriptions({
+    workspaceId: owner.sId,
+  });
 
   const formValidation = useCallback(() => {
     if (workspaceName === owner.name) {
@@ -157,42 +157,50 @@ export default function WorkspaceAdmin({
 
   const monthOptions: string[] = [];
 
-  // This is not perfect as workspaces who were on multiple paid plans will have the list of months only for the current plan.
-  // We're living with it until it's a problem.
-  if (subscription.startDate) {
-    const startDate = new Date(subscription.startDate);
-    const startDateYear = startDate.getFullYear();
-    const startDateMonth = startDate.getMonth();
+  if (subscriptions.length > 0) {
+    const oldestStartDate = subscriptions.reduce(
+      (oldest, current) => {
+        if (!current.startDate) {
+          return oldest;
+        }
+        if (!oldest) {
+          return new Date(current.startDate);
+        }
+        return new Date(current.startDate) < oldest
+          ? new Date(current.startDate)
+          : oldest;
+      },
+      null as Date | null
+    );
 
-    const currentYear = new Date().getFullYear();
-    const currentMonth = new Date().getMonth();
+    if (oldestStartDate) {
+      const startDateYear = oldestStartDate.getFullYear();
+      const startDateMonth = oldestStartDate.getMonth();
 
-    for (let year = startDateYear; year <= currentYear; year++) {
-      const startMonth = year === startDateYear ? startDateMonth : 0;
-      const endMonth = year === currentYear ? currentMonth : 11;
-      for (let month = endMonth; month >= startMonth; month--) {
-        monthOptions.push(`${year}-${String(month + 1).padStart(2, "0")}`);
+      const currentYear = new Date().getFullYear();
+      const currentMonth = new Date().getMonth();
+
+      for (let year = currentYear; year >= startDateYear; year--) {
+        const startMonth = year === startDateYear ? startDateMonth : 0;
+        const endMonth = year === currentYear ? currentMonth : 11;
+        for (let month = endMonth; month >= startMonth; month--) {
+          monthOptions.push(`${year}-${String(month + 1).padStart(2, "0")}`);
+        }
       }
     }
   }
 
   return (
     <>
-      <ProviderManagementModal
-        owner={owner}
-        showProviderModal={showProviderModal}
-        onClose={() => setShowProviderModal(false)}
-      />
       <AppLayout
         subscription={subscription}
         owner={owner}
-        gaTrackingId={gaTrackingId}
         subNavigation={subNavigationAdmin({ owner, current: "workspace" })}
       >
         <Page.Vertical align="stretch" gap="xl">
           <Page.Header
             title="Workspace"
-            icon={PlanetIcon}
+            icon={CompanyIcon}
             description="Manage your workspace"
           />
           <Page.Vertical align="stretch" gap="md">
@@ -227,9 +235,9 @@ export default function WorkspaceAdmin({
                   name="name"
                   placeholder="Workspace name"
                   value={workspaceName}
-                  onChange={(x) => setWorkspaceName(x)}
-                  error={workspaceNameError}
-                  showErrorLabel={true}
+                  onChange={(e) => setWorkspaceName(e.target.value)}
+                  message={workspaceNameError}
+                  messageStatus="error"
                 />
                 {!disable && (
                   <Button
@@ -242,12 +250,7 @@ export default function WorkspaceAdmin({
                 )}
               </div>
               <div>
-                <Button
-                  variant="primary"
-                  onClick={() => setShowProviderModal(true)}
-                  label="Manage providers"
-                  className="grow-0"
-                />
+                <ProviderManagementModal owner={owner} />
               </div>
             </div>
           </Page.Vertical>

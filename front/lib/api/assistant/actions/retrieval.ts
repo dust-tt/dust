@@ -1,9 +1,9 @@
 import type {
-  AgentActionConfigurationType,
-  AgentConfigurationType,
+  ActionConfigurationType,
   FunctionCallType,
   FunctionMessageTypeModel,
   ModelId,
+  RetrievalDocumentChunkType,
   RetrievalErrorEvent,
   RetrievalParamsEvent,
   RetrievalSuccessEvent,
@@ -18,29 +18,31 @@ import type { AgentActionSpecification } from "@dust-tt/types";
 import type { Result } from "@dust-tt/types";
 import { BaseAction, isDevelopment } from "@dust-tt/types";
 import { Ok } from "@dust-tt/types";
+import assert from "assert";
+import _ from "lodash";
 
 import { runActionStreamed } from "@app/lib/actions/server";
-import { DEFAULT_RETRIEVAL_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
+import { DEFAULT_RETRIEVAL_ACTION_NAME } from "@app/lib/api/assistant/actions/constants";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
-import { getCitationsCount } from "@app/lib/api/assistant/actions/utils";
+import {
+  actionRefsOffset,
+  getRetrievalTopK,
+} from "@app/lib/api/assistant/actions/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import {
-  AgentRetrievalAction,
-  RetrievalDocument,
-  RetrievalDocumentChunk,
-} from "@app/lib/models/assistant/actions/retrieval";
+import { getDataSourceNameFromView } from "@app/lib/data_sources";
+import { AgentRetrievalAction } from "@app/lib/models/assistant/actions/retrieval";
 import {
   cloneBaseConfig,
   DustProdActionRegistry,
   PRODUCTION_DUST_WORKSPACE_ID,
 } from "@app/lib/registry";
-import { frontSequelize } from "@app/lib/resources/storage";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import type { RetrievalDocumentBlob } from "@app/lib/resources/retrieval_document_resource";
+import { RetrievalDocumentResource } from "@app/lib/resources/retrieval_document_resource";
 import logger from "@app/logger/logger";
-
-import { getRunnerforActionConfiguration } from "./runners";
 
 /**
  * TimeFrame parsing
@@ -168,7 +170,7 @@ export class RetrievalAction extends BaseAction {
     };
   }
 
-  renderForMultiActionsModel(): FunctionMessageTypeModel {
+  async renderForMultiActionsModel(): Promise<FunctionMessageTypeModel> {
     let content = "";
     if (!this.documents?.length) {
       content += "(retrieval failed)\n";
@@ -182,10 +184,9 @@ export class RetrievalAction extends BaseAction {
           }
         }
 
-        let dataSourceName = d.dataSourceId;
-        if (d.dataSourceId.startsWith("managed-")) {
-          dataSourceName = d.dataSourceId.substring(8);
-        }
+        const dataSourceName = d.dataSourceView
+          ? getDataSourceNameFromView(d.dataSourceView)
+          : "unknown";
 
         content += `TITLE: ${title} (data source: ${dataSourceName})\n`;
         content += `REFERENCE: ${d.reference}\n`;
@@ -266,55 +267,13 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
     return new Ok(spec);
   }
 
-  // Retrieval shares topK across retrieval actions of a same step and uses citations for these.
-  getCitationsCount({
-    agentConfiguration,
-    stepActions,
-  }: {
-    agentConfiguration: AgentConfigurationType;
-    stepActions: AgentActionConfigurationType[];
-  }): number {
-    return getCitationsCount({ agentConfiguration, stepActions });
-  }
-
-  // stepTopKAndRefsOffsetForAction returns the references offset and the number of documents an
-  // action will use as part of the current step. We share topK among all actions that use citations of a step
-  // so that we don't overflow the context when the model asks for many retrievals
-  // at the same time. Based on the nature of the retrieval actions (query being `auto` or `null`),
-  // the topK can vary (exhaustive or not). So we need all the actions of the current step to
-  // properly split the topK among them and decide which slice of references we will allocate to the
-  // current action.
-  stepTopKAndRefsOffsetForAction({
-    agentConfiguration,
-    stepActionIndex,
-    stepActions,
-    refsOffset,
-  }: {
-    agentConfiguration: AgentConfigurationType;
-    stepActionIndex: number;
-    stepActions: AgentActionConfigurationType[];
-    refsOffset: number;
-  }): { topK: number; refsOffset: number } {
-    for (let i = 0; i < stepActionIndex; i++) {
-      const r = stepActions[i];
-      refsOffset += getRunnerforActionConfiguration(r).getCitationsCount({
-        agentConfiguration,
-        stepActions,
-      });
-    }
-
-    return {
-      topK: this.getCitationsCount({ agentConfiguration, stepActions }),
-      refsOffset,
-    };
-  }
-
-  // This method is in charge of running the retrieval and creating an AgentRetrievalAction object in
-  // the database (along with the RetrievalDocument and RetrievalDocumentChunk objects). It does not
-  // create any generic model related to the conversation. It is possible for an AgentRetrievalAction
-  // to be stored (once the query params are infered) but for the retrieval to fail, in which case an
-  // error event will be emitted and the AgentRetrievalAction won't have any documents associated. The
-  // error is expected to be stored by the caller on the parent agent message.
+  // This method is in charge of running the retrieval and creating an AgentRetrievalAction object
+  // in the database (along with the RetrievalDocument and RetrievalDocumentChunk objects). It does
+  // not create any generic model related to the conversation. It is possible for an
+  // AgentRetrievalAction to be stored (once the query params are infered) but for the retrieval to
+  // fail, in which case an error event will be emitted and the AgentRetrievalAction won't have any
+  // documents associated. The error is expected to be stored by the caller on the parent agent
+  // message.
   async *run(
     auth: Authenticator,
     {
@@ -331,7 +290,7 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
       citationsRefsOffset,
     }: {
       stepActionIndex: number;
-      stepActions: AgentActionConfigurationType[];
+      stepActions: ActionConfigurationType[];
       citationsRefsOffset: number;
     }
   ): AsyncGenerator<
@@ -381,17 +340,21 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
       }
     }
 
-    const { topK, refsOffset } = this.stepTopKAndRefsOffsetForAction({
+    const topK = getRetrievalTopK({
+      agentConfiguration,
+      stepActions,
+    });
+    const refsOffset = actionRefsOffset({
       agentConfiguration,
       stepActionIndex,
       stepActions,
       refsOffset: citationsRefsOffset,
     });
 
-    // Create the AgentRetrievalAction object in the database and yield an event for the generation of
-    // the params. We store the action here as the params have been generated, if an error occurs
-    // later on, the action won't have retrieved documents but the error will be stored on the parent
-    // agent message.
+    // Create the AgentRetrievalAction object in the database and yield an event for the generation
+    // of the params. We store the action here as the params have been generated, if an error occurs
+    // later on, the action won't have retrieved documents but the error will be stored on the
+    // parent agent message.
     const action = await AgentRetrievalAction.create({
       query: query,
       relativeTimeFrameDuration: relativeTimeFrame?.duration ?? null,
@@ -427,6 +390,14 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
 
     const now = Date.now();
 
+    const dataSourceViews = await DataSourceViewResource.fetchByIds(
+      auth,
+      _.uniq(actionConfiguration.dataSources.map((ds) => ds.dataSourceViewId))
+    );
+    const dataSourceViewsMap = Object.fromEntries(
+      dataSourceViews.map((dsv) => [dsv.sId, dsv])
+    );
+
     // "assistant-v2-retrieval" has no model interaction.
     const config = cloneBaseConfig(
       DustProdActionRegistry["assistant-v2-retrieval"].config
@@ -439,9 +410,9 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
           isDevelopment() && !apiConfig.getDevelopmentDustAppsWorkspaceId()
             ? PRODUCTION_DUST_WORKSPACE_ID
             : d.workspaceId,
-        // Use dataSourceViewId if it exists; otherwise, use dataSourceId.
-        // Note: This value is passed to the registry for lookup.
-        data_source_id: d.dataSourceViewId ?? d.dataSourceId,
+        // Note: This value is passed to the registry for lookup. The registry will return the
+        // associated data source's dustAPIDataSourceId.
+        data_source_id: d.dataSourceViewId,
       })
     );
 
@@ -456,10 +427,16 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
           config.DATASOURCE.filter.parents.in_map = {};
         }
 
-        // Note: We use dataSourceId here because after the registry lookup,
-        // it returns either the data source itself or the data source associated with the data source view.
-        config.DATASOURCE.filter.parents.in_map[ds.dataSourceId] =
-          ds.filter.parents.in;
+        const dsView = dataSourceViewsMap[ds.dataSourceViewId];
+        // This should never happen since dataSourceViews are stored by id in the
+        // agent_data_source_configurations table.
+        assert(dsView, `Data source view ${ds.dataSourceViewId} not found`);
+
+        // Note we use the dustAPIDataSourceId here since this is what is returned from the registry
+        // lookup.
+        config.DATASOURCE.filter.parents.in_map[
+          dsView.dataSource.dustAPIDataSourceId
+        ] = ds.filter.parents.in;
       }
       if (ds.filter.parents?.not) {
         if (!config.DATASOURCE.filter.parents.not) {
@@ -519,16 +496,24 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
 
     const { eventStream, dustRunId } = res.value;
 
-    let documents: RetrievalDocumentType[] = [];
+    let blobs: {
+      blob: RetrievalDocumentBlob;
+      chunks: RetrievalDocumentChunkType[];
+      dataSourceView: DataSourceViewResource;
+    }[] = [];
 
-    // This is not perfect and will be erroneous in case of two data sources with the same id from two
-    // different workspaces. We don't support cross workspace data sources right now. But we'll likely
-    // want `core` to return the `workspace_id` that was used eventualy.
-    // TODO(spolu): make `core` return data source workspace id.
-    const dataSourcesIdToWorkspaceId: { [key: string]: string } = {};
-    for (const ds of actionConfiguration.dataSources) {
-      dataSourcesIdToWorkspaceId[ds.dataSourceId] = ds.workspaceId;
-    }
+    // This is not perfect and will be erroneous in case of two data sources with the same id from
+    // two different workspaces. We don't support cross workspace data sources right now. But we'll
+    // likely want `core` to return the `workspace_id` that was used eventualy.
+    const dustAPIDataSourcesIdToDetails = Object.fromEntries(
+      actionConfiguration.dataSources.map((ds) => [
+        dataSourceViewsMap[ds.dataSourceViewId].dataSource.dustAPIDataSourceId,
+        {
+          dataSourceView: dataSourceViewsMap[ds.dataSourceViewId],
+          workspaceId: ds.workspaceId,
+        },
+      ])
+    );
 
     for await (const event of eventStream) {
       if (event.type === "error") {
@@ -595,7 +580,6 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
               offset: number;
               score: number;
             }[];
-            token_count: number;
           }[];
 
           if (refsOffset + topK > getRefs().length) {
@@ -624,24 +608,25 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
 
           const refs = getRefs().slice(refsOffset, refsOffset + topK);
 
-          documents = v.map((d, i) => {
+          // Prepare an array of document blobs and chunks to be passed to makeNewBatch.
+          blobs = v.map((d, i) => {
             const reference = refs[i % refs.length];
+
+            const details = dustAPIDataSourcesIdToDetails[d.data_source_id];
+            assert(details, `Data source view ${d.data_source_id} not found`);
+
             return {
-              id: 0, // dummy pending database insertion
-              dataSourceWorkspaceId:
-                dataSourcesIdToWorkspaceId[d.data_source_id],
-              dataSourceId: d.data_source_id,
-              documentId: d.document_id,
-              reference,
-              timestamp: d.timestamp,
-              tags: d.tags,
-              sourceUrl: d.source_url ?? null,
-              score: d.chunks.map((c) => c.score)[0],
-              chunks: d.chunks.map((c) => ({
-                text: c.text,
-                offset: c.offset,
-                score: c.score,
-              })),
+              blob: {
+                sourceUrl: d.source_url,
+                documentId: d.document_id,
+                reference,
+                documentTimestamp: new Date(d.timestamp),
+                tags: d.tags,
+                score: Math.max(...d.chunks.map((c) => c.score)),
+                retrievalActionId: action.id,
+              },
+              chunks: d.chunks,
+              dataSourceView: details.dataSourceView,
             };
           });
         }
@@ -649,39 +634,7 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
     }
 
     // We are done, store documents and chunks in database and yield the final events.
-
-    await frontSequelize.transaction(async (t) => {
-      for (const d of documents) {
-        const document = await RetrievalDocument.create(
-          {
-            dataSourceWorkspaceId: d.dataSourceWorkspaceId,
-            dataSourceId: d.dataSourceId,
-            sourceUrl: d.sourceUrl,
-            documentId: d.documentId,
-            reference: d.reference,
-            documentTimestamp: new Date(d.timestamp),
-            tags: d.tags,
-            score: d.score,
-            retrievalActionId: action.id,
-          },
-          { transaction: t }
-        );
-
-        d.id = document.id;
-
-        for (const c of d.chunks) {
-          await RetrievalDocumentChunk.create(
-            {
-              text: c.text,
-              offset: c.offset,
-              score: c.score,
-              retrievalDocumentId: document.id,
-            },
-            { transaction: t }
-          );
-        }
-      }
-    });
+    const documents = await RetrievalDocumentResource.makeNewBatch(blobs);
 
     logger.info(
       {
@@ -712,7 +665,7 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
         },
         functionCallId: action.functionCallId,
         functionCallName: action.functionCallName,
-        documents,
+        documents: documents.map((d) => d.toJSON(auth)),
         step: action.step,
       }),
     };
@@ -776,6 +729,7 @@ function retrievalActionSpecification({
 // should not be used outside of api/assistant. We allow a ModelId interface here because for
 // optimization purposes to avoid duplicating DB requests while having clear action specific code.
 export async function retrievalActionTypesFromAgentMessageIds(
+  auth: Authenticator,
   agentMessageIds: ModelId[]
 ): Promise<RetrievalActionType[]> {
   const models = await AgentRetrievalAction.findAll({
@@ -793,37 +747,20 @@ export async function retrievalActionTypesFromAgentMessageIds(
 
   const actionIds = models.map((a) => a.id);
 
-  const documentRowsByActionId = (
-    await RetrievalDocument.findAll({
-      where: {
-        retrievalActionId: actionIds,
-      },
-    })
-  ).reduce<{
-    [id: ModelId]: RetrievalDocument[];
+  const documents = await RetrievalDocumentResource.listAllForActions(
+    auth,
+    actionIds
+  );
+  const documentRowsByActionId = documents.reduce<{
+    [id: ModelId]: RetrievalDocumentResource[];
   }>((acc, d) => {
+    if (!d.retrievalActionId) {
+      return acc;
+    }
     if (!acc[d.retrievalActionId]) {
       acc[d.retrievalActionId] = [];
     }
     acc[d.retrievalActionId].push(d);
-    return acc;
-  }, {});
-
-  const chunkRowsByDocumentId = (
-    await RetrievalDocumentChunk.findAll({
-      where: {
-        retrievalDocumentId: Object.values(documentRowsByActionId).flatMap(
-          (docs) => docs.map((d) => d.id)
-        ),
-      },
-    })
-  ).reduce<{
-    [id: ModelId]: RetrievalDocumentChunk[];
-  }>((acc, c) => {
-    if (!acc[c.retrievalDocumentId]) {
-      acc[c.retrievalDocumentId] = [];
-    }
-    acc[c.retrievalDocumentId].push(c);
     return acc;
   }, {});
 
@@ -832,9 +769,6 @@ export async function retrievalActionTypesFromAgentMessageIds(
   for (const id of actionIds) {
     const action = actionById[id];
     const documentRows = documentRowsByActionId[id] ?? [];
-    const chunkRows = documentRows.flatMap(
-      (d) => chunkRowsByDocumentId[d.id] ?? []
-    );
 
     let relativeTimeFrame: TimeFrame | null = null;
     if (action.relativeTimeFrameDuration && action.relativeTimeFrameUnit) {
@@ -844,39 +778,9 @@ export async function retrievalActionTypesFromAgentMessageIds(
       };
     }
 
-    const documents: RetrievalDocumentType[] = documentRows.map((d) => {
-      const chunks = chunkRows
-        .filter((c) => c.retrievalDocumentId === d.id)
-        .map((c) => ({
-          text: c.text,
-          offset: c.offset,
-          score: c.score,
-        }));
-      chunks.sort((a, b) => {
-        if (a.score === null && b.score === null) {
-          return a.offset - b.offset;
-        }
-        if (a.score !== null && b.score !== null) {
-          return b.score - a.score;
-        }
-        throw new Error(
-          "Unexpected comparison of null and non-null scored chunks."
-        );
-      });
-
-      return {
-        id: d.id,
-        dataSourceWorkspaceId: d.dataSourceWorkspaceId,
-        dataSourceId: d.dataSourceId,
-        sourceUrl: d.sourceUrl,
-        documentId: d.documentId,
-        reference: d.reference,
-        timestamp: d.documentTimestamp.getTime(),
-        tags: d.tags,
-        score: d.score,
-        chunks,
-      };
-    });
+    const documents: RetrievalDocumentType[] = documentRows.map((d) =>
+      d.toJSON(auth)
+    );
 
     documents.sort((a, b) => {
       if (a.score === null && b.score === null) {

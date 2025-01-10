@@ -4,14 +4,13 @@ import {
   Button,
   FullscreenExitIcon,
   FullscreenIcon,
-  IconButton,
 } from "@dust-tt/sparkle";
 import type {
   AgentMention,
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { supportedFileExtensions } from "@dust-tt/types";
+import { getSupportedFileExtensions } from "@dust-tt/types";
 import { EditorContent } from "@tiptap/react";
 import React, { useContext, useEffect, useRef, useState } from "react";
 
@@ -24,7 +23,12 @@ import { InputBarContext } from "@app/components/assistant/conversation/input_ba
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { classNames } from "@app/lib/utils";
 
-export const INPUT_BAR_ACTIONS = ["attachment", "quick-actions"] as const;
+export const INPUT_BAR_ACTIONS = [
+  "attachment",
+  "assistants-list",
+  "assistants-list-with-actions",
+  "fullscreen",
+] as const;
 
 export type InputBarAction = (typeof INPUT_BAR_ACTIONS)[number];
 
@@ -95,14 +99,14 @@ const InputBarContainer = ({
 
   const contentEditableClasses = classNames(
     "inline-block w-full",
-    "border-0 pr-1 pl-2 sm:pl-0 outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0 py-3.5",
+    "border-0 px-2 outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0 sm:py-3.5",
     "whitespace-pre-wrap font-normal"
   );
 
   return (
     <div
       id="InputBarContainer"
-      className="relative flex flex-1 flex-col sm:flex-row"
+      className="relative flex flex-1 flex-col pt-3 sm:flex-row sm:pt-0"
     >
       <EditorContent
         editor={editor}
@@ -116,18 +120,12 @@ const InputBarContainer = ({
         )}
       />
 
-      <div className="flex flex-row items-end justify-between gap-2 self-stretch py-2 pr-2 sm:flex-col sm:border-0">
-        <div
-          className={classNames(
-            "flex gap-5 rounded-full px-4 py-2 sm:gap-3 sm:px-2",
-            // Hide border when there are no actions.
-            actions.length === 0 ? "" : "border border-structure-200/60"
-          )}
-        >
+      <div className="flex flex-row items-end justify-between gap-2 self-stretch pb-3 pr-3 sm:flex-col sm:border-0">
+        <div className="flex items-center py-0 sm:py-3.5">
           {actions.includes("attachment") && (
             <>
               <input
-                accept={supportedFileExtensions.join(",")}
+                accept={getSupportedFileExtensions().join(",")}
                 onChange={async (e) => {
                   await fileUploaderService.handleFileChange(e);
                   if (fileInputRef.current) {
@@ -140,55 +138,59 @@ const InputBarContainer = ({
                 type="file"
                 multiple={true}
               />
-              <IconButton
-                variant={"tertiary"}
+              <Button
+                variant="ghost-secondary"
                 icon={AttachmentIcon}
-                size="sm"
-                tooltip={`Add a document to the conversation (${supportedFileExtensions.join(", ")}).`}
-                tooltipPosition="above"
-                className="flex"
+                size="xs"
+                tooltip={`Add a document to the conversation (${getSupportedFileExtensions().join(", ")}).`}
                 onClick={() => {
                   fileInputRef.current?.click();
                 }}
               />
             </>
           )}
-          {actions.includes("quick-actions") && (
-            <>
-              <AssistantPicker
-                owner={owner}
-                size="sm"
-                onItemClick={(c) => {
-                  editorService.insertMention({ id: c.sId, label: c.name });
-                }}
-                assistants={allAssistants}
-                showFooterButtons={true}
+          {(actions.includes("assistants-list") ||
+            actions.includes("assistants-list-with-actions")) && (
+            <AssistantPicker
+              owner={owner}
+              size="xs"
+              onItemClick={(c) => {
+                editorService.insertMention({ id: c.sId, label: c.name });
+              }}
+              assistants={allAssistants}
+              showFooterButtons={actions.includes(
+                "assistants-list-with-actions"
+              )}
+            />
+          )}
+          {actions.includes("fullscreen") && (
+            <div className="hidden sm:flex">
+              <Button
+                variant="ghost-secondary"
+                icon={isExpanded ? FullscreenExitIcon : FullscreenIcon}
+                size="xs"
+                onClick={handleExpansionToggle}
               />
-              <div className="hidden sm:flex">
-                <IconButton
-                  variant={"tertiary"}
-                  icon={isExpanded ? FullscreenExitIcon : FullscreenIcon}
-                  size="sm"
-                  className="flex"
-                  onClick={handleExpansionToggle}
-                />
-              </div>
-            </>
+            </div>
           )}
         </div>
         <Button
           size="sm"
+          isLoading={disableSendButton}
           icon={ArrowUpIcon}
-          label="Send"
+          variant="highlight"
           disabled={editorService.isEmpty() || disableSendButton}
-          labelVisible={false}
-          disabledTooltip
           onClick={async () => {
             const jsonContent = editorService.getTextAndMentions();
-            onEnterKeyDown(editorService.isEmpty(), jsonContent, () => {
-              editorService.clearEditor();
-              resetEditorContainerSize();
-            });
+            onEnterKeyDown(
+              editorService.isEmpty(),
+              jsonContent,
+              () => {
+                editorService.clearEditor();
+                resetEditorContainerSize();
+              },
+              editorService.setLoading
+            );
           }}
         />
       </div>

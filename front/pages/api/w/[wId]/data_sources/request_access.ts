@@ -4,9 +4,9 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { sendEmailWithTemplate } from "@app/lib/api/email";
 import type { Authenticator } from "@app/lib/auth";
-import { sendEmailWithTemplate } from "@app/lib/email";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
@@ -29,6 +29,16 @@ async function handler(
   auth: Authenticator
 ) {
   const user = auth.getNonNullableUser();
+
+  if (!auth.isUser()) {
+    return apiError(req, res, {
+      status_code: 401,
+      api_error: {
+        type: "data_source_auth_error",
+        message: "You are not authorized to submit connections requests.",
+      },
+    });
+  }
 
   const { method } = req;
 
@@ -92,7 +102,7 @@ async function handler(
 
   const result = await sendEmailWithTemplate({
     to: userReceipent.email,
-    from: { name: "Dust team", email: "team@dust.tt" },
+    from: { name: "Dust team", email: "support@dust.help" },
     subject: `[Dust] Request Data source from ${emailRequester}`,
     body,
   });

@@ -1,28 +1,54 @@
 import {
-  AssistantPreview,
+  AssistantCard,
+  AssistantCardMore,
   Button,
-  ListAddIcon,
+  CardGrid,
+  CompanyIcon,
   LockIcon,
-  PlanetIcon,
+  MagnifyingGlassIcon,
   PlusIcon,
   RobotIcon,
   RocketIcon,
-  Searchbar,
-  Tab,
-  Tooltip,
+  ScrollArea,
+  ScrollBar,
+  SearchInput,
+  StarIcon,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  useHashParam,
   UserGroupIcon,
 } from "@dust-tt/sparkle";
 import type {
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
-import Link from "next/link";
+import { useRouter } from "next/router";
 import React, { useMemo, useState } from "react";
-import type { KeyedMutator } from "swr";
 
-import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { subFilter } from "@app/lib/utils";
-import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
+import { setQueryParam } from "@app/lib/utils/router";
+
+function isValidTab(tab: string, visibleTabs: TabId[]): tab is TabId {
+  return visibleTabs.includes(tab as TabId);
+}
+
+const ALL_AGENTS_TABS = [
+  // default shown tab = earliest in this list with non-empty agents
+  { label: "Favorites", icon: StarIcon, id: "favorites" },
+  { label: "Most popular", icon: RocketIcon, id: "most_popular" },
+  { label: "Company", icon: CompanyIcon, id: "workspace" },
+  { label: "Shared", icon: UserGroupIcon, id: "published" },
+  { label: "Personal", icon: LockIcon, id: "personal" },
+  { label: "All", icon: RobotIcon, id: "all" },
+  {
+    label: "Searching across all assistants",
+    icon: MagnifyingGlassIcon,
+    id: "search",
+  },
+] as const;
+
+type TabId = (typeof ALL_AGENTS_TABS)[number]["id"];
 
 interface AssistantListProps {
   owner: WorkspaceType;
@@ -30,20 +56,7 @@ interface AssistantListProps {
   agents: LightAgentConfigurationType[];
   loadingStatus: "loading" | "finished";
   handleAssistantClick: (agent: LightAgentConfigurationType) => void;
-  mutateAgentConfigurations: KeyedMutator<GetAgentConfigurationsResponseBody>;
 }
-
-const ALL_AGENTS_TABS = [
-  // default shown tab = earliest in this list with non-empty agents
-  { label: "Most popular", icon: RocketIcon, id: "most_popular" },
-  { label: "Company", icon: PlanetIcon, id: "workspace" },
-  { label: "Shared", icon: UserGroupIcon, id: "published" },
-  { label: "Personal", icon: LockIcon, id: "personal" },
-  { label: "In my list", icon: ListAddIcon, id: "list" },
-  { label: "All", icon: RobotIcon, id: "all" },
-] as const;
-
-type TabId = (typeof ALL_AGENTS_TABS)[number]["id"];
 
 export function AssistantBrowser({
   owner,
@@ -51,12 +64,14 @@ export function AssistantBrowser({
   agents,
   loadingStatus,
   handleAssistantClick,
-  mutateAgentConfigurations,
 }: AssistantListProps) {
   const [assistantSearch, setAssistantSearch] = useState<string>("");
-  const [assistantIdToShow, setAssistantIdToShow] = useState<string | null>(
-    null
+  const [selectedTab, setSelectedTab] = useHashParam(
+    "selectedTab",
+    "favorites"
   );
+
+  const router = useRouter();
 
   const agentsByTab = useMemo(() => {
     const filteredAgents: LightAgentConfigurationType[] = agents
@@ -65,7 +80,10 @@ export function AssistantBrowser({
           a.status === "active" &&
           // Filters on search query
           (assistantSearch.trim() === "" ||
-            subFilter(assistantSearch.toLowerCase(), a.name.toLowerCase()))
+            subFilter(
+              assistantSearch.toLowerCase().trim().replace(/^@/, ""),
+              a.name.toLowerCase()
+            ))
       )
       .sort((a, b) => {
         return a.name
@@ -79,130 +97,131 @@ export function AssistantBrowser({
       published: filteredAgents.filter((a) => a.scope === "published"),
       workspace: filteredAgents.filter((a) => a.scope === "workspace"),
       personal: filteredAgents.filter((a) => a.scope === "private"),
-      list: filteredAgents.filter(
-        (a) => a.scope === "published" && a.userListStatus === "in-list"
-      ),
+      favorites: filteredAgents.filter((a) => a.userFavorite),
       most_popular: filteredAgents
         .filter((a) => a.usage && a.usage.messageCount > 0)
         .sort(
           (a, b) => (b.usage?.messageCount ?? 0) - (a.usage?.messageCount ?? 0)
         ),
+      search: loadingStatus !== "finished" ? [] : filteredAgents,
     };
   }, [assistantSearch, loadingStatus, agents]);
 
+  // if search is active, only show the search tab, otherwise show all tabs with agents except the search tab
   const visibleTabs = useMemo(() => {
-    return ALL_AGENTS_TABS.filter((tab) => agentsByTab[tab.id].length > 0);
-  }, [agentsByTab]);
-  const [selectedTab, setSelectedTab] = useState<TabId | null>(
-    visibleTabs[0]?.id || null
-  );
+    const searchTab = ALL_AGENTS_TABS.find((tab) => tab.id === "search");
+    if (!searchTab) {
+      throw new Error("Unexpected: Search tab not found");
+    }
 
-  const displayedTab =
-    assistantSearch.trim() !== "" // If search is active, show all agents
-      ? "all"
-      : visibleTabs.find((tab) => tab.id === selectedTab)
-        ? selectedTab
-        : visibleTabs.length > 0
-          ? visibleTabs[0].id
-          : null;
+    return assistantSearch.trim() !== ""
+      ? [searchTab]
+      : ALL_AGENTS_TABS.filter(
+          (tab) => agentsByTab[tab.id].length > 0 && tab.id !== "search"
+        );
+  }, [agentsByTab, assistantSearch]);
 
-  const isVaultsEnabled = owner.flags.includes("data_vaults_feature");
-  const builderManageAssistantsRoute = isVaultsEnabled
-    ? `/w/${owner.sId}/assistants/`
-    : `/w/${owner.sId}/builder/assistants/`;
+  // check the query string for the tab to show, the query param to look for is called "selectedTab"
+  // if it's not found, show the first tab with agents
+  const viewTab = useMemo(() => {
+    return selectedTab &&
+      isValidTab(
+        selectedTab,
+        visibleTabs.map((tab) => tab.id)
+      )
+      ? selectedTab
+      : visibleTabs[0]?.id;
+  }, [selectedTab, visibleTabs]);
 
   return (
     <>
-      <AssistantDetails
-        assistantId={assistantIdToShow}
-        onClose={() => setAssistantIdToShow(null)}
-        owner={owner}
-        mutateAgentConfigurations={mutateAgentConfigurations}
-      />
       {/* Search bar */}
       <div
         id="search-container"
-        className="flex w-full flex-row items-center justify-center gap-4 px-4 align-middle"
+        className="flex w-full flex-row items-center justify-center gap-2 px-4 align-middle"
       >
-        <Searchbar
+        <SearchInput
           name="search"
-          size="sm"
           placeholder="Search (Name)"
           value={assistantSearch}
           onChange={setAssistantSearch}
         />
-        <Button.List>
-          <Tooltip label="Create your own assistant">
-            <Link
+        <div className="hidden sm:block">
+          <div className="flex gap-2">
+            <Button
+              tooltip="Create your own assistant"
               href={`/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`}
-            >
-              <div className="hidden sm:block">
-                <Button
-                  variant="primary"
-                  icon={PlusIcon}
-                  label="Create"
-                  size="sm"
-                />
-              </div>
-              <div className="sm:hidden">
-                <Button
-                  variant="primary"
-                  icon={PlusIcon}
-                  label="Create"
-                  labelVisible={false}
-                  size="sm"
-                  className="sm:hidden"
-                />
-              </div>
-            </Link>
-          </Tooltip>
-          {isBuilder && (
-            <Tooltip label="Manage assistants">
-              <Link href={builderManageAssistantsRoute}>
-                <Button
-                  variant="primary"
-                  icon={RobotIcon}
-                  label="Manage"
-                  size="sm"
-                />
-              </Link>
-            </Tooltip>
-          )}
-        </Button.List>
+              variant="primary"
+              icon={PlusIcon}
+              label="Create"
+              size="sm"
+            />
+
+            {isBuilder && (
+              <Button
+                tooltip="Manage assistants"
+                href={`/w/${owner.sId}/builder/assistants/`}
+                variant="primary"
+                icon={RobotIcon}
+                label="Manage"
+                size="sm"
+              />
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Assistant tabs */}
-      <div className="flex flex-row space-x-4 px-4">
-        <Tab
-          className="grow"
-          tabs={visibleTabs.map((tab) => ({
-            ...tab,
-            current: tab.id === displayedTab,
-          }))}
-          setCurrentTab={setSelectedTab}
-        />
+      <div className="w-full px-4">
+        <ScrollArea aria-orientation="horizontal">
+          <Tabs value={viewTab} onValueChange={setSelectedTab}>
+            <TabsList>
+              {visibleTabs.map((tab) => (
+                <TabsTrigger
+                  key={tab.id}
+                  value={tab.id}
+                  label={tab.label}
+                  icon={tab.icon}
+                  className={
+                    assistantSearch !== ""
+                      ? "border-element-700 text-element-700"
+                      : ""
+                  }
+                />
+              ))}
+            </TabsList>
+          </Tabs>
+          <ScrollBar orientation="horizontal" className="hidden" />
+        </ScrollArea>
       </div>
-      {!displayedTab && (
-        <div className="text-center">
+
+      {!viewTab && (
+        <div className="my-12 text-center text-sm text-muted-foreground">
           No assistants found. Try adjusting your search criteria.
         </div>
       )}
 
-      {displayedTab && (
-        <div className="grid w-full grid-cols-1 gap-2 px-4 md:grid-cols-3">
-          {agentsByTab[displayedTab].map((agent) => (
-            <AssistantPreview
+      {viewTab && (
+        <CardGrid className="mb-12">
+          {agentsByTab[viewTab].map((agent) => (
+            <AssistantCard
               key={agent.sId}
               title={agent.name}
               pictureUrl={agent.pictureUrl}
               subtitle={agent.lastAuthors?.join(", ") ?? ""}
               description={agent.description}
-              variant="minimal"
               onClick={() => handleAssistantClick(agent)}
-              onActionClick={() => setAssistantIdToShow(agent.sId)}
+              action={
+                <AssistantCardMore
+                  onClick={(e: Event) => {
+                    e.stopPropagation();
+                    setQueryParam(router, "assistantDetails", agent.sId);
+                  }}
+                />
+              }
             />
           ))}
-        </div>
+        </CardGrid>
       )}
     </>
   );

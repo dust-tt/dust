@@ -45,7 +45,7 @@ async function deleteUnmanagedDataSourceViewsForWorkspace(
   }
 
   for (const view of viewsToDelete) {
-    await view.delete(auth);
+    await view.delete(auth, { hardDelete: true });
     logger.info(`Deleted view for data source ${view.dataSourceId}.`);
   }
 

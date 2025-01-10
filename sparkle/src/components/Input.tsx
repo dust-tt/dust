@@ -1,81 +1,121 @@
-import React from "react";
+import { cva } from "class-variance-authority";
+import React, { forwardRef } from "react";
 
-import { classNames } from "@sparkle/lib/utils";
+import { Icon } from "@sparkle/components/Icon";
+import { InformationCircleIcon } from "@sparkle/icons";
+import { cn } from "@sparkle/lib/utils";
 
-type InputProps = {
-  placeholder: string;
-  size?: "sm" | "md";
-  value: string | null;
-  onChange?: (value: string) => void;
-  error?: string | null;
-  showErrorLabel?: boolean;
-  name: string;
-  isPassword?: boolean;
-  disabled?: boolean;
+import { Label } from "./Label";
+
+const MESSAGE_STATUS = ["info", "default", "error"] as const;
+
+type MessageStatus = (typeof MESSAGE_STATUS)[number];
+
+export interface InputProps
+  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "value"> {
+  message?: string | null;
+  messageStatus?: MessageStatus;
+  value?: string | null;
+  isError?: boolean;
   className?: string;
   label?: string;
-};
-
-const sizeInputClasses = {
-  sm: "s-text-base s-rounded-md s-py-1.5 s-pl-4 s-pr-8",
-  md: "s-text-lg s-rounded-lg s-py-2 s-pl-4 s-pr-10",
-};
-
-export function Input({
-  placeholder,
-  value,
-  size = "sm",
-  onChange,
-  error,
-  showErrorLabel = false,
-  name,
-  isPassword = false,
-  disabled = false,
-  className = "",
-  label,
-}: InputProps) {
-  return (
-    <div className="s-flex s-flex-col s-gap-1 s-p-px">
-      {label && (
-        <label
-          htmlFor={name}
-          className="s-pb-1 s-text-sm s-font-medium s-text-element-700 dark:s-text-element-700-dark"
-        >
-          {label}
-        </label>
-      )}
-      <input
-        type={isPassword ? "password" : "text"}
-        name={name}
-        id={name}
-        className={classNames(
-          "s-w-full s-border-0 s-outline-none s-ring-1 focus:s-outline-none focus:s-ring-2",
-          "s-bg-structure-50 s-text-element-900 s-placeholder-element-700",
-          "dark:s-bg-structure-50-dark dark:s-text-element-800-dark dark:s-placeholder-element-700-dark",
-          sizeInputClasses[size],
-          "s-transition-all s-duration-300 s-ease-out",
-          className ?? "",
-          !error
-            ? classNames(
-                "s-ring-structure-200 focus:s-ring-action-300",
-                "dark:s-ring-structure-300-dark dark:focus:s-ring-action-300-dark"
-              )
-            : classNames(
-                "s-ring-warning-200 focus:s-ring-warning-300",
-                "dark:s-ring-warning-200-dark dark:focus:s-ring-warning-300-dark"
-              )
-        )}
-        placeholder={placeholder}
-        value={value ?? ""}
-        onChange={(e) => {
-          onChange?.(e.target.value);
-        }}
-        data-1p-ignore={!isPassword}
-        disabled={disabled}
-      />
-      <div className="s-ml-2 s-text-sm s-text-warning-500">
-        {showErrorLabel && error ? error : null}
-      </div>
-    </div>
-  );
 }
+
+const INPUT_STATES = ["error", "disabled", "default"];
+
+type InputStateType = (typeof INPUT_STATES)[number];
+
+const messageVariantStyles: Record<MessageStatus, string> = {
+  info: "s-text-muted-foreground",
+  default: "s-text-muted-foreground",
+  error: "s-text-foreground-warning",
+};
+
+const stateVariantStyles: Record<InputStateType, string> = {
+  default:
+    "s-border-border-dark/50 s-ring-highlight/0 focus-visible:s-border-border-focus focus-visible:s-outline-none focus-visible:s-ring-highlight/10",
+  disabled: "disabled:s-cursor-not-allowed disabled:s-text-muted-foreground",
+  error:
+    "s-border-border-warning/30 s-ring-warning/0 focus-visible:s-border-border-warning focus-visible:s-outline-none focus-visible:s-ring-warning/10",
+};
+
+const messageVariant = cva("", {
+  variants: {
+    status: messageVariantStyles,
+  },
+  defaultVariants: {
+    status: "info",
+  },
+});
+
+const inputStyleClasses = cva(
+  cn(
+    "s-text-sm s-bg-background s-rounded-xl s-bg-muted-background s-flex s-h-9 s-w-full s-px-3 s-py-1.5 ",
+    "s-border focus-visible:s-ring",
+    "file:s-border-0 file:s-bg-transparent file:s-text-sm file:s-font-medium file:s-text-foreground",
+    "placeholder:s-text-muted-foreground"
+  ),
+  {
+    variants: {
+      state: stateVariantStyles,
+    },
+    defaultVariants: {
+      state: "default",
+    },
+  }
+);
+
+export const Input = forwardRef<HTMLInputElement, InputProps>(
+  (
+    {
+      className,
+      message,
+      messageStatus,
+      value,
+      label,
+      isError,
+      disabled,
+      ...props
+    },
+    ref
+  ) => {
+    const state =
+      isError || (message && messageStatus === "error")
+        ? "error"
+        : disabled
+          ? "disabled"
+          : "default";
+    return (
+      <div className="s-flex s-flex-col s-gap-1">
+        {label && (
+          <Label htmlFor={props.name} className="s-mb-1">
+            {label}
+          </Label>
+        )}
+        <input
+          ref={ref}
+          className={cn(inputStyleClasses({ state }), className)}
+          data-1p-ignore={props.type !== "password"}
+          value={value ?? undefined}
+          disabled={disabled}
+          {...props}
+        />
+        {message && (
+          <div
+            className={cn(
+              "s-ml-3.5 s-flex s-items-center s-gap-1 s-text-xs",
+              messageVariant({ status: messageStatus })
+            )}
+          >
+            {messageStatus === "info" && (
+              <Icon visual={InformationCircleIcon} size="xs" />
+            )}
+            {message}
+          </div>
+        )}
+      </div>
+    );
+  }
+);
+
+Input.displayName = "Input";

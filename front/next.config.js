@@ -1,5 +1,22 @@
 const path = require("path");
 
+const CONTENT_SECURITY_POLICIES = [
+  "default-src 'none';",
+  `script-src 'self' 'unsafe-inline' 'unsafe-eval' *.googletagmanager.com *.google-analytics.com;`,
+  `style-src 'self' 'unsafe-inline' *.typekit.net;`,
+  `img-src 'self' data: https:;`,
+  `connect-src 'self' *.google-analytics.com;`,
+  `frame-src 'self' *.wistia.net viz.dust.tt;`,
+  `font-src 'self' data: *.typekit.net;`,
+  `object-src 'none';`,
+  `form-action 'self';`,
+  `base-uri 'self';`,
+  `frame-ancestors 'self';`,
+  `manifest-src 'self';`,
+  `worker-src 'self';`,
+  `upgrade-insecure-requests;`,
+].join(" ");
+
 module.exports = {
   transpilePackages: ["@uiw/react-textarea-code-editor"],
   // As of Next 14.2.3 swc minification creates a bug in the generated client side files.
@@ -30,6 +47,11 @@ module.exports = {
         permanent: true,
       },
       {
+        source: "/jobs",
+        destination: "https://jobs.ashbyhq.com/dust",
+        permanent: true,
+      },
+      {
         source: "/w/:wId/u/chat/:cId",
         destination: "/w/:wId/assistant/:cId",
         permanent: false,
@@ -44,14 +66,27 @@ module.exports = {
         headers: [
           {
             key: "Content-Security-Policy",
-            value:
-              "frame-ancestors 'self' https://*.salesforce.com https://*.force.com;",
+            value: CONTENT_SECURITY_POLICIES,
           },
           {
             key: "Strict-Transport-Security",
             value: "max-age=86400", // 1 day in seconds
           },
         ],
+      },
+    ];
+  },
+  async rewrites() {
+    return [
+      // Legacy endpoint rewrite to maintain compatibility for users still hitting `/vaults/`
+      // endpoints on the public API.
+      {
+        source: "/api/v1/w/:wId/vaults/:vId/:path*",
+        destination: "/api/v1/w/:wId/spaces/:vId/:path*",
+      },
+      {
+        source: "/api/v1/w/:wId/vaults",
+        destination: "/api/v1/w/:wId/spaces",
       },
     ];
   },

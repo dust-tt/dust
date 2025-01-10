@@ -1,3 +1,4 @@
+import { Input } from "@dust-tt/sparkle";
 import type { Control, FieldValues, Path } from "react-hook-form";
 
 import {
@@ -7,7 +8,6 @@ import {
   PokeFormLabel,
   PokeFormMessage,
 } from "@app/components/poke/shadcn/ui/form";
-import { PokeInput } from "@app/components/poke/shadcn/ui/input";
 import {
   PokeSelect,
   PokeSelectContent,
@@ -88,7 +88,7 @@ export function InputField<T extends FieldValues>({
         <PokeFormItem>
           <PokeFormLabel className="capitalize">{title ?? name}</PokeFormLabel>
           <PokeFormControl>
-            <PokeInput
+            <Input
               placeholder={placeholder ?? name}
               type={type}
               {...field}

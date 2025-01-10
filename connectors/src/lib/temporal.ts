@@ -5,6 +5,8 @@ import { Client, Connection, WorkflowNotFoundError } from "@temporalio/client";
 import { NativeConnection } from "@temporalio/worker";
 import fs from "fs-extra";
 
+import logger from "@connectors/logger/logger";
+
 // Assuming one cached workflows takes 2MB on average,
 // we can cache 292 workflows in 4096MB, which is the max heap size
 // we give to our temporal workers.
@@ -135,7 +137,19 @@ export async function terminateAllWorkflowsForConnectorId(
     query: `ExecutionStatus = 'Running' AND connectorId = ${connectorId}`,
   });
 
+  logger.info(
+    {
+      connectorId,
+    },
+    "About to terminate all workflows for connectorId"
+  );
+
   for await (const handle of workflowInfos) {
+    logger.info(
+      { connectorId, workflowId: handle.workflowId },
+      "Terminating Temporal workflow"
+    );
+
     const workflowHandle = client.workflow.getHandle(handle.workflowId);
     try {
       await workflowHandle.terminate();

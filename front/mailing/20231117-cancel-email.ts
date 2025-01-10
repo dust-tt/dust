@@ -1,4 +1,4 @@
-import { sendEmail } from "@app/lib/email";
+import { sendEmail } from "@app/lib/api/email";
 
 /** Send emails to users who canceled their subscription before the automated emails were available */
 const { LIVE, SENDGRID_API_KEY } = process.env;

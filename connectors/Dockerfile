@@ -1,6 +1,6 @@
 
 # start installing poppler tools for pdf text extraction
-FROM node:20.13.0 as build
+FROM node:20.13.0 AS build
 
 RUN apt-get update && apt-get install -y vim redis-tools postgresql-client htop
 
@@ -19,6 +19,12 @@ COPY --from=build /tmp/poppler-23.07.0/build/libpoppler.so.130 /usr/lib/libpoppl
 WORKDIR /types
 COPY /types/package*.json ./
 COPY /types/ .
+RUN npm ci
+RUN npm run build
+
+WORKDIR /sdks/js
+COPY /sdks/js/package*.json ./
+COPY /sdks/js/ .
 RUN npm ci
 RUN npm run build
 

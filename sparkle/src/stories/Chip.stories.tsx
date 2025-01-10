@@ -1,87 +1,61 @@
-import type { Meta } from "@storybook/react";
-import React from "react";
+import type { Meta, StoryObj } from "@storybook/react";
+
+import { CHIP_COLORS, CHIP_SIZES } from "@sparkle/components/Chip";
 
 import { Chip, UserGroupIcon } from "../index_with_tw_base";
+
+const ICONS = {
+  none: null,
+  UserGroupIcon: UserGroupIcon,
+} as const;
 
 const meta = {
   title: "Primitives/Chip",
   component: Chip,
+  parameters: {
+    layout: "padded",
+  },
+  argTypes: {
+    size: {
+      options: CHIP_SIZES,
+      control: { type: "select" },
+      description: "Size of the chip",
+      defaultValue: "xs",
+    },
+    color: {
+      options: CHIP_COLORS,
+      control: { type: "select" },
+      description: "Color variant of the chip",
+      defaultValue: "slate",
+    },
+    label: {
+      control: "text",
+      description: "Text to display in the chip",
+    },
+    isBusy: {
+      control: "boolean",
+      description: "Whether to show the breathing animation",
+      defaultValue: false,
+    },
+    icon: {
+      options: Object.keys(ICONS),
+      mapping: ICONS,
+      control: { type: "select" },
+      description: "Optional icon to display",
+      defaultValue: "none",
+    },
+  },
 } satisfies Meta<typeof Chip>;
 
 export default meta;
+type Story = StoryObj<typeof meta>;
 
-const colors = [
-  "emerald",
-  "amber",
-  "slate",
-  "purple",
-  "warning",
-  "sky",
-  "pink",
-  "action",
-  "red",
-] as const;
-
-export const ListChipsExample = () => (
-  <div className="s-flex s-flex-col s-gap-4">
-    <Chip.List>
-      {colors.map((color) => (
-        <Chip key={`xs-${color}`} size="xs" label={color} color={color} />
-      ))}
-    </Chip.List>
-    <Chip.List>
-      {colors.map((color) => (
-        <Chip key={`sm-${color}`} size="sm" label={color} color={color} />
-      ))}
-    </Chip.List>
-    <div className="s-w-60">
-      <Chip.List isWrapping={true}>
-        {colors.map((color) => (
-          <Chip
-            key={`xs-${color}`}
-            size="xs"
-            label={color}
-            color={color}
-            icon={UserGroupIcon}
-          />
-        ))}
-      </Chip.List>
-    </div>
-    <div className="s-w-60">
-      <Chip.List isWrapping={true}>
-        {colors.map((color) => (
-          <Chip
-            key={`xs-${color}`}
-            size="sm"
-            label={color}
-            color={color}
-            icon={UserGroupIcon}
-          />
-        ))}
-      </Chip.List>
-    </div>
-    isBusy
-    <Chip.List>
-      {colors.map((color) => (
-        <Chip
-          key={`xs-${color}`}
-          size="xs"
-          label={color}
-          color={color}
-          isBusy
-        />
-      ))}
-    </Chip.List>
-    <Chip.List>
-      {colors.map((color) => (
-        <Chip
-          key={`sm-${color}`}
-          size="sm"
-          label={color}
-          color={color}
-          isBusy
-        />
-      ))}
-    </Chip.List>
-  </div>
-);
+// Basic example with controls
+export const Basic: Story = {
+  args: {
+    label: "Example Chip",
+    size: "sm",
+    color: "slate",
+    isBusy: true,
+  },
+};

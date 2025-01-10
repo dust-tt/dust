@@ -18,7 +18,8 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { runAction } from "@app/lib/actions/server";
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import { filterSuggestedNames } from "@app/lib/api/assistant/agent";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
 import { apiError } from "@app/logger/withlogging";
@@ -120,7 +121,17 @@ async function handler(
           },
         });
       }
-      const suggestions = responseValidation.right;
+      const suggestions = responseValidation.right as {
+        status: "ok";
+        suggestions: string[] | null | undefined;
+      };
+      if (suggestionsType === "name") {
+        suggestions.suggestions = await filterSuggestedNames(
+          owner,
+          suggestions.suggestions
+        );
+      }
+
       return res.status(200).json(suggestions);
 
     default:

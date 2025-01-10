@@ -1,18 +1,20 @@
 import {
-  CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
+  assertNever,
   ConnectorsAPI,
   removeNulls,
   SUPPORTED_MODEL_CONFIGS,
 } from "@dust-tt/types";
-import { CoreAPI } from "@dust-tt/types";
-import { Storage } from "@google-cloud/storage";
 import parseArgs from "minimist";
-import readline from "readline";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
-import { renderConversationForModelMultiActions } from "@app/lib/api/assistant/generation";
+import { renderConversationForModel } from "@app/lib/api/assistant/generation";
+import {
+  getTextContentFromMessage,
+  getTextRepresentationFromMessages,
+} from "@app/lib/api/assistant/utils";
 import config from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
+import { garbageCollectGoogleDriveDocument } from "@app/lib/api/poke/plugins/data_sources/garbage_collect_google_drive_document";
 import { Authenticator } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models/workspace";
 import { FREE_UPGRADED_PLAN_CODE } from "@app/lib/plans/plan_codes";
@@ -25,15 +27,17 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
+import { SpaceResource } from "@app/lib/resources/space_resource";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { VaultResource } from "@app/lib/resources/vault_resource";
+import { tokenCountForTexts } from "@app/lib/tokenization";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import {
   launchRetrieveTranscriptsWorkflow,
   stopRetrieveTranscriptsWorkflow,
 } from "@app/temporal/labs/client";
+import { REGISTERED_CHECKS } from "@app/temporal/production_checks/activities";
 
 // `cli` takes an object type and a command as first two arguments and then a list of arguments.
 const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
@@ -44,7 +48,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       }
 
       const w = await Workspace.create({
-        sId: generateLegacyModelSId(),
+        sId: generateRandomModelSId(),
         name: args.name,
       });
 
@@ -56,7 +60,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       const auth = await Authenticator.internalAdminForWorkspace(
         lightWorkspace.sId
       );
-      await VaultResource.makeDefaultsForWorkspace(auth, {
+      await SpaceResource.makeDefaultsForWorkspace(auth, {
         systemGroup,
         globalGroup,
       });
@@ -129,7 +133,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
           throw new Error(`Workspace not found: wId='${args.wId}'`);
         }
 
-        const auth = await Authenticator.internalBuilderForWorkspace(w.sId);
+        const auth = await Authenticator.internalAdminForWorkspace(w.sId);
         const dataSources = await getDataSources(auth);
         const connectorIds = removeNulls(dataSources.map((d) => d.connectorId));
         const connectorsAPI = new ConnectorsAPI(
@@ -169,7 +173,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         }
         console.log(`Unpausing connectors for workspace: wId=${w.sId}`);
 
-        const auth = await Authenticator.internalBuilderForWorkspace(w.sId);
+        const auth = await Authenticator.internalAdminForWorkspace(w.sId);
         const dataSources = await getDataSources(auth);
         const connectorIds = removeNulls(dataSources.map((d) => d.connectorId));
         const connectorsAPI = new ConnectorsAPI(
@@ -262,125 +266,12 @@ const user = async (command: string, args: parseArgs.ParsedArgs) => {
 
 const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
   switch (command) {
-    case "delete": {
-      if (!args.wId) {
-        throw new Error("Missing --wId argument");
-      }
-      if (!args.name) {
-        throw new Error("Missing --name argument");
-      }
-
-      const auth = await Authenticator.internalAdminForWorkspace(args.wId);
-
-      const dataSource = await DataSourceResource.fetchByNameOrId(
-        auth,
-        args.name,
-        // TODO(DATASOURCE_SID): Clean-up
-        { origin: "cli_delete" }
-      );
-      if (!dataSource) {
-        throw new Error(
-          `DataSource not found: wId='${args.wId}' name='${args.name}'`
-        );
-      }
-
-      const dustAPIProjectId = dataSource.dustAPIProjectId;
-
-      await new Promise((resolve) => {
-        const rl = readline.createInterface({
-          input: process.stdin,
-          output: process.stdout,
-        });
-        rl.question(
-          `Are you sure you want to definitely delete the following data source and all associated data: wId='${args.wId}' name='${args.name}' provider='${dataSource.connectorProvider}'? (y/N) `,
-          (answer: string) => {
-            rl.close();
-            if (answer !== "y") {
-              throw new Error("Aborting");
-            }
-            resolve(null);
-          }
-        );
-      });
-
-      if (dataSource.connectorId) {
-        console.log(`Deleting connectorId=${dataSource.connectorId}}`);
-        const connDeleteRes = await new ConnectorsAPI(
-          config.getConnectorsAPIConfig(),
-          logger
-        ).deleteConnector(dataSource.connectorId.toString(), true);
-        if (connDeleteRes.isErr()) {
-          throw new Error(connDeleteRes.error.message);
-        }
-      }
-      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-
-      const coreDeleteRes = await coreAPI.deleteDataSource({
-        projectId: dataSource.dustAPIProjectId,
-        dataSourceId: dataSource.dustAPIDataSourceId,
-      });
-      if (coreDeleteRes.isErr()) {
-        throw new Error(coreDeleteRes.error.message);
-      }
-
-      await dataSource.delete(auth);
-
-      console.log("Data source deleted. Make sure to run: \n\n");
-      console.log(
-        "\x1b[32m%s\x1b[0m",
-        `./admin/cli.sh data-source scrub --dustAPIProjectId ${dustAPIProjectId}`
-      );
-      console.log(
-        "\n\n...to fully scrub the customer data from our infra (GCS clean-up)."
-      );
-      console.log(`WARNING: For Github datasource, the user may want to uninstall the app from Github
-      to revoke the authorization. If needed, send an email (cf template in lib/email.ts) `);
-      return;
-    }
-
-    case "scrub": {
-      if (!args.dustAPIProjectId) {
-        throw new Error("Missing --dustAPIProjectId argument");
-      }
-
-      const storage = new Storage({ keyFilename: config.getServiceAccount() });
-
-      const [files] = await storage
-        .bucket(config.getDustDataSourcesBucket())
-        .getFiles({ prefix: `${args.dustAPIProjectId}` });
-
-      console.log(`Chunking ${files.length} files...`);
-      const chunkSize = 32;
-      const chunks = [];
-      for (let i = 0; i < files.length; i += chunkSize) {
-        chunks.push(files.slice(i, i + chunkSize));
-      }
-
-      for (let i = 0; i < chunks.length; i++) {
-        console.log(`Processing chunk ${i}/${chunks.length}...`);
-        const chunk = chunks[i];
-        if (!chunk) {
-          continue;
-        }
-        await Promise.all(
-          chunk.map((f) => {
-            return (async () => {
-              console.log(`Deleting file: ${f.name}`);
-              await f.delete();
-            })();
-          })
-        );
-      }
-
-      return;
-    }
-
     case "delete-document": {
       if (!args.wId) {
         throw new Error("Missing --wId argument");
       }
-      if (!args.name) {
-        throw new Error("Missing --name argument");
+      if (!args.dsId) {
+        throw new Error("Missing --dsId argument");
       }
       if (!args.documentId) {
         throw new Error("Missing --documentId argument");
@@ -388,39 +279,20 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
 
       const auth = await Authenticator.internalAdminForWorkspace(args.wId);
 
-      const dataSource = await DataSourceResource.fetchByNameOrId(
-        auth,
-        args.name,
-        {
-          // TODO(DATASOURCE_SID): Clean-up
-          origin: "cli_delete_document",
-        }
-      );
+      const dataSource = await DataSourceResource.fetchById(auth, args.dsId);
       if (!dataSource) {
         throw new Error(
-          `DataSource not found: wId='${args.wId}' name='${args.name}'`
+          `DataSource not found: wId='${args.wId}' dsId='${args.dsId}'`
         );
       }
 
-      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-      const getRes = await coreAPI.getDataSourceDocument({
-        projectId: dataSource.dustAPIProjectId,
-        dataSourceId: dataSource.dustAPIDataSourceId,
+      const gcRes = await garbageCollectGoogleDriveDocument(dataSource, {
         documentId: args.documentId,
       });
-      if (getRes.isErr()) {
-        throw new Error(
-          `Error while getting the document: ` + getRes.error.message
-        );
+      if (gcRes.isErr()) {
+        throw new Error(`Error deleting document: ${gcRes.error.message}`);
       }
-      const delRes = await coreAPI.deleteDataSourceDocument({
-        projectId: dataSource.dustAPIProjectId,
-        dataSourceId: dataSource.dustAPIDataSourceId,
-        documentId: args.documentId,
-      });
-      if (delRes.isErr()) {
-        throw new Error(`Error deleting document: ${delRes.error.message}`);
-      }
+
       console.log(`Data Source document deleted: ${args.documentId}`);
 
       return;
@@ -441,61 +313,81 @@ const conversation = async (command: string, args: parseArgs.ParsedArgs) => {
       if (!args.cId) {
         throw new Error("Missing --cId argument");
       }
+      if (!args.modelId) {
+        throw new Error("Missing --modelId argument");
+      }
+      const model = SUPPORTED_MODEL_CONFIGS.find(
+        (m) => m.modelId === args.modelId
+      );
+      if (!model) {
+        throw new Error(`Model not found: '${args.modelId}'`);
+      }
       const verbose = args.verbose === "true";
 
-      const modelId =
-        args.modelId ?? CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG.modelId;
-      const model = SUPPORTED_MODEL_CONFIGS.find((m) => m.modelId === modelId);
-      if (!model) {
-        throw new Error(`Model not found: modelId='${modelId}'`);
-      }
-
       const auth = await Authenticator.internalAdminForWorkspace(args.wId);
-      const conversation = await getConversation(auth, args.cId as string);
+      const conversationRes = await getConversation(auth, args.cId as string);
 
-      if (!conversation) {
-        throw new Error(`Conversation not found: cId='${args.cId}'`);
+      if (conversationRes.isErr()) {
+        throw new Error(conversationRes.error.message);
       }
+      const conversation = conversationRes.value;
 
       const MIN_GENERATION_TOKENS = 2048;
       const allowedTokenCount = model.contextSize - MIN_GENERATION_TOKENS;
       const prompt = "";
 
-      const response = await renderConversationForModelMultiActions({
+      const convoRes = await renderConversationForModel(auth, {
         conversation,
         model,
         prompt,
         allowedTokenCount,
       });
 
-      if (response.isErr()) {
-        logger.error(response.error.message);
-      } else {
-        logger.info(
-          {
-            model,
-            prompt,
-          },
-          "Called renderConversationForModel with params:"
-        );
-        const result = response.value;
-
-        if (!verbose) {
-          // For convenience we shorten the content when role = "tool"
-          result.modelConversation.messages =
-            result.modelConversation.messages.map((m) => {
-              if (m.role === "function") {
-                return {
-                  ...m,
-                  content: m.content.slice(0, 200) + "...",
-                };
-              }
-              return m;
-            });
-        }
-
-        logger.info(result, "Result from renderConversationForModel:");
+      if (convoRes.isErr()) {
+        throw new Error(convoRes.error.message);
       }
+      const renderedConvo = convoRes.value;
+      const messages = renderedConvo.modelConversation.messages;
+
+      const tokenCountRes = await tokenCountForTexts(
+        getTextRepresentationFromMessages(messages),
+        model
+      );
+      if (tokenCountRes.isErr()) {
+        throw new Error(tokenCountRes.error.message);
+      }
+      const tokenCount = tokenCountRes.value;
+
+      console.log(
+        `Token used: ${renderedConvo.tokensUsed} (this includes a margin of 64 tokens).`
+      );
+      console.log(
+        `Number of messages: ${renderedConvo.modelConversation.messages.length}`
+      );
+      console.log(`Tokens per message: ${tokenCount}.`);
+
+      if (verbose) {
+        // For convenience we shorten the content when role = "tool"
+        renderedConvo.modelConversation.messages =
+          renderedConvo.modelConversation.messages.map((m) => {
+            if (m.role === "function") {
+              return {
+                ...m,
+                content: m.content.slice(0, 200) + "...",
+              };
+            }
+            return m;
+          });
+
+        renderedConvo.modelConversation.messages.forEach((m) => {
+          console.log(m);
+        });
+      } else {
+        console.log(
+          "Add option --verbose=true to print also the content of the messages."
+        );
+      }
+
       return;
     }
   }
@@ -566,6 +458,60 @@ const registry = async (command: string) => {
   }
 };
 
+const productionCheck = async (command: string, args: parseArgs.ParsedArgs) => {
+  switch (command) {
+    case "run": {
+      if (!args.check) {
+        throw new Error("Missing --check argument");
+      }
+
+      const check = REGISTERED_CHECKS.find((c) => c.name === args.check);
+      if (!check) {
+        console.log(args.check);
+        throw new Error(
+          `Invalid check, possible values: ${REGISTERED_CHECKS.map((c) => c.name).join(", ")}`
+        );
+      }
+
+      const reportSuccess = (reportPayload: unknown) => {
+        logger.info({ reportPayload }, "Check succeeded");
+      };
+      const reportFailure = (reportPayload: unknown, message: string) => {
+        logger.error(
+          { reportPayload, errorMessage: message },
+          "Production check failed"
+        );
+      };
+      const heartbeat = () => {};
+
+      await check.check(
+        check.name,
+        logger,
+        reportSuccess,
+        reportFailure,
+        heartbeat
+      );
+      return;
+    }
+  }
+};
+
+export const CLI_OBJECT_TYPES = [
+  "workspace",
+  "user",
+  "data-source",
+  "conversation",
+  "transcripts",
+  "registry",
+  "production-check",
+] as const;
+
+export type CliObjectType = (typeof CLI_OBJECT_TYPES)[number];
+
+export function isCliObjectType(val: string): val is CliObjectType {
+  return (CLI_OBJECT_TYPES as unknown as string[]).includes(val);
+}
+
 const main = async () => {
   const argv = parseArgs(process.argv.slice(2));
 
@@ -573,13 +519,17 @@ const main = async () => {
     console.log(
       "Expects object type and command as first two arguments, eg: `cli workspace create ...`"
     );
-    console.log(
-      "Possible object types: `workspace`, `user`, `data-source`, `conversation`"
-    );
     return;
   }
 
   const [objectType, command] = argv._;
+
+  if (!isCliObjectType(objectType)) {
+    console.log(
+      "Unknown object type, possible values: " + CLI_OBJECT_TYPES.join(", ")
+    );
+    return;
+  }
 
   switch (objectType) {
     case "workspace":
@@ -597,11 +547,10 @@ const main = async () => {
       return transcripts(command, argv);
     case "registry":
       return registry(command);
+    case "production-check":
+      return productionCheck(command, argv);
     default:
-      console.log(
-        "Unknown object type, possible values: `workspace`, `user`, `data-source`, `event-schema`, `conversation`, `transcripts`"
-      );
-      return;
+      assertNever(objectType);
   }
 };
 

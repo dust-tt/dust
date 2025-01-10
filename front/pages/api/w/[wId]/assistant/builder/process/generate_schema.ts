@@ -12,7 +12,7 @@ import { InternalPostBuilderProcessActionGenerateSchemaRequestBodySchema } from 
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { runAction } from "@app/lib/actions/server";
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
 import { apiError } from "@app/logger/withlogging";

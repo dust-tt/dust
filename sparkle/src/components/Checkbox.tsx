@@ -1,122 +1,111 @@
+import * as CheckboxPrimitive from "@radix-ui/react-checkbox";
+import { cva, VariantProps } from "class-variance-authority";
 import React from "react";
 
 import { CheckIcon, DashIcon } from "@sparkle/icons/solid";
-import { classNames } from "@sparkle/lib/utils";
+import { cn } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
+import { Label } from "./Label";
 
-export type CheckBoxCheckedStatus = "checked" | "unchecked" | "partial";
+export const CHECKBOX_SIZES = ["xs", "sm"] as const;
+type CheckboxSizeType = (typeof CHECKBOX_SIZES)[number];
 
-export interface CheckboxProps {
-  variant?: "selectable" | "checkable";
-  size?: "xs" | "sm";
-  checked?: CheckBoxCheckedStatus;
-  disabled?: boolean;
-  onChange: (checked: boolean) => void;
-  className?: string;
-}
+const checkboxSizeVariant: Record<CheckboxSizeType, string> = {
+  xs: "s-h-4 s-w-4 s-rounded",
+  sm: "s-h-5 s-w-5 s-rounded-md",
+};
 
-export function Checkbox({
-  variant = "selectable",
-  checked = "unchecked",
-  size = "sm",
-  onChange,
-  className = "",
-  disabled,
-}: CheckboxProps) {
-  let isChecked: boolean;
-  let isPartialChecked: boolean;
-  switch (checked) {
-    case "checked":
-      isChecked = true;
-      isPartialChecked = false;
-      break;
-    case "unchecked":
-      isChecked = false;
-      isPartialChecked = false;
-      break;
-    case "partial":
-      isChecked = true;
-      isPartialChecked = true;
-      break;
-    default:
-      throw new Error("Invalid checked prop");
-  }
-
-  const baseStyleClasses = {
-    base: "s-border s-justify-center s-flex s-items-center s-transition-colors s-duration-300 s-ease-out",
-    idle: "s-bg-structure-50 s-border-element-600 s-cursor-pointer",
-    hover:
-      "hover:s-border-action-500 hover:s-bg-action-200 hover:s-text-white/100",
-    disabled: "s-bg-structure-0 s-border-structure-300 s-cursor-default",
-    dark: {
-      base: "dark:s-bg-structure-50-dark dark:s-border-element-500-dark",
-      hover:
-        "dark:hover:s-border-action-500-dark dark:hover:s-bg-action-200-dark",
-      disabled:
-        "dark:s-bg-structure-0-dark dark:s-border-structure-300-dark s-cursor-default",
+const checkboxStyles = cva(
+  cn(
+    "s-shrink-0 s-peer s-border s-text-foreground s-border-border-darker",
+    "data-[state=checked]:s-text-white data-[state=checked]:s-border-primary",
+    "focus-visible:s-ring-ring s-ring-offset-background focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-offset-2",
+    "disabled:s-cursor-not-allowed disabled:s-opacity-50"
+  ),
+  {
+    variants: {
+      checked: {
+        true: "data-[state=checked]:s-bg-primary",
+        partial: "data-[state=checked]:s-bg-muted-foreground",
+        false: "",
+      },
+      size: checkboxSizeVariant,
     },
-  };
+    defaultVariants: {
+      size: "sm",
+      checked: false,
+    },
+  }
+);
 
-  const baseSizeClasses = {
-    xs: "s-w-4 s-h-4 s-rounded",
-    sm: "s-w-5 s-h-5 s-rounded-md",
-  };
+type CheckBoxStateType = boolean | "partial";
 
-  const checkedIndicatorClasses = {
-    base: "s-transition s-duration-300 s-ease-in-out",
-    selected: "s-opacity-100 s-bg-action-500 dark:s-bg-action-500-dark",
-    unselected: "s-opacity-0",
-    partialChecked: "s-opacity-100 s-bg-element-700 dark:s-bg-element-700-dark",
-    disabled: "s-opacity-100 s-bg-element-500 dark:s-bg-element-500-dark",
-  };
+interface CheckboxProps
+  extends Omit<
+      React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root>,
+      "checked" | "defaultChecked"
+    >,
+    VariantProps<typeof checkboxStyles> {
+  checked?: CheckBoxStateType;
+}
 
-  const sizeStyles = {
-    xs: { width: "12px", height: "12px", borderRadius: "2px" },
-    sm: { width: "14px", height: "14px", borderRadius: "3px" },
-  };
+const Checkbox = React.forwardRef<
+  React.ElementRef<typeof CheckboxPrimitive.Root>,
+  CheckboxProps
+>(({ className, size, checked, ...props }, ref) => (
+  <CheckboxPrimitive.Root
+    ref={ref}
+    className={cn(checkboxStyles({ checked, size }), className)}
+    checked={checked === "partial" ? "indeterminate" : checked}
+    {...props}
+  >
+    <CheckboxPrimitive.Indicator className="s-flex s-items-center s-justify-center s-text-current">
+      <span className={cn(size === "xs" ? "-s-mt-px" : "")}>
+        <Icon size="xs" visual={checked === "partial" ? DashIcon : CheckIcon} />
+      </span>
+    </CheckboxPrimitive.Indicator>
+  </CheckboxPrimitive.Root>
+));
 
-  const combinedBaseClasses = classNames(
-    baseStyleClasses.base,
-    baseSizeClasses[size],
-    isChecked || isPartialChecked ? "s-text-white" : "s-text-white/0",
-    disabled ? baseStyleClasses.disabled : baseStyleClasses.idle,
-    !disabled ? baseStyleClasses.hover : "",
-    disabled ? baseStyleClasses.dark.disabled : baseStyleClasses.dark.base,
-    !disabled ? baseStyleClasses.dark.hover : "",
-    className
-  );
+Checkbox.displayName = CheckboxPrimitive.Root.displayName;
 
-  const combinedCheckedIndicatorClasses = classNames(
-    checkedIndicatorClasses.base,
-    disabled ? checkedIndicatorClasses.disabled : "",
-    isChecked && !isPartialChecked && !disabled
-      ? checkedIndicatorClasses.selected
-      : "",
-    isPartialChecked && !disabled ? checkedIndicatorClasses.partialChecked : "",
-    !isChecked && !disabled ? checkedIndicatorClasses.unselected : ""
-  );
+interface CheckboxWithTextProps extends CheckboxProps {
+  text: string;
+}
 
+function CheckboxWithText({ text, ...props }: CheckboxWithTextProps) {
   return (
-    <label>
-      <input
-        type="checkbox"
-        checked={isChecked}
-        onChange={(e) => onChange && onChange(e.target.checked)}
-        className="s-hidden"
-        disabled={disabled}
-      />
-      <div className={classNames(combinedBaseClasses, "s-relative")}>
-        <div
-          className={combinedCheckedIndicatorClasses}
-          style={sizeStyles[size]}
-        />
-        {variant === "checkable" && (
-          <div className="s-absolute">
-            <Icon visual={isPartialChecked ? DashIcon : CheckIcon} size="xs" />
-          </div>
-        )}
-      </div>
-    </label>
+    <div className="s-items-top s-flex s-items-center s-space-x-2">
+      <Checkbox {...props} />
+      <Label className="s-text-sm s-leading-none peer-disabled:s-cursor-not-allowed peer-disabled:s-opacity-70">
+        {text}
+      </Label>
+    </div>
   );
 }
+
+interface CheckboxWithTextAndDescriptionProps extends CheckboxWithTextProps {
+  description: string;
+}
+
+function CheckBoxWithTextAndDescription({
+  text,
+  description,
+  ...props
+}: CheckboxWithTextAndDescriptionProps) {
+  return (
+    <div className="s-items-top s-flex s-space-x-2">
+      <Checkbox {...props} />
+      <div className="s-grid s-gap-1.5 s-leading-none">
+        <Label className="s-text-sm s-leading-none peer-disabled:s-cursor-not-allowed peer-disabled:s-opacity-70">
+          {text}
+        </Label>
+        <p className="s-text-xs s-text-muted-foreground">{description}</p>
+      </div>
+    </div>
+  );
+}
+
+export { Checkbox, CheckboxWithText, CheckBoxWithTextAndDescription };
+export type { CheckboxProps };

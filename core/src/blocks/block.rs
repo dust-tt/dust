@@ -155,7 +155,6 @@ pub trait Block {
         name: &str,
         env: &Env,
         event_sender: Option<UnboundedSender<Value>>,
-        project_id: i64,
     ) -> Result<BlockResult>;
 
     fn clone_box(&self) -> Box<dyn Block + Sync + Send>;
@@ -230,40 +229,6 @@ pub fn find_secrets(text: &str) -> Vec<String> {
             String::from(name)
         })
         .collect::<Vec<_>>()
-}
-pub fn replace_secrets_in_string(text: &str, field: &str, env: &Env) -> Result<String> {
-    let secrets_found = find_secrets(text);
-
-    // Run Tera templating engine one_off on the result (before replacing variables but after
-    // looking for them).
-    let context = Context::from_value(json!(env.state))?;
-
-    let mut result = match Tera::one_off(text, &context, false) {
-        Ok(r) => r,
-        Err(e) => {
-            let err_msg = e
-                .source()
-                .unwrap()
-                .to_string()
-                .replace("__tera_one_off", field);
-
-            Err(anyhow!("Templating error: {}", err_msg))?
-        }
-    };
-
-    secrets_found
-        .iter()
-        .map(|key| {
-            if let Some(secret) = env.secrets.secrets.get(key) {
-                result = result.replace(&format!("${{secrets.{}}}", key), secret);
-                Ok(())
-            } else {
-                Err(anyhow!("`secrets.{}` is not a string", key))
-            }
-        })
-        .collect::<Result<Vec<_>>>()?;
-
-    Ok(result)
 }
 
 pub fn find_variables(text: &str) -> Vec<(String, String)> {

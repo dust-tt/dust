@@ -2,28 +2,28 @@ import type {
   AgentParticipantType,
   ConversationParticipantsType,
   ConversationWithoutContentType,
-  LightAgentConfigurationType,
   ModelId,
   Result,
   UserParticipantType,
 } from "@dust-tt/types";
-import { Err, formatUserFullName, Ok } from "@dust-tt/types";
+import { ConversationError, Err, formatUserFullName, Ok } from "@dust-tt/types";
 import { Op } from "sequelize";
 
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import type { Authenticator } from "@app/lib/auth";
+import type { Conversation } from "@app/lib/models/assistant/conversation";
 import {
   AgentMessage,
   Message,
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
-import { User } from "@app/lib/models/user";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 
 async function fetchAllUsersById(
   userIds: ModelId[]
 ): Promise<UserParticipantType[]> {
   const users = (
-    await User.findAll({
+    await UserModel.findAll({
       attributes: ["firstName", "lastName", "imageUrl", "username"],
       where: {
         id: {
@@ -31,7 +31,7 @@ async function fetchAllUsersById(
         },
       },
     })
-  ).filter((u) => u !== null) as User[];
+  ).filter((u) => u !== null) as UserModel[];
 
   return users.map((u) => ({
     fullName: formatUserFullName(u),
@@ -44,14 +44,11 @@ async function fetchAllAgentsById(
   auth: Authenticator,
   agentConfigurationIds: string[]
 ): Promise<AgentParticipantType[]> {
-  // TODO(2024-3-25 flav) Support fetching many agents by id.
-  const agents = (
-    await Promise.all(
-      agentConfigurationIds.map((agentConfigId) => {
-        return getAgentConfiguration(auth, agentConfigId);
-      })
-    )
-  ).filter((a) => a !== null) as LightAgentConfigurationType[];
+  const agents = await getAgentConfigurations({
+    auth,
+    agentsGetView: { agentIds: agentConfigurationIds },
+    variant: "light",
+  });
 
   return agents.map((a) => ({
     configurationId: a.sId,
@@ -62,7 +59,7 @@ async function fetchAllAgentsById(
 
 export async function fetchConversationParticipants(
   auth: Authenticator,
-  conversation: ConversationWithoutContentType
+  conversation: ConversationWithoutContentType | Conversation
 ): Promise<Result<ConversationParticipantsType, Error>> {
   const owner = auth.workspace();
   if (!owner) {
@@ -73,7 +70,7 @@ export async function fetchConversationParticipants(
     where: {
       conversationId: conversation.id,
     },
-    order: [["rank", "ASC"]],
+    attributes: [],
     include: [
       {
         model: UserMessage,
@@ -112,6 +109,12 @@ export async function fetchConversationParticipants(
     fetchAllUsersById([...userIds]),
     fetchAllAgentsById(auth, [...agentConfigurationIds]),
   ]);
+
+  // if less agents than agentConfigurationIds, it means some agents are forbidden
+  // to the user
+  if (agents.length < agentConfigurationIds.size) {
+    return new Err(new ConversationError("conversation_access_restricted"));
+  }
 
   return new Ok({
     agents,

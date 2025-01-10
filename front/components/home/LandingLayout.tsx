@@ -10,7 +10,6 @@ import {
 import { Transition } from "@headlessui/react";
 import Head from "next/head";
 import Link from "next/link";
-import { useRouter } from "next/router";
 import Script from "next/script";
 import { useEffect, useState } from "react";
 import { useCookies } from "react-cookie";
@@ -22,12 +21,10 @@ import { MainNavigation } from "@app/components/home/menu/MainNavigation";
 import { MobileNavigation } from "@app/components/home/menu/MobileNavigation";
 import Particles, { shapeNamesArray } from "@app/components/home/Particles";
 import ScrollingHeader from "@app/components/home/ScrollingHeader";
-import { ClientSideTracking } from "@app/lib/tracking/client";
 import { classNames } from "@app/lib/utils";
 
 export interface LandingLayoutProps {
   shape: number;
-  gaTrackingId: string;
   postLoginReturnToUrl?: string;
 }
 
@@ -38,13 +35,8 @@ export default function LandingLayout({
   children: React.ReactNode;
   pageProps: LandingLayoutProps;
 }) {
-  const {
-    gaTrackingId,
-    postLoginReturnToUrl = "/api/login",
-    shape,
-  } = pageProps;
+  const { postLoginReturnToUrl = "/api/login", shape } = pageProps;
 
-  const router = useRouter();
   const [currentShape, setCurrentShape] = useState(shape);
   const [showCookieBanner, setShowCookieBanner] = useState<boolean>(true);
   const [hasAcceptedCookies, setHasAcceptedCookies] = useState<boolean>(false);
@@ -84,19 +76,13 @@ export default function LandingLayout({
     };
   }, []);
 
-  useEffect(() => {
-    ClientSideTracking.trackPageView({
-      pathname: router.pathname,
-    });
-  }, [router.pathname]);
-
   return (
     <RootLayout>
       <Header />
       <ScrollingHeader>
-        <div className="flex h-full w-full items-center gap-4 px-6 lg:gap-10">
-          <div className="hidden h-[24px] w-[96px] lg:block">
-            <Link href="/">
+        <div className="flex h-full w-full items-center gap-4 px-6 xl:gap-10">
+          <div className="hidden h-[24px] w-[96px] xl:block">
+            <Link href="/home">
               <Hover3D className="relative h-[24px] w-[96px]">
                 <Div3D depth={0} className="h-[24px] w-[96px]">
                   <LogoHorizontalColorLayer1Logo className="h-[24px] w-[96px]" />
@@ -108,13 +94,21 @@ export default function LandingLayout({
             </Link>
           </div>
           <MobileNavigation />
-          <div className="block lg:hidden">
+          <div className="block xl:hidden">
             <LogoHorizontalColorLogo className="h-[24px] w-[96px]" />
           </div>
           <MainNavigation />
-          <div className="flex flex-grow justify-end">
+          <div className="flex flex-grow justify-end gap-4">
             <Button
-              variant="tertiary"
+              className="hidden xs:block"
+              variant="outline"
+              size="sm"
+              label="Request a demo"
+              href="https://forms.gle/dGaQ1AZuDCbXY1ft9"
+              target="_blank"
+            />
+            <Button
+              variant="highlight"
               size="sm"
               label="Sign in"
               icon={LoginIcon}
@@ -157,7 +151,7 @@ export default function LandingLayout({
         {hasAcceptedCookies && (
           <>
             <Script
-              src={`https://www.googletagmanager.com/gtag/js?id=${gaTrackingId}`}
+              src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GA_TRACKING_ID}`}
               strategy="afterInteractive"
             />
             <Script id="google-analytics" strategy="afterInteractive">
@@ -166,7 +160,7 @@ export default function LandingLayout({
              function gtag(){window.dataLayer.push(arguments);}
              gtag('js', new Date());
 
-             gtag('config', '${gaTrackingId}');
+             gtag('config', '${process.env.NEXT_PUBLIC_GA_TRACKING_ID}');
             `}
             </Script>
           </>
@@ -191,7 +185,7 @@ const CookieBanner = ({
   return (
     <Transition
       show={show}
-      enter="transition-opacity s-duration-300"
+      enter="transition-opacity duration-300"
       appear={true}
       enterFrom="opacity-0"
       enterTo="opacity-100"
@@ -203,7 +197,7 @@ const CookieBanner = ({
         className || ""
       )}
     >
-      <div className="text-sm font-normal text-element-900">
+      <div className="text-sm font-normal text-foreground">
         We use{" "}
         <A variant="primary">
           <Link
@@ -217,13 +211,13 @@ const CookieBanner = ({
       </div>
       <div className="flex gap-2">
         <Button
-          variant="tertiary"
+          variant="outline"
           size="sm"
           label="Reject"
           onClick={onClickRefuse}
         />
         <Button
-          variant="primary"
+          variant="highlight"
           size="sm"
           label="Accept All"
           onClick={onClickAccept}

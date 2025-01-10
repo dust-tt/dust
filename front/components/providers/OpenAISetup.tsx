@@ -169,7 +169,7 @@ export default function OpenAISetup({
                     <Button
                       onClick={() => setOpen(false)}
                       label="Cancel"
-                      variant="secondary"
+                      variant="outline"
                     />
                   </div>
                   <div className="flex flex-initial">

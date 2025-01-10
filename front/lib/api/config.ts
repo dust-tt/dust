@@ -4,10 +4,18 @@ export const PRODUCTION_DUST_API = "https://dust.tt";
 
 const config = {
   getClientFacingUrl: (): string => {
-    return EnvironmentConfig.getEnvVariable("DUST_CLIENT_FACING_URL");
+    return EnvironmentConfig.getEnvVariable(
+      "NEXT_PUBLIC_DUST_CLIENT_FACING_URL"
+    );
   },
   getAuth0TenantUrl: (): string => {
     return EnvironmentConfig.getEnvVariable("AUTH0_TENANT_DOMAIN_URL");
+  },
+  getAuth0AudienceUri: (): string => {
+    return EnvironmentConfig.getEnvVariable("AUTH0_AUDIENCE_URI");
+  },
+  getDustApiAudience: (): string => {
+    return EnvironmentConfig.getEnvVariable("DUST_API_AUDIENCE");
   },
   getAuth0M2MClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("AUTH0_M2M_CLIENT_ID");
@@ -17,6 +25,9 @@ const config = {
   },
   getAuth0WebApplicationId: (): string => {
     return EnvironmentConfig.getEnvVariable("AUTH0_WEB_APP_CLIENT_ID");
+  },
+  getAuth0ExtensionApplicationId: (): string => {
+    return EnvironmentConfig.getEnvVariable("AUTH0_EXTENSION_CLIENT_ID");
   },
   getDustInviteTokenSecret: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_INVITE_TOKEN_SECRET");
@@ -46,9 +57,6 @@ const config = {
   getServiceAccount: (): string => {
     return EnvironmentConfig.getEnvVariable("SERVICE_ACCOUNT");
   },
-  getGaTrackingId: (): string => {
-    return EnvironmentConfig.getEnvVariable("GA_TRACKING_ID");
-  },
   getCustomerIoSiteId: (): string => {
     return EnvironmentConfig.getEnvVariable("CUSTOMERIO_SITE_ID");
   },
@@ -66,6 +74,9 @@ const config = {
   },
   getDustDevelopmentWorkspaceId: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_DEVELOPMENT_WORKSPACE_ID");
+  },
+  getDustRegistrySecret: (): string => {
+    return EnvironmentConfig.getEnvVariable("DUST_REGISTRY_SECRET");
   },
   getCoreAPIConfig: (): { url: string; apiKey: string | null } => {
     return {
@@ -85,7 +96,8 @@ const config = {
       url:
         EnvironmentConfig.getOptionalEnvVariable("DUST_PROD_API") ??
         PRODUCTION_DUST_API,
-      nodeEnv: EnvironmentConfig.getEnvVariable("NODE_ENV"),
+      nodeEnv:
+        EnvironmentConfig.getOptionalEnvVariable("NODE_ENV") || "development",
     };
   },
   getOAuthAPIConfig: (): { url: string; apiKey: string | null } => {
@@ -98,6 +110,14 @@ const config = {
     return EnvironmentConfig.getOptionalEnvVariable(
       "DEVELOPMENT_DUST_APPS_WORKSPACE_ID"
     );
+  },
+  getDevelopmentDustAppsSpaceId: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable(
+      "DEVELOPMENT_DUST_APPS_VAULT_ID"
+    );
+  },
+  getRegionResolverSecret: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("REGION_RESOLVER_SECRET");
   },
   // OAuth
   getOAuthGithubApp: (): string => {
@@ -124,13 +144,19 @@ const config = {
   getOAuthMicrosoftClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_MICROSOFT_CLIENT_ID");
   },
+  getOAuthZendeskClientId: (): string => {
+    return EnvironmentConfig.getEnvVariable("OAUTH_ZENDESK_CLIENT_ID");
+  },
   // Text extraction.
   getTextExtractionUrl: (): string => {
     return EnvironmentConfig.getEnvVariable("TEXT_EXTRACTION_URL");
   },
   // Status page.
-  getProviderStatusPageId: (): string => {
-    return EnvironmentConfig.getEnvVariable("PROVIDER_STATUS_PAGE_ID");
+  getStatusPageProvidersPageId: (): string => {
+    return EnvironmentConfig.getEnvVariable("STATUS_PAGE_PROVIDERS_PAGE_ID");
+  },
+  getStatusPageDustPageId: (): string => {
+    return EnvironmentConfig.getEnvVariable("STATUS_PAGE_DUST_PAGE_ID");
   },
   getStatusPageApiToken: (): string => {
     return EnvironmentConfig.getEnvVariable("STATUS_PAGE_API_TOKEN");

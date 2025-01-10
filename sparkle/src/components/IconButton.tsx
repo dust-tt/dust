@@ -1,126 +1,96 @@
+import { cva } from "class-variance-authority";
 import React, { ComponentType, MouseEventHandler } from "react";
 
-import { classNames } from "@sparkle/lib/utils";
-
-import { Icon, IconProps } from "./Icon";
-import { Tooltip, TooltipProps } from "./Tooltip";
+import { Tooltip } from "@sparkle/components";
+import { Button, ButtonVariantType } from "@sparkle/components/Button";
+import { cn } from "@sparkle/lib/utils";
 
 type IconButtonProps = {
-  variant?: "primary" | "warning" | "secondary" | "tertiary" | "white";
+  variant?: React.ComponentProps<typeof Button>["variant"];
   onClick?: MouseEventHandler<HTMLButtonElement>;
-  size?: "xs" | "sm" | "md";
+  size?: React.ComponentProps<typeof Button>["size"];
   tooltip?: string;
-  tooltipPosition?: TooltipProps["position"];
-  icon?: ComponentType;
+  tooltipPosition?: React.ComponentProps<typeof Tooltip>["side"];
+  icon: ComponentType;
   className?: string;
   disabled?: boolean;
 };
 
-const baseClasses =
-  "s-transition-all s-ease-out s-duration-300 s-cursor-pointer hover:s-scale-110";
-
-const iconClasses = {
-  primary: {
-    base: "s-text-action-500",
-    hover: "hover:s-text-action-400",
-    active: "active:s-text-action-600",
-    disabled: "s-text-element-500",
-    dark: {
-      base: "dark:s-text-action-500-dark",
-      hover: "dark:hover:s-text-action-500-dark",
-      active: "dark:active:s-text-action-600-dark",
-      disabled: "dark:s-text-element-500-dark",
-    },
-  },
-  warning: {
-    base: "s-text-warning-500",
-    hover: "hover:s-text-warning-400",
-    active: "active:s-text-warning-600",
-    disabled: "s-text-element-500",
-    dark: {
-      base: "dark:s-text-warning-500-dark",
-      hover: "dark:hover:s-text-warning-500-dark",
-      active: "dark:active:s-text-warning-600-dark",
-      disabled: "dark:s-text-element-500-dark",
-    },
-  },
-  secondary: {
-    base: "s-text-element-900",
-    hover: "hover:s-text-action-400",
-    active: "active:s-text-action-600",
-    disabled: "s-text-element-500",
-    dark: {
-      base: "dark:s-text-element-900-dark",
-      hover: "dark:hover:s-text-action-500-dark",
-      active: "dark:active:s-text-action-600-dark",
-      disabled: "dark:s-text-element-500-dark",
-    },
-  },
-  tertiary: {
-    base: "s-text-element-700",
-    hover: "hover:s-text-action-400",
-    active: "active:s-text-action-600",
-    disabled: "s-text-element-500",
-    dark: {
-      base: "dark:s-text-element-700-dark",
-      hover: "dark:hover:s-text-action-500-dark",
-      active: "dark:active:s-text-action-600-dark",
-      disabled: "dark:s-text-element-500-dark",
-    },
-  },
-  white: {
-    base: "s-text-white",
-    hover: "hover:s-text-slate-100",
-    active: "active:s-text-slate-200",
-    disabled: "s-text-white/50",
-    dark: {
-      base: "s-text-white",
-      hover: "hover:s-text-slate-100",
-      active: "active:s-text-slate-200",
-      disabled: "s-text-white/50",
-    },
-  },
+const styleVariants: Record<ButtonVariantType, string> = {
+  primary:
+    "s-text-action-500 dark:s-text-action-500-dark" +
+    "hover:s-text-action-400 dark:hover:s-text-action-500-dark" +
+    "active:s-text-action-600 dark:active:s-text-action-600-dark" +
+    "s-text-element-500 dark:s-text-element-500-dark",
+  warning:
+    "s-text-warning-500 dark:s-text-warning-500-dark" +
+    "hover:s-text-warning-400 dark:hover:s-text-warning-500-dark" +
+    "active:s-text-warning-600 dark:active:s-text-warning-600-dark" +
+    "s-text-element-500 dark:s-text-element-500-dark",
+  highlight:
+    "s-text-foreground dark:s-text-foreground-dark" +
+    "hover:s-text-action-400 dark:hover:s-text-action-500-dark" +
+    "active:s-text-action-600 dark:active:s-text-action-600-dark" +
+    "s-text-element-500 dark:s-text-element-500-dark",
+  outline:
+    "s-text-element-700 dark:s-text-element-700-dark" +
+    "hover:s-text-action-400 dark:hover:s-text-action-500-dark" +
+    "active:s-text-action-600 dark:active:s-text-action-600-dark" +
+    "s-text-element-500 dark:s-text-element-500-dark",
+  ghost:
+    "s-text-white s-text-white" +
+    "hover:s-text-slate-100 hover:s-text-slate-100" +
+    "active:s-text-slate-200 active:s-text-slate-200" +
+    "s-text-white/50 s-text-white/50",
+  "ghost-secondary":
+    "s-text-white" +
+    "hover:s-text-slate-100 hover:s-text-slate-100" +
+    "active:s-text-slate-200 active:s-text-slate-200" +
+    "s-text-white/50 s-text-white/50",
 };
 
-export function IconButton({
-  variant = "tertiary",
-  onClick,
-  disabled = false,
-  tooltip,
-  tooltipPosition = "above",
-  icon,
-  className = "",
-  size = "sm",
-}: IconButtonProps) {
-  // Choose the correct group of classes based on 'type'
-  const iconGroup = iconClasses[variant];
+const iconButtonVariants = cva(
+  "s-transition-all s-ease-out s-duration-300 s-cursor-pointer hover:s-scale-110",
+  {
+    variants: {
+      variant: styleVariants,
+      disabled: {
+        true: "s-text-element-500 s-cursor-default hover:s-scale-100",
+      },
+    },
+    defaultVariants: {
+      variant: "outline",
+      disabled: false,
+    },
+  }
+);
 
-  const finalIconClasses = classNames(
-    className,
-    baseClasses,
-    iconGroup.base,
-    disabled ? iconGroup.disabled : iconGroup.hover,
-    disabled ? "" : iconGroup.active,
-    iconGroup.dark.base,
-    disabled ? iconGroup.dark.disabled : iconGroup.dark.hover,
-    disabled ? "" : iconGroup.dark.active
-  );
-
-  const IconButtonContent = (
-    <button
-      className={finalIconClasses}
-      onClick={disabled ? undefined : onClick}
+const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
+  (
+    {
+      variant = "outline",
+      onClick,
+      disabled = false,
+      tooltip,
+      icon,
+      className,
+      size = "sm",
+      ...props
+    },
+    ref
+  ) => (
+    <Button
+      tooltip={tooltip}
+      className={cn(iconButtonVariants({ variant, disabled }), className)}
+      onClick={onClick}
       disabled={disabled}
-    >
-      {icon && <Icon visual={icon} size={size as IconProps["size"]} />}
-    </button>
-  );
+      ref={ref}
+      size={size}
+      icon={icon}
+      variant={null}
+      {...props}
+    />
+  )
+);
 
-  return tooltip ? (
-    <Tooltip label={tooltip} position={tooltipPosition}>
-      {IconButtonContent}
-    </Tooltip>
-  ) : (
-    IconButtonContent
-  );
-}
+export { IconButton };

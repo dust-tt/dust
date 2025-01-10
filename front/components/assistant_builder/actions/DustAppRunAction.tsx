@@ -1,5 +1,5 @@
-import { ContentMessage } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
+import { ContentMessage, InformationCircleIcon } from "@dust-tt/sparkle";
+import type { LightWorkspaceType, SpaceType } from "@dust-tt/types";
 import { assertNever, slugify } from "@dust-tt/types";
 import { useContext, useState } from "react";
 
@@ -23,14 +23,11 @@ export function isActionDustAppRunValid(
     : "Please select a Dust App.";
 }
 
-export function ActionDustAppRun({
-  owner,
-  action,
-  updateAction,
-  setEdited,
-}: {
-  owner: WorkspaceType;
+interface ActionDustAppRunProps {
   action: AssistantBuilderActionConfiguration;
+  allowedSpaces: SpaceType[];
+  owner: LightWorkspaceType;
+  setEdited: (edited: boolean) => void;
   updateAction: (args: {
     actionName: string;
     actionDescription: string;
@@ -38,13 +35,21 @@ export function ActionDustAppRun({
       old: AssistantBuilderActionConfiguration["configuration"]
     ) => AssistantBuilderActionConfiguration["configuration"];
   }) => void;
-  setEdited: (edited: boolean) => void;
-}) {
+}
+
+export function ActionDustAppRun({
+  action,
+  allowedSpaces,
+  owner,
+  setEdited,
+  updateAction,
+}: ActionDustAppRunProps) {
   const { dustApps } = useContext(AssistantBuilderContext);
   const [showDustAppsModal, setShowDustAppsModal] = useState(false);
 
   const deleteDustApp = () => {
     setEdited(true);
+
     updateAction({
       actionName:
         ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_NAME,
@@ -66,6 +71,8 @@ export function ActionDustAppRun({
   return (
     <>
       <AssistantBuilderDustAppModal
+        allowedSpaces={allowedSpaces}
+        owner={owner}
         isOpen={showDustAppsModal}
         setOpen={(isOpen) => {
           setShowDustAppsModal(isOpen);
@@ -87,6 +94,7 @@ export function ActionDustAppRun({
       {noDustApp ? (
         <ContentMessage
           title="You don't have any Dust Application available"
+          icon={InformationCircleIcon}
           variant="warning"
         >
           <div className="flex flex-col gap-y-3">
@@ -136,6 +144,7 @@ export function ActionDustAppRun({
             application's input block dataset schema.
           </div>
           <DustAppSelectionSection
+            owner={owner}
             show={true}
             dustAppConfiguration={
               action.configuration as AssistantBuilderDustAppConfiguration

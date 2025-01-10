@@ -1,25 +1,16 @@
 import type { ModelId } from "@dust-tt/types";
 
 import {
+  getCodeRootInternalId,
+  getRepositoryInternalId,
+  isGithubCodeDirId,
+} from "@connectors/connectors/github/lib/utils";
+import {
   GithubCodeDirectory,
   GithubCodeFile,
 } from "@connectors/lib/models/github";
 
-export async function getGithubCodeOrDirectoryParentIds(
-  connectorId: ModelId,
-  internalId: string,
-  repoId: number
-): Promise<string[]> {
-  if (internalId.startsWith(`github-code-${repoId}-dir`)) {
-    return getGithubCodeDirectoryParentIds(connectorId, internalId, repoId);
-  }
-  if (internalId.startsWith(`github-code-${repoId}-file`)) {
-    return getGithubCodeFileParentIds(connectorId, internalId, repoId);
-  }
-  return [];
-}
-
-async function getGithubCodeDirectoryParentIds(
+export async function getGithubCodeDirectoryParentIds(
   connectorId: ModelId,
   internalId: string,
   repoId: number
@@ -35,21 +26,21 @@ async function getGithubCodeDirectoryParentIds(
     return [];
   }
 
-  if (directory.parentInternalId.startsWith(`github-code-${repoId}-dir`)) {
+  if (isGithubCodeDirId(directory.parentInternalId)) {
     // Pull the directory.
     const parents = await getGithubCodeDirectoryParentIds(
       connectorId,
       directory.parentInternalId,
       repoId
     );
-    return [...parents, directory.parentInternalId];
-  } else if (directory.parentInternalId === `github-code-${repoId}`) {
-    return [`${repoId}`, `github-code-${repoId}`];
+    return [directory.parentInternalId, ...parents];
+  } else if (directory.parentInternalId === getCodeRootInternalId(repoId)) {
+    return [directory.parentInternalId, getRepositoryInternalId(repoId)];
   }
   return [];
 }
 
-async function getGithubCodeFileParentIds(
+export async function getGithubCodeFileParentIds(
   connectorId: ModelId,
   internalId: string,
   repoId: number
@@ -65,16 +56,16 @@ async function getGithubCodeFileParentIds(
     return [];
   }
 
-  if (file.parentInternalId.startsWith(`github-code-${repoId}-dir`)) {
+  if (isGithubCodeDirId(file.parentInternalId)) {
     // Pull the directory.
     const parents = await getGithubCodeDirectoryParentIds(
       connectorId,
       file.parentInternalId,
       repoId
     );
-    return [...parents, file.parentInternalId];
-  } else if (file.parentInternalId === `github-code-${repoId}`) {
-    return [`${repoId}`, `github-code-${repoId}`];
+    return [file.parentInternalId, ...parents];
+  } else if (file.parentInternalId === getCodeRootInternalId(repoId)) {
+    return [file.parentInternalId, getRepositoryInternalId(repoId)];
   }
   return [];
 }

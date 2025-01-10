@@ -36,6 +36,7 @@ export type EditingPlanType = {
   dataSourcesDocumentsCount: string | number;
   dataSourcesDocumentsSizeMb: string | number;
   maxUsers: string | number;
+  maxVaults: string | number;
   isNewPlan?: boolean;
   trialPeriodDays: string | number;
 };
@@ -58,6 +59,7 @@ export const fromPlanType = (plan: PlanType): EditingPlanType => {
     dataSourcesDocumentsCount: plan.limits.dataSources.documents.count,
     dataSourcesDocumentsSizeMb: plan.limits.dataSources.documents.sizeMb,
     maxUsers: plan.limits.users.maxUsers,
+    maxVaults: plan.limits.vaults.maxVaults,
     trialPeriodDays: plan.trialPeriodDays,
   };
 };
@@ -101,6 +103,9 @@ export const toPlanType = (editingPlan: EditingPlanType): PlanType => {
       users: {
         maxUsers: parseMaybeNumber(editingPlan.maxUsers),
       },
+      vaults: {
+        maxVaults: parseMaybeNumber(editingPlan.maxVaults),
+      },
       canUseProduct: true,
     },
     trialPeriodDays: parseMaybeNumber(editingPlan.trialPeriodDays),
@@ -124,6 +129,7 @@ const getEmptyPlan = (): EditingPlanType => ({
   dataSourcesDocumentsCount: "",
   dataSourcesDocumentsSizeMb: "",
   maxUsers: "",
+  maxVaults: "",
   isNewPlan: true,
   trialPeriodDays: 0,
 });
@@ -214,7 +220,7 @@ export const PLAN_FIELDS = {
   },
   maxMessages: {
     type: "number",
-    width: "medium",
+    width: "small",
     title: "# Messages",
     error: (plan: EditingPlanType) => errorCheckNumber(plan.maxMessages),
   },
@@ -227,13 +233,13 @@ export const PLAN_FIELDS = {
   },
   dataSourcesCount: {
     type: "number",
-    width: "medium",
+    width: "small",
     title: "# DS",
     error: (plan: EditingPlanType) => errorCheckNumber(plan.dataSourcesCount),
   },
   dataSourcesDocumentsCount: {
     type: "number",
-    width: "medium",
+    width: "small",
     title: "# Docs",
     error: (plan: EditingPlanType) =>
       errorCheckNumber(plan.dataSourcesDocumentsCount),
@@ -247,9 +253,15 @@ export const PLAN_FIELDS = {
   },
   maxUsers: {
     type: "number",
-    width: "medium",
+    width: "small",
     title: "# Users",
     error: (plan: EditingPlanType) => errorCheckNumber(plan.maxUsers),
+  },
+  maxVaults: {
+    type: "number",
+    width: "small",
+    title: "# Spaces",
+    error: (plan: EditingPlanType) => errorCheckNumber(plan.maxVaults),
   },
   trialPeriodDays: {
     type: "number",
@@ -304,17 +316,17 @@ export const Field: React.FC<FieldProps> = ({
       case "number":
         return isEditing && !disabled ? (
           <Input
+            className="px-2"
             value={editingPlan && editingPlan[fieldName].toString()}
             onChange={(x) => {
               if (!editingPlan) {
                 return;
               }
-              setEditingPlan({ ...editingPlan, [fieldName]: x });
+              setEditingPlan({ ...editingPlan, [fieldName]: x.target.value });
             }}
-            placeholder=""
             name={fieldName}
-            error={editingPlan && field.error(editingPlan)}
-            showErrorLabel={false}
+            message={editingPlan && field.error(editingPlan)}
+            messageStatus="error"
           />
         ) : (
           renderPlanFieldValue(plan[fieldName])
@@ -323,12 +335,12 @@ export const Field: React.FC<FieldProps> = ({
       case "boolean":
         const fieldValue =
           editingPlan && isEditing ? editingPlan[fieldName] : plan[fieldName];
-        const checkedStatus = fieldValue ? "checked" : "unchecked";
+        const isChecked = !!fieldValue;
 
         return (
           <Checkbox
-            checked={checkedStatus}
-            onChange={(x) => {
+            checked={isChecked}
+            onCheckedChange={(x) => {
               if (!editingPlan) {
                 return;
               }

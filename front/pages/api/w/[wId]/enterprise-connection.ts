@@ -8,12 +8,12 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import {
   createEnterpriseConnection,
   deleteEnterpriseConnection,
   getEnterpriseConnectionForWorkspace,
 } from "@app/lib/api/enterprise_connection";
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { Workspace, WorkspaceHasDomain } from "@app/lib/models/workspace";
 import logger from "@app/logger/logger";
@@ -23,17 +23,36 @@ export type GetEnterpriseConnectionResponseBody = {
   connection: WorkspaceEnterpriseConnection;
 };
 
-const PostCreateEnterpriseConnectionRequestBodySchema = t.type({
+const PostCreateEnterpriseIdpSpecificConnectionRequestBodySchema = t.type({
   clientId: t.string,
   clientSecret: t.string,
   domain: t.string,
-  // SAML creation is not supported yet.
   strategy: t.union([t.literal("okta"), t.literal("waad")]),
 });
 
-export type PostCreateEnterpriseConnectionRequestBodySchemaType = t.TypeOf<
-  typeof PostCreateEnterpriseConnectionRequestBodySchema
+export type IdpSpecificConnectionTypeDetails = t.TypeOf<
+  typeof PostCreateEnterpriseIdpSpecificConnectionRequestBodySchema
 >;
+
+const PostCreateSAMLEnterpriseConnectionRequestBodySchema = t.type({
+  // Base-64 encoded certificate.
+  x509SignInCertificate: t.string,
+  signInUrl: t.string,
+  strategy: t.literal("samlp"),
+});
+
+const PostCreateEnterpriseConnectionRequestBodySchema = t.union([
+  PostCreateEnterpriseIdpSpecificConnectionRequestBodySchema,
+  PostCreateSAMLEnterpriseConnectionRequestBodySchema,
+]);
+
+export type SAMLConnectionTypeDetails = t.TypeOf<
+  typeof PostCreateSAMLEnterpriseConnectionRequestBodySchema
+>;
+
+export type PostCreateEnterpriseConnectionRequestBodySchemaType =
+  | IdpSpecificConnectionTypeDetails
+  | SAMLConnectionTypeDetails;
 
 async function handler(
   req: NextApiRequest,
@@ -128,10 +147,21 @@ async function handler(
         },
       });
 
+      if (!workspaceWithVerifiedDomain) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "Cannot create connection: workspace domain not verified. Verify domain and retry.",
+          },
+        });
+      }
+
       try {
         await createEnterpriseConnection(
           auth,
-          workspaceWithVerifiedDomain?.domain ?? null,
+          workspaceWithVerifiedDomain.domain,
           body
         );
       } catch (err) {

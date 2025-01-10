@@ -1,7 +1,12 @@
+import {
+  AgentReasoningEffort,
+  LightAgentConfigurationType,
+} from "../../front/assistant/agent";
+import { GenerationTokensEvent } from "../../front/assistant/generation";
 import { WorkspaceType } from "../../front/user";
+import { WhitelistableFeature } from "../../shared/feature_flags";
 import { ExtractSpecificKeys } from "../../shared/typescipt_utils";
 import { ioTsEnum } from "../../shared/utils/iots_utils";
-import { GenerationTokensEvent } from "./api/assistant/generation";
 
 /**
  * PROVIDER IDS
@@ -12,6 +17,8 @@ export const MODEL_PROVIDER_IDS = [
   "anthropic",
   "mistral",
   "google_ai_studio",
+  "togetherai",
+  "deepseek",
 ] as const;
 export type ModelProviderIdType = (typeof MODEL_PROVIDER_IDS)[number];
 
@@ -49,7 +56,7 @@ export function getSmallWhitelistedModel(
     return GPT_4O_MINI_MODEL_CONFIG;
   }
   if (isProviderWhitelisted(owner, "anthropic")) {
-    return CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG;
+    return CLAUDE_3_5_HAIKU_DEFAULT_MODEL_CONFIG;
   }
   if (isProviderWhitelisted(owner, "google_ai_studio")) {
     return GEMINI_FLASH_DEFAULT_MODEL_CONFIG;
@@ -63,11 +70,11 @@ export function getSmallWhitelistedModel(
 export function getLargeWhitelistedModel(
   owner: WorkspaceType
 ): ModelConfigurationType | null {
-  if (isProviderWhitelisted(owner, "openai")) {
-    return GPT_4_TURBO_MODEL_CONFIG;
-  }
   if (isProviderWhitelisted(owner, "anthropic")) {
-    return CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG;
+    return CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG;
+  }
+  if (isProviderWhitelisted(owner, "openai")) {
+    return GPT_4O_MODEL_CONFIG;
   }
   if (isProviderWhitelisted(owner, "google_ai_studio")) {
     return GEMINI_PRO_DEFAULT_MODEL_CONFIG;
@@ -84,14 +91,20 @@ export function getLargeWhitelistedModel(
 
 export const GPT_3_5_TURBO_MODEL_ID = "gpt-3.5-turbo" as const;
 export const GPT_4_TURBO_MODEL_ID = "gpt-4-turbo" as const;
-export const GPT_4O_LEGACY_MODEL_ID = "gpt-4o" as const;
-export const GPT_4O_MODEL_ID = "gpt-4o-2024-08-06" as const;
+export const GPT_4O_MODEL_ID = "gpt-4o" as const;
+export const GPT_4O_20240806_MODEL_ID = "gpt-4o-2024-08-06" as const;
 export const GPT_4O_MINI_MODEL_ID = "gpt-4o-mini" as const;
+export const O1_MODEL_ID = "o1" as const;
+export const O1_MINI_MODEL_ID = "o1-mini" as const;
 export const CLAUDE_3_OPUS_2024029_MODEL_ID = "claude-3-opus-20240229" as const;
 export const CLAUDE_3_5_SONNET_20240620_MODEL_ID =
   "claude-3-5-sonnet-20240620" as const;
+export const CLAUDE_3_5_SONNET_20241022_MODEL_ID =
+  "claude-3-5-sonnet-20241022" as const;
 export const CLAUDE_3_HAIKU_20240307_MODEL_ID =
   "claude-3-haiku-20240307" as const;
+export const CLAUDE_3_5_HAIKU_20241022_MODEL_ID =
+  "claude-3-5-haiku-20241022" as const;
 export const CLAUDE_2_1_MODEL_ID = "claude-2.1" as const;
 export const CLAUDE_INSTANT_1_2_MODEL_ID = "claude-instant-1.2" as const;
 export const MISTRAL_LARGE_MODEL_ID = "mistral-large-latest" as const;
@@ -101,16 +114,29 @@ export const MISTRAL_CODESTRAL_MODEL_ID = "codestral-latest" as const;
 export const GEMINI_1_5_PRO_LATEST_MODEL_ID = "gemini-1.5-pro-latest" as const;
 export const GEMINI_1_5_FLASH_LATEST_MODEL_ID =
   "gemini-1.5-flash-latest" as const;
+export const TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_ID =
+  "meta-llama/Llama-3.3-70B-Instruct-Turbo" as const;
+export const TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_ID =
+  "Qwen/Qwen2.5-Coder-32B-Instruct" as const;
+export const TOGETHERAI_QWEN_32B_PREVIEW_MODEL_ID =
+  "Qwen/QwQ-32B-Preview" as const;
+export const TOGETHERAI_QWEN_72B_INSTRUCT_MODEL_ID =
+  "Qwen/Qwen2-72B-Instruct" as const;
+export const DEEPSEEK_CHAT_MODEL_ID = "deepseek-chat" as const;
 
 export const MODEL_IDS = [
   GPT_3_5_TURBO_MODEL_ID,
   GPT_4_TURBO_MODEL_ID,
   GPT_4O_MODEL_ID,
-  GPT_4O_LEGACY_MODEL_ID,
+  GPT_4O_20240806_MODEL_ID,
   GPT_4O_MINI_MODEL_ID,
+  O1_MODEL_ID,
+  O1_MINI_MODEL_ID,
   CLAUDE_3_OPUS_2024029_MODEL_ID,
   CLAUDE_3_5_SONNET_20240620_MODEL_ID,
+  CLAUDE_3_5_SONNET_20241022_MODEL_ID,
   CLAUDE_3_HAIKU_20240307_MODEL_ID,
+  CLAUDE_3_5_HAIKU_20241022_MODEL_ID,
   CLAUDE_2_1_MODEL_ID,
   CLAUDE_INSTANT_1_2_MODEL_ID,
   MISTRAL_LARGE_MODEL_ID,
@@ -119,6 +145,11 @@ export const MODEL_IDS = [
   MISTRAL_CODESTRAL_MODEL_ID,
   GEMINI_1_5_PRO_LATEST_MODEL_ID,
   GEMINI_1_5_FLASH_LATEST_MODEL_ID,
+  TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_ID,
+  TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_ID,
+  TOGETHERAI_QWEN_32B_PREVIEW_MODEL_ID,
+  TOGETHERAI_QWEN_72B_INSTRUCT_MODEL_ID,
+  DEEPSEEK_CHAT_MODEL_ID,
 ] as const;
 export type ModelIdType = (typeof MODEL_IDS)[number];
 
@@ -166,6 +197,12 @@ export type ModelConfigurationType = {
   toolUseMetaPrompt?: string;
 
   supportsVision: boolean;
+
+  // Only used for O-series OpenAI models.
+  reasoningEffort?: AgentReasoningEffort;
+
+  featureFlag?: WhitelistableFeature;
+  customAssistantFeatureFlag?: WhitelistableFeature;
 };
 
 // Should be used for all Open AI models older than gpt-4o-2024-08-06 to prevent issues
@@ -216,9 +253,9 @@ export const GPT_4O_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   supportsVision: true,
 };
-export const GPT_4O_LEGACY_MODEL_CONFIG: ModelConfigurationType = {
+export const GPT_4O_20240806_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
-  modelId: GPT_4O_LEGACY_MODEL_ID,
+  modelId: GPT_4O_20240806_MODEL_ID,
   displayName: "GPT 4o",
   contextSize: 128_000,
   recommendedTopK: 32,
@@ -227,7 +264,6 @@ export const GPT_4O_LEGACY_MODEL_CONFIG: ModelConfigurationType = {
   description: "OpenAI's GPT 4o model (128k context).",
   shortDescription: "OpenAI's most advanced model.",
   isLegacy: false,
-  toolUseMetaPrompt: LEGACY_OPEN_AI_TOOL_USE_META_PROMPT,
   supportsVision: true,
 };
 export const GPT_4O_MINI_MODEL_CONFIG: ModelConfigurationType = {
@@ -243,6 +279,56 @@ export const GPT_4O_MINI_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   toolUseMetaPrompt: LEGACY_OPEN_AI_TOOL_USE_META_PROMPT,
   supportsVision: true,
+};
+export const O1_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "openai",
+  modelId: O1_MODEL_ID,
+  displayName: "O1",
+  contextSize: 200_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 128, // 65_536
+  largeModel: true,
+  description:
+    "OpenAI's reasoning model designed to solve hard problems across domains (Limited preview access).",
+  shortDescription: "OpenAI's reasoning model.",
+  isLegacy: false,
+  supportsVision: true,
+  featureFlag: "openai_o1_feature",
+  customAssistantFeatureFlag: "openai_o1_custom_assistants_feature",
+};
+export const O1_HIGH_REASONING_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "openai",
+  modelId: O1_MODEL_ID,
+  displayName: "O1 (High Reasoning)",
+  contextSize: 200_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 128, // 65_536
+  largeModel: true,
+  description:
+    "OpenAI's reasoning model designed to solve hard problems across domains (Limited preview access). High reasoning effort.",
+  shortDescription: "OpenAI's reasoning model (high effort).",
+  isLegacy: false,
+  supportsVision: true,
+  reasoningEffort: "high",
+  featureFlag: "openai_o1_high_reasoning_feature",
+  customAssistantFeatureFlag:
+    "openai_o1_high_reasoning_custom_assistants_feature",
+};
+export const O1_MINI_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "openai",
+  modelId: O1_MINI_MODEL_ID,
+  displayName: "O1 Mini",
+  contextSize: 128_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 128, // 65_536
+  largeModel: true,
+  description:
+    "OpenAI's fast reasoning model particularly good at coding, math, and science.",
+  shortDescription: "OpenAI's fast reasoning model.",
+  isLegacy: false,
+  supportsVision: false,
+  featureFlag: "openai_o1_mini_feature",
+  customAssistantFeatureFlag: "openai_o1_custom_assistants_feature",
 };
 
 const ANTHROPIC_DELIMITERS_CONFIGURATION = {
@@ -310,9 +396,27 @@ export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   supportsVision: true,
   toolUseMetaPrompt: ANTHROPIC_TOOL_USE_META_PROMPT,
 };
+
+export const CLAUDE_3_5_SONNET_20240620_DEPRECATED_MODEL_CONFIG: ModelConfigurationType =
+  {
+    providerId: "anthropic",
+    modelId: CLAUDE_3_5_SONNET_20240620_MODEL_ID,
+    displayName: "Claude 3.5 Sonnet",
+    contextSize: 180_000,
+    recommendedTopK: 32,
+    recommendedExhaustiveTopK: 128, // 65_536
+    largeModel: true,
+    description: "Anthropic's latest Claude 3.5 Sonnet model (200k context).",
+    shortDescription: "Anthropic's latest model.",
+    isLegacy: false,
+    delimitersConfiguration: ANTHROPIC_DELIMITERS_CONFIGURATION,
+    supportsVision: true,
+    toolUseMetaPrompt: ANTHROPIC_TOOL_USE_META_PROMPT,
+  };
+
 export const CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
-  modelId: CLAUDE_3_5_SONNET_20240620_MODEL_ID,
+  modelId: CLAUDE_3_5_SONNET_20241022_MODEL_ID,
   displayName: "Claude 3.5 Sonnet",
   contextSize: 180_000,
   recommendedTopK: 32,
@@ -325,6 +429,20 @@ export const CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   supportsVision: true,
   toolUseMetaPrompt: ANTHROPIC_TOOL_USE_META_PROMPT,
 };
+export const CLAUDE_3_5_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "anthropic",
+  modelId: CLAUDE_3_5_HAIKU_20241022_MODEL_ID,
+  displayName: "Claude 3.5 Haiku",
+  contextSize: 180_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 128, // 65_536
+  largeModel: false,
+  description:
+    "Anthropic's Claude 3.5 Haiku model, cost effective and high throughput (200k context).",
+  shortDescription: "Anthropic's cost-effective model.",
+  isLegacy: false,
+  supportsVision: false,
+};
 export const CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
   modelId: CLAUDE_3_HAIKU_20240307_MODEL_ID,
@@ -332,7 +450,7 @@ export const CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   contextSize: 180_000,
   recommendedTopK: 32,
   recommendedExhaustiveTopK: 128, // 65_536
-  largeModel: true,
+  largeModel: false,
   description:
     "Anthropic's Claude 3 Haiku model, cost effective and high throughput (200k context).",
   shortDescription: "Anthropic's cost-effective model.",
@@ -452,15 +570,95 @@ export const GEMINI_FLASH_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   supportsVision: false,
 };
 
+export const TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_CONFIG: ModelConfigurationType =
+  {
+    providerId: "togetherai",
+    modelId: TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_ID,
+    displayName: "Llama 3.3 70B Instruct Turbo",
+    contextSize: 128_000,
+    recommendedTopK: 32,
+    recommendedExhaustiveTopK: 128, // 65_536
+    largeModel: true,
+    description: "Meta's fast, powerful and open source model (128k context).",
+    shortDescription: "Meta's open source model.",
+    isLegacy: false,
+    supportsVision: false,
+  };
+
+export const TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_CONFIG: ModelConfigurationType =
+  {
+    providerId: "togetherai",
+    modelId: TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_ID,
+    displayName: "Qwen 2.5 Coder 32B Instruct",
+    contextSize: 32_000,
+    recommendedTopK: 16,
+    recommendedExhaustiveTopK: 56, // 28_672
+    largeModel: false,
+    description: "Alibaba's fast model for coding (32k context).",
+    shortDescription: "Alibaba's fast coding model.",
+    isLegacy: false,
+    supportsVision: false,
+  };
+
+export const TOGETHERAI_QWEN_32B_PREVIEW_MODEL_CONFIG: ModelConfigurationType =
+  {
+    providerId: "togetherai",
+    modelId: TOGETHERAI_QWEN_32B_PREVIEW_MODEL_ID,
+    displayName: "Qwen 32B Preview",
+    contextSize: 32_000,
+    recommendedTopK: 16,
+    recommendedExhaustiveTopK: 56, // 28_672
+    largeModel: false,
+    description: "Alibaba's fast model (32k context).",
+    shortDescription: "Alibaba's fast model.",
+    isLegacy: false,
+    supportsVision: false,
+  };
+
+export const TOGETHERAI_QWEN_72B_INSTRUCT_MODEL_CONFIG: ModelConfigurationType =
+  {
+    providerId: "togetherai",
+    modelId: TOGETHERAI_QWEN_72B_INSTRUCT_MODEL_ID,
+    displayName: "Qwen 72B Instruct",
+    contextSize: 32_000,
+    recommendedTopK: 16,
+    recommendedExhaustiveTopK: 56, // 28_672
+    largeModel: false,
+    description: "Alibaba's powerful model (32k context).",
+    shortDescription: "Alibaba's powerful model.",
+    isLegacy: false,
+    supportsVision: false,
+  };
+
+export const DEEPSEEK_CHAT_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "deepseek",
+  modelId: DEEPSEEK_CHAT_MODEL_ID,
+  displayName: "DeepSeek",
+  contextSize: 64_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 64,
+  largeModel: true,
+  description: "DeepSeek's best model (v3, 64k context).",
+  shortDescription: "DeepSeek's best model.",
+  isLegacy: false,
+  supportsVision: false,
+  featureFlag: "deepseek_feature",
+};
+
 export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_TURBO_MODEL_CONFIG,
   GPT_4O_MODEL_CONFIG,
-  GPT_4O_LEGACY_MODEL_CONFIG,
+  GPT_4O_20240806_MODEL_CONFIG,
   GPT_4O_MINI_MODEL_CONFIG,
+  O1_MODEL_CONFIG,
+  O1_HIGH_REASONING_MODEL_CONFIG,
+  O1_MINI_MODEL_CONFIG,
   CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
+  CLAUDE_3_5_SONNET_20240620_DEPRECATED_MODEL_CONFIG,
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG,
+  CLAUDE_3_5_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_2_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
   MISTRAL_LARGE_MODEL_CONFIG,
@@ -469,6 +667,11 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   MISTRAL_CODESTRAL_MODEL_CONFIG,
   GEMINI_PRO_DEFAULT_MODEL_CONFIG,
   GEMINI_FLASH_DEFAULT_MODEL_CONFIG,
+  TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_CONFIG,
+  TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_CONFIG,
+  TOGETHERAI_QWEN_32B_PREVIEW_MODEL_CONFIG,
+  TOGETHERAI_QWEN_72B_INSTRUCT_MODEL_CONFIG,
+  DEEPSEEK_CHAT_MODEL_CONFIG,
 ];
 
 export type ModelConfig = (typeof SUPPORTED_MODEL_CONFIGS)[number];
@@ -477,7 +680,7 @@ export type ModelConfig = (typeof SUPPORTED_MODEL_CONFIGS)[number];
 // pairs that are in SUPPORTED_MODELS
 export type SupportedModel = ExtractSpecificKeys<
   (typeof SUPPORTED_MODEL_CONFIGS)[number],
-  "providerId" | "modelId"
+  "providerId" | "modelId" | "reasoningEffort"
 >;
 
 export function isSupportedModel(model: unknown): model is SupportedModel {
@@ -487,4 +690,135 @@ export function isSupportedModel(model: unknown): model is SupportedModel {
       m.modelId === maybeSupportedModel.modelId &&
       m.providerId === maybeSupportedModel.providerId
   );
+}
+
+/**
+ * Global agent list (stored here to be imported from client-side)
+ */
+
+export enum GLOBAL_AGENTS_SID {
+  HELPER = "helper",
+  DUST = "dust",
+  SLACK = "slack",
+  GOOGLE_DRIVE = "google_drive",
+  NOTION = "notion",
+  GITHUB = "github",
+  INTERCOM = "intercom",
+  GPT35_TURBO = "gpt-3.5-turbo",
+  GPT4 = "gpt-4",
+  O1 = "o1",
+  O1_MINI = "o1-mini",
+  O1_HIGH_REASONING = "o1_high",
+  CLAUDE_3_OPUS = "claude-3-opus",
+  CLAUDE_3_SONNET = "claude-3-sonnet",
+  CLAUDE_3_HAIKU = "claude-3-haiku",
+  CLAUDE_2 = "claude-2",
+  CLAUDE_INSTANT = "claude-instant-1",
+  MISTRAL_LARGE = "mistral-large",
+  MISTRAL_MEDIUM = "mistral-medium",
+  //!\ TEMPORARY WORKAROUND: Renaming 'mistral' to 'mistral-small' is not feasible since
+  // it interferes with the retrieval of ongoing conversations involving this agent.
+  // Needed to preserve ongoing chat integrity due to 'sId=mistral' references in legacy messages.
+  MISTRAL_SMALL = "mistral",
+  GEMINI_PRO = "gemini-pro",
+  DEEPSEEK = "deepseek",
+}
+
+export function getGlobalAgentAuthorName(agentId: string): string {
+  switch (agentId) {
+    case GLOBAL_AGENTS_SID.GPT4:
+      return "OpenAI";
+    case GLOBAL_AGENTS_SID.CLAUDE_INSTANT:
+    case GLOBAL_AGENTS_SID.CLAUDE_3_OPUS:
+    case GLOBAL_AGENTS_SID.CLAUDE_3_SONNET:
+    case GLOBAL_AGENTS_SID.CLAUDE_3_HAIKU:
+    case GLOBAL_AGENTS_SID.CLAUDE_2:
+      return "Anthropic";
+    case GLOBAL_AGENTS_SID.MISTRAL_LARGE:
+    case GLOBAL_AGENTS_SID.MISTRAL_MEDIUM:
+    case GLOBAL_AGENTS_SID.MISTRAL_SMALL:
+      return "Mistral";
+    case GLOBAL_AGENTS_SID.GEMINI_PRO:
+      return "Google";
+    case GLOBAL_AGENTS_SID.DEEPSEEK:
+      return "DeepSeek";
+    default:
+      return "Dust";
+  }
+}
+
+const CUSTOM_ORDER: string[] = [
+  GLOBAL_AGENTS_SID.DUST,
+  GLOBAL_AGENTS_SID.GPT4,
+  GLOBAL_AGENTS_SID.SLACK,
+  GLOBAL_AGENTS_SID.NOTION,
+  GLOBAL_AGENTS_SID.GOOGLE_DRIVE,
+  GLOBAL_AGENTS_SID.GITHUB,
+  GLOBAL_AGENTS_SID.INTERCOM,
+  GLOBAL_AGENTS_SID.CLAUDE_3_OPUS,
+  GLOBAL_AGENTS_SID.CLAUDE_3_SONNET,
+  GLOBAL_AGENTS_SID.CLAUDE_3_HAIKU,
+  GLOBAL_AGENTS_SID.CLAUDE_2,
+  GLOBAL_AGENTS_SID.CLAUDE_INSTANT,
+  GLOBAL_AGENTS_SID.MISTRAL_LARGE,
+  GLOBAL_AGENTS_SID.MISTRAL_MEDIUM,
+  GLOBAL_AGENTS_SID.MISTRAL_SMALL,
+  GLOBAL_AGENTS_SID.GEMINI_PRO,
+  GLOBAL_AGENTS_SID.HELPER,
+];
+
+// This function implements our general strategy to sort agents to users (input bar, assistant list,
+// agent suggestions...).
+export function compareAgentsForSort(
+  a: LightAgentConfigurationType,
+  b: LightAgentConfigurationType
+) {
+  // Place favorites first
+  if (a.userFavorite && !b.userFavorite) {
+    return -1;
+  }
+  if (b.userFavorite && !a.userFavorite) {
+    return 1;
+  }
+  // Check for 'dust'
+  if (a.sId === GLOBAL_AGENTS_SID.DUST) {
+    return -1;
+  }
+  if (b.sId === GLOBAL_AGENTS_SID.DUST) {
+    return 1;
+  }
+
+  // Check for 'gpt4'
+  if (a.sId === GLOBAL_AGENTS_SID.GPT4) {
+    return -1;
+  }
+  if (b.sId === GLOBAL_AGENTS_SID.GPT4) {
+    return 1;
+  }
+
+  // Check for agents with non-global 'scope'
+  if (a.scope !== "global" && b.scope === "global") {
+    return -1;
+  }
+  if (b.scope !== "global" && a.scope === "global") {
+    return 1;
+  }
+
+  // Check for customOrder (slack, notion, googledrive, github, claude)
+  const aIndex = CUSTOM_ORDER.indexOf(a.sId);
+  const bIndex = CUSTOM_ORDER.indexOf(b.sId);
+
+  if (aIndex !== -1 && bIndex !== -1) {
+    return aIndex - bIndex; // Both are in customOrder, sort them accordingly
+  }
+
+  if (aIndex !== -1) {
+    return -1;
+  } // Only a is in customOrder, it comes first
+  if (bIndex !== -1) {
+    return 1;
+  } // Only b is in customOrder, it comes first
+
+  // default: sort alphabetically
+  return a.name.localeCompare(b.name, "en", { sensitivity: "base" });
 }

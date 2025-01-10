@@ -7,7 +7,7 @@ use thiserror::Error;
 use urlencoding::encode;
 
 use crate::{
-    databases::database::{QueryResult, Table},
+    databases::{database::QueryResult, table::LocalTable},
     utils,
 };
 
@@ -52,7 +52,7 @@ impl From<serde_json::Error> for SqliteWorkerError {
 impl SqliteWorker {
     pub fn new(url: String, last_heartbeat: u64) -> Self {
         Self {
-            last_heartbeat: last_heartbeat,
+            last_heartbeat,
             url,
         }
     }
@@ -71,7 +71,7 @@ impl SqliteWorker {
     pub async fn execute_query(
         &self,
         database_unique_id: &str,
-        tables: &Vec<Table>,
+        tables: &Vec<LocalTable>,
         query: &str,
     ) -> Result<Vec<QueryResult>, SqliteWorkerError> {
         let worker_url = self.url();
@@ -81,7 +81,7 @@ impl SqliteWorker {
             .post(&uri)
             .header("Content-Type", "application/json")
             .json(&json!({
-                "tables": tables,
+                "tables": tables.iter().map(|lt| &lt.table).collect::<Vec<_>>(),
                 "query": query,
             }));
 

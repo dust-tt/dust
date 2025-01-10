@@ -1,69 +1,63 @@
 import type {
+  DataSourceSearchQuery,
+  DataSourceSearchResponseType,
+} from "@dust-tt/client";
+import type {
   ConnectorProvider,
   ConnectorType,
+  ConversationWithoutContentType,
   CoreAPIDataSource,
   CoreAPIDocument,
+  CoreAPIError,
   CoreAPILightDocument,
+  CoreAPITable,
   DataSourceType,
   DataSourceWithConnectorDetailsType,
   FrontDataSourceDocumentSectionType,
+  PlanType,
   Result,
+  UpsertTableFromCsvRequestType,
   WithConnector,
+  WorkspaceType,
 } from "@dust-tt/types";
 import {
+  assertNever,
   ConnectorsAPI,
   CoreAPI,
+  DEFAULT_EMBEDDING_PROVIDER_ID,
+  DEFAULT_QDRANT_CLUSTER,
   dustManagedCredentials,
+  EMBEDDING_CONFIGS,
   Err,
+  isDataSourceNameValid,
+  MANAGED_DS_DELETABLE,
   Ok,
   sectionFullText,
 } from "@dust-tt/types";
+import { validateUrl } from "@dust-tt/types/src/shared/utils/url_utils";
+import assert from "assert";
+import type { Transaction } from "sequelize";
 
 import { default as apiConfig, default as config } from "@app/lib/api/config";
+import { sendGithubDeletionEmail } from "@app/lib/api/email";
 import { rowsFromCsv, upsertTableFromCsv } from "@app/lib/api/tables";
 import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
-import { sendGithubDeletionEmail } from "@app/lib/email";
+import { getFeatureFlags } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
+import { Lock } from "@app/lib/lock";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { ServerSideTracking } from "@app/lib/tracking/server";
 import { enqueueUpsertTable } from "@app/lib/upsert_queue";
-import { validateUrl } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { launchScrubDataSourceWorkflow } from "@app/poke/temporal/client";
 
-export const MANAGED_DS_DELETABLE_AS_BUILDER: ConnectorProvider[] = [
-  "webcrawler",
-];
-
-export async function getDataSource(
-  auth: Authenticator,
-  nameOrId: string,
-  { includeEditedBy }: { includeEditedBy: boolean } = {
-    includeEditedBy: false,
-  }
-): Promise<DataSourceResource | null> {
-  const owner = auth.workspace();
-
-  // This condition is critical it checks that we can identify the workspace and that the current
-  // auth is a user for this workspace. Checking `auth.isUser()` is critical as it would otherwise
-  // be possible to access data sources without being authenticated.
-  if (!owner || !auth.isUser()) {
-    return null;
-  }
-
-  const dataSource = await DataSourceResource.fetchByNameOrId(auth, nameOrId, {
-    includeEditedBy,
-    // TODO(DATASOURCE_SID): clean-up
-    origin: "lib_api_get_data_source",
-  });
-
-  if (!dataSource) {
-    return null;
-  }
-
-  return dataSource;
-}
+import type { FileResource } from "../resources/file_resource";
+import { getConversationWithoutContent } from "./assistant/conversation/without_content";
+import { isJITActionsEnabled } from "./assistant/jit_actions";
 
 export async function getDataSources(
   auth: Authenticator,
@@ -85,9 +79,13 @@ export async function getDataSources(
   });
 }
 
-export async function deleteDataSource(
+/**
+ * Soft delete a data source. This will mark the data source as deleted and will trigger a scrubbing.
+ */
+export async function softDeleteDataSourceAndLaunchScrubWorkflow(
   auth: Authenticator,
-  dataSource: DataSourceResource
+  dataSource: DataSourceResource,
+  transaction?: Transaction
 ): Promise<
   Result<DataSourceType, { code: "unauthorized_deletion"; message: string }>
 > {
@@ -100,11 +98,28 @@ export async function deleteDataSource(
     });
   }
 
-  const dustAPIProjectId = dataSource.dustAPIProjectId;
+  await dataSource.delete(auth, { transaction, hardDelete: false });
 
+  // The scrubbing workflow will delete associated resources and hard delete the data source.
+  await launchScrubDataSourceWorkflow(owner, dataSource);
+
+  return new Ok(dataSource.toJSON());
+}
+
+/**
+ * Performs a hard deletion of the specified data source, ensuring complete removal of the data
+ * source and all its associated resources, including any existing connectors.
+ */
+export async function hardDeleteDataSource(
+  auth: Authenticator,
+  dataSource: DataSourceResource
+) {
+  assert(auth.isBuilder(), "Only builders can delete data sources.");
+
+  const { dustAPIProjectId } = dataSource;
   if (dataSource.connectorId && dataSource.connectorProvider) {
     if (
-      !MANAGED_DS_DELETABLE_AS_BUILDER.includes(dataSource.connectorProvider) &&
+      !MANAGED_DS_DELETABLE.includes(dataSource.connectorProvider) &&
       !auth.isAdmin()
     ) {
       return new Err({
@@ -149,17 +164,11 @@ export async function deleteDataSource(
     }
   }
 
-  await dataSource.delete(auth);
+  await dataSource.delete(auth, { hardDelete: true });
 
-  await launchScrubDataSourceWorkflow({
-    wId: owner.sId,
-    dustAPIProjectId,
-  });
   if (dataSource.connectorProvider) {
     await warnPostDeletion(auth, dataSource.connectorProvider);
   }
-
-  return new Ok(dataSource.toJSON());
 }
 
 async function warnPostDeletion(
@@ -177,6 +186,7 @@ async function warnPostDeletion(
         await sendGithubDeletionEmail(email);
       }
       break;
+
     default:
       break;
   }
@@ -193,7 +203,8 @@ export async function augmentDataSourceWithConnectorDetails(
       config.getConnectorsAPIConfig(),
       logger
     );
-    const statusRes = await connectorsAPI.getConnector(dataSource.connectorId);
+    const statusRes =
+      await connectorsAPI.getConnectorFromDataSource(dataSource);
     if (statusRes.isErr()) {
       fetchConnectorError = true;
       fetchConnectorErrorMessage = statusRes.error.message;
@@ -215,30 +226,36 @@ export async function augmentDataSourceWithConnectorDetails(
     fetchConnectorErrorMessage,
   };
 }
-
+export type UpsertDocumentArgs = {
+  name: string;
+  source_url?: string | null;
+  text?: string | null;
+  section?: FrontDataSourceDocumentSectionType | null;
+  tags?: string[] | null;
+  parent_id?: string | null;
+  parents?: string[] | null;
+  timestamp?: number | null;
+  light_document_output?: boolean;
+  dataSource: DataSourceResource;
+  auth: Authenticator;
+  mime_type: string;
+  title: string;
+};
 export async function upsertDocument({
   name,
   source_url,
   text,
   section,
   tags,
+  parent_id,
   parents,
   timestamp,
   light_document_output,
   dataSource,
   auth,
-}: {
-  name: string;
-  source_url?: string | null;
-  text?: string | null;
-  section?: FrontDataSourceDocumentSectionType | null;
-  tags?: string[] | null;
-  parents?: string[] | null;
-  timestamp?: number | null;
-  light_document_output?: boolean;
-  dataSource: DataSourceResource;
-  auth: Authenticator;
-}): Promise<
+  mime_type,
+  title,
+}: UpsertDocumentArgs): Promise<
   Result<
     {
       document:
@@ -296,6 +313,15 @@ export async function upsertDocument({
       new DustError(
         "text_or_section_required",
         "Invalid request body, `text` or `section` must be provided."
+      )
+    );
+  }
+
+  if (parent_id && parents && parents[1] !== parent_id) {
+    return new Err(
+      new DustError(
+        "invalid_parent_id",
+        "Invalid request body, parents[1] and parent_id should be equal"
       )
     );
   }
@@ -358,18 +384,34 @@ export async function upsertDocument({
   // Data source operations are performed with our credentials.
   const credentials = dustManagedCredentials();
 
+  const documentId = name;
+  const documentParents = parents || [];
+
+  // Ensure that the documentId is included in the parents as the first item.
+  // remove it if it's already present and add it as the first item.
+  const indexOfDocumentId = documentParents.indexOf(documentId);
+  if (indexOfDocumentId !== -1) {
+    documentParents.splice(indexOfDocumentId, 1);
+  }
+  documentParents.unshift(documentId);
+
   // Create document with the Dust internal API.
   const upsertRes = await coreAPI.upsertDataSourceDocument({
     projectId: dataSource.dustAPIProjectId,
     dataSourceId: dataSource.dustAPIDataSourceId,
-    documentId: name,
+    documentId: documentId,
     tags: nonNullTags,
-    parents: parents || [],
+    parentId: parent_id ?? null,
+    parents: documentParents,
     sourceUrl,
-    timestamp: timestamp || null,
+    // TEMPORARY -- need to unstuck a specific entry
+    // TODO(FONTANIERH): remove this once the entry is unstuck
+    timestamp: timestamp ? Math.floor(timestamp) : null,
     section: generatedSection,
     credentials,
     lightDocumentOutput: light_document_output === true,
+    title,
+    mimeType: mime_type,
   });
 
   if (upsertRes.isErr()) {
@@ -384,6 +426,23 @@ export async function upsertDocument({
   return new Ok(upsertRes.value);
 }
 
+export type UpsertTableArgs = {
+  tableId?: string | null;
+  name: string;
+  description: string;
+  truncate: boolean;
+  csv?: string | null;
+  tags?: string[] | null;
+  parentId?: string | null;
+  parents?: string[] | null;
+  timestamp?: number | null;
+  async: boolean;
+  dataSource: DataSourceResource;
+  auth: Authenticator;
+  useAppForHeaderDetection?: boolean;
+  title: string;
+  mimeType: string;
+};
 export async function upsertTable({
   tableId,
   name,
@@ -391,37 +450,47 @@ export async function upsertTable({
   truncate,
   csv,
   tags,
+  parentId,
   parents,
   timestamp,
   async,
   dataSource,
   auth,
-}: {
-  tableId?: string | null;
-  name: string;
-  description: string;
-  truncate: boolean;
-  csv?: string | null;
-  tags?: string[] | null;
-  parents?: string[] | null;
-  timestamp?: number | null;
-  async: boolean;
-  dataSource: DataSourceResource;
-  auth: Authenticator;
-}) {
-  const nonNullTableId = tableId ?? generateLegacyModelSId();
+  useAppForHeaderDetection,
+  title,
+  mimeType,
+}: UpsertTableArgs) {
+  const nonNullTableId = tableId ?? generateRandomModelSId();
   const tableParents: string[] = parents ?? [];
 
-  if (!tableParents.includes(nonNullTableId)) {
-    tableParents.push(nonNullTableId);
+  // Ensure that the nonNullTableId is included in the parents as the first item.
+  // remove it if it's already present and add it as the first item.
+  const indexOfTableId = tableParents.indexOf(nonNullTableId);
+  if (indexOfTableId !== -1) {
+    tableParents.splice(indexOfTableId, 1);
   }
+  tableParents.unshift(nonNullTableId);
+
+  const flags = await getFeatureFlags(auth.getNonNullableWorkspace());
+
+  const useAppForHeaderDetectionFlag = flags.includes(
+    "use_app_for_header_detection"
+  );
+
+  const useApp = !!useAppForHeaderDetection && useAppForHeaderDetectionFlag;
 
   if (async) {
     // Ensure the CSV is valid before enqueuing the upsert.
-    const csvRowsRes = csv ? await rowsFromCsv(csv) : null;
+    const csvRowsRes = csv
+      ? await rowsFromCsv({ auth, csv, useAppForHeaderDetection: useApp })
+      : null;
     if (csvRowsRes?.isErr()) {
       return csvRowsRes;
     }
+
+    const detectedHeaders = csvRowsRes?.isOk()
+      ? csvRowsRes.value.detectedHeaders
+      : undefined;
 
     const enqueueRes = await enqueueUpsertTable({
       upsertTable: {
@@ -432,9 +501,14 @@ export async function upsertTable({
         tableDescription: description,
         tableTimestamp: timestamp ?? null,
         tableTags: tags ?? [],
+        tableParentId: parentId ?? null,
         tableParents,
         csv: csv ?? null,
         truncate,
+        useAppForHeaderDetection: useApp,
+        detectedHeaders,
+        title,
+        mimeType,
       },
     });
     if (enqueueRes.isErr()) {
@@ -452,10 +526,501 @@ export async function upsertTable({
     tableDescription: description,
     tableTimestamp: timestamp ?? null,
     tableTags: tags || [],
+    tableParentId: parentId ?? null,
     tableParents,
     csv: csv ?? null,
     truncate,
+    useAppForHeaderDetection: useApp,
+    title,
+    mimeType,
   });
 
   return tableRes;
+}
+
+export async function handleDataSourceSearch({
+  searchQuery,
+  dataSource,
+  dataSourceView,
+}: {
+  searchQuery: DataSourceSearchQuery;
+  dataSource: DataSourceResource;
+  dataSourceView?: DataSourceViewResource;
+}): Promise<
+  Result<
+    DataSourceSearchResponseType,
+    Omit<DustError, "code"> & { code: "data_source_error" }
+  >
+> {
+  // Dust managed credentials: all data sources.
+  const credentials = dustManagedCredentials();
+
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+  const data = await coreAPI.searchDataSource(
+    dataSource.dustAPIProjectId,
+    dataSource.dustAPIDataSourceId,
+    {
+      query: searchQuery.query,
+      topK: searchQuery.top_k,
+      fullText: searchQuery.full_text,
+      target_document_tokens: searchQuery.target_document_tokens,
+      filter: {
+        tags: {
+          in: searchQuery.tags_in ?? null,
+          not: searchQuery.tags_not ?? null,
+        },
+        parents: {
+          in: searchQuery.parents_in ?? null,
+          not: searchQuery.parents_not ?? null,
+        },
+        timestamp: {
+          gt: searchQuery.timestamp_gt ?? null,
+          lt: searchQuery.timestamp_lt ?? null,
+        },
+      },
+      view_filter: dataSourceView
+        ? {
+            parents: {
+              in: dataSourceView.parentsIn,
+              not: [],
+            },
+            tags: null,
+            timestamp: null,
+          }
+        : undefined,
+      credentials: credentials,
+    }
+  );
+
+  if (data.isErr()) {
+    return new Err({
+      name: "dust_error",
+      code: "data_source_error",
+      message: data.error.message,
+    });
+  }
+
+  return new Ok({
+    documents: data.value.documents,
+  });
+}
+
+export async function handleDataSourceTableCSVUpsert({
+  auth,
+  params,
+  dataSource,
+}: {
+  auth: Authenticator;
+  params: UpsertTableFromCsvRequestType;
+  dataSource: DataSourceResource;
+}): Promise<
+  Result<
+    | {
+        table: {
+          table_id: string;
+        };
+      }
+    | {
+        table: CoreAPITable;
+      },
+    Omit<DustError, "code"> & {
+      code:
+        | "missing_csv"
+        | "data_source_error"
+        | "invalid_rows"
+        | "resource_not_found"
+        | "invalid_parent_id"
+        | "internal_error";
+    }
+  >
+> {
+  const owner = auth.getNonNullableWorkspace();
+
+  const { name, description, csv, truncate, async } = params;
+  if (!csv && truncate) {
+    return new Err({
+      name: "dust_error",
+      code: "missing_csv",
+      message: "Cannot truncate a table without providing a CSV.",
+    });
+  }
+
+  const tableId = params.tableId ?? generateRandomModelSId();
+  const tableParents: string[] = params.parents ?? [tableId];
+
+  const flags = await getFeatureFlags(owner);
+
+  const useAppForHeaderDetection =
+    !!params.useAppForHeaderDetection &&
+    flags.includes("use_app_for_header_detection");
+
+  if (async) {
+    // Ensure the CSV is valid before enqueuing the upsert.
+    const csvRowsRes = csv
+      ? await rowsFromCsv({ auth, csv, useAppForHeaderDetection })
+      : null;
+    if (csvRowsRes?.isErr()) {
+      return new Err({
+        name: "dust_error",
+        code: "invalid_rows",
+        message: "Failed to parse CSV: " + csvRowsRes.error.message,
+      });
+    }
+
+    const detectedHeaders = csvRowsRes?.isOk()
+      ? csvRowsRes.value.detectedHeaders
+      : undefined;
+
+    const enqueueRes = await enqueueUpsertTable({
+      upsertTable: {
+        workspaceId: owner.sId,
+        dataSourceId: dataSource.sId,
+        tableId,
+        tableName: name,
+        tableDescription: description,
+        tableTimestamp: params.timestamp ?? null,
+        tableTags: params.tags ?? [],
+        tableParentId: params.parentId ?? null,
+        tableParents,
+        csv: csv ?? null,
+        truncate,
+        useAppForHeaderDetection,
+        detectedHeaders,
+        title: params.title,
+        mimeType: params.mimeType,
+      },
+    });
+    if (enqueueRes.isErr()) {
+      return new Err({
+        name: "dust_error",
+        code: "data_source_error",
+        message:
+          "There was an error enqueueing the the document for asynchronous upsert.",
+      });
+    }
+    return new Ok({
+      table: {
+        table_id: tableId,
+      },
+    });
+  }
+
+  const tableRes = await upsertTableFromCsv({
+    auth,
+    dataSource,
+    tableId,
+    tableName: name,
+    tableDescription: description,
+    tableTimestamp: params.timestamp ?? null,
+    tableTags: params.tags || [],
+    tableParentId: params.parentId ?? null,
+    tableParents,
+    csv: csv ?? null,
+    truncate,
+    useAppForHeaderDetection,
+    title: params.title,
+    mimeType: params.mimeType,
+  });
+
+  if (tableRes.isErr()) {
+    if (tableRes.error.type === "internal_server_error") {
+      return new Err({
+        name: "dust_error",
+        code: "internal_error",
+        message: tableRes.error.message,
+      });
+    }
+
+    if (tableRes.error.type === "invalid_request_error") {
+      if ("csvParsingError" in tableRes.error) {
+        return new Err({
+          name: "dust_error",
+          code: "internal_error",
+          message:
+            "Failed to parse CSV: " + tableRes.error.csvParsingError.message,
+        });
+      } else if ("inputValidationError" in tableRes.error) {
+        return new Err({
+          name: "dust_error",
+          code: "internal_error",
+          message:
+            "Invalid request body: " + tableRes.error.inputValidationError,
+        });
+      } else if ("message" in tableRes.error) {
+        return new Err({
+          name: "dust_error",
+          code: "invalid_parent_id",
+          message: "Invalid request body: " + tableRes.error.message,
+        });
+      } else {
+        assertNever(tableRes.error);
+      }
+    }
+
+    if (tableRes.error.type === "not_found_error") {
+      return new Err({
+        name: "dust_error",
+        code: "resource_not_found",
+        message: tableRes.error.notFoundError.message,
+      });
+    }
+
+    assertNever(tableRes.error);
+  }
+
+  return new Ok(tableRes.value);
+}
+
+/**
+ * Data sources without provider = folders
+ */
+export async function createDataSourceWithoutProvider(
+  auth: Authenticator,
+  {
+    plan,
+    owner,
+    space,
+    name,
+    description,
+    conversation,
+  }: {
+    plan: PlanType;
+    owner: WorkspaceType;
+    space: SpaceResource;
+    name: string;
+    description: string | null;
+    conversation?: ConversationWithoutContentType;
+  }
+): Promise<
+  Result<
+    DataSourceViewResource,
+    Omit<DustError, "code"> & {
+      code:
+        | "invalid_request_error"
+        | "plan_limit_error"
+        | "internal_server_error";
+      dataSourceError?: CoreAPIError;
+    }
+  >
+> {
+  if (name.startsWith("managed-")) {
+    return new Err({
+      name: "dust_error",
+      code: "invalid_request_error",
+      message: "The data source name cannot start with `managed-`.",
+    });
+  }
+  if (!isDataSourceNameValid(name)) {
+    return new Err({
+      name: "dust_error",
+      code: "invalid_request_error",
+      message: "Data source names cannot be empty.",
+    });
+  }
+  const dataSources = await DataSourceResource.listByWorkspace(auth);
+  if (
+    plan.limits.dataSources.count != -1 &&
+    dataSources.length >= plan.limits.dataSources.count
+  ) {
+    return new Err({
+      name: "dust_error",
+      code: "plan_limit_error",
+      message: "Your plan does not allow you to create more data sources.",
+    });
+  }
+
+  if (dataSources.some((ds) => ds.name === name)) {
+    return new Err({
+      name: "dust_error",
+      code: "invalid_request_error",
+      message: "Data source with that name already exist.",
+    });
+  }
+
+  const dataSourceEmbedder =
+    owner.defaultEmbeddingProvider ?? DEFAULT_EMBEDDING_PROVIDER_ID;
+  const embedderConfig = EMBEDDING_CONFIGS[dataSourceEmbedder];
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+
+  const dustProject = await coreAPI.createProject();
+  if (dustProject.isErr()) {
+    return new Err({
+      name: "dust_error",
+      code: "internal_server_error",
+      message: "Failed to create internal project for the data source.",
+      dataSourceError: dustProject.error,
+    });
+  }
+
+  const dustDataSource = await coreAPI.createDataSource({
+    projectId: dustProject.value.project.project_id.toString(),
+    config: {
+      qdrant_config: {
+        cluster: DEFAULT_QDRANT_CLUSTER,
+        shadow_write_cluster: null,
+      },
+      embedder_config: {
+        embedder: {
+          max_chunk_size: embedderConfig.max_chunk_size,
+          model_id: embedderConfig.model_id,
+          provider_id: embedderConfig.provider_id,
+          splitter_id: embedderConfig.splitter_id,
+        },
+      },
+    },
+    credentials: dustManagedCredentials(),
+  });
+
+  if (dustDataSource.isErr()) {
+    return new Err({
+      name: "dust_error",
+      code: "internal_server_error",
+      message: "Failed to create the data source.",
+      dataSourceError: dustDataSource.error,
+    });
+  }
+
+  const dataSourceView =
+    await DataSourceViewResource.createDataSourceAndDefaultView(
+      auth,
+      {
+        name,
+        description,
+        dustAPIProjectId: dustProject.value.project.project_id.toString(),
+        dustAPIDataSourceId: dustDataSource.value.data_source.data_source_id,
+        workspaceId: owner.id,
+        assistantDefaultSelected: false,
+        conversationId: conversation?.id,
+      },
+      space
+    );
+
+  try {
+    // Asynchronous tracking without awaiting, handled safely
+    void ServerSideTracking.trackDataSourceCreated({
+      user: auth.user() ?? undefined,
+      workspace: owner,
+      dataSource: dataSourceView.dataSource.toJSON(),
+    });
+  } catch (error) {
+    logger.error(
+      {
+        error,
+      },
+      "Failed to track data source creation"
+    );
+  }
+
+  return new Ok(dataSourceView);
+}
+
+async function getOrCreateConversationDataSource(
+  auth: Authenticator,
+  conversation: ConversationWithoutContentType
+): Promise<
+  Result<
+    DataSourceResource,
+    Omit<DustError, "code"> & {
+      code: "internal_server_error" | "invalid_request_error";
+    }
+  >
+> {
+  const jitEnabled = isJITActionsEnabled();
+
+  if (!jitEnabled) {
+    return new Err({
+      name: "dust_error",
+      code: "invalid_request_error",
+      message: "JIT processing is not enabled for this file.",
+    });
+  }
+
+  const lockName = "conversationDataSource" + conversation.id;
+
+  const res = await Lock.executeWithLock(
+    lockName,
+    async (): Promise<
+      Result<
+        DataSourceResource,
+        Omit<DustError, "code"> & {
+          code: "internal_server_error" | "invalid_request_error";
+        }
+      >
+    > => {
+      // Fetch the datasource linked to the conversation...
+      let dataSource = await DataSourceResource.fetchByConversation(
+        auth,
+        conversation
+      );
+
+      if (!dataSource) {
+        // ...or create a new one.
+        const conversationsSpace =
+          await SpaceResource.fetchWorkspaceConversationsSpace(auth);
+
+        // IMPORTANT: never use the conversation sID in the name or description, as conversation sIDs
+        // are used as secrets to share the conversation within the workspace users.
+        const r = await createDataSourceWithoutProvider(auth, {
+          plan: auth.getNonNullablePlan(),
+          owner: auth.getNonNullableWorkspace(),
+          space: conversationsSpace,
+          name: generateRandomModelSId("conv"),
+          description: "Files uploaded to conversation",
+          conversation: conversation,
+        });
+
+        if (r.isErr()) {
+          return new Err({
+            name: "dust_error",
+            code: "internal_server_error",
+            message: `Failed to create datasource : ${r.error}`,
+          });
+        }
+
+        dataSource = r.value.dataSource;
+      }
+
+      return new Ok(dataSource);
+    }
+  );
+
+  return res;
+}
+
+export async function getOrCreateConversationDataSourceFromFile(
+  auth: Authenticator,
+  file: FileResource
+): Promise<
+  Result<
+    DataSourceResource,
+    Omit<DustError, "code"> & {
+      code: "internal_server_error" | "invalid_request_error";
+    }
+  >
+> {
+  // Note: this assume that if we don't have useCaseMetadata, the file is fine.
+  const hasRequiredMetadata =
+    !!file.useCaseMetadata && !!file.useCaseMetadata.conversationId;
+
+  if (!hasRequiredMetadata) {
+    return new Err({
+      name: "dust_error",
+      code: "invalid_request_error",
+      message: "File is missing required metadata for JIT processing.",
+    });
+  }
+
+  const cRes = await getConversationWithoutContent(
+    auth,
+    file.useCaseMetadata.conversationId
+  );
+  if (cRes.isErr()) {
+    return new Err({
+      name: "dust_error",
+      code: "internal_server_error",
+      message: `Failed to fetch conversation.`,
+    });
+  }
+
+  return getOrCreateConversationDataSource(auth, cRes.value);
 }

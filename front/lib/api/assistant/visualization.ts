@@ -1,9 +1,14 @@
 import type { ContentFragmentType, ConversationType } from "@dust-tt/types";
-import { isContentFragmentType, removeNulls } from "@dust-tt/types";
+import {
+  getTablesQueryResultsFileAttachment,
+  isAgentMessageType,
+  isContentFragmentType,
+  isTablesQueryActionType,
+  removeNulls,
+} from "@dust-tt/types";
 import _ from "lodash";
-import * as readline from "readline"; // Add this line
-import type { Readable } from "stream";
 
+import { isJITActionsEnabled } from "@app/lib/api/assistant/jit_actions";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 
@@ -14,36 +19,16 @@ export async function getVisualizationPrompt({
   auth: Authenticator;
   conversation: ConversationType;
 }) {
-  const readFirstFiveLines = (inputStream: Readable): Promise<string[]> => {
-    return new Promise((resolve, reject) => {
-      const rl: readline.Interface = readline.createInterface({
-        input: inputStream,
-        crlfDelay: Infinity,
-      });
-
-      let lineCount: number = 0;
-      const lines: string[] = [];
-
-      rl.on("line", (line: string) => {
-        lines.push(line);
-        lineCount++;
-        if (lineCount === 5) {
-          rl.close();
-        }
-      });
-
-      rl.on("close", () => {
-        resolve(lines);
-      });
-
-      rl.on("error", (err: Error) => {
-        reject(err);
-      });
-    });
-  };
+  // If `jit_conversations_actions` is enabled we rely on the `conversations_list_files` emulated
+  // actions to make the list of files available to the agent.
+  if (isJITActionsEnabled()) {
+    return visualizationSystemPrompt(true);
+  }
 
   const contentFragmentMessages: Array<ContentFragmentType> = [];
-  for (const m of conversation.content.flat(1)) {
+  for (const versions of conversation.content) {
+    const m = versions[versions.length - 1];
+
     if (isContentFragmentType(m)) {
       contentFragmentMessages.push(m);
     }
@@ -56,34 +41,40 @@ export async function getVisualizationPrompt({
     "sId"
   );
 
-  const contentFragmentTextByMessageId: Record<string, string[]> = {};
-  for (const m of contentFragmentMessages) {
-    if (!m.fileId || !m.contentType.startsWith("text/")) {
-      continue;
-    }
+  let prompt = visualizationSystemPrompt(false).trim() + "\n\n";
 
-    const file = contentFragmentFileBySid[m.fileId];
-    if (!file) {
-      continue;
+  const fileAttachments: string[] = [];
+  for (const versions of conversation.content) {
+    const m = versions[versions.length - 1];
+
+    if (isContentFragmentType(m)) {
+      if (!m.fileId || !contentFragmentFileBySid[m.fileId]) {
+        continue;
+      }
+      fileAttachments.push(
+        `<file id="${m.fileId}" name="${m.title}" type="${m.contentType}" />`
+      );
+    } else if (isAgentMessageType(m)) {
+      for (const a of m.actions) {
+        if (isTablesQueryActionType(a)) {
+          const attachment = getTablesQueryResultsFileAttachment({
+            resultsFileId: a.resultsFileId,
+            resultsFileSnippet: a.resultsFileSnippet,
+            output: a.output,
+            includeSnippet: false,
+          });
+          if (attachment) {
+            fileAttachments.push(attachment);
+          }
+        }
+      }
     }
-    const readStream = file.getReadStream({
-      auth,
-      version: "original",
-    });
-    contentFragmentTextByMessageId[m.sId] =
-      await readFirstFiveLines(readStream);
   }
 
-  let prompt = visualizationSystemPrompt.trim() + "\n\n";
-
-  if (contentFragmentMessages.length > 0) {
+  if (fileAttachments.length > 0) {
     prompt +=
       "Files accessible to the :::visualization directive environment:\n";
-    prompt += contentFragmentMessages
-      .map((m) => {
-        return `<file id="${m.fileId}" name="${m.title}" type="${m.contentType}">\n${contentFragmentTextByMessageId[m.sId]?.join("\n")}(truncated...)</file>`;
-      })
-      .join("\n");
+    prompt += fileAttachments.join("\n");
   } else {
     prompt +=
       "No files are currently accessible to the :::visualization directive environment in this conversation.";
@@ -92,10 +83,10 @@ export async function getVisualizationPrompt({
   return prompt;
 }
 
-export const visualizationSystemPrompt = `\
+export const visualizationSystemPrompt = (jitActionsEnabled: boolean) => `\
 It is possible to generate visualizations for the user (using React components executed in a react-runner environment) that will be rendered in the user's browser by using the :::visualization container block markdown directive.
 
-Guidelines using the :::visualization tag:
+Guidelines using the :::visualization directive:
 - The generated component should always be exported as default
 - There is no internet access in the visualization environment
 - Supported React features:
@@ -108,17 +99,24 @@ Guidelines using the :::visualization tag:
 - Props:
   - The generated component should not have any required props / parameters
 - Responsiveness:
-  - The content should be responsive and should not have fixed widths or heights
+  - Use ResponsiveContainer for charts to adapt to parent dimensions
+  - Leave adequate padding around charts for labels and legends
+  - Content should adapt gracefully to different widths
+  - For multi-chart layouts, use flex or grid to maintain spacing
   - The component should be able to adapt to different screen sizes
   - The content should never overflow the viewport and should never have horizontal or vertical scrollbars
 - Styling:
   - Tailwind's arbitrary values like \`h-[600px]\` must never be used, as they are not available in the visualization environment. No tailwind class that include a square bracket should ever be used in the visualization code, as they will cause the visualization to fail for the user.
   - When arbitrary / specific values are required, regular CSS (using the \`style\` prop) can be used as a fallback.
   - For all other styles, Tailwind CSS classes should be preferred
-  - Consider using paddings to ensure elements are fully visible.
-- Using files from the conversation when available:
- - Files from the conversation can be accessed using the \`useFile()\` hook.
- - Once/if the file is available, \`useFile()\` will return a non-null \`File\` object. The \`File\` object is a browser File object. Examples of using \`useFile\` are available below.
+  - Always use padding around plots to ensure elements are fully visible and labels/legends do not overlap with the plot or with each other.
+  - Use a default white background (represented by the Tailwind class bg-white) unless explicitly requested otherwise by the user.
+  - If you need to generate a legend for a chart, ensure it uses relative positioning or follows the natural flow of the layout, avoiding \`position: absolute\`, to maintain responsiveness and adaptability.
+- Using ${jitActionsEnabled ? "any file from the `list_conversation_files` action" : "files from the conversation"} when available:
+ - Files from the conversation ${jitActionsEnabled ? "as returned by `list_conversation_files` " : ""}can be accessed using the \`useFile()\` hook${jitActionsEnabled ? " (all files can be accessed by the hook irrespective of their status)" : ""}.
+ - Once/if the file is available, \`useFile()\` will return a non-null \`File\` object. \`useFile()\` can be imported from \`"@dust/react-hooks"\`. The \`File\` object is a browser File object. Examples of using \`useFile\` are available below.
+ - Always use \`papaparse\` to parse CSV files.
+ - To let users download data from the visualization, use the \`triggerUserFileDownload()\` function. \`triggerUserFileDownload()\` can be imported from \`"@dust/react-hooks"\`. Downloading must not be automatically triggered and must be exposed to the user as a button or other navigation element.
 - Available third-party libraries:
   - Base React is available to be imported. In order to use hooks, they have to be imported at the top of the script, e.g. \`import { useState } from "react"\`
   - The recharts charting library is available to be imported, e.g. \`import { LineChart, XAxis, ... } from "recharts"\` & \`<LineChart ...><XAxis dataKey="name"> ...\`.
@@ -128,11 +126,14 @@ Guidelines using the :::visualization tag:
   - Images from the web cannot be rendered or used in the visualization (no internet access).
   - When parsing dates, the date format should be accounted for based on the format seen in the \`<attachment/>\` tag.
   - If needed, the application must contain buttons or other navigation elements to allow the user to scroll/cycle through the content.
-
+- When to use the :::visualization directive:
+  - The visualization directive is particularly adapted to use-cases involving data visualizations such as graphs, charts, and plots.
+  - The visualization directive should not be used for anything that can be achieved with regular markdown.
 
 Example using the \`useFile\` hook:
 
 \`\`\`
+// Reading files from conversation
 import { useFile } from "@dust/react-hooks";
 const file = useFile(fileId);
 if (file) {
@@ -144,7 +145,21 @@ if (file) {
 }
 \`\`\`
 
-\`fileId\` can be extracted from the \`<file id="\${FILE_ID}" type... name...>\` tags in the conversation history.
+\`fileId\` can be extracted from the \`<file id="\${FILE_ID}" type... name...>\` tags ${jitActionsEnabled ? "returned by the `list_conversation_files` action" : "in the conversation history"}.
+
+Example using the \`triggerUserFileDownload\` hook:
+
+\`\`\`
+// Adding download capability
+import { triggerUserFileDownload } from "@dust/react-hooks";
+
+<button onClick={() => triggerUserFileDownload({
+  content: csvContent,  // string or Blob
+  filename: "data.csv"
+})}>
+  Download Data
+</button>
+\`\`\`
 
 General example of a visualization component:
 
@@ -179,7 +194,7 @@ const generateData = () => {
 const SineCosineChart = () => {
   const data = generateData();
   return (
-    <div style={{ width: "800px", height: "500px" }} className="p-4 mx-auto">
+    <div style={{ width: "800px", height: "500px" }} className="p-4 mx-auto bg-white">
       <h2 className="text-2xl font-bold mb-4 text-center">
         Sine and Cosine Functions
       </h2>

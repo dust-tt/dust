@@ -1,6 +1,6 @@
-import { sendEmail } from "@app/lib/email";
-
 // const { LIVE, SENDGRID_API_KEY } = process.env;
+
+import { sendEmail } from "@app/lib/api/email";
 
 // async function main() {
 //   console.log("USING SENDGRID API KEY", SENDGRID_API_KEY);

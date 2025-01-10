@@ -2,16 +2,20 @@ import type { DustAppRunConfigurationType, ModelId } from "@dust-tt/types";
 import _ from "lodash";
 import { Op } from "sequelize";
 
+import type { Authenticator } from "@app/lib/auth";
 import { AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
-import { App } from "@app/lib/resources/storage/models/apps";
+import { AppResource } from "@app/lib/resources/app_resource";
 
-export async function fetchDustAppRunActionConfigurations({
-  configurationIds,
-  variant,
-}: {
-  configurationIds: ModelId[];
-  variant: "light" | "full";
-}): Promise<Map<ModelId, DustAppRunConfigurationType[]>> {
+export async function fetchDustAppRunActionConfigurations(
+  auth: Authenticator,
+  {
+    configurationIds,
+    variant,
+  }: {
+    configurationIds: ModelId[];
+    variant: "light" | "full";
+  }
+): Promise<Map<ModelId, DustAppRunConfigurationType[]>> {
   if (variant !== "full") {
     return new Map();
   }
@@ -24,13 +28,10 @@ export async function fetchDustAppRunActionConfigurations({
     return new Map();
   }
 
-  const dustApps = await App.findAll({
-    where: {
-      sId: {
-        [Op.in]: dustAppRunConfigurations.map((c) => c.appId),
-      },
-    },
-  });
+  const dustApps = await AppResource.fetchByIds(
+    auth,
+    dustAppRunConfigurations.map((c) => c.appId)
+  );
 
   const groupedDustAppRunConfigurations = _.groupBy(
     dustAppRunConfigurations,
@@ -46,21 +47,20 @@ export async function fetchDustAppRunActionConfigurations({
     for (const c of configs) {
       const dustApp = dustApps.find((app) => app.sId === c.appId);
 
-      if (!dustApp) {
-        // unreachable
-        throw new Error(
-          `Couldn't find dust app for dust app run configuration ${c.id}`
-        );
+      // If the dust app is not found (was deleted) we just skip the action. This is not ideal as it
+      // will change the behavior of the assistant without notice, but we don't want to crash or let
+      // the app be used if it was deleted.
+      if (dustApp) {
+        actions.push({
+          id: c.id,
+          sId: c.sId,
+          type: "dust_app_run_configuration",
+          appWorkspaceId: c.appWorkspaceId,
+          appId: c.appId,
+          name: dustApp.name,
+          description: dustApp.description,
+        });
       }
-      actions.push({
-        id: c.id,
-        sId: c.sId,
-        type: "dust_app_run_configuration",
-        appWorkspaceId: c.appWorkspaceId,
-        appId: c.appId,
-        name: dustApp.name,
-        description: dustApp.description,
-      });
     }
 
     actionsByConfigurationId.set(parseInt(agentConfigurationId, 10), actions);

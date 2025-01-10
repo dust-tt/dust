@@ -3,7 +3,7 @@ import type { LightWorkspaceType } from "@dust-tt/types";
 import { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { VaultResource } from "@app/lib/resources/vault_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { Logger } from "@app/logger/logger";
 import { makeScript, runOnAllWorkspaces } from "@app/scripts/helpers";
 
@@ -13,18 +13,18 @@ async function backfillDefaultViewForDataSource(
   logger: Logger,
   execute: boolean
 ): Promise<boolean> {
-  const { vault } = dataSource;
+  const { space } = dataSource;
   // Check if there is already a view for this managed data source in the vault.
   const dataSourceViews =
-    await DataSourceViewResource.listForDataSourcesInVault(
+    await DataSourceViewResource.listForDataSourcesInSpace(
       auth,
       [dataSource],
-      vault
+      space
     );
 
   if (dataSourceViews.length > 0) {
     logger.info(
-      `Data source view already exists for data source ${dataSource.id} in vault ${vault.kind} (id: ${dataSourceViews[0].id}).`
+      `Data source view already exists for data source ${dataSource.id} in vault ${space.kind} (id: ${dataSourceViews[0].id}).`
     );
     return false;
   }
@@ -34,10 +34,11 @@ async function backfillDefaultViewForDataSource(
   }
 
   // Create a default view for this data source in the vault.
-  await DataSourceViewResource.createViewInVaultFromDataSourceIncludingAllDocuments(
+  await DataSourceViewResource.createViewInSpaceFromDataSource(
     auth,
-    vault,
-    dataSource
+    space,
+    dataSource,
+    []
   );
 
   logger.info(`View created for data source ${dataSource.id}.`);
@@ -57,15 +58,14 @@ async function backfillDataSourceViewsForWorkspace(
     `Found ${dataSources.length} data sources for workspace(${workspace.sId}).`
   );
 
-  const globalVault = await VaultResource.fetchWorkspaceGlobalVault(auth);
+  const globalVault = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
 
   let updated = 0;
   for (const dataSource of dataSources) {
-    let created: boolean;
-    if (dataSource.vault.isSystem()) {
+    if (dataSource.space.isSystem()) {
       // Update the kind to "custom" for the data source view created in the global vault.
       const dataSourceViews =
-        await DataSourceViewResource.listForDataSourcesInVault(
+        await DataSourceViewResource.listForDataSourcesInSpace(
           auth,
           [dataSource],
           globalVault
@@ -78,7 +78,7 @@ async function backfillDataSourceViewsForWorkspace(
     }
 
     // Otherwise, create a default view in the data source's vault.
-    created = await backfillDefaultViewForDataSource(
+    const created = await backfillDefaultViewForDataSource(
       auth,
       dataSource,
       logger,

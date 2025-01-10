@@ -3,6 +3,7 @@ import type {
   AdminSuccessResponseType,
   BatchAllResponseType,
   BatchCommandType,
+  ConnectorPermission,
   ConnectorsCommandType,
   GetParentsResponseType,
   Result,
@@ -16,6 +17,7 @@ import PQueue from "p-queue";
 import readline from "readline";
 
 import { getConnectorManager } from "@connectors/connectors";
+import { confluence } from "@connectors/connectors/confluence/lib/cli";
 import { github } from "@connectors/connectors/github/lib/cli";
 import { google_drive } from "@connectors/connectors/google_drive/lib/cli";
 import { intercom } from "@connectors/connectors/intercom/lib/cli";
@@ -23,6 +25,7 @@ import { microsoft } from "@connectors/connectors/microsoft/lib/cli";
 import { notion } from "@connectors/connectors/notion/lib/cli";
 import { slack } from "@connectors/connectors/slack/lib/cli";
 import { launchCrawlWebsiteSchedulerWorkflow } from "@connectors/connectors/webcrawler/temporal/client";
+import { zendesk } from "@connectors/connectors/zendesk/lib/cli";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
@@ -33,6 +36,8 @@ export async function runCommand(adminCommand: AdminCommandType) {
   switch (adminCommand.majorCommand) {
     case "connectors":
       return connectors(adminCommand);
+    case "confluence":
+      return confluence(adminCommand);
     case "batch":
       return batch(adminCommand);
     case "notion":
@@ -51,6 +56,8 @@ export async function runCommand(adminCommand: AdminCommandType) {
       return intercom(adminCommand);
     case "microsoft":
       return microsoft(adminCommand);
+    case "zendesk":
+      return zendesk(adminCommand);
     default:
       assertNever(adminCommand);
   }
@@ -132,7 +139,15 @@ export const connectors = async ({
       await throwOnError(manager.pause());
       return { success: true };
     }
+    case "unpause": {
+      await throwOnError(manager.unpause());
+      return { success: true };
+    }
     case "resume": {
+      if (connector.pausedAt) {
+        throw new Error("Cannot resume a paused connector");
+      }
+
       await throwOnError(manager.resume());
       return { success: true };
     }
@@ -158,6 +173,10 @@ export const connectors = async ({
     }
 
     case "restart": {
+      if (connector.pausedAt) {
+        throw new Error("Cannot restart a paused connector");
+      }
+
       await throwOnError(manager.stop());
       await throwOnError(manager.resume());
       return { success: true };
@@ -176,6 +195,31 @@ export const connectors = async ({
       }
 
       return { parents: parents.value };
+    }
+
+    case "set-permission": {
+      const { permissionKey, permissionValue } = args;
+      if (!permissionKey) {
+        throw new Error("Missing --permissionKey argument");
+      }
+      if (!permissionValue) {
+        throw new Error("Missing --permissionValue argument");
+      }
+      if (!["read", "write", "read_write", "none"].includes(permissionValue)) {
+        throw new Error("Invalid permissionValue argument");
+      }
+
+      const setPermissionsRes = await manager.setPermissions({
+        permissions: {
+          [permissionKey as string]: permissionValue as ConnectorPermission,
+        },
+      });
+
+      if (setPermissionsRes.isErr()) {
+        throw new Error(`Cannot set permissions: ${setPermissionsRes.error}`);
+      }
+
+      return { success: true };
     }
 
     default:
@@ -253,6 +297,9 @@ export const batch = async ({
         "intercom",
         "confluence",
         "github",
+        "google_drive",
+        "snowflake",
+        "zendesk",
       ];
       if (!PROVIDERS_ALLOWING_RESTART.includes(args.provider)) {
         throw new Error(

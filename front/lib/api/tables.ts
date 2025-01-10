@@ -6,17 +6,28 @@ import type {
   Result,
   WorkspaceType,
 } from "@dust-tt/types";
-import { CoreAPI, Err, isSlugified, Ok } from "@dust-tt/types";
-import { guessDelimiter } from "@dust-tt/types";
+import {
+  CoreAPI,
+  Err,
+  getSanitizedHeaders,
+  getSmallWhitelistedModel,
+  guessDelimiter,
+  Ok,
+} from "@dust-tt/types";
 import { parse } from "csv-parse";
+import * as t from "io-ts";
 import { DateTime } from "luxon";
 
+import { callAction } from "@app/lib/actions/helpers";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
+import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
 import logger from "@app/logger/logger";
 
 import type { DataSourceResource } from "../resources/data_source_resource";
+
+const MAX_TABLE_COLUMNS = 512;
+const MAX_COLUMN_NAME_LENGTH = 1024;
 
 type CsvParsingError = {
   type:
@@ -25,6 +36,7 @@ type CsvParsingError = {
     | "duplicate_header"
     | "invalid_record_length"
     | "empty_csv"
+    | "too_many_columns"
     | "invalid_row_id";
   message: string;
 };
@@ -39,6 +51,8 @@ type NotFoundError = {
   message: string;
 };
 
+type DetectedHeadersType = { header: string[]; rowIndex: number };
+
 export type TableOperationError =
   | {
       type: "internal_server_error";
@@ -52,6 +66,10 @@ export type TableOperationError =
   | {
       type: "invalid_request_error";
       inputValidationError: InputValidationError;
+    }
+  | {
+      type: "invalid_request_error";
+      message: string;
     }
   | {
       type: "not_found_error";
@@ -100,14 +118,9 @@ export async function deleteTable({
       message: "Failed to delete table.",
     });
   }
-  await AgentTablesQueryConfigurationTable.destroy({
-    where: {
-      dataSourceWorkspaceId: owner.sId,
-      // TODO(DATASOURCE_SID); state storing the datasource name
-      dataSourceId: dataSource.name,
-      tableId,
-    },
-  });
+  // We do not delete the related AgentTablesQueryConfigurationTable entry if any.
+  // This is because the table might be created again with the same name and we want to keep the configuration.
+  // The Assistant Builder displays an error on the action card if it misses a table.
 
   return new Ok(null);
 }
@@ -120,9 +133,14 @@ export async function upsertTableFromCsv({
   tableId,
   tableTimestamp,
   tableTags,
+  tableParentId,
   tableParents,
   csv,
   truncate,
+  useAppForHeaderDetection,
+  detectedHeaders,
+  title,
+  mimeType,
 }: {
   auth: Authenticator;
   dataSource: DataSourceResource;
@@ -131,11 +149,23 @@ export async function upsertTableFromCsv({
   tableId: string;
   tableTimestamp: number | null;
   tableTags: string[];
+  tableParentId: string | null;
   tableParents: string[];
   csv: string | null;
   truncate: boolean;
+  useAppForHeaderDetection: boolean;
+  detectedHeaders?: DetectedHeadersType;
+  title: string;
+  mimeType: string;
 }): Promise<Result<{ table: CoreAPITable }, TableOperationError>> {
-  const csvRowsRes = csv ? await rowsFromCsv(csv) : null;
+  const csvRowsRes = csv
+    ? await rowsFromCsv({
+        auth,
+        csv,
+        useAppForHeaderDetection,
+        detectedHeaders,
+      })
+    : null;
 
   const owner = auth.workspace();
 
@@ -154,6 +184,13 @@ export async function upsertTableFromCsv({
         message: "Failed to get workspace.",
       },
       message: "Failed to get workspace.",
+    });
+  }
+
+  if (tableParentId && tableParents && tableParents[1] !== tableParentId) {
+    return new Err({
+      type: "invalid_request_error",
+      message: "Invalid request body, parents[1] and parent_id should be equal",
     });
   }
 
@@ -178,7 +215,7 @@ export async function upsertTableFromCsv({
       return new Err(errorDetails);
     }
 
-    csvRows = csvRowsRes.value;
+    csvRows = csvRowsRes.value.rows;
   }
 
   if ((csvRows?.length ?? 0) > 500_000) {
@@ -212,7 +249,10 @@ export async function upsertTableFromCsv({
     description: tableDescription,
     timestamp: tableTimestamp,
     tags: tableTags,
+    parentId: tableParentId,
     parents: tableParents,
+    title,
+    mimeType,
   });
 
   if (tableRes.isErr()) {
@@ -237,6 +277,7 @@ export async function upsertTableFromCsv({
   }
 
   if (csvRows) {
+    const now = performance.now();
     const rowsRes = await coreAPI.upsertTableRows({
       projectId: dataSource.dustAPIProjectId,
       dataSourceId: dataSource.dustAPIDataSourceId,
@@ -244,6 +285,20 @@ export async function upsertTableFromCsv({
       rows: csvRows,
       truncate,
     });
+
+    logger.info(
+      {
+        durationMs: performance.now() - now,
+        csvRowsLength: csvRows.length,
+        csvColsLength: csvRows[0]?.value
+          ? Object.keys(csvRows[0].value).length
+          : 0,
+        workspaceId: owner.id,
+        tableId,
+        tableName,
+      },
+      "Upserting table rows"
+    );
 
     if (rowsRes.isErr()) {
       const errorDetails = {
@@ -292,9 +347,23 @@ export async function upsertTableFromCsv({
   return tableRes;
 }
 
-export async function rowsFromCsv(
-  csv: string
-): Promise<Result<CoreAPIRow[], CsvParsingError>> {
+export async function rowsFromCsv({
+  auth,
+  csv,
+  useAppForHeaderDetection,
+  detectedHeaders,
+}: {
+  auth: Authenticator;
+  csv: string;
+  useAppForHeaderDetection: boolean;
+  detectedHeaders?: DetectedHeadersType;
+}): Promise<
+  Result<
+    { detectedHeaders: DetectedHeadersType; rows: CoreAPIRow[] },
+    CsvParsingError
+  >
+> {
+  const now = performance.now();
   const delimiter = await guessDelimiter(csv);
   if (!delimiter) {
     return new Err({
@@ -303,75 +372,38 @@ export async function rowsFromCsv(
     });
   }
 
+  const headerRes = detectedHeaders
+    ? new Ok(detectedHeaders)
+    : await detectHeaders(auth, csv, delimiter, useAppForHeaderDetection);
+
+  if (headerRes.isErr()) {
+    return headerRes;
+  }
+  const { header, rowIndex } = headerRes.value;
+
+  let i = 0;
   const parser = parse(csv, { delimiter });
-  let header: string[] | undefined = undefined;
-  const valuesByCol: Record<string, string[]> = {};
-
+  // this differs with = {} in that it prevent errors when header values clash with object properties such as toString, constructor, ..
+  const valuesByCol: Record<string, string[]> = Object.create(null);
   for await (const anyRecord of parser) {
-    // Assert that record is string[].
-    if (!Array.isArray(anyRecord)) {
-      throw new Error("Record is not an array");
-    }
-    if (anyRecord.some((r) => typeof r !== "string")) {
-      throw new Error("Record contains non-string values");
-    }
-
-    const record = anyRecord as string[];
-
-    if (!header) {
-      header = [];
-      const firstRecordCells = record.map((h) => h.trim().toLocaleLowerCase());
-      const firstEmptyCellIndex = firstRecordCells.indexOf("");
-      if (firstEmptyCellIndex !== -1) {
-        // Ensure there are no non-empty cells after the first empty cell.
-        if (firstRecordCells.slice(firstEmptyCellIndex).some((c) => c !== "")) {
-          return new Err({
-            type: "invalid_header",
-            message: `Invalid header: found non-empty cell after empty cell.`,
-          });
+    if (i++ >= rowIndex) {
+      for (const [i, h] of header.entries()) {
+        try {
+          valuesByCol[h] ??= [];
+          valuesByCol[h].push((anyRecord[i] ?? "").toString());
+        } catch (e) {
+          logger.error(
+            // temporary log to fix the valuesByCol[h].push is not a function error
+            { typeOf: typeof valuesByCol[h], columnName: h },
+            "Error parsing record"
+          );
+          throw e;
         }
-      }
-      header = firstRecordCells.slice(
-        0,
-        firstEmptyCellIndex === -1 ? undefined : firstEmptyCellIndex
-      );
-      const headerSet = new Set<string>();
-      for (const h of header) {
-        if (!isSlugified(h)) {
-          return new Err({
-            type: "invalid_header",
-            message: `Header '${h}' is not a valid slug. A header should only contain lowercase letters, numbers, or underscores.`,
-          });
-        }
-
-        if (headerSet.has(h)) {
-          return new Err({
-            type: "duplicate_header",
-            message: `Duplicate header: ${h}.`,
-          });
-        }
-        headerSet.add(h);
-      }
-      continue;
-    }
-
-    for (const [i, h] of header.entries()) {
-      const col = record[i];
-      if (col === undefined) {
-        return new Err({
-          type: "invalid_record_length",
-          message: `Invalid record length at row ${i} (expected ${header.length} columns, got ${record.length})).`,
-        });
-      }
-      if (!valuesByCol[h]) {
-        valuesByCol[h] = [col];
-      } else {
-        (valuesByCol[h] as string[]).push(col);
       }
     }
   }
 
-  if (!header || !Object.values(valuesByCol).some((vs) => vs.length > 0)) {
+  if (!Object.values(valuesByCol).some((vs) => vs.length > 0)) {
     return new Err({
       type: "empty_csv",
       message: `CSV is empty.`,
@@ -458,7 +490,6 @@ export async function rowsFromCsv(
       );
     })();
   }
-
   const nbRows = (Object.values(parsedValuesByCol)[0] || []).length;
   const rows: CoreAPIRow[] = [];
   for (let i = 0; i < nbRows; i++) {
@@ -486,5 +517,110 @@ export async function rowsFromCsv(
     rows.push({ row_id: rowId, value: record });
   }
 
-  return new Ok(rows);
+  logger.info(
+    {
+      durationMs: performance.now() - now,
+      nbRows,
+      nbCols: header.length,
+      workspaceId: auth.getNonNullableWorkspace().id,
+    },
+    "Parsing CSV"
+  );
+
+  return new Ok({ detectedHeaders: { header, rowIndex }, rows });
+}
+
+async function staticHeaderDetection(
+  firstRow: string[]
+): Promise<Result<DetectedHeadersType, CsvParsingError>> {
+  const firstRecordCells = firstRow.map(
+    (h, i) => h.trim().toLocaleLowerCase() || `col_${i}`
+  );
+
+  if (firstRecordCells.some((h) => h.length > MAX_COLUMN_NAME_LENGTH)) {
+    return new Err({
+      type: "invalid_header",
+      message: `Column name is too long (over ${MAX_COLUMN_NAME_LENGTH} characters).`,
+    });
+  }
+
+  const header = getSanitizedHeaders(firstRecordCells);
+
+  if (header.isErr()) {
+    return new Err({ type: "invalid_header", message: header.error.message });
+  }
+
+  return new Ok({ header: header.value, rowIndex: 1 });
+}
+
+async function detectHeaders(
+  auth: Authenticator,
+  csv: string,
+  delimiter: string,
+  useAppForHeaderDetection: boolean
+): Promise<Result<DetectedHeadersType, CsvParsingError>> {
+  const headParser = parse(csv, { delimiter });
+  const records = [];
+  for await (const anyRecord of headParser) {
+    // Assert that record is string[].
+    if (!Array.isArray(anyRecord)) {
+      throw new Error("Record is not an array.");
+    }
+
+    if (anyRecord.some((r) => typeof r !== "string")) {
+      throw new Error("Record contains non-string values.");
+    }
+
+    const record = anyRecord as string[];
+
+    if (record.length > MAX_TABLE_COLUMNS) {
+      return new Err({ type: "too_many_columns", message: "Too many columns" });
+    }
+
+    if (!useAppForHeaderDetection) {
+      return staticHeaderDetection(record);
+    }
+
+    records.push(record);
+
+    if (records.length === 10) {
+      break;
+    }
+  }
+  headParser.destroy();
+
+  const action = DustProdActionRegistry["table-header-detection"];
+
+  const model = getSmallWhitelistedModel(auth.getNonNullableWorkspace());
+  if (!model) {
+    throw new Error("Could not find a whitelisted model for the workspace.");
+  }
+
+  const config = cloneBaseConfig(action.config);
+  config.MODEL.provider_id = model.providerId;
+  config.MODEL.model_id = model.modelId;
+
+  const res = await callAction(auth, {
+    action,
+    config,
+    input: { tableData: records },
+    responseValueSchema: t.type({
+      headers: t.array(t.string),
+      rowIndex: t.Integer,
+    }),
+  });
+
+  if (res.isErr()) {
+    logger.warn("Error when running app for detecting header", res.error);
+    // Fallback to statuc header detection.
+    return staticHeaderDetection(records[0]);
+  }
+  const rowIndex = res.value.rowIndex;
+  const header = getSanitizedHeaders(res.value.headers);
+
+  if (header.isErr()) {
+    return new Err({ type: "invalid_header", message: header.error.message });
+  }
+
+  return new Ok({ header: header.value, rowIndex });
 }

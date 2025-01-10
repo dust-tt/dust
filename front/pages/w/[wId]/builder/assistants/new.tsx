@@ -3,9 +3,9 @@ import type {
   AppType,
   DataSourceViewType,
   PlanType,
+  SpaceType,
   SubscriptionType,
   TemplateAgentConfigurationType,
-  VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { throwIfInvalidAgentConfiguration } from "@dust-tt/types";
@@ -40,12 +40,10 @@ function getDuplicateAndTemplateIdFromQuery(query: ParsedUrlQuery) {
 }
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
-  isAdmin: boolean;
   owner: WorkspaceType;
   subscription: SubscriptionType;
   plan: PlanType;
-  gaTrackingId: string;
-  vaults: VaultType[];
+  spaces: SpaceType[];
   dataSourceViews: DataSourceViewType[];
   dustApps: AppType[];
   actions: AssistantBuilderInitialState["actions"];
@@ -66,7 +64,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const { vaults, dataSourceViews, dustApps } =
+  const { spaces, dataSourceViews, dustApps } =
     await getAccessibleSourcesAndApps(auth);
 
   const flow: BuilderFlow = BUILDER_FLOWS.includes(
@@ -90,6 +88,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
         notFound: true,
       };
     }
+    // We reset the scope according to the current flow. This ensures that cloning a workspace
+    // assistant with flow `personal_assistants` will initialize the assistant as private.
+    configuration.scope =
+      flow === "personal_assistants" ? "private" : "workspace";
   } else if (templateId) {
     const agentConfigRes = await generateMockAgentConfigurationFromTemplate(
       templateId,
@@ -119,15 +121,13 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       agentConfiguration: configuration,
       baseUrl: config.getClientFacingUrl(),
       dataSourceViews: dataSourceViews.map((v) => v.toJSON()),
-      dustApps,
+      dustApps: dustApps.map((a) => a.toJSON()),
       flow,
-      gaTrackingId: config.getGaTrackingId(),
-      isAdmin: auth.isAdmin(),
       owner,
       plan,
       subscription,
       templateId,
-      vaults: vaults.map((v) => v.toJSON()),
+      spaces: spaces.map((s) => s.toJSON()),
     },
   };
 });
@@ -136,12 +136,10 @@ export default function CreateAssistant({
   actions,
   agentConfiguration,
   baseUrl,
-  vaults,
+  spaces,
   dataSourceViews,
   dustApps,
   flow,
-  gaTrackingId,
-  isAdmin,
   owner,
   plan,
   subscription,
@@ -162,7 +160,7 @@ export default function CreateAssistant({
 
   return (
     <AssistantBuilderProvider
-      vaults={vaults}
+      spaces={spaces}
       dustApps={dustApps}
       dataSourceViews={dataSourceViews}
     >
@@ -170,7 +168,6 @@ export default function CreateAssistant({
         owner={owner}
         subscription={subscription}
         plan={plan}
-        gaTrackingId={gaTrackingId}
         flow={flow}
         initialBuilderState={
           agentConfiguration
@@ -203,8 +200,7 @@ export default function CreateAssistant({
             : null
         }
         agentConfigurationId={null}
-        isAdmin={isAdmin}
-        defaultIsEdited={false}
+        defaultIsEdited={assistantTemplate !== null}
         baseUrl={baseUrl}
         defaultTemplate={assistantTemplate}
       />

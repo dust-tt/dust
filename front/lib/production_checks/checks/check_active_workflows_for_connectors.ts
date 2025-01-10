@@ -1,5 +1,8 @@
 import type { ConnectorProvider } from "@dust-tt/types";
-import { microsoftIncrementalSyncWorkflowId } from "@dust-tt/types";
+import {
+  microsoftGarbageCollectionWorkflowId,
+  microsoftIncrementalSyncWorkflowId,
+} from "@dust-tt/types";
 import {
   getIntercomSyncWorkflowId,
   googleDriveIncrementalSyncWorkflowId,
@@ -9,7 +12,7 @@ import type { Client, WorkflowHandle } from "@temporalio/client";
 import { QueryTypes } from "sequelize";
 
 import type { CheckFunction } from "@app/lib/production_checks/types";
-import { getConnectorReplicaDbConnection } from "@app/lib/production_checks/utils";
+import { getConnectorsPrimaryDbConnection } from "@app/lib/production_checks/utils";
 import { getTemporalConnectorsNamespaceConnection } from "@app/lib/temporal";
 
 interface ConnectorBlob {
@@ -20,32 +23,37 @@ interface ConnectorBlob {
 }
 
 interface ProviderCheck {
-  makeIdFn: (connector: ConnectorBlob) => string;
+  makeIdsFn: (connector: ConnectorBlob) => string[];
 }
 
-const connectorsReplica = getConnectorReplicaDbConnection();
+const connectorsDb = getConnectorsPrimaryDbConnection();
 
 const providersToCheck: Partial<Record<ConnectorProvider, ProviderCheck>> = {
   confluence: {
-    makeIdFn: (connector: ConnectorBlob) =>
+    makeIdsFn: (connector: ConnectorBlob) => [
       makeConfluenceSyncWorkflowId(connector.id),
+    ],
   },
   intercom: {
-    makeIdFn: (connector: ConnectorBlob) =>
+    makeIdsFn: (connector: ConnectorBlob) => [
       getIntercomSyncWorkflowId(connector.id),
+    ],
   },
   google_drive: {
-    makeIdFn: (connector: ConnectorBlob) =>
+    makeIdsFn: (connector: ConnectorBlob) => [
       googleDriveIncrementalSyncWorkflowId(connector.id),
+    ],
   },
   microsoft: {
-    makeIdFn: (connector: ConnectorBlob) =>
+    makeIdsFn: (connector: ConnectorBlob) => [
       microsoftIncrementalSyncWorkflowId(connector.id),
+      microsoftGarbageCollectionWorkflowId(connector.id),
+    ],
   },
 };
 
 async function listAllConnectorsForProvider(provider: ConnectorProvider) {
-  const connectors: ConnectorBlob[] = await connectorsReplica.query(
+  const connectors: ConnectorBlob[] = await connectorsDb.query(
     `SELECT id, "dataSourceId", "workspaceId", "pausedAt" FROM connectors WHERE "type" = :provider and  "errorType" IS NULL`,
     {
       type: QueryTypes.SELECT,
@@ -63,16 +71,17 @@ async function areTemporalWorkflowsRunning(
   connector: ConnectorBlob,
   info: ProviderCheck
 ) {
-  try {
-    const workflowHandle: WorkflowHandle = client.workflow.getHandle(
-      info.makeIdFn(connector)
-    );
+  for (const workflowId of info.makeIdsFn(connector)) {
+    try {
+      const workflowHandle: WorkflowHandle =
+        client.workflow.getHandle(workflowId);
 
-    const descriptions = await Promise.all([workflowHandle.describe()]);
+      const descriptions = await Promise.all([workflowHandle.describe()]);
 
-    return descriptions.every(({ status: { name } }) => name === "RUNNING");
-  } catch (err) {
-    return false;
+      return descriptions.every(({ status: { name } }) => name === "RUNNING");
+    } catch (err) {
+      return false;
+    }
   }
 }
 

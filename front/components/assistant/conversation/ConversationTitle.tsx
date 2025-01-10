@@ -3,31 +3,33 @@ import {
   Button,
   CheckIcon,
   ClipboardCheckIcon,
-  Dialog,
-  DropdownMenu,
   IconButton,
-  LinkStrokeIcon,
+  LinkIcon,
   PencilSquareIcon,
+  Popover,
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
 import type { ConversationType } from "@dust-tt/types";
+import type { WorkspaceType } from "@dust-tt/types";
 import type { MouseEvent } from "react";
 import React, { useRef, useState } from "react";
 import { useSWRConfig } from "swr";
 
 import { ConversationParticipants } from "@app/components/assistant/conversation/ConversationParticipants";
+import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
 import { classNames } from "@app/lib/utils";
 
 export function ConversationTitle({
   owner,
+  conversationId,
   conversation,
   shareLink,
   onDelete,
 }: {
   owner: WorkspaceType;
-  conversation: ConversationType;
+  conversationId: string;
+  conversation: ConversationType | null;
   shareLink: string;
   onDelete?: (conversationId: string) => void;
 }) {
@@ -52,7 +54,7 @@ export function ConversationTitle({
   const onTitleChange = async (title: string) => {
     try {
       const res = await fetch(
-        `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}`,
+        `/api/w/${owner.sId}/assistant/conversations/${conversationId}`,
         {
           method: "PATCH",
           headers: {
@@ -65,7 +67,7 @@ export function ConversationTitle({
         }
       );
       await mutate(
-        `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}`
+        `/api/w/${owner.sId}/assistant/conversations/${conversationId}`
       );
       void mutate(`/api/w/${owner.sId}/assistant/conversations`);
       if (!res.ok) {
@@ -81,12 +83,14 @@ export function ConversationTitle({
   return (
     <>
       {onDelete && (
-        <DeleteConversationDialog
-          show={showDeleteDialog}
+        <DeleteConversationsDialog
+          isOpen={showDeleteDialog}
+          type="selection"
+          selectedCount={1}
           onClose={() => setShowDeleteDialog(false)}
           onDelete={() => {
             setShowDeleteDialog(false);
-            onDelete(conversation.sId);
+            onDelete(conversationId);
           }}
         />
       )}
@@ -94,7 +98,7 @@ export function ConversationTitle({
         <div className="flex min-w-0 flex-row items-center gap-4">
           {!isEditingTitle ? (
             <div className="min-w-0 overflow-hidden truncate">
-              <span className="font-bold">{conversation.title || ""}</span>
+              <span className="font-bold">{conversation?.title || ""}</span>
             </div>
           ) : (
             <div className="w-[84%]">
@@ -147,7 +151,7 @@ export function ConversationTitle({
                 }}
                 className="flex items-center"
               >
-                <IconButton icon={CheckIcon} variant="secondary" />
+                <IconButton icon={CheckIcon} variant="highlight" />
               </div>
               <IconButton
                 icon={XMarkIcon}
@@ -155,63 +159,63 @@ export function ConversationTitle({
                   setIsEditingTitle(false);
                   setEditedTitle("");
                 }}
-                variant="secondary"
+                variant="highlight"
               />
             </div>
           ) : (
             <IconButton
               icon={PencilSquareIcon}
               onClick={() => {
-                setEditedTitle(conversation.title || "");
+                setEditedTitle(conversation?.title || "");
                 setIsEditingTitle(true);
               }}
               size="sm"
-              variant="tertiary"
+              variant="outline"
             />
           )}
         </div>
         <div className="flex items-center">
           <div className="hidden pr-6 lg:flex">
             <ConversationParticipants
-              conversationId={conversation.sId}
+              conversationId={conversationId}
               owner={owner}
             />
           </div>
-          <Button.List>
+          <div className="flex gap-2">
             <div className="hidden lg:flex">
               {onDelete && (
                 <Button
                   size="sm"
-                  labelVisible={false}
-                  tooltipPosition="below"
-                  variant="tertiary"
-                  label="Delete Conversation"
+                  variant="ghost"
+                  tooltip="Delete Conversation"
                   icon={TrashIcon}
                   onClick={() => setShowDeleteDialog(true)}
                 />
               )}
             </div>
-            <DropdownMenu>
-              <DropdownMenu.Button>
-                <div className="hidden sm:flex">
-                  <Button
-                    size="sm"
-                    label="Share"
-                    icon={ArrowUpOnSquareIcon}
-                    variant="tertiary"
-                  />
+            <Popover
+              popoverTriggerAsChild
+              trigger={
+                <div>
+                  <div className="hidden sm:flex">
+                    <Button
+                      size="sm"
+                      label="Share"
+                      icon={ArrowUpOnSquareIcon}
+                      variant="ghost"
+                    />
+                  </div>
+                  <div className="flex sm:hidden">
+                    <Button
+                      size="sm"
+                      tooltip="Share"
+                      icon={ArrowUpOnSquareIcon}
+                      variant="ghost"
+                    />
+                  </div>
                 </div>
-                <div className="flex sm:hidden">
-                  <Button
-                    size="sm"
-                    label="Share"
-                    labelVisible={false}
-                    icon={ArrowUpOnSquareIcon}
-                    variant="tertiary"
-                  />
-                </div>
-              </DropdownMenu.Button>
-              <DropdownMenu.Items width={280}>
+              }
+              content={
                 <div className="flex flex-col gap-y-4 py-4">
                   <div className="text-sm font-normal text-element-700">
                     Share the conversation link with other members of your
@@ -222,48 +226,16 @@ export function ConversationTitle({
                       variant="primary"
                       size="sm"
                       label={copyLinkSuccess ? "Copied!" : "Copy the link"}
-                      icon={
-                        copyLinkSuccess ? ClipboardCheckIcon : LinkStrokeIcon
-                      }
+                      icon={copyLinkSuccess ? ClipboardCheckIcon : LinkIcon}
                       onClick={handleClick}
                     />
                   </div>
                 </div>
-              </DropdownMenu.Items>
-            </DropdownMenu>
-          </Button.List>
+              }
+            />
+          </div>
         </div>
       </div>
     </>
-  );
-}
-
-function DeleteConversationDialog({
-  show,
-  onClose,
-  onDelete,
-}: {
-  show: boolean;
-  onClose: () => void;
-  onDelete: () => void;
-}) {
-  return (
-    <Dialog
-      isOpen={show}
-      title={"Deleting the conversation"}
-      onCancel={onClose}
-      validateLabel="Delete for everyone"
-      validateVariant="primaryWarning"
-      onValidate={onDelete}
-    >
-      <div className="flex flex-col gap-2">
-        <div>
-          <div>
-            <span className="font-bold">Are you sure you want to delete?</span>{" "}
-          </div>
-          This will delete the conversation for everyone.
-        </div>
-      </div>
-    </Dialog>
   );
 }

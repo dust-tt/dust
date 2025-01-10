@@ -3,11 +3,10 @@ import type {
   LightAgentConfigurationType,
   UserType,
 } from "@dust-tt/types";
-import { removeNulls } from "@dust-tt/types";
+import { getGlobalAgentAuthorName, removeNulls } from "@dust-tt/types";
 import { Sequelize } from "sequelize";
 
 import { runOnRedis } from "@app/lib/api/redis";
-import { getGlobalAgentAuthorName } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -66,7 +65,7 @@ async function setAuthorIdsWithVersionInRedis(
     workspaceId,
   });
 
-  await runOnRedis(async (redis) => {
+  await runOnRedis({ origin: "update_authors" }, async (redis) => {
     // Add <authorId:version> pairs to the sorted set, only if the version is greater than the one stored.
     await redis.zAdd(agentRecentAuthorIdsKey, authorIdsWithScore, { GT: true });
     // Set the expiry for the sorted set to manage its lifecycle.
@@ -149,8 +148,10 @@ export async function getAgentsRecentAuthors({
           agentId,
           workspaceId,
         });
-        let recentAuthorIds = await runOnRedis(async (redis) =>
-          redis.zRange(agentRecentAuthorIdsKey, 0, 2, { REV: true })
+        let recentAuthorIds = await runOnRedis(
+          { origin: "agent_recent_authors" },
+          async (redis) =>
+            redis.zRange(agentRecentAuthorIdsKey, 0, 2, { REV: true })
         );
         if (recentAuthorIds.length === 0) {
           // Populate from the database and store in Redis if the entry is not already present.

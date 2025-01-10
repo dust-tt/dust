@@ -3,6 +3,7 @@ import type {
   LightAgentConfigurationType,
   PostOrPatchAgentConfigurationRequestBody,
   Result,
+  RetrievalTimeframe,
   WorkspaceType,
 } from "@dust-tt/types";
 import { assertNever, Err, Ok } from "@dust-tt/types";
@@ -16,9 +17,11 @@ import type {
   AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
 import {
+  DEFAULT_BROWSE_ACTION_DESCRIPTION,
   DEFAULT_BROWSE_ACTION_NAME,
+  DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
   DEFAULT_WEBSEARCH_ACTION_NAME,
-} from "@app/lib/api/assistant/actions/names";
+} from "@app/lib/api/assistant/actions/constants";
 
 type SlackChannelLinkedWithAgent = SlackChannel & {
   agentConfigurationId: string;
@@ -61,6 +64,24 @@ export async function submitAssistantBuilderForm({
   >;
 
   const map: (a: AssistantBuilderActionConfiguration) => ActionsType = (a) => {
+    let timeFrame: RetrievalTimeframe = "auto";
+
+    if (a.type === "RETRIEVAL_EXHAUSTIVE") {
+      if (a.configuration.timeFrame) {
+        timeFrame = {
+          duration: a.configuration.timeFrame.value,
+          unit: a.configuration.timeFrame.unit,
+        };
+      } else {
+        timeFrame = "none";
+      }
+    } else if (a.type === "PROCESS") {
+      timeFrame = {
+        duration: a.configuration.timeFrame.value,
+        unit: a.configuration.timeFrame.unit,
+      };
+    }
+
     switch (a.type) {
       case "RETRIEVAL_SEARCH":
       case "RETRIEVAL_EXHAUSTIVE":
@@ -70,18 +91,11 @@ export async function submitAssistantBuilderForm({
             name: a.name,
             description: a.description,
             query: a.type === "RETRIEVAL_SEARCH" ? "auto" : "none",
-            relativeTimeFrame:
-              a.type === "RETRIEVAL_EXHAUSTIVE"
-                ? {
-                    duration: a.configuration.timeFrame.value,
-                    unit: a.configuration.timeFrame.unit,
-                  }
-                : "auto",
+            relativeTimeFrame: timeFrame,
             topK: "auto",
             dataSources: Object.values(
               a.configuration.dataSourceConfigurations
             ).map(({ dataSourceView, selectedResources, isSelectAll }) => ({
-              dataSourceId: dataSourceView.dataSource.name,
               dataSourceViewId: dataSourceView.sId,
               workspaceId: owner.sId,
               filter: {
@@ -124,7 +138,6 @@ export async function submitAssistantBuilderForm({
             tables: Object.values(a.configuration).flatMap(
               ({ dataSourceView, selectedResources }) => {
                 return selectedResources.map((resource) => ({
-                  dataSourceId: dataSourceView.dataSource.name,
                   dataSourceViewId: dataSourceView.sId,
                   workspaceId: owner.sId,
                   tableId: getTableIdForContentNode(
@@ -142,12 +155,12 @@ export async function submitAssistantBuilderForm({
           {
             type: "websearch_configuration",
             name: DEFAULT_WEBSEARCH_ACTION_NAME,
-            description: "Perform a web search",
+            description: DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
           },
           {
             type: "browse_configuration",
             name: DEFAULT_BROWSE_ACTION_NAME,
-            description: "Browse the content of a web page",
+            description: DEFAULT_BROWSE_ACTION_DESCRIPTION,
           },
         ];
 
@@ -160,7 +173,6 @@ export async function submitAssistantBuilderForm({
             dataSources: Object.values(
               a.configuration.dataSourceConfigurations
             ).map(({ dataSourceView, selectedResources, isSelectAll }) => ({
-              dataSourceId: dataSourceView.dataSource.name,
               dataSourceViewId: dataSourceView.sId,
               workspaceId: owner.sId,
               filter: {
@@ -176,10 +188,7 @@ export async function submitAssistantBuilderForm({
               },
             })),
             tagsFilter: a.configuration.tagsFilter,
-            relativeTimeFrame: {
-              duration: a.configuration.timeFrame.value,
-              unit: a.configuration.timeFrame.unit,
-            },
+            relativeTimeFrame: timeFrame,
             schema: a.configuration.schema,
           },
         ];
@@ -209,6 +218,8 @@ export async function submitAssistantBuilderForm({
         modelId: builderState.generationSettings.modelSettings.modelId,
         providerId: builderState.generationSettings.modelSettings.providerId,
         temperature: builderState.generationSettings.temperature,
+        reasoningEffort:
+          builderState.generationSettings.modelSettings.reasoningEffort,
       },
       maxStepsPerRun,
       visualizationEnabled: builderState.visualizationEnabled,
@@ -264,7 +275,7 @@ export async function submitAssistantBuilderForm({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          slack_channel_ids: selectedSlackChannels.map(
+          slack_channel_internal_ids: selectedSlackChannels.map(
             ({ slackChannelId }) => slackChannelId
           ),
         }),

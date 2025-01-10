@@ -11,6 +11,7 @@ import {
 } from "@app/lib/api/workspace";
 import { getPendingMembershipInvitationForToken } from "@app/lib/iam/invitations";
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
+import { getSignUpUrl } from "@app/lib/signup";
 
 /**
  * 3 ways to end up here:
@@ -40,7 +41,6 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   requireUserPrivilege: "none",
 })<{
   baseUrl: string;
-  gaTrackingId: string;
   invitationEmail: string | null;
   onboardingType: OnboardingType;
   signUpCallbackUrl: string;
@@ -124,7 +124,6 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   return {
     props: {
       baseUrl: config.getClientFacingUrl(),
-      gaTrackingId: config.getGaTrackingId(),
       invitationEmail,
       onboardingType,
       signUpCallbackUrl,
@@ -134,26 +133,23 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
 });
 
 export default function Join({
-  gaTrackingId,
   invitationEmail,
   onboardingType,
   signUpCallbackUrl,
   workspace,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  let signUpUrl = `/api/auth/login?returnTo=${signUpCallbackUrl}&screen_hint=signup`;
-
-  if (invitationEmail) {
-    signUpUrl += `&login_hint=${encodeURIComponent(invitationEmail)}`;
-  }
+  const signUpUrl = getSignUpUrl({
+    signupCallbackUrl: signUpCallbackUrl,
+    invitationEmail: invitationEmail ?? undefined,
+  });
 
   return (
     <OnboardingLayout
       owner={workspace}
-      gaTrackingId={gaTrackingId}
       headerTitle="Welcome to Dust"
       headerRightActions={
         <Button
-          variant="tertiary"
+          variant="ghost"
           size="sm"
           label="Sign up"
           icon={LoginIcon}

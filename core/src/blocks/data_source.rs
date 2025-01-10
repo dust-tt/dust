@@ -77,17 +77,20 @@ impl DataSource {
         env: &Env,
         workspace_id: String,
         data_source_or_data_source_view_id: String,
+        q: Option<String>,
         top_k: usize,
         filter: Option<SearchFilter>,
         target_document_tokens: Option<usize>,
-        project_id: i64,
     ) -> Result<Vec<Document>> {
+        let is_system_run =
+            env.credentials.get("DUST_IS_SYSTEM_RUN") == Some(&String::from("true"));
+
         let (data_source_project, view_filter, data_source_id) =
             get_data_source_project_and_view_filter(
                 &workspace_id,
                 &data_source_or_data_source_view_id,
                 env,
-                format!("data_source_project_id_{}", project_id).as_str(),
+                is_system_run,
             )
             .await?;
 
@@ -100,14 +103,12 @@ impl DataSource {
             None => Err(anyhow!("Data source `{}` not found", data_source_id))?,
         };
 
-        let q = self.query(env)?;
-
         let documents = ds
             .search(
                 env.credentials.clone(),
                 env.store.clone(),
                 env.qdrant_clients.clone(),
-                &Some(q.to_string()),
+                &q,
                 top_k,
                 match filter {
                     Some(filter) => Some(filter.postprocess_for_data_source(&data_source_id)),
@@ -124,17 +125,30 @@ impl DataSource {
 
     /// This function is in charge given a set of Documents with scored chunks possibly coming from
     /// multiple data sources, to return the documents associated with the `top_k` chunks (including
-    /// only these `top_k` chunks), sorted by top chunk.
-    fn top_k_sorted_documents(top_k: usize, documents: &Vec<Document>) -> Vec<Document> {
-        // Extract all chunks, keeping their source `document_id`.
+    /// only these `top_k` chunks), sorted by top chunk. We pass the query as we want a date
+    /// ordering if the query is not specified.
+    fn top_k_sorted_documents(
+        query: &Option<String>,
+        top_k: usize,
+        documents: &Vec<Document>,
+    ) -> Vec<Document> {
+        // Extract all chunks, keeping their source `document_id` and document timestamp.
         let mut chunks = documents
             .iter()
-            .map(|d| d.chunks.iter().map(|c| (d.document_id.clone(), c.clone())))
+            .map(|d| {
+                d.chunks
+                    .iter()
+                    .map(|c| (d.document_id.clone(), d.timestamp, c.clone()))
+            })
             .flatten()
             .collect::<Vec<_>>();
 
-        // Sort them by score and truncate to `top_k`
-        chunks.sort_by(|a, b| b.1.score.partial_cmp(&a.1.score).unwrap());
+        // Sort them by score or timestamp and truncate to `top_k`
+        if query.is_some() {
+            chunks.sort_by(|a, b| b.2.score.partial_cmp(&a.2.score).unwrap());
+        } else {
+            chunks.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        }
         chunks.truncate(top_k);
 
         // Get the documents without chunks.
@@ -148,7 +162,7 @@ impl DataSource {
             .collect::<HashMap<_, _>>();
 
         // Reinsert the `top_k` chunks in their respective documents.
-        for (document_id, chunk) in chunks {
+        for (document_id, _, chunk) in chunks {
             documents.get_mut(&document_id).unwrap().chunks.push(chunk);
         }
 
@@ -159,8 +173,12 @@ impl DataSource {
             .map(|(_, d)| d)
             .collect::<Vec<_>>();
 
-        // Order documents by top chunk score.
-        d.sort_by(|a, b| b.chunks[0].score.partial_cmp(&a.chunks[0].score).unwrap());
+        // Order documents by top chunk score or timestamp if no query.
+        if query.is_some() {
+            d.sort_by(|a, b| b.chunks[0].score.partial_cmp(&a.chunks[0].score).unwrap());
+        } else {
+            d.sort_by(|a, b| b.timestamp.partial_cmp(&a.timestamp).unwrap());
+        }
         d.truncate(top_k);
 
         return d;
@@ -186,7 +204,6 @@ impl Block for DataSource {
         name: &str,
         env: &Env,
         _event_sender: Option<UnboundedSender<Value>>,
-        project_id: i64,
     ) -> Result<BlockResult> {
         let config = env.config.config_for_block(name);
 
@@ -322,6 +339,13 @@ impl Block for DataSource {
             _ => (),
         };
 
+        // If the query is an empty string (no query) we set it to None.
+        let q_raw = self.query(env)?;
+        let q = match q_raw.len() {
+            0 => None,
+            _ => Some(q_raw),
+        };
+
         // For each data_sources, retrieve documents concurrently.
         let mut futures = Vec::new();
         for (w_id, ds) in data_sources {
@@ -329,10 +353,10 @@ impl Block for DataSource {
                 env,
                 w_id.clone(),
                 ds.clone(),
+                q.clone(),
                 top_k,
                 filter.clone(),
                 target_document_tokens,
-                project_id,
             ));
         }
 
@@ -347,7 +371,7 @@ impl Block for DataSource {
         }
 
         Ok(BlockResult {
-            value: serde_json::to_value(Self::top_k_sorted_documents(top_k, &documents))?,
+            value: serde_json::to_value(Self::top_k_sorted_documents(&q, top_k, &documents))?,
             meta: Some(json!({
                 "logs": filter_logs,
             })),

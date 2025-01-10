@@ -1,7 +1,7 @@
 import * as t from "io-ts";
 
+import { BaseAction } from "../../../front/assistant/actions";
 import { ModelId } from "../../../shared/model_id";
-import { BaseAction } from "../../lib/api/assistant/actions";
 
 export type WebsearchConfigurationType = {
   id: ModelId;
@@ -60,3 +60,35 @@ export interface WebsearchActionType extends BaseAction {
   step: number;
   type: "websearch_action";
 }
+
+/**
+ * WebSearch Action Events
+ */
+
+// Event sent before the execution with the finalized params to be used.
+export type WebsearchParamsEvent = {
+  type: "websearch_params";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  action: WebsearchActionType;
+};
+
+export type WebsearchErrorEvent = {
+  type: "websearch_error";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  error: {
+    code: string;
+    message: string;
+  };
+};
+
+export type WebsearchSuccessEvent = {
+  type: "websearch_success";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  action: WebsearchActionType;
+};

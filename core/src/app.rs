@@ -310,6 +310,7 @@ impl App {
         databases_store: Box<dyn DatabasesStore + Sync + Send>,
         qdrant_clients: QdrantClients,
         event_sender: Option<UnboundedSender<Value>>,
+        store_blocks_results: bool,
     ) -> Result<()> {
         assert!(self.run.is_some());
         assert!(self.run_config.is_some());
@@ -531,10 +532,9 @@ impl App {
                     Some(ref skips) => skips[input_idx],
                     None => false,
                 };
-                let project_id = project.project_id();
                 tokio::spawn(async move {
                     match skip {
-                        false => match b.execute(&name, &e, event_sender, project_id).await {
+                        false => match b.execute(&name, &e, event_sender).await {
                             Ok(v) => {
                                 let block_status = {
                                     let mut block_status = block_status.lock();
@@ -732,6 +732,7 @@ impl App {
                     block_idx,
                     &block.block_type(),
                     name,
+                    store_blocks_results,
                 )
                 .await?;
 

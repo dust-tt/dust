@@ -1,17 +1,23 @@
-import { Button, Modal, PencilSquareIcon } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
+import {
+  Button,
+  EyeIcon,
+  Modal,
+  PencilSquareIcon,
+  useSendNotification,
+} from "@dust-tt/sparkle";
 import type {
   AppType,
+  BlockType,
+  DatasetType,
+  RunType,
   SpecificationBlockType,
   SpecificationType,
+  WorkspaceType,
 } from "@dust-tt/types";
-import type { BlockType, RunType } from "@dust-tt/types";
-import type { DatasetType } from "@dust-tt/types";
-import { useContext, useState } from "react";
+import { useState } from "react";
 
 import DatasetPicker from "@app/components/app/DatasetPicker";
 import DatasetView from "@app/components/app/DatasetView";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { useDataset } from "@app/lib/swr/datasets";
 import { shallowBlockClone } from "@app/lib/utils";
 
@@ -59,7 +65,7 @@ export default function Input({
   const [datasetModalData, setDatasetModalData] = useState<DatasetType | null>(
     null
   );
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
 
   const handleSetDataset = async (dataset: string) => {
     const b = shallowBlockClone(block);
@@ -72,7 +78,7 @@ export default function Input({
     setDatasetModalData(null);
     if (dataset) {
       const res = await fetch(
-        `/api/w/${owner.sId}/apps/${app.sId}/datasets/${block.config.dataset}`,
+        `/api/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/datasets/${block.config.dataset}`,
         {
           method: "POST",
           headers: {
@@ -128,9 +134,9 @@ export default function Input({
                 {block.config && block.config.dataset ? (
                   <>
                     <Button
-                      variant="secondary"
+                      variant="outline"
                       onClick={() => setIsDatasetModalOpen(true)}
-                      icon={PencilSquareIcon}
+                      icon={readOnly ? EyeIcon : PencilSquareIcon}
                       label={readOnly ? "View" : "Edit"}
                       size="xs"
                     />
@@ -152,16 +158,16 @@ export default function Input({
               {readOnly ? null : (
                 <Button
                   className="ml-1 mt-2"
-                  variant="secondary"
+                  variant="outline"
                   onClick={() => {
-                    window.location.href = `/w/${owner.sId}/a/${app.sId}/datasets/${block.config.dataset}`;
+                    window.location.href = `/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/datasets/${block.config.dataset}`;
                   }}
                   icon={PencilSquareIcon}
-                  label={"Edit schema"}
+                  label="Edit schema"
                 />
               )}
               <DatasetView
-                readOnly={false}
+                readOnly={readOnly}
                 datasets={[dataset]}
                 dataset={dataset}
                 schema={dataset.schema}

@@ -1,16 +1,20 @@
 import {
   Button,
   DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Modal,
   PlusIcon,
   TextArea,
 } from "@dust-tt/sparkle";
+import { useSendNotification } from "@dust-tt/sparkle";
 import type { DataSourceType, LightWorkspaceType } from "@dust-tt/types";
-import { useContext, useEffect, useState } from "react";
+import * as _ from "lodash";
+import { useEffect, useState } from "react";
 
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
-import { getDataSourceName, isManaged } from "@app/lib/data_sources";
+import { getDisplayNameForDataSource, isManaged } from "@app/lib/data_sources";
 import { sendRequestDataSourceEmail } from "@app/lib/email";
 import logger from "@app/logger/logger";
 
@@ -30,7 +34,7 @@ export function RequestDataSourceModal({
     useState<DataSourceType | null>(null);
 
   const [message, setMessage] = useState("");
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
 
   useEffect(() => {
     if (dataSources.length === 1) {
@@ -76,11 +80,11 @@ export function RequestDataSourceModal({
                   <p>Where are the requested Data hosted?</p>
                 </label>
                 <DropdownMenu>
-                  <DropdownMenu.Button>
+                  <DropdownMenuTrigger asChild>
                     {selectedDataSource && isManaged(selectedDataSource) ? (
                       <Button
-                        variant="tertiary"
-                        label={getDataSourceName(selectedDataSource)}
+                        variant="outline"
+                        label={getDisplayNameForDataSource(selectedDataSource)}
                         icon={getConnectorProviderLogoWithFallback(
                           selectedDataSource.connectorProvider
                         )}
@@ -88,19 +92,19 @@ export function RequestDataSourceModal({
                     ) : (
                       <Button
                         label="Pick your platform"
-                        variant="tertiary"
+                        variant="outline"
                         size="sm"
-                        type="select"
+                        isSelect
                       />
                     )}
-                  </DropdownMenu.Button>
-                  <DropdownMenu.Items width={180}>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
                     {dataSources.map(
                       (dataSource) =>
                         dataSource.connectorProvider && (
-                          <DropdownMenu.Item
-                            key={dataSource.name}
-                            label={getDataSourceName(dataSource)}
+                          <DropdownMenuItem
+                            key={dataSource.sId}
+                            label={getDisplayNameForDataSource(dataSource)}
                             onClick={() => setSelectedDataSource(dataSource)}
                             icon={getConnectorProviderLogoWithFallback(
                               dataSource.connectorProvider
@@ -108,72 +112,76 @@ export function RequestDataSourceModal({
                           />
                         )
                     )}
-                  </DropdownMenu.Items>
+                  </DropdownMenuContent>
                 </DropdownMenu>
               </>
             )}
           </div>
 
           {selectedDataSource && (
-            <div>
-              <p className="s-mb-2 s-text-sm s-text-element-700">
-                The administrator for {getDataSourceName(selectedDataSource)} is{" "}
-                {selectedDataSource.editedByUser?.fullName}. Send an email to{" "}
-                {selectedDataSource.editedByUser?.fullName}, explaining your
-                request.
+            <div className="flex flex-col gap-2">
+              <p className="mb-2 text-sm text-element-700">
+                {_.capitalize(selectedDataSource.editedByUser?.fullName ?? "")}{" "}
+                is the administrator for the{" "}
+                {getDisplayNameForDataSource(selectedDataSource)} connection
+                within Dust. Send an email to{" "}
+                {_.capitalize(selectedDataSource.editedByUser?.fullName ?? "")},
+                explaining your request.
               </p>
               <TextArea
                 placeholder={`Hello ${selectedDataSource.editedByUser?.fullName},`}
                 value={message}
-                onChange={setMessage}
-                className="s-mb-2"
+                onChange={(e) => setMessage(e.target.value)}
+                className="mb-2"
               />
-              <Button
-                label="Send"
-                variant="primary"
-                size="sm"
-                onClick={async () => {
-                  const userToId = selectedDataSource?.editedByUser?.userId;
-                  if (!userToId || !selectedDataSource) {
-                    sendNotification({
-                      type: "error",
-                      title: "Error sending email",
-                      description:
-                        "An unexpected error occurred while sending email.",
-                    });
-                  } else {
-                    try {
-                      await sendRequestDataSourceEmail({
-                        userTo: userToId,
-                        emailMessage: message,
-                        dataSourceName: selectedDataSource.name,
-                        owner,
-                      });
-                      sendNotification({
-                        type: "success",
-                        title: "Email sent!",
-                        description: `Your request was sent to ${selectedDataSource?.editedByUser?.fullName}.`,
-                      });
-                    } catch (e) {
+              <div>
+                <Button
+                  label="Send"
+                  variant="primary"
+                  size="sm"
+                  onClick={async () => {
+                    const userToId = selectedDataSource?.editedByUser?.userId;
+                    if (!userToId || !selectedDataSource) {
                       sendNotification({
                         type: "error",
                         title: "Error sending email",
                         description:
-                          "An unexpected error occurred while sending the request.",
+                          "An unexpected error occurred while sending email.",
                       });
-                      logger.error(
-                        {
-                          userToId,
+                    } else {
+                      try {
+                        await sendRequestDataSourceEmail({
+                          userTo: userToId,
+                          emailMessage: message,
                           dataSourceName: selectedDataSource.name,
-                          error: e,
-                        },
-                        "Error sending email"
-                      );
+                          owner,
+                        });
+                        sendNotification({
+                          type: "success",
+                          title: "Email sent!",
+                          description: `Your request was sent to ${selectedDataSource?.editedByUser?.fullName}.`,
+                        });
+                      } catch (e) {
+                        sendNotification({
+                          type: "error",
+                          title: "Error sending email",
+                          description:
+                            "An unexpected error occurred while sending the request.",
+                        });
+                        logger.error(
+                          {
+                            userToId,
+                            dataSourceName: selectedDataSource.name,
+                            error: e,
+                          },
+                          "Error sending email"
+                        );
+                      }
+                      onClose();
                     }
-                    onClose();
-                  }
-                }}
-              />
+                  }}
+                />
+              </div>
             </div>
           )}
         </div>

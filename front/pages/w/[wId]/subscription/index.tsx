@@ -4,29 +4,31 @@ import {
   Chip,
   Dialog,
   DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   MoreIcon,
   Page,
   ShapesIcon,
   Spinner,
 } from "@dust-tt/sparkle";
+import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   SubscriptionPerSeatPricing,
+  SubscriptionType,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
-import type { SubscriptionType } from "@dust-tt/types";
 import type * as t from "io-ts";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import React, { useContext, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 
 import { subNavigationAdmin } from "@app/components/navigation/config";
 import { PricePlans } from "@app/components/plans/PlansTables";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { SubscriptionContactUsDrawer } from "@app/components/SubscriptionContactUsDrawer";
-import config from "@app/lib/api/config";
 import { getPriceAsString } from "@app/lib/client/subscription";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -45,7 +47,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   subscription: SubscriptionType;
   user: UserType;
   trialDaysRemaining: number | null;
-  gaTrackingId: string;
   workspaceSeats: number;
   perSeatPricing: SubscriptionPerSeatPricing | null;
 }>(async (context, auth) => {
@@ -85,7 +86,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       owner,
       subscription,
       trialDaysRemaining,
-      gaTrackingId: config.getGaTrackingId(),
       user,
       workspaceSeats,
       perSeatPricing,
@@ -98,12 +98,11 @@ export default function Subscription({
   user,
   subscription,
   trialDaysRemaining,
-  gaTrackingId,
   workspaceSeats,
   perSeatPricing,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
   const [isWebhookProcessing, setIsWebhookProcessing] =
     React.useState<boolean>(false);
 
@@ -282,7 +281,6 @@ export default function Subscription({
     <AppLayout
       subscription={subscription}
       owner={owner}
-      gaTrackingId={gaTrackingId}
       subNavigation={subNavigationAdmin({ owner, current: "subscription" })}
     >
       {perSeatPricing && (
@@ -333,21 +331,15 @@ export default function Subscription({
                   {!subscription.trialing &&
                     subscription.stripeSubscriptionId && (
                       <DropdownMenu>
-                        <DropdownMenu.Button>
-                          <Button
-                            icon={MoreIcon}
-                            variant="tertiary"
-                            labelVisible={false}
-                            disabledTooltip={true}
-                            label=""
-                          />
-                        </DropdownMenu.Button>
-                        <DropdownMenu.Items origin="auto" width={210}>
-                          <DropdownMenu.Item
+                        <DropdownMenuTrigger asChild>
+                          <Button icon={MoreIcon} variant="ghost" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                          <DropdownMenuItem
                             label="Manage my subscription"
                             onClick={handleGoToStripePortal}
                           />
-                        </DropdownMenu.Items>
+                        </DropdownMenuContent>
                       </DropdownMenu>
                     )}
                 </Page.Horizontal>
@@ -363,7 +355,7 @@ export default function Subscription({
                 />
                 <Button
                   label="Cancel subscription"
-                  variant="tertiary"
+                  variant="ghost"
                   onClick={() => setShowCancelFreeTrialDialog(true)}
                 />
               </Page.Horizontal>
@@ -412,7 +404,7 @@ export default function Subscription({
                 <Button
                   icon={CardIcon}
                   label="Your billing dashboard on Stripe"
-                  variant="tertiary"
+                  variant="ghost"
                   onClick={handleGoToStripePortal}
                 />
               </div>
@@ -425,21 +417,8 @@ export default function Subscription({
               <>
                 <div className="pt-2">
                   <Page.H variant="h5">Manage my plan</Page.H>
-                  <div className="s-h-full s-w-full pt-2">
+                  <div className="h-full w-full pt-2">
                     <PricePlans
-                      size="xs"
-                      className="lg:hidden"
-                      isTabs
-                      plan={plan}
-                      onClickProPlan={onClickProPlan}
-                      onClickEnterprisePlan={onClickEnterprisePlan}
-                      isProcessing={isProcessing}
-                      display="subscribe"
-                    />
-                    <PricePlans
-                      size="xs"
-                      flexCSS="gap-3"
-                      className="hidden lg:flex"
                       plan={plan}
                       onClickProPlan={onClickProPlan}
                       onClickEnterprisePlan={onClickEnterprisePlan}
@@ -545,7 +524,7 @@ function CancelFreeTrialDialog({
       title={`Cancel subscription`}
       onCancel={onClose}
       validateLabel="Yes, cancel subscription"
-      validateVariant="primaryWarning"
+      validateVariant="warning"
       onValidate={onValidate}
       isSaving={isSaving}
     >

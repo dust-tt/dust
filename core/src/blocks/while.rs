@@ -80,7 +80,6 @@ impl Block for While {
         _name: &str,
         env: &Env,
         _event_sender: Option<UnboundedSender<Value>>,
-        _project_id: i64,
     ) -> Result<BlockResult> {
         let e = env.clone();
 

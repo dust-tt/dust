@@ -21,10 +21,16 @@ const REGION = 1; // US.
 const RESOURCES_PREFIX = {
   file: "fil",
   group: "grp",
-  vault: "vlt",
+  // TODO(2024-10-31 flav) Add new prefix for space.
+  space: "vlt",
   data_source: "dts",
   data_source_view: "dsv",
+  tracker: "trk",
+  template: "tpl",
+  extension: "ext",
 };
+
+export const CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID: ModelId = 0;
 
 const ALL_RESOURCES_PREFIXES = Object.values(RESOURCES_PREFIX);
 
@@ -111,12 +117,32 @@ export function isResourceSId(
   return sId.startsWith(`${RESOURCES_PREFIX[resourceName]}_`);
 }
 
+export function getResourceNameAndIdFromSId(
+  sId: string
+): { resourceName: ResourceNameType; sId: string } | null {
+  const resourceName = (
+    Object.keys(RESOURCES_PREFIX) as ResourceNameType[]
+  ).find((name) => isResourceSId(name, sId));
+
+  if (!resourceName) {
+    return null;
+  }
+
+  const sIdRes = getIdsFromSId(sId);
+  // Silently ignore errors.
+  if (sIdRes.isErr()) {
+    return null;
+  }
+
+  return { resourceName, sId };
+}
+
 // Legacy behavior.
 
 /**
  * Generates 10-character long model SId from [A-Za-z0-9] characters.
  */
-export function generateLegacyModelSId(prefix?: string): string {
+export function generateRandomModelSId(prefix?: string): string {
   const u = uuidv4();
   const b = blake3(u, { length: 10 });
   const sId = Buffer.from(b)

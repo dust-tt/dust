@@ -5,11 +5,7 @@ import type {
   ParsedNotionPage,
   PropertyKeys,
 } from "@dust-tt/types";
-import {
-  assertNever,
-  cacheWithRedis,
-  getSanitizedHeaders,
-} from "@dust-tt/types";
+import { assertNever, cacheWithRedis } from "@dust-tt/types";
 import type { LogLevel } from "@notionhq/client";
 import {
   APIResponseError,
@@ -134,20 +130,33 @@ async function refreshLastPageCursor(
  * page of results will be returned.
  * @param loggerArgs arguments to pass to the logger
  * @param retry options for retrying the request
+ * @param filter (pages | databases) to filter the results (only return pages or databases)
  * @returns a promise that resolves to an array of page IDs, an array of database IDs and the next
  * cursor
  */
-export async function getPagesAndDatabasesEditedSince(
-  notionAccessToken: string,
-  sinceTs: number | null,
-  cursors: string[],
-  loggerArgs: Record<string, string | number> = {},
-  skippedDatabaseIds: Set<string> = new Set(),
-  retry: { retries: number; backoffFactor: number } = {
+export async function getPagesAndDatabasesEditedSince({
+  notionAccessToken,
+  sinceTs,
+  cursors,
+  loggerArgs = {},
+  skippedDatabaseIds = new Set(),
+  retry = {
     retries: 5,
     backoffFactor: 2,
-  }
-): Promise<{
+  },
+  filter,
+}: {
+  notionAccessToken: string;
+  sinceTs: number | null;
+  cursors: {
+    previous: string | null;
+    last: string | null;
+  };
+  loggerArgs: Record<string, string | number>;
+  skippedDatabaseIds: Set<string>;
+  retry?: { retries: number; backoffFactor: number };
+  filter?: "page" | "database";
+}): Promise<{
   pages: { id: string; lastEditedTs: number }[];
   dbs: { id: string; lastEditedTs: number }[];
   nextCursor: string | null;
@@ -172,8 +181,7 @@ export async function getPagesAndDatabasesEditedSince(
   let tries = 0;
   const pageSize = 90;
 
-  const [previousCursor] = cursors;
-  let [, lastCursor = null] = cursors;
+  let lastCursor = cursors.last;
   while (tries < retry.retries) {
     const tryLogger = localLogger.child({
       tries,
@@ -191,6 +199,7 @@ export async function getPagesAndDatabasesEditedSince(
             : undefined,
           start_cursor: lastCursor || undefined,
           page_size: pageSize,
+          filter: filter ? { property: "object", value: filter } : undefined,
         });
       });
     } catch (e) {
@@ -209,11 +218,11 @@ export async function getPagesAndDatabasesEditedSince(
         UnknownHTTPResponseError.isUnknownHTTPResponseError(e) &&
         e.status === 504
       ) {
-        if (previousCursor) {
+        if (cursors.previous) {
           lastCursor = await refreshLastPageCursor(notionClient, {
             loggerArgs,
             originalPageSize: pageSize,
-            previousCursor,
+            previousCursor: cursors.previous,
             sinceTs,
           });
         }
@@ -327,10 +336,11 @@ export async function getPagesAndDatabasesEditedSince(
 }
 
 const NOTION_UNAUTHORIZED_ACCESS_ERROR_CODES = [
-  "object_not_found",
   "unauthorized",
   "restricted_resource",
 ];
+
+const NOTION_NOT_FOUND_ERROR_CODES = ["object_not_found"];
 
 const NOTION_RETRIABLE_ERRORS = ["rate_limited", "internal_server_error"];
 
@@ -380,12 +390,30 @@ export async function isAccessibleAndUnarchived(
     } catch (e) {
       if (APIResponseError.isAPIResponseError(e)) {
         if (NOTION_RETRIABLE_ERRORS.includes(e.code)) {
-          const waitTime = 500 * 2 ** tries;
+          let waitTime = 500 * 2 ** tries;
+          let usingHeader = false;
+
+          try {
+            // Trying to respect the rate limit sent back by notion api
+            // See: https://developers.notion.com/reference/request-limits
+            const responseHeaders = e.headers as Record<string, string>;
+            if (responseHeaders["retry-after"]) {
+              const retryAfter = parseInt(responseHeaders["retry-after"], 10);
+              if (!isNaN(retryAfter) && retryAfter > 0) {
+                waitTime = retryAfter * 1000;
+                usingHeader = true;
+              }
+            }
+          } catch (e) {
+            // Ignore all errors here as the e.headers type is unknown.
+            tryLogger.error({ error: e }, "Error parsing Retry-After header.");
+          }
+
           tryLogger.info(
-            { waitTime },
+            { waitTime, usingHeader },
             "Got potentially transient error. Trying again."
           );
-          await new Promise((resolve) => setTimeout(resolve, 500 * 2 ** tries));
+          await new Promise((resolve) => setTimeout(resolve, waitTime));
           tries += 1;
           if (tries >= maxTries) {
             throw e;
@@ -404,7 +432,11 @@ export async function isAccessibleAndUnarchived(
             { errorCode: e.code },
             "Skipping page/database due to unauthorized status code."
           );
+          return false;
+        }
 
+        if (NOTION_NOT_FOUND_ERROR_CODES.includes(e.code)) {
+          tryLogger.info({ errorCode: e.code }, "Object not found.");
           return false;
         }
       }
@@ -420,7 +452,8 @@ export async function isAccessibleAndUnarchived(
 async function getBlockParent(
   notionAccessToken: string,
   blockId: string,
-  localLogger: Logger
+  localLogger: Logger,
+  onProgress?: () => Promise<void>
 ): Promise<{
   parentId: string;
   parentType: "database" | "page" | "workspace";
@@ -440,6 +473,9 @@ async function getBlockParent(
   let transient_errors = 0;
 
   for (;;) {
+    if (onProgress) {
+      await onProgress();
+    }
     localLogger.info({ blockId }, "Looking up block parent");
     try {
       const block = await wrapNotionAPITokenErrors(async () =>
@@ -494,7 +530,14 @@ async function getBlockParent(
 
 export const getBlockParentMemoized = cacheWithRedis(
   getBlockParent,
-  (notionAccessToken: string, blockId: string) => {
+  (
+    notionAccessToken: string,
+    blockId: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for memoization
+    localLogger: Logger,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for memoization
+    onProgress?: () => Promise<void>
+  ) => {
     return blockId;
   },
   60 * 10 * 1000
@@ -524,6 +567,7 @@ export async function getParsedDatabase(
     if (
       APIResponseError.isAPIResponseError(e) &&
       (NOTION_UNAUTHORIZED_ACCESS_ERROR_CODES.includes(e.code) ||
+        NOTION_NOT_FOUND_ERROR_CODES.includes(e.code) ||
         // This happens if the database is a "linked" database - we can't query those so
         // it's not useful to retry.
         e.code === "validation_error")
@@ -924,6 +968,7 @@ export async function retrieveDatabaseChildrenResultPage({
     if (
       APIResponseError.isAPIResponseError(e) &&
       (NOTION_UNAUTHORIZED_ACCESS_ERROR_CODES.includes(e.code) ||
+        NOTION_NOT_FOUND_ERROR_CODES.includes(e.code) ||
         e.code === "validation_error")
     ) {
       localLogger.info(
@@ -942,12 +987,13 @@ export async function retrieveDatabaseChildrenResultPage({
   }
 }
 
-// This function is used to create a text representation of a notion database properties.
-// We use it to render databases inline (in the Notion Page document on Dust), and to create
-// structured Tables on Dust (we use the CSV format).
-// The function accepts a `dustIdColumn` array which must have the same length as the `pagesProperties`. This
-// array is used to add a column to the CSV that contains the Dust ID of the page (__dust_id). This is useful
-// to uniquely identify the notion page in the CSV.
+// This function is used to create a text representation of a notion database properties.  We use it
+// to render databases inline (in the Notion Page document on Dust), and to create structured Tables
+// on Dust (we use the CSV format).
+// The function accepts a `dustIdColumn` array which must have the same length as the
+// `pagesProperties`. This array is used to add a column to the CSV that contains the Dust ID of the
+// page (__dust_id). This is useful to uniquely identify the notion page in the CSV.
+// The function returns the CSV as well as the original (non sanitized, non slugified) headers.
 export async function renderDatabaseFromPages({
   databaseTitle,
   pagesProperties,
@@ -960,9 +1006,12 @@ export async function renderDatabaseFromPages({
   dustIdColumn?: string[];
   rowBoundary?: string;
   cellSeparator?: string;
-}) {
+}): Promise<{
+  originalHeader: string[];
+  csv: string;
+}> {
   if (!pagesProperties.length || !pagesProperties[0]) {
-    return "";
+    return { csv: "", originalHeader: [] };
   }
 
   if (dustIdColumn && dustIdColumn.length !== pagesProperties.length) {
@@ -1005,8 +1054,6 @@ export async function renderDatabaseFromPages({
     )
   );
 
-  const sanitizedHeaders = getSanitizedHeaders(header);
-
   let csv = await new Promise<string>((resolve, reject) => {
     stringify(
       content,
@@ -1015,7 +1062,7 @@ export async function renderDatabaseFromPages({
         delimiter: cellSeparator,
         columns: header.map((h, idx) => ({
           key: h,
-          header: sanitizedHeaders[idx],
+          header: header[idx],
         })),
       },
       (err, output) => {
@@ -1040,7 +1087,7 @@ export async function renderDatabaseFromPages({
     csv = `${databaseTitle}\n${csv}`;
   }
 
-  return csv;
+  return { csv, originalHeader: header };
 }
 
 export async function getUserName(

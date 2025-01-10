@@ -1,3 +1,4 @@
+import Bold from "@tiptap/extension-bold";
 import { MentionPluginKey } from "@tiptap/extension-mention";
 import Placeholder from "@tiptap/extension-placeholder";
 import type { Editor, JSONContent } from "@tiptap/react";
@@ -137,6 +138,15 @@ const useEditorService = (editor: Editor | null) => {
       clearEditor() {
         return editor?.commands.clearContent();
       },
+
+      setLoading(loading: boolean) {
+        if (loading) {
+          editor?.view.dom.classList.add("loading-text");
+        } else {
+          editor?.view.dom.classList.remove("loading-text");
+        }
+        return editor?.setEditable(!loading);
+      },
     };
   }, [editor]);
 
@@ -149,12 +159,21 @@ export interface CustomEditorProps {
   onEnterKeyDown: (
     isEmpty: boolean,
     textAndMentions: ReturnType<typeof getTextAndMentionsFromNode>,
-    clearEditor: () => void
+    clearEditor: () => void,
+    setLoading: (loading: boolean) => void
   ) => void;
   suggestions: EditorSuggestions;
   resetEditorContainerSize: () => void;
   disableAutoFocus: boolean;
 }
+
+const CustomBold = Bold.extend({
+  addKeyboardShortcuts() {
+    return {
+      "Mod-b": () => false,
+    };
+  },
+});
 
 const useCustomEditor = ({
   onEnterKeyDown,
@@ -171,7 +190,10 @@ const useCustomEditor = ({
         heading: false,
         // Disable the paragraph extension to handle Enter key press manually.
         paragraph: false,
+        // Disable the default Bold extension from StarterKit
+        bold: false,
       }),
+      CustomBold,
       ParagraphExtension,
       MentionStorage,
       MentionWithPaste.configure({
@@ -223,10 +245,20 @@ const useCustomEditor = ({
             resetEditorContainerSize();
           };
 
+          const setLoading = (loading: boolean) => {
+            if (loading) {
+              editor?.view.dom.classList.add("loading-text");
+            } else {
+              editor?.view.dom.classList.remove("loading-text");
+            }
+            return editor?.setEditable(!loading);
+          };
+
           onEnterKeyDown(
             editor.isEmpty,
             getTextAndMentionsFromNode(editor.getJSON()),
-            clearEditor
+            clearEditor,
+            setLoading
           );
 
           // Return true to indicate that this key event has been handled.

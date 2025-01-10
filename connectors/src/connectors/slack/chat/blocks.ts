@@ -1,6 +1,9 @@
+import type { LightAgentConfigurationType } from "@dust-tt/types";
 import { truncate } from "@dust-tt/types";
 
+import { STATIC_AGENT_CONFIG } from "@connectors/api/webhooks/webhook_slack_interaction";
 import type { SlackMessageFootnotes } from "@connectors/connectors/slack/chat/citations";
+import { makeDustAppUrl } from "@connectors/connectors/slack/chat/utils";
 
 /*
  * This length threshold is set to prevent the "msg_too_long" error
@@ -9,31 +12,10 @@ import type { SlackMessageFootnotes } from "@connectors/connectors/slack/chat/ci
  * We adopt a conservative approach by setting a lower threshold
  * to accommodate ellipses and ensure buffer space.
  */
-export const MAX_SLACK_MESSAGE_LENGTH = 2950;
+export const MAX_SLACK_MESSAGE_LENGTH = 2500;
 
-function makeConversationLinkContextBlock(conversationUrl: string) {
-  return {
-    type: "context",
-    elements: [
-      {
-        type: "mrkdwn",
-        text: `<${conversationUrl}|Continue conversation on Dust>`,
-      },
-    ],
-  };
-}
-
-export function makeThinkingBlock() {
-  return {
-    type: "context",
-    elements: [
-      {
-        type: "plain_text",
-        text: "Thinking...",
-      },
-    ],
-  };
-}
+export const DUST_URL = "https://dust.tt/home";
+export const SLACK_HELP_URL = "https://docs.dust.tt/docs/slack";
 
 function makeDividerBlock() {
   return {
@@ -41,14 +23,18 @@ function makeDividerBlock() {
   };
 }
 
-function makeMarkdownBlock(text: string) {
-  return {
-    type: "section",
-    text: {
-      type: "mrkdwn",
-      text: truncate(text, MAX_SLACK_MESSAGE_LENGTH),
-    },
-  };
+function makeMarkdownBlock(text?: string) {
+  return text
+    ? [
+        {
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: truncate(text, MAX_SLACK_MESSAGE_LENGTH),
+          },
+        },
+      ]
+    : [];
 }
 
 function makeFootnotesBlock(footnotes: SlackMessageFootnotes) {
@@ -70,8 +56,10 @@ function makeFootnotesBlock(footnotes: SlackMessageFootnotes) {
 }
 
 function makeContextSectionBlocks(
+  isComplete: boolean,
   conversationUrl: string | null,
-  footnotes: SlackMessageFootnotes | undefined
+  footnotes: SlackMessageFootnotes | undefined,
+  workspaceId: string
 ) {
   const blocks = [];
 
@@ -82,34 +70,156 @@ function makeContextSectionBlocks(
     }
   }
 
-  // Bundle the conversation url in the context.
-  if (conversationUrl) {
-    blocks.push(makeConversationLinkContextBlock(conversationUrl));
-  }
+  blocks.push(makeFooterBlock(conversationUrl, workspaceId));
 
   const resultBlocks = blocks.length ? [makeDividerBlock(), ...blocks] : [];
 
   return resultBlocks;
 }
 
-export type SlackMessageUpdate =
-  | { isThinking: true; text?: never; footnotes?: never }
-  | { isThinking?: never; text: string; footnotes: SlackMessageFootnotes };
+function makeThinkingBlock(
+  assistantName: string,
+  isThinking: boolean,
+  thinkingText: string
+) {
+  return assistantName
+    ? [
+        {
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: isThinking
+              ? `@${assistantName}: _${thinkingText}_`
+              : `@${assistantName}`,
+          },
+        },
+      ]
+    : [];
+}
+
+export function makeAssistantSelectionBlock(
+  agentConfigurations: LightAgentConfigurationType[],
+  id: string
+) {
+  return [
+    {
+      type: "actions",
+      block_id: id,
+      elements: [
+        {
+          type: "static_select",
+          placeholder: {
+            type: "plain_text",
+            text: "Ask another assistant",
+            emoji: true,
+          },
+          options: agentConfigurations.map((ac) => {
+            return {
+              text: {
+                type: "plain_text",
+                text: ac.name,
+              },
+              value: ac.sId,
+            };
+          }),
+          action_id: STATIC_AGENT_CONFIG,
+        },
+      ],
+    },
+  ];
+}
+
+export type SlackMessageUpdate = {
+  isComplete: boolean;
+  isThinking?: boolean;
+  thinkingAction?: string;
+  assistantName: string;
+  agentConfigurations: LightAgentConfigurationType[];
+  text?: string;
+  footnotes?: SlackMessageFootnotes;
+};
+
+export function makeFooterBlock(
+  conversationUrl: string | null,
+  workspaceId: string
+) {
+  const assistantsUrl = makeDustAppUrl(`/w/${workspaceId}/assistant/new`);
+  const baseHeader = `<${assistantsUrl}|Browse assistants> | <${SLACK_HELP_URL}|Use Dust in Slack> | <${DUST_URL}|Learn more>`;
+  return {
+    type: "context",
+    elements: [
+      {
+        type: "mrkdwn",
+        text: conversationUrl
+          ? `<${conversationUrl}|Go to full conversation> | ${baseHeader}`
+          : baseHeader,
+      },
+    ],
+  };
+}
 
 export function makeMessageUpdateBlocksAndText(
   conversationUrl: string | null,
+  workspaceId: string,
   messageUpdate: SlackMessageUpdate
 ) {
-  const { isThinking, text, footnotes } = messageUpdate;
+  const {
+    isComplete,
+    isThinking,
+    thinkingAction,
+    assistantName,
+    text,
+    footnotes,
+  } = messageUpdate;
+  const thinkingText = "is thinking...";
+  const thinkingTextWithAction = thinkingAction
+    ? `${thinkingText}... (${thinkingAction})`
+    : thinkingText;
 
   return {
     blocks: [
-      isThinking ? makeThinkingBlock() : makeMarkdownBlock(text),
-      ...makeContextSectionBlocks(conversationUrl, footnotes),
+      ...makeThinkingBlock(
+        assistantName,
+        isThinking ?? false,
+        thinkingTextWithAction
+      ),
+      ...makeMarkdownBlock(text),
+      ...makeContextSectionBlocks(
+        isComplete,
+        conversationUrl,
+        footnotes,
+        workspaceId
+      ),
     ],
     // TODO(2024-06-17 flav) We should not return markdown here.
     // Provide plain text for places where the content cannot be rendered (e.g push notifications).
-    text: isThinking ? "Thinking..." : truncate(text, MAX_SLACK_MESSAGE_LENGTH),
+    text: isThinking
+      ? thinkingText
+      : text && truncate(text, MAX_SLACK_MESSAGE_LENGTH),
     mrkdwn: true,
+    unfurl_links: false,
+  };
+}
+
+export function makeErrorBlock(
+  conversationUrl: string | null,
+  workspaceId: string,
+  errorMessage: string
+) {
+  return {
+    blocks: [
+      {
+        type: "section",
+        text: {
+          type: "plain_text",
+          text: truncate(errorMessage, MAX_SLACK_MESSAGE_LENGTH),
+        },
+      },
+      makeDividerBlock(),
+      makeFooterBlock(conversationUrl, workspaceId),
+    ],
+    mrkdwn: true,
+    unfurl_links: false,
+    text: errorMessage,
   };
 }

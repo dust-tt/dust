@@ -1,10 +1,6 @@
 // JS cannot give you any guarantee about the shape of an error you `catch`
 
-import type {
-  APIError,
-  ConnectorProvider,
-  OAuthAPIError,
-} from "@dust-tt/types";
+import type { APIError, ConnectorProvider } from "@dust-tt/types";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function errorFromAny(e: any): Error {
@@ -25,6 +21,8 @@ type GeneralWorkflowErrorType =
   | "transient_upstream_activity_error"
   | "unhandled_internal_activity_error"
   | "workflow_timeout_failure";
+
+type TablesErrorType = "invalid_headers" | "file_too_large";
 
 // Combine both general and provider-specific error types.
 type WorkflowErrorType = GeneralWorkflowErrorType | ProviderErrorType;
@@ -76,21 +74,13 @@ export function isNotFoundError(err: unknown): err is NotFoundError {
   return err instanceof HTTPError && err.statusCode === 404;
 }
 
-export function isMicrosoftApplicationDisabledError(
-  error: OAuthAPIError,
-  provider: string
-): boolean {
-  return (
-    error.code === "provider_access_token_refresh_error" &&
-    provider === "microsoft" &&
-    /Application.*is disabled/.test(error.message)
-  );
-}
-
 // Error for invalid rows when upserting table
-export class InvalidRowsRequestError extends Error {
-  constructor(message: string) {
+export class TablesError extends Error {
+  constructor(
+    public type: TablesErrorType,
+    message: string
+  ) {
     super(message);
-    this.name = "InvalidRowsRequestError";
+    this.name = "TablesError";
   }
 }

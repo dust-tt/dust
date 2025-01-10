@@ -1,7 +1,6 @@
 import { ModelId } from "../shared/model_id";
 import { Err, Ok, Result } from "../shared/result";
 import { ConnectorType } from "./lib/connectors_api";
-import { ManageDataSourcesLimitsType } from "./plan";
 
 export const CONNECTOR_PROVIDERS = [
   "confluence",
@@ -12,7 +11,14 @@ export const CONNECTOR_PROVIDERS = [
   "slack",
   "microsoft",
   "webcrawler",
+  "snowflake",
+  "zendesk",
 ] as const;
+
+export const MANAGED_DS_DELETABLE: ConnectorProvider[] = [
+  "webcrawler",
+  "snowflake",
+];
 
 export const CONNECTOR_TYPE_TO_NAME: Record<ConnectorProvider, string> = {
   confluence: "Confluence",
@@ -23,6 +29,8 @@ export const CONNECTOR_TYPE_TO_NAME: Record<ConnectorProvider, string> = {
   slack: "Slack",
   microsoft: "Microsoft",
   webcrawler: "Website",
+  snowflake: "Snowflake",
+  zendesk: "Zendesk",
 };
 
 export const CONNECTOR_TYPE_TO_MISMATCH_ERROR: Record<
@@ -41,11 +49,13 @@ export const CONNECTOR_TYPE_TO_MISMATCH_ERROR: Record<
     "You cannot select another Intercom Workspace.\nPlease contact us at support@dust.tt if you initially selected a wrong Workspace.",
   microsoft: `Microsoft / mismatch error.`,
   webcrawler: "You cannot change the URL. Please add a new Public URL instead.",
+  snowflake:
+    "You cannot change the Snowflake account. Please add a new Snowflake connection instead.",
+  zendesk:
+    "You cannot select another Zendesk Workspace.\nPlease contact us at support@dust.tt if you initially selected a wrong Workspace.",
 };
 
 export type ConnectorProvider = (typeof CONNECTOR_PROVIDERS)[number];
-
-export type LabsConnectorProvider = "google_drive" | "gong";
 
 export const WEBHOOK_BASED_CONNECTORS: ConnectorProvider[] = [
   "slack",
@@ -89,12 +99,20 @@ export type WithConnector = {
   connectorId: string;
 };
 
+export type ConnectorStatusDetails = {
+  connector: ConnectorType | null;
+  fetchConnectorError: boolean;
+  fetchConnectorErrorMessage: string | null;
+};
+
 export type DataSourceWithConnectorDetailsType = DataSourceType &
-  WithConnector & {
-    connector: ConnectorType | null;
-    fetchConnectorError: boolean;
-    fetchConnectorErrorMessage: string | null;
-  };
+  WithConnector &
+  ConnectorStatusDetails;
+
+export type DataSourceWithAgentsUsageType = {
+  count: number;
+  agentNames: string[];
+};
 
 export function isDataSourceNameValid(name: string): Result<void, string> {
   const trimmed = name.trim();
@@ -104,46 +122,10 @@ export function isDataSourceNameValid(name: string): Result<void, string> {
   if (name.startsWith("managed-")) {
     return new Err("DataSource name cannot start with the prefix `managed-`");
   }
-  // eslint-disable-next-line no-useless-escape
-  if (!name.match(/^[a-zA-Z0-9\._\-]+$/)) {
-    return new Err(
-      "DataSource name must only contain letters, numbers, and the characters `._-`"
-    );
-  }
 
   return new Ok(undefined);
 }
 
-export function isConnectorProviderAllowed(
-  provider: ConnectorProvider,
-  limits: ManageDataSourcesLimitsType
-): boolean {
-  switch (provider) {
-    case "confluence": {
-      return limits.isConfluenceAllowed;
-    }
-    case "slack": {
-      return limits.isSlackAllowed;
-    }
-    case "notion": {
-      return limits.isNotionAllowed;
-    }
-    case "github": {
-      return limits.isGithubAllowed;
-    }
-    case "google_drive": {
-      return limits.isGoogleDriveAllowed;
-    }
-    case "intercom": {
-      return limits.isIntercomAllowed;
-    }
-    case "microsoft": {
-      return true;
-    }
-    case "webcrawler": {
-      return false;
-    }
-    default:
-      throw new Error(`Unknown connector provider ${provider}`);
-  }
-}
+export const REMOTE_DATABASE_CONNECTOR_PROVIDERS: ConnectorProvider[] = [
+  "snowflake",
+];

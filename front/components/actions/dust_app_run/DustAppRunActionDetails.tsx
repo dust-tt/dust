@@ -1,13 +1,16 @@
-import { Collapsible, CommandLineIcon } from "@dust-tt/sparkle";
+import type { GetContentToDownloadFunction } from "@dust-tt/sparkle";
+import {
+  CodeBlock,
+  Collapsible,
+  CommandLineIcon,
+  ContentBlockWrapper,
+} from "@dust-tt/sparkle";
 import type { DustAppRunActionType } from "@dust-tt/types";
 import { capitalize } from "lodash";
 import { useMemo } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
-import { CodeBlock } from "@app/components/assistant/RenderMessageMarkdown";
-import type { GetContentToDownloadFunction } from "@app/components/misc/ContentBlockWrapper";
-import { ContentBlockWrapper } from "@app/components/misc/ContentBlockWrapper";
 
 export function DustAppRunActionDetails({
   action,
@@ -20,16 +23,18 @@ export function DustAppRunActionDetails({
       visual={CommandLineIcon}
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">
-        <div className="flex flex-col gap-1">
-          <span className="text-sm font-bold text-slate-900">Parameters</span>
-          <div className="text-sm font-normal text-slate-500">
+        <div className="flex flex-col gap-1 text-sm">
+          <span className="font-semibold text-foreground">Parameters</span>
+          <div className="text-muted-foreground">
             <DustAppRunParamsDetails action={action} />
           </div>
         </div>
         <div>
           <Collapsible defaultOpen={defaultOpen}>
             <Collapsible.Button>
-              <span className="text-sm font-bold text-slate-900">Results</span>
+              <span className="text-sm font-semibold text-foreground">
+                Results
+              </span>
             </Collapsible.Button>
             <Collapsible.Panel>
               <DustAppRunOutputDetails action={action} />

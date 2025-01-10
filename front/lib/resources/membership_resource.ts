@@ -1,6 +1,7 @@
 import type {
   LightWorkspaceType,
   MembershipRoleType,
+  ModelId,
   RequireAtLeastOne,
   Result,
 } from "@dust-tt/types";
@@ -17,7 +18,7 @@ import { Op } from "sequelize";
 
 import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
-import { canForceUserRole } from "@app/lib/development";
+import { showDebugTools } from "@app/lib/development";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -51,6 +52,51 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     blob: Attributes<MembershipModel>
   ) {
     super(MembershipModel, blob);
+  }
+
+  static async getMembershipsForWorkspace({
+    workspace,
+    transaction,
+    paginationParams,
+  }: {
+    workspace: LightWorkspaceType;
+    transaction?: Transaction;
+    paginationParams?: PaginationParams;
+  }): Promise<MembershipsWithTotal> {
+    const orderedResourcesFromModels = (resources: MembershipModel[]) =>
+      resources
+        .sort((a, b) => a.startAt.getTime() - b.startAt.getTime())
+        .map(
+          (resource) => new MembershipResource(MembershipModel, resource.get())
+        );
+
+    const whereClause: WhereOptions<InferAttributes<MembershipModel>> = {
+      workspaceId: workspace.id,
+    };
+
+    const findOptions: FindOptions<InferAttributes<MembershipModel>> = {
+      where: whereClause,
+      transaction,
+    };
+
+    if (paginationParams) {
+      const { limit, orderColumn, orderDirection, lastValue } =
+        paginationParams;
+
+      if (lastValue) {
+        const op = orderDirection === "desc" ? Op.lt : Op.gt;
+        whereClause[orderColumn as any] = { [op]: lastValue };
+      }
+
+      findOptions.order = [
+        [orderColumn, orderDirection === "desc" ? "DESC" : "ASC"],
+      ];
+      findOptions.limit = limit;
+    }
+
+    const { rows, count } = await MembershipModel.findAndCountAll(findOptions);
+
+    return { memberships: orderedResourcesFromModels(rows), total: count };
   }
 
   static async getActiveMemberships({
@@ -308,6 +354,16 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     });
   }
 
+  static async deleteAllForWorkspace(
+    workspace: LightWorkspaceType,
+    transaction?: Transaction
+  ) {
+    return this.model.destroy({
+      where: { workspaceId: workspace.id },
+      transaction,
+    });
+  }
+
   /**
    * Caller of this method should call `ServerSideTracking.trackCreateMembership`.
    */
@@ -354,6 +410,19 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     );
 
     return new MembershipResource(MembershipModel, newMembership.get());
+  }
+
+  static async fetchByUserIds(
+    userIds: ModelId[]
+  ): Promise<MembershipResource[]> {
+    const membershipModels = await MembershipModel.findAll({
+      where: {
+        userId: userIds,
+      },
+    });
+    return membershipModels.map(
+      (m) => new MembershipResource(MembershipModel, m.get())
+    );
   }
 
   /**
@@ -463,7 +532,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
         });
 
         if (adminsCount < 2) {
-          if (canForceUserRole(workspace)) {
+          if (showDebugTools(workspace)) {
             logger.warn(
               {
                 panic: false,
@@ -498,7 +567,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
 
   async delete(
     auth: Authenticator,
-    transaction?: Transaction
+    { transaction }: { transaction?: Transaction }
   ): Promise<Result<undefined, Error>> {
     try {
       await this.model.destroy({

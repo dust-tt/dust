@@ -2,7 +2,7 @@ import React, { ComponentType, MouseEvent, ReactNode } from "react";
 import type { UrlObject } from "url";
 import url from "url";
 
-export type SparkleContextLinkType = ComponentType<{
+type SparkleLinkProps = {
   href: string | UrlObject;
   className?: string;
   children: ReactNode;
@@ -21,7 +21,12 @@ export type SparkleContextLinkType = ComponentType<{
   shallow?: boolean;
   target?: string;
   rel?: string;
-}>;
+  prefetch?: boolean;
+};
+
+export type SparkleContextLinkType = ComponentType<
+  SparkleLinkProps & React.RefAttributes<HTMLAnchorElement>
+>;
 
 export type SparkleContextType = {
   components: {
@@ -29,49 +34,47 @@ export type SparkleContextType = {
   };
 };
 
-export const aLink: SparkleContextLinkType = ({
-  href,
-  className,
-  ariaCurrent,
-  ariaLabel,
-  onClick,
-  children,
-  target,
-  rel,
-}) => {
-  const hrefAsString = typeof href !== "string" ? url.format(href) : href;
+export const aLink: SparkleContextLinkType = React.forwardRef<
+  HTMLAnchorElement,
+  SparkleLinkProps
+>(
+  (
+    { href, className, ariaCurrent, ariaLabel, onClick, children, target, rel },
+    ref
+  ) => {
+    const hrefAsString = typeof href !== "string" ? url.format(href) : href;
 
-  return (
-    <a
-      href={hrefAsString}
-      className={className}
-      aria-current={ariaCurrent}
-      aria-label={ariaLabel}
-      onClick={onClick}
-      target={target}
-      rel={rel}
-    >
-      {children}
-    </a>
-  );
-};
+    return (
+      <a
+        ref={ref}
+        href={hrefAsString}
+        className={className}
+        aria-current={ariaCurrent}
+        aria-label={ariaLabel}
+        onClick={onClick}
+        target={target}
+        rel={rel}
+      >
+        {children}
+      </a>
+    );
+  }
+);
 
-export const noHrefLink: SparkleContextLinkType = ({
-  className,
-  ariaCurrent,
-  ariaLabel,
-  onClick,
-  children,
-}) => (
+export const noHrefLink: SparkleContextLinkType = React.forwardRef<
+  HTMLAnchorElement,
+  SparkleLinkProps
+>(({ className, ariaCurrent, ariaLabel, onClick, children }, ref) => (
   <a
+    ref={ref}
     className={className}
     aria-current={ariaCurrent}
-    arria-label={ariaLabel}
+    aria-label={ariaLabel}
     onClick={onClick}
   >
     {children}
   </a>
-);
+));
 
 export const SparkleContext = React.createContext<SparkleContextType>({
   components: {

@@ -1,43 +1,34 @@
-import type { AppType, LightWorkspaceType, RunRunType } from "@dust-tt/types";
+import type {
+  AppType,
+  LightWorkspaceType,
+  RunRunType,
+  SpaceType,
+} from "@dust-tt/types";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { GetAppsResponseBody } from "@app/pages/api/w/[wId]/apps";
-import type { GetRunsResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs";
-import type { GetRunBlockResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs/[runId]/blocks/[type]/[name]";
-import type { GetRunStatusResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs/[runId]/status";
 import type { GetDustAppSecretsResponseBody } from "@app/pages/api/w/[wId]/dust_app_secrets";
 import type { GetKeysResponseBody } from "@app/pages/api/w/[wId]/keys";
 import type { GetProvidersResponseBody } from "@app/pages/api/w/[wId]/providers";
+import type { GetAppsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps";
+import type { GetRunsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/runs";
+import type { GetRunBlockResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/runs/[runId]/blocks/[type]/[name]";
+import type { GetRunStatusResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/runs/[runId]/status";
 
-export function useApp({
-  workspaceId,
-  appId,
+export function useApps({
+  disabled,
+  owner,
+  space,
 }: {
-  workspaceId: string;
-  appId: string;
+  disabled?: boolean;
+  owner: LightWorkspaceType;
+  space: SpaceType;
 }) {
-  const appFetcher: Fetcher<{ app: AppType }> = fetcher;
-
-  const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/apps/${appId}`,
-    appFetcher
-  );
-
-  return {
-    app: data ? data.app : null,
-    isAppLoading: !error && !data,
-    isAppError: error,
-    mutateApp: mutate,
-  };
-}
-
-export function useApps(owner: LightWorkspaceType, disabled?: boolean) {
   const appsFetcher: Fetcher<GetAppsResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/apps`,
+    `/api/w/${owner.sId}/spaces/${space.sId}/apps`,
     appsFetcher,
     {
       disabled,
@@ -59,7 +50,7 @@ export function useSavedRunStatus(
 ) {
   const runStatusFetcher: Fetcher<GetRunStatusResponseBody> = fetcher;
   const { data, error } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/apps/${app.sId}/runs/saved/status`,
+    `/api/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/runs/saved/status`,
     runStatusFetcher,
     {
       refreshInterval: refresh,
@@ -83,7 +74,7 @@ export function useRunBlock(
 ) {
   const runBlockFetcher: Fetcher<GetRunBlockResponseBody> = fetcher;
   const { data, error } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/apps/${app.sId}/runs/${runId}/blocks/${type}/${name}`,
+    `/api/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/runs/${runId}/blocks/${type}/${name}`,
     runBlockFetcher,
     {
       refreshInterval: refresh,
@@ -120,7 +111,7 @@ export function useRuns(
   wIdTarget: string | null
 ) {
   const runsFetcher: Fetcher<GetRunsResponseBody> = fetcher;
-  let url = `/api/w/${owner.sId}/apps/${app.sId}/runs?limit=${limit}&offset=${offset}&runType=${runType}`;
+  let url = `/api/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/runs?limit=${limit}&offset=${offset}&runType=${runType}`;
   if (wIdTarget) {
     url += `&wIdTarget=${wIdTarget}`;
   }
@@ -159,14 +150,15 @@ export function useProviders({
 }
 export function useKeys(owner: LightWorkspaceType) {
   const keysFetcher: Fetcher<GetKeysResponseBody> = fetcher;
-  const { data, error } = useSWRWithDefaults(
+  const { data, error, isValidating } = useSWRWithDefaults(
     `/api/w/${owner.sId}/keys`,
     keysFetcher
   );
 
   return {
-    keys: useMemo(() => (data ? data.keys : []), [data]),
-    isKeysLoading: !error && !data,
     isKeysError: error,
+    isKeysLoading: !error && !data,
+    isValidating,
+    keys: useMemo(() => (data ? data.keys : []), [data]),
   };
 }

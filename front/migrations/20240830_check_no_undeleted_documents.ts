@@ -1,7 +1,7 @@
 import { QueryTypes } from "sequelize";
 
 import {
-  getConnectorReplicaDbConnection,
+  getConnectorsReplicaDbConnection,
   getCoreReplicaDbConnection,
 } from "@app/lib/production_checks/utils";
 import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
@@ -12,6 +12,7 @@ type DataSource = {
   id: number;
   connectorId: string;
   dustAPIProjectId: number;
+  dustAPIDataSourceId: string;
   name: string;
 };
 
@@ -28,7 +29,7 @@ async function checkCoreDeleted(
     {
       replacements: {
         dustAPIProjectId: dataSource.dustAPIProjectId,
-        dataSourceId: dataSource.name,
+        dataSourceId: dataSource.dustAPIDataSourceId,
       },
       type: QueryTypes.SELECT,
     }
@@ -36,6 +37,7 @@ async function checkCoreDeleted(
 
   const coreDocuments: { id: number; document_id: string }[] =
     await coreReplica.query(
+      // Note this query won't be valid anymore
       "SELECT id, document_id FROM data_sources_documents WHERE data_source = :dataSourceId AND status = 'latest'",
       {
         replacements: {
@@ -70,11 +72,11 @@ async function checkCoreDeleted(
 }
 
 async function checkGoogleDriveDeleted(logger: Logger) {
-  const connectorsReplica = getConnectorReplicaDbConnection();
+  const connectorsReplica = getConnectorsReplicaDbConnection();
   const frontReplica = getFrontReplicaDbConnection();
 
   const gDriveDataSources: DataSource[] = await frontReplica.query(
-    `SELECT id, "connectorId", "dustAPIProjectId", "name" FROM data_sources WHERE "connectorProvider" = 'google_drive'`,
+    `SELECT id, "connectorId", "dustAPIProjectId", "dustAPIDataSourceId", "name" FROM data_sources WHERE "connectorProvider" = 'google_drive'`,
     { type: QueryTypes.SELECT }
   );
 
@@ -100,16 +102,17 @@ async function checkGoogleDriveDeleted(logger: Logger) {
 }
 
 async function checkNotionDeleted(logger: Logger) {
-  const connectorsReplica = getConnectorReplicaDbConnection();
+  const connectorsReplica = getConnectorsReplicaDbConnection();
   const frontReplica = getFrontReplicaDbConnection();
 
   const notionDataSources: {
     id: number;
     connectorId: string;
     dustAPIProjectId: number;
+    dustAPIDataSourceId: string;
     name: string;
   }[] = await frontReplica.query(
-    `SELECT id, "connectorId", "dustAPIProjectId", "name" FROM data_sources WHERE "connectorProvider" = 'notion'`,
+    `SELECT id, "connectorId", "dustAPIProjectId", "dustAPIDataSourceId", "name" FROM data_sources WHERE "connectorProvider" = 'notion'`,
     { type: QueryTypes.SELECT }
   );
 

@@ -3,20 +3,17 @@ import type {
   Result,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
-import { Err, groupHasPermission, Ok } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import { isManaged } from "@app/lib/data_sources";
-import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { GroupResource } from "@app/lib/resources/group_resource";
-import { VaultResource } from "@app/lib/resources/vault_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
-
-const { DUST_REGISTRY_SECRET } = process.env;
 
 type LookupDataSourceResponseBody = {
   project_id: number;
@@ -59,15 +56,16 @@ async function handler(
   }
   const secret = parse[1];
 
-  if (secret !== DUST_REGISTRY_SECRET) {
+  if (secret !== config.getDustRegistrySecret()) {
     res.status(401).end();
     return;
   }
 
-  const dustWorkspaceId = req.headers["x-dust-workspace-id"];
+  // Extract and validate headers necessary for user permission checks.
+  const userWorkspaceId = req.headers["x-dust-workspace-id"];
   const rawDustGroupIds = req.headers["x-dust-group-ids"];
   if (
-    typeof dustWorkspaceId !== "string" ||
+    typeof userWorkspaceId !== "string" ||
     typeof rawDustGroupIds !== "string"
   ) {
     return apiError(req, res, {
@@ -79,13 +77,16 @@ async function handler(
     });
   }
 
-  // Temporary instrumentation to track the origin of the request.
-  const dustOrigin =
-    typeof req.headers["x-dust-origin"] === "string"
-      ? req.headers["x-dust-origin"]
-      : null;
-
   const dustGroupIds = rawDustGroupIds.split(",");
+
+  // by default, data sources from the "conversations" space are not allowed
+  // except for our packaged dust-apps called internally, see
+  // https://github.com/dust-tt/tasks/issues/1658 in particular
+  // "assistant-retrieval-v2" that needs access to the conversation space we
+  // determine that we are on packaged apps by checking whether this is a system
+  // run
+
+  const allowConversationsDataSources = req.query.is_system_run === "true";
 
   switch (req.method) {
     case "GET":
@@ -100,35 +101,17 @@ async function handler(
               },
             });
           };
-          const {
-            data_source_id: dataSourceOrDataSourceViewId,
-            workspace_id: workspaceId,
-          } = req.query;
 
-          if (
-            typeof workspaceId !== "string" ||
-            typeof dataSourceOrDataSourceViewId !== "string"
-          ) {
+          const { data_source_id: dataSourceOrDataSourceViewId } = req.query;
+          if (typeof dataSourceOrDataSourceViewId !== "string") {
             return notFoundError();
           }
 
-          const owner = await Workspace.findOne({
-            where: {
-              sId: workspaceId,
-            },
+          const auth = await Authenticator.fromRegistrySecret({
+            groupIds: dustGroupIds,
+            secret,
+            workspaceId: userWorkspaceId,
           });
-          if (!owner || dustWorkspaceId !== owner.sId) {
-            return notFoundError();
-          }
-
-          // Use admin auth to fetch the groups.
-          const auth =
-            await Authenticator.internalAdminForWorkspace(workspaceId);
-
-          const groups = await GroupResource.fetchByIds(auth, dustGroupIds);
-          if (groups.isErr()) {
-            return notFoundError();
-          }
 
           if (
             DataSourceViewResource.isDataSourceViewSId(
@@ -137,9 +120,8 @@ async function handler(
           ) {
             const dataSourceViewRes = await handleDataSourceView(
               auth,
-              groups.value,
               dataSourceOrDataSourceViewId,
-              dustOrigin
+              allowConversationsDataSources
             );
             if (dataSourceViewRes.isErr()) {
               logger.info(
@@ -147,7 +129,7 @@ async function handler(
                   dataSourceViewId: dataSourceOrDataSourceViewId,
                   err: dataSourceViewRes.error,
                   groups: dustGroupIds,
-                  workspaceId: dustWorkspaceId,
+                  workspaceId: userWorkspaceId,
                 },
                 "Failed to lookup data source view."
               );
@@ -159,9 +141,8 @@ async function handler(
           } else {
             const dataSourceRes = await handleDataSource(
               auth,
-              groups.value,
               dataSourceOrDataSourceViewId,
-              dustOrigin
+              allowConversationsDataSources
             );
             if (dataSourceRes.isErr()) {
               logger.info(
@@ -169,7 +150,7 @@ async function handler(
                   dataSourceId: dataSourceOrDataSourceViewId,
                   err: dataSourceRes.error,
                   groups: dustGroupIds,
-                  workspaceId: dustWorkspaceId,
+                  workspaceId: userWorkspaceId,
                 },
                 "Failed to lookup data source."
               );
@@ -204,107 +185,94 @@ export default withLogging(handler);
 
 async function handleDataSourceView(
   auth: Authenticator,
-  groups: GroupResource[],
   dataSourceViewId: string,
-  dustOrigin: string | null
+  allowConversationsDataSources: boolean
 ): Promise<Result<LookupDataSourceResponseBody, Error>> {
   const dataSourceView = await DataSourceViewResource.fetchById(
     auth,
     dataSourceViewId
   );
-  if (!dataSourceView) {
+
+  if (
+    !dataSourceView ||
+    (!allowConversationsDataSources &&
+      dataSourceView.space?.kind === "conversations")
+  ) {
     return new Err(new Error("Data source view not found."));
   }
 
-  // Ensure provided groups can access the data source view.
-  const hasAccessToDataSourceView = groups.some((g) =>
-    groupHasPermission(dataSourceView.acl(), "read", g.id)
-  );
-  // TODO(GROUPS_INFRA) Clean up after release.
-  if (!hasAccessToDataSourceView) {
-    logger.info(
-      {
-        acl: dataSourceView.acl(),
-        dataSourceViewId,
-        dustOrigin,
-        groups: groups.map((g) => g.id),
-      },
-      "No access to data source view."
-    );
+  if (!dataSourceView.canRead(auth)) {
+    return new Err(new Error("No access to data source view."));
   }
 
-  if (hasAccessToDataSourceView) {
-    const { dataSource } = dataSourceView;
+  const { dataSource } = dataSourceView;
 
-    return new Ok({
-      project_id: parseInt(dataSource.dustAPIProjectId),
-      data_source_id: dataSource.dustAPIDataSourceId,
-      view_filter: {
-        tags: null,
-        parents: {
-          in: dataSourceView.parentsIn,
-          not: null,
-        },
-        timestamp: null,
+  return new Ok({
+    project_id: parseInt(dataSource.dustAPIProjectId),
+    data_source_id: dataSource.dustAPIDataSourceId,
+    view_filter: {
+      tags: null,
+      parents: {
+        in: dataSourceView.parentsIn,
+        not: null,
       },
-    });
-  }
-
-  return new Err(new Error("No access to data source view."));
+      timestamp: null,
+    },
+  });
 }
 
 async function handleDataSource(
   auth: Authenticator,
-  groups: GroupResource[],
   dataSourceId: string,
-  dustOrigin: string | null
+  allowConversationsDataSources: boolean
 ): Promise<Result<LookupDataSourceResponseBody, Error>> {
+  logger.info(
+    {
+      dataSource: {
+        id: dataSourceId,
+      },
+      workspace: {
+        id: auth.getNonNullableWorkspace().id,
+        sId: auth.getNonNullableWorkspace().sId,
+      },
+    },
+    "Looking up registry with data source id"
+  );
+
   const dataSource = await DataSourceResource.fetchByNameOrId(
     auth,
     dataSourceId,
     // TODO(DATASOURCE_SID): Clean-up
     { origin: "registry_lookup" }
   );
-  if (!dataSource) {
+
+  if (
+    !dataSource ||
+    (!allowConversationsDataSources &&
+      dataSource.space?.kind === "conversations")
+  ) {
     return new Err(new Error("Data source not found."));
   }
 
   // Until we pass the data source view id for managed data sources, we need to fetch it here.
-  // TODO(2024-08-02 flav) Remove once dust apps rely on the data source view id for managed data sources.
+  // TODO(DATASOURCE_SID) Clean-up Remove once dust apps rely on the data source view id for managed data sources.
   if (isManaged(dataSource)) {
-    const globalVault = await VaultResource.fetchWorkspaceGlobalVault(auth);
+    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
     const dataSourceView =
-      await DataSourceViewResource.listForDataSourcesInVault(
+      await DataSourceViewResource.listForDataSourcesInSpace(
         auth,
         [dataSource],
-        globalVault
+        globalSpace
       );
 
     return handleDataSourceView(
       auth,
-      groups,
       dataSourceView[0].sId,
-      dustOrigin
+      allowConversationsDataSources
     );
   }
 
-  const hasAccessToDataSource = groups.some((g) =>
-    groupHasPermission(dataSource.acl(), "read", g.id)
-  );
-  // TODO(GROUPS_INFRA) Clean up after release.
-  if (!hasAccessToDataSource) {
-    logger.info(
-      {
-        acl: dataSource.acl(),
-        dataSourceId,
-        dustOrigin,
-        groups: groups.map((g) => g.id),
-      },
-      "No access to data source."
-    );
-  }
-
-  if (hasAccessToDataSource) {
+  if (dataSource.canRead(auth)) {
     return new Ok({
       project_id: parseInt(dataSource.dustAPIProjectId),
       data_source_id: dataSource.dustAPIDataSourceId,

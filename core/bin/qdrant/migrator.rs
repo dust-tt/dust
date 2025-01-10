@@ -331,7 +331,7 @@ async fn migrate_shadow_write(
                 qdrant::PointStruct::new(
                     r.id.unwrap(),
                     r.vectors.unwrap(),
-                    Payload::new_from_hashmap(r.payload),
+                    Payload::from(r.payload),
                 )
             })
             .collect::<Vec<_>>();

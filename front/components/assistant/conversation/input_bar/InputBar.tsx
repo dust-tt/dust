@@ -1,12 +1,12 @@
-import { Button, StopIcon } from "@dust-tt/sparkle";
+import { Button, cn, RainbowEffect, StopIcon } from "@dust-tt/sparkle";
+import type { AgentMention, MentionType, Result } from "@dust-tt/types";
+import type { UploadedContentFragment } from "@dust-tt/types";
 import type {
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
-import type { AgentMention, MentionType } from "@dust-tt/types";
-import type { UploadedContentFragment } from "@dust-tt/types";
+import { compareAgentsForSort } from "@dust-tt/types";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
-import { useSWRConfig } from "swr";
 
 import { useFileDrop } from "@app/components/assistant/conversation/FileUploaderContext";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
@@ -17,31 +17,12 @@ import InputBarContainer, {
 } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
-import { compareAgentsForSort } from "@app/lib/assistant";
-import { useAgentConfigurations } from "@app/lib/swr/assistants";
-import { ClientSideTracking } from "@app/lib/tracking/client";
+import type { DustError } from "@app/lib/error";
+import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
+import { useConversation } from "@app/lib/swr/conversations";
 import { classNames } from "@app/lib/utils";
 
 const DEFAULT_INPUT_BAR_ACTIONS = [...INPUT_BAR_ACTIONS];
-
-// AGENT MENTION
-
-function AgentMention({
-  agentConfiguration,
-}: {
-  agentConfiguration: LightAgentConfigurationType;
-}) {
-  return (
-    <div
-      className={classNames("inline-block font-medium text-brand")}
-      contentEditable={false}
-      data-agent-configuration-id={agentConfiguration?.sId}
-      data-agent-name={agentConfiguration?.name}
-    >
-      @{agentConfiguration.name}
-    </div>
-  );
-}
 
 /**
  *
@@ -58,14 +39,13 @@ export function AssistantInputBar({
   actions = DEFAULT_INPUT_BAR_ACTIONS,
   disableAutoFocus = false,
   isFloating = true,
-  isFloatingWithoutMargin = false,
 }: {
   owner: WorkspaceType;
   onSubmit: (
     input: string,
     mentions: MentionType[],
     contentFragments: UploadedContentFragment[]
-  ) => void;
+  ) => Promise<Result<undefined, DustError>>;
   conversationId: string | null;
   stickyMentions?: AgentMention[];
   additionalAgentConfiguration?: LightAgentConfigurationType;
@@ -74,12 +54,38 @@ export function AssistantInputBar({
   isFloating?: boolean;
   isFloatingWithoutMargin?: boolean;
 }) {
-  const { mutate } = useSWRConfig();
+  const [disableSendButton, setDisableSendButton] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
+  const rainbowEffectRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    const container = rainbowEffectRef.current;
+    if (!container) {
+      return;
+    }
+
+    const onFocusIn = () => setIsFocused(true);
+    const onFocusOut = () => setIsFocused(false);
+
+    container.addEventListener("focusin", onFocusIn);
+    container.addEventListener("focusout", onFocusOut);
+
+    return () => {
+      container.removeEventListener("focusin", onFocusIn);
+      container.removeEventListener("focusout", onFocusOut);
+    };
+  }, []);
+
+  const { mutateConversation } = useConversation({
+    conversationId,
+    workspaceId: owner.sId,
+    options: { disabled: true }, // We just want to get the mutation function
+  });
+
+  // We use this specific hook because this component is involved in the new conversation page.
   const { agentConfigurations: baseAgentConfigurations } =
-    useAgentConfigurations({
+    useUnifiedAgentConfigurations({
       workspaceId: owner.sId,
-      agentsGetView: "assistants-search",
     });
 
   // Files upload.
@@ -87,6 +93,7 @@ export function AssistantInputBar({
   const fileUploaderService = useFileUploaderService({
     owner,
     useCase: "conversation",
+    useCaseMetadata: conversationId ? { conversationId } : undefined,
   });
 
   const { droppedFiles, setDroppedFiles } = useFileDrop();
@@ -147,41 +154,62 @@ export function AssistantInputBar({
   const activeAgents = agentConfigurations.filter((a) => a.status === "active");
   activeAgents.sort(compareAgentsForSort);
 
-  const handleSubmit: InputBarContainerProps["onEnterKeyDown"] = (
+  const handleSubmit: InputBarContainerProps["onEnterKeyDown"] = async (
     isEmpty,
     textAndMentions,
-    resetEditorText
+    resetEditorText,
+    setLoading
   ) => {
     if (isEmpty || fileUploaderService.isProcessingFiles) {
       return;
     }
 
     const { mentions: rawMentions, text } = textAndMentions;
-    const mentions: MentionType[] = rawMentions.map((m) => ({
-      configurationId: m.id,
-    }));
+    const mentions: MentionType[] = [
+      ...new Set(rawMentions.map((mention) => mention.id)),
+    ].map((id) => ({ configurationId: id }));
 
-    if (fileUploaderService.fileBlobs.length > 0) {
-      void ClientSideTracking.trackInputBarFileUploadUsed({
-        fileCount: fileUploaderService.fileBlobs.length,
-      });
+    // When we are creating a new conversation, we will disable the input bar, show a loading
+    // spinner and in case of error, re-enable the input bar
+    if (!conversationId) {
+      setLoading(true);
+      setDisableSendButton(true);
+
+      const r = await onSubmit(
+        text,
+        mentions,
+        fileUploaderService.getFileBlobs().map((cf) => {
+          return {
+            title: cf.filename,
+            fileId: cf.fileId,
+          };
+        })
+      );
+
+      setLoading(false);
+      setDisableSendButton(false);
+      if (r.isOk()) {
+        resetEditorText();
+        fileUploaderService.resetUpload();
+      }
+    } else {
+      void onSubmit(
+        text,
+        mentions,
+        fileUploaderService.getFileBlobs().map((cf) => {
+          return {
+            title: cf.filename,
+            fileId: cf.fileId,
+          };
+        })
+      );
+
+      resetEditorText();
+      fileUploaderService.resetUpload();
     }
-
-    onSubmit(
-      text,
-      mentions,
-      fileUploaderService.getFileBlobs().map((cf) => {
-        return {
-          title: cf.filename,
-          fileId: cf.fileId,
-        };
-      })
-    );
-    resetEditorText();
-    fileUploaderService.resetUpload();
   };
 
-  const [isProcessing, setIsProcessing] = useState<boolean>(false);
+  const [isStopping, setIsStopping] = useState<boolean>(false);
 
   // GenerationContext: to know if we are generating or not
   const generationContext = useContext(GenerationContext);
@@ -195,7 +223,7 @@ export function AssistantInputBar({
     if (!conversationId) {
       return;
     }
-    setIsProcessing(true); // we don't set it back to false immediately cause it takes a bit of time to cancel
+    setIsStopping(true); // we don't set it back to false immediately cause it takes a bit of time to cancel
     await fetch(
       `/api/w/${owner.sId}/assistant/conversations/${conversationId}/cancel`,
       {
@@ -211,60 +239,57 @@ export function AssistantInputBar({
         }),
       }
     );
-    await mutate(
-      `/api/w/${owner.sId}/assistant/conversations/${conversationId}`
-    );
+    mutateConversation();
   };
 
   useEffect(() => {
     if (
-      isProcessing &&
+      isStopping &&
       !generationContext.generatingMessages.some(
         (m) => m.conversationId === conversationId
       )
     ) {
-      setIsProcessing(false);
+      setIsStopping(false);
     }
-  }, [isProcessing, generationContext.generatingMessages, conversationId]);
+  }, [isStopping, generationContext.generatingMessages, conversationId]);
 
   return (
-    <div className="flex w-full flex-col">
+    <div className={cn("flex w-full flex-col", isFloating && "sm:px-3")}>
       {generationContext.generatingMessages.some(
         (m) => m.conversationId === conversationId
       ) && (
         <div className="flex justify-center px-4 pb-4">
           <Button
             className="mt-4"
-            variant="tertiary"
-            label={isProcessing ? "Stopping generation..." : "Stop generation"}
+            variant="outline"
+            label={isStopping ? "Stopping generation..." : "Stop generation"}
             icon={StopIcon}
             onClick={handleStopGeneration}
-            disabled={isProcessing}
+            disabled={isStopping}
           />
         </div>
       )}
 
-      <div
-        className={classNames(
-          "flex flex-1 px-0",
-          isFloating ? (isFloatingWithoutMargin ? "" : "sm:px-4") : ""
-        )}
-      >
-        <div className="flex w-full flex-1 flex-col items-end self-stretch sm:flex-row">
+      <div ref={rainbowEffectRef} className="flex w-full flex-col">
+        <RainbowEffect
+          className="w-full"
+          containerClassName="w-full"
+          size={isFocused ? "large" : "medium"}
+          disabled={!isFloating}
+        >
           <div
             className={classNames(
-              "relative flex w-full flex-1 flex-col items-stretch gap-0 self-stretch pl-4 sm:flex-row",
-              "border-struture-200 border-t bg-white/90 backdrop-blur focus-within:border-structure-300",
+              "relative flex w-full flex-1 flex-col items-stretch gap-0 self-stretch pl-3 sm:flex-row",
+              "bg-primary-50",
               "transition-all",
               isFloating
-                ? "sm:rounded-3xl sm:border-b sm:border-l sm:border-r sm:border-element-500 sm:focus-within:border-action-300 sm:focus-within:shadow-md sm:focus-within:ring-1"
-                : "",
+                ? "rounded-3xl border border-border-dark focus-within:ring-1 focus-within:ring-highlight/30 sm:border-border-dark/50 sm:focus-within:border-border-dark sm:focus-within:ring-2"
+                : "border-t",
               isAnimating ? "duration-600 animate-shake" : "duration-300"
             )}
           >
             <div className="relative flex w-full flex-1 flex-col">
               <InputBarCitations fileUploaderService={fileUploaderService} />
-
               <InputBarContainer
                 actions={actions}
                 disableAutoFocus={disableAutoFocus}
@@ -275,11 +300,13 @@ export function AssistantInputBar({
                 onEnterKeyDown={handleSubmit}
                 stickyMentions={stickyMentions}
                 fileUploaderService={fileUploaderService}
-                disableSendButton={fileUploaderService.isProcessingFiles}
+                disableSendButton={
+                  disableSendButton || fileUploaderService.isProcessingFiles
+                }
               />
             </div>
           </div>
-        </div>
+        </RainbowEffect>
       </div>
     </div>
   );
@@ -299,7 +326,7 @@ export function FixedAssistantInputBar({
     input: string,
     mentions: MentionType[],
     contentFragments: UploadedContentFragment[]
-  ) => void;
+  ) => Promise<Result<undefined, DustError>>;
   stickyMentions?: AgentMention[];
   conversationId: string | null;
   additionalAgentConfiguration?: LightAgentConfigurationType;
@@ -307,7 +334,13 @@ export function FixedAssistantInputBar({
   disableAutoFocus?: boolean;
 }) {
   return (
-    <div className="sticky bottom-0 z-20 flex max-h-screen w-full max-w-4xl sm:pb-8">
+    <div
+      className={cn(
+        "sticky bottom-0 z-20 flex max-h-screen w-full",
+        "pb-2",
+        "sm:w-full sm:max-w-4xl sm:pb-8"
+      )}
+    >
       <AssistantInputBar
         owner={owner}
         onSubmit={onSubmit}

@@ -1,24 +1,18 @@
 import {
   BookOpenIcon,
+  BracesIcon,
   ChatBubbleLeftRightIcon,
-  CloudArrowLeftRightIcon,
   Cog6ToothIcon,
   CommandLineIcon,
+  CompanyIcon,
   DocumentTextIcon,
   FolderOpenIcon,
   LockIcon,
-  PlanetIcon,
-  PuzzleIcon,
-  QuestionMarkCircleIcon,
-  RobotIcon,
   ShapesIcon,
-  UserGroupIcon,
+  UserIcon,
 } from "@dust-tt/sparkle";
-import { GlobeAltIcon } from "@dust-tt/sparkle";
-import type { AppType } from "@dust-tt/types";
-import type { WorkspaceType } from "@dust-tt/types";
-import { isAdmin, isBuilder, isUser } from "@dust-tt/types";
-import { UsersIcon } from "@heroicons/react/20/solid";
+import type { AppType, WorkspaceType } from "@dust-tt/types";
+import { isAdmin, isBuilder } from "@dust-tt/types";
 
 /**
  * NavigationIds are typed ids we use to identify which navigation item is currently active. We need
@@ -44,14 +38,15 @@ export type SubNavigationAssistantsId =
   | "developers"
   | "documentation"
   | "community"
-  | "vaults";
+  | "spaces";
 
 export type SubNavigationAdminId =
   | "subscription"
   | "workspace"
   | "members"
   | "providers"
-  | "api_keys";
+  | "api_keys"
+  | "dev_secrets";
 
 export type SubNavigationAppId =
   | "specification"
@@ -113,7 +108,7 @@ export const getTopNavigationTabs = (owner: WorkspaceType) => {
     label: "Chat",
     href: `/w/${owner.sId}/assistant/new`,
     icon: ChatBubbleLeftRightIcon,
-    sizing: "expand",
+    sizing: "hug",
     isCurrent: (currentRoute) =>
       [
         "/w/[wId]/assistant/new",
@@ -122,30 +117,15 @@ export const getTopNavigationTabs = (owner: WorkspaceType) => {
       ].includes(currentRoute),
   });
 
-  if (isBuilder(owner)) {
-    nav.push({
-      id: "assistants",
-      label: "Build",
-      icon: PuzzleIcon,
-      href: `/w/${owner.sId}/builder/assistants`,
-      isCurrent: (currentRoute: string) =>
-        currentRoute.startsWith("/w/[wId]/builder/") ||
-        currentRoute === "/w/[wId]/a",
-      sizing: "expand",
-    });
-  }
-
-  if (owner.flags.includes("data_vaults_feature")) {
-    nav.push({
-      id: "data_sources",
-      label: "Data sources",
-      icon: BookOpenIcon,
-      href: `/w/${owner.sId}/vaults`,
-      isCurrent: (currentRoute: string) =>
-        currentRoute.startsWith("/w/[wId]/vaults/"),
-      sizing: "expand",
-    });
-  }
+  nav.push({
+    id: "data_sources",
+    label: "Knowledge",
+    icon: BookOpenIcon,
+    href: `/w/${owner.sId}/spaces`,
+    isCurrent: (currentRoute: string) =>
+      currentRoute.startsWith("/w/[wId]/spaces/"),
+    sizing: "hug",
+  });
 
   if (isAdmin(owner)) {
     nav.push({
@@ -159,125 +139,13 @@ export const getTopNavigationTabs = (owner: WorkspaceType) => {
           "/w/[wId]/members",
           "/w/[wId]/workspace",
           "/w/[wId]/subscription",
+          "/w/[wId]/developers/providers",
+          "/w/[wId]/developers/api-keys",
+          "/w/[wId]/developers/dev-secrets",
         ].includes(currentRoute),
       sizing: "hug",
     });
   }
-
-  return nav;
-};
-
-export const subNavigationBuild = ({
-  owner,
-  current,
-  subMenuLabel,
-  subMenu,
-}: {
-  owner: WorkspaceType;
-  current: SubNavigationAssistantsId;
-  subMenuLabel?: string;
-  subMenu?: AppLayoutNavigation[];
-}) => {
-  const nav: SidebarNavigation[] = [];
-
-  const assistantMenus: AppLayoutNavigation[] = [];
-
-  assistantMenus.push({
-    id: "workspace_assistants",
-    label: "Manage Assistants",
-    icon: RobotIcon,
-    href: `/w/${owner.sId}/builder/assistants`,
-    current: current === "workspace_assistants",
-    subMenuLabel: current === "workspace_assistants" ? subMenuLabel : undefined,
-    subMenu: current === "workspace_assistants" ? subMenu : undefined,
-  });
-
-  nav.push({
-    id: "assistants",
-    label: null,
-    variant: "secondary",
-    menus: assistantMenus,
-  });
-
-  const dataSourceItems: AppLayoutNavigation[] = [
-    {
-      id: "data_sources_managed",
-      label: "Connections",
-      icon: CloudArrowLeftRightIcon,
-      href: `/w/${owner.sId}/builder/data-sources/managed`,
-      current: current === "data_sources_managed",
-      subMenuLabel:
-        current === "data_sources_managed" ? subMenuLabel : undefined,
-      subMenu: current === "data_sources_managed" ? subMenu : undefined,
-    },
-    {
-      id: "data_sources_static",
-      label: "Folders",
-      icon: FolderOpenIcon,
-      href: `/w/${owner.sId}/builder/data-sources/static`,
-      current: current === "data_sources_static",
-      subMenuLabel:
-        current === "data_sources_static" ? subMenuLabel : undefined,
-      subMenu: current === "data_sources_static" ? subMenu : undefined,
-    },
-    {
-      id: "data_sources_url",
-      label: "Websites",
-      icon: GlobeAltIcon,
-      href: `/w/${owner.sId}/builder/data-sources/public-urls`,
-      current: current === "data_sources_url",
-      subMenuLabel: current === "data_sources_url" ? subMenuLabel : undefined,
-      subMenu: current === "data_sources_url" ? subMenu : undefined,
-    },
-  ];
-
-  nav.push({
-    id: "data_sources",
-    label: "Data Sources",
-    variant: "secondary",
-    menus: dataSourceItems,
-  });
-
-  nav.push({
-    id: "developers",
-    label: "Developers",
-    variant: "secondary",
-    menus: [
-      {
-        id: "developers",
-        label: "Developer Tools",
-        icon: CommandLineIcon,
-        href: `/w/${owner.sId}/a`,
-        current: current === "developers",
-        subMenuLabel: current === "developers" ? subMenuLabel : undefined,
-        subMenu: current === "developers" ? subMenu : undefined,
-      },
-    ],
-  });
-
-  nav.push({
-    id: "help",
-    label: "Resources",
-    variant: "secondary",
-    menus: [
-      {
-        id: "documentation",
-        label: "Documentation",
-        icon: QuestionMarkCircleIcon,
-        href: `https://docs.dust.tt`,
-        current: current === "documentation",
-        target: "_blank",
-      },
-      {
-        id: "community",
-        label: "Community Support",
-        icon: UserGroupIcon,
-        href: `https://community.dust.tt`,
-        current: current === "community",
-        target: "_blank",
-      },
-    ],
-  });
 
   return nav;
 };
@@ -302,13 +170,13 @@ export const subNavigationAdmin = ({
   if (isAdmin(owner)) {
     nav.push({
       id: "workspace",
-      label: null,
-      variant: "secondary",
+      label: "Workspace Settings",
+      variant: "primary",
       menus: [
         {
           id: "members",
           label: "Members",
-          icon: UsersIcon,
+          icon: UserIcon,
           href: `/w/${owner.sId}/members`,
           current: current === "members",
           subMenuLabel: current === "members" ? subMenuLabel : undefined,
@@ -317,7 +185,7 @@ export const subNavigationAdmin = ({
         {
           id: "workspace",
           label: "Workspace",
-          icon: PlanetIcon,
+          icon: CompanyIcon,
           href: `/w/${owner.sId}/workspace`,
           current: current === "workspace",
           subMenuLabel: current === "workspace" ? subMenuLabel : undefined,
@@ -335,33 +203,40 @@ export const subNavigationAdmin = ({
       ],
     });
 
-    if (owner.flags.includes("data_vaults_feature")) {
-      nav.push({
-        id: "developers",
-        label: "Developers",
-        variant: "secondary",
-        menus: [
-          {
-            id: "providers",
-            label: "Providers",
-            icon: ShapesIcon,
-            href: `/w/${owner.sId}/developers/providers`,
-            current: current === "providers",
-            subMenuLabel: current === "providers" ? subMenuLabel : undefined,
-            subMenu: current === "providers" ? subMenu : undefined,
-          },
-          {
-            id: "api_keys",
-            label: "API Keys",
-            icon: LockIcon,
-            href: `/w/${owner.sId}/developers/api-keys`,
-            current: current === "api_keys",
-            subMenuLabel: current === "api_keys" ? subMenuLabel : undefined,
-            subMenu: current === "api_keys" ? subMenu : undefined,
-          },
-        ],
-      });
-    }
+    nav.push({
+      id: "developers",
+      label: "Developers",
+      variant: "primary",
+      menus: [
+        {
+          id: "providers",
+          label: "Providers",
+          icon: ShapesIcon,
+          href: `/w/${owner.sId}/developers/providers`,
+          current: current === "providers",
+          subMenuLabel: current === "providers" ? subMenuLabel : undefined,
+          subMenu: current === "providers" ? subMenu : undefined,
+        },
+        {
+          id: "api_keys",
+          label: "API Keys",
+          icon: LockIcon,
+          href: `/w/${owner.sId}/developers/api-keys`,
+          current: current === "api_keys",
+          subMenuLabel: current === "api_keys" ? subMenuLabel : undefined,
+          subMenu: current === "api_keys" ? subMenu : undefined,
+        },
+        {
+          id: "dev_secrets",
+          label: "Secrets",
+          icon: BracesIcon,
+          href: `/w/${owner.sId}/developers/dev-secrets`,
+          current: current === "dev_secrets",
+          subMenuLabel: current === "dev_secrets" ? subMenuLabel : undefined,
+          subMenu: current === "dev_secrets" ? subMenu : undefined,
+        },
+      ],
+    });
   }
 
   return nav;
@@ -376,41 +251,37 @@ export const subNavigationApp = ({
   app: AppType;
   current: SubNavigationAppId;
 }) => {
-  let nav: AppLayoutNavigation[] = [
+  let nav = [
     {
-      id: "specification",
+      value: "specification",
       label: "Specification",
       icon: CommandLineIcon,
-      href: `/w/${owner.sId}/a/${app.sId}`,
-      sizing: "expand",
+      href: `/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}`,
       current: current === "specification",
     },
     {
-      id: "datasets",
+      value: "datasets",
       label: "Datasets",
       icon: DocumentTextIcon,
-      href: `/w/${owner.sId}/a/${app.sId}/datasets`,
-      sizing: "expand",
+      href: `/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/datasets`,
       current: current === "datasets",
     },
   ];
 
-  if (isUser(owner)) {
+  if (isAdmin(owner) || isBuilder(owner)) {
     nav = nav.concat([
       {
-        id: "runs",
+        value: "runs",
         label: "Logs",
         icon: FolderOpenIcon,
-        href: `/w/${owner.sId}/a/${app.sId}/runs`,
-        sizing: "expand",
+        href: `/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/runs`,
         current: current === "runs",
       },
       {
-        id: "settings",
+        value: "settings",
         label: "Settings",
         icon: Cog6ToothIcon,
-        href: `/w/${owner.sId}/a/${app.sId}/settings`,
-        sizing: "expand",
+        href: `/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/settings`,
         current: current === "settings",
       },
     ]);

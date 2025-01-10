@@ -12,14 +12,12 @@ import {
   GetAgentConfigurationsQuerySchema,
   Ok,
   PostOrPatchAgentConfigurationRequestBodySchema,
-  removeNulls,
 } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import _ from "lodash";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getApp } from "@app/lib/api/app";
 import { getAgentsUsage } from "@app/lib/api/assistant/agent_usage";
 import {
   createAgentActionConfiguration,
@@ -27,10 +25,17 @@ import {
   getAgentConfigurations,
   unsafeHardDeleteAgentConfiguration,
 } from "@app/lib/api/assistant/configuration";
+import {
+  getAgentConfigurationGroupIdsFromActions,
+  getAgentConfigurationGroupIdsFromActionsLegacy,
+} from "@app/lib/api/assistant/permissions";
 import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { runOnRedis } from "@app/lib/api/redis";
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
+import { AppResource } from "@app/lib/resources/app_resource";
+import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { apiError } from "@app/logger/withlogging";
 
@@ -75,13 +80,11 @@ async function handler(
         });
       }
 
-      const { view, conversationId, limit, withUsage, withAuthors, sort } =
+      const { view, limit, withUsage, withAuthors, withFeedbacks, sort } =
         queryValidation.right;
-      const viewParam = view
-        ? view
-        : conversationId
-          ? { conversationId }
-          : "all";
+      let viewParam = view ? view : "all";
+      // @ts-expect-error: added for backwards compatibility
+      viewParam = viewParam === "assistant-search" ? "list" : viewParam;
       if (viewParam === "admin_internal" && !auth.isDustSuperUser()) {
         return apiError(req, res, {
           status_code: 404,
@@ -99,16 +102,19 @@ async function handler(
         sort,
       });
       if (withUsage === "true") {
-        const mentionCounts = await runOnRedis(async (redis) => {
-          return getAgentsUsage({
-            providedRedis: redis,
-            workspaceId: owner.sId,
-            limit:
-              typeof req.query.limit === "string"
-                ? parseInt(req.query.limit, 10)
-                : -1,
-          });
-        });
+        const mentionCounts = await runOnRedis(
+          { origin: "agent_usage" },
+          async (redis) => {
+            return getAgentsUsage({
+              providedRedis: redis,
+              workspaceId: owner.sId,
+              limit:
+                typeof req.query.limit === "string"
+                  ? parseInt(req.query.limit, 10)
+                  : -1,
+            });
+          }
+        );
         const usageMap = _.keyBy(mentionCounts, "agentId");
         agentConfigurations = agentConfigurations.map((agentConfiguration) =>
           usageMap[agentConfiguration.sId]
@@ -127,25 +133,58 @@ async function handler(
           auth,
           agents: agentConfigurations,
         });
-        agentConfigurations = await Promise.all(
-          agentConfigurations.map(
-            async (
-              agentConfiguration,
-              index
-            ): Promise<LightAgentConfigurationType> => {
-              return {
-                ...agentConfiguration,
-                lastAuthors: recentAuthors[index],
-              };
-            }
-          )
+        agentConfigurations = agentConfigurations.map(
+          (agentConfiguration, index) => {
+            return {
+              ...agentConfiguration,
+              lastAuthors: recentAuthors[index],
+            };
+          }
         );
+      }
+      if (withFeedbacks === "true") {
+        const feedbacks =
+          await AgentMessageFeedbackResource.getFeedbackCountForAssistants(
+            auth,
+            agentConfigurations
+              .filter((agent) => agent.scope !== "global")
+              .map((agent) => agent.sId),
+            30
+          );
+        agentConfigurations = agentConfigurations.map((agentConfiguration) => ({
+          ...agentConfiguration,
+          feedbacks: {
+            up:
+              feedbacks.find(
+                (f) =>
+                  f.agentConfigurationId === agentConfiguration.sId &&
+                  f.thumbDirection === "up"
+              )?.count ?? 0,
+            down:
+              feedbacks.find(
+                (f) =>
+                  f.agentConfigurationId === agentConfiguration.sId &&
+                  f.thumbDirection === "down"
+              )?.count ?? 0,
+          },
+        }));
       }
 
       return res.status(200).json({
         agentConfigurations,
       });
     case "POST":
+      const killSwitches = await KillSwitchResource.listEnabledKillSwitches();
+      if (killSwitches?.includes("save_agent_configurations")) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "app_auth_error",
+            message:
+              "Saving agent configurations is temporarily disabled, try again later.",
+          },
+        });
+      }
       const bodyValidation =
         PostOrPatchAgentConfigurationRequestBodySchema.decode(req.body);
       if (isLeft(bodyValidation)) {
@@ -295,7 +334,14 @@ export async function createOrUpgradeAgentConfiguration({
     model: assistant.model,
     agentConfigurationId,
     templateId: assistant.templateId ?? null,
-    dataSourceViewIds: getDataSourceViewIdsFromActions(actions),
+    groupIds: await getAgentConfigurationGroupIdsFromActionsLegacy(
+      auth,
+      actions
+    ),
+    requestedGroupIds: await getAgentConfigurationGroupIdsFromActions(
+      auth,
+      actions
+    ),
   });
 
   if (agentConfigurationRes.isErr()) {
@@ -327,7 +373,7 @@ export async function createOrUpgradeAgentConfiguration({
       }
       actionConfigs.push(res.value);
     } else if (action.type === "dust_app_run_configuration") {
-      const app = await getApp(auth, action.appId);
+      const app = await AppResource.fetchById(auth, action.appId);
       if (!app) {
         return new Err(new Error(`App ${action.appId} not found`));
       }
@@ -336,7 +382,7 @@ export async function createOrUpgradeAgentConfiguration({
         auth,
         {
           type: "dust_app_run_configuration",
-          app,
+          app: app.toJSON(),
           appWorkspaceId: action.appWorkspaceId,
           appId: action.appId,
           name: action.name ?? null,
@@ -444,31 +490,4 @@ export async function createOrUpgradeAgentConfiguration({
   }
 
   return new Ok(agentConfiguration);
-}
-
-function getDataSourceViewIdsFromActions(
-  actions: PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"]
-): string[] {
-  const relevantActions = actions.filter(
-    (action) =>
-      action.type === "retrieval_configuration" ||
-      action.type === "process_configuration" ||
-      action.type === "tables_query_configuration"
-  );
-
-  return removeNulls(
-    relevantActions.flatMap((action) => {
-      if (
-        action.type === "retrieval_configuration" ||
-        action.type === "process_configuration"
-      ) {
-        return action.dataSources.map(
-          (dataSource) => dataSource.dataSourceViewId
-        );
-      } else if (action.type === "tables_query_configuration") {
-        return action.tables.map((table) => table.dataSourceViewId);
-      }
-      return [];
-    })
-  );
 }

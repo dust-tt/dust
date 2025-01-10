@@ -7,7 +7,7 @@ interface ErrorBoundaryState {
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
-  onErrored: () => void;
+  onErrored: (e?: unknown) => void;
 }
 
 export class ErrorBoundary extends React.Component<
@@ -26,7 +26,7 @@ export class ErrorBoundary extends React.Component<
 
   componentDidCatch(error: unknown) {
     this.setState({ hasError: true, error });
-    this.props.onErrored();
+    this.props.onErrored(error);
   }
 
   render() {

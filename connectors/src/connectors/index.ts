@@ -2,7 +2,7 @@ import type {
   ConnectorProvider,
   ModelId,
   Result,
-  SlackConfiguration,
+  SlackConfigurationType,
   WebCrawlerConfiguration,
 } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
@@ -11,10 +11,16 @@ import { ConfluenceConnectorManager } from "@connectors/connectors/confluence";
 import { GithubConnectorManager } from "@connectors/connectors/github";
 import { GoogleDriveConnectorManager } from "@connectors/connectors/google_drive";
 import { IntercomConnectorManager } from "@connectors/connectors/intercom";
+import type {
+  ConnectorManagerError,
+  CreateConnectorErrorCode,
+} from "@connectors/connectors/interface";
 import { MicrosoftConnectorManager } from "@connectors/connectors/microsoft";
 import { NotionConnectorManager } from "@connectors/connectors/notion";
 import { SlackConnectorManager } from "@connectors/connectors/slack";
+import { SnowflakeConnectorManager } from "@connectors/connectors/snowflake";
 import { WebcrawlerConnectorManager } from "@connectors/connectors/webcrawler";
+import { ZendeskConnectorManager } from "@connectors/connectors/zendesk";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 type ConnectorManager =
@@ -25,7 +31,8 @@ type ConnectorManager =
   | SlackConnectorManager
   | IntercomConnectorManager
   | GithubConnectorManager
-  | GoogleDriveConnectorManager;
+  | GoogleDriveConnectorManager
+  | SnowflakeConnectorManager;
 
 export function getConnectorManager({
   connectorProvider,
@@ -51,6 +58,10 @@ export function getConnectorManager({
       return new SlackConnectorManager(connectorId);
     case "webcrawler":
       return new WebcrawlerConnectorManager(connectorId);
+    case "snowflake":
+      return new SnowflakeConnectorManager(connectorId);
+    case "zendesk":
+      return new ZendeskConnectorManager(connectorId);
     default:
       assertNever(connectorProvider);
   }
@@ -81,9 +92,11 @@ export function createConnector({
       params: {
         dataSourceConfig: DataSourceConfig;
         connectionId: string;
-        configuration: SlackConfiguration;
+        configuration: SlackConfigurationType;
       };
-    }): Promise<Result<string, Error>> {
+    }): Promise<
+  Result<string, ConnectorManagerError<CreateConnectorErrorCode>>
+> {
   switch (connectorProvider) {
     case "confluence":
       return ConfluenceConnectorManager.create(params);
@@ -101,6 +114,10 @@ export function createConnector({
       return SlackConnectorManager.create(params);
     case "webcrawler":
       return WebcrawlerConnectorManager.create(params);
+    case "snowflake":
+      return SnowflakeConnectorManager.create(params);
+    case "zendesk":
+      return ZendeskConnectorManager.create(params);
     default:
       assertNever(connectorProvider);
   }

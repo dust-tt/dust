@@ -19,7 +19,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY } from "@app/lib/invitations";
 import { MembershipInvitation } from "@app/lib/models/workspace";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { isEmailValid } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
@@ -128,7 +128,7 @@ export async function updateOrCreateInvitation(
   return typeFromModel(
     owner,
     await MembershipInvitation.create({
-      sId: generateLegacyModelSId(),
+      sId: generateRandomModelSId(),
       workspaceId: owner.id,
       inviteEmail: sanitizeString(inviteEmail),
       status: "pending",
@@ -154,6 +154,14 @@ function getMembershipInvitationUrlForToken(
   return `${config.getClientFacingUrl()}/w/${owner.sId}/join/?t=${invitationToken}`;
 }
 
+export function getTokenFromMembershipInvitationUrl(
+  url: string
+): string | null {
+  const urlObj = new URL(url);
+  const token = urlObj.searchParams.get("t");
+  return token;
+}
+
 export function getMembershipInvitationUrl(
   owner: LightWorkspaceType,
   invitationId: number
@@ -172,7 +180,7 @@ export async function sendWorkspaceInvitationEmail(
     to: invitation.inviteEmail,
     from: {
       name: "Dust team",
-      email: "team@dust.tt",
+      email: "support@dust.help",
     },
     templateId: config.getInvitationEmailTemplate(),
     dynamic_template_data: {

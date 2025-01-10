@@ -1,49 +1,78 @@
-import { Input } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
-import type { CoreAPITable } from "@dust-tt/types";
-import { Menu } from "@headlessui/react";
+import {
+  Button,
+  PopoverContent,
+  PopoverRoot,
+  PopoverTrigger,
+  ScrollArea,
+  SearchInput,
+} from "@dust-tt/sparkle";
+import type {
+  DataSourceViewContentNode,
+  LightWorkspaceType,
+  SpaceType,
+} from "@dust-tt/types";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import { useEffect, useState } from "react";
 
-import { useDataSourceTables } from "@app/lib/swr/data_sources";
+import { useDataSourceViewTables } from "@app/lib/swr/data_source_view_tables";
+import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
 import { classNames } from "@app/lib/utils";
 
-export default function TablePicker({
-  owner,
-  dataSource,
-  currentTableId,
-  readOnly,
-  onTableUpdate,
-}: {
-  owner: WorkspaceType;
+interface TablePickerProps {
+  owner: LightWorkspaceType;
   dataSource: {
     workspace_id: string;
     data_source_id: string;
   };
   currentTableId?: string;
   readOnly: boolean;
-  onTableUpdate: (table: CoreAPITable) => void;
-}) {
-  void owner;
+  space: SpaceType;
+  onTableUpdate: (table: DataSourceViewContentNode) => void;
+  excludeTables?: Array<{ dataSourceId: string; tableId: string }>;
+}
+
+export default function TablePicker({
+  owner,
+  dataSource,
+  currentTableId,
+  readOnly,
+  space,
+  onTableUpdate,
+  excludeTables,
+}: TablePickerProps) {
   void dataSource;
 
-  // TODO(GROUPS_INFRA): Use data source views to get tables.
-  const { tables } = useDataSourceTables({
-    workspaceId: dataSource.workspace_id,
-    dataSourceName: dataSource.data_source_id,
+  const { spaceDataSourceViews } = useSpaceDataSourceViews({
+    spaceId: space.sId,
+    workspaceId: owner.sId,
+  });
+
+  // Look for the selected data source view in the list - data_source_id can contain either dsv sId
+  // or dataSource name, try to find a match
+  const selectedDataSourceView = spaceDataSourceViews.find(
+    (dsv) =>
+      dsv.sId === dataSource.data_source_id ||
+      // Legacy behavior.
+      dsv.dataSource.name === dataSource.data_source_id
+  );
+
+  const { tables } = useDataSourceViewTables({
+    owner,
+    dataSourceView: selectedDataSourceView ?? null,
   });
 
   const currentTable = currentTableId
-    ? tables.find((t) => t.table_id === currentTableId)
+    ? tables.find((t) => t.dustDocumentId === currentTableId)
     : null;
 
   const [searchFilter, setSearchFilter] = useState("");
   const [filteredTables, setFilteredTables] = useState(tables);
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     const newTables = searchFilter
       ? tables.filter((t) =>
-          t.name.toLowerCase().includes(searchFilter.toLowerCase())
+          t.title.toLowerCase().includes(searchFilter.toLowerCase())
         )
       : tables;
     setFilteredTables(newTables.slice(0, 30));
@@ -54,86 +83,89 @@ export default function TablePicker({
       <div className="flex items-center">
         {readOnly ? (
           currentTable ? (
-            <div className="text-sm font-bold text-action-500">
-              {currentTable.name}
+            <div className="max-w-20 mr-1 truncate text-sm font-bold text-action-500">
+              {currentTable.title}
             </div>
           ) : (
             "No Table"
           )
         ) : (
-          <Menu as="div" className="relative inline-block text-left">
-            <div>
-              <Menu.Button
-                className={classNames(
-                  "inline-flex items-center rounded-md py-1 text-sm font-normal text-gray-700",
-                  currentTable ? "px-0" : "border px-3",
-                  readOnly
-                    ? "border-white text-gray-300"
-                    : "border-orange-400 text-gray-700",
-                  "focus:outline-none focus:ring-0"
-                )}
-              >
-                {currentTable ? (
-                  <>
-                    <div className="mr-1 text-sm font-bold text-action-500">
-                      {currentTable.name}
-                    </div>
-                    <ChevronDownIcon className="mt-0.5 h-4 w-4 hover:text-gray-700" />
-                  </>
-                ) : tables && tables.length > 0 ? (
-                  "Select Table"
-                ) : (
-                  "No Tables"
-                )}
-              </Menu.Button>
-            </div>
+          <PopoverRoot open={open} onOpenChange={setOpen}>
+            <PopoverTrigger>
+              {currentTable ? (
+                <div
+                  className={classNames(
+                    "inline-flex items-center rounded-md py-1 text-sm font-normal",
+                    readOnly ? "text-gray-300" : "text-gray-700",
+                    "focus:outline-none focus:ring-0"
+                  )}
+                >
+                  <div className="mr-1 max-w-xs truncate text-sm font-bold text-action-500">
+                    {currentTable.title}
+                  </div>
+                  <ChevronDownIcon className="mt-0.5 h-4 w-4 hover:text-gray-700" />
+                </div>
+              ) : tables && tables.length > 0 ? (
+                <Button
+                  variant="outline"
+                  label="Select Table"
+                  isSelect
+                  size="xs"
+                />
+              ) : (
+                <span
+                  className={classNames(
+                    "text-sm",
+                    readOnly ? "text-gray-300" : "text-gray-700"
+                  )}
+                >
+                  No Tables
+                </span>
+              )}
+            </PopoverTrigger>
 
-            {(tables || []).length > 0 ? (
-              <Menu.Items
-                className={classNames(
-                  "absolute z-10 mt-1 w-max origin-top-left rounded-md bg-white shadow-sm ring-1 ring-black ring-opacity-5 focus:outline-none",
-                  currentTable ? "-left-4" : "left-1"
-                )}
-              >
-                <Input
+            {(tables || []).length > 0 && (
+              <PopoverContent className="mr-2 p-4">
+                <SearchInput
                   name="search"
                   placeholder="Search"
                   value={searchFilter}
-                  onChange={(value) => setSearchFilter(value)}
-                  className="w-48"
+                  onChange={(e) => setSearchFilter(e)}
                 />
-                <div className="py-1">
-                  {(filteredTables || []).map((t) => {
-                    return (
-                      <Menu.Item key={t.table_id}>
-                        {({ active }) => (
-                          <span
-                            className={classNames(
-                              active
-                                ? "bg-gray-50 text-gray-900"
-                                : "text-gray-700",
-                              "block cursor-pointer px-4 py-2 text-sm"
-                            )}
-                            onClick={() => {
-                              onTableUpdate(t);
-                              setSearchFilter("");
-                            }}
-                          >
-                            {t.name}
-                          </span>
-                        )}
-                      </Menu.Item>
-                    );
-                  })}
+                <ScrollArea className="flex max-h-[300px] flex-col">
+                  {(filteredTables || [])
+                    .filter(
+                      (t) =>
+                        !excludeTables?.some(
+                          (et) =>
+                            et.dataSourceId === dataSource.data_source_id &&
+                            et.tableId === t.dustDocumentId
+                        )
+                    )
+                    .map((t) => (
+                      <div
+                        key={t.dustDocumentId}
+                        className="flex cursor-pointer flex-col items-start hover:opacity-80"
+                        onClick={() => {
+                          onTableUpdate(t);
+                          setSearchFilter("");
+                          setOpen(false);
+                        }}
+                      >
+                        <div className="my-1">
+                          <div className="text-sm">{t.title}</div>
+                        </div>
+                      </div>
+                    ))}
                   {filteredTables.length === 0 && (
                     <span className="block px-4 py-2 text-sm text-gray-700">
                       No tables found
                     </span>
                   )}
-                </div>
-              </Menu.Items>
-            ) : null}
-          </Menu>
+                </ScrollArea>
+              </PopoverContent>
+            )}
+          </PopoverRoot>
         )}
       </div>
     </div>

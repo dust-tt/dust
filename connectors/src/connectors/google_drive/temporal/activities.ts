@@ -1,14 +1,17 @@
 import type { ModelId } from "@dust-tt/types";
+import { GOOGLE_DRIVE_MIME_TYPES } from "@dust-tt/types";
 import { uuid4 } from "@temporalio/workflow";
 import type { drive_v3 } from "googleapis";
-import type { GaxiosResponse } from "googleapis-common";
-import type { OAuth2Client } from "googleapis-common";
+import type { GaxiosResponse, OAuth2Client } from "googleapis-common";
 import { GaxiosError } from "googleapis-common";
 import StatsD from "hot-shots";
 import PQueue from "p-queue";
 import { Op } from "sequelize";
 
-import { GOOGLE_DRIVE_USER_SPACE_VIRTUAL_DRIVE_ID } from "@connectors/connectors/google_drive/lib/consts";
+import {
+  GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID,
+  GOOGLE_DRIVE_USER_SPACE_VIRTUAL_DRIVE_ID,
+} from "@connectors/connectors/google_drive/lib/consts";
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import { syncOneFile } from "@connectors/connectors/google_drive/temporal/file";
@@ -20,23 +23,27 @@ import { deleteSpreadsheet } from "@connectors/connectors/google_drive/temporal/
 import {
   driveObjectToDustType,
   getAuthObject,
-  getDocumentId,
   getDriveClient,
+  getInternalId,
   getMyDriveIdCached,
 } from "@connectors/connectors/google_drive/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { deleteFromDataSource } from "@connectors/lib/data_sources";
+import {
+  deleteDataSourceDocument,
+  deleteDataSourceFolder,
+  upsertDataSourceFolder,
+} from "@connectors/lib/data_sources";
 import {
   GoogleDriveConfig,
   GoogleDriveFiles,
   GoogleDriveFolders,
   GoogleDriveSyncToken,
 } from "@connectors/lib/models/google_drive";
+import { redisClient } from "@connectors/lib/redis";
 import { heartbeat } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { sequelizeConnection } from "@connectors/resources/storage";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
 import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
 import { FILE_ATTRIBUTES_TO_FETCH } from "@connectors/types/google_drive";
 
@@ -50,6 +57,26 @@ type LightGoogleDrive = {
 };
 
 export const statsDClient = new StatsD();
+
+/**
+ *  Upserts to data_sources_folders (core) a top-level folder "Shared with me".
+ */
+export async function upsertSharedWithMeFolder(connectorId: ModelId) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+
+  const folderId = getInternalId(GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID);
+  await upsertDataSourceFolder({
+    dataSourceConfig: dataSourceConfigFromConnector(connector),
+    folderId,
+    parents: [folderId],
+    parentId: null,
+    title: "Shared with me",
+    mimeType: GOOGLE_DRIVE_MIME_TYPES.FOLDER,
+  });
+}
 
 export async function getDrives(
   connectorId: ModelId
@@ -159,6 +186,7 @@ export async function syncFiles(
   logger.info(
     {
       connectorId,
+      folderId: driveFolderId,
       dataSourceId: dataSourceConfig.dataSourceId,
     },
     `[SyncFiles] Start sync.`
@@ -176,7 +204,11 @@ export async function syncFiles(
   if (!driveFolder) {
     // We got a 404 on this folder, we skip it.
     logger.info(
-      { driveFolderId },
+      {
+        connectorId,
+        folderId: driveFolderId,
+        dataSourceId: dataSourceConfig.dataSourceId,
+      },
       `Google Drive Folder unexpectedly not found (got 404)`
     );
     return {
@@ -237,9 +269,9 @@ export async function syncFiles(
         return driveObjectToDustType(file, authCredentials);
       })
   );
-  const subfolders = filesToSync
-    .filter((file) => file.mimeType === "application/vnd.google-apps.folder")
-    .map((f) => f.id);
+  const subfolders = filesToSync.filter(
+    (file) => file.mimeType === "application/vnd.google-apps.folder"
+  );
 
   logger.info(
     {
@@ -286,7 +318,7 @@ export async function syncFiles(
   return {
     nextPageToken: res.data.nextPageToken ? res.data.nextPageToken : null,
     count,
-    subfolders: subfolders,
+    subfolders: subfolders.map((f) => f.id),
   };
 }
 
@@ -309,7 +341,7 @@ export async function objectIsInFolderSelection(
   );
 
   for (const parent of parents) {
-    if (foldersIds.includes(parent.id)) {
+    if (foldersIds.includes(parent)) {
       return true;
     }
   }
@@ -319,7 +351,6 @@ export async function objectIsInFolderSelection(
 
 export async function incrementalSync(
   connectorId: ModelId,
-  dataSourceConfig: DataSourceConfig,
   driveId: string,
   isSharedDrive: boolean,
   startSyncTs: number,
@@ -332,6 +363,10 @@ export async function incrementalSync(
     activity: "incrementalSync",
     runInstance: uuid4(),
   });
+  const redisCli = await redisClient({
+    origin: "google_drive_incremental_sync",
+  });
+
   try {
     const connector = await ConnectorResource.fetchById(connectorId);
     if (!connector) {
@@ -361,7 +396,7 @@ export async function incrementalSync(
 
     let opts: drive_v3.Params$Resource$Changes$List = {
       pageToken: nextPageToken,
-      pageSize: 100,
+      pageSize: 500,
       fields: "*",
       includeItemsFromAllDrives: true,
       supportsAllDrives: true,
@@ -408,6 +443,18 @@ export async function incrementalSync(
       if (!change.file.id) {
         continue;
       }
+
+      if (
+        await alreadySeenAndIgnored({
+          fileId: change.file.id,
+          connectorId,
+          startSyncTs,
+          redisCli,
+        })
+      ) {
+        continue;
+      }
+
       const file = await driveObjectToDustType(change.file, authCredentials);
       if (
         !(await objectIsInFolderSelection(
@@ -430,6 +477,12 @@ export async function incrementalSync(
         if (localFile) {
           await deleteOneFile(connectorId, file);
         }
+        await markAsSeenAndIgnored({
+          fileId: change.file.id,
+          connectorId,
+          startSyncTs,
+          redisCli,
+        });
         continue;
       }
 
@@ -438,23 +491,43 @@ export async function incrementalSync(
           `Invalid file. File is: ${JSON.stringify(change.file)}`
         );
       }
-      localLogger.info({ file_id: change.file.id }, "will sync file");
+      localLogger.info({ fileId: change.file.id }, "will sync file");
+
+      const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
       const driveFile: GoogleDriveObjectType = await driveObjectToDustType(
         change.file,
         authCredentials
       );
       if (driveFile.mimeType === "application/vnd.google-apps.folder") {
+        const parentGoogleIds = await getFileParentsMemoized(
+          connectorId,
+          authCredentials,
+          driveFile,
+          startSyncTs
+        );
+
+        const parents = parentGoogleIds.map((parent) => getInternalId(parent));
+
+        await upsertDataSourceFolder({
+          dataSourceConfig,
+          folderId: getInternalId(driveFile.id),
+          parents,
+          parentId: parents[1] || null,
+          title: driveFile.name ?? "",
+          mimeType: GOOGLE_DRIVE_MIME_TYPES.FOLDER,
+        });
+
         await GoogleDriveFiles.upsert({
           connectorId: connectorId,
-          dustFileId: getDocumentId(driveFile.id),
+          dustFileId: getInternalId(driveFile.id),
           driveFileId: file.id,
           name: file.name,
           mimeType: file.mimeType,
           parentId: file.parent,
           lastSeenTs: new Date(),
         });
-        localLogger.info({ file_id: change.file.id }, "done syncing file");
+        localLogger.info({ fileId: change.file.id }, "done syncing file");
 
         continue;
       }
@@ -466,7 +539,7 @@ export async function incrementalSync(
         driveFile,
         startSyncTs
       );
-      localLogger.info({ file_id: change.file.id }, "done syncing file");
+      localLogger.info({ fileId: change.file.id }, "done syncing file");
     }
 
     nextPageToken = changesRes.data.nextPageToken
@@ -724,7 +797,10 @@ export async function deleteFile(googleDriveFile: GoogleDriveFiles) {
     googleDriveFile.mimeType !== "application/vnd.google-apps.folder"
   ) {
     const dataSourceConfig = dataSourceConfigFromConnector(connector);
-    await deleteFromDataSource(dataSourceConfig, googleDriveFile.dustFileId);
+    await deleteDataSourceDocument(
+      dataSourceConfig,
+      googleDriveFile.dustFileId
+    );
   }
   const folder = await GoogleDriveFolders.findOne({
     where: {
@@ -739,11 +815,18 @@ export async function deleteFile(googleDriveFile: GoogleDriveFiles) {
     }
     await googleDriveFile.destroy({ transaction: t });
   });
+
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  await deleteDataSourceFolder({
+    dataSourceConfig,
+    folderId: googleDriveFile.dustFileId,
+  });
 }
 
 export async function markFolderAsVisited(
   connectorId: ModelId,
-  driveFileId: string
+  driveFileId: string,
+  startSyncTs: number = 0
 ) {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -761,9 +844,28 @@ export async function markFolderAsVisited(
     return;
   }
 
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const parentGoogleIds = await getFileParentsMemoized(
+    connectorId,
+    authCredentials,
+    file,
+    startSyncTs
+  );
+
+  const parents = parentGoogleIds.map((parent) => getInternalId(parent));
+
+  await upsertDataSourceFolder({
+    dataSourceConfig,
+    folderId: getInternalId(file.id),
+    parents,
+    parentId: parents[1] || null,
+    title: file.name ?? "",
+    mimeType: GOOGLE_DRIVE_MIME_TYPES.FOLDER,
+  });
+
   await GoogleDriveFiles.upsert({
     connectorId: connectorId,
-    dustFileId: getDocumentId(driveFileId),
+    dustFileId: getInternalId(driveFileId),
     driveFileId: file.id,
     name: file.name,
     mimeType: file.mimeType,
@@ -795,4 +897,38 @@ export async function folderHasChildren(
   }
 
   return res.data.files?.length > 0;
+}
+
+async function alreadySeenAndIgnored({
+  fileId,
+  connectorId,
+  startSyncTs,
+  redisCli,
+}: {
+  fileId: string;
+  connectorId: ModelId;
+  startSyncTs: number;
+  redisCli: Awaited<ReturnType<typeof redisClient>>;
+}) {
+  const key = `google_drive_seen_and_ignored_${connectorId}_${startSyncTs}_${fileId}`;
+  const val = await redisCli.get(key);
+  return val !== null;
+}
+
+async function markAsSeenAndIgnored({
+  fileId,
+  connectorId,
+  startSyncTs,
+  redisCli,
+}: {
+  fileId: string;
+  connectorId: ModelId;
+  startSyncTs: number;
+  redisCli: Awaited<ReturnType<typeof redisClient>>;
+}) {
+  const key = `google_drive_seen_and_ignored_${connectorId}_${startSyncTs}_${fileId}`;
+  await redisCli.set(key, "1", {
+    PX: 1000 * 60 * 60 * 24, // 1 day
+  });
+  return;
 }

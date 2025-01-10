@@ -1,13 +1,13 @@
+import type { MessageWithContentFragmentsType } from "@dust-tt/types";
 import { useEffect } from "react";
 
-import type { MessageWithContentFragmentsType } from "@app/components/assistant/conversation/ConversationViewer";
-import { LAST_MESSAGE_GROUP_ID } from "@app/components/assistant/conversation/messages/MessageGroup";
+import { LAST_MESSAGE_GROUP_ID } from "@app/components/assistant/conversation/MessageGroup";
 
 /**
  * A custom hook to observe when the last message group element becomes visible or not.
  */
 export function useLastMessageGroupObserver(
-  messages: MessageWithContentFragmentsType[][][]
+  messages: MessageWithContentFragmentsType[][]
 ) {
   useEffect(() => {
     const observer = new IntersectionObserver(

@@ -6,21 +6,16 @@ import { SUBSCRIPTION_STATUSES } from "@dust-tt/types";
 import type {
   CreationOptional,
   ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
   NonAttribute,
   Transaction,
 } from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import { DataTypes } from "sequelize";
 
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { BaseModel } from "@app/lib/resources/storage/wrappers";
 
-export class Plan extends Model<
-  InferAttributes<Plan>,
-  InferCreationAttributes<Plan>
-> {
-  declare id: CreationOptional<number>;
+export class Plan extends BaseModel<Plan> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -33,6 +28,7 @@ export class Plan extends Model<
   declare maxMessages: number;
   declare maxMessagesTimeframe: MaxMessagesTimeframeType;
   declare maxUsersInWorkspace: number;
+  declare maxVaultsInWorkspace: number;
   declare isSlackbotAllowed: boolean;
   declare isManagedConfluenceAllowed: boolean;
   declare isManagedSlackAllowed: boolean;
@@ -47,11 +43,6 @@ export class Plan extends Model<
 }
 Plan.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -89,6 +80,10 @@ Plan.init(
       allowNull: false,
     },
     maxUsersInWorkspace: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    maxVaultsInWorkspace: {
       type: DataTypes.INTEGER,
       allowNull: false,
     },
@@ -148,11 +143,7 @@ Plan.init(
   }
 );
 
-export class Subscription extends Model<
-  InferAttributes<Subscription>,
-  InferCreationAttributes<Subscription>
-> {
-  declare id: CreationOptional<number>;
+export class Subscription extends BaseModel<Subscription> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -178,11 +169,6 @@ export class Subscription extends Model<
 }
 Subscription.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -266,7 +252,7 @@ Subscription.addHook(
 // Plan <> Subscription relationship: attribute "planId" in Subscription
 Plan.hasMany(Subscription, {
   foreignKey: { name: "planId", allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 Subscription.belongsTo(Plan, {
   foreignKey: { name: "planId", allowNull: false },
@@ -275,7 +261,7 @@ Subscription.belongsTo(Plan, {
 // Subscription <> Workspace relationship: attribute "workspaceId" in Subscription
 Workspace.hasMany(Subscription, {
   foreignKey: { name: "workspaceId", allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 Subscription.belongsTo(Workspace, {
   foreignKey: { name: "workspaceId", allowNull: false },

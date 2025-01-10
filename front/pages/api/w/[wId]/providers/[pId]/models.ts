@@ -1,7 +1,7 @@
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { Provider } from "@app/lib/resources/storage/models/apps";
 import { apiError } from "@app/logger/withlogging";
@@ -84,9 +84,11 @@ async function handler(
                   ) &&
                   (m.id.startsWith("text-") ||
                     m.id.startsWith("code-") ||
+                    m.id.startsWith("o1-") ||
                     m.id.startsWith("gpt-3.5-turbo") ||
                     m.id.startsWith("gpt-4")) &&
                   (!chat ||
+                    m.id.startsWith("o1-") ||
                     m.id.startsWith("gpt-3.5-turbo") ||
                     m.id.startsWith("gpt-4"))
                 );
@@ -174,18 +176,16 @@ async function handler(
           } else {
             if (chat) {
               anthropic_models = [
-                { id: "claude-instant-1.2" },
                 { id: "claude-2.1" },
                 { id: "claude-3-haiku-20240307" },
                 { id: "claude-3-sonnet-20240229" },
                 { id: "claude-3-5-sonnet-20240620" },
+                { id: "claude-3-5-sonnet-20241022" },
+                { id: "claude-3-5-haiku-20241022" },
                 { id: "claude-3-opus-20240229" },
               ];
             } else {
-              anthropic_models = [
-                { id: "claude-instant-1.2" },
-                { id: "claude-2.1" },
-              ];
+              anthropic_models = [{ id: "claude-2.1" }];
             }
           }
 
@@ -240,6 +240,31 @@ async function handler(
               { id: "gemini-1.5-flash-latest" },
               { id: "gemini-1.5-pro-latest" },
             ],
+          });
+
+        case "togetherai":
+          if (embed) {
+            res.status(200).json({ models: [] });
+            return;
+          }
+          return res.status(200).json({
+            models: [
+              // llama
+              { id: "meta-llama/Llama-3.3-70B-Instruct-Turbo" },
+              // qwen
+              { id: "Qwen/Qwen2.5-Coder-32B-Instruct" },
+              { id: "Qwen/QwQ-32B-Preview" },
+              { id: "Qwen/Qwen2-72B-Instruct" },
+            ],
+          });
+
+        case "deepseek":
+          if (embed) {
+            res.status(200).json({ models: [] });
+            return;
+          }
+          return res.status(200).json({
+            models: [{ id: "deepseek-chat" }],
           });
 
         default:

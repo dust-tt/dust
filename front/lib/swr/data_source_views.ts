@@ -5,19 +5,18 @@ import type {
 } from "@dust-tt/types";
 import type { PaginationState } from "@tanstack/react-table";
 import { useMemo } from "react";
-import type { Fetcher, KeyedMutator } from "swr";
+import type { Fetcher, KeyedMutator, SWRConfiguration } from "swr";
 
 import {
   appendPaginationParams,
   fetcher,
   fetcherMultiple,
-  postFetcher,
+  fetcherWithBody,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { GetDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]/data_source_views";
-import type { GetDataSourceViewContentNodes } from "@app/pages/api/w/[wId]/vaults/[vId]/data_source_views/[dsvId]/content-nodes";
-import type { GetDataSourceViewDocumentResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_source_views/[dsvId]/documents/[documentId]";
-import type { GetDataSourceConfigurationResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_sources/[dsId]/configuration";
+import type { GetDataSourceViewContentNodes } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/content-nodes";
+import type { GetDataSourceConfigurationResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/configuration";
 
 type DataSourceViewsAndInternalIds = {
   dataSourceView: DataSourceViewType;
@@ -64,11 +63,10 @@ export function useMultipleDataSourceViewsContentNodes({
 } {
   const urlsAndOptions = dataSourceViewsAndInternalIds.map(
     ({ dataSourceView, internalIds }) => {
-      const url = `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/content-nodes`;
+      const url = `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/content-nodes`;
       const body = JSON.stringify({
         internalIds,
         viewType,
-        includeChildren: false,
       });
       const options = {
         method: "POST",
@@ -105,20 +103,26 @@ export function useDataSourceViewContentNodes({
   owner,
   dataSourceView,
   internalIds,
-  includeChildren,
+  parentId,
   pagination,
-  viewType = "documents",
+  viewType,
+  disabled = false,
+  swrOptions,
 }: {
   owner: LightWorkspaceType;
   dataSourceView?: DataSourceViewType;
   internalIds?: string[];
-  includeChildren: boolean;
+  parentId?: string;
   pagination?: PaginationState;
   viewType?: ContentNodesViewType;
+  disabled?: boolean;
+  swrOptions?: SWRConfiguration;
 }): {
   isNodesError: boolean;
   isNodesLoading: boolean;
-  mutateDataSourceViewContentNodes: KeyedMutator<GetDataSourceViewContentNodes>;
+  isNodesValidating: boolean;
+  mutate: KeyedMutator<GetDataSourceViewContentNodes>;
+  mutateRegardlessOfQueryParams: KeyedMutator<GetDataSourceViewContentNodes>;
   nodes: GetDataSourceViewContentNodes["nodes"];
   totalNodesCount: number;
 } {
@@ -126,64 +130,45 @@ export function useDataSourceViewContentNodes({
   appendPaginationParams(params, pagination);
 
   const url = dataSourceView
-    ? `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/content-nodes?${params}`
+    ? `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/content-nodes?${params}`
     : null;
 
-  const body = JSON.stringify({
+  const body = {
     internalIds,
-    includeChildren,
+    parentId,
     viewType,
-  });
+  };
 
-  const fetchKey = useMemo(() => {
-    return JSON.stringify({
-      url,
-      body,
-    }); // Serialize with body to ensure uniqueness.
-  }, [url, body]);
+  const fetchKey = JSON.stringify([url + "?" + params.toString(), body]);
 
-  const { data, error, mutate } = useSWRWithDefaults(fetchKey, async () => {
-    if (!url) {
-      return null;
-    }
+  const { data, error, mutate, isValidating, mutateRegardlessOfQueryParams } =
+    useSWRWithDefaults(
+      fetchKey,
+      async () => {
+        if (!url) {
+          return undefined;
+        }
 
-    return postFetcher([url, { internalIds, includeChildren, viewType }]);
-  });
+        return fetcherWithBody([
+          url,
+          { internalIds, parentId, viewType },
+          "POST",
+        ]);
+      },
+      {
+        ...swrOptions,
+        disabled: disabled || !viewType,
+      }
+    );
 
   return {
     isNodesError: !!error,
     isNodesLoading: !error && !data,
-    mutateDataSourceViewContentNodes: mutate,
+    isNodesValidating: isValidating,
+    mutate,
+    mutateRegardlessOfQueryParams,
     nodes: useMemo(() => (data ? data.nodes : []), [data]),
     totalNodesCount: data ? data.total : 0,
-  };
-}
-
-export function useDataSourceViewDocument({
-  dataSourceView,
-  documentId,
-  owner,
-}: {
-  dataSourceView: DataSourceViewType | null;
-  documentId: string | null;
-  owner: LightWorkspaceType;
-}) {
-  const dataSourceViewDocumentFetcher: Fetcher<GetDataSourceViewDocumentResponseBody> =
-    fetcher;
-  const disabled = !dataSourceView || !documentId;
-
-  const { data, error, mutate } = useSWRWithDefaults(
-    disabled
-      ? null
-      : `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/documents/${encodeURIComponent(documentId)}`,
-    dataSourceViewDocumentFetcher
-  );
-
-  return {
-    document: data?.document,
-    isDocumentLoading: !disabled && !error && !data,
-    isDocumentError: error,
-    mutateDocument: mutate,
   };
 }
 
@@ -198,16 +183,17 @@ export function useDataSourceViewConnectorConfiguration({
     fetcher;
   const disabled = !dataSourceView;
 
-  const { data, error } = useSWRWithDefaults(
+  const { data, error, mutate } = useSWRWithDefaults(
     disabled
       ? null
-      : `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_sources/${dataSourceView.dataSource.name}/configuration`,
+      : `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_sources/${dataSourceView.dataSource.sId}/configuration`,
     dataSourceViewDocumentFetcher
   );
 
   return {
     configuration: data ? data.configuration : null,
-    isDocumentLoading: !disabled && !error && !data,
-    isDocumentError: error,
+    mutateConfiguration: mutate,
+    isConfigurationLoading: !disabled && !error && !data,
+    isConfigurationError: error,
   };
 }

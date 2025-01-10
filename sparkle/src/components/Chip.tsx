@@ -1,21 +1,31 @@
+import { cva } from "class-variance-authority";
 import React, { ComponentType, ReactNode } from "react";
 
-import { classNames } from "@sparkle/lib/utils";
+import { AnimatedText } from "@sparkle/components/";
+import { cn } from "@sparkle/lib/utils";
 
 import { Icon, IconProps } from "./Icon";
 
+export const CHIP_SIZES = ["xs", "sm"] as const;
+
+type ChipSizeType = (typeof CHIP_SIZES)[number];
+
+export const CHIP_COLORS = [
+  "emerald",
+  "amber",
+  "slate",
+  "purple",
+  "warning",
+  "sky",
+  "pink",
+  "red",
+] as const;
+
+type ChipColorType = (typeof CHIP_COLORS)[number];
+
 type ChipProps = {
-  size?: "xs" | "sm";
-  color?:
-    | "emerald"
-    | "amber"
-    | "slate"
-    | "purple"
-    | "warning"
-    | "sky"
-    | "pink"
-    | "action"
-    | "red";
+  size?: ChipSizeType;
+  color?: ChipColorType;
   label?: string;
   children?: ReactNode;
   className?: string;
@@ -23,75 +33,79 @@ type ChipProps = {
   icon?: ComponentType;
 };
 
-const sizeClasses = {
-  xs: "s-h-7 s-text-xs s-font-medium s-px-3 s-gap-2",
-  sm: "s-h-9 s-text-sm s-font-semibold s-px-3 s-gap-2.5",
+const sizeVariants: Record<ChipSizeType, string> = {
+  xs: "s-rounded-lg s-min-h-7 s-text-xs s-font-medium s-px-3 s-gap-2",
+  sm: "s-rounded-xl s-min-h-9 s-text-sm s-font-medium s-px-3 s-gap-2.5",
 };
 
-const baseClasses =
-  "s-rounded-lg s-inline-flex s-box-border s-border s-items-center";
+const backgroundVariants: Record<ChipColorType, string> = {
+  emerald: "s-bg-emerald-100 s-border-emerald-200",
+  amber: "s-bg-amber-100 s-border-amber-200",
+  slate: "s-bg-slate-100 s-border-slate-200",
+  purple: "s-bg-purple-100 s-border-purple-200",
+  warning: "s-bg-warning-100 s-border-warning-200",
+  sky: "s-bg-sky-100 s-border-sky-200",
+  pink: "s-bg-pink-100 s-border-pink-200",
+  red: "s-bg-red-100 s-border-red-200",
+};
 
-export function Chip({
-  size = "xs",
-  color = "slate",
-  label,
-  children,
-  className = "",
-  isBusy = false,
-  icon,
-}: ChipProps) {
-  const backgroundColor = `s-bg-${color}-100 s-border-${color}-200`;
-  const textColor = `s-text-${color}-900`;
+const textVariants: Record<ChipColorType, string> = {
+  emerald: "s-text-emerald-900",
+  amber: "s-text-amber-900",
+  slate: "s-text-foreground",
+  purple: "s-text-purple-900",
+  warning: "s-text-warning-900",
+  sky: "s-text-sky-900",
+  pink: "s-text-pink-900",
+  red: "s-text-red-900",
+};
 
-  const ChipClasses = classNames(
-    baseClasses,
-    sizeClasses[size],
-    backgroundColor,
-    textColor,
-    className
-  );
+const chipVariants = cva("s-inline-flex s-box-border s-items-center", {
+  variants: {
+    size: sizeVariants,
+    text: textVariants,
+    background: backgroundVariants,
+    isBusy: {
+      true: "s-animate-breathing-scale s-cursor-default",
+      false: "",
+    },
+  },
+  defaultVariants: {
+    size: "xs",
+    text: "slate",
+    background: "slate",
+    isBusy: false,
+  },
+});
 
-  return (
+const Chip = React.forwardRef<HTMLDivElement, ChipProps>(
+  (
+    { size, color, label, children, className, isBusy, icon }: ChipProps,
+    ref
+  ) => (
     <div
-      className={classNames(
-        ChipClasses,
-        isBusy ? "s-animate-breathing-scale s-cursor-default" : ""
+      className={cn(
+        chipVariants({ size, background: color, text: color }),
+        className
       )}
       aria-label={label}
+      ref={ref}
     >
       {icon && <Icon visual={icon} size={size as IconProps["size"]} />}
       {label && (
-        <span
-          className={classNames(
-            textColor,
-            "s-pointer s-grow s-cursor-default s-truncate"
+        <span className={cn("s-pointer s-grow s-cursor-default s-truncate")}>
+          {isBusy ? (
+            <AnimatedText variant={color}>{label}</AnimatedText>
+          ) : (
+            label
           )}
-        >
-          {label}
         </span>
       )}
       {children}
     </div>
-  );
-}
+  )
+);
 
-interface ListChipProps {
-  children: ReactNode;
-  className?: string;
-  isWrapping?: boolean;
-}
+Chip.displayName = "Chip";
 
-Chip.List = function ({ children, className, isWrapping }: ListChipProps) {
-  return (
-    <div className={classNames(className ? className : "", "s-flex")}>
-      <div
-        className={classNames(
-          "s-flex s-flex-row s-gap-2",
-          isWrapping ? "s-flex-wrap" : ""
-        )}
-      >
-        {children}
-      </div>
-    </div>
-  );
-};
+export { Chip };

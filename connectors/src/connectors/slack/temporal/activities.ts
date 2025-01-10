@@ -1,5 +1,9 @@
 import type { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
-import { cacheWithRedis, safeSubstring } from "@dust-tt/types";
+import {
+  cacheWithRedis,
+  safeSubstring,
+  SLACK_MIME_TYPES,
+} from "@dust-tt/types";
 import type {
   CodedError,
   WebAPIPlatformError,
@@ -24,12 +28,21 @@ import {
 import { isSlackWebAPIPlatformError } from "@connectors/connectors/slack/lib/errors";
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 import { getRepliesFromThread } from "@connectors/connectors/slack/lib/thread";
+import {
+  getWeekEnd,
+  getWeekStart,
+  slackChannelInternalIdFromSlackChannelId,
+  slackNonThreadedMessagesInternalIdFromSlackNonThreadedMessagesIdentifier,
+  slackThreadInternalIdFromSlackThreadIdentifier,
+} from "@connectors/connectors/slack/lib/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { cacheGet, cacheSet } from "@connectors/lib/cache";
 import {
-  deleteFromDataSource,
+  deleteDataSourceDocument,
+  deleteDataSourceFolder,
   renderDocumentTitleAndContent,
-  upsertToDatasource,
+  upsertDataSourceDocument,
+  upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
 import { ProviderWorkflowError } from "@connectors/lib/error";
 import { SlackChannel, SlackMessages } from "@connectors/lib/models/slack";
@@ -37,11 +50,11 @@ import {
   reportInitialSyncProgress,
   syncSucceeded,
 } from "@connectors/lib/sync_status";
+import { heartbeat } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
-
-import { getWeekEnd, getWeekStart } from "../lib/utils";
 
 const logger = mainLogger.child({ provider: "slack" });
 
@@ -58,24 +71,70 @@ const MAX_SYNC_NON_THREAD_MESSAGES = 4000;
  * Broadly, you'll encounter limits like these, applied on a
  * "per API method per app per workspace" basis.
  * Tier 1: ~1 request per minute
- * Tier 2: ~20 request per minute (conversations.history)
+ * Tier 2: ~20 request per minute (conversations.history, conversation.list)
  * Tier 3: ~50 request per minute (conversations.replies)
  */
 
-export async function getChannels(
+/**
+ *  Call cached to avoid rate limits
+ *  ON RATE LIMIT ERRORS PERTAINING TO THIS FUNCTION:
+ * - the next step will be to paginate (overkill at time of writing)
+ * - see issue https://github.com/dust-tt/tasks/issues/1655
+ * - and related PR https://github.com/dust-tt/dust/pull/8709
+ * @param connectorId
+ * @param joinedOnly
+ */
+export const getChannels = cacheWithRedis(
+  _getChannelsUncached,
+  (connectorId, joinedOnly) => `slack-channels-${connectorId}-${joinedOnly}`,
+  5 * 60 * 1000
+);
+
+async function _getChannelsUncached(
   connectorId: ModelId,
   joinedOnly: boolean
+): Promise<Channel[]> {
+  return Promise.all([
+    _getTypedChannelsUncached(connectorId, joinedOnly, "public_channel"),
+    _getTypedChannelsUncached(connectorId, joinedOnly, "private_channel"),
+  ]).then(([publicChannels, privateChannels]) => [
+    ...publicChannels,
+    ...privateChannels,
+  ]);
+}
+
+async function _getTypedChannelsUncached(
+  connectorId: ModelId,
+  joinedOnly: boolean,
+  types: "public_channel" | "private_channel"
 ): Promise<Channel[]> {
   const client = await getSlackClient(connectorId);
   const allChannels = [];
   let nextCursor: string | undefined = undefined;
+  let nbCalls = 0;
   do {
     const c: ConversationsListResponse = await client.conversations.list({
-      types: "public_channel",
-      limit: 1000,
+      types,
+      // despite the limit being 1000, slack may return fewer channels
+      // we observed ~50 channels per call at times see https://github.com/dust-tt/tasks/issues/1655
+      limit: 999,
       cursor: nextCursor,
+      exclude_archived: true,
     });
+    nbCalls++;
+
+    logger.info(
+      {
+        connectorId,
+        returnedChannels: allChannels.length,
+        currentCursor: nextCursor,
+        nbCalls,
+      },
+      `[Slack] conversations.list called for getChannels (${nbCalls} calls)`
+    );
+
     nextCursor = c?.response_metadata?.next_cursor;
+
     if (c.error) {
       throw new Error(c.error);
     }
@@ -88,9 +147,6 @@ export async function getChannels(
     }
     for (const channel of c.channels) {
       if (channel && channel.id) {
-        if (channel.is_archived) {
-          continue;
-        }
         if (!joinedOnly || channel.is_member) {
           allChannels.push(channel);
         }
@@ -171,6 +227,16 @@ export async function syncChannel(
     slackChannelName: remoteChannel.name,
     connectorId: connectorId,
   });
+
+  const slackConfiguration =
+    await SlackConfigurationResource.fetchByConnectorId(connectorId);
+
+  if (!slackConfiguration) {
+    throw new Error(
+      `Could not find slack configuration for connector ${connectorId}`
+    );
+  }
+
   if (!["read", "read_write"].includes(channel.permission)) {
     logger.info(
       {
@@ -182,6 +248,20 @@ export async function syncChannel(
     );
     return;
   }
+
+  // If the cursor is not set this is the first call to syncChannel so we upsert the associated
+  // folder.
+  if (!messagesCursor) {
+    await upsertDataSourceFolder({
+      dataSourceConfig,
+      folderId: slackChannelInternalIdFromSlackChannelId(channelId),
+      title: `#${channel.name}`,
+      parentId: null,
+      parents: [slackChannelInternalIdFromSlackChannelId(channelId)],
+      mimeType: SLACK_MIME_TYPES.CHANNEL,
+    });
+  }
+
   const threadsToSync: string[] = [];
   let unthreadedTimeframesToSync: number[] = [];
   const messages = await getMessagesForChannel(
@@ -203,8 +283,16 @@ export async function syncChannel(
   // first).
   let allSkip = true;
   for (const message of messages.messages) {
-    if (!message.user) {
-      // We do not support messages not posted by users for now
+    if (
+      !message.user &&
+      !(
+        message.bot_profile?.name &&
+        (await slackConfiguration.isBotWhitelistedToIndexMessages(
+          message.bot_profile.name
+        ))
+      )
+    ) {
+      // We do not support messages not posted by users for now, unless it's a whitelisted bot
       continue;
     }
     let skip = false;
@@ -370,6 +458,14 @@ export async function syncNonThreaded(
     throw new Error(`Connector ${connectorId} not found`);
   }
 
+  const slackConfiguration =
+    await SlackConfigurationResource.fetchByConnectorId(connectorId);
+  if (!slackConfiguration) {
+    throw new Error(
+      `Could not find slack configuration for connector ${connector}`
+    );
+  }
+
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const client = await getSlackClient(connectorId);
   const nextCursor: string | undefined = undefined;
@@ -418,7 +514,16 @@ export async function syncNonThreaded(
       if (message.ts) {
         latestTsSec = parseInt(message.ts);
       }
-      if (!message.user) {
+      if (
+        !message.user &&
+        !(
+          message.bot_profile?.name &&
+          (await slackConfiguration.isBotWhitelistedToIndexMessages(
+            message.bot_profile.name
+          ))
+        )
+      ) {
+        // We do not support messages not posted by users for now, unless it's a whitelisted bot
         continue;
       }
       if (!message.thread_ts && message.ts) {
@@ -462,9 +567,12 @@ export async function syncNonThreaded(
 
   const startDate = new Date(startTsMs);
   const endDate = new Date(endTsMs);
-  const startDateStr = `${startDate.getFullYear()}-${startDate.getMonth()}-${startDate.getDate()}`;
-  const endDateStr = `${endDate.getFullYear()}-${endDate.getMonth()}-${endDate.getDate()}`;
-  const documentId = `slack-${channelId}-messages-${startDateStr}-${endDateStr}`;
+  const documentId =
+    slackNonThreadedMessagesInternalIdFromSlackNonThreadedMessagesIdentifier({
+      channelId,
+      startDate,
+      endDate,
+    });
   const firstMessage = messages[0];
   let sourceUrl: string | undefined = undefined;
 
@@ -495,24 +603,40 @@ export async function syncNonThreaded(
 
   const tags = getTagsForPage(documentId, channelId, channelName);
 
-  await SlackMessages.upsert({
-    connectorId: connectorId,
-    channelId: channelId,
-    messageTs: undefined,
-    documentId: documentId,
+  // Only create the document if it doesn't already exist based on the documentId
+  const existingMessages = await SlackMessages.findAll({
+    where: {
+      connectorId: connectorId,
+      channelId: channelId,
+      documentId: documentId,
+    },
+    order: [["id", "ASC"]],
+    limit: 1,
   });
 
-  await upsertToDatasource({
+  if (existingMessages.length === 0) {
+    await SlackMessages.create({
+      connectorId: connectorId,
+      channelId: channelId,
+      messageTs: undefined,
+      documentId: documentId,
+    });
+  }
+
+  await upsertDataSourceDocument({
     dataSourceConfig,
     documentId,
     documentContent: content,
     documentUrl: sourceUrl,
     timestampMs: updatedAt,
     tags,
-    parents: [channelId],
+    parentId: slackChannelInternalIdFromSlackChannelId(channelId),
+    parents: [documentId, slackChannelInternalIdFromSlackChannelId(channelId)],
     upsertContext: {
       sync_type: isBatchSync ? "batch" : "incremental",
     },
+    title: tags.find((t) => t.startsWith("title:"))?.split(":")[1] ?? "",
+    mimeType: SLACK_MIME_TYPES.THREAD,
     async: true,
   });
 }
@@ -609,8 +733,17 @@ export async function syncThread(
     const slackError = e as CodedError;
     if (slackError.code === ErrorCode.PlatformError) {
       const platformError = slackError as WebAPIPlatformError;
+
       if (platformError.data.error === "thread_not_found") {
         // If the thread is not found we just return and don't upsert anything.
+        return;
+      }
+
+      if (
+        platformError.code === "slack_webapi_platform_error" &&
+        platformError.data?.error === "not_in_channel"
+      ) {
+        // If the bot is no longer in the channel, we don't upsert anything.
         return;
       }
     }
@@ -628,7 +761,10 @@ export async function syncThread(
     "syncThread.getRepliesFromThread.done"
   );
 
-  const documentId = `slack-${channelId}-thread-${threadTs}`;
+  const documentId = slackThreadInternalIdFromSlackThreadIdentifier({
+    channelId,
+    threadTs,
+  });
 
   const botUserId = await getBotUserIdMemoized(connectorId);
   allMessages = allMessages.filter((m) => m.user !== botUserId);
@@ -678,24 +814,43 @@ export async function syncThread(
 
   const tags = getTagsForPage(documentId, channelId, channelName, threadTs);
 
-  await SlackMessages.upsert({
-    connectorId: connectorId,
-    channelId: channelId,
-    messageTs: threadTs,
-    documentId: documentId,
+  // Only create the document if it doesn't already exist based on the documentId
+  const existingMessages = await SlackMessages.findAll({
+    where: {
+      connectorId: connectorId,
+      channelId: channelId,
+      documentId: documentId,
+    },
+    order: [["id", "ASC"]],
+    limit: 1,
   });
+  if (existingMessages[0]) {
+    await existingMessages[0].update({
+      messageTs: threadTs,
+    });
+  } else {
+    await SlackMessages.create({
+      connectorId: connectorId,
+      channelId: channelId,
+      messageTs: threadTs,
+      documentId: documentId,
+    });
+  }
 
-  await upsertToDatasource({
+  await upsertDataSourceDocument({
     dataSourceConfig,
     documentId,
     documentContent: content,
     documentUrl: sourceUrl,
     timestampMs: updatedAt,
     tags,
-    parents: [channelId],
+    parentId: slackChannelInternalIdFromSlackChannelId(channelId),
+    parents: [documentId, slackChannelInternalIdFromSlackChannelId(channelId)],
     upsertContext: {
       sync_type: isBatchSync ? "batch" : "incremental",
     },
+    title: tags.find((t) => t.startsWith("title:"))?.split(":")[1] ?? "",
+    mimeType: SLACK_MIME_TYPES.THREAD,
     async: true,
   });
 }
@@ -755,11 +910,20 @@ export async function formatMessagesForUpsert({
       const messageDate = new Date(parseInt(message.ts as string, 10) * 1000);
       const messageDateStr = formatDateForUpsert(messageDate);
 
+      const filesInfo = message.files
+        ? "\n" +
+          message.files
+            .map((file) => {
+              return `Attached file : ${file.name} ( ${file.mimetype} )`;
+            })
+            .join("\n")
+        : "";
+
       return {
         messageDate,
         dateStr: messageDateStr,
         userName,
-        text: text,
+        text: text + filesInfo,
         content: text + "\n",
         sections: [],
       };
@@ -1019,11 +1183,29 @@ export async function deleteChannel(channelId: string, connectorId: ModelId) {
     for (const slackMessage of slackMessages) {
       // We delete from the remote datasource first because we would rather double delete remotely
       // than miss one.
-      await deleteFromDataSource(dataSourceConfig, slackMessage.documentId);
-      await slackMessage.destroy();
+      await deleteDataSourceDocument(dataSourceConfig, slackMessage.documentId);
       nbDeleted++;
+
+      if (nbDeleted % 50 === 0) {
+        await heartbeat();
+      }
     }
+
+    // Batch delete after we deleted from the remote datasource
+    await SlackMessages.destroy({
+      where: {
+        channelId: channelId,
+        connectorId: connectorId,
+        id: slackMessages.map((s) => s.id),
+      },
+    });
   } while (slackMessages.length === maxMessages);
+
+  await deleteDataSourceFolder({
+    dataSourceConfig,
+    folderId: slackChannelInternalIdFromSlackChannelId(channelId),
+  });
+
   logger.info(
     { nbDeleted, channelId, connectorId },
     "Deleted documents from datasource while garbage collecting."

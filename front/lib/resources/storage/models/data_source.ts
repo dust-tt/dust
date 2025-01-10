@@ -1,29 +1,22 @@
 import type { ConnectorProvider } from "@dust-tt/types";
-import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-  NonAttribute,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import { DataTypes } from "sequelize";
 
-import { User } from "@app/lib/models/user";
+import { Conversation } from "@app/lib/models/assistant/conversation";
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { VaultModel } from "@app/lib/resources/storage/models/vaults";
+import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
+import { UserModel } from "@app/lib/resources/storage/models/user";
+import { SoftDeletableModel } from "@app/lib/resources/storage/wrappers";
 
-export class DataSource extends Model<
-  InferAttributes<DataSource>,
-  InferCreationAttributes<DataSource>
-> {
+export class DataSourceModel extends SoftDeletableModel<DataSourceModel> {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
   // Corresponds to the ID of the last user to configure the connection.
-  declare editedByUserId: ForeignKey<User["id"]>;
-  declare editedAt: CreationOptional<Date>;
+  declare editedByUserId: ForeignKey<UserModel["id"]> | null;
+  declare editedAt: Date;
 
   declare name: string;
   declare description: string | null;
@@ -33,14 +26,16 @@ export class DataSource extends Model<
   declare connectorId: string | null;
   declare connectorProvider: ConnectorProvider | null;
   declare workspaceId: ForeignKey<Workspace["id"]>;
-  declare vaultId: ForeignKey<VaultModel["id"]>;
+  declare vaultId: ForeignKey<SpaceModel["id"]>;
+  declare conversationId: ForeignKey<Conversation["id"]>;
 
-  declare editedByUser: NonAttribute<User>;
-  declare vault: NonAttribute<VaultModel>;
+  declare editedByUser: NonAttribute<UserModel>;
+  declare conversation: NonAttribute<Conversation>;
+  declare space: NonAttribute<SpaceModel>;
   declare workspace: NonAttribute<Workspace>;
 }
 
-DataSource.init(
+DataSourceModel.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -52,6 +47,9 @@ DataSource.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
+    deletedAt: {
+      type: DataTypes.DATE,
+    },
     updatedAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -59,9 +57,7 @@ DataSource.init(
     },
     editedAt: {
       type: DataTypes.DATE,
-      // TODO(2024-01-25 flav) Set `allowNull` to `false` once backfilled.
-      allowNull: true,
-      defaultValue: DataTypes.NOW,
+      allowNull: false,
     },
     name: {
       type: DataTypes.STRING,
@@ -94,29 +90,35 @@ DataSource.init(
     modelName: "data_source",
     sequelize: frontSequelize,
     indexes: [
-      { fields: ["workspaceId", "name"], unique: true },
+      { fields: ["workspaceId", "name", "deletedAt"], unique: true },
       { fields: ["workspaceId", "connectorProvider"] },
       { fields: ["workspaceId", "vaultId"] },
+      { fields: ["workspaceId", "conversationId"] },
+      { fields: ["dustAPIProjectId"] },
     ],
   }
 );
-Workspace.hasMany(DataSource, {
+Workspace.hasMany(DataSourceModel, {
   as: "workspace",
   foreignKey: { name: "workspaceId", allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
-DataSource.belongsTo(Workspace, {
+Conversation.hasMany(DataSourceModel, {
+  as: "conversation",
+  foreignKey: { name: "conversationId", allowNull: true },
+  onDelete: "RESTRICT",
+});
+DataSourceModel.belongsTo(Workspace, {
   as: "workspace",
   foreignKey: { name: "workspaceId", allowNull: false },
 });
 
-DataSource.belongsTo(User, {
+DataSourceModel.belongsTo(UserModel, {
   as: "editedByUser",
-  // TODO(2024-01-25 flav) Set `allowNull` to `false` once backfilled.
   foreignKey: { name: "editedByUserId", allowNull: true },
 });
 
-DataSource.belongsTo(VaultModel, {
+DataSourceModel.belongsTo(SpaceModel, {
   foreignKey: { name: "vaultId", allowNull: false },
   onDelete: "RESTRICT",
 });

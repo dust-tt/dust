@@ -1,8 +1,8 @@
 import type {
-  ACLType,
   GroupType,
   LightWorkspaceType,
   ModelId,
+  ResourcePermission,
   Result,
   UserType,
 } from "@dust-tt/types";
@@ -23,8 +23,9 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import type { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
-import { GroupVaultModel } from "@app/lib/resources/storage/models/group_vaults";
+import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
+import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
@@ -100,14 +101,10 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   // Internal fetcher for Authenticator only
 
-  static async superAdminFetchWorkspaceGroups(
-    userResource: UserResource,
+  // Use with care as this gives access to all groups in the workspace.
+  static async internalFetchAllWorkspaceGroups(
     workspaceId: ModelId
   ): Promise<GroupResource[]> {
-    if (!userResource.isDustSuperUser) {
-      throw new Error("User is not a super admin.");
-    }
-
     const groups = await this.model.findAll({
       where: {
         workspaceId,
@@ -120,15 +117,19 @@ export class GroupResource extends BaseResource<GroupModel> {
   static async listWorkspaceGroupsFromKey(
     key: KeyResource
   ): Promise<GroupResource[]> {
-    // TODO(GROUPS_INFRA): we need to pull the groups associated with the key once that's built.
+    const whereCondition: WhereOptions<GroupModel> = key.isSystem
+      ? // If the key is a system key, we include all groups in the workspace.
+        {
+          workspaceId: key.workspaceId,
+        }
+      : // If it's not a system key, we only fetch the associated group.
+        {
+          workspaceId: key.workspaceId,
+          id: key.groupId,
+        };
+
     const groups = await this.model.findAll({
-      where: {
-        workspaceId: key.workspaceId,
-        [Op.or]: [
-          { kind: key.isSystem ? "system" : "global" },
-          { id: key.groupId },
-        ],
-      },
+      where: whereCondition,
     });
 
     if (groups.length === 0) {
@@ -145,6 +146,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     if (!key.isSystem) {
       throw new Error("Only system keys are supported.");
     }
+
     const groups = await this.model.findAll({
       where: {
         workspaceId: key.workspaceId,
@@ -159,7 +161,7 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   static async internalFetchWorkspaceGlobalGroup(
     workspaceId: ModelId
-  ): Promise<GroupResource> {
+  ): Promise<GroupResource | null> {
     const group = await this.model.findOne({
       where: {
         workspaceId,
@@ -168,7 +170,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     });
 
     if (!group) {
-      throw new Error("Global group not found.");
+      return null;
     }
 
     return new this(GroupModel, group.get());
@@ -309,12 +311,16 @@ export class GroupResource extends BaseResource<GroupModel> {
     return new Ok(group);
   }
 
-  static async listWorkspaceGroups(
-    auth: Authenticator
+  static async listAllWorkspaceGroups(
+    auth: Authenticator,
+    options: { includeSystem?: boolean } = {}
   ): Promise<GroupResource[]> {
+    const { includeSystem } = options;
     const groups = await this.baseFetch(auth, {});
 
-    return groups.filter((group) => group.canRead(auth));
+    return groups
+      .filter((group) => group.canRead(auth))
+      .filter((group) => includeSystem || !group.isSystem());
   }
 
   static async listUserGroupsInWorkspace({
@@ -367,15 +373,12 @@ export class GroupResource extends BaseResource<GroupModel> {
     return groups.map((group) => new this(GroupModel, group.get()));
   }
 
-  // Group methods
-
   async getActiveMembers(auth: Authenticator): Promise<UserResource[]> {
     const owner = auth.getNonNullableWorkspace();
 
     let memberships: GroupMembershipModel[] | MembershipResource[];
 
     // The global group does not have a DB entry for each workspace member.
-    // TODO(GROUPS_INFRA): Remove this once we consolidate memberships with group memberships.
     if (this.isGlobal()) {
       const { memberships: m } = await MembershipResource.getActiveMemberships({
         workspace: auth.getNonNullableWorkspace(),
@@ -583,9 +586,13 @@ export class GroupResource extends BaseResource<GroupModel> {
   ): Promise<Result<undefined, DustError>> {
     if (!this.canWrite(auth)) {
       return new Err(
-        new DustError("unauthorized", "Only `admins` can administer groups")
+        new DustError(
+          "unauthorized",
+          "Only `admins` are authorized to manage groups"
+        )
       );
     }
+
     const userIds = users.map((u) => u.sId);
     const currentMembers = await this.getActiveMembers(auth);
     const currentMemberIds = currentMembers.map((member) => member.sId);
@@ -615,14 +622,43 @@ export class GroupResource extends BaseResource<GroupModel> {
     return new Ok(undefined);
   }
 
+  // Updates
+
+  async updateName(
+    auth: Authenticator,
+    newName: string
+  ): Promise<Result<undefined, Error>> {
+    if (!auth.canAdministrate(this.requestedPermissions())) {
+      return new Err(new Error("Only admins can update group names."));
+    }
+
+    await this.update({ name: newName });
+    return new Ok(undefined);
+  }
+
   // Deletion
 
   async delete(
     auth: Authenticator,
-    transaction?: Transaction
+    { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
     try {
-      await GroupVaultModel.destroy({
+      await KeyModel.destroy({
+        where: {
+          groupId: this.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+        transaction,
+      });
+
+      await GroupSpaceModel.destroy({
+        where: {
+          groupId: this.id,
+        },
+        transaction,
+      });
+
+      await GroupMembershipModel.destroy({
         where: {
           groupId: this.id,
         },
@@ -642,77 +678,38 @@ export class GroupResource extends BaseResource<GroupModel> {
     }
   }
 
-  static async deleteAllForWorkspace(
-    workspace: LightWorkspaceType,
-    transaction?: Transaction
-  ) {
-    await GroupMembershipModel.destroy({
-      where: {
-        workspaceId: workspace.id,
-      },
-      transaction,
-    });
-    await this.model.destroy({
-      where: {
-        workspaceId: workspace.id,
-      },
-      transaction,
-    });
-  }
-
-  static async deleteAllForWorkspaceExceptDefaults(auth: Authenticator) {
-    const workspaceId = auth.getNonNullableWorkspace().id;
-
-    const groups = await this.model.findAll({
-      attributes: ["id"],
-      where: {
-        workspaceId,
-        kind: {
-          [Op.notIn]: ["system", "global"],
-        },
-      },
-    });
-
-    const groupIds = groups.map((group) => group.id);
-
-    await GroupMembershipModel.destroy({
-      where: {
-        workspaceId,
-        groupId: {
-          [Op.in]: groupIds,
-        },
-      },
-    });
-
-    await this.model.destroy({
-      where: {
-        id: {
-          [Op.in]: groupIds,
-        },
-        workspaceId,
-      },
-    });
-  }
-
   // Permissions
 
-  acl(): ACLType {
-    return {
-      aclEntries: [
-        {
-          groupId: this.id,
-          permissions: ["read"],
-        },
-      ],
-    };
+  /**
+   * Returns the requested permissions for this resource.
+   *
+   * Configures two types of access:
+   * 1. Group-based: The group's members get read access
+   * 2. Role-based: Workspace admins get read and write access
+   *
+   * @returns Array of ResourcePermission objects defining the default access configuration
+   */
+  requestedPermissions(): ResourcePermission[] {
+    return [
+      {
+        groups: [
+          {
+            id: this.id,
+            permissions: ["read"],
+          },
+        ],
+        roles: [{ role: "admin", permissions: ["read", "write", "admin"] }],
+        workspaceId: this.workspaceId,
+      },
+    ];
   }
 
   canRead(auth: Authenticator): boolean {
-    return auth.isAdmin() || auth.canRead([this.acl()]);
+    return auth.canRead(this.requestedPermissions());
   }
 
   canWrite(auth: Authenticator): boolean {
-    return auth.isAdmin();
+    return auth.canWrite(this.requestedPermissions());
   }
 
   isSystem(): boolean {
@@ -721,6 +718,10 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   isGlobal(): boolean {
     return this.kind === "global";
+  }
+
+  isRegular(): boolean {
+    return this.kind === "regular";
   }
 
   // JSON Serialization

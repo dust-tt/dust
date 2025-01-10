@@ -1,9 +1,8 @@
+import type { NotificationType } from "@dust-tt/sparkle";
 import { IconButton, SliderToggle } from "@dust-tt/sparkle";
 import type { WhitelistableFeature, WorkspaceType } from "@dust-tt/types";
 import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
-
-import type { NotificationType } from "@app/components/sparkle/Notification";
 
 type FeatureFlagsDisplayType = {
   name: WhitelistableFeature;
@@ -23,7 +22,7 @@ export function makeColumnsForFeatureFlags(
           <div className="flex space-x-2">
             <p>Name</p>
             <IconButton
-              variant="tertiary"
+              variant="outline"
               icon={ArrowsUpDownIcon}
               onClick={() =>
                 column.toggleSorting(column.getIsSorted() === "asc")
@@ -70,18 +69,15 @@ async function toggleFeatureFlag(
       }),
     });
     if (!r.ok) {
-      throw new Error("Failed to disable feature.");
+      const error: { error: { message: string } } = await r.json();
+      throw new Error(error.error.message);
     }
 
     reload();
   } catch (e) {
     sendNotification({
       title: "Error",
-      description: `An error occurred while toggling feature "${feature}": ${JSON.stringify(
-        e,
-        null,
-        2
-      )}`,
+      description: `An error occurred while toggling feature "${feature}": ${e}`,
       type: "error",
     });
   }

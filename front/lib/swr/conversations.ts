@@ -1,22 +1,38 @@
+import { useSendNotification } from "@dust-tt/sparkle";
 import type {
+  ConversationError,
   ConversationMessageReactions,
   ConversationType,
+  LightWorkspaceType,
 } from "@dust-tt/types";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";
-import useSWRInfinite from "swr/infinite";
 
+import { deleteConversation } from "@app/components/assistant/conversation/lib";
+import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
-import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { getVisualizationRetryMessage } from "@app/lib/client/visualization";
+import {
+  fetcher,
+  useSWRInfiniteWithDefaults,
+  useSWRWithDefaults,
+} from "@app/lib/swr/swr";
 import type { FetchConversationParticipantsResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/participants";
 
 export function useConversation({
   conversationId,
   workspaceId,
+  options,
 }: {
   conversationId: string | null;
   workspaceId: string;
-}) {
+  options?: { disabled: boolean };
+}): {
+  conversation: ConversationType | null;
+  isConversationLoading: boolean;
+  conversationError: ConversationError;
+  mutateConversation: () => void;
+} {
   const conversationFetcher: Fetcher<{ conversation: ConversationType }> =
     fetcher;
 
@@ -24,13 +40,14 @@ export function useConversation({
     conversationId
       ? `/api/w/${workspaceId}/assistant/conversations/${conversationId}`
       : null,
-    conversationFetcher
+    conversationFetcher,
+    options
   );
 
   return {
     conversation: data ? data.conversation : null,
     isConversationLoading: !error && !data,
-    isConversationError: error,
+    conversationError: error,
     mutateConversation: mutate,
   };
 }
@@ -76,19 +93,45 @@ export function useConversationReactions({
   };
 }
 
+export function useConversationFeedbacks({
+  conversationId,
+  workspaceId,
+}: {
+  conversationId: string;
+  workspaceId: string;
+}) {
+  const conversationFeedbacksFetcher: Fetcher<{
+    feedbacks: AgentMessageFeedbackType[];
+  }> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/assistant/conversations/${conversationId}/feedbacks`,
+    conversationFeedbacksFetcher
+  );
+
+  return {
+    feedbacks: useMemo(() => (data ? data.feedbacks : []), [data]),
+    isFeedbacksLoading: !error && !data,
+    isFeedbacksError: error,
+    mutateReactions: mutate,
+  };
+}
+
 export function useConversationMessages({
   conversationId,
   workspaceId,
   limit,
+  startAtRank,
 }: {
   conversationId: string | null;
   workspaceId: string;
   limit: number;
+  startAtRank?: number;
 }) {
   const messagesFetcher: Fetcher<FetchConversationMessagesResponse> = fetcher;
 
   const { data, error, mutate, size, setSize, isLoading, isValidating } =
-    useSWRInfinite(
+    useSWRInfiniteWithDefaults(
       (pageIndex: number, previousPageData) => {
         if (!conversationId) {
           return null;
@@ -103,8 +146,11 @@ export function useConversationMessages({
           return null;
         }
 
-        if (pageIndex === 0) {
-          return `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages?orderDirection=desc&orderColumn=rank&limit=${limit}`;
+        if (previousPageData === null) {
+          const startAtRankParam = startAtRank
+            ? `&lastValue=${startAtRank}`
+            : "";
+          return `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages?orderDirection=desc&orderColumn=rank&limit=${limit}${startAtRankParam}`;
         }
 
         return `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages?lastValue=${previousPageData.lastValue}&orderDirection=desc&orderColumn=rank&limit=${limit}`;
@@ -154,4 +200,86 @@ export function useConversationParticipants({
     isConversationParticipantsError: error,
     mutateConversationParticipants: mutate,
   };
+}
+
+export const useDeleteConversation = (owner: LightWorkspaceType) => {
+  const sendNotification = useSendNotification();
+  const { mutateConversations } = useConversations({
+    workspaceId: owner.sId,
+  });
+
+  const doDelete = async (conversation: ConversationType | null) => {
+    if (!conversation) {
+      return false;
+    }
+    const res = await deleteConversation({
+      workspaceId: owner.sId,
+      conversationId: conversation.sId,
+      sendNotification,
+    });
+    if (res) {
+      void mutateConversations((prevState) => {
+        return {
+          ...prevState,
+          conversations:
+            prevState?.conversations.filter(
+              (c) => c.sId !== conversation.sId
+            ) ?? [],
+        };
+      });
+    }
+    return res;
+  };
+
+  return doDelete;
+};
+
+export function useVisualizationRetry({
+  workspaceId,
+  conversationId,
+  agentConfigurationId,
+}: {
+  workspaceId: string;
+  conversationId: string;
+  agentConfigurationId: string;
+}) {
+  const handleVisualizationRetry = useCallback(
+    async (errorMessage: string) => {
+      try {
+        const response = await fetch(
+          `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              content: getVisualizationRetryMessage(errorMessage),
+              mentions: [
+                {
+                  configurationId: agentConfigurationId,
+                },
+              ],
+              context: {
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                profilePictureUrl: null,
+              },
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to send retry message");
+        }
+
+        return true;
+      } catch (error) {
+        console.error("Error sending retry message:", error);
+        return false;
+      }
+    },
+    [workspaceId, conversationId, agentConfigurationId]
+  );
+
+  return handleVisualizationRetry;
 }

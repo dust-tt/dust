@@ -9,8 +9,8 @@ import { sendUserOperationMessage } from "@dust-tt/types";
 import * as _ from "lodash";
 import type Stripe from "stripe";
 
+import { sendProactiveTrialCancelledEmail } from "@app/lib/api/email";
 import type { Authenticator } from "@app/lib/auth";
-import { sendProactiveTrialCancelledEmail } from "@app/lib/email";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import { Workspace } from "@app/lib/models/workspace";
 import type { PlanAttributes } from "@app/lib/plans/free_plans";
@@ -34,7 +34,7 @@ import { getTrialVersionForPlan, isTrial } from "@app/lib/plans/trial";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import { REPORT_USAGE_METADATA_KEY } from "@app/lib/plans/usage/types";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { getWorkspaceFirstAdmin } from "@app/lib/workspace";
 import { checkWorkspaceActivity } from "@app/lib/workspace_usage";
 import logger from "@app/logger/logger";
@@ -255,7 +255,7 @@ export const internalSubscribeWorkspaceToFreePlan = async ({
 
     return Subscription.create(
       {
-        sId: generateLegacyModelSId(),
+        sId: generateRandomModelSId(),
         workspaceId: workspace.id,
         planId: newPlan.id,
         status: "active",

@@ -1,37 +1,50 @@
-import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { ModelIdType, ModelProviderIdType } from "@dust-tt/types";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import { DataTypes } from "sequelize";
 
-import { User } from "@app/lib/models/user";
+import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { DataSource } from "@app/lib/resources/storage/models/data_source";
+import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
+import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
+import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
+import { UserModel } from "@app/lib/resources/storage/models/user";
+import { SoftDeletableModel } from "@app/lib/resources/storage/wrappers";
 
-export class TrackedDocument extends Model<
-  InferAttributes<TrackedDocument>,
-  InferCreationAttributes<TrackedDocument>
-> {
-  declare id: CreationOptional<number>;
+export class TrackerConfigurationModel extends SoftDeletableModel<TrackerConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare documentId: string;
-  declare trackingEnabledAt: Date | null;
+  declare status: "active" | "inactive";
+  declare name: string;
+  declare description: string | null;
 
-  declare userId: ForeignKey<User["id"]>;
-  declare dataSourceId: ForeignKey<DataSource["id"]>;
+  declare modelId: ModelIdType;
+  declare providerId: ModelProviderIdType;
+  declare temperature: number;
+
+  declare prompt: string | null;
+
+  declare frequency: string | null;
+  declare lastNotifiedAt: Date | null;
+  declare skipEmptyEmails: boolean;
+
+  declare recipients: string[] | null;
+
+  declare workspaceId: ForeignKey<Workspace["id"]>;
+  declare vaultId: ForeignKey<SpaceModel["id"]>;
+  declare userId: ForeignKey<UserModel["id"]> | null; // If a user is deleted, the tracker should still be available
+
+  declare workspace: NonAttribute<Workspace>;
+  declare space: NonAttribute<SpaceModel>;
+  declare user: NonAttribute<UserModel> | null;
+  declare dataSourceConfigurations: NonAttribute<
+    TrackerDataSourceConfigurationModel[]
+  >;
+  declare generations: NonAttribute<TrackerGenerationModel[]>;
 }
 
-TrackedDocument.init(
+TrackerConfigurationModel.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -42,87 +55,248 @@ TrackedDocument.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    documentId: {
+    deletedAt: {
+      type: DataTypes.DATE,
+    },
+    status: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "active",
+    },
+    name: {
       type: DataTypes.STRING,
       allowNull: false,
     },
-    trackingEnabledAt: {
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    modelId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    providerId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    temperature: {
+      type: DataTypes.FLOAT,
+      allowNull: false,
+      defaultValue: 0.7,
+    },
+    prompt: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    frequency: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    skipEmptyEmails: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+    },
+    lastNotifiedAt: {
       type: DataTypes.DATE,
       allowNull: true,
-      defaultValue: DataTypes.NOW,
+    },
+    recipients: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: true,
     },
   },
   {
-    modelName: "tracked_document",
+    modelName: "tracker_configuration",
+    sequelize: frontSequelize,
+    indexes: [{ fields: ["workspaceId"] }],
+  }
+);
+
+Workspace.hasMany(TrackerConfigurationModel, {
+  foreignKey: { allowNull: false },
+  onDelete: "RESTRICT",
+});
+
+TrackerConfigurationModel.belongsTo(Workspace, {
+  foreignKey: { allowNull: false },
+});
+
+SpaceModel.hasMany(TrackerConfigurationModel, {
+  foreignKey: { allowNull: false, name: "vaultId" },
+  onDelete: "RESTRICT",
+});
+
+TrackerConfigurationModel.belongsTo(SpaceModel, {
+  foreignKey: { allowNull: false, name: "vaultId" },
+});
+
+UserModel.hasMany(TrackerConfigurationModel, {
+  foreignKey: { allowNull: true },
+  onDelete: "RESTRICT",
+});
+
+TrackerConfigurationModel.belongsTo(UserModel, {
+  foreignKey: { allowNull: true },
+});
+
+export class TrackerDataSourceConfigurationModel extends SoftDeletableModel<TrackerDataSourceConfigurationModel> {
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare scope: "maintained" | "watched";
+  declare parentsIn: string[] | null;
+  declare parentsNotIn: string[] | null;
+
+  declare trackerConfigurationId: ForeignKey<TrackerConfigurationModel["id"]>;
+
+  declare dataSourceId: ForeignKey<DataSourceModel["id"]>;
+  declare dataSourceViewId: ForeignKey<DataSourceViewModel["id"]>;
+
+  declare trackerConfiguration: NonAttribute<TrackerConfigurationModel>;
+  declare dataSource: NonAttribute<DataSourceModel>;
+  declare dataSourceView: NonAttribute<DataSourceViewModel>;
+}
+
+TrackerDataSourceConfigurationModel.init(
+  {
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    deletedAt: {
+      type: DataTypes.DATE,
+    },
+    scope: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    parentsIn: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: true,
+    },
+    parentsNotIn: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: true,
+    },
+  },
+  {
+    modelName: "tracker_data_source_configuration",
     sequelize: frontSequelize,
     indexes: [
-      { fields: ["userId", "dataSourceId", "documentId"], unique: true },
+      { fields: ["trackerConfigurationId"] },
+      {
+        fields: ["parentsIn"],
+        using: "gin",
+        name: "tracker_data_source_configuration_parent_ids_gin_idx",
+      },
       { fields: ["dataSourceId"] },
+      { fields: ["dataSourceViewId"] },
     ],
   }
 );
 
-DataSource.hasMany(TrackedDocument, {
+TrackerConfigurationModel.hasMany(TrackerDataSourceConfigurationModel, {
   foreignKey: { allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
+  as: "dataSourceConfigurations",
 });
-User.hasMany(TrackedDocument, {
+TrackerDataSourceConfigurationModel.belongsTo(TrackerConfigurationModel, {
   foreignKey: { allowNull: false },
-  onDelete: "CASCADE",
 });
 
-export class DocumentTrackerChangeSuggestion extends Model<
-  InferAttributes<DocumentTrackerChangeSuggestion>,
-  InferCreationAttributes<DocumentTrackerChangeSuggestion>
-> {
-  declare id: CreationOptional<number>;
+DataSourceModel.hasMany(TrackerDataSourceConfigurationModel, {
+  foreignKey: { allowNull: false },
+  onDelete: "RESTRICT",
+});
+TrackerDataSourceConfigurationModel.belongsTo(DataSourceModel, {
+  foreignKey: { allowNull: false },
+});
+
+DataSourceViewModel.hasMany(TrackerDataSourceConfigurationModel, {
+  foreignKey: { allowNull: false },
+  onDelete: "RESTRICT",
+});
+TrackerDataSourceConfigurationModel.belongsTo(DataSourceViewModel, {
+  foreignKey: { allowNull: false },
+});
+
+export class TrackerGenerationModel extends SoftDeletableModel<TrackerGenerationModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare suggestion: string;
-  declare reason: string | null;
-  declare status: "pending" | "done" | "rejected";
+  declare content: string;
+  declare thinking: string | null;
 
-  declare trackedDocumentId: ForeignKey<TrackedDocument["id"]>;
-  declare sourceDataSourceId: ForeignKey<DataSource["id"]>;
-  declare sourceDocumentId: string;
+  declare trackerConfigurationId: ForeignKey<TrackerConfigurationModel["id"]>;
+  declare dataSourceId: ForeignKey<DataSourceModel["id"]>;
+  declare documentId: string;
+
+  declare consumedAt: Date | null;
+
+  declare trackerConfiguration: NonAttribute<TrackerConfigurationModel>;
+  declare dataSource: NonAttribute<DataSourceModel>;
 }
 
-DocumentTrackerChangeSuggestion.init(
+TrackerGenerationModel.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
     },
-    createdAt: { type: DataTypes.DATE, allowNull: false },
-    updatedAt: { type: DataTypes.DATE, allowNull: false },
-    suggestion: { type: DataTypes.TEXT, allowNull: false },
-    //@ts-expect-error TODO remove once propagated
-    suggestionTitle: { type: DataTypes.TEXT, allowNull: true },
-    reason: { type: DataTypes.TEXT, allowNull: true },
-    status: {
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    deletedAt: {
+      type: DataTypes.DATE,
+    },
+    content: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+    },
+    thinking: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    documentId: {
       type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: "pending",
     },
-    sourceDocumentId: {
-      type: DataTypes.STRING,
-      allowNull: false,
+    consumedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
     },
   },
   {
-    modelName: "document_tracker_change_suggestion",
+    modelName: "tracker_generation",
     sequelize: frontSequelize,
-    indexes: [{ fields: ["trackedDocumentId"] }],
+    indexes: [{ fields: ["trackerConfigurationId"] }],
   }
 );
 
-TrackedDocument.hasMany(DocumentTrackerChangeSuggestion, {
+TrackerConfigurationModel.hasMany(TrackerGenerationModel, {
   foreignKey: { allowNull: false },
-  onDelete: "CASCADE",
+  as: "generations",
+  onDelete: "RESTRICT",
 });
-DataSource.hasMany(DocumentTrackerChangeSuggestion, {
-  foreignKey: { allowNull: false, name: "sourceDataSourceId" },
-  onDelete: "CASCADE",
+TrackerGenerationModel.belongsTo(TrackerConfigurationModel, {
+  foreignKey: { allowNull: false },
+});
+
+DataSourceModel.hasMany(TrackerGenerationModel, {
+  foreignKey: { allowNull: false },
+  onDelete: "RESTRICT",
+});
+TrackerGenerationModel.belongsTo(DataSourceModel, {
+  foreignKey: { allowNull: false },
+  as: "dataSource",
 });

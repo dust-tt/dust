@@ -1,6 +1,5 @@
 import type {
   ConnectorPermission,
-  ConnectorsAPIError,
   ContentNode,
   ContentNodesViewType,
   Result,
@@ -31,6 +30,15 @@ import {
   getPermissionViewType,
 } from "@connectors/connectors/google_drive/lib/permissions";
 import {
+  folderHasChildren,
+  getDrives,
+} from "@connectors/connectors/google_drive/temporal/activities";
+import {
+  launchGoogleDriveFullSyncWorkflow,
+  launchGoogleDriveIncrementalSyncWorkflow,
+  launchGoogleGarbageCollector,
+} from "@connectors/connectors/google_drive/temporal/client";
+import {
   isGoogleDriveFolder,
   isGoogleDriveSpreadSheetFile,
 } from "@connectors/connectors/google_drive/temporal/mime_types";
@@ -38,14 +46,25 @@ import {
   driveObjectToDustType,
   getAuthObject,
   getDriveClient,
+  getDriveId,
+  getInternalId,
 } from "@connectors/connectors/google_drive/temporal/utils";
-import { BaseConnectorManager } from "@connectors/connectors/interface";
+import type {
+  CreateConnectorErrorCode,
+  RetrievePermissionsErrorCode,
+  UpdateConnectorErrorCode,
+} from "@connectors/connectors/interface";
+import {
+  BaseConnectorManager,
+  ConnectorManagerError,
+} from "@connectors/connectors/interface";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
-import { GoogleDriveSheet } from "@connectors/lib/models/google_drive";
+import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import {
   GoogleDriveConfig,
   GoogleDriveFiles,
   GoogleDriveFolders,
+  GoogleDriveSheet,
 } from "@connectors/lib/models/google_drive";
 import { syncSucceeded } from "@connectors/lib/sync_status";
 import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
@@ -54,13 +73,6 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
 import { FILE_ATTRIBUTES_TO_FETCH } from "@connectors/types/google_drive";
 
-import { folderHasChildren, getDrives } from "./temporal/activities";
-import {
-  launchGoogleDriveFullSyncWorkflow,
-  launchGoogleDriveIncrementalSyncWorkflow,
-  launchGoogleGarbageCollector,
-} from "./temporal/client";
-
 export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
   static async create({
     dataSourceConfig,
@@ -68,50 +80,40 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
   }: {
     dataSourceConfig: DataSourceConfig;
     connectionId: string;
-  }): Promise<Result<string, Error>> {
-    try {
-      const driveClient = await getDriveClient(connectionId);
+  }): Promise<Result<string, ConnectorManagerError<CreateConnectorErrorCode>>> {
+    const driveClient = await getDriveClient(connectionId);
 
-      // Sanity checks to confirm we have sufficient permissions.
-      const [sanityCheckAbout, sanityCheckFilesGet, sanityCheckFilesList] =
-        await Promise.all([
-          driveClient.about.get({ fields: "*" }),
-          driveClient.files.get({ fileId: "root" }),
-          driveClient.drives.list({
-            pageSize: 10,
-            fields: "nextPageToken, drives(id, name)",
-          }),
-        ]);
+    // Sanity checks to confirm we have sufficient permissions.
+    const [sanityCheckAbout, sanityCheckFilesGet, sanityCheckFilesList] =
+      await Promise.all([
+        driveClient.about.get({ fields: "*" }),
+        driveClient.files.get({ fileId: "root" }),
+        driveClient.drives.list({
+          pageSize: 10,
+          fields: "nextPageToken, drives(id, name)",
+        }),
+      ]);
 
-      if (sanityCheckAbout.status !== 200) {
-        throw new Error(
-          `Could not get google drive info. Error message: ${
-            sanityCheckAbout.statusText || "unknown"
-          }`
-        );
-      }
-      if (sanityCheckFilesGet.status !== 200) {
-        throw new Error(
-          `Could not call google drive files get. Error message: ${
-            sanityCheckFilesGet.statusText || "unknown"
-          }`
-        );
-      }
-      if (sanityCheckFilesList.status !== 200) {
-        throw new Error(
-          `Could not call google drive files list. Error message: ${
-            sanityCheckFilesList.statusText || "unknown"
-          }`
-        );
-      }
-    } catch (err) {
-      logger.error(
-        {
-          err,
-        },
-        "Error creating Google Drive connector"
+    if (sanityCheckAbout.status !== 200) {
+      throw new Error(
+        `Could not get google drive info. Error message: ${
+          sanityCheckAbout.statusText || "unknown"
+        }`
       );
-      return new Err(new Error("Error creating Google Drive connector"));
+    }
+    if (sanityCheckFilesGet.status !== 200) {
+      throw new Error(
+        `Could not call google drive files get. Error message: ${
+          sanityCheckFilesGet.statusText || "unknown"
+        }`
+      );
+    }
+    if (sanityCheckFilesList.status !== 200) {
+      throw new Error(
+        `Could not call google drive files list. Error message: ${
+          sanityCheckFilesList.statusText || "unknown"
+        }`
+      );
     }
 
     const googleDriveConfigurationBlob = {
@@ -137,7 +139,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
     // We nonetheless launch the incremental sync.
     const res = await launchGoogleDriveIncrementalSyncWorkflow(connector.id);
     if (res.isErr()) {
-      return res;
+      throw res.error;
     }
 
     return new Ok(connector.id.toString());
@@ -147,14 +149,11 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
     connectionId,
   }: {
     connectionId?: string | null;
-  }): Promise<Result<string, ConnectorsAPIError>> {
+  }): Promise<Result<string, ConnectorManagerError<UpdateConnectorErrorCode>>> {
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
       logger.error({ connectorId: this.connectorId }, "Connector not found");
-      return new Err({
-        message: "Connector not found",
-        type: "connector_not_found",
-      });
+      throw new Error(`Connector ${this.connectorId} not found`);
     }
 
     // Ideally we want to check that the Google Project ID is the same as the one from the connector
@@ -179,17 +178,18 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
         const newDriveUserDomain = newDriveUserEmail.split("@")[1];
 
         if (!currentDriveUserDomain || !newDriveUserDomain) {
-          return new Err({
-            type: "connector_update_error",
-            message: "Error retrieving google drive info to update connector",
-          });
+          throw new Error(
+            "Error retrieving google drive info to update connector"
+          );
         }
 
         if (currentDriveUserDomain !== newDriveUserDomain) {
-          return new Err({
-            type: "connector_oauth_target_mismatch",
-            message: "Cannot change domain of a Google Drive connector",
-          });
+          return new Err(
+            new ConnectorManagerError(
+              "CONNECTOR_OAUTH_TARGET_MISMATCH",
+              "Cannot change domain of a Google Drive connector"
+            )
+          );
         }
       } catch (e) {
         logger.error(
@@ -201,6 +201,11 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
       }
 
       await connector.update({ connectionId });
+
+      // If connector was previously paused, unpause it.
+      if (connector.isPaused()) {
+        await this.unpause();
+      }
     }
 
     return new Ok(connector.id.toString());
@@ -237,271 +242,305 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
     parentInternalId: string | null;
     filterPermission: ConnectorPermission | null;
     viewType: ContentNodesViewType;
-  }): Promise<Result<ContentNode[], Error>> {
+  }): Promise<
+    Result<ContentNode[], ConnectorManagerError<RetrievePermissionsErrorCode>>
+  > {
     const c = await ConnectorResource.fetchById(this.connectorId);
     const isTablesView = viewType === "tables";
     if (!c) {
       logger.error({ connectorId: this.connectorId }, "Connector not found");
-      return new Err(new Error("Connector not found"));
-    }
-    const authCredentials = await getAuthObject(c.connectionId);
-    if (isTablesView && filterPermission !== "read") {
       return new Err(
-        new Error("Tables view is only supported for read permissions")
+        new ConnectorManagerError("CONNECTOR_NOT_FOUND", "Connector not found")
       );
     }
-    if (filterPermission === "read") {
-      if (parentInternalId === null) {
-        // Return the list of folders explicitly selected by the user.
-        const folders = await GoogleDriveFolders.findAll({
-          where: {
-            connectorId: this.connectorId,
-          },
-        });
+    const authCredentials = await getAuthObject(c.connectionId);
 
-        const folderAsContentNodes = await getFoldersAsContentNodes({
-          authCredentials,
-          folders,
-          viewType,
-        });
+    if (isTablesView && filterPermission !== "read") {
+      return new Err(
+        new ConnectorManagerError(
+          "INVALID_FILTER_PERMISSION",
+          "Tables view is only supported for read permissions"
+        )
+      );
+    }
 
-        const nodes = removeNulls(folderAsContentNodes);
-
-        nodes.sort((a, b) => {
-          return a.title.localeCompare(b.title);
-        });
-
-        return new Ok(nodes);
-      } else {
-        // Return the list of all folders and files synced in a parent folder.
-        const where: WhereOptions<InferAttributes<GoogleDriveFiles>> = {
-          connectorId: this.connectorId,
-          parentId: parentInternalId,
-        };
-        if (isTablesView) {
-          // In tables view, we only show folders, spreadhsheets and sheets.
-          // We filter out folders that only contain Documents.
-          where.mimeType = [
-            "application/vnd.google-apps.folder",
-            "application/vnd.google-apps.spreadsheet",
-          ];
-        }
-        const folderOrFiles = await GoogleDriveFiles.findAll({
-          where,
-        });
-        let sheets: GoogleDriveSheet[] = [];
-        if (isTablesView) {
-          sheets = await GoogleDriveSheet.findAll({
+    try {
+      const parentDriveId = parentInternalId && getDriveId(parentInternalId);
+      if (filterPermission === "read") {
+        if (parentDriveId === null) {
+          // Return the list of folders explicitly selected by the user.
+          const folders = await GoogleDriveFolders.findAll({
             where: {
               connectorId: this.connectorId,
-              driveFileId: parentInternalId,
             },
           });
-        }
 
-        let nodes = await concurrentExecutor(
-          folderOrFiles,
-          async (f): Promise<ContentNode> => {
-            const type = getPermissionViewType(f);
+          const folderAsContentNodes = await getFoldersAsContentNodes({
+            authCredentials,
+            folders,
+            viewType,
+          });
 
-            return {
-              provider: c.type,
-              internalId: f.driveFileId,
-              parentInternalId: null,
-              type,
-              title: f.name || "",
-              dustDocumentId: getGoogleDriveEntityDocumentId(f),
-              lastUpdatedAt: f.lastUpsertedTs?.getTime() || null,
-              sourceUrl: null,
-              expandable: await isDriveObjectExpandable({
-                objectId: f.driveFileId,
-                mimeType: f.mimeType,
+          const nodes = removeNulls(folderAsContentNodes);
+
+          nodes.sort((a, b) => {
+            return a.title.localeCompare(b.title);
+          });
+
+          return new Ok(nodes);
+        } else {
+          // Return the list of all folders and files synced in a parent folder.
+          const where: WhereOptions<InferAttributes<GoogleDriveFiles>> = {
+            connectorId: this.connectorId,
+            parentId: parentDriveId,
+          };
+          if (isTablesView) {
+            // In tables view, we only show folders, spreadhsheets and sheets.
+            // We filter out folders that only contain Documents.
+            where.mimeType = [
+              "application/vnd.google-apps.folder",
+              "application/vnd.google-apps.spreadsheet",
+            ];
+          }
+          const folderOrFiles = await GoogleDriveFiles.findAll({
+            where,
+          });
+          let sheets: GoogleDriveSheet[] = [];
+          if (isTablesView) {
+            sheets = await GoogleDriveSheet.findAll({
+              where: {
                 connectorId: this.connectorId,
-                viewType,
-              }),
-              permission: "read",
-            };
-          },
-          { concurrency: 4 }
-        );
+                driveFileId: parentDriveId,
+              },
+            });
+          }
 
-        if (sheets.length) {
-          nodes = nodes.concat(
-            sheets.map((s) => {
+          let nodes = await concurrentExecutor(
+            folderOrFiles,
+            async (f): Promise<ContentNode> => {
+              const type = getPermissionViewType(f);
+
               return {
                 provider: c.type,
-                internalId: getGoogleSheetContentNodeInternalId(
-                  s.driveFileId,
-                  s.driveSheetId
-                ),
-                parentInternalId: s.driveFileId,
-                type: "database" as const,
-                title: s.name || "",
-                dustDocumentId: null,
-                lastUpdatedAt: s.updatedAt.getTime() || null,
-                sourceUrl: null,
-                expandable: false,
+                internalId: getInternalId(f.driveFileId),
+                parentInternalId: null,
+                type,
+                title: f.name || "",
+                dustDocumentId: getGoogleDriveEntityDocumentId(f),
+                lastUpdatedAt: f.lastUpsertedTs?.getTime() || null,
+                sourceUrl: getSourceUrlForGoogleDriveFiles(f),
+                expandable: await isDriveObjectExpandable({
+                  objectId: f.driveFileId,
+                  mimeType: f.mimeType,
+                  connectorId: this.connectorId,
+                  viewType,
+                }),
                 permission: "read",
-                dustTableId: getGoogleSheetTableId(
-                  s.driveFileId,
-                  s.driveSheetId
+              };
+            },
+            { concurrency: 4 }
+          );
+
+          if (sheets.length) {
+            nodes = nodes.concat(
+              sheets.map((s) => {
+                return {
+                  provider: c.type,
+                  internalId: getGoogleSheetContentNodeInternalId(
+                    s.driveFileId,
+                    s.driveSheetId
+                  ),
+                  parentInternalId: getInternalId(s.driveFileId),
+                  type: "database" as const,
+                  title: s.name || "",
+                  dustDocumentId: null,
+                  lastUpdatedAt: s.updatedAt.getTime() || null,
+                  sourceUrl: null,
+                  expandable: false,
+                  permission: "read",
+                  dustTableId: getGoogleSheetTableId(
+                    s.driveFileId,
+                    s.driveSheetId
+                  ),
+                };
+              })
+            );
+          }
+
+          // Sorting nodes, folders first then alphabetically.
+          nodes.sort((a, b) => {
+            if (a.type !== b.type) {
+              return a.type === "folder" ? -1 : 1;
+            }
+            return a.title.localeCompare(b.title);
+          });
+
+          return new Ok(nodes);
+        }
+      } else if (filterPermission === null) {
+        if (parentInternalId === null) {
+          // Return the list of remote shared drives.
+          const drives = await getDrives(c.id);
+
+          const nodes: ContentNode[] = await Promise.all(
+            drives.map(async (d): Promise<ContentNode> => {
+              const driveObject = await getGoogleDriveObject(
+                authCredentials,
+                d.id
+              );
+              if (!driveObject) {
+                throw new Error(
+                  `Drive ${d.id} unexpectedly not found (got 404).`
+                );
+              }
+              return {
+                provider: c.type,
+                internalId: getInternalId(driveObject.id),
+                parentInternalId:
+                  // note: if the parent is null, the drive object falls at top-level
+                  driveObject.parent && getInternalId(driveObject.parent),
+                type: "folder" as const,
+                title: driveObject.name,
+                sourceUrl: driveObject.webViewLink || null,
+                dustDocumentId: null,
+                lastUpdatedAt: driveObject.updatedAtMs || null,
+                expandable: await folderHasChildren(
+                  this.connectorId,
+                  driveObject.id
                 ),
+                permission: (await GoogleDriveFolders.findOne({
+                  where: {
+                    connectorId: this.connectorId,
+                    folderId: driveObject.id,
+                  },
+                }))
+                  ? "read"
+                  : "none",
               };
             })
           );
-        }
+          // Adding a fake "Shared with me" node, to allow the user to see their shared files
+          // that are not living in a shared drive.
+          nodes.push({
+            provider: c.type,
+            internalId: getInternalId(GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID),
+            parentInternalId: null,
+            type: "folder" as const,
+            preventSelection: true,
+            title: "Shared with me",
+            sourceUrl: null,
+            dustDocumentId: null,
+            lastUpdatedAt: null,
+            expandable: true,
+            permission: "none",
+          });
 
-        // Sorting nodes, folders first then alphabetically.
-        nodes.sort((a, b) => {
-          if (a.type !== b.type) {
-            return a.type === "folder" ? -1 : 1;
+          nodes.sort((a, b) => {
+            return a.title.localeCompare(b.title);
+          });
+
+          return new Ok(nodes);
+        } else {
+          // Return the list of remote folders inside a parent folder.
+          const drive = await getDriveClient(authCredentials);
+          let nextPageToken: string | undefined = undefined;
+          let remoteFolders: drive_v3.Schema$File[] = [];
+          // Depending on the view the user is requesting, the way of querying changes.
+          // The "Shared with me" view requires to look for folders
+          // with the flag `sharedWithMe=true`, but there is no need to check for the parents.
+          let gdriveQuery = `mimeType='application/vnd.google-apps.folder'`;
+          if (
+            parentInternalId ===
+            getInternalId(GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID)
+          ) {
+            gdriveQuery += ` and sharedWithMe=true`;
+          } else {
+            gdriveQuery += ` and '${parentDriveId}' in parents`;
           }
-          return a.title.localeCompare(b.title);
-        });
+          do {
+            const res: GaxiosResponse<drive_v3.Schema$FileList> =
+              await drive.files.list({
+                corpora: "allDrives",
+                pageSize: 200,
+                includeItemsFromAllDrives: true,
+                supportsAllDrives: true,
+                fields: `nextPageToken, files(${FILE_ATTRIBUTES_TO_FETCH.join(
+                  ", "
+                )})`,
+                q: gdriveQuery,
+                pageToken: nextPageToken,
+              });
 
-        return new Ok(nodes);
-      }
-    } else if (filterPermission === null) {
-      if (parentInternalId === null) {
-        // Return the list of remote shared drives.
-        const drives = await getDrives(c.id);
-
-        const nodes: ContentNode[] = await Promise.all(
-          drives.map(async (d): Promise<ContentNode> => {
-            const driveObject = await getGoogleDriveObject(
-              authCredentials,
-              d.id
-            );
-            if (!driveObject) {
+            if (res.status !== 200) {
               throw new Error(
-                `Drive ${d.id} unexpectedly not found (got 404).`
+                `Error getting files. status_code: ${res.status}. status_text: ${res.statusText}`
               );
             }
-            return {
-              provider: c.type,
-              internalId: driveObject.id,
-              parentInternalId: driveObject.parent,
-              type: "folder" as const,
-              title: driveObject.name,
-              sourceUrl: driveObject.webViewLink || null,
-              dustDocumentId: null,
-              lastUpdatedAt: driveObject.updatedAtMs || null,
-              expandable: await folderHasChildren(
-                this.connectorId,
-                driveObject.id
-              ),
-              permission: (await GoogleDriveFolders.findOne({
-                where: {
-                  connectorId: this.connectorId,
-                  folderId: driveObject.id,
-                },
-              }))
-                ? "read"
-                : "none",
-            };
-          })
-        );
-        // Adding a fake "Shared with me" node, to allow the user to see their shared files
-        // that are not living in a shared drive.
-        nodes.push({
-          provider: c.type,
-          internalId: GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID,
-          parentInternalId: null,
-          type: "folder" as const,
-          preventSelection: true,
-          title: "Shared with me",
-          sourceUrl: null,
-          dustDocumentId: null,
-          lastUpdatedAt: null,
-          expandable: true,
-          permission: "none",
-        });
+            if (!res.data.files) {
+              throw new Error("Files list is undefined");
+            }
+            remoteFolders = remoteFolders.concat(res.data.files);
+            nextPageToken = res.data.nextPageToken || undefined;
+          } while (nextPageToken);
 
-        nodes.sort((a, b) => {
-          return a.title.localeCompare(b.title);
-        });
+          const nodes: ContentNode[] = await Promise.all(
+            remoteFolders.map(async (rf): Promise<ContentNode> => {
+              const driveObject = await driveObjectToDustType(
+                rf,
+                authCredentials
+              );
 
-        return new Ok(nodes);
-      } else {
-        // Return the list of remote folders inside a parent folder.
-        const drive = await getDriveClient(authCredentials);
-        let nextPageToken: string | undefined = undefined;
-        let remoteFolders: drive_v3.Schema$File[] = [];
-        // Depending on the view the user is requesting, the way of querying changes.
-        // The "Shared with me" view requires to look for folders
-        // with the flag `sharedWithMe=true`, but there is no need to check for the parents.
-        let gdriveQuery = `mimeType='application/vnd.google-apps.folder'`;
-        if (parentInternalId === GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID) {
-          gdriveQuery += ` and sharedWithMe=true`;
-        } else {
-          gdriveQuery += ` and '${parentInternalId}' in parents`;
+              return {
+                provider: c.type,
+                internalId: getInternalId(driveObject.id),
+                parentInternalId:
+                  driveObject.parent && getInternalId(driveObject.parent),
+                type: "folder" as const,
+                title: driveObject.name,
+                sourceUrl: driveObject.webViewLink || null,
+                expandable: await folderHasChildren(
+                  this.connectorId,
+                  driveObject.id
+                ),
+                dustDocumentId: null,
+                lastUpdatedAt: driveObject.updatedAtMs || null,
+                permission: (await GoogleDriveFolders.findOne({
+                  where: {
+                    connectorId: this.connectorId,
+                    folderId: driveObject.id,
+                  },
+                }))
+                  ? "read"
+                  : "none",
+              };
+            })
+          );
+
+          nodes.sort((a, b) => {
+            return a.title.localeCompare(b.title);
+          });
+
+          return new Ok(nodes);
         }
-        do {
-          const res: GaxiosResponse<drive_v3.Schema$FileList> =
-            await drive.files.list({
-              corpora: "allDrives",
-              pageSize: 200,
-              includeItemsFromAllDrives: true,
-              supportsAllDrives: true,
-              fields: `nextPageToken, files(${FILE_ATTRIBUTES_TO_FETCH.join(
-                ", "
-              )})`,
-              q: gdriveQuery,
-              pageToken: nextPageToken,
-            });
-
-          if (res.status !== 200) {
-            throw new Error(
-              `Error getting files. status_code: ${res.status}. status_text: ${res.statusText}`
-            );
-          }
-          if (!res.data.files) {
-            throw new Error("Files list is undefined");
-          }
-          remoteFolders = remoteFolders.concat(res.data.files);
-          nextPageToken = res.data.nextPageToken || undefined;
-        } while (nextPageToken);
-
-        const nodes: ContentNode[] = await Promise.all(
-          remoteFolders.map(async (rf): Promise<ContentNode> => {
-            const driveObject = await driveObjectToDustType(
-              rf,
-              authCredentials
-            );
-
-            return {
-              provider: c.type,
-              internalId: driveObject.id,
-              parentInternalId: driveObject.parent,
-              type: "folder" as const,
-              title: driveObject.name,
-              sourceUrl: driveObject.webViewLink || null,
-              expandable: await folderHasChildren(
-                this.connectorId,
-                driveObject.id
-              ),
-              dustDocumentId: null,
-              lastUpdatedAt: driveObject.updatedAtMs || null,
-              permission: (await GoogleDriveFolders.findOne({
-                where: {
-                  connectorId: this.connectorId,
-                  folderId: driveObject.id,
-                },
-              }))
-                ? "read"
-                : "none",
-            };
-          })
+      } else {
+        return new Err(
+          new ConnectorManagerError(
+            "INVALID_FILTER_PERMISSION",
+            `Invalid permission: ${filterPermission}`
+          )
         );
-
-        nodes.sort((a, b) => {
-          return a.title.localeCompare(b.title);
-        });
-
-        return new Ok(nodes);
       }
-    } else {
-      return new Err(new Error(`Invalid permission: ${filterPermission}`));
+    } catch (e) {
+      if (e instanceof ExternalOAuthTokenError) {
+        return new Err(
+          new ConnectorManagerError(
+            "EXTERNAL_OAUTH_TOKEN_ERROR",
+            "Google Drive authorization error, please re-authorize."
+          )
+        );
+      }
+      // Unanhdled error, throwing to get a 500.
+      throw e;
     }
   }
 
@@ -519,7 +558,8 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
 
     const addedFolderIds: string[] = [];
     const removedFolderIds: string[] = [];
-    for (const [id, permission] of Object.entries(permissions)) {
+    for (const [internalId, permission] of Object.entries(permissions)) {
+      const id = getDriveId(internalId);
       if (permission === "none") {
         removedFolderIds.push(id);
         await GoogleDriveFolders.destroy({
@@ -575,9 +615,9 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
     internalIds: string[];
     viewType: ContentNodesViewType;
   }): Promise<Result<ContentNode[], Error>> {
-    const driveFileIds = internalIds.filter(
-      (id) => !isGoogleSheetContentNodeInternalId(id)
-    );
+    const driveFileIds = internalIds
+      .filter((id) => !isGoogleSheetContentNodeInternalId(id))
+      .map(getDriveId);
     const sheetIds = internalIds
       .filter((id) => isGoogleSheetContentNodeInternalId(id))
       .map(getGoogleIdsFromSheetContentNodeInternalId);
@@ -635,19 +675,11 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
       folderOrFiles,
       async (f): Promise<ContentNode> => {
         const type = getPermissionViewType(f);
-        let sourceUrl = null;
-
-        if (isGoogleDriveSpreadSheetFile(f)) {
-          sourceUrl = `https://docs.google.com/spreadsheets/d/${f.driveFileId}/edit`;
-        } else if (isGoogleDriveFolder(f)) {
-          sourceUrl = `https://drive.google.com/drive/folders/${f.driveFileId}`;
-        } else {
-          sourceUrl = `https://drive.google.com/file/d/${f.driveFileId}/view`;
-        }
+        const sourceUrl = getSourceUrlForGoogleDriveFiles(f);
 
         return {
           provider: "google_drive",
-          internalId: f.driveFileId,
+          internalId: getInternalId(f.driveFileId),
           parentInternalId: null,
           type,
           title: f.name || "",
@@ -691,7 +723,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
         s.driveFileId,
         s.driveSheetId
       ),
-      parentInternalId: s.driveFileId,
+      parentInternalId: getInternalId(s.driveFileId),
       type: "database",
       title: s.name || "",
       dustDocumentId: null,
@@ -948,7 +980,7 @@ async function getFoldersAsContentNodes({
       const sourceUrl = `https://drive.google.com/drive/folders/${f.folderId}`;
       return {
         provider: "google_drive",
-        internalId: f.folderId,
+        internalId: getInternalId(f.folderId),
         parentInternalId: null,
         type: "folder",
         title: fd.name || "",
@@ -966,4 +998,14 @@ async function getFoldersAsContentNodes({
     },
     { concurrency: 4 }
   );
+}
+
+function getSourceUrlForGoogleDriveFiles(f: GoogleDriveFiles): string {
+  if (isGoogleDriveSpreadSheetFile(f)) {
+    return `https://docs.google.com/spreadsheets/d/${f.driveFileId}/edit`;
+  } else if (isGoogleDriveFolder(f)) {
+    return `https://drive.google.com/drive/folders/${f.driveFileId}`;
+  }
+
+  return `https://drive.google.com/file/d/${f.driveFileId}/view`;
 }

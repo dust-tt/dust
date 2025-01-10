@@ -2,12 +2,13 @@ import type {
   UserTypeWithWorkspaces,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
+import { sendUserOperationMessage } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { withSessionAuthentication } from "@app/lib/api/wrappers";
+import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { getSession } from "@app/lib/auth";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -81,6 +82,18 @@ async function handler(
             type: "user_not_found",
             message: "The user was not found.",
           },
+        });
+      }
+      if (user.workspaces[0]?.role === "admin") {
+        sendUserOperationMessage({
+          message: `workspace_sid: ${user.workspaces[0]?.sId}; email: [${user.email}]; User Name [${user.firstName} ${user.lastName}].`,
+          logger,
+          channel: "C075LJ6PUFQ",
+        }).catch((err) => {
+          logger.error(
+            { error: err },
+            "Failed to send user operation message to Slack."
+          );
         });
       }
 

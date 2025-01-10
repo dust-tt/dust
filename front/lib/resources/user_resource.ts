@@ -6,28 +6,30 @@ import type {
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
+import { Op } from "sequelize";
 
+import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
-import { User } from "@app/lib/models/user";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
-export interface UserResource extends ReadonlyAttributesType<User> {}
+export interface UserResource extends ReadonlyAttributesType<UserModel> {}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export class UserResource extends BaseResource<User> {
-  static model: ModelStatic<User> = User;
+export class UserResource extends BaseResource<UserModel> {
+  static model: ModelStatic<UserModel> = UserModel;
 
-  constructor(model: ModelStatic<User>, blob: Attributes<User>) {
-    super(User, blob);
+  constructor(model: ModelStatic<UserModel>, blob: Attributes<UserModel>) {
+    super(UserModel, blob);
   }
 
   static async makeNew(
     blob: Omit<
-      Attributes<User>,
+      Attributes<UserModel>,
       | "id"
       | "createdAt"
       | "updatedAt"
@@ -35,98 +37,99 @@ export class UserResource extends BaseResource<User> {
       | "providerId"
       | "imageUrl"
     > &
-      Partial<Pick<Attributes<User>, "providerId" | "imageUrl">>
+      Partial<Pick<Attributes<UserModel>, "providerId" | "imageUrl">>
   ): Promise<UserResource> {
-    const user = await User.create(blob);
-    return new this(User, user.get());
+    const lowerCaseEmail = blob.email?.toLowerCase();
+    const user = await UserModel.create({ ...blob, email: lowerCaseEmail });
+    return new this(UserModel, user.get());
   }
 
   static async fetchByIds(userIds: string[]): Promise<UserResource[]> {
-    const users = await User.findAll({
+    const users = await UserModel.findAll({
       where: {
         sId: userIds,
       },
     });
 
-    return users.map((user) => new UserResource(User, user.get()));
+    return users.map((user) => new UserResource(UserModel, user.get()));
   }
 
   static async fetchByModelIds(ids: ModelId[]): Promise<UserResource[]> {
-    const users = await User.findAll({
+    const users = await UserModel.findAll({
       where: {
         id: ids,
       },
     });
 
-    return users.map((user) => new UserResource(User, user.get()));
+    return users.map((user) => new UserResource(UserModel, user.get()));
   }
 
   static async listByUsername(username: string): Promise<UserResource[]> {
-    const users = await User.findAll({
+    const users = await UserModel.findAll({
       where: {
         username,
       },
     });
 
-    return users.map((user) => new UserResource(User, user.get()));
+    return users.map((user) => new UserResource(UserModel, user.get()));
   }
 
   static async listByEmail(email: string): Promise<UserResource[]> {
-    const users = await User.findAll({
+    const users = await UserModel.findAll({
       where: {
         email,
       },
     });
 
-    return users.map((user) => new UserResource(User, user.get()));
+    return users.map((user) => new UserResource(UserModel, user.get()));
   }
 
   static async fetchById(userId: string): Promise<UserResource | null> {
-    const user = await User.findOne({
+    const user = await UserModel.findOne({
       where: {
         sId: userId,
       },
     });
-    return user ? new UserResource(User, user.get()) : null;
+    return user ? new UserResource(UserModel, user.get()) : null;
   }
 
   static async fetchByAuth0Sub(sub: string): Promise<UserResource | null> {
-    const user = await User.findOne({
+    const user = await UserModel.findOne({
       where: {
         auth0Sub: sub,
       },
     });
-    return user ? new UserResource(User, user.get()) : null;
+    return user ? new UserResource(UserModel, user.get()) : null;
   }
 
   static async fetchByEmail(email: string): Promise<UserResource | null> {
-    const user = await User.findOne({
+    const user = await UserModel.findOne({
       where: {
-        email,
+        email: email.toLowerCase(),
       },
     });
 
-    return user ? new UserResource(User, user.get()) : null;
+    return user ? new UserResource(UserModel, user.get()) : null;
   }
 
   static async fetchByProvider(
     provider: UserProviderType,
     providerId: string
   ): Promise<UserResource | null> {
-    const user = await User.findOne({
+    const user = await UserModel.findOne({
       where: {
         provider,
         providerId,
       },
     });
 
-    return user ? new UserResource(User, user.get()) : null;
+    return user ? new UserResource(UserModel, user.get()) : null;
   }
 
   static async getWorkspaceFirstAdmin(
     workspaceId: number
   ): Promise<UserResource | null> {
-    const user = await User.findOne({
+    const user = await UserModel.findOne({
       include: [
         {
           model: MembershipModel,
@@ -140,7 +143,46 @@ export class UserResource extends BaseResource<User> {
       order: [["createdAt", "ASC"]],
     });
 
-    return user ? new UserResource(User, user.get()) : null;
+    return user ? new UserResource(UserModel, user.get()) : null;
+  }
+
+  static async listUsersWithEmailPredicat(
+    workspaceId: number,
+    options: {
+      email?: string;
+    },
+    paginationParams: PaginationParams
+  ): Promise<{ users: UserResource[]; total: number }> {
+    const userWhereClause: any = {};
+    if (options.email) {
+      userWhereClause.email = {
+        [Op.iLike]: `%${options.email}%`,
+      };
+    }
+
+    const { count, rows: users } = await UserModel.findAndCountAll({
+      where: userWhereClause,
+      include: [
+        {
+          model: MembershipModel,
+          as: "memberships",
+          where: {
+            workspaceId,
+            startAt: { [Op.lte]: new Date() },
+            endAt: { [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: new Date() }] },
+          },
+          required: true,
+        },
+      ],
+      order: [[paginationParams.orderColumn, paginationParams.orderDirection]],
+      limit: paginationParams.limit,
+      offset: paginationParams.lastValue,
+    });
+
+    return {
+      users: users.map((u) => new UserResource(UserModel, u.get())),
+      total: count,
+    };
   }
 
   async updateAuth0Sub(sub: string): Promise<void> {
@@ -186,8 +228,9 @@ export class UserResource extends BaseResource<User> {
     lastName: string | null,
     email: string
   ): Promise<void> {
+    const lowerCaseEmail = email.toLowerCase();
     const [, affectedRows] = await this.model.update(
-      { username, firstName, lastName, email },
+      { username, firstName, lastName, email: lowerCaseEmail },
       {
         where: {
           id: this.id,
@@ -201,7 +244,7 @@ export class UserResource extends BaseResource<User> {
 
   async delete(
     auth: Authenticator,
-    transaction?: Transaction
+    { transaction }: { transaction?: Transaction }
   ): Promise<Result<undefined, Error>> {
     try {
       await this.model.destroy({

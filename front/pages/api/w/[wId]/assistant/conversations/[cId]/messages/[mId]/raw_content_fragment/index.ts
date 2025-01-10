@@ -4,7 +4,8 @@ import { IncomingForm } from "formidable";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { fileAttachmentLocation } from "@app/lib/resources/content_fragment_resource";
@@ -41,16 +42,13 @@ async function handler(
   }
 
   const conversationId = req.query.cId;
-  const conversation = await getConversation(auth, conversationId);
-  if (!conversation) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "conversation_not_found",
-        message: "Conversation not found.",
-      },
-    });
+  const conversationRes = await getConversation(auth, conversationId);
+
+  if (conversationRes.isErr()) {
+    return apiErrorForConversation(req, res, conversationRes.error);
   }
+
+  const conversation = conversationRes.value;
 
   if (!(typeof req.query.mId === "string")) {
     return apiError(req, res, {

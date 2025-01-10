@@ -1,39 +1,102 @@
-import { Dialog } from "@dust-tt/sparkle";
+import {
+  NewDialog,
+  NewDialogContainer,
+  NewDialogContent,
+  NewDialogFooter,
+  NewDialogHeader,
+  NewDialogTitle,
+  Spinner,
+} from "@dust-tt/sparkle";
+import type { DataSourceType, LightWorkspaceType } from "@dust-tt/types";
+import { useMemo, useState } from "react";
+
+import { getDisplayNameForDataSource } from "@app/lib/data_sources";
+import { useDataSourceUsage } from "@app/lib/swr/data_sources";
 
 interface DeleteStaticDataSourceDialogProps {
-  handleDelete: () => void;
-  dataSourceUsage?: number;
+  owner: LightWorkspaceType;
+  dataSource: DataSourceType;
+  handleDelete: () => Promise<void>;
   isOpen: boolean;
   onClose: () => void;
 }
 
 export function DeleteStaticDataSourceDialog({
+  owner,
+  dataSource,
   handleDelete,
-  dataSourceUsage,
   isOpen,
   onClose,
 }: DeleteStaticDataSourceDialogProps) {
+  const [isLoading, setIsLoading] = useState(false);
+  const { usage, isUsageLoading, isUsageError } = useDataSourceUsage({
+    owner,
+    dataSource,
+  });
+
   const onDelete = async () => {
+    setIsLoading(true);
     await handleDelete();
+    setIsLoading(false);
     onClose();
   };
+  const name = getDisplayNameForDataSource(dataSource);
 
-  const message =
-    dataSourceUsage === undefined
-      ? "Are you sure you want to permanently delete this data source?"
-      : dataSourceUsage > 0
-        ? `${dataSourceUsage} assistants currently use this Data Source. Are you sure you want to remove?`
-        : "No assistants are using this data source. Confirm permanent deletion?";
+  const message = useMemo(() => {
+    if (isUsageLoading) {
+      return "Checking usage...";
+    }
+    if (isUsageError) {
+      return "Failed to check usage.";
+    }
+    if (!usage) {
+      return "No usage data available.";
+    }
+    if (usage.count > 0) {
+      return `${usage.count} assistants currently use "${name}": ${usage.agentNames.join(", ")}.`;
+    }
+    return `No assistants are using "${name}".`;
+  }, [isUsageLoading, isUsageError, usage, name]);
 
   return (
-    <Dialog
-      isOpen={isOpen}
-      title="Removing Data Source"
-      onValidate={onDelete}
-      onCancel={onClose}
-      validateVariant="primaryWarning"
+    <NewDialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose();
+        }
+      }}
     >
-      <div>{message}</div>
-    </Dialog>
+      <NewDialogContent>
+        <NewDialogHeader>
+          <NewDialogTitle>Confirm deletion</NewDialogTitle>
+        </NewDialogHeader>
+        {isLoading ? (
+          <div className="flex justify-center py-8">
+            <Spinner variant="dark" size="md" />
+          </div>
+        ) : (
+          <>
+            <NewDialogContainer>
+              {message}
+              <b>Are you sure you want to delete ?</b>
+            </NewDialogContainer>
+            <NewDialogFooter
+              leftButtonProps={{
+                label: "Cancel",
+                variant: "outline",
+              }}
+              rightButtonProps={{
+                label: "Delete",
+                variant: "warning",
+                onClick: async () => {
+                  void onDelete();
+                },
+              }}
+            />
+          </>
+        )}
+      </NewDialogContent>
+    </NewDialog>
   );
 }

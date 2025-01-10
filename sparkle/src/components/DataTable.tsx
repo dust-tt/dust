@@ -1,4 +1,5 @@
 import {
+  Column,
   type ColumnDef,
   ColumnFiltersState,
   flexRender,
@@ -7,7 +8,6 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
   PaginationState,
-  SortingFn,
   type SortingState,
   Updater,
   useReactTable,
@@ -16,21 +16,42 @@ import React, { ReactNode, useEffect, useState } from "react";
 
 import { Avatar } from "@sparkle/components/Avatar";
 import {
-  DropdownItemProps,
   DropdownMenu,
-} from "@sparkle/components/DropdownMenu";
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuItemProps,
+  DropdownMenuTrigger,
+} from "@sparkle/components/Dropdown";
 import { IconButton } from "@sparkle/components/IconButton";
 import { Pagination } from "@sparkle/components/Pagination";
 import { Tooltip } from "@sparkle/components/Tooltip";
-import { ArrowDownIcon, ArrowUpIcon, MoreIcon } from "@sparkle/icons";
+import { useCopyToClipboard } from "@sparkle/hooks";
+import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  ClipboardCheckIcon,
+  ClipboardIcon,
+  MoreIcon,
+} from "@sparkle/icons";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
 import { breakpoints, useWindowSize } from "./WindowUtility";
 
+declare module "@tanstack/react-table" {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  interface ColumnMeta<TData, TValue> {
+    className?: string;
+    width?: string;
+    flex?: number;
+  }
+}
+
 interface TBaseData {
   onClick?: () => void;
-  moreMenuItems?: DropdownItemProps[];
+  moreMenuItems?: DropdownMenuItemProps[];
+  dropdownMenuProps?: React.ComponentPropsWithoutRef<typeof DropdownMenu>;
 }
 
 interface ColumnBreakpoint {
@@ -42,13 +63,15 @@ interface DataTableProps<TData extends TBaseData> {
   totalRowCount?: number;
   columns: ColumnDef<TData, any>[]; // eslint-disable-line @typescript-eslint/no-explicit-any
   className?: string;
+  widthClassName?: string;
   filter?: string;
   filterColumn?: string;
   pagination?: PaginationState;
   setPagination?: (pagination: PaginationState) => void;
-  initialColumnOrder?: SortingState;
   columnsBreakpoints?: ColumnBreakpoint;
-  sortingFn?: SortingFn<TData>;
+  sorting?: SortingState;
+  setSorting?: (sorting: SortingState) => void;
+  isServerSideSorting?: boolean;
 }
 
 function shouldRenderColumn(
@@ -66,20 +89,24 @@ export function DataTable<TData extends TBaseData>({
   totalRowCount,
   columns,
   className,
+  widthClassName = "s-w-full s-max-w-4xl",
   filter,
   filterColumn,
-  initialColumnOrder,
   columnsBreakpoints = {},
   pagination,
   setPagination,
+  sorting,
+  setSorting,
+  isServerSideSorting = false,
 }: DataTableProps<TData>) {
   const windowSize = useWindowSize();
-  const [sorting, setSorting] = useState<SortingState>(
-    initialColumnOrder ?? []
-  );
+
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
   const isServerSidePagination = !!totalRowCount && totalRowCount > data.length;
+  const isClientSideSortingEnabled =
+    !isServerSideSorting && !isServerSidePagination;
+
   const onPaginationChange =
     pagination && setPagination
       ? (updater: Updater<PaginationState>) => {
@@ -89,26 +116,43 @@ export function DataTable<TData extends TBaseData>({
         }
       : undefined;
 
+  const onSortingChange =
+    sorting && setSorting
+      ? (updater: Updater<SortingState>) => {
+          const newValue =
+            typeof updater === "function" ? updater(sorting) : updater;
+          setSorting(newValue);
+        }
+      : undefined;
+
   const table = useReactTable({
     data,
     columns,
     rowCount: totalRowCount,
     manualPagination: isServerSidePagination,
-    onSortingChange: setSorting,
+    manualSorting: isServerSideSorting,
+    ...(isServerSideSorting && {
+      onSortingChange: onSortingChange,
+    }),
     getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
+    ...(!isServerSideSorting && {
+      getSortedRowModel: getSortedRowModel(),
+      enableSorting: isClientSideSortingEnabled,
+    }),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: pagination ? getPaginationRowModel() : undefined,
     onColumnFiltersChange: setColumnFilters,
     state: {
       columnFilters,
-      sorting: isServerSidePagination ? undefined : sorting,
+      ...(isServerSideSorting && {
+        sorting,
+      }),
       pagination,
     },
     initialState: {
-      pagination,
+      sorting,
     },
-    onPaginationChange: onPaginationChange,
+    onPaginationChange,
   });
 
   useEffect(() => {
@@ -118,11 +162,17 @@ export function DataTable<TData extends TBaseData>({
   }, [filter, filterColumn]);
 
   return (
-    <div className="s-flex s-flex-col s-gap-2">
-      <DataTable.Root className={className}>
+    <div
+      className={classNames(
+        "s-flex s-flex-col s-gap-2",
+        className || "",
+        widthClassName
+      )}
+    >
+      <DataTable.Root>
         <DataTable.Header>
           {table.getHeaderGroups().map((headerGroup) => (
-            <DataTable.Row key={headerGroup.id}>
+            <DataTable.Row key={headerGroup.id} widthClassName={widthClassName}>
               {headerGroup.headers.map((header) => {
                 const breakpoint = columnsBreakpoints[header.id];
                 if (
@@ -133,6 +183,7 @@ export function DataTable<TData extends TBaseData>({
                 }
                 return (
                   <DataTable.Head
+                    column={header.column}
                     key={header.id}
                     onClick={header.column.getToggleSortingHandler()}
                     className={classNames(
@@ -172,9 +223,11 @@ export function DataTable<TData extends TBaseData>({
         <DataTable.Body>
           {table.getRowModel().rows.map((row) => (
             <DataTable.Row
+              widthClassName={widthClassName}
               key={row.id}
               onClick={row.original.onClick}
               moreMenuItems={row.original.moreMenuItems}
+              dropdownMenuProps={row.original.dropdownMenuProps}
             >
               {row.getVisibleCells().map((cell) => {
                 const breakpoint = columnsBreakpoints[cell.column.id];
@@ -185,7 +238,7 @@ export function DataTable<TData extends TBaseData>({
                   return null;
                 }
                 return (
-                  <DataTable.Cell key={cell.id}>
+                  <DataTable.Cell column={cell.column} key={cell.id}>
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </DataTable.Cell>
                 );
@@ -213,14 +266,10 @@ interface DataTableRootProps extends React.HTMLAttributes<HTMLTableElement> {
 
 DataTable.Root = function DataTableRoot({
   children,
-  className,
   ...props
 }: DataTableRootProps) {
   return (
-    <table
-      className={classNames("s-w-full s-border-collapse", className || "")}
-      {...props}
-    >
+    <table className="s-w-full s-border-collapse" {...props}>
       {children}
     </table>
   );
@@ -247,13 +296,20 @@ DataTable.Header = function Header({
 
 interface HeadProps extends React.ThHTMLAttributes<HTMLTableCellElement> {
   children?: ReactNode;
+  column: Column<any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
-DataTable.Head = function Head({ children, className, ...props }: HeadProps) {
+DataTable.Head = function Head({
+  children,
+  className,
+  column,
+  ...props
+}: HeadProps) {
   return (
     <th
+      style={getSize(column.columnDef)}
       className={classNames(
-        "s-w-full s-py-1 s-pr-3 s-text-left s-font-medium s-text-element-800",
+        "s-py-1 s-pr-3 s-text-left s-font-medium s-text-element-800",
         className || ""
       )}
       {...props}
@@ -278,7 +334,9 @@ DataTable.Body = function Body({
 interface RowProps extends React.HTMLAttributes<HTMLTableRowElement> {
   children: ReactNode;
   onClick?: () => void;
-  moreMenuItems?: DropdownItemProps[];
+  moreMenuItems?: DropdownMenuItemProps[];
+  widthClassName: string;
+  dropdownMenuProps?: React.ComponentPropsWithoutRef<typeof DropdownMenu>;
 }
 
 DataTable.Row = function Row({
@@ -286,30 +344,41 @@ DataTable.Row = function Row({
   className,
   onClick,
   moreMenuItems,
+  widthClassName,
+  dropdownMenuProps,
   ...props
 }: RowProps) {
   return (
     <tr
       className={classNames(
-        "s-group/dt s-border-b s-border-structure-200 s-text-sm s-transition-colors s-duration-300 s-ease-out",
+        "s-group/dt s-flex s-items-center s-border-b s-border-structure-200 s-text-sm s-transition-colors s-duration-300 s-ease-out",
         onClick ? "s-cursor-pointer hover:s-bg-structure-50" : "",
+        widthClassName,
         className || ""
       )}
       onClick={onClick ? onClick : undefined}
       {...props}
     >
       {children}
-      <td className="s-w-1 s-cursor-pointer s-pl-1 s-text-element-600">
+      <td className="s-flex s-w-8 s-cursor-pointer s-items-center s-pl-1 s-text-element-600">
         {moreMenuItems && moreMenuItems.length > 0 && (
-          <DropdownMenu className="s-mr-1.5 s-flex">
-            <DropdownMenu.Button>
-              <IconButton icon={MoreIcon} size="sm" variant="tertiary" />
-            </DropdownMenu.Button>
-            <DropdownMenu.Items origin="topRight" width={220}>
-              {moreMenuItems?.map((item, index) => (
-                <DropdownMenu.Item key={index} {...item} />
-              ))}
-            </DropdownMenu.Items>
+          <DropdownMenu {...dropdownMenuProps}>
+            <DropdownMenuTrigger asChild>
+              <IconButton
+                icon={MoreIcon}
+                size="sm"
+                variant="outline"
+                className="s-m-1"
+              />
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent align="end">
+              <DropdownMenuGroup>
+                {moreMenuItems?.map((item, index) => (
+                  <DropdownMenuItem key={index} {...item} />
+                ))}
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
           </DropdownMenu>
         )}
       </td>
@@ -319,13 +388,21 @@ DataTable.Row = function Row({
 
 interface CellProps extends React.HTMLAttributes<HTMLTableCellElement> {
   children: ReactNode;
+  column: Column<any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
-DataTable.Cell = function Cell({ children, className, ...props }: CellProps) {
+DataTable.Cell = function Cell({
+  children,
+  className,
+  column,
+  ...props
+}: CellProps) {
   return (
     <td
+      style={getSize(column.columnDef)}
       className={classNames(
-        "s-h-12 s-whitespace-nowrap s-pl-1.5 s-text-element-800",
+        "s-flex s-h-12 s-items-center s-truncate s-whitespace-nowrap s-pl-1.5 s-text-element-800",
+        column.columnDef.meta?.className || "",
         className || ""
       )}
       {...props}
@@ -334,6 +411,16 @@ DataTable.Cell = function Cell({ children, className, ...props }: CellProps) {
     </td>
   );
 };
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function getSize(columnDef: ColumnDef<any>) {
+  if (columnDef.meta?.width) {
+    return { width: columnDef.meta.width };
+  }
+  return {
+    flex: columnDef.meta?.flex ?? 1,
+  };
+}
 
 interface CellContentProps extends React.TdHTMLAttributes<HTMLDivElement> {
   avatarUrl?: string;
@@ -358,18 +445,24 @@ DataTable.CellContent = function CellContent({
 }: CellContentProps) {
   return (
     <div
-      className={classNames("s-flex s-items-center s-py-2", className || "")}
+      className={classNames(
+        "s-flex s-w-full s-items-center s-py-2",
+        className || ""
+      )}
       {...props}
     >
       {avatarUrl && avatarTooltipLabel && (
-        <Tooltip label={avatarTooltipLabel} position="above">
-          <Avatar
-            visual={avatarUrl}
-            size="xs"
-            className="s-mr-2"
-            isRounded={roundedAvatar ?? false}
-          />
-        </Tooltip>
+        <Tooltip
+          trigger={
+            <Avatar
+              visual={avatarUrl}
+              size="xs"
+              className="s-mr-2"
+              isRounded={roundedAvatar ?? false}
+            />
+          }
+          label={avatarTooltipLabel}
+        />
       )}
       {avatarUrl && !avatarTooltipLabel && (
         <Avatar
@@ -384,19 +477,65 @@ DataTable.CellContent = function CellContent({
           visual={icon}
           size="sm"
           className={classNames(
-            "s-mr-2 s-text-element-600",
+            "s-mr-2 s-text-element-800",
             iconClassName || ""
           )}
         />
       )}
-      <div className="s-flex">
-        <span className="s-text-sm s-text-element-800">{children}</span>
+      <div className="s-flex s-shrink s-truncate">
+        <span className="s-truncate s-text-sm s-text-element-800">
+          {children}
+        </span>
         {description && (
           <span className="s-pl-2 s-text-sm s-text-element-600">
             {description}
           </span>
         )}
       </div>
+    </div>
+  );
+};
+
+interface CellContentWithCopyProps {
+  children: React.ReactNode;
+  textToCopy?: string;
+  className?: string;
+}
+
+DataTable.CellContentWithCopy = function CellContentWithCopy({
+  children,
+  textToCopy,
+  className,
+}: CellContentWithCopyProps) {
+  const [isCopied, copyToClipboard] = useCopyToClipboard();
+
+  const handleCopy = async () => {
+    void copyToClipboard(
+      new ClipboardItem({
+        "text/plain": new Blob([textToCopy ?? String(children)], {
+          type: "text/plain",
+        }),
+      })
+    );
+  };
+
+  return (
+    <div
+      className={classNames(
+        "s-flex s-items-center s-space-x-2",
+        className || ""
+      )}
+    >
+      <span className="s-truncate">{children}</span>
+      <IconButton
+        icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+        variant="outline"
+        onClick={async (e) => {
+          e.stopPropagation();
+          await handleCopy();
+        }}
+        size="xs"
+      />
     </div>
   );
 };

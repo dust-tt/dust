@@ -9,17 +9,30 @@ pub mod stores {
     pub mod postgres;
     pub mod store;
 }
+pub mod search_stores {
+    pub mod search_store;
+}
+
 pub mod app;
 pub mod dataset;
 pub mod data_sources {
     pub mod data_source;
     pub mod file_storage_document;
+    pub mod folder;
+    pub mod node;
     pub mod qdrant;
     pub mod splitter;
 }
 pub mod databases {
     pub mod database;
+    pub mod table;
     pub mod table_schema;
+    pub mod remote_databases {
+        pub mod get_remote_database;
+        pub mod remote_database;
+        pub mod snowflake;
+    }
+    pub mod transient_database;
 }
 pub mod project;
 pub mod run;
@@ -41,7 +54,9 @@ pub mod providers {
         pub mod sentencepiece;
     }
     pub mod anthropic;
+    pub mod deepseek;
     pub mod google_ai_studio;
+    pub mod togetherai;
 }
 pub mod http {
     pub mod request;
@@ -83,8 +98,13 @@ pub mod cached_request;
 pub mod consts;
 
 pub mod oauth {
+    pub mod app;
+    pub mod client;
     pub mod connection;
+    pub mod credential;
+    pub mod encryption;
     pub mod store;
+
     pub mod providers {
         pub mod confluence;
         pub mod github;
@@ -92,12 +112,16 @@ pub mod oauth {
         pub mod google_drive;
         pub mod intercom;
         pub mod microsoft;
+        pub mod mock;
         pub mod notion;
         pub mod slack;
+        pub mod utils;
+        pub mod zendesk;
+    }
+
+    pub mod tests {
         pub mod utils;
     }
 }
 
 pub mod api_keys;
-
-pub mod secondary_api;

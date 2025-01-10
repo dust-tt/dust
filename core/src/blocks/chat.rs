@@ -3,7 +3,7 @@ use crate::blocks::block::{
 };
 use crate::deno::js_executor::JSExecutor;
 use crate::providers::chat_messages::{AssistantChatMessage, ChatMessage, SystemChatMessage};
-use crate::providers::llm::{ChatFunction, ChatMessageRole, LLMChatRequest};
+use crate::providers::llm::{ChatFunction, ChatMessageRole, LLMChatLogprob, LLMChatRequest};
 use crate::providers::provider::ProviderID;
 use crate::Rule;
 use anyhow::{anyhow, Result};
@@ -25,6 +25,8 @@ pub struct Chat {
     max_tokens: Option<i32>,
     presence_penalty: Option<f32>,
     frequency_penalty: Option<f32>,
+    logprobs: Option<bool>,
+    top_logprobs: Option<i32>,
 }
 
 impl Chat {
@@ -38,6 +40,8 @@ impl Chat {
         let mut max_tokens: Option<i32> = None;
         let mut frequency_penalty: Option<f32> = None;
         let mut presence_penalty: Option<f32> = None;
+        let mut logprobs: Option<bool> = None;
+        let mut top_logprobs: Option<i32> = None;
 
         for pair in block_pair.into_inner() {
             match pair.as_rule() {
@@ -78,6 +82,18 @@ impl Chat {
                                 "Invalid `frequency_penalty` in `chat` block, expecting float"
                             ))?,
                         },
+                        "logprobs" => match value.parse::<bool>() {
+                            Ok(n) => logprobs = Some(n),
+                            Err(_) => Err(anyhow!(
+                                "Invalid `logprobs` in `chat` block, expecting boolean"
+                            ))?,
+                        },
+                        "top_logprobs" => match value.parse::<i32>() {
+                            Ok(n) => top_logprobs = Some(n),
+                            Err(_) => Err(anyhow!(
+                                "Invalid `top_logprobs` in `chat` block, expecting integer"
+                            ))?,
+                        },
                         _ => Err(anyhow!("Unexpected `{}` in `chat` block", key))?,
                     }
                 }
@@ -103,6 +119,8 @@ impl Chat {
             max_tokens,
             presence_penalty,
             frequency_penalty,
+            logprobs,
+            top_logprobs,
         })
     }
 
@@ -129,6 +147,8 @@ impl Chat {
 #[derive(Debug, Serialize, PartialEq)]
 struct ChatValue {
     message: AssistantChatMessage,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    logprobs: Option<Vec<LLMChatLogprob>>,
 }
 
 #[async_trait]
@@ -163,6 +183,12 @@ impl Block for Chat {
         if let Some(frequency_penalty) = &self.frequency_penalty {
             hasher.update(frequency_penalty.to_string().as_bytes());
         }
+        if let Some(logprobs) = &self.logprobs {
+            hasher.update(logprobs.to_string().as_bytes());
+        }
+        if let Some(top_logprobs) = &self.top_logprobs {
+            hasher.update(top_logprobs.to_string().as_bytes());
+        }
         format!("{}", hasher.finalize().to_hex())
     }
 
@@ -171,7 +197,6 @@ impl Block for Chat {
         name: &str,
         env: &Env,
         event_sender: Option<UnboundedSender<Value>>,
-        _project_id: i64,
     ) -> Result<BlockResult> {
         let config = env.config.config_for_block(name);
 
@@ -291,6 +316,9 @@ impl Block for Chat {
                 if let Some(Value::String(s)) = v.get("response_format") {
                     extras["response_format"] = json!(s.clone());
                 }
+                if let Some(Value::String(s)) = v.get("reasoning_effort") {
+                    extras["reasoning_effort"] = json!(s.clone());
+                }
 
                 match extras.as_object().unwrap().keys().len() {
                     0 => None,
@@ -382,12 +410,12 @@ impl Block for Chat {
         match function_call.as_ref() {
             None => (),
             Some(s) => match s.as_str() {
-                "auto" | "none" => (),
+                "auto" | "none" | "any" => (),
                 s => {
                     functions.iter().find(|f| f.name == s).ok_or(anyhow!(
                         "Invalid `function_call` in configuration for chat block `{}`: \
                          function name `{}` not found in functions. Possible values are \
-                         'auto', 'none' or the name of one of the functions.",
+                         'auto', 'none', 'any' or the name of one of the functions.",
                         name,
                         s
                     ))?;
@@ -423,6 +451,8 @@ impl Block for Chat {
             self.max_tokens,
             self.presence_penalty,
             self.frequency_penalty,
+            self.logprobs,
+            self.top_logprobs,
             extras,
         );
 
@@ -510,6 +540,7 @@ impl Block for Chat {
         Ok(BlockResult {
             value: serde_json::to_value(ChatValue {
                 message: g.completions[0].clone(),
+                logprobs: g.logprobs.clone(),
             })?,
             meta: Some(json!({
                 "logs": all_logs,

@@ -1,10 +1,11 @@
+import type { GetAgentConfigurationsResponseType } from "@dust-tt/client";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { searchAgentConfigurationsByName } from "@app/lib/api/assistant/configuration";
-import { Authenticator, getAPIKey } from "@app/lib/auth";
-import type { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
+import type { Authenticator } from "@app/lib/auth";
+import { apiError } from "@app/logger/withlogging";
 
 /**
  * @swagger
@@ -52,45 +53,16 @@ import { apiError, withLogging } from "@app/logger/withlogging";
  *       500:
  *         description: Internal Server Error.
  */
-
-type GetAgentConfigurationsResponseBody = {
-  agentConfigurations: AgentConfiguration[];
-};
-
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetAgentConfigurationsResponseBody>>
+  res: NextApiResponse<
+    WithAPIErrorResponse<GetAgentConfigurationsResponseType>
+  >,
+  auth: Authenticator
 ): Promise<void> {
-  const keyRes = await getAPIKey(req);
-  if (keyRes.isErr()) {
-    return apiError(req, res, keyRes.error);
-  }
-
-  const { wId, q } = req.query;
-  if (typeof wId !== "string") {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Workspace ID not found",
-      },
-    });
-  }
-
-  const { workspaceAuth } = await Authenticator.fromKey(keyRes.value, wId);
-
-  if (!workspaceAuth || !workspaceAuth.isBuilder()) {
-    return apiError(req, res, {
-      status_code: 401,
-      api_error: {
-        type: "workspace_not_found",
-        message: "Workspace not found",
-      },
-    });
-  }
-
   switch (req.method) {
     case "GET": {
+      const { q } = req.query;
       if (typeof q !== "string") {
         return apiError(req, res, {
           status_code: 400,
@@ -102,7 +74,7 @@ async function handler(
       }
 
       const agentConfigurations = await searchAgentConfigurationsByName(
-        workspaceAuth,
+        auth,
         q
       );
       return res.status(200).json({
@@ -120,4 +92,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withPublicAPIAuthentication(handler);

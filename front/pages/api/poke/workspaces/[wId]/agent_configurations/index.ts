@@ -5,13 +5,13 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
-import { withSessionAuthentication } from "@app/lib/api/wrappers";
+import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 
 const GetAgentConfigurationsQuerySchema = t.type({
-  view: t.literal("archived"),
+  view: t.union([t.literal("admin_internal"), t.literal("archived")]),
 });
 
 async function handler(
@@ -38,15 +38,6 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      if (!auth.isUser()) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "app_auth_error",
-            message: "Only the workspace users can see Assistants.",
-          },
-        });
-      }
       const queryValidation = GetAgentConfigurationsQuerySchema.decode(
         req.query
       );

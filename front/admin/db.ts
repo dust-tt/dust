@@ -4,6 +4,7 @@ import {
   AgentBrowseAction,
   AgentBrowseConfiguration,
 } from "@app/lib/models/assistant/actions/browse";
+import { AgentConversationIncludeFileAction } from "@app/lib/models/assistant/actions/conversation/include_file";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import {
   AgentDustAppRunAction,
@@ -25,10 +26,6 @@ import {
   AgentTablesQueryConfigurationTable,
 } from "@app/lib/models/assistant/actions/tables_query";
 import {
-  AgentVisualizationAction,
-  AgentVisualizationConfiguration,
-} from "@app/lib/models/assistant/actions/visualization";
-import {
   AgentWebsearchAction,
   AgentWebsearchConfiguration,
 } from "@app/lib/models/assistant/actions/websearch";
@@ -40,6 +37,7 @@ import {
 import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import {
   AgentMessage,
+  AgentMessageFeedback,
   Conversation,
   ConversationParticipant,
   Mention,
@@ -49,12 +47,13 @@ import {
 } from "@app/lib/models/assistant/conversation";
 import { ConversationClassification } from "@app/lib/models/conversation_classification";
 import {
-  DocumentTrackerChangeSuggestion,
-  TrackedDocument,
+  TrackerConfigurationModel,
+  TrackerDataSourceConfigurationModel,
+  TrackerGenerationModel,
 } from "@app/lib/models/doc_tracker";
+import { ExtensionConfigurationModel } from "@app/lib/models/extension";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { Plan, Subscription } from "@app/lib/models/plan";
-import { User, UserMetadata } from "@app/lib/models/user";
 import {
   DustAppSecret,
   MembershipInvitation,
@@ -62,19 +61,20 @@ import {
   WorkspaceHasDomain,
 } from "@app/lib/models/workspace";
 import {
-  App,
+  AppModel,
   Clone,
   Dataset,
   Provider,
 } from "@app/lib/resources/storage/models/apps";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
-import { DataSource } from "@app/lib/resources/storage/models/data_source";
+import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
-import { GroupVaultModel } from "@app/lib/resources/storage/models/group_vaults";
+import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
+import { KillSwitchModel } from "@app/lib/resources/storage/models/kill_switches";
 // Labs - Can be removed at all times if a solution is dropped
 import {
   LabsTranscriptsConfigurationModel,
@@ -85,8 +85,12 @@ import {
   RunModel,
   RunUsageModel,
 } from "@app/lib/resources/storage/models/runs";
+import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { TemplateModel } from "@app/lib/resources/storage/models/templates";
-import { VaultModel } from "@app/lib/resources/storage/models/vaults";
+import {
+  UserMetadataModel,
+  UserModel,
+} from "@app/lib/resources/storage/models/user";
 import logger from "@app/logger/logger";
 
 async function main() {
@@ -94,8 +98,8 @@ async function main() {
     service: "front",
     logger: logger,
   });
-  await User.sync({ alter: true });
-  await UserMetadata.sync({ alter: true });
+  await UserModel.sync({ alter: true });
+  await UserMetadataModel.sync({ alter: true });
   await Workspace.sync({ alter: true });
   await WorkspaceHasDomain.sync({ alter: true });
   await MembershipModel.sync({ alter: true });
@@ -103,21 +107,30 @@ async function main() {
   await GroupModel.sync({ alter: true });
   await GroupMembershipModel.sync({ alter: true });
 
-  await VaultModel.sync({ alter: true });
-  await App.sync({ alter: true });
+  await SpaceModel.sync({ alter: true });
+  await AppModel.sync({ alter: true });
   await Dataset.sync({ alter: true });
   await Provider.sync({ alter: true });
   await Clone.sync({ alter: true });
   await KeyModel.sync({ alter: true });
   await FileModel.sync({ alter: true });
   await DustAppSecret.sync({ alter: true });
-  await GroupVaultModel.sync({ alter: true });
-  await DataSource.sync({ alter: true });
+  await GroupSpaceModel.sync({ alter: true });
+
+  await Conversation.sync({ alter: true });
+  await ConversationParticipant.sync({ alter: true });
+
+  await DataSourceModel.sync({ alter: true });
   await DataSourceViewModel.sync({ alter: true });
+
   await RunModel.sync({ alter: true });
   await RunUsageModel.sync({ alter: true });
-  await TrackedDocument.sync({ alter: true });
-  await DocumentTrackerChangeSuggestion.sync({ alter: true });
+
+  await TrackerConfigurationModel.sync({ alter: true });
+  await TrackerDataSourceConfigurationModel.sync({ alter: true });
+  await TrackerGenerationModel.sync({ alter: true });
+
+  await ExtensionConfigurationModel.sync({ alter: true });
 
   await Plan.sync({ alter: true });
   await Subscription.sync({ alter: true });
@@ -134,14 +147,12 @@ async function main() {
   await AgentProcessConfiguration.sync({ alter: true });
   await AgentWebsearchConfiguration.sync({ alter: true });
   await AgentBrowseConfiguration.sync({ alter: true });
-  await AgentVisualizationConfiguration.sync({ alter: true });
 
   await AgentDataSourceConfiguration.sync({ alter: true });
 
-  await Conversation.sync({ alter: true });
-  await ConversationParticipant.sync({ alter: true });
   await UserMessage.sync({ alter: true });
   await AgentMessage.sync({ alter: true });
+  await AgentMessageFeedback.sync({ alter: true });
   await ContentFragmentModel.sync({ alter: true });
   await Message.sync({ alter: true });
   await MessageReaction.sync({ alter: true });
@@ -153,13 +164,14 @@ async function main() {
   await AgentProcessAction.sync({ alter: true });
   await AgentWebsearchAction.sync({ alter: true });
   await AgentBrowseAction.sync({ alter: true });
-  await AgentVisualizationAction.sync({ alter: true });
+  await AgentConversationIncludeFileAction.sync({ alter: true });
   await AgentMessageContent.sync({ alter: true });
 
   await RetrievalDocument.sync({ alter: true });
   await RetrievalDocumentChunk.sync({ alter: true });
 
   await FeatureFlag.sync({ alter: true });
+  await KillSwitchModel.sync({ alter: true });
 
   await ConversationClassification.sync({ alter: true });
 

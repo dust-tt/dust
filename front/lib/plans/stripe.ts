@@ -2,16 +2,19 @@ import type {
   BillingPeriod,
   LightWorkspaceType,
   Result,
+  SubscriptionType,
   WorkspaceType,
 } from "@dust-tt/types";
-import type { SubscriptionType } from "@dust-tt/types";
 import { Err, isDevelopment, Ok } from "@dust-tt/types";
 import { Stripe } from "stripe";
 
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { Plan, Subscription } from "@app/lib/models/plan";
-import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
+import {
+  isOldFreePlan,
+  PRO_PLAN_SEAT_29_CODE,
+} from "@app/lib/plans/plan_codes";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import {
   isEnterpriseReportUsage,
@@ -113,11 +116,10 @@ export const createProPlanCheckoutSession = async ({
   // User under the grandfathered free plan are not allowed to have a trial.
   let trialAllowed = true;
   const existingSubscription = await Subscription.findOne({
-    where: {
-      workspaceId: owner.id,
-    },
+    where: { workspaceId: owner.id },
+    include: [Plan],
   });
-  if (existingSubscription) {
+  if (existingSubscription && !isOldFreePlan(existingSubscription.plan.code)) {
     trialAllowed = false;
   }
 
@@ -237,6 +239,35 @@ export const getStripeSubscription = async (
   } catch (error) {
     return null;
   }
+};
+
+const DAY_IN_SECONDS = 24 * 60 * 60;
+
+export const extendStripeSubscriptionTrial = async (
+  stripeSubscriptionId: string,
+  { days }: { days: number }
+): Promise<Result<{ trialEnd: number | null }, Error>> => {
+  const stripe = getStripeClient();
+  const subscription = await getStripeSubscription(stripeSubscriptionId);
+  if (!subscription) {
+    return new Err(new Error("The subscription does not exist."));
+  }
+
+  if (!subscription.trial_end) {
+    return new Err(new Error("The subscription is not in trial."));
+  }
+
+  const newTrialEnd = Math.floor(Date.now() / 1000) + days * DAY_IN_SECONDS;
+
+  const updatedSubscription = await stripe.subscriptions.update(
+    stripeSubscriptionId,
+    {
+      trial_end: newTrialEnd,
+      proration_behavior: "none",
+    }
+  );
+
+  return new Ok({ trialEnd: updatedSubscription.trial_end });
 };
 
 /**

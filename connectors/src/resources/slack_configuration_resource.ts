@@ -1,10 +1,17 @@
-import type { ModelId, Result, SlackConfigurationType } from "@dust-tt/types";
+import type {
+  ModelId,
+  Result,
+  SlackAutoReadPattern,
+  SlackbotWhitelistType,
+  SlackConfigurationType,
+} from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
 import {
   SlackBotWhitelistModel,
   SlackChannel,
+  SlackChatBotMessage,
   SlackConfigurationModel,
   SlackMessages,
 } from "@connectors/lib/models/slack";
@@ -53,9 +60,10 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
 
     await SlackConfigurationModel.create(
       {
-        slackTeamId,
+        autoReadChannelPatterns: [],
         botEnabled: otherSlackConfigurationWithBotEnabled ? false : true,
-        connectorId: connectorId,
+        connectorId,
+        slackTeamId,
       },
       { transaction }
     );
@@ -106,24 +114,39 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
     return new this(this.model, blob.get());
   }
 
-  async isBotWhitelisted(botName: string | string[]): Promise<boolean> {
+  async isBotWhitelistedToSummon(botName: string | string[]): Promise<boolean> {
     return !!(await SlackBotWhitelistModel.findOne({
       where: {
         connectorId: this.connectorId,
         botName: botName,
+        whitelistType: "summon_agent",
+      },
+    }));
+  }
+
+  async isBotWhitelistedToIndexMessages(
+    botName: string | string[]
+  ): Promise<boolean> {
+    return !!(await SlackBotWhitelistModel.findOne({
+      where: {
+        connectorId: this.connectorId,
+        botName: botName,
+        whitelistType: "index_messages",
       },
     }));
   }
 
   async whitelistBot(
     botName: string,
-    groupIds: string[]
+    groupIds: string[],
+    whitelistType: SlackbotWhitelistType
   ): Promise<Result<undefined, Error>> {
     await SlackBotWhitelistModel.create({
       connectorId: this.connectorId,
       slackConfigurationId: this.id,
       botName,
       groupIds,
+      whitelistType,
     });
 
     return new Ok(undefined);
@@ -226,9 +249,9 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
     return new Ok(undefined);
   }
 
-  async setAutoReadChannelPattern(pattern: string | null) {
+  async setAutoReadChannelPatterns(patterns: SlackAutoReadPattern[]) {
     await this.model.update(
-      { autoReadChannelPattern: pattern },
+      { autoReadChannelPatterns: patterns },
       {
         where: {
           id: this.id,
@@ -248,6 +271,13 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
       });
 
       await SlackMessages.destroy({
+        where: {
+          connectorId: this.connectorId,
+        },
+        transaction,
+      });
+
+      await SlackChatBotMessage.destroy({
         where: {
           connectorId: this.connectorId,
         },
@@ -276,9 +306,9 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
 
   toJSON(): SlackConfigurationType {
     return {
+      autoReadChannelPatterns: this.autoReadChannelPatterns,
       botEnabled: this.botEnabled,
       whitelistedDomains: this.whitelistedDomains?.map((d) => d),
-      autoReadChannelPattern: this.autoReadChannelPattern,
     };
   }
 }

@@ -1,26 +1,16 @@
-import type {
-  AgentMessageType,
-  UserMessageType,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
-import {
-  isEmptyString,
-  PublicPostMessagesRequestBodySchema,
-} from "@dust-tt/types";
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
+import type { PostMessagesResponseBody } from "@dust-tt/client";
+import { PublicPostMessagesRequestBodySchema } from "@dust-tt/client";
+import type { WithAPIErrorResponse } from "@dust-tt/types";
+import { isEmptyString } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
+import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
-import { Authenticator, getAPIKey } from "@app/lib/auth";
-import { getGroupIdsFromHeaders } from "@app/lib/http_api/group_header";
-import { apiError, withLogging } from "@app/logger/withlogging";
-
-export type PostMessagesResponseBody = {
-  message: UserMessageType;
-  agentMessages?: AgentMessageType[];
-};
+import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
+import type { Authenticator } from "@app/lib/auth";
+import { apiError } from "@app/logger/withlogging";
 
 /**
  * @swagger
@@ -68,39 +58,11 @@ export type PostMessagesResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<PostMessagesResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<PostMessagesResponseBody>>,
+  auth: Authenticator
 ): Promise<void> {
-  const keyRes = await getAPIKey(req);
-  if (keyRes.isErr()) {
-    return apiError(req, res, keyRes.error);
-  }
-
-  const authenticator = await Authenticator.fromKey(
-    keyRes.value,
-    req.query.wId as string,
-    getGroupIdsFromHeaders(req.headers)
-  );
-  let { workspaceAuth } = authenticator;
-  const { keyAuth } = authenticator;
-
-  if (
-    !workspaceAuth.isBuilder() ||
-    keyAuth.getNonNullableWorkspace().sId !== req.query.wId
-  ) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "The Assistant API is only available on your own workspace.",
-      },
-    });
-  }
-
-  const conversation = await getConversation(
-    workspaceAuth,
-    req.query.cId as string
-  );
-  if (!conversation) {
+  const { cId } = req.query;
+  if (typeof cId !== "string") {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -110,23 +72,28 @@ async function handler(
     });
   }
 
+  const conversationRes = await getConversation(auth, cId);
+
+  if (conversationRes.isErr()) {
+    return apiErrorForConversation(req, res, conversationRes.error);
+  }
+
+  const conversation = conversationRes.value;
+
   switch (req.method) {
     case "POST":
-      const bodyValidation = PublicPostMessagesRequestBodySchema.decode(
-        req.body
-      );
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+      const r = PublicPostMessagesRequestBodySchema.safeParse(req.body);
+      if (r.error) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${pathError}`,
+            message: fromError(r.error).toString(),
           },
         });
       }
 
-      const { content, context, mentions, blocking } = bodyValidation.right;
+      const { content, context, mentions, blocking } = r.data;
 
       if (isEmptyString(context.username)) {
         return apiError(req, res, {
@@ -138,28 +105,18 @@ async function handler(
         });
       }
 
-      // /!\ This is reserved for internal use!
-      // If the header "x-api-user-email" is present and valid,
-      // associate the message with the provided user email if it belongs to the same workspace.
-      const userEmailFromHeader = req.headers["x-api-user-email"];
-      if (typeof userEmailFromHeader === "string") {
-        workspaceAuth =
-          (await workspaceAuth.exchangeSystemKeyForUserAuthByEmail(
-            workspaceAuth,
-            {
-              userEmail: userEmailFromHeader,
-            }
-          )) ?? workspaceAuth;
-      }
-
       const messageRes = await postUserMessageWithPubSub(
-        workspaceAuth,
+        auth,
         {
           conversation,
           content,
           mentions,
           context: {
-            ...context,
+            timezone: context.timezone,
+            username: context.username,
+            fullName: context.fullName ?? null,
+            email: context.email ?? null,
+            profilePictureUrl: context.profilePictureUrl ?? null,
             origin: context.origin ?? "api",
           },
         },
@@ -186,4 +143,6 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withPublicAPIAuthentication(handler, {
+  requiredScopes: { POST: "update:conversation" },
+});

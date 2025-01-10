@@ -162,7 +162,7 @@ export function useEventSource(
   }, [buildURL, onEventCallback, uniqueId, sourceManager]);
 
   useEffect(() => {
-    if (!isReadyToConsumeStream) {
+    if (!isReadyToConsumeStream || isError) {
       return;
     }
 
@@ -181,6 +181,7 @@ export function useEventSource(
     reconnectCounter,
     sourceManager,
     uniqueId,
+    isError,
   ]);
 
   return { isError };

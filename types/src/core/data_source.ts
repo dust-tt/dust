@@ -48,6 +48,8 @@ export type CoreAPIDocument = {
   data_source_id: string;
   created: number;
   document_id: string;
+  parents: string[];
+  parent_id: string | null;
   timestamp: number;
   tags: string[];
   source_url?: string | null;
@@ -61,6 +63,8 @@ export type CoreAPIDocument = {
     vector?: number[] | null;
     score?: number | null;
   }[];
+  title: string | null;
+  mime_type: string | null;
   text?: string | null;
 };
 
@@ -70,4 +74,21 @@ export type CoreAPILightDocument = {
   chunk_count: number;
   token_count: number;
   created: number;
+};
+
+export type CoreAPIFolder = {
+  data_source_id: string;
+  folder_id: string;
+  timestamp: number;
+  title: string;
+  parent_id: string | null;
+  parents: string[];
+};
+
+export type CoreAPIDocumentVersionStatus = "latest" | "superseded" | "deleted";
+
+export type CoreAPIDocumentVersion = {
+  hash: string;
+  created: number;
+  status: CoreAPIDocumentVersionStatus;
 };

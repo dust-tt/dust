@@ -1,6 +1,6 @@
-import type { DustAppConfigType, DustAppType } from "@dust-tt/types";
-import { DustAPI } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import type { DustAppConfigType, DustAppType } from "@dust-tt/client";
+import { DustAPI } from "@dust-tt/client";
+import { Err, getHeaderFromGroupIds, Ok } from "@dust-tt/types";
 
 import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -89,7 +89,10 @@ export async function runActionStreamed(
   const requestedGroupIds = auth.groups().map((g) => g.sId);
   const api = new DustAPI(
     apiConfig.getDustAPIConfig(),
-    { ...prodCredentials, groupIds: requestedGroupIds },
+    {
+      ...prodCredentials,
+      extraHeaders: getHeaderFromGroupIds(requestedGroupIds),
+    },
     logger
   );
 
@@ -202,7 +205,10 @@ export async function runAction(
   const requestedGroupIds = auth.groups().map((g) => g.sId);
   const api = new DustAPI(
     apiConfig.getDustAPIConfig(),
-    { ...prodCredentials, groupIds: requestedGroupIds },
+    {
+      ...prodCredentials,
+      extraHeaders: getHeaderFromGroupIds(requestedGroupIds),
+    },
     logger
   );
 

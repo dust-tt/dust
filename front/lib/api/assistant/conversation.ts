@@ -10,29 +10,33 @@ import type {
   AgentMessageType,
   AgentMessageWithRankType,
   ContentFragmentContextType,
-  ContentFragmentInputType,
+  ContentFragmentInputWithFileIdType,
   ContentFragmentType,
   ConversationTitleEvent,
   ConversationType,
   ConversationVisibility,
   ConversationWithoutContentType,
   GenerationTokensEvent,
+  LightAgentConfigurationType,
   MentionType,
   PlanType,
   Result,
-  SupportedContentFragmentType,
   UserMessageContext,
   UserMessageErrorEvent,
   UserMessageNewEvent,
   UserMessageType,
   UserMessageWithRankType,
+  UserType,
   WorkspaceType,
 } from "@dust-tt/types";
 import {
   assertNever,
+  ConversationError,
   getSmallWhitelistedModel,
+  isContentFragmentType,
   isProviderWhitelisted,
   md5,
+  removeNulls,
 } from "@dust-tt/types";
 import {
   Err,
@@ -42,8 +46,8 @@ import {
   isUserMessageType,
   Ok,
   rateLimiter,
-  removeNulls,
 } from "@dust-tt/types";
+import { isEqual, sortBy } from "lodash";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
@@ -51,14 +55,25 @@ import { runActionStreamed } from "@app/lib/actions/server";
 import { runAgent } from "@app/lib/api/assistant/agent";
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import { getLightAgentConfiguration } from "@app/lib/api/assistant/configuration";
-import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
-import { renderConversationForModelMultiActions } from "@app/lib/api/assistant/generation";
 import {
-  batchRenderAgentMessages,
-  batchRenderContentFragment,
-  batchRenderUserMessages,
+  canAccessConversation,
+  getConversationGroupIdsFromModel,
+  getConversationRequestedGroupIdsFromModel,
+} from "@app/lib/api/assistant/conversation/auth";
+import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
+import { renderConversationForModel } from "@app/lib/api/assistant/generation";
+import {
+  batchRenderMessages,
+  canReadMessage,
 } from "@app/lib/api/assistant/messages";
+import {
+  makeAgentMentionsRateLimitKeyForWorkspace,
+  makeMessageRateLimitKeyForWorkspace,
+} from "@app/lib/api/assistant/rate_limits";
+import { maybeUpsertFileAttachment } from "@app/lib/api/files/utils";
+import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import {
   AgentMessage,
@@ -71,11 +86,16 @@ import {
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
-import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
+import {
+  generateRandomModelSId,
+  getResourceIdFromSId,
+} from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
+import { isEmailValid } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
 
@@ -99,10 +119,13 @@ export async function createConversation(
   }
 
   const conversation = await Conversation.create({
-    sId: generateLegacyModelSId(),
+    sId: generateRandomModelSId(),
     workspaceId: owner.id,
     title: title,
     visibility: visibility,
+    // TODO(2024-11-04 flav) `group-id` clean-up.
+    groupIds: [],
+    requestedGroupIds: [],
   });
 
   return {
@@ -113,6 +136,11 @@ export async function createConversation(
     title: conversation.title,
     visibility: conversation.visibility,
     content: [],
+    groupIds: getConversationGroupIdsFromModel(owner, conversation),
+    requestedGroupIds: getConversationRequestedGroupIdsFromModel(
+      owner,
+      conversation
+    ),
   };
 }
 
@@ -126,7 +154,7 @@ export async function updateConversation(
     title: string | null;
     visibility: ConversationVisibility;
   }
-): Promise<ConversationType> {
+): Promise<Result<ConversationType, ConversationError>> {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
@@ -149,13 +177,7 @@ export async function updateConversation(
     visibility: visibility,
   });
 
-  const c = await getConversation(auth, conversationId);
-
-  if (!c) {
-    throw new Error(`Conversation ${conversationId} not found`);
-  }
-
-  return c;
+  return getConversation(auth, conversationId);
 }
 
 /**
@@ -171,9 +193,8 @@ export async function deleteConversation(
     conversationId: string;
     destroy?: boolean;
   }
-): Promise<void> {
-  const owner = auth.workspace();
-  if (!owner) {
+): Promise<Result<{ success: true }, ConversationError>> {
+  if (!auth.workspace()) {
     throw new Error("Unexpected `auth` without `workspace`.");
   }
 
@@ -186,7 +207,11 @@ export async function deleteConversation(
   });
 
   if (!conversation) {
-    throw new Error(`Conversation ${conversationId} not found`);
+    return new Err(new ConversationError("conversation_not_found"));
+  }
+
+  if (!canAccessConversation(auth, conversation)) {
+    return new Err(new ConversationError("conversation_access_restricted"));
   }
 
   if (destroy) {
@@ -196,6 +221,7 @@ export async function deleteConversation(
       visibility: "deleted",
     });
   }
+  return new Ok({ success: true });
 }
 
 /**
@@ -217,6 +243,7 @@ export async function getUserConversations(
   }
 
   const participations = await ConversationParticipant.findAll({
+    attributes: ["userId", "updatedAt"],
     where: {
       userId: user.id,
       action: "posted",
@@ -228,7 +255,7 @@ export async function getUserConversations(
         required: true,
       },
     ],
-    order: [["createdAt", "DESC"]],
+    order: [["updatedAt", "DESC"]],
   });
 
   const conversations = participations.reduce<ConversationWithoutContentType[]>(
@@ -245,28 +272,64 @@ export async function getUserConversations(
         return acc;
       }
 
-      const conversation = {
-        id: p.conversationId,
+      const conversation: ConversationWithoutContentType = {
+        id: p.conversation.id,
         created: p.conversation.createdAt.getTime(),
+        updated: p.updatedAt.getTime(),
         sId: p.conversation.sId,
         owner,
         title: p.conversation.title,
         visibility: p.conversation.visibility,
+        // TODO(2024-11-04 flav) `group-id` clean-up.
+        groupIds: getConversationGroupIdsFromModel(owner, p.conversation),
+        requestedGroupIds: getConversationRequestedGroupIdsFromModel(
+          owner,
+          p.conversation
+        ),
       };
 
       return [...acc, conversation];
     },
     []
   );
-
   return conversations;
+}
+
+async function createOrUpdateParticipation({
+  user,
+  conversation,
+}: {
+  user: UserType | null;
+  conversation: ConversationType;
+}) {
+  if (user) {
+    const participant = await ConversationParticipant.findOne({
+      where: {
+        conversationId: conversation.id,
+        userId: user.id,
+      },
+    });
+    if (participant) {
+      participant.changed("updatedAt", true);
+      await participant.update({
+        action: "posted",
+        updatedAt: new Date(),
+      });
+    } else {
+      await ConversationParticipant.create({
+        conversationId: conversation.id,
+        action: "posted",
+        userId: user.id,
+      });
+    }
+  }
 }
 
 export async function getConversation(
   auth: Authenticator,
   conversationId: string,
   includeDeleted?: boolean
-): Promise<ConversationType | null> {
+): Promise<Result<ConversationType, ConversationError>> {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
@@ -281,7 +344,11 @@ export async function getConversation(
   });
 
   if (!conversation) {
-    return null;
+    return new Err(new ConversationError("conversation_not_found"));
+  }
+
+  if (!canAccessConversation(auth, conversation)) {
+    return new Err(new ConversationError("conversation_access_restricted"));
   }
 
   const messages = await Message.findAll({
@@ -321,19 +388,13 @@ export async function getConversation(
     ],
   });
 
-  const [userMessages, agentMessages, contentFragments] = await Promise.all([
-    batchRenderUserMessages(messages),
-    batchRenderAgentMessages(auth, messages),
-    batchRenderContentFragment(auth, conversationId, messages),
-  ]);
+  const renderRes = await batchRenderMessages(auth, conversation.sId, messages);
 
-  const render = [...userMessages, ...agentMessages, ...contentFragments];
-  render.sort((a, b) => {
-    if (a.rank !== b.rank) {
-      return a.rank - b.rank;
-    }
-    return a.version - b.version;
-  });
+  if (renderRes.isErr()) {
+    return new Err(renderRes.error);
+  }
+
+  const render = renderRes.value;
 
   // We need to escape the type system here to create content. We pre-create an array that will hold
   // the versions of each User/Assistant/ContentFragment message. The lenght of that array is by definition the
@@ -344,11 +405,11 @@ export async function getConversation(
     () => []
   );
 
-  for (const { m, rank } of render) {
+  for (const { rank, ...m } of render) {
     content[rank] = [...content[rank], m];
   }
 
-  return {
+  return new Ok({
     id: conversation.id,
     created: conversation.createdAt.getTime(),
     sId: conversation.sId,
@@ -356,39 +417,35 @@ export async function getConversation(
     title: conversation.title,
     visibility: conversation.visibility,
     content,
-  };
+    // TODO(2024-11-04 flav) `group-id` clean-up.
+    groupIds: getConversationGroupIdsFromModel(owner, conversation),
+    requestedGroupIds: getConversationRequestedGroupIdsFromModel(
+      owner,
+      conversation
+    ),
+  });
 }
 
-export async function getConversationWithoutContent(
+export async function getMessageRank(
   auth: Authenticator,
-  conversationId: string,
-  includeDeleted?: boolean
-): Promise<ConversationWithoutContentType | null> {
+  messageId: string
+): Promise<number | null> {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
   }
 
-  const conversation = await Conversation.findOne({
+  const message = await Message.findOne({
     where: {
-      sId: conversationId,
-      workspaceId: owner.id,
-      ...(includeDeleted ? {} : { visibility: { [Op.ne]: "deleted" } }),
+      sId: messageId,
     },
   });
 
-  if (!conversation) {
+  if (!message) {
     return null;
   }
 
-  return {
-    id: conversation.id,
-    created: conversation.createdAt.getTime(),
-    sId: conversation.sId,
-    owner,
-    title: conversation.title,
-    visibility: conversation.visibility,
-  };
+  return message.rank;
 }
 
 export async function getConversationMessageType(
@@ -448,7 +505,7 @@ export async function generateConversationTitle(
   const MIN_GENERATION_TOKENS = 1024;
 
   // Turn the conversation into a digest that can be presented to the model.
-  const modelConversationRes = await renderConversationForModelMultiActions({
+  const modelConversationRes = await renderConversationForModel(auth, {
     conversation,
     model,
     prompt: "", // There is no prompt for title generation.
@@ -578,6 +635,28 @@ async function getConversationRankVersionLock(
   );
 }
 
+async function attributeUserFromWorkspaceAndEmail(
+  workspace: WorkspaceType | null,
+  email: string | null
+): Promise<UserType | null> {
+  if (!workspace || !email || !isEmailValid(email)) {
+    return null;
+  }
+
+  const matchingUser = await UserResource.fetchByEmail(email);
+  if (!matchingUser) {
+    return null;
+  }
+
+  const membership =
+    await MembershipResource.getActiveMembershipOfUserInWorkspace({
+      user: matchingUser,
+      workspace,
+    });
+
+  return membership ? matchingUser.toJSON() : null;
+}
+
 // This method is in charge of creating a new user message in database, running the necessary agents
 // in response and updating accordingly the conversation. AgentMentions must point to valid agent
 // configurations from the same workspace or whose scope is global.
@@ -624,6 +703,21 @@ export async function* postUserMessage(
     };
     return;
   }
+
+  const featureFlags = await getFeatureFlags(owner);
+
+  if (!canAccessConversation(auth, conversation)) {
+    yield {
+      type: "user_message_error",
+      created: Date.now(),
+      error: {
+        code: "conversation_access_restricted",
+        message: "Conversation cannot be accessed.",
+      },
+    };
+    return;
+  }
+
   // Check plan and rate limit
   const messageLimit = await isMessagesLimitReached({
     owner,
@@ -645,39 +739,16 @@ export async function* postUserMessage(
     return;
   }
 
-  async function createOrUpdateParticipation() {
-    if (user) {
-      const participant = await ConversationParticipant.findOne({
-        where: {
-          conversationId: conversation.id,
-          userId: user.id,
-        },
-      });
-      if (participant) {
-        return participant.update({
-          action: "posted",
-        });
-      } else {
-        return ConversationParticipant.create({
-          conversationId: conversation.id,
-          userId: user.id,
-          action: "posted",
-        });
-      }
-    }
-  }
-
   const results = await Promise.all([
-    removeNulls(
-      await Promise.all(
-        mentions.filter(isAgentMention).map((mention) => {
-          return getLightAgentConfiguration(auth, mention.configurationId);
-        })
-      )
+    Promise.all(
+      mentions.filter(isAgentMention).map((mention) => {
+        return getLightAgentConfiguration(auth, mention.configurationId);
+      })
     ),
-    await createOrUpdateParticipation(),
+    createOrUpdateParticipation({ user, conversation }),
   ]);
-  const agentConfigurations = results[0];
+
+  const agentConfigurations = removeNulls(results[0]);
 
   for (const agentConfig of agentConfigurations) {
     if (!isProviderWhitelisted(owner, agentConfig.model.providerId)) {
@@ -694,6 +765,22 @@ export async function* postUserMessage(
         },
       };
       return; // Stop processing if any agent uses a disabled provider
+    }
+    const supportedModelConfig = getSupportedModelConfig(agentConfig.model);
+    if (
+      supportedModelConfig.featureFlag &&
+      !featureFlags.includes(supportedModelConfig.featureFlag)
+    ) {
+      yield {
+        type: "agent_disabled_error",
+        created: Date.now(),
+        configurationId: agentConfig.sId,
+        error: {
+          code: "model_not_supported",
+          message: "The model is not supported.",
+        },
+      };
+      return;
     }
   }
 
@@ -716,7 +803,7 @@ export async function* postUserMessage(
       async function createMessageAndUserMessage() {
         return Message.create(
           {
-            sId: generateLegacyModelSId(),
+            sId: generateRandomModelSId(),
             rank: nextMessageRank++,
             conversationId: conversation.id,
             parentId: null,
@@ -730,7 +817,14 @@ export async function* postUserMessage(
                   userContextEmail: context.email,
                   userContextProfilePictureUrl: context.profilePictureUrl,
                   userContextOrigin: context.origin,
-                  userId: user ? user.id : null,
+                  userId: user
+                    ? user.id
+                    : (
+                        await attributeUserFromWorkspaceAndEmail(
+                          owner,
+                          context.email
+                        )
+                      )?.id,
                 },
                 { transaction: t }
               )
@@ -789,7 +883,7 @@ export async function* postUserMessage(
               );
               const messageRow = await Message.create(
                 {
-                  sId: generateLegacyModelSId(),
+                  sId: generateRandomModelSId(),
                   rank: nextMessageRank++,
                   conversationId: conversation.id,
                   parentId: userMessage.id,
@@ -830,6 +924,19 @@ export async function* postUserMessage(
         m: AgentMessageWithRankType;
       }[];
 
+      // TODO(2024-11-04 flav) `group-id` clean-up.
+      await updateConversationGroups({
+        mentionedAgents: nonNullResults.map(({ m }) => m.configuration),
+        conversation,
+        t,
+      });
+
+      await updateConversationRequestedGroupIds(
+        nonNullResults.map(({ m }) => m.configuration),
+        conversation,
+        t
+      );
+
       return {
         userMessage,
         agentMessages: nonNullResults.map(({ m }) => m),
@@ -840,6 +947,7 @@ export async function* postUserMessage(
   if (agentMessageRows.length !== agentMessages.length) {
     throw new Error("Unreachable: agentMessageRows and agentMessages mismatch");
   }
+
   if (agentMessages.length > 0) {
     for (const agentMessage of agentMessages) {
       void signalAgentUsage({
@@ -862,26 +970,6 @@ export async function* postUserMessage(
     messageId: userMessage.sId,
     message: userMessage,
   };
-
-  // TODO(2024-08-30 flav) Remove once debugging is done.
-  const groups = auth.groups();
-  if (
-    groups.length === 0 ||
-    (groups.length === 1 && groups[0].kind === "system")
-  ) {
-    logger.info(
-      {
-        agentMessages: {
-          sIds: agentMessages.map((m) => m.sId),
-        },
-        err: new Error("Authenticating as system group only."),
-        userMessage: {
-          sId: userMessage.sId,
-        },
-      },
-      "Authenticating as system group only."
-    );
-  }
 
   for (let i = 0; i < agentMessages.length; i++) {
     const agentMessage = agentMessages[i];
@@ -1048,6 +1136,19 @@ export async function* editUserMessage(
     };
     return;
   }
+
+  if (!canAccessConversation(auth, conversation)) {
+    yield {
+      type: "user_message_error",
+      created: Date.now(),
+      error: {
+        code: "conversation_access_restricted",
+        message: "Conversation cannot be accessed.",
+      },
+    };
+    return;
+  }
+
   if (auth.user()?.id !== message.user?.id) {
     yield {
       type: "user_message_error",
@@ -1097,37 +1198,16 @@ export async function* editUserMessage(
   let agentMessages: AgentMessageWithRankType[] = [];
   let agentMessageRows: AgentMessage[] = [];
 
-  async function createOrUpdateParticipation() {
-    if (user) {
-      const participant = await ConversationParticipant.findOne({
-        where: {
-          conversationId: conversation.id,
-          userId: user.id,
-        },
-      });
-      if (participant) {
-        return participant.update({
-          action: "posted",
-        });
-      } else {
-        throw new Error("Unreachable: edited message implies participation");
-      }
-    }
-  }
-
   const results = await Promise.all([
-    removeNulls(
-      await Promise.all(
-        mentions.filter(isAgentMention).map((mention) => {
-          return getLightAgentConfiguration(auth, mention.configurationId);
-        })
-      )
+    Promise.all(
+      mentions.filter(isAgentMention).map((mention) => {
+        return getLightAgentConfiguration(auth, mention.configurationId);
+      })
     ),
-
-    createOrUpdateParticipation(),
+    createOrUpdateParticipation({ user, conversation }),
   ]);
 
-  const agentConfigurations = results[0];
+  const agentConfigurations = removeNulls(results[0]);
 
   for (const agentConfig of agentConfigurations) {
     if (!isProviderWhitelisted(owner, agentConfig.model.providerId)) {
@@ -1192,7 +1272,7 @@ export async function* editUserMessage(
       async function createMessageAndUserMessage(messageRow: Message) {
         return Message.create(
           {
-            sId: generateLegacyModelSId(),
+            sId: generateRandomModelSId(),
             rank: messageRow.rank,
             conversationId: conversation.id,
             parentId: messageRow.parentId,
@@ -1208,7 +1288,14 @@ export async function* editUserMessage(
                   userContextProfilePictureUrl:
                     userMessageRow.userContextProfilePictureUrl,
                   userContextOrigin: userMessageRow.userContextOrigin,
-                  userId: userMessageRow.userId,
+                  userId: userMessageRow.userId
+                    ? userMessageRow.userId
+                    : (
+                        await attributeUserFromWorkspaceAndEmail(
+                          owner,
+                          userMessageRow.userContextEmail
+                        )
+                      )?.id,
                 },
                 { transaction: t }
               )
@@ -1280,7 +1367,7 @@ export async function* editUserMessage(
             );
             const messageRow = await Message.create(
               {
-                sId: generateLegacyModelSId(),
+                sId: generateRandomModelSId(),
                 rank: nextMessageRank++,
                 conversationId: conversation.id,
                 parentId: userMessage.id,
@@ -1320,6 +1407,22 @@ export async function* editUserMessage(
         row: AgentMessage;
         m: AgentMessageWithRankType;
       }[];
+
+      // TODO(2024-11-04 flav) `group-id` clean-up.
+      // updateConversationGroups is purely additive, this will not remove any
+      // group from the conversation (see function description)
+      await updateConversationGroups({
+        mentionedAgents: nonNullResults.map(({ m }) => m.configuration),
+        conversation,
+        t,
+      });
+
+      await updateConversationRequestedGroupIds(
+        nonNullResults.map(({ m }) => m.configuration),
+        conversation,
+        t
+      );
+
       return {
         userMessage,
         agentMessages: nonNullResults.map(({ m }) => m),
@@ -1447,6 +1550,21 @@ export async function* retryAgentMessage(
   void
 > {
   class AgentMessageError extends Error {}
+
+  if (!canReadMessage(auth, message)) {
+    yield {
+      type: "agent_error",
+      created: Date.now(),
+      configurationId: message.configuration.sId,
+      messageId: message.sId,
+      error: {
+        code: "message_access_denied",
+        message: "The message to retry is not accessible.",
+      },
+    };
+    return;
+  }
+
   let agentMessageResult: {
     agentMessage: AgentMessageWithRankType;
     agentMessageRow: AgentMessage;
@@ -1497,7 +1615,7 @@ export async function* retryAgentMessage(
       );
       const m = await Message.create(
         {
-          sId: generateLegacyModelSId(),
+          sId: generateRandomModelSId(),
           rank: messageRow.rank,
           conversationId: conversation.id,
           parentId: messageRow.parentId,
@@ -1508,6 +1626,20 @@ export async function* retryAgentMessage(
           transaction: t,
         }
       );
+
+      // TODO(2024-11-04 flav) `group-id` clean-up.
+      await updateConversationGroups({
+        mentionedAgents: [message.configuration],
+        conversation,
+        t,
+      });
+
+      await updateConversationRequestedGroupIds(
+        [message.configuration],
+        conversation,
+        t
+      );
+
       const agentMessage: AgentMessageWithRankType = {
         id: m.id,
         agentMessageId: agentMessageRow.id,
@@ -1526,6 +1658,7 @@ export async function* retryAgentMessage(
         configuration: message.configuration,
         rank: m.rank,
       };
+
       return {
         agentMessage,
         agentMessageRow,
@@ -1623,7 +1756,7 @@ export async function* retryAgentMessage(
 export async function postNewContentFragment(
   auth: Authenticator,
   conversation: ConversationType,
-  cf: ContentFragmentInputType,
+  cf: ContentFragmentInputWithFileIdType,
   context: ContentFragmentContextType | null
 ): Promise<Result<ContentFragmentType, Error>> {
   const owner = auth.workspace();
@@ -1631,33 +1764,64 @@ export async function postNewContentFragment(
     throw new Error("Invalid auth for conversation.");
   }
 
-  const messageId = generateLegacyModelSId();
+  if (!canAccessConversation(auth, conversation)) {
+    return new Err(new ConversationError("conversation_access_restricted"));
+  }
 
-  const cfBlobRes = await getContentFragmentBlob(
-    auth,
+  await maybeUpsertFileAttachment(auth, {
+    contentFragments: [cf],
     conversation,
-    cf,
-    messageId
-  );
+  });
+
+  const messageId = generateRandomModelSId();
+
+  const cfBlobRes = await getContentFragmentBlob(auth, cf);
   if (cfBlobRes.isErr()) {
     return cfBlobRes;
+  }
+
+  const supersededContentFragmentId = cf.supersededContentFragmentId;
+  // If the request is superseding an existing content fragment, we need to validate
+  // that it exists and is part of the conversation.
+  if (supersededContentFragmentId) {
+    const found = conversation.content.some((versions) => {
+      const latest = versions[versions.length - 1];
+      return (
+        isContentFragmentType(latest) &&
+        latest.contentFragmentId === supersededContentFragmentId
+      );
+    });
+
+    if (!found) {
+      return new Err(new Error("Superseded content fragment not found."));
+    }
   }
 
   const { contentFragment, messageRow } = await frontSequelize.transaction(
     async (t) => {
       await getConversationRankVersionLock(conversation, t);
 
-      const contentFragment = await ContentFragmentResource.makeNew(
-        {
-          ...cfBlobRes.value,
-          userId: auth.user()?.id,
-          userContextProfilePictureUrl: context?.profilePictureUrl,
-          userContextEmail: context?.email,
-          userContextFullName: context?.fullName,
-          userContextUsername: context?.username,
-        },
-        t
-      );
+      const fullBlob = {
+        ...cfBlobRes.value,
+        userId: auth.user()?.id,
+        userContextProfilePictureUrl: context?.profilePictureUrl,
+        userContextEmail: context?.email,
+        userContextFullName: context?.fullName,
+        userContextUsername: context?.username,
+      };
+
+      const contentFragment = await (() => {
+        if (supersededContentFragmentId) {
+          return ContentFragmentResource.makeNewVersion(
+            supersededContentFragmentId,
+            fullBlob,
+            t
+          );
+        } else {
+          return ContentFragmentResource.makeNew(fullBlob, t);
+        }
+      })();
+
       const nextMessageRank =
         ((await Message.max<number | null, Message>("rank", {
           where: {
@@ -1679,14 +1843,13 @@ export async function postNewContentFragment(
       return { contentFragment, messageRow };
     }
   );
+  const render = await contentFragment.renderFromMessage({
+    auth,
+    conversationId: conversation.sId,
+    message: messageRow,
+  });
 
-  return new Ok(
-    contentFragment.renderFromMessage({
-      auth,
-      conversationId: conversation.sId,
-      message: messageRow,
-    })
-  );
+  return new Ok(render);
 }
 
 async function* streamRunAgentEvents(
@@ -1711,6 +1874,20 @@ async function* streamRunAgentEvents(
   | AgentMessageSuccessEvent,
   void
 > {
+  if (!canReadMessage(auth, agentMessage)) {
+    yield {
+      type: "agent_error",
+      created: Date.now(),
+      configurationId: agentMessage.configuration.sId,
+      messageId: agentMessage.sId,
+      error: {
+        code: "agent_not_allowed",
+        message: "Agent cannot be used by this user",
+      },
+    };
+    return;
+  }
+
   for await (const event of eventStream) {
     switch (event.type) {
       case "agent_error":
@@ -1762,11 +1939,13 @@ async function* streamRunAgentEvents(
       case "retrieval_params":
       case "dust_app_run_params":
       case "dust_app_run_block":
-      case "tables_query_params":
+      case "tables_query_started":
       case "tables_query_output":
+      case "tables_query_model_output":
       case "process_params":
       case "websearch_params":
       case "browse_params":
+      case "conversation_include_file_params":
       case "generation_tokens":
         yield event;
         break;
@@ -1796,7 +1975,7 @@ async function isMessagesLimitReached({
 
   const userMessagesLimit = 10 * activeSeats;
   const remainingMessages = await rateLimiter({
-    key: `postUserMessage:${owner.sId}`,
+    key: makeMessageRateLimitKeyForWorkspace(owner),
     maxPerTimeframe: userMessagesLimit,
     timeframeSeconds: 60,
     logger,
@@ -1831,7 +2010,10 @@ async function isMessagesLimitReached({
   const remainingMentions = await Promise.all(
     mentions.map(() =>
       rateLimiter({
-        key: `workspace:${owner.id}:agent_message_count:${maxMessagesTimeframe}`,
+        key: makeAgentMentionsRateLimitKeyForWorkspace(
+          owner,
+          maxMessagesTimeframe
+        ),
         maxPerTimeframe: maxMessages * activeSeats,
         timeframeSeconds: getTimeframeSecondsFromLiteral(maxMessagesTimeframe),
         logger,
@@ -1847,22 +2029,146 @@ async function isMessagesLimitReached({
   };
 }
 
-export function normalizeContentFragmentType({
-  contentType,
-  url,
+/**
+ *  Update the conversation groupIds based on the mentioned agents. This
+ *  function is purely additive, groupIds will never be removed from the
+ *  conversation.
+ *
+ *  At time of writing, this is a no brainer, because messages can't be deleted
+ *  from a conversation
+ *
+ *  Even considering message deletion, the purely additive model is simpler in
+ *  code and less risky permission-wise. Considering that we version messages,
+ *  and that deleting a message would likely keep its previous version in
+ *  conversation, the additive model is appropriate.
+ *
+ */
+async function updateConversationGroups({
+  mentionedAgents,
+  conversation,
+  t,
 }: {
-  contentType: SupportedContentFragmentType;
-  url?: string;
-}) {
-  // hack: for users creating content_fragments through our public API
-  if (contentType === "file_attachment") {
-    logger.info(
-      {
-        url,
-      },
-      "ContentFragment of type 'file_attachment' being created"
-    );
-    return "text/plain";
+  mentionedAgents: LightAgentConfigurationType[];
+  conversation: ConversationType;
+  t: Transaction;
+}): Promise<void> {
+  const newGroupIds = mentionedAgents.flatMap((agent) => agent.groupIds);
+
+  const currentGroupIds = new Set(conversation.groupIds);
+
+  // No need to update if newGroupIds is a subset of currentGroupIds.
+  if (newGroupIds.every((g) => currentGroupIds.has(g))) {
+    return;
   }
-  return contentType;
+
+  newGroupIds.forEach((g) => currentGroupIds.add(g));
+
+  const groupIds = Array.from(currentGroupIds).map((g) => {
+    const id = getResourceIdFromSId(g);
+    if (id === null) {
+      throw new Error("Unexpected: invalid group id");
+    }
+    return id;
+  });
+
+  await Conversation.update(
+    {
+      groupIds,
+    },
+    {
+      where: {
+        id: conversation.id,
+      },
+      transaction: t,
+    }
+  );
+}
+
+/**
+ * Update the conversation requestedGroupIds based on the mentioned agents.
+ * This function is purely additive - requirements are never removed.
+ *
+ * Each agent's requestedGroupIds represents a set of requirements that must be
+ * satisfied. When an agent is mentioned in a conversation, its requirements are
+ * added to the conversation's requirements.
+ *
+ * Within each requirement (sub-array), groups are combined with OR logic.
+ * Different requirements (different sub-arrays) are combined with AND logic.
+ */
+export async function updateConversationRequestedGroupIds(
+  mentionedAgents: LightAgentConfigurationType[],
+  conversation: ConversationType,
+  t: Transaction
+): Promise<void> {
+  const newRequirements = mentionedAgents.flatMap(
+    (agent) => agent.requestedGroupIds
+  );
+  const currentRequirements = conversation.requestedGroupIds;
+
+  // Check if each new requirement already exists in current requirements.
+  const areAllRequirementsPresent = newRequirements.every((newReq) =>
+    currentRequirements.some((currentReq) =>
+      isEqual(sortBy(newReq), sortBy(currentReq))
+    )
+  );
+
+  // Early return if all new requirements are already present.
+  if (areAllRequirementsPresent) {
+    return;
+  }
+
+  // Get missing requirements.
+  const requirementsToAdd = newRequirements.filter(
+    (newReq) =>
+      !currentRequirements.some((currentReq) =>
+        isEqual(sortBy(newReq), sortBy(currentReq))
+      )
+  );
+
+  // Convert all sIds to modelIds.
+  const sIdToModelId = new Map<string, number>();
+  const getModelId = (sId: string) => {
+    if (!sIdToModelId.has(sId)) {
+      const id = getResourceIdFromSId(sId);
+      if (id === null) {
+        throw new Error("Unexpected: invalid group id");
+      }
+      sIdToModelId.set(sId, id);
+    }
+    return sIdToModelId.get(sId)!;
+  };
+
+  const allRequirements = [
+    ...currentRequirements.map((req) => sortBy(req.map(getModelId))),
+    ...requirementsToAdd.map((req) => sortBy(req.map(getModelId))),
+  ];
+
+  // Hotfix: Postgres requires all subarrays to be of the same length
+  //
+  // since a requirement (subarray) is a set of groups that are linked with OR
+  // logic we can just repeat the last element of each requirement until all
+  // requirements have the maximal length.
+  const longestRequirement = allRequirements.reduce(
+    (max, req) => Math.max(max, req.length),
+    0
+  );
+  // for each requirement, repeatedly add the last id until array is of longest requirement length
+  const updatedRequirements = allRequirements.map((req) => {
+    while (req.length < longestRequirement) {
+      req.push(req[req.length - 1]);
+    }
+    return req;
+  });
+
+  await Conversation.update(
+    {
+      requestedGroupIds: updatedRequirements,
+    },
+    {
+      where: {
+        id: conversation.id,
+      },
+      transaction: t,
+    }
+  );
 }

@@ -1,15 +1,11 @@
-import type {
-  WhitelistableFeature,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
+import type { GetWorkspaceFeatureFlagsResponseType } from "@dust-tt/client";
+import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { Authenticator, getAPIKey } from "@app/lib/auth";
-import { apiError, withLogging } from "@app/logger/withlogging";
-
-export type WorkspaceFeatureFlagsResponseBody = {
-  feature_flags: WhitelistableFeature[];
-};
+import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
+import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
+import { apiError } from "@app/logger/withlogging";
 
 /**
  * @ignoreswagger
@@ -18,20 +14,13 @@ export type WorkspaceFeatureFlagsResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<WorkspaceFeatureFlagsResponseBody>>
+  res: NextApiResponse<
+    WithAPIErrorResponse<GetWorkspaceFeatureFlagsResponseType>
+  >,
+  auth: Authenticator
 ): Promise<void> {
-  const keyRes = await getAPIKey(req);
-  if (keyRes.isErr()) {
-    return apiError(req, res, keyRes.error);
-  }
-  const { workspaceAuth } = await Authenticator.fromKey(
-    keyRes.value,
-    req.query.wId as string
-  );
-
-  const owner = workspaceAuth.workspace();
-  const isSystemKey = keyRes.value.isSystem;
-  if (!owner || !isSystemKey || !workspaceAuth.isBuilder()) {
+  const owner = auth.getNonNullableWorkspace();
+  if (!auth.isSystemKey()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -43,7 +32,8 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      return res.status(200).json({ feature_flags: owner.flags });
+      const feature_flags = await getFeatureFlags(owner);
+      return res.status(200).json({ feature_flags });
 
     default:
       return apiError(req, res, {
@@ -56,4 +46,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withPublicAPIAuthentication(handler);

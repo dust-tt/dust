@@ -1,9 +1,12 @@
-import { ContextItem, IntercomLogo, SliderToggle } from "@dust-tt/sparkle";
+import {
+  ContextItem,
+  IntercomLogo,
+  SliderToggle,
+  useSendNotification,
+} from "@dust-tt/sparkle";
 import type { APIError, DataSourceType, WorkspaceType } from "@dust-tt/types";
-import { useContext, useState } from "react";
-import * as React from "react";
+import { useState } from "react";
 
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { useConnectorConfig } from "@app/lib/swr/connectors";
 
 export function IntercomConfigView({
@@ -26,13 +29,13 @@ export function IntercomConfigView({
     });
   const isSyncNotesEnabled = syncNotesConfig === "true";
 
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
   const [loading, setLoading] = useState(false);
 
   const handleSetNewConfig = async (configValue: boolean) => {
     setLoading(true);
     const res = await fetch(
-      `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/config/${configKey}`,
+      `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/${configKey}`,
       {
         headers: {
           "Content-Type": "application/json",

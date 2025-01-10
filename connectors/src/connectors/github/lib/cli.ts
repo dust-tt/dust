@@ -14,6 +14,7 @@ import {
 import {
   GithubCodeRepository,
   GithubConnectorState,
+  GithubIssue,
 } from "@connectors/lib/models/github";
 import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -159,6 +160,44 @@ export const github = async ({
 
       return { success: true };
     }
+
+    case "skip-issue": {
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+      if (!args.dsId) {
+        throw new Error("Missing --dsId argument");
+      }
+      if (!args.repoId) {
+        throw new Error("Missing --repoId argument");
+      }
+      if (!args.issueNumber) {
+        throw new Error("Missing --issueNumber argument");
+      }
+      if (!args.skipReason) {
+        throw new Error("Missing --skipReason argument");
+      }
+
+      const connector = await ConnectorResource.findByDataSource({
+        workspaceId: `${args.wId}`,
+        dataSourceId: args.dsId,
+      });
+      if (!connector) {
+        throw new Error(
+          `Could not find connector for workspace ${args.wId}, data source ${args.dsId}`
+        );
+      }
+
+      await GithubIssue.upsert({
+        repoId: args.repoId.toString(),
+        issueNumber: parseInt(args.issueNumber, 10),
+        connectorId: connector.id,
+        skipReason: args.skipReason,
+      });
+
+      return { success: true };
+    }
+
     case "force-daily-code-sync": {
       if (!args.wId) {
         throw new Error("Missing --wId argument");

@@ -1,7 +1,14 @@
 import type { ComponentType } from "react";
 import React from "react";
 
-import { DropdownMenu } from "@sparkle/components/DropdownMenu";
+import { Button } from "@sparkle/components/Button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@sparkle/components/Dropdown";
 import { Icon } from "@sparkle/components/Icon";
 import { Tooltip } from "@sparkle/components/Tooltip";
 import { SparkleContext, SparkleContextLinkType } from "@sparkle/context";
@@ -57,22 +64,22 @@ export function Breadcrumbs({ items }: BreadcrumbProps) {
             <Icon visual={item.icon} className="s-text-brand" />
             {item.label === ELLIPSIS_STRING ? (
               <DropdownMenu>
-                <DropdownMenu.Button>{ELLIPSIS_STRING}</DropdownMenu.Button>
-                <DropdownMenu.Items origin="topLeft">
-                  {itemsHidden.map((item, index) => (
-                    <DropdownMenu.Item
-                      icon={item.icon}
-                      label={item.label}
-                      link={item.href ? { href: item.href } : undefined}
-                      key={`breadcrumbs-hidden-${index}`}
-                    >
-                      {truncateWithTooltip(
-                        item.label,
-                        LABEL_TRUNCATE_LENGTH_MIDDLE
-                      )}
-                    </DropdownMenu.Item>
-                  ))}
-                </DropdownMenu.Items>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" label={ELLIPSIS_STRING} />
+                </DropdownMenuTrigger>
+
+                <DropdownMenuContent align="start">
+                  <DropdownMenuGroup>
+                    {itemsHidden.map((item, index) => (
+                      <DropdownMenuItem
+                        key={`breadcrumbs-hidden-${index}`}
+                        href={item.href}
+                        icon={item.icon}
+                        label={item.label}
+                      />
+                    ))}
+                  </DropdownMenuGroup>
+                </DropdownMenuContent>
               </DropdownMenu>
             ) : (
               <div>
@@ -80,7 +87,7 @@ export function Breadcrumbs({ items }: BreadcrumbProps) {
                   href={item.href || "#"}
                   className={
                     index === items.length - 1
-                      ? "s-text-element-900"
+                      ? "s-text-foreground"
                       : "s-text-element-700"
                   }
                 >
@@ -106,9 +113,9 @@ export function Breadcrumbs({ items }: BreadcrumbProps) {
 function truncateWithTooltip(text: string, length: number) {
   return text.length > length ? (
     <Tooltip
+      trigger={`${text.substring(0, length - 1)}${ELLIPSIS_STRING}`}
       label={text}
-      position="below"
-    >{`${text.substring(0, length - 1)}…`}</Tooltip>
+    />
   ) : (
     text
   );

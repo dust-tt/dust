@@ -2,14 +2,15 @@ use crate::providers::chat_messages::{
     AssistantChatMessage, ChatMessage, ContentBlock, MixedContent,
 };
 use crate::providers::embedder::{Embedder, EmbedderVector};
-use crate::providers::llm::Tokens;
 use crate::providers::llm::{ChatFunction, ChatFunctionCall};
 use crate::providers::llm::{
     ChatMessageRole, LLMChatGeneration, LLMGeneration, LLMTokenUsage, LLM,
 };
+use crate::providers::llm::{LLMChatLogprob, Tokens};
 use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, ProviderID};
 use crate::providers::tiktoken::tiktoken::{
-    batch_tokenize_async, cl100k_base_singleton, p50k_base_singleton, r50k_base_singleton, CoreBPE,
+    batch_tokenize_async, cl100k_base_singleton, o200k_base_singleton, p50k_base_singleton,
+    r50k_base_singleton, CoreBPE,
 };
 use crate::providers::tiktoken::tiktoken::{decode_async, encode_async};
 use crate::run::Credentials;
@@ -34,6 +35,8 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::timeout;
+
+use super::llm::TopLogprob;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Usage {
@@ -207,6 +210,7 @@ pub enum OpenAIChatMessageRole {
     Assistant,
     Function,
     System,
+    Developer,
     Tool,
     User,
 }
@@ -241,6 +245,7 @@ impl From<OpenAIChatMessageRole> for ChatMessageRole {
             OpenAIChatMessageRole::Assistant => ChatMessageRole::Assistant,
             OpenAIChatMessageRole::Function => ChatMessageRole::Function,
             OpenAIChatMessageRole::System => ChatMessageRole::System,
+            OpenAIChatMessageRole::Developer => ChatMessageRole::System,
             OpenAIChatMessageRole::Tool => ChatMessageRole::Function,
             OpenAIChatMessageRole::User => ChatMessageRole::User,
         }
@@ -286,12 +291,16 @@ pub enum OpenAIContentBlock {
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-pub struct OpenAIContentBlockVec(Vec<OpenAIContentBlock>);
+#[serde(untagged)]
+pub enum OpenAIChatMessageContent {
+    Structured(Vec<OpenAIContentBlock>),
+    String(String),
+}
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct OpenAIChatMessage {
     pub role: OpenAIChatMessageRole,
-    pub content: Option<OpenAIContentBlockVec>,
+    pub content: Option<OpenAIChatMessageContent>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -314,10 +323,41 @@ pub struct OpenAICompletionChatMessage {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct OpenAITopLogprob {
+    pub token: String,
+    pub logprob: f32,
+    pub bytes: Option<Vec<u8>>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct OpenAIChatChoiceLogprob {
+    pub token: String,
+    pub logprob: f32,
+    pub bytes: Option<Vec<u8>>,
+    pub top_logprobs: Vec<OpenAITopLogprob>,
+}
+
+impl From<OpenAITopLogprob> for TopLogprob {
+    fn from(top_logprob: OpenAITopLogprob) -> Self {
+        TopLogprob {
+            token: top_logprob.token,
+            logprob: top_logprob.logprob,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct OpenAIChatChoiceLogprobs {
+    pub content: Vec<OpenAIChatChoiceLogprob>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct OpenAIChatChoice {
     pub message: OpenAICompletionChatMessage,
     pub index: usize,
     pub finish_reason: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub logprobs: Option<OpenAIChatChoiceLogprobs>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -378,12 +418,12 @@ impl TryFrom<&OpenAICompletionChatMessage> for AssistantChatMessage {
     }
 }
 
-impl TryFrom<&ContentBlock> for OpenAIContentBlockVec {
+impl TryFrom<&ContentBlock> for OpenAIChatMessageContent {
     type Error = anyhow::Error;
 
     fn try_from(cm: &ContentBlock) -> Result<Self, Self::Error> {
         match cm {
-            ContentBlock::Text(t) => Ok(OpenAIContentBlockVec(vec![
+            ContentBlock::Text(t) => Ok(OpenAIChatMessageContent::Structured(vec![
                 OpenAIContentBlock::TextContent(OpenAITextContent {
                     r#type: OpenAITextContentType::Text,
                     text: t.clone(),
@@ -410,17 +450,17 @@ impl TryFrom<&ContentBlock> for OpenAIContentBlockVec {
                     })
                     .collect::<Result<Vec<OpenAIContentBlock>>>()?;
 
-                Ok(OpenAIContentBlockVec(content))
+                Ok(OpenAIChatMessageContent::Structured(content))
             }
         }
     }
 }
 
-impl TryFrom<&String> for OpenAIContentBlockVec {
+impl TryFrom<&String> for OpenAIChatMessageContent {
     type Error = anyhow::Error;
 
     fn try_from(t: &String) -> Result<Self, Self::Error> {
-        Ok(OpenAIContentBlockVec(vec![
+        Ok(OpenAIChatMessageContent::Structured(vec![
             OpenAIContentBlock::TextContent(OpenAITextContent {
                 r#type: OpenAITextContentType::Text,
                 text: t.clone(),
@@ -436,7 +476,7 @@ impl TryFrom<&ChatMessage> for OpenAIChatMessage {
         match cm {
             ChatMessage::Assistant(assistant_msg) => Ok(OpenAIChatMessage {
                 content: match &assistant_msg.content {
-                    Some(c) => Some(OpenAIContentBlockVec::try_from(c)?),
+                    Some(c) => Some(OpenAIChatMessageContent::try_from(c)?),
                     None => None,
                 },
                 name: assistant_msg.name.clone(),
@@ -452,21 +492,21 @@ impl TryFrom<&ChatMessage> for OpenAIChatMessage {
                 tool_call_id: None,
             }),
             ChatMessage::Function(function_msg) => Ok(OpenAIChatMessage {
-                content: Some(OpenAIContentBlockVec::try_from(&function_msg.content)?),
+                content: Some(OpenAIChatMessageContent::try_from(&function_msg.content)?),
                 name: None,
                 role: OpenAIChatMessageRole::Tool,
                 tool_calls: None,
                 tool_call_id: Some(function_msg.function_call_id.clone()),
             }),
             ChatMessage::System(system_msg) => Ok(OpenAIChatMessage {
-                content: Some(OpenAIContentBlockVec::try_from(&system_msg.content)?),
+                content: Some(OpenAIChatMessageContent::try_from(&system_msg.content)?),
                 name: None,
                 role: OpenAIChatMessageRole::from(&system_msg.role),
                 tool_calls: None,
                 tool_call_id: None,
             }),
             ChatMessage::User(user_msg) => Ok(OpenAIChatMessage {
-                content: Some(OpenAIContentBlockVec::try_from(&user_msg.content)?),
+                content: Some(OpenAIChatMessageContent::try_from(&user_msg.content)?),
                 name: user_msg.name.clone(),
                 role: OpenAIChatMessageRole::from(&user_msg.role),
                 tool_calls: None,
@@ -496,6 +536,7 @@ pub struct ChatDelta {
     pub delta: Value,
     pub index: usize,
     pub finish_reason: Option<String>,
+    pub logprobs: Option<OpenAIChatChoiceLogprobs>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -1007,6 +1048,9 @@ pub async fn streamed_chat_completion(
     presence_penalty: f32,
     frequency_penalty: f32,
     response_format: Option<String>,
+    reasoning_effort: Option<String>,
+    logprobs: Option<bool>,
+    top_logprobs: Option<i32>,
     user: Option<String>,
     event_sender: Option<UnboundedSender<Value>>,
 ) -> Result<(OpenAIChatCompletion, Option<String>)> {
@@ -1064,13 +1108,22 @@ pub async fn streamed_chat_completion(
     if tools.len() > 0 {
         body["tools"] = json!(tools);
     }
-    if tool_choice.is_some() {
+    if let Some(tool_choice) = tool_choice {
         body["tool_choice"] = json!(tool_choice);
     }
-    if response_format.is_some() {
+    if let Some(response_format) = response_format {
         body["response_format"] = json!({
-            "type": response_format.unwrap(),
+            "type": response_format,
         });
+    }
+    if let Some(reasoning_effort) = reasoning_effort {
+        body["reasoning_effort"] = json!(reasoning_effort);
+    }
+    if let Some(logprobs) = logprobs {
+        body["logprobs"] = json!(logprobs);
+    }
+    if let Some(top_logprobs) = top_logprobs {
+        body["top_logprobs"] = json!(top_logprobs);
     }
 
     let client = builder
@@ -1277,6 +1330,19 @@ pub async fn streamed_chat_completion(
             0 => Err(anyhow!("No chunks received from OpenAI")),
             _ => Ok(guard[0].clone()),
         }?;
+
+        // merge logprobs from all choices of all chunks
+        let logprobs: Vec<OpenAIChatChoiceLogprob> = guard
+            .iter()
+            .flat_map(|chunk| {
+                chunk
+                    .choices
+                    .iter()
+                    .filter_map(|choice| choice.logprobs.as_ref().map(|lp| lp.content.clone()))
+            })
+            .flatten()
+            .collect();
+
         let mut c = OpenAIChatCompletion {
             id: f.id.clone(),
             object: f.object.clone(),
@@ -1294,6 +1360,12 @@ pub async fn streamed_chat_completion(
                     },
                     index: c.index,
                     finish_reason: None,
+                    logprobs: match logprobs.len() {
+                        0 => None,
+                        _ => Some(OpenAIChatChoiceLogprobs {
+                            content: logprobs.clone(),
+                        }),
+                    },
                 })
                 .collect::<Vec<_>>(),
             usage,
@@ -1429,6 +1501,9 @@ pub async fn chat_completion(
     presence_penalty: f32,
     frequency_penalty: f32,
     response_format: Option<String>,
+    reasoning_effort: Option<String>,
+    logprobs: Option<bool>,
+    top_logprobs: Option<i32>,
     user: Option<String>,
 ) -> Result<(OpenAIChatCompletion, Option<String>)> {
     let mut body = json!({
@@ -1442,7 +1517,7 @@ pub async fn chat_completion(
     if user.is_some() {
         body["user"] = json!(user);
     }
-    if model_id.is_some() {
+    if let Some(model_id) = model_id {
         body["model"] = json!(model_id);
     }
     if let Some(mt) = max_tokens {
@@ -1452,16 +1527,25 @@ pub async fn chat_completion(
         body["stop"] = json!(stop);
     }
 
-    if response_format.is_some() {
+    if let Some(response_format) = response_format {
         body["response_format"] = json!({
-            "type": response_format.unwrap(),
+            "type": response_format,
         });
     }
     if tools.len() > 0 {
         body["tools"] = json!(tools);
     }
-    if tool_choice.is_some() {
+    if let Some(tool_choice) = tool_choice {
         body["tool_choice"] = json!(tool_choice);
+    }
+    if let Some(reasoning_effort) = reasoning_effort {
+        body["reasoning_effort"] = json!(reasoning_effort);
+    }
+    if let Some(logprobs) = logprobs {
+        body["logprobs"] = json!(logprobs);
+    }
+    if let Some(top_logprobs) = top_logprobs {
+        body["top_logprobs"] = json!(top_logprobs);
     }
 
     let mut req = reqwest::Client::new()
@@ -1539,6 +1623,34 @@ pub async fn chat_completion(
     }
 
     Ok((completion, request_id))
+}
+
+pub fn logprobs_from_choices(choices: &Vec<OpenAIChatChoice>) -> Option<Vec<LLMChatLogprob>> {
+    let lp: Vec<LLMChatLogprob> = choices
+        .iter()
+        .filter_map(|choice| choice.logprobs.as_ref())
+        .flat_map(|lp| {
+            lp.content.iter().map(|content_logprob| LLMChatLogprob {
+                token: content_logprob.token.clone(),
+                logprob: content_logprob.logprob,
+                top_logprobs: match content_logprob.top_logprobs.len() {
+                    0 => None,
+                    _ => Some(
+                        content_logprob
+                            .top_logprobs
+                            .iter()
+                            .map(|top_logprob| top_logprob.clone().into())
+                            .collect(),
+                    ),
+                },
+            })
+        })
+        .collect();
+
+    match lp.len() {
+        0 => None,
+        _ => Some(lp),
+    }
 }
 
 ///
@@ -1668,10 +1780,15 @@ impl OpenAILLM {
         match self.id.as_str() {
             "code_davinci-002" | "code-cushman-001" => p50k_base_singleton(),
             "text-davinci-002" | "text-davinci-003" => p50k_base_singleton(),
-            _ => match self.id.starts_with("gpt-3.5-turbo") || self.id.starts_with("gpt-4") {
-                true => cl100k_base_singleton(),
-                false => r50k_base_singleton(),
-            },
+            _ => {
+                if self.id.starts_with("gpt-4o-") {
+                    o200k_base_singleton()
+                } else if self.id.starts_with("gpt-3.5-turbo") || self.id.starts_with("gpt-4") {
+                    cl100k_base_singleton()
+                } else {
+                    r50k_base_singleton()
+                }
+            }
         }
     }
 
@@ -1707,11 +1824,25 @@ impl OpenAILLM {
 
 pub fn to_openai_messages(
     messages: &Vec<ChatMessage>,
+    model_id: &str,
 ) -> Result<Vec<OpenAIChatMessage>, anyhow::Error> {
-    messages
+    let mut oai_messages = messages
         .iter()
         .map(|m| OpenAIChatMessage::try_from(m))
-        .collect::<Result<Vec<_>>>()
+        .collect::<Result<Vec<_>>>()?
+        .into_iter()
+        // [o1-mini] O1 mini does not support system messages, so we filter them out.
+        .filter(|m| m.role != OpenAIChatMessageRole::System || !model_id.starts_with("o1-mini"))
+        .collect::<Vec<_>>();
+
+    // [o1] O1 uses `developer` messages instead of `system` messages.
+    for m in oai_messages.iter_mut() {
+        if m.role == OpenAIChatMessageRole::System && model_id.starts_with("o1") {
+            m.role = OpenAIChatMessageRole::Developer;
+        }
+    }
+
+    Ok(oai_messages)
 }
 
 #[async_trait]
@@ -1780,101 +1911,102 @@ impl LLM for OpenAILLM {
             }
         }
 
-        let (c, request_id) = match event_sender {
-            Some(_) => {
-                if n > 1 {
-                    return Err(anyhow!(
-                        "Generating multiple variations in streaming mode is not supported."
-                    ))?;
-                }
-                streamed_completion(
-                    self.uri()?,
-                    self.api_key.clone().unwrap(),
-                    match &extras {
-                        Some(ex) => match ex.get("openai_organization_id") {
-                            Some(Value::String(o)) => Some(o.to_string().clone()),
-                            _ => None,
-                        },
-                        None => None,
-                    },
-                    Some(self.id.clone()),
-                    prompt,
-                    max_tokens,
-                    temperature,
-                    n,
-                    match top_logprobs {
-                        Some(l) => Some(l),
-                        None => Some(0),
-                    },
-                    true,
-                    stop,
-                    match frequency_penalty {
-                        Some(f) => f,
-                        None => 0.0,
-                    },
-                    match presence_penalty {
-                        Some(p) => p,
-                        None => 0.0,
-                    },
-                    match top_p {
-                        Some(t) => t,
-                        None => 1.0,
-                    },
-                    match &extras {
-                        Some(e) => match e.get("openai_user") {
-                            Some(Value::String(u)) => Some(u.to_string()),
-                            _ => None,
-                        },
-                        None => None,
-                    },
-                    event_sender,
-                )
-                .await?
+        // [o1] Hack for OpenAI `o1*` models to not use streaming.
+        let model_is_o1 = self.id.as_str().starts_with("o1");
+        let (c, request_id) = if !model_is_o1 && event_sender.is_some() {
+            if n > 1 {
+                return Err(anyhow!(
+                    "Generating multiple variations in streaming mode is not supported."
+                ))?;
             }
-            None => {
-                completion(
-                    self.uri()?,
-                    self.api_key.clone().unwrap(),
-                    match &extras {
-                        Some(e) => match e.get("openai_organization_id") {
-                            Some(Value::String(o)) => Some(o.to_string()),
-                            _ => None,
-                        },
-                        None => None,
+            streamed_completion(
+                self.uri()?,
+                self.api_key.clone().unwrap(),
+                match &extras {
+                    Some(ex) => match ex.get("openai_organization_id") {
+                        Some(Value::String(o)) => Some(o.to_string().clone()),
+                        _ => None,
                     },
-                    Some(self.id.clone()),
-                    prompt,
-                    max_tokens,
-                    temperature,
-                    n,
-                    match top_logprobs {
-                        Some(l) => Some(l),
-                        None => Some(0),
+                    None => None,
+                },
+                Some(self.id.clone()),
+                prompt,
+                max_tokens,
+                // [o1] O1 models do not support custom temperature.
+                if !model_is_o1 { temperature } else { 1.0 },
+                n,
+                match top_logprobs {
+                    Some(l) => Some(l),
+                    None => Some(0),
+                },
+                true,
+                stop,
+                match frequency_penalty {
+                    Some(f) => f,
+                    None => 0.0,
+                },
+                match presence_penalty {
+                    Some(p) => p,
+                    None => 0.0,
+                },
+                match top_p {
+                    Some(t) => t,
+                    None => 1.0,
+                },
+                match &extras {
+                    Some(e) => match e.get("openai_user") {
+                        Some(Value::String(u)) => Some(u.to_string()),
+                        _ => None,
                     },
-                    true,
-                    stop,
-                    match frequency_penalty {
-                        Some(f) => f,
-                        None => 0.0,
+                    None => None,
+                },
+                event_sender,
+            )
+            .await?
+        } else {
+            completion(
+                self.uri()?,
+                self.api_key.clone().unwrap(),
+                match &extras {
+                    Some(e) => match e.get("openai_organization_id") {
+                        Some(Value::String(o)) => Some(o.to_string()),
+                        _ => None,
                     },
-                    match presence_penalty {
-                        Some(p) => p,
-                        None => 0.0,
+                    None => None,
+                },
+                Some(self.id.clone()),
+                prompt,
+                max_tokens,
+                // [o1] O1 models do not support custom temperature.
+                if !model_is_o1 { temperature } else { 1.0 },
+                n,
+                match top_logprobs {
+                    Some(l) => Some(l),
+                    None => Some(0),
+                },
+                true,
+                stop,
+                match frequency_penalty {
+                    Some(f) => f,
+                    None => 0.0,
+                },
+                match presence_penalty {
+                    Some(p) => p,
+                    None => 0.0,
+                },
+                match top_p {
+                    Some(t) => t,
+                    None => 1.0,
+                },
+                match &extras {
+                    Some(e) => match e.get("openai_user") {
+                        Some(Value::String(u)) => Some(u.to_string()),
+                        _ => None,
                     },
-                    match top_p {
-                        Some(t) => t,
-                        None => 1.0,
-                    },
-                    match &extras {
-                        Some(e) => match e.get("openai_user") {
-                            Some(Value::String(u)) => Some(u.to_string()),
-                            _ => None,
-                        },
-                        None => None,
-                    },
-                )
-                .await?
-            }
+                    None => None,
+                },
+            )
+            .await?
         };
 
         // println!("COMPLETION: {:?}", c);
@@ -1971,6 +2103,8 @@ impl LLM for OpenAILLM {
         mut max_tokens: Option<i32>,
         presence_penalty: Option<f32>,
         frequency_penalty: Option<f32>,
+        logprobs: Option<bool>,
+        top_logprobs: Option<i32>,
         extras: Option<Value>,
         event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMChatGeneration> {
@@ -1980,8 +2114,8 @@ impl LLM for OpenAILLM {
             }
         }
 
-        let (openai_org_id, openai_user, response_format) = match &extras {
-            None => (None, None, None),
+        let (openai_org_id, openai_user, response_format, reasoning_effort) = match &extras {
+            None => (None, None, None, None),
             Some(v) => (
                 match v.get("openai_organization_id") {
                     Some(Value::String(o)) => Some(o.to_string()),
@@ -1993,6 +2127,10 @@ impl LLM for OpenAILLM {
                 },
                 match v.get("response_format") {
                     Some(Value::String(f)) => Some(f.to_string()),
+                    _ => None,
+                },
+                match v.get("reasoning_effort") {
+                    Some(Value::String(r)) => Some(r.to_string()),
                     _ => None,
                 },
             ),
@@ -2008,71 +2146,105 @@ impl LLM for OpenAILLM {
             .map(OpenAITool::try_from)
             .collect::<Result<Vec<OpenAITool>, _>>()?;
 
-        let openai_messages = to_openai_messages(messages)?;
+        let openai_messages = to_openai_messages(messages, &self.id)?;
 
-        let (c, request_id) = match event_sender {
-            Some(_) => {
-                streamed_chat_completion(
-                    self.chat_uri()?,
-                    self.api_key.clone().unwrap(),
-                    openai_org_id,
-                    Some(self.id.clone()),
-                    &openai_messages,
-                    tools,
-                    tool_choice,
-                    temperature,
-                    match top_p {
-                        Some(t) => t,
-                        None => 1.0,
-                    },
-                    n,
-                    stop,
-                    max_tokens,
-                    match presence_penalty {
-                        Some(p) => p,
-                        None => 0.0,
-                    },
-                    match frequency_penalty {
-                        Some(f) => f,
-                        None => 0.0,
-                    },
-                    response_format,
-                    openai_user,
-                    event_sender,
-                )
-                .await?
-            }
-            None => {
-                chat_completion(
-                    self.chat_uri()?,
-                    self.api_key.clone().unwrap(),
-                    openai_org_id,
-                    Some(self.id.clone()),
-                    &openai_messages,
-                    tools,
-                    tool_choice,
-                    temperature,
-                    match top_p {
-                        Some(t) => t,
-                        None => 1.0,
-                    },
-                    n,
-                    stop,
-                    max_tokens,
-                    match presence_penalty {
-                        Some(p) => p,
-                        None => 0.0,
-                    },
-                    match frequency_penalty {
-                        Some(f) => f,
-                        None => 0.0,
-                    },
-                    response_format,
-                    openai_user,
-                )
-                .await?
-            }
+        // [o1] Hack for OpenAI `o1*` models to simulate streaming.
+        let is_streaming = event_sender.is_some();
+        let model_is_o1 = self.id.as_str().starts_with("o1");
+
+        let (c, request_id) = if !model_is_o1 && is_streaming {
+            streamed_chat_completion(
+                self.chat_uri()?,
+                self.api_key.clone().unwrap(),
+                openai_org_id,
+                Some(self.id.clone()),
+                &openai_messages,
+                tools,
+                tool_choice,
+                // [o1] O1 models do not support custom temperature.
+                if !model_is_o1 { temperature } else { 1.0 },
+                match top_p {
+                    Some(t) => t,
+                    None => 1.0,
+                },
+                n,
+                stop,
+                max_tokens,
+                match presence_penalty {
+                    Some(p) => p,
+                    None => 0.0,
+                },
+                match frequency_penalty {
+                    Some(f) => f,
+                    None => 0.0,
+                },
+                response_format,
+                reasoning_effort,
+                logprobs,
+                top_logprobs,
+                openai_user,
+                event_sender.clone(),
+            )
+            .await?
+        } else {
+            chat_completion(
+                self.chat_uri()?,
+                self.api_key.clone().unwrap(),
+                openai_org_id,
+                Some(self.id.clone()),
+                &openai_messages,
+                tools,
+                tool_choice,
+                // [o1] O1 models do not support custom temperature.
+                if !model_is_o1 { temperature } else { 1.0 },
+                match top_p {
+                    Some(t) => t,
+                    None => 1.0,
+                },
+                n,
+                stop,
+                max_tokens,
+                match presence_penalty {
+                    Some(p) => p,
+                    None => 0.0,
+                },
+                match frequency_penalty {
+                    Some(f) => f,
+                    None => 0.0,
+                },
+                response_format,
+                reasoning_effort,
+                logprobs,
+                top_logprobs,
+                openai_user,
+            )
+            .await?
         };
+
+        // [o1] Hack for OpenAI `o1*` models to simulate streaming.
+        if model_is_o1 && is_streaming {
+            let sender = event_sender.as_ref().unwrap();
+            for choice in &c.choices {
+                if let Some(content) = &choice.message.content {
+                    // Split content into smaller chunks to simulate streaming.
+                    for chunk in content
+                        .chars()
+                        .collect::<Vec<char>>()
+                        .chunks(4)
+                        .map(|c| c.iter().collect::<String>())
+                    {
+                        let _ = sender.send(json!({
+                            "type": "tokens",
+                            "content": {
+                                "text": chunk,
+                            },
+                        }));
+                        // Add a small delay to simulate real-time streaming.
+                        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+                    }
+                }
+            }
+        }
 
         assert!(c.choices.len() > 0);
 
@@ -2090,6 +2262,7 @@ impl LLM for OpenAILLM {
                 completion_tokens: usage.completion_tokens.unwrap_or(0),
             }),
             provider_request_id: request_id,
+            logprobs: logprobs_from_choices(&c.choices),
         })
     }
 }

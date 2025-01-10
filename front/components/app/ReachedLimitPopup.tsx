@@ -1,13 +1,20 @@
-import { Dialog, Hoverable, Page } from "@dust-tt/sparkle";
+import {
+  Hoverable,
+  NewDialog,
+  NewDialogContainer,
+  NewDialogContent,
+  NewDialogFooter,
+  NewDialogHeader,
+  NewDialogTitle,
+  Page,
+} from "@dust-tt/sparkle";
 import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import type { NextRouter } from "next/router";
 import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { FairUsageModal } from "@app/components/FairUsageModal";
-import { isTrial } from "@app/lib/plans/trial";
-import { ClientSideTracking } from "@app/lib/tracking/client";
 
 export type WorkspaceLimit =
   | "cant_invite_no_seats_available"
@@ -124,9 +131,10 @@ function getLimitPromptForCode(
           validateLabel: "Ok",
           children: (
             <p className="text-sm font-normal text-element-800">
-              As part of our fair usage policy, we've put a brief pause on your
-              messaging since you've reached the 100 messages limit within a 24h
-              window. Check our{" "}
+              We've paused messaging for your workspace due to our fair usage
+              policy. Your workspace has reached its shared limit of 100
+              messages per user for the past 24 hours. This total limit is
+              collectively shared by all users in the workspace. Check our{" "}
               <Hoverable
                 className="cursor-pointer font-bold text-action-500"
                 onClick={() => displayFairUseModal()}
@@ -161,7 +169,6 @@ export function ReachedLimitPopup({
   const [isFairUsageModalOpened, setIsFairUsageModalOpened] = useState(false);
 
   const router = useRouter();
-  const trialing = isTrial(subscription);
   const { title, children, validateLabel, onValidate } = getLimitPromptForCode(
     router,
     owner,
@@ -170,37 +177,38 @@ export function ReachedLimitPopup({
     () => setIsFairUsageModalOpened(true)
   );
 
-  useEffect(() => {
-    if (isOpened) {
-      void ClientSideTracking.trackFairUsageDialogViewed({
-        workspaceId: owner.sId,
-        workspaceName: owner.name,
-        trialing,
-      });
-    }
-  }, [isOpened, owner.name, owner.sId, trialing]);
-
   return (
     <>
       <FairUsageModal
         isOpened={isFairUsageModalOpened}
         onClose={() => setIsFairUsageModalOpened(false)}
       />
-      <Dialog
-        title={title}
-        isOpen={isOpened}
-        onValidate={
-          onValidate ||
-          (() => {
+      <NewDialog
+        open={isOpened}
+        onOpenChange={(open) => {
+          if (!open) {
             onClose();
-          })
-        }
-        onCancel={() => onClose()}
-        cancelLabel="Close"
-        validateLabel={validateLabel}
+          }
+        }}
       >
-        {children}
-      </Dialog>
+        <NewDialogContent>
+          <NewDialogHeader>
+            <NewDialogTitle>{title}</NewDialogTitle>
+          </NewDialogHeader>
+          <NewDialogContainer>{children}</NewDialogContainer>
+          <NewDialogFooter
+            leftButtonProps={{
+              label: "Cancel",
+              variant: "outline",
+            }}
+            rightButtonProps={{
+              label: validateLabel,
+              variant: "highlight",
+              onClick: onValidate || (() => onClose()),
+            }}
+          />
+        </NewDialogContent>
+      </NewDialog>
     </>
   );
 }

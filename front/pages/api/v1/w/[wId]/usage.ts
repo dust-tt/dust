@@ -3,9 +3,11 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { Authenticator, getAPIKey } from "@app/lib/auth";
+import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
+import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { unsafeGetUsageData } from "@app/lib/workspace_usage";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 
 const DateString = t.refinement(
   t.string,
@@ -29,29 +31,12 @@ const GetWorkspaceUsageSchema = t.intersection([
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse
+  res: NextApiResponse,
+  auth: Authenticator
 ): Promise<void> {
-  const keyRes = await getAPIKey(req);
-  if (keyRes.isErr()) {
-    return apiError(req, res, keyRes.error);
-  }
-  const { workspaceAuth } = await Authenticator.fromKey(
-    keyRes.value,
-    req.query.wId as string
-  );
-
-  const owner = workspaceAuth.workspace();
-  if (!owner || !workspaceAuth.isBuilder()) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "workspace_not_found",
-        message: "The workspace was not found.",
-      },
-    });
-  }
-
-  if (!owner.flags.includes("usage_data_api")) {
+  const owner = auth.getNonNullableWorkspace();
+  const flags = await getFeatureFlags(owner);
+  if (!flags.includes("usage_data_api")) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {
@@ -80,7 +65,7 @@ async function handler(
       const csvData = await unsafeGetUsageData(
         new Date(query.start_date),
         query.end_date ? new Date(query.end_date) : new Date(),
-        owner.sId
+        owner
       );
       res.setHeader("Content-Type", "text/csv");
       res.status(200).send(csvData);
@@ -97,4 +82,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withPublicAPIAuthentication(handler);

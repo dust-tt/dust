@@ -1,6 +1,8 @@
-import type { AgentActionType } from "@dust-tt/types";
+import type { AgentActionType, LightWorkspaceType } from "@dust-tt/types";
+import { ACTION_RUNNING_LABELS } from "@dust-tt/types";
 
 import { BrowseActionDetails } from "@app/components/actions/browse/BrowseActionDetails";
+import { ConversationIncludeFileActionDetails } from "@app/components/actions/conversation/include_file/IncludeFileActionDetails";
 import { DustAppRunActionDetails } from "@app/components/actions/dust_app_run/DustAppRunActionDetails";
 import { ProcessActionDetails } from "@app/components/actions/process/ProcessActionDetails";
 import { RetrievalActionDetails } from "@app/components/actions/retrieval/RetrievalActionDetails";
@@ -11,6 +13,7 @@ export interface ActionDetailsComponentBaseProps<
   T extends AgentActionType = AgentActionType,
 > {
   action: T;
+  owner: LightWorkspaceType;
   defaultOpen: boolean;
 }
 
@@ -28,27 +31,35 @@ type ActionSpecifications = {
 const actionsSpecification: ActionSpecifications = {
   dust_app_run_action: {
     detailsComponent: DustAppRunActionDetails,
-    runningLabel: "Running App",
+    runningLabel: ACTION_RUNNING_LABELS.dust_app_run_action,
   },
   process_action: {
     detailsComponent: ProcessActionDetails,
-    runningLabel: "Extracting data",
+    runningLabel: ACTION_RUNNING_LABELS.process_action,
   },
   retrieval_action: {
     detailsComponent: RetrievalActionDetails,
-    runningLabel: "Searching data",
+    runningLabel: ACTION_RUNNING_LABELS.retrieval_action,
   },
   tables_query_action: {
     detailsComponent: TablesQueryActionDetails,
-    runningLabel: "Querying tables",
+    runningLabel: ACTION_RUNNING_LABELS.tables_query_action,
   },
   websearch_action: {
     detailsComponent: WebsearchActionDetails,
-    runningLabel: "Searching the web",
+    runningLabel: ACTION_RUNNING_LABELS.websearch_action,
   },
   browse_action: {
     detailsComponent: BrowseActionDetails,
-    runningLabel: "Browsing page",
+    runningLabel: ACTION_RUNNING_LABELS.browse_action,
+  },
+  conversation_list_files_action: {
+    detailsComponent: () => null,
+    runningLabel: ACTION_RUNNING_LABELS.conversation_list_files_action,
+  },
+  conversation_include_file_action: {
+    detailsComponent: ConversationIncludeFileActionDetails,
+    runningLabel: ACTION_RUNNING_LABELS.conversation_include_file_action,
   },
 };
 

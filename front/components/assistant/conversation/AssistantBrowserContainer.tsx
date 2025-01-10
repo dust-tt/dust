@@ -6,7 +6,7 @@ import type {
 import { useCallback } from "react";
 
 import { AssistantBrowser } from "@app/components/assistant/AssistantBrowser";
-import { useProgressiveAgentConfigurations } from "@app/lib/swr/assistants";
+import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { classNames } from "@app/lib/utils";
 
 interface AssistantBrowserContainerProps {
@@ -22,10 +22,10 @@ export function AssistantBrowserContainer({
   isBuilder,
   setAssistantToMention,
 }: AssistantBrowserContainerProps) {
-  const { agentConfigurations, isLoading, mutateAgentConfigurations } =
-    useProgressiveAgentConfigurations({
-      workspaceId: owner.sId,
-    });
+  // We use this specific hook because this component is involved in the new conversation page.
+  const { agentConfigurations, isLoading } = useUnifiedAgentConfigurations({
+    workspaceId: owner.sId,
+  });
 
   const handleAssistantClick = useCallback(
     // On click, scroll to the input bar and set the selected assistant.
@@ -40,16 +40,16 @@ export function AssistantBrowserContainer({
       }
       const scrollDistance = scrollContainerElement.getBoundingClientRect().top;
 
-      // If the input bar is already in view, set the mention directly. We leave
-      // a little margin, -2 instead of 0, since the autoscroll below can
-      // sometimes scroll a bit over 0, to -0.3 or -0.5, in which case if there
-      // is a clic on a visible assistant we still want this condition to
-      // trigger.
+      // If the input bar is already in view, set the mention directly. We leave a little margin, -2
+      // instead of 0, since the autoscroll below can sometimes scroll a bit over 0, to -0.3 or
+      // -0.5, in which case if there is a clic on a visible assistant we still want this condition
+      // to trigger.
       if (scrollDistance > -2) {
         return onAgentConfigurationClick(agent.sId);
       }
 
-      // Otherwise, scroll to the input bar and set the ref (mention will be set via intersection observer).
+      // Otherwise, scroll to the input bar and set the ref (mention will be set via intersection
+      // observer).
       scrollContainerElement.scrollIntoView({ behavior: "smooth" });
 
       setAssistantToMention(agent);
@@ -61,7 +61,7 @@ export function AssistantBrowserContainer({
     <div
       id="assistants-lists-container"
       className={classNames(
-        "duration-400 flex h-full w-full max-w-4xl flex-col gap-3 pt-9 transition-opacity",
+        "duration-400 flex h-full w-full max-w-4xl flex-col gap-2 pt-8 transition-opacity",
         isLoading ? "opacity-0" : "opacity-100"
       )}
     >
@@ -74,7 +74,6 @@ export function AssistantBrowserContainer({
         agents={agentConfigurations}
         loadingStatus={isLoading ? "loading" : "finished"}
         handleAssistantClick={handleAssistantClick}
-        mutateAgentConfigurations={mutateAgentConfigurations}
       />
     </div>
   );

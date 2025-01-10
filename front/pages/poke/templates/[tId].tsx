@@ -1,10 +1,15 @@
 import {
-  AssistantPreview,
+  AssistantCard,
   ColorPicker,
   DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
   EmojiPicker,
   Markdown,
+  TextArea,
 } from "@dust-tt/sparkle";
+import { Input } from "@dust-tt/sparkle";
+import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   CreateTemplateFormType,
   TemplateTagCodeType,
@@ -46,7 +51,6 @@ import {
   PokeFormLabel,
   PokeFormMessage,
 } from "@app/components/poke/shadcn/ui/form";
-import { PokeInput } from "@app/components/poke/shadcn/ui/input";
 import {
   PokeSelect,
   PokeSelectContent,
@@ -54,9 +58,7 @@ import {
   PokeSelectTrigger,
   PokeSelectValue,
 } from "@app/components/poke/shadcn/ui/select";
-import { PokeTextarea } from "@app/components/poke/shadcn/ui/textarea";
 import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { usePokeAssistantTemplate } from "@app/poke/swr";
@@ -100,7 +102,7 @@ function InputField({
           <PokeFormLabel className="capitalize">{title ?? name}</PokeFormLabel>
           {typeof field.value === "string" ? (
             <PokeFormControl>
-              <PokeInput
+              <Input
                 placeholder={placeholder ?? name}
                 type={type}
                 {...field}
@@ -150,28 +152,24 @@ function PickerInputField({
           {typeof field.value === "string" ? (
             <PokeFormControl>
               <div className="flex flex-row gap-2">
-                <PokeInput
+                <Input
                   readOnly
                   placeholder={placeholder ?? name}
                   {...field}
                   value={field.value} // Ensuring value is a string
                 />
                 <DropdownMenu>
-                  <DropdownMenu.Button>
+                  <DropdownMenuTrigger asChild>
                     <div ref={pickerRef}>
                       <PokeButton variant="outline">{buttonLabel}</PokeButton>
                     </div>
-                  </DropdownMenu.Button>
-                  <DropdownMenu.Items
-                    width={350}
-                    origin="topLeft"
-                    variant="no-padding"
-                  >
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
                     {picker((value: string) => {
                       field.onChange(value);
                       pickerRef.current?.click();
                     })}
-                  </DropdownMenu.Items>
+                  </DropdownMenuContent>
                 </DropdownMenu>
               </div>
             </PokeFormControl>
@@ -216,7 +214,7 @@ function TextareaField({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <PokeFormControl>
-                    <PokeTextarea
+                    <TextArea
                       placeholder={placeholder ?? name}
                       rows={rows}
                       {...field} // Ensure `value` is a string
@@ -230,7 +228,7 @@ function TextareaField({
               </div>
             ) : (
               <PokeFormControl>
-                <PokeTextarea
+                <TextArea
                   placeholder={placeholder ?? name}
                   rows={rows}
                   {...field} // Ensure `value` is a string
@@ -438,11 +436,10 @@ function PreviewDialog({ form }: { form: any }) {
         <PokeDialogHeader>
           <PokeDialogTitle>Preview</PokeDialogTitle>
         </PokeDialogHeader>
-        <AssistantPreview
+        <AssistantCard
           title={form.getValues("handle")}
           pictureUrl={avatarVisual}
           description={form.getValues("description") ?? ""}
-          variant="list"
           onClick={() => console.log("clicked")}
         />
       </PokeDialogContent>
@@ -456,7 +453,7 @@ function TemplatesPage({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
 
-  const sendNotification = React.useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
 
   const { assistantTemplate } = usePokeAssistantTemplate({
     templateId: templateId === "new" ? null : templateId,

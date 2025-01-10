@@ -1,4 +1,5 @@
 import type {
+  ActionGeneratedFileType,
   AgentActionSpecification,
   DustAppParameters,
   FunctionCallType,
@@ -8,21 +9,31 @@ import type {
   TablesQueryActionType,
   TablesQueryConfigurationType,
   TablesQueryErrorEvent,
+  TablesQueryModelOutputEvent,
   TablesQueryOutputEvent,
-  TablesQueryParamsEvent,
-  TablesQuerySuccessEvent,
+  TablesQueryStartedEvent,
 } from "@dust-tt/types";
-import { BaseAction, Ok } from "@dust-tt/types";
+import {
+  BaseAction,
+  getTablesQueryResultsFileAttachment,
+  getTablesQueryResultsFileTitle,
+  Ok,
+} from "@dust-tt/types";
+import { stringify } from "csv-stringify";
 
 import { runActionStreamed } from "@app/lib/actions/server";
-import { DEFAULT_TABLES_QUERY_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
+import { DEFAULT_TABLES_QUERY_ACTION_NAME } from "@app/lib/api/assistant/actions/constants";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
-import { renderConversationForModelMultiActions } from "@app/lib/api/assistant/generation";
+import { renderConversationForModel } from "@app/lib/api/assistant/generation";
+import { generateCSVSnippet } from "@app/lib/api/csv";
+import { internalCreateToolOutputCsvFile } from "@app/lib/api/files/tool_output";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
+import { FileResource } from "@app/lib/resources/file_resource";
+import { FileModel } from "@app/lib/resources/storage/models/files";
 import { sanitizeJSONOutput } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
@@ -35,22 +46,27 @@ interface TablesQueryActionBlob {
   agentMessageId: ModelId;
   params: DustAppParameters;
   output: Record<string, string | number | boolean> | null;
+  resultsFileId: string | null;
+  resultsFileSnippet: string | null;
   functionCallId: string | null;
   functionCallName: string | null;
   step: number;
+  generatedFiles: ActionGeneratedFileType[];
 }
 
 export class TablesQueryAction extends BaseAction {
   readonly agentMessageId: ModelId;
   readonly params: DustAppParameters;
   readonly output: Record<string, string | number | boolean> | null;
+  readonly resultsFileId: string | null;
+  readonly resultsFileSnippet: string | null;
   readonly functionCallId: string | null;
   readonly functionCallName: string | null;
   readonly step: number;
   readonly type = "tables_query_action";
 
   constructor(blob: TablesQueryActionBlob) {
-    super(blob.id, "tables_query_action");
+    super(blob.id, "tables_query_action", blob.generatedFiles);
 
     this.agentMessageId = blob.agentMessageId;
     this.params = blob.params;
@@ -58,6 +74,8 @@ export class TablesQueryAction extends BaseAction {
     this.functionCallId = blob.functionCallId;
     this.functionCallName = blob.functionCallName;
     this.step = blob.step;
+    this.resultsFileId = blob.resultsFileId;
+    this.resultsFileSnippet = blob.resultsFileSnippet;
   }
 
   renderForFunctionCall(): FunctionCallType {
@@ -68,20 +86,92 @@ export class TablesQueryAction extends BaseAction {
     };
   }
 
-  renderForMultiActionsModel(): FunctionMessageTypeModel {
-    let content = "";
-    content += `OUTPUT:\n`;
-
-    if (this.output === null) {
-      content += "(query failed)\n";
-    } else {
-      content += `${JSON.stringify(this.output, null, 2)}\n`;
-    }
-
-    return {
+  async renderForMultiActionsModel(): Promise<FunctionMessageTypeModel> {
+    const partialOutput: Omit<FunctionMessageTypeModel, "content"> = {
       role: "function" as const,
       name: this.functionCallName ?? DEFAULT_TABLES_QUERY_ACTION_NAME,
       function_call_id: this.functionCallId ?? `call_${this.id.toString()}`,
+    };
+
+    // Unexpected error case -- we don't have any action output.
+    if (!this.output) {
+      return {
+        ...partialOutput,
+        content: "(query failed)",
+      };
+    }
+
+    let content = "";
+
+    // Add reasoning if it exists (should always exist).
+    if (typeof this.output.thinking === "string") {
+      content += `Reasoning:\n${this.output.thinking}\n\n`;
+    }
+
+    const query =
+      typeof this.output.query === "string" ? this.output.query : null;
+
+    if (!query) {
+      // Model didn't generate a query, so we don't have any results.
+      content += "No query was executed.\n";
+      return {
+        ...partialOutput,
+        content,
+      };
+    }
+
+    content += `Query:\n${this.output.query}\n\n`;
+
+    const error =
+      typeof this.output.error === "string" ? this.output.error : null;
+
+    if (error) {
+      // Generated query failed to execute.
+      content += `Error:\n${this.output.error}\n\n`;
+      return {
+        ...partialOutput,
+        content,
+      };
+    }
+
+    const hasResultsFile = this.resultsFileId && this.resultsFileSnippet;
+
+    if (!hasResultsFile && !this.output.results) {
+      // We don't have any results -- this is unexpected, we should always
+      // have either an eror or some results (either a file or a `results` prop).
+      content += "No results were returned.\n";
+      return {
+        ...partialOutput,
+        content,
+      };
+    }
+
+    if (hasResultsFile) {
+      const attachment = getTablesQueryResultsFileAttachment({
+        resultsFileId: this.resultsFileId,
+        resultsFileSnippet: this.resultsFileSnippet,
+        output: this.output,
+        includeSnippet: true,
+      });
+      if (!attachment) {
+        throw new Error(
+          "Unexpected: No file attachment for tables query with results file."
+        );
+      }
+      // New path -- we have a results file.
+      // We render it as an attachment.
+      return {
+        ...partialOutput,
+        content: attachment,
+      };
+    }
+
+    // Legacy path -- we don't have a results file.
+    // We render the raw results object inline.
+    content += `OUTPUT:\n${JSON.stringify(this.output, null, 2)}`;
+
+    return {
+      ...partialOutput,
       content,
     };
   }
@@ -91,14 +181,41 @@ export class TablesQueryAction extends BaseAction {
 // used outside of api/assistant. We allow a ModelId interface here because we don't have `sId` on
 // actions (the `sId` is on the `Message` object linked to the `UserMessage` parent of this action).
 export async function tableQueryTypesFromAgentMessageIds(
+  auth: Authenticator,
   agentMessageIds: ModelId[]
 ): Promise<TablesQueryActionType[]> {
+  const owner = auth.getNonNullableWorkspace();
+
   const actions = await AgentTablesQueryAction.findAll({
     where: {
       agentMessageId: agentMessageIds,
     },
+    include: [
+      {
+        model: FileModel,
+        as: "resultsFile",
+      },
+    ],
   });
+
   return actions.map((action) => {
+    const resultsFile: ActionGeneratedFileType | null = action.resultsFile
+      ? {
+          fileId: FileResource.modelIdToSId({
+            id: action.resultsFile.id,
+            workspaceId: owner.id,
+          }),
+          title: getTablesQueryResultsFileTitle({
+            output: action.output as Record<
+              string,
+              string | number | boolean
+            > | null,
+          }),
+          contentType: action.resultsFile.contentType,
+          snippet: action.resultsFile.snippet,
+        }
+      : null;
+
     return new TablesQueryAction({
       id: action.id,
       params: action.params as DustAppParameters,
@@ -107,6 +224,9 @@ export async function tableQueryTypesFromAgentMessageIds(
       functionCallName: action.functionCallName,
       agentMessageId: action.agentMessageId,
       step: action.step,
+      resultsFileId: resultsFile ? resultsFile.fileId : null,
+      resultsFileSnippet: action.resultsFileSnippet,
+      generatedFiles: resultsFile ? [resultsFile] : [],
     });
   });
 }
@@ -145,7 +265,7 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
     }
 
     let actionDescription =
-      "Query data tables specificied by the user by executing a generated SQL query. " +
+      "Query data tables described below by executing a SQL query automatically generated from the conversation context. " +
       "The function does not require any inputs, the SQL query will be inferred from the conversation history.";
     if (description) {
       actionDescription += `\nDescription of the data tables:\n${description}`;
@@ -156,11 +276,6 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
       description: actionDescription,
     });
     return new Ok(spec);
-  }
-
-  // TablesQuery does not use citations.
-  getCitationsCount(): number {
-    return 0;
   }
 
   async *run(
@@ -175,8 +290,8 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
     }: BaseActionRunParams
   ): AsyncGenerator<
     | TablesQueryErrorEvent
-    | TablesQuerySuccessEvent
-    | TablesQueryParamsEvent
+    | TablesQueryStartedEvent
+    | TablesQueryModelOutputEvent
     | TablesQueryOutputEvent
   > {
     const owner = auth.workspace();
@@ -194,12 +309,13 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
       params: rawInputs,
       output,
       functionCallId,
+      functionCallName: actionConfiguration.name,
       agentMessageId: agentMessage.agentMessageId,
       step: step,
     });
 
     yield {
-      type: "tables_query_params",
+      type: "tables_query_started",
       created: Date.now(),
       configurationId: actionConfiguration.sId,
       messageId: agentMessage.sId,
@@ -211,6 +327,9 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
         functionCallName: action.functionCallName,
         agentMessageId: action.agentMessageId,
         step: action.step,
+        resultsFileId: null,
+        resultsFileSnippet: null,
+        generatedFiles: [],
       }),
     };
 
@@ -237,14 +356,13 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
       return;
     }
 
-    const renderedConversationRes =
-      await renderConversationForModelMultiActions({
-        conversation,
-        model: supportedModel,
-        prompt: agentConfiguration.instructions ?? "",
-        allowedTokenCount,
-        excludeImages: true,
-      });
+    const renderedConversationRes = await renderConversationForModel(auth, {
+      conversation,
+      model: supportedModel,
+      prompt: agentConfiguration.instructions ?? "",
+      allowedTokenCount,
+      excludeImages: true,
+    });
     if (renderedConversationRes.isErr()) {
       yield {
         type: "tables_query_error",
@@ -268,7 +386,9 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
     const tables = actionConfiguration.tables.map((t) => ({
       workspace_id: t.workspaceId,
       table_id: t.tableId,
-      data_source_id: t.dataSourceId,
+      // Note: This value is passed to the registry for lookup. The registry will return the
+      // associated data source's dustAPIDataSourceId.
+      data_source_id: t.dataSourceViewId,
     }));
     if (tables.length === 0) {
       yield {
@@ -390,51 +510,93 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
           return;
         }
 
-        if (event.content.block_name === "SQL") {
-          let tmpOutput = null;
-          if (e.value) {
-            const sql = e.value as string;
-            tmpOutput = { query: sql };
-          } else {
-            tmpOutput = { no_query: true };
-          }
+        if (event.content.block_name === "MODEL_OUTPUT") {
+          // Check e.value is an object.
 
-          yield {
-            type: "tables_query_output",
-            created: Date.now(),
-            configurationId: agentConfiguration.sId,
-            messageId: agentMessage.sId,
-            action: new TablesQueryAction({
-              id: action.id,
-              params: action.params as DustAppParameters,
-              output: tmpOutput as Record<string, string | number | boolean>,
-              functionCallId: action.functionCallId,
-              functionCallName: action.functionCallName,
-              agentMessageId: agentMessage.id,
-              step: action.step,
-            }),
-          };
+          if (e.value && typeof e.value === "object") {
+            yield {
+              type: "tables_query_model_output",
+              created: Date.now(),
+              configurationId: agentConfiguration.sId,
+              messageId: agentMessage.sId,
+              action: new TablesQueryAction({
+                id: action.id,
+                params: action.params as DustAppParameters,
+                output: e.value as Record<string, string | number | boolean>,
+                functionCallId: action.functionCallId,
+                functionCallName: action.functionCallName,
+                agentMessageId: agentMessage.id,
+                step: action.step,
+                resultsFileId: null,
+                resultsFileSnippet: null,
+                generatedFiles: [],
+              }),
+            };
+          }
         }
 
         if (event.content.block_name === "OUTPUT" && e.value) {
           output = JSON.parse(e.value as string);
-          if (!output.query) {
-            output.no_query = true;
-          }
         }
       }
     }
 
-    const sanitizedOutput = sanitizeJSONOutput(output);
+    const sanitizedOutput = sanitizeJSONOutput(output) as Record<
+      string,
+      unknown
+    >;
+
+    const updateParams: {
+      resultsFileId: number | null;
+      resultsFileSnippet: string | null;
+      output: Record<string, unknown> | null;
+    } = {
+      resultsFileId: null,
+      resultsFileSnippet: null,
+      output: null,
+    };
+
+    let resultFile: ActionGeneratedFileType | null = null;
+
+    if (
+      "results" in sanitizedOutput &&
+      Array.isArray(sanitizedOutput.results)
+    ) {
+      const results = sanitizedOutput.results;
+      const queryTitle = getTablesQueryResultsFileTitle({
+        output: sanitizedOutput,
+      });
+
+      const { file, snippet } = await getTablesQueryOutputCsvFileAndSnippet(
+        auth,
+        {
+          title: queryTitle,
+          conversationId: conversation.sId,
+          results,
+        }
+      );
+
+      resultFile = {
+        fileId: file.sId,
+        title: queryTitle,
+        contentType: file.contentType,
+        snippet: file.snippet,
+      };
+
+      delete sanitizedOutput.results;
+      updateParams.resultsFileId = file.id;
+      updateParams.resultsFileSnippet = snippet;
+    }
 
     // Updating action
     await action.update({
+      ...updateParams,
       output: sanitizedOutput,
       runId: await dustRunId,
     });
 
     yield {
-      type: "tables_query_success",
+      type: "tables_query_output",
       created: Date.now(),
       configurationId: agentConfiguration.sId,
       messageId: agentMessage.sId,
@@ -446,8 +608,51 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
         functionCallName: action.functionCallName,
         agentMessageId: action.agentMessageId,
         step: action.step,
+        resultsFileId: resultFile?.fileId ?? null,
+        resultsFileSnippet: updateParams.resultsFileSnippet,
+        generatedFiles: resultFile ? [resultFile] : [],
       }),
     };
     return;
   }
+}
+
+async function getTablesQueryOutputCsvFileAndSnippet(
+  auth: Authenticator,
+  {
+    title,
+    conversationId,
+    results,
+  }: {
+    title: string;
+    conversationId: string;
+    results: Array<Record<string, string | number | boolean>>;
+  }
+): Promise<{
+  file: FileResource;
+  snippet: string;
+}> {
+  const toCsv = (
+    records: Array<Record<string, string | number | boolean>>,
+    options: { header: boolean } = { header: true }
+  ): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      stringify(records, options, (err, data) => {
+        if (err) {
+          reject(err);
+        }
+        resolve(data);
+      });
+    });
+  };
+  const csvOutput = await toCsv(results);
+
+  const file = await internalCreateToolOutputCsvFile(auth, {
+    title,
+    conversationId: conversationId,
+    content: csvOutput,
+    contentType: "text/csv",
+  });
+
+  return { file, snippet: generateCSVSnippet(csvOutput) };
 }

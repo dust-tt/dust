@@ -3,7 +3,7 @@ import {
   ChevronDownIcon,
   ChevronUpIcon,
   Spinner,
-  Square3Stack3DStrokeIcon,
+  Square3Stack3DIcon,
   Tooltip,
   TrashIcon,
 } from "@dust-tt/sparkle";
@@ -132,30 +132,35 @@ export default function Block({
             )}
           >
             {block.config && block.config.use_cache ? (
-              <Tooltip label="Results are cached (faster)" position="above">
-                <div
-                  className="flex flex-initial cursor-pointer text-gray-400"
-                  onClick={() => {
-                    handleUseCacheChange(false);
-                  }}
-                >
-                  <Square3Stack3DStrokeIcon className="h-4 w-4" />
-                </div>
-              </Tooltip>
+              <Tooltip
+                label="Results are cached (faster)"
+                side="top"
+                trigger={
+                  <div
+                    className="flex flex-initial cursor-pointer text-gray-400"
+                    onClick={() => {
+                      handleUseCacheChange(false);
+                    }}
+                  >
+                    <Square3Stack3DIcon className="h-4 w-4" />
+                  </div>
+                }
+              />
             ) : (
               <Tooltip
                 label="Results are computed at each run"
-                position="above"
-              >
-                <div
-                  className="flex flex-initial cursor-pointer text-gray-400"
-                  onClick={() => {
-                    handleUseCacheChange(true);
-                  }}
-                >
-                  <ArrowPathIcon className="h-4 w-4" />
-                </div>
-              </Tooltip>
+                side="right"
+                trigger={
+                  <div
+                    className="flex flex-initial cursor-pointer text-gray-400"
+                    onClick={() => {
+                      handleUseCacheChange(true);
+                    }}
+                  >
+                    <ArrowPathIcon className="h-4 w-4" />
+                  </div>
+                }
+              />
             )}
           </div>
 

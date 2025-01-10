@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - types/**
+      - sdks/js/**
       - connectors/**
       - .github/workflows/build-and-lint-connectors.yml
 
@@ -19,5 +20,7 @@ jobs:
           cache-dependency-path: ./connectors/package-lock.json
       - working-directory: types
         run: npm install &&  npm run build
+      - working-directory: sdks/js
+        run: npm install && npm run build
       - working-directory: connectors
         run: npm install && npm run build && npm run lint && npm run format:check

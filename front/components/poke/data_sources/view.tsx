@@ -1,4 +1,4 @@
-import { Modal } from "@dust-tt/sparkle";
+import { Chip, Modal } from "@dust-tt/sparkle";
 import type {
   ConnectorType,
   CoreAPIDataSource,
@@ -23,15 +23,22 @@ export function ViewDataSourceTable({
   coreDataSource,
   dataSource,
   temporalWorkspace,
+  temporalRunningWorkflows,
 }: {
   connector: ConnectorType | null;
   coreDataSource: CoreAPIDataSource;
   dataSource: DataSourceType;
   temporalWorkspace: string;
+  temporalRunningWorkflows: {
+    workflowId: string;
+    runId: string;
+    status: string;
+  }[];
 }) {
   const [showRawObjectsModal, setShowRawObjectsModal] = useState(false);
 
   const isPaused = connector && !!connector.pausedAt;
+  const isRunning = temporalRunningWorkflows.length > 0;
 
   return (
     <>
@@ -56,6 +63,12 @@ export function ViewDataSourceTable({
                 🤓 Show raw objects
               </PokeButton>
             </div>
+            {isPaused && isRunning && (
+              <Chip color="warning" size="sm" className="my-4">
+                Connector is marked as paused but has temporal workflows
+                running. Potential resolution: unpause the connector.
+              </Chip>
+            )}
             <PokeTable>
               <PokeTableBody>
                 <PokeTableRow>
@@ -65,6 +78,12 @@ export function ViewDataSourceTable({
                 <PokeTableRow>
                   <PokeTableCell>Description</PokeTableCell>
                   <PokeTableCell>{dataSource.description}</PokeTableCell>
+                </PokeTableRow>
+                <PokeTableRow>
+                  <PokeTableCell>Created at</PokeTableCell>
+                  <PokeTableCell>
+                    {formatTimestampToFriendlyDate(dataSource.createdAt)}
+                  </PokeTableCell>
                 </PokeTableRow>
                 <PokeTableRow>
                   <PokeTableCell>Edited by</PokeTableCell>
@@ -105,8 +124,8 @@ export function ViewDataSourceTable({
                 {connector && (
                   <>
                     <PokeTableRow>
-                      <PokeTableCell>Is Running?</PokeTableCell>
-                      <PokeTableCell>{isPaused ? "❌" : "✅"}</PokeTableCell>
+                      <PokeTableCell>Is Running? </PokeTableCell>
+                      <PokeTableCell>{isRunning ? "✅" : "❌"}</PokeTableCell>
                     </PokeTableRow>
                     <PokeTableRow>
                       <PokeTableCell>Paused at</PokeTableCell>

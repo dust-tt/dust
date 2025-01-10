@@ -15,11 +15,11 @@ import type {
 import { useContext, useState } from "react";
 
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
-import { DataSourceViewPermissionTreeChildren } from "@app/components/ConnectorPermissionsTree";
+import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
+import { DataSourceViewPermissionTree } from "@app/components/DataSourceViewPermissionTree";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
-import ManagedDataSourceDocumentModal from "@app/components/ManagedDataSourceDocumentModal";
-import { orderDatasourceViewSelectionConfigurationByImportance } from "@app/lib/assistant";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
+import { orderDatasourceViewSelectionConfigurationByImportance } from "@app/lib/connectors";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
 import {
   canBeExpanded,
@@ -51,33 +51,27 @@ export default function DataSourceSelectionSection({
 
   return (
     <>
-      <ManagedDataSourceDocumentModal
+      <DataSourceViewDocumentModal
         owner={owner}
-        dataSource={dataSourceViewToDisplay?.dataSource ?? null}
+        dataSourceView={dataSourceViewToDisplay}
         documentId={documentToDisplay}
         isOpen={!!documentToDisplay}
-        setOpen={(open) => {
-          if (!open) {
-            setDocumentToDisplay(null);
-          }
-        }}
+        onClose={() => setDocumentToDisplay(null)}
       />
 
       <div className="overflow-hidden pt-4">
         <div className="flex flex-row items-start">
-          <div className="flex-grow pb-2 text-sm font-semibold text-element-900">
-            Selected Data sources
+          <div className="flex-grow pb-2 text-sm font-semibold text-foreground">
+            Selected Data Sources
           </div>
           <div>
             {Object.keys(dataSourceConfigurations).length > 0 && (
               <Button
-                labelVisible={true}
                 label="Manage selection"
                 variant="primary"
                 size="sm"
                 onClick={openDataSourceModal}
                 disabled={!canAddDataSource}
-                hasMagnifying={false}
               />
             )}
           </div>
@@ -113,16 +107,14 @@ export default function DataSourceSelectionSection({
                   className="whitespace-nowrap"
                 >
                   {dsConfig.isSelectAll && (
-                    <DataSourceViewPermissionTreeChildren
+                    <DataSourceViewPermissionTree
                       owner={owner}
                       dataSourceView={dsConfig.dataSourceView}
                       parentId={null}
-                      canUpdatePermissions={true}
-                      displayDocumentSource={(documentId: string) => {
+                      onDocumentViewClick={(documentId: string) => {
                         setDataSourceViewToDisplay(dsConfig.dataSourceView);
                         setDocumentToDisplay(documentId);
                       }}
-                      isSearchEnabled={false}
                       viewType={viewType}
                     />
                   )}
@@ -150,7 +142,7 @@ export default function DataSourceSelectionSection({
                                   : "pointer-events-none opacity-0"
                               )}
                               disabled={!node.sourceUrl}
-                              variant="tertiary"
+                              variant="outline"
                             />
                             <IconButton
                               size="xs"
@@ -169,21 +161,19 @@ export default function DataSourceSelectionSection({
                                   : "pointer-events-none opacity-0"
                               )}
                               disabled={!node.dustDocumentId}
-                              variant="tertiary"
+                              variant="ghost"
                             />
                           </div>
                         }
                       >
-                        <DataSourceViewPermissionTreeChildren
+                        <DataSourceViewPermissionTree
                           owner={owner}
                           dataSourceView={dsConfig.dataSourceView}
                           parentId={node.internalId}
-                          canUpdatePermissions={true}
-                          displayDocumentSource={(documentId: string) => {
+                          onDocumentViewClick={(documentId: string) => {
                             setDataSourceViewToDisplay(dsConfig.dataSourceView);
                             setDocumentToDisplay(documentId);
                           }}
-                          isSearchEnabled={false}
                           viewType={viewType}
                         />
                       </Tree.Item>

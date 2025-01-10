@@ -15,24 +15,28 @@ const LimitCodec = createRangeCodec(0, 100);
 // of AgentGetViewType
 export const GetAgentConfigurationsQuerySchema = t.type({
   view: t.union([
+    t.literal("current_user"),
     t.literal("list"),
     t.literal("workspace"),
     t.literal("published"),
     t.literal("global"),
     t.literal("admin_internal"),
     t.literal("all"),
-    t.literal("assistants-search"),
     t.undefined,
   ]),
-  conversationId: t.union([t.string, t.undefined]),
   withUsage: t.union([t.literal("true"), t.literal("false"), t.undefined]),
   withAuthors: t.union([t.literal("true"), t.literal("false"), t.undefined]),
+  withFeedbacks: t.union([t.literal("true"), t.literal("false"), t.undefined]),
   limit: t.union([LimitCodec, t.undefined]),
   sort: t.union([
     t.literal("priority"),
     t.literal("alphabetical"),
     t.undefined,
   ]),
+});
+
+export const GetAgentConfigurationsHistoryQuerySchema = t.type({
+  limit: t.union([LimitCodec, t.undefined]),
 });
 
 export const GetAgentConfigurationsLeaderboardQuerySchema = t.type({
@@ -61,7 +65,6 @@ const RetrievalActionConfigurationSchema = t.type({
   topK: t.union([t.number, t.literal("auto")]),
   dataSources: t.array(
     t.type({
-      dataSourceId: t.string,
       dataSourceViewId: t.string,
       workspaceId: t.string,
       filter: t.type({
@@ -87,7 +90,6 @@ const TablesQueryActionConfigurationSchema = t.type({
   type: t.literal("tables_query_configuration"),
   tables: t.array(
     t.type({
-      dataSourceId: t.string,
       dataSourceViewId: t.string,
       tableId: t.string,
       workspaceId: t.string,
@@ -107,7 +109,6 @@ const ProcessActionConfigurationSchema = t.type({
   type: t.literal("process_configuration"),
   dataSources: t.array(
     t.type({
-      dataSourceId: t.string,
       dataSourceViewId: t.string,
       workspaceId: t.string,
       filter: t.type({
@@ -153,6 +154,11 @@ const multiActionsCommonFields = {
   description: t.union([t.string, t.null]),
 };
 
+const requiredMultiActionsCommonFields = t.type({
+  name: t.string,
+  description: t.union([t.string, t.null]),
+});
+
 const ActionConfigurationSchema = t.intersection([
   t.union([
     RetrievalActionConfigurationSchema,
@@ -162,7 +168,7 @@ const ActionConfigurationSchema = t.intersection([
     WebsearchActionConfigurationSchema,
     BrowseActionConfigurationSchema,
   ]),
-  t.partial(multiActionsCommonFields),
+  requiredMultiActionsCommonFields,
 ]);
 
 const ModelConfigurationSchema = t.intersection([
@@ -171,7 +177,15 @@ const ModelConfigurationSchema = t.intersection([
     providerId: ModelProviderIdCodec,
     temperature: t.number,
   }),
+  // TODO(2024-11-04 flav) Clean up this legacy type.
   t.partial(multiActionsCommonFields),
+  t.partial({
+    reasoningEffort: t.union([
+      t.literal("low"),
+      t.literal("medium"),
+      t.literal("high"),
+    ]),
+  }),
 ]);
 const IsSupportedModelSchema = new t.Type<SupportedModel>(
   "SupportedModel",

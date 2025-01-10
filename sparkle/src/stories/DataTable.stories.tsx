@@ -1,11 +1,26 @@
 import type { Meta } from "@storybook/react";
-import { ColumnDef, PaginationState } from "@tanstack/react-table";
+import {
+  ColumnDef,
+  PaginationState,
+  SortingState,
+} from "@tanstack/react-table";
 import React, { useMemo } from "react";
 
-import { DropdownItemProps } from "@sparkle/components/DropdownMenu";
 import { Input } from "@sparkle/components/Input";
 
-import { DataTable, FolderIcon } from "../index_with_tw_base";
+import {
+  DataTable,
+  DropdownMenu,
+  DropdownMenuItemProps,
+  FolderIcon,
+  NewDialog,
+  NewDialogContainer,
+  NewDialogContent,
+  NewDialogDescription,
+  NewDialogFooter,
+  NewDialogHeader,
+  NewDialogTitle,
+} from "../index_with_tw_base";
 
 const meta = {
   title: "Components/DataTable",
@@ -25,7 +40,8 @@ type Data = {
   avatarTooltipLabel?: string;
   icon?: React.ComponentType<{ className?: string }>;
   onClick?: () => void;
-  moreMenuItems?: DropdownItemProps[];
+  moreMenuItems?: DropdownMenuItemProps[];
+  dropdownMenuProps?: React.ComponentPropsWithoutRef<typeof DropdownMenu>;
   roundedAvatar?: boolean;
 };
 
@@ -66,7 +82,21 @@ const data: Data[] = [
         disabled: true,
       },
     ],
-    onClick: () => alert("Design clicked"),
+  },
+  {
+    name: "Very long name that should be truncated at some point to avoid overflow and make the table more readable",
+    usedBy: 2,
+    addedBy: "Another very long user name that should be truncated",
+    lastUpdated: "2023-07-09",
+    size: "64kb",
+    icon: FolderIcon,
+    moreMenuItems: [
+      {
+        label: "Edit (disabled)",
+        onClick: () => alert("Design menu clicked"),
+        disabled: true,
+      },
+    ],
   },
   {
     name: "design",
@@ -124,7 +154,12 @@ const columns: ColumnDef<Data>[] = [
   },
   {
     accessorKey: "usedBy",
+    minSize: 100,
+    size: 100,
     header: "Used by",
+    meta: {
+      width: "100px",
+    },
     cell: (info) => (
       <DataTable.CellContent>{info.row.original.usedBy}</DataTable.CellContent>
     ),
@@ -132,13 +167,21 @@ const columns: ColumnDef<Data>[] = [
   {
     accessorKey: "addedBy",
     header: "Added by",
+    meta: {
+      width: "100px",
+    },
     cell: (info) => (
-      <DataTable.CellContent>{info.row.original.addedBy}</DataTable.CellContent>
+      <DataTable.CellContentWithCopy>
+        {info.row.original.addedBy}
+      </DataTable.CellContentWithCopy>
     ),
   },
   {
     accessorKey: "lastUpdated",
     header: "Last updated",
+    meta: {
+      width: "200px",
+    },
     cell: (info) => (
       <DataTable.CellContent>
         {info.row.original.lastUpdated}
@@ -149,6 +192,9 @@ const columns: ColumnDef<Data>[] = [
   {
     accessorKey: "size",
     header: "Size",
+    meta: {
+      width: "100px",
+    },
     cell: (info) => (
       <DataTable.CellContent>{info.row.original.size}</DataTable.CellContent>
     ),
@@ -157,6 +203,28 @@ const columns: ColumnDef<Data>[] = [
 
 export const DataTableExample = () => {
   const [filter, setFilter] = React.useState<string>("");
+  const [dialogOpen, setDialogOpen] = React.useState(false);
+  const [selectedName, setSelectedName] = React.useState("");
+
+  const tableData = data.map((item) =>
+    item.moreMenuItems
+      ? {
+          ...item,
+          dropdownMenuProps: {
+            modal: false,
+          },
+          moreMenuItems: [
+            {
+              label: "Edit",
+              onClick: () => {
+                setSelectedName(item.name);
+                setDialogOpen(true);
+              },
+            },
+          ],
+        }
+      : item
+  );
 
   return (
     <div className="s-w-full s-max-w-4xl s-overflow-x-auto">
@@ -164,13 +232,66 @@ export const DataTableExample = () => {
         name="filter"
         placeholder="Filter"
         value={filter}
-        onChange={(v) => setFilter(v)}
+        onChange={(e) => setFilter(e.target.value)}
       />
       <DataTable
+        data={tableData}
+        filter={filter}
+        filterColumn="name"
+        columns={columns}
+      />
+      <NewDialog open={dialogOpen} onOpenChange={(open) => setDialogOpen(open)}>
+        <NewDialogContent
+          onOpenAutoFocus={(e) => e.preventDefault()}
+          onCloseAutoFocus={(e) => e.preventDefault()}
+        >
+          <NewDialogHeader>
+            <NewDialogTitle>Edit {selectedName}</NewDialogTitle>
+            <NewDialogDescription>
+              Make changes to your item here
+            </NewDialogDescription>
+          </NewDialogHeader>
+          <NewDialogContainer>Your dialog content here</NewDialogContainer>
+          <NewDialogFooter
+            leftButtonProps={{
+              label: "Cancel",
+              variant: "outline",
+            }}
+            rightButtonProps={{
+              label: "Save",
+              variant: "primary",
+              onClick: () => setDialogOpen(false),
+            }}
+          />
+        </NewDialogContent>
+      </NewDialog>
+    </div>
+  );
+};
+
+export const DataTableClientSideSortingExample = () => {
+  const [sorting, setSorting] = React.useState<SortingState>([
+    { id: "name", desc: true },
+  ]);
+  const [filter, setFilter] = React.useState<string>("");
+
+  return (
+    <div className="s-w-full s-max-w-4xl s-overflow-x-auto">
+      <Input
+        name="filter"
+        placeholder="Filter"
+        value={filter}
+        onChange={(e) => setFilter(e.target.value)}
+      />
+      <DataTable
+        className="s-w-full s-max-w-4xl s-overflow-x-auto"
         data={data}
         filter={filter}
         filterColumn="name"
         columns={columns}
+        columnsBreakpoints={{ lastUpdated: "sm" }}
+        sorting={sorting}
+        setSorting={setSorting}
       />
     </div>
   );
@@ -189,16 +310,16 @@ export const DataTablePaginatedExample = () => {
         name="filter"
         placeholder="Filter"
         value={filter}
-        onChange={(v) => setFilter(v)}
+        onChange={(e) => setFilter(e.target.value)}
       />
       <DataTable
+        className="s-w-full s-max-w-4xl s-overflow-x-auto"
         data={data}
         filter={filter}
         filterColumn="name"
         pagination={pagination}
         setPagination={setPagination}
         columns={columns}
-        initialColumnOrder={[{ id: "name", desc: false }]}
         columnsBreakpoints={{ lastUpdated: "sm" }}
       />
     </div>
@@ -210,23 +331,39 @@ export const DataTablePaginatedServerSideExample = () => {
     pageIndex: 0,
     pageSize: 2,
   });
+  const [sorting, setSorting] = React.useState<SortingState>([
+    { id: "name", desc: true },
+  ]);
   const [filter, setFilter] = React.useState<string>("");
   const rows = useMemo(() => {
+    if (sorting.length > 0) {
+      const order = sorting[0].desc ? -1 : 1;
+      return data
+        .sort((a: Data, b: Data) => {
+          return (
+            a.name.toLowerCase().localeCompare(b.name.toLowerCase()) * order
+          );
+        })
+        .slice(
+          pagination.pageIndex * pagination.pageSize,
+          (pagination.pageIndex + 1) * pagination.pageSize
+        );
+    }
     return data.slice(
       pagination.pageIndex * pagination.pageSize,
       (pagination.pageIndex + 1) * pagination.pageSize
     );
-  }, [data, pagination]);
-
+  }, [data, pagination, sorting]);
   return (
     <div className="s-w-full s-max-w-4xl s-overflow-x-auto">
       <Input
         name="filter"
         placeholder="Filter"
         value={filter}
-        onChange={(v) => setFilter(v)}
+        onChange={(e) => setFilter(e.target.value)}
       />
       <DataTable
+        className="s-w-full s-max-w-4xl s-overflow-x-auto"
         data={rows}
         totalRowCount={data.length}
         filter={filter}
@@ -234,8 +371,10 @@ export const DataTablePaginatedServerSideExample = () => {
         pagination={pagination}
         setPagination={setPagination}
         columns={columns}
-        initialColumnOrder={[{ id: "name", desc: false }]}
+        sorting={sorting}
+        setSorting={setSorting}
         columnsBreakpoints={{ lastUpdated: "sm" }}
+        isServerSideSorting={true}
       />
     </div>
   );

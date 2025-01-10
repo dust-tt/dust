@@ -1,33 +1,33 @@
 import type {
+  GetConversationsResponseType,
+  PostConversationsResponseType,
+} from "@dust-tt/client";
+import { PublicPostConversationsRequestBodySchema } from "@dust-tt/client";
+import type {
   ContentFragmentType,
-  ConversationType,
   UserMessageType,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
 import {
+  ConversationError,
+  isContentFragmentInputWithContentType,
   isEmptyString,
-  PublicPostConversationsRequestBodySchema,
 } from "@dust-tt/types";
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 import {
   createConversation,
   getConversation,
-  normalizeContentFragmentType,
+  getUserConversations,
   postNewContentFragment,
 } from "@app/lib/api/assistant/conversation";
+import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
+import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
-import { Authenticator, getAPIKey } from "@app/lib/auth";
-import { getGroupIdsFromHeaders } from "@app/lib/http_api/group_header";
-import { apiError, withLogging } from "@app/logger/withlogging";
-
-export type PostConversationsResponseBody = {
-  conversation: ConversationType;
-  message?: UserMessageType;
-  contentFragment?: ContentFragmentType;
-};
+import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
+import type { Authenticator } from "@app/lib/auth";
+import { apiError } from "@app/logger/withlogging";
 
 /**
  * @swagger
@@ -52,12 +52,16 @@ export type PostConversationsResponseBody = {
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - message
  *             properties:
  *               message:
  *                 $ref: '#/components/schemas/Message'
- *               contentFragment:
- *                 $ref: '#/components/schemas/ContentFragment'
- *                 description: The text content of an attached file (optional)
+ *               contentFragments:
+ *                 type: array
+ *                 items:
+ *                   $ref: '#/components/schemas/ContentFragment'
+ *                 description: The list of content fragments to attach to this conversation (optional)
  *               blocking:
  *                 type: boolean
  *                 description: Whether to wait for the agent to generate the initial message (if blocking = false, you will need to use streaming events to get the messages)
@@ -65,7 +69,6 @@ export type PostConversationsResponseBody = {
  *               title:
  *                 type: string
  *                 description: The title of the conversation
- *                 nullable: true
  *                 example: My conversation
  *               visibility:
  *                 type: string
@@ -91,65 +94,35 @@ export type PostConversationsResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<PostConversationsResponseBody>>
+  res: NextApiResponse<
+    WithAPIErrorResponse<
+      PostConversationsResponseType | GetConversationsResponseType
+    >
+  >,
+  auth: Authenticator
 ): Promise<void> {
-  const keyRes = await getAPIKey(req);
-  if (keyRes.isErr()) {
-    return apiError(req, res, keyRes.error);
-  }
-
-  const authenticator = await Authenticator.fromKey(
-    keyRes.value,
-    req.query.wId as string,
-    getGroupIdsFromHeaders(req.headers)
-  );
-  let { workspaceAuth } = authenticator;
-  const { keyAuth } = authenticator;
-
-  if (
-    !workspaceAuth.isBuilder() ||
-    keyAuth.getNonNullableWorkspace().sId !== req.query.wId
-  ) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "The Assistant API is only available on your own workspace.",
-      },
-    });
-  }
-
-  const owner = workspaceAuth.workspace();
-  if (!owner) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "workspace_not_found",
-        message: "The workspace you're trying to access was not found",
-      },
-    });
-  }
-
   switch (req.method) {
     case "POST":
-      const bodyValidation = PublicPostConversationsRequestBodySchema.decode(
-        req.body
-      );
+      const r = PublicPostConversationsRequestBodySchema.safeParse(req.body);
 
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
-
+      if (r.error) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${pathError}`,
+            message: fromError(r.error).toString(),
           },
         });
       }
 
-      const { title, visibility, message, contentFragment, blocking } =
-        bodyValidation.right;
+      const {
+        title,
+        visibility,
+        message,
+        contentFragment,
+        contentFragments,
+        blocking,
+      } = r.data;
 
       if (message) {
         if (isEmptyString(message.context.username)) {
@@ -164,63 +137,60 @@ async function handler(
         }
       }
 
+      const resolvedFragments = contentFragments ?? [];
       if (contentFragment) {
-        if (
-          contentFragment.content.length === 0 ||
-          contentFragment.content.length > 64 * 1024
-        ) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message:
-                "The content must be a non-empty string of less than 64kb.",
-            },
-          });
+        resolvedFragments.push(contentFragment);
+      }
+
+      for (const fragment of resolvedFragments) {
+        if (fragment.content) {
+          if (
+            fragment.content.length === 0 ||
+            fragment.content.length > 128 * 1024
+          ) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message:
+                  "The content must be a non-empty string of less than 128kb.",
+              },
+            });
+          }
         }
       }
 
-      // /!\ This is reserved for internal use!
-      // If the header "x-api-user-email" is present and valid,
-      // associate the message with the provided user email if it belongs to the same workspace.
-      const userEmailFromHeader = req.headers["x-api-user-email"];
-      if (typeof userEmailFromHeader === "string") {
-        workspaceAuth =
-          (await workspaceAuth.exchangeSystemKeyForUserAuthByEmail(
-            workspaceAuth,
-            {
-              userEmail: userEmailFromHeader,
-            }
-          )) ?? workspaceAuth;
-      }
-
-      let conversation = await createConversation(workspaceAuth, {
-        title,
+      let conversation = await createConversation(auth, {
+        title: title ?? null,
         visibility,
       });
 
       let newContentFragment: ContentFragmentType | null = null;
       let newMessage: UserMessageType | null = null;
 
-      if (contentFragment) {
-        const contentType = normalizeContentFragmentType({
-          contentType: contentFragment.contentType,
-          url: req.url,
-        });
+      for (const resolvedFragment of resolvedFragments) {
+        const { context, ...rest } = resolvedFragment;
+        let contentFragment = rest;
+
+        if (isContentFragmentInputWithContentType(contentFragment)) {
+          const contentFragmentRes = await toFileContentFragment(auth, {
+            contentFragment,
+          });
+          if (contentFragmentRes.isErr()) {
+            throw new Error(contentFragmentRes.error.message);
+          }
+          contentFragment = contentFragmentRes.value;
+        }
 
         const cfRes = await postNewContentFragment(
-          workspaceAuth,
+          auth,
           conversation,
+          contentFragment,
           {
-            ...contentFragment,
-            contentType,
-          },
-          {
-            username: contentFragment.context?.username || null,
-            fullName: contentFragment.context?.fullName || null,
-            email: contentFragment.context?.email || null,
-            profilePictureUrl:
-              contentFragment.context?.profilePictureUrl || null,
+            username: context?.username ?? null,
+            fullName: context?.fullName ?? null,
+            email: context?.email ?? null,
+            profilePictureUrl: context?.profilePictureUrl ?? null,
           }
         );
         if (cfRes.isErr()) {
@@ -234,12 +204,27 @@ async function handler(
         }
 
         newContentFragment = cfRes.value;
-        const updatedConversation = await getConversation(
-          workspaceAuth,
+        const updatedConversationRes = await getConversation(
+          auth,
           conversation.sId
         );
-        if (updatedConversation) {
-          conversation = updatedConversation;
+
+        if (updatedConversationRes.isErr()) {
+          // Preserving former code in which if the conversation was not found here, we do not error
+          if (
+            !(
+              updatedConversationRes.error instanceof ConversationError &&
+              updatedConversationRes.error.type === "conversation_not_found"
+            )
+          ) {
+            return apiErrorForConversation(
+              req,
+              res,
+              updatedConversationRes.error
+            );
+          }
+        } else {
+          conversation = updatedConversationRes.value;
         }
       }
 
@@ -249,7 +234,7 @@ async function handler(
         // PostUserMessageWithPubSub returns swiftly since it only waits for the
         // initial message creation event (or error)
         const messageRes = await postUserMessageWithPubSub(
-          workspaceAuth,
+          auth,
           {
             conversation,
             content: message.content,
@@ -257,9 +242,9 @@ async function handler(
             context: {
               timezone: message.context.timezone,
               username: message.context.username,
-              fullName: message.context.fullName,
-              email: message.context.email,
-              profilePictureUrl: message.context.profilePictureUrl,
+              fullName: message.context.fullName ?? null,
+              email: message.context.email ?? null,
+              profilePictureUrl: message.context.profilePictureUrl ?? null,
               origin: message.context.origin ?? "api",
             },
           },
@@ -279,13 +264,12 @@ async function handler(
         // created as well, so pulling the conversation again will allow to have an up to date view
         // of the conversation with agent messages included so that the user of the API can start
         // streaming events from these agent messages directly.
-        const updated = await getConversation(workspaceAuth, conversation.sId);
+        const updatedRes = await getConversation(auth, conversation.sId);
 
-        if (!updated) {
-          throw `Conversation unexpectedly not found after creation: ${conversation.sId}`;
+        if (updatedRes.isErr()) {
+          return apiErrorForConversation(req, res, updatedRes.error);
         }
-
-        conversation = updated;
+        conversation = updatedRes.value;
       }
 
       res.status(200).json({
@@ -294,16 +278,23 @@ async function handler(
         contentFragment: newContentFragment ?? undefined,
       });
       return;
+    case "GET":
+      const conversations = await getUserConversations(auth);
+      res.status(200).json({ conversations });
+      return;
 
     default:
       return apiError(req, res, {
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, POST is expected.",
+          message:
+            "The method passed is not supported, POST or GET is expected.",
         },
       });
   }
 }
 
-export default withLogging(handler);
+export default withPublicAPIAuthentication(handler, {
+  requiredScopes: { GET: "read:conversation", POST: "create:conversation" },
+});

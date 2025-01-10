@@ -1,14 +1,18 @@
 // @ts-expect-error old migration code kept for reference
 
 import { personalWorkspace } from "@app/lib/auth";
-import { User } from "@app/lib/models/user";
-import { App, Dataset, Provider } from "@app/lib/resources/storage/models/apps";
-import { DataSource } from "@app/lib/resources/storage/models/data_source";
+import {
+  AppModel,
+  Dataset,
+  Provider,
+} from "@app/lib/resources/storage/models/apps";
+import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import { RunModel } from "@app/lib/resources/storage/models/runs";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 
 async function addWorkspaceToObject(
-  object: App | Dataset | Provider | KeyModel | DataSource | RunModel
+  object: AppModel | Dataset | Provider | KeyModel | DataSourceModel | RunModel
 ) {
   if (object.workspaceId) {
     // @ts-expect-error old migration code kept for reference
@@ -16,7 +20,7 @@ async function addWorkspaceToObject(
     return;
   }
 
-  const user = await User.findOne({
+  const user = await UserModel.findOne({
     where: {
       // @ts-expect-error old migration code kept for reference
       id: object.userId,
@@ -43,11 +47,11 @@ async function addWorkspaceToObject(
 
 async function updateObjects(
   objects:
-    | App[]
+    | AppModel[]
     | Dataset[]
     | Provider[]
     | KeyModel[]
-    | DataSource[]
+    | DataSourceModel[]
     | RunModel[]
 ) {
   const chunks = [];
@@ -67,7 +71,7 @@ async function updateObjects(
 }
 
 async function updateApps() {
-  const apps = await App.findAll();
+  const apps = await AppModel.findAll();
   await updateObjects(apps);
 }
 
@@ -87,7 +91,7 @@ async function updateKeys() {
 }
 
 async function updateDataSources() {
-  const dataSources = await DataSource.findAll();
+  const dataSources = await DataSourceModel.findAll();
   await updateObjects(dataSources);
 }
 

@@ -19,7 +19,7 @@ export function makeColumnsForSubscriptions(): ColumnDef<SubscriptionsDisplayTyp
           <div className="flex space-x-2">
             <p>Id</p>
             <IconButton
-              variant="tertiary"
+              variant="ghost"
               icon={ArrowsUpDownIcon}
               onClick={() =>
                 column.toggleSorting(column.getIsSorted() === "asc")
@@ -36,7 +36,7 @@ export function makeColumnsForSubscriptions(): ColumnDef<SubscriptionsDisplayTyp
           <div className="flex space-x-2">
             <p>Plan Code</p>
             <IconButton
-              variant="tertiary"
+              variant="ghost"
               icon={ArrowsUpDownIcon}
               onClick={() =>
                 column.toggleSorting(column.getIsSorted() === "asc")
@@ -53,7 +53,7 @@ export function makeColumnsForSubscriptions(): ColumnDef<SubscriptionsDisplayTyp
           <div className="flex space-x-2">
             <p>Status</p>
             <IconButton
-              variant="tertiary"
+              variant="ghost"
               icon={ArrowsUpDownIcon}
               onClick={() =>
                 column.toggleSorting(column.getIsSorted() === "asc")
@@ -87,7 +87,7 @@ export function makeColumnsForSubscriptions(): ColumnDef<SubscriptionsDisplayTyp
           <div className="flex space-x-2">
             <p>Start Date</p>
             <IconButton
-              variant="tertiary"
+              variant="ghost"
               icon={ArrowsUpDownIcon}
               onClick={() =>
                 column.toggleSorting(column.getIsSorted() === "asc")
@@ -104,7 +104,7 @@ export function makeColumnsForSubscriptions(): ColumnDef<SubscriptionsDisplayTyp
           <div className="flex space-x-2">
             <p>End Date</p>
             <IconButton
-              variant="tertiary"
+              variant="ghost"
               icon={ArrowsUpDownIcon}
               onClick={() =>
                 column.toggleSorting(column.getIsSorted() === "asc")

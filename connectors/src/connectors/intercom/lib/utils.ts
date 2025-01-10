@@ -4,6 +4,7 @@ import type {
   IntercomArticleType,
   IntercomCollectionType,
 } from "@connectors/connectors/intercom/lib/types";
+import { IntercomCollection } from "@connectors/lib/models/intercom";
 
 /**
  * From id to internalId
@@ -42,10 +43,6 @@ export function getConversationInternalId(
   return `intercom-conversation-${connectorId}-${conversationId}`;
 }
 
-export function getAllConversationsInternalId(connectorId: ModelId): string {
-  return `intercom-conversations-all-${connectorId}`;
-}
-
 /**
  * From internalId to id
  */
@@ -70,11 +67,11 @@ export function getHelpCenterArticleIdFromInternalId(
 ): string | null {
   return _getIdFromInternal(internalId, `intercom-article-${connectorId}-`);
 }
-export function isInternalIdForAllConversations(
+export function isInternalIdForAllTeams(
   connectorId: ModelId,
   internalId: string
 ): boolean {
-  return internalId === `intercom-conversations-all-${connectorId}`;
+  return internalId === `intercom-teams-${connectorId}`;
 }
 export function getTeamIdFromInternalId(
   connectorId: ModelId,
@@ -116,4 +113,68 @@ export function getConversationInAppUrl(
 ): string {
   const domain = getIntercomDomain(region);
   return `${domain}/a/inbox/${workspaceId}/inbox/conversation/${conversationId}`;
+}
+
+// Parents in the Core datasource should map the internal ids that we use in the permission modal
+// Order is important: We want the id of the article, then all parents collection in order, then the help center
+export async function getParentIdsForArticle({
+  documentId,
+  connectorId,
+  parentCollectionId,
+  helpCenterId,
+}: {
+  documentId: string;
+  connectorId: number;
+  parentCollectionId: string;
+  helpCenterId: string;
+}): Promise<[string, string, ...string[], string]> {
+  // Get collection parents
+  const collectionParents = await getParentIdsForCollection({
+    connectorId,
+    collectionId: parentCollectionId,
+    helpCenterId,
+  });
+
+  return [documentId, ...collectionParents];
+}
+
+export async function getParentIdsForCollection({
+  connectorId,
+  collectionId,
+  helpCenterId,
+}: {
+  connectorId: number;
+  collectionId: string;
+  helpCenterId: string;
+}): Promise<[string, ...string[], string]> {
+  const parentIds = [];
+
+  // Fetch and add any parent collection Ids.
+  let currentParentId = collectionId;
+
+  // There's max 2-levels on Intercom.
+  for (let i = 0; i < 2; i++) {
+    const currentParent = await IntercomCollection.findOne({
+      where: {
+        connectorId,
+        collectionId: currentParentId,
+      },
+    });
+
+    if (!currentParent || !currentParent.parentId) {
+      break;
+    }
+
+    currentParentId = currentParent.parentId;
+    parentIds.push(
+      getHelpCenterCollectionInternalId(connectorId, currentParentId)
+    );
+  }
+
+  // Add the collection ID and the help center internal ID.
+  return [
+    getHelpCenterCollectionInternalId(connectorId, collectionId),
+    ...parentIds,
+    getHelpCenterInternalId(connectorId, helpCenterId),
+  ];
 }

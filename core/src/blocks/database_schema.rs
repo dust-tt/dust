@@ -1,7 +1,3 @@
-use super::helpers::get_data_source_project_and_view_filter;
-use crate::blocks::block::{Block, BlockResult, BlockType, Env};
-use crate::databases::database::{get_unique_table_names_for_database, Table};
-use crate::Rule;
 use anyhow::{anyhow, Ok, Result};
 use async_trait::async_trait;
 use futures::future::try_join_all;
@@ -9,6 +5,16 @@ use itertools::Itertools;
 use pest::iterators::Pair;
 use serde_json::{json, Value};
 use tokio::sync::mpsc::UnboundedSender;
+
+use crate::{
+    blocks::{
+        block::{Block, BlockResult, BlockType, Env},
+        helpers::get_data_source_project_and_view_filter,
+    },
+    databases::{database::get_tables_schema, table::Table},
+    Rule,
+};
+
 #[derive(Clone)]
 pub struct DatabaseSchema {}
 
@@ -35,7 +41,6 @@ impl Block for DatabaseSchema {
         name: &str,
         env: &Env,
         _event_sender: Option<UnboundedSender<Value>>,
-        project_id: i64,
     ) -> Result<BlockResult> {
         let config = env.config.config_for_block(name);
 
@@ -72,33 +77,20 @@ impl Block for DatabaseSchema {
             _ => Err(anyhow!(err_msg.clone()))?,
         };
 
-        let mut tables = load_tables_from_identifiers(&table_identifiers, env, project_id).await?;
+        let tables = load_tables_from_identifiers(&table_identifiers, env).await?;
 
         // Compute the unique table names for each table.
-        let unique_table_names = get_unique_table_names_for_database(&tables);
 
-        // Load the schema for each table.
-        // If the schema cache is stale, this will update it in place.
-        try_join_all(
-            tables
-                .iter_mut()
-                .map(|t| t.schema(env.store.clone(), env.databases_store.clone())),
-        )
-        .await?;
+        let (dialect, schemas) =
+            get_tables_schema(tables, env.store.clone(), env.databases_store.clone()).await?;
 
         Ok(BlockResult {
             value: serde_json::to_value(
-                tables
-                    .into_iter()
-                    .map(|t| {
-                        let unique_table_name = unique_table_names
-                            .get(&t.unique_id())
-                            .expect("Unreachable: missing unique table name.");
-                        json!({
-                            "table_schema": t.schema_cached(),
-                            "dbml": t.render_dbml(Some(&unique_table_name)),
-                        })
-                    })
+                schemas
+                    .iter()
+                    .map(
+                        |s| json!({ "table_schema": s.schema, "dbml": s.dbml, "dialect": dialect, "head": s.head }),
+                    )
                     .collect::<Vec<_>>(),
             )?,
             meta: None,
@@ -117,28 +109,41 @@ impl Block for DatabaseSchema {
 pub async fn load_tables_from_identifiers(
     table_identifiers: &Vec<(&String, &String, &String)>,
     env: &Env,
-    project_id: i64,
 ) -> Result<Vec<Table>> {
     // Get a vec of unique (workspace_id, data_source_id) pairs.
     let data_source_identifiers = table_identifiers
         .iter()
-        .map(|(workspace_id, data_source_id, _)| (*workspace_id, *data_source_id))
+        .map(|(workspace_id, data_source_or_view_id, _)| (*workspace_id, *data_source_or_view_id))
         .unique()
         .collect::<Vec<_>>();
-    let origin = format!("database_schema_project_id_{}", project_id);
+
+    let is_system_run = env.credentials.get("DUST_IS_SYSTEM_RUN") == Some(&String::from("true"));
+
     // Get a vec of the corresponding project ids for each (workspace_id, data_source_id) pair.
-    let project_ids_view_filters = try_join_all(
-        data_source_identifiers
-            .iter()
-            .map(|(w, d)| get_data_source_project_and_view_filter(w, d, env, origin.as_str())),
-    )
+    let project_ids_view_filters = try_join_all(data_source_identifiers.iter().map(
+        |(workspace_id, data_source_or_view_id)| {
+            get_data_source_project_and_view_filter(
+                workspace_id,
+                data_source_or_view_id,
+                env,
+                is_system_run,
+            )
+        },
+    ))
     .await?;
 
     // Create a hashmap of (workspace_id, data_source_id) -> project_id.
-    let project_by_data_source = data_source_identifiers
+    let project_and_data_source_by_data_source_view = data_source_identifiers
         .iter()
         .zip(project_ids_view_filters.iter())
-        .map(|((w, d), p)| ((*w, *d), p.0.clone()))
+        .map(
+            |((workspace_id, data_source_or_view_id), (project, _, data_source_name))| {
+                (
+                    (*workspace_id, *data_source_or_view_id),
+                    (project, data_source_name),
+                )
+            },
+        )
         .collect::<std::collections::HashMap<_, _>>();
 
     let filters_by_project = project_ids_view_filters
@@ -153,12 +158,14 @@ pub async fn load_tables_from_identifiers(
     let store = env.store.clone();
 
     // Concurrently load all tables.
-    (try_join_all(table_identifiers.iter().map(|(w, d, t)| {
-        let p = project_by_data_source
-            .get(&(*w, *d))
-            .expect("Unreachable: missing project.");
-        store.load_table(&p, &d, &t)
-    }))
+    (try_join_all(table_identifiers.iter().map(
+        |(workspace_id, data_source_or_view_id, table_id)| {
+            let (project, data_source_name) = project_and_data_source_by_data_source_view
+                .get(&(*workspace_id, *data_source_or_view_id))
+                .expect("Unreachable: missing project.");
+            store.load_data_source_table(&project, &data_source_name, &table_id)
+        },
+    ))
     .await?)
         // Unwrap the results.
         .into_iter()

@@ -1,25 +1,22 @@
-import { IconButton, TrashIcon } from "@dust-tt/sparkle";
-import type { AgentConfigurationType, WorkspaceType } from "@dust-tt/types";
-import { isRetrievalConfiguration } from "@dust-tt/types";
+import { IconButton, LinkWrapper, TrashIcon } from "@dust-tt/sparkle";
+import type { WorkspaceType } from "@dust-tt/types";
 import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
-import Link from "next/link";
 
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 
-export type DataSources = {
+interface DataSources {
   connectorProvider: string | null;
   id: number;
   sId: string;
   name: string;
   editedBy: string | undefined;
   editedAt: number | undefined;
-};
+}
 
 export function makeColumnsForDataSources(
   owner: WorkspaceType,
-  agentConfigurations: AgentConfigurationType[],
-  reload: () => void
+  onDeleted: () => Promise<void>
 ): ColumnDef<DataSources>[] {
   return [
     {
@@ -28,12 +25,9 @@ export function makeColumnsForDataSources(
         const sId: string = row.getValue("sId");
 
         return (
-          <Link
-            className="font-bold hover:underline"
-            href={`/poke/${owner.sId}/data_sources/${sId}`}
-          >
+          <LinkWrapper href={`/poke/${owner.sId}/data_sources/${sId}`}>
             {sId}
-          </Link>
+          </LinkWrapper>
         );
       },
       header: ({ column }) => {
@@ -41,7 +35,7 @@ export function makeColumnsForDataSources(
           <div className="flex space-x-2">
             <p>sId</p>
             <IconButton
-              variant="tertiary"
+              variant="outline"
               icon={ArrowsUpDownIcon}
               onClick={() =>
                 column.toggleSorting(column.getIsSorted() === "asc")
@@ -58,7 +52,7 @@ export function makeColumnsForDataSources(
           <div className="flex space-x-2">
             <p>Name</p>
             <IconButton
-              variant="tertiary"
+              variant="outline"
               icon={ArrowsUpDownIcon}
               onClick={() =>
                 column.toggleSorting(column.getIsSorted() === "asc")
@@ -98,14 +92,9 @@ export function makeColumnsForDataSources(
           <IconButton
             icon={TrashIcon}
             size="xs"
-            variant="tertiary"
+            variant="outline"
             onClick={async () => {
-              await deleteDataSource(
-                owner,
-                agentConfigurations,
-                dataSource.name,
-                reload
-              );
+              await deleteDataSource(owner, dataSource.sId, onDeleted);
             }}
           />
         );
@@ -116,27 +105,12 @@ export function makeColumnsForDataSources(
 
 async function deleteDataSource(
   owner: WorkspaceType,
-  agentConfigurations: AgentConfigurationType[],
-  dataSourceName: string,
-  reload: () => void
+  dataSourceId: string,
+  onDeleted: () => Promise<void>
 ) {
-  const retrievalAgents = agentConfigurations.filter((agt) =>
-    agt.actions.some(
-      (a) =>
-        isRetrievalConfiguration(a) &&
-        a.dataSources.some((ds) => ds.dataSourceId === dataSourceName)
-    )
-  );
-  if (retrievalAgents.length > 0) {
-    window.alert(
-      "Please archive agents using this data source first: " +
-        retrievalAgents.map((a) => a.name).join(", ")
-    );
-    return;
-  }
   if (
     !window.confirm(
-      `Are you sure you want to delete the ${dataSourceName} data source? There is no going back.`
+      `Are you sure you want to delete the ${dataSourceId} data source? There is no going back.`
     )
   ) {
     return;
@@ -148,9 +122,7 @@ async function deleteDataSource(
 
   try {
     const r = await fetch(
-      `/api/poke/workspaces/${owner.sId}/data_sources/${encodeURIComponent(
-        dataSourceName
-      )}`,
+      `/api/poke/workspaces/${owner.sId}/data_sources/${dataSourceId}`,
       {
         method: "DELETE",
         headers: {
@@ -159,11 +131,14 @@ async function deleteDataSource(
       }
     );
     if (!r.ok) {
-      throw new Error("Failed to delete data source.");
+      const text = await r.text();
+
+      throw new Error(`Failed to delete data source: ${text}`);
     }
-    reload();
+
+    await onDeleted();
   } catch (e) {
     console.error(e);
-    window.alert("An error occurred while deleting the data source.");
+    window.alert(e);
   }
 }

@@ -9,69 +9,117 @@ import {
 } from "@app/components/home/Carousel";
 import { BlogBlock } from "@app/components/home/ContentBlocks";
 import { Grid, H2, P } from "@app/components/home/ContentComponents";
-import { classNames } from "@app/lib/utils";
 
-export function BlogSection() {
+interface BlogSectionProps {
+  headerColorFrom?: string;
+  headerColorTo?: string;
+}
+
+export function BlogSection({
+  headerColorFrom = "from-green-200",
+  headerColorTo = "to-emerald-400",
+}: BlogSectionProps) {
   return (
     <Grid gap="gap-8">
-      <div
-        className={classNames(
-          "flex flex-col gap-8",
-          "col-span-12",
-          "lg:col-span-10 lg:col-start-2",
-          "xl:col-span-9 xl:col-start-2",
-          "2xl:col-start-3"
-        )}
-      >
-        <H2 from="from-green-200" to="to-emerald-400">
-          Dust in Action:
-          <br />
-          Customer Stories
-        </H2>
-        <P size="lg">
-          Discover how our customers augment their&nbsp;workflows
-          with&nbsp;Dust.
-        </P>
-      </div>
-      <div className="col-span-12 flex flex-col items-center gap-4">
+      <div className="col-span-12">
         <Carousel className="w-full">
-          <div className="flex w-full flex-row gap-4 md:justify-center">
-            <CarouselPrevious label="previous" />
-            <CarouselNext label="next" />
+          <div className="mb-6 flex items-end justify-between">
+            <div>
+              <H2 from={headerColorFrom} to={headerColorTo}>
+                Customer Stories
+              </H2>
+              <P size="lg">
+                Discover how our customers augment their&nbsp;workflows
+                with&nbsp;Dust.
+              </P>
+            </div>
+            <div className="flex gap-4">
+              <CarouselPrevious />
+              <CarouselNext />
+            </div>
           </div>
+
           <CarouselContent>
-            <CarouselItem className="basis-full md:basis-1/2 md:px-6 lg:basis-1/3">
+            <CarouselItem className="basis-full md:basis-1/2 lg:basis-1/3">
               <BlogBlock
-                title="Navigating Growth and Innovation with November Five’s Dario Prskalo"
-                content="Discover how November Five leverages AI with Dust to enhance efficiency and maintain a human touch in their digital solutions."
-                href="https://blog.dust.tt/november-five-ai-transformation-dust/"
+                title="Qonto partners with Dust to upgrade its customer experience"
+                content="Qonto streamlines operations with Dust's AI assistants, saving 50,000 hours yearly."
+                href="https://blog.dust.tt/qonto-dust-ai-partnership/"
               >
                 <img
-                  src="https://blog.dust.tt/content/images/size/w2000/2024/04/DSCF6552-1.jpeg"
+                  src="https://blog.dust.tt/content/images/size/w2000/2024/11/qonto_dust.jpg"
                   alt="Blog Image"
                 />
               </BlogBlock>
             </CarouselItem>
-            <CarouselItem className="basis-full px-6 md:basis-1/2 lg:basis-1/3">
+            <CarouselItem className="basis-full md:basis-1/2 lg:basis-1/3">
               <BlogBlock
-                title="How Eléonore improved the efficiency of Pennylane’s Care team thanks to Dust"
-                content="Discover how Pennylane leveraged Dust’s specialized virtual assistants to improve efficiency and optimize workflows."
-                href="https://blog.dust.tt/pennylane-dust-customer-support-journey/"
+                title="Malt cuts support ticket closing time by 50% with Dust"
+                content="Malt streamlines customer support using Dust's AI platform for rapid, consistent multilingual responses."
+                href="https://blog.dust.tt/malt-customer-support/"
               >
                 <img
-                  src="https://blog.dust.tt/content/images/size/w2000/2024/04/Ele-onore-MOTTE--1--1.jpg"
+                  src="https://blog.dust.tt/content/images/size/w2000/2024/12/Malt_Customer_Story_Dust_Support.jpg"
                   alt="Blog Image"
                 />
               </BlogBlock>
             </CarouselItem>
-            <CarouselItem className="basis-full px-6 md:basis-1/2 lg:basis-1/3">
+            <CarouselItem className="basis-full md:basis-1/2 lg:basis-1/3">
               <BlogBlock
-                title="Integrating AI for Enhanced Workflows at Alan"
-                content="Discover how Alan revolutionizes healthcare and enhances workflows using AI. See how @code-help and Dust streamline developer tasks."
+                title="How Vincent, Engineer at Alan, reduces project completion time by 20%"
+                content="Discover how Alan's Engineering team built Dust assistants to accelerate their workflows beyond coding."
                 href="https://blog.dust.tt/integrating-ai-workflows-alan/"
               >
                 <img
-                  src="https://blog.dust.tt/content/images/size/w2000/2024/03/cover-vincent.png"
+                  src="https://blog.dust.tt/content/images/size/w2000/2024/12/alan_dust_customer_story_.png"
+                  alt="Blog Image"
+                />
+              </BlogBlock>
+            </CarouselItem>
+            <CarouselItem className="basis-full md:basis-1/2 lg:basis-1/3">
+              <BlogBlock
+                title="Pennylane's journey to deploy Dust for Customer Care teams"
+                content="Dust evolved from a simple support tool into an integral part of Pennylane's operations."
+                href="https://blog.dust.tt/pennylane-dust-customer-support-journey/"
+              >
+                <img
+                  src="https://blog.dust.tt/content/images/size/w2000/2024/12/pennylane_dust_customer_story.png"
+                  alt="Blog Image"
+                />
+              </BlogBlock>
+            </CarouselItem>
+            <CarouselItem className="basis-full md:basis-1/2 lg:basis-1/3">
+              <BlogBlock
+                title="Lifen uses Dust AI assistants to boost team productivity"
+                content="Lifen uses Dust AI assistants to boost team productivity and save hours of work each week."
+                href="https://blog.dust.tt/customer-story-lifen/"
+              >
+                <img
+                  src="https://blog.dust.tt/content/images/size/w2000/2024/11/lifen_dust_customer_story.jpg"
+                  alt="Blog Image"
+                />
+              </BlogBlock>
+            </CarouselItem>
+            <CarouselItem className="basis-full md:basis-1/2 lg:basis-1/3">
+              <BlogBlock
+                title="PayFit Accelerates Content Creation and Knowledge Sharing with Dust"
+                content="PayFit boosts efficiency with instant AI assistants for knowledge sharing."
+                href="https://blog.dust.tt/dust-ai-payfit-efficiency/"
+              >
+                <img
+                  src="https://blog.dust.tt/content/images/size/w2000/2024/12/payfit_dust_customer_story.png"
+                  alt="Blog Image"
+                />
+              </BlogBlock>
+            </CarouselItem>
+            <CarouselItem className="basis-full md:basis-1/2 lg:basis-1/3">
+              <BlogBlock
+                title="Kyriba accelerates innovation with Dust"
+                content="Kyriba saves thousands of hours by turning AI assistants into innovation catalysts."
+                href="https://blog.dust.tt/kyriba-accelerating-innovation-with-dust/"
+              >
+                <img
+                  src="https://blog.dust.tt/content/images/size/w2000/2024/10/kyriba_dust.jpg"
                   alt="Blog Image"
                 />
               </BlogBlock>

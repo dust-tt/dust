@@ -1,0 +1,27 @@
+name: Publish SDK Client
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: publish_sdk_client
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    # This ensures the workflow only runs on main branch
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 20.13.0
+          cache: "npm"
+          cache-dependency-path: ./sdks/js/package-lock.json
+          registry-url: "https://registry.npmjs.org"
+
+      - working-directory: sdks/js
+        run: npm ci && npm run build && npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -198,19 +198,15 @@ CarouselItem.displayName = "CarouselItem";
 const CarouselPrevious = React.forwardRef<
   HTMLButtonElement,
   React.ComponentProps<typeof Button>
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
->(({ className = "", variant = "tertiary", size = "sm", ...props }, ref) => {
+>(({ className, variant = "outline", size = "sm", ...props }, ref) => {
   const { scrollPrev, canScrollPrev, isLooping } = useCarousel();
 
   return (
     <Button
-      // TODO(2024-04-10 flav) Support ref in the Button.
-      // ref={ref}
+      ref={ref}
       variant={variant}
       size={size}
-      labelVisible={false}
       icon={ChevronLeftIcon}
-      disabledTooltip={true}
       className={className}
       disabled={!isLooping && !canScrollPrev}
       onClick={scrollPrev}
@@ -223,19 +219,15 @@ CarouselPrevious.displayName = "CarouselPrevious";
 const CarouselNext = React.forwardRef<
   HTMLButtonElement,
   React.ComponentProps<typeof Button>
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
->(({ className = "", variant = "tertiary", size = "sm", ...props }, ref) => {
+>(({ className, variant = "outline", size = "sm", ...props }, ref) => {
   const { scrollNext, canScrollNext, isLooping } = useCarousel();
 
   return (
     <Button
-      // TODO(2024-04-10 flav) Support ref in the Button.
-      // ref={ref}
+      ref={ref}
       variant={variant}
       size={size}
-      labelVisible={false}
       icon={ChevronRightIcon}
-      disabledTooltip={true}
       className={className}
       disabled={!isLooping && !canScrollNext}
       onClick={scrollNext}

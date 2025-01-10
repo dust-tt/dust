@@ -1,7 +1,7 @@
-import { DataSource } from "@app/lib/resources/storage/models/data_source";
+import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 
 async function main() {
-  const dataSources = await DataSource.findAll();
+  const dataSources = await DataSourceModel.findAll();
 
   const chunks = [];
   for (let i = 0; i < dataSources.length; i += 16) {

@@ -1,18 +1,28 @@
 import {
   Avatar,
   BookOpenIcon,
+  ChevronDownIcon,
   DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+  EyeIcon,
+  Icon,
   LightbulbIcon,
   LogoutIcon,
   StarIcon,
   UserIcon,
 } from "@dust-tt/sparkle";
+import { useSendNotification } from "@dust-tt/sparkle";
 import type { UserType, WorkspaceType } from "@dust-tt/types";
 import { isOnlyAdmin, isOnlyBuilder, isOnlyUser } from "@dust-tt/types";
-import { useContext, useMemo } from "react";
+import { BugIcon } from "lucide-react";
+import { useRouter } from "next/router";
+import { useMemo } from "react";
 
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { canForceUserRole, forceUserRole } from "@app/lib/development";
+import { forceUserRole, showDebugTools } from "@app/lib/development";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 export function UserMenu({
   user,
@@ -21,10 +31,13 @@ export function UserMenu({
   user: UserType;
   owner: WorkspaceType;
 }) {
-  const hasBetaAccess = owner.flags.some((flag: string) =>
+  const router = useRouter();
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+
+  const hasBetaAccess = featureFlags.some((flag: string) =>
     flag.startsWith("labs_")
   );
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
 
   const forceRoleUpdate = useMemo(
     () => async (role: "user" | "builder" | "admin") => {
@@ -51,52 +64,79 @@ export function UserMenu({
 
   return (
     <DropdownMenu>
-      <DropdownMenu.Button className="flex rounded-full bg-gray-800 text-sm focus:outline-none">
-        <span className="sr-only">Open user menu</span>
-        <Avatar
-          size="md"
-          visual={
-            user.image
-              ? user.image
-              : "https://gravatar.com/avatar/anonymous?d=mp"
-          }
-          onClick={() => {
-            "clickable";
-          }}
-        />
-      </DropdownMenu.Button>
-      <DropdownMenu.Items origin="topRight" width={220}>
+      <DropdownMenuTrigger>
+        <div className="flex items-center gap-2">
+          <span className="sr-only">Open user menu</span>
+          <Avatar
+            size="sm"
+            visual={
+              user.image
+                ? user.image
+                : "https://gravatar.com/avatar/anonymous?d=mp"
+            }
+            onClick={() => {
+              "clickable";
+            }}
+          />
+          <Icon visual={ChevronDownIcon} />
+        </div>
+      </DropdownMenuTrigger>
+
+      <DropdownMenuContent>
         {hasBetaAccess && (
           <>
-            <DropdownMenu.SectionHeader label="Beta" />
-            {owner.flags.includes("labs_transcripts") && (
-              <DropdownMenu.Item
-                label="Transcripts processing"
-                link={{ href: `/w/${owner.sId}/assistant/labs/transcripts` }}
+            <DropdownMenuLabel label="Beta" />
+            {featureFlags.includes("labs_transcripts") && (
+              <DropdownMenuItem
+                label="Meeting transcripts"
                 icon={BookOpenIcon}
+                href={`/w/${owner.sId}/assistant/labs/transcripts`}
+              />
+            )}
+            {featureFlags.includes("labs_trackers") && (
+              <DropdownMenuItem
+                label="Trackers"
+                icon={EyeIcon}
+                href={`/w/${owner.sId}/assistant/labs/trackers`}
               />
             )}
           </>
         )}
-        {canForceUserRole(owner) && (
+
+        {showDebugTools(owner) && (
           <>
-            <DropdownMenu.SectionHeader label="Dev Tools" />
+            <DropdownMenuLabel label="Dev Tools" />
+            {router.route === "/w/[wId]/assistant/[cId]" && (
+              <DropdownMenuItem
+                label="Debug conversation"
+                onClick={() => {
+                  const regexp = new RegExp(`/w/([^/]+)/assistant/([^/]+)`);
+                  const match = window.location.href.match(regexp);
+                  if (match) {
+                    void router.push(
+                      `/poke/${match[1]}/conversations/${match[2]}`
+                    );
+                  }
+                }}
+                icon={BugIcon}
+              />
+            )}
             {!isOnlyAdmin(owner) && (
-              <DropdownMenu.Item
+              <DropdownMenuItem
                 label="Become Admin"
                 onClick={() => forceRoleUpdate("admin")}
                 icon={StarIcon}
               />
             )}
             {!isOnlyBuilder(owner) && (
-              <DropdownMenu.Item
+              <DropdownMenuItem
                 label="Become Builder"
                 onClick={() => forceRoleUpdate("builder")}
                 icon={LightbulbIcon}
               />
             )}
             {!isOnlyUser(owner) && (
-              <DropdownMenu.Item
+              <DropdownMenuItem
                 label="Become User"
                 onClick={() => forceRoleUpdate("user")}
                 icon={UserIcon}
@@ -104,13 +144,16 @@ export function UserMenu({
             )}
           </>
         )}
-        <DropdownMenu.SectionHeader label="Account" />
-        <DropdownMenu.Item
-          label="Sign&nbsp;out"
-          link={{ href: "/api/auth/logout" }}
+
+        <DropdownMenuLabel label="Account" />
+        <DropdownMenuItem
+          onClick={() => {
+            void router.push("/api/auth/logout");
+          }}
           icon={LogoutIcon}
+          label="Sign&nbsp;out"
         />
-      </DropdownMenu.Items>
+      </DropdownMenuContent>
     </DropdownMenu>
   );
 }

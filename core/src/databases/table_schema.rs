@@ -1,12 +1,15 @@
-use std::collections::{HashMap, HashSet};
-
-use super::database::{HasValue, Row};
 use anyhow::{anyhow, Result};
 use chrono::prelude::DateTime;
 use itertools::Itertools;
 use rusqlite::{types::ToSqlOutput, ToSql};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
+
+use crate::databases::{database::HasValue, table::Row};
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "lowercase")]
@@ -94,6 +97,10 @@ impl TableSchemaColumn {
 pub struct TableSchema(Vec<TableSchemaColumn>);
 
 impl TableSchema {
+    pub fn from_columns(columns: Vec<TableSchemaColumn>) -> Self {
+        Self(columns)
+    }
+
     pub fn empty() -> Self {
         Self(vec![])
     }
@@ -144,8 +151,17 @@ impl TableSchema {
         }
     }
 
+    pub async fn from_rows_async<T: HasValue + Send + Sync + 'static>(
+        rows: Arc<Vec<T>>,
+    ) -> Result<TableSchema> {
+        tokio::task::spawn_blocking(move || TableSchema::from_rows(&rows)).await?
+    }
+
     pub fn from_rows<T: HasValue>(rows: &Vec<T>) -> Result<Self> {
-        let mut schema: Vec<TableSchemaColumn> = vec![];
+        // We store the ordering and the column in an hashmap to avoid a quadratic complexity in
+        // column count.
+        let mut schema_order: Vec<String> = Vec::new();
+        let mut schema_map: HashMap<String, TableSchemaColumn> = HashMap::new();
 
         for (row_index, row) in rows.iter().enumerate() {
             let object = match row.value().as_object() {
@@ -187,32 +203,43 @@ impl TableSchema {
                     Value::Null => unreachable!(),
                 };
 
-                if let Some(column) = schema.iter_mut().find(|c| &c.name == k) {
-                    if column.value_type != value_type {
-                        use TableSchemaFieldType::*;
-                        match (&column.value_type, &value_type) {
-                            // Ints and Floats can be merged into Floats.
-                            (Int, Float) | (Float, Int) => {
-                                column.value_type = Float;
-                            }
-                            // Otherwise we default to Text.
-                            _ => {
-                                column.value_type = Text;
+                match schema_map.get_mut(k) {
+                    Some(column) => {
+                        if column.value_type != value_type {
+                            use TableSchemaFieldType::*;
+                            match (&column.value_type, &value_type) {
+                                // Ints and Floats can be merged into Floats.
+                                (Int, Float) | (Float, Int) => {
+                                    column.value_type = Float;
+                                }
+                                // Otherwise we default to Text.
+                                _ => {
+                                    column.value_type = Text;
+                                }
                             }
                         }
+                        Self::accumulate_value(column, v);
                     }
-                    Self::accumulate_value(column, v);
-                } else {
-                    let mut column = TableSchemaColumn {
-                        name: k.clone(),
-                        value_type,
-                        possible_values: Some(vec![]),
-                    };
-                    Self::accumulate_value(&mut column, v);
-                    schema.push(column);
+                    None => {
+                        let mut column = TableSchemaColumn {
+                            name: k.clone(),
+                            value_type,
+                            possible_values: Some(vec![]),
+                        };
+                        Self::accumulate_value(&mut column, v);
+                        schema_map.insert(k.clone(), column);
+                        schema_order.push(k.clone());
+                    }
                 }
             }
         }
+
+        // The unwrap below is guaranteed to work as we insert in both schema_map and schema_order
+        // at the same time.
+        let schema = schema_order
+            .iter()
+            .map(|k| schema_map.get(k).unwrap().clone())
+            .collect();
 
         Ok(Self(schema))
     }
@@ -369,6 +396,18 @@ impl TableSchema {
             .collect::<Result<Vec<_>>>()?;
 
         Ok(TableSchema(merged_schema))
+    }
+
+    pub fn render_dbml(&self, name: &str, description: &str) -> String {
+        return format!(
+            "Table {} {{\n{}\n\n  Note: '{}'\n}}",
+            name,
+            self.columns()
+                .iter()
+                .map(|c| format!("  {}", c.render_dbml()))
+                .join("\n"),
+            description
+        );
     }
 
     fn try_parse_date_object(maybe_date_obj: &serde_json::Map<String, Value>) -> Option<String> {

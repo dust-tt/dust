@@ -1,0 +1,102 @@
+name: "Slack Notification"
+description: "Send deployment notifications to Slack"
+
+inputs:
+  step:
+    description: "Deployment step (start/build_success/failure)"
+    required: true
+  component:
+    description: "Component being deployed"
+    required: true
+  image_tag:
+    description: "Image tag being deployed"
+    required: true
+  channel:
+    description: "Slack channel"
+    required: true
+  thread_ts:
+    description: "Slack thread timestamp"
+    required: false
+  slack_token:
+    description: "Slack bot token"
+    required: true
+  blocked:
+    description: "Is deployment blocked?"
+    required: false
+  region:
+    description: "Region being deployed to"
+    required: false
+
+outputs:
+  thread_ts:
+    description: "Slack thread timestamp from the initial message"
+    value: ${{ steps.start_notification.outputs.ts }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Get author info
+      if: inputs.step == 'start'
+      id: author
+      shell: bash
+      run: |
+        AUTHOR_NAME="${{ github.actor }}"
+
+        if ! EMAIL=$(grep "^$AUTHOR_NAME: " .authors | cut -d' ' -f2); then
+          echo "GitHub handle $AUTHOR_NAME not found in authors file" >&2
+          exit 1
+        fi
+        echo "email=$EMAIL" >> $GITHUB_OUTPUT
+
+    - name: Lookup by email
+      if: inputs.step == 'start'
+      id: email
+      uses: slackapi/slack-github-action@v2.0.0
+      with:
+        errors: false
+        method: users.lookupByEmail
+        token: ${{ inputs.slack_token }}
+        payload: |
+          email: "${{ steps.author.outputs.email }}"
+
+    - name: Get Slack user ID
+      if: inputs.step == 'start' && steps.email.outputs.ok == 'true'
+      id: slack_user
+      shell: bash
+      run: |
+        RESPONSE='${{ steps.email.outputs.response }}'
+        if ! SLACK_ID=$(echo "$RESPONSE" | jq -r '.user.id'); then
+          echo "Failed to extract Slack user ID" >&2
+          exit 0
+        fi
+        echo "id=$SLACK_ID" >> $GITHUB_OUTPUT
+
+    - name: Notify Build And Deploy Start
+      if: inputs.step == 'start'
+      id: start_notification
+      uses: slackapi/slack-github-action@v2.0.0
+      with:
+        method: chat.postMessage
+        token: ${{ inputs.slack_token }}
+        payload: |
+          channel: ${{ inputs.channel }}
+          text: |
+            🚀 Starting deployment of ${{ inputs.component }} `${{ inputs.image_tag }}`
+            • Region: `${{ inputs.region }}`
+            • Commit: <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ inputs.image_tag }}>
+            • Workflow: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View build>
+            • Author: ${{ steps.slack_user.outputs.id != '' && format('<@{0}>', steps.slack_user.outputs.id) || format('`{0}`', steps.author.outputs.name) }}
+
+    - name: Notify Deploy Failure
+      if: inputs.step == 'failure'
+      uses: slackapi/slack-github-action@v2.0.0
+      with:
+        method: chat.postMessage
+        token: ${{ inputs.slack_token }}
+        payload: |
+          channel: ${{ inputs.channel }}
+          thread_ts: "${{ inputs.thread_ts }}"
+          text: |
+            ❌ Build pipeline failed
+            ${{ inputs.blocked == 'true' && format('Is blocked by channel topic: {0}', inputs.blocked) }}
+            • Check logs: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View details>

@@ -2,10 +2,10 @@ import type {
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
+import { compareAgentsForSort } from "@dust-tt/types";
 import { useMemo } from "react";
 
-import { compareAgentsForSort } from "@app/lib/assistant";
-import { useAgentConfigurations } from "@app/lib/swr/assistants";
+import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 
 function makeEditorSuggestions(
   agentConfigurations: LightAgentConfigurationType[]
@@ -17,6 +17,7 @@ function makeEditorSuggestions(
       id: agent.sId,
       label: agent.name,
       pictureUrl: agent.pictureUrl,
+      userFavorite: agent.userFavorite,
     }));
 }
 
@@ -24,9 +25,9 @@ const useAssistantSuggestions = (
   inListAgentConfigurations: LightAgentConfigurationType[],
   owner: WorkspaceType
 ) => {
-  const { agentConfigurations } = useAgentConfigurations({
+  // We use this specific hook because this component is involved in the new conversation page.
+  const { agentConfigurations } = useUnifiedAgentConfigurations({
     workspaceId: owner.sId,
-    agentsGetView: "assistants-search",
   });
 
   // `useMemo` will ensure that suggestions is only recalculated

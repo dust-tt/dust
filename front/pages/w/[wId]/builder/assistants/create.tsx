@@ -5,7 +5,7 @@ import {
   MagicIcon,
   Page,
   PencilSquareIcon,
-  Searchbar,
+  SearchInput,
 } from "@dust-tt/sparkle";
 import type {
   SubscriptionType,
@@ -26,13 +26,11 @@ import type { BuilderFlow } from "@app/components/assistant_builder/types";
 import { BUILDER_FLOWS } from "@app/components/assistant_builder/types";
 import AppLayout, { appLayoutBack } from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
-import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAssistantTemplates } from "@app/lib/swr/assistants";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   flow: BuilderFlow;
-  gaTrackingId: string;
   owner: WorkspaceType;
   subscription: SubscriptionType;
   templateTagsMapping: TemplateTagsType;
@@ -56,7 +54,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     props: {
       owner,
       subscription,
-      gaTrackingId: config.getGaTrackingId(),
       flow,
       templateTagsMapping: TEMPLATES_TAGS_CONFIG,
     },
@@ -65,7 +62,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
 export default function CreateAssistant({
   flow,
-  gaTrackingId,
   owner,
   subscription,
   templateTagsMapping,
@@ -194,7 +190,6 @@ export default function CreateAssistant({
       subscription={subscription}
       hideSidebar
       owner={owner}
-      gaTrackingId={gaTrackingId}
       titleChildren={
         <AppLayoutSimpleCloseTitle
           title={"Create an Assistant"}
@@ -212,19 +207,23 @@ export default function CreateAssistant({
               <Link
                 href={`/w/${owner.sId}/builder/assistants/new?flow=${flow}`}
               >
-                <Button icon={DocumentIcon} label="New Assistant" size="md" />
+                <Button
+                  icon={DocumentIcon}
+                  label="New Assistant"
+                  size="md"
+                  variant="highlight"
+                />
               </Link>
             </div>
             <Page.Separator />
 
             <Page.Header title="Start from a template" icon={MagicIcon} />
             <div className="flex flex-col gap-6">
-              <Searchbar
+              <SearchInput
                 placeholder="Search templates"
                 name="input"
                 value={templateSearchTerm}
                 onChange={handleSearch}
-                size="md"
               />
               <div className="flex flex-row flex-wrap gap-2">
                 {filteredTemplates.tags
@@ -234,10 +233,9 @@ export default function CreateAssistant({
                   .map((tagName) => (
                     <Button
                       label={templateTagsMapping[tagName].label}
-                      variant="tertiary"
+                      variant="outline"
                       key={tagName}
                       size="xs"
-                      hasMagnifying={false}
                       onClick={() => scrollToTag(tagName)}
                     />
                   ))}

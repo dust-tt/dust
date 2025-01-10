@@ -3,7 +3,6 @@ import type {
   ModelId,
   Result,
 } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
 import { cacheWithRedis } from "@dust-tt/types";
 import axios from "axios";
 
@@ -24,13 +23,14 @@ import {
   handleTextFile,
 } from "@connectors/connectors/shared/file";
 import {
-  deleteFromDataSource,
+  deleteDataSourceDocument,
+  deleteDataSourceFolder,
   MAX_DOCUMENT_TXT_LEN,
   MAX_FILE_SIZE_TO_DOWNLOAD,
   MAX_LARGE_DOCUMENT_TXT_LEN,
   renderDocumentTitleAndContent,
   sectionLength,
-  upsertToDatasource,
+  upsertDataSourceDocument,
 } from "@connectors/lib/data_sources";
 import type { MicrosoftNodeModel } from "@connectors/lib/models/microsoft";
 import logger from "@connectors/logger/logger";
@@ -163,6 +163,7 @@ export async function syncOneFile({
     name: file.name ?? "",
     parentInternalId,
     mimeType: file.file.mimeType ?? "",
+    webUrl: file.webUrl ?? "",
   };
 
   if (mimeType === "application/vnd.ms-excel" || mimeType === "text/csv") {
@@ -297,7 +298,7 @@ export async function syncOneFile({
           })),
         ];
 
-        await upsertToDatasource({
+        await upsertDataSourceDocument({
           dataSourceConfig,
           documentId,
           documentContent: content,
@@ -305,9 +306,12 @@ export async function syncOneFile({
           timestampMs: upsertTimestampMs,
           tags,
           parents,
+          parentId: parents[1] || null,
           upsertContext: {
             sync_type: isBatchSync ? "batch" : "incremental",
           },
+          title: file.name ?? "",
+          mimeType: file.file.mimeType ?? "application/octet-stream",
           async: true,
         });
 
@@ -349,7 +353,7 @@ export async function getParents({
   connectorId: ModelId;
   internalId: string;
   startSyncTs: number;
-}): Promise<string[]> {
+}): Promise<[string, ...string[]]> {
   const parentInternalId = await getParentId(
     connectorId,
     internalId,
@@ -373,7 +377,7 @@ export async function getParents({
  * per-sync basis (given by startSyncTs) */
 const getParentId = cacheWithRedis(
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async (connectorId, internalId, startSyncTs) => {
+  async (connectorId: ModelId, internalId: string, startSyncTs: number) => {
     const node = await MicrosoftNodeResource.fetchByInternalId(
       connectorId,
       internalId
@@ -391,9 +395,11 @@ const getParentId = cacheWithRedis(
 
 export async function deleteFolder({
   connectorId,
+  dataSourceConfig,
   internalId,
 }: {
   connectorId: number;
+  dataSourceConfig: DataSourceConfig;
   internalId: string;
 }) {
   const folder = await MicrosoftNodeResource.fetchByInternalId(
@@ -415,8 +421,13 @@ export async function deleteFolder({
   );
 
   if (root) {
-    await root.delete();
+    // Roots represent the user selection for synchronization As such, they
+    // should be deleted first, explicitly by users, before deleting the
+    // underlying folder
+    throw new Error("Unexpected: attempt to delete folder with root node");
   }
+
+  await deleteDataSourceFolder({ dataSourceConfig, folderId: internalId });
 
   if (folder) {
     await folder.delete();
@@ -451,7 +462,7 @@ export async function deleteFile({
   ) {
     await deleteAllSheets(dataSourceConfig, file);
   } else {
-    await deleteFromDataSource(dataSourceConfig, internalId);
+    await deleteDataSourceDocument(dataSourceConfig, internalId);
   }
   return file.delete();
 }
@@ -475,15 +486,16 @@ export async function recursiveNodeDeletion(
   nodeId: string,
   connectorId: ModelId,
   dataSourceConfig: DataSourceConfig
-): Promise<Result<void, Error>> {
+): Promise<string[]> {
   const node = await MicrosoftNodeResource.fetchByInternalId(
     connectorId,
     nodeId
   );
+  const deletedFiles: string[] = [];
 
   if (!node) {
     logger.warn({ connectorId, nodeId }, "Node not found for deletion");
-    return new Ok(undefined);
+    return deletedFiles;
   }
 
   const { nodeType } = typeAndPathFromInternalId(nodeId);
@@ -495,12 +507,12 @@ export async function recursiveNodeDeletion(
         dataSourceConfig,
         internalId: node.internalId,
       });
+      deletedFiles.push(node.internalId);
     } catch (error) {
       logger.error(
         { connectorId, nodeId, error },
         `Failed to delete document ${node.internalId} from core data source`
       );
-      return new Err(new Error(`Failed to delete document ${node.internalId}`));
     }
   } else if (nodeType === "folder" || nodeType === "drive") {
     const children = await node.fetchChildren();
@@ -510,35 +522,15 @@ export async function recursiveNodeDeletion(
         connectorId,
         dataSourceConfig
       );
-      if (result.isErr()) {
-        logger.error(
-          { connectorId, nodeId: child.internalId, error: result.error },
-          `Failed to delete child node`
-        );
-        return result;
-      }
+      deletedFiles.push(...result);
     }
     await deleteFolder({
       connectorId,
+      dataSourceConfig,
       internalId: node.internalId,
     });
+    deletedFiles.push(node.internalId);
   }
 
-  try {
-    const root = await MicrosoftRootResource.fetchByInternalId(
-      connectorId,
-      nodeId
-    );
-    if (root) {
-      await root.delete();
-    }
-  } catch (error) {
-    logger.error(
-      { connectorId, nodeId, error },
-      `Failed to delete node ${nodeId}`
-    );
-    return new Err(new Error(`Failed to delete node ${nodeId}`));
-  }
-
-  return new Ok(undefined);
+  return deletedFiles;
 }

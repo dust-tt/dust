@@ -3,7 +3,7 @@ import { QueryTypes } from "sequelize";
 import { getCoreDocuments } from "@app/lib/production_checks/managed_ds";
 import type { CheckFunction } from "@app/lib/production_checks/types";
 import {
-  getConnectorReplicaDbConnection,
+  getConnectorsReplicaDbConnection,
   getFrontReplicaDbConnection,
 } from "@app/lib/production_checks/utils";
 
@@ -14,7 +14,7 @@ export const managedDataSourceGCGdriveCheck: CheckFunction = async (
   reportFailure,
   heartbeat
 ) => {
-  const connectorsReplica = getConnectorReplicaDbConnection();
+  const connectorsReplica = getConnectorsReplicaDbConnection();
   const frontReplica = getFrontReplicaDbConnection();
   const GdriveDataSources: { id: number; connectorId: string }[] =
     await frontReplica.query(

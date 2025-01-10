@@ -6,6 +6,7 @@ import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import logger from "@app/logger/logger";
+import { stopRetrieveTranscriptsWorkflow } from "@app/temporal/labs/client";
 
 // Google Auth
 export async function getTranscriptsGoogleAuth(
@@ -43,6 +44,7 @@ export async function getTranscriptsGoogleAuth(
       { connectionId, error: tokRes.error, provider },
       "Error retrieving access token"
     );
+    await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
     throw new Error(`Error retrieving access token from ${provider}`);
   }
 

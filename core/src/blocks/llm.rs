@@ -302,7 +302,6 @@ impl Block for LLM {
         name: &str,
         env: &Env,
         event_sender: Option<UnboundedSender<Value>>,
-        _project_id: i64,
     ) -> Result<BlockResult> {
         let config = env.config.config_for_block(name);
 
@@ -407,6 +406,9 @@ impl Block for LLM {
                 if let Some(Value::String(s)) = v.get("response_format") {
                     extras["response_format"] = json!(s.clone());
                 }
+                if let Some(Value::String(s)) = v.get("reasoning_effort") {
+                    extras["reasoning_effort"] = json!(s.clone());
+                }
 
                 match extras.as_object().unwrap().keys().len() {
                     0 => None,
@@ -446,6 +448,12 @@ impl Block for LLM {
                     Some(self.max_tokens),
                     self.presence_penalty,
                     self.frequency_penalty,
+                    if self.top_logprobs.is_some() {
+                        Some(true)
+                    } else {
+                        None
+                    },
+                    self.top_logprobs,
                     extras,
                 );
 

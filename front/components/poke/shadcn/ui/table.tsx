@@ -1,6 +1,13 @@
+import {
+  ClipboardCheckIcon,
+  ClipboardIcon,
+  Label,
+  LinkWrapper,
+} from "@dust-tt/sparkle";
 import * as React from "react";
 
 import { cn } from "@app/components/poke/shadcn/lib/utils";
+import { PokeButton } from "@app/components/poke/shadcn/ui/button";
 
 const Table = React.forwardRef<
   HTMLTableElement,
@@ -43,7 +50,7 @@ const TableFooter = React.forwardRef<
   <tfoot
     ref={ref}
     className={cn(
-      "bg-muted/50 border-t font-medium [&>tr]:last:border-b-0",
+      "border-t bg-muted/50 font-medium [&>tr]:last:border-b-0",
       className
     )}
     {...props}
@@ -58,7 +65,7 @@ const TableRow = React.forwardRef<
   <tr
     ref={ref}
     className={cn(
-      "hover:bg-muted/50 data-[state=selected]:bg-muted border-b transition-colors",
+      "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
       className
     )}
     {...props}
@@ -73,7 +80,7 @@ const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={cn(
-      "text-muted-foreground h-10 px-2 text-left align-middle font-medium [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+      "h-10 px-2 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
       className
     )}
     {...props}
@@ -102,17 +109,80 @@ const TableCaption = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <caption
     ref={ref}
-    className={cn("text-muted-foreground mt-4 text-sm", className)}
+    className={cn("mt-4 text-sm text-muted-foreground", className)}
     {...props}
   />
 ));
 TableCaption.displayName = "TableCaption";
+
+const TableCellWithCopy = React.forwardRef<
+  HTMLTableCellElement,
+  React.TdHTMLAttributes<HTMLTableCellElement> & {
+    label: string;
+    textToCopy?: string;
+  }
+>(({ className, label, textToCopy, ...props }, ref) => {
+  const [isCopied, setIsCopied] = React.useState(false);
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(textToCopy ?? label);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
+  };
+
+  return (
+    <TableCell
+      ref={ref}
+      className={cn(
+        "p-2 align-middle [&:has([role=checkbox])]:pr-0",
+        className
+      )}
+      {...props}
+    >
+      <div className="flex items-center space-x-2">
+        <Label>{label}</Label>
+        <PokeButton size="sm" variant="outline" onClick={handleCopy}>
+          {isCopied ? (
+            <ClipboardCheckIcon className="h-4 w-4" />
+          ) : (
+            <ClipboardIcon className="h-4 w-4" />
+          )}
+        </PokeButton>
+      </div>
+    </TableCell>
+  );
+});
+TableCellWithCopy.displayName = "TableCellWithCopy";
+
+interface TableCellWithLinkProps
+  extends React.TdHTMLAttributes<HTMLTableCellElement> {
+  href: string;
+  content: string;
+}
+
+const TableCellWithLink = React.forwardRef<
+  HTMLTableCellElement,
+  TableCellWithLinkProps
+>(({ className, href, content, ...props }, ref) => {
+  return (
+    <TableCell
+      ref={ref}
+      className={cn("p-2 align-middle", className)}
+      {...props}
+    >
+      <LinkWrapper href={href}>{content}</LinkWrapper>
+    </TableCell>
+  );
+});
+TableCellWithLink.displayName = "TableCellWithLink";
 
 export {
   Table as PokeTable,
   TableBody as PokeTableBody,
   TableCaption as PokeTableCaption,
   TableCell as PokeTableCell,
+  TableCellWithCopy as PokeTableCellWithCopy,
+  TableCellWithLink as PokeTableCellWithLink,
   TableFooter as PokeTableFooter,
   TableHead as PokeTableHead,
   TableHeader as PokeTableHeader,

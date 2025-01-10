@@ -152,7 +152,7 @@ async function handleUserMessageEvents(
     >
   > = new Promise((resolve) => {
     void wakeLock(async () => {
-      const redis = await getRedisClient();
+      const redis = await getRedisClient({ origin: "user_message_events" });
       let didResolve = false;
 
       let userMessage: UserMessageType | undefined = undefined;
@@ -184,11 +184,13 @@ async function handleUserMessageEvents(
             case "retrieval_params":
             case "dust_app_run_params":
             case "dust_app_run_block":
-            case "tables_query_params":
+            case "tables_query_started":
+            case "tables_query_model_output":
             case "tables_query_output":
             case "process_params":
             case "websearch_params":
             case "browse_params":
+            case "conversation_include_file_params":
             case "agent_error":
             case "agent_action_success":
             case "generation_tokens":
@@ -300,7 +302,7 @@ export async function retryAgentMessageWithPubSub(
   const promise: Promise<Result<AgentMessageType, PubSubError>> = new Promise(
     (resolve) => {
       void wakeLock(async () => {
-        const redis = await getRedisClient();
+        const redis = await getRedisClient({ origin: "retry_agent_message" });
         let didResolve = false;
         try {
           for await (const event of retryAgentMessage(auth, {
@@ -336,11 +338,13 @@ export async function retryAgentMessageWithPubSub(
               case "retrieval_params":
               case "dust_app_run_params":
               case "dust_app_run_block":
-              case "tables_query_params":
+              case "tables_query_started":
+              case "tables_query_model_output":
               case "tables_query_output":
               case "process_params":
               case "websearch_params":
               case "browse_params":
+              case "conversation_include_file_params":
               case "agent_error":
               case "agent_action_success":
               case "generation_tokens":
@@ -399,11 +403,15 @@ export async function* getConversationEvents(
 ): AsyncGenerator<
   {
     eventId: string;
-    data: UserMessageNewEvent | AgentMessageNewEvent | ConversationTitleEvent;
+    data:
+      | UserMessageNewEvent
+      | AgentMessageNewEvent
+      | AgentGenerationCancelledEvent
+      | ConversationTitleEvent;
   },
   void
 > {
-  const redis = await getRedisClient();
+  const redis = await getRedisClient({ origin: "conversation_events" });
   const pubsubChannel = getConversationChannelId(conversationId);
 
   while (true) {
@@ -435,7 +443,7 @@ export async function* getConversationEvents(
 export async function cancelMessageGenerationEvent(
   messageIds: string[]
 ): Promise<void> {
-  const redis = await getRedisClient();
+  const redis = await getRedisClient({ origin: "cancel_message_generation" });
 
   try {
     const tasks = messageIds.map((messageId) => {
@@ -486,7 +494,7 @@ export async function* getMessagesEvents(
   void
 > {
   const pubsubChannel = getMessageChannelId(messageId);
-  const redis = await getRedisClient();
+  const redis = await getRedisClient({ origin: "message_events" });
 
   while (true) {
     // Use an isolated connection to avoid blocking the main connection.

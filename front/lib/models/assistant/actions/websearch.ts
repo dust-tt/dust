@@ -1,21 +1,13 @@
 import type { WebsearchActionOutputType } from "@dust-tt/types";
-import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional, ForeignKey } from "sequelize";
+import { DataTypes } from "sequelize";
 
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { BaseModel } from "@app/lib/resources/storage/wrappers";
 
-export class AgentWebsearchConfiguration extends Model<
-  InferAttributes<AgentWebsearchConfiguration>,
-  InferCreationAttributes<AgentWebsearchConfiguration>
-> {
-  declare id: CreationOptional<number>;
+export class AgentWebsearchConfiguration extends BaseModel<AgentWebsearchConfiguration> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -29,11 +21,6 @@ export class AgentWebsearchConfiguration extends Model<
 
 AgentWebsearchConfiguration.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -80,11 +67,7 @@ AgentWebsearchConfiguration.belongsTo(AgentConfiguration, {
   foreignKey: { name: "agentConfigurationId", allowNull: false },
 });
 
-export class AgentWebsearchAction extends Model<
-  InferAttributes<AgentWebsearchAction>,
-  InferCreationAttributes<AgentWebsearchAction>
-> {
-  declare id: CreationOptional<number>;
+export class AgentWebsearchAction extends BaseModel<AgentWebsearchAction> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare runId: string | null;
@@ -102,11 +85,6 @@ export class AgentWebsearchAction extends Model<
 }
 AgentWebsearchAction.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,

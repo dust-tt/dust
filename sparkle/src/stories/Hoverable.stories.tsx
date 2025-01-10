@@ -1,37 +1,52 @@
-import type { Meta } from "@storybook/react";
-import React from "react";
+import type { Meta, StoryObj } from "@storybook/react";
 
-import { Hoverable } from "@sparkle/components/Hoverable";
+import { Hoverable, HOVERABLE_VARIANTS } from "@sparkle/components/Hoverable";
 
 const meta = {
   title: "Primitives/Hoverable",
   component: Hoverable,
+  parameters: {
+    layout: "padded",
+  },
+  argTypes: {
+    variant: {
+      options: HOVERABLE_VARIANTS,
+      control: { type: "select" },
+      description: "Visual style variant",
+      defaultValue: "invisible",
+    },
+    children: {
+      control: "text",
+      description: "Text content to display",
+    },
+    href: {
+      control: "text",
+      description: "Optional URL for link behavior",
+    },
+    target: {
+      options: ["_self", "_blank", "_parent", "_top"],
+      control: { type: "select" },
+      description: "Target attribute for link",
+      defaultValue: "_self",
+    },
+    onClick: {
+      action: "clicked",
+      description: "Click handler function",
+    },
+    className: {
+      control: "text",
+      description: "Additional CSS classes",
+    },
+  },
 } satisfies Meta<typeof Hoverable>;
 
 export default meta;
+type Story = StoryObj<typeof meta>;
 
-export const HoverableExample = () => {
-  return (
-    <div className="items-start s-flex s-flex-col s-gap-10">
-      <div>
-        <Hoverable
-          onClick={() => {
-            alert("Clicked!");
-          }}
-        >
-          I am invisible but you can hover me.
-        </Hoverable>
-      </div>
-      <div>
-        <Hoverable
-          variant="primary"
-          onClick={() => {
-            alert("Soupinou!");
-          }}
-        >
-          I am primary, you can hover me.
-        </Hoverable>
-      </div>
-    </div>
-  );
+// Basic example with controls
+export const Basic: Story = {
+  args: {
+    children: "I am hoverable text",
+    variant: "invisible",
+  },
 };

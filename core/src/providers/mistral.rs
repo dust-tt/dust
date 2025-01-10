@@ -110,7 +110,7 @@ fn sanitize_tool_call_id(id: &str) -> String {
         .collect::<String>();
 
     if s.len() > 9 {
-        s = id[0..9].to_string();
+        s = s[0..9].to_string();
     }
     if s.len() < 9 {
         s = format!("{:0>9}", s);
@@ -921,6 +921,8 @@ impl LLM for MistralAILLM {
         max_tokens: Option<i32>,
         presence_penalty: Option<f32>,
         frequency_penalty: Option<f32>,
+        _logprobs: Option<bool>,
+        _top_logprobs: Option<i32>,
         _extras: Option<Value>,
         event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMChatGeneration> {
@@ -1030,6 +1032,7 @@ impl LLM for MistralAILLM {
                 prompt_tokens: u.prompt_tokens,
             }),
             provider_request_id: request_id,
+            logprobs: None,
         })
     }
 

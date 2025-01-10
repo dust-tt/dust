@@ -93,6 +93,9 @@
  *           example: "openai"
  *     Context:
  *       type: object
+ *       required:
+ *         - username
+ *         - timezone
  *       properties:
  *         username:
  *           type: string
@@ -116,8 +119,18 @@
  *           example: "https://example.com/profiles/johndoe123.jpg"
  *         origin:
  *           type: string
- *           description: Origin of the context
- *           example: "api"
+ *           description: Origin of the context (contact us to add more at support@dust.tt)
+ *           enum:
+ *             - api
+ *             - slack
+ *             - gsheet
+ *             - zapier
+ *             - make
+ *             - zendesk
+ *             - raycast
+ *             - github-copilot-chat
+ *             - extension
+ *             - email
  *     AgentConfiguration:
  *       type: object
  *       properties:
@@ -166,10 +179,10 @@
  *           type: string
  *           description: Scope of the agent configuration
  *           example: "workspace"
- *         userListStatus:
- *           type: string
- *           description: Status of the user list for this configuration
- *           example: "all_users"
+ *         userFavorite:
+ *           type: boolean
+ *           description: Status of the user favorite for this configuration
+ *           example: true
  *         model:
  *           type: object
  *           properties:
@@ -308,6 +321,9 @@
  *           example: "7f3a9c2b1e"
  *     Message:
  *       type: object
+ *       required:
+ *         - content
+ *         - mentions
  *       properties:
  *         content:
  *           type: string
@@ -315,12 +331,15 @@
  *           example: "This is my message"
  *         mentions:
  *           type: array
+ *           description: Empty array is accepted but won't trigger any agent.
  *           items:
  *             $ref: '#/components/schemas/Mention'
  *         context:
  *           $ref: '#/components/schemas/Context'
  *     ContentFragment:
  *       type: object
+ *       required:
+ *         - title
  *       properties:
  *         title:
  *           type: string
@@ -328,18 +347,40 @@
  *           example: "My content fragment"
  *         content:
  *           type: string
- *           description: The content of the content fragment
+ *           description: The content of the content fragment (optional if `fileId` is set)
  *           example: "This is my content fragment extracted text"
+ *         contentType:
+ *           type: string
+ *           description: The content type of the content fragment (optional if `fileId` is set)
+ *           example: "text/plain"
  *         url:
  *           type: string
  *           description: The URL of the content fragment
  *           example: "https://example.com/content"
- *         contentType:
+ *         fileId:
  *           type: string
- *           description: The content type of the content fragment
- *           example: "text/plain"
+ *           description: The id of the previously uploaded file (optional if `content` and `contentType` are set)
+ *           example: fil_123456
  *         context:
  *           $ref: '#/components/schemas/Context'
+ *     Space:
+ *       type: object
+ *       properties:
+ *         sId:
+ *           type: string
+ *           description: Unique string identifier for the space
+ *         name:
+ *           type: string
+ *           description: Name of the space
+ *         kind:
+ *           type: string
+ *           enum: [regular, global, system, public]
+ *           description: The kind of the space
+ *         groupIds:
+ *           type: array
+ *           items:
+ *             type: string
+ *           description: List of group IDs that have access to the space
  *     Datasource:
  *       type: object
  *       properties:
@@ -375,6 +416,117 @@
  *           type: boolean
  *           description: Whether this datasource is selected by default for assistants
  *           example: true
+ *     Table:
+ *       type: object
+ *       properties:
+ *         name:
+ *           type: string
+ *           description: Name of the table
+ *           example: "Roi data"
+ *           deprecated: true
+ *         title:
+ *           type: string
+ *           description: Title of the table
+ *           example: "ROI Data"
+ *         table_id:
+ *           type: string
+ *           description: Unique identifier for the table
+ *           example: "1234f4567c"
+ *         description:
+ *           type: string
+ *           description: Description of the table
+ *           example: "roi data for Q1"
+ *         mime_type:
+ *           type: string
+ *           description: MIME type of the table
+ *           example: "text/csv"
+ *         schema:
+ *           type: array
+ *           description: Array of column definitions
+ *           items:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 description: Name of the column
+ *                 example: "roi"
+ *               value_type:
+ *                 type: string
+ *                 description: Data type of the column
+ *                 enum: [text, int, float, bool, date]
+ *                 example: "int"
+ *               possible_values:
+ *                 type: array
+ *                 description: Array of possible values for the column (null if unrestricted)
+ *                 items:
+ *                   type: string
+ *                 nullable: true
+ *                 example: ["1", "2", "3"]
+ *         timestamp:
+ *           type: number
+ *           description: Unix timestamp of table creation/modification
+ *           example: 1732810375150
+ *         tags:
+ *           type: array
+ *           description: Array of tags associated with the table
+ *           items:
+ *             type: string
+ *         parent_id:
+ *           type: string
+ *           description: ID of the table parent
+ *           items:
+ *             type: string
+ *           example: "1234f4567c"
+ *         parents:
+ *           type: array
+ *           description: Array of parent table IDs
+ *           items:
+ *             type: string
+ *           example: ["1234f4567c"]
+ *     DatasourceView:
+ *       type: object
+ *       properties:
+ *         category:
+ *           type: string
+ *           enum: [managed, folder, website, apps]
+ *           description: The category of the data source view
+ *         createdAt:
+ *           type: number
+ *           description: Timestamp of when the data source view was created
+ *         dataSource:
+ *           $ref: '#/components/schemas/Datasource'
+ *         editedByUser:
+ *           type: object
+ *           description: The user who last edited the data source view
+ *           properties:
+ *             fullName:
+ *               type: string
+ *               description: Full name of the user
+ *             editedAt:
+ *               type: number
+ *               description: Timestamp of when the data source view was last edited by the user
+ *         id:
+ *           type: number
+ *           description: Unique identifier for the data source view
+ *         kind:
+ *           type: string
+ *           enum: [default, custom]
+ *           description: The kind of the data source view
+ *         parentsIn:
+ *           type: array
+ *           items:
+ *             type: string
+ *           description: List of IDs included in this view, null if complete data source is taken
+ *           nullable: true
+ *         sId:
+ *           type: string
+ *           description: Unique string identifier for the data source view
+ *         updatedAt:
+ *           type: number
+ *           description: Timestamp of when the data source view was last updated
+ *         spaceId:
+ *           type: string
+ *           description: ID of the space containing the data source view
  *     Run:
  *       type: object
  *       properties:
@@ -432,6 +584,14 @@
  *         document_id:
  *           type: string
  *           example: "2c4a6e8d0f"
+ *         title:
+ *           type: string
+ *           description: Title of the document
+ *           example: "Customer Support FAQ"
+ *         mime_type:
+ *           type: string
+ *           description: MIME type of the table
+ *           example: "text/md"
  *         timestamp:
  *           type: number
  *           example: 1625097600
@@ -440,6 +600,12 @@
  *           items:
  *             type: string
  *           example: ["customer_support", "faq"]
+ *         parent_id:
+ *           type: string
+ *           description: ID of the document parent
+ *           items:
+ *             type: string
+ *           example: "1234f4567c"
  *         parents:
  *           type: array
  *           items:

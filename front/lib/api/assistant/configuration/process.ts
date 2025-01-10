@@ -6,13 +6,12 @@ import type {
 import _ from "lodash";
 import { Op } from "sequelize";
 
-import { DEFAULT_PROCESS_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
+import { DEFAULT_PROCESS_ACTION_NAME } from "@app/lib/api/assistant/actions/constants";
 import { renderRetrievalTimeframeType } from "@app/lib/api/assistant/configuration/helpers";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/process";
 import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { DataSource } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 
 export async function fetchAgentProcessActionConfigurations({
@@ -45,26 +44,12 @@ export async function fetchAgentProcessActionConfigurations({
       },
       include: [
         {
-          model: DataSource,
-          as: "dataSource",
-          include: [
-            {
-              model: Workspace,
-              as: "workspace",
-            },
-          ],
-        },
-        {
           model: DataSourceViewModel,
           as: "dataSourceView",
           include: [
             {
               model: Workspace,
               as: "workspace",
-            },
-            {
-              model: DataSource,
-              as: "dataSourceForView",
             },
           ],
         },
@@ -121,12 +106,11 @@ function getDataSource(
   const { dataSourceView } = dataSourceConfig;
 
   return {
+    workspaceId: dataSourceView.workspace.sId,
     dataSourceViewId: DataSourceViewResource.modelIdToSId({
       id: dataSourceView.id,
       workspaceId: dataSourceView.workspaceId,
     }),
-    dataSourceId: dataSourceView.dataSourceForView.name,
-    workspaceId: dataSourceView.workspace.sId,
     filter: {
       parents:
         dataSourceConfig.parentsIn && dataSourceConfig.parentsNotIn

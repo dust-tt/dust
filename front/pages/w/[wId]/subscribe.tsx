@@ -1,25 +1,28 @@
-import { BarHeader, Button, LockIcon, Page } from "@dust-tt/sparkle";
+import {
+  BarHeader,
+  Button,
+  LockIcon,
+  Page,
+  useSendNotification,
+} from "@dust-tt/sparkle";
 import type { BillingPeriod, WorkspaceType } from "@dust-tt/types";
 import { CreditCardIcon } from "@heroicons/react/20/solid";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import React, { useContext, useEffect } from "react";
+import React from "react";
 
 import { ProPlansTable } from "@app/components/plans/ProPlansTable";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { UserMenu } from "@app/components/UserMenu";
 import WorkspacePicker from "@app/components/WorkspacePicker";
-import config from "@app/lib/api/config";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
+import { isOldFreePlan } from "@app/lib/plans/plan_codes";
 import { useUser } from "@app/lib/swr/user";
 import { useWorkspaceSubscriptions } from "@app/lib/swr/workspaces";
-import { ClientSideTracking } from "@app/lib/tracking/client";
 
 export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
   owner: WorkspaceType;
   isAdmin: boolean;
-  gaTrackingId: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   if (!owner || !auth.isUser()) {
@@ -32,7 +35,6 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
     props: {
       owner,
       isAdmin: auth.isAdmin(),
-      gaTrackingId: config.getGaTrackingId(),
     },
   };
 });
@@ -42,7 +44,7 @@ export default function Subscribe({
   isAdmin,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
   const { user } = useUser();
 
   const { subscriptions } = useWorkspaceSubscriptions({
@@ -53,19 +55,11 @@ export default function Subscribe({
     React.useState<BillingPeriod>("monthly");
 
   // If you had another subscription before, you will not get the free trial again: we use this to show the correct message.
-  // Current plan is always FREE_NO_PLAN if you're on this paywall.
-  // Since FREE_NO_PLAN is not on the database, we check if there is at least 1 subscription.
-  const hasPreviouSubscription = subscriptions?.length > 0;
-
-  useEffect(() => {
-    if (user?.id) {
-      ClientSideTracking.trackPageView({
-        user,
-        pathname: router.pathname,
-        workspaceId: owner.sId,
-      });
-    }
-  }, [owner.sId, router.pathname, user]);
+  // Current plan is either FREE_NO_PLAN or FREE_TEST_PLAN if you're on this paywall.
+  // FREE_NO_PLAN is not on the database, checking it comes down to having at least 1 subscription.
+  const noPreviousSubscription =
+    subscriptions.length === 0 ||
+    (subscriptions.length === 1 && isOldFreePlan(subscriptions[0].plan.code)); // FREE_TEST_PLAN did not pay, they should be asked to start instead of resume
 
   const { submit: handleSubscribePlan } = useSubmitFunction(
     async (billingPeriod) => {
@@ -105,29 +99,24 @@ export default function Subscribe({
     <>
       <div className="mb-10">
         <BarHeader
-          title={"Joining Dust"}
+          title="Joining Dust"
           className="ml-10 lg:ml-0"
           rightActions={
             <>
               <div className="flex flex-row items-center">
                 {user && user.workspaces.length > 1 && (
-                  <div className="mr-4 flex flex-row gap-2">
-                    <div className="text-sm text-slate-500">Workspace:</div>
-                    <WorkspacePicker
-                      user={user}
-                      workspace={owner}
-                      readOnly={false}
-                      displayDropDownOrigin="topRight"
-                      onWorkspaceUpdate={(workspace) => {
-                        const assistantRoute = `/w/${workspace.sId}/assistant/new`;
-                        if (workspace.id !== owner.id) {
-                          void router
-                            .push(assistantRoute)
-                            .then(() => router.reload());
-                        }
-                      }}
-                    />
-                  </div>
+                  <WorkspacePicker
+                    user={user}
+                    workspace={owner}
+                    onWorkspaceUpdate={(workspace) => {
+                      const assistantRoute = `/w/${workspace.sId}/assistant/new`;
+                      if (workspace.id !== owner.id) {
+                        void router
+                          .push(assistantRoute)
+                          .then(() => router.reload());
+                      }
+                    }}
+                  />
                 )}
                 <div>{user && <UserMenu user={user} owner={owner} />}</div>
               </div>
@@ -144,7 +133,7 @@ export default function Subscribe({
                   icon={CreditCardIcon}
                   title="Setting up your subscription"
                 />
-                {hasPreviouSubscription ? (
+                {!noPreviousSubscription ? (
                   <>
                     <Page.P>
                       <span className="font-bold">
@@ -203,7 +192,7 @@ export default function Subscribe({
                 <Button
                   variant="primary"
                   label={
-                    hasPreviouSubscription
+                    !noPreviousSubscription
                       ? billingPeriod === "monthly"
                         ? "Resume with monthly billing"
                         : "Resume with yearly billing"
@@ -216,7 +205,7 @@ export default function Subscribe({
                   onClick={() => {
                     void handleSubscribePlan(billingPeriod);
                   }}
-                ></Button>
+                />
               </Page.Vertical>
               <Page.Horizontal sizing="grow">
                 <ProPlansTable

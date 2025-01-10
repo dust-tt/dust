@@ -3,14 +3,14 @@ import React, { ComponentType, MouseEventHandler } from "react";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Icon, IconProps } from "./Icon";
-import { Tooltip, TooltipProps } from "./Tooltip";
+import { Tooltip } from "./Tooltip";
 
 type IconToggleButtonProps = {
   variant?: "secondary" | "tertiary";
   onClick?: MouseEventHandler<HTMLButtonElement>;
   size?: "xs" | "sm" | "md";
   tooltip?: string;
-  tooltipPosition?: TooltipProps["position"];
+  tooltipPosition?: React.ComponentProps<typeof Tooltip>["side"];
   icon: ComponentType;
   iconSelected?: ComponentType;
   className?: string;
@@ -23,13 +23,13 @@ const baseClasses =
 
 const iconClasses = {
   secondary: {
-    idle: "s-text-element-900",
+    idle: "s-text-foreground",
     selected: "s-text-action-500",
     hover: "hover:s-text-action-400",
     active: "active:s-text-action-600",
     disabled: "s-text-element-500",
     dark: {
-      idle: "dark:s-text-element-900-dark",
+      idle: "dark:s-text-foreground-dark",
       selected: "dark:s-text-action-500-dark",
       hover: "dark:hover:s-text-action-500-dark",
       active: "dark:active:s-text-action-600-dark",
@@ -57,7 +57,7 @@ export function IconToggleButton({
   onClick,
   disabled = false,
   tooltip,
-  tooltipPosition = "above",
+  tooltipPosition = "top",
   icon,
   iconSelected,
   className = "",
@@ -105,9 +105,11 @@ export function IconToggleButton({
   );
 
   return tooltip ? (
-    <Tooltip label={tooltip} position={tooltipPosition}>
-      {IconButtonToggleContent}
-    </Tooltip>
+    <Tooltip
+      trigger={IconButtonToggleContent}
+      label={tooltip}
+      side={tooltipPosition}
+    />
   ) : (
     IconButtonToggleContent
   );

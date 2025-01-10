@@ -1,4 +1,5 @@
 use super::file_storage_document::FileStorageDocument;
+use super::node::{Node, NodeType};
 use super::qdrant::{DustQdrantClient, QdrantCluster};
 use crate::consts::DATA_SOURCE_DOCUMENT_SYSTEM_TAG_PREFIX;
 use crate::data_sources::qdrant::{QdrantClients, QdrantDataSourceConfig};
@@ -9,7 +10,8 @@ use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
 use crate::providers::provider::ProviderID;
 use crate::run::Credentials;
 use crate::search_filter::{Filterable, SearchFilter};
-use crate::stores::store::Store;
+use crate::search_stores::search_store::SearchStore;
+use crate::stores::store::{DocumentCreateParams, Store};
 use crate::utils;
 use anyhow::{anyhow, Result};
 use futures::future::try_join_all;
@@ -23,6 +25,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::fmt;
+use std::str::FromStr;
 use tokio_stream::{self as stream};
 use tracing::{error, info};
 use uuid::Uuid;
@@ -65,9 +68,14 @@ pub struct Chunk {
     pub offset: usize,
     pub vector: Option<Vec<f64>>,
     pub score: Option<f64>,
+    // Empty unless search was ran with `target_document_tokens`
+    // and the chunk's `text` was expanded with content from other chunks.
+    // In this case, this field will contain the offsets of the chunks that
+    // were included to produce the chunk's `text`.
+    pub expanded_offsets: Vec<usize>,
 }
 
-/// Document is used as a data-strucutre for insertion into the SQL store (no
+/// Document is used as a data-structure for insertion into the SQL store (no
 /// chunks, they are directly inserted in the vector search db). It is also used
 /// as a result from search (only the retrieved chunks are provided in the
 /// result). `hash` covers both the original document id and text and the
@@ -134,10 +142,14 @@ pub struct Chunk {
 #[derive(Debug, Serialize, Clone)]
 pub struct Document {
     pub data_source_id: String,
+    pub data_source_internal_id: String,
     pub created: u64,
     pub document_id: String,
     pub timestamp: u64,
+    pub title: String,
+    pub mime_type: String,
     pub tags: Vec<String>,
+    pub parent_id: Option<String>,
     pub parents: Vec<String>,
     pub source_url: Option<String>,
     pub hash: String,
@@ -152,9 +164,13 @@ pub struct Document {
 impl Document {
     pub fn new(
         data_source_id: &str,
+        data_source_internal_id: &str,
         document_id: &str,
         timestamp: u64,
+        title: &str,
+        mime_type: &str,
         tags: &Vec<String>,
+        parent_id: &Option<String>,
         parents: &Vec<String>,
         source_url: &Option<String>,
         hash: &str,
@@ -162,10 +178,14 @@ impl Document {
     ) -> Result<Self> {
         Ok(Document {
             data_source_id: data_source_id.to_string(),
+            data_source_internal_id: data_source_internal_id.to_string(),
             created: utils::now(),
             document_id: document_id.to_string(),
             timestamp,
+            title: title.to_string(),
+            mime_type: mime_type.to_string(),
             tags: tags.clone(),
+            parent_id: parent_id.clone(),
             parents: parents.clone(),
             source_url: source_url.clone(),
             hash: hash.to_string(),
@@ -199,6 +219,22 @@ impl Filterable for Document {
     }
 }
 
+impl From<Document> for Node {
+    fn from(document: Document) -> Node {
+        Node::new(
+            &document.data_source_id,
+            &document.data_source_internal_id,
+            &document.document_id,
+            NodeType::Document,
+            document.timestamp,
+            &document.title,
+            &document.mime_type,
+            document.parent_id,
+            document.parents.clone(),
+        )
+    }
+}
+
 pub fn make_document_id_hash(document_id: &str) -> String {
     let mut hasher = blake3::Hasher::new();
     hasher.update(document_id.as_bytes());
@@ -206,10 +242,41 @@ pub fn make_document_id_hash(document_id: &str) -> String {
     format!("{}", hasher.finalize().to_hex())
 }
 
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum DocumentStatus {
+    Latest,
+    Superseded,
+    Deleted,
+}
+
+impl FromStr for DocumentStatus {
+    type Err = utils::ParseError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "latest" => Ok(DocumentStatus::Latest),
+            "superseded" => Ok(DocumentStatus::Superseded),
+            "deleted" => Ok(DocumentStatus::Deleted),
+            _ => Err(utils::ParseError::with_message("Unknown DocumentStatus"))?,
+        }
+    }
+}
+
+impl ToString for DocumentStatus {
+    fn to_string(&self) -> String {
+        match self {
+            DocumentStatus::Latest => "latest".to_string(),
+            DocumentStatus::Superseded => "superseded".to_string(),
+            DocumentStatus::Deleted => "deleted".to_string(),
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Clone)]
 pub struct DocumentVersion {
     pub created: u64,
     pub hash: String,
+    pub status: DocumentStatus,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
@@ -309,11 +376,11 @@ fn target_document_tokens_offsets(
 }
 
 impl DataSource {
-    pub fn new(project: &Project, data_source_id: &str, config: &DataSourceConfig) -> Self {
+    pub fn new(project: &Project, config: &DataSourceConfig) -> Self {
         DataSource {
             project: project.clone(),
             created: utils::now(),
-            data_source_id: data_source_id.to_string(),
+            data_source_id: utils::new_id(),
             internal_id: utils::new_id(),
             config: config.clone(),
         }
@@ -402,6 +469,7 @@ impl DataSource {
         &self,
         store: Box<dyn Store + Sync + Send>,
         qdrant_clients: QdrantClients,
+        search_store: Box<dyn SearchStore + Sync + Send>,
         document_id: String,
         parents: Vec<String>,
     ) -> Result<()> {
@@ -418,6 +486,22 @@ impl DataSource {
 
         self.update_document_payload(qdrant_clients, document_id_hash, "parents", parents)
             .await?;
+
+        let document = store
+            .load_data_source_document(
+                &self.project,
+                &self.data_source_id(),
+                &document_id.to_string(),
+                &None,
+            )
+            .await?;
+
+        match document {
+            Some(document) => {
+                search_store.index_node(Node::from(document)).await?;
+            }
+            None => (),
+        }
         Ok(())
     }
 
@@ -549,12 +633,15 @@ impl DataSource {
         store: Box<dyn Store + Sync + Send>,
         qdrant_clients: QdrantClients,
         document_id: &str,
+        title: String,
+        mime_type: String,
         timestamp: Option<u64>,
         tags: &Vec<String>,
         parents: &Vec<String>,
         source_url: &Option<String>,
         text: Section,
         preserve_system_tags: bool,
+        search_store: Box<dyn SearchStore + Sync + Send>,
     ) -> Result<Document> {
         let full_text = text.full_text();
         // Disallow preserve_system_tags=true if tags contains a string starting with the system
@@ -626,10 +713,14 @@ impl DataSource {
 
         let document = Document::new(
             &self.data_source_id,
+            &self.internal_id,
             document_id,
             timestamp,
+            title.as_str(),
+            mime_type.as_str(),
             &tags,
-            &parents,
+            &parents.get(1).cloned(),
+            parents,
             source_url,
             &document_hash,
             full_text.len() as u64,
@@ -668,7 +759,7 @@ impl DataSource {
                 &qdrant_clients,
                 &document_id,
                 &document_id_hash,
-                document,
+                document.clone(),
                 &document_hash,
                 &text,
                 // Cache is not used when writing to the shadow collection.
@@ -677,13 +768,30 @@ impl DataSource {
             .await?;
         }
 
-        // Upsert document (SQL)
+        // TODO(@fontanierh): use a different type for "DocumentWithTextAndTokenCount"
+        let create_params = DocumentCreateParams {
+            document_id: main_collection_document.document_id.clone(),
+            title: Some(main_collection_document.title.clone()),
+            mime_type: Some(main_collection_document.mime_type.clone()),
+            timestamp: main_collection_document.timestamp,
+            tags: main_collection_document.tags.clone(),
+            parents: main_collection_document.parents.clone(),
+            source_url: main_collection_document.source_url.clone(),
+            hash: main_collection_document.hash.clone(),
+            text_size: main_collection_document.text_size,
+            chunk_count: main_collection_document.chunk_count,
+            created: main_collection_document.created,
+        };
+
         store
-            .upsert_data_source_document(
-                &self.project,
-                &self.data_source_id,
-                &main_collection_document,
-            )
+            .create_data_source_document(&self.project, self.data_source_id.clone(), create_params)
+            .await?;
+
+        // Upsert document in search index.
+        search_store.index_node(Node::from(document)).await?;
+
+        // Clean-up old superseded versions.
+        self.scrub_document_superseded_versions(store, &document_id)
             .await?;
 
         Ok(main_collection_document)
@@ -816,9 +924,9 @@ impl DataSource {
             .filter(|ci| !embeddings.contains_key(&ci.hash))
             .collect::<Vec<_>>();
 
-        // Chunk splits into a vectors of 8 chunks (Vec<Vec<String>>)
+        // Chunk splits into a vectors of 128 chunks (Vec<Vec<String>>)
         let chunked_splits = splits_to_embbed
-            .chunks(8)
+            .chunks(128)
             .map(|chunk| chunk.to_vec())
             .collect::<Vec<_>>();
 
@@ -872,6 +980,7 @@ impl DataSource {
                     offset: i,
                     vector: Some(v.vector.clone()),
                     score: None,
+                    expanded_offsets: vec![],
                 }
             })
             .collect::<Vec<_>>();
@@ -941,7 +1050,6 @@ impl DataSource {
                 payload.insert("timestamp", document.timestamp as i64);
                 payload.insert("chunk_offset", c.offset as i64);
                 payload.insert("chunk_hash", c.hash.clone());
-                payload.insert("data_source_id", self.data_source_id.clone());
                 payload.insert("data_source_internal_id", self.internal_id.clone());
                 payload.insert("document_id", document.document_id.clone());
                 payload.insert("document_id_hash", document_id_hash);
@@ -1158,7 +1266,7 @@ impl DataSource {
 
         // Retrieve the documents from the store.
         let time_store_start = utils::now();
-        let documents = stream::iter(document_ids)
+        let documents: Vec<Document> = stream::iter(document_ids)
             .map(|document_id| {
                 let store = store.clone();
                 let document_id = document_id.clone();
@@ -1166,38 +1274,55 @@ impl DataSource {
                 let project = self.project.clone();
                 let data_source = data_source.clone();
 
+                let document_id_hash = make_document_id_hash(&document_id);
+
                 tokio::spawn(async move {
-                    let mut d: Document = match store
+                    match store
                         .load_data_source_document(&project, &data_source_id, &document_id, &None)
                         .await?
                     {
-                        Some(d) => d,
-                        None => Err(anyhow!("Document not found"))?,
-                    };
+                        Some(mut d) => {
+                            if full_text {
+                                let stored_doc = FileStorageDocument::get_stored_document(
+                                    &data_source,
+                                    d.created,
+                                    &document_id_hash,
+                                    &d.hash,
+                                )
+                                .await?;
 
-                    if full_text {
-                        let document_id_hash = make_document_id_hash(&document_id);
-
-                        let stored_doc = FileStorageDocument::get_stored_document(
-                            &data_source,
-                            d.created,
-                            &document_id_hash,
-                            &d.hash,
-                        )
-                        .await?;
-
-                        d.text = Some(stored_doc.full_text.clone());
+                                d.text = Some(stored_doc.full_text.clone());
+                            }
+                            Ok::<Option<Document>, anyhow::Error>(Some(d))
+                        }
+                        None => {
+                            // document not found should never happen if it unexpectedly does,
+                            // we skip it via returning None to let the search move forward but we
+                            // raise a panic log
+                            error!(
+                                data_source_id = %data_source_id,
+                                document_id = %document_id,
+                                document_id_hash = %document_id_hash,
+                                data_source_internal_id = data_source.internal_id(),
+                                panic = true,
+                                "Document not found in store"
+                            );
+                            Ok::<Option<Document>, anyhow::Error>(None)
+                        }
                     }
-                    Ok::<Document, anyhow::Error>(d)
                 })
             })
             .buffer_unordered(16)
             .map(|r| match r {
                 Err(e) => Err(anyhow!("Data source document retrieval error: {}", e))?,
-                Ok(r) => r,
+                Ok(s) => s,
             })
-            .try_collect::<Vec<_>>()
-            .await?;
+            .try_collect::<Vec<Option<Document>>>()
+            .await?
+            .into_iter()
+            // filter out document not found
+            .filter_map(|d| d)
+            .collect();
 
         let store_duration = utils::now() - time_store_start;
 
@@ -1335,6 +1460,8 @@ impl DataSource {
                                             == chunk.offset
                                     {
                                         let c_offset = parsed_results[counter].1;
+                                        chunk.expanded_offsets.push(c_offset);
+
                                         if chunk.offset < c_offset {
                                             chunk.text.push_str(
                                                 &(" ".to_owned()
@@ -1448,6 +1575,7 @@ impl DataSource {
                 // With top_k documents, we should be guaranteed to have at least top_k chunks, if
                 // we make the assumption that each document has at least one chunk.
                 Some((top_k, 0)),
+                false,
             )
             .await?;
 
@@ -1616,8 +1744,17 @@ impl DataSource {
         &self,
         store: Box<dyn Store + Sync + Send>,
         qdrant_clients: QdrantClients,
+        search_store: Box<dyn SearchStore + Sync + Send>,
         document_id: &str,
     ) -> Result<()> {
+        let document = match store
+            .load_data_source_document(&self.project, &self.data_source_id, document_id, &None)
+            .await?
+        {
+            Some(document) => document,
+            None => return Ok(()),
+        };
+
         // Delete the document in the main embedder collection.
         self.delete_document_for_embedder(self.embedder_config(), &qdrant_clients, document_id)
             .await?;
@@ -1635,10 +1772,20 @@ impl DataSource {
             None => Ok(()),
         }?;
 
-        // Delete document (SQL)
+        // Delete document (SQL). This one marks the document as deleted.
         store
             .delete_data_source_document(&self.project, &self.data_source_id, document_id)
-            .await
+            .await?;
+
+        // Delete document from search index.
+        search_store.delete_node(Node::from(document)).await?;
+
+        // We also scrub it directly. We used to scrub async but now that we store a GCS version
+        // for each data_source_documents entry we can scrub directly at the time of delete.
+        self.scrub_document_deleted_versions(store, document_id)
+            .await?;
+
+        Ok(())
     }
 
     async fn delete_document_for_embedder(
@@ -1676,6 +1823,7 @@ impl DataSource {
                 Ok(_) => {
                     info!(
                         data_source_internal_id = self.internal_id(),
+                        document_id = document_id,
                         cluster = ?self.shadow_write_qdrant_cluster(),
                         collection = qdrant_client.collection_name(embedder_config),
                         "[SHADOW_WRITE_SUCCESS] Delete points"
@@ -1689,16 +1837,163 @@ impl DataSource {
                         error = %e,
                         "[SHADOW_WRITE_FAIL] Delete points"
                     );
+                    return Err(e);
                 }
             },
             None => (),
         }
 
-        qdrant_client
+        match qdrant_client
             .delete_points(embedder_config, &self.internal_id, filter)
+            .await
+        {
+            Ok(_) => {
+                info!(
+                    data_source_internal_id = self.internal_id(),
+                    document_id = document_id,
+                    collection = qdrant_client.collection_name(embedder_config),
+                    "[SUCCESS] Delete points"
+                );
+                Ok(())
+            }
+            Err(e) => {
+                error!(
+                    data_source_internal_id = self.internal_id(),
+                    document_id = document_id,
+                    collection = qdrant_client.collection_name(embedder_config),
+                    error = %e,
+                    "[FAIL] Delete points"
+                );
+                Err(e)
+            }
+        }
+    }
+
+    pub async fn scrub_document_deleted_versions(
+        &self,
+        store: Box<dyn Store + Sync + Send>,
+        document_id: &str,
+    ) -> Result<Vec<DocumentVersion>> {
+        let store = store.clone();
+
+        let (versions, _) = store
+            .list_data_source_document_versions(
+                &self.project,
+                &self.data_source_id,
+                document_id,
+                None,
+                &None,
+                &None,
+                false,
+            )
             .await?;
 
-        Ok(())
+        let versions = versions
+            .into_iter()
+            .filter(|v| v.status == DocumentStatus::Deleted)
+            .collect::<Vec<_>>();
+
+        let mut scrubbed_versions: Vec<DocumentVersion> = vec![];
+        for v in versions {
+            let document_id_hash = make_document_id_hash(document_id);
+
+            FileStorageDocument::scrub_document_version_from_file_storage(
+                &self,
+                document_id,
+                &document_id_hash,
+                &v,
+            )
+            .await?;
+
+            store
+                .delete_data_source_document_version(
+                    &self.project,
+                    &self.data_source_id,
+                    document_id,
+                    &v,
+                )
+                .await?;
+
+            info!(
+                data_source_internal_id = self.internal_id,
+                document_id = document_id,
+                version_created = v.created,
+                version_hash = v.hash,
+                "Scrubbed deleted document version"
+            );
+
+            scrubbed_versions.push(v);
+        }
+
+        Ok(scrubbed_versions)
+    }
+
+    pub async fn scrub_document_superseded_versions(
+        &self,
+        store: Box<dyn Store + Sync + Send>,
+        document_id: &str,
+    ) -> Result<Vec<DocumentVersion>> {
+        let (versions, _) = store
+            .list_data_source_document_versions(
+                &self.project,
+                &self.data_source_id,
+                document_id,
+                None,
+                &None,
+                &None,
+                false,
+            )
+            .await?;
+
+        // We scrub only superseded version keeping always the last one as well as the ones that
+        // have been created within the past 24h. Document versions are ordered by creation date
+        // (descending) but we resort here just to be safe in case the API of the store changes.
+        let now = utils::now();
+        let scrubbed_versions = versions
+            .into_iter()
+            .sorted_by(|a, b| Ord::cmp(&b.created, &a.created))
+            .filter(|v| v.status == DocumentStatus::Superseded)
+            .skip(1)
+            .filter(|v| now - v.created > 24 * 60 * 60 * 1000)
+            .collect::<Vec<_>>();
+
+        for v in scrubbed_versions.iter() {
+            let document_id_hash = make_document_id_hash(document_id);
+
+            FileStorageDocument::scrub_document_version_from_file_storage(
+                &self,
+                document_id,
+                &document_id_hash,
+                v,
+            )
+            .await?;
+
+            store
+                .delete_data_source_document_version(
+                    &self.project,
+                    &self.data_source_id,
+                    document_id,
+                    v,
+                )
+                .await?;
+
+            info!(
+                data_source_internal_id = self.internal_id,
+                document_id = document_id,
+                version_created = v.created,
+                version_hash = v.hash,
+                "Scrubbed superseded document version"
+            );
+        }
+
+        info!(
+            data_source_internal_id = self.internal_id,
+            document_id = document_id,
+            scrubbed_version_count = scrubbed_versions.len(),
+            "Scrubbed superseded document versions"
+        );
+
+        Ok(scrubbed_versions)
     }
 
     pub async fn delete(
@@ -1706,6 +2001,7 @@ impl DataSource {
         store: Box<dyn Store + Sync + Send>,
         databases_store: Box<dyn DatabasesStore + Sync + Send>,
         qdrant_clients: QdrantClients,
+        search_store: Box<dyn SearchStore + Sync + Send>,
     ) -> Result<()> {
         if self.shadow_write_qdrant_cluster().is_some() {
             Err(anyhow!(
@@ -1733,12 +2029,14 @@ impl DataSource {
 
         // Delete tables (concurrently).
         let (tables, total) = store
-            .list_tables(&self.project, &self.data_source_id, &None, &None, None)
+            .list_data_source_tables(&self.project, &self.data_source_id, &None, &None, None)
             .await?;
         try_join_all(
             tables
                 .iter()
-                .map(|t| t.delete(store.clone(), databases_store.clone())),
+                // not deleting from search index here, as it's done more efficiently in the
+                // full-nodes deletion below
+                .map(|t| t.delete(store.clone(), databases_store.clone(), None)),
         )
         .await?;
 
@@ -1748,12 +2046,34 @@ impl DataSource {
             "Deleted tables"
         );
 
+        // Delete folders (concurrently).
+        let (folders, total) = store
+            .list_data_source_folders(&self.project, &self.data_source_id, &None, &None, None)
+            .await?;
+
+        try_join_all(folders.iter().map(|f| {
+            store.delete_data_source_folder(&self.project, &self.data_source_id, &f.folder_id())
+        }))
+        .await?;
+
+        info!(
+            data_source_internal_id = self.internal_id(),
+            table_count = total,
+            "Deleted folders"
+        );
+
+        // Delete all nodes from the search index
+        search_store
+            .delete_data_source_nodes(&self.data_source_id)
+            .await?;
+
         // Delete data source and documents (SQL).
-        store
+        let deleted_rows = store
             .delete_data_source(&self.project, &self.data_source_id)
             .await?;
 
         info!(
+            deleted_rows = deleted_rows,
             data_source_internal_id = self.internal_id(),
             "Deleted data source records"
         );
@@ -1946,6 +2266,7 @@ fn parse_points_into_chunks(
                     offset: chunk_offset as usize,
                     vector: None,
                     score: maybe_score,
+                    expanded_offsets: vec![],
                 },
             ))
         })

@@ -13,12 +13,13 @@ async function getFileParents(
   driveFile: GoogleDriveObjectType,
   /* eslint-disable @typescript-eslint/no-unused-vars */
   startSyncTs: number
-): Promise<GoogleDriveObjectType[]> {
+): Promise<string[]> {
   const logger = mainLogger.child({
     provider: "google_drive",
     connectorId: connectorId,
   });
-  const parents: GoogleDriveObjectType[] = [];
+
+  const parents: string[] = [driveFile.id];
   let currentObject = driveFile;
   while (currentObject.parent) {
     const parent = await getGoogleDriveObject(
@@ -33,13 +34,20 @@ async function getFileParents(
       });
       break;
     }
-    parents.push(parent);
+    parents.push(parent.id);
     currentObject = parent;
   }
 
-  return parents.reverse();
+  return parents;
 }
 
+/**
+ * This returns the list of parentIds in expected format for upsert,
+ * starting with the id of the "driveFile" itself up to the root drive id.
+ * [ driveFileId, directParentId, .... , rootDriveId ]
+ *
+ * Result is cached in redis for the current sync workflow, for one hour.
+ */
 export const getFileParentsMemoized = cacheWithRedis(
   getFileParents,
   (
@@ -48,7 +56,7 @@ export const getFileParentsMemoized = cacheWithRedis(
     driveFile: GoogleDriveObjectType,
     startSyncTs: number
   ) => {
-    const cacheKey = `${connectorId}-${startSyncTs}-${driveFile.id}`;
+    const cacheKey = `gdrive-parents-${connectorId}-${startSyncTs}-${driveFile.id}`;
 
     return cacheKey;
   },

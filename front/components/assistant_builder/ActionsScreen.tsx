@@ -1,22 +1,31 @@
 import {
   BookOpenIcon,
   Button,
-  CardButton,
+  Card,
+  CardActionButton,
+  CardGrid,
   Checkbox,
   Chip,
   ContentMessage,
   DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
   Icon,
-  IconButton,
+  InformationCircleIcon,
   Input,
   Modal,
   MoreIcon,
   Page,
   PlusIcon,
+  Popover,
   TextArea,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type { VaultType, WorkspaceType } from "@dust-tt/types";
+import type { SpaceType, WorkspaceType } from "@dust-tt/types";
 import { assertNever, MAX_STEPS_USE_PER_RUN_LIMIT } from "@dust-tt/types";
 import assert from "assert";
 import type { ReactNode } from "react";
@@ -54,6 +63,7 @@ import { AssistantBuilderContext } from "@app/components/assistant_builder/Assis
 import { isLegacyAssistantBuilderConfiguration } from "@app/components/assistant_builder/legacy_agent";
 import type {
   AssistantBuilderActionConfiguration,
+  AssistantBuilderActionConfigurationWithId,
   AssistantBuilderPendingAction,
   AssistantBuilderProcessConfiguration,
   AssistantBuilderRetrievalConfiguration,
@@ -61,7 +71,10 @@ import type {
   AssistantBuilderState,
   AssistantBuilderTableConfiguration,
 } from "@app/components/assistant_builder/types";
-import { getDefaultActionConfiguration } from "@app/components/assistant_builder/types";
+import {
+  getDefaultActionConfiguration,
+  isDefaultActionName,
+} from "@app/components/assistant_builder/types";
 import { ACTION_SPECIFICATIONS } from "@app/lib/api/assistant/actions/utils";
 
 const DATA_SOURCES_ACTION_CATEGORIES = [
@@ -113,16 +126,18 @@ export function hasActionError(
   }
 }
 
-type VaultIdToActions = Record<string, AssistantBuilderActionConfiguration[]>;
+function actionDisplayName(action: AssistantBuilderActionConfiguration) {
+  return `${ACTION_SPECIFICATIONS[action.type].label}${
+    !isDefaultActionName(action) ? " - " + action.name : ""
+  }`;
+}
 
-export default function ActionsScreen({
-  owner,
-  builderState,
-  setBuilderState,
-  setEdited,
-  setAction,
-  pendingAction,
-}: {
+type SpaceIdToActions = Record<
+  string,
+  AssistantBuilderActionConfigurationWithId[]
+>;
+
+interface ActionScreenProps {
   owner: WorkspaceType;
   builderState: AssistantBuilderState;
   setBuilderState: (
@@ -131,8 +146,17 @@ export default function ActionsScreen({
   setEdited: (edited: boolean) => void;
   setAction: (action: AssistantBuilderSetActionType) => void;
   pendingAction: AssistantBuilderPendingAction;
-}) {
-  const { vaults } = useContext(AssistantBuilderContext);
+}
+
+export default function ActionsScreen({
+  owner,
+  builderState,
+  setBuilderState,
+  setEdited,
+  setAction,
+  pendingAction,
+}: ActionScreenProps) {
+  const { spaces } = useContext(AssistantBuilderContext);
 
   const configurableActions = builderState.actions.filter(
     (a) => !(CAPABILITIES_ACTION_CATEGORIES as string[]).includes(a.type)
@@ -140,46 +164,53 @@ export default function ActionsScreen({
 
   const isLegacyConfig = isLegacyAssistantBuilderConfiguration(builderState);
 
-  const vaultIdToActions = useMemo(() => {
-    const vaultIdToActions: VaultIdToActions = {};
+  const spaceIdToActions = useMemo(() => {
+    return configurableActions.reduce<
+      Record<string, AssistantBuilderActionConfigurationWithId[]>
+    >((acc, action) => {
+      const addActionToSpace = (spaceId?: string) => {
+        if (spaceId) {
+          acc[spaceId] = (acc[spaceId] || []).concat(action);
+        }
+      };
 
-    configurableActions.forEach((action) => {
       const actionType = action.type;
 
       switch (actionType) {
         case "TABLES_QUERY":
           Object.values(action.configuration).forEach((config) => {
-            vaultIdToActions[config.dataSourceView.vaultId] = (
-              vaultIdToActions[config.dataSourceView.vaultId] ?? []
-            ).concat(action);
+            addActionToSpace(config.dataSourceView.spaceId);
           });
           break;
+
         case "RETRIEVAL_SEARCH":
         case "RETRIEVAL_EXHAUSTIVE":
         case "PROCESS":
           Object.values(action.configuration.dataSourceConfigurations).forEach(
             (config) => {
-              vaultIdToActions[config.dataSourceView.vaultId] = (
-                vaultIdToActions[config.dataSourceView.vaultId] ?? []
-              ).concat(action);
+              addActionToSpace(config.dataSourceView.spaceId);
             }
           );
           break;
+
         case "DUST_APP_RUN":
+          addActionToSpace(action.configuration.app?.space.sId);
+          break;
+
         case "WEB_NAVIGATION":
           break;
+
         default:
           assertNever(actionType);
       }
-    });
-
-    return vaultIdToActions;
+      return acc;
+    }, {});
   }, [configurableActions]);
 
-  const nonGlobalVaultsUsedInActions = useMemo(() => {
-    const nonGlobalVaults = vaults.filter((v) => v.kind !== "global");
-    return nonGlobalVaults.filter((v) => vaultIdToActions[v.sId]?.length > 0);
-  }, [vaultIdToActions, vaults]);
+  const nonGlobalSpacessUsedInActions = useMemo(() => {
+    const nonGlobalSpaces = spaces.filter((s) => s.kind !== "global");
+    return nonGlobalSpaces.filter((v) => spaceIdToActions[v.sId]?.length > 0);
+  }, [spaceIdToActions, spaces]);
 
   const updateAction = useCallback(
     function _updateAction({
@@ -209,6 +240,7 @@ export default function ActionsScreen({
                 // There is no way (that I could find) to make typescript understand that
                 // type and configuration are compatible.
                 configuration: getNewActionConfig(action.configuration) as any,
+                id: action.id,
               }
             : action
         ),
@@ -236,7 +268,7 @@ export default function ActionsScreen({
         isOpen={pendingAction.action !== null}
         builderState={builderState}
         initialAction={pendingAction.action}
-        vaultsUsedInActions={vaultIdToActions}
+        spacesUsedInActions={spaceIdToActions}
         onSave={(newAction) => {
           setEdited(true);
           if (!pendingAction.action) {
@@ -309,7 +341,10 @@ export default function ActionsScreen({
           </div>
           <div className="flex flex-row gap-2">
             {isLegacyConfig && (
-              <ContentMessage title="Update Needed for Your Assistant!">
+              <ContentMessage
+                title="Update Needed for Your Assistant!"
+                icon={InformationCircleIcon}
+              >
                 <p>
                   We're enhancing assistants to make them smarter and more
                   versatile. You can now add multiple tools to an assistant,
@@ -342,7 +377,7 @@ export default function ActionsScreen({
                 <Button
                   label="Read our guide"
                   size="sm"
-                  variant="secondary"
+                  variant="outline"
                   icon={BookOpenIcon}
                   onClick={() => {
                     window.open("https://docs.dust.tt/docs/tools", "_blank");
@@ -362,16 +397,12 @@ export default function ActionsScreen({
             )}
           </div>
         </div>
-        {nonGlobalVaultsUsedInActions.length > 0 && (
+        {nonGlobalSpacessUsedInActions.length > 0 && (
           <div className="w-full">
             <Chip
               color="amber"
               size="sm"
-              label={
-                nonGlobalVaultsUsedInActions.length > 1
-                  ? `Based on the sources you selected, this assistant can only be used by users with access to vaults : ${nonGlobalVaultsUsedInActions.map((v) => v.name).join(", ")}.`
-                  : `Based on the sources you selected, this assistant can only be used by users with access to vault : ${nonGlobalVaultsUsedInActions[0].name}.`
-              }
+              label={`Based on the sources you selected, this assistant can only be used by users with access to space${nonGlobalSpacessUsedInActions.length > 1 ? "s" : ""} : ${nonGlobalSpacessUsedInActions.map((v) => v.name).join(", ")}.`}
             />
           </div>
         )}
@@ -379,7 +410,7 @@ export default function ActionsScreen({
           {configurableActions.length === 0 && (
             <div
               className={
-                "flex h-full items-center justify-center rounded-lg border border-structure-100 bg-structure-50"
+                "flex h-36 w-full items-center justify-center rounded-xl bg-muted-background"
               }
             >
               <AddAction
@@ -392,26 +423,24 @@ export default function ActionsScreen({
               />
             </div>
           )}
-          <div className="mx-auto grid w-full grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
+          <CardGrid>
             {configurableActions.map((a) => (
-              <div className="flex w-full" key={a.name}>
-                <ActionCard
-                  action={a}
-                  key={a.name}
-                  editAction={() => {
-                    setAction({
-                      type: "edit",
-                      action: a,
-                    });
-                  }}
-                  deleteAction={() => {
-                    deleteAction(a.name);
-                  }}
-                  isLegacyConfig={isLegacyConfig}
-                />
-              </div>
+              <ActionCard
+                action={a}
+                key={a.name}
+                editAction={() => {
+                  setAction({
+                    type: "edit",
+                    action: a,
+                  });
+                }}
+                deleteAction={() => {
+                  deleteAction(a.name);
+                }}
+                isLegacyConfig={isLegacyConfig}
+              />
             ))}
-          </div>
+          </CardGrid>
         </div>
 
         <Capabilities
@@ -429,9 +458,9 @@ export default function ActionsScreen({
 type NewActionModalProps = {
   isOpen: boolean;
   builderState: AssistantBuilderState;
-  initialAction: AssistantBuilderActionConfiguration | null;
-  vaultsUsedInActions: VaultIdToActions;
-  onSave: (newAction: AssistantBuilderActionConfiguration) => void;
+  initialAction: AssistantBuilderActionConfigurationWithId | null;
+  spacesUsedInActions: SpaceIdToActions;
+  onSave: (newAction: AssistantBuilderActionConfigurationWithId) => void;
   onClose: () => void;
   updateAction: (args: {
     actionName: string;
@@ -446,15 +475,16 @@ type NewActionModalProps = {
 function NewActionModal({
   isOpen,
   initialAction,
-  vaultsUsedInActions,
+  spacesUsedInActions,
   onSave,
   onClose,
   owner,
   setEdited,
   builderState,
 }: NewActionModalProps) {
-  const [newAction, setNewAction] =
-    useState<AssistantBuilderActionConfiguration | null>(null);
+  const [newAction, setNewAction] = useState<
+    (AssistantBuilderActionConfiguration & { id: string }) | null
+  >(null);
 
   const [showInvalidActionError, setShowInvalidActionError] = useState<
     string | null
@@ -472,16 +502,35 @@ function NewActionModal({
     }
   }, [initialAction, newAction]);
 
-  const titleValid =
-    (initialAction && initialAction?.name === newAction?.name) ||
-    ((newAction?.name?.trim() ?? "").length > 0 &&
-      !builderState.actions.some((a) => a.name === newAction?.name) &&
-      /^[a-z0-9_]+$/.test(newAction?.name ?? "") &&
-      // We reserve the name we use for capability actions, as these aren't
-      // configurable via the "add tool" menu.
-      !CAPABILITIES_ACTION_CATEGORIES.some(
-        (c) => getDefaultActionConfiguration(c)?.name === newAction?.name
-      ));
+  const titleError =
+    initialAction && initialAction?.name !== newAction?.name
+      ? getActionNameError(newAction?.name, builderState.actions)
+      : null;
+
+  function getActionNameError(
+    name: string | undefined,
+    existingActions: AssistantBuilderActionConfiguration[]
+  ): string | null {
+    if (!name || name.trim().length === 0) {
+      return "The name cannot be empty.";
+    }
+    if (existingActions.some((a) => a.name === name)) {
+      return "This name is already used for another tool. Please use a different name.";
+    }
+    if (!/^[a-z0-9_]+$/.test(name)) {
+      return "The name can only contain lowercase letters, numbers, and underscores (no spaces).";
+    }
+    // We reserve the name we use for capability actions, as these aren't
+    // configurable via the "add tool" menu.
+    const isReservedName = CAPABILITIES_ACTION_CATEGORIES.some(
+      (c) => getDefaultActionConfiguration(c)?.name === name
+    );
+    if (isReservedName) {
+      return "This name is reserved for a system tool. Please use a different name.";
+    }
+
+    return null;
+  }
 
   const descriptionValid = (newAction?.description?.trim() ?? "").length > 0;
 
@@ -505,7 +554,7 @@ function NewActionModal({
       onSave={() => {
         if (
           newAction &&
-          titleValid &&
+          !titleError &&
           descriptionValid &&
           !hasActionError(newAction)
         ) {
@@ -514,10 +563,8 @@ function NewActionModal({
           onSave(newAction);
           onCloseLocal();
         } else {
-          if (!titleValid) {
-            setShowInvalidActionNameError(
-              "This name is already used for another tool. Please use a different name."
-            );
+          if (titleError) {
+            setShowInvalidActionNameError(titleError);
           }
           if (!descriptionValid) {
             setShowInvalidActionDescError("Description cannot be empty.");
@@ -533,7 +580,7 @@ function NewActionModal({
           {newAction && (
             <ActionEditor
               action={newAction}
-              vaultsUsedInActions={vaultsUsedInActions}
+              spacesUsedInActions={spacesUsedInActions}
               updateAction={({
                 actionName,
                 actionDescription,
@@ -583,24 +630,24 @@ function ActionCard({
   }
   const actionError = hasActionError(action);
   return (
-    <CardButton
+    <Card
       variant="primary"
       onClick={editAction}
-      className="mx-auto inline-block w-72"
+      action={
+        <CardActionButton
+          size="mini"
+          icon={XMarkIcon}
+          onClick={(e: any) => {
+            deleteAction();
+            e.stopPropagation();
+          }}
+        />
+      }
     >
       <div className="flex w-full flex-col gap-2 text-sm">
-        <div className="flex w-full gap-1 font-medium text-element-900">
-          <Icon visual={spec.cardIcon} size="sm" className="text-element-900" />
-          <div className="w-full truncate">{spec.label}</div>
-          <IconButton
-            icon={XMarkIcon}
-            variant="tertiary"
-            size="sm"
-            onClick={(e) => {
-              deleteAction();
-              e.stopPropagation();
-            }}
-          />
+        <div className="flex w-full gap-1 font-medium text-foreground">
+          <Icon visual={spec.cardIcon} size="sm" className="text-foreground" />
+          <div className="w-full truncate">{actionDisplayName(action)}</div>
         </div>
         {isLegacyConfig ? (
           <div className="mx-auto">
@@ -612,83 +659,87 @@ function ActionCard({
             />
           </div>
         ) : (
-          <>
+          <div className="w-full truncate text-muted-foreground">
             {actionError ? (
-              <div className="w-full truncate text-base text-warning-500">
-                {actionError}
-              </div>
+              <span className="text-warning-500">{actionError}</span>
             ) : (
-              <div className="w-full truncate text-base text-element-700">
-                {action.description}
-              </div>
+              <>{action.description}</>
             )}
-          </>
+          </div>
         )}
       </div>
-    </CardButton>
+    </Card>
   );
 }
 
-type ActionConfigEditorProps = {
+interface ActionConfigEditorProps {
   owner: WorkspaceType;
-  action: AssistantBuilderActionConfiguration;
-  vaultsUsedInActions: VaultIdToActions;
+  action: AssistantBuilderActionConfigurationWithId;
+  spacesUsedInActions: SpaceIdToActions;
   instructions: string | null;
   updateAction: (args: {
     actionName: string;
     actionDescription: string;
     getNewActionConfig: (
-      old: AssistantBuilderActionConfiguration["configuration"]
-    ) => AssistantBuilderActionConfiguration["configuration"];
+      old: AssistantBuilderActionConfigurationWithId["configuration"]
+    ) => AssistantBuilderActionConfigurationWithId["configuration"];
   }) => void;
   setEdited: (edited: boolean) => void;
   description: string;
   onDescriptionChange: (v: string) => void;
-};
+}
 
 function ActionConfigEditor({
   owner,
   action,
-  vaultsUsedInActions,
+  spacesUsedInActions,
   instructions,
   updateAction,
   setEdited,
   description,
   onDescriptionChange,
 }: ActionConfigEditorProps) {
-  const { vaults } = useContext(AssistantBuilderContext);
+  const { spaces } = useContext(AssistantBuilderContext);
 
-  // Only allow one vault across all actions
-  const allowedVaults = useMemo(() => {
-    const isVaultUsedInOtherActions = (vault: VaultType) => {
-      const actionsUsingVault = vaultsUsedInActions[vault.sId] ?? [];
-      return actionsUsingVault.some((a) => a !== action);
+  // Only allow one space across all actions.
+  const allowedSpaces = useMemo(() => {
+    const isSpaceUsedInOtherActions = (space: SpaceType) => {
+      const actionsUsingSpace = spacesUsedInActions[space.sId] ?? [];
+
+      return actionsUsingSpace.some((a) => {
+        // We use the id to compare actions, as the configuration can change.
+        return a.id !== action.id;
+      });
     };
-    const usedVaultsInOtherActions = vaults.filter(isVaultUsedInOtherActions);
-    if (usedVaultsInOtherActions.length === 0) {
-      return vaults;
+
+    const usedSpacesInOtherActions = spaces.filter(isSpaceUsedInOtherActions);
+    if (usedSpacesInOtherActions.length === 0) {
+      return spaces;
     }
-    return vaults.filter((vault) =>
-      usedVaultsInOtherActions.some((v) => v.sId === vault.sId)
+
+    return spaces.filter((space) =>
+      usedSpacesInOtherActions.some((s) => s.sId === space.sId)
     );
-  }, [action, vaults, vaultsUsedInActions]);
+  }, [action, spaces, spacesUsedInActions]);
 
   switch (action.type) {
     case "DUST_APP_RUN":
       return (
         <ActionDustAppRun
+          allowedSpaces={allowedSpaces}
           owner={owner}
           action={action}
           updateAction={updateAction}
           setEdited={setEdited}
         />
       );
+
     case "RETRIEVAL_SEARCH":
       return (
         <ActionRetrievalSearch
           owner={owner}
           actionConfiguration={action.configuration}
-          allowedVaults={allowedVaults}
+          allowedSpaces={allowedSpaces}
           updateAction={(setNewAction) => {
             updateAction({
               actionName: action.name,
@@ -700,12 +751,13 @@ function ActionConfigEditor({
           setEdited={setEdited}
         />
       );
+
     case "RETRIEVAL_EXHAUSTIVE":
       return (
         <ActionRetrievalExhaustive
           owner={owner}
           actionConfiguration={action.configuration}
-          allowedVaults={allowedVaults}
+          allowedSpaces={allowedSpaces}
           updateAction={(setNewAction) => {
             updateAction({
               actionName: action.name,
@@ -717,13 +769,14 @@ function ActionConfigEditor({
           setEdited={setEdited}
         />
       );
+
     case "PROCESS":
       return (
         <ActionProcess
           owner={owner}
           instructions={instructions}
           actionConfiguration={action.configuration}
-          allowedVaults={allowedVaults}
+          allowedSpaces={allowedSpaces}
           updateAction={(setNewAction) => {
             updateAction({
               actionName: action.name,
@@ -737,12 +790,13 @@ function ActionConfigEditor({
           onDescriptionChange={onDescriptionChange}
         />
       );
+
     case "TABLES_QUERY":
       return (
         <ActionTablesQuery
           owner={owner}
           actionConfiguration={action.configuration}
-          allowedVaults={allowedVaults}
+          allowedSpaces={allowedSpaces}
           updateAction={(setNewAction) => {
             updateAction({
               actionName: action.name,
@@ -754,16 +808,18 @@ function ActionConfigEditor({
           setEdited={setEdited}
         />
       );
+
     case "WEB_NAVIGATION":
       return <ActionWebNavigation />;
+
     default:
       assertNever(action);
   }
 }
 
-type ActionEditorProps = {
-  action: AssistantBuilderActionConfiguration;
-  vaultsUsedInActions: VaultIdToActions;
+interface ActionEditorProps {
+  action: AssistantBuilderActionConfigurationWithId;
+  spacesUsedInActions: SpaceIdToActions;
   showInvalidActionNameError: string | null;
   showInvalidActionDescError: string | null;
   showInvalidActionError: string | null;
@@ -779,11 +835,11 @@ type ActionEditorProps = {
   owner: WorkspaceType;
   setEdited: (edited: boolean) => void;
   builderState: AssistantBuilderState;
-};
+}
 
 function ActionEditor({
   action,
-  vaultsUsedInActions,
+  spacesUsedInActions,
   showInvalidActionNameError,
   showInvalidActionDescError,
   showInvalidActionError,
@@ -807,82 +863,73 @@ function ActionEditor({
   );
 
   return (
-    <>
+    <div className="px-1">
       <ActionModeSection show={true}>
-        <>
-          <div className="flex w-full flex-row items-center justify-center justify-between">
-            <Page.Header
-              title={ACTION_SPECIFICATIONS[action.type].label}
-              icon={ACTION_SPECIFICATIONS[action.type].cardIcon}
-            />
-            {shouldDisplayAdvancedSettings && (
-              <DropdownMenu className="pr-2">
-                <DropdownMenu.Button>
-                  <Button
-                    label=""
-                    labelVisible={false}
-                    icon={MoreIcon}
-                    size="sm"
-                    variant="tertiary"
-                  />
-                </DropdownMenu.Button>
-                <DropdownMenu.Items width={320} overflow="visible">
-                  <div className="flex flex-col gap-4">
-                    <div className="flex flex-col items-end gap-2">
-                      <div className="w-full grow text-sm font-bold text-element-800">
-                        Name of the tool
-                      </div>
-                    </div>
-                    <Input
-                      name="actionName"
-                      placeholder="My tool name…"
-                      value={action.name}
-                      onChange={(v) => {
-                        updateAction({
-                          actionName: v.toLowerCase(),
-                          actionDescription: action.description,
-                          getNewActionConfig: (old) => old,
-                        });
-                        setShowInvalidActionNameError(null);
-                      }}
-                      error={showInvalidActionNameError}
-                      className="text-sm"
-                    />
-                  </div>
-                </DropdownMenu.Items>
-              </DropdownMenu>
-            )}
-          </div>
-
-          {showInvalidActionNameError && (
-            <div className="text-sm text-warning-500">
-              {showInvalidActionNameError}
-            </div>
-          )}
-
-          <ActionConfigEditor
-            owner={owner}
-            action={action}
-            vaultsUsedInActions={vaultsUsedInActions}
-            instructions={builderState.instructions}
-            updateAction={updateAction}
-            setEdited={setEdited}
-            description={action.description}
-            onDescriptionChange={(v) => {
-              updateAction({
-                actionName: action.name,
-                actionDescription: v,
-                getNewActionConfig: (old) => old,
-              });
-              setShowInvalidActionDescError(null);
-            }}
+        <div className="flex w-full flex-row items-center justify-between px-1">
+          <Page.Header
+            title={actionDisplayName(action)}
+            icon={ACTION_SPECIFICATIONS[action.type].cardIcon}
           />
-          {showInvalidActionError && (
-            <div className="text-sm text-warning-500">
-              {showInvalidActionError}
-            </div>
+          {shouldDisplayAdvancedSettings && (
+            <Popover
+              trigger={<Button icon={MoreIcon} size="sm" variant="ghost" />}
+              popoverTriggerAsChild
+              content={
+                <div className="flex flex-col gap-4">
+                  <div className="flex flex-col items-end gap-2">
+                    <div className="w-full grow text-sm font-bold text-element-800">
+                      Name of the tool
+                    </div>
+                  </div>
+                  <Input
+                    name="actionName"
+                    placeholder="My tool name…"
+                    value={action.name}
+                    onChange={(e) => {
+                      updateAction({
+                        actionName: e.target.value.toLowerCase(),
+                        actionDescription: action.description,
+                        getNewActionConfig: (old) => old,
+                      });
+                      setShowInvalidActionNameError(null);
+                    }}
+                    message={showInvalidActionNameError}
+                    messageStatus="error"
+                    className="text-sm"
+                  />
+                </div>
+              }
+            />
           )}
-        </>
+        </div>
+        {showInvalidActionNameError && (
+          <div className="text-sm text-warning-500">
+            {showInvalidActionNameError}
+          </div>
+        )}
+
+        <ActionConfigEditor
+          owner={owner}
+          action={action}
+          spacesUsedInActions={spacesUsedInActions}
+          instructions={builderState.instructions}
+          updateAction={updateAction}
+          setEdited={setEdited}
+          description={action.description}
+          onDescriptionChange={(v) => {
+            updateAction({
+              actionName: action.name,
+              actionDescription: v,
+              getNewActionConfig: (old) => old,
+            });
+            setShowInvalidActionDescError(null);
+          }}
+        />
+        {showInvalidActionError && (
+          <div className="text-sm text-warning-500">
+            {showInvalidActionError}
+          </div>
+        )}
       </ActionModeSection>
       {shouldDisplayDescription && (
         <div className="flex flex-col gap-4 pt-8">
@@ -892,9 +939,9 @@ function ActionEditor({
                 What's the data?
               </div>
               <div className="text-sm text-element-600">
-                Provide a brief description of the data content and context.
-                This helps the Assistant determine when and how to utilize this
-                information source effectively
+                Provide a brief description (maximum 800 characters) of the data
+                content and context to help the assistant determine when to
+                utilize it effectively
               </div>
             </div>
           ) : (
@@ -907,22 +954,22 @@ function ActionEditor({
               isDataSourceAction ? "This data contains…" : "This tool is about…"
             }
             value={action.description}
-            onChange={(v) => {
-              if (v.length < 800) {
+            onChange={(e) => {
+              if (e.target.value.length < 800) {
                 updateAction({
                   actionName: action.name,
-                  actionDescription: v,
+                  actionDescription: e.target.value,
                   getNewActionConfig: (old) => old,
                 });
                 setShowInvalidActionDescError(null);
               }
             }}
             error={showInvalidActionDescError}
-            showErrorLabel={true}
+            showErrorLabel
           />
         </div>
       )}
-    </>
+    </div>
   );
 }
 
@@ -934,16 +981,17 @@ function AdvancedSettings({
   setMaxStepsPerRun: (maxStepsPerRun: number | null) => void;
 }) {
   return (
-    <DropdownMenu>
-      <DropdownMenu.Button>
+    <Popover
+      popoverTriggerAsChild
+      trigger={
         <Button
           label="Advanced settings"
-          variant="tertiary"
+          variant="outline"
           size="sm"
-          type="menu"
+          isSelect
         />
-      </DropdownMenu.Button>
-      <DropdownMenu.Items width={240} overflow="visible">
+      }
+      content={
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             <div className="flex flex-col items-start justify-start">
@@ -958,12 +1006,12 @@ function AdvancedSettings({
               value={maxStepsPerRun?.toString() ?? ""}
               placeholder=""
               name="maxStepsPerRun"
-              onChange={(v) => {
-                if (!v || v === "") {
+              onChange={(e) => {
+                if (!e.target.value || e.target.value === "") {
                   setMaxStepsPerRun(null);
                   return;
                 }
-                const value = parseInt(v);
+                const value = parseInt(e.target.value);
                 if (
                   !isNaN(value) &&
                   value >= 0 &&
@@ -975,60 +1023,65 @@ function AdvancedSettings({
             />
           </div>
         </div>
-      </DropdownMenu.Items>
-    </DropdownMenu>
+      }
+    />
   );
 }
 
-function AddAction({
-  onAddAction,
-}: {
-  onAddAction: (action: AssistantBuilderActionConfiguration) => void;
-}) {
+interface AddActionProps {
+  onAddAction: (action: AssistantBuilderActionConfigurationWithId) => void;
+}
+
+function AddAction({ onAddAction }: AddActionProps) {
   return (
     <DropdownMenu>
-      <DropdownMenu.Button>
+      <DropdownMenuTrigger asChild>
         <Button variant="primary" label="Add a tool" icon={PlusIcon} />
-      </DropdownMenu.Button>
-      <DropdownMenu.Items origin="topLeft" width={320} overflow="visible">
-        <DropdownMenu.SectionHeader label="DATA SOURCES" />
-        {DATA_SOURCES_ACTION_CATEGORIES.map((key) => {
-          const spec = ACTION_SPECIFICATIONS[key];
-          const defaultAction = getDefaultActionConfiguration(key);
-          if (!defaultAction) {
-            // Unreachable
-            return null;
-          }
-          return (
-            <DropdownMenu.Item
-              key={key}
-              label={spec.label}
-              icon={spec.dropDownIcon}
-              description={spec.description}
-              onClick={() => onAddAction(defaultAction)}
-            />
-          );
-        })}
+      </DropdownMenuTrigger>
 
-        <DropdownMenu.SectionHeader label="ADVANCED ACTIONS" />
-        {ADVANCED_ACTION_CATEGORIES.map((key) => {
-          const spec = ACTION_SPECIFICATIONS[key];
-          const defaultAction = getDefaultActionConfiguration(key);
-          if (!defaultAction) {
-            // Unreachable
-            return null;
-          }
-          return (
-            <DropdownMenu.Item
-              key={key}
-              label={spec.label}
-              icon={spec.dropDownIcon}
-              description={spec.description}
-              onClick={() => onAddAction(defaultAction)}
-            />
-          );
-        })}
-      </DropdownMenu.Items>
+      <DropdownMenuContent>
+        <DropdownMenuGroup>
+          <DropdownMenuLabel label="Data Sources" />
+          {DATA_SOURCES_ACTION_CATEGORIES.map((key) => {
+            const spec = ACTION_SPECIFICATIONS[key];
+            const defaultAction = getDefaultActionConfiguration(key);
+            if (!defaultAction) {
+              return null;
+            }
+
+            return (
+              <DropdownMenuItem
+                key={key}
+                onClick={() => onAddAction(defaultAction)}
+                icon={spec.dropDownIcon}
+                label={spec.label}
+                description={spec.description}
+              />
+            );
+          })}
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuGroup>
+          <DropdownMenuLabel label="Advanced Actions" />
+          {ADVANCED_ACTION_CATEGORIES.map((key) => {
+            const spec = ACTION_SPECIFICATIONS[key];
+            const defaultAction = getDefaultActionConfiguration(key);
+            if (!defaultAction) {
+              return null;
+            }
+
+            return (
+              <DropdownMenuItem
+                key={key}
+                onClick={() => onAddAction(defaultAction)}
+                icon={spec.dropDownIcon}
+                label={spec.label}
+                description={spec.description}
+              />
+            );
+          })}
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
     </DropdownMenu>
   );
 }
@@ -1064,12 +1117,11 @@ function Capabilities({
     return (
       <div className="flex flex-row gap-2">
         <Checkbox
-          checked={enabled ? "checked" : "unchecked"}
-          onChange={enabled ? onDisable : onEnable}
-          variant="checkable"
+          checked={enabled}
+          onCheckedChange={enabled ? onDisable : onEnable}
         />
         <div>
-          <div className="flex text-base font-semibold text-element-900">
+          <div className="flex text-base font-semibold text-foreground">
             {name}
           </div>
           <div className="text-base text-element-700">{description}</div>

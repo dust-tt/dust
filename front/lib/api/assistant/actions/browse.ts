@@ -15,7 +15,7 @@ import { BaseAction, BrowseActionOutputSchema, Ok } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 
 import { runActionStreamed } from "@app/lib/actions/server";
-import { DEFAULT_BROWSE_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
+import { DEFAULT_BROWSE_ACTION_NAME } from "@app/lib/api/assistant/actions/constants";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
 import type { Authenticator } from "@app/lib/auth";
@@ -64,7 +64,7 @@ export class BrowseAction extends BaseAction {
     };
   }
 
-  renderForMultiActionsModel(): FunctionMessageTypeModel {
+  async renderForMultiActionsModel(): Promise<FunctionMessageTypeModel> {
     let content = "BROWSE OUTPUT:\n";
     if (this.output === null) {
       content += "The browse failed.\n";
@@ -109,11 +109,6 @@ export class BrowseConfigurationServerRunner extends BaseActionConfigurationServ
         },
       ],
     });
-  }
-
-  // Browse does not use citations.
-  getCitationsCount(): number {
-    return 0;
   }
 
   // This method is in charge of running the browse and creating an AgentBrowseAction object in

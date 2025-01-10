@@ -1,5 +1,6 @@
 import React, { ComponentType } from "react";
 
+import { Separator } from "@sparkle/components/Separator";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Button, ButtonProps } from "./Button";
@@ -20,7 +21,7 @@ export function Page({ children, variant = "normal" }: PageProps) {
     <main className={mainVariantClasses}>
       <div
         className={classNames(
-          "s-mx-auto s-flex s-h-full s-max-w-4xl s-flex-col s-text-sm s-font-normal s-text-element-900",
+          "s-mx-auto s-flex s-h-full s-max-w-4xl s-flex-col s-text-sm s-font-normal s-text-foreground",
           divVariantClassNames
         )}
       >
@@ -32,15 +33,14 @@ export function Page({ children, variant = "normal" }: PageProps) {
 
 interface PageHeaderProps {
   title: React.ReactNode;
-  description?: string;
+  description?: React.ReactNode;
   icon?: ComponentType<{ className?: string }>;
 }
 
 Page.Header = function ({ title, description, icon }: PageHeaderProps) {
-  const iconClasses = "s-text-brand";
   return (
     <Page.Vertical gap="xs">
-      <Icon visual={icon} className={iconClasses} size="lg" />
+      <Icon visual={icon} className="s-text-primary-400" size="lg" />
       <Page.H variant="h3">{title}</Page.H>
       {description && <Page.P variant="secondary">{description}</Page.P>}
     </Page.Vertical>
@@ -74,11 +74,7 @@ Page.SectionHeader = function ({
 };
 
 Page.Separator = function () {
-  return (
-    <div className="s-w-full s-py-2">
-      <div className="s-h-px s-w-full s-bg-structure-200" />
-    </div>
-  );
+  return <Separator />;
 };
 
 interface PagePProps {
@@ -101,7 +97,7 @@ Page.P = function ({ children, variant, size = "sm" }: PagePProps) {
         PsizeClasses[size],
         variant === "secondary"
           ? "s-text-element-700 dark:s-text-element-600-dark"
-          : "s-text-element-900 dark:s-text-element-900-dark"
+          : "s-text-foreground dark:s-text-foreground-dark"
       )}
     >
       {children}
@@ -129,7 +125,7 @@ Page.H = function ({ children, variant = "h3" }: PageHProps) {
   return (
     <Component
       className={classNames(
-        "s-text-element-900 dark:s-text-element-900-dark",
+        "s-text-foreground dark:s-text-foreground-dark",
         hSizes[variant]
       )}
     >

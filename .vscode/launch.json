@@ -7,15 +7,15 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug dust-api",
+            "name": "Debug core-api",
             "cargo": {
                 "args": [
                     "build",
-                    "--bin=dust-api",
+                    "--bin=core-api",
                     "--manifest-path=${workspaceFolder}/core/Cargo.toml"
                 ],
                 "filter": {
-                    "name": "dust-api",
+                    "name": "core-api",
                     "kind": "bin"
                 }
             },

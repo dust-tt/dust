@@ -443,7 +443,7 @@ async fn migrate_shadow_embedder(
                 qdrant::PointStruct::new(
                     r.id.unwrap(),
                     r.vectors.unwrap(),
-                    Payload::new_from_hashmap(r.payload),
+                    Payload::from(r.payload),
                 )
             })
             .collect::<Vec<_>>();
@@ -512,7 +512,7 @@ async fn migrate_shadow_embedder(
                 .iter()
                 .map(|ci| match embeddings.get(&ci.hash) {
                     Some(v) => {
-                        let payload = Payload::new_from_hashmap(ci.payload.clone());
+                        let payload = Payload::from(ci.payload.clone());
 
                         let ps = qdrant::PointStruct::new(
                             ci.hash.to_string(),

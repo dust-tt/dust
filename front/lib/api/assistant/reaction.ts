@@ -1,11 +1,14 @@
-import type { UserType } from "@dust-tt/types";
 import type {
   ConversationMessageReactions,
   ConversationType,
   ConversationWithoutContentType,
   MessageReactionType,
+  Result,
 } from "@dust-tt/types";
+import type { UserType } from "@dust-tt/types";
+import { ConversationError, Err, Ok } from "@dust-tt/types";
 
+import { canAccessConversation } from "@app/lib/api/assistant/conversation/auth";
 import type { Authenticator } from "@app/lib/auth";
 import {
   Message,
@@ -18,10 +21,14 @@ import {
 export async function getMessageReactions(
   auth: Authenticator,
   conversation: ConversationType | ConversationWithoutContentType
-): Promise<ConversationMessageReactions> {
+): Promise<Result<ConversationMessageReactions, ConversationError>> {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
+  }
+
+  if (!canAccessConversation(auth, conversation)) {
+    return new Err(new ConversationError("conversation_access_restricted"));
   }
 
   const messages = await Message.findAll({
@@ -38,10 +45,12 @@ export async function getMessageReactions(
     ],
   });
 
-  return messages.map((m) => ({
-    messageId: m.sId,
-    reactions: _renderMessageReactions(m.reactions || []),
-  }));
+  return new Ok(
+    messages.map((m) => ({
+      messageId: m.sId,
+      reactions: _renderMessageReactions(m.reactions || []),
+    }))
+  );
 }
 
 function _renderMessageReactions(

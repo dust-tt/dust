@@ -2,10 +2,10 @@ import { existsSync, readFileSync, writeFileSync } from "fs";
 import { Op } from "sequelize";
 
 import {
-  getDiscussionDocumentId,
-  getIssueDocumentId,
-} from "@connectors/connectors/github/temporal/activities";
-import { updateDocumentParentsField } from "@connectors/lib/data_sources";
+  getDiscussionInternalId,
+  getIssueInternalId,
+} from "@connectors/connectors/github/lib/utils";
+import { updateDataSourceDocumentParents } from "@connectors/lib/data_sources";
 import { GithubDiscussion, GithubIssue } from "@connectors/lib/models/github";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
@@ -77,17 +77,18 @@ async function updateDiscussionsParentsFieldForConnector(
     // update parents field for each document of the chunk, in parallel
     await Promise.all(
       chunk.map(async (document) => {
-        const docId = getDiscussionDocumentId(
+        const docId = getDiscussionInternalId(
           document.repoId,
           document.discussionNumber
         );
-        await updateDocumentParentsField({
+        await updateDataSourceDocumentParents({
           dataSourceConfig: connector,
           documentId: docId,
           parents: [
-            getDiscussionDocumentId(document.repoId, document.discussionNumber),
+            getDiscussionInternalId(document.repoId, document.discussionNumber),
             document.repoId,
           ],
+          parentId: document.repoId,
         });
       })
     );
@@ -110,14 +111,15 @@ async function updateIssuesParentsFieldForConnector(connector: ConnectorModel) {
     // update parents field for each document of the chunk, in parallel
     await Promise.all(
       chunk.map(async (document) => {
-        const docId = getIssueDocumentId(document.repoId, document.issueNumber);
-        await updateDocumentParentsField({
+        const docId = getIssueInternalId(document.repoId, document.issueNumber);
+        await updateDataSourceDocumentParents({
           dataSourceConfig: connector,
           documentId: docId,
           parents: [
-            getIssueDocumentId(document.repoId, document.issueNumber),
+            getIssueInternalId(document.repoId, document.issueNumber),
             document.repoId,
           ],
+          parentId: document.repoId,
         });
       })
     );

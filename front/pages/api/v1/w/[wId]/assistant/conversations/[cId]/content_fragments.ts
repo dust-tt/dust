@@ -1,25 +1,19 @@
-import type { ContentFragmentType, WithAPIErrorResponse } from "@dust-tt/types";
-import { PublicPostContentFragmentRequestBodySchema } from "@dust-tt/types";
-import { isLeft } from "fp-ts/lib/Either";
-import type * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
+import type { PostContentFragmentResponseType } from "@dust-tt/client";
+import { PublicPostContentFragmentRequestBodySchema } from "@dust-tt/client";
+import type { WithAPIErrorResponse } from "@dust-tt/types";
+import { isContentFragmentInputWithContentType } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 import {
   getConversation,
-  normalizeContentFragmentType,
   postNewContentFragment,
 } from "@app/lib/api/assistant/conversation";
-import { Authenticator, getAPIKey } from "@app/lib/auth";
-import { apiError, withLogging } from "@app/logger/withlogging";
-
-export type PostContentFragmentsResponseBody = {
-  contentFragment: ContentFragmentType;
-};
-
-export type PostContentFragmentRequestBody = t.TypeOf<
-  typeof PublicPostContentFragmentRequestBodySchema
->;
+import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
+import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
+import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
+import type { Authenticator } from "@app/lib/auth";
+import { apiError } from "@app/logger/withlogging";
 
 /**
  * @swagger
@@ -67,36 +61,11 @@ export type PostContentFragmentRequestBody = t.TypeOf<
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<PostContentFragmentsResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<PostContentFragmentResponseType>>,
+  auth: Authenticator
 ): Promise<void> {
-  const keyRes = await getAPIKey(req);
-  if (keyRes.isErr()) {
-    return apiError(req, res, keyRes.error);
-  }
-
-  const { keyAuth, workspaceAuth } = await Authenticator.fromKey(
-    keyRes.value,
-    req.query.wId as string
-  );
-
-  if (
-    !workspaceAuth.isBuilder() ||
-    keyAuth.getNonNullableWorkspace().sId !== req.query.wId
-  ) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "The Assistant API is only available on your own workspace.",
-      },
-    });
-  }
-
-  const conversation = await getConversation(
-    workspaceAuth,
-    req.query.cId as string
-  );
-  if (!conversation) {
+  const { cId } = req.query;
+  if (typeof cId !== "string") {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -106,52 +75,71 @@ async function handler(
     });
   }
 
+  const conversationRes = await getConversation(auth, cId);
+
+  if (conversationRes.isErr()) {
+    return apiErrorForConversation(req, res, conversationRes.error);
+  }
+
+  const conversation = conversationRes.value;
+
   switch (req.method) {
     case "POST":
-      const bodyValidation = PublicPostContentFragmentRequestBodySchema.decode(
-        req.body
-      );
+      const r = PublicPostContentFragmentRequestBodySchema.safeParse(req.body);
 
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+      if (r.error) {
+        const ve = fromError(r.error);
+        console.log(ve.toString());
 
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${pathError}`,
+            message: fromError(r.error).toString(),
           },
         });
       }
 
-      const { right: contentFragmentBody } = bodyValidation;
-      const { content, contentType } = contentFragmentBody;
-
-      if (content.length === 0 || content.length > 64 * 1024) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message:
-              "The content must be a non-empty string of less than 64kb.",
-          },
-        });
+      if (r.data.content) {
+        const { content } = r.data;
+        if (content.length === 0 || content.length > 128 * 1024) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "The content must be a non-empty string of less than 128kb.",
+            },
+          });
+        }
       }
+      const { context, ...rest } = r.data;
+      let contentFragment = rest;
 
-      const normalizedContentType = normalizeContentFragmentType({
-        contentType,
-        url: req.url,
-      });
+      // If we receive a content fragment that is not file based, we transform it to a file-based
+      // one.
+      if (isContentFragmentInputWithContentType(contentFragment)) {
+        const contentFragmentRes = await toFileContentFragment(auth, {
+          contentFragment,
+        });
+        if (contentFragmentRes.isErr()) {
+          throw new Error(contentFragmentRes.error.message);
+        }
+        contentFragment = contentFragmentRes.value;
+      }
 
       const contentFragmentRes = await postNewContentFragment(
-        workspaceAuth,
+        auth,
         conversation,
+        contentFragment,
         {
-          ...contentFragmentBody,
-          contentType: normalizedContentType,
-        },
-        contentFragmentBody.context
+          email: context?.email ?? null,
+          fullName: context?.fullName ?? null,
+          username: context?.username ?? null,
+          profilePictureUrl: context?.profilePictureUrl ?? null,
+        }
       );
+
       if (contentFragmentRes.isErr()) {
         return apiError(req, res, {
           status_code: 400,
@@ -161,10 +149,8 @@ async function handler(
           },
         });
       }
-
       res.status(200).json({ contentFragment: contentFragmentRes.value });
       return;
-
     default:
       return apiError(req, res, {
         status_code: 405,
@@ -176,4 +162,6 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withPublicAPIAuthentication(handler, {
+  requiredScopes: { POST: "update:conversation" },
+});

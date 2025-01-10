@@ -1,24 +1,20 @@
-import type { SupportedContentFragmentType } from "@dust-tt/types";
 import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+  ContentFragmentVersion,
+  SupportedContentFragmentType,
+} from "@dust-tt/types";
+import type { CreationOptional, ForeignKey } from "sequelize";
+import { DataTypes } from "sequelize";
 
-import { User } from "@app/lib/models/user";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { FileModel } from "@app/lib/resources/storage/models/files";
+import { UserModel } from "@app/lib/resources/storage/models/user";
+import { BaseModel } from "@app/lib/resources/storage/wrappers";
 
-export class ContentFragmentModel extends Model<
-  InferAttributes<ContentFragmentModel>,
-  InferCreationAttributes<ContentFragmentModel>
-> {
-  declare id: CreationOptional<number>;
+export class ContentFragmentModel extends BaseModel<ContentFragmentModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
+  declare sId: string;
   declare title: string;
   declare contentType: SupportedContentFragmentType;
   declare sourceUrl: string | null; // GCS (upload) or Slack or ...
@@ -33,17 +29,14 @@ export class ContentFragmentModel extends Model<
   declare userContextEmail: string | null;
   declare userContextProfilePictureUrl: string | null;
 
-  declare userId: ForeignKey<User["id"]> | null;
+  declare userId: ForeignKey<UserModel["id"]> | null;
   declare fileId: ForeignKey<FileModel["id"]> | null;
+
+  declare version: ContentFragmentVersion;
 }
 
 ContentFragmentModel.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -53,6 +46,10 @@ ContentFragmentModel.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    sId: {
+      type: DataTypes.STRING,
+      allowNull: false,
     },
     title: {
       type: DataTypes.TEXT,
@@ -86,18 +83,23 @@ ContentFragmentModel.init(
       type: DataTypes.STRING,
       allowNull: true,
     },
+    version: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "latest",
+    },
   },
   {
     modelName: "content_fragment",
     sequelize: frontSequelize,
-    indexes: [{ fields: ["fileId"] }],
+    indexes: [{ fields: ["fileId"] }, { fields: ["sId", "version"] }],
   }
 );
 
-User.hasMany(ContentFragmentModel, {
+UserModel.hasMany(ContentFragmentModel, {
   foreignKey: { name: "userId", allowNull: true }, // null = ContentFragment is not associated with a user
 });
-ContentFragmentModel.belongsTo(User, {
+ContentFragmentModel.belongsTo(UserModel, {
   foreignKey: { name: "userId", allowNull: true },
 });
 

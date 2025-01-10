@@ -135,7 +135,7 @@ export default function NoWorkspace({
           <Button
             size="sm"
             label="Create a new workspace"
-            variant="primaryWarning"
+            variant="warning"
             onClick={onCreateWorkspace}
           />
         }
@@ -145,7 +145,7 @@ export default function NoWorkspace({
           <div className="items-left justify-left flex flex-row">
             <Icon visual={LogoSquareColorLogo} size="md" />
           </div>
-          <span className="text-2xl font-bold text-element-900">
+          <span className="text-2xl font-bold text-foreground">
             Hello {userFirstName}!
           </span>
         </div>
@@ -206,7 +206,7 @@ export default function NoWorkspace({
           <Button
             size="sm"
             label="Create a new workspace"
-            variant="primaryWarning"
+            variant="warning"
             onClick={onCreateWorkspace}
           />
         </div>

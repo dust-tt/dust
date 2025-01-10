@@ -1,6 +1,5 @@
 import type {
   ConnectorPermission,
-  ConnectorsAPIError,
   ContentNode,
   ContentNodesViewType,
   Result,
@@ -8,6 +7,12 @@ import type {
 import { assertNever, Err, Ok } from "@dust-tt/types";
 import { Client } from "@microsoft/microsoft-graph-client";
 
+import type {
+  CreateConnectorErrorCode,
+  RetrievePermissionsErrorCode,
+  UpdateConnectorErrorCode,
+} from "@connectors/connectors/interface";
+import { ConnectorManagerError } from "@connectors/connectors/interface";
 import { BaseConnectorManager } from "@connectors/connectors/interface";
 import {
   getChannelAsContentNode,
@@ -18,6 +23,7 @@ import {
   getTeamAsContentNode,
 } from "@connectors/connectors/microsoft/lib/content_nodes";
 import {
+  clientApiGet,
   getAllPaginatedEntities,
   getChannels,
   getDrives,
@@ -32,16 +38,16 @@ import {
   typeAndPathFromInternalId,
 } from "@connectors/connectors/microsoft/lib/utils";
 import {
-  getRootNodesToSync,
+  getRootNodesToSyncFromResources,
   populateDeltas,
 } from "@connectors/connectors/microsoft/temporal/activities";
 import {
-  launchMicrosoftDeletionWorkflow,
   launchMicrosoftFullSyncWorkflow,
   launchMicrosoftGarbageCollectionWorkflow,
   launchMicrosoftIncrementalSyncWorkflow,
 } from "@connectors/connectors/microsoft/temporal/client";
 import { getParents } from "@connectors/connectors/microsoft/temporal/file";
+import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
 import { syncSucceeded } from "@connectors/lib/sync_status";
 import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
@@ -61,13 +67,12 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
   }: {
     dataSourceConfig: DataSourceConfig;
     connectionId: string;
-  }): Promise<Result<string, Error>> {
+  }): Promise<Result<string, ConnectorManagerError<CreateConnectorErrorCode>>> {
     const client = await getClient(connectionId);
 
     try {
       // Sanity checks - check connectivity and permissions. User should be able to access the sites and teams list.
       await getSites(client);
-      await getTeams(client);
     } catch (err) {
       logger.error(
         {
@@ -75,7 +80,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
         },
         "Error creating Microsoft connector"
       );
-      return new Err(new Error("Error creating Microsoft connector"));
+      throw new Error("Error creating Microsoft connector");
     }
 
     const microsoftConfigurationBlob = {
@@ -99,7 +104,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
 
     const res = await launchMicrosoftIncrementalSyncWorkflow(connector.id);
     if (res.isErr()) {
-      return res;
+      throw res.error;
     }
 
     return new Ok(connector.id.toString());
@@ -109,24 +114,20 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
     connectionId,
   }: {
     connectionId?: string | null;
-  }): Promise<Result<string, ConnectorsAPIError>> {
+  }): Promise<Result<string, ConnectorManagerError<UpdateConnectorErrorCode>>> {
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
-      logger.error({ connectorId: this.connectorId }, "Connector not found");
-      return new Err({
-        message: "Connector not found",
-        type: "connector_not_found",
-      });
+      throw new Error(`Connector ${this.connectorId} not found`);
     }
 
     // Check that we don't switch tenants
     if (connectionId) {
       try {
         const client = await getClient(connector.connectionId);
-        const currentOrg = await client.api("/organization").get();
+        const currentOrg = await clientApiGet(client, "/organization");
 
         const newClient = await getClient(connectionId);
-        const newOrg = await newClient.api("/organization").get();
+        const newOrg = await clientApiGet(newClient, "/organization");
 
         if (
           !currentOrg?.value ||
@@ -134,26 +135,34 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
           currentOrg.value.length === 0 ||
           newOrg.value.length === 0
         ) {
-          return new Err({
-            type: "connector_update_error",
-            message: "Error retrieving organization info to update connector",
-          });
+          throw new Error(
+            "Error retrieving organization info to update connector"
+          );
         }
+
         if (currentOrg.value[0].id !== newOrg.value[0].id) {
-          return new Err({
-            type: "connector_oauth_target_mismatch",
-            message: "Cannot change domain of a Microsoft connector",
-          });
+          return new Err(
+            new ConnectorManagerError(
+              "CONNECTOR_OAUTH_TARGET_MISMATCH",
+              "Cannot change domain of a Microsoft connector"
+            )
+          );
         }
       } catch (e) {
         logger.error(
           {
             error: e,
           },
-          `Error checking Microsoft organization - lets update the connector regardless`
+          "Error checking Microsoft organization - lets update the connector regardless"
         );
       }
+
       await connector.update({ connectionId });
+
+      // If connector was previously paused, unpause it.
+      if (connector.isPaused()) {
+        await this.unpause();
+      }
     }
 
     return new Ok(connector.id.toString());
@@ -196,11 +205,13 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
     parentInternalId: string | null;
     filterPermission: ConnectorPermission | null;
     viewType: ContentNodesViewType;
-  }): Promise<Result<ContentNode[], Error>> {
+  }): Promise<
+    Result<ContentNode[], ConnectorManagerError<RetrievePermissionsErrorCode>>
+  > {
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
       return new Err(
-        new Error(`Could not find connector with id ${this.connectorId}`)
+        new ConnectorManagerError("CONNECTOR_NOT_FOUND", "Connector not found")
       );
     }
 
@@ -220,11 +231,19 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       );
       if (!node) {
         return new Err(
-          new Error(`Could not find node with id ${parentInternalId}`)
+          new ConnectorManagerError(
+            "INVALID_PARENT_INTERNAL_ID",
+            `Could not find node with id ${parentInternalId}`
+          )
         );
       }
-      return retrieveChildrenNodes(node, isTablesView);
+      const nRes = await retrieveChildrenNodes(node, isTablesView);
+      if (nRes.isErr()) {
+        throw nRes.error;
+      }
+      return new Ok(nRes.value);
     }
+
     const client = await getClient(connector.connectionId);
     const nodes = [];
 
@@ -244,84 +263,97 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
 
     const { nodeType } = typeAndPathFromInternalId(parentInternalId);
 
-    switch (nodeType) {
-      case "sites-root": {
-        const sites = await getAllPaginatedEntities((nextLink) =>
-          getSites(client, nextLink)
-        );
-        nodes.push(...sites.map((n) => getSiteAsContentNode(n)));
-        break;
+    try {
+      switch (nodeType) {
+        case "sites-root": {
+          const sites = await getAllPaginatedEntities((nextLink) =>
+            getSites(client, nextLink)
+          );
+          nodes.push(...sites.map((n) => getSiteAsContentNode(n)));
+          break;
+        }
+        case "teams-root": {
+          const teams = await getAllPaginatedEntities((nextLink) =>
+            getTeams(client, nextLink)
+          );
+          nodes.push(...teams.map((n) => getTeamAsContentNode(n)));
+          break;
+        }
+        case "team": {
+          const channels = await getAllPaginatedEntities((nextLink) =>
+            getChannels(client, parentInternalId, nextLink)
+          );
+          nodes.push(
+            ...channels.map((n) => getChannelAsContentNode(n, parentInternalId))
+          );
+          break;
+        }
+        case "site": {
+          const subSites = await getAllPaginatedEntities((nextLink) =>
+            getSubSites(client, parentInternalId, nextLink)
+          );
+          const drives = await getAllPaginatedEntities((nextLink) =>
+            getDrives(client, parentInternalId, nextLink)
+          );
+          nodes.push(
+            ...subSites.map((n) => getSiteAsContentNode(n, parentInternalId)),
+            ...drives.map((n) => getDriveAsContentNode(n, parentInternalId))
+          );
+          break;
+        }
+        case "drive":
+        case "folder": {
+          const filesAndFolders = await getAllPaginatedEntities((nextLink) =>
+            getFilesAndFolders(client, parentInternalId, nextLink)
+          );
+          const folders = filesAndFolders.filter((n) => n.folder);
+          nodes.push(
+            ...folders.map((n) => getFolderAsContentNode(n, parentInternalId))
+          );
+          break;
+        }
+        case "channel":
+        case "file":
+        case "page":
+        case "message":
+        case "worksheet":
+          throw new Error(
+            `Unexpected node type ${nodeType} for retrievePermissions`
+          );
+        default: {
+          assertNever(nodeType);
+        }
       }
-      case "teams-root": {
-        const teams = await getAllPaginatedEntities((nextLink) =>
-          getTeams(client, nextLink)
-        );
-        nodes.push(...teams.map((n) => getTeamAsContentNode(n)));
-        break;
-      }
-      case "team": {
-        const channels = await getAllPaginatedEntities((nextLink) =>
-          getChannels(client, parentInternalId, nextLink)
-        );
-        nodes.push(
-          ...channels.map((n) => getChannelAsContentNode(n, parentInternalId))
-        );
-        break;
-      }
-      case "site": {
-        const subSites = await getAllPaginatedEntities((nextLink) =>
-          getSubSites(client, parentInternalId, nextLink)
-        );
-        const drives = await getAllPaginatedEntities((nextLink) =>
-          getDrives(client, parentInternalId, nextLink)
-        );
-        nodes.push(
-          ...subSites.map((n) => getSiteAsContentNode(n, parentInternalId)),
-          ...drives.map((n) => getDriveAsContentNode(n, parentInternalId))
-        );
-        break;
-      }
-      case "drive":
-      case "folder": {
-        const filesAndFolders = await getAllPaginatedEntities((nextLink) =>
-          getFilesAndFolders(client, parentInternalId, nextLink)
-        );
-        const folders = filesAndFolders.filter((n) => n.folder);
-        nodes.push(
-          ...folders.map((n) => getFolderAsContentNode(n, parentInternalId))
-        );
-        break;
-      }
-      case "channel":
-      case "file":
-      case "page":
-      case "message":
-      case "worksheet":
-        throw new Error(
-          `Unexpected node type ${nodeType} for retrievePermissions`
-        );
-      default: {
-        assertNever(nodeType);
-      }
-    }
 
-    const nodesWithPermissions = nodes.map((res) => {
-      return {
-        ...res,
-        permission: (selectedResources.includes(res.internalId) ||
-        (res.parentInternalId &&
-          selectedResources.includes(res.parentInternalId))
-          ? "read"
-          : "none") as ConnectorPermission,
-      };
-    });
+      const nodesWithPermissions = nodes.map((res) => {
+        return {
+          ...res,
+          permission: (selectedResources.includes(res.internalId) ||
+          (res.parentInternalId &&
+            selectedResources.includes(res.parentInternalId))
+            ? "read"
+            : "none") as ConnectorPermission,
+        };
+      });
 
-    if (filterPermission) {
-      return new Ok(
-        nodesWithPermissions.filter((n) => n.permission === filterPermission)
-      );
+      if (filterPermission) {
+        return new Ok(
+          nodesWithPermissions.filter((n) => n.permission === filterPermission)
+        );
+      }
+      return new Ok(nodesWithPermissions);
+    } catch (e) {
+      if (e instanceof ExternalOAuthTokenError) {
+        return new Err(
+          new ConnectorManagerError(
+            "EXTERNAL_OAUTH_TOKEN_ERROR",
+            "Microsoft authorization error, please re-authorize."
+          )
+        );
+      }
+      // Unanhdled error, throwing to get a 500.
+      throw e;
     }
-    return new Ok(nodesWithPermissions);
   }
 
   async setPermissions({
@@ -336,36 +368,41 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       );
     }
 
-    await MicrosoftRootResource.batchDelete({
-      resourceIds: Object.keys(permissions),
-      connectorId: connector.id,
-    });
+    const existing = await MicrosoftRootResource.listRootsByConnectorId(
+      connector.id
+    );
 
     const nodeIdsToDelete = Object.keys(permissions).filter(
-      (key) => permissions[key] === "none"
+      (internalId) =>
+        permissions[internalId] === "none" &&
+        existing.some((e) => e.internalId === internalId)
     );
     if (nodeIdsToDelete.length > 0) {
-      const gcRes = await launchMicrosoftDeletionWorkflow(
-        this.connectorId,
-        nodeIdsToDelete
-      );
-
-      if (gcRes.isErr()) {
-        return gcRes;
-      }
+      await MicrosoftRootResource.batchDelete({
+        resourceIds: Object.keys(permissions),
+        connectorId: connector.id,
+      });
     }
 
     const newResourcesBlobs = Object.entries(permissions)
-      .filter(([, permission]) => permission === "read")
-      .map(([id]) => ({
+      .filter(
+        ([internalId, permission]) =>
+          permission === "read" &&
+          existing.every((e) => e.internalId !== internalId)
+      )
+      .map(([internalId]) => ({
         connectorId: connector.id,
-        nodeType: typeAndPathFromInternalId(id).nodeType,
-        internalId: id,
+        nodeType: typeAndPathFromInternalId(internalId).nodeType,
+        internalId,
       }));
 
-    await MicrosoftRootResource.batchMakeNew(newResourcesBlobs);
+    const addedResources =
+      await MicrosoftRootResource.batchMakeNew(newResourcesBlobs);
 
-    const nodesToSync = await getRootNodesToSync(this.connectorId);
+    const nodesToSync = await getRootNodesToSyncFromResources(
+      this.connectorId,
+      addedResources
+    );
 
     // poupulates deltas for the nodes so that if incremental sync starts before
     // fullsync populated, there's no error
@@ -373,7 +410,8 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
 
     const res = await launchMicrosoftFullSyncWorkflow(
       this.connectorId,
-      nodesToSync
+      nodesToSync,
+      nodeIdsToDelete
     );
 
     if (res.isErr()) {
@@ -558,7 +596,6 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
   }: {
     configKey: string;
   }): Promise<Result<string | null, Error>> {
-    console.log("getMicrosoftConfig", this.connectorId, configKey);
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
       return new Err(

@@ -2,26 +2,32 @@ import {
   Button,
   ContentMessage,
   DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
   Page,
+  Popover,
+  ScrollArea,
+  ScrollBar,
   Spinner,
 } from "@dust-tt/sparkle";
 import type {
   APIError,
   AssistantCreativityLevel,
   BuilderSuggestionsType,
+  LightAgentConfigurationType,
   ModelConfigurationType,
   ModelIdType,
-  PlanType,
   Result,
   SupportedModel,
   WorkspaceType,
 } from "@dust-tt/types";
 import {
-  CLAUDE_3_5_SONNET_20240620_MODEL_ID,
+  CLAUDE_3_5_SONNET_20241022_MODEL_ID,
   GPT_4O_MODEL_ID,
   MISTRAL_LARGE_MODEL_ID,
 } from "@dust-tt/types";
-import { isProviderWhitelisted } from "@dust-tt/types";
 import {
   ASSISTANT_CREATIVITY_LEVEL_DISPLAY_NAMES,
   ASSISTANT_CREATIVITY_LEVEL_TEMPERATURES,
@@ -36,20 +42,24 @@ import { History } from "@tiptap/extension-history";
 import Text from "@tiptap/extension-text";
 import type { Editor, JSONContent } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
-import {
-  MODEL_PROVIDER_LOGOS,
-  USED_MODEL_CONFIGS,
-} from "@app/components/providers/types";
+import { MODEL_PROVIDER_LOGOS } from "@app/components/providers/types";
 import { ParagraphExtension } from "@app/components/text_editor/extensions";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import {
   plainTextFromTipTapContent,
   tipTapContentFromPlainText,
 } from "@app/lib/client/assistant_builder/instructions";
-import { isUpgraded } from "@app/lib/plans/plan_codes";
+import { useAgentConfigurationHistory } from "@app/lib/swr/assistants";
+import { useModels } from "@app/lib/swr/models";
 import { classNames } from "@app/lib/utils";
 import { debounce } from "@app/lib/utils/debounce";
 
@@ -65,7 +75,7 @@ export const CREATIVITY_LEVELS = Object.entries(
 
 const BEST_PERFORMING_MODELS_ID: ModelIdType[] = [
   GPT_4O_MODEL_ID,
-  CLAUDE_3_5_SONNET_20240620_MODEL_ID,
+  CLAUDE_3_5_SONNET_20241022_MODEL_ID,
   MISTRAL_LARGE_MODEL_ID,
 ] as const;
 
@@ -96,7 +106,6 @@ const useInstructionEditorService = (editor: Editor | null) => {
 
 export function InstructionScreen({
   owner,
-  plan,
   builderState,
   setBuilderState,
   setEdited,
@@ -105,9 +114,9 @@ export function InstructionScreen({
   instructionsError,
   doTypewriterEffect,
   setDoTypewriterEffect,
+  agentConfigurationId,
 }: {
   owner: WorkspaceType;
-  plan: PlanType;
   builderState: AssistantBuilderState;
   setBuilderState: (
     statefn: (state: AssistantBuilderState) => AssistantBuilderState
@@ -118,6 +127,7 @@ export function InstructionScreen({
   instructionsError: string | null;
   doTypewriterEffect: boolean;
   setDoTypewriterEffect: (doTypewriterEffect: boolean) => void;
+  agentConfigurationId: string | null;
 }) {
   const editor = useEditor({
     extensions: [
@@ -146,6 +156,44 @@ export function InstructionScreen({
     },
   });
   const editorService = useInstructionEditorService(editor);
+
+  const { agentConfigurationHistory } = useAgentConfigurationHistory({
+    workspaceId: owner.sId,
+    agentConfigurationId,
+    disabled: !agentConfigurationId,
+    limit: 30,
+  });
+  // Keep a memory of overriden versions, to not lose them when switching back and forth
+  const [currentConfig, setCurrentConfig] =
+    useState<LightAgentConfigurationType | null>(null);
+  // versionNumber -> instructions
+  const [overridenConfigInstructions, setOverridenConfigInstructions] =
+    useState<{
+      [key: string]: string;
+    }>({});
+
+  // Deduplicate configs based on instructions
+  const configsWithUniqueInstructions: LightAgentConfigurationType[] =
+    useMemo(() => {
+      const uniqueInstructions = new Set<string>();
+      const configs: LightAgentConfigurationType[] = [];
+      agentConfigurationHistory?.forEach((config) => {
+        if (
+          !config.instructions ||
+          uniqueInstructions.has(config.instructions)
+        ) {
+          return;
+        } else {
+          uniqueInstructions.add(config.instructions);
+          configs.push(config);
+        }
+      });
+      return configs;
+    }, [agentConfigurationHistory]);
+
+  useEffect(() => {
+    setCurrentConfig(agentConfigurationHistory?.[0] || null);
+  }, [agentConfigurationHistory]);
 
   const [letterIndex, setLetterIndex] = useState(0);
 
@@ -228,10 +276,48 @@ export function InstructionScreen({
           </Page.P>
         </div>
         <div className="flex-grow" />
-        <div className="self-end">
+        {configsWithUniqueInstructions &&
+          configsWithUniqueInstructions.length > 1 &&
+          currentConfig && (
+            <div className="mr-2 mt-2 self-end">
+              <PromptHistory
+                history={configsWithUniqueInstructions}
+                onConfigChange={(config) => {
+                  // Remember the instructions of the version we're leaving, if overriden
+                  if (
+                    currentConfig &&
+                    currentConfig.instructions !== builderState.instructions
+                  ) {
+                    setOverridenConfigInstructions((prev) => ({
+                      ...prev,
+                      [currentConfig.version]: builderState.instructions,
+                    }));
+                  }
+
+                  // Bring new version's instructions to the editor, fetch overriden instructions if any
+                  setCurrentConfig(config);
+                  editorService.resetContent(
+                    tipTapContentFromPlainText(
+                      overridenConfigInstructions[config.version] ||
+                        config.instructions ||
+                        ""
+                    )
+                  );
+                  setBuilderState((state) => ({
+                    ...state,
+                    instructions:
+                      overridenConfigInstructions[config.version] ||
+                      config.instructions ||
+                      "",
+                  }));
+                }}
+                currentConfig={currentConfig}
+              />
+            </div>
+          )}
+        <div className="mt-2 self-end">
           <AdvancedSettings
             owner={owner}
-            plan={plan}
             generationSettings={builderState.generationSettings}
             setGenerationSettings={(generationSettings) => {
               setEdited(true);
@@ -288,7 +374,7 @@ const InstructionsCharacterCount = ({
     <span
       className={classNames(
         "text-end text-xs",
-        count >= maxCount ? "text-red-500" : "text-slate-500"
+        count >= maxCount ? "text-red-500" : "text-muted-foreground"
       )}
     >
       {count} / {maxCount} characters
@@ -306,13 +392,14 @@ function ModelList({ modelConfigs, onClick }: ModelListProps) {
     onClick({
       modelId: modelConfig.modelId,
       providerId: modelConfig.providerId,
+      reasoningEffort: modelConfig.reasoningEffort,
     });
   };
 
   return (
     <>
       {modelConfigs.map((modelConfig) => (
-        <DropdownMenu.Item
+        <DropdownMenuItem
           key={modelConfig.modelId}
           icon={MODEL_PROVIDER_LOGOS[modelConfig.providerId]}
           description={modelConfig.shortDescription}
@@ -324,19 +411,23 @@ function ModelList({ modelConfigs, onClick }: ModelListProps) {
   );
 }
 
-function AdvancedSettings({
+export function AdvancedSettings({
   owner,
-  plan,
   generationSettings,
   setGenerationSettings,
 }: {
   owner: WorkspaceType;
-  plan: PlanType;
   generationSettings: AssistantBuilderState["generationSettings"];
   setGenerationSettings: (
     generationSettingsSettings: AssistantBuilderState["generationSettings"]
   ) => void;
 }) {
+  const { models, isModelsLoading } = useModels({ owner });
+
+  if (isModelsLoading) {
+    return null;
+  }
+
   const supportedModelConfig = getSupportedModelConfig(
     generationSettings.modelSettings
   );
@@ -345,64 +436,53 @@ function AdvancedSettings({
     alert("Unsupported model");
   }
 
-  const [bestPerformingModelConfig, otherModelsConfig] =
-    USED_MODEL_CONFIGS.reduce<
-      [ModelConfigurationType[], ModelConfigurationType[]]
-    >(
-      ([best, others], m) => {
-        if (
-          (m.largeModel && !isUpgraded(plan)) ||
-          !isProviderWhitelisted(owner, m.providerId)
-        ) {
-          return [best, others];
-        }
-        if (isBestPerformingModel(m.modelId)) {
-          best.push(m);
-        } else {
-          others.push(m);
-        }
-        return [best, others];
-      },
-      [[], []]
-    );
+  const bestPerformingModelConfigs: ModelConfigurationType[] = [];
+  const otherModelConfigs: ModelConfigurationType[] = [];
+  for (const modelConfig of models) {
+    if (isBestPerformingModel(modelConfig.modelId)) {
+      bestPerformingModelConfigs.push(modelConfig);
+    } else {
+      otherModelConfigs.push(modelConfig);
+    }
+  }
 
   return (
-    <DropdownMenu>
-      <DropdownMenu.Button>
+    <Popover
+      popoverTriggerAsChild
+      trigger={
         <Button
           label="Advanced settings"
-          variant="tertiary"
+          variant="outline"
           size="sm"
-          type="menu"
+          isSelect
         />
-      </DropdownMenu.Button>
-      <DropdownMenu.Items width={240} overflow="visible">
+      }
+      content={
         <div className="flex flex-col gap-4">
           <div className="flex flex-col items-end gap-2">
             <div className="w-full grow text-sm font-bold text-element-800">
               Model selection
             </div>
             <DropdownMenu>
-              <DropdownMenu.Button>
+              <DropdownMenuTrigger asChild>
                 <Button
-                  type="select"
-                  labelVisible={true}
+                  isSelect
                   label={
                     getSupportedModelConfig(generationSettings.modelSettings)
                       .displayName
                   }
-                  variant="secondary"
-                  hasMagnifying={false}
+                  variant="outline"
                   size="sm"
                 />
-              </DropdownMenu.Button>
-              <DropdownMenu.Items origin="topRight" width={250}>
-                <div className="z-[120]">
-                  <span className="text-sm uppercase text-element-700">
-                    Best performing models
-                  </span>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuLabel label="Best performing models" />
+                <ScrollArea
+                  className="flex max-h-[300px] flex-col"
+                  hideScrollBar
+                >
                   <ModelList
-                    modelConfigs={bestPerformingModelConfig}
+                    modelConfigs={bestPerformingModelConfigs}
                     onClick={(modelSettings) => {
                       setGenerationSettings({
                         ...generationSettings,
@@ -410,11 +490,9 @@ function AdvancedSettings({
                       });
                     }}
                   />
-                  <span className="text-sm uppercase text-element-700">
-                    Other models
-                  </span>
+                  <DropdownMenuLabel label="Other models" />
                   <ModelList
-                    modelConfigs={otherModelsConfig}
+                    modelConfigs={otherModelConfigs}
                     onClick={(modelSettings) => {
                       setGenerationSettings({
                         ...generationSettings,
@@ -422,8 +500,9 @@ function AdvancedSettings({
                       });
                     }}
                   />
-                </div>
-              </DropdownMenu.Items>
+                  <ScrollBar className="py-0" />
+                </ScrollArea>
+              </DropdownMenuContent>
             </DropdownMenu>
           </div>
           <div className="flex flex-col items-end gap-2">
@@ -431,23 +510,21 @@ function AdvancedSettings({
               Creativity level
             </div>
             <DropdownMenu>
-              <DropdownMenu.Button>
+              <DropdownMenuTrigger asChild>
                 <Button
-                  type="select"
-                  labelVisible={true}
+                  isSelect
                   label={
                     getCreativityLevelFromTemperature(
                       generationSettings?.temperature
                     ).label
                   }
-                  variant="secondary"
-                  hasMagnifying={false}
+                  variant="outline"
                   size="sm"
                 />
-              </DropdownMenu.Button>
-              <DropdownMenu.Items origin="topRight">
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
                 {CREATIVITY_LEVELS.map(({ label, value }) => (
-                  <DropdownMenu.Item
+                  <DropdownMenuItem
                     key={label}
                     label={label}
                     onClick={() => {
@@ -458,11 +535,69 @@ function AdvancedSettings({
                     }}
                   />
                 ))}
-              </DropdownMenu.Items>
+              </DropdownMenuContent>
             </DropdownMenu>
           </div>
         </div>
-      </DropdownMenu.Items>
+      }
+    />
+  );
+}
+
+function PromptHistory({
+  history,
+  onConfigChange,
+  currentConfig,
+}: {
+  history: LightAgentConfigurationType[];
+  onConfigChange: (config: LightAgentConfigurationType) => void;
+  currentConfig: LightAgentConfigurationType;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const latestConfig = history[0];
+
+  const getStringRepresentation = useCallback(
+    (config: LightAgentConfigurationType) => {
+      const dateFormatter = new Intl.DateTimeFormat(navigator.language, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "numeric",
+      });
+      return config.version === latestConfig?.version
+        ? "Latest Version"
+        : config.versionCreatedAt
+          ? dateFormatter.format(new Date(config.versionCreatedAt))
+          : `v${config.version}`;
+    },
+    [latestConfig]
+  );
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          label={getStringRepresentation(currentConfig)}
+          variant="outline"
+          size="sm"
+          isSelect
+          onClick={() => setIsOpen(!isOpen)}
+        />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
+        <ScrollArea className="flex max-h-[300px] flex-col">
+          {history.map((config) => (
+            <DropdownMenuItem
+              key={config.version}
+              label={getStringRepresentation(config)}
+              onClick={() => {
+                onConfigChange(config);
+              }}
+            />
+          ))}
+        </ScrollArea>
+      </DropdownMenuContent>
     </DropdownMenu>
   );
 }

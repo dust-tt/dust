@@ -1,63 +1,92 @@
-import React, { useEffect, useRef } from "react";
+import { cva } from "class-variance-authority";
+import React from "react";
 
-import { classNames } from "@sparkle/lib/utils";
+import { cn } from "@sparkle/lib/utils";
 
-type TextAreaProps = {
-  placeholder: string;
-  value: string | null;
-  onChange: (value: string) => void;
+const RESIZE_DIRECTIONS = ["none", "vertical", "horizontal", "both"] as const;
+
+type ResizeDirectionType = (typeof RESIZE_DIRECTIONS)[number];
+
+export interface TextareaProps
+  extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
+  resize?: ResizeDirectionType;
   error?: string | null;
   showErrorLabel?: boolean;
-  className?: string;
-};
-
-export function TextArea({
-  placeholder,
-  value,
-  onChange,
-  error,
-  showErrorLabel = false,
-  className,
-}: TextAreaProps) {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  useEffect(() => {
-    const textarea = textareaRef.current;
-    if (textarea) {
-      textarea.style.height = `${textarea.scrollHeight}px`; // Set to scroll height
-    }
-  }, [value]); // Re-run when value changes
-  return (
-    <div className="s-flex s-flex-col s-gap-1 s-p-px">
-      <textarea
-        ref={textareaRef}
-        className={classNames(
-          "overflow-y-auto s-block s-min-h-60 s-w-full s-min-w-0 s-rounded-xl s-text-sm s-placeholder-element-700 s-transition-all s-duration-200 s-scrollbar-hide",
-          !error
-            ? "s-border-structure-100 focus:s-border-action-300 focus:s-ring-action-300"
-            : "s-border-red-500 focus:s-border-red-500 focus:s-ring-red-500",
-          "s-border-structure-200 s-bg-structure-50",
-          "s-resize-y",
-          className ?? ""
-        )}
-        placeholder={placeholder}
-        value={value ?? ""}
-        onChange={(e) => {
-          const newValue = e.target.value;
-          const textAreaComponent = textareaRef.current;
-          if (
-            textAreaComponent &&
-            value?.length &&
-            newValue.length < value.length
-          ) {
-            textAreaComponent.style.height = "auto"; // Reset height to recalculate
-          }
-          onChange(e.target.value);
-        }}
-      />
-      {error && showErrorLabel && (
-        <div className="s-ml-2 s-text-sm s-text-warning-500">{error}</div>
-      )}
-    </div>
-  );
+  minRows?: number;
+  isDisplay?: boolean;
 }
+
+const textAreaVariants = cva(
+  "s-flex s-w-full s-px-3 s-py-2 s-text-sm s-text-foreground s-bg-muted-background s-ring-offset-background s-border s-rounded-xl s-transition s-duration-100 focus-visible:s-outline-none focus-visible:s-border-border-dark focus-visible:s-ring",
+  {
+    variants: {
+      resize: {
+        none: "s-resize-none",
+        vertical: "s-resize-y",
+        horizontal: "s-resize-x",
+        both: "s-resize",
+      },
+      error: {
+        true: "s-border-border-warning/30 focus:s-ring-warning/10 focus-visible:s-border-border-warning dark:s-ring-warning-200-dark dark:focus:s-ring-warning-300-dark",
+        false:
+          "s-border-border-dark/50 focus:s-ring-border-focus/10 focus-visible:s-border-border-focus dark:s-ring-structure-300-dark dark:focus:s-ring-highlight-200-dark",
+      },
+      disabled: {
+        true: "disabled:s-cursor-not-allowed disabled:s-text-muted-foreground",
+        false: "",
+      },
+      isDisplay: {
+        true: "s-cursor-default",
+        false: "",
+      },
+    },
+    defaultVariants: {
+      resize: "both",
+      error: false,
+      disabled: false,
+      isDisplay: false,
+    },
+  }
+);
+
+const TextArea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
+  (
+    {
+      className,
+      resize,
+      minRows = 10,
+      error,
+      showErrorLabel,
+      disabled,
+      isDisplay,
+      ...props
+    },
+    ref
+  ) => {
+    return (
+      <div className="s-flex s-flex-col s-gap-1 s-p-px">
+        <textarea
+          className={cn(
+            textAreaVariants({
+              resize,
+              error: !!error,
+              disabled,
+              isDisplay,
+              className,
+            })
+          )}
+          ref={ref}
+          rows={minRows}
+          disabled={disabled}
+          {...props}
+        />
+        {error && showErrorLabel && (
+          <div className="s-ml-2 s-text-xs s-text-warning-500">{error}</div>
+        )}
+      </div>
+    );
+  }
+);
+TextArea.displayName = "TextArea";
+
+export { TextArea };

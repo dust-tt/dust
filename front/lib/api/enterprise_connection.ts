@@ -1,10 +1,14 @@
-import type { SupportedEnterpriseConnectionStrategies } from "@dust-tt/types";
+import type { LightWorkspaceType } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import type { Connection } from "auth0";
 
 import { getAuth0ManagemementClient } from "@app/lib/api/auth0";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
+import type {
+  IdpSpecificConnectionTypeDetails,
+  SAMLConnectionTypeDetails,
+} from "@app/pages/api/w/[wId]/enterprise-connection";
 
 function makeEnterpriseConnectionName(workspaceId: string) {
   return `workspace-${workspaceId}`;
@@ -14,6 +18,14 @@ export function makeEnterpriseConnectionInitiateLoginUrl(workspaceId: string) {
   return `${config.getClientFacingUrl()}/api/auth/login?connection=${makeEnterpriseConnectionName(
     workspaceId
   )}`;
+}
+
+export function makeAudienceUri(owner: LightWorkspaceType) {
+  return `${config.getAuth0AudienceUri()}:${makeEnterpriseConnectionName(owner.sId)}`;
+}
+
+export function makeSamlAcsUrl(owner: LightWorkspaceType) {
+  return `https://${config.getAuth0TenantUrl()}/login/callback?connection=${makeEnterpriseConnectionName(owner.sId)}`;
 }
 
 export async function getEnterpriseConnectionForWorkspace(auth: Authenticator) {
@@ -28,16 +40,13 @@ export async function getEnterpriseConnectionForWorkspace(auth: Authenticator) {
   return connections.data.find((c) => c.name === expectedConnectionName);
 }
 
-interface EnterpriseConnectionDetails {
-  clientId: string;
-  clientSecret: string;
-  domain: string;
-  strategy: SupportedEnterpriseConnectionStrategies;
-}
+type EnterpriseConnectionDetails =
+  | IdpSpecificConnectionTypeDetails
+  | SAMLConnectionTypeDetails;
 
 export async function createEnterpriseConnection(
   auth: Authenticator,
-  verifiedDomain: string | null,
+  verifiedDomain: string,
   connectionDetails: EnterpriseConnectionDetails
 ): Promise<Connection> {
   const owner = auth.getNonNullableWorkspace();
@@ -49,12 +58,15 @@ export async function createEnterpriseConnection(
     strategy: connectionDetails.strategy,
     options: {
       ...getCreateConnectionPayloadFromConnectionDetails(connectionDetails),
-      domain_aliases: verifiedDomain ? [verifiedDomain] : [],
+      domain_aliases: [verifiedDomain],
       scope: "email profile openid",
     },
     is_domain_connection: false,
     realms: [],
-    enabled_clients: [config.getAuth0WebApplicationId()],
+    enabled_clients: [
+      config.getAuth0WebApplicationId(),
+      config.getAuth0ExtensionApplicationId(),
+    ],
     metadata: {},
   });
 
@@ -95,9 +107,13 @@ function getCreateConnectionPayloadFromConnectionDetails(
       };
 
     case "samlp":
-      throw new Error("SAML connections creation is not supported.");
+      return {
+        strategy: connectionDetails.strategy,
+        signingCert: connectionDetails.x509SignInCertificate,
+        signInEndpoint: connectionDetails.signInUrl,
+      };
 
     default:
-      assertNever(connectionDetails.strategy);
+      assertNever(connectionDetails);
   }
 }

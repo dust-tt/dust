@@ -1,7 +1,6 @@
 import type { ModelId } from "@dust-tt/types";
 import {
   getGoogleSheetTableId,
-  getSanitizedHeaders,
   InvalidStructuredDataHeaderError,
   slugify,
 } from "@dust-tt/types";
@@ -13,11 +12,15 @@ import { google } from "googleapis";
 import type { OAuth2Client } from "googleapis-common";
 
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
+import { getInternalId } from "@connectors/connectors/google_drive/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
-import { MAX_FILE_SIZE_TO_DOWNLOAD } from "@connectors/lib/data_sources";
-import { deleteTable, upsertTableFromCsv } from "@connectors/lib/data_sources";
-import { ProviderWorkflowError } from "@connectors/lib/error";
+import {
+  deleteDataSourceTable,
+  MAX_FILE_SIZE_TO_DOWNLOAD,
+  upsertDataSourceTableFromCsv,
+} from "@connectors/lib/data_sources";
+import { ProviderWorkflowError, TablesError } from "@connectors/lib/error";
 import type { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
 import { GoogleDriveSheet } from "@connectors/lib/models/google_drive";
 import type { Logger } from "@connectors/logger/logger";
@@ -45,14 +48,14 @@ async function upsertSheetInDb(connector: ConnectorResource, sheet: Sheet) {
   });
 }
 
-async function upsertTable(
+async function upsertGdriveTable(
   connector: ConnectorResource,
   sheet: Sheet,
   parents: string[],
   rows: string[][],
   loggerArgs: object
 ) {
-  const dataSourceConfig = await dataSourceConfigFromConnector(connector);
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
   const { id, spreadsheet, title } = sheet;
   const tableId = getGoogleSheetTableId(spreadsheet.id, id);
@@ -67,7 +70,7 @@ async function upsertTable(
 
   // Upserting is safe: Core truncates any previous table with the same Id before
   // the operation. Note: Renaming a sheet in Google Drive retains its original Id.
-  await upsertTableFromCsv({
+  await upsertDataSourceTableFromCsv({
     dataSourceConfig,
     tableId,
     tableName,
@@ -80,6 +83,10 @@ async function upsertTable(
     },
     truncate: true,
     parents: [tableId, ...parents],
+    parentId: parents[0] || null,
+    useAppForHeaderDetection: true,
+    title: `${spreadsheet.title} - ${title}`,
+    mimeType: "application/vnd.google-apps.spreadsheet",
   });
 
   logger.info(loggerArgs, "[Spreadsheet] Table upserted.");
@@ -87,30 +94,20 @@ async function upsertTable(
 
 function findDataRangeAndSelectRows(allRows: string[][]): string[][] {
   // Find the first row with data to determine the range.
-  const firstNonEmptyRow = allRows.find((row) =>
+  const nonEmptyRow = allRows.filter((row) =>
     row.some((cell) => cell.trim() !== "")
   );
-  if (!firstNonEmptyRow) {
-    return []; // No data found.
-  }
 
-  // Identify the range of data: Start at the first non-empty cell and end at the nearest following empty cell or row end.
-  const startIndex = firstNonEmptyRow.findIndex((cell) => cell.trim() !== "");
-  let endIndex = firstNonEmptyRow.findIndex(
-    (cell, idx) => idx > startIndex && cell.trim() === ""
-  );
-  if (endIndex === -1) {
-    endIndex = firstNonEmptyRow.length;
-  }
-
-  // Select only rows and columns within the data range.
-  return allRows
-    .map((row) => row.slice(startIndex, endIndex))
-    .filter((row) => row.some((cell) => cell.trim() !== ""));
+  return nonEmptyRow;
 }
 
 function getValidRows(allRows: string[][], loggerArgs: object): string[][] {
   const filteredRows = findDataRangeAndSelectRows(allRows);
+
+  const maxCols = filteredRows.reduce(
+    (acc, row) => (row.length > acc ? row.length : acc),
+    0
+  );
 
   // We assume that the first row is always the headers.
   // Headers are used to assert the number of cells per row.
@@ -124,23 +121,11 @@ function getValidRows(allRows: string[][], loggerArgs: object): string[][] {
   }
 
   try {
-    const headers = getSanitizedHeaders(rawHeaders);
-
-    const validRows: string[][] = filteredRows.map((row, index) => {
-      // Return raw headers.
-      if (index === 0) {
-        return headers;
-      }
-
+    const validRows: string[][] = filteredRows.map((row) => {
       // If a row has less cells than headers, we fill the gap with empty strings.
-      if (row.length < headers.length) {
-        const shortfall = headers.length - row.length;
+      if (row.length < maxCols) {
+        const shortfall = maxCols - row.length;
         return [...row, ...Array(shortfall).fill("")];
-      }
-
-      // If a row has more cells than headers we truncate the row.
-      if (row.length > headers.length) {
-        return row.slice(0, headers.length);
       }
 
       return row;
@@ -197,10 +182,26 @@ async function processSheet(
     "[Spreadsheet] Processing sheet in Google Spreadsheet."
   );
 
-  const rows = await getValidRows(sheet.values, loggerArgs);
+  const rows = getValidRows(sheet.values, loggerArgs);
   // Assuming the first line as headers, at least one additional data line is required.
   if (rows.length > 1) {
-    await upsertTable(connector, sheet, parents, rows, loggerArgs);
+    try {
+      await upsertGdriveTable(connector, sheet, parents, rows, loggerArgs);
+    } catch (err) {
+      if (err instanceof TablesError) {
+        logger.warn(
+          { ...loggerArgs, error: err },
+          "[Spreadsheet] Tables error - skipping (but not failing)."
+        );
+        return false;
+      } else {
+        logger.error(
+          { ...loggerArgs, error: err },
+          "[Spreadsheet] Failed to upsert table."
+        );
+        throw err;
+      }
+    }
 
     await upsertSheetInDb(connector, sheet);
 
@@ -459,6 +460,17 @@ export async function syncSpreadSheet(
               // Allow to locally retry the API call.
               continue;
             }
+          } else if (
+            err instanceof Error &&
+            "code" in err &&
+            err.code === 404
+          ) {
+            localLogger.info(
+              "[Spreadsheet] Consistently getting 404 Not Found from Google Sheets, skipping further processing."
+            );
+            return {
+              isSupported: false,
+            };
           }
 
           throw err;
@@ -479,17 +491,14 @@ export async function syncSpreadSheet(
         },
       });
 
-      const parents = [
-        file.id,
-        ...(
-          await getFileParentsMemoized(
-            connectorId,
-            oauth2client,
-            file,
-            startSyncTs
-          )
-        ).map((f) => f.id),
-      ];
+      const parentGoogleIds = await getFileParentsMemoized(
+        connectorId,
+        oauth2client,
+        file,
+        startSyncTs
+      );
+
+      const parents = parentGoogleIds.map((parent) => getInternalId(parent));
 
       const successfulSheetIdImports: number[] = [];
       for (const sheet of sheets) {
@@ -539,7 +548,7 @@ async function deleteSheetForSpreadsheet(
   );
 
   // First remove the upserted table in core.
-  await deleteTable({
+  await deleteDataSourceTable({
     dataSourceConfig,
     tableId: getGoogleSheetTableId(spreadsheetFileId, sheet.driveSheetId),
     loggerArgs: {

@@ -1,16 +1,24 @@
-import { AssistantPreview, Button, RobotIcon, Spinner } from "@dust-tt/sparkle";
+import {
+  AssistantCard,
+  AssistantCardMore,
+  Button,
+  CardGrid,
+  RobotIcon,
+  Spinner,
+  useSendNotification,
+} from "@dust-tt/sparkle";
 import type {
   LightAgentConfigurationType,
   UserMessageType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { useContext, useMemo, useState } from "react";
+import { useRouter } from "next/router";
+import { useCallback, useMemo, useState } from "react";
 
-import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
+import { setQueryParam } from "@app/lib/utils/router";
 
 interface AgentSuggestionProps {
   conversationId: string;
@@ -25,12 +33,14 @@ export function AgentSuggestion({
 }: AgentSuggestionProps) {
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
-    agentsGetView: { conversationId: conversationId },
+    agentsGetView: "list",
     includes: ["authors", "usage"],
   });
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
 
   const [isLoading, setIsLoading] = useState(false);
+
+  const router = useRouter();
 
   const { submit: handleSelectSuggestion } = useSubmitFunction(
     async (agent: LightAgentConfigurationType) => {
@@ -72,21 +82,20 @@ export function AgentSuggestion({
     return [agents.slice(0, 3), agents.slice(3)];
   }, [agentConfigurations]);
 
-  const [showAssistantDetail, setShowAssistantDetail] =
-    useState<LightAgentConfigurationType | null>(null);
+  const showAssistantDetails = useCallback(
+    (agentConfiguration: LightAgentConfigurationType) => {
+      setQueryParam(router, "assistantDetails", agentConfiguration.sId);
+    },
+    [router]
+  );
 
   return (
     <>
-      <AssistantDetails
-        assistantId={showAssistantDetail?.sId || null}
-        owner={owner}
-        onClose={() => setShowAssistantDetail(null)}
-      />
       <div className="pt-4">
-        <div className="flex items-center gap-2">
-          <span className="grow text-sm text-element-800">
+        <div className="flex items-center gap-2 pb-2">
+          <p className="grow text-base text-muted-foreground">
             Which Assistant would you like to chat with?
-          </span>
+          </p>
           <AssistantPicker
             owner={owner}
             assistants={otherAgents}
@@ -99,11 +108,11 @@ export function AgentSuggestion({
             }}
             pickerButton={
               <Button
-                variant="tertiary"
-                size="xs"
+                variant="outline"
+                size="sm"
                 icon={RobotIcon}
                 label="Select another"
-                type="menu"
+                isSelect
               />
             }
           />
@@ -114,20 +123,24 @@ export function AgentSuggestion({
             <Spinner />
           </div>
         ) : (
-          <div className="mt-3 grid gap-2 md:grid-cols-3">
+          <CardGrid>
             {topAgents.map((agent, id) => (
-              <AssistantPreview
+              <AssistantCard
                 key={`${agent.sId}-${id}`}
-                variant="minimal"
                 description={agent.description}
                 subtitle={agent.lastAuthors?.join(", ") ?? ""}
                 title={agent.name}
                 pictureUrl={agent.pictureUrl}
                 onClick={() => handleSelectSuggestion(agent)}
-                onActionClick={() => setShowAssistantDetail(agent)}
+                variant="secondary"
+                action={
+                  <AssistantCardMore
+                    onClick={() => showAssistantDetails(agent)}
+                  />
+                }
               />
             ))}
-          </div>
+          </CardGrid>
         )}
       </div>
     </>
@@ -142,6 +155,13 @@ function sortAgents(
   a: LightAgentConfigurationType,
   b: LightAgentConfigurationType
 ) {
+  // Place favorites first
+  if (a.userFavorite && !b.userFavorite) {
+    return -1;
+  }
+  if (b.userFavorite && !a.userFavorite) {
+    return 1;
+  }
   if (a.sId === "dust") {
     return -1;
   } else if (b.sId === "dust") {

@@ -19,27 +19,38 @@ import {
   CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
+  DEEPSEEK_CHAT_MODEL_CONFIG,
   GEMINI_PRO_DEFAULT_MODEL_CONFIG,
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
+  GLOBAL_AGENTS_SID,
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4O_MODEL_CONFIG,
   isProviderWhitelisted,
   MISTRAL_LARGE_MODEL_CONFIG,
   MISTRAL_MEDIUM_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
+  O1_HIGH_REASONING_MODEL_CONFIG,
+  O1_MINI_MODEL_CONFIG,
+  O1_MODEL_CONFIG,
 } from "@dust-tt/types";
 
 import {
+  DEFAULT_BROWSE_ACTION_DESCRIPTION,
   DEFAULT_BROWSE_ACTION_NAME,
   DEFAULT_RETRIEVAL_ACTION_NAME,
+  DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
   DEFAULT_WEBSEARCH_ACTION_NAME,
-} from "@app/lib/api/assistant/actions/names";
-import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
+} from "@app/lib/api/assistant/actions/constants";
+import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
+import {
+  PRODUCTION_DUST_APPS_HELPER_DATASOURCE_VIEW_ID,
+  PRODUCTION_DUST_APPS_WORKSPACE_ID,
+} from "@app/lib/registry";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { VaultResource } from "@app/lib/resources/vault_resource";
 import logger from "@app/logger/logger";
 
 // Used when returning an agent with status 'disabled_by_admin'
@@ -50,7 +61,7 @@ const dummyModelConfiguration = {
 };
 
 type PrefetchedDataSourcesType = {
-  dataSourceViews: DataSourceViewType[];
+  dataSourceViews: (DataSourceViewType & { isInGlobalSpace: boolean })[];
   workspaceId: string;
 };
 
@@ -86,27 +97,42 @@ class HelperAssistantPrompt {
 
 async function getDataSourcesAndWorkspaceIdForGlobalAgents(
   auth: Authenticator
-): Promise<{
-  dataSourceViews: DataSourceViewType[];
-  workspaceId: string;
-}> {
+): Promise<PrefetchedDataSourcesType> {
   const owner = auth.getNonNullableWorkspace();
-
-  const defaultVaults = [await VaultResource.fetchWorkspaceGlobalVault(auth)];
-  const dataSourceViews = await DataSourceViewResource.listByVaults(
-    auth,
-    defaultVaults
-  );
+  const dsvs = await DataSourceViewResource.listAssistantDefaultSelected(auth);
 
   return {
-    dataSourceViews: dataSourceViews.map((dsv) => {
+    dataSourceViews: dsvs.map((dsv) => {
       return {
         ...dsv.toJSON(),
-        assistantDefaultSelected: dsv.dataSource.assistantDefaultSelected,
+        isInGlobalSpace: dsv.space.isGlobal(),
       };
     }),
     workspaceId: owner.sId,
   };
+}
+
+function _getDefaultWebActionsForGlobalAgent({
+  agentSid,
+}: {
+  agentSid: GLOBAL_AGENTS_SID;
+}): [AgentActionConfigurationType, AgentActionConfigurationType] {
+  return [
+    {
+      id: -1,
+      sId: agentSid + "-search-action",
+      type: "websearch_configuration",
+      name: DEFAULT_WEBSEARCH_ACTION_NAME,
+      description: DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
+    },
+    {
+      id: -1,
+      sId: agentSid + "-browse-action",
+      type: "browse_configuration",
+      name: DEFAULT_BROWSE_ACTION_NAME,
+      description: DEFAULT_BROWSE_ACTION_DESCRIPTION,
+    },
+  ];
 }
 
 /**
@@ -161,22 +187,37 @@ function _getHelperGlobalAgent({
     instructions: prompt,
     pictureUrl: "https://dust.tt/static/systemavatar/helper_avatar_full.png",
     status: status,
-    userListStatus: "in-list",
+    userFavorite: false,
     scope: "global",
     model: model,
     actions: [
       {
         id: -1,
-        sId: GLOBAL_AGENTS_SID.HELPER + "-websearch-action",
-        type: "websearch_configuration",
-        name: DEFAULT_WEBSEARCH_ACTION_NAME,
-        description: null,
+        sId: GLOBAL_AGENTS_SID.HELPER + "-datasource-action",
+        type: "retrieval_configuration",
+        query: "auto",
+        relativeTimeFrame: "auto",
+        topK: "auto",
+        dataSources: [
+          {
+            dataSourceViewId: PRODUCTION_DUST_APPS_HELPER_DATASOURCE_VIEW_ID,
+            workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
+            filter: { parents: null },
+          },
+        ],
+        name: "search_dust_docs",
+        description: `The documentation of the Dust platform.`,
       },
+      ..._getDefaultWebActionsForGlobalAgent({
+        agentSid: GLOBAL_AGENTS_SID.HELPER,
+      }),
     ],
-    maxStepsPerRun: 0,
-    visualizationEnabled: false,
+    maxStepsPerRun: 3,
+    visualizationEnabled: true,
     templateId: null,
+    // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
+    requestedGroupIds: [],
   };
 }
 
@@ -198,17 +239,23 @@ function _getGPT35TurboGlobalAgent({
     pictureUrl: "https://dust.tt/static/systemavatar/gpt3_avatar_full.png",
     status,
     scope: "global",
-    userListStatus: status === "active" ? "in-list" : "not-in-list",
+    userFavorite: false,
     model: {
       providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
       modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
-    actions: [],
-    maxStepsPerRun: 0,
-    visualizationEnabled: false,
+    actions: [
+      ..._getDefaultWebActionsForGlobalAgent({
+        agentSid: GLOBAL_AGENTS_SID.GPT35_TURBO,
+      }),
+    ],
+    maxStepsPerRun: 3,
+    visualizationEnabled: true,
     templateId: null,
+    // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
+    requestedGroupIds: [],
   };
 }
 function _getGPT4GlobalAgent({
@@ -239,17 +286,142 @@ function _getGPT4GlobalAgent({
     pictureUrl: "https://dust.tt/static/systemavatar/gpt4_avatar_full.png",
     status,
     scope: "global",
-    userListStatus: status === "active" ? "in-list" : "not-in-list",
+    userFavorite: false,
     model: {
       providerId: GPT_4O_MODEL_CONFIG.providerId,
       modelId: GPT_4O_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
+    actions: [
+      ..._getDefaultWebActionsForGlobalAgent({
+        agentSid: GLOBAL_AGENTS_SID.GPT4,
+      }),
+    ],
+    maxStepsPerRun: 3,
+    visualizationEnabled: true,
+    templateId: null,
+    // TODO(2024-11-04 flav) `groupId` clean-up.
+    groupIds: [],
+    requestedGroupIds: [],
+  };
+}
+function _getO1GlobalAgent({
+  auth,
+  settings,
+}: {
+  auth: Authenticator;
+  settings: GlobalAgentSettings | null;
+}): AgentConfigurationType {
+  let status = settings?.status ?? "active";
+  if (!auth.isUpgraded()) {
+    status = "disabled_free_workspace";
+  }
+
+  return {
+    id: -1,
+    sId: GLOBAL_AGENTS_SID.O1,
+    version: 0,
+    versionCreatedAt: null,
+    versionAuthorId: null,
+    name: "o1",
+    description: O1_MODEL_CONFIG.description,
+    instructions: null,
+    pictureUrl: "https://dust.tt/static/systemavatar/o1_avatar_full.png",
+    status,
+    scope: "global",
+    userFavorite: false,
+    model: {
+      providerId: O1_MODEL_CONFIG.providerId,
+      modelId: O1_MODEL_CONFIG.modelId,
+      temperature: 1, // 1 is forced for O1
+    },
     actions: [],
-    maxStepsPerRun: 0,
+    maxStepsPerRun: 3,
     visualizationEnabled: false,
     templateId: null,
+    // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
+    requestedGroupIds: [],
+  };
+}
+function _getO1MiniGlobalAgent({
+  auth,
+  settings,
+}: {
+  auth: Authenticator;
+  settings: GlobalAgentSettings | null;
+}): AgentConfigurationType {
+  let status = settings?.status ?? "active";
+  if (!auth.isUpgraded()) {
+    status = "disabled_free_workspace";
+  }
+
+  return {
+    id: -1,
+    sId: GLOBAL_AGENTS_SID.O1_MINI,
+    version: 0,
+    versionCreatedAt: null,
+    versionAuthorId: null,
+    name: "o1-mini",
+    description: O1_MINI_MODEL_CONFIG.description,
+    instructions: null,
+    pictureUrl: "https://dust.tt/static/systemavatar/o1_avatar_full.png",
+    status,
+    scope: "global",
+    userFavorite: false,
+    model: {
+      providerId: O1_MINI_MODEL_CONFIG.providerId,
+      modelId: O1_MINI_MODEL_CONFIG.modelId,
+      temperature: 1, // 1 is forced for O1
+    },
+    actions: [],
+    maxStepsPerRun: 3,
+    visualizationEnabled: false,
+    templateId: null,
+    // TODO(2024-11-04 flav) `groupId` clean-up.
+    groupIds: [],
+    requestedGroupIds: [],
+  };
+}
+
+function _getO1HighReasoningGlobalAgent({
+  auth,
+  settings,
+}: {
+  auth: Authenticator;
+  settings: GlobalAgentSettings | null;
+}): AgentConfigurationType {
+  let status = settings?.status ?? "active";
+  if (!auth.isUpgraded()) {
+    status = "disabled_free_workspace";
+  }
+
+  return {
+    id: -1,
+    sId: GLOBAL_AGENTS_SID.O1_HIGH_REASONING,
+    version: 0,
+    versionCreatedAt: null,
+    versionAuthorId: null,
+    name: "o1-high-reasoning",
+    description: O1_HIGH_REASONING_MODEL_CONFIG.description,
+    instructions: null,
+    pictureUrl: "https://dust.tt/static/systemavatar/o1_avatar_full.png",
+    status,
+    scope: "global",
+    userFavorite: false,
+    model: {
+      providerId: O1_HIGH_REASONING_MODEL_CONFIG.providerId,
+      modelId: O1_HIGH_REASONING_MODEL_CONFIG.modelId,
+      temperature: 1, // 1 is forced for O1
+      reasoningEffort: O1_HIGH_REASONING_MODEL_CONFIG.reasoningEffort,
+    },
+    actions: [],
+    maxStepsPerRun: 3,
+    visualizationEnabled: false,
+    templateId: null,
+    // TODO(2024-11-04 flav) `groupId` clean-up.
+    groupIds: [],
+    requestedGroupIds: [],
   };
 }
 
@@ -271,17 +443,19 @@ function _getClaudeInstantGlobalAgent({
     pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
     status,
     scope: "global",
-    userListStatus: status === "active" ? "in-list" : "not-in-list",
+    userFavorite: false,
     model: {
       providerId: CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG.providerId,
       modelId: CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
     actions: [],
-    maxStepsPerRun: 0,
-    visualizationEnabled: false,
+    maxStepsPerRun: 3,
+    visualizationEnabled: true,
     templateId: null,
+    // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
+    requestedGroupIds: [],
   };
 }
 
@@ -309,7 +483,7 @@ function _getClaude2GlobalAgent({
     pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
     status,
     scope: "global",
-    userListStatus: status === "active" ? "in-list" : "not-in-list",
+    userFavorite: false,
     model: {
       providerId: CLAUDE_2_DEFAULT_MODEL_CONFIG.providerId,
       modelId: CLAUDE_2_DEFAULT_MODEL_CONFIG.modelId,
@@ -317,10 +491,12 @@ function _getClaude2GlobalAgent({
     },
 
     actions: [],
-    maxStepsPerRun: 0,
-    visualizationEnabled: false,
+    maxStepsPerRun: 3,
+    visualizationEnabled: true,
     templateId: null,
+    // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
+    requestedGroupIds: [],
   };
 }
 
@@ -343,17 +519,19 @@ function _getClaude3HaikuGlobalAgent({
     pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
     status,
     scope: "global",
-    userListStatus: status === "active" ? "in-list" : "not-in-list",
+    userFavorite: false,
     model: {
       providerId: CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG.providerId,
       modelId: CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
     actions: [],
-    maxStepsPerRun: 0,
-    visualizationEnabled: false,
+    maxStepsPerRun: 3,
+    visualizationEnabled: true,
     templateId: null,
+    // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
+    requestedGroupIds: [],
   };
 }
 
@@ -381,17 +559,19 @@ function _getClaude3OpusGlobalAgent({
     pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
     status,
     scope: "global",
-    userListStatus: status === "active" ? "in-list" : "not-in-list",
+    userFavorite: false,
     model: {
       providerId: CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG.providerId,
       modelId: CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
     actions: [],
-    maxStepsPerRun: 0,
-    visualizationEnabled: false,
+    maxStepsPerRun: 3,
+    visualizationEnabled: true,
     templateId: null,
+    // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
+    requestedGroupIds: [],
   };
 }
 
@@ -415,11 +595,14 @@ function _getClaude3GlobalAgent({
     versionAuthorId: null,
     name: "claude-3",
     description: CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.description,
-    instructions: null,
+    instructions:
+      "Only use visualization if it is strictly necessary to visualize " +
+      "data or if it was explicitly requested by the user. " +
+      "Do not use visualization if markdown is sufficient.",
     pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
     status,
     scope: "global",
-    userListStatus: status === "active" ? "in-list" : "not-in-list",
+    userFavorite: false,
     model: {
       providerId: CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.providerId,
       modelId: CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.modelId,
@@ -427,10 +610,12 @@ function _getClaude3GlobalAgent({
     },
 
     actions: [],
-    maxStepsPerRun: 0,
-    visualizationEnabled: false,
+    maxStepsPerRun: 3,
+    visualizationEnabled: true,
     templateId: null,
+    // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
+    requestedGroupIds: [],
   };
 }
 
@@ -458,17 +643,23 @@ function _getMistralLargeGlobalAgent({
     pictureUrl: "https://dust.tt/static/systemavatar/mistral_avatar_full.png",
     status,
     scope: "global",
-    userListStatus: status === "active" ? "in-list" : "not-in-list",
+    userFavorite: false,
     model: {
       providerId: MISTRAL_LARGE_MODEL_CONFIG.providerId,
       modelId: MISTRAL_LARGE_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
-    actions: [],
-    maxStepsPerRun: 0,
-    visualizationEnabled: false,
+    actions: [
+      ..._getDefaultWebActionsForGlobalAgent({
+        agentSid: GLOBAL_AGENTS_SID.MISTRAL_LARGE,
+      }),
+    ],
+    maxStepsPerRun: 3,
+    visualizationEnabled: true,
     templateId: null,
+    // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
+    requestedGroupIds: [],
   };
 }
 
@@ -496,17 +687,23 @@ function _getMistralMediumGlobalAgent({
     pictureUrl: "https://dust.tt/static/systemavatar/mistral_avatar_full.png",
     status,
     scope: "global",
-    userListStatus: status === "active" ? "in-list" : "not-in-list",
+    userFavorite: false,
     model: {
       providerId: MISTRAL_MEDIUM_MODEL_CONFIG.providerId,
       modelId: MISTRAL_MEDIUM_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
-    actions: [],
-    maxStepsPerRun: 0,
-    visualizationEnabled: false,
+    actions: [
+      ..._getDefaultWebActionsForGlobalAgent({
+        agentSid: GLOBAL_AGENTS_SID.MISTRAL_MEDIUM,
+      }),
+    ],
+    maxStepsPerRun: 3,
+    visualizationEnabled: true,
     templateId: null,
+    // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
+    requestedGroupIds: [],
   };
 }
 
@@ -528,17 +725,23 @@ function _getMistralSmallGlobalAgent({
     pictureUrl: "https://dust.tt/static/systemavatar/mistral_avatar_full.png",
     status,
     scope: "global",
-    userListStatus: status === "active" ? "in-list" : "not-in-list",
+    userFavorite: false,
     model: {
       providerId: MISTRAL_SMALL_MODEL_CONFIG.providerId,
       modelId: MISTRAL_SMALL_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
-    actions: [],
-    maxStepsPerRun: 0,
-    visualizationEnabled: false,
+    actions: [
+      ..._getDefaultWebActionsForGlobalAgent({
+        agentSid: GLOBAL_AGENTS_SID.MISTRAL_SMALL,
+      }),
+    ],
+    maxStepsPerRun: 3,
+    visualizationEnabled: true,
     templateId: null,
+    // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
+    requestedGroupIds: [],
   };
 }
 
@@ -565,17 +768,68 @@ function _getGeminiProGlobalAgent({
     pictureUrl: "https://dust.tt/static/systemavatar/gemini_avatar_full.png",
     status,
     scope: "global",
-    userListStatus: status === "active" ? "in-list" : "not-in-list",
+    userFavorite: false,
     model: {
       providerId: GEMINI_PRO_DEFAULT_MODEL_CONFIG.providerId,
       modelId: GEMINI_PRO_DEFAULT_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
-    actions: [],
-    maxStepsPerRun: 0,
+    actions: [
+      ..._getDefaultWebActionsForGlobalAgent({
+        agentSid: GLOBAL_AGENTS_SID.GEMINI_PRO,
+      }),
+    ],
+    maxStepsPerRun: 3,
+    visualizationEnabled: true,
+    templateId: null,
+    // TODO(2024-11-04 flav) `groupId` clean-up.
+    groupIds: [],
+    requestedGroupIds: [],
+  };
+}
+
+function _getDeepSeekGlobalAgent({
+  auth,
+  settings,
+}: {
+  auth: Authenticator;
+  settings: GlobalAgentSettings | null;
+}): AgentConfigurationType {
+  let status = settings?.status ?? "disabled_by_admin";
+  if (!auth.isUpgraded()) {
+    status = "disabled_free_workspace";
+  }
+
+  return {
+    id: -1,
+    sId: GLOBAL_AGENTS_SID.DEEPSEEK,
+    version: 0,
+    versionCreatedAt: null,
+    versionAuthorId: null,
+    name: "deepseek",
+    description: DEEPSEEK_CHAT_MODEL_CONFIG.description,
+    instructions:
+      "Only use web search if the user's question require recent or up to date information. Browse a maximum of 8 web pages.",
+    pictureUrl: "https://dust.tt/static/systemavatar/deepseek_avatar_full.png",
+    status,
+    scope: "global",
+    userFavorite: false,
+    model: {
+      providerId: DEEPSEEK_CHAT_MODEL_CONFIG.providerId,
+      modelId: DEEPSEEK_CHAT_MODEL_CONFIG.modelId,
+      temperature: 0.7,
+    },
+    actions: [
+      ..._getDefaultWebActionsForGlobalAgent({
+        agentSid: GLOBAL_AGENTS_SID.DEEPSEEK,
+      }),
+    ],
+    maxStepsPerRun: 3,
     visualizationEnabled: false,
     templateId: null,
+    // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
+    requestedGroupIds: [],
   };
 }
 
@@ -636,13 +890,15 @@ function _getManagedDataSourceAgent(
       pictureUrl,
       status: "disabled_by_admin",
       scope: "global",
-      userListStatus: "not-in-list",
+      userFavorite: false,
       model,
       actions: [],
       maxStepsPerRun: 0,
       visualizationEnabled: false,
       templateId: null,
+      // TODO(2024-11-04 flav) `groupId` clean-up.
       groupIds: [],
+      requestedGroupIds: [],
     };
   }
 
@@ -663,13 +919,15 @@ function _getManagedDataSourceAgent(
       pictureUrl,
       status: "disabled_missing_datasource",
       scope: "global",
-      userListStatus: "not-in-list",
+      userFavorite: false,
       model,
       actions: [],
       maxStepsPerRun: 0,
       visualizationEnabled: false,
       templateId: null,
+      // TODO(2024-11-04 flav) `groupId` clean-up.
       groupIds: [],
+      requestedGroupIds: [],
     };
   }
 
@@ -685,7 +943,7 @@ function _getManagedDataSourceAgent(
     pictureUrl,
     status: "active",
     scope: "global",
-    userListStatus: "in-list",
+    userFavorite: false,
     model,
     actions: [
       {
@@ -696,7 +954,7 @@ function _getManagedDataSourceAgent(
         relativeTimeFrame: "auto",
         topK: "auto",
         dataSources: filteredDataSourceViews.map((dsView) => ({
-          dataSourceId: dsView.dataSource.name,
+          dataSourceId: dsView.dataSource.sId,
           dataSourceViewId: dsView.sId,
           workspaceId: preFetchedDataSources.workspaceId,
           filter: { tags: null, parents: null },
@@ -708,7 +966,9 @@ function _getManagedDataSourceAgent(
     maxStepsPerRun: 1,
     visualizationEnabled: false,
     templateId: null,
+    // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
+    requestedGroupIds: [],
   };
 }
 
@@ -849,15 +1109,9 @@ function _getDustGlobalAgent(
   const description = "An assistant with context on your company data.";
   const pictureUrl = "https://dust.tt/static/systemavatar/dust_avatar_full.png";
 
-  const modelConfiguration = (() => {
-    // If we can use Sonnet 3.5, we use it. Otherwise we use the default model.
-    if (auth.isUpgraded() && isProviderWhitelisted(owner, "anthropic")) {
-      return CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG;
-    }
-    return auth.isUpgraded()
-      ? getLargeWhitelistedModel(owner)
-      : getSmallWhitelistedModel(owner);
-  })();
+  const modelConfiguration = auth.isUpgraded()
+    ? getLargeWhitelistedModel(owner)
+    : getSmallWhitelistedModel(owner);
 
   const model: AgentModelConfigurationType = modelConfiguration
     ? {
@@ -883,13 +1137,19 @@ function _getDustGlobalAgent(
       pictureUrl,
       status: "disabled_by_admin",
       scope: "global",
-      userListStatus: "not-in-list",
+      userFavorite: false,
       model,
-      actions: [],
+      actions: [
+        ..._getDefaultWebActionsForGlobalAgent({
+          agentSid: GLOBAL_AGENTS_SID.DUST,
+        }),
+      ],
       maxStepsPerRun: 0,
-      visualizationEnabled: false,
+      visualizationEnabled: true,
       templateId: null,
+      // TODO(2024-11-04 flav) `groupId` clean-up.
       groupIds: [],
+      requestedGroupIds: [],
     };
   }
 
@@ -910,13 +1170,15 @@ function _getDustGlobalAgent(
       pictureUrl,
       status: "disabled_missing_datasource",
       scope: "global",
-      userListStatus: "not-in-list",
+      userFavorite: false,
       model,
       actions: [],
       maxStepsPerRun: 0,
-      visualizationEnabled: false,
+      visualizationEnabled: true,
       templateId: null,
+      // TODO(2024-11-04 flav) `groupId` clean-up.
       groupIds: [],
+      requestedGroupIds: [],
     };
   }
 
@@ -938,7 +1200,7 @@ function _getDustGlobalAgent(
       relativeTimeFrame: "auto",
       topK: "auto",
       dataSources: dataSourceViews.map((dsView) => ({
-        dataSourceId: dsView.dataSource.name,
+        dataSourceId: dsView.dataSource.sId,
         dataSourceViewId: dsView.sId,
         workspaceId: preFetchedDataSources.workspaceId,
         filter: { parents: null },
@@ -948,28 +1210,32 @@ function _getDustGlobalAgent(
     },
   ];
 
-  // Then we push one action per managed data source to have better results when users ask "search in <data_source>"
-  // Hack: We prefix the action names with "hidden_" to hide it from the user in the UI otherwise data sources are displayed twice.
+  // Add one action per managed data source to improve search results for queries like
+  // "search in <data_source>".
+  // Only include data sources from the global space to limit actions for the same
+  // data source.
+  // Hack: Prefix action names with "hidden_" to prevent them from appearing in the UI,
+  // avoiding duplicate display of data sources.
   dataSourceViews.forEach((dsView) => {
     if (
       dsView.dataSource.connectorProvider &&
-      dsView.dataSource.connectorProvider !== "webcrawler"
+      dsView.dataSource.connectorProvider !== "webcrawler" &&
+      dsView.isInGlobalSpace
     ) {
       actions.push({
         id: -1,
         sId:
           GLOBAL_AGENTS_SID.DUST +
           "-datasource-action-" +
-          dsView.dataSource.name,
+          dsView.dataSource.sId,
         type: "retrieval_configuration",
         query: "auto",
         relativeTimeFrame: "auto",
         topK: "auto",
         dataSources: [
           {
-            dataSourceId: dsView.dataSource.name,
-            dataSourceViewId: dsView.sId,
             workspaceId: preFetchedDataSources.workspaceId,
+            dataSourceViewId: dsView.sId,
             filter: { parents: null },
           },
         ],
@@ -1011,13 +1277,15 @@ function _getDustGlobalAgent(
     pictureUrl,
     status: "active",
     scope: "global",
-    userListStatus: "in-list",
+    userFavorite: false,
     model,
     actions,
     maxStepsPerRun: 3,
-    visualizationEnabled: false,
+    visualizationEnabled: true,
     templateId: null,
+    // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
+    requestedGroupIds: [],
   };
 }
 
@@ -1044,6 +1312,15 @@ function getGlobalAgent(
       break;
     case GLOBAL_AGENTS_SID.GPT4:
       agentConfiguration = _getGPT4GlobalAgent({ auth, settings });
+      break;
+    case GLOBAL_AGENTS_SID.O1:
+      agentConfiguration = _getO1GlobalAgent({ auth, settings });
+      break;
+    case GLOBAL_AGENTS_SID.O1_MINI:
+      agentConfiguration = _getO1MiniGlobalAgent({ auth, settings });
+      break;
+    case GLOBAL_AGENTS_SID.O1_HIGH_REASONING:
+      agentConfiguration = _getO1HighReasoningGlobalAgent({ auth, settings });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_INSTANT:
       agentConfiguration = _getClaudeInstantGlobalAgent({ settings });
@@ -1082,6 +1359,9 @@ function getGlobalAgent(
       break;
     case GLOBAL_AGENTS_SID.GEMINI_PRO:
       agentConfiguration = _getGeminiProGlobalAgent({ auth, settings });
+      break;
+    case GLOBAL_AGENTS_SID.DEEPSEEK:
+      agentConfiguration = _getDeepSeekGlobalAgent({ auth, settings });
       break;
     case GLOBAL_AGENTS_SID.SLACK:
       agentConfiguration = _getSlackGlobalAgent(auth, {
@@ -1182,11 +1462,34 @@ export async function getGlobalAgents(
   // If agentIds have been passed we fetch those. Otherwise we fetch them all, removing the retired
   // one (which will remove these models from the list of default agents in the product + list of
   // user assistants).
-  const agentsIdsToFetch =
+  let agentsIdsToFetch =
     agentIds ??
     Object.values(GLOBAL_AGENTS_SID).filter(
       (sId) => !RETIRED_GLOABL_AGENTS_SID.includes(sId)
     );
+
+  const flags = await getFeatureFlags(owner);
+
+  if (!flags.includes("openai_o1_feature")) {
+    agentsIdsToFetch = agentsIdsToFetch.filter(
+      (sId) => sId !== GLOBAL_AGENTS_SID.O1
+    );
+  }
+  if (!flags.includes("openai_o1_mini_feature")) {
+    agentsIdsToFetch = agentsIdsToFetch.filter(
+      (sId) => sId !== GLOBAL_AGENTS_SID.O1_MINI
+    );
+  }
+  if (!flags.includes("openai_o1_high_reasoning_feature")) {
+    agentsIdsToFetch = agentsIdsToFetch.filter(
+      (sId) => sId !== GLOBAL_AGENTS_SID.O1_HIGH_REASONING
+    );
+  }
+  if (!flags.includes("deepseek_feature")) {
+    agentsIdsToFetch = agentsIdsToFetch.filter(
+      (sId) => sId !== GLOBAL_AGENTS_SID.DEEPSEEK
+    );
+  }
 
   // For now we retrieve them all
   // We will store them in the database later to allow admin enable them or not
@@ -1209,6 +1512,18 @@ export async function getGlobalAgents(
       isProviderWhitelisted(owner, agentFetcherResult.model.providerId)
     ) {
       globalAgents.push(agentFetcherResult);
+    }
+  }
+
+  // add user's favorite status to the agents if needed
+  const user = auth.user();
+  if (user) {
+    const favoriteStates = await getFavoriteStates(auth, {
+      configurationIds: globalAgents.map((agent) => agent.sId),
+    });
+
+    for (const agent of globalAgents) {
+      agent.userFavorite = !!favoriteStates.get(agent.sId);
     }
   }
 

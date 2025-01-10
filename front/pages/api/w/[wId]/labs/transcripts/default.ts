@@ -3,14 +3,15 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
 import { acceptableTranscriptProvidersCodec } from "@app/pages/api/w/[wId]/labs/transcripts";
 
-const PROVIDERS_WITH_WORKSPACE_CONFIGURATIONS = ["gong"];
+const PROVIDERS_WITH_WORKSPACE_CONFIGURATIONS = ["gong", "modjo"];
 
 export const GetDefaultTranscriptsConfigurationBodySchema = t.type({
   provider: acceptableTranscriptProvidersCodec,
@@ -24,8 +25,9 @@ async function handler(
   auth: Authenticator
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
+  const flags = await getFeatureFlags(owner);
 
-  if (!owner.flags.includes("labs_transcripts")) {
+  if (!flags.includes("labs_transcripts")) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {
@@ -59,12 +61,8 @@ async function handler(
         });
 
       if (!transcriptsConfiguration) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "transcripts_configuration_not_found",
-            message: "The transcripts configuration was not found.",
-          },
+        return res.status(200).json({
+          configuration: null,
         });
       }
 

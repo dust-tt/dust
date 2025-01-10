@@ -41,6 +41,9 @@ export type LimitsType = {
   users: {
     maxUsers: number;
   };
+  vaults: {
+    maxVaults: number;
+  };
   canUseProduct: boolean;
 };
 
@@ -102,6 +105,7 @@ export const CreatePlanFormSchema = t.type({
   dataSourcesDocumentsCount: t.union([t.number, NumberFromString]),
   dataSourcesDocumentsSizeMb: t.union([t.number, NumberFromString]),
   maxUsers: t.union([t.number, NumberFromString]),
+  maxVaults: t.union([t.number, NumberFromString]),
 });
 
 export type CreatePlanFormType = t.TypeOf<typeof CreatePlanFormSchema>;

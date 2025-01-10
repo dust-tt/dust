@@ -7,32 +7,31 @@ import {
   PlusIcon,
   SliderToggle,
 } from "@dust-tt/sparkle";
+import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   APIError,
   DataSourceType,
   LightAgentConfigurationType,
+  SpaceType,
   SubscriptionType,
   WorkspaceType,
 } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import { useContext } from "react";
 
-import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import config from "@app/lib/api/config";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
-import { useDataSources } from "@app/lib/swr/data_sources";
+import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
-  gaTrackingId: string;
+  globalSpace: SpaceType;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
@@ -43,11 +42,13 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
+  const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+
   return {
     props: {
       owner,
       subscription,
-      gaTrackingId: config.getGaTrackingId(),
+      globalSpace: globalSpace.toJSON(),
     },
   };
 });
@@ -55,26 +56,45 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 export default function EditDustAssistant({
   owner,
   subscription,
-  gaTrackingId,
+  globalSpace,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
 
-  const { agentConfigurations, mutateAgentConfigurations } =
-    useAgentConfigurations({
+  const {
+    agentConfigurations,
+    mutateRegardlessOfQueryParams: mutateAgentConfigurations,
+  } = useAgentConfigurations({
+    workspaceId: owner.sId,
+    agentsGetView: "global",
+  });
+
+  const { spaceDataSourceViews, mutate: mutateDataSourceViews } =
+    useSpaceDataSourceViews({
       workspaceId: owner.sId,
-      agentsGetView: "global",
+      spaceId: globalSpace.sId,
     });
-  const { dataSources, mutateDataSources } = useDataSources(owner);
 
-  const sortedDatasources = dataSources.sort((a, b) => {
-    if (a.connectorProvider && !b.connectorProvider) {
+  const sortedDatasources = spaceDataSourceViews.sort((a, b) => {
+    if (a.dataSource.connectorProvider && !b.dataSource.connectorProvider) {
       return -1;
     }
-    if (!a.connectorProvider && b.connectorProvider) {
+    if (!a.dataSource.connectorProvider && b.dataSource.connectorProvider) {
       return 1;
     }
-    return a.name.localeCompare(b.name);
+    if (
+      a.dataSource.connectorProvider === "webcrawler" &&
+      b.dataSource.connectorProvider !== "webcrawler"
+    ) {
+      return 1;
+    }
+    if (
+      a.dataSource.connectorProvider !== "webcrawler" &&
+      b.dataSource.connectorProvider === "webcrawler"
+    ) {
+      return -1;
+    }
+    return a.dataSource.name.localeCompare(b.dataSource.name);
   });
 
   const dustAgentConfiguration = agentConfigurations?.find(
@@ -128,7 +148,7 @@ export default function EditDustAssistant({
     dataSource: DataSourceType
   ) => {
     const res = await fetch(
-      `/api/w/${owner.sId}/data_sources/${dataSource.name}`,
+      `/api/w/${owner.sId}/data_sources/${dataSource.sId}`,
       {
         method: "POST",
         headers: {
@@ -143,7 +163,7 @@ export default function EditDustAssistant({
         `Failed to update the Data Source (contact support@dust.tt for assistance) (internal error: type=${err.error.type} message=${err.error.message})`
       );
     }
-    await mutateDataSources();
+    await mutateDataSourceViews();
     await mutateAgentConfigurations();
   };
 
@@ -152,11 +172,6 @@ export default function EditDustAssistant({
       subscription={subscription}
       hideSidebar
       owner={owner}
-      gaTrackingId={gaTrackingId}
-      subNavigation={subNavigationBuild({
-        owner,
-        current: "workspace_assistants",
-      })}
       titleChildren={
         <AppLayoutSimpleCloseTitle
           title="Manage Dust Assistant"
@@ -174,11 +189,11 @@ export default function EditDustAssistant({
       />
       <div className="flex flex-col space-y-8 pb-8 pt-8">
         <div className="flex w-full flex-col gap-4">
-          {!!dataSources.length && (
+          {!!spaceDataSourceViews.length && (
             <>
               <Page.SectionHeader
                 title="Availability"
-                description="The Dust assistant requres at least one data source to be enabled."
+                description="The Dust assistant requires at least one data source to be enabled."
               />
 
               <ContextItem
@@ -204,38 +219,40 @@ export default function EditDustAssistant({
               />
             </>
           )}
-          {dataSources.length &&
+          {spaceDataSourceViews.length &&
           dustAgentConfiguration?.status !== "disabled_by_admin" ? (
             <>
               <Page.SectionHeader
                 title="Data Sources and Connections"
-                description="Configure which connections and data sources will be searched by the Dust assistant."
+                description="Configure which Company Data connections and data sources will be searched by the Dust assistant."
               />
               <>
                 {
                   <ContextItem.List>
-                    {sortedDatasources.map((ds) => (
+                    {sortedDatasources.map((dsView) => (
                       <ContextItem
-                        key={ds.id}
-                        title={getDisplayNameForDataSource(ds)}
+                        key={dsView.id}
+                        title={getDisplayNameForDataSource(dsView.dataSource)}
                         visual={
                           <ContextItem.Visual
                             visual={getConnectorProviderLogoWithFallback(
-                              ds.connectorProvider,
+                              dsView.dataSource.connectorProvider,
                               CloudArrowDownIcon
                             )}
                           />
                         }
                         action={
                           <SliderToggle
-                            selected={ds.assistantDefaultSelected}
+                            selected={
+                              dsView.dataSource.assistantDefaultSelected
+                            }
                             onClick={async () => {
                               await updateDatasourceSettings(
                                 {
                                   assistantDefaultSelected:
-                                    !ds.assistantDefaultSelected,
+                                    !dsView.dataSource.assistantDefaultSelected,
                                 },
-                                ds
+                                dsView.dataSource
                               );
                             }}
                           />
@@ -251,14 +268,14 @@ export default function EditDustAssistant({
             <>
               <Page.SectionHeader
                 title="This workspace doesn't currently have any data sources."
-                description="Add connections or data sources to enable the Dust assistant."
+                description="Add Company Data connections or data sources to enable the Dust assistant."
                 action={{
-                  label: "Add connections",
+                  label: "Add data",
                   variant: "primary",
                   icon: PlusIcon,
                   onClick: async () => {
                     await router.push(
-                      `/w/${owner.sId}/builder/data-sources/managed`
+                      `/w/${owner.sId}/spaces/${globalSpace.sId}`
                     );
                   },
                 }}

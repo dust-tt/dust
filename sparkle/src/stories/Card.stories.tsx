@@ -1,0 +1,147 @@
+import type { Meta } from "@storybook/react";
+import React, { ComponentType } from "react";
+
+import { Card, Icon } from "@sparkle/components";
+import {
+  CARD_VARIANTS,
+  CARD_VARIANTS_SIZES,
+  CardActionButton,
+  CardGrid,
+} from "@sparkle/components/Card";
+import {
+  BookOpenIcon,
+  BracesIcon,
+  CommandLineIcon,
+  MagnifyingGlassIcon,
+  PlanetIcon,
+  ScanIcon,
+  TableIcon,
+  XMarkIcon,
+} from "@sparkle/icons";
+
+const meta = {
+  title: "Primitives/Card",
+  component: Card,
+} satisfies Meta<typeof Card>;
+
+export default meta;
+
+export const Demo = () => {
+  const variants = CARD_VARIANTS;
+  const sizes = CARD_VARIANTS_SIZES;
+
+  return (
+    <div className="s-flex s-flex-col s-gap-8">
+      {variants.map((variant) => (
+        <div key={variant} className="s-flex s-flex-col s-gap-4">
+          <h3 className="s-text-lg s-font-semibold">
+            {variant.charAt(0).toUpperCase() + variant.slice(1)} Variant
+          </h3>
+          <div className="s-flex s-gap-4">
+            {sizes.map((size) => (
+              <div>
+                <Card
+                  key={size}
+                  variant={variant}
+                  size={size}
+                  onClick={() => {
+                    console.log(
+                      `Button clicked - Size: ${size}, Variant: ${variant}`
+                    );
+                  }}
+                >
+                  Hello World
+                </Card>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+export const InteractiveStates = () => (
+  <div className="s-flex s-gap-4">
+    <Card
+      variant="primary"
+      onClick={() => alert("Primary Clicked")}
+      className="s-hover:bg-primary-200"
+    >
+      Hover/Active
+    </Card>
+    <Card variant="secondary" disabled>
+      Disabled
+    </Card>
+  </div>
+);
+
+interface CardData {
+  icon: ComponentType<{ className?: string }>;
+  title: string;
+  description: string;
+}
+
+const cardData: CardData[] = [
+  {
+    icon: MagnifyingGlassIcon,
+    title: "Search",
+    description: "Architecture Projects Descriptions",
+  },
+  {
+    icon: TableIcon,
+    title: "Table Query",
+    description: "Find product references",
+  },
+  {
+    icon: PlanetIcon,
+    title: "Web",
+    description: "Search & browse the web",
+  },
+  {
+    icon: BracesIcon,
+    title: "Code Interpreter",
+    description: "Write a description for it",
+  },
+  {
+    icon: CommandLineIcon,
+    title: "Dust App",
+    description: "Dust App Name",
+  },
+  {
+    icon: BookOpenIcon,
+    title: "Include",
+    description: "Description of the Data",
+  },
+  {
+    icon: ScanIcon,
+    title: "Extract Data",
+    description: "Description of the Data",
+  },
+];
+
+export const ActionCardDemo: React.FC = () => (
+  <CardGrid>
+    {cardData.map((card, index) => (
+      <Card
+        key={index}
+        variant="primary"
+        size="md"
+        onClick={() => {
+          alert(`You clicked on ${card.title}`);
+        }}
+        action={<CardActionButton size="mini" icon={XMarkIcon} />}
+      >
+        <div className="s-flex s-w-full s-flex-col s-gap-1 s-text-sm">
+          <div className="s-flex s-w-full s-gap-1 s-font-medium s-text-foreground">
+            <Icon visual={card.icon} size="sm" />
+            <div className="s-w-full">{card.title}</div>
+          </div>
+          <div className="s-w-full s-truncate s-text-sm s-text-muted-foreground">
+            {card.description}
+          </div>
+        </div>
+      </Card>
+    ))}
+  </CardGrid>
+);

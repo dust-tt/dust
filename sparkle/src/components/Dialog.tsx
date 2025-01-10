@@ -7,36 +7,52 @@ import { classNames } from "@sparkle/lib/utils";
 
 import { Button } from "./Button";
 
-export type ModalProps = {
-  title: string;
-  children: React.ReactNode;
-  isOpen: boolean;
-  onCancel: () => void;
-  onValidate: () => void;
-  cancelLabel?: string;
-  validateLabel?: string;
-  validateVariant?: "primary" | "primaryWarning";
-  isSaving?: boolean;
+export type BaseDialogProps = {
   backgroundType?: "confetti" | "snow" | "none";
+  children: React.ReactNode;
+  disabled?: boolean;
+  isOpen: boolean;
+  isSaving?: boolean;
+  onValidate: () => void;
+  title: string;
+  validateLabel?: string;
+  validateVariant?: React.ComponentProps<typeof Button>["variant"];
+  cancelLabel?: string;
+};
+
+export type DialogProps = BaseDialogProps & {
+  alertDialog?: false;
+  onCancel: () => void;
+};
+
+export type AlertDialogProps = BaseDialogProps & {
+  alertDialog: true;
+  onCancel?: () => void;
 };
 
 export function Dialog({
-  isOpen,
+  backgroundType = "none",
   children,
-  onCancel,
-  onValidate,
-  cancelLabel = "Cancel",
+  disabled,
+  isOpen,
+  isSaving,
+  title,
   validateLabel = "Ok",
   validateVariant = "primary",
-  title,
-  isSaving,
-  backgroundType = "none",
-}: ModalProps) {
+  onValidate,
+  ...props
+}: AlertDialogProps | DialogProps) {
   const referentRef = useRef<HTMLDivElement>(null);
 
   return (
     <Transition show={isOpen} as={Fragment} appear={true}>
-      <HeadlessDialog as="div" className="s-relative s-z-50" onClose={onCancel}>
+      <HeadlessDialog
+        as="div"
+        className="s-relative s-z-50"
+        // If it's an alert dialog, we don't want to close it when clicking outside.
+        onClose={props.alertDialog ? () => {} : props.onCancel}
+        role={props.alertDialog ? "alertdialog" : "dialog"}
+      >
         <Transition.Child
           as={Fragment}
           enter="s-ease-out s-duration-150"
@@ -68,22 +84,23 @@ export function Dialog({
                 )}
                 ref={referentRef}
               >
-                <HeadlessDialog.Title className="s-text-element-950 s-truncate s-text-lg s-font-medium">
+                <HeadlessDialog.Title className="s-truncate s-text-lg s-font-medium s-text-element-950">
                   {title}
                 </HeadlessDialog.Title>
-                <div className="s-z-10 s-text-base s-text-element-700">
-                  {children}
-                </div>
-                <div className="s-z-10 s-flex s-w-full s-justify-end">
-                  <Button.List>
+                <div className="s-text-base s-text-element-700">{children}</div>
+                <div className="s-flex s-w-full s-justify-end">
+                  <div className="s-flex s-gap-2">
                     {!isSaving && (
                       <>
+                        {props.onCancel && (
+                          <Button
+                            label={props.cancelLabel ?? "Cancel"}
+                            variant="outline"
+                            onClick={props.onCancel}
+                          />
+                        )}
                         <Button
-                          label={cancelLabel}
-                          variant="tertiary"
-                          onClick={onCancel}
-                        />
-                        <Button
+                          disabled={disabled}
                           label={validateLabel}
                           variant={validateVariant}
                           onClick={onValidate}
@@ -91,7 +108,7 @@ export function Dialog({
                       </>
                     )}
                     {isSaving && <Spinner variant="color" />}
-                  </Button.List>
+                  </div>
                 </div>
                 {backgroundType !== "none" && (
                   <div className="s-absolute s-bottom-0 s-left-0 s-right-0 s-top-0 s-z-0">

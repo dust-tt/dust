@@ -1,14 +1,21 @@
 import {
+  BarChartIcon,
   Button,
   ChatBubbleBottomCenterTextIcon,
+  classNames,
   DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   LightbulbIcon,
   MagicIcon,
   Markdown,
   MoreIcon,
   Page,
   Spinner,
-  Tab,
+  Tabs,
+  TabsList,
+  TabsTrigger,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import type {
@@ -17,11 +24,12 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { Separator } from "@radix-ui/react-select";
-import { useContext, useEffect, useMemo } from "react";
+import { useContext, useEffect } from "react";
 
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
+import { FeedbacksSection } from "@app/components/assistant_builder/FeedbacksSection";
 import {
   usePreviewAssistant,
   useTryAssistantCore,
@@ -36,8 +44,21 @@ import { getDefaultActionConfiguration } from "@app/components/assistant_builder
 import { ConfirmContext } from "@app/components/Confirm";
 import { ACTION_SPECIFICATIONS } from "@app/lib/api/assistant/actions/utils";
 import { useUser } from "@app/lib/swr/user";
-import { classNames } from "@app/lib/utils";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates/[tId]";
+
+interface AssistantBuilderRightPanelProps {
+  screen: BuilderScreen;
+  template: FetchAssistantTemplateResponse | null;
+  removeTemplate: () => Promise<void>;
+  resetToTemplateInstructions: () => Promise<void>;
+  resetToTemplateActions: () => Promise<void>;
+  owner: WorkspaceType;
+  rightPanelStatus: AssistantBuilderRightPanelStatus;
+  openRightPanelTab: (tabName: AssistantBuilderRightPanelTab) => void;
+  builderState: AssistantBuilderState;
+  agentConfigurationId: string | null;
+  setAction: (action: AssistantBuilderSetActionType) => void;
+}
 
 export default function AssistantBuilderRightPanel({
   screen,
@@ -49,41 +70,9 @@ export default function AssistantBuilderRightPanel({
   rightPanelStatus,
   openRightPanelTab,
   builderState,
+  agentConfigurationId,
   setAction,
-}: {
-  screen: BuilderScreen;
-  template: FetchAssistantTemplateResponse | null;
-  removeTemplate: () => Promise<void>;
-  resetToTemplateInstructions: () => Promise<void>;
-  resetToTemplateActions: () => Promise<void>;
-  owner: WorkspaceType;
-  rightPanelStatus: AssistantBuilderRightPanelStatus;
-  openRightPanelTab: (tabName: AssistantBuilderRightPanelTab) => void;
-  builderState: AssistantBuilderState;
-  setAction: (action: AssistantBuilderSetActionType) => void;
-}) {
-  const tabsConfig = useMemo(
-    () => [
-      {
-        label: "Template",
-        current: rightPanelStatus.tab === "Template",
-        onClick: () => {
-          openRightPanelTab("Template");
-        },
-        icon: MagicIcon,
-      },
-      {
-        label: "Preview",
-        current: rightPanelStatus.tab === "Preview",
-        onClick: () => {
-          openRightPanelTab("Preview");
-        },
-        icon: ChatBubbleBottomCenterTextIcon,
-      },
-    ],
-    [rightPanelStatus.tab, openRightPanelTab]
-  );
-
+}: AssistantBuilderRightPanelProps) {
   const {
     shouldAnimate: shouldAnimatePreviewDrawer,
     draftAssistant,
@@ -119,16 +108,39 @@ export default function AssistantBuilderRightPanel({
 
   return (
     <div className="flex h-full flex-col">
-      {template && (
-        <div className="shrink-0 bg-white pt-5">
-          <Tab tabs={tabsConfig} variant="default" className="hidden lg:flex" />
-        </div>
-      )}
+      <div className="shrink-0 bg-white pt-5">
+        <Tabs
+          value={rightPanelStatus.tab ?? "Preview"}
+          onValueChange={(t) =>
+            openRightPanelTab(t as AssistantBuilderRightPanelTab)
+          }
+          className="hidden lg:flex"
+        >
+          <TabsList className="inline-flex items-center gap-2 border-b border-separator">
+            {template && (
+              <TabsTrigger value="Template" label="Template" icon={MagicIcon} />
+            )}
+            {/* The agentConfigurationId is truthy iff not a new assistant */}
+            {agentConfigurationId && (
+              <TabsTrigger
+                value="Performance"
+                label="Performance"
+                icon={BarChartIcon}
+              />
+            )}
+            <TabsTrigger
+              value="Preview"
+              label="Preview"
+              icon={ChatBubbleBottomCenterTextIcon}
+            />
+          </TabsList>
+        </Tabs>
+      </div>
       <div
         className={classNames(
           template !== null
-            ? "grow-1 mb-5 h-full overflow-y-auto rounded-b-xl border-x border-b border-structure-200 bg-structure-50 pt-5"
-            : "grow-1 mb-5 mt-5 h-full overflow-y-auto rounded-xl border border-structure-200 bg-structure-50",
+            ? "grow-1 mb-5 h-full overflow-y-auto rounded-b-xl border-x border-b border-structure-200 pt-5"
+            : "grow-1 mb-5 mt-5 h-full overflow-y-auto rounded-xl border border-structure-200",
           shouldAnimatePreviewDrawer &&
             rightPanelStatus.tab === "Preview" &&
             rightPanelStatus.openedAt != null &&
@@ -136,7 +148,8 @@ export default function AssistantBuilderRightPanel({
             // This is to prevent the animation from triggering right after the drawer is opened.
             Date.now() - rightPanelStatus.openedAt > 1000
             ? "animate-reload"
-            : ""
+            : "",
+          rightPanelStatus.tab !== "Performance" ? "bg-structure-50" : ""
         )}
       >
         {(rightPanelStatus.tab === "Preview" || screen === "naming") &&
@@ -152,7 +165,6 @@ export default function AssistantBuilderRightPanel({
                         conversationId={conversation.sId}
                         onStickyMentionsChange={setStickyMentions}
                         isInModal
-                        hideReactions
                         isFading={isFading}
                         key={conversation.sId}
                       />
@@ -225,8 +237,7 @@ export default function AssistantBuilderRightPanel({
                     <div>
                       <Markdown
                         content={template?.helpActions ?? ""}
-                        className=""
-                        size="sm"
+                        textSize="sm"
                       />
                     </div>
                     <Separator />
@@ -265,6 +276,15 @@ export default function AssistantBuilderRightPanel({
               </div>
             </div>
           )}
+        {rightPanelStatus.tab === "Performance" && agentConfigurationId && (
+          <div className="ml-4 mt-4">
+            <Page.SectionHeader title="Feedback" />
+            <FeedbacksSection
+              owner={owner}
+              agentConfigurationId={agentConfigurationId}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -288,50 +308,44 @@ const TemplateAddActionButton = ({
         icon={spec.cardIcon}
         label={`Add tool “${spec.label}”`}
         size="sm"
-        variant="secondary"
+        variant="outline"
         onClick={() => addAction(action)}
       />
     </div>
   );
 };
 
-const TemplateDropDownMenu = ({
-  screen,
-  removeTemplate,
-  resetToTemplateInstructions,
-  resetToTemplateActions,
-  openRightPanelTab,
-}: {
-  screen: BuilderScreen;
-  removeTemplate: () => Promise<void>;
-  resetToTemplateInstructions: () => Promise<void>;
-  resetToTemplateActions: () => Promise<void>;
+interface TemplateDropDownMenuProps {
   openRightPanelTab: (tabName: AssistantBuilderRightPanelTab) => void;
-}) => {
+  removeTemplate: () => Promise<void>;
+  resetToTemplateActions: () => Promise<void>;
+  resetToTemplateInstructions: () => Promise<void>;
+  screen: BuilderScreen;
+}
+
+const TemplateDropDownMenu = ({
+  openRightPanelTab,
+  removeTemplate,
+  resetToTemplateActions,
+  resetToTemplateInstructions,
+  screen,
+}: TemplateDropDownMenuProps) => {
   const confirm = useContext(ConfirmContext);
 
   return (
-    <DropdownMenu className="text-element-700">
-      <DropdownMenu.Button>
-        <Button
-          icon={MoreIcon}
-          label="Actions"
-          labelVisible={false}
-          disabledTooltip
-          size="sm"
-          variant="tertiary"
-          hasMagnifying={false}
-        />
-      </DropdownMenu.Button>
-      <DropdownMenu.Items width={320} origin="topRight">
-        <DropdownMenu.Item
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button icon={MoreIcon} size="sm" variant="ghost" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
+        <DropdownMenuItem
           label="Close the template"
           onClick={async () => {
             const confirmed = await confirm({
               title: "Are you sure you want to close the template?",
               message:
                 "Your assistant will remain as it is but will not display template's help any more.",
-              validateVariant: "primaryWarning",
+              validateVariant: "warning",
             });
             if (confirmed) {
               openRightPanelTab("Preview");
@@ -341,7 +355,7 @@ const TemplateDropDownMenu = ({
           icon={XMarkIcon}
         />
         {screen === "instructions" && (
-          <DropdownMenu.Item
+          <DropdownMenuItem
             label="Reset instructions"
             description="Set instructions back to template's default"
             onClick={async () => {
@@ -349,7 +363,7 @@ const TemplateDropDownMenu = ({
                 title: "Are you sure?",
                 message:
                   "You will lose the changes you have made to the assistant's instructions and go back to the template's default settings.",
-                validateVariant: "primaryWarning",
+                validateVariant: "warning",
               });
               if (confirmed) {
                 await resetToTemplateInstructions();
@@ -359,15 +373,15 @@ const TemplateDropDownMenu = ({
           />
         )}
         {screen === "actions" && (
-          <DropdownMenu.Item
-            label={"Reset tools"}
-            description={"Remove all tools"}
+          <DropdownMenuItem
+            label="Reset tools"
+            description="Remove all tools"
             onClick={async () => {
               const confirmed = await confirm({
                 title: "Are you sure?",
                 message:
                   "You will lose the changes you have made to the assistant's tools.",
-                validateVariant: "primaryWarning",
+                validateVariant: "warning",
               });
               if (confirmed) {
                 await resetToTemplateActions();
@@ -376,7 +390,7 @@ const TemplateDropDownMenu = ({
             icon={MagicIcon}
           />
         )}
-      </DropdownMenu.Items>
+      </DropdownMenuContent>
     </DropdownMenu>
   );
 };

@@ -1,4 +1,5 @@
-import { Spinner } from "@dust-tt/sparkle";
+import { Input } from "@dust-tt/sparkle";
+import { Checkbox, Spinner } from "@dust-tt/sparkle";
 import type { CreatePlanFormType, WorkspaceType } from "@dust-tt/types";
 import { CreatePlanFormSchema, removeNulls } from "@dust-tt/types";
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
@@ -9,7 +10,6 @@ import { useForm } from "react-hook-form";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { PokeButton } from "@app/components/poke/shadcn/ui/button";
-import { PokeCheckbox } from "@app/components/poke/shadcn/ui/checkbox";
 import {
   PokeForm,
   PokeFormControl,
@@ -18,7 +18,6 @@ import {
   PokeFormLabel,
   PokeFormMessage,
 } from "@app/components/poke/shadcn/ui/form";
-import { PokeInput } from "@app/components/poke/shadcn/ui/input";
 import {
   PokeSelect,
   PokeSelectContent,
@@ -51,6 +50,7 @@ export default function CreatePlanForm({ owner }: { owner: WorkspaceType }) {
       dataSourcesDocumentsCount: -1,
       dataSourcesDocumentsSizeMb: 2,
       maxUsers: 1000,
+      maxVaults: 1,
     },
   });
 
@@ -237,24 +237,29 @@ function InputField({
     <PokeFormField
       control={control}
       name={name}
-      render={({ field }) => (
-        <PokeFormItem>
-          <PokeFormLabel className="capitalize">{title ?? name}</PokeFormLabel>
-          <PokeFormControl>
-            <PokeInput
-              placeholder={placeholder ?? name}
-              type={type}
-              {...field}
-              value={
-                typeof field.value === "boolean"
-                  ? field.value.toString()
-                  : field.value
-              }
-            />
-          </PokeFormControl>
-          <PokeFormMessage />
-        </PokeFormItem>
-      )}
+      render={({ field }) => {
+        const { onChange, value, ...rest } = field;
+
+        return (
+          <PokeFormItem>
+            <PokeFormLabel className="capitalize">
+              {title ?? name}
+            </PokeFormLabel>
+            <PokeFormControl>
+              <Input
+                placeholder={placeholder ?? name}
+                type={type}
+                onChange={(e) => {
+                  onChange(e.target.value);
+                }}
+                value={value.toString()}
+                {...rest}
+              />
+            </PokeFormControl>
+            <PokeFormMessage />
+          </PokeFormItem>
+        );
+      }}
     />
   );
 }
@@ -277,7 +282,7 @@ function CheckboxField({
         <PokeFormItem>
           <PokeFormLabel className="capitalize">{title ?? name}</PokeFormLabel>
           <PokeFormControl>
-            <PokeCheckbox
+            <Checkbox
               checked={!!field.value}
               onCheckedChange={field.onChange}
             />

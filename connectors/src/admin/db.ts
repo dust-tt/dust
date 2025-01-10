@@ -43,18 +43,32 @@ import {
   NotionPage,
 } from "@connectors/lib/models/notion";
 import {
+  RemoteDatabaseModel,
+  RemoteSchemaModel,
+  RemoteTableModel,
+} from "@connectors/lib/models/remote_databases";
+import {
   SlackBotWhitelistModel,
   SlackChannel,
   SlackChatBotMessage,
   SlackConfigurationModel,
   SlackMessages,
 } from "@connectors/lib/models/slack";
+import { SnowflakeConfigurationModel } from "@connectors/lib/models/snowflake";
 import {
   WebCrawlerConfigurationHeader,
   WebCrawlerConfigurationModel,
   WebCrawlerFolder,
   WebCrawlerPage,
 } from "@connectors/lib/models/webcrawler";
+import {
+  ZendeskArticle,
+  ZendeskBrand,
+  ZendeskCategory,
+  ZendeskConfiguration,
+  ZendeskTicket,
+  ZendeskTimestampCursor,
+} from "@connectors/lib/models/zendesk";
 import logger from "@connectors/logger/logger";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
@@ -103,6 +117,16 @@ async function main(): Promise<void> {
   await WebCrawlerFolder.sync({ alter: true });
   await WebCrawlerPage.sync({ alter: true });
   await WebCrawlerConfigurationHeader.sync({ alter: true });
+  await SnowflakeConfigurationModel.sync({ alter: true });
+  await RemoteDatabaseModel.sync({ alter: true });
+  await RemoteSchemaModel.sync({ alter: true });
+  await RemoteTableModel.sync({ alter: true });
+  await ZendeskTimestampCursor.sync({ alter: true });
+  await ZendeskConfiguration.sync({ alter: true });
+  await ZendeskBrand.sync({ alter: true });
+  await ZendeskCategory.sync({ alter: true });
+  await ZendeskArticle.sync({ alter: true });
+  await ZendeskTicket.sync({ alter: true });
 
   // enable the `unaccent` extension
   await sequelizeConnection.query("CREATE EXTENSION IF NOT EXISTS unaccent;");

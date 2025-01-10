@@ -1,156 +1,46 @@
-import { Dialog } from "@dust-tt/sparkle";
+import { Dialog, useSendNotification } from "@dust-tt/sparkle";
 import type {
   LightAgentConfigurationType,
   PostOrPatchAgentConfigurationRequestBody,
+  WorkspaceType,
 } from "@dust-tt/types";
-import type { WorkspaceType } from "@dust-tt/types";
-import { useContext } from "react";
 
-import { assistantUsageMessage } from "@app/components/assistant/Usage";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { updateAgentUserListStatus } from "@app/lib/client/dust_api";
-import { useAgentConfiguration, useAgentUsage } from "@app/lib/swr/assistants";
+import {
+  useAgentConfiguration,
+  useUpdateUserFavorite,
+} from "@app/lib/swr/assistants";
 
-export function DeleteAssistantDialog({
-  owner,
-  agentConfigurationId,
-  show,
-  onClose,
-  onDelete,
-  isPrivateAssistant,
-}: {
-  owner: WorkspaceType;
-  agentConfigurationId: string;
-  show: boolean;
-  onClose: () => void;
-  onDelete: () => void;
-  isPrivateAssistant?: boolean;
-}) {
-  const sendNotification = useContext(SendNotificationsContext);
-  const { agentConfiguration } = useAgentConfiguration({
-    workspaceId: owner.sId,
-    agentConfigurationId,
-  });
-  const agentUsage = useAgentUsage({
-    workspaceId: owner.sId,
-    agentConfigurationId,
-  });
-  return (
-    <Dialog
-      isOpen={show}
-      title={`Deleting the assistant`}
-      onCancel={onClose}
-      validateLabel={
-        isPrivateAssistant ? "Delete the assistant" : "Delete for everyone"
-      }
-      validateVariant="primaryWarning"
-      onValidate={async () => {
-        try {
-          const res = await fetch(
-            `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}`,
-            {
-              method: "DELETE",
-            }
-          );
-          if (!res.ok) {
-            const data = await res.json();
-            sendNotification({
-              title: "Error deleting Assistant",
-              description: data.error.message,
-              type: "error",
-            });
-          } else {
-            sendNotification({
-              title: "Assistant deleted",
-              type: "success",
-            });
-            onDelete();
-          }
-        } catch (e) {
-          sendNotification({
-            title: "Error deleting Assistant",
-            description: (e as Error).message,
-            type: "error",
-          });
-        }
-
-        onClose();
-      }}
-    >
-      <div className="flex flex-col gap-2">
-        <div>
-          {isPrivateAssistant ? (
-            "Deleting the assistant will be permanent."
-          ) : (
-            <div>
-              <span className="font-bold">
-                {agentUsage &&
-                  assistantUsageMessage({
-                    usage: agentUsage.agentUsage,
-                    isError: agentUsage.isAgentUsageError,
-                    isLoading: agentUsage.isAgentUsageLoading,
-                    assistantName: agentConfiguration?.name ?? "",
-                  })}
-              </span>{" "}
-              This will permanently delete the assistant for everyone.
-            </div>
-          )}
-        </div>
-        <div className="font-bold">Are you sure you want to proceed?</div>
-      </div>
-    </Dialog>
-  );
-}
-
-export function RemoveAssistantFromListDialog({
+export function RemoveAssistantFromFavoritesDialog({
   owner,
   agentConfiguration,
   show,
   onClose,
-  onRemove,
 }: {
   owner: WorkspaceType;
   agentConfiguration: LightAgentConfigurationType;
   show: boolean;
   onClose: () => void;
-  onRemove: () => void;
 }) {
-  const sendNotification = useContext(SendNotificationsContext);
+  const { updateUserFavorite } = useUpdateUserFavorite({
+    owner,
+    agentConfigurationId: agentConfiguration.sId,
+  });
 
   return (
     <Dialog
       isOpen={show}
-      title={`Remove from my list`}
+      title={`Remove from favorites`}
       onCancel={onClose}
       validateLabel="Remove"
-      validateVariant="primaryWarning"
+      validateVariant="warning"
       onValidate={async () => {
-        const { errorMessage, success } = await updateAgentUserListStatus({
-          listStatus: "not-in-list",
-          owner,
-          agentConfigurationId: agentConfiguration.sId,
-        });
-
-        if (success) {
-          sendNotification({
-            title: `Assistant removed from your list`,
-            type: "success",
-          });
-          onRemove();
-        } else {
-          sendNotification({
-            title: `Error removing Assistant`,
-            description: errorMessage,
-            type: "error",
-          });
-        }
-
+        void updateUserFavorite(false);
         onClose();
       }}
     >
       <div>
-        This will remove the assistant from your list. You can add it back to
-        your list at any time from the Chat homepage.
+        This will remove the assistant from favorites. You can add it back at
+        any time from the Chat homepage.
       </div>
     </Dialog>
   );
@@ -169,7 +59,7 @@ export function RemoveAssistantFromWorkspaceDialog({
   onClose: () => void;
   onRemove: () => void;
 }) {
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
 
   const { agentConfiguration: detailedConfiguration } = useAgentConfiguration({
     workspaceId: owner.sId,
@@ -182,7 +72,7 @@ export function RemoveAssistantFromWorkspaceDialog({
       title={`Remove from Company assistants`}
       onCancel={onClose}
       validateLabel="Remove"
-      validateVariant="primaryWarning"
+      validateVariant="warning"
       onValidate={async () => {
         if (!detailedConfiguration) {
           throw new Error("Agent configuration not found");

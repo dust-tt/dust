@@ -2,7 +2,10 @@ import type { ModelId, Result } from "@dust-tt/types";
 import { Err, getOAuthConnectionAccessToken, Ok } from "@dust-tt/types";
 
 import type { ConfluenceSpaceType } from "@connectors/connectors/confluence/lib/confluence_client";
-import { ConfluenceClient } from "@connectors/connectors/confluence/lib/confluence_client";
+import {
+  CONFLUENCE_SUPPORTED_SPACE_TYPES,
+  ConfluenceClient,
+} from "@connectors/connectors/confluence/lib/confluence_client";
 import { apiConfig } from "@connectors/lib/api/config";
 import { ConfluenceConfiguration } from "@connectors/lib/models/confluence";
 import logger from "@connectors/logger/logger";
@@ -75,15 +78,20 @@ export async function listConfluenceSpaces(
   });
 
   const allSpaces = new Map<string, ConfluenceSpaceType>();
-  let nextPageCursor: string | null = "";
-  do {
-    const { spaces, nextPageCursor: nextCursor } =
-      await client.getGlobalSpaces(nextPageCursor);
 
-    spaces.forEach((s) => allSpaces.set(s.id, s));
+  for (const spaceType of CONFLUENCE_SUPPORTED_SPACE_TYPES) {
+    let nextPageCursor: string | null = "";
+    do {
+      const { spaces, nextPageCursor: nextCursor } = await client.getSpaces(
+        spaceType,
+        { pageCursor: nextPageCursor }
+      );
 
-    nextPageCursor = nextCursor;
-  } while (nextPageCursor);
+      spaces.forEach((s) => allSpaces.set(s.id, s));
+
+      nextPageCursor = nextCursor;
+    } while (nextPageCursor);
+  }
 
   return new Ok([...allSpaces.values()]);
 }
@@ -94,6 +102,10 @@ export async function pageHasReadRestrictions(
 ) {
   const pageReadRestrictions = await client.getPageReadRestrictions(pageId);
 
+  if (pageReadRestrictions === null) {
+    return null; // Page not found, we let the caller choose how to handle this.
+  }
+
   const hasGroupReadPermissions =
     pageReadRestrictions.restrictions.group.results.length > 0;
   const hasUserReadPermissions =
@@ -102,19 +114,76 @@ export async function pageHasReadRestrictions(
   return hasGroupReadPermissions || hasUserReadPermissions;
 }
 
-export async function getActiveChildPageIds(
-  client: ConfluenceClient,
-  parentPageId: string,
-  pageCursor: string | null
-) {
-  const { pages: childPages, nextPageCursor } = await client.getChildPages(
-    parentPageId,
-    pageCursor
-  );
+export interface ConfluencePageRef {
+  id: string;
+  version: number;
+  parentId: string | null;
+}
 
-  const childPageIds = childPages
-    .filter((p) => p.status === "current")
+const PAGE_FETCH_LIMIT = 100;
+
+export async function getActiveChildPageRefs(
+  client: ConfluenceClient,
+  {
+    pageCursor,
+    parentPageId,
+    spaceId,
+  }: {
+    pageCursor: string | null;
+    parentPageId: string;
+    spaceId: string;
+  }
+) {
+  // Fetch the child pages of the parent page.
+  const { pages: childPages, nextPageCursor } = await client.getChildPages({
+    parentPageId,
+    pageCursor,
+    limit: PAGE_FETCH_LIMIT,
+  });
+
+  const activeChildPageIds = childPages
+    .filter((p) => p.status === "current" && p.spaceId === spaceId)
     .map((p) => p.id);
 
-  return { childPageIds, nextPageCursor };
+  if (activeChildPageIds.length === 0) {
+    return { childPageRefs: [], nextPageCursor };
+  }
+
+  // Fetch the details of the child pages (version and parentId).
+  const childPageRefs = await bulkFetchConfluencePageRefs(client, {
+    limit: PAGE_FETCH_LIMIT,
+    pageIds: activeChildPageIds,
+    spaceId,
+  });
+
+  return { childPageRefs, nextPageCursor };
+}
+
+export async function bulkFetchConfluencePageRefs(
+  client: ConfluenceClient,
+  {
+    limit,
+    pageIds,
+    spaceId,
+  }: {
+    limit: number;
+    pageIds: string[];
+    spaceId: string;
+  }
+) {
+  // Fetch the details of the pages (version and parentId).
+  const pagesWithDetails = await client.getPagesByIdsInSpace({
+    spaceId,
+    sort: "id",
+    pageIds,
+    limit,
+  });
+
+  const pageRefs: ConfluencePageRef[] = pagesWithDetails.pages.map((p) => ({
+    id: p.id,
+    version: p.version.number,
+    parentId: p.parentId,
+  }));
+
+  return pageRefs;
 }

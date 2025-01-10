@@ -8,14 +8,30 @@ import {
   MicrosoftLogo,
   NotionLogo,
   SlackLogo,
+  SnowflakeLogo,
+  ZendeskLogo,
 } from "@dust-tt/sparkle";
 import type {
   ConnectorProvider,
+  DataSourceType,
   PlanType,
   WhitelistableFeature,
+  WorkspaceType,
 } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import type { ComponentType } from "react";
+
+import { GithubCodeEnableView } from "@app/components/data_source/GithubCodeEnableView";
+import { IntercomConfigView } from "@app/components/data_source/IntercomConfigView";
+import { SlackBotEnableView } from "@app/components/data_source/SlackBotEnableView";
+
+interface ConnectorOptionsProps {
+  owner: WorkspaceType;
+  readOnly: boolean;
+  isAdmin: boolean;
+  dataSource: DataSourceType;
+  plan: PlanType;
+}
 
 export type ConnectorProviderConfiguration = {
   name: string;
@@ -24,9 +40,11 @@ export type ConnectorProviderConfiguration = {
   rollingOutFlag?: WhitelistableFeature;
   hide: boolean;
   logoComponent: (props: React.SVGProps<SVGSVGElement>) => React.JSX.Element;
+  optionsComponent?: (props: ConnectorOptionsProps) => React.JSX.Element;
   description: string;
   limitations: string | null;
   guideLink: string | null;
+  selectLabel?: string;
   isNested: boolean;
   isSearchEnabled: boolean;
 };
@@ -45,6 +63,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     limitations:
       "Dust indexes pages in selected global spaces without any view restrictions. If a page, or its parent pages, have view restrictions, it won't be indexed.",
     guideLink: "https://docs.dust.tt/docs/confluence-connection",
+    selectLabel: "Select pages",
     logoComponent: ConfluenceLogo,
     isNested: true,
     isSearchEnabled: false,
@@ -58,6 +77,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       "Authorize granular access to your company's Notion workspace, by top-level pages.",
     limitations: "External files and content behind links are not indexed.",
     guideLink: "https://docs.dust.tt/docs/notion-connection",
+    selectLabel: "Select pages",
     logoComponent: NotionLogo,
     isNested: true,
     isSearchEnabled: false,
@@ -72,6 +92,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     limitations:
       "Files with empty text content or with more than 750KB of extracted text are ignored. By default, PDF files are not indexed. Email us at support@dust.tt to enable PDF indexing.",
     guideLink: "https://docs.dust.tt/docs/google-drive-connection",
+    selectLabel: "Select folders and files",
     logoComponent: DriveLogo,
     isNested: true,
     isSearchEnabled: false,
@@ -85,7 +106,9 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       "Authorize granular access to your Slack workspace on a channel-by-channel basis.",
     limitations: "External files and content behind links are not indexed.",
     guideLink: "https://docs.dust.tt/docs/slack-connection",
+    selectLabel: "Select channels",
     logoComponent: SlackLogo,
+    optionsComponent: SlackBotEnableView,
     isNested: false,
     isSearchEnabled: true,
   },
@@ -99,7 +122,9 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     limitations:
       "Dust gathers data from issues, discussions, and pull-requests (top-level discussion, but not in-code comments). It synchronizes your code only if enabled.",
     guideLink: "https://docs.dust.tt/docs/github-connection",
+    selectLabel: "Select pages",
     logoComponent: GithubLogo,
+    optionsComponent: GithubCodeEnableView,
     isNested: true,
     isSearchEnabled: false,
   },
@@ -113,7 +138,9 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     limitations:
       "Dust will index only the conversations from the selected Teams that were initiated within the past 90 days and concluded (marked as closed). For the Help Center data, Dust will index every Article published within a selected Collection.",
     guideLink: "https://docs.dust.tt/docs/intercom-connection",
+    selectLabel: "Select pages",
     logoComponent: IntercomLogo,
+    optionsComponent: IntercomConfigView,
     isNested: true,
     isSearchEnabled: false,
   },
@@ -125,8 +152,9 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     description:
       "Authorize Dust to access a Microsoft account and index shared documents stored in SharePoint, OneDrive, and Office365.",
     limitations:
-      "Dust will only index documents accessible to the account used when making the connection. Only organizational accounts are supported. At the time, personal OneDrives cannot be synced.",
+      "Dust will only index documents accessible to the account used when making the connection. Only organizational accounts are supported (Sharepoint). At the time, OneDrive cannot be synced.",
     guideLink: "https://docs.dust.tt/docs/microsoft-connection",
+    selectLabel: "Select folders and files",
     logoComponent: MicrosoftLogo,
     isNested: true,
     isSearchEnabled: false,
@@ -140,6 +168,33 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     limitations: null,
     guideLink: "https://docs.dust.tt/docs/website-connection",
     logoComponent: GlobeAltIcon,
+    isNested: true,
+    isSearchEnabled: false,
+  },
+  snowflake: {
+    name: "Snowflake",
+    connectorProvider: "snowflake",
+    status: "built",
+    hide: true,
+    description: "Query a Snowflake database.",
+    limitations: null,
+    logoComponent: SnowflakeLogo,
+    isNested: true,
+    isSearchEnabled: false,
+    guideLink: "https://docs.dust.tt/docs/snowflake-connection",
+    selectLabel: "Select tables",
+  },
+  zendesk: {
+    name: "Zendesk",
+    connectorProvider: "zendesk",
+    status: "built",
+    hide: false,
+    description:
+      "Authorize access to Zendesk for indexing tickets from your support center and articles from your help center.",
+    limitations:
+      "Dust will index the content accessible to the authorized account only. Attachments are not indexed.",
+    guideLink: "https://docs.dust.tt/docs/zendesk-connection",
+    logoComponent: ZendeskLogo,
     isNested: true,
     isSearchEnabled: false,
   },
@@ -180,6 +235,11 @@ export const isConnectorProviderAllowedForPlan = (
       return true;
     case "webcrawler":
       return plan.limits.connections.isWebCrawlerAllowed;
+    case "snowflake":
+      // TODO(SNOWFLAKE): Add a isSnowflakeAllowed column to the plan model.
+      return true;
+    case "zendesk":
+      return true;
     default:
       assertNever(provider);
   }
@@ -196,6 +256,8 @@ export const isConnectorProviderAssistantDefaultSelected = (
     case "google_drive":
     case "intercom":
     case "microsoft":
+    case "zendesk":
+    case "snowflake":
       return true;
     case "webcrawler":
       return false;
@@ -215,6 +277,8 @@ export const isConnectionIdRequiredForProvider = (
     case "google_drive":
     case "intercom":
     case "microsoft":
+    case "zendesk":
+    case "snowflake":
       return true;
     case "webcrawler":
       return false;

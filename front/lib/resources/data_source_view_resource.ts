@@ -2,26 +2,37 @@
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 import type {
-  DataSourceViewKind,
+  ConversationType,
+  DataSourceViewCategory,
   DataSourceViewType,
   ModelId,
   Result,
 } from "@dust-tt/types";
-import { Err, formatUserFullName, Ok, removeNulls } from "@dust-tt/types";
+import { formatUserFullName, Ok, removeNulls } from "@dust-tt/types";
+import assert from "assert";
 import type {
   Attributes,
   CreationAttributes,
   ModelStatic,
   Transaction,
+  WhereOptions,
 } from "sequelize";
+import { Op } from "sequelize";
 
 import { getDataSourceViewUsage } from "@app/lib/api/agent_data_sources";
-import { getDataSourceCategory } from "@app/lib/api/vaults";
 import type { Authenticator } from "@app/lib/auth";
-import { User } from "@app/lib/models/user";
+import { isFolder, isWebsite } from "@app/lib/data_sources";
+import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
+import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { ResourceWithVault } from "@app/lib/resources/resource_with_vault";
+import { GroupResource } from "@app/lib/resources/group_resource";
+import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
+import { SpaceResource } from "@app/lib/resources/space_resource";
+import { frontSequelize } from "@app/lib/resources/storage";
+import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
+import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
   getResourceIdFromSId,
@@ -29,31 +40,47 @@ import {
   makeSId,
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import type { VaultResource } from "@app/lib/resources/vault_resource";
+
+const getDataSourceCategory = (
+  dataSourceResource: DataSourceResource
+): DataSourceViewCategory => {
+  if (isFolder(dataSourceResource)) {
+    return "folder";
+  }
+
+  if (isWebsite(dataSourceResource)) {
+    return "website";
+  }
+
+  return "managed";
+};
 
 export type FetchDataSourceViewOptions = {
+  includeDeleted?: boolean;
   includeEditedBy?: boolean;
   limit?: number;
   order?: [string, "ASC" | "DESC"][];
 };
 
+type AllowedSearchColumns = "vaultId" | "dataSourceId" | "kind" | "vaultKind";
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface DataSourceViewResource
   extends ReadonlyAttributesType<DataSourceViewModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export class DataSourceViewResource extends ResourceWithVault<DataSourceViewModel> {
+export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewModel> {
   static model: ModelStatic<DataSourceViewModel> = DataSourceViewModel;
 
   private ds?: DataSourceResource;
-  readonly editedByUser?: Attributes<User>;
+  readonly editedByUser?: Attributes<UserModel>;
 
   constructor(
     model: ModelStatic<DataSourceViewModel>,
     blob: Attributes<DataSourceViewModel>,
-    vault: VaultResource,
-    { editedByUser }: { editedByUser?: Attributes<User> } = {}
+    space: SpaceResource,
+    { editedByUser }: { editedByUser?: Attributes<UserModel> } = {}
   ) {
-    super(DataSourceViewModel, blob, vault);
+    super(DataSourceViewModel, blob, space);
 
     this.editedByUser = editedByUser;
   }
@@ -62,62 +89,91 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
 
   private static async makeNew(
     auth: Authenticator,
-    blob: Omit<CreationAttributes<DataSourceViewModel>, "vaultId">,
-    vault: VaultResource,
-    dataSource: DataSourceResource
+    blob: Omit<
+      CreationAttributes<DataSourceViewModel>,
+      "editedAt" | "editedByUserId" | "vaultId"
+    >,
+    space: SpaceResource,
+    dataSource: DataSourceResource,
+    transaction?: Transaction
   ) {
-    const dataSourceView = await DataSourceViewResource.model.create({
-      ...blob,
-      editedByUserId: auth.getNonNullableUser().id,
-      editedAt: new Date(),
-      vaultId: vault.id,
-    });
+    const dataSourceView = await DataSourceViewResource.model.create(
+      {
+        ...blob,
+        editedByUserId: auth.user()?.id ?? null,
+        editedAt: new Date(),
+        vaultId: space.id,
+      },
+      { transaction }
+    );
 
     const dsv = new this(
       DataSourceViewResource.model,
       dataSourceView.get(),
-      vault
+      space
     );
     dsv.ds = dataSource;
     return dsv;
   }
 
-  static async createViewInVaultFromDataSource(
+  static async createDataSourceAndDefaultView(
     auth: Authenticator,
-    vault: VaultResource,
+    blob: Omit<CreationAttributes<DataSourceModel>, "editedAt" | "vaultId">,
+    space: SpaceResource
+  ) {
+    return frontSequelize.transaction(async (transaction) => {
+      const dataSource = await DataSourceResource.makeNew(
+        auth,
+        blob,
+        space,
+        transaction
+      );
+      return this.createDefaultViewInSpaceFromDataSourceIncludingAllDocuments(
+        auth,
+        dataSource.space,
+        dataSource,
+        transaction
+      );
+    });
+  }
+
+  static async createViewInSpaceFromDataSource(
+    auth: Authenticator,
+    space: SpaceResource,
     dataSource: DataSourceResource,
-    parentsIn: string[] | null
+    parentsIn: string[]
   ) {
     return this.makeNew(
       auth,
       {
         dataSourceId: dataSource.id,
         parentsIn,
-        workspaceId: vault.workspaceId,
+        workspaceId: space.workspaceId,
         kind: "custom",
       },
-      vault,
+      space,
       dataSource
     );
   }
 
   // This view has access to all documents, which is represented by null.
-  static async createViewInVaultFromDataSourceIncludingAllDocuments(
+  private static async createDefaultViewInSpaceFromDataSourceIncludingAllDocuments(
     auth: Authenticator,
-    vault: VaultResource,
+    space: SpaceResource,
     dataSource: DataSourceResource,
-    kind: DataSourceViewKind = "default"
+    transaction?: Transaction
   ) {
     return this.makeNew(
       auth,
       {
         dataSourceId: dataSource.id,
         parentsIn: null,
-        workspaceId: vault.workspaceId,
-        kind,
+        workspaceId: space.workspaceId,
+        kind: "default",
       },
-      vault,
-      dataSource
+      space,
+      dataSource,
+      transaction
     );
   }
 
@@ -131,8 +187,9 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     if (options?.includeEditedBy) {
       result.includes = [
         {
-          model: User,
+          model: UserModel,
           as: "editedByUser",
+          required: false,
         },
       ];
     }
@@ -153,9 +210,12 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     fetchDataSourceViewOptions?: FetchDataSourceViewOptions,
     options?: ResourceFindOptions<DataSourceViewModel>
   ) {
+    const { includeDeleted } = fetchDataSourceViewOptions ?? {};
+
     const dataSourceViews = await this.baseFetchWithAuthorization(auth, {
       ...this.getOptions(fetchDataSourceViewOptions),
       ...options,
+      includeDeleted,
     });
 
     const dataSourceIds = removeNulls(
@@ -179,48 +239,100 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
 
   static async listByWorkspace(
     auth: Authenticator,
-    fetchDataSourceViewOptions?: FetchDataSourceViewOptions
+    fetchDataSourceViewOptions?: FetchDataSourceViewOptions,
+    includeConversationDataSources?: boolean
   ) {
     const dataSourceViews = await this.baseFetch(
       auth,
-      fetchDataSourceViewOptions
+      fetchDataSourceViewOptions,
+      {
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+      }
     );
 
     return dataSourceViews.filter(
-      (dsv) => auth.isAdmin() || auth.hasPermission([dsv.vault.acl()], "read")
+      (dsv) =>
+        (!dsv.space.isConversations() || includeConversationDataSources) &&
+        dsv.canReadOrAdministrate(auth)
     );
   }
 
-  static async listByVault(
+  static async listBySpace(
     auth: Authenticator,
-    vault: VaultResource,
+    space: SpaceResource,
     fetchDataSourceViewOptions?: FetchDataSourceViewOptions
   ) {
-    return this.listByVaults(auth, [vault], fetchDataSourceViewOptions);
+    return this.listBySpaces(auth, [space], fetchDataSourceViewOptions);
   }
 
-  static async listByVaults(
+  static async listBySpaces(
     auth: Authenticator,
-    vaults: VaultResource[],
+    spaces: SpaceResource[],
     fetchDataSourceViewOptions?: FetchDataSourceViewOptions
   ) {
+    // We inject the auth workspaceId to make sure we rely on the associated index as there is no
+    // cross-workspace data source support at this stage.
     return this.baseFetch(auth, fetchDataSourceViewOptions, {
       where: {
-        vaultId: vaults.map((v) => v.id),
+        workspaceId: auth.getNonNullableWorkspace().id,
+        vaultId: spaces.map((s) => s.id),
       },
     });
   }
 
-  static async listForDataSourcesInVault(
+  static async listAssistantDefaultSelected(auth: Authenticator) {
+    const globalGroup = await GroupResource.fetchWorkspaceGlobalGroup(auth);
+    assert(globalGroup.isOk(), "Failed to fetch global group");
+
+    const spaces = await SpaceResource.listForGroups(auth, [globalGroup.value]);
+
+    return this.baseFetch(auth, undefined, {
+      includes: [
+        {
+          model: DataSourceModel,
+          as: "dataSourceForView",
+          required: true,
+          where: {
+            assistantDefaultSelected: true,
+          },
+        },
+      ],
+      where: {
+        vaultId: spaces.map((s) => s.id),
+      },
+    });
+  }
+
+  static async listForDataSourcesInSpace(
     auth: Authenticator,
     dataSources: DataSourceResource[],
-    vault: VaultResource,
+    space: SpaceResource,
     fetchDataSourceViewOptions?: FetchDataSourceViewOptions
   ) {
+    // We inject the auth workspaceId to make sure we rely on the associated index as there is no
+    // cross-workspace data source support at this stage.
     return this.baseFetch(auth, fetchDataSourceViewOptions, {
       where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
         dataSourceId: dataSources.map((ds) => ds.id),
-        vaultId: vault.id,
+        vaultId: space.id,
+      },
+    });
+  }
+
+  static async listForDataSources(
+    auth: Authenticator,
+    dataSources: DataSourceResource[],
+    fetchDataSourceViewOptions?: FetchDataSourceViewOptions
+  ) {
+    // We inject the auth workspaceId to make sure we rely on the associated index as there is no
+    // cross-workspace data source support at this stage.
+    return this.baseFetch(auth, fetchDataSourceViewOptions, {
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        dataSourceId: dataSources.map((ds) => ds.id),
       },
     });
   }
@@ -257,7 +369,9 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
       fetchDataSourceViewOptions,
       {
         where: {
-          id: dataSourceViewModelIds,
+          id: {
+            [Op.in]: dataSourceViewModelIds,
+          },
         },
       }
     );
@@ -265,17 +379,114 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     return dataSourceViews ?? null;
   }
 
+  static async fetchByModelIds(auth: Authenticator, ids: ModelId[]) {
+    const dataSourceViews = await this.baseFetch(
+      auth,
+      {},
+      {
+        where: {
+          id: {
+            [Op.in]: ids,
+          },
+        },
+      }
+    );
+
+    return dataSourceViews ?? null;
+  }
+
+  static async fetchByConversation(
+    auth: Authenticator,
+    conversation: ConversationType
+  ): Promise<DataSourceViewResource | null> {
+    // Fetch the data source view associated with the datasource that is associated with the conversation.
+    const dataSource = await DataSourceResource.fetchByConversation(
+      auth,
+      conversation
+    );
+    if (!dataSource) {
+      return null;
+    }
+
+    const dataSourceViews = await this.baseFetch(
+      auth,
+      {},
+      {
+        where: {
+          kind: "default",
+          dataSourceId: dataSource.id,
+        },
+      }
+    );
+
+    return dataSourceViews[0] ?? null;
+  }
+
+  static async search(
+    auth: Authenticator,
+    searchParams: {
+      [key in AllowedSearchColumns]?: string;
+    }
+  ): Promise<DataSourceViewResource[]> {
+    const owner = auth.workspace();
+    if (!owner) {
+      return [];
+    }
+
+    const whereClause: WhereOptions = {
+      workspaceId: owner.id,
+    };
+
+    for (const [key, value] of Object.entries(searchParams)) {
+      if (value) {
+        switch (key) {
+          case "dataSourceId":
+          case "vaultId":
+            const vaultModelId = getResourceIdFromSId(value);
+
+            if (vaultModelId) {
+              whereClause[key] = vaultModelId;
+            }
+            break;
+
+          case "vaultKind":
+            whereClause["$space.kind$"] = searchParams.vaultKind;
+            break;
+
+          default:
+            whereClause[key] = value;
+            break;
+        }
+      }
+    }
+
+    return this.baseFetch(
+      auth,
+      {},
+      {
+        where: whereClause,
+        order: [["updatedAt", "DESC"]],
+        includes: [
+          {
+            model: SpaceModel,
+            as: "space",
+          },
+        ],
+      }
+    );
+  }
+
   // Updating.
 
   async setEditedBy(auth: Authenticator) {
     await this.update({
-      editedByUserId: auth.getNonNullableUser().id,
+      editedByUserId: auth.user()?.id ?? null,
       editedAt: new Date(),
     });
   }
 
   private makeEditedBy(
-    editedByUser: Attributes<User> | undefined,
+    editedByUser: Attributes<UserModel> | undefined,
     editedAt: Date | undefined
   ) {
     if (!editedByUser || !editedAt) {
@@ -294,59 +505,78 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
   }
 
   async updateParents(
+    parentsToAdd: string[] = [],
+    parentsToRemove: string[] = []
+  ): Promise<Result<undefined, Error>> {
+    const currentParents = this.parentsIn || [];
+
+    // add new parents
+    const newParents = [...new Set(currentParents), ...new Set(parentsToAdd)];
+
+    // remove specified parents
+    const updatedParents = newParents.filter(
+      (parent) => !parentsToRemove.includes(parent)
+    );
+
+    await this.update({ parentsIn: updatedParents });
+
+    return new Ok(undefined);
+  }
+
+  async setParents(
     parentsIn: string[] | null
   ): Promise<Result<undefined, Error>> {
     await this.update({ parentsIn });
-
     return new Ok(undefined);
   }
 
   // Deletion.
 
-  async delete(
+  protected async softDelete(
     auth: Authenticator,
     transaction?: Transaction
-  ): Promise<Result<undefined, Error>> {
-    try {
-      await this.model.destroy({
-        where: {
-          workspaceId: auth.getNonNullableWorkspace().id,
-          id: this.id,
-        },
-        transaction,
-      });
-
-      return new Ok(undefined);
-    } catch (err) {
-      return new Err(err as Error);
-    }
-  }
-
-  static async deleteAllForWorkspace(
-    auth: Authenticator,
-    transaction?: Transaction
-  ) {
-    // TODO(GROUPS_INFRA) Delete agent_data_source_configuration and agent_tables_query_configuration.
-    return this.model.destroy({
+  ): Promise<Result<number, Error>> {
+    const deletedCount = await DataSourceViewModel.destroy({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
+        id: this.id,
+      },
+      transaction,
+      hardDelete: false,
+    });
+
+    return new Ok(deletedCount);
+  }
+
+  async hardDelete(
+    auth: Authenticator,
+    transaction?: Transaction
+  ): Promise<Result<number, Error>> {
+    // Delete agent configurations elements pointing to this data source view.
+    await AgentDataSourceConfiguration.destroy({
+      where: {
+        dataSourceViewId: this.id,
       },
       transaction,
     });
-  }
+    await AgentTablesQueryConfigurationTable.destroy({
+      where: {
+        dataSourceViewId: this.id,
+      },
+    });
 
-  static async deleteForDataSource(
-    auth: Authenticator,
-    dataSource: DataSourceResource,
-    transaction?: Transaction
-  ) {
-    return this.model.destroy({
+    const deletedCount = await DataSourceViewModel.destroy({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
-        dataSourceId: dataSource.id,
+        id: this.id,
       },
       transaction,
+      // Use 'hardDelete: true' to ensure the record is permanently deleted from the database,
+      // bypassing the soft deletion in place.
+      hardDelete: true,
     });
+
+    return new Ok(deletedCount);
   }
 
   // Getters.
@@ -386,7 +616,7 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
   }
 
   getUsagesByAgents = async (auth: Authenticator) => {
-    return getDataSourceViewUsage({ auth, dataSourceView: this.toJSON() });
+    return getDataSourceViewUsage({ auth, dataSourceView: this });
   };
 
   // Serialization.
@@ -401,9 +631,16 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
       parentsIn: this.parentsIn,
       sId: this.sId,
       updatedAt: this.updatedAt.getTime(),
-      usage: 0,
-      vaultId: this.vault.sId,
+      spaceId: this.space.sId,
       ...this.makeEditedBy(this.editedByUser, this.editedAt),
+    };
+  }
+
+  toTraceJSON() {
+    return {
+      id: this.id,
+      sId: this.sId,
+      kind: this.kind,
     };
   }
 

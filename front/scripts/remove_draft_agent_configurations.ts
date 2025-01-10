@@ -1,4 +1,5 @@
 import type { LightWorkspaceType } from "@dust-tt/types";
+import { concurrentExecutor } from "@dust-tt/types";
 import { Op } from "sequelize";
 
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
@@ -8,10 +9,7 @@ import {
   AgentTablesQueryConfiguration,
   AgentTablesQueryConfigurationTable,
 } from "@app/lib/models/assistant/actions/tables_query";
-import {
-  AgentConfiguration,
-  AgentUserRelation,
-} from "@app/lib/models/assistant/agent";
+import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { Mention } from "@app/lib/models/assistant/conversation";
 import { Workspace } from "@app/lib/models/workspace";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -135,14 +133,6 @@ async function deleteDraftAgentConfigurationAndRelatedResources(
   // Delete the table query configurations.
   await deleteTableQueryConfigurationForAgent(agent);
 
-  // Delete the agent user relation.
-  await AgentUserRelation.destroy({
-    where: {
-      // It uses the `sId` for the relation.
-      agentConfiguration: agent.sId,
-    },
-  });
-
   // Finally delete the agent configuration.
   await AgentConfiguration.destroy({
     where: {
@@ -199,6 +189,11 @@ async function removeDraftAgentConfigurationsForWorkspace(
 
 makeScript(
   {
+    concurrency: {
+      type: "number",
+      description: "The number of workspaces to process concurrently.",
+      default: 8,
+    },
     workspaceId: {
       type: "string",
       description: "A single workspace id.",
@@ -222,6 +217,7 @@ makeScript(
         execute
       );
     }
+
     return runOnAllWorkspaces(async (workspace) => {
       await removeDraftAgentConfigurationsForWorkspace(
         workspace,

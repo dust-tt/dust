@@ -1,10 +1,13 @@
+import type { ConversationEventType } from "@dust-tt/client";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation";
+import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
+import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation/without_content";
 import { getConversationEvents } from "@app/lib/api/assistant/pubsub";
-import { Authenticator, getAPIKey } from "@app/lib/auth";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
+import type { Authenticator } from "@app/lib/auth";
+import { apiError } from "@app/logger/withlogging";
 
 /**
  * @swagger
@@ -46,36 +49,11 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<void>>
+  res: NextApiResponse<WithAPIErrorResponse<void>>,
+  auth: Authenticator
 ): Promise<void> {
-  const keyRes = await getAPIKey(req);
-  if (keyRes.isErr()) {
-    return apiError(req, res, keyRes.error);
-  }
-
-  const { keyAuth, workspaceAuth } = await Authenticator.fromKey(
-    keyRes.value,
-    req.query.wId as string
-  );
-
-  if (
-    !workspaceAuth.isBuilder() ||
-    keyAuth.getNonNullableWorkspace().sId !== req.query.wId
-  ) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "The Assistant API is only available on your own workspace.",
-      },
-    });
-  }
-
-  const conversation = await getConversationWithoutContent(
-    workspaceAuth,
-    req.query.cId as string
-  );
-  if (!conversation) {
+  const { cId } = req.query;
+  if (typeof cId !== "string") {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -85,6 +63,14 @@ async function handler(
     });
   }
 
+  const conversationRes = await getConversationWithoutContent(auth, cId);
+
+  if (conversationRes.isErr()) {
+    return apiErrorForConversation(req, res, conversationRes.error);
+  }
+
+  const conversation = conversationRes.value;
+
   switch (req.method) {
     case "GET": {
       res.writeHead(200, {
@@ -92,9 +78,14 @@ async function handler(
         "Cache-Control": "no-cache",
         Connection: "keep-alive",
       });
+      res.flushHeaders();
 
-      for await (const event of getConversationEvents(conversation.sId, null)) {
-        res.write(JSON.stringify(event));
+      const eventStream: AsyncGenerator<ConversationEventType> =
+        getConversationEvents(conversation.sId, null);
+
+      for await (const event of eventStream) {
+        res.write(`data: ${JSON.stringify(event)}\n\n`);
+
         // @ts-expect-error we need to flush for streaming but TS thinks flush() does not exists.
         res.flush();
       }
@@ -117,4 +108,7 @@ async function handler(
   }
 }
 
-export default withLogging(handler, true);
+export default withPublicAPIAuthentication(handler, {
+  isStreaming: true,
+  requiredScopes: { GET: "read:conversation" },
+});

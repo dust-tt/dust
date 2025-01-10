@@ -5,6 +5,7 @@ import type {
 } from "@dust-tt/types";
 import type { ConnectorProvider } from "@dust-tt/types";
 import {
+  assertNever,
   getGoogleSheetTableIdFromContentNodeInternalId,
   getMicrosoftSheetContentNodeInternalIdFromTableId,
   getNotionDatabaseTableIdFromContentNodeInternalId,
@@ -40,6 +41,8 @@ const CONNECTOR_PROVIDER_TO_RESOURCE_NAME: Record<
   github: { singular: "repository", plural: "repositories" },
   intercom: { singular: "element", plural: "elements" },
   webcrawler: { singular: "page", plural: "pages" },
+  snowflake: { singular: "table", plural: "tables" },
+  zendesk: { singular: "element", plural: "elements" },
 };
 
 export const getConnectorProviderResourceName = (
@@ -305,11 +308,20 @@ export function getTableIdForContentNode(
 
     // For static tables, the tableId is the contentNode internalId.
     case null:
+    case "snowflake":
       return contentNode.internalId;
 
-    default:
+    case "confluence":
+    case "intercom":
+    case "slack":
+    case "github":
+    case "zendesk":
+    case "webcrawler":
       throw new Error(
         `Provider ${dataSource.connectorProvider} is not supported`
       );
+
+    default:
+      assertNever(dataSource.connectorProvider);
   }
 }

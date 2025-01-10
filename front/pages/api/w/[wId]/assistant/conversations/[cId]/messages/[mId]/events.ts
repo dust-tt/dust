@@ -1,12 +1,11 @@
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import {
-  getConversationMessageType,
-  getConversationWithoutContent,
-} from "@app/lib/api/assistant/conversation";
+import { getConversationMessageType } from "@app/lib/api/assistant/conversation";
+import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
+import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation/without_content";
 import { getMessagesEvents } from "@app/lib/api/assistant/pubsub";
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 
@@ -25,20 +24,16 @@ async function handler(
     });
   }
   const conversationId = req.query.cId;
-  const conversation = await getConversationWithoutContent(
+  const conversationRes = await getConversationWithoutContent(
     auth,
     conversationId
   );
 
-  if (!conversation) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "conversation_not_found",
-        message: "The conversation you're trying to access was not found.",
-      },
-    });
+  if (conversationRes.isErr()) {
+    return apiErrorForConversation(req, res, conversationRes.error);
   }
+
+  const conversation = conversationRes.value;
 
   if (!(typeof req.query.mId === "string")) {
     return apiError(req, res, {

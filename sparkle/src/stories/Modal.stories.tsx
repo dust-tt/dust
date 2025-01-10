@@ -21,6 +21,8 @@ export const ModalExample = () => {
   const [inputValue, setInputValue] = useState("initial value");
   const [isRightSideWideModalOpen, setIsRightSideWideModalOpen] =
     useState(false);
+  const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
+
   return (
     <Page.Layout gap="md">
       <Modal
@@ -48,7 +50,7 @@ export const ModalExample = () => {
               placeholder="Input placeholder"
               className="s-mt-4"
               value={inputValue}
-              onChange={setInputValue}
+              onChange={(e) => setInputValue(e.target.value)}
               name="input-name"
             />
           </div>
@@ -58,9 +60,8 @@ export const ModalExample = () => {
         isOpen={isOpenWithActionAndChange}
         onClose={() => setIsOpenWithActionAndChange(false)}
         action={{
-          labelVisible: true,
           label: "An action",
-          variant: "tertiary",
+          variant: "outline",
           size: "xs",
         }}
         saveLabel="Save (custom name possible)"
@@ -121,6 +122,20 @@ export const ModalExample = () => {
           I'm the modal content
         </div>
       </Modal>
+      <Modal
+        isOpen={isAlertModalOpen}
+        onClose={() => {}}
+        onSave={() => {}}
+        isSaving={false}
+        hasChanged={false}
+        variant="side-sm"
+        title="Alert modal"
+        alertModal
+        action={undefined}
+      >
+        This is an alert modal.
+        <Button label="Ok" onClick={() => setIsAlertModalOpen(false)} />
+      </Modal>
       <div className="s-flex s-flex-col s-items-start s-gap-3">
         <div className="s-text-lg s-font-bold">Fullscreen</div>
         <Button
@@ -140,6 +155,7 @@ export const ModalExample = () => {
           label="Modal right side wide"
           onClick={() => setIsRightSideWideModalOpen(true)}
         />
+        <Button label="Alert modal" onClick={() => setIsAlertModalOpen(true)} />
       </div>
     </Page.Layout>
   );

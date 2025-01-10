@@ -1,7 +1,12 @@
-import { isOAuthProvider, isOAuthUseCase } from "@dust-tt/types";
+import { isOAuthProvider, isOAuthUseCase, safeParseJSON } from "@dust-tt/types";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
 
 import { createConnectionAndGetSetupUrl } from "@app/lib/api/oauth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+
+export const ExtraConfigTypeSchema = t.record(t.string, t.string);
+export type ExtraConfigType = t.TypeOf<typeof ExtraConfigTypeSchema>;
 
 export const getServerSideProps = withDefaultUserAuthRequirements<object>(
   async (context, auth) => {
@@ -11,24 +16,39 @@ export const getServerSideProps = withDefaultUserAuthRequirements<object>(
       };
     }
 
-    const provider = context.query.provider as string;
+    const { provider, useCase, extraConfig } = context.query;
+
     if (!isOAuthProvider(provider)) {
       return {
         notFound: true,
       };
     }
-
-    const useCase = context.query.useCase as string;
     if (!isOAuthUseCase(useCase)) {
       return {
         notFound: true,
       };
     }
 
+    let parsedExtraConfig: Record<string, string> = {};
+    const parseRes = safeParseJSON(extraConfig as string);
+    if (parseRes.isErr()) {
+      return {
+        notFound: true,
+      };
+    }
+    const bodyValidation = ExtraConfigTypeSchema.decode(parseRes.value);
+    if (isLeft(bodyValidation)) {
+      return {
+        notFound: true,
+      };
+    }
+    parsedExtraConfig = bodyValidation.right;
+
     const urlRes = await createConnectionAndGetSetupUrl(
       auth,
       provider,
-      useCase
+      useCase,
+      parsedExtraConfig
     );
 
     if (!urlRes.isOk()) {

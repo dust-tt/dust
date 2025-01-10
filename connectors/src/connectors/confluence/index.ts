@@ -1,11 +1,10 @@
 import type {
   ConnectorPermission,
-  ConnectorsAPIError,
   ContentNode,
   ContentNodesViewType,
   Result,
 } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import { cacheWithRedis, ConfluenceClientError, Err, Ok } from "@dust-tt/types";
 
 import {
   getConfluenceAccessToken,
@@ -14,12 +13,15 @@ import {
   listConfluenceSpaces,
 } from "@connectors/connectors/confluence/lib/confluence_api";
 import type { ConfluenceSpaceType } from "@connectors/connectors/confluence/lib/confluence_client";
-import { getConfluencePageParentIds } from "@connectors/connectors/confluence/lib/hierarchy";
 import {
-  getIdFromConfluenceInternalId,
-  isConfluenceInternalPageId,
-  isConfluenceInternalSpaceId,
-  makeConfluenceInternalSpaceId,
+  getConfluencePageParentIds,
+  getSpaceHierarchy,
+} from "@connectors/connectors/confluence/lib/hierarchy";
+import {
+  getConfluenceIdFromInternalId,
+  isInternalPageId,
+  isInternalSpaceId,
+  makeSpaceInternalId,
 } from "@connectors/connectors/confluence/lib/internal_ids";
 import {
   checkPageHasChildren,
@@ -34,8 +36,17 @@ import {
   launchConfluenceSyncWorkflow,
   stopConfluenceSyncWorkflow,
 } from "@connectors/connectors/confluence/temporal/client";
-import { BaseConnectorManager } from "@connectors/connectors/interface";
+import type {
+  CreateConnectorErrorCode,
+  RetrievePermissionsErrorCode,
+  UpdateConnectorErrorCode,
+} from "@connectors/connectors/interface";
+import {
+  BaseConnectorManager,
+  ConnectorManagerError,
+} from "@connectors/connectors/interface";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
+import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import {
   ConfluenceConfiguration,
   ConfluencePage,
@@ -56,11 +67,11 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
   }: {
     dataSourceConfig: DataSourceConfig;
     connectionId: string;
-  }): Promise<Result<string, Error>> {
+  }): Promise<Result<string, ConnectorManagerError<CreateConnectorErrorCode>>> {
     const confluenceAccessTokenRes =
       await getConfluenceAccessToken(connectionId);
     if (confluenceAccessTokenRes.isErr()) {
-      return new Err(confluenceAccessTokenRes.error);
+      throw confluenceAccessTokenRes.error;
     }
 
     const confluenceAccessToken = confluenceAccessTokenRes.value;
@@ -69,7 +80,7 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
       confluenceAccessToken
     );
     if (!confluenceCloudInformation) {
-      return new Err(new Error("Confluence access token is invalid"));
+      throw new Error("Confluence access token is invalid");
     }
 
     const userAccountId = await getConfluenceUserAccountId(
@@ -77,53 +88,46 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
     );
 
     const { id: cloudId, url: cloudUrl } = confluenceCloudInformation;
-    try {
-      const confluenceConfigurationBlob = {
-        cloudId,
-        url: cloudUrl,
-        userAccountId,
-      };
 
-      const connector = await ConnectorResource.makeNew(
-        "confluence",
-        {
-          connectionId,
-          workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
-          workspaceId: dataSourceConfig.workspaceId,
-          dataSourceId: dataSourceConfig.dataSourceId,
-        },
-        confluenceConfigurationBlob
-      );
+    const confluenceConfigurationBlob = {
+      cloudId,
+      url: cloudUrl,
+      userAccountId,
+    };
 
-      const workflowStarted = await launchConfluenceSyncWorkflow(
-        connector.id,
-        null
-      );
-      if (workflowStarted.isErr()) {
-        return new Err(workflowStarted.error);
-      }
+    const connector = await ConnectorResource.makeNew(
+      "confluence",
+      {
+        connectionId,
+        workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
+        workspaceId: dataSourceConfig.workspaceId,
+        dataSourceId: dataSourceConfig.dataSourceId,
+      },
+      confluenceConfigurationBlob
+    );
 
-      await launchConfluencePersonalDataReportingSchedule();
-
-      return new Ok(connector.id.toString());
-    } catch (e) {
-      logger.error({ error: e }, "Error creating confluence connector.");
-      return new Err(e as Error);
+    const workflowStarted = await launchConfluenceSyncWorkflow(
+      connector.id,
+      null
+    );
+    if (workflowStarted.isErr()) {
+      throw workflowStarted.error;
     }
+
+    await launchConfluencePersonalDataReportingSchedule();
+
+    return new Ok(connector.id.toString());
   }
 
   async update({
     connectionId,
   }: {
     connectionId?: string | null;
-  }): Promise<Result<string, ConnectorsAPIError>> {
+  }): Promise<Result<string, ConnectorManagerError<UpdateConnectorErrorCode>>> {
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
       logger.error({ connectorId: this.connectorId }, "Connector not found.");
-      return new Err({
-        message: "Connector not found",
-        type: "connector_not_found",
-      });
+      throw new Error(`Connector ${this.connectorId} not found`);
     }
 
     if (connectionId) {
@@ -137,10 +141,7 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
       const confluenceAccessTokenRes =
         await getConfluenceAccessToken(connectionId);
       if (confluenceAccessTokenRes.isErr()) {
-        return new Err({
-          type: "connector_oauth_error",
-          message: confluenceAccessTokenRes.error.message,
-        });
+        throw new Error(confluenceAccessTokenRes.error.message);
       }
 
       const newConfluenceCloudInformation = await getConfluenceCloudInformation(
@@ -154,6 +155,11 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
         newConfluenceCloudInformation.id === currentCloudInformation.cloudId
       ) {
         await connector.update({ connectionId });
+
+        // If connector was previously paused, unpause it.
+        if (connector.isPaused()) {
+          await this.unpause();
+        }
       } else {
         logger.info(
           {
@@ -164,10 +170,12 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
           "Cannot change the workspace of a Confluence connector"
         );
 
-        return new Err({
-          type: "connector_oauth_target_mismatch",
-          message: "Cannot change the workspace of a Confluence connector",
-        });
+        return new Err(
+          new ConnectorManagerError(
+            "CONNECTOR_OAUTH_TARGET_MISMATCH",
+            "Cannot change the workspace of a Confluence connector"
+          )
+        );
       }
     }
 
@@ -259,11 +267,15 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
   }: {
     parentInternalId: string | null;
     filterPermission: ConnectorPermission | null;
-  }): Promise<Result<ContentNode[], Error>> {
+  }): Promise<
+    Result<ContentNode[], ConnectorManagerError<RetrievePermissionsErrorCode>>
+  > {
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
       logger.error({ connectorId: this.connectorId }, "Connector not found");
-      return new Err(new Error("Connector not found"));
+      return new Err(
+        new ConnectorManagerError("CONNECTOR_NOT_FOUND", "Connector not found")
+      );
     }
 
     const confluenceConfig = await ConfluenceConfiguration.findOne({
@@ -276,32 +288,55 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
         { connectorId: this.connectorId },
         "Confluence configuration not found"
       );
-      return new Err(new Error("Confluence configuration not found"));
+      throw new Error("Confluence configuration not found");
     }
 
-    // When the filter permission is set to 'read', the full hierarchy of spaces
-    // and pages that Dust can access is displayed to the user.
-    if (filterPermission === "read") {
-      const data = await retrieveHierarchyForParent(
-        connector,
-        confluenceConfig,
-        parentInternalId
-      );
+    try {
+      // When the filter permission is set to 'read', the full hierarchy of spaces
+      // and pages that Dust can access is displayed to the user.
+      if (filterPermission === "read") {
+        const data = await retrieveHierarchyForParent(
+          connector,
+          confluenceConfig,
+          parentInternalId
+        );
+        if (data.isErr()) {
+          throw data.error;
+        }
 
-      if (data.isErr()) {
-        return new Err(data.error);
+        return new Ok(data.value);
+      } else {
+        // If the permission is not set to 'read', users are limited to selecting only
+        // spaces for synchronization with Dust.
+        const allSpacesRes = await retrieveAvailableSpaces(
+          connector,
+          confluenceConfig
+        );
+        if (allSpacesRes.isErr()) {
+          throw allSpacesRes.error;
+        }
+
+        return allSpacesRes;
       }
-
-      return new Ok(data.value);
-    } else {
-      // If the permission is not set to 'read', users are limited to selecting only
-      // spaces for synchronization with Dust.
-      const allSpacesRes = await retrieveAvailableSpaces(
-        connector,
-        confluenceConfig
-      );
-
-      return allSpacesRes;
+    } catch (e) {
+      if (e instanceof ExternalOAuthTokenError) {
+        return new Err(
+          new ConnectorManagerError(
+            "EXTERNAL_OAUTH_TOKEN_ERROR",
+            "Confluence authorization error, please re-authorize."
+          )
+        );
+      }
+      if (e instanceof ConfluenceClientError && e.status === 429) {
+        return new Err(
+          new ConnectorManagerError(
+            "RATE_LIMIT_ERROR",
+            `Confluence rate limit error when retrieving content nodes.`
+          )
+        );
+      }
+      // Unanhdled error, throwing to get a 500.
+      throw e;
     }
   }
 
@@ -334,7 +369,7 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
     const addedSpaceIds = [];
     const removedSpaceIds = [];
     for (const [internalId, permission] of Object.entries(permissions)) {
-      const confluenceId = getIdFromConfluenceInternalId(internalId);
+      const confluenceId = getConfluenceIdFromInternalId(internalId);
       if (permission === "none") {
         await ConfluenceSpace.destroy({
           where: {
@@ -408,10 +443,10 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
     const pageIds: string[] = [];
 
     internalIds.forEach((internalId) => {
-      if (isConfluenceInternalSpaceId(internalId)) {
-        spaceIds.push(getIdFromConfluenceInternalId(internalId));
-      } else if (isConfluenceInternalPageId(internalId)) {
-        pageIds.push(getIdFromConfluenceInternalId(internalId));
+      if (isInternalSpaceId(internalId)) {
+        spaceIds.push(getConfluenceIdFromInternalId(internalId));
+      } else if (isInternalPageId(internalId)) {
+        pageIds.push(getConfluenceIdFromInternalId(internalId));
       }
     });
 
@@ -470,13 +505,17 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
 
   async retrieveContentNodeParents({
     internalId,
+    memoizationKey,
   }: {
     internalId: string;
     memoizationKey?: string;
   }): Promise<Result<string[], Error>> {
-    const confluenceId = getIdFromConfluenceInternalId(internalId);
+    if (isInternalSpaceId(internalId)) {
+      return new Ok([internalId]);
+    }
 
-    if (isConfluenceInternalPageId(internalId)) {
+    if (isInternalPageId(internalId)) {
+      const confluenceId = getConfluenceIdFromInternalId(internalId);
       const currentPage = await ConfluencePage.findOne({
         attributes: ["pageId", "parentId", "spaceId"],
         where: {
@@ -491,12 +530,24 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
 
       // If the page does not have a parentId, return only the spaceId.
       if (!currentPage.parentId) {
-        return new Ok([makeConfluenceInternalSpaceId(currentPage.spaceId)]);
+        return new Ok([internalId, makeSpaceInternalId(currentPage.spaceId)]);
       }
+
+      // if a memoization key is provided, use it to cache the hierarchy which
+      // is expensive to compute
+      const cachedHierarchy = memoizationKey
+        ? await cacheWithRedis(
+            getSpaceHierarchy,
+            () => memoizationKey,
+            60 * 60 * 1000,
+            undefined
+          )(this.connectorId, currentPage.spaceId)
+        : undefined;
 
       const parentIds = await getConfluencePageParentIds(
         this.connectorId,
-        currentPage
+        currentPage,
+        cachedHierarchy
       );
       return new Ok(parentIds);
     }

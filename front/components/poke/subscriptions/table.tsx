@@ -31,7 +31,6 @@ import EnterpriseUpgradeDialog from "@app/components/poke/subscriptions/Enterpri
 import { useSubmitFunction } from "@app/lib/client/utils";
 import {
   FREE_NO_PLAN_CODE,
-  isEntreprisePlan,
   isFreePlan,
   isProPlan,
 } from "@app/lib/plans/plan_codes";
@@ -110,9 +109,9 @@ export function ActiveSubscriptionTable({
         show={showHistoryModal}
         onClose={() => setShowHistoryModal(false)}
       />
-      <div className="flex flex-col space-y-8 pt-4">
+      <div className="flex flex-col">
         <div className="flex justify-between gap-3">
-          <div className="border-material-200 my-4 flex flex-grow flex-col rounded-lg border p-4">
+          <div className="border-material-200 flex flex-grow flex-col rounded-lg border p-4">
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-md flex-grow pb-4 font-bold">
                 Active Subscription:
@@ -189,7 +188,7 @@ export function ActiveSubscriptionTable({
               </PokeTableBody>
             </PokeTable>
           </div>
-          <div className="border-material-200 my-4 flex flex-grow flex-col rounded-lg border p-4">
+          <div className="border-material-200 flex flex-grow flex-col rounded-lg border p-4">
             <h2 className="text-md pb-4 font-bold">Plan limitations:</h2>
             <PokeTable>
               <PokeTableBody>
@@ -236,6 +235,15 @@ export function ActiveSubscriptionTable({
                     {activePlan.limits.users.maxUsers === -1
                       ? "unlimited"
                       : activePlan.limits.users.maxUsers}
+                  </PokeTableCell>
+                </PokeTableRow>
+
+                <PokeTableRow>
+                  <PokeTableCell>Max number of spaces</PokeTableCell>
+                  <PokeTableCell>
+                    {activePlan.limits.vaults.maxVaults === -1
+                      ? "unlimited"
+                      : activePlan.limits.vaults.maxVaults}
                   </PokeTableCell>
                 </PokeTableRow>
 
@@ -407,10 +415,7 @@ function UpgradeDowngradeModal({
           description="Go to the Enterprise billing form page to upgrade this workspace to a new Enterprise plan ."
         />
         <div>
-          <EnterpriseUpgradeDialog
-            disabled={isEntreprisePlan(subscription.plan.code)}
-            owner={owner}
-          />
+          <EnterpriseUpgradeDialog owner={owner} />
         </div>
         {isProPlan(subscription.plan.code) && (
           <>

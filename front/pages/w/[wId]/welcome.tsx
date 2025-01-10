@@ -1,9 +1,11 @@
 import {
   Button,
   Input,
+  Label,
   LogoSquareColorLogo,
   Page,
-  RadioButton,
+  RadioGroup,
+  RadioGroupChoice,
 } from "@dust-tt/sparkle";
 import type { UserType, WorkspaceType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
@@ -23,7 +25,6 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
   defaultExpertise: string;
   defaultAdminInterest: string;
   conversationId: string | null;
-  gaTrackingId: string;
   baseUrl: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
@@ -57,7 +58,6 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
       defaultAdminInterest: adminInterest?.value || "",
       conversationId,
       baseUrl: config.getClientFacingUrl(),
-      gaTrackingId: config.getGaTrackingId(),
     },
   };
 });
@@ -69,7 +69,6 @@ export default function Welcome({
   defaultExpertise,
   defaultAdminInterest,
   conversationId,
-  gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   const [firstName, setFirstName] = useState<string>(user.firstName);
@@ -124,7 +123,6 @@ export default function Welcome({
   return (
     <OnboardingLayout
       owner={owner}
-      gaTrackingId={gaTrackingId}
       headerTitle="Joining Dust"
       headerRightActions={
         <Button
@@ -140,14 +138,12 @@ export default function Welcome({
           title={`Hello ${firstName}!`}
           icon={() => <LogoSquareColorLogo className="-ml-11 h-10 w-32" />}
         />
-        <p className="font-semibold text-element-800">
-          Let's check a few things.
-        </p>
+        <p className="text-element-800">Let's check a few things.</p>
         {!isAdmin && (
           <div>
             <p className="text-element-700">
               You will be joining the workspace:{" "}
-              <span className="font-semibold">{owner.name}</span>.
+              <span className="">{owner.name}</span>.
             </p>
           </div>
         )}
@@ -158,66 +154,57 @@ export default function Welcome({
               name="firstName"
               placeholder="First Name"
               value={firstName}
-              onChange={setFirstName}
+              onChange={(e) => setFirstName(e.target.value)}
             />
             <Input
               name="lastName"
               placeholder="Last Name"
               value={lastName}
-              onChange={setLastName}
+              onChange={(e) => setLastName(e.target.value)}
             />
           </div>
         </div>
         {isAdmin && (
           <div>
             <p className="pb-2">I'm looking at Dust:</p>
-            <RadioButton
-              name="adminInterest"
-              className="flex-col font-semibold sm:flex-row"
-              choices={[
-                {
-                  label: "Just for me",
-                  value: "personnal",
-                  disabled: false,
-                },
-                {
-                  label: "For me and my team",
-                  value: "team",
-                  disabled: false,
-                },
-              ]}
+            <RadioGroup
               value={adminInterest}
-              onChange={setAdminInterest}
-            />
+              onValueChange={setAdminInterest}
+              className="flex flex-col gap-2 sm:flex-row"
+            >
+              <RadioGroupChoice
+                value="personnal"
+                label={<Label className="pl-1">Just for me</Label>}
+              ></RadioGroupChoice>
+              <RadioGroupChoice
+                value="team"
+                label={<Label className="pl-1">For me and my team</Label>}
+              ></RadioGroupChoice>
+            </RadioGroup>
           </div>
         )}
         <div>
           <p className="pb-2 text-element-700">
             How much do you know about AI assistants?
           </p>
-          <RadioButton
-            name="expertise"
-            className="flex-col font-semibold sm:flex-row"
-            choices={[
-              {
-                label: "Nothing!",
-                value: "beginner",
-                disabled: false,
-              },
-              {
-                label: "I know the basics",
-                value: "intermediate",
-                disabled: false,
-              },
-              {
-                label: "I'm a pro",
-                value: "advanced",
-                disabled: false,
-              },
-            ]}
+          <RadioGroup
             value={expertise}
-            onChange={setExpertise}
-          />
+            onValueChange={setExpertise}
+            className="flex flex-col gap-2 sm:flex-row"
+          >
+            <RadioGroupChoice
+              value="beginner"
+              label={<Label className="pl-1">Nothing!</Label>}
+            ></RadioGroupChoice>
+            <RadioGroupChoice
+              value="intermediate"
+              label={<Label className="pl-1">I know the basics</Label>}
+            ></RadioGroupChoice>
+            <RadioGroupChoice
+              value="advanced"
+              label={<Label className="pl-1">I'm a pro</Label>}
+            ></RadioGroupChoice>
+          </RadioGroup>
         </div>
         <div className="flex justify-end">
           <Button

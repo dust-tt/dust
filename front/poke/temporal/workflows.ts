@@ -8,22 +8,38 @@ const activityProxies = proxyActivities<typeof activities>({
 });
 
 const {
-  scrubDataSourceActivity,
-  isWorkflowDeletableActivity,
-  deleteConversationsActivity,
   deleteAgentsActivity,
   deleteAppsActivity,
-  deleteRunOnDustAppsActivity,
+  deleteTrackersActivity,
+  deleteConversationsActivity,
   deleteMembersActivity,
+  deleteRunOnDustAppsActivity,
+  deleteSpacesActivity,
   deleteWorkspaceActivity,
+  deleteTranscriptsActivity,
+  isWorkflowDeletableActivity,
+  scrubDataSourceActivity,
+  scrubSpaceActivity,
 } = activityProxies;
 
 export async function scrubDataSourceWorkflow({
-  dustAPIProjectId,
+  dataSourceId,
+  workspaceId,
 }: {
-  dustAPIProjectId: string;
+  dataSourceId: string;
+  workspaceId: string;
 }) {
-  await scrubDataSourceActivity({ dustAPIProjectId });
+  await scrubDataSourceActivity({ dataSourceId, workspaceId });
+}
+
+export async function scrubSpaceWorkflow({
+  spaceId,
+  workspaceId,
+}: {
+  spaceId: string;
+  workspaceId: string;
+}) {
+  await scrubSpaceActivity({ spaceId, workspaceId });
 }
 
 export async function deleteWorkspaceWorkflow({
@@ -37,8 +53,11 @@ export async function deleteWorkspaceWorkflow({
   }
   await deleteConversationsActivity({ workspaceId });
   await deleteAgentsActivity({ workspaceId });
-  await deleteAppsActivity({ workspaceId });
   await deleteRunOnDustAppsActivity({ workspaceId });
+  await deleteAppsActivity({ workspaceId });
+  await deleteTrackersActivity({ workspaceId });
   await deleteMembersActivity({ workspaceId });
+  await deleteSpacesActivity({ workspaceId });
+  await deleteTranscriptsActivity({ workspaceId });
   await deleteWorkspaceActivity({ workspaceId });
 }

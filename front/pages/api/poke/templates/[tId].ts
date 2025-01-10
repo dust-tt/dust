@@ -8,7 +8,7 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
-import { withSessionAuthentication } from "@app/lib/api/wrappers";
+import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import { apiError } from "@app/logger/withlogging";

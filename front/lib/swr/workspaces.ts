@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import type { GetWorkspaceFeatureFlagsResponseType } from "@app/pages/api/w/[wId]/feature-flags";
 import type { GetSubscriptionsResponseBody } from "@app/pages/api/w/[wId]/subscriptions";
 import type { GetWorkspaceAnalyticsResponse } from "@app/pages/api/w/[wId]/workspace-analytics";
 
@@ -52,8 +53,10 @@ export function useWorkspaceAnalytics({
 
 export function useWorkspaceEnterpriseConnection({
   workspaceId,
+  disabled,
 }: {
   workspaceId: string;
+  disabled?: boolean;
 }) {
   const workspaceEnterpriseConnectionFetcher: Fetcher<{
     connection: WorkspaceEnterpriseConnection;
@@ -61,7 +64,10 @@ export function useWorkspaceEnterpriseConnection({
 
   const { data, error, mutate } = useSWRWithDefaults(
     workspaceId ? `/api/w/${workspaceId}/enterprise-connection` : null,
-    workspaceEnterpriseConnectionFetcher
+    workspaceEnterpriseConnectionFetcher,
+    {
+      disabled,
+    }
   );
 
   return {
@@ -69,5 +75,65 @@ export function useWorkspaceEnterpriseConnection({
     isEnterpriseConnectionLoading: !error && !data,
     isEnterpriseConnectionError: error,
     mutateEnterpriseConnection: mutate,
+  };
+}
+
+export function useWorkspaceActiveSubscription({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const workspaceSubscriptionsFetcher: Fetcher<GetSubscriptionsResponseBody> =
+    fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/subscriptions`,
+    workspaceSubscriptionsFetcher,
+    {
+      disabled,
+    }
+  );
+
+  const activeSubscription = useMemo(() => {
+    if (!data) {
+      return null;
+    }
+    const activeSubscriptions = data.subscriptions.filter(
+      (sub) => sub.status === "active"
+    );
+    return activeSubscriptions.length ? activeSubscriptions[0] : null;
+  }, [data]);
+
+  return {
+    activeSubscription,
+    isActiveSubscriptionLoading: !error && !data,
+    isActiveSubscriptionError: error,
+  };
+}
+
+export function useFeatureFlags({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const featureFlagsFetcher: Fetcher<GetWorkspaceFeatureFlagsResponseType> =
+    fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/feature-flags`,
+    featureFlagsFetcher,
+    {
+      disabled,
+    }
+  );
+
+  return {
+    featureFlags: data ? data.feature_flags : [],
+    isFeatureFlagsLoading: !error && !data,
+    isFeatureFlagsError: error,
   };
 }

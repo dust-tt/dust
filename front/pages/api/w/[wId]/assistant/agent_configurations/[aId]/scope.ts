@@ -5,8 +5,7 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
-import { setAgentUserListStatus } from "@app/lib/api/assistant/user_relation";
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import { createOrUpgradeAgentConfiguration } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
@@ -79,24 +78,6 @@ async function handler(
               type: "app_auth_error",
               message:
                 "An assistant can only be set to private by an existing user of the workspace.",
-            },
-          });
-        }
-
-        // ensure the assistant is in the list of the user otherwise
-        // switching it back to private will make it disappear
-        const setRes = await setAgentUserListStatus({
-          auth,
-          agentId: assistant.sId,
-          listStatus: "in-list",
-        });
-
-        if (setRes.isErr()) {
-          return apiError(req, res, {
-            status_code: 500,
-            api_error: {
-              type: "internal_server_error",
-              message: setRes.error.message,
             },
           });
         }

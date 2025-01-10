@@ -75,11 +75,8 @@ export function Pagination({
         )}
       >
         <Button
-          variant="tertiary"
+          variant="ghost"
           size={size === "xs" ? "xs" : "sm"}
-          label="previous"
-          labelVisible={false}
-          disabledTooltip={true}
           disabled={!canPreviousPage}
           icon={ChevronLeftIcon}
           onClick={previousPage}
@@ -96,11 +93,8 @@ export function Pagination({
         </div>
 
         <Button
-          variant="tertiary"
+          variant="ghost"
           size={size === "xs" ? "xs" : "sm"}
-          label="next"
-          labelVisible={false}
-          disabledTooltip={true}
           disabled={!canNextPage}
           icon={ChevronRightIcon}
           onClick={nextPage}

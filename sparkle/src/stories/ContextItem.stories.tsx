@@ -78,20 +78,15 @@ export const ListItemExample = () => (
         title="Slack"
         visual={<ContextItem.Visual visual={SlackLogo} />}
         action={
-          <Button.List>
+          <div className="s-flex s-gap-1">
+            <Button icon={TrashIcon} variant="warning" label="Remove" />
             <Button
-              icon={TrashIcon}
-              variant="secondaryWarning"
-              label="Remove"
-              labelVisible={false}
-            />
-            <Button
-              variant="secondary"
+              variant="outline"
               label="Edit"
               size="sm"
               icon={PencilSquareIcon}
             />
-          </Button.List>
+          </div>
         }
       >
         <ContextItem.Description description="Hello you" />
@@ -126,7 +121,7 @@ export const ListItemExample = () => (
         subElement={<>By: Edouard Wautier, Amira Hadad</>}
         action={
           <Button
-            variant="secondary"
+            variant="outline"
             label="Manage"
             size="sm"
             icon={Cog6ToothIcon}
@@ -146,7 +141,7 @@ export const ListItemExample = () => (
         subElement={<>By: Edouard Wautier, Amira Hadad</>}
         action={
           <Button
-            variant="secondary"
+            variant="outline"
             label="Manage"
             size="sm"
             icon={Cog6ToothIcon}

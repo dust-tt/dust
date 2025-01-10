@@ -8,12 +8,13 @@ import _ from "lodash";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
-import { DEFAULT_TABLES_QUERY_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
+import { DEFAULT_TABLES_QUERY_ACTION_NAME } from "@app/lib/api/assistant/actions/constants";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentTablesQueryConfiguration,
   AgentTablesQueryConfigurationTable,
 } from "@app/lib/models/assistant/actions/tables_query";
+import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 
@@ -49,6 +50,12 @@ export async function fetchTableQueryActionConfigurations({
         {
           model: DataSourceViewModel,
           as: "dataSourceView",
+          include: [
+            {
+              model: Workspace,
+              as: "workspace",
+            },
+          ],
         },
       ],
     });
@@ -77,15 +84,12 @@ export async function fetchTableQueryActionConfigurations({
         tablesQueryConfigTables.map((table) => {
           const { dataSourceView } = table;
 
-          const dataSourceViewId = DataSourceViewResource.modelIdToSId({
-            id: dataSourceView.id,
-            workspaceId: dataSourceView.workspaceId,
-          });
-
           return {
-            dataSourceId: table.dataSourceId,
-            dataSourceViewId,
-            workspaceId: table.dataSourceWorkspaceId,
+            dataSourceViewId: DataSourceViewResource.modelIdToSId({
+              id: dataSourceView.id,
+              workspaceId: dataSourceView.workspaceId,
+            }),
+            workspaceId: dataSourceView.workspace.sId,
             tableId: table.tableId,
           };
         });
@@ -141,17 +145,10 @@ export async function createTableDataSourceConfiguration(
 
       const { dataSource } = dataSourceView;
 
-      assert(
-        dataSourceView.dataSource.name === tc.dataSourceId,
-        "Can't create TableDataSourceConfiguration for query tables: data source view does not belong to the data source."
-      );
-
       await AgentTablesQueryConfigurationTable.create(
         {
-          // TODO(GROUPS_INFRA) Use ModelId for dataSourceId.
-          dataSourceId: dataSource.name,
+          dataSourceId: dataSource.id,
           dataSourceViewId: dataSourceView.id,
-          dataSourceWorkspaceId: tc.workspaceId,
           tableId: tc.tableId,
           tablesQueryConfigurationId: tablesQueryConfig.id,
         },

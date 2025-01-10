@@ -1,34 +1,25 @@
-import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-  NonAttribute,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import { DataTypes } from "sequelize";
 
 import { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/process";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { DataSource } from "@app/lib/resources/storage/models/data_source";
+import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
+import { BaseModel } from "@app/lib/resources/storage/wrappers";
 
 /**
  * Configuration of Datasources used for Retrieval Action.
  */
-export class AgentDataSourceConfiguration extends Model<
-  InferAttributes<AgentDataSourceConfiguration>,
-  InferCreationAttributes<AgentDataSourceConfiguration>
-> {
-  declare id: CreationOptional<number>;
+export class AgentDataSourceConfiguration extends BaseModel<AgentDataSourceConfiguration> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
   declare parentsIn: string[] | null;
   declare parentsNotIn: string[] | null;
 
-  declare dataSourceId: ForeignKey<DataSource["id"]>;
-  declare dataSourceViewId: ForeignKey<DataSourceViewModel["id"]> | null;
+  declare dataSourceId: ForeignKey<DataSourceModel["id"]>;
+  declare dataSourceViewId: ForeignKey<DataSourceViewModel["id"]>;
 
   // AgentDataSourceConfiguration can be used by both the retrieval and the process actions'
   // configurations.
@@ -39,16 +30,11 @@ export class AgentDataSourceConfiguration extends Model<
     AgentRetrievalConfiguration["id"]
   > | null;
 
-  declare dataSource: NonAttribute<DataSource>;
+  declare dataSource: NonAttribute<DataSourceModel>;
   declare dataSourceView: NonAttribute<DataSourceViewModel>;
 }
 AgentDataSourceConfiguration.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -71,9 +57,10 @@ AgentDataSourceConfiguration.init(
   {
     modelName: "agent_data_source_configuration",
     indexes: [
-      {
-        fields: ["retrievalConfigurationId"],
-      },
+      { fields: ["retrievalConfigurationId"] },
+      { fields: ["processConfigurationId"] },
+      { fields: ["dataSourceId"] },
+      { fields: ["dataSourceViewId"] },
     ],
     sequelize: frontSequelize,
     hooks: {
@@ -92,7 +79,7 @@ AgentDataSourceConfiguration.init(
 // Retrieval config <> Data source config
 AgentRetrievalConfiguration.hasMany(AgentDataSourceConfiguration, {
   foreignKey: { name: "retrievalConfigurationId", allowNull: true },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 AgentDataSourceConfiguration.belongsTo(AgentRetrievalConfiguration, {
   foreignKey: { name: "retrievalConfigurationId", allowNull: true },
@@ -101,19 +88,19 @@ AgentDataSourceConfiguration.belongsTo(AgentRetrievalConfiguration, {
 // Process config <> Data source config
 AgentProcessConfiguration.hasMany(AgentDataSourceConfiguration, {
   foreignKey: { name: "processConfigurationId", allowNull: true },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 AgentDataSourceConfiguration.belongsTo(AgentProcessConfiguration, {
   foreignKey: { name: "processConfigurationId", allowNull: true },
 });
 
 // Data source config <> Data source
-DataSource.hasMany(AgentDataSourceConfiguration, {
+DataSourceModel.hasMany(AgentDataSourceConfiguration, {
   as: "dataSource",
   foreignKey: { name: "dataSourceId", allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
-AgentDataSourceConfiguration.belongsTo(DataSource, {
+AgentDataSourceConfiguration.belongsTo(DataSourceModel, {
   as: "dataSource",
   foreignKey: { name: "dataSourceId", allowNull: false },
 });
@@ -122,10 +109,9 @@ AgentDataSourceConfiguration.belongsTo(DataSource, {
 DataSourceViewModel.hasMany(AgentDataSourceConfiguration, {
   as: "dataSourceView",
   foreignKey: { allowNull: true },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
-// TODO(GROUPS_INFRA): This should be a required relationship.
 AgentDataSourceConfiguration.belongsTo(DataSourceViewModel, {
   as: "dataSourceView",
-  foreignKey: { allowNull: true },
+  foreignKey: { allowNull: false },
 });

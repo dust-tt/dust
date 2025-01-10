@@ -9,13 +9,8 @@ const SvgDocumentPile = (props: SVGProps<SVGSVGElement>) => (
     viewBox="0 0 24 24"
     {...props}
   >
-    <path
-      fill="currentColor"
-      fillRule="evenodd"
-      d="M15 2H7v4H3v16h14v-4h4V8h-6V2Zm0 16H7c-.126 0 0-8.952 0-10H5v12h10v-2Z"
-      clipRule="evenodd"
-    />
-    <path fill="currentColor" d="M17 2v4h4l-4-4Z" />
+    <path fill="currentColor" d="M8 2h6v6h6v10H8c-.088 0-.002-14.165 0-16Z" />
+    <path fill="currentColor" d="M6 7H4v15h12v-2H6V7ZM16 6V2l4 4h-4Z" />
   </svg>
 );
 export default SvgDocumentPile;

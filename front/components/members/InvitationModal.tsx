@@ -1,61 +1,50 @@
 import {
-  Button,
   ContentMessage,
-  ElementModal,
+  InformationCircleIcon,
   Modal,
-  MovingMailIcon,
-  Page,
   TextArea,
-  XMarkIcon,
 } from "@dust-tt/sparkle";
+import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   ActiveRoleType,
-  MembershipInvitationType,
-  RoleType,
   SubscriptionPerSeatPricing,
-  UserTypeWithWorkspaces,
   WorkspaceType,
 } from "@dust-tt/types";
 import { useContext, useEffect, useState } from "react";
 import { mutate } from "swr";
 
-import type { ConfirmDataType } from "@app/components/Confirm";
 import { ConfirmContext } from "@app/components/Confirm";
 import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
 import { RoleDropDown } from "@app/components/members/RolesDropDown";
-import type { NotificationType } from "@app/components/sparkle/Notification";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { handleMembersRoleChange } from "@app/lib/client/members";
+import { useChangeMembersRoles } from "@app/hooks/useChangeMembersRoles";
 import { getPriceAsString } from "@app/lib/client/subscription";
-import { MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY } from "@app/lib/invitations";
+import {
+  MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY,
+  sendInvitations,
+} from "@app/lib/invitations";
 import { isEmailValid } from "@app/lib/utils";
-import type {
-  PostInvitationRequestBody,
-  PostInvitationResponseBody,
-} from "@app/pages/api/w/[wId]/invitations";
 
 export function InviteEmailModal({
   showModal,
   onClose,
   owner,
   prefillText,
-  members,
   perSeatPricing,
 }: {
   showModal: boolean;
   onClose: () => void;
   owner: WorkspaceType;
   prefillText: string;
-  members: UserTypeWithWorkspaces[];
   perSeatPricing: SubscriptionPerSeatPricing | null;
 }) {
   const [inviteEmails, setInviteEmails] = useState<string>("");
   const [isSending, setIsSending] = useState(false);
   const [emailError, setEmailError] = useState("");
 
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
   const [invitationRole, setInvitationRole] = useState<ActiveRoleType>("user");
+  const handleMembersRoleChange = useChangeMembersRoles({ owner });
 
   function getEmailsList(): string[] | null {
     const inviteEmailsList = inviteEmails
@@ -88,24 +77,36 @@ export function InviteEmailModal({
       return;
     }
 
+    const existingMembersResponses = await Promise.all(
+      inviteEmailsList.map(async (email) => {
+        const response = await fetch(
+          `/api/w/${owner.sId}/members/search?searchTerm=${encodeURIComponent(email)}&orderBy=name`
+        );
+        if (!response.ok) {
+          throw new Error("Failed to fetch member information");
+        }
+        return response.json();
+      })
+    );
+    const existingMembers = existingMembersResponses.flatMap(
+      (response) => response.members
+    );
+
     const invitesByCase = {
-      activeSameRole: members.filter((m) =>
-        inviteEmailsList.find(
-          (e) => m.email === e && m.workspaces[0].role === invitationRole
-        )
+      activeSameRole: existingMembers.filter(
+        (m) => m && m.workspaces[0].role === invitationRole
       ),
-      activeDifferentRole: members.filter((m) =>
-        inviteEmailsList.find(
-          (e) =>
-            m.email === e &&
-            m.workspaces[0].role !== invitationRole &&
-            m.workspaces[0].role !== "none"
-        )
+      activeDifferentRole: existingMembers.filter(
+        (m) =>
+          m &&
+          m.workspaces[0].role !== invitationRole &&
+          m.workspaces[0].role !== "none"
       ),
       notInWorkspace: inviteEmailsList.filter(
-        (e) =>
-          !members.find((m) => m.email === e) ||
-          members.find((m) => m.email === e)?.workspaces[0].role === "none"
+        (m) =>
+          !existingMembers.find((x) => x.email === m) ||
+          existingMembers.find((x) => x.email === m)?.workspaces[0].role ===
+            "none"
       ),
     };
 
@@ -124,9 +125,7 @@ export function InviteEmailModal({
               {activeDifferentRole.map((user) => (
                 <div key={user.email}>{`- ${
                   user.fullName
-                } (current role: ${displayRole(
-                  user.workspaces[0].role
-                )})`}</div>
+                } (current role: ${displayRole(user.workspaces[0].role)})`}</div>
               ))}
             </div>
           </div>
@@ -135,6 +134,7 @@ export function InviteEmailModal({
         <div>Do you want to proceed?</div>
       </div>
     );
+
     const hasExistingMembers = activeDifferentRole.length > 0;
 
     const shouldProceedWithInvites =
@@ -143,7 +143,7 @@ export function InviteEmailModal({
         title: "Some users are already in the workspace",
         message: ReinviteUsersMessage,
         validateLabel: "Yes, proceed",
-        validateVariant: "primaryWarning",
+        validateVariant: "warning",
       }));
 
     if (shouldProceedWithInvites) {
@@ -159,7 +159,6 @@ export function InviteEmailModal({
         await handleMembersRoleChange({
           members: activeDifferentRole,
           role: invitationRole,
-          sendNotification,
         });
         await mutate(`/api/w/${owner.sId}/members`);
       }
@@ -211,18 +210,18 @@ export function InviteEmailModal({
                 <TextArea
                   placeholder="Email addresses, comma or newline separated"
                   value={inviteEmails}
-                  onChange={(value) => {
-                    setInviteEmails(value);
+                  onChange={(e) => {
+                    setInviteEmails(e.target.value);
                     setEmailError("");
                   }}
                   error={emailError}
-                  showErrorLabel={true}
+                  showErrorLabel
                 />
               </div>
             </div>
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-2">
-                <div className="font-semibold text-element-900">Role:</div>
+                <div className="font-semibold text-foreground">Role:</div>
                 <RoleDropDown
                   selectedRole={invitationRole}
                   onChange={setInvitationRole}
@@ -244,108 +243,18 @@ export function InviteEmailModal({
   );
 }
 
-export function EditInvitationModal({
-  owner,
-  invitation,
-  onClose,
-}: {
-  owner: WorkspaceType;
-  invitation: MembershipInvitationType;
-  onClose: () => void;
-}) {
-  const [selectedRole, setSelectedRole] = useState<ActiveRoleType>(
-    invitation.initialRole
-  );
-  const sendNotification = useContext(SendNotificationsContext);
-  const confirm = useContext(ConfirmContext);
-
-  return (
-    <ElementModal
-      title="Edit invitation"
-      openOnElement={invitation}
-      onClose={() => {
-        onClose();
-        setSelectedRole(invitation.initialRole);
-      }}
-      hasChanged={selectedRole !== invitation.initialRole}
-      variant="side-sm"
-      onSave={async (closeModalFn) => {
-        await updateInvitation({
-          owner,
-          invitation,
-          newRole: selectedRole,
-          sendNotification,
-          confirm,
-        });
-        closeModalFn();
-      }}
-      saveLabel="Update role"
-    >
-      <Page variant="modal">
-        <Page.Layout direction="vertical">
-          <Page.Layout direction="horizontal" sizing="grow" gap="sm">
-            <Page.H variant="h6">{invitation.inviteEmail}</Page.H>
-          </Page.Layout>
-          <div className="grow font-normal text-element-700">
-            Invitation sent on{" "}
-            {new Date(invitation.createdAt).toLocaleDateString()}
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="font-semibold text-element-900">Role:</div>
-            <RoleDropDown
-              selectedRole={selectedRole}
-              onChange={setSelectedRole}
-            />
-          </div>
-          <div className="grow font-normal text-element-700">
-            The role defines the rights of a member fo the workspace.{" "}
-            {ROLES_DATA[invitation.initialRole].description}
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              className="mt-4"
-              variant="primary"
-              label="Send invitation again"
-              icon={MovingMailIcon}
-              onClick={async () => {
-                await sendInvitations({
-                  owner,
-                  emails: [invitation.inviteEmail],
-                  invitationRole: selectedRole,
-                  sendNotification,
-                  isNewInvitation: false,
-                });
-              }}
-            />
-            <Button
-              className="mt-4"
-              variant="primaryWarning"
-              label="Revoke invitation"
-              icon={XMarkIcon}
-              disabled={owner.ssoEnforced}
-              onClick={async () => {
-                await updateInvitation({
-                  invitation,
-                  owner,
-                  sendNotification,
-                  confirm,
-                });
-              }}
-            />
-          </div>
-        </Page.Layout>
-      </Page>
-    </ElementModal>
-  );
-}
-
 function ProPlanBillingNotice({
   perSeatPricing,
 }: {
   perSeatPricing: SubscriptionPerSeatPricing;
 }) {
   return (
-    <ContentMessage size="md" variant="amber" title="Note">
+    <ContentMessage
+      size="md"
+      variant="amber"
+      title="Note"
+      icon={InformationCircleIcon}
+    >
       <p>
         New users will be charged a{" "}
         <span className="font-semibold">
@@ -364,139 +273,4 @@ function ProPlanBillingNotice({
       </p>
     </ContentMessage>
   );
-}
-
-async function sendInvitations({
-  owner,
-  emails,
-  invitationRole,
-  sendNotification,
-  isNewInvitation,
-}: {
-  owner: WorkspaceType;
-  emails: string[];
-  invitationRole: ActiveRoleType;
-  sendNotification: any;
-  isNewInvitation: boolean;
-}) {
-  const body: PostInvitationRequestBody = emails.map((email) => ({
-    email,
-    role: invitationRole,
-  }));
-
-  const res = await fetch(`/api/w/${owner.sId}/invitations`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
-
-  if (!res.ok) {
-    let data: any = {};
-    try {
-      data = await res.json();
-    } catch (e) {
-      // ignore
-    }
-    if (data?.error?.type === "invitation_already_sent_recently") {
-      sendNotification({
-        type: "error",
-        title: emails.length === 1 ? "Invite failed" : "Invites failed",
-        description:
-          (emails.length === 1 ? "This user has" : "These users have") +
-          " already been invited in the last 24 hours. Please wait before sending another invite.",
-      });
-    }
-
-    sendNotification({
-      type: "error",
-      title: "Invite failed",
-      description:
-        "Failed to invite new members to workspace: " + res.statusText,
-    });
-  } else {
-    const result: PostInvitationResponseBody = await res.json();
-    const failures = result.filter((r) => !r.success);
-
-    if (failures.length > 0) {
-      sendNotification({
-        type: "error",
-        title: "Some invites failed",
-        description:
-          result[0].error_message ||
-          `Failed to invite ${failures} new member(s) to workspace.`,
-      });
-    } else {
-      sendNotification({
-        type: "success",
-        title: "Invites sent",
-        description: isNewInvitation
-          ? `${emails.length} new invites sent.`
-          : `Sent ${emails.length} invites again.`,
-      });
-    }
-  }
-}
-
-async function updateInvitation({
-  owner,
-  invitation,
-  newRole,
-  sendNotification,
-  confirm,
-}: {
-  owner: WorkspaceType;
-  invitation: MembershipInvitationType;
-  newRole?: RoleType; // Optional parameter for role change
-  sendNotification: (notificationData: NotificationType) => void;
-  confirm?: (confirmData: ConfirmDataType) => Promise<boolean>;
-}) {
-  if (!newRole && confirm) {
-    const confirmation = await confirm({
-      title: "Revoke invitation",
-      message: `Are you sure you want to revoke the invitation for ${invitation.inviteEmail}?`,
-      validateLabel: "Yes, revoke",
-      validateVariant: "primaryWarning",
-    });
-    if (!confirmation) {
-      return;
-    }
-  }
-
-  const body = {
-    status: newRole ? invitation.status : "revoked",
-    initialRole: newRole ?? invitation.initialRole,
-  };
-
-  const res = await fetch(`/api/w/${owner.sId}/invitations/${invitation.sId}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
-
-  if (!res.ok) {
-    const error: { error: { message: string } } = await res.json();
-    const message = newRole
-      ? error.error.message
-      : "Failed to update member's invitation.";
-    sendNotification({
-      type: "error",
-      title: `${newRole ? "Role Update Failed" : "Revoke Failed"}`,
-      description: message,
-    });
-    return;
-  }
-
-  const successMessage = newRole
-    ? `Invitation updated to ${newRole}`
-    : "Invitation revoked";
-  sendNotification({
-    type: "success",
-    title: `${newRole ? "Role updated" : "Invitation Revoked"}`,
-    description: `${successMessage} for ${invitation.inviteEmail}.`,
-  });
-  await mutate(`/api/w/${owner.sId}/invitations`);
 }

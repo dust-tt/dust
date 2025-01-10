@@ -8,7 +8,7 @@ import { ConnectorCreateRequestBody } from "../../connectors/api_handlers/create
 import { UpdateConnectorRequestBody } from "../../connectors/api_handlers/update_connector";
 import { ConnectorConfiguration } from "../../connectors/configuration";
 import { ContentNodesViewType } from "../../connectors/content_nodes";
-import { ConnectorProvider } from "../../front/data_source";
+import { ConnectorProvider, DataSourceType } from "../../front/data_source";
 import { LoggerInterface } from "../../shared/logger";
 import { Err, Ok, Result } from "../../shared/result";
 
@@ -18,6 +18,12 @@ const CONNECTORS_ERROR_TYPES = [
   "oauth_token_revoked",
   "third_party_internal_error",
   "webcrawling_error",
+  "webcrawling_error_empty_content",
+  "webcrawling_error_content_too_large",
+  "webcrawling_error_blocked",
+  "webcrawling_synchronization_limit_reached",
+  "remote_database_connection_not_readonly",
+  "remote_database_network_error",
 ] as const;
 
 export type ConnectorErrorType = (typeof CONNECTORS_ERROR_TYPES)[number];
@@ -50,6 +56,18 @@ export type ConnectorType = {
  */
 export type ConnectorPermission = "read" | "write" | "read_write" | "none";
 export type ContentNodeType = "file" | "folder" | "database" | "channel";
+
+/*
+ * This constant defines the priority order for sorting content nodes by their type.
+ * The types are sorted in the following order: folder first, then file, database, and channel.
+ * This mapping is used to provide a numerical value representing the priority of each content node type.
+ */
+export const contentNodeTypeSortOrder: Record<ContentNodeType, number> = {
+  folder: 1,
+  file: 2,
+  database: 3,
+  channel: 4,
+};
 
 /**
  * A ContentNode represents a connector related node. As an example:
@@ -91,6 +109,7 @@ export interface BaseContentNode {
   permission: ConnectorPermission;
   dustDocumentId: string | null;
   lastUpdatedAt: number | null;
+  providerVisibility?: "public" | "private";
 }
 
 export type ContentNode = BaseContentNode & {
@@ -352,6 +371,15 @@ export class ConnectorsAPI {
       permission: ConnectorPermission;
     }[];
   }): Promise<ConnectorsAPIResponse<void>> {
+    // Connector permission changes are logged so user actions can be traced
+    this._logger.info(
+      {
+        connectorId,
+        resources,
+      },
+      "Setting connector permissions"
+    );
+
     const res = await this._fetchWithError(
       `${this._url}/connectors/${encodeURIComponent(connectorId)}/permissions`,
       {
@@ -372,8 +400,34 @@ export class ConnectorsAPI {
   async getConnector(
     connectorId: string
   ): Promise<ConnectorsAPIResponse<ConnectorType>> {
+    const parsedId = parseInt(connectorId, 10);
+    if (isNaN(parsedId)) {
+      const err: ConnectorsAPIError = {
+        type: "invalid_request_error",
+        message: "Invalid connector ID",
+      };
+      return new Err(err);
+    }
+
     const res = await this._fetchWithError(
       `${this._url}/connectors/${encodeURIComponent(connectorId)}`,
+      {
+        method: "GET",
+        headers: this.getDefaultHeaders(),
+      }
+    );
+
+    return this._resultFromResponse(res);
+  }
+
+  // TODO(jules): remove after debugging
+  async getConnectorFromDataSource(
+    dataSource: DataSourceType
+  ): Promise<ConnectorsAPIResponse<ConnectorType>> {
+    const res = await this._fetchWithError(
+      `${this._url}/connectors/${encodeURIComponent(
+        dataSource.connectorId ?? ""
+      )}?origin=${dataSource.id}`,
       {
         method: "GET",
         headers: this.getDefaultHeaders(),
@@ -495,6 +549,7 @@ export class ConnectorsAPI {
         connectorId
       )}/content_nodes`,
       {
+        keepalive: false,
         method: "POST",
         headers: this.getDefaultHeaders(),
         body: JSON.stringify({
@@ -512,11 +567,11 @@ export class ConnectorsAPI {
 
   async linkSlackChannelsWithAgent({
     connectorId,
-    slackChannelIds,
+    slackChannelInternalIds,
     agentConfigurationId,
   }: {
     connectorId: string;
-    slackChannelIds: string[];
+    slackChannelInternalIds: string[];
     agentConfigurationId: string;
   }): Promise<ConnectorsAPIResponse<{ success: true }>> {
     const res = await this._fetchWithError(
@@ -527,7 +582,7 @@ export class ConnectorsAPI {
         body: JSON.stringify({
           connector_id: connectorId,
           agent_configuration_id: agentConfigurationId,
-          slack_channel_ids: slackChannelIds,
+          slack_channel_internal_ids: slackChannelInternalIds,
         }),
       }
     );

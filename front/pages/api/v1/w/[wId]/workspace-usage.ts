@@ -1,50 +1,26 @@
+import type {
+  GetWorkspaceUsageRequestType,
+  UsageTableType,
+} from "@dust-tt/client";
+import { GetWorkspaceUsageRequestSchema } from "@dust-tt/client";
+import type { WorkspaceType } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import { endOfMonth } from "date-fns/endOfMonth";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import JSZip from "jszip";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
-import { Authenticator, getAPIKey } from "@app/lib/auth";
+import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
+import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import {
   getAssistantsUsageData,
   getBuildersUsageData,
+  getFeedbacksUsageData,
   getMessageUsageData,
   getUserUsageData,
 } from "@app/lib/workspace_usage";
-import { apiError, withLogging } from "@app/logger/withlogging";
-import { getSupportedUsageTablesCodec } from "@app/pages/api/w/[wId]/workspace-usage";
-
-export const usageTables = [
-  "users",
-  "assistant_messages",
-  "builders",
-  "assistants",
-  "all",
-];
-type usageTableType = (typeof usageTables)[number];
-
-const MonthSchema = t.refinement(
-  t.string,
-  (s): s is string => /^\d{4}-(0[1-9]|1[0-2])$/.test(s),
-  "YYYY-MM"
-);
-
-const GetWorkspaceUsageSchema = t.union([
-  t.type({
-    start: MonthSchema,
-    end: t.undefined,
-    mode: t.literal("month"),
-    table: getSupportedUsageTablesCodec(),
-  }),
-  t.type({
-    start: MonthSchema,
-    end: MonthSchema,
-    mode: t.literal("range"),
-    table: getSupportedUsageTablesCodec(),
-  }),
-]);
+import { apiError } from "@app/logger/withlogging";
 
 /**
  * @swagger
@@ -66,13 +42,13 @@ const GetWorkspaceUsageSchema = t.union([
  *       - in: query
  *         name: start
  *         required: true
- *         description: The start date in YYYY-MM format
+ *         description: The start date in YYYY-MM or YYYY-MM-DD format
  *         schema:
  *           type: string
  *       - in: query
  *         name: end
  *         required: false
- *         description: The end date in YYYY-MM format (required when mode is 'range')
+ *         description: The end date in YYYY-MM or YYYY-MM-DD format (required when mode is 'range')
  *         schema:
  *           type: string
  *       - in: query
@@ -91,10 +67,11 @@ const GetWorkspaceUsageSchema = t.union([
  *           - "assistant_messages": The list of messages sent by users including the mentioned assistants.
  *           - "builders": The list of builders categorized by their activity level.
  *           - "assistants": The list of workspace assistants and their corresponding usage.
+ *           - "feedbacks": The list of feedbacks given by users on the assistant messages.
  *           - "all": A concatenation of all the above tables.
  *         schema:
  *           type: string
- *           enum: [users, assistant_messages, builders, assistants, all]
+ *           enum: [users, assistant_messages, builders, assistants, feedbacks, all]
  *     responses:
  *       200:
  *         description: The usage data in CSV format or a ZIP of multiple CSVs if table is equal to "all"
@@ -118,29 +95,12 @@ const GetWorkspaceUsageSchema = t.union([
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse
+  res: NextApiResponse,
+  auth: Authenticator
 ): Promise<void> {
-  const keyRes = await getAPIKey(req);
-  if (keyRes.isErr()) {
-    return apiError(req, res, keyRes.error);
-  }
-  const { workspaceAuth } = await Authenticator.fromKey(
-    keyRes.value,
-    req.query.wId as string
-  );
-
-  const owner = workspaceAuth.workspace();
-  if (!owner || !workspaceAuth.isBuilder()) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "workspace_not_found",
-        message: "The workspace was not found.",
-      },
-    });
-  }
-
-  if (!owner.flags.includes("usage_data_api")) {
+  const owner = auth.getNonNullableWorkspace();
+  const flags = await getFeatureFlags(owner);
+  if (!flags.includes("usage_data_api")) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {
@@ -152,25 +112,24 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const queryValidation = GetWorkspaceUsageSchema.decode(req.query);
-      if (isLeft(queryValidation)) {
-        const pathError = reporter.formatValidationErrors(queryValidation.left);
+      const r = GetWorkspaceUsageRequestSchema.safeParse(req.query);
+      if (r.error) {
         return apiError(req, res, {
+          status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request query: ${pathError}`,
+            message: fromError(r.error).toString(),
           },
-          status_code: 400,
         });
       }
 
-      const query = queryValidation.right;
+      const query = r.data;
       const { endDate, startDate } = resolveDates(query);
       const csvData = await fetchUsageData({
         table: query.table,
         start: startDate,
         end: endDate,
-        workspaceId: owner.sId,
+        workspace: owner,
       });
       const zip = new JSZip();
       const csvSuffix = startDate
@@ -215,15 +174,23 @@ async function handler(
   }
 }
 
-function resolveDates(query: t.TypeOf<typeof GetWorkspaceUsageSchema>) {
+function resolveDates(query: GetWorkspaceUsageRequestType) {
+  const parseDate = (dateString: string) => {
+    const parts = dateString.split("-");
+    return new Date(
+      parseInt(parts[0]),
+      parseInt(parts[1]) - 1,
+      parts[2] ? parseInt(parts[2]) : 1
+    );
+  };
   switch (query.mode) {
     case "month":
-      const date = new Date(`${query.start}-01`);
+      const date = parseDate(query.start);
       return { startDate: date, endDate: endOfMonth(date) };
     case "range":
       return {
-        startDate: new Date(`${query.start}-01`),
-        endDate: endOfMonth(new Date(`${query.end}-01`)),
+        startDate: parseDate(query.start),
+        endDate: parseDate(query.end),
       };
     default:
       assertNever(query);
@@ -234,38 +201,43 @@ async function fetchUsageData({
   table,
   start,
   end,
-  workspaceId,
+  workspace,
 }: {
-  table: usageTableType;
+  table: UsageTableType;
   start: Date;
   end: Date;
-  workspaceId: string;
-}): Promise<Partial<Record<usageTableType, string>>> {
+  workspace: WorkspaceType;
+}): Promise<Partial<Record<UsageTableType, string>>> {
   switch (table) {
     case "users":
-      return { users: await getUserUsageData(start, end, workspaceId) };
+      return { users: await getUserUsageData(start, end, workspace) };
     case "assistant_messages":
       return {
-        assistant_messages: await getMessageUsageData(start, end, workspaceId),
+        assistant_messages: await getMessageUsageData(start, end, workspace),
       };
     case "builders":
-      return { builders: await getBuildersUsageData(start, end, workspaceId) };
+      return { builders: await getBuildersUsageData(start, end, workspace) };
     case "assistants":
       return {
-        assistants: await getAssistantsUsageData(start, end, workspaceId),
+        assistants: await getAssistantsUsageData(start, end, workspace),
+      };
+    case "feedbacks":
+      return {
+        feedbacks: await getFeedbacksUsageData(start, end, workspace),
       };
     case "all":
-      const [users, assistant_messages, builders, assistants] =
+      const [users, assistant_messages, builders, assistants, feedbacks] =
         await Promise.all([
-          getUserUsageData(start, end, workspaceId),
-          getMessageUsageData(start, end, workspaceId),
-          getBuildersUsageData(start, end, workspaceId),
-          getAssistantsUsageData(start, end, workspaceId),
+          getUserUsageData(start, end, workspace),
+          getMessageUsageData(start, end, workspace),
+          getBuildersUsageData(start, end, workspace),
+          getAssistantsUsageData(start, end, workspace),
+          getFeedbacksUsageData(start, end, workspace),
         ]);
-      return { users, assistant_messages, builders, assistants };
+      return { users, assistant_messages, builders, assistants, feedbacks };
     default:
       return {};
   }
 }
 
-export default withLogging(handler);
+export default withPublicAPIAuthentication(handler);

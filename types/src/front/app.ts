@@ -1,7 +1,10 @@
 import { BlockType } from "../front/run";
 import { ModelId } from "../shared/model_id";
-import { VaultType } from "./vault";
-export type AppVisibility = "public" | "private" | "deleted";
+import { SpaceType } from "./space";
+
+export type AppVisibility = "private" | "deleted";
+
+export const APP_NAME_REGEXP = /^[a-zA-Z0-9_-]{1,64}$/;
 
 export type BlockRunConfig = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -13,12 +16,11 @@ export type AppType = {
   sId: string;
   name: string;
   description: string | null;
-  visibility: AppVisibility;
   savedSpecification: string | null;
   savedConfig: string | null;
   savedRun: string | null;
   dustAPIProjectId: string;
-  vault: VaultType;
+  space: SpaceType;
 };
 
 export type SpecificationBlockType = {

@@ -1,9 +1,12 @@
-import { ContextItem, GithubLogo, SliderToggle } from "@dust-tt/sparkle";
+import {
+  ContextItem,
+  GithubLogo,
+  SliderToggle,
+  useSendNotification,
+} from "@dust-tt/sparkle";
 import type { APIError, DataSourceType, WorkspaceType } from "@dust-tt/types";
-import { useContext, useState } from "react";
-import * as React from "react";
+import { useState } from "react";
 
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { useConnectorConfig } from "@app/lib/swr/connectors";
 
 export function GithubCodeEnableView({
@@ -24,13 +27,13 @@ export function GithubCodeEnableView({
   });
   const codeSyncEnabled = configValue === "true";
 
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
   const [loading, setLoading] = useState(false);
 
   const handleSetCodeSyncEnabled = async (codeSyncEnabled: boolean) => {
     setLoading(true);
     const res = await fetch(
-      `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/config/codeSyncEnabled`,
+      `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/codeSyncEnabled`,
       {
         headers: {
           "Content-Type": "application/json",

@@ -1,23 +1,87 @@
-use crate::blocks::block::BlockType;
-use crate::cached_request::CachedRequest;
-use crate::data_sources::data_source::{DataSource, DataSourceConfig, Document, DocumentVersion};
-use crate::databases::database::{Database, Table};
-use crate::databases::table_schema::TableSchema;
-use crate::dataset::Dataset;
-use crate::http::request::{HttpRequest, HttpResponse};
-use crate::project::Project;
-use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
-use crate::providers::llm::{LLMChatGeneration, LLMChatRequest, LLMGeneration, LLMRequest};
-use crate::run::{Run, RunStatus, RunType};
-use crate::search_filter::SearchFilter;
-use crate::sqlite_workers::client::SqliteWorker;
-
 use anyhow::Result;
 use async_trait::async_trait;
+use bb8::Pool;
+use bb8_postgres::PostgresConnectionManager;
 use std::collections::HashMap;
+use tokio_postgres::NoTls;
+
+use crate::{
+    blocks::block::BlockType,
+    cached_request::CachedRequest,
+    data_sources::{
+        data_source::{DataSource, DataSourceConfig, Document, DocumentVersion},
+        folder::Folder,
+        node::Node,
+    },
+    databases::{table::Table, table_schema::TableSchema, transient_database::TransientDatabase},
+    dataset::Dataset,
+    http::request::{HttpRequest, HttpResponse},
+    project::Project,
+    providers::{
+        embedder::{EmbedderRequest, EmbedderVector},
+        llm::{LLMChatGeneration, LLMChatRequest, LLMGeneration, LLMRequest},
+    },
+    run::{Run, RunStatus, RunType},
+    search_filter::SearchFilter,
+    sqlite_workers::client::SqliteWorker,
+};
+
+pub struct DocumentCreateParams {
+    pub document_id: String,
+    pub title: Option<String>,
+    pub mime_type: Option<String>,
+    pub timestamp: u64,
+    pub tags: Vec<String>,
+    pub parents: Vec<String>,
+    pub source_url: Option<String>,
+    pub hash: String,
+    pub text_size: u64,
+    pub chunk_count: usize,
+    pub created: u64,
+}
+
+impl From<Document> for DocumentCreateParams {
+    fn from(document: Document) -> Self {
+        DocumentCreateParams {
+            document_id: document.document_id,
+            title: Some(document.title),
+            mime_type: Some(document.mime_type),
+            timestamp: document.timestamp,
+            tags: document.tags,
+            parents: document.parents,
+            source_url: document.source_url,
+            hash: document.hash,
+            text_size: document.text_size,
+            chunk_count: document.chunk_count,
+            created: document.created,
+        }
+    }
+}
+
+pub struct TableUpsertParams {
+    pub table_id: String,
+    pub name: String,
+    pub description: String,
+    pub timestamp: u64,
+    pub tags: Vec<String>,
+    pub parents: Vec<String>,
+    pub remote_database_table_id: Option<String>,
+    pub remote_database_secret_id: Option<String>,
+    pub title: String,
+    pub mime_type: String,
+}
+
+pub struct FolderUpsertParams {
+    pub folder_id: String,
+    pub timestamp: u64,
+    pub title: String,
+    pub parents: Vec<String>,
+    pub mime_type: String,
+}
 
 #[async_trait]
 pub trait Store {
+    fn raw_pool(&self) -> &Pool<PostgresConnectionManager<NoTls>>;
     // Projects
     async fn create_project(&self) -> Result<Project>;
     async fn delete_project(&self, project: &Project) -> Result<()>;
@@ -76,6 +140,7 @@ pub trait Store {
         block_idx: usize,
         block_type: &BlockType,
         block_name: &String,
+        store_blocks_results: bool,
     ) -> Result<()>;
 
     async fn load_run(
@@ -119,13 +184,14 @@ pub trait Store {
         filter: &Option<SearchFilter>,
         view_filter: &Option<SearchFilter>,
         limit_offset: Option<(usize, usize)>,
+        include_count: bool,
     ) -> Result<(Vec<String>, usize)>;
-    async fn upsert_data_source_document(
+    async fn create_data_source_document(
         &self,
         project: &Project,
-        data_source_id: &str,
-        document: &Document,
-    ) -> Result<()>;
+        data_source_id: String,
+        create_params: DocumentCreateParams,
+    ) -> Result<Document>;
     async fn update_data_source_document_tags(
         &self,
         project: &Project,
@@ -156,6 +222,7 @@ pub trait Store {
         limit_offset: Option<(usize, usize)>,
         view_filter: &Option<SearchFilter>,
         latest_hash: &Option<String>,
+        include_count: bool,
     ) -> Result<(Vec<DocumentVersion>, usize)>;
     async fn list_data_source_documents(
         &self,
@@ -165,6 +232,7 @@ pub trait Store {
         document_ids: &Option<Vec<String>>,
         limit_offset: Option<(usize, usize)>,
         remove_system_tags: bool,
+        include_count: bool,
     ) -> Result<(Vec<Document>, usize)>;
     async fn delete_data_source_document(
         &self,
@@ -172,61 +240,67 @@ pub trait Store {
         data_source_id: &str,
         document_id: &str,
     ) -> Result<()>;
-    async fn delete_data_source(&self, project: &Project, data_source_id: &str) -> Result<()>;
+    async fn delete_data_source_document_version(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        document_id: &str,
+        version: &DocumentVersion,
+    ) -> Result<()>;
+    async fn delete_data_source(&self, project: &Project, data_source_id: &str) -> Result<u64>;
     // Databases
-    async fn upsert_database(&self, table_ids_hash: &str, worker_ttl: u64) -> Result<Database>;
+    async fn upsert_database(
+        &self,
+        table_ids_hash: &str,
+        worker_ttl: u64,
+    ) -> Result<TransientDatabase>;
     async fn load_database(
         &self,
         table_ids_hash: &str,
         worker_ttl: u64,
-    ) -> Result<Option<Database>>;
+    ) -> Result<Option<TransientDatabase>>;
     async fn find_databases_using_table(
         &self,
         project: &Project,
         data_source_id: &str,
         table_id: &str,
         worker_ttl: u64,
-    ) -> Result<Vec<Database>>;
+    ) -> Result<Vec<TransientDatabase>>;
     async fn delete_database(&self, table_ids_hash: &str) -> Result<()>;
     // Tables
-    async fn upsert_table(
+    async fn upsert_data_source_table(
         &self,
-        project: &Project,
-        data_source_id: &str,
-        table_id: &str,
-        name: &str,
-        description: &str,
-        timestamp: u64,
-        tags: &Vec<String>,
-        parents: &Vec<String>,
+        project: Project,
+        data_source_id: String,
+        upsert_params: TableUpsertParams,
     ) -> Result<Table>;
-    async fn update_table_schema(
+    async fn update_data_source_table_schema(
         &self,
         project: &Project,
         data_source_id: &str,
         table_id: &str,
         schema: &TableSchema,
     ) -> Result<()>;
-    async fn update_table_parents(
+    async fn update_data_source_table_parents(
         &self,
         project: &Project,
         data_source_id: &str,
         table_id: &str,
         parents: &Vec<String>,
     ) -> Result<()>;
-    async fn invalidate_table_schema(
+    async fn invalidate_data_source_table_schema(
         &self,
         project: &Project,
         data_source_id: &str,
         table_id: &str,
     ) -> Result<()>;
-    async fn load_table(
+    async fn load_data_source_table(
         &self,
         project: &Project,
         data_source_id: &str,
         table_id: &str,
     ) -> Result<Option<Table>>;
-    async fn list_tables(
+    async fn list_data_source_tables(
         &self,
         project: &Project,
         data_source_id: &str,
@@ -234,12 +308,53 @@ pub trait Store {
         table_ids: &Option<Vec<String>>,
         limit_offset: Option<(usize, usize)>,
     ) -> Result<(Vec<Table>, usize)>;
-    async fn delete_table(
+    async fn delete_data_source_table(
         &self,
         project: &Project,
         data_source_id: &str,
         table_id: &str,
     ) -> Result<()>;
+    // Folders
+    async fn upsert_data_source_folder(
+        &self,
+        project: Project,
+        data_source_id: String,
+        upsert_params: FolderUpsertParams,
+    ) -> Result<Folder>;
+    async fn load_data_source_folder(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        folder_id: &str,
+    ) -> Result<Option<Folder>>;
+    async fn list_data_source_folders(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        view_filter: &Option<SearchFilter>,
+        folder_ids: &Option<Vec<String>>,
+        limit_offset: Option<(usize, usize)>,
+    ) -> Result<(Vec<Folder>, usize)>;
+    async fn delete_data_source_folder(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        folder_id: &str,
+    ) -> Result<()>;
+    // Data Sources Nodes
+    async fn get_data_source_node(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        node_id: &str,
+    ) -> Result<Option<(Node, i64)>>;
+    // returns a list of (node, row_id, element_row_id)
+    async fn list_data_source_nodes(
+        &self,
+        id_cursor: i64,
+        batch_size: i64,
+    ) -> Result<Vec<(Node, i64, i64)>>;
+
     // LLM Cache
     async fn llm_cache_get(
         &self,
@@ -324,7 +439,7 @@ impl Clone for Box<dyn Store + Sync + Send> {
     }
 }
 
-pub const POSTGRES_TABLES: [&'static str; 14] = [
+pub const POSTGRES_TABLES: [&'static str; 16] = [
     "-- projects
      CREATE TABLE IF NOT EXISTS projects (
         id BIGSERIAL PRIMARY KEY
@@ -426,7 +541,6 @@ pub const POSTGRES_TABLES: [&'static str; 14] = [
        document_id              TEXT NOT NULL,
        timestamp                BIGINT NOT NULL,
        tags_array               TEXT[] NOT NULL,
-       parents                  TEXT[] NOT NULL,
        source_url               TEXT,
        hash                     TEXT NOT NULL,
        text_size                BIGINT NOT NULL,
@@ -451,22 +565,54 @@ pub const POSTGRES_TABLES: [&'static str; 14] = [
     );",
     "-- databases tables
     CREATE TABLE IF NOT EXISTS tables (
-       id                       BIGSERIAL PRIMARY KEY,
-       created                  BIGINT NOT NULL,
-       table_id                 TEXT NOT NULL, -- unique within datasource
-       name                     TEXT NOT NULL, -- unique within datasource
-       description              TEXT NOT NULL,
-       timestamp                BIGINT NOT NULL,
-       tags_array               TEXT[] NOT NULL,
-       parents                  TEXT[] NOT NULL,
-       schema                   TEXT, -- json, kept up-to-date automatically with the last insert
-       schema_stale_at          BIGINT, -- timestamp when the schema was last invalidated
-       data_source              BIGINT NOT NULL,
-       FOREIGN KEY(data_source) REFERENCES data_sources(id)
+       id                           BIGSERIAL PRIMARY KEY,
+       created                      BIGINT NOT NULL,
+       table_id                     TEXT NOT NULL, -- unique within datasource
+       name                         TEXT NOT NULL, -- unique within datasource
+       description                  TEXT NOT NULL,
+       timestamp                    BIGINT NOT NULL,
+       tags_array                   TEXT[] NOT NULL,
+       schema                       TEXT, -- json, kept up-to-date automatically with the last insert
+       schema_stale_at              BIGINT, -- timestamp when the schema was last invalidated
+       data_source                  BIGINT NOT NULL,
+       remote_database_table_id     TEXT,
+       remote_database_secret_id    TEXT,
+       FOREIGN KEY(data_source)     REFERENCES data_sources(id)
+    );",
+    "-- data sources folders
+    CREATE TABLE IF NOT EXISTS data_sources_folders (
+       id                           BIGSERIAL PRIMARY KEY,
+       data_source                  BIGINT NOT NULL,
+       created                      BIGINT NOT NULL,
+       folder_id                    TEXT NOT NULL,
+       FOREIGN KEY(data_source)    REFERENCES data_sources(id)
+    );",
+    "-- data sources nodes
+    CREATE TABLE IF NOT EXISTS data_sources_nodes (
+       id                           BIGSERIAL PRIMARY KEY,
+       created                      BIGINT NOT NULL,
+       data_source                  BIGINT NOT NULL,
+       timestamp                    BIGINT NOT NULL,
+       node_id                      TEXT NOT NULL,
+       title                        TEXT NOT NULL,
+       mime_type                    TEXT NOT NULL,
+       parents                      TEXT[] NOT NULL,
+       document                     BIGINT,
+       \"table\"                      BIGINT,
+       folder                       BIGINT,
+       FOREIGN KEY(data_source)    REFERENCES data_sources(id),
+       FOREIGN KEY(document)       REFERENCES data_sources_documents(id),
+       FOREIGN KEY(\"table\")      REFERENCES tables(id),
+       FOREIGN KEY(folder)         REFERENCES data_sources_folders(id),
+       CONSTRAINT data_sources_nodes_document_id_table_id_folder_id_check CHECK (
+           (document IS NOT NULL AND \"table\" IS NULL AND folder IS NULL) OR
+           (document IS NULL AND \"table\" IS NOT NULL AND folder IS NULL) OR
+           (document IS NULL AND \"table\" IS NULL AND folder IS NOT NULL)
+        )
     );",
 ];
 
-pub const SQL_INDEXES: [&'static str; 26] = [
+pub const SQL_INDEXES: [&'static str; 35] = [
     "CREATE INDEX IF NOT EXISTS
        idx_specifications_project_created ON specifications (project, created);",
     "CREATE INDEX IF NOT EXISTS
@@ -525,6 +671,24 @@ pub const SQL_INDEXES: [&'static str; 26] = [
        idx_tables_parents_array ON tables USING GIN (parents);",
     "CREATE UNIQUE INDEX IF NOT EXISTS
         idx_sqlite_workers_url ON sqlite_workers (url);",
+    "CREATE INDEX IF NOT EXISTS
+        idx_status_deleted ON data_sources_documents (id) WHERE status = 'deleted';",
+    "CREATE UNIQUE INDEX IF NOT EXISTS
+        idx_data_sources_folders_data_source_folder_id ON data_sources_folders(data_source, folder_id);",
+    "CREATE UNIQUE INDEX IF NOT EXISTS
+        idx_data_sources_nodes_data_source_node_id ON data_sources_nodes(data_source, node_id);",
+    "CREATE INDEX IF NOT EXISTS
+        idx_data_sources_nodes_parents_array ON data_sources_nodes USING GIN (parents);",
+    "CREATE INDEX IF NOT EXISTS
+        idx_data_sources_nodes_document ON data_sources_nodes(document);",
+    "CREATE INDEX IF NOT EXISTS
+        idx_data_sources_nodes_table ON data_sources_nodes(\"table\");",
+    "CREATE INDEX IF NOT EXISTS
+        idx_data_sources_nodes_folder ON data_sources_nodes(folder);",
+    "CREATE INDEX IF NOT EXISTS
+        idx_data_sources_nodes_parents_second ON data_sources_nodes (data_source, (parents[2]));",
+    "CREATE INDEX IF NOT EXISTS
+        idx_data_sources_nodes_parents_single ON data_sources_nodes (data_source, (array_length(parents, 1) = 1));",
 ];
 
 pub const SQL_FUNCTIONS: [&'static str; 2] = [

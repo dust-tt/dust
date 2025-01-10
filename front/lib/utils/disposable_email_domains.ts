@@ -1,4 +1,4 @@
-const DISPOSABLE_EMAIL_DOMAINS = [
+const DISPOSABLE_EMAIL_DOMAINS = new Set([
   "0-mail.com",
   "027168.com",
   "0815.su",
@@ -4771,8 +4771,8 @@ const DISPOSABLE_EMAIL_DOMAINS = [
   "zzom.co.uk",
   "zzz.com",
   "zzz.pl",
-];
+]);
 
 export function isDisposableEmailDomain(emailDomain: string) {
-  return DISPOSABLE_EMAIL_DOMAINS.includes(emailDomain);
+  return DISPOSABLE_EMAIL_DOMAINS.has(emailDomain);
 }

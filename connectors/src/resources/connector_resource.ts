@@ -12,6 +12,7 @@ import type {
   WhereOptions,
 } from "sequelize";
 
+import logger from "@connectors/logger/logger";
 import { BaseResource } from "@connectors/resources/base_resource";
 import type {
   ConnectorProviderConfigurationResource,
@@ -136,9 +137,22 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
   }
 
   static async fetchByIds(type: ConnectorProvider, ids: (ModelId | string)[]) {
-    const parsedIds = ids.map((id) =>
-      typeof id === "string" ? parseInt(id, 10) : id
-    );
+    const parsedIds = ids
+      .map((id) => {
+        const parsed = typeof id === "string" ? parseInt(id, 10) : id;
+        if (isNaN(parsed)) {
+          logger.error(
+            { originalId: id, type },
+            "Received invalid connector ID (NaN)"
+          );
+        }
+        return parsed;
+      })
+      .filter((id) => !isNaN(id));
+
+    if (parsedIds.length === 0) {
+      return [];
+    }
 
     const blobs = await ConnectorResource.model.findAll({
       where: {

@@ -1,5 +1,6 @@
 import { IconButton, TrashIcon } from "@dust-tt/sparkle";
-import type { RoleType } from "@dust-tt/types";
+import type { ActiveRoleType, RoleType } from "@dust-tt/types";
+import { ACTIVE_ROLES } from "@dust-tt/types";
 import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
 
@@ -16,10 +17,17 @@ export type MemberDisplayType = {
 
 export function makeColumnsForMembers({
   onRevokeMember,
+  onUpdateMemberRole,
+  readonly,
 }: {
   onRevokeMember: (m: MemberDisplayType) => Promise<void>;
+  onUpdateMemberRole: (
+    m: MemberDisplayType,
+    role: ActiveRoleType
+  ) => Promise<void>;
+  readonly?: boolean;
 }): ColumnDef<MemberDisplayType>[] {
-  return [
+  const baseColumns: ColumnDef<MemberDisplayType>[] = [
     {
       accessorKey: "sId",
       header: ({ column }) => {
@@ -27,7 +35,7 @@ export function makeColumnsForMembers({
           <div className="flex space-x-2">
             <p>Id</p>
             <IconButton
-              variant="tertiary"
+              variant="outline"
               icon={ArrowsUpDownIcon}
               onClick={() =>
                 column.toggleSorting(column.getIsSorted() === "asc")
@@ -44,7 +52,7 @@ export function makeColumnsForMembers({
           <div className="flex space-x-2">
             <p>Name</p>
             <IconButton
-              variant="tertiary"
+              variant="outline"
               icon={ArrowsUpDownIcon}
               onClick={() =>
                 column.toggleSorting(column.getIsSorted() === "asc")
@@ -82,7 +90,7 @@ export function makeColumnsForMembers({
           <div className="flex space-x-2">
             <p>Role</p>
             <IconButton
-              variant="tertiary"
+              variant="outline"
               icon={ArrowsUpDownIcon}
               onClick={() =>
                 column.toggleSorting(column.getIsSorted() === "asc")
@@ -94,23 +102,57 @@ export function makeColumnsForMembers({
       filterFn: (row, id, value) => {
         return value.includes(row.getValue(id));
       },
-    },
-    {
-      id: "actions",
       cell: ({ row }) => {
         const member = row.original;
+        if (member.role === "none") {
+          return <span className="py-2 pl-3 italic">revoked</span>;
+        }
+
+        if (readonly) {
+          return <span>{member.role}</span>;
+        }
 
         return (
-          <IconButton
-            icon={TrashIcon}
-            size="xs"
-            variant="tertiary"
-            onClick={async () => {
-              await onRevokeMember(member);
+          <select
+            className="rounded-lg border border-gray-300 bg-gray-50 text-sm text-gray-900"
+            value={member.role}
+            onChange={async (e) => {
+              await onUpdateMemberRole(
+                member,
+                e.target.value as ActiveRoleType
+              );
             }}
-          />
+          >
+            {ACTIVE_ROLES.map((role) => (
+              <option key={role} value={role}>
+                {role}
+              </option>
+            ))}
+          </select>
         );
       },
     },
   ];
+
+  if (!readonly) {
+    baseColumns.push({
+      id: "actions",
+      cell: ({ row }) => {
+        const member = row.original;
+
+        return member.role !== "none" ? (
+          <IconButton
+            icon={TrashIcon}
+            size="xs"
+            variant="outline"
+            onClick={async () => {
+              await onRevokeMember(member);
+            }}
+          />
+        ) : null;
+      },
+    });
+  }
+
+  return baseColumns;
 }

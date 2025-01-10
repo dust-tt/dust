@@ -1,5 +1,9 @@
-import type { ModelId, Result } from "@dust-tt/types";
-import { cacheWithRedis, Err, Ok } from "@dust-tt/types";
+import type { ModelId } from "@dust-tt/types";
+import {
+  cacheWithRedis,
+  MICROSOFT_MIME_TYPES,
+  removeNulls,
+} from "@dust-tt/types";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import { GraphError } from "@microsoft/microsoft-graph-client";
 import type { DriveItem } from "@microsoft/microsoft-graph-types";
@@ -8,6 +12,7 @@ import * as _ from "lodash";
 
 import { getClient } from "@connectors/connectors/microsoft";
 import {
+  clientApiPost,
   extractPath,
   getAllPaginatedEntities,
   getDeltaResults,
@@ -39,7 +44,10 @@ import {
 import { getMimeTypesToSync } from "@connectors/connectors/microsoft/temporal/mime_types";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
-import { updateDocumentParentsField } from "@connectors/lib/data_sources";
+import {
+  updateDataSourceDocumentParents,
+  upsertDataSourceFolder,
+} from "@connectors/lib/data_sources";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
@@ -55,6 +63,16 @@ const DELETE_CONCURRENCY = 5;
 export async function getRootNodesToSync(
   connectorId: ModelId
 ): Promise<string[]> {
+  const rootResources =
+    await MicrosoftRootResource.listRootsByConnectorId(connectorId);
+
+  return getRootNodesToSyncFromResources(connectorId, rootResources);
+}
+
+export async function getRootNodesToSyncFromResources(
+  connectorId: ModelId,
+  rootResources: MicrosoftRootResource[]
+): Promise<string[]> {
   const connector = await ConnectorResource.fetchById(connectorId);
 
   if (!connector) {
@@ -63,32 +81,44 @@ export async function getRootNodesToSync(
 
   const client = await getClient(connector.connectionId);
 
-  const rootResources =
-    await MicrosoftRootResource.listRootsByConnectorId(connectorId);
-
   // get root folders and drives and drill down site-root and sites to their
   // child drives (converted to MicrosoftNode types)
-  const rootFolderAndDriveNodes = await Promise.all(
-    rootResources
-      .filter(
-        (resource) =>
-          resource.nodeType === "folder" || resource.nodeType === "drive"
-      )
-      .map(async (resource) => {
-        const item = await getItem(
-          client,
-          typeAndPathFromInternalId(resource.internalId).itemAPIPath
-        );
+  const rootFolderAndDriveNodes = removeNulls(
+    await Promise.all(
+      rootResources
+        .filter(
+          (resource) =>
+            resource.nodeType === "folder" || resource.nodeType === "drive"
+        )
+        .map(async (resource) => {
+          try {
+            const item = await getItem(
+              client,
+              typeAndPathFromInternalId(resource.internalId).itemAPIPath
+            );
 
-        const node = itemToMicrosoftNode(
-          resource.nodeType as "folder" | "drive",
-          item
-        );
-        return {
-          ...node,
-          name: `${node.name} (${extractPath(item)})`,
-        };
-      })
+            const node = itemToMicrosoftNode(
+              resource.nodeType as "folder" | "drive",
+              item
+            );
+            return {
+              ...node,
+              name: `${node.name} (${extractPath(item)})`,
+            };
+          } catch (error) {
+            logger.error(
+              {
+                connectorId,
+                error,
+                id: resource.internalId,
+                panic: true,
+              },
+              "Failed to get item"
+            );
+            return null;
+          }
+        })
+    )
   );
 
   const rootSitePaths: string[] = rootResources
@@ -170,6 +200,22 @@ export async function getRootNodesToSync(
   const nodeResources = await MicrosoftNodeResource.batchUpdateOrCreate(
     connectorId,
     nodesToSync
+  );
+
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  await concurrentExecutor(
+    nodeResources,
+    async (createdOrUpdatedResource) =>
+      upsertDataSourceFolder({
+        dataSourceConfig,
+        folderId: createdOrUpdatedResource.internalId,
+        parents: [createdOrUpdatedResource.internalId],
+        parentId: null,
+        title: createdOrUpdatedResource.name ?? "",
+        mimeType: MICROSOFT_MIME_TYPES.FOLDER,
+      }),
+    { concurrency: 5 }
   );
 
   return nodeResources.map((r) => r.internalId);
@@ -404,6 +450,7 @@ export async function syncFiles({
   });
 
   const alreadySeenResources = Object.values(alreadySeenResourcesById);
+
   const createdOrUpdatedResources =
     await MicrosoftNodeResource.batchUpdateOrCreate(
       connectorId,
@@ -422,6 +469,26 @@ export async function syncFiles({
           })
         )
     );
+
+  const parentsOfParent = await getParents({
+    connectorId: parent.connectorId,
+    internalId: parent.internalId,
+    startSyncTs,
+  });
+
+  await concurrentExecutor(
+    createdOrUpdatedResources,
+    async (createdOrUpdatedResource) =>
+      upsertDataSourceFolder({
+        dataSourceConfig,
+        folderId: createdOrUpdatedResource.internalId,
+        parents: [createdOrUpdatedResource.internalId, ...parentsOfParent],
+        parentId: parentsOfParent[0],
+        title: createdOrUpdatedResource.name ?? "",
+        mimeType: MICROSOFT_MIME_TYPES.FOLDER,
+      }),
+    { concurrency: 5 }
+  );
 
   return {
     count,
@@ -557,7 +624,7 @@ export async function syncDeltaForRootNodesInDrive({
       if (driveItem.deleted) {
         // no need to delete children here since they will all be listed
         // in the delta with the 'deleted' field set
-        await deleteFolder({ connectorId, internalId });
+        await deleteFolder({ connectorId, dataSourceConfig, internalId });
       } else {
         const isMoved = await isFolderMovedInSameRoot({
           connectorId,
@@ -586,6 +653,15 @@ export async function syncDeltaForRootNodesInDrive({
           blob
         );
 
+        await upsertDataSourceFolder({
+          dataSourceConfig,
+          folderId: blob.internalId,
+          parents: [blob.internalId],
+          parentId: null,
+          title: blob.name ?? "",
+          mimeType: MICROSOFT_MIME_TYPES.FOLDER,
+        });
+
         // add parent information to new node resource. for the toplevel folder,
         // parent is null
         // todo check filter
@@ -601,7 +677,7 @@ export async function syncDeltaForRootNodesInDrive({
         });
 
         if (isMoved) {
-          await updateDescendantsParentsInQdrant({
+          await updateDescendantsParentsInCore({
             dataSourceConfig,
             folder: resource,
             startSyncTs,
@@ -775,7 +851,7 @@ async function isFolderMovedInSameRoot({
   return oldParentId !== newParentId;
 }
 
-async function updateDescendantsParentsInQdrant({
+async function updateDescendantsParentsInCore({
   folder,
   dataSourceConfig,
   startSyncTs,
@@ -787,6 +863,21 @@ async function updateDescendantsParentsInQdrant({
   const children = await folder.fetchChildren();
   const files = children.filter((child) => child.nodeType === "file");
   const folders = children.filter((child) => child.nodeType === "folder");
+
+  const parents = await getParents({
+    connectorId: folder.connectorId,
+    internalId: folder.internalId,
+    startSyncTs,
+  });
+  await upsertDataSourceFolder({
+    dataSourceConfig,
+    folderId: folder.internalId,
+    parents,
+    parentId: parents[1] || null,
+    title: folder.name ?? "",
+    mimeType: MICROSOFT_MIME_TYPES.FOLDER,
+  });
+
   await concurrentExecutor(
     files,
     async (file) => updateParentsField({ file, dataSourceConfig, startSyncTs }),
@@ -795,7 +886,7 @@ async function updateDescendantsParentsInQdrant({
     }
   );
   for (const childFolder of folders) {
-    await updateDescendantsParentsInQdrant({
+    await updateDescendantsParentsInCore({
       dataSourceConfig,
       folder: childFolder,
       startSyncTs,
@@ -818,10 +909,11 @@ async function updateParentsField({
     startSyncTs,
   });
 
-  await updateDocumentParentsField({
+  await updateDataSourceDocumentParents({
     dataSourceConfig,
     documentId: file.internalId,
     parents,
+    parentId: parents[1] || null,
   });
 }
 
@@ -831,10 +923,10 @@ export async function microsoftDeletionActivity({
 }: {
   connectorId: ModelId;
   nodeIdsToDelete: string[];
-}): Promise<Result<void, Error>> {
+}): Promise<string[]> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
-    return new Err(new Error(`Connector ${connectorId} not found`));
+    return [];
   }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
@@ -845,17 +937,7 @@ export async function microsoftDeletionActivity({
     { concurrency: DELETE_CONCURRENCY }
   );
 
-  const errors = results.filter((r): r is Err<Error> => r.isErr());
-  if (errors.length > 0) {
-    logger.error(
-      { connectorId, errors: errors.map((e) => e.error.message) },
-      "Microsoft deletion workflow completed with errors"
-    );
-    return new Err(
-      new Error("Microsoft deletion workflow completed with errors")
-    );
-  }
-  return new Ok(undefined);
+  return results.flat();
 }
 
 export async function microsoftGarbageCollectionActivity({
@@ -884,7 +966,7 @@ export async function microsoftGarbageCollectionActivity({
 
   const nodes = await MicrosoftNodeResource.fetchByPaginatedIds({
     connectorId,
-    pageSize: 300,
+    pageSize: 500,
     idCursor,
   });
 
@@ -918,7 +1000,9 @@ export async function microsoftGarbageCollectionActivity({
   const chunkedRequests = _.chunk(requests, 20);
 
   for (const chunk of chunkedRequests) {
-    const batchRes = await client.api("/$batch").post({ requests: chunk });
+    const batchRes = await clientApiPost(client, "/$batch", {
+      requests: chunk,
+    });
     for (const res of batchRes.responses) {
       const node = nodesToCheck[Number(res.id)];
       if (node && (res.status === 200 || res.status === 404)) {
@@ -926,7 +1010,11 @@ export async function microsoftGarbageCollectionActivity({
         switch (node.nodeType) {
           case "drive":
             if (!driveOrItem || !rootNodeIds.includes(node.internalId)) {
-              await deleteFolder({ connectorId, internalId: node.internalId });
+              await deleteFolder({
+                connectorId,
+                dataSourceConfig,
+                internalId: node.internalId,
+              });
             }
             break;
           case "folder": {
@@ -942,7 +1030,11 @@ export async function microsoftGarbageCollectionActivity({
                 startGarbageCollectionTs,
               }))
             ) {
-              await deleteFolder({ connectorId, internalId: node.internalId });
+              await deleteFolder({
+                connectorId,
+                dataSourceConfig,
+                internalId: node.internalId,
+              });
             }
             break;
           }
@@ -1093,6 +1185,14 @@ async function scrubRemovedFolders({
   );
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  logger.info(
+    {
+      connectorId: connector.id,
+      nodes: nodes.map((n) => n.toJSON()),
+    },
+    "Scrubbing removed folders"
+  );
 
   for (const node of nodes) {
     if (node.nodeType === "file") {

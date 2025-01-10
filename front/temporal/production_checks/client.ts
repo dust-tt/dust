@@ -27,7 +27,7 @@ export async function launchProductionChecksWorkflow(): Promise<
       args: [],
       taskQueue: QUEUE_NAME,
       workflowId: workflowId,
-      cronSchedule: "0 * * * *", // every hour, on the hour
+      cronSchedule: "20 * * * *", // every hour, on 20 minutes past the hour
     });
     logger.info(
       {

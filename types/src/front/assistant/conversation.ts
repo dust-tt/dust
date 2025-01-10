@@ -7,6 +7,8 @@ import { UserType, WorkspaceType } from "../../front/user";
 import { ModelId } from "../../shared/model_id";
 import { ContentFragmentType } from "../content_fragment";
 import { BrowseActionType } from "./actions/browse";
+import { ConversationIncludeFileActionType } from "./actions/conversation/include_file";
+import { ConversationListFilesActionType } from "./actions/conversation/list_files";
 import { WebsearchActionType } from "./actions/websearch";
 
 /**
@@ -44,6 +46,12 @@ export type MessageType =
   | UserMessageType
   | ContentFragmentType;
 
+export type MessageWithContentFragmentsType =
+  | AgentMessageType
+  | (UserMessageType & {
+      contenFragments?: ContentFragmentType[];
+    });
+
 export type WithRank<T> = T & {
   rank: number;
 };
@@ -57,9 +65,15 @@ export type UserMessageOrigin =
   | "slack"
   | "web"
   | "api"
+  | "email"
   | "gsheet"
   | "zapier"
-  | "make";
+  | "make"
+  | "zendesk"
+  | "raycast"
+  | "github-copilot-chat"
+  | "extension"
+  | "email";
 
 export type UserMessageContext = {
   username: string;
@@ -67,7 +81,7 @@ export type UserMessageContext = {
   fullName: string | null;
   email: string | null;
   profilePictureUrl: string | null;
-  origin: UserMessageOrigin | null;
+  origin?: UserMessageOrigin | null;
 };
 
 export type UserMessageType = {
@@ -91,8 +105,7 @@ export function isUserMessageType(arg: MessageType): arg is UserMessageType {
 /**
  * Agent messages
  */
-
-export type AgentActionType =
+export type ConfigurableAgentActionType =
   | RetrievalActionType
   | DustAppRunActionType
   | TablesQueryActionType
@@ -100,11 +113,30 @@ export type AgentActionType =
   | WebsearchActionType
   | BrowseActionType;
 
+export type ConversationAgentActionType =
+  | ConversationListFilesActionType
+  | ConversationIncludeFileActionType;
+
+export type AgentActionType =
+  | ConfigurableAgentActionType
+  | ConversationAgentActionType;
+
 export type AgentMessageStatus =
   | "created"
   | "succeeded"
   | "failed"
   | "cancelled";
+
+export const ACTION_RUNNING_LABELS: Record<AgentActionType["type"], string> = {
+  dust_app_run_action: "Running App",
+  process_action: "Extracting data",
+  retrieval_action: "Searching data",
+  tables_query_action: "Querying tables",
+  websearch_action: "Searching the web",
+  browse_action: "Browsing page",
+  conversation_list_files_action: "Listing files",
+  conversation_include_file_action: "Reading file",
+};
 
 /**
  * Both `action` and `message` are optional (we could have a no-op agent basically).
@@ -159,16 +191,26 @@ export type ConversationVisibility =
   | "test";
 
 /**
+ * A lighter version of Conversation without the content (for menu display).
+ */
+export type ConversationWithoutContentType = {
+  id: ModelId;
+  created: number;
+  updated?: number;
+  owner: WorkspaceType;
+  sId: string;
+  title: string | null;
+  visibility: ConversationVisibility;
+  // TODO(2024-11-04 flav) `group-id` clean-up.
+  groupIds: string[];
+  requestedGroupIds: string[][];
+};
+
+/**
  * content [][] structure is intended to allow retries (of agent messages) or edits (of user
  * messages).
  */
-export type ConversationType = {
-  id: ModelId;
-  created: number;
-  sId: string;
-  owner: WorkspaceType;
-  title: string | null;
-  visibility: ConversationVisibility;
+export type ConversationType = ConversationWithoutContentType & {
   content: (UserMessageType[] | AgentMessageType[] | ContentFragmentType[])[];
 };
 
@@ -181,18 +223,6 @@ export type AgentParticipant = {
   configurationId: string;
   name: string;
   pictureUrl: string | null;
-};
-
-/**
- * A lighter version of Conversation without the content (for menu display).
- */
-export type ConversationWithoutContentType = {
-  created: number;
-  id: ModelId;
-  owner: WorkspaceType;
-  sId: string;
-  title: string | null;
-  visibility: ConversationVisibility;
 };
 
 export type ParticipantActionType = "posted" | "reacted" | "subscribed";
@@ -217,3 +247,71 @@ export interface ConversationParticipantsType {
   agents: AgentParticipant[];
   users: UserParticipant[];
 }
+
+export type ConversationErrorType =
+  | "conversation_not_found"
+  | "conversation_access_restricted";
+
+export class ConversationError extends Error {
+  readonly type: ConversationErrorType;
+
+  constructor(type: ConversationErrorType) {
+    super(`Cannot access conversation: ${type}`);
+    this.type = type;
+  }
+}
+
+export type SubmitMessageError = {
+  type:
+    | "user_not_found"
+    | "attachment_upload_error"
+    | "message_send_error"
+    | "plan_limit_reached_error"
+    | "content_too_large";
+  title: string;
+  message: string;
+};
+
+export interface FetchConversationMessagesResponse {
+  hasMore: boolean;
+  lastValue: number | null;
+  messages: MessageWithRankType[];
+}
+
+/**
+ * Conversation events.
+ */
+
+// Event sent when the user message is created.
+export type UserMessageNewEvent = {
+  type: "user_message_new";
+  created: number;
+  messageId: string;
+  message: UserMessageWithRankType;
+};
+
+// Event sent when the user message is created.
+export type UserMessageErrorEvent = {
+  type: "user_message_error";
+  created: number;
+  error: {
+    code: string;
+    message: string;
+  };
+};
+
+// Event sent when a new message is created (empty) and the agent is about to be executed.
+export type AgentMessageNewEvent = {
+  type: "agent_message_new";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  message: AgentMessageWithRankType;
+};
+
+// Event sent when the conversation title is updated.
+export type ConversationTitleEvent = {
+  type: "conversation_title";
+  created: number;
+  title: string;
+};

@@ -1,36 +1,42 @@
 import type {
-  AgentActionType,
-  AgentMessageType,
-  ConversationType,
+  AgentActionPublicType,
+  ConversationPublicType,
   DustAPI,
-  Result,
   UserMessageType,
-} from "@dust-tt/types";
-import { assertNever, Err, Ok } from "@dust-tt/types";
+} from "@dust-tt/client";
+import type { LightAgentConfigurationType, Result } from "@dust-tt/types";
+import { ACTION_RUNNING_LABELS, assertNever, Err, Ok } from "@dust-tt/types";
 import type { ChatPostMessageResponse, WebClient } from "@slack/web-api";
 import slackifyMarkdown from "slackify-markdown";
 
 import type { SlackMessageUpdate } from "@connectors/connectors/slack/chat/blocks";
 import {
+  makeAssistantSelectionBlock,
   makeMessageUpdateBlocksAndText,
   MAX_SLACK_MESSAGE_LENGTH,
 } from "@connectors/connectors/slack/chat/blocks";
 import { annotateCitations } from "@connectors/connectors/slack/chat/citations";
-import { makeDustAppUrl } from "@connectors/connectors/slack/chat/utils";
+import { makeConversationUrl } from "@connectors/connectors/slack/chat/utils";
+import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
+import type { SlackChatBotMessage } from "@connectors/lib/models/slack";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
 interface StreamConversationToSlackParams {
-  assistantName: string | undefined;
+  assistantName: string;
   connector: ConnectorResource;
-  conversation: ConversationType;
+  conversation: ConversationPublicType;
   mainMessage: ChatPostMessageResponse;
   slack: {
     slackChannelId: string;
     slackClient: WebClient;
     slackMessageTs: string;
+    slackUserInfo: SlackUserInfo;
+    slackUserId: string | null;
   };
   userMessage: UserMessageType;
+  slackChatBotMessage: SlackChatBotMessage;
+  agentConfigurations: LightAgentConfigurationType[];
 }
 
 // Adding linear backoff mechanism.
@@ -46,9 +52,17 @@ export async function streamConversationToSlack(
     mainMessage,
     slack,
     userMessage,
+    slackChatBotMessage,
+    agentConfigurations,
   }: StreamConversationToSlackParams
 ): Promise<Result<undefined, Error>> {
-  const { slackChannelId, slackClient, slackMessageTs } = slack;
+  const {
+    slackChannelId,
+    slackClient,
+    slackMessageTs,
+    slackUserInfo,
+    slackUserId,
+  } = slack;
 
   let lastSentDate = new Date();
   let backoffTime = initialBackoffTime;
@@ -73,7 +87,11 @@ export async function streamConversationToSlack(
     }
 
     const response = await slackClient.chat.update({
-      ...makeMessageUpdateBlocksAndText(conversationUrl, messageUpdate),
+      ...makeMessageUpdateBlocksAndText(
+        conversationUrl,
+        connector.workspaceId,
+        messageUpdate
+      ),
       channel: slackChannelId,
       thread_ts: slackMessageTs,
       ts: mainMessage.ts as string,
@@ -91,47 +109,54 @@ export async function streamConversationToSlack(
     }
   };
 
-  const conversationUrl = makeDustAppUrl(
-    `/w/${connector.workspaceId}/assistant/${conversation.sId}`
+  const conversationUrl = makeConversationUrl(
+    connector.workspaceId,
+    conversation.sId
   );
 
   // Immediately post the conversation URL once available.
   await postSlackMessageUpdate(
-    { isThinking: true },
+    { isComplete: false, isThinking: true, assistantName, agentConfigurations },
     { adhereToRateLimit: false }
   );
 
-  const agentMessages = conversation.content
-    .map((versions) => {
-      const m = versions[versions.length - 1];
-      return m;
-    })
-    .filter((m) => {
-      return (
-        m &&
-        m.type === "agent_message" &&
-        m.parentMessageId === userMessage?.sId
-      );
-    });
-  if (agentMessages.length === 0) {
-    return new Err(new Error("Failed to retrieve agent message"));
-  }
-  const agentMessage = agentMessages[0] as AgentMessageType;
-
-  const streamRes = await dustAPI.streamAgentMessageEvents({
+  const streamRes = await dustAPI.streamAgentAnswerEvents({
     conversation,
-    message: agentMessage,
+    userMessageId: userMessage.sId,
   });
 
   if (streamRes.isErr()) {
     return new Err(new Error(streamRes.error.message));
   }
 
-  const botIdentity = assistantName ? `@${assistantName}:\n` : "";
-  let answer = botIdentity;
-  const actions: AgentActionType[] = [];
+  let answer = "";
+  const actions: AgentActionPublicType[] = [];
   for await (const event of streamRes.value.eventStream) {
     switch (event.type) {
+      case "retrieval_params":
+      case "dust_app_run_params":
+      case "dust_app_run_block":
+      case "tables_query_started":
+      case "tables_query_model_output":
+      case "tables_query_output":
+      case "process_params":
+      case "websearch_params":
+      case "browse_params":
+      case "conversation_include_file_params":
+        await postSlackMessageUpdate(
+          {
+            isComplete: false,
+            isThinking: true,
+            assistantName,
+            agentConfigurations,
+            text: answer,
+            thinkingAction: ACTION_RUNNING_LABELS[event.action.type],
+          },
+          { adhereToRateLimit: false }
+        );
+
+        break;
+
       case "user_message_error": {
         return new Err(
           new Error(
@@ -181,12 +206,18 @@ export async function streamConversationToSlack(
         if (slackContent.length > MAX_SLACK_MESSAGE_LENGTH) {
           break;
         }
-        await postSlackMessageUpdate({ text: slackContent, footnotes });
+        await postSlackMessageUpdate({
+          isComplete: false,
+          text: slackContent,
+          assistantName,
+          agentConfigurations,
+          footnotes,
+        });
         break;
       }
 
       case "agent_message_success": {
-        const finalAnswer = `${botIdentity}${event.message.content}`;
+        const finalAnswer = event.message.content ?? "";
         const actions = event.message.actions;
         const { formattedContent, footnotes } = annotateCitations(
           finalAnswer,
@@ -197,9 +228,36 @@ export async function streamConversationToSlack(
         );
 
         await postSlackMessageUpdate(
-          { text: slackContent, footnotes },
+          {
+            isComplete: true,
+            text: slackContent,
+            assistantName,
+            agentConfigurations,
+            footnotes,
+          },
           { adhereToRateLimit: false }
         );
+        if (
+          slackUserId &&
+          !slackUserInfo.is_bot &&
+          agentConfigurations.length > 0
+        ) {
+          await slackClient.chat.postEphemeral({
+            channel: slackChannelId,
+            user: slackUserId,
+            text: "You can use another assistant by using the dropdown in slack.",
+            blocks: makeAssistantSelectionBlock(
+              agentConfigurations,
+              JSON.stringify({
+                slackChatBotMessage: slackChatBotMessage.id,
+                slackThreadTs: mainMessage.message?.thread_ts,
+                messageTs: mainMessage.message?.ts,
+                botId: mainMessage.message?.bot_id,
+              })
+            ),
+            thread_ts: slackMessageTs,
+          });
+        }
 
         return new Ok(undefined);
       }

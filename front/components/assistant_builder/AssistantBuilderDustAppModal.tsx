@@ -1,18 +1,37 @@
-import { CommandLineIcon, Item, Modal, Page } from "@dust-tt/sparkle";
-import type { AppType } from "@dust-tt/types";
+import {
+  CommandLineIcon,
+  ContextItem,
+  Icon,
+  Modal,
+  Page,
+  Spinner,
+} from "@dust-tt/sparkle";
+import type { AppType, LightWorkspaceType, SpaceType } from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
+import { sortBy } from "lodash";
+import { useMemo } from "react";
+
+import { SpaceSelector } from "@app/components/assistant_builder/spaces/SpaceSelector";
+import { useSpaces } from "@app/lib/swr/spaces";
+import { classNames } from "@app/lib/utils";
+
+interface AssistantBuilderDustAppModalProps {
+  allowedSpaces: SpaceType[];
+  dustApps: AppType[];
+  isOpen: boolean;
+  onSave: (app: AppType) => void;
+  owner: LightWorkspaceType;
+  setOpen: (isOpen: boolean) => void;
+}
 
 export default function AssistantBuilderDustAppModal({
-  isOpen,
-  setOpen,
+  allowedSpaces,
   dustApps,
+  isOpen,
   onSave,
-}: {
-  isOpen: boolean;
-  setOpen: (isOpen: boolean) => void;
-  dustApps: AppType[];
-  onSave: (app: AppType) => void;
-}) {
+  owner,
+  setOpen,
+}: AssistantBuilderDustAppModalProps) {
   const onClose = () => {
     setOpen(false);
   };
@@ -22,11 +41,13 @@ export default function AssistantBuilderDustAppModal({
       isOpen={isOpen}
       onClose={onClose}
       hasChanged={false}
-      variant="full-screen"
+      variant="side-md"
       title="Select Dust App"
     >
       <div className="w-full pt-12">
         <PickDustApp
+          allowedSpaces={allowedSpaces}
+          owner={owner}
           show={true}
           dustApps={dustApps}
           onPick={(app) => {
@@ -39,21 +60,38 @@ export default function AssistantBuilderDustAppModal({
   );
 }
 
+interface PickDustAppProps {
+  allowedSpaces: SpaceType[];
+  dustApps: AppType[];
+  onPick: (app: AppType) => void;
+  owner: LightWorkspaceType;
+  show: boolean;
+}
+
 function PickDustApp({
+  owner,
+  allowedSpaces,
   dustApps,
   show,
   onPick,
-}: {
-  dustApps: AppType[];
-  show: boolean;
-  onPick: (app: AppType) => void;
-}) {
+}: PickDustAppProps) {
+  const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
+
+  const filteredSpaces = useMemo(
+    () =>
+      spaces.filter((space) =>
+        dustApps.some((app) => app.space.sId === space.sId)
+      ),
+    [spaces, dustApps]
+  );
+
   const hasSomeUnselectableApps = dustApps.some(
     (app) => !app.description || app.description.length === 0
   );
+
   return (
     <Transition show={show} className="mx-auto max-w-6xl">
-      <Page>
+      <Page variant="modal">
         <Page.Header title="Select Dust App" icon={CommandLineIcon} />
         {hasSomeUnselectableApps && (
           <Page.P>
@@ -61,17 +99,61 @@ function PickDustApp({
             App selectable, edit it and add a description.
           </Page.P>
         )}
-        {dustApps.map((app) => (
-          <Item.Navigation
-            label={app.name}
-            icon={CommandLineIcon}
-            disabled={!app.description || app.description.length === 0}
-            key={app.sId}
-            onClick={() => {
-              onPick(app);
+        {isSpacesLoading ? (
+          <Spinner />
+        ) : (
+          <SpaceSelector
+            spaces={filteredSpaces}
+            allowedSpaces={allowedSpaces}
+            defaultSpace={allowedSpaces[0].sId}
+            renderChildren={(space) => {
+              const allowedDustApps = space
+                ? dustApps.filter((app) => app.space.sId === space.sId)
+                : dustApps;
+
+              if (allowedDustApps.length === 0) {
+                return <>No Dust Apps available.</>;
+              }
+
+              return (
+                <ContextItem.List>
+                  {sortBy(
+                    allowedDustApps,
+                    (a) => !a.description || a.description.length === 0,
+                    "name"
+                  ).map((app) => {
+                    const disabled =
+                      !app.description || app.description.length === 0;
+                    return (
+                      <ContextItem
+                        key={app.sId}
+                        title={
+                          <span
+                            className={classNames(
+                              disabled
+                                ? "s-text-element-500"
+                                : "s-text-foreground"
+                            )}
+                          >
+                            {app.name + (disabled ? " (No description)" : "")}
+                          </span>
+                        }
+                        visual={
+                          <Icon
+                            visual={CommandLineIcon}
+                            size="md"
+                            className={disabled ? "s-text-element-500" : ""}
+                          />
+                        }
+                        onClick={disabled ? undefined : () => onPick(app)}
+                      />
+                    );
+                  })}
+                </ContextItem.List>
+              );
             }}
           />
-        ))}
+        )}
       </Page>
     </Transition>
   );

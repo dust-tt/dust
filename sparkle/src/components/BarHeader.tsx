@@ -1,5 +1,6 @@
 import React from "react";
 
+import { Tooltip } from "@sparkle/components/Tooltip";
 import {
   ArrowUpOnSquareIcon,
   ChevronLeftIcon,
@@ -12,6 +13,7 @@ import { Button } from "./Button";
 
 interface BarHeaderProps {
   title: string;
+  tooltip?: string;
   leftActions?: React.ReactNode;
   rightActions?: React.ReactNode;
   className?: string;
@@ -19,6 +21,7 @@ interface BarHeaderProps {
 
 export function BarHeader({
   title,
+  tooltip,
   leftActions,
   rightActions,
   className = "",
@@ -39,7 +42,17 @@ export function BarHeader({
       )}
     >
       {leftActions && <div className={buttonBarClasses}>{leftActions}</div>}
-      <div className={titleClasses}>{title}</div>
+      <div className={titleClasses}>
+        {tooltip ? (
+          <Tooltip
+            tooltipTriggerAsChild
+            trigger={<span>{title}</span>}
+            label={tooltip}
+          ></Tooltip>
+        ) : (
+          title
+        )}
+      </div>
       {rightActions && <div className={buttonBarClasses}>{rightActions}</div>}
     </div>
   );
@@ -62,6 +75,7 @@ type BarHeaderButtonBarValidateProps = {
   saveLabel?: string;
   isSaving?: boolean;
   savingLabel?: string;
+  saveTooltip?: string;
 };
 
 type BarHeaderButtonBarConversationProps = {
@@ -76,6 +90,28 @@ export type BarHeaderButtonBarProps =
   | BarHeaderButtonBarValidateProps
   | BarHeaderButtonBarConversationProps;
 
+function ValidateSaveButton(props: BarHeaderButtonBarValidateProps) {
+  const button = (
+    <Button
+      size="sm"
+      label={
+        props.isSaving
+          ? props.savingLabel || "Processing..."
+          : props.saveLabel || "Save"
+      }
+      variant="primary"
+      onClick={props.onSave}
+      disabled={!props.onSave || props.isSaving}
+    />
+  );
+
+  return props.saveTooltip ? (
+    <Tooltip label={props.saveTooltip} side="left" trigger={button} />
+  ) : (
+    button
+  );
+}
+
 BarHeader.ButtonBar = function (props: BarHeaderButtonBarProps) {
   switch (props.variant) {
     case "back":
@@ -83,10 +119,8 @@ BarHeader.ButtonBar = function (props: BarHeaderButtonBarProps) {
         <Button
           size="sm"
           icon={ChevronLeftIcon}
-          variant="tertiary"
-          label="Back"
-          tooltipPosition="below"
-          labelVisible={false}
+          variant="ghost"
+          tooltip="Back"
           onClick={props.onBack}
         />
       );
@@ -95,10 +129,8 @@ BarHeader.ButtonBar = function (props: BarHeaderButtonBarProps) {
         <Button
           size="sm"
           icon={XMarkIcon}
-          variant="tertiary"
-          label="Close"
-          tooltipPosition="below"
-          labelVisible={false}
+          variant="ghost"
+          tooltip="Close"
           onClick={props.onClose}
         />
       );
@@ -108,21 +140,11 @@ BarHeader.ButtonBar = function (props: BarHeaderButtonBarProps) {
           <Button
             size="sm"
             label="Cancel"
-            variant="tertiary"
+            variant="ghost"
             onClick={props.onCancel}
             disabled={!props.onCancel || props.isSaving}
           />
-          <Button
-            size="sm"
-            label={
-              props.isSaving
-                ? props.savingLabel || "Processing..."
-                : props.saveLabel || "Save"
-            }
-            variant="primary"
-            onClick={props.onSave}
-            disabled={!props.onSave || props.isSaving}
-          />
+          <ValidateSaveButton {...props} />
         </>
       );
     case "conversation":
@@ -130,18 +152,16 @@ BarHeader.ButtonBar = function (props: BarHeaderButtonBarProps) {
         <>
           <Button
             size="sm"
-            label="Delete"
             icon={TrashIcon}
-            variant="tertiary"
-            labelVisible={false}
-            tooltipPosition="below"
+            tooltip="Delete"
+            variant="ghost"
             onClick={props.onDelete}
           />
           <Button
             size="sm"
             label="Share"
             icon={ArrowUpOnSquareIcon}
-            variant="tertiary"
+            variant="ghost"
             onClick={props.onShare}
           />
         </>

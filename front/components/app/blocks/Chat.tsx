@@ -28,6 +28,7 @@ export default function Chat({
   status,
   running,
   readOnly,
+  isAdmin,
   showOutputs,
   onBlockUpdate,
   onBlockDelete,
@@ -43,6 +44,7 @@ export default function Chat({
   status: any;
   running: boolean;
   readOnly: boolean;
+  isAdmin: boolean;
   showOutputs: boolean;
   onBlockUpdate: (block: SpecificationBlockType) => void;
   onBlockDelete: () => void;
@@ -133,6 +135,18 @@ export default function Chat({
     onBlockUpdate(b);
   };
 
+  const handleLogprobsChange = (logprobs: boolean) => {
+    const b = shallowBlockClone(block);
+    b.spec.logprobs = logprobs;
+    onBlockUpdate(b);
+  };
+
+  const handleTopLogprobsChange = (top_logprobs: number) => {
+    const b = shallowBlockClone(block);
+    b.spec.top_logprobs = top_logprobs;
+    onBlockUpdate(b);
+  };
+
   const [advancedExpanded, setAdvancedExpanded] = useState(false);
   const [functionsExpanded, setFunctionsExpanded] = useState(false);
   const [newStop, setNewStop] = useState("");
@@ -173,6 +187,7 @@ export default function Chat({
             <ModelPicker
               owner={owner}
               readOnly={readOnly}
+              isAdmin={isAdmin}
               model={
                 config
                   ? {
@@ -367,6 +382,35 @@ export default function Chat({
                     readOnly={readOnly}
                     value={block.spec.top_p}
                     onChange={(e) => handleTopPChange(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
+                <div className="flex flex-initial">top_logprobs:</div>
+                <div className="flex flex-initial font-normal">
+                  <input
+                    type="number"
+                    className={classNames(
+                      "block w-12 flex-1 rounded-md px-1 py-1 text-sm font-normal",
+                      readOnly
+                        ? "border-white ring-0 focus:border-white focus:ring-0"
+                        : "border-white focus:border-gray-300 focus:ring-0"
+                    )}
+                    readOnly={readOnly}
+                    value={block.spec.top_logprobs}
+                    onChange={(e) =>
+                      handleTopLogprobsChange(parseInt(e.target.value))
+                    }
+                  />
+                </div>
+              </div>
+              <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
+                <div className="flex flex-initial">logprobs:</div>
+                <div className="flex flex-initial font-normal">
+                  <input
+                    type="checkbox"
+                    checked={block.spec.logprobs}
+                    onChange={(e) => handleLogprobsChange(e.target.checked)}
                   />
                 </div>
               </div>

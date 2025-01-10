@@ -13,83 +13,78 @@ export default meta;
 export const InputExample = () => (
   <div className="s-flex s-flex-col s-gap-20">
     <div className="s-grid s-grid-cols-3 s-gap-4">
-      <Input placeholder="placeholder" name="input" value={null} />
       <Input
         placeholder="placeholder"
         name="input"
-        value={"value"}
-        error={"errored because it's a very long message"}
-        showErrorLabel
+        message="Name must be unique"
+        messageStatus="info"
       />
       <Input
         placeholder="placeholder"
         name="input"
-        value={"value"}
-        error={"errored"}
+        value="value"
+        message="errored because it's a very long message"
+        messageStatus="error"
       />
       <Input
         placeholder="placeholder"
         name="input"
-        value={"value"}
-        error={"errored because it's a very long message"}
-        showErrorLabel
+        value="value"
+        message="Default message"
       />
       <Input
         placeholder="placeholder"
         name="input"
-        value={"disabled"}
-        showErrorLabel
-      />
-    </div>
-    <div className="s-grid s-grid-cols-3 s-gap-4">
-      <Input placeholder="placeholder" name="input" value={null} size="md" />
-      <Input
-        placeholder="placeholder"
-        name="input"
-        size="md"
-        value={"value"}
-        error={"errored because it's a very long message"}
-        showErrorLabel
+        value="value"
+        message="errored because it's a very long message"
+        messageStatus="error"
       />
       <Input
         placeholder="placeholder"
         name="input"
-        size="md"
-        value={"value"}
-        error={"errored"}
-      />
-      <Input
-        placeholder="placeholder"
-        name="input"
-        size="md"
-        value={"value"}
-        error={"errored because it's a very long message"}
-        showErrorLabel
-      />
-      <Input
-        placeholder="placeholder"
-        name="input"
-        size="md"
-        value={"disabled"}
-        showErrorLabel
+        value="disabled"
+        disabled
+        messageStatus="error"
       />
     </div>
     <div className="s-grid s-grid-cols-3 s-gap-4">
+      <Input placeholder="placeholder" name="input" />
       <Input
         placeholder="placeholder"
         name="input"
-        size="sm"
-        label="Firstname"
-        value=""
-        showErrorLabel
+        value="value"
+        message="errored because it's a very long message"
+        messageStatus="error"
       />
       <Input
         placeholder="placeholder"
         name="input"
-        size="sm"
+        value="value"
+        message="Default message"
+      />
+      <Input
+        placeholder="placeholder"
+        name="input"
+        value="value"
+        message="errored because it's a very long message"
+        messageStatus="error"
+      />
+      <Input
+        placeholder="placeholder"
+        name="input"
+        value="test"
+        messageStatus="error"
+      />
+    </div>
+    <div className="s-grid s-grid-cols-3 s-gap-4">
+      <Input placeholder="placeholder" name="input" label="Firstname" isError />
+      <Input
+        placeholder="placeholder"
+        name="input"
         label="Lastname"
-        value=""
-        showErrorLabel
+        message="Input your lastname"
+        messageStatus="info"
+        isError
       />
     </div>
   </div>

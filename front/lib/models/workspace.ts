@@ -4,27 +4,18 @@ import type {
   WorkspaceSegmentationType,
 } from "@dust-tt/types";
 import { MODEL_PROVIDER_IDS } from "@dust-tt/types";
-import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-  NonAttribute,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import { DataTypes } from "sequelize";
 
 import type { Subscription } from "@app/lib/models/plan";
-import { User } from "@app/lib/models/user";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { UserModel } from "@app/lib/resources/storage/models/user";
+import { BaseModel } from "@app/lib/resources/storage/wrappers";
 
 const modelProviders = [...MODEL_PROVIDER_IDS] as string[];
 export type ModelProviderIdType = (typeof MODEL_PROVIDER_IDS)[number];
 
-export class Workspace extends Model<
-  InferAttributes<Workspace>,
-  InferCreationAttributes<Workspace>
-> {
-  declare id: CreationOptional<number>;
+export class Workspace extends BaseModel<Workspace> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -39,11 +30,6 @@ export class Workspace extends Model<
 }
 Workspace.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -101,14 +87,10 @@ Workspace.init(
   }
 );
 
-export class WorkspaceHasDomain extends Model<
-  InferAttributes<WorkspaceHasDomain>,
-  InferCreationAttributes<WorkspaceHasDomain>
-> {
+export class WorkspaceHasDomain extends BaseModel<WorkspaceHasDomain> {
   declare createdAt: CreationOptional<Date>;
   declare domain: string;
   declare domainAutoJoinEnabled: CreationOptional<boolean>;
-  declare id: CreationOptional<number>;
   declare updatedAt: CreationOptional<Date>;
 
   declare workspaceId: ForeignKey<Workspace["id"]>;
@@ -116,11 +98,6 @@ export class WorkspaceHasDomain extends Model<
 }
 WorkspaceHasDomain.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -148,15 +125,11 @@ WorkspaceHasDomain.init(
 );
 Workspace.hasMany(WorkspaceHasDomain, {
   foreignKey: { allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 WorkspaceHasDomain.belongsTo(Workspace);
 
-export class MembershipInvitation extends Model<
-  InferAttributes<MembershipInvitation>,
-  InferCreationAttributes<MembershipInvitation>
-> {
-  declare id: CreationOptional<number>;
+export class MembershipInvitation extends BaseModel<MembershipInvitation> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -166,17 +139,12 @@ export class MembershipInvitation extends Model<
   declare initialRole: Exclude<RoleType, "none">;
 
   declare workspaceId: ForeignKey<Workspace["id"]>;
-  declare invitedUserId: ForeignKey<User["id"]> | null;
+  declare invitedUserId: ForeignKey<UserModel["id"]> | null;
 
   declare workspace: NonAttribute<Workspace>;
 }
 MembershipInvitation.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -225,36 +193,27 @@ MembershipInvitation.init(
 );
 Workspace.hasMany(MembershipInvitation, {
   foreignKey: { allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 MembershipInvitation.belongsTo(Workspace);
 
-User.hasMany(MembershipInvitation, {
+UserModel.hasMany(MembershipInvitation, {
   foreignKey: "invitedUserId",
 });
 
-export class DustAppSecret extends Model<
-  InferAttributes<DustAppSecret>,
-  InferCreationAttributes<DustAppSecret>
-> {
-  declare id: CreationOptional<number>;
+export class DustAppSecret extends BaseModel<DustAppSecret> {
   declare createdAt: CreationOptional<Date>;
 
   declare name: string;
   declare hash: string;
 
-  declare userId: ForeignKey<User["id"]>;
+  declare userId: ForeignKey<UserModel["id"]>;
   declare workspaceId: ForeignKey<Workspace["id"]>;
 
-  declare user: NonAttribute<User>;
+  declare user: NonAttribute<UserModel>;
 }
 DustAppSecret.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -265,7 +224,7 @@ DustAppSecret.init(
       allowNull: false,
     },
     hash: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: false,
     },
   },
@@ -277,11 +236,11 @@ DustAppSecret.init(
 );
 Workspace.hasMany(DustAppSecret, {
   foreignKey: { allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 // We don't want to delete keys when a user gets deleted.
-User.hasMany(DustAppSecret, {
+UserModel.hasMany(DustAppSecret, {
   foreignKey: { allowNull: true },
   onDelete: "SET NULL",
 });
-DustAppSecret.belongsTo(User);
+DustAppSecret.belongsTo(UserModel);

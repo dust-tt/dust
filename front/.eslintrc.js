@@ -7,7 +7,7 @@ module.exports = {
   ],
   plugins: ["import", "simple-import-sort"],
   rules: {
-    "import/no-cycle": "warn",
+    "import/no-cycle": "error",
     /**
     "@typescript-eslint/naming-convention": [
       "error",
@@ -33,6 +33,14 @@ module.exports = {
       },
     ],
     "jsx-a11y/alt-text": 0,
+    "no-restricted-syntax": [
+      "error",
+      {
+        selector: "JSXAttribute[name.name='className'][value.value=/\\bs-/]",
+        message:
+          "className values with 's-' prefix are not allowed in front. These are reserved for sparkle components.",
+      },
+    ],
     "simple-import-sort/imports": [
       "error",
       {

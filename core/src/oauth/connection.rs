@@ -1,10 +1,12 @@
 use crate::oauth::{
+    encryption::{seal_str, unseal_str},
     providers::{
         confluence::ConfluenceConnectionProvider, github::GithubConnectionProvider,
         gong::GongConnectionProvider, google_drive::GoogleDriveConnectionProvider,
         intercom::IntercomConnectionProvider, microsoft::MicrosoftConnectionProvider,
-        notion::NotionConnectionProvider, slack::SlackConnectionProvider,
-        utils::ProviderHttpRequestError,
+        mock::MockConnectionProvider, notion::NotionConnectionProvider,
+        slack::SlackConnectionProvider, utils::ProviderHttpRequestError,
+        zendesk::ZendeskConnectionProvider,
     },
     store::OAuthStore,
 };
@@ -12,12 +14,7 @@ use crate::utils;
 use crate::utils::ParseError;
 use anyhow::Result;
 use async_trait::async_trait;
-use base64::{engine::general_purpose, Engine as _};
 use lazy_static::lazy_static;
-use ring::{
-    aead,
-    rand::{self, SecureRandom},
-};
 use rslock::LockManager;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
@@ -37,12 +34,6 @@ pub static ACCESS_TOKEN_REFRESH_BUFFER_MILLIS: u64 = 10 * 60 * 1000;
 
 lazy_static! {
     static ref REDIS_URI: String = env::var("REDIS_URI").unwrap();
-    static ref ENCRYPTION_KEY: aead::LessSafeKey = {
-        let encoded_key = env::var("OAUTH_ENCRYPTION_KEY").unwrap();
-        let key_bytes = general_purpose::STANDARD.decode(&encoded_key).unwrap();
-        let unbound_key = aead::UnboundKey::new(&aead::CHACHA20_POLY1305, &key_bytes).unwrap();
-        aead::LessSafeKey::new(unbound_key)
-    };
 }
 
 // API Error types.
@@ -98,6 +89,8 @@ pub enum ConnectionProvider {
     Microsoft,
     Notion,
     Slack,
+    Mock,
+    Zendesk,
 }
 
 impl fmt::Display for ConnectionProvider {
@@ -184,6 +177,8 @@ pub fn provider(t: ConnectionProvider) -> Box<dyn Provider + Sync + Send> {
         ConnectionProvider::Microsoft => Box::new(MicrosoftConnectionProvider::new()),
         ConnectionProvider::Notion => Box::new(NotionConnectionProvider::new()),
         ConnectionProvider::Slack => Box::new(SlackConnectionProvider::new()),
+        ConnectionProvider::Mock => Box::new(MockConnectionProvider::new()),
+        ConnectionProvider::Zendesk => Box::new(ZendeskConnectionProvider::new()),
     }
 }
 
@@ -392,7 +387,7 @@ impl Connection {
 
     pub fn unseal_authorization_code(&self) -> Result<Option<String>> {
         match &self.encrypted_authorization_code {
-            Some(t) => Ok(Some(Connection::unseal_str(t)?)),
+            Some(t) => Ok(Some(unseal_str(t)?)),
             None => Ok(None),
         }
     }
@@ -407,7 +402,7 @@ impl Connection {
 
     pub fn unseal_access_token(&self) -> Result<Option<String>> {
         match &self.encrypted_access_token {
-            Some(t) => Ok(Some(Connection::unseal_str(t)?)),
+            Some(t) => Ok(Some(unseal_str(t)?)),
             None => Ok(None),
         }
     }
@@ -418,7 +413,7 @@ impl Connection {
 
     pub fn unseal_refresh_token(&self) -> Result<Option<String>> {
         match &self.encrypted_refresh_token {
-            Some(t) => Ok(Some(Connection::unseal_str(t)?)),
+            Some(t) => Ok(Some(unseal_str(t)?)),
             None => Ok(None),
         }
     }
@@ -429,49 +424,9 @@ impl Connection {
 
     pub fn unseal_raw_json(&self) -> Result<Option<serde_json::Value>> {
         match &self.encrypted_raw_json {
-            Some(t) => Ok(Some(serde_json::from_str(&Connection::unseal_str(t)?)?)),
+            Some(t) => Ok(Some(serde_json::from_str(&unseal_str(t)?)?)),
             None => Ok(None),
         }
-    }
-
-    fn seal_str(s: &str) -> Result<Vec<u8>> {
-        let key = &ENCRYPTION_KEY;
-        let rng = rand::SystemRandom::new();
-
-        let mut nonce_bytes = [0u8; aead::NONCE_LEN];
-        rng.fill(&mut nonce_bytes)
-            .map_err(|_| anyhow::anyhow!("Nonce generation failed"))?;
-        let nonce = aead::Nonce::assume_unique_for_key(nonce_bytes);
-
-        let mut combined = nonce.as_ref().to_vec();
-
-        let mut in_out = s.as_bytes().to_vec();
-        let tag = key
-            .seal_in_place_separate_tag(nonce, aead::Aad::empty(), &mut in_out)
-            .map_err(|_| anyhow::anyhow!("Encryption failed"))?;
-
-        combined.append(&mut in_out);
-        combined.extend_from_slice(tag.as_ref());
-
-        Ok(combined)
-    }
-
-    fn unseal_str(encrypted_data: &[u8]) -> Result<String> {
-        let key = &ENCRYPTION_KEY;
-
-        let nonce_bytes = &encrypted_data[0..aead::NONCE_LEN];
-        let ciphertext_and_tag = &encrypted_data[aead::NONCE_LEN..];
-
-        let nonce = aead::Nonce::try_assume_unique_for_key(nonce_bytes)
-            .map_err(|_| anyhow::anyhow!("Invalid nonce"))?;
-        let mut in_out = ciphertext_and_tag.to_vec();
-
-        key.open_in_place(nonce, aead::Aad::empty(), &mut in_out)
-            .map_err(|_| anyhow::anyhow!("Decryption failed"))?;
-
-        Ok(String::from_utf8(
-            in_out[0..(in_out.len() - aead::CHACHA20_POLY1305.tag_len())].to_vec(),
-        )?)
     }
 
     async fn reload(&mut self, store: Box<dyn OAuthStore + Sync + Send>) -> Result<()> {
@@ -504,16 +459,14 @@ impl Connection {
         if let Some(creds) = migrated_credentials {
             c.redirect_uri = Some(creds.redirect_uri);
             c.access_token_expiry = creds.access_token_expiry;
-            c.encrypted_access_token = Some(Connection::seal_str(&creds.access_token)?);
-            c.encrypted_raw_json = Some(Connection::seal_str(&serde_json::to_string(
-                &creds.raw_json,
-            )?)?);
+            c.encrypted_access_token = Some(seal_str(&creds.access_token)?);
+            c.encrypted_raw_json = Some(seal_str(&serde_json::to_string(&creds.raw_json)?)?);
 
             if let Some(code) = creds.authorization_code {
-                c.encrypted_authorization_code = Some(Connection::seal_str(&code)?);
+                c.encrypted_authorization_code = Some(seal_str(&code)?);
             }
             if let Some(token) = creds.refresh_token {
-                c.encrypted_refresh_token = Some(Connection::seal_str(&token)?);
+                c.encrypted_refresh_token = Some(seal_str(&token)?);
             }
 
             store.update_connection_secrets(&c).await?;
@@ -586,16 +539,14 @@ impl Connection {
         store.update_connection_status(self).await?;
 
         self.redirect_uri = Some(finalize.redirect_uri);
-        self.encrypted_authorization_code = Some(Connection::seal_str(&finalize.code)?);
+        self.encrypted_authorization_code = Some(seal_str(&finalize.code)?);
         self.access_token_expiry = finalize.access_token_expiry;
-        self.encrypted_access_token = Some(Connection::seal_str(&finalize.access_token)?);
+        self.encrypted_access_token = Some(seal_str(&finalize.access_token)?);
         self.encrypted_refresh_token = match &finalize.refresh_token {
-            Some(t) => Some(Connection::seal_str(t)?),
+            Some(t) => Some(seal_str(t)?),
             None => None,
         };
-        self.encrypted_raw_json = Some(Connection::seal_str(&serde_json::to_string(
-            &finalize.raw_json,
-        )?)?);
+        self.encrypted_raw_json = Some(seal_str(&serde_json::to_string(&finalize.raw_json)?)?);
         store.update_connection_secrets(self).await?;
 
         info!(
@@ -673,7 +624,7 @@ impl Connection {
 
     fn valid_access_token(&self) -> Result<Option<String>, ConnectionError> {
         let access_token = match &self.encrypted_access_token {
-            Some(t) => Connection::unseal_str(t).map_err(|e| {
+            Some(t) => unseal_str(t).map_err(|e| {
                 error!(error = ?e, "Failed to unseal access_token");
                 ConnectionError {
                     code: ConnectionErrorCode::InternalError,
@@ -729,14 +680,12 @@ impl Connection {
         let refresh = provider(self.provider).refresh(self).await?;
 
         self.access_token_expiry = refresh.access_token_expiry;
-        self.encrypted_access_token = Some(Connection::seal_str(&refresh.access_token)?);
+        self.encrypted_access_token = Some(seal_str(&refresh.access_token)?);
         self.encrypted_refresh_token = match &refresh.refresh_token {
-            Some(t) => Some(Connection::seal_str(t)?),
+            Some(t) => Some(seal_str(t)?),
             None => None,
         };
-        self.encrypted_raw_json = Some(Connection::seal_str(&serde_json::to_string(
-            &refresh.raw_json,
-        )?)?);
+        self.encrypted_raw_json = Some(seal_str(&serde_json::to_string(&refresh.raw_json)?)?);
         store.update_connection_secrets(self).await?;
 
         info!(

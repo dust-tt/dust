@@ -3,7 +3,7 @@ import {
   DustProdActionRegistry,
   PRODUCTION_DUST_APPS_WORKSPACE_ID,
 } from "@app/lib/registry";
-import { App } from "@app/lib/resources/storage/models/apps";
+import { AppModel } from "@app/lib/resources/storage/models/apps";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { makeScript } from "@app/scripts/helpers";
 
@@ -35,7 +35,7 @@ makeScript({}, async ({ execute }, logger) => {
         `(sId=${dustAppsWorkspace.sId}) with vaultId ${vaultId}`
     );
     if (execute) {
-      await App.update(
+      await AppModel.update(
         {
           vaultId,
         },

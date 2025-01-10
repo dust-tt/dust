@@ -229,7 +229,7 @@ export const PageExample = () => {
         </ContextItem>
         <ContextItem
           title="@SalesFr"
-          action={<Button variant="secondary" label="Manage" size="sm" />}
+          action={<Button variant="outline" label="Manage" size="sm" />}
           visual={
             <Avatar
               visual="https://dust.tt/static/droidavatar/Droid_Indigo_4.jpg"
@@ -241,7 +241,7 @@ export const PageExample = () => {
         </ContextItem>
         <ContextItem
           title="@SupportFr"
-          action={<Button variant="secondary" label="Manage" size="sm" />}
+          action={<Button variant="outline" label="Manage" size="sm" />}
           visual={
             <Avatar
               visual="https://dust.tt/static/droidavatar/Droid_Pink_4.jpg"
@@ -282,7 +282,7 @@ export const AssistantBuilder = () => {
             size="xl"
             visual="https://dust.tt/static/droidavatar/Droid_Black_2.jpg/"
           />
-          <Button size="sm" variant="tertiary" label="Change" />
+          <Button size="sm" variant="outline" label="Change" />
         </Page.Layout>
       </Page.Layout>
       <Page.Separator />
@@ -365,22 +365,19 @@ export const HelpExample = () => {
         <Page.SectionHeader title="Frequently asked questions" />
         <Page.Layout direction="fluid" gap="sm">
           <Button
-            variant="secondary"
+            variant="outline"
             label="Hey @helper, how do I use the assistant?"
             icon={ChatBubbleLeftRightIcon}
-            hasMagnifying={false}
           />
           <Button
-            variant="secondary"
+            variant="outline"
             label="Hey @helper, What is assistant not good at?"
             icon={ChatBubbleLeftRightIcon}
-            hasMagnifying={false}
           />
           <Button
-            variant="secondary"
+            variant="outline"
             label="Hey @helper, Anything I should know?"
             icon={ChatBubbleLeftRightIcon}
-            hasMagnifying={false}
           />
         </Page.Layout>
       </Page.Layout>

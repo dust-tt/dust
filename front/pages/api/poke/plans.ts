@@ -4,7 +4,7 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { withSessionAuthentication } from "@app/lib/api/wrappers";
+import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { Plan } from "@app/lib/models/plan";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
@@ -37,6 +37,9 @@ export const PlanTypeSchema = t.type({
     }),
     users: t.type({
       maxUsers: t.number,
+    }),
+    vaults: t.type({
+      maxVaults: t.number,
     }),
     canUseProduct: t.boolean,
   }),
@@ -114,6 +117,7 @@ async function handler(
         maxDataSourcesDocumentsCount: body.limits.dataSources.documents.count,
         maxDataSourcesDocumentsSizeMb: body.limits.dataSources.documents.sizeMb,
         maxUsersInWorkspace: body.limits.users.maxUsers,
+        maxVaultsInWorkspace: body.limits.vaults.maxVaults,
         trialPeriodDays: body.trialPeriodDays,
         canUseProduct: body.limits.canUseProduct,
       });

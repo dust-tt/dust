@@ -103,7 +103,7 @@ impl Provider for GongConnectionProvider {
         let authorization = create_gong_basic_auth_token();
 
         let params = [
-            ("grant_type", "authorization_code"),
+            ("grant_type", "refresh_token"),
             ("refresh_token", &refresh_token),
         ];
 

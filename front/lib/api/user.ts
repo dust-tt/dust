@@ -2,13 +2,15 @@ import type {
   Result,
   UserMetadataType,
   UserType,
+  UserTypeWithExtensionWorkspaces,
   UserTypeWithWorkspaces,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 
 import type { Authenticator } from "@app/lib/auth";
-import { UserMetadata } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
+import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
+import { UserMetadataModel } from "@app/lib/resources/storage/models/user";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 
@@ -56,7 +58,7 @@ export async function getUserMetadata(
   user: UserType,
   key: string
 ): Promise<UserMetadataType | null> {
-  const metadata = await UserMetadata.findOne({
+  const metadata = await UserMetadataModel.findOne({
     where: {
       userId: user.id,
       key,
@@ -83,7 +85,7 @@ export async function setUserMetadata(
   user: UserType,
   update: UserMetadataType
 ): Promise<void> {
-  const metadata = await UserMetadata.findOne({
+  const metadata = await UserMetadataModel.findOne({
     where: {
       userId: user.id,
       key: update.key,
@@ -91,7 +93,7 @@ export async function setUserMetadata(
   });
 
   if (!metadata) {
-    await UserMetadata.create({
+    await UserMetadataModel.create({
       userId: user.id,
       key: update.key,
       value: update.value,
@@ -136,4 +138,47 @@ export async function fetchRevokedWorkspace(
   }
 
   return new Ok(workspace);
+}
+
+export async function getUserWithWorkspaces<T extends boolean>(
+  user: UserResource,
+  populateExtensionConfig: T = false as T
+): Promise<
+  T extends true ? UserTypeWithExtensionWorkspaces : UserTypeWithWorkspaces
+> {
+  const { memberships } = await MembershipResource.getActiveMemberships({
+    users: [user],
+  });
+  const workspaceIds = memberships.map((m) => m.workspaceId);
+  const workspaces = await Workspace.findAll({
+    where: {
+      id: workspaceIds,
+    },
+  });
+
+  const configs = populateExtensionConfig
+    ? await ExtensionConfigurationResource.internalFetchForWorkspaces(
+        workspaceIds
+      )
+    : [];
+
+  return {
+    ...user.toJSON(),
+    workspaces: workspaces.map((w) => {
+      return {
+        id: w.id,
+        sId: w.sId,
+        name: w.name,
+        role: memberships.find((m) => m.workspaceId === w.id)?.role ?? "none",
+        segmentation: w.segmentation || null,
+        whiteListedProviders: w.whiteListedProviders,
+        defaultEmbeddingProvider: w.defaultEmbeddingProvider,
+        ...(populateExtensionConfig && {
+          blacklistedDomains:
+            configs.find((c) => c.workspaceId === w.id)?.blacklistedDomains ??
+            null,
+        }),
+      };
+    }),
+  };
 }

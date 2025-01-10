@@ -2,9 +2,9 @@ import type { APIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { QueryTypes } from "sequelize";
 
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { frontSequelize } from "@app/lib/resources/storage";
+import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
 import { apiError } from "@app/logger/withlogging";
 
 export type GetWorkspaceAnalyticsResponse = {
@@ -77,9 +77,11 @@ interface AverageWeeklyDailyActiveUsersQueryResult {
 async function getAnalytics(
   wId: string
 ): Promise<GetWorkspaceAnalyticsResponse> {
+  const replicaDb = getFrontReplicaDbConnection();
+
   const [memberCountResults, activeUsersResult, averageWeeklyDauResult] =
     await Promise.all([
-      frontSequelize.query<MemberCountQueryResult>(
+      replicaDb.query<MemberCountQueryResult>(
         `
       SELECT COUNT(DISTINCT "memberships"."userId") AS "member_count"
       FROM "memberships"
@@ -94,7 +96,7 @@ async function getAnalytics(
           type: QueryTypes.SELECT,
         }
       ),
-      frontSequelize.query<ActiveUsersQueryResult>(
+      replicaDb.query<ActiveUsersQueryResult>(
         `WITH activity_periods AS (
         SELECT
           "user_messages"."userId",
@@ -146,7 +148,7 @@ async function getAnalytics(
           type: QueryTypes.SELECT,
         }
       ),
-      frontSequelize.query<AverageWeeklyDailyActiveUsersQueryResult>(
+      replicaDb.query<AverageWeeklyDailyActiveUsersQueryResult>(
         `
         WITH daily_activity AS (
           SELECT

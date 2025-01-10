@@ -1,5 +1,5 @@
 import type { Result } from "@dust-tt/types";
-import { Err, getSanitizedHeaders, Ok, slugify } from "@dust-tt/types";
+import { Err, Ok, slugify } from "@dust-tt/types";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import { stringify } from "csv-stringify/sync";
 
@@ -15,11 +15,11 @@ import {
 import { getParents } from "@connectors/connectors/microsoft/temporal/file";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
-import { deleteTable, upsertTableFromCsv } from "@connectors/lib/data_sources";
 import {
-  InvalidRowsRequestError,
-  ProviderWorkflowError,
-} from "@connectors/lib/error";
+  deleteDataSourceTable,
+  upsertDataSourceTableFromCsv,
+} from "@connectors/lib/data_sources";
+import { ProviderWorkflowError, TablesError } from "@connectors/lib/error";
 import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -65,12 +65,12 @@ async function upsertWorksheetInDb(
   });
 }
 
-async function upsertTable(
+async function upsertMSTable(
   connector: ConnectorResource,
   internalId: string,
   spreadsheet: microsoftgraph.DriveItem,
   worksheet: microsoftgraph.WorkbookWorksheet,
-  parents: string[],
+  parents: [string, string, ...string[]],
   rows: string[][],
   loggerArgs: object
 ) {
@@ -86,7 +86,7 @@ async function upsertTable(
 
   // Upserting is safe: Core truncates any previous table with the same Id before
   // the operation. Note: Renaming a sheet in Google Drive retains its original Id.
-  await upsertTableFromCsv({
+  await upsertDataSourceTableFromCsv({
     dataSourceConfig,
     tableId: internalId,
     tableName,
@@ -99,6 +99,11 @@ async function upsertTable(
     },
     truncate: true,
     parents,
+    parentId: parents[1],
+    useAppForHeaderDetection: true,
+    title: `${spreadsheet.name} - ${worksheet.name}`,
+    mimeType:
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });
 
   logger.info(loggerArgs, "[Spreadsheet] Table upserted.");
@@ -177,13 +182,9 @@ async function processSheet({
     );
   }
 
-  const [rawHeaders, ...rest] = rows;
-
   // Assuming the first line as headers, at least one additional data line is required.
-  if (rawHeaders && rows.length > 1) {
-    const headers = getSanitizedHeaders(rawHeaders);
-
-    const parents = [
+  if (rows.length > 1) {
+    const parents: [string, string, ...string[]] = [
       worksheetInternalId,
       ...(await getParents({
         connectorId: connector.id,
@@ -193,13 +194,13 @@ async function processSheet({
     ];
 
     try {
-      await upsertTable(
+      await upsertMSTable(
         connector,
         worksheetInternalId,
         spreadsheet,
         worksheet,
         parents,
-        [headers, ...rest],
+        rows,
         loggerArgs
       );
     } catch (err) {
@@ -207,10 +208,10 @@ async function processSheet({
         { ...loggerArgs, error: err },
         "[Spreadsheet] Failed to upsert table."
       );
-      if (err instanceof InvalidRowsRequestError) {
+      if (err instanceof TablesError) {
         localLogger.warn(
           { ...loggerArgs, error: err },
-          "[Spreadsheet] Invalid rows detected - skipping (but not failing)."
+          "[Spreadsheet] Tables error - skipping (but not failing)."
         );
         return new Ok(null);
       }
@@ -341,7 +342,7 @@ export async function deleteAllSheets(
   await concurrentExecutor(
     await spreadsheet.fetchChildren(),
     async (sheet) => {
-      await deleteTable({
+      await deleteDataSourceTable({
         dataSourceConfig,
         tableId: sheet.internalId,
         loggerArgs: {

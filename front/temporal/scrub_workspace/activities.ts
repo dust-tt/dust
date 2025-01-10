@@ -5,28 +5,32 @@ import {
   archiveAgentConfiguration,
   getAgentConfigurations,
 } from "@app/lib/api/assistant/configuration";
+import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
 import { isGlobalAgentId } from "@app/lib/api/assistant/global_agents";
 import config from "@app/lib/api/config";
-import { deleteDataSource, getDataSources } from "@app/lib/api/data_sources";
+import {
+  getDataSources,
+  softDeleteDataSourceAndLaunchScrubWorkflow,
+} from "@app/lib/api/data_sources";
+import { sendAdminDataDeletionEmail } from "@app/lib/api/email";
+import { softDeleteSpaceAndLaunchScrubWorkflow } from "@app/lib/api/spaces";
 import {
   getMembers,
   getWorkspaceInfos,
   unsafeGetWorkspacesByModelId,
 } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
-import { destroyConversation } from "@app/lib/conversation";
-import { sendAdminDataDeletionEmail } from "@app/lib/email";
 import { Conversation } from "@app/lib/models/assistant/conversation";
 import {
   FREE_NO_PLAN_CODE,
   FREE_TEST_PLAN_CODE,
 } from "@app/lib/plans/plan_codes";
 import { subscriptionForWorkspaces } from "@app/lib/plans/subscription";
-import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { GroupResource } from "@app/lib/resources/group_resource";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
+import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { VaultResource } from "@app/lib/resources/vault_resource";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -50,7 +54,6 @@ export async function sendDataDeletionEmail({
     for (const a of admins) {
       await sendAdminDataDeletionEmail({
         email: a.email,
-        firstName: a.firstName,
         workspaceName: ws.name,
         remainingDays,
         isLast,
@@ -84,12 +87,14 @@ export async function scrubWorkspaceData({
 }: {
   workspaceId: string;
 }) {
-  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId, {
+    dangerouslyRequestAllGroups: true,
+  });
   await deleteAllConversations(auth);
   await archiveAssistants(auth);
+  await deleteTrackers(auth);
   await deleteDatasources(auth);
-  await deleteVaults(auth);
-  await deleteGroups(auth);
+  await deleteSpaces(auth);
   await cleanupCustomerio(auth);
 }
 
@@ -112,11 +117,8 @@ export async function pauseAllConnectors({
   }
 }
 
-async function deleteAllConversations(auth: Authenticator) {
-  const workspace = auth.workspace();
-  if (!workspace) {
-    throw new Error("No workspace found");
-  }
+export async function deleteAllConversations(auth: Authenticator) {
+  const workspace = auth.getNonNullableWorkspace();
   const conversations = await Conversation.findAll({
     where: { workspaceId: workspace.id },
   });
@@ -129,7 +131,7 @@ async function deleteAllConversations(auth: Authenticator) {
   for (const conversationChunk of conversationChunks) {
     await Promise.all(
       conversationChunk.map(async (c) => {
-        await destroyConversation(workspace, c);
+        await destroyConversation(auth, { conversationId: c.sId });
       })
     );
   }
@@ -150,32 +152,55 @@ async function archiveAssistants(auth: Authenticator) {
   }
 }
 
-async function deleteDatasources(auth: Authenticator) {
-  const dataSources = await getDataSources(auth);
-  // First, we delete all the data source views.
-  await DataSourceViewResource.deleteAllForWorkspace(auth);
+async function deleteTrackers(auth: Authenticator) {
+  const workspace = auth.workspace();
+  if (!workspace) {
+    throw new Error("No workspace found");
+  }
 
-  for (const dataSource of dataSources) {
-    const r = await deleteDataSource(auth, dataSource);
+  const trackers = await TrackerConfigurationResource.listByWorkspace(auth, {
+    includeDeleted: true,
+  });
+  for (const tracker of trackers) {
+    await tracker.delete(auth, { hardDelete: true });
+  }
+}
+
+async function deleteDatasources(auth: Authenticator) {
+  const globalAndSystemSpaces = await SpaceResource.listWorkspaceDefaultSpaces(
+    auth,
+    { includeConversationsSpace: true }
+  );
+
+  // Retrieve and delete all data sources associated with the system and global spaces.
+  // Others will be deleted when deleting the spaces.
+  const dataSources = await DataSourceResource.listBySpaces(
+    auth,
+    globalAndSystemSpaces
+  );
+
+  for (const ds of dataSources) {
+    // Perform a soft delete and initiate a workflow for permanent deletion of the data source.
+    const r = await softDeleteDataSourceAndLaunchScrubWorkflow(auth, ds);
     if (r.isErr()) {
       throw new Error(`Failed to delete data source: ${r.error.message}`);
     }
   }
 }
 
-// Delete all vaults except the system and global vaults.
-async function deleteVaults(auth: Authenticator) {
-  await VaultResource.deleteAllForWorkspaceExceptDefaults(auth);
-}
+// Remove all user-created spaces and their associated groups,
+// preserving only the system and global spaces.
+async function deleteSpaces(auth: Authenticator) {
+  const spaces = await SpaceResource.listWorkspaceSpaces(auth);
 
-// Delete all groups except the default groups.
-async function deleteGroups(auth: Authenticator) {
-  const workspace = auth.workspace();
-  if (!workspace) {
-    throw new Error("No workspace found");
+  // Filter out system and global spaces.
+  const filteredSpaces = spaces.filter(
+    (space) => !space.isGlobal() && !space.isSystem()
+  );
+
+  for (const space of filteredSpaces) {
+    await softDeleteSpaceAndLaunchScrubWorkflow(auth, space);
   }
-
-  await GroupResource.deleteAllForWorkspaceExceptDefaults(auth);
 }
 
 async function cleanupCustomerio(auth: Authenticator) {

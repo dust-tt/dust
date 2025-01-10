@@ -23,14 +23,14 @@
     "@tsconfig/recommended": "^1.0.3",
     "@types/uuid": "^9.0.7",
     "tslib": "^2.6.2",
-    "typescript": "^5.4.5"
+    "typescript": "^5.4.5",
+    "dts-cli": "^2.0.5",
+    "eslint-plugin-simple-import-sort": "^12.1.0"
   },
   "dependencies": {
     "@notionhq/client": "^2.2.4",
     "csv-parse": "^5.5.6",
     "csv-stringify": "^6.5.0",
-    "dts-cli": "^2.0.5",
-    "eslint-plugin-simple-import-sort": "^12.1.0",
     "eventsource-parser": "^1.1.1",
     "hot-shots": "^10.0.0",
     "htmlparser2": "^9.1.0",
@@ -44,6 +44,7 @@
   "browser": {
     "tls": false,
     "net": false,
-    "hot-shots": false
+    "hot-shots": false,
+    "child_process": false
   }
 }

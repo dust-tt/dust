@@ -1,6 +1,7 @@
 import type {
   LightWorkspaceType,
   MembershipRoleType,
+  Result,
   RoleType,
   SubscriptionType,
   UserTypeWithWorkspaces,
@@ -8,13 +9,19 @@ import type {
   WorkspaceSegmentationType,
   WorkspaceType,
 } from "@dust-tt/types";
+import { ACTIVE_ROLES, Err, Ok } from "@dust-tt/types";
+import { Op } from "sequelize";
 
 import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
+import { Subscription } from "@app/lib/models/plan";
 import { Workspace, WorkspaceHasDomain } from "@app/lib/models/workspace";
+import { getStripeSubscription } from "@app/lib/plans/stripe";
+import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
+import { launchDeleteWorkspaceWorkflow } from "@app/poke/temporal/client";
 
 export async function getWorkspaceInfos(
   wId: string
@@ -177,6 +184,51 @@ export async function getMembers(
   return { members: usersWithWorkspaces, total };
 }
 
+export async function searchMembers(
+  auth: Authenticator,
+  options: {
+    email?: string;
+  },
+  paginationParams: PaginationParams
+): Promise<{ members: UserTypeWithWorkspaces[]; total: number }> {
+  const owner = auth.workspace();
+  if (!owner) {
+    return { members: [], total: 0 };
+  }
+
+  const { users, total } = await UserResource.listUsersWithEmailPredicat(
+    owner.id,
+    {
+      email: options.email,
+    },
+    paginationParams
+  );
+
+  const { memberships } = await MembershipResource.getActiveMemberships({
+    users,
+    workspace: owner,
+  });
+
+  const usersWithWorkspaces = users.map((u) => {
+    const membership = memberships.find(
+      (m) => m.userId === u.id && m.workspaceId === owner.id
+    );
+    const role =
+      membership && !membership.isRevoked()
+        ? ACTIVE_ROLES.includes(membership.role)
+          ? membership.role
+          : ("none" as RoleType)
+        : ("none" as RoleType);
+
+    return {
+      ...u.toJSON(),
+      workspaces: [{ ...owner, role, flags: null }],
+    };
+  });
+
+  return { members: usersWithWorkspaces, total };
+}
+
 export async function getMembersCount(
   auth: Authenticator,
   { activeOnly = false }: { activeOnly?: boolean } = {}
@@ -235,4 +287,115 @@ export async function unsafeGetWorkspacesByModelId(
       },
     })
   ).map((w) => renderLightWorkspaceType({ workspace: w }));
+}
+
+export async function areAllSubscriptionsCanceled(
+  workspace: LightWorkspaceType
+): Promise<boolean> {
+  const subscriptions = await Subscription.findAll({
+    where: {
+      workspaceId: workspace.id,
+      stripeSubscriptionId: {
+        [Op.not]: null,
+      },
+    },
+  });
+
+  // If the workspace had a subscription, it must be canceled.
+  if (subscriptions.length > 0) {
+    for (const sub of subscriptions) {
+      if (!sub.stripeSubscriptionId) {
+        continue;
+      }
+
+      const stripeSubscription = await getStripeSubscription(
+        sub.stripeSubscriptionId
+      );
+
+      if (!stripeSubscription) {
+        continue;
+      }
+
+      if (stripeSubscription.status !== "canceled") {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
+export async function deleteWorkspace(
+  owner: LightWorkspaceType
+): Promise<Result<void, Error>> {
+  const allSubscriptionsCanceled = await areAllSubscriptionsCanceled(owner);
+  if (!allSubscriptionsCanceled) {
+    return new Err(
+      new Error(
+        "The workspace cannot be deleted because there are active subscriptions."
+      )
+    );
+  }
+
+  await launchDeleteWorkspaceWorkflow({ workspaceId: owner.sId });
+
+  return new Ok(undefined);
+}
+
+export async function changeWorkspaceName(
+  owner: LightWorkspaceType,
+  newName: string
+): Promise<Result<void, Error>> {
+  const [affectedCount] = await Workspace.update(
+    { name: newName },
+    {
+      where: {
+        id: owner.id,
+      },
+    }
+  );
+
+  if (affectedCount === 0) {
+    return new Err(new Error("Workspace not found."));
+  }
+
+  return new Ok(undefined);
+}
+
+export async function disableSSOEnforcement(
+  owner: LightWorkspaceType
+): Promise<Result<void, Error>> {
+  const [affectedCount] = await Workspace.update(
+    { ssoEnforced: false },
+    {
+      where: {
+        id: owner.id,
+        ssoEnforced: true,
+      },
+    }
+  );
+
+  if (affectedCount === 0) {
+    return new Err(new Error("SSO enforcement is already disabled."));
+  }
+
+  return new Ok(undefined);
+}
+
+export async function updateExtensionConfiguration(
+  auth: Authenticator,
+  blacklistedDomains: string[]
+): Promise<Result<void, Error>> {
+  const config = await ExtensionConfigurationResource.fetchForWorkspace(auth);
+
+  if (config) {
+    await config.updateBlacklistedDomains(auth, { blacklistedDomains });
+  } else {
+    await ExtensionConfigurationResource.makeNew(
+      { blacklistedDomains },
+      auth.getNonNullableWorkspace().id
+    );
+  }
+
+  return new Ok(undefined);
 }

@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from "fs";
 import { Op } from "sequelize";
 
-import { updateDocumentParentsField } from "@connectors/lib/data_sources";
+import { updateDataSourceDocumentParents } from "@connectors/lib/data_sources";
 import { SlackMessages } from "@connectors/lib/models/slack";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
@@ -72,10 +72,11 @@ async function updateParentsFieldForConnector(connector: ConnectorModel) {
     // update parents field for each document of the chunk, in parallel
     await Promise.all(
       chunk.map(async (documentIdAndChannel) =>
-        updateDocumentParentsField({
+        updateDataSourceDocumentParents({
           dataSourceConfig: connector,
           documentId: documentIdAndChannel.documentId,
           parents: [documentIdAndChannel.channelId],
+          parentId: null,
         })
       )
     );

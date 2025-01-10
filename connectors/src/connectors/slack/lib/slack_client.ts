@@ -65,10 +65,7 @@ export async function getSlackClient(
           // If we get rate limited, we throw a known error.
           // Note: a previous version using slackError.code === ErrorCode.RateLimitedError failed
           // see PR #2689 for details
-          if (
-            e instanceof Error &&
-            e.message.startsWith("A rate limit was exceeded")
-          ) {
+          if (e instanceof Error && e.message.includes("rate limit")) {
             try {
               Context.current().heartbeat();
               await Context.current().sleep("1 minute");
@@ -101,7 +98,7 @@ export async function getSlackClient(
           if (slackError.code === ErrorCode.PlatformError) {
             const platformError = e as WebAPIPlatformError;
             if (
-              ["account_inactive", "invalid_auth"].includes(
+              ["account_inactive", "invalid_auth", "missing_scope"].includes(
                 platformError.data.error
               )
             ) {

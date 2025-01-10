@@ -1,6 +1,15 @@
-import { Button, Hoverable, PriceTable, RocketIcon } from "@dust-tt/sparkle";
+import {
+  Button,
+  Hoverable,
+  PriceTable,
+  RocketIcon,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  UserIcon,
+} from "@dust-tt/sparkle";
 import type { BillingPeriod, PlanType } from "@dust-tt/types";
-import { Tab } from "@headlessui/react";
 import type { ReactNode } from "react";
 import React, { useState } from "react";
 
@@ -13,18 +22,6 @@ import {
 import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
 import { classNames } from "@app/lib/utils";
 
-interface PricePlanProps {
-  size: "sm" | "xs";
-  className?: string;
-  isTabs?: boolean;
-  plan?: PlanType;
-  onClickProPlan?: () => void;
-  onClickEnterprisePlan?: () => void;
-  isProcessing?: boolean;
-  flexCSS?: string;
-  display: PriceTableDisplay;
-}
-
 export type PriceTableDisplay = "landing" | "subscribe";
 
 type PriceTableItem = {
@@ -35,74 +32,59 @@ type PriceTableItem = {
 
 const ENTERPRISE_PLAN_ITEMS: PriceTableItem[] = [
   {
-    label: "From 100 users",
+    label: "Everything in Pro, plus:",
     variant: "check",
     display: ["landing", "subscribe"],
   },
   {
-    label: "Multiple workspaces",
+    label: "Multiple private spaces",
     variant: "check",
     display: ["landing", "subscribe"],
   },
   {
-    label: "Privacy and Data Security",
+    label: "Larger storage and file size limits",
     variant: "check",
     display: ["landing", "subscribe"],
   },
   {
-    label: "Advanced models (GPT-4, Claude…)",
+    label: "Custom price on programmatic usage (API, GSheet, Zapier)",
     variant: "check",
     display: ["landing", "subscribe"],
   },
   {
-    label: "Unlimited custom assistants",
+    label: "Single Sign-On (SSO) (Okta, Entra ID, Jumpcloud)",
     variant: "check",
     display: ["landing", "subscribe"],
   },
   {
-    label: "Unlimited messages",
+    label: "Flexible payment options (SEPA, Credit Card)",
     variant: "check",
     display: ["landing", "subscribe"],
   },
   {
-    label: "Custom programmatic usage (API)",
+    label: "Priority support & dedicated account management",
     variant: "check",
     display: ["landing", "subscribe"],
   },
   {
-    label: "Unlimited data sources",
+    label: "Priority access to new features",
     variant: "check",
     display: ["landing", "subscribe"],
   },
   {
-    label: "Connections (GitHub, Google Drive, Notion, Slack, ...)",
+    label: "US / EU data hosting",
     variant: "check",
-    display: ["landing", "subscribe"],
+    display: ["landing"],
   },
   {
-    label: "Single Sign-On (SSO)",
+    label: "(soon) User provisioning",
     variant: "check",
-    display: ["landing", "subscribe"],
+    display: ["landing"],
   },
   {
-    label: "Dust Slackbot",
+    label: "(soon) Salesforce Connection",
     variant: "check",
-    display: ["landing", "subscribe"],
-  },
-  {
-    label: "Assistants can execute actions",
-    variant: "check",
-    display: ["landing", "subscribe"],
-  },
-  {
-    label: "Advanced workspace role and permissions",
-    variant: "check",
-    display: ["landing", "subscribe"],
-  },
-  {
-    label: "Dedicated account support",
-    variant: "check",
-    display: ["landing", "subscribe"],
+    display: ["landing"],
   },
 ];
 
@@ -130,24 +112,34 @@ export function ProPriceTable({
       display: ["landing", "subscribe"],
     },
     {
-      label: "One workspace",
-      variant: "dash",
-      display: ["landing"],
-    },
-    {
-      label: "Privacy and Data Security",
-      variant: "check",
-      display: ["landing"],
-    },
-    {
       label: "Advanced models (GPT-4, Claude…)",
       variant: "check",
       display: ["landing", "subscribe"],
     },
     {
-      label: "Unlimited custom assistants",
+      label: "Custom assistants which can execute actions",
       variant: "check",
       display: ["landing", "subscribe"],
+    },
+    {
+      label: "Custom actions (Dust Apps)",
+      variant: "check",
+      display: ["landing", "subscribe"],
+    },
+    {
+      label: "Connections (GitHub, Google Drive, Notion, Slack, ...)",
+      variant: "check",
+      display: ["landing", "subscribe"],
+    },
+    {
+      label: "Native integrations (Zendesk, Slack, Chrome Extension)",
+      variant: "check",
+      display: ["landing", "subscribe"],
+    },
+    {
+      label: "Privacy and Data Security (SOC2, Zero Data Retention)",
+      variant: "check",
+      display: ["landing"],
     },
     {
       label: (
@@ -163,37 +155,17 @@ export function ProPriceTable({
       display: ["landing", "subscribe"],
     },
     {
-      label: "Limited Programmatic usage (API)",
+      label: "Fixed price on programmatic usage (API, GSheet, Zapier)",
       variant: "dash",
       display: ["landing", "subscribe"],
     },
     {
       label: "Up to 1Gb/user of data sources",
-      variant: "check",
-      display: ["landing", "subscribe"],
-    },
-    {
-      label: "Connections (GitHub, Google Drive, Notion, Slack, ...)",
-      variant: "check",
-      display: ["landing", "subscribe"],
-    },
-    {
-      label: "Google & GitHub Authentication",
       variant: "dash",
       display: ["landing", "subscribe"],
     },
     {
-      label: "Dust Slackbot",
-      variant: "check",
-      display: ["landing", "subscribe"],
-    },
-    {
-      label: "Assistants can execute actions",
-      variant: "check",
-      display: ["landing", "subscribe"],
-    },
-    {
-      label: "Workspace role and permissions",
+      label: "One private space",
       variant: "dash",
       display: ["landing"],
     },
@@ -216,16 +188,18 @@ export function ProPriceTable({
         title="Pro"
         price={price}
         color="emerald"
-        priceLabel="/ month / user, excl. tax"
+        priceLabel="/ month / user, excl. tax."
         size={size}
         magnified={false}
       >
         {onClick && (!plan || plan.code !== PRO_PLAN_SEAT_29_CODE) && (
           <PriceTable.ActionContainer position="top">
             <Button
-              variant="primary"
+              variant="highlight"
               size={biggerButtonSize}
-              label="Start now, 15 days free"
+              label={
+                display === "landing" ? "Start now, 15 days free" : "Start now"
+              }
               icon={RocketIcon}
               disabled={isProcessing}
               onClick={onClick}
@@ -240,18 +214,6 @@ export function ProPriceTable({
               variant={item.variant}
             />
           )
-        )}
-        {onClick && (!plan || plan.code !== PRO_PLAN_SEAT_29_CODE) && (
-          <PriceTable.ActionContainer>
-            <Button
-              variant="primary"
-              size={biggerButtonSize}
-              label="Start now, 15 days free"
-              icon={RocketIcon}
-              disabled={isProcessing}
-              onClick={onClick}
-            />
-          </PriceTable.ActionContainer>
         )}
       </PriceTable>
     </>
@@ -268,13 +230,20 @@ function EnterprisePriceTable({
 }) {
   const biggerButtonSize = size === "xs" ? "sm" : "md";
   return (
-    <PriceTable title="Enterprise" price="Custom" size={size} magnified={false}>
+    <PriceTable
+      title="Enterprise"
+      price="Custom"
+      size={size}
+      priceLabel=" pay-per-use, 100+ users"
+      magnified={false}
+    >
       <PriceTable.ActionContainer position="top">
         {onClick && (
           <Button
-            variant="primary"
+            variant="highlight"
             size={biggerButtonSize}
-            label="Contact us"
+            label="Contact sales"
+            icon={UserIcon}
             disabled={isProcessing}
             onClick={onClick}
           />
@@ -287,25 +256,20 @@ function EnterprisePriceTable({
           variant={item.variant}
         />
       ))}
-      <PriceTable.ActionContainer>
-        {onClick && (
-          <Button
-            variant="primary"
-            size={biggerButtonSize}
-            label="Contact us"
-            disabled={isProcessing}
-            onClick={onClick}
-          />
-        )}
-      </PriceTable.ActionContainer>
     </PriceTable>
   );
 }
 
+interface PricePlanProps {
+  plan?: PlanType;
+  onClickProPlan?: () => void;
+  onClickEnterprisePlan?: () => void;
+  isProcessing?: boolean;
+  flexCSS?: string;
+  display: PriceTableDisplay;
+}
+
 export function PricePlans({
-  size = "sm",
-  isTabs = false,
-  className = "",
   flexCSS = "mx-4 flex flex-row w-full md:-mx-12 md:gap-4 lg:gap-6 xl:mx-0 xl:gap-8 2xl:gap-10",
   plan,
   onClickProPlan,
@@ -313,89 +277,60 @@ export function PricePlans({
   isProcessing,
   display,
 }: PricePlanProps) {
-  if (isTabs) {
-    return (
+  return (
+    <>
+      {/* Tabs view for smaller screens (hidden on lg and above) */}
       <div
         className={classNames(
-          "mx-0 sm:mx-24",
-          "w-full max-w-md px-2 py-16 sm:px-0",
-          className
+          "mx-0 sm:mx-24 lg:hidden",
+          "w-full max-w-md px-2 sm:px-0"
         )}
       >
-        <Tab.Group>
-          <Tab.List
-            className={classNames(
-              "flex space-x-1 rounded-full border p-1 backdrop-blur",
-              "border-structure-300/30 bg-white/80",
-              "dark:border-structure-300-dark/30 dark:bg-structure-50-dark/80"
-            )}
-          >
-            <Tab
-              className={({ selected }) =>
-                classNames(
-                  "w-full rounded-full font-semibold transition-all duration-300 ease-out",
-                  "py-3 text-lg",
-                  "ring-0 focus:outline-none",
-                  selected
-                    ? "bg-emerald-400 text-white shadow dark:bg-emerald-500"
-                    : "text-element-700 hover:bg-white/20 hover:text-white dark:text-element-700-dark"
-                )
-              }
-            >
-              Pro
-            </Tab>
-            <Tab
-              className={({ selected }) =>
-                classNames(
-                  "w-full rounded-full font-semibold transition-all duration-300 ease-out",
-                  "py-3 text-lg",
-                  "ring-0 focus:outline-none",
-                  selected
-                    ? "bg-pink-400 text-white shadow dark:bg-pink-500"
-                    : "text-element-700 hover:bg-white/20 hover:text-white dark:text-element-700-dark"
-                )
-              }
-            >
-              Enterprise
-            </Tab>
-          </Tab.List>
-          <Tab.Panels className="mt-8">
-            <Tab.Panel>
+        <Tabs defaultValue="pro">
+          <TabsList>
+            <TabsTrigger value="pro" label="Pro" buttonVariant="outline" />
+            <TabsTrigger
+              value="enterprise"
+              label="Enterprise"
+              buttonVariant="outline"
+            />
+          </TabsList>
+          <div className="mt-8">
+            <TabsContent value="pro">
               <ProPriceTable
                 display={display}
-                size={size}
+                size="xs"
                 plan={plan}
                 isProcessing={isProcessing}
                 onClick={onClickProPlan}
               />
-            </Tab.Panel>
-            <Tab.Panel>
+            </TabsContent>
+            <TabsContent value="enterprise">
               <EnterprisePriceTable
-                size={size}
+                size="xs"
                 isProcessing={isProcessing}
                 onClick={onClickEnterprisePlan}
               />
-            </Tab.Panel>
-          </Tab.Panels>
-        </Tab.Group>
+            </TabsContent>
+          </div>
+        </Tabs>
       </div>
-    );
-  } else {
-    return (
-      <div className={classNames(flexCSS, className)}>
+
+      {/* Cards view for larger screens (hidden below lg) */}
+      <div className={classNames(flexCSS, "hidden lg:flex")}>
         <ProPriceTable
-          size={size}
+          size="sm"
           plan={plan}
           isProcessing={isProcessing}
           onClick={onClickProPlan}
           display={display}
         />
         <EnterprisePriceTable
-          size={size}
+          size="sm"
           isProcessing={isProcessing}
           onClick={onClickEnterprisePlan}
         />
       </div>
-    );
-  }
+    </>
+  );
 }
