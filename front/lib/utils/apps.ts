@@ -1,8 +1,10 @@
 import type { ApiAppType } from "@dust-tt/client";
+import { DustAPI } from "@dust-tt/client";
 import type { AppType, CoreAPIError, Result } from "@dust-tt/types";
 import { CoreAPI, credentialsFromProviders, Err, Ok } from "@dust-tt/types";
 
 import config from "@app/lib/api/config";
+import apiConfig from "@app/lib/api/config";
 import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
 import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
@@ -201,4 +203,38 @@ export async function importApps(
   }
 
   return new Ok(apps.map((a) => a.toJSON()));
+}
+
+export async function synchronizeDustApps(
+  auth: Authenticator,
+  space: SpaceResource
+) {
+  if (!apiConfig.getDustAppsSyncEnabled()) {
+    return new Ok(false);
+  }
+
+  const syncMasterApi = new DustAPI(
+    apiConfig.getDustAPIConfig(),
+    {
+      apiKey: apiConfig.getDustAppsSyncMasterApiKey(), // TODO: Use a secret instead
+      workspaceId: apiConfig.getDustAppsSyncMasterWorkspaceId(),
+    },
+    logger,
+    apiConfig.getDustAppsSyncMasterApiUrl()
+  );
+
+  const exportRes = await syncMasterApi.exportApps({
+    appSpaceId: apiConfig.getDustAppsSyncMasterSpaceId(),
+  });
+
+  if (exportRes.isErr()) {
+    return exportRes;
+  }
+
+  const importRes = await importApps(auth, space, exportRes.value);
+  if (importRes.isErr()) {
+    return importRes;
+  }
+  logger.info("Apps imported successfully");
+  return new Ok(true);
 }
