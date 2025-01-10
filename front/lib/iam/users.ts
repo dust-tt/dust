@@ -7,6 +7,7 @@ import { getAuth0ManagemementClient } from "@app/lib/api/auth0";
 import type { Authenticator } from "@app/lib/auth";
 import type { ExternalUser, SessionWithUser } from "@app/lib/iam/provider";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -200,6 +201,18 @@ export async function mergeUserIdentities({
     );
   }
 
+  const workspaceId = auth.getNonNullableWorkspace().id;
+
+  // Ensure that primary user has a membership in the workspace.
+  const primaryMemberships = await MembershipResource.fetchByUserIds([
+    primaryUser.id,
+  ]);
+  if (!primaryMemberships.some((m) => m.workspaceId === workspaceId)) {
+    return new Err(
+      new Error("Primary must have a membership in the workspace.")
+    );
+  }
+
   const auth0ManagemementClient = getAuth0ManagemementClient();
 
   const users = await auth0ManagemementClient.usersByEmail.getByEmail({
@@ -259,7 +272,7 @@ export async function mergeUserIdentities({
     {
       where: {
         authorId: secondaryUser.id,
-        workspaceId: auth.getNonNullableWorkspace().id,
+        workspaceId: workspaceId,
       },
     }
   );
