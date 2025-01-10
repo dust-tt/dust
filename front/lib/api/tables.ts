@@ -155,8 +155,8 @@ export async function upsertTableFromCsv({
   truncate: boolean;
   useAppForHeaderDetection: boolean;
   detectedHeaders?: DetectedHeadersType;
-  title?: string;
-  mimeType?: string;
+  title: string;
+  mimeType: string;
 }): Promise<Result<{ table: CoreAPITable }, TableOperationError>> {
   const csvRowsRes = csv
     ? await rowsFromCsv({

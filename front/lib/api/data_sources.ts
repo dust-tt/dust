@@ -237,8 +237,8 @@ export type UpsertDocumentArgs = {
   light_document_output?: boolean;
   dataSource: DataSourceResource;
   auth: Authenticator;
-  mime_type?: string;
-  title?: string;
+  mime_type: string;
+  title: string;
 };
 export async function upsertDocument({
   name,
@@ -439,8 +439,8 @@ export type UpsertTableArgs = {
   dataSource: DataSourceResource;
   auth: Authenticator;
   useAppForHeaderDetection?: boolean;
-  title?: string;
-  mimeType?: string;
+  title: string;
+  mimeType: string;
 };
 export async function upsertTable({
   tableId,

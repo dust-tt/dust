@@ -2700,7 +2700,7 @@ impl Store for PostgresStore {
             }
         };
 
-        let title = upsert_params.title.unwrap_or(upsert_params.name.clone());
+        let title = upsert_params.title;
 
         let table = Table::new(
             project,
@@ -2712,7 +2712,7 @@ impl Store for PostgresStore {
             upsert_params.description,
             upsert_params.timestamp,
             title,
-            upsert_params.mime_type.unwrap_or("text/csv".to_string()),
+            upsert_params.mime_type,
             upsert_params.tags,
             upsert_params.parents.get(1).cloned(),
             upsert_params.parents,
