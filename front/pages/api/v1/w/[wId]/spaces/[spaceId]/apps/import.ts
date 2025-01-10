@@ -352,49 +352,53 @@ async function importApps(
         latestDatasets[d] = coreDatasets.value.datasets[d][0].hash;
       }
 
-      // Fetch providers and secrets
-      const [providers, secrets] = await Promise.all([
-        Provider.findAll({
-          where: {
-            workspaceId: owner.id,
-          },
-        }),
-        getDustAppSecrets(auth, true),
-      ]);
+      const datasetId = Object.keys(latestDatasets)[0];
+      if (datasetId) {
+        // Fetch providers and secrets
+        const [providers, secrets] = await Promise.all([
+          Provider.findAll({
+            where: {
+              workspaceId: owner.id,
+            },
+          }),
+          getDustAppSecrets(auth, true),
+        ]);
 
-      // Create a new run to save specifications and configs
-      const dustRun = await coreAPI.createRun(owner, auth.groups(), {
-        projectId: app.dustAPIProjectId,
-        runType: "local",
-        specification: dumpSpecification(
-          JSON.parse(appToImport.savedSpecification),
-          latestDatasets
-        ),
-        config: { blocks: JSON.parse(appToImport.savedConfig) },
-        credentials: credentialsFromProviders(providers),
-        datasetId: Object.keys(latestDatasets)[0] || undefined,
-        secrets,
-        storeBlocksResults: true,
-      });
-
-      if (dustRun.isErr()) {
-        return dustRun;
-      }
-
-      // Update app state
-      await Promise.all([
-        RunResource.makeNew({
-          dustRunId: dustRun.value.run.run_id,
-          appId: app.id,
+        // Create a new run to save specifications and configs
+        const dustRun = await coreAPI.createRun(owner, auth.groups(), {
+          projectId: app.dustAPIProjectId,
           runType: "local",
-          workspaceId: owner.id,
-        }),
-        app.updateState(auth, {
-          savedSpecification: appToImport.savedSpecification,
-          savedConfig: appToImport.savedConfig,
-          savedRun: dustRun.value.run.run_id,
-        }),
-      ]);
+          specification: dumpSpecification(
+            JSON.parse(appToImport.savedSpecification),
+            latestDatasets
+          ),
+          config: { blocks: JSON.parse(appToImport.savedConfig) },
+          credentials: credentialsFromProviders(providers),
+          datasetId,
+          secrets,
+          storeBlocksResults: true,
+        });
+
+        if (dustRun.isErr()) {
+          logger.error(app, "Failed to create run for app");
+          return dustRun;
+        }
+
+        // Update app state
+        await Promise.all([
+          RunResource.makeNew({
+            dustRunId: dustRun.value.run.run_id,
+            appId: app.id,
+            runType: "local",
+            workspaceId: owner.id,
+          }),
+          app.updateState(auth, {
+            savedSpecification: appToImport.savedSpecification,
+            savedConfig: appToImport.savedConfig,
+            savedRun: dustRun.value.run.run_id,
+          }),
+        ]);
+      }
     }
   }
 
