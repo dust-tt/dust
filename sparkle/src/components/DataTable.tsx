@@ -363,7 +363,14 @@ DataTable.Row = function Row({
       <td className="s-flex s-w-8 s-cursor-pointer s-items-center s-pl-1 s-text-element-600">
         {moreMenuItems && moreMenuItems.length > 0 && (
           <DropdownMenu {...dropdownMenuProps}>
-            <DropdownMenuTrigger asChild>
+            <DropdownMenuTrigger
+              // Necessary to allow clicking the dropdown in a table cell without clicking on the cell
+              onKeyUp={(event) => event.stopPropagation()}
+              onClick={(event) => {
+                event.stopPropagation();
+              }}
+              asChild
+            >
               <IconButton
                 icon={MoreIcon}
                 size="sm"
