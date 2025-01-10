@@ -70,7 +70,7 @@ export const DocumentOrTableDeleteDialog = ({
       open={isOpen}
       onOpenChange={(open) => {
         if (!open) {
-          onClose(true);
+          onClose(false);
         }
       }}
     >
