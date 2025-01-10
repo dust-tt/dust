@@ -167,7 +167,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       if (!isUserAdmin(zendeskUser)) {
         return new Err(
           new ConnectorManagerError(
-            "USER_NOT_ADMIN",
+            "CONNECTOR_OAUTH_USER_MISSING_RIGHTS",
             "New authenticated user is not an admin"
           )
         );

@@ -72,7 +72,7 @@ const _postConnectorUpdateAPIHandler = async (
             message: updateRes.error.message,
           },
         });
-      case "USER_NOT_ADMIN":
+      case "CONNECTOR_OAUTH_USER_MISSING_RIGHTS":
         return apiError(req, res, {
           status_code: 401,
           api_error: {
