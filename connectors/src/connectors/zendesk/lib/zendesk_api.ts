@@ -459,6 +459,10 @@ export async function fetchZendeskCurrentUser({
   return response.user;
 }
 
+export function isUserAdmin(user: ZendeskFetchedUser): boolean {
+  return user.active && user.role === "admin";
+}
+
 /**
  * Fetches a multiple users at once from the Zendesk API.
  * May run multiple queries, more precisely we need userCount // 100 + 1 API calls.
