@@ -251,6 +251,7 @@ export function DataTable<TData extends TBaseData>({
       {pagination && (
         <div className="s-p-1">
           <Pagination
+            size="xs"
             pagination={table.getState().pagination}
             setPagination={table.setPagination}
             rowCount={table.getRowCount()}
