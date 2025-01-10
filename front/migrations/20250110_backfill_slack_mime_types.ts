@@ -1,4 +1,5 @@
 import assert from "assert";
+import _ from "lodash";
 import type { Sequelize } from "sequelize";
 import { QueryTypes } from "sequelize";
 
@@ -8,7 +9,8 @@ import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 
 const { CORE_DATABASE_URI } = process.env;
-const BATCH_SIZE = 512;
+const SELECT_BATCH_SIZE = 512;
+const UPDATE_BATCH_SIZE = 32;
 
 async function backfillDataSource(
   frontDataSource: DataSourceModel,
@@ -33,14 +35,16 @@ async function backfillDataSource(
           WHERE dsn.id > :nextId
             AND ds.data_source_id = :dataSourceId
             AND ds.project = :projectId
+            AND dsn.node_id ~ :pattern
           ORDER BY dsn.id
           LIMIT :batchSize;`,
       {
         replacements: {
           dataSourceId: frontDataSource.dustAPIDataSourceId,
           projectId: frontDataSource.dustAPIProjectId,
-          batchSize: BATCH_SIZE,
+          batchSize: SELECT_BATCH_SIZE,
           nextId,
+          pattern,
         },
         type: QueryTypes.SELECT,
       }
@@ -53,25 +57,30 @@ async function backfillDataSource(
     nextId = rows[rows.length - 1].id;
     updatedRowsCount = rows.length;
 
-    if (execute) {
-      await coreSequelize.query(
-        `UPDATE data_sources_nodes SET mime_type = :mimeType WHERE id IN (:ids)`,
-        {
-          replacements: {
-            mimeType,
-            ids: rows.map((row) => row.id),
-          },
-        }
-      );
-      logger.info(
-        `Updated chunk from ${rows[0].id} to ${rows[rows.length - 1].id}`
-      );
-    } else {
-      logger.info(
-        `Would update chunk from ${rows[0].id} to ${rows[rows.length - 1].id}`
-      );
+    // doing smaller chunks to avoid long transactions
+    const chunks = _.chunk(rows, UPDATE_BATCH_SIZE);
+
+    for (const chunk of chunks) {
+      if (execute) {
+        await coreSequelize.query(
+          `UPDATE data_sources_nodes SET mime_type = :mimeType WHERE id IN (:ids)`,
+          {
+            replacements: {
+              mimeType,
+              ids: chunk.map((row) => row.id),
+            },
+          }
+        );
+        logger.info(
+          `Updated chunk from ${chunk[0].id} to ${chunk[chunk.length - 1].id}`
+        );
+      } else {
+        logger.info(
+          `Would update chunk from ${chunk[0].id} to ${chunk[chunk.length - 1].id}`
+        );
+      }
     }
-  } while (updatedRowsCount === BATCH_SIZE);
+  } while (updatedRowsCount === SELECT_BATCH_SIZE);
 }
 
 makeScript(
