@@ -422,7 +422,7 @@ function DataSourceViewSelectedNodes({
       {nodes.map((node) => (
         <Tree.Item
           key={node.internalId}
-          label={node.titleWithParentsContext ?? node.title}
+          label={node.title}
           type={node.expandable && viewType !== "tables" ? "node" : "leaf"}
           visual={getVisualForContentNode(node)}
           className="whitespace-nowrap"

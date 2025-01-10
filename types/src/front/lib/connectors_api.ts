@@ -102,7 +102,6 @@ export interface BaseContentNode {
   parentInternalId: string | null;
   type: ContentNodeType;
   title: string;
-  titleWithParentsContext?: string;
   sourceUrl: string | null;
   expandable: boolean;
   preventSelection?: boolean;
