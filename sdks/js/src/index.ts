@@ -89,6 +89,16 @@ const axiosNoKeepAlive = axios.create({
   httpsAgent: new https.Agent({ keepAlive: false }),
 });
 
+const sanitizedError = (e: unknown) => {
+  if (axios.isAxiosError(e)) {
+    return {
+      ...e,
+      config: undefined,
+    };
+  }
+  return e;
+};
+
 type RequestArgsType = {
   method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   path: string;
@@ -447,13 +457,6 @@ export class DustAPI {
             });
           }
         } catch (e) {
-          yield {
-            type: "error",
-            content: {
-              code: "stream_error",
-              message: "Error streaming chunks",
-            },
-          } as DustAppRunErroredEvent;
           logger.error(
             {
               error: e,
@@ -462,6 +465,13 @@ export class DustAPI {
             },
             "DustAPI error: streaming chunks"
           );
+          yield {
+            type: "error",
+            content: {
+              code: "stream_error",
+              message: "Error streaming chunks",
+            },
+          } as DustAppRunErroredEvent;
         }
       };
 
@@ -705,7 +715,7 @@ export class DustAPI {
     });
 
     const reader = res.value.response.body;
-    const logger = this._logger.child({});
+    const logger = this._logger;
 
     const streamEvents = async function* () {
       try {
@@ -717,13 +727,6 @@ export class DustAPI {
           pendingEvents = [];
         }
       } catch (e) {
-        yield {
-          type: "error",
-          content: {
-            code: "stream_error",
-            message: "Error streaming chunks",
-          },
-        } as DustAppRunErroredEvent;
         logger.error(
           {
             error: e,
@@ -732,6 +735,13 @@ export class DustAPI {
           },
           "DustAPI error: streaming chunks"
         );
+        yield {
+          type: "error",
+          content: {
+            code: "stream_error",
+            message: "Error streaming chunks",
+          },
+        } as DustAppRunErroredEvent;
       }
     };
 
@@ -1058,7 +1068,7 @@ export class DustAPI {
           url,
           duration,
           connectorsError: err,
-          error: e,
+          error: sanitizedError(e),
         },
         "DustAPI error"
       );

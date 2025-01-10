@@ -34,6 +34,7 @@ export function InputBarCitations({
                 onClick={() => fileUploaderService.removeFile(blob.id)}
               />
             }
+            tooltip={blob.id}
           >
             {isImage ? (
               <>

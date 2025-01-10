@@ -691,7 +691,7 @@ function getCitations({
   activeReferences.sort((a, b) => a.index - b.index);
   return activeReferences.map(({ document, index }) => {
     return (
-      <Citation key={index} href={document.href}>
+      <Citation key={index} href={document.href} tooltip={document.title}>
         <CitationIcons>
           <CitationIndex>{index}</CitationIndex>
           {document.icon}

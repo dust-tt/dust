@@ -11,6 +11,7 @@ use std::hash::Hasher;
 use std::str::FromStr;
 use tokio_postgres::types::ToSql;
 use tokio_postgres::{NoTls, Transaction};
+use tracing::info;
 
 use crate::data_sources::data_source::DocumentStatus;
 use crate::data_sources::node::{Node, NodeType};
@@ -154,6 +155,27 @@ impl PostgresStore {
         row_id: i64,
         tx: &Transaction<'_>,
     ) -> Result<()> {
+        // Check that all parents exist in data_sources_nodes.
+        let stmt_check = tx
+            .prepare(
+                "SELECT COUNT(*) FROM data_sources_nodes
+                 WHERE data_source = $1 AND node_id = ANY($2)",
+            )
+            .await?;
+        let count: i64 = tx
+            .query_one(&stmt_check, &[&data_source_row_id, &upsert_params.parents])
+            .await?
+            .get(0);
+        if count != upsert_params.parents.len() as i64 {
+            info!(
+                data_source_id = data_source_row_id,
+                node_id = upsert_params.node_id,
+                parents = ?upsert_params.parents,
+                operation = "upsert_node",
+                "[KWSEARCH] invariant_parents_missing_in_nodes"
+            );
+        }
+
         let created = utils::now();
 
         let (document_row_id, table_row_id, folder_row_id) = match upsert_params.node_type {
@@ -1451,6 +1473,24 @@ impl Store for PostgresStore {
 
         let tx = c.transaction().await?;
 
+        // Check that all parents exist in data_sources_nodes.
+        let count: u64 = tx
+            .execute(
+                "SELECT COUNT(*) FROM data_sources_nodes
+                 WHERE data_source = $1 AND node_id = ANY($2)",
+                &[&data_source_row_id, &parents],
+            )
+            .await?;
+        if count != parents.len() as u64 {
+            info!(
+                data_source_id = data_source_row_id,
+                node_id = document_id,
+                parents = ?parents,
+                operation = "update_document_parents",
+                "[KWSEARCH] invariant_parents_missing_in_nodes"
+            );
+        }
+
         // Update parents on nodes table.
         tx.execute(
             "UPDATE data_sources_nodes SET parents = $1 \
@@ -2660,7 +2700,7 @@ impl Store for PostgresStore {
             }
         };
 
-        let title = upsert_params.title.unwrap_or(upsert_params.name.clone());
+        let title = upsert_params.title;
 
         let table = Table::new(
             project,
@@ -2672,7 +2712,7 @@ impl Store for PostgresStore {
             upsert_params.description,
             upsert_params.timestamp,
             title,
-            upsert_params.mime_type.unwrap_or("text/csv".to_string()),
+            upsert_params.mime_type,
             upsert_params.tags,
             upsert_params.parents.get(1).cloned(),
             upsert_params.parents,
@@ -2776,6 +2816,24 @@ impl Store for PostgresStore {
         };
 
         let tx = c.transaction().await?;
+
+        // Check that all parents exist in data_sources_nodes.
+        let count: u64 = tx
+            .execute(
+                "SELECT COUNT(*) FROM data_sources_nodes
+                 WHERE data_source = $1 AND node_id = ANY($2)",
+                &[&data_source_row_id, &parents],
+            )
+            .await?;
+        if count != parents.len() as u64 {
+            info!(
+                data_source_id = data_source_row_id,
+                node_id = table_id,
+                parents = ?parents,
+                operation = "update_table_parents",
+                "[KWSEARCH] invariant_parents_missing_in_nodes"
+            );
+        }
 
         // Update parents on nodes table.
         let stmt = tx

@@ -72,6 +72,14 @@ const _postConnectorUpdateAPIHandler = async (
             message: updateRes.error.message,
           },
         });
+      case "CONNECTOR_OAUTH_USER_MISSING_RIGHTS":
+        return apiError(req, res, {
+          status_code: 401,
+          api_error: {
+            type: "connector_oauth_user_missing_rights",
+            message: updateRes.error.message,
+          },
+        });
       case "INVALID_CONFIGURATION":
         return apiError(req, res, {
           status_code: 400,

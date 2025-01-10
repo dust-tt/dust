@@ -1,4 +1,14 @@
-import { Dialog, useSendNotification } from "@dust-tt/sparkle";
+import {
+  NewDialog,
+  NewDialogContainer,
+  NewDialogContent,
+  NewDialogDescription,
+  NewDialogFooter,
+  NewDialogHeader,
+  NewDialogTitle,
+  Spinner,
+  useSendNotification,
+} from "@dust-tt/sparkle";
 import type {
   DataSourceViewType,
   LightContentNode,
@@ -56,24 +66,47 @@ export const DocumentOrTableDeleteDialog = ({
   };
 
   return (
-    <Dialog
-      isOpen={isOpen}
-      isSaving={isLoading}
-      onCancel={() => onClose(false)}
-      onValidate={handleDelete}
-      title="Confirm deletion"
-      validateVariant="warning"
-      validateLabel="Delete"
+    <NewDialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose(false);
+        }
+      }}
     >
-      <div className="mt-1 text-left">
-        <p className="mb-4">
-          Are you sure you want to delete {isTable ? "table" : "document"} '
-          {contentNode.title}'?
-        </p>
-        <p className="mb-4 font-bold text-warning-500">
-          This action cannot be undone.
-        </p>
-      </div>
-    </Dialog>
+      <NewDialogContent>
+        <NewDialogHeader>
+          <NewDialogTitle>Confirm deletion</NewDialogTitle>
+          <NewDialogDescription>
+            Are you sure you want to delete {isTable ? "table" : "document"} '
+            {contentNode.title}'?
+          </NewDialogDescription>
+        </NewDialogHeader>
+        {isLoading ? (
+          <div className="flex justify-center py-8">
+            <Spinner variant="dark" size="md" />
+          </div>
+        ) : (
+          <>
+            <NewDialogContainer>
+              <b>This action cannot be undone.</b>
+            </NewDialogContainer>
+            <NewDialogFooter
+              leftButtonProps={{
+                label: "Cancel",
+                variant: "outline",
+              }}
+              rightButtonProps={{
+                label: "Delete",
+                variant: "warning",
+                onClick: async () => {
+                  void handleDelete();
+                },
+              }}
+            />
+          </>
+        )}
+      </NewDialogContent>
+    </NewDialog>
   );
 };

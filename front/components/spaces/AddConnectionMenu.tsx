@@ -6,8 +6,14 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  NewDialog,
+  NewDialogContent,
+  NewDialogDescription,
+  NewDialogFooter,
+  NewDialogHeader,
+  NewDialogTitle,
+  useSendNotification,
 } from "@dust-tt/sparkle";
-import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   ConnectorProvider,
   ConnectorType,
@@ -338,25 +344,49 @@ export const AddConnectionMenu = ({
             />
           )
         )}
-        <Dialog
-          isOpen={showPreviewPopupForProvider.isOpen}
-          title="Coming Soon!"
-          validateLabel="Contact us"
-          onValidate={() => {
-            window.open(
-              `mailto:support@dust.tt?subject=Early access to the ${showPreviewPopupForProvider.connector} connection`
-            );
-          }}
-          onCancel={() => {
-            setShowPreviewPopupForProvider((prev) => ({
-              isOpen: false,
-              connector: prev.connector,
-            }));
+        <NewDialog
+          open={showPreviewPopupForProvider.isOpen}
+          onOpenChange={(open) => {
+            if (!open) {
+              setShowPreviewPopupForProvider((prev) => ({
+                isOpen: false,
+                connector: prev.connector,
+              }));
+            }
           }}
         >
-          Please email us at support@dust.tt for early access.
-        </Dialog>
-        <DropdownMenu>
+          <NewDialogContent size="md">
+            <NewDialogHeader>
+              <NewDialogTitle>Coming Soon!</NewDialogTitle>
+              <NewDialogDescription>
+                Please email us at support@dust.tt for early access.
+              </NewDialogDescription>
+            </NewDialogHeader>
+            <NewDialogFooter
+              leftButtonProps={{
+                label: "Cancel",
+                variant: "outline",
+                onClick: () => {
+                  setShowPreviewPopupForProvider((prev) => ({
+                    isOpen: false,
+                    connector: prev.connector,
+                  }));
+                },
+              }}
+              rightButtonProps={{
+                label: "Contact us",
+                variant: "highlight",
+                onClick: () => {
+                  window.open(
+                    `mailto:support@dust.tt?subject=Early access to the ${showPreviewPopupForProvider.connector} connection`
+                  );
+                },
+              }}
+            />
+          </NewDialogContent>
+        </NewDialog>
+
+        <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
             <Button
               label="Add Connections"

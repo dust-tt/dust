@@ -45,6 +45,7 @@ import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
+import { Lock } from "@app/lib/lock";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -237,8 +238,8 @@ export type UpsertDocumentArgs = {
   light_document_output?: boolean;
   dataSource: DataSourceResource;
   auth: Authenticator;
-  mime_type?: string;
-  title?: string;
+  mime_type: string;
+  title: string;
 };
 export async function upsertDocument({
   name,
@@ -439,8 +440,8 @@ export type UpsertTableArgs = {
   dataSource: DataSourceResource;
   auth: Authenticator;
   useAppForHeaderDetection?: boolean;
-  title?: string;
-  mimeType?: string;
+  title: string;
+  mimeType: string;
 };
 export async function upsertTable({
   tableId,
@@ -912,6 +913,80 @@ export async function createDataSourceWithoutProvider(
 
   return new Ok(dataSourceView);
 }
+
+async function getOrCreateConversationDataSource(
+  auth: Authenticator,
+  conversation: ConversationWithoutContentType
+): Promise<
+  Result<
+    DataSourceResource,
+    Omit<DustError, "code"> & {
+      code: "internal_server_error" | "invalid_request_error";
+    }
+  >
+> {
+  const jitEnabled = isJITActionsEnabled();
+
+  if (!jitEnabled) {
+    return new Err({
+      name: "dust_error",
+      code: "invalid_request_error",
+      message: "JIT processing is not enabled for this file.",
+    });
+  }
+
+  const lockName = "conversationDataSource" + conversation.id;
+
+  const res = await Lock.executeWithLock(
+    lockName,
+    async (): Promise<
+      Result<
+        DataSourceResource,
+        Omit<DustError, "code"> & {
+          code: "internal_server_error" | "invalid_request_error";
+        }
+      >
+    > => {
+      // Fetch the datasource linked to the conversation...
+      let dataSource = await DataSourceResource.fetchByConversation(
+        auth,
+        conversation
+      );
+
+      if (!dataSource) {
+        // ...or create a new one.
+        const conversationsSpace =
+          await SpaceResource.fetchWorkspaceConversationsSpace(auth);
+
+        // IMPORTANT: never use the conversation sID in the name or description, as conversation sIDs
+        // are used as secrets to share the conversation within the workspace users.
+        const r = await createDataSourceWithoutProvider(auth, {
+          plan: auth.getNonNullablePlan(),
+          owner: auth.getNonNullableWorkspace(),
+          space: conversationsSpace,
+          name: generateRandomModelSId("conv"),
+          description: "Files uploaded to conversation",
+          conversation: conversation,
+        });
+
+        if (r.isErr()) {
+          return new Err({
+            name: "dust_error",
+            code: "internal_server_error",
+            message: `Failed to create datasource : ${r.error}`,
+          });
+        }
+
+        dataSource = r.value.dataSource;
+      }
+
+      return new Ok(dataSource);
+    }
+  );
+
+  return res;
+}
+
 export async function getOrCreateConversationDataSourceFromFile(
   auth: Authenticator,
   file: FileResource
@@ -923,16 +998,6 @@ export async function getOrCreateConversationDataSourceFromFile(
     }
   >
 > {
-  const jitEnabled = isJITActionsEnabled(auth);
-
-  if (!jitEnabled) {
-    return new Err({
-      name: "dust_error",
-      code: "invalid_request_error",
-      message: "JIT processing is not enabled for this file.",
-    });
-  }
-
   // Note: this assume that if we don't have useCaseMetadata, the file is fine.
   const hasRequiredMetadata =
     !!file.useCaseMetadata && !!file.useCaseMetadata.conversationId;
@@ -957,38 +1022,5 @@ export async function getOrCreateConversationDataSourceFromFile(
     });
   }
 
-  // Fetch the datasource linked to the conversation...
-  let dataSource = await DataSourceResource.fetchByConversation(
-    auth,
-    cRes.value
-  );
-
-  if (!dataSource) {
-    // ...or create a new one.
-    const conversationsSpace =
-      await SpaceResource.fetchWorkspaceConversationsSpace(auth);
-
-    // IMPORTANT: never use the conversation sID in the name or description, as conversation sIDs
-    // are used as secrets to share the conversation within the workspace users.
-    const r = await createDataSourceWithoutProvider(auth, {
-      plan: auth.getNonNullablePlan(),
-      owner: auth.getNonNullableWorkspace(),
-      space: conversationsSpace,
-      name: generateRandomModelSId("conv"),
-      description: "Files uploaded to conversation",
-      conversation: cRes.value,
-    });
-
-    if (r.isErr()) {
-      return new Err({
-        name: "dust_error",
-        code: "internal_server_error",
-        message: `Failed to create datasource : ${r.error}`,
-      });
-    }
-
-    dataSource = r.value.dataSource;
-  }
-
-  return new Ok(dataSource);
+  return getOrCreateConversationDataSource(auth, cRes.value);
 }

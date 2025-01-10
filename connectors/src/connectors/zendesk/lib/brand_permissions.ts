@@ -9,7 +9,10 @@ import {
   forbidSyncZendeskTickets,
 } from "@connectors/connectors/zendesk/lib/ticket_permissions";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
-import { createZendeskClient } from "@connectors/connectors/zendesk/lib/zendesk_api";
+import {
+  createZendeskClient,
+  isBrandHelpCenterEnabled,
+} from "@connectors/connectors/zendesk/lib/zendesk_api";
 import logger from "@connectors/logger/logger";
 import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
 
@@ -26,48 +29,48 @@ export async function allowSyncZendeskBrand({
   connectionId: string;
   brandId: number;
 }): Promise<boolean> {
-  let brand = await ZendeskBrandResource.fetchByBrandId({
+  const brand = await ZendeskBrandResource.fetchByBrandId({
     connectorId,
     brandId,
   });
 
-  if (brand) {
-    await brand.grantTicketsPermissions();
-    if (brand.hasHelpCenter) {
-      await brand.grantHelpCenterPermissions();
-    }
-  } else {
-    // fetching the brand from Zendesk
-    const zendeskApiClient = createZendeskClient(
-      await getZendeskSubdomainAndAccessToken(connectionId)
+  // fetching the brand from Zendesk
+  const zendeskApiClient = createZendeskClient(
+    await getZendeskSubdomainAndAccessToken(connectionId)
+  );
+  const {
+    result: { brand: fetchedBrand },
+  } = await zendeskApiClient.brand.show(brandId);
+
+  if (!fetchedBrand) {
+    logger.error(
+      { connectorId, brandId },
+      "[Zendesk] Brand could not be fetched."
     );
-    const {
-      result: { brand: fetchedBrand },
-    } = await zendeskApiClient.brand.show(brandId);
+    return false;
+  }
 
-    if (!fetchedBrand) {
-      logger.error(
-        { connectorId, brandId },
-        "[Zendesk] Brand could not be fetched."
-      );
-      return false;
-    }
+  const helpCenterEnabled = isBrandHelpCenterEnabled(fetchedBrand);
 
-    brand = await ZendeskBrandResource.makeNew({
+  // creating the brand if it does not exist yet in db
+  if (!brand) {
+    await ZendeskBrandResource.makeNew({
       blob: {
         subdomain: fetchedBrand.subdomain,
         connectorId: connectorId,
         brandId: fetchedBrand.id,
         name: fetchedBrand.name || "Brand",
         ticketsPermission: "read",
-        helpCenterPermission: fetchedBrand.has_help_center ? "read" : "none",
-        hasHelpCenter: fetchedBrand.has_help_center,
+        helpCenterPermission: helpCenterEnabled ? "read" : "none",
         url: fetchedBrand.url,
       },
     });
   }
 
-  if (brand?.hasHelpCenter) {
+  // setting the permissions for the brand:
+  // can be redundant if already set when creating the brand but necessary because of the categories.
+  if (helpCenterEnabled) {
+    // allow the categories
     await allowSyncZendeskHelpCenter({
       connectorId,
       connectionId,

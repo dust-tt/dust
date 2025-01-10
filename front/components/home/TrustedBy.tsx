@@ -16,8 +16,8 @@ export default function TrustedBy() {
         Trusted by 1000+ organizations
       </H3>
 
-      <div className="mx-auto mt-8 w-full max-w-screen-2xl px-8">
-        <div className="grid grid-cols-2 place-items-center gap-8 sm:grid-cols-5 sm:gap-2">
+      <div className="mx-auto mt-4 w-full max-w-screen-2xl px-8">
+        <div className="grid grid-cols-2 place-items-center gap-4 sm:grid-cols-5 sm:gap-2">
           {" "}
           <Image
             alt="alan"

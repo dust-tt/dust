@@ -48,11 +48,7 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import logger from "@app/logger/logger";
 
-export function isJITActionsEnabled(auth: Authenticator): boolean {
-  // Disable for one specific customer to avoid slightly changing the behavior of their assistants.
-  if (auth.getNonNullableWorkspace().sId === "4d76593070") {
-    return false;
-  }
+export function isJITActionsEnabled(): boolean {
   return true;
 }
 
@@ -160,7 +156,7 @@ export async function getEmulatedAndJITActions(
   const emulatedActions: AgentActionType[] = [];
   let jitActions: ActionConfigurationType[] = [];
 
-  if (isJITActionsEnabled(auth)) {
+  if (isJITActionsEnabled()) {
     const files = listFiles(conversation);
 
     const a = makeConversationListFilesAction({

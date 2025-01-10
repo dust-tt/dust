@@ -1686,8 +1686,8 @@ struct DataSourcesDocumentsUpsertPayload {
     section: Section,
     credentials: run::Credentials,
     light_document_output: Option<bool>,
-    title: Option<String>,
-    mime_type: Option<String>,
+    title: String,
+    mime_type: String,
 }
 
 async fn data_sources_documents_upsert(
@@ -2191,8 +2191,8 @@ struct DatabasesTablesUpsertPayload {
     remote_database_secret_id: Option<String>,
 
     // Node meta:
-    title: Option<String>,
-    mime_type: Option<String>,
+    title: String,
+    mime_type: String,
 }
 
 async fn tables_upsert(

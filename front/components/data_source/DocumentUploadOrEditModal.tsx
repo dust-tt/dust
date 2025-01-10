@@ -147,7 +147,7 @@ export const DocumentUploadOrEditModal = ({
       const body = {
         name: initialId ?? document.name,
         title: initialId ?? document.name,
-        mime_type: document.mimeType ?? undefined,
+        mime_type: document.mimeType ?? "application/octet-stream",
         timestamp: null,
         parent_id: null,
         parents: [initialId ?? document.name],

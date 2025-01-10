@@ -27,24 +27,20 @@ export type FrontDataSourceDocumentSectionType = t.TypeOf<
   typeof FrontDataSourceDocumentSection
 >;
 
-export const PostDataSourceDocumentRequestBodySchema = t.intersection([
-  t.type({
-    timestamp: t.union([t.Int, t.undefined, t.null]),
-    tags: t.union([t.array(t.string), t.undefined, t.null]),
-    parent_id: t.union([t.string, t.undefined, t.null]),
-    parents: t.union([t.array(t.string), t.undefined, t.null]),
-    source_url: t.union([t.string, t.undefined, t.null]),
-    upsert_context: t.union([UpsertContextSchema, t.undefined, t.null]),
-    text: t.union([t.string, t.undefined, t.null]),
-    section: t.union([FrontDataSourceDocumentSection, t.undefined, t.null]),
-    light_document_output: t.union([t.boolean, t.undefined]),
-    async: t.union([t.boolean, t.undefined, t.null]),
-  }),
-  t.partial({
-    title: t.string,
-    mime_type: t.string,
-  }),
-]);
+export const PostDataSourceDocumentRequestBodySchema = t.type({
+  timestamp: t.union([t.Int, t.undefined, t.null]),
+  tags: t.union([t.array(t.string), t.undefined, t.null]),
+  parent_id: t.union([t.string, t.undefined, t.null]),
+  parents: t.union([t.array(t.string), t.undefined, t.null]),
+  source_url: t.union([t.string, t.undefined, t.null]),
+  upsert_context: t.union([UpsertContextSchema, t.undefined, t.null]),
+  text: t.union([t.string, t.undefined, t.null]),
+  section: t.union([FrontDataSourceDocumentSection, t.undefined, t.null]),
+  light_document_output: t.union([t.boolean, t.undefined]),
+  async: t.union([t.boolean, t.undefined, t.null]),
+  title: t.string,
+  mime_type: t.string,
+});
 
 export type PostDataSourceDocumentRequestBody = t.TypeOf<
   typeof PostDataSourceDocumentRequestBodySchema
@@ -66,24 +62,20 @@ export type PatchDataSourceWithNameDocumentRequestBody = t.TypeOf<
   typeof PostDataSourceWithNameDocumentRequestBodySchema
 >;
 
-export const PatchDataSourceTableRequestBodySchema = t.intersection([
-  t.type({
-    name: t.string,
-    description: t.string,
-    timestamp: t.union([t.number, t.undefined, t.null]),
-    tags: t.union([t.array(t.string), t.undefined, t.null]),
-    parentId: t.union([t.string, t.undefined, t.null]),
-    parents: t.union([t.array(t.string), t.undefined, t.null]),
-    truncate: t.boolean,
-    async: t.union([t.boolean, t.undefined]),
-    csv: t.union([t.string, t.undefined]),
-    useAppForHeaderDetection: t.union([t.boolean, t.undefined]),
-  }),
-  t.partial({
-    title: t.string,
-    mimeType: t.string,
-  }),
-]);
+export const PatchDataSourceTableRequestBodySchema = t.type({
+  name: t.string,
+  description: t.string,
+  timestamp: t.union([t.number, t.undefined, t.null]),
+  tags: t.union([t.array(t.string), t.undefined, t.null]),
+  parentId: t.union([t.string, t.undefined, t.null]),
+  parents: t.union([t.array(t.string), t.undefined, t.null]),
+  truncate: t.boolean,
+  async: t.union([t.boolean, t.undefined]),
+  csv: t.union([t.string, t.undefined]),
+  useAppForHeaderDetection: t.union([t.boolean, t.undefined]),
+  title: t.string,
+  mimeType: t.string,
+});
 
 export type PatchDataSourceTableRequestBody = t.TypeOf<
   typeof PatchDataSourceTableRequestBodySchema
@@ -112,6 +104,8 @@ export const UpsertTableFromCsvRequestSchema = t.intersection([
     truncate: t.boolean,
     useAppForHeaderDetection: t.union([t.boolean, t.undefined, t.null]),
     async: t.union([t.boolean, t.undefined]),
+    title: t.string,
+    mimeType: t.string,
   }),
   // csv is optional when editing an existing table.
   t.union([
@@ -121,10 +115,6 @@ export const UpsertTableFromCsvRequestSchema = t.intersection([
       tableId: t.string,
     }),
   ]),
-  t.partial({
-    title: t.string,
-    mimeType: t.string,
-  }),
 ]);
 
 export type UpsertTableFromCsvRequestType = t.TypeOf<

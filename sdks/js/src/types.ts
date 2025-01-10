@@ -107,6 +107,7 @@ export const supportedOtherFileFormats = {
   "application/json": [".json"],
   "application/xml": [".xml"],
   "application/x-sh": [".sh"],
+  "text/x-sh": [".sh"],
 } as const;
 
 // Supported content types for images.
@@ -338,7 +339,6 @@ export interface LoggerInterface {
   info: (args: Record<string, unknown>, message: string) => void;
   trace: (args: Record<string, unknown>, message: string) => void;
   warn: (args: Record<string, unknown>, message: string) => void;
-  child: (args: Record<string, unknown>) => LoggerInterface;
 }
 
 const DataSourceViewCategoriesSchema = FlexibleEnumSchema<
@@ -1980,8 +1980,8 @@ export const UpsertTableFromCsvRequestSchema = z.intersection(
       truncate: z.boolean(),
       useAppForHeaderDetection: z.boolean().nullable().optional(),
       async: z.boolean().optional(),
-      title: z.string().optional(),
-      mimeType: z.string().optional(),
+      title: z.string(),
+      mimeType: z.string(),
     })
     .transform((o) => ({
       name: o.name,
@@ -2048,8 +2048,8 @@ export const UpsertDatabaseTableRequestSchema = z.object({
   parents: z.array(z.string()).nullable().optional(),
   remote_database_table_id: z.string().nullable().optional(),
   remote_database_secret_id: z.string().nullable().optional(),
-  title: z.string().optional(),
-  mime_type: z.string().optional(),
+  title: z.string(),
+  mime_type: z.string(),
 });
 
 export type UpsertDatabaseTableRequestType = z.infer<
