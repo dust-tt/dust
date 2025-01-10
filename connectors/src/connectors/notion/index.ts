@@ -1,7 +1,6 @@
 import type { ContentNode, ContentNodesViewType, Result } from "@dust-tt/types";
 import {
   Err,
-  getNotionDatabaseTableId,
   getOAuthConnectionAccessToken,
   NOTION_MIME_TYPES,
   Ok,
@@ -566,7 +565,6 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
         permission: "read",
         dustDocumentId: nodeIdFromNotionId(page.notionPageId),
         lastUpdatedAt: page.lastUpsertedTs?.getTime() || null,
-        dustTableId: null,
       }))
     );
 
@@ -584,7 +582,6 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       permission: "read",
       dustDocumentId: nodeIdFromNotionId(`database-${db.notionDatabaseId}`),
       lastUpdatedAt: null,
-      dustTableId: getNotionDatabaseTableId(db.notionDatabaseId),
     }));
 
     const contentNodes = pageNodes.concat(dbNodes);
