@@ -14,8 +14,11 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { capitalize } from "lodash";
-import type { ComponentProps, RefObject } from "react";
-import type { MouseEvent as ReactMouseEvent } from "react";
+import type {
+  ComponentProps,
+  MouseEvent as ReactMouseEvent,
+  RefObject,
+} from "react";
 import React, {
   useCallback,
   useEffect,
@@ -35,6 +38,7 @@ import {
   isManaged,
   isWebsite,
 } from "@app/lib/data_sources";
+
 export type UploadOrEditContentActionKey =
   | "DocumentUploadOrEdit"
   | "TableUploadOrEdit";
