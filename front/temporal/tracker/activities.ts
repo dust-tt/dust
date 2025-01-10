@@ -5,7 +5,14 @@ import type {
   Result,
   TrackerIdWorkspaceId,
 } from "@dust-tt/types";
-import { ConnectorsAPI, CoreAPI, Err, Ok } from "@dust-tt/types";
+import {
+  ConnectorsAPI,
+  CoreAPI,
+  Err,
+  GPT_4O_MODEL_CONFIG,
+  Ok,
+} from "@dust-tt/types";
+import { Context } from "@temporalio/activity";
 import _ from "lodash";
 
 import config from "@app/lib/api/config";
@@ -36,6 +43,8 @@ const TRACKER_MAINTAINED_SCOPE_MAX_TOP_K = 8;
 // TODO(@fontanierh): find a way to ensure this remains true.
 const CHUNK_SIZE = 512;
 
+const TRACKER_SCORE_DOCS_MODEL_CONFIG = GPT_4O_MODEL_CONFIG;
+
 export async function getDebounceMsActivity(
   dataSourceConnectorProvider: ConnectorProvider | null
 ): Promise<number> {
@@ -55,6 +64,11 @@ export async function trackersGenerationActivity(
   documentHash: string,
   dataSourceConnectorProvider: ConnectorProvider | null
 ) {
+  if (Context.current().info.attempt > 1) {
+    // TODO(DOC_TRACKER): mechanism to retry "manually"
+    throw new Error("Too many attempts");
+  }
+
   const localLogger = logger.child({
     workspaceId,
     dataSourceId,
@@ -334,8 +348,9 @@ export async function trackersGenerationActivity(
     const scoreDocsResult = await callDocTrackerScoreDocsAction(auth, {
       watchedDocDiff: diffString,
       maintainedDocuments,
-      providerId: "openai",
-      modelId: "gpt-4o",
+      prompt: tracker.prompt,
+      providerId: TRACKER_SCORE_DOCS_MODEL_CONFIG.providerId,
+      modelId: TRACKER_SCORE_DOCS_MODEL_CONFIG.modelId,
     });
 
     // The output of the Dust App above is a list of document for which we want to run the change suggestion.

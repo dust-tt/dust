@@ -280,7 +280,7 @@ TrackerGenerationModel.init(
     },
     maintainedDocumentId: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
     },
   },
   {
@@ -309,8 +309,7 @@ TrackerGenerationModel.belongsTo(DataSourceModel, {
 });
 
 DataSourceModel.hasMany(TrackerGenerationModel, {
-  foreignKey: { allowNull: false },
-  onDelete: "RESTRICT",
+  foreignKey: { allowNull: true },
   as: "maintainedDocumentDataSource",
 });
 TrackerGenerationModel.belongsTo(DataSourceModel, {

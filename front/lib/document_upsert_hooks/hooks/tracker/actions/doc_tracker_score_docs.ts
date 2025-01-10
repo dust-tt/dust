@@ -9,6 +9,7 @@ export async function callDocTrackerScoreDocsAction(
   {
     watchedDocDiff,
     maintainedDocuments,
+    prompt,
     providerId,
     modelId,
   }: {
@@ -20,6 +21,7 @@ export async function callDocTrackerScoreDocsAction(
       dataSourceId: string;
       documentId: string;
     }>;
+    prompt: string | null;
     providerId: string;
     modelId: string;
   }
@@ -36,6 +38,7 @@ export async function callDocTrackerScoreDocsAction(
     input: {
       watched_diff: watchedDocDiff,
       maintained_documents: maintainedDocuments,
+      prompt,
     },
     responseValueSchema: DocTrackerScoreDocsActionResultSchema,
   });
