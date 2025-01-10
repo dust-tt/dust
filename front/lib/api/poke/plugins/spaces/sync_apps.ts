@@ -23,7 +23,7 @@ export const syncApps = createPlugin(
     }
     const result = await synchronizeDustApps(auth, space);
     if (result.isErr()) {
-      return new Err(new Error("Error when syncing"));
+      return new Err(new Error(`Error when syncing: ${result.error.message}`));
     }
     if (!result.value) {
       return new Ok({

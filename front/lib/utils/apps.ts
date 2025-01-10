@@ -22,7 +22,7 @@ export async function importApps(
   const owner = auth.getNonNullableWorkspace();
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
-  const apps: AppResource[] = [];
+  const apps: AppType[] = [];
   const existingApps = await AppResource.listBySpace(auth, space, {
     includeDeleted: true,
   });
@@ -30,18 +30,6 @@ export async function importApps(
   for (const appToImport of appsToImport) {
     let app = existingApps.find((a) => a.sId === appToImport.sId);
     if (app) {
-      // An app with this sId exist, check workspace and space first to see if it matches
-      if (app?.workspaceId !== owner.id) {
-        return new Err(
-          new Error("App already exist and does not belong to this workspace")
-        );
-      }
-      if (app?.space.sId !== space.sId) {
-        return new Err(
-          new Error("App already exist and does not belong to this space")
-        );
-      }
-
       // If existing app was deleted, undelete it
       if (app.deletedAt) {
         const undelete = await app.undelete();
@@ -59,9 +47,17 @@ export async function importApps(
           name: appToImport.name,
           description: appToImport.description,
         });
+        apps.push(app.toJSON());
       }
-      apps.push(app);
     } else {
+      // An app with this sId exist, check workspace and space first to see if it matches
+      const existingApp = await AppResource.fetchById(auth, appToImport.sId);
+      if (existingApp) {
+        return new Err(
+          new Error("App with this sId already exists in another space.")
+        );
+      }
+
       // App does not exist, create a new app
       const p = await coreAPI.createProject();
 
@@ -82,7 +78,7 @@ export async function importApps(
         space
       );
 
-      apps.push(app);
+      apps.push(app.toJSON());
     }
 
     // Getting all existing datasets for this app
@@ -184,6 +180,11 @@ export async function importApps(
           return dustRun;
         }
 
+        const appJson = {
+          ...app.toJSON(),
+          hash: dustRun.value.run.app_hash,
+        };
+
         // Update app state
         await Promise.all([
           RunResource.makeNew({
@@ -198,11 +199,17 @@ export async function importApps(
             savedRun: dustRun.value.run.run_id,
           }),
         ]);
+
+        const index = apps.findIndex((a) => a.id === app.id);
+        if (index >= 0) {
+          apps.splice(index, 1);
+        }
+        apps.push(appJson);
       }
     }
   }
 
-  return new Ok(apps.map((a) => a.toJSON()));
+  return new Ok(apps);
 }
 
 export async function synchronizeDustApps(
@@ -235,6 +242,6 @@ export async function synchronizeDustApps(
   if (importRes.isErr()) {
     return importRes;
   }
-  logger.info("Apps imported successfully");
+  logger.info({ importedApp: importRes.value }, "Apps imported successfully");
   return new Ok(true);
 }
