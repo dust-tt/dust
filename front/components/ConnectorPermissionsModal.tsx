@@ -205,7 +205,9 @@ async function updateConnectorConnectionId(
     };
   }
   if (
-    error.type === "connector_authorization_error" &&
+    error.type === "connector_oauth_user_missing_rights" &&
+    // not adding a CONNECTOR_TYPE_TO_USER_RIGHTS_ERROR for now since this is a Zendesk-specific feature,
+    // will be added if more than 1 provider is affected (would fall back on the default error message for now).
     provider === "zendesk"
   ) {
     return {
