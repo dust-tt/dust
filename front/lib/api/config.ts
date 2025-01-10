@@ -161,6 +161,36 @@ const config = {
   getStatusPageApiToken: (): string => {
     return EnvironmentConfig.getEnvVariable("STATUS_PAGE_API_TOKEN");
   },
+  getDustAppsSyncEnabled: (): boolean => {
+    return (
+      EnvironmentConfig.getOptionalEnvVariable("DUST_APPS_SYNC_ENABLED") ===
+      "true"
+    );
+  },
+  getDustAppsSyncMasterApiUrl: (): string => {
+    return (
+      EnvironmentConfig.getOptionalEnvVariable(
+        "DUST_APPS_SYNC_MASTER_API_URL"
+      ) || "https://dust.tt"
+    );
+  },
+  getDustAppsSyncMasterWorkspaceId: (): string => {
+    return (
+      EnvironmentConfig.getOptionalEnvVariable(
+        "DUST_APPS_SYNC_MASTER_WORKSPACE_ID"
+      ) || "78bda07b39"
+    );
+  },
+  getDustAppsSyncMasterSpaceId: (): string => {
+    return (
+      EnvironmentConfig.getOptionalEnvVariable(
+        "DUST_APPS_SYNC_MASTER_SPACE_ID"
+      ) || "vlt_rICtlrSEpWqX"
+    );
+  },
+  getDustAppsSyncMasterApiKey: (): string => {
+    return EnvironmentConfig.getEnvVariable("DUST_APPS_SYNC_MASTER_API_KEY");
+  },
 };
 
 export default config;

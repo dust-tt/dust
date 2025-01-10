@@ -1774,7 +1774,7 @@ export type ValidateMemberResponseType = z.infer<
   typeof ValidateMemberResponseSchema
 >;
 
-const GetAppsResponseSchema = z.object({
+export const GetAppsResponseSchema = z.object({
   apps: AppTypeSchema.array(),
 });
 
