@@ -148,7 +148,7 @@ export async function importApps(
         latestDatasets[d] = coreDatasets.value.datasets[d][0].hash;
       }
 
-      const datasetId = Object.keys(latestDatasets)[0];
+      const [datasetId] = Object.keys(latestDatasets);
       if (datasetId) {
         // Fetch providers and secrets
         const [providers, secrets] = await Promise.all([
