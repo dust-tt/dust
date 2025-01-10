@@ -302,6 +302,9 @@ export const SpaceDataSourceViewContentList = ({
             }
           },
         }),
+        dropdownMenuProps: {
+          modal: false,
+        },
         moreMenuItems: getMenuItems(
           canReadInSpace,
           canWriteInSpace,
