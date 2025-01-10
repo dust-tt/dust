@@ -140,6 +140,9 @@ const columns: ColumnDef<Data>[] = [
     accessorKey: "name",
     header: "Name",
     sortingFn: "text",
+    meta: {
+      className: "s-w-full",
+    },
     cell: (info) => (
       <DataTable.CellContent
         avatarUrl={info.row.original.avatarUrl}
@@ -154,12 +157,10 @@ const columns: ColumnDef<Data>[] = [
   },
   {
     accessorKey: "usedBy",
-    minSize: 100,
-    size: 100,
-    header: "Used by",
     meta: {
-      width: "100px",
+      className: "s-w-[64px]",
     },
+    header: "Used by",
     cell: (info) => (
       <DataTable.CellContent>{info.row.original.usedBy}</DataTable.CellContent>
     ),
@@ -168,7 +169,7 @@ const columns: ColumnDef<Data>[] = [
     accessorKey: "addedBy",
     header: "Added by",
     meta: {
-      width: "100px",
+      className: "s-w-[128px]",
     },
     cell: (info) => (
       <DataTable.CellContentWithCopy>
@@ -180,7 +181,7 @@ const columns: ColumnDef<Data>[] = [
     accessorKey: "lastUpdated",
     header: "Last updated",
     meta: {
-      width: "200px",
+      className: "s-w-[128px]",
     },
     cell: (info) => (
       <DataTable.CellContent>
@@ -193,7 +194,7 @@ const columns: ColumnDef<Data>[] = [
     accessorKey: "size",
     header: "Size",
     meta: {
-      width: "100px",
+      className: "s-w-[48px]",
     },
     cell: (info) => (
       <DataTable.CellContent>{info.row.original.size}</DataTable.CellContent>
@@ -228,7 +229,7 @@ export const DataTableExample = () => {
   );
 
   return (
-    <div className="s-w-full s-max-w-4xl s-overflow-x-auto">
+    <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6">
       <Input
         name="filter"
         placeholder="Filter"

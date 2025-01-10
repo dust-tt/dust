@@ -89,7 +89,7 @@ export function DataTable<TData extends TBaseData>({
   totalRowCount,
   columns,
   className,
-  widthClassName = "s-w-full s-max-w-4xl",
+  widthClassName = "s-w-full",
   filter,
   filterColumn,
   columnsBreakpoints = {},
@@ -164,7 +164,7 @@ export function DataTable<TData extends TBaseData>({
   return (
     <div
       className={classNames(
-        "s-flex s-flex-col s-gap-2",
+        "s-flex s-w-full s-flex-col s-gap-2",
         className || "",
         widthClassName
       )}
@@ -269,7 +269,7 @@ DataTable.Root = function DataTableRoot({
   ...props
 }: DataTableRootProps) {
   return (
-    <table className="s-w-full s-border-collapse" {...props}>
+    <table className="s-w-full s-table-fixed s-border-collapse" {...props}>
       {children}
     </table>
   );
@@ -307,9 +307,9 @@ DataTable.Head = function Head({
 }: HeadProps) {
   return (
     <th
-      style={getSize(column.columnDef)}
       className={classNames(
-        "s-py-1 s-pr-3 s-text-left s-font-medium s-text-element-800",
+        "s-py-1 s-pr-3 s-text-left s-font-medium s-text-foreground",
+        column.columnDef.meta?.className || "",
         className || ""
       )}
       {...props}
@@ -351,8 +351,8 @@ DataTable.Row = function Row({
   return (
     <tr
       className={classNames(
-        "s-group/dt s-flex s-items-center s-border-b s-border-structure-200 s-text-sm s-transition-colors s-duration-300 s-ease-out",
-        onClick ? "s-cursor-pointer hover:s-bg-structure-50" : "",
+        "s-group/dt s-border-b s-border-separator s-transition-colors s-duration-300 s-ease-out",
+        onClick ? "s-cursor-pointer hover:s-bg-muted" : "",
         widthClassName,
         className || ""
       )}
@@ -360,7 +360,7 @@ DataTable.Row = function Row({
       {...props}
     >
       {children}
-      <td className="s-flex s-w-8 s-cursor-pointer s-items-center s-pl-1 s-text-element-600">
+      <td className="s-w-8 s-cursor-pointer s-pl-1 s-text-foreground">
         {moreMenuItems && moreMenuItems.length > 0 && (
           <DropdownMenu {...dropdownMenuProps}>
             <DropdownMenuTrigger
@@ -413,9 +413,8 @@ DataTable.Cell = function Cell({
 }: CellProps) {
   return (
     <td
-      style={getSize(column.columnDef)}
       className={classNames(
-        "s-flex s-h-12 s-items-center s-truncate s-whitespace-nowrap s-pl-1.5 s-text-element-800",
+        "s-h-12 s-truncate s-whitespace-nowrap s-pl-1.5",
         column.columnDef.meta?.className || "",
         className || ""
       )}
@@ -425,16 +424,6 @@ DataTable.Cell = function Cell({
     </td>
   );
 };
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function getSize(columnDef: ColumnDef<any>) {
-  if (columnDef.meta?.width) {
-    return { width: columnDef.meta.width };
-  }
-  return {
-    flex: columnDef.meta?.flex ?? 1,
-  };
-}
 
 interface CellContentProps extends React.TdHTMLAttributes<HTMLDivElement> {
   avatarUrl?: string;
@@ -459,10 +448,7 @@ DataTable.CellContent = function CellContent({
 }: CellContentProps) {
   return (
     <div
-      className={classNames(
-        "s-flex s-w-full s-items-center s-py-2",
-        className || ""
-      )}
+      className={classNames("s-flex s-items-center s-py-2", className || "")}
       {...props}
     >
       {avatarUrl && avatarTooltipLabel && (
@@ -491,17 +477,17 @@ DataTable.CellContent = function CellContent({
           visual={icon}
           size="sm"
           className={classNames(
-            "s-mr-2 s-text-element-800",
+            "s-mr-2 s-text-foreground",
             iconClassName || ""
           )}
         />
       )}
       <div className="s-flex s-shrink s-truncate">
-        <span className="s-truncate s-text-sm s-text-element-800">
+        <span className="s-truncate s-text-sm s-text-foreground">
           {children}
         </span>
         {description && (
-          <span className="s-pl-2 s-text-sm s-text-element-600">
+          <span className="s-pl-2 s-text-sm s-text-muted-foreground">
             {description}
           </span>
         )}
