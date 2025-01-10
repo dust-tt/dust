@@ -34,6 +34,7 @@ export const userIdentityMergePlugin = createPlugin(
     }
 
     const mergeResult = await mergeUserIdentities({
+      auth,
       primaryUserId,
       secondaryUserId,
     });
