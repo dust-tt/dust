@@ -9,7 +9,7 @@ export function UseCasesSection() {
   return (
     <div className="w-full">
       <div className="mb-12">
-        <H2 from="from-sky-200" to="to-blue-400">
+        <H2 from="from-sky-200" to="to-sky-500">
           Top use cases
         </H2>
         {/* <P size="lg">Resolve tickets, train agents, and build knowledge.</P> */}

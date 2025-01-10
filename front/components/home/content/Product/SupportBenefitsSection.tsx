@@ -17,7 +17,7 @@ export function BenefitsSection() {
       <Grid>
         <div className="col-span-12 mb-6 mt-6">
           <div>
-            <H2 from="from-sky-200" to="to-blue-400">
+            <H2 from="from-sky-200" to="to-sky-500">
               Elevate support operations
             </H2>
             {/* <P size="lg">
