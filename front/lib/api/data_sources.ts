@@ -923,7 +923,7 @@ export async function getOrCreateConversationDataSourceFromFile(
     }
   >
 > {
-  const jitEnabled = isJITActionsEnabled(auth);
+  const jitEnabled = isJITActionsEnabled();
 
   if (!jitEnabled) {
     return new Err({
