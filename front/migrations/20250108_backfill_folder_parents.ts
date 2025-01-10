@@ -43,9 +43,9 @@ async function migrateNode(
       }
     }
   } else if (node.parents.length >= 2) {
-    logger.warn("Node has 2 parents or more.");
+    logger.error("Node has 2 parents or more.");
   } else if (node.parents[0] !== node.node_id) {
-    logger.warn("Node has incorrect parents: parents[0] !== document_id.");
+    logger.error("Node has incorrect parents: parents[0] !== document_id.");
   }
 }
 
@@ -88,7 +88,7 @@ async function migrateFolderDataSourceParents(
         logger.child({
           nodeId: node.node_id,
           parents: node.parents,
-          timestamp: new Date(node.timestamp),
+          created: new Date(node.created),
         })
       ),
     { concurrency: NODE_CONCURRENCY }
