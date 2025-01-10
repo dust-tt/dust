@@ -30,7 +30,9 @@ import { useRouter } from "next/router";
 import React, { useState } from "react";
 
 import { CreateConnectionConfirmationModal } from "@app/components/data_source/CreateConnectionConfirmationModal";
-import { CreateOrUpdateConnectionSnowflakeModal } from "@app/components/data_source/CreateOrUpdateConnectionSnowflakeModal";
+import {
+  CreateOrUpdateConnectionSnowflakeModal,
+} from "@app/components/data_source/CreateOrUpdateConnectionSnowflakeModal";
 import {
   CONNECTOR_CONFIGURATIONS,
   getConnectorProviderLogoWithFallback,
@@ -356,7 +358,7 @@ export const AddConnectionMenu = ({
           }}
         >
           <NewDialogContent size="md">
-            <NewDialogHeader hideButton>
+            <NewDialogHeader>
               <NewDialogTitle>Coming Soon!</NewDialogTitle>
               <NewDialogDescription>
                 Please email us at support@dust.tt for early access.
