@@ -358,10 +358,6 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
                   sourceUrl: null,
                   expandable: false,
                   permission: "read",
-                  dustTableId: getGoogleSheetTableId(
-                    s.driveFileId,
-                    s.driveSheetId
-                  ),
                 };
               })
             );

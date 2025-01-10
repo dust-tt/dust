@@ -407,7 +407,6 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
         permission: ch.permission,
         dustDocumentId: null,
         lastUpdatedAt: null,
-        dustTableId: null,
         providerVisibility: ch.private ? "private" : "public",
       }));
 
@@ -631,7 +630,6 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
       permission: ch.permission,
       dustDocumentId: null,
       lastUpdatedAt: null,
-      dustTableId: null,
       providerVisibility: ch.private ? "private" : "public",
     }));
 
