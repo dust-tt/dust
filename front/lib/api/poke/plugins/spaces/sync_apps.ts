@@ -34,7 +34,7 @@ export const syncApps = createPlugin(
 
     return new Ok({
       display: "text",
-      value: `Apps successfully synced`,
+      value: "Apps successfully synced",
     });
   }
 );
