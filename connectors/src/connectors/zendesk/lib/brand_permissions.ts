@@ -66,14 +66,13 @@ export async function allowSyncZendeskBrand({
         name: fetchedBrand.name || "Brand",
         ticketsPermission: "read",
         helpCenterPermission: helpCenterEnabled ? "read" : "none",
-        hasHelpCenter: fetchedBrand.has_help_center,
-        helpCenterState: fetchedBrand.help_center_state,
         url: fetchedBrand.url,
       },
     });
   }
 
   if (helpCenterEnabled) {
+    // allow the categories
     await allowSyncZendeskHelpCenter({
       connectorId,
       connectionId,

@@ -46,8 +46,6 @@ export async function allowSyncZendeskTickets({
         name: fetchedBrand.name || "Brand",
         ticketsPermission: "read",
         helpCenterPermission: "none",
-        hasHelpCenter: fetchedBrand.has_help_center,
-        helpCenterState: fetchedBrand.help_center_state,
         url: fetchedBrand.url,
       },
     });
