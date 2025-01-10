@@ -14,18 +14,19 @@ import {
 } from "@tanstack/react-table";
 import React, { ReactNode, useEffect, useState } from "react";
 
-import { Avatar } from "@sparkle/components/Avatar";
 import {
+  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuItemProps,
   DropdownMenuTrigger,
-} from "@sparkle/components/Dropdown";
-import { IconButton } from "@sparkle/components/IconButton";
-import { Pagination } from "@sparkle/components/Pagination";
-import { Tooltip } from "@sparkle/components/Tooltip";
+  IconButton,
+  Pagination,
+  Tooltip,
+} from "@sparkle/components";
+import { Avatar } from "@sparkle/components/Avatar";
 import { useCopyToClipboard } from "@sparkle/hooks";
 import {
   ArrowDownIcon,
@@ -34,10 +35,12 @@ import {
   ClipboardIcon,
   MoreIcon,
 } from "@sparkle/icons";
-import { classNames } from "@sparkle/lib/utils";
+import { classNames, cn } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
 import { breakpoints, useWindowSize } from "./WindowUtility";
+
+const cellHeight = "s-h-12";
 
 declare module "@tanstack/react-table" {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -226,8 +229,6 @@ export function DataTable<TData extends TBaseData>({
               widthClassName={widthClassName}
               key={row.id}
               onClick={row.original.onClick}
-              moreMenuItems={row.original.moreMenuItems}
-              dropdownMenuProps={row.original.dropdownMenuProps}
             >
               {row.getVisibleCells().map((cell) => {
                 const breakpoint = columnsBreakpoints[cell.column.id];
@@ -285,10 +286,7 @@ DataTable.Header = function Header({
   ...props
 }: HeaderProps) {
   return (
-    <thead
-      className={classNames("s-text-xs s-capitalize", className || "")}
-      {...props}
-    >
+    <thead className={cn(className)} {...props}>
       {children}
     </thead>
   );
@@ -308,7 +306,7 @@ DataTable.Head = function Head({
   return (
     <th
       className={classNames(
-        "s-py-1 s-pr-3 s-text-left s-font-medium s-text-foreground",
+        "s-py-2 s-pr-3 s-text-left s-text-xs s-font-medium s-capitalize s-text-foreground",
         column.columnDef.meta?.className || "",
         className || ""
       )}
@@ -334,18 +332,14 @@ DataTable.Body = function Body({
 interface RowProps extends React.HTMLAttributes<HTMLTableRowElement> {
   children: ReactNode;
   onClick?: () => void;
-  moreMenuItems?: DropdownMenuItemProps[];
   widthClassName: string;
-  dropdownMenuProps?: React.ComponentPropsWithoutRef<typeof DropdownMenu>;
 }
 
 DataTable.Row = function Row({
   children,
   className,
   onClick,
-  moreMenuItems,
   widthClassName,
-  dropdownMenuProps,
   ...props
 }: RowProps) {
   return (
@@ -360,43 +354,57 @@ DataTable.Row = function Row({
       {...props}
     >
       {children}
-      <td className="s-w-8 s-cursor-pointer s-pl-1 s-text-foreground">
-        {moreMenuItems && moreMenuItems.length > 0 && (
-          <DropdownMenu {...dropdownMenuProps}>
-            <DropdownMenuTrigger
-              // Necessary to allow clicking the dropdown in a table cell without clicking on the cell
-              // See https://github.com/radix-ui/primitives/issues/1242
+    </tr>
+  );
+};
+
+interface MoreButtonProps {
+  className?: string;
+  moreMenuItems?: DropdownMenuItemProps[];
+  dropdownMenuProps?: React.ComponentPropsWithoutRef<typeof DropdownMenu>;
+}
+
+DataTable.MoreButton = function MoreButton({
+  className,
+  moreMenuItems,
+  dropdownMenuProps,
+}: MoreButtonProps) {
+  if (!moreMenuItems || moreMenuItems.length === 0) {
+    return null;
+  }
+
+  return (
+    <DropdownMenu {...dropdownMenuProps}>
+      <DropdownMenuTrigger // Necessary to allow clicking the dropdown in a table cell without clicking on the cell
+        // See https://github.com/radix-ui/primitives/issues/1242
+        onClick={(event) => {
+          event.stopPropagation();
+        }}
+        asChild
+      >
+        <Button
+          icon={MoreIcon}
+          size="mini"
+          variant="ghost-secondary"
+          className={cn(className)}
+        />
+      </DropdownMenuTrigger>
+
+      <DropdownMenuContent align="end">
+        <DropdownMenuGroup>
+          {moreMenuItems.map((item, index) => (
+            <DropdownMenuItem
+              key={index}
+              {...item}
               onClick={(event) => {
                 event.stopPropagation();
+                item.onClick?.(event);
               }}
-              asChild
-            >
-              <IconButton
-                icon={MoreIcon}
-                size="sm"
-                variant="outline"
-                className="s-m-1"
-              />
-            </DropdownMenuTrigger>
-
-            <DropdownMenuContent align="end">
-              <DropdownMenuGroup>
-                {moreMenuItems?.map((item, index) => (
-                  <DropdownMenuItem
-                    key={index}
-                    {...item}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      item.onClick?.(event);
-                    }}
-                  />
-                ))}
-              </DropdownMenuGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-      </td>
-    </tr>
+            />
+          ))}
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 };
 
@@ -413,8 +421,9 @@ DataTable.Cell = function Cell({
 }: CellProps) {
   return (
     <td
-      className={classNames(
-        "s-h-12 s-truncate s-whitespace-nowrap s-pl-1.5",
+      className={cn(
+        cellHeight,
+        "s-truncate s-whitespace-nowrap s-pl-2",
         column.columnDef.meta?.className || "",
         className || ""
       )}
@@ -422,6 +431,91 @@ DataTable.Cell = function Cell({
     >
       {children}
     </td>
+  );
+};
+
+interface BasicCellContentProps extends React.TdHTMLAttributes<HTMLDivElement> {
+  label: string | number;
+  tooltip?: string | number;
+  textToCopy?: string | number;
+}
+
+DataTable.BasicCellContent = function CellContent({
+  label,
+  tooltip,
+  className,
+  textToCopy,
+  ...props
+}: BasicCellContentProps) {
+  const [isCopied, copyToClipboard] = useCopyToClipboard();
+
+  const handleCopy = async () => {
+    const textToUse = textToCopy ?? String(label);
+    void copyToClipboard(
+      new ClipboardItem({
+        "text/plain": new Blob([String(textToUse)], {
+          type: "text/plain",
+        }),
+      })
+    );
+  };
+
+  return (
+    <>
+      {tooltip ? (
+        <Tooltip
+          tooltipTriggerClassName="s-w-full"
+          trigger={
+            <div
+              className={cn(
+                cellHeight,
+                "s-group s-flex s-items-center s-gap-2 s-text-sm s-text-muted-foreground",
+                className || ""
+              )}
+              {...props}
+            >
+              <span className="s-truncate">{label}</span>
+              {textToCopy && (
+                <Button
+                  icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+                  className="s-hidden group-hover:s-block"
+                  variant="outline"
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    await handleCopy();
+                  }}
+                  size="xs"
+                />
+              )}
+            </div>
+          }
+          label={tooltip}
+        />
+      ) : (
+        <div
+          className={cn(
+            cellHeight,
+            "s-group s-flex s-items-center s-gap-2 s-text-sm s-text-muted-foreground",
+            className || ""
+          )}
+          {...props}
+        >
+          <span className="s-truncate">{label}</span>
+          {textToCopy && (
+            <Button
+              icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+              className="s-hidden group-hover:s-block"
+              variant="outline"
+              onClick={async (e) => {
+                e.stopPropagation();
+                await handleCopy();
+              }}
+              size="xs"
+            />
+          )}
+        </div>
+      )}
+    </>
   );
 };
 
