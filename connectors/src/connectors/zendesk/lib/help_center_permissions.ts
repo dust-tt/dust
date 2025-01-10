@@ -14,6 +14,9 @@ import {
 
 /**
  * Marks a help center as permission "read", optionally alongside all its children (categories and articles).
+ * If we are in this function, it means that the user selected the Help Center in the UI.
+ * Therefore, we don't need to check for the help_center_state and has_help_center attributes
+ * since the box does not appear in the UI then.
  */
 export async function allowSyncZendeskHelpCenter({
   connectorId,
@@ -56,7 +59,6 @@ export async function allowSyncZendeskHelpCenter({
         name: fetchedBrand.name || "Brand",
         ticketsPermission: "none",
         helpCenterPermission: "read",
-        hasHelpCenter: fetchedBrand.has_help_center,
         url: fetchedBrand.url,
       },
     });
@@ -179,7 +181,6 @@ export async function allowSyncZendeskCategory({
           name: fetchedBrand.name || "Brand",
           ticketsPermission: "none",
           helpCenterPermission: "read",
-          hasHelpCenter: fetchedBrand.has_help_center,
           url: fetchedBrand.url,
         },
       });

@@ -142,7 +142,6 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
 
       name: this.name,
       url: this.url,
-      hasHelpCenter: this.hasHelpCenter,
       subdomain: this.subdomain,
       brandId: this.brandId,
       helpCenterPermission: this.helpCenterPermission,

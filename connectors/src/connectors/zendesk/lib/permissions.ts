@@ -18,6 +18,7 @@ import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendes
 import {
   changeZendeskClientSubdomain,
   createZendeskClient,
+  isBrandHelpCenterEnabled,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
@@ -35,9 +36,7 @@ export async function retrieveAllSelectedNodes(
 ): Promise<ContentNode[]> {
   const brands = await ZendeskBrandResource.fetchAllReadOnly(connectorId);
   const helpCenterNodes: ContentNode[] = brands
-    .filter(
-      (brand) => brand.hasHelpCenter && brand.helpCenterPermission === "read"
-    )
+    .filter((brand) => brand.helpCenterPermission === "read")
     .map((brand) =>
       brand.getHelpCenterContentNode(connectorId, { richTitle: true })
     );
@@ -114,16 +113,20 @@ async function getBrandChildren(
     connectorId: connector.id,
     brandId,
   });
+
+  // fetching the brand to check whether it has an enabled Help Center
+  const {
+    result: { brand: fetchedBrand },
+  } = await zendeskApiClient.brand.show(brandId);
+  const helpCenterEnabled = isBrandHelpCenterEnabled(fetchedBrand);
+
   if (isReadPermissionsOnly) {
     if (brandInDb?.ticketsPermission === "read") {
       nodes.push(
         brandInDb.getTicketsContentNode(connector.id, { expandable: true })
       );
     }
-    if (
-      brandInDb?.hasHelpCenter &&
-      brandInDb?.helpCenterPermission === "read"
-    ) {
+    if (helpCenterEnabled && brandInDb?.helpCenterPermission === "read") {
       nodes.push(brandInDb.getHelpCenterContentNode(connector.id));
     }
   } else {
@@ -143,11 +146,8 @@ async function getBrandChildren(
     };
     nodes.push(ticketsNode);
 
-    const hasHelpCenter =
-      brandInDb?.hasHelpCenter ||
-      (await zendeskApiClient.brand.show(brandId)).result.brand.has_help_center;
-
-    if (hasHelpCenter) {
+    // only displaying the Help Center node if the brand has an enabled Help Center
+    if (helpCenterEnabled) {
       const helpCenterNode: ContentNode = brandInDb?.getHelpCenterContentNode(
         connector.id
       ) ?? {
