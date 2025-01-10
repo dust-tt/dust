@@ -10,7 +10,7 @@ struct Args {
     #[arg(long, default_value = "512")]
     batch_size: i64,
 
-    #[arg(long, default_value)]
+    #[arg(long, default_value = "thread")]
     node_type: NodeType,
 }
 
