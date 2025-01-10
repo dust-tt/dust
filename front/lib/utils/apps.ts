@@ -1,10 +1,9 @@
 import type { ApiAppType } from "@dust-tt/client";
 import { DustAPI } from "@dust-tt/client";
-import type { AppType, CoreAPIError, Result } from "@dust-tt/types";
+import type { CoreAPIError, Result } from "@dust-tt/types";
 import { CoreAPI, credentialsFromProviders, Err, Ok } from "@dust-tt/types";
 
-import config from "@app/lib/api/config";
-import apiConfig from "@app/lib/api/config";
+import { default as apiConfig, default as config } from "@app/lib/api/config";
 import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
 import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
@@ -14,69 +13,88 @@ import { Dataset, Provider } from "@app/lib/resources/storage/models/apps";
 import { dumpSpecification } from "@app/lib/specification";
 import logger from "@app/logger/logger";
 
-export async function importApps(
+async function updateOrCreateApp(
   auth: Authenticator,
-  space: SpaceResource,
-  appsToImport: ApiAppType[]
-): Promise<Result<AppType[], Error | CoreAPIError>> {
-  const owner = auth.getNonNullableWorkspace();
-  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-
-  const apps: AppType[] = [];
+  {
+    appToImport,
+    space,
+  }: {
+    appToImport: ApiAppType;
+    space: SpaceResource;
+  }
+) {
   const existingApps = await AppResource.listBySpace(auth, space, {
     includeDeleted: true,
   });
-
-  for (const appToImport of appsToImport) {
-    let app = existingApps.find((a) => a.sId === appToImport.sId);
-    if (app) {
-      // Check if existing app was deleted
-      if (app.deletedAt) {
-        new Error("App has been deleted, it can't be reimported.");
-      }
-
-      // Now update if name/descriptions have been modified
-      if (
-        app.name !== appToImport.name ||
-        app.description !== appToImport.description
-      ) {
-        await app.updateSettings(auth, {
-          name: appToImport.name,
-          description: appToImport.description,
-        });
-        apps.push(app.toJSON());
-      }
-    } else {
-      // An app with this sId exist, check workspace and space first to see if it matches
-      const existingApp = await AppResource.fetchById(auth, appToImport.sId);
-      if (existingApp) {
-        return new Err(
-          new Error("App with this sId already exists in another space.")
-        );
-      }
-
-      // App does not exist, create a new app
-      const p = await coreAPI.createProject();
-
-      if (p.isErr()) {
-        return p;
-      }
-      const dustAPIProject = p.value.project;
-
-      app = await AppResource.makeNew(
-        {
-          sId: appToImport.sId,
-          name: appToImport.name,
-          description: appToImport.description,
-          visibility: "private",
-          dustAPIProjectId: dustAPIProject.project_id.toString(),
-          workspaceId: owner.id,
-        },
-        space
+  const existingApp = existingApps.find((a) => a.sId === appToImport.sId);
+  if (existingApp) {
+    // Check if existing app was deleted
+    if (existingApp.deletedAt) {
+      return new Err(
+        new Error("App has been deleted, it can't be reimported.")
       );
-
-      apps.push(app.toJSON());
     }
+
+    // Now update if name/descriptions have been modified
+    if (
+      existingApp.name !== appToImport.name ||
+      existingApp.description !== appToImport.description
+    ) {
+      await existingApp.updateSettings(auth, {
+        name: appToImport.name,
+        description: appToImport.description,
+      });
+      return new Ok({ app: existingApp, updated: true });
+    }
+    return new Ok({ app: existingApp, updated: false });
+  } else {
+    // An app with this sId exist, check workspace and space first to see if it matches
+    const existingApp = await AppResource.fetchById(auth, appToImport.sId);
+    if (existingApp) {
+      return new Err(
+        new Error("App with this sId already exists in another space.")
+      );
+    }
+
+    // App does not exist, create a new app
+    const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+    const p = await coreAPI.createProject();
+
+    if (p.isErr()) {
+      return p;
+    }
+    const dustAPIProject = p.value.project;
+
+    const owner = auth.getNonNullableWorkspace();
+    const newApp = await AppResource.makeNew(
+      {
+        sId: appToImport.sId,
+        name: appToImport.name,
+        description: appToImport.description,
+        visibility: "private",
+        dustAPIProjectId: dustAPIProject.project_id.toString(),
+        workspaceId: owner.id,
+      },
+      space
+    );
+
+    return new Ok({ app: newApp, updated: true });
+  }
+}
+
+async function updateDatasets(
+  auth: Authenticator,
+  {
+    app,
+    datasetsToImport,
+  }: {
+    app: AppResource;
+    datasetsToImport: ApiAppType["datasets"];
+  }
+) {
+  if (datasetsToImport) {
+    const owner = auth.getNonNullableWorkspace();
+    const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
     // Getting all existing datasets for this app
     const existingDatasets = await Dataset.findAll({
@@ -86,123 +104,228 @@ export async function importApps(
       },
     });
 
-    const datasetsToImport = appToImport.datasets;
-    if (datasetsToImport) {
-      for (const datasetToImport of datasetsToImport) {
-        // First, create or update the dataset in core
-        const coreDataset = await coreAPI.createDataset({
-          projectId: app.dustAPIProjectId,
-          datasetId: datasetToImport.name,
-          data: datasetToImport.data || [],
-        });
-        if (coreDataset.isErr()) {
-          return coreDataset;
-        }
+    for (const datasetToImport of datasetsToImport) {
+      // First, create or update the dataset in core
+      const coreDataset = await coreAPI.createDataset({
+        projectId: app.dustAPIProjectId,
+        datasetId: datasetToImport.name,
+        data: datasetToImport.data || [],
+      });
+      if (coreDataset.isErr()) {
+        return coreDataset;
+      }
 
-        // Now update the dataset in front if it exists, or create one
-        const dataset = existingDatasets.find(
-          (d) => d.name === datasetToImport.name
-        );
-        if (dataset) {
-          if (
-            dataset.schema !== datasetToImport.schema ||
-            dataset.description !== datasetToImport.description
-          ) {
-            await dataset.update({
-              description: datasetToImport.description,
-              schema: datasetToImport.schema,
-            });
-          }
-        } else {
-          await Dataset.create({
-            name: datasetToImport.name,
+      // Now update the dataset in front if it exists, or create one
+      const dataset = existingDatasets.find(
+        (d) => d.name === datasetToImport.name
+      );
+      if (dataset) {
+        if (
+          dataset.schema !== datasetToImport.schema ||
+          dataset.description !== datasetToImport.description
+        ) {
+          await dataset.update({
             description: datasetToImport.description,
-            appId: app.id,
-            workspaceId: owner.id,
             schema: datasetToImport.schema,
           });
         }
+      } else {
+        await Dataset.create({
+          name: datasetToImport.name,
+          description: datasetToImport.description,
+          appId: app.id,
+          workspaceId: owner.id,
+          schema: datasetToImport.schema,
+        });
       }
     }
+  }
+  return new Ok(true);
+}
 
-    // Specification and config have been modified and need to be imported
-    if (
-      appToImport.savedSpecification &&
-      appToImport.savedConfig &&
-      appToImport.savedSpecification !== app.savedSpecification &&
-      appToImport.savedConfig !== app.savedConfig
-    ) {
-      // Fetch all datasets from core for this app
-      const coreDatasets = await coreAPI.getDatasets({
-        projectId: app.dustAPIProjectId,
-      });
-      if (coreDatasets.isErr()) {
-        return coreDatasets;
-      }
+async function updateAppSpecifications(
+  auth: Authenticator,
+  {
+    app,
+    savedSpecification,
+    savedConfig,
+  }: {
+    app: AppResource;
+    savedSpecification: string;
+    savedConfig: string;
+  }
+) {
+  // Specification and config have been modified and need to be imported
+  if (
+    savedSpecification !== app.savedSpecification &&
+    savedConfig !== app.savedConfig
+  ) {
+    // Fetch all datasets from core for this app
+    const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+    const coreDatasets = await coreAPI.getDatasets({
+      projectId: app.dustAPIProjectId,
+    });
+    if (coreDatasets.isErr()) {
+      return coreDatasets;
+    }
 
-      const latestDatasets: { [key: string]: string } = {};
-      for (const d in coreDatasets.value.datasets) {
-        latestDatasets[d] = coreDatasets.value.datasets[d][0].hash;
-      }
+    const latestDatasets: { [key: string]: string } = {};
+    for (const d in coreDatasets.value.datasets) {
+      latestDatasets[d] = coreDatasets.value.datasets[d][0].hash;
+    }
 
-      const [datasetId] = Object.keys(latestDatasets);
-      if (datasetId) {
-        // Fetch providers and secrets
-        const [providers, secrets] = await Promise.all([
-          Provider.findAll({
-            where: {
-              workspaceId: owner.id,
-            },
-          }),
-          getDustAppSecrets(auth, true),
-        ]);
-
-        // Create a new run to save specifications and configs
-        const dustRun = await coreAPI.createRun(owner, auth.groups(), {
-          projectId: app.dustAPIProjectId,
-          runType: "local",
-          specification: dumpSpecification(
-            JSON.parse(appToImport.savedSpecification),
-            latestDatasets
-          ),
-          config: { blocks: JSON.parse(appToImport.savedConfig) },
-          credentials: credentialsFromProviders(providers),
-          datasetId,
-          secrets,
-          storeBlocksResults: true,
-        });
-
-        if (dustRun.isErr()) {
-          logger.error(app, "Failed to create run for app");
-          return dustRun;
-        }
-
-        const appJson = {
-          ...app.toJSON(),
-          hash: dustRun.value.run.app_hash,
-        };
-
-        // Update app state
-        await Promise.all([
-          RunResource.makeNew({
-            dustRunId: dustRun.value.run.run_id,
-            appId: app.id,
-            runType: "local",
+    const [datasetId] = Object.keys(latestDatasets);
+    if (datasetId) {
+      const owner = auth.getNonNullableWorkspace();
+      // Fetch providers and secrets
+      const [providers, secrets] = await Promise.all([
+        Provider.findAll({
+          where: {
             workspaceId: owner.id,
-          }),
-          app.updateState(auth, {
-            savedSpecification: appToImport.savedSpecification,
-            savedConfig: appToImport.savedConfig,
-            savedRun: dustRun.value.run.run_id,
-          }),
-        ]);
+          },
+        }),
+        getDustAppSecrets(auth, true),
+      ]);
 
-        const index = apps.findIndex((a) => a.id === app.id);
-        if (index >= 0) {
-          apps.splice(index, 1);
-        }
-        apps.push(appJson);
+      // Create a new run to save specifications and configs
+      const dustRun = await coreAPI.createRun(owner, auth.groups(), {
+        projectId: app.dustAPIProjectId,
+        runType: "local",
+        specification: dumpSpecification(
+          JSON.parse(savedSpecification),
+          latestDatasets
+        ),
+        config: { blocks: JSON.parse(savedConfig) },
+        credentials: credentialsFromProviders(providers),
+        datasetId,
+        secrets,
+        storeBlocksResults: true,
+      });
+
+      if (dustRun.isErr()) {
+        logger.error(app, "Failed to create run for app");
+        return dustRun;
       }
+
+      // Update app state
+      await Promise.all([
+        RunResource.makeNew({
+          dustRunId: dustRun.value.run.run_id,
+          appId: app.id,
+          runType: "local",
+          workspaceId: owner.id,
+        }),
+        app.updateState(auth, {
+          savedSpecification,
+          savedConfig,
+          savedRun: dustRun.value.run.run_id,
+        }),
+      ]);
+
+      return new Ok({
+        hash: dustRun.value.run.app_hash ?? undefined,
+        updated: true,
+      });
+    }
+  }
+  return new Ok({ updated: false, hash: undefined });
+}
+
+export async function importApp(
+  auth: Authenticator,
+  space: SpaceResource,
+  appToImport: ApiAppType
+) {
+  const appRes = await updateOrCreateApp(auth, {
+    appToImport,
+    space,
+  });
+  if (appRes.isErr()) {
+    logger.error(
+      { sId: appToImport.sId, name: appToImport.name, error: appRes.error },
+      "Error when importing app config"
+    );
+    return appRes;
+  }
+
+  const { app, updated } = appRes.value;
+
+  const datasetsRes = await updateDatasets(auth, {
+    app,
+    datasetsToImport: appToImport.datasets,
+  });
+  if (datasetsRes.isErr()) {
+    logger.error(
+      {
+        sId: app.sId,
+        name: app.name,
+        error: datasetsRes.error,
+      },
+      "Error when importing app datasets"
+    );
+    return datasetsRes;
+  }
+
+  if (appToImport.savedSpecification && appToImport.savedConfig) {
+    const updateSpecificationsRes = await updateAppSpecifications(auth, {
+      app,
+      savedSpecification: appToImport.savedSpecification,
+      savedConfig: appToImport.savedConfig,
+    });
+    if (updateSpecificationsRes.isErr()) {
+      logger.error(
+        {
+          sId: app.sId,
+          name: app.name,
+          error: updateSpecificationsRes.error,
+        },
+        "Error when importing app specifications"
+      );
+      return updateSpecificationsRes;
+    }
+
+    const { hash, updated: specUpdated } = updateSpecificationsRes.value;
+
+    if (updated || specUpdated) {
+      logger.info(
+        { sId: app.sId, appName: app.name, hash },
+        "App imported successfully"
+      );
+    }
+
+    return new Ok({ app, hash, updated: updated || specUpdated });
+  }
+
+  if (updated) {
+    logger.info(
+      { sId: app.sId, appName: app.name },
+      "App imported successfully"
+    );
+  }
+  return new Ok({ app, hash: undefined, updated });
+}
+
+type ImportRes = {
+  sId: string;
+  name: string;
+  hash?: string;
+};
+
+export async function importApps(
+  auth: Authenticator,
+  space: SpaceResource,
+  appsToImport: ApiAppType[]
+): Promise<Result<ImportRes[], Error | CoreAPIError>> {
+  const apps: ImportRes[] = [];
+
+  for (const appToImport of appsToImport) {
+    const res = await importApp(auth, space, appToImport);
+    if (res.isErr()) {
+      return res;
+    }
+    const { app, hash, updated } = res.value;
+    if (updated) {
+      apps.push({ sId: app.sId, name: app.name, hash });
     }
   }
 

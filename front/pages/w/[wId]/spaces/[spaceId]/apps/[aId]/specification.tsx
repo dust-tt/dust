@@ -1,7 +1,6 @@
 import { Tabs, TabsList, TabsTrigger } from "@dust-tt/sparkle";
 import type { AppType, SubscriptionType, WorkspaceType } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
-import { hash } from "crypto";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 
