@@ -334,24 +334,30 @@ export async function trackersGenerationActivity(
     const scoreDocsResult = await callDocTrackerScoreDocsAction(auth, {
       watchedDocDiff: diffString,
       maintainedDocuments,
-      providerId: tracker.providerId,
-      modelId: tracker.modelId,
+      providerId: "openai",
+      modelId: "gpt-4o",
     });
 
     // The output of the Dust App above is a list of document for which we want to run the change suggestion.
 
-    for (const { documentId, dataSourceId, score } of scoreDocsResult) {
+    for (const {
+      documentId: maintainedDocumentId,
+      dataSourceId: maintainedDataSourceId,
+      score,
+    } of scoreDocsResult) {
       logger.info(
         {
-          documentId,
-          dataSourceId,
+          maintainedDocumentId,
+          maintainedDataSourceId,
           score,
         },
         "Running document tracker suggest changes."
       );
 
       const content =
-        contentByDocumentIdentifier[`${dataSourceId}__${documentId}`];
+        contentByDocumentIdentifier[
+          `${maintainedDataSourceId}__${maintainedDocumentId}`
+        ];
       if (!content) {
         continue;
       }
@@ -372,6 +378,17 @@ export async function trackersGenerationActivity(
         continue;
       }
 
+      const maintainedDocumentDataSource =
+        await DataSourceResource.fetchByDustAPIDataSourceId(
+          auth,
+          maintainedDataSourceId
+        );
+      if (!maintainedDocumentDataSource) {
+        throw new Error(
+          `Could not find maintained data source ${maintainedDataSourceId}`
+        );
+      }
+
       const suggestedChanges = suggestChangesResult.suggestion;
       const thinking = suggestChangesResult.thinking;
       const confidenceScore = suggestChangesResult.confidence_score;
@@ -388,6 +405,8 @@ export async function trackersGenerationActivity(
         thinking: thinking ?? null,
         dataSourceId,
         documentId,
+        maintainedDocumentDataSourceId: maintainedDocumentDataSource.sId,
+        maintainedDocumentId,
       });
     }
   }

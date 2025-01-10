@@ -146,7 +146,7 @@ export const DustProdActionRegistry = createActionRegistry({
     },
     config: {
       MODEL: {
-        use_cache: false,
+        use_cache: true,
       },
     },
   },

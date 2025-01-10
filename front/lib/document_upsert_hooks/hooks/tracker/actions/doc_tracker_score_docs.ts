@@ -27,8 +27,8 @@ export async function callDocTrackerScoreDocsAction(
   const action = DustProdActionRegistry["doc-tracker-score-docs"];
 
   const config = cloneBaseConfig(action.config);
-  config.SUGGEST_CHANGES.provider_id = providerId;
-  config.SUGGEST_CHANGES.model_id = modelId;
+  config.MODEL.provider_id = providerId;
+  config.MODEL.model_id = modelId;
 
   const res = await callAction(auth, {
     action,
