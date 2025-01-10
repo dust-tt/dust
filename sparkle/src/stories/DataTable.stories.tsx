@@ -201,6 +201,7 @@ const columns: ColumnDef<Data>[] = [
   },
 ];
 
+// TODO: Fix 'Edit' changing the order of the rows
 export const DataTableExample = () => {
   const [filter, setFilter] = React.useState<string>("");
   const [dialogOpen, setDialogOpen] = React.useState(false);
