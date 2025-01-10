@@ -151,7 +151,7 @@ export const zendesk = async ({
       if (!connector) {
         throw new Error(`Connector ${connectorId} not found`);
       }
-      const brandId = args.brandId ? parseInt(args.brandId, 10) : null;
+      const brandId = args.brandId ? args.brandId : null;
       if (!brandId) {
         throw new Error(`Missing --brandId argument`);
       }
@@ -166,7 +166,7 @@ export const zendesk = async ({
       });
       return {
         brand: brand as { [key: string]: unknown } | null,
-        brandOnDb,
+        brandOnDb: brandOnDb as { [key: string]: unknown } | null,
       };
     }
   }
