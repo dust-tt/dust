@@ -1688,6 +1688,7 @@ struct DataSourcesDocumentsUpsertPayload {
     light_document_output: Option<bool>,
     title: String,
     mime_type: String,
+    provider_visibility: Option<String>,
 }
 
 async fn data_sources_documents_upsert(
@@ -1781,6 +1782,7 @@ async fn data_sources_documents_upsert(
                         &payload.document_id,
                         payload.title,
                         payload.mime_type,
+                        &payload.provider_visibility,
                         payload.timestamp,
                         &payload.tags,
                         &payload.parents,

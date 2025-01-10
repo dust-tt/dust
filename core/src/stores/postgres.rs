@@ -53,6 +53,7 @@ pub struct UpsertNode<'a> {
     pub timestamp: u64,
     pub title: &'a str,
     pub mime_type: &'a str,
+    pub provider_visibility: &'a Option<String>,
     pub parents: &'a Vec<String>,
 }
 
@@ -187,9 +188,9 @@ impl PostgresStore {
         let stmt = tx
             .prepare(
                 "INSERT INTO data_sources_nodes \
-                  (id, data_source, created, node_id, timestamp, title, mime_type, parents, \
+                  (id, data_source, created, node_id, timestamp, title, mime_type, provider_visibility, parents, \
                    document, \"table\", folder) \
-                  VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10) \
+                  VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) \
                   ON CONFLICT (data_source, node_id) DO UPDATE \
                   SET timestamp = EXCLUDED.timestamp, title = EXCLUDED.title, \
                     mime_type = EXCLUDED.mime_type, parents = EXCLUDED.parents, \
@@ -209,6 +210,7 @@ impl PostgresStore {
                     &(upsert_params.timestamp as i64),
                     &upsert_params.title,
                     &upsert_params.mime_type,
+                    &upsert_params.provider_visibility,
                     &upsert_params.parents,
                     &document_row_id,
                     &table_row_id,
@@ -1354,7 +1356,7 @@ impl Store for PostgresStore {
                 c.query(
                     "SELECT dsd.id, dsd.created, dsd.timestamp, dsd.tags_array, dsn.parents, \
                        dsd.source_url, dsd.hash, dsd.text_size, dsd.chunk_count, dsn.title, \
-                       dsn.mime_type \
+                       dsn.mime_type, dsn.provider_visibility \
                        FROM data_sources_documents dsd \
                        INNER JOIN data_sources_nodes dsn ON dsn.document=dsd.id \
                        WHERE dsd.data_source = $1 AND dsd.document_id = $2 \
@@ -1367,7 +1369,7 @@ impl Store for PostgresStore {
                 c.query(
                     "SELECT dsd.id, dsd.created, dsd.timestamp, dsd.tags_array, dsn.parents, \
                        dsd.source_url, dsd.hash, dsd.text_size, dsd.chunk_count, dsn.title, \
-                       dsn.mime_type \
+                       dsn.mime_type dsn.provider_visibility \
                        FROM data_sources_documents dsd \
                        INNER JOIN data_sources_nodes dsn ON dsn.document=dsd.id \
                        WHERE dsd.data_source = $1 AND dsd.document_id = $2 \
@@ -1390,6 +1392,7 @@ impl Store for PostgresStore {
             i64,
             Option<String>,
             Option<String>,
+            Option<String>,
         )> = match r.len() {
             0 => None,
             1 => Some((
@@ -1404,6 +1407,7 @@ impl Store for PostgresStore {
                 r[0].get(8),
                 r[0].get(9),
                 r[0].get(10),
+                r[0].get(11),
             )),
             _ => unreachable!(),
         };
@@ -1422,6 +1426,7 @@ impl Store for PostgresStore {
                 chunk_count,
                 node_title,
                 node_mime_type,
+                node_provider_visibility,
             )) => Ok(Some(Document {
                 data_source_id: data_source_id.clone(),
                 data_source_internal_id: data_source_internal_id.clone(),
@@ -1431,6 +1436,7 @@ impl Store for PostgresStore {
                 document_id,
                 tags,
                 mime_type: node_mime_type.unwrap_or("application/octet-stream".to_string()),
+                provider_visibility: node_provider_visibility,
                 parent_id: parents.get(1).cloned(),
                 parents,
                 source_url,
@@ -1928,12 +1934,14 @@ impl Store for PostgresStore {
         // TODO: defaults
         let title = create_params.title.unwrap_or("".to_string());
         let mime_type = create_params.mime_type.unwrap_or("".to_string());
+        let provider_visibility = create_params.provider_visibility;
 
         let document = Document {
             data_source_id,
             data_source_internal_id: data_source_internal_id.to_string(),
             title,
             mime_type,
+            provider_visibility,
             created: created as u64,
             document_id: create_params.document_id,
             timestamp: create_params.timestamp,
@@ -1956,6 +1964,7 @@ impl Store for PostgresStore {
                 timestamp: document.timestamp,
                 title: &document.title,
                 mime_type: &document.mime_type,
+                provider_visibility: &document.provider_visibility,
                 parents: &document.parents,
             },
             data_source_row_id,
@@ -2037,7 +2046,7 @@ impl Store for PostgresStore {
         let sql = format!(
             "SELECT dsd.id, dsd.created, dsd.document_id, dsd.timestamp, dsd.tags_array, \
                dsn.parents, dsd.source_url, dsd.hash, dsd.text_size, dsd.chunk_count, \
-               dsn.title, dsn.mime_type \
+               dsn.title, dsn.mime_type, dsn.provider_visibility \
                FROM data_sources_documents dsd \
                INNER JOIN data_sources_nodes dsn ON dsn.document=dsd.id \
                WHERE {} ORDER BY dsd.timestamp DESC",
@@ -2078,6 +2087,7 @@ impl Store for PostgresStore {
                 let chunk_count: i64 = r.get(9);
                 let node_title: Option<String> = r.get(10);
                 let node_mime_type: Option<String> = r.get(11);
+                let node_provider_visibility: Option<String> = r.get(12);
 
                 let tags = if remove_system_tags {
                     // Remove tags that are prefixed with the system tag prefix.
@@ -2095,6 +2105,7 @@ impl Store for PostgresStore {
                     timestamp: timestamp as u64,
                     title: node_title.unwrap_or(document_id.clone()),
                     mime_type: node_mime_type.unwrap_or("application/octet-stream".to_string()),
+                    provider_visibility: node_provider_visibility,
                     document_id,
                     tags,
                     parent_id: parents.get(1).cloned(),
@@ -2729,6 +2740,7 @@ impl Store for PostgresStore {
                 timestamp: table.timestamp(),
                 title: table.title(),
                 mime_type: table.mime_type(),
+                provider_visibility: &None, // TODO(2025-01-10 aubin) - add support for provider_visibility in tables
                 parents: table.parents(),
             },
             data_source_row_id,
@@ -3290,6 +3302,7 @@ impl Store for PostgresStore {
                 node_id: folder.folder_id(),
                 node_type: &NodeType::Folder,
                 timestamp: folder.timestamp(),
+                provider_visibility: &None, // TODO(2025-01-10 aubin) - add support for provider_visibility in folders
                 title: folder.title(),
                 mime_type: folder.mime_type(),
                 parents: folder.parents(),
