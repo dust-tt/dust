@@ -6,7 +6,7 @@ import {
   SlackLogo,
 } from "@dust-tt/sparkle";
 import type {
-  BaseContentNode,
+  ContentNode,
   DataSourceType,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -52,7 +52,7 @@ export function SlackIntegration({
   }, [existingSelection, newSelection]);
 
   const customIsNodeChecked = useCallback(
-    (node: BaseContentNode) => {
+    (node: ContentNode) => {
       return (
         newSelection?.some((c) => c.slackChannelId === node.internalId) || false
       );

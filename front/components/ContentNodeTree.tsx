@@ -8,7 +8,7 @@ import {
   Tooltip,
   Tree,
 } from "@dust-tt/sparkle";
-import type { APIError, BaseContentNode } from "@dust-tt/types";
+import type { APIError, ContentNode } from "@dust-tt/types";
 import type { ReactNode } from "react";
 import React, { useCallback, useContext, useState } from "react";
 
@@ -17,7 +17,7 @@ import { classNames, timeAgoFrom } from "@app/lib/utils";
 
 const unselectedChildren = (
   selection: Record<string, ContentNodeTreeItemStatus>,
-  node: BaseContentNode
+  node: ContentNode
 ) =>
   Object.entries(selection).reduce((acc, [k, v]) => {
     const shouldUnselect = v.parents.includes(node.internalId);
@@ -32,7 +32,7 @@ const unselectedChildren = (
   }, {});
 
 export type UseResourcesHook = (parentId: string | null) => {
-  resources: BaseContentNode[];
+  resources: ContentNode[];
   isResourcesLoading: boolean;
   isResourcesError: boolean;
   resourcesError?: APIError | null;
@@ -40,7 +40,7 @@ export type UseResourcesHook = (parentId: string | null) => {
 
 export type ContentNodeTreeItemStatus = {
   isSelected: boolean;
-  node: BaseContentNode;
+  node: ContentNode;
   parents: string[];
 };
 
@@ -121,7 +121,7 @@ function ContentNodeTreeChildren({
   );
 
   const getCheckedState = useCallback(
-    (node: BaseContentNode) => {
+    (node: ContentNode) => {
       if (!selectedNodes) {
         return false;
       }
