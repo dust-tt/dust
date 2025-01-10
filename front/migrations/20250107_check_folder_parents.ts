@@ -42,7 +42,7 @@ async function checkStaticDataSourceParents(
   }
 
   const nodes: any[] = await coreSequelize.query(
-    `SELECT node_id, parents, timestamp FROM data_sources_nodes WHERE data_source=:c AND != ARRAY[node_id]`,
+    `SELECT node_id, parents, timestamp FROM data_sources_nodes WHERE data_source=:c AND parents != ARRAY[node_id]`,
     { replacements: { c: coreDataSource.id }, type: QueryTypes.SELECT }
   );
   nodes.forEach((doc) => {
