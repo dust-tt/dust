@@ -30,12 +30,9 @@ export async function importApps(
   for (const appToImport of appsToImport) {
     let app = existingApps.find((a) => a.sId === appToImport.sId);
     if (app) {
-      // If existing app was deleted, undelete it
+      // Check if existing app was deleted
       if (app.deletedAt) {
-        const undelete = await app.undelete();
-        if (undelete.isErr()) {
-          return undelete;
-        }
+        new Error("App has been deleted, it can't be reimported.");
       }
 
       // Now update if name/descriptions have been modified

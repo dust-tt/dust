@@ -11,115 +11,9 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 
 /**
- * @swagger
- * /api/v1/w/{wId}/spaces/{spaceId}/apps/export:
- *   get:
- *     summary: Export all apps with datasets
- *     description: Get all apps in the space identified by {spaceId}, with their datasets.
- *     tags:
- *       - Apps
- *     security:
- *       - BearerAuth: []
- *     parameters:
- *       - in: path
- *         name: wId
- *         required: true
- *         description: Unique string identifier for the workspace
- *         schema:
- *           type: string
- *       - in: path
- *         name: spaceId
- *         required: true
- *         description: ID of the space
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Apps of the workspace
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 apps:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       id:
- *                         type: integer
- *                         description: Unique identifier for the app
- *                       sId:
- *                         type: string
- *                         description: Unique string identifier for the app
- *                       name:
- *                         type: string
- *                         description: Name of the app
- *                       description:
- *                         type: string
- *                         description: Description of the app
- *                       savedSpecification:
- *                         type: string
- *                         description: Saved specification of the app
- *                       savedConfig:
- *                         type: string
- *                         description: Saved configuration of the app
- *                       savedRun:
- *                         type: string
- *                         description: Saved run identifier of the app
- *                       dustAPIProjectId:
- *                         type: string
- *                         description: ID of the associated Dust API project
- *                       datasets:
- *                         type: array
- *                         items:
- *                           type: object
- *                           properties:
- *                             name:
- *                               type: string
- *                               description: Name of the dataset
- *                             description:
- *                               type: string
- *                               description: Description of the dataset
- *                               nullable: true
- *                             data:
- *                               type: array
- *                               items:
- *                                 type: object
- *                                 additionalProperties:
- *                                   oneOf:
- *                                     - type: string
- *                                     - type: number
- *                                     - type: boolean
- *                                     - type: object
- *                                       additionalProperties: true
- *                             schema:
- *                               type: array
- *                               items:
- *                                 type: object
- *                                 properties:
- *                                   key:
- *                                     type: string
- *                                     description: Key of the schema entry
- *                                   type:
- *                                     type: string
- *                                     description: Type of the schema entry
- *                                   description:
- *                                     type: string
- *                                     description: Description of the schema entry
- *                                     nullable: true
- *       400:
- *         description: Bad Request. Missing or invalid parameters.
- *       401:
- *         description: Unauthorized. Invalid or missing authentication token.
- *       404:
- *         description: Workspace not found.
- *       405:
- *         description: Method not supported.
- *       500:
- *         description: Internal Server Error.
+ * @ignoreswagger
+ * System API key only endpoint. Undocumented.
  */
-
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<GetAppsResponseType>>,
@@ -163,7 +57,6 @@ async function handler(
                   dataset.name,
                   "latest"
                 );
-                dataset.schema;
                 return fromCore || dataset;
               })
             );
