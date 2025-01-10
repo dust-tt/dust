@@ -27,12 +27,10 @@ import type {
 } from "@dust-tt/types";
 import { Err, isOAuthProvider, Ok, setupOAuthConnection } from "@dust-tt/types";
 import { useRouter } from "next/router";
-import React, { useState } from "react";
+import { useState } from "react";
 
 import { CreateConnectionConfirmationModal } from "@app/components/data_source/CreateConnectionConfirmationModal";
-import {
-  CreateOrUpdateConnectionSnowflakeModal,
-} from "@app/components/data_source/CreateOrUpdateConnectionSnowflakeModal";
+import { CreateOrUpdateConnectionSnowflakeModal } from "@app/components/data_source/CreateOrUpdateConnectionSnowflakeModal";
 import {
   CONNECTOR_CONFIGURATIONS,
   getConnectorProviderLogoWithFallback,
