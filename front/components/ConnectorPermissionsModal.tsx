@@ -207,7 +207,8 @@ async function updateConnectorConnectionId(
   if (error.type === "connector_oauth_user_missing_rights") {
     return {
       success: false,
-      error: "The authenticated user does not have sufficient rights.",
+      error:
+        "The authenticated user needs higher permissions from your service provider.",
     };
   }
   return {
