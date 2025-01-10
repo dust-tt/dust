@@ -184,14 +184,14 @@ export default function CustomerSupport() {
         </div>
         <div
           className={classNames(
-            "flex flex-col justify-center gap-8 pb-10",
+            "flex flex-col justify-center gap-8 pb-4",
             "col-span-12",
             "lg:col-span-11 lg:col-start-2",
             "xl:col-span-10 xl:col-start-2",
             "2xl:col-start-2"
           )}
         >
-          <div className="mb-6">
+          <div>
             <H2 from={pageSettings.from} to={pageSettings.to}>
               Dust in action
             </H2>
