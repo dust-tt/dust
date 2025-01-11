@@ -2,7 +2,6 @@ import {
   Button,
   CardIcon,
   Chip,
-  Dialog,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -543,25 +542,44 @@ function CancelFreeTrialDialog({
   isSaving: boolean;
 }) {
   return (
-    <Dialog
-      isOpen={show}
-      title={`Cancel subscription`}
-      onCancel={onClose}
-      validateLabel="Yes, cancel subscription"
-      validateVariant="warning"
-      onValidate={onValidate}
-      isSaving={isSaving}
+    <NewDialog
+      open={show}
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose();
+        }
+      }}
     >
-      <Page.Vertical gap="md">
-        <Page.P>
-          <span className="font-bold">
+      <NewDialogContent size="md">
+        <NewDialogHeader>
+          <NewDialogTitle>Cancel subscription</NewDialogTitle>
+          <NewDialogDescription>
             All your workspace data will be deleted and you will lose access to
             your Dust workspace.
-          </span>
-        </Page.P>
-
-        <Page.P>Are you sure you want to cancel ?</Page.P>
-      </Page.Vertical>
-    </Dialog>
+          </NewDialogDescription>
+        </NewDialogHeader>
+        <NewDialogContainer>
+          {isSaving ? (
+            <div className="flex justify-center py-8">
+              <Spinner variant="dark" size="md" />
+            </div>
+          ) : (
+            <div className="font-bold">Are you sure you want to proceed?</div>
+          )}
+          <div className="font-bold">Are you sure you want to proceed?</div>
+        </NewDialogContainer>
+        <NewDialogFooter
+          leftButtonProps={{
+            label: "Cancel",
+            variant: "outline",
+          }}
+          rightButtonProps={{
+            label: "Yes, cancel subscription",
+            variant: "warning",
+            onClick: onValidate,
+          }}
+        />
+      </NewDialogContent>
+    </NewDialog>
   );
 }
