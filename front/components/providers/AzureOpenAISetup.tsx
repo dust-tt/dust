@@ -100,17 +100,10 @@ export default function AzureOpenAISetup({
         <NewDialogHeader>
           <NewDialogTitle>Setup Azure OpenAI</NewDialogTitle>
           <NewDialogDescription>
-            <div className="mt-4">
-              <p>
-                To use Azure OpenAI models you must provide your API key and
-                Endpoint. They can be found in the left menu of your OpenAI
-                Azure Resource portal (menu item `Keys and Endpoint`).
-              </p>
-              <p className="mt-2">
-                We'll never use your API key for anything other than to run your
-                apps.
-              </p>
-            </div>
+            To use Azure OpenAI models you must provide your API key and
+            Endpoint. They can be found in the left menu of your OpenAI Azure
+            Resource portal (menu item `Keys and Endpoint`). We'll never use
+            your API key for anything other than to run your apps.
           </NewDialogDescription>
         </NewDialogHeader>
 

@@ -94,35 +94,24 @@ export default function BrowserlessAPISetup({
         <NewDialogHeader>
           <NewDialogTitle>Setup Browserless API</NewDialogTitle>
           <NewDialogDescription>
-            <div className="mt-4">
-              <p>
-                Browserless lets you use headless browsers to scrape web
-                content. To use Browserless, you must provide your API key. It
-                can be found{" "}
-                <a
-                  className="font-bold text-action-600 hover:text-action-500"
-                  href="https://cloud.browserless.io/account/"
-                  target="_blank"
-                >
-                  here
-                </a>
-                .
-              </p>
-              <p className="mt-2">
-                Note that it generally takes{" "}
-                <span className="font-bold">5 mins</span> for the API key to
-                become active (an email is sent when it's ready).
-              </p>
-              <p className="mt-2">
-                We'll never use your API key for anything other than to run your
-                apps.
-              </p>
-            </div>
+            Browserless lets you use headless browsers to scrape web content. To
+            use Browserless, you must provide your API key. It can be found{" "}
+            <a
+              className="font-bold text-action-600 hover:text-action-500"
+              href="https://cloud.browserless.io/account/"
+              target="_blank"
+            >
+              here
+            </a>
+            . Note that it generally takes{" "}
+            <span className="font-bold">5 mins</span> for the API key to become
+            active (an email is sent when it's ready). We'll never use your API
+            key for anything other than to run your apps.
           </NewDialogDescription>
         </NewDialogHeader>
 
         <NewDialogContainer>
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col">
             <input
               type="text"
               className="block w-full rounded-md border-gray-300 shadow-sm focus:border-action-500 focus:ring-action-500 sm:text-sm"

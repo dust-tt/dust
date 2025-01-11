@@ -92,28 +92,22 @@ export default function SerperSetup({
         <NewDialogHeader>
           <NewDialogTitle>Setup Serper Search</NewDialogTitle>
           <NewDialogDescription>
-            <div className="mt-4">
-              <p>
-                Serper lets you search Google (and other search engines). To use
-                Serper you must provide your API key. It can be found{" "}
-                <a
-                  className="font-bold text-action-600 hover:text-action-500"
-                  href="https://serper.dev/api-key"
-                  target="_blank"
-                >
-                  here
-                </a>
-              </p>
-              <p className="mt-2">
-                We'll never use your API key for anything other than to run your
-                apps.
-              </p>
-            </div>
+            Serper lets you search Google (and other search engines). To use
+            Serper you must provide your API key. It can be found{" "}
+            <a
+              className="font-bold text-action-600 hover:text-action-500"
+              href="https://serper.dev/api-key"
+              target="_blank"
+            >
+              here
+            </a>
+            We'll never use your API key for anything other than to run your
+            apps.
           </NewDialogDescription>
         </NewDialogHeader>
 
         <NewDialogContainer>
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col">
             <input
               type="text"
               className="block w-full rounded-md border-gray-300 shadow-sm focus:border-action-500 focus:ring-action-500 sm:text-sm"
