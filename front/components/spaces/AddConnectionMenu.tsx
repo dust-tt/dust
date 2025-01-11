@@ -1,12 +1,12 @@
 import {
   Button,
   CloudArrowLeftRightIcon,
-  Dialog,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   NewDialog,
+  NewDialogContainer,
   NewDialogContent,
   NewDialogDescription,
   NewDialogFooter,
@@ -282,16 +282,36 @@ export const AddConnectionMenu = ({
   return (
     availableIntegrations.length > 0 && (
       <>
-        <Dialog
-          isOpen={showUpgradePopup}
-          onCancel={() => setShowUpgradePopup(false)}
-          title={`${plan.name} plan`}
-          onValidate={() => {
-            void router.push(`/w/${owner.sId}/subscription`);
+        <NewDialog
+          open={showUpgradePopup}
+          onOpenChange={(open) => {
+            if (!open) {
+              setShowUpgradePopup(false);
+            }
           }}
         >
-          <p>Unlock this managed data source by upgrading your plan.</p>
-        </Dialog>
+          <NewDialogContent size="md" isAlertDialog>
+            <NewDialogHeader hideButton>
+              <NewDialogTitle>${plan.name} plan</NewDialogTitle>
+            </NewDialogHeader>
+            <NewDialogContainer>
+              Unlock this managed data source by upgrading your plan.
+            </NewDialogContainer>
+            <NewDialogFooter
+              leftButtonProps={{
+                label: "Cancel",
+                variant: "outline",
+              }}
+              rightButtonProps={{
+                label: "Validate",
+                variant: "primary",
+                onClick: () => {
+                  void router.push(`/w/${owner.sId}/subscription`);
+                },
+              }}
+            />
+          </NewDialogContent>
+        </NewDialog>
 
         {connectorProvider === "snowflake" ? (
           <CreateOrUpdateConnectionSnowflakeModal
