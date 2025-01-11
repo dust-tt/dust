@@ -108,7 +108,7 @@ export default function CustomerSupport() {
         <div
           className={classNames(
             "col-span-12 justify-center",
-            "mt-12 flex flex-col gap-8 lg:min-h-[50vh]",
+            "mt-36 flex flex-col gap-8 lg:min-h-[50vh]",
             "lg:col-span-5 lg:py-20",
             "2xl:col-span-5 2xl:col-start-2",
             "text-center lg:text-left"
@@ -117,11 +117,6 @@ export default function CustomerSupport() {
           <div className="flex w-full px-8 md:px-20 lg:hidden">
             {MainVisualImage()}
           </div>
-          {pageSettings.uptitle && (
-            <P size="lg" className="text-muted-foreground">
-              Dust for {pageSettings.uptitle}
-            </P>
-          )}
           <H1 from={pageSettings.from} to={pageSettings.to}>
             {pageSettings.title}
           </H1>
@@ -154,7 +149,7 @@ export default function CustomerSupport() {
             "hidden lg:block"
           )}
         >
-          <div className="flex h-full w-full items-center justify-center pt-16 xl:px-8">
+          <div className="flex h-full w-full items-center justify-center pt-36 xl:px-8">
             {MainVisualImage()}
           </div>
         </div>
