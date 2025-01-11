@@ -18,7 +18,6 @@
     "prepare": "cd .. && husky .husky"
   },
   "dependencies": {
-    "@aaronhayes/react-use-hubspot-form": "^2.1.1",
     "@auth0/nextjs-auth0": "^3.5.0",
     "@dust-tt/client": "file:../sdks/js",
     "@dust-tt/sparkle": "^0.2.361",

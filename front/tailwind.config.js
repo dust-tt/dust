@@ -22,7 +22,6 @@ module.exports = {
       },
       maxWidth: {
         48: "12rem",
-        150: "600px",
       },
       scale: {
         99: ".99",
