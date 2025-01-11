@@ -4,14 +4,19 @@ import {
   ChatBubbleThoughtIcon,
   CloudArrowLeftRightIcon,
   ContentMessage,
-  Dialog,
   Input,
+  NewDialog,
+  NewDialogContainer,
+  NewDialogContent,
+  NewDialogFooter,
+  NewDialogHeader,
+  NewDialogTitle,
   Page,
   SliderToggle,
   Spinner,
+  useSendNotification,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   DataSourceViewSelectionConfigurations,
   DataSourceViewType,
@@ -632,20 +637,38 @@ export default function LabsTranscriptsIndex({
         pageTitle="Dust - Transcripts processing"
         navChildren={<AssistantSidebarMenu owner={owner} />}
       >
-        <Dialog
-          isOpen={isDeleteProviderDialogOpened}
-          title="Disconnect transcripts provider"
-          onValidate={async () => {
-            await handleDisconnectProvider();
-            setIsDeleteProviderDialogOpened(false);
+        <NewDialog
+          open={isDeleteProviderDialogOpened}
+          onOpenChange={(open) => {
+            if (!open) {
+              setIsDeleteProviderDialogOpened(false);
+            }
           }}
-          onCancel={() => setIsDeleteProviderDialogOpened(false)}
         >
-          <div>
-            This will stop the processing of your meeting transcripts and delete
-            all history. You can reconnect anytime.
-          </div>
-        </Dialog>
+          <NewDialogContent size="md">
+            <NewDialogHeader>
+              <NewDialogTitle>Disconnect transcripts provider</NewDialogTitle>
+            </NewDialogHeader>
+            <NewDialogContainer>
+              This will stop the processing of your meeting transcripts and
+              delete all history. You can reconnect anytime.
+            </NewDialogContainer>
+            <NewDialogFooter
+              leftButtonProps={{
+                label: "Cancel",
+                variant: "outline",
+              }}
+              rightButtonProps={{
+                label: "Ok",
+                variant: "warning",
+                onClick: async () => {
+                  await handleDisconnectProvider();
+                  setIsDeleteProviderDialogOpened(false);
+                },
+              }}
+            />
+          </NewDialogContent>
+        </NewDialog>
         <Page>
           <Page.Header
             title="Meeting transcripts processing"
