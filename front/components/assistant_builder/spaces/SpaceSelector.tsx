@@ -1,6 +1,11 @@
 import {
-  Dialog,
   Icon,
+  NewDialog,
+  NewDialogContainer,
+  NewDialogContent,
+  NewDialogFooter,
+  NewDialogHeader,
+  NewDialogTitle,
   RadioGroup,
   RadioGroupChoice,
   Separator,
@@ -118,15 +123,31 @@ export function SpaceSelector({
         })}
       </RadioGroup>
       <Separator />
-      <Dialog
-        alertDialog={true}
-        isOpen={isAlertDialogOpen}
-        onValidate={() => setAlertIsDialogOpen(false)}
-        title="Changing source selection"
+      <NewDialog
+        open={isAlertDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setAlertIsDialogOpen(false);
+          }
+        }}
       >
-        An assistant can access one source of data only. The other tools are
-        using a different source.
-      </Dialog>
+        <NewDialogContent size="md" isAlertDialog>
+          <NewDialogHeader hideButton>
+            <NewDialogTitle>Changing source selection</NewDialogTitle>
+          </NewDialogHeader>
+          <NewDialogContainer>
+            An assistant can access one source of data only. The other tools are
+            using a different source.
+          </NewDialogContainer>
+          <NewDialogFooter
+            rightButtonProps={{
+              label: "Ok",
+              variant: "outline",
+              onClick: () => setAlertIsDialogOpen(false),
+            }}
+          />
+        </NewDialogContent>
+      </NewDialog>
     </>
   );
 }
