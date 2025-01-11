@@ -8,8 +8,8 @@ import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 
 const coreSequelize = getCoreReplicaDbConnection();
-const DATASOURCE_BATCH_SIZE = 25;
-const NODE_CONCURRENCY = 10;
+const DATASOURCE_BATCH_SIZE = 256;
+const NODE_CONCURRENCY = 16;
 
 async function migrateNode(
   node: any,
