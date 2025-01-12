@@ -1,19 +1,10 @@
-import { Page, ShapesIcon } from "@dust-tt/sparkle";
+import { Button, Page, ShapesIcon } from "@dust-tt/sparkle";
 import type { SubscriptionType, UserType, WorkspaceType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
-import React from "react";
+import React, { useState } from "react";
 
 import { subNavigationAdmin } from "@app/components/navigation/config";
-import AnthropicSetup from "@app/components/providers/AnthropicSetup";
-import AzureOpenAISetup from "@app/components/providers/AzureOpenAISetup";
-import BrowserlessAPISetup from "@app/components/providers/BrowserlessAPISetup";
-import DeepseekSetup from "@app/components/providers/DeepseekSetup";
-import GoogleAiStudioSetup from "@app/components/providers/GoogleAiStudioSetup";
-import MistralAISetup from "@app/components/providers/MistralAISetup";
-import OpenAISetup from "@app/components/providers/OpenAISetup";
-import SerpAPISetup from "@app/components/providers/SerpAPISetup";
-import SerperSetup from "@app/components/providers/SerperSetup";
-import TogetherAISetup from "@app/components/providers/TogetherAISetup";
+import { ProviderSetup } from "@app/components/providers/ProviderSetup";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import {
@@ -23,6 +14,226 @@ import {
 } from "@app/lib/providers";
 import { useProviders } from "@app/lib/swr/apps";
 import { classNames } from "@app/lib/utils";
+
+type ProviderConfig = {
+  title: string;
+  fields: {
+    name: string;
+    placeholder: string;
+    type?: string;
+  }[];
+  instructions: React.ReactNode;
+};
+
+const MODEL_PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
+  openai: {
+    title: "OpenAI",
+    fields: [{ name: "api_key", placeholder: "OpenAI API Key" }],
+    instructions: (
+      <>
+        <p>
+          To use OpenAI models you must provide your API key. It can be found{" "}
+          <a
+            className="font-bold text-action-600 hover:text-action-500"
+            href="https://platform.openai.com/account/api-keys"
+            target="_blank"
+          >
+            here
+          </a>
+          .
+        </p>
+        <p className="mt-2">
+          We'll never use your API key for anything other than to run your apps.
+        </p>
+      </>
+    ),
+  },
+  azure_openai: {
+    title: "Azure OpenAI",
+    fields: [
+      { name: "endpoint", placeholder: "Azure OpenAI Endpoint" },
+      { name: "api_key", placeholder: "Azure OpenAI API Key" },
+    ],
+    instructions: (
+      <>
+        <p>
+          To use Azure OpenAI models you must provide your API key and Endpoint.
+          They can be found in the left menu of your OpenAI Azure Resource
+          portal (menu item `Keys and Endpoint`).
+        </p>
+        <p className="mt-2">
+          We'll never use your API key for anything other than to run your apps.
+        </p>
+      </>
+    ),
+  },
+  anthropic: {
+    title: "Anthropic",
+    fields: [{ name: "api_key", placeholder: "Anthropic API Key" }],
+    instructions: (
+      <>
+        <p>
+          To use Anthropic models you must provide your API key. It can be found{" "}
+          <a
+            className="font-bold text-action-600 hover:text-action-500"
+            href="https://console.anthropic.com/account/keys"
+            target="_blank"
+          >
+            here
+          </a>
+          &nbsp;(you can create a new key specifically for Dust).
+        </p>
+        <p className="mt-2">
+          We'll never use your API key for anything other than to run your apps.
+        </p>
+      </>
+    ),
+  },
+  mistral: {
+    title: "Mistral AI",
+    fields: [{ name: "api_key", placeholder: "Mistral AI API Key" }],
+    instructions: (
+      <>
+        <p>
+          To use Mistral AI models you must provide your API key. It can be
+          found{" "}
+          <a
+            className="font-bold text-action-600 hover:text-action-500"
+            href="https://console.mistral.ai/api-keys/"
+            target="_blank"
+          >
+            here
+          </a>
+          &nbsp;(you can create a new key specifically for Dust).
+        </p>
+        <p className="mt-2">
+          We'll never use your API key for anything other than to run your apps.
+        </p>
+      </>
+    ),
+  },
+  google_ai_studio: {
+    title: "Google AI Studio",
+    fields: [{ name: "api_key", placeholder: "Google AI Studio API Key" }],
+    instructions: (
+      <>
+        <p>
+          To use Google AI Studio models you must provide your API key. It can
+          be found{" "}
+          <a
+            className="font-bold text-action-600 hover:text-action-500"
+            href="https://aistudio.google.com/app/apikey"
+            target="_blank"
+          >
+            here
+          </a>
+          &nbsp;(you can create a new key specifically for Dust).
+        </p>
+        <p className="mt-2">
+          We'll never use your API key for anything other than to run your apps.
+        </p>
+      </>
+    ),
+  },
+  togetherai: {
+    title: "TogetherAI",
+    fields: [{ name: "api_key", placeholder: "TogetherAI API Key" }],
+    instructions: (
+      <>
+        <p>To use TogetherAI models you must provide your API key.</p>
+        <p className="mt-2">
+          We'll never use your API key for anything other than to run your apps.
+        </p>
+      </>
+    ),
+  },
+  deepseek: {
+    title: "Deepseek",
+    fields: [{ name: "api_key", placeholder: "Deepseek API Key" }],
+    instructions: (
+      <>
+        <p>To use Deepseek models you must provide your API key.</p>
+        <p className="mt-2">
+          We'll never use your API key for anything other than to run your apps.
+        </p>
+      </>
+    ),
+  },
+};
+
+const SERVICE_PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
+  serpapi: {
+    title: "SerpAPI Search",
+    fields: [{ name: "api_key", placeholder: "SerpAPI API Key" }],
+    instructions: (
+      <>
+        <p>
+          SerpAPI lets you search Google (and other search engines). To use
+          SerpAPI you must provide your API key. It can be found{" "}
+          <a
+            className="font-bold text-action-600 hover:text-action-500"
+            href="https://serpapi.com/manage-api-key"
+            target="_blank"
+          >
+            here
+          </a>
+        </p>
+        <p className="mt-2">
+          We'll never use your API key for anything other than to run your apps.
+        </p>
+      </>
+    ),
+  },
+  serper: {
+    title: "Serper Search",
+    fields: [{ name: "api_key", placeholder: "Serper API Key" }],
+    instructions: (
+      <>
+        <p>
+          Serper lets you search Google (and other search engines). To use
+          Serper you must provide your API key. It can be found{" "}
+          <a
+            className="font-bold text-action-600 hover:text-action-500"
+            href="https://serper.dev/api-key"
+            target="_blank"
+          >
+            here
+          </a>
+        </p>
+        <p className="mt-2">
+          We'll never use your API key for anything other than to run your apps.
+        </p>
+      </>
+    ),
+  },
+  browserlessapi: {
+    title: "Browserless API",
+    fields: [{ name: "api_key", placeholder: "Browserless API Key" }],
+    instructions: (
+      <>
+        <p>
+          Browserless lets you use headless browsers to scrape web content. To
+          use Browserless, you must provide your API key. It can be found{" "}
+          <a
+            className="font-bold text-action-600 hover:text-action-500"
+            href="https://cloud.browserless.io/account/"
+            target="_blank"
+          >
+            here
+          </a>
+          .
+        </p>
+        <p className="mt-2">
+          Note that it generally takes <span className="font-bold">5 mins</span>{" "}
+          for the API key to become active (an email is sent when it's ready).
+        </p>
+        <p className="mt-2">
+          We'll never use your API key for anything other than to run your apps.
+        </p>
+      </>
+    ),
+  },
+};
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -35,7 +246,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   if (!auth.isAdmin()) {
     return { notFound: true };
   }
-
   return {
     props: {
       owner,
@@ -49,6 +259,10 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
   const { providers, isProvidersLoading, isProvidersError } = useProviders({
     owner,
   });
+  const [selectedProviderId, setSelectedProviderId] = useState<string | null>(
+    null
+  );
+  const [isModelProvider, setIsModelProvider] = useState(true);
 
   const appWhiteListedProviders = owner.whiteListedProviders
     ? [...owner.whiteListedProviders, "azure_openai"]
@@ -65,7 +279,6 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
   );
 
   const configs = {} as any;
-
   if (!isProvidersLoading && !isProvidersError) {
     for (const provider of providers) {
       const { api_key, ...rest } = JSON.parse(provider.config);
@@ -78,52 +291,40 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
     }
   }
 
-  const filteredProviders = modelProviders.filter((provider) =>
-    filteredProvidersIdSet.has(provider.providerId)
+  const filteredProviders = modelProviders.filter((p) =>
+    filteredProvidersIdSet.has(p.providerId)
   );
 
-  const renderProviderSetup = (providerId: string) => {
-    const enabled = !!configs[providerId];
-    const config = configs[providerId] ?? null;
+  const selectedConfig = selectedProviderId
+    ? isModelProvider
+      ? MODEL_PROVIDER_CONFIGS[selectedProviderId]
+      : SERVICE_PROVIDER_CONFIGS[selectedProviderId]
+    : null;
 
-    switch (providerId) {
-      case "openai":
-        return <OpenAISetup owner={owner} enabled={enabled} config={config} />;
-      case "azure_openai":
-        return (
-          <AzureOpenAISetup owner={owner} enabled={enabled} config={config} />
-        );
-      case "anthropic":
-        return (
-          <AnthropicSetup owner={owner} enabled={enabled} config={config} />
-        );
-      case "mistral":
-        return (
-          <MistralAISetup owner={owner} enabled={enabled} config={config} />
-        );
-      case "google_ai_studio":
-        return (
-          <GoogleAiStudioSetup
-            owner={owner}
-            enabled={enabled}
-            config={config}
-          />
-        );
-      case "togetherai":
-        return (
-          <TogetherAISetup owner={owner} enabled={enabled} config={config} />
-        );
-      case "deepseek":
-        return (
-          <DeepseekSetup owner={owner} enabled={enabled} config={config} />
-        );
-      default:
-        return null;
-    }
-  };
+  const enabled =
+    selectedProviderId && configs[selectedProviderId]
+      ? !!configs[selectedProviderId]
+      : false;
+
+  const configForSelected =
+    (selectedProviderId && configs[selectedProviderId]) || {};
 
   return (
     <>
+      {selectedProviderId && selectedConfig && (
+        <ProviderSetup
+          owner={owner}
+          providerId={selectedProviderId}
+          title={selectedConfig.title}
+          instructions={selectedConfig.instructions}
+          fields={selectedConfig.fields}
+          config={configForSelected}
+          enabled={enabled}
+          isOpen={true}
+          onClose={() => setSelectedProviderId(null)}
+        />
+      )}
+
       <Page.SectionHeader
         title="Model Providers"
         description="Model providers available to your Dust apps."
@@ -164,7 +365,14 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
                   </p>
                 )}
               </div>
-              <div>{renderProviderSetup(provider.providerId)}</div>
+              <Button
+                variant={configs[provider.providerId] ? "primary" : "outline"}
+                label={configs[provider.providerId] ? "Edit" : "Set up"}
+                onClick={() => {
+                  setIsModelProvider(true);
+                  setSelectedProviderId(provider.providerId);
+                }}
+              />
             </div>
           </li>
         ))}
@@ -202,29 +410,14 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
                   </p>
                 </div>
               </div>
-              <div>
-                {provider.providerId === "serpapi" && (
-                  <SerpAPISetup
-                    owner={owner}
-                    enabled={!!configs["serpapi"]}
-                    config={configs["serpapi"] ?? null}
-                  />
-                )}
-                {provider.providerId === "serper" && (
-                  <SerperSetup
-                    owner={owner}
-                    enabled={!!configs["serper"]}
-                    config={configs["serper"] ?? null}
-                  />
-                )}
-                {provider.providerId === "browserlessapi" && (
-                  <BrowserlessAPISetup
-                    owner={owner}
-                    enabled={!!configs["browserlessapi"]}
-                    config={configs["browserlessapi"] ?? null}
-                  />
-                )}
-              </div>
+              <Button
+                variant={configs[provider.providerId] ? "ghost" : "outline"}
+                label={configs[provider.providerId] ? "Edit" : "Set up"}
+                onClick={() => {
+                  setIsModelProvider(false);
+                  setSelectedProviderId(provider.providerId);
+                }}
+              />
             </div>
           </li>
         ))}
