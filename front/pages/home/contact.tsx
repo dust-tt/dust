@@ -40,7 +40,7 @@ export default function Contact() {
       />
       <div className="grid grid-cols-12 items-start sm:gap-8 md:gap-y-12">
         <div className="col-span-12 flex flex-col justify-end gap-12 sm:col-span-12 lg:col-span-8 lg:col-start-2 xl:col-span-8 xl:col-start-2 2xl:col-start-3">
-          <div className="w-full max-w-150">
+          <div className="max-w-150 w-full">
             <HubSpotForm />
           </div>
         </div>
