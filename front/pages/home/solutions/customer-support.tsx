@@ -1,18 +1,24 @@
-import { Button, Div3D, Hover3D, RocketIcon } from "@dust-tt/sparkle";
-import Link from "next/link";
+import {
+  Button,
+  Div3D,
+  Hover3D,
+  RocketIcon,
+  UserGroupIcon,
+  LightbulbIcon,
+} from "@dust-tt/sparkle";
 import type { ReactElement } from "react-markdown/lib/react-markdown";
 
 import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from "@app/components/home/Carousel";
-import { UseCasesSection } from "@app/components/home/content/Product/SupportUseCasesSection";
+  UseCasesSection,
+  type UseCase,
+} from "@app/components/home/content/Product/UseCasesSection";
 
 import {
-  BlogBlock,
+  CustomerStoriesSection,
+  type CustomerStory,
+} from "@app/components/home/content/Product/CustomerStoriesSection";
+
+import {
   CarousselContentBlock,
   MetricComponent,
   Quote,
@@ -25,9 +31,13 @@ import {
   shapeNames,
 } from "@app/components/home/Particles";
 import type { SolutionSectionAssistantBlockProps } from "@app/components/home/SolutionSection";
-import { BenefitsSection } from "@app/components/home/content/Product/SupportBenefitsSection";
+import {
+  BenefitsSection,
+  type Benefit,
+} from "@app/components/home/content/Product/BenefitsSection";
 import TrustedBy from "@app/components/home/TrustedBy";
 import { classNames } from "@app/lib/utils";
+import { HeroSection } from "@app/components/home/content/Product/HeroSection";
 
 export async function getServerSideProps() {
   return {
@@ -58,6 +68,145 @@ const pageSettings: pageSettingsProps = {
   ),
 };
 
+// Settings for Hero section
+const supportHeroProps = {
+  uptitle: "Customer Support",
+  title: "Instant knowledge, exceptional support.",
+  description:
+    "Equip your team with AI assistants to accelerate issue resolution and increase customer satisfaction.",
+  fromColor: "from-sky-200",
+  toColor: "to-sky-500",
+  visuals: [
+    {
+      src: "/static/landing/support/support1.png",
+      alt: "Support Visual 1",
+      depth: -30,
+    },
+    {
+      src: "/static/landing/support/support2.png",
+      alt: "Support Visual 2",
+      depth: -10,
+    },
+    {
+      src: "/static/landing/support/support3.png",
+      alt: "Support Visual 3",
+      depth: 20,
+    },
+    {
+      src: "/static/landing/support/support4.png",
+      alt: "Support Visual 4",
+      depth: 50,
+    },
+  ],
+  ctaButtons: {
+    primary: {
+      label: "Get started",
+      href: "/home/pricing",
+      icon: RocketIcon,
+    },
+    secondary: {
+      label: "Talk to sales",
+      href: "https://forms.gle/dGaQ1AZuDCbXY1ft9",
+      target: "_blank",
+    },
+  },
+};
+
+// Parameters for the Benefits Section
+const supportBenefits: Benefit[] = [
+  {
+    icon: RocketIcon,
+    title: "Resolve Issues Faster",
+    description:
+      "Surface relevant information from all connected knowledge bases instantly and understand messages in 50+ languages.",
+  },
+  {
+    icon: UserGroupIcon,
+    title: "Boost Team Productivity",
+    description:
+      "Keep teams synchronized with real-time access to information across all communication channels and reduce onboarding time.",
+  },
+  {
+    icon: LightbulbIcon,
+    title: "Understand Customer Needs",
+    description:
+      "Gain insights from cross-tool interactions to understand and act on customer needs, improve documentation.",
+  },
+];
+
+// Parameters for the Use Cases Section
+const supportUseCases: UseCase[] = [
+  {
+    title: "Ticket Resolution",
+    content:
+      "Smart answer suggestions and contextual knowledge at your fingertips.",
+    images: [
+      "/static/landing/support/front.png",
+      "/static/landing/support/front.png",
+      "/static/landing/support/front.png",
+      "/static/landing/support/front.png",
+    ],
+  },
+  {
+    title: "Agent Coaching",
+    content:
+      "Helps support agents learn best practices and company knowledge faster.",
+    images: [
+      "/static/landing/slack/slack1.png",
+      "/static/landing/slack/slack2.png",
+      "/static/landing/slack/slack3.png",
+      "/static/landing/slack/slack4.png",
+    ],
+  },
+  {
+    title: "Documentation Builder",
+    content:
+      "Converts resolved support tickets into searchable knowledge base articles and FAQ.",
+    images: [
+      "/static/landing/slack/slack1.png",
+      "/static/landing/slack/slack2.png",
+      "/static/landing/slack/slack3.png",
+      "/static/landing/slack/slack4.png",
+    ],
+  },
+  {
+    title: "Customer Insights",
+    content:
+      "Turn customer feedback from every channel into actionable insights.",
+    images: [
+      "/static/landing/slack/slack1.png",
+      "/static/landing/slack/slack2.png",
+      "/static/landing/slack/slack3.png",
+      "/static/landing/slack/slack4.png",
+    ],
+  },
+];
+
+// Parameters for the Customer Stories Section
+const supportStories: CustomerStory[] = [
+  {
+    title: "Malt cuts support ticket closing time by 50% with Dust",
+    content:
+      "Malt streamlines customer support using Dust's AI platform for rapid, consistent multilingual responses.",
+    href: "https://blog.dust.tt/malt-customer-support/",
+    src: "https://blog.dust.tt/content/images/size/w2000/2024/12/Malt_Customer_Story_Dust_Support.jpg",
+  },
+  {
+    title: "Pennylane's journey to deploy Dust for Customer Care teams",
+    content:
+      "Dust evolved from a simple support tool into an integral part of Pennylane's operations.",
+    href: "https://blog.dust.tt/pennylane-dust-customer-support-journey/",
+    src: "https://blog.dust.tt/content/images/size/w2000/2024/12/pennylane_dust_customer_story.png",
+  },
+  {
+    title: "Lifen uses Dust AI assistants to boost team productivity",
+    content:
+      "Lifen uses Dust AI assistants to boost team productivity and save hours of work each week.",
+    href: "https://blog.dust.tt/customer-story-lifen/",
+    src: "https://blog.dust.tt/content/images/size/w2000/2024/11/lifen_dust_customer_story.jpg",
+  },
+];
+
 export default function CustomerSupport() {
   const MainVisualImage = () => (
     <>
@@ -79,25 +228,10 @@ export default function CustomerSupport() {
   );
   return (
     <>
-      {/* <HeaderContentBlock
-        uptitle={"Dust for " + pageSettings.uptitle}
-        title={pageSettings.title}
-        from={pageSettings.from}
-        to={pageSettings.to}
-        subtitle={pageSettings.description}
-      /> */}
-      <div className="container flex w-full flex-col gap-16 px-6 py-24 pb-12 xl:gap-28 2xl:gap-36">
+      <div className="container flex w-full flex-col gap-0 px-6 pb-12">
+        <HeroSection {...supportHeroProps} />
         <Grid>
           {/* <div
-          className={classNames(
-            "col-span-8 justify-center",
-            "flex flex-col gap-8 pt-24 lg:min-h-[50vh]",
-            "lg:col-span-5 lg:py-10",
-            "2xl:col-span-5 2xl:col-start-2",
-            "text-center lg:text-left"
-          )}
-        > */}
-          <div
             className={classNames(
               "col-span-12 mx-auto py-4 pt-12 sm:max-w-[100%] md:max-w-[90%]",
               "lg:col-span-6 lg:col-start-1 lg:h-[100%] lg:max-w-[100%]",
@@ -141,7 +275,7 @@ export default function CustomerSupport() {
             <div className="flex h-full w-full items-center justify-center xl:px-8">
               {MainVisualImage()}
             </div>
-          </div>
+          </div> */}
           <div
             className={classNames(
               "flex flex-col gap-8",
@@ -151,7 +285,12 @@ export default function CustomerSupport() {
               "2xl:col-start-1"
             )}
           >
-            <BenefitsSection />
+            <BenefitsSection
+              title="Elevate support operations"
+              benefits={supportBenefits}
+              fromColor={pageSettings.from}
+              toColor={pageSettings.to}
+            />
           </div>
           <MetricComponent
             metrics={[
@@ -181,7 +320,12 @@ export default function CustomerSupport() {
               "2xl:col-start-1"
             )}
           >
-            <UseCasesSection />
+            <UseCasesSection
+              title="Top use cases"
+              useCases={supportUseCases}
+              fromColor={pageSettings.from}
+              toColor={pageSettings.to}
+            />
           </div>
           <div
             className={classNames(
@@ -227,66 +371,12 @@ export default function CustomerSupport() {
               title="Head of Data Platform at Malt"
               logo="/static/landing/logos/malt.png"
             />
-            <Grid gap="gap-8">
-              <div className="col-span-12">
-                <Carousel className="w-full">
-                  <div className="mb-6 flex items-end justify-between">
-                    <div>
-                      <H2 from={pageSettings.from} to={pageSettings.to}>
-                        Customer stories
-                      </H2>
-                      {/* <P size="lg">
-                      Discover how our customers augment their&nbsp;workflows
-                      with&nbsp;Dust.
-                    </P> */}
-                    </div>
-                    <div className="flex gap-4">
-                      <CarouselPrevious />
-                      <CarouselNext />
-                    </div>
-                  </div>
-
-                  <CarouselContent>
-                    <CarouselItem className="basis-full md:basis-1/2 lg:basis-1/3">
-                      <BlogBlock
-                        title="Malt cuts support ticket closing time by 50% with Dust"
-                        content="Malt streamlines customer support using Dust's AI platform for rapid, consistent multilingual responses."
-                        href="https://blog.dust.tt/malt-customer-support/"
-                      >
-                        <img
-                          src="https://blog.dust.tt/content/images/size/w2000/2024/12/Malt_Customer_Story_Dust_Support.jpg"
-                          alt="Blog Image"
-                        />
-                      </BlogBlock>
-                    </CarouselItem>
-                    <CarouselItem className="basis-full md:basis-1/2 lg:basis-1/3">
-                      <BlogBlock
-                        title="Pennylane's journey to deploy Dust for Customer Care teams"
-                        content="Dust evolved from a simple support tool into an integral part of Pennylane's operations."
-                        href="https://blog.dust.tt/pennylane-dust-customer-support-journey/"
-                      >
-                        <img
-                          src="https://blog.dust.tt/content/images/size/w2000/2024/12/pennylane_dust_customer_story.png"
-                          alt="Blog Image"
-                        />
-                      </BlogBlock>
-                    </CarouselItem>
-                    <CarouselItem className="basis-full md:basis-1/2 lg:basis-1/3">
-                      <BlogBlock
-                        title="Lifen uses Dust AI assistants to boost team productivity"
-                        content="Lifen uses Dust AI assistants to boost team productivity and save hours of work each week."
-                        href="https://blog.dust.tt/customer-story-lifen/"
-                      >
-                        <img
-                          src="https://blog.dust.tt/content/images/size/w2000/2024/11/lifen_dust_customer_story.jpg"
-                          alt="Blog Image"
-                        />
-                      </BlogBlock>
-                    </CarouselItem>
-                  </CarouselContent>
-                </Carousel>
-              </div>
-            </Grid>
+            <CustomerStoriesSection
+              title="Customer stories"
+              stories={supportStories}
+              fromColor={pageSettings.from}
+              toColor={pageSettings.to}
+            />
           </div>
           <TrustedBy />;
         </Grid>

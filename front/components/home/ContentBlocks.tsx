@@ -204,7 +204,7 @@ export const MetricComponent = ({
     {metrics.map((metric, index) => (
       <div
         key={index}
-        className="col-span-6 flex flex-col items-center gap-4 py-6 text-center"
+        className="col-span-6 flex flex-col items-center gap-4 py-4 text-center"
       >
         <H1 from={from} to={to}>
           {metric.value}
