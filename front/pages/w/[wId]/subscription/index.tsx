@@ -19,7 +19,12 @@ import {
   Spinner,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type { SubscriptionPerSeatPricing, SubscriptionType, UserType, WorkspaceType } from "@dust-tt/types";
+import type {
+  SubscriptionPerSeatPricing,
+  SubscriptionType,
+  UserType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import type * as t from "io-ts";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
@@ -33,7 +38,11 @@ import { SubscriptionContactUsDrawer } from "@app/components/SubscriptionContact
 import { getPriceAsString } from "@app/lib/client/subscription";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { FREE_TEST_PLAN_CODE, FREE_UPGRADED_PLAN_CODE, isUpgraded } from "@app/lib/plans/plan_codes";
+import {
+  FREE_TEST_PLAN_CODE,
+  FREE_UPGRADED_PLAN_CODE,
+  isUpgraded,
+} from "@app/lib/plans/plan_codes";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { getPerSeatSubscriptionPricing } from "@app/lib/plans/subscription";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
