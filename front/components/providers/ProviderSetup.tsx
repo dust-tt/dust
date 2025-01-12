@@ -8,7 +8,8 @@ import {
   NewDialogTitle,
 } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
-import React, { type MouseEvent, useEffect, useState } from "react";
+import type { MouseEvent } from "react";
+import React, { useEffect, useState } from "react";
 import { useSWRConfig } from "swr";
 
 import { checkProvider } from "@app/lib/providers";
