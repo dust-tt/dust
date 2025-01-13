@@ -2,7 +2,7 @@ import type { ContentNode, ContentNodesViewType, Result } from "@dust-tt/types";
 import {
   Err,
   getOAuthConnectionAccessToken,
-  NOTION_MIME_TYPES,
+  MIME_TYPES,
   Ok,
 } from "@dust-tt/types";
 import _ from "lodash";
@@ -104,7 +104,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       parents: [folderId],
       parentId: null,
       title: "Orphaned Resources",
-      mimeType: NOTION_MIME_TYPES.UNKNOWN_FOLDER,
+      mimeType: MIME_TYPES.NOTION["UNKNOWN-FOLDER"],
     });
 
     try {

@@ -1,4 +1,4 @@
-import { INTERCOM_MIME_TYPES } from "@dust-tt/types";
+import { MIME_TYPES } from "@dust-tt/types";
 import { makeScript } from "scripts/helpers";
 
 import {
@@ -36,7 +36,7 @@ async function createFolderNodes(execute: boolean) {
         parents: [getTeamsInternalId(connector.id)],
         parentId: null,
         title: "Conversations",
-        mimeType: INTERCOM_MIME_TYPES.CONVERSATIONS,
+        mimeType: MIME_TYPES.INTERCOM["TEAMS-FOLDER"],
       });
     }
 
@@ -60,7 +60,7 @@ async function createFolderNodes(execute: boolean) {
             parents: [teamInternalId, getTeamsInternalId(connector.id)],
             parentId: getTeamsInternalId(connector.id),
             title: team.name,
-            mimeType: INTERCOM_MIME_TYPES.TEAM,
+            mimeType: MIME_TYPES.INTERCOM.TEAM,
           });
         }
       },
@@ -99,7 +99,7 @@ async function createFolderNodes(execute: boolean) {
             parents: [helpCenterInternalId],
             parentId: null,
             title: helpCenter.name,
-            mimeType: INTERCOM_MIME_TYPES.HELP_CENTER,
+            mimeType: MIME_TYPES.INTERCOM["HELP-CENTER"],
           });
         }
 
@@ -133,7 +133,7 @@ async function createFolderNodes(execute: boolean) {
                 parents: collectionParents,
                 parentId: collectionParents[1] || null,
                 title: collection.name,
-                mimeType: INTERCOM_MIME_TYPES.COLLECTION,
+                mimeType: MIME_TYPES.INTERCOM.COLLECTION,
               });
             }
           },
