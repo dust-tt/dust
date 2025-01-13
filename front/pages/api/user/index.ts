@@ -96,17 +96,7 @@ async function handler(
         });
       }
 
-      const result = await u.updateName(req.body.firstName, req.body.lastName);
-
-      if (result.isErr()) {
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "Failed to update user name.",
-          },
-        });
-      }
+      await u.updateName(req.body.firstName, req.body.lastName);
 
       res.status(200).json({
         success: true,
