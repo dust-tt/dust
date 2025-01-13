@@ -12,7 +12,7 @@ export const ConversationContainer = React.forwardRef<
     <div
       ref={ref}
       className={cn(
-        "s-flex s-w-full s-flex-col s-items-center s-@container/conversation",
+        "s-flex s-h-full s-w-full s-flex-col s-items-center s-@container/conversation",
         className
       )}
       {...props}
