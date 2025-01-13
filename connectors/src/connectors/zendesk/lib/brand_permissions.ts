@@ -9,10 +9,7 @@ import {
   forbidSyncZendeskTickets,
 } from "@connectors/connectors/zendesk/lib/ticket_permissions";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
-import {
-  createZendeskClient,
-  isBrandHelpCenterEnabled,
-} from "@connectors/connectors/zendesk/lib/zendesk_api";
+import { createZendeskClient } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import logger from "@connectors/logger/logger";
 import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
 
@@ -50,8 +47,6 @@ export async function allowSyncZendeskBrand({
     return false;
   }
 
-  const helpCenterEnabled = isBrandHelpCenterEnabled(fetchedBrand);
-
   // creating the brand if it does not exist yet in db
   if (!brand) {
     await ZendeskBrandResource.makeNew({
@@ -61,7 +56,7 @@ export async function allowSyncZendeskBrand({
         brandId: fetchedBrand.id,
         name: fetchedBrand.name || "Brand",
         ticketsPermission: "read",
-        helpCenterPermission: helpCenterEnabled ? "read" : "none",
+        helpCenterPermission: fetchedBrand.has_help_center ? "read" : "none",
         url: fetchedBrand.url,
       },
     });
@@ -69,7 +64,7 @@ export async function allowSyncZendeskBrand({
 
   // setting the permissions for the brand:
   // can be redundant if already set when creating the brand but necessary because of the categories.
-  if (helpCenterEnabled) {
+  if (fetchedBrand.has_help_center) {
     // allow the categories
     await allowSyncZendeskHelpCenter({
       connectorId,

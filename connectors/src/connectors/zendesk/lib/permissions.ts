@@ -18,7 +18,6 @@ import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendes
 import {
   changeZendeskClientSubdomain,
   createZendeskClient,
-  isBrandHelpCenterEnabled,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
@@ -118,7 +117,6 @@ async function getBrandChildren(
   const {
     result: { brand: fetchedBrand },
   } = await zendeskApiClient.brand.show(brandId);
-  const helpCenterEnabled = isBrandHelpCenterEnabled(fetchedBrand);
 
   if (isReadPermissionsOnly) {
     if (brandInDb?.ticketsPermission === "read") {
@@ -126,7 +124,10 @@ async function getBrandChildren(
         brandInDb.getTicketsContentNode(connector.id, { expandable: true })
       );
     }
-    if (helpCenterEnabled && brandInDb?.helpCenterPermission === "read") {
+    if (
+      fetchedBrand.has_help_center &&
+      brandInDb?.helpCenterPermission === "read"
+    ) {
       nodes.push(brandInDb.getHelpCenterContentNode(connector.id));
     }
   } else {
@@ -147,7 +148,7 @@ async function getBrandChildren(
     nodes.push(ticketsNode);
 
     // only displaying the Help Center node if the brand has an enabled Help Center
-    if (helpCenterEnabled) {
+    if (fetchedBrand.has_help_center) {
       const helpCenterNode: ContentNode = brandInDb?.getHelpCenterContentNode(
         connector.id
       ) ?? {
