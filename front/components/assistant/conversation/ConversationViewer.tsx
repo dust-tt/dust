@@ -388,7 +388,7 @@ const ConversationViewer = React.forwardRef<
         <span ref={viewRef} className="py-4" />
       )}
       {(isMessagesLoading || prevFirstMessageId) && (
-        <div className="flex justify-center py-4">
+        <div className="mb-auto mt-auto flex justify-center">
           <Spinner variant="color" size="xs" />
         </div>
       )}

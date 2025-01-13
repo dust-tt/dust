@@ -35,7 +35,6 @@ import {
 } from "@app/lib/swr/conversations";
 
 interface ConversationContainerProps {
-  conversationId: string | null;
   owner: WorkspaceType;
   subscription: SubscriptionType;
   user: UserType;
@@ -45,7 +44,6 @@ interface ConversationContainerProps {
 }
 
 export function ConversationContainer({
-  conversationId,
   owner,
   subscription,
   user,
@@ -53,8 +51,8 @@ export function ConversationContainer({
   agentIdToMention,
   messageRankToScrollTo,
 }: ConversationContainerProps) {
-  const [activeConversationId, setActiveConversationId] =
-    useState(conversationId);
+  const { activeConversationId } = useConversationsNavigation();
+
   const [planLimitReached, setPlanLimitReached] = useState(false);
   const [stickyMentions, setStickyMentions] = useState<AgentMention[]>([]);
 
@@ -242,7 +240,6 @@ export function ConversationContainer({
           undefined,
           { shallow: true }
         );
-        setActiveConversationId(conversationRes.value.sId);
         await mutateConversations();
         await scrollConversationsToTop();
 
