@@ -6,6 +6,7 @@ import {
   DataTable,
   HandThumbDownIcon,
   HandThumbUpIcon,
+  Icon,
   MagnifyingGlassIcon,
   PencilSquareIcon,
   Popup,
@@ -70,6 +71,13 @@ export const ASSISTANT_MANAGER_TABS = [
 export type AssistantManagerTabsType =
   (typeof ASSISTANT_MANAGER_TABS)[number]["id"];
 
+type MoreMenuItem = {
+  label: string;
+  icon: React.ComponentType;
+  onClick: (e: React.MouseEvent) => void;
+  variant?: "warning" | "default";
+};
+
 type RowData = {
   name: string;
   description: string;
@@ -79,6 +87,7 @@ type RowData = {
   lastUpdate: string | null;
   scope: AgentConfigurationScope;
   onClick?: () => void;
+  moreMenuItems?: MoreMenuItem[];
 };
 
 const calculateFeedback = (row: Row<RowData>) => {
@@ -94,70 +103,56 @@ const getTableColumns = () => {
       accessorKey: "name",
       cell: (info: CellContext<RowData, string>) => (
         <DataTable.CellContent>
-          <div className={classNames("flex flex-row items-center gap-3 px-4")}>
+          <div className={classNames("flex flex-row items-center gap-2")}>
             <div className="">
-              <Avatar visual={info.row.original.pictureUrl} size="md" />
+              <Avatar visual={info.row.original.pictureUrl} size="sm" />
             </div>
             <div className="flex min-w-0 grow flex-col">
-              <div className="overflow-hidden text-ellipsis whitespace-nowrap text-base font-semibold">
+              <div className="truncated overflow-hidden text-sm font-semibold text-foreground">
                 {`@${info.getValue()}`}
               </div>
-              <div className="overflow-hidden text-ellipsis whitespace-nowrap text-element-600">
+              <div className="truncated overflow-hidden text-sm text-muted-foreground">
                 {info.row.original.description}
               </div>
             </div>
           </div>
         </DataTable.CellContent>
       ),
-      meta: { className: "h-16" },
+      meta: { className: "h-16 w-full" },
     },
     {
       header: "Messages",
       accessorKey: "usage.messageCount",
       cell: (info: CellContext<RowData, AgentUsageType | undefined>) => (
-        <DataTable.CellContent>
-          <Tooltip
-            label={assistantUsageMessage({
-              assistantName: info.row.original.name,
-              usage: info.row.original.usage || null,
-              isLoading: false,
-              isError: false,
-              shortVersion: true,
-            })}
-            trigger={
-              <span className="px-2">
-                {info.row.original.usage?.messageCount ?? 0}
-              </span>
-            }
-          />
-        </DataTable.CellContent>
+        <DataTable.BasicCellContent
+          tooltip={assistantUsageMessage({
+            assistantName: info.row.original.name,
+            usage: info.row.original.usage || null,
+            isLoading: false,
+            isError: false,
+            shortVersion: true,
+            asString: true,
+          })}
+          label={info.row.original.usage?.messageCount ?? 0}
+        />
       ),
-      meta: {
-        width: "6rem",
-      },
+      meta: { className: "w-6" },
     },
     {
       header: "Active Users",
       accessorKey: "usage.userCount",
       cell: (info: CellContext<RowData, AgentUsageType | undefined>) => (
-        <DataTable.CellContent>
-          <Tooltip
-            label={assistantActiveUsersMessage({
-              usage: info.row.original.usage || null,
-              isLoading: false,
-              isError: false,
-            })}
-            trigger={
-              <span className="px-2">
-                {info.row.original.usage?.userCount ?? 0}
-              </span>
-            }
-          />
-        </DataTable.CellContent>
+        <DataTable.BasicCellContent
+          label={info.row.original.usage?.userCount ?? 0}
+          tooltip={assistantActiveUsersMessage({
+            usage: info.row.original.usage || null,
+            isLoading: false,
+            isError: false,
+            asString: true,
+          })}
+        />
       ),
-      meta: {
-        width: "6rem",
-      },
+      meta: { className: "w-6" },
     },
     {
       header: "Feedbacks",
@@ -174,18 +169,14 @@ const getTableColumns = () => {
               <Tooltip
                 label={feedbacksCount}
                 trigger={
-                  <div className="flex flex-row items-center gap-2">
-                    <div className="flex flex-row items-center">
-                      <div>{f.up}</div>
-                      <div>
-                        <HandThumbUpIcon className="h-4 w-4 pl-1" />
-                      </div>
+                  <div className="flex flex-row items-center gap-2 text-sm text-muted-foreground">
+                    <div className="flex flex-row items-center gap-1">
+                      {f.up}
+                      <Icon visual={HandThumbUpIcon} size="xs" />
                     </div>
-                    <div className="flex flex-row items-center">
-                      <div>{f.down}</div>
-                      <div>
-                        <HandThumbDownIcon className="h-4 w-4 pl-1" />
-                      </div>
+                    <div className="flex flex-row items-center gap-1">
+                      {f.down}
+                      <Icon visual={HandThumbDownIcon} size="xs" />
                     </div>
                   </div>
                 }
@@ -197,21 +188,23 @@ const getTableColumns = () => {
       sortingFn: (rowA: Row<RowData>, rowB: Row<RowData>) =>
         calculateFeedback(rowA) - calculateFeedback(rowB),
       meta: {
-        width: "6rem",
+        meta: { className: "w-6" },
       },
     },
     {
       header: "Last Update",
       accessorKey: "lastUpdate",
       cell: (info: CellContext<RowData, number>) => (
-        <DataTable.CellContent>
-          {info.getValue()
-            ? formatTimestampToFriendlyDate(info.getValue(), "short")
-            : "-"}
-        </DataTable.CellContent>
+        <DataTable.BasicCellContent
+          label={
+            info.getValue()
+              ? formatTimestampToFriendlyDate(info.getValue(), "short")
+              : "-"
+          }
+        />
       ),
       meta: {
-        width: "10rem",
+        meta: { className: "w-8" },
       },
     },
     {
@@ -221,7 +214,17 @@ const getTableColumns = () => {
         <DataTable.CellContent>{info.getValue()}</DataTable.CellContent>
       ),
       meta: {
-        width: "0",
+        className: "s-w-12",
+      },
+    },
+    {
+      header: "",
+      accessorKey: "moreAction",
+      cell: (info: CellContext<RowData, number>) => (
+        <DataTable.MoreButton moreMenuItems={info.row.original.moreMenuItems} />
+      ),
+      meta: {
+        className: "s-w-12",
       },
     },
   ];
@@ -400,23 +403,21 @@ function GlobalAgentAction({
 
   if (agent.sId === "dust") {
     return (
-      <div className="absolute -m-[18px] ml-2">
-        <Button
-          variant="ghost"
-          icon={Cog6ToothIcon}
-          size="sm"
-          disabled={!isBuilder(owner)}
-          onClick={(e: Event) => {
-            e.stopPropagation();
-            void router.push(`/w/${owner.sId}/builder/assistants/dust`);
-          }}
-        />
-      </div>
+      <Button
+        variant="ghost-secondary"
+        icon={Cog6ToothIcon}
+        size="mini"
+        disabled={!isBuilder(owner)}
+        onClick={(e: Event) => {
+          e.stopPropagation();
+          void router.push(`/w/${owner.sId}/builder/assistants/dust`);
+        }}
+      />
     );
   }
 
   return (
-    <div className="absolute -m-[14px] ml-2">
+    <>
       <SliderToggle
         size="xs"
         onClick={async (e) => {
@@ -441,6 +442,6 @@ function GlobalAgentAction({
           }}
         />
       </div>
-    </div>
+    </>
   );
 }

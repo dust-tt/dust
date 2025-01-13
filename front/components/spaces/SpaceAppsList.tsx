@@ -48,6 +48,9 @@ const getTableColumns = () => {
         </DataTable.CellContent>
       ),
       accessorFn: (row: RowData) => row.name,
+      meta: {
+        className: "w-full",
+      },
     },
   ];
 };
