@@ -1,99 +1,124 @@
-export const CONFLUENCE_MIME_TYPES = {
-  SPACE: "application/vnd.dust.confluence.space",
-  PAGE: "application/vnd.dust.confluence.page",
+import { ConnectorProvider } from "../front/data_source";
+
+function getMimeTypes<
+  P extends ConnectorProvider,
+  T extends Uppercase<string>[]
+>({
+  provider,
+  resourceTypes,
+}: {
+  provider: P;
+  resourceTypes: T;
+}): {
+  [K in T[number]]: `application/vnd.dust.${P}.${Lowercase<K>}`;
+} {
+  return resourceTypes.reduce(
+    (acc, s) => ({
+      ...acc,
+      s: `application/vnd.dust.${provider.replace("_", "")}.${s.toLowerCase()}`,
+    }),
+    {} as {
+      [K in T[number]]: `application/vnd.dust.${P}.${Lowercase<K>}`;
+    }
+  );
+}
+
+export const MIME_TYPES = {
+  CONFLUENCE: getMimeTypes({
+    provider: "confluence",
+    resourceTypes: ["SPACE", "PAGE"],
+  }),
+  GITHUB: getMimeTypes({
+    provider: "github",
+    resourceTypes: [
+      "REPOSITORY",
+      "CODE.ROOT",
+      "CODE.DIRECTORY",
+      "CODE.FILE",
+      "ISSUES",
+      "ISSUE",
+      "DISCUSSIONS",
+      "DISCUSSION",
+    ],
+  }),
+  GOOGLE_DRIVE: getMimeTypes({
+    // @ts-expect-error: we have an inconsistency here in that we have been using "googledrive" in the mime type instead of the ConnectorProvider "google_drive"
+    provider: "googledrive", // TODO: see if we backfill into google_drive
+    resourceTypes: ["FOLDER"], // for files and spreadsheets, we keep Google's mime types
+  }),
+  INTERCOM: getMimeTypes({
+    provider: "intercom",
+    resourceTypes: [
+      "COLLECTION",
+      "TEAMS-FOLDER",
+      "CONVERSATION",
+      "TEAM",
+      "HELP-CENTER",
+      "ARTICLE",
+    ],
+  }),
+  MICROSOFT: getMimeTypes({
+    provider: "microsoft",
+    resourceTypes: ["FOLDER"], // for files and spreadsheets, we keep Microsoft's mime types
+  }),
+  NOTION: getMimeTypes({
+    provider: "notion",
+    resourceTypes: ["UNKNOWN-FOLDER", "DATABASE", "PAGE"],
+  }),
+  SLACK: getMimeTypes({
+    provider: "slack",
+    resourceTypes: ["CHANNEL", "THREAD", "MESSAGES"],
+  }),
+  SNOWFLAKE: getMimeTypes({
+    provider: "snowflake",
+    resourceTypes: ["DATABASE", "SCHEMA", "TABLE"],
+  }),
+  WEBCRAWLER: getMimeTypes({
+    provider: "webcrawler",
+    resourceTypes: ["FOLDER"], // pages are upserted as text/html, not an internal mime type
+  }),
+  ZENDESK: getMimeTypes({
+    provider: "zendesk",
+    resourceTypes: [
+      "BRAND",
+      "HELPCENTER", // TODO: see if we backfill into HELP-CENTER
+      "CATEGORY",
+      "ARTICLE",
+      "TICKETS",
+      "TICKET",
+    ],
+  }),
 };
 
 export type ConfluenceMimeType =
-  (typeof CONFLUENCE_MIME_TYPES)[keyof typeof CONFLUENCE_MIME_TYPES];
-
-export const GITHUB_MIME_TYPES = {
-  REPOSITORY: "application/vnd.dust.github.repository",
-  CODE_ROOT: "application/vnd.dust.github.code.root",
-  CODE_DIRECTORY: "application/vnd.dust.github.code.directory",
-  CODE_FILE: "application/vnd.dust.github.code.file",
-  ISSUES: "application/vnd.dust.github.issues",
-  ISSUE: "application/vnd.dust.github.issue",
-  DISCUSSIONS: "application/vnd.dust.github.discussions",
-  DISCUSSION: "application/vnd.dust.github.discussion",
-};
+  (typeof MIME_TYPES.CONFLUENCE)[keyof typeof MIME_TYPES.CONFLUENCE];
 
 export type GithubMimeType =
-  (typeof GITHUB_MIME_TYPES)[keyof typeof GITHUB_MIME_TYPES];
-
-export const GOOGLE_DRIVE_MIME_TYPES = {
-  FOLDER: "application/vnd.dust.googledrive.folder",
-  // for files and spreadsheets, we keep Google's mime types
-};
+  (typeof MIME_TYPES.GITHUB)[keyof typeof MIME_TYPES.GITHUB];
 
 export type GoogleDriveMimeType =
-  (typeof GOOGLE_DRIVE_MIME_TYPES)[keyof typeof GOOGLE_DRIVE_MIME_TYPES];
-
-export const INTERCOM_MIME_TYPES = {
-  COLLECTION: "application/vnd.dust.intercom.collection",
-  CONVERSATIONS: "application/vnd.dust.intercom.teams-folder",
-  CONVERSATION: "application/vnd.dust.intercom.conversation",
-  TEAM: "application/vnd.dust.intercom.team",
-  HELP_CENTER: "application/vnd.dust.intercom.help-center",
-  ARTICLE: "application/vnd.dust.intercom.article",
-};
+  (typeof MIME_TYPES.GOOGLE_DRIVE)[keyof typeof MIME_TYPES.GOOGLE_DRIVE];
 
 export type IntercomMimeType =
-  (typeof INTERCOM_MIME_TYPES)[keyof typeof INTERCOM_MIME_TYPES];
-
-export const MICROSOFT_MIME_TYPES = {
-  FOLDER: "application/vnd.dust.microsoft.folder",
-  // for files and spreadsheets, we keep Microsoft's mime types
-};
+  (typeof MIME_TYPES.INTERCOM)[keyof typeof MIME_TYPES.INTERCOM];
 
 export type MicrosoftMimeType =
-  (typeof MICROSOFT_MIME_TYPES)[keyof typeof MICROSOFT_MIME_TYPES];
-
-export const NOTION_MIME_TYPES = {
-  UNKNOWN_FOLDER: "application/vnd.dust.notion.unknown-folder",
-  DATABASE: "application/vnd.dust.notion.database",
-  PAGE: "application/vnd.dust.notion.page",
-};
+  (typeof MIME_TYPES.MICROSOFT)[keyof typeof MIME_TYPES.MICROSOFT];
 
 export type NotionMimeType =
-  (typeof NOTION_MIME_TYPES)[keyof typeof NOTION_MIME_TYPES];
-
-export const SLACK_MIME_TYPES = {
-  CHANNEL: "application/vnd.dust.slack.channel",
-  THREAD: "application/vnd.dust.slack.thread",
-  MESSAGES: "application/vnd.dust.slack.messages",
-};
+  (typeof MIME_TYPES.NOTION)[keyof typeof MIME_TYPES.NOTION];
 
 export type SlackMimeType =
-  (typeof SLACK_MIME_TYPES)[keyof typeof SLACK_MIME_TYPES];
-
-export const SNOWFLAKE_MIME_TYPES = {
-  DATABASE: "application/vnd.snowflake.database",
-  SCHEMA: "application/vnd.snowflake.schema",
-  TABLE: "application/vnd.snowflake.table",
-};
+  (typeof MIME_TYPES.SLACK)[keyof typeof MIME_TYPES.SLACK];
 
 export type SnowflakeMimeType =
-  (typeof SNOWFLAKE_MIME_TYPES)[keyof typeof SNOWFLAKE_MIME_TYPES];
-
-export const WEBCRAWLER_MIME_TYPES = {
-  FOLDER: "application/vnd.dust.webcrawler.folder",
-  // pages are upserted as text/html, not an internal mime type
-};
+  (typeof MIME_TYPES.SNOWFLAKE)[keyof typeof MIME_TYPES.SNOWFLAKE];
 
 export type WebcrawlerMimeType =
-  (typeof WEBCRAWLER_MIME_TYPES)[keyof typeof WEBCRAWLER_MIME_TYPES];
-
-export const ZENDESK_MIME_TYPES = {
-  BRAND: "application/vnd.dust.zendesk.brand",
-  HELP_CENTER: "application/vnd.dust.zendesk.helpcenter",
-  CATEGORY: "application/vnd.dust.zendesk.category",
-  ARTICLE: "application/vnd.dust.zendesk.article",
-  TICKETS: "application/vnd.dust.zendesk.tickets",
-  TICKET: "application/vnd.dust.zendesk.ticket",
-};
+  (typeof MIME_TYPES.WEBCRAWLER)[keyof typeof MIME_TYPES.WEBCRAWLER];
 
 export type ZendeskMimeType =
-  (typeof ZENDESK_MIME_TYPES)[keyof typeof ZENDESK_MIME_TYPES];
+  (typeof MIME_TYPES.ZENDESK)[keyof typeof MIME_TYPES.ZENDESK];
 
 export type DustMimeType =
   | ConfluenceMimeType
