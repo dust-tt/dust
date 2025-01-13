@@ -13,6 +13,7 @@ import {
   HandThumbDownIcon,
   HandThumbUpIcon,
   InformationCircleIcon,
+  LockIcon,
   Page,
   Sheet,
   SheetContainer,
@@ -267,11 +268,14 @@ export function AssistantDetails({
 }: AssistantDetailsProps) {
   const [isUpdatingScope, setIsUpdatingScope] = useState(false);
   const [selectedTab, setSelectedTab] = useState("info");
-  const { agentConfiguration, isAgentConfigurationValidating } =
-    useAgentConfiguration({
-      workspaceId: owner.sId,
-      agentConfigurationId: assistantId,
-    });
+  const {
+    agentConfiguration,
+    isAgentConfigurationValidating,
+    isAgentConfigurationError,
+  } = useAgentConfiguration({
+    workspaceId: owner.sId,
+    agentConfigurationId: assistantId,
+  });
 
   const doUpdateScope = useUpdateAgentScope({
     owner,
@@ -379,6 +383,18 @@ export function AssistantDetails({
                 />
               )}
             </div>
+          )}
+          {isAgentConfigurationError?.error.type ===
+            "agent_configuration_not_found" && (
+            <ContentMessage
+              variant="amber"
+              title="Not Available"
+              icon={LockIcon}
+              size="md"
+            >
+              This is a private assistant that can't be shared with other
+              workspace members.
+            </ContentMessage>
           )}
         </SheetContainer>
       </SheetContent>
