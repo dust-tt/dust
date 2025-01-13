@@ -1,5 +1,13 @@
 import { ConnectorProvider } from "../front/data_source";
 
+/**
+ * This is a utility type that indicates that we removed all underscores from a string.
+ * This is used because we don't want underscores in mime types.
+ */
+type WithoutUnderscores<T extends string> = T extends `${infer A}_${infer B}`
+  ? WithoutUnderscores<`${A}${B}`> // operates recursively to remove all underscores
+  : T;
+
 function getMimeTypes<
   P extends ConnectorProvider,
   T extends Uppercase<string>[]
@@ -10,7 +18,7 @@ function getMimeTypes<
   provider: P;
   resourceTypes: T;
 }): {
-  [K in T[number]]: `application/vnd.dust.${P}.${Lowercase<K>}`;
+  [K in T[number]]: `application/vnd.dust.${WithoutUnderscores<P>}.${Lowercase<K>}`;
 } {
   return resourceTypes.reduce(
     (acc, s) => ({
@@ -18,7 +26,7 @@ function getMimeTypes<
       s: `application/vnd.dust.${provider.replace("_", "")}.${s.toLowerCase()}`,
     }),
     {} as {
-      [K in T[number]]: `application/vnd.dust.${P}.${Lowercase<K>}`;
+      [K in T[number]]: `application/vnd.dust.${WithoutUnderscores<P>}.${Lowercase<K>}`;
     }
   );
 }
@@ -42,8 +50,7 @@ export const MIME_TYPES = {
     ],
   }),
   GOOGLE_DRIVE: getMimeTypes({
-    // @ts-expect-error: we have an inconsistency here in that we have been using "googledrive" in the mime type instead of the ConnectorProvider "google_drive"
-    provider: "googledrive", // TODO: see if we backfill into google_drive
+    provider: "google_drive",
     resourceTypes: ["FOLDER"], // for files and spreadsheets, we keep Google's mime types
   }),
   INTERCOM: getMimeTypes({
