@@ -8,7 +8,10 @@ use elasticsearch::{
 use serde_json::json;
 use url::Url;
 
-use crate::{data_sources::node::Node, utils};
+use crate::{
+    data_sources::node::{CoreContentNode, Node},
+    utils,
+};
 use tracing::{error, info};
 
 #[derive(serde::Deserialize)]
@@ -30,7 +33,7 @@ pub trait SearchStore {
         query: String,
         filter: Vec<DatasourceViewFilter>,
         options: Option<NodesSearchOptions>,
-    ) -> Result<Vec<Node>>;
+    ) -> Result<Vec<CoreContentNode>>;
 
     async fn index_node(&self, node: Node) -> Result<()>;
     async fn delete_node(&self, node: Node) -> Result<()>;
@@ -84,7 +87,7 @@ impl SearchStore for ElasticsearchSearchStore {
         query: String,
         filter: Vec<DatasourceViewFilter>,
         options: Option<NodesSearchOptions>,
-    ) -> Result<Vec<Node>> {
+    ) -> Result<Vec<CoreContentNode>> {
         // First, collect all datasource_ids and their corresponding view_filters
         let mut filter_conditions = Vec::new();
         for f in filter {
@@ -119,20 +122,53 @@ impl SearchStore for ElasticsearchSearchStore {
                         "should": filter_conditions,
                         "minimum_should_match": 1
                     }
-                }
+                },
+                "runtime_mappings": {
+                    "has_children": {
+                        "type": "boolean",
+                        "script": {
+                            "source": "def children = searchInternalByField('parent_id', doc['node_id'].value); emit(children.size() > 0);"
+                        }
+                    },
+                    "parent_title": {
+                        "type": "keyword",
+                        "script": {
+                            "source": "if (!doc['parent_id'].isEmpty()) { def parents = searchInternalByField('node_id', doc['parent_id'].value); if (parents.size() > 0) { emit(parents[0].title); } }"
+                        }
+                    }
+                },
+                "fields": ["*", "has_children", "parent_title"],
+                "_source": true
             }))
             .send()
             .await?;
 
         match response.status_code().is_success() {
             true => {
-                // get nodes from elasticsearch response in hits.hits
                 let response_body = response.json::<serde_json::Value>().await?;
-                let nodes: Vec<Node> = response_body["hits"]["hits"]
+                let nodes: Vec<CoreContentNode> = response_body["hits"]["hits"]
                     .as_array()
                     .unwrap()
                     .iter()
-                    .map(|h| Node::from(h.get("_source").unwrap().clone()))
+                    .map(|h| {
+                        let base = Node::from(h.get("_source").unwrap().clone());
+                        let has_children = h
+                            .get("fields")
+                            .and_then(|fields| fields.get("has_children"))
+                            .and_then(|arr| arr.get(0))
+                            .and_then(|v| v.as_bool())
+                            .unwrap_or(false);
+
+                        let parent_title = h
+                            .get("fields")
+                            .and_then(|fields| fields.get("parent_title"))
+                            .and_then(|arr| arr.get(0))
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("")
+                            .to_string();
+
+                        CoreContentNode::new(base, has_children, parent_title)
+                    })
                     .collect();
                 Ok(nodes)
             }
