@@ -21,6 +21,226 @@ export type ProviderField = {
   type?: string;
 };
 
+type ProviderConfig = {
+  title: string;
+  fields: {
+    name: string;
+    placeholder: string;
+    type?: string;
+  }[];
+  instructions: React.ReactNode;
+};
+
+export const MODEL_PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
+  openai: {
+    title: "OpenAI",
+    fields: [{ name: "api_key", placeholder: "OpenAI API Key" }],
+    instructions: (
+      <>
+        <p>
+          To use OpenAI models you must provide your API key. It can be found{" "}
+          <a
+            className="font-bold text-action-600 hover:text-action-500"
+            href="https://platform.openai.com/account/api-keys"
+            target="_blank"
+          >
+            here
+          </a>
+          .
+        </p>
+        <p className="mt-2">
+          We'll never use your API key for anything other than to run your apps.
+        </p>
+      </>
+    ),
+  },
+  azure_openai: {
+    title: "Azure OpenAI",
+    fields: [
+      { name: "endpoint", placeholder: "Azure OpenAI Endpoint" },
+      { name: "api_key", placeholder: "Azure OpenAI API Key" },
+    ],
+    instructions: (
+      <>
+        <p>
+          To use Azure OpenAI models you must provide your API key and Endpoint.
+          They can be found in the left menu of your OpenAI Azure Resource
+          portal (menu item `Keys and Endpoint`).
+        </p>
+        <p className="mt-2">
+          We'll never use your API key for anything other than to run your apps.
+        </p>
+      </>
+    ),
+  },
+  anthropic: {
+    title: "Anthropic",
+    fields: [{ name: "api_key", placeholder: "Anthropic API Key" }],
+    instructions: (
+      <>
+        <p>
+          To use Anthropic models you must provide your API key. It can be found{" "}
+          <a
+            className="font-bold text-action-600 hover:text-action-500"
+            href="https://console.anthropic.com/account/keys"
+            target="_blank"
+          >
+            here
+          </a>
+          &nbsp;(you can create a new key specifically for Dust).
+        </p>
+        <p className="mt-2">
+          We'll never use your API key for anything other than to run your apps.
+        </p>
+      </>
+    ),
+  },
+  mistral: {
+    title: "Mistral AI",
+    fields: [{ name: "api_key", placeholder: "Mistral AI API Key" }],
+    instructions: (
+      <>
+        <p>
+          To use Mistral AI models you must provide your API key. It can be
+          found{" "}
+          <a
+            className="font-bold text-action-600 hover:text-action-500"
+            href="https://console.mistral.ai/api-keys/"
+            target="_blank"
+          >
+            here
+          </a>
+          &nbsp;(you can create a new key specifically for Dust).
+        </p>
+        <p className="mt-2">
+          We'll never use your API key for anything other than to run your apps.
+        </p>
+      </>
+    ),
+  },
+  google_ai_studio: {
+    title: "Google AI Studio",
+    fields: [{ name: "api_key", placeholder: "Google AI Studio API Key" }],
+    instructions: (
+      <>
+        <p>
+          To use Google AI Studio models you must provide your API key. It can
+          be found{" "}
+          <a
+            className="font-bold text-action-600 hover:text-action-500"
+            href="https://aistudio.google.com/app/apikey"
+            target="_blank"
+          >
+            here
+          </a>
+          &nbsp;(you can create a new key specifically for Dust).
+        </p>
+        <p className="mt-2">
+          We'll never use your API key for anything other than to run your apps.
+        </p>
+      </>
+    ),
+  },
+  togetherai: {
+    title: "TogetherAI",
+    fields: [{ name: "api_key", placeholder: "TogetherAI API Key" }],
+    instructions: (
+      <>
+        <p>To use TogetherAI models you must provide your API key.</p>
+        <p className="mt-2">
+          We'll never use your API key for anything other than to run your apps.
+        </p>
+      </>
+    ),
+  },
+  deepseek: {
+    title: "Deepseek",
+    fields: [{ name: "api_key", placeholder: "Deepseek API Key" }],
+    instructions: (
+      <>
+        <p>To use Deepseek models you must provide your API key.</p>
+        <p className="mt-2">
+          We'll never use your API key for anything other than to run your apps.
+        </p>
+      </>
+    ),
+  },
+};
+
+export const SERVICE_PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
+  serpapi: {
+    title: "SerpAPI Search",
+    fields: [{ name: "api_key", placeholder: "SerpAPI API Key" }],
+    instructions: (
+      <>
+        <p>
+          SerpAPI lets you search Google (and other search engines). To use
+          SerpAPI you must provide your API key. It can be found{" "}
+          <a
+            className="font-bold text-action-600 hover:text-action-500"
+            href="https://serpapi.com/manage-api-key"
+            target="_blank"
+          >
+            here
+          </a>
+        </p>
+        <p className="mt-2">
+          We'll never use your API key for anything other than to run your apps.
+        </p>
+      </>
+    ),
+  },
+  serper: {
+    title: "Serper Search",
+    fields: [{ name: "api_key", placeholder: "Serper API Key" }],
+    instructions: (
+      <>
+        <p>
+          Serper lets you search Google (and other search engines). To use
+          Serper you must provide your API key. It can be found{" "}
+          <a
+            className="font-bold text-action-600 hover:text-action-500"
+            href="https://serper.dev/api-key"
+            target="_blank"
+          >
+            here
+          </a>
+        </p>
+        <p className="mt-2">
+          We'll never use your API key for anything other than to run your apps.
+        </p>
+      </>
+    ),
+  },
+  browserlessapi: {
+    title: "Browserless API",
+    fields: [{ name: "api_key", placeholder: "Browserless API Key" }],
+    instructions: (
+      <>
+        <p>
+          Browserless lets you use headless browsers to scrape web content. To
+          use Browserless, you must provide your API key. It can be found{" "}
+          <a
+            className="font-bold text-action-600 hover:text-action-500"
+            href="https://cloud.browserless.io/account/"
+            target="_blank"
+          >
+            here
+          </a>
+          .
+        </p>
+        <p className="mt-2">
+          Note that it generally takes <span className="font-bold">5 mins</span>{" "}
+          for the API key to become active (an email is sent when it's ready).
+        </p>
+        <p className="mt-2">
+          We'll never use your API key for anything other than to run your apps.
+        </p>
+      </>
+    ),
+  },
+};
+
 export interface ProviderSetupProps {
   owner: WorkspaceType;
   providerId: string;
