@@ -76,9 +76,10 @@ async function backfillDataSource(
   let nextId = 0;
   let updatedRowsCount;
   do {
-    const rows: { id: number; node_id: string }[] = await coreSequelize.query(
-      `
-          SELECT dsn.id, dsn.node_id
+    const rows: { id: number; node_id: string; mime_type: string }[] =
+      await coreSequelize.query(
+        `
+          SELECT dsn.id, dsn.node_id, dsn.mime_type
           FROM data_sources_nodes dsn
                    JOIN data_sources ds ON ds.id = dsn.data_source
           WHERE dsn.id > :nextId
@@ -87,16 +88,16 @@ async function backfillDataSource(
             AND dsn.node_id LIKE 'github-code-%' -- leverages the btree
           ORDER BY dsn.id
           LIMIT :batchSize;`,
-      {
-        replacements: {
-          dataSourceId: frontDataSource.dustAPIDataSourceId,
-          projectId: frontDataSource.dustAPIProjectId,
-          batchSize: BATCH_SIZE,
-          nextId,
-        },
-        type: QueryTypes.SELECT,
-      }
-    );
+        {
+          replacements: {
+            dataSourceId: frontDataSource.dustAPIDataSourceId,
+            projectId: frontDataSource.dustAPIProjectId,
+            batchSize: BATCH_SIZE,
+            nextId,
+          },
+          type: QueryTypes.SELECT,
+        }
+      );
 
     if (rows.length == 0) {
       logger.info({ nextId }, `Finished processing data source.`);
@@ -105,6 +106,7 @@ async function backfillDataSource(
     nextId = rows[rows.length - 1].id;
     updatedRowsCount = rows.length;
 
+    const mimeTypes = rows.map((row) => getMimeTypeForNodeId(row.node_id));
     if (execute) {
       await coreSequelize.query(
         `WITH pairs AS (
@@ -114,18 +116,17 @@ async function backfillDataSource(
          SET mime_type = p.mime_type
          FROM pairs p
          WHERE dsn.id = p.id;`,
-        {
-          replacements: {
-            mimeTypes: rows.map((row) => getMimeTypeForNodeId(row.node_id)),
-            ids: rows.map((row) => row.id),
-          },
-        }
+        { replacements: { mimeTypes, ids: rows.map((row) => row.id) } }
       );
       logger.info(
         `Updated chunk from ${rows[0].id} to ${rows[rows.length - 1].id}`
       );
     } else {
       logger.info(
+        {
+          fromMimeTypes: rows.map((row) => row.mime_type),
+          toMimeTypes: mimeTypes,
+        },
         `Would update chunk from ${rows[0].id} to ${rows[rows.length - 1].id}`
       );
     }
