@@ -781,6 +781,8 @@ export type AgentConfigurationViewType = z.infer<
 
 const AgentUsageTypeSchema = z.object({
   messageCount: z.number(),
+  conversationCount: z.number(),
+  userCount: z.number(),
   timePeriodSec: z.number(),
 });
 

@@ -127,7 +127,7 @@ async function handler(
           }))
           .filter((r) => r.user),
         mentions: {
-          messageCount: mentionCounts?.count ?? 0,
+          messageCount: mentionCounts?.messageCount ?? 0,
           conversationCount: mentionCounts?.conversationCount ?? 0,
           timePeriodSec: mentionCounts?.timePeriodSec ?? period * 60 * 60 * 24,
         },
