@@ -1,13 +1,23 @@
-import { Dialog } from "@dust-tt/sparkle";
+import {
+  NewDialog,
+  NewDialogContainer,
+  NewDialogContent,
+  NewDialogDescription,
+  NewDialogHeader,
+  NewDialogTitle,
+  Spinner,
+} from "@dust-tt/sparkle";
 import type {
   DataSourceViewType,
   LightWorkspaceType,
   PlanType,
 } from "@dust-tt/types";
-import { concurrentExecutor } from "@dust-tt/types";
-import { getSupportedNonImageFileExtensions } from "@dust-tt/types";
+import {
+  concurrentExecutor,
+  getSupportedNonImageFileExtensions,
+} from "@dust-tt/types";
 import type { ChangeEvent } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import { DocumentLimitPopup } from "@app/components/data_source/DocumentLimitPopup";
 import type {
@@ -168,26 +178,32 @@ export const MultipleDocumentsUpload = ({
         onClose={() => setIsLimitPopupOpen(false)}
         owner={owner}
       />
-      <Dialog
-        onCancel={() => {
-          //no-op as we can't cancel file upload
-        }}
-        onValidate={() => {
-          //no-op as we can't cancel file upload
-        }}
-        // isSaving is always true since we are showing this Dialog while
-        // uploading files only
-        isSaving={true}
-        isOpen={isBulkFilesUploading !== null}
-        title="Uploading files"
-      >
-        {isBulkFilesUploading && (
-          <>
-            Processing files {isBulkFilesUploading.completed} /{" "}
-            {isBulkFilesUploading.total}
-          </>
-        )}
-      </Dialog>
+      <NewDialog open={isBulkFilesUploading !== null}>
+        <NewDialogContent
+          size="md"
+          isAlertDialog
+          onOpenAutoFocus={(e) => e.preventDefault()}
+        >
+          <NewDialogHeader hideButton>
+            <NewDialogTitle>Uploading files</NewDialogTitle>
+            <NewDialogDescription>
+              {isBulkFilesUploading && (
+                <>
+                  Processing files {isBulkFilesUploading.completed} /{" "}
+                  {isBulkFilesUploading.total}
+                </>
+              )}
+            </NewDialogDescription>
+          </NewDialogHeader>
+          <NewDialogContainer>
+            {isBulkFilesUploading && (
+              <div className="flex justify-center">
+                <Spinner variant="dark" size="md" />
+              </div>
+            )}
+          </NewDialogContainer>
+        </NewDialogContent>
+      </NewDialog>
       <input
         className="hidden"
         type="file"

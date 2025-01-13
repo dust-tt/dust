@@ -2,17 +2,23 @@ import {
   Button,
   CardIcon,
   Chip,
-  Dialog,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   MoreIcon,
+  NewDialog,
+  NewDialogContainer,
+  NewDialogContent,
+  NewDialogDescription,
+  NewDialogFooter,
+  NewDialogHeader,
+  NewDialogTitle,
   Page,
   ShapesIcon,
   Spinner,
+  useSendNotification,
 } from "@dust-tt/sparkle";
-import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   SubscriptionPerSeatPricing,
   SubscriptionType,
@@ -457,29 +463,47 @@ function SkipFreeTrialDialog({
   plan: SubscriptionType["plan"];
 }) {
   return (
-    <Dialog
-      isOpen={show}
-      title={`End trial`}
-      onCancel={onClose}
-      validateLabel="End trial & get full access"
-      validateVariant="primary"
-      onValidate={() => {
-        onValidate();
+    <NewDialog
+      open={show}
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose();
+        }
       }}
-      isSaving={isSaving}
     >
-      <Page.Vertical gap="md">
-        <Page.P>
-          Ending your trial will allow you to invite more than{" "}
-          {plan.limits.users.maxUsers} members to your workspace.
-        </Page.P>
-        <Page.P>
-          {(() => {
-            if (workspaceSeats === 1) {
+      <NewDialogContent size="md">
+        <NewDialogHeader>
+          <NewDialogTitle>End trial</NewDialogTitle>
+          <NewDialogDescription>
+            Ending your trial will allow you to invite more than{" "}
+            {plan.limits.users.maxUsers} members to your workspace.
+          </NewDialogDescription>
+        </NewDialogHeader>
+        <NewDialogContainer>
+          {isSaving ? (
+            <div className="flex justify-center py-8">
+              <Spinner variant="dark" size="md" />
+            </div>
+          ) : (
+            (() => {
+              if (workspaceSeats === 1) {
+                return (
+                  <>
+                    Billing will start immediately for your workspace. <br />
+                    Currently: {workspaceSeats} member,{" "}
+                    {getPriceAsString({
+                      currency: perSeatPricing.seatCurrency,
+                      priceInCents: perSeatPricing.seatPrice,
+                    })}
+                    monthly (excluding taxes).
+                  </>
+                );
+              }
               return (
                 <>
-                  Billing will start immediately for your workspace. <br />
-                  Currently: {workspaceSeats} member,{" "}
+                  Billing will start immediately for your workspace:.
+                  <br />
+                  Currently: {workspaceSeats} members,{" "}
                   {getPriceAsString({
                     currency: perSeatPricing.seatCurrency,
                     priceInCents: perSeatPricing.seatPrice,
@@ -487,23 +511,22 @@ function SkipFreeTrialDialog({
                   monthly (excluding taxes).
                 </>
               );
-            }
-            return (
-              <>
-                Billing will start immediately for your workspace:.
-                <br />
-                Currently: {workspaceSeats} members,{" "}
-                {getPriceAsString({
-                  currency: perSeatPricing.seatCurrency,
-                  priceInCents: perSeatPricing.seatPrice,
-                })}
-                monthly (excluding taxes).
-              </>
-            );
-          })()}
-        </Page.P>
-      </Page.Vertical>
-    </Dialog>
+            })()
+          )}
+        </NewDialogContainer>
+        <NewDialogFooter
+          leftButtonProps={{
+            label: "Cancel",
+            variant: "outline",
+          }}
+          rightButtonProps={{
+            label: "End trial & get full access",
+            variant: "primary",
+            onClick: onValidate,
+          }}
+        />
+      </NewDialogContent>
+    </NewDialog>
   );
 }
 
@@ -519,25 +542,43 @@ function CancelFreeTrialDialog({
   isSaving: boolean;
 }) {
   return (
-    <Dialog
-      isOpen={show}
-      title={`Cancel subscription`}
-      onCancel={onClose}
-      validateLabel="Yes, cancel subscription"
-      validateVariant="warning"
-      onValidate={onValidate}
-      isSaving={isSaving}
+    <NewDialog
+      open={show}
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose();
+        }
+      }}
     >
-      <Page.Vertical gap="md">
-        <Page.P>
-          <span className="font-bold">
+      <NewDialogContent size="md">
+        <NewDialogHeader>
+          <NewDialogTitle>Cancel subscription</NewDialogTitle>
+          <NewDialogDescription>
             All your workspace data will be deleted and you will lose access to
             your Dust workspace.
-          </span>
-        </Page.P>
-
-        <Page.P>Are you sure you want to cancel ?</Page.P>
-      </Page.Vertical>
-    </Dialog>
+          </NewDialogDescription>
+        </NewDialogHeader>
+        <NewDialogContainer>
+          {isSaving ? (
+            <div className="flex justify-center py-8">
+              <Spinner variant="dark" size="md" />
+            </div>
+          ) : (
+            <div className="font-bold">Are you sure you want to proceed?</div>
+          )}
+        </NewDialogContainer>
+        <NewDialogFooter
+          leftButtonProps={{
+            label: "Cancel",
+            variant: "outline",
+          }}
+          rightButtonProps={{
+            label: "Yes, cancel subscription",
+            variant: "warning",
+            onClick: onValidate,
+          }}
+        />
+      </NewDialogContent>
+    </NewDialog>
   );
 }
