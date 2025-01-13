@@ -11,6 +11,7 @@ import {
   changeZendeskClientSubdomain,
   createZendeskClient,
   fetchZendeskArticlesInCategory,
+  fetchZendeskBrand,
   fetchZendeskCategoriesInBrand,
   fetchZendeskManyUsers,
   fetchZendeskTicketComments,
@@ -178,6 +179,7 @@ export async function syncZendeskBrandActivity({
 
 /**
  * Retrieves the IDs of every brand in db that has read permissions on their Help Center or in one of their Categories.
+ * Removes the permissions beforehand for Help Center that have been deleted or disabled on Zendesk.
  * This activity will be used to retrieve the brands that need to be incrementally synced.
  *
  * Note: in this approach; if a single category has read permissions and not its Help Center,
@@ -189,7 +191,36 @@ export async function getZendeskHelpCenterReadAllowedBrandIdsActivity(
   // fetching the brands that have a Help Center selected as a whole
   const brandsWithHelpCenter =
     await ZendeskBrandResource.fetchHelpCenterReadAllowedBrandIds(connectorId);
-  // fetching the brands that have at least one Category selected
+
+  // cleaning up Brands (resp. Help Centers) that don't exist on Zendesk anymore (resp. have been deleted)
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error("[Zendesk] Connector not found.");
+  }
+  const { subdomain, accessToken } = await getZendeskSubdomainAndAccessToken(
+    connector.connectionId
+  );
+  for (const brandId of brandsWithHelpCenter) {
+    const fetchedBrand = await fetchZendeskBrand({
+      accessToken,
+      subdomain,
+      brandId,
+    });
+    const brandInDb = await ZendeskBrandResource.fetchByBrandId({
+      connectorId,
+      brandId,
+    });
+    if (!fetchedBrand) {
+      await brandInDb?.revokeTicketsPermissions();
+      await brandInDb?.revokeHelpCenterPermissions();
+    } else if (!fetchedBrand.has_help_center) {
+      await brandInDb?.revokeHelpCenterPermissions();
+    }
+  }
+
+  // fetching the brands that have at least one Category selected:
+  // we need to do that because we can only fetch diffs at the brand level.
+  // We will filter later on the categories allowed.
   const brandWithCategories =
     await ZendeskCategoryResource.fetchBrandIdsOfReadOnlyCategories(
       connectorId
