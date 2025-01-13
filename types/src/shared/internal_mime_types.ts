@@ -61,9 +61,9 @@ export const MIME_TYPES = {
     provider: "github",
     resourceTypes: [
       "REPOSITORY",
-      "CODE.ROOT",
-      "CODE.DIRECTORY",
-      "CODE.FILE",
+      "CODE_ROOT",
+      "CODE_DIRECTORY",
+      "CODE_FILE",
       "ISSUES",
       "ISSUE",
       "DISCUSSIONS",

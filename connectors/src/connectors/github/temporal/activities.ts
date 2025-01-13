@@ -960,7 +960,7 @@ export async function githubCodeSyncActivity({
     title: "Code",
     parents: [getCodeRootInternalId(repoId), getRepositoryInternalId(repoId)],
     parentId: getRepositoryInternalId(repoId),
-    mimeType: MIME_TYPES.GITHUB["CODE.ROOT"],
+    mimeType: MIME_TYPES.GITHUB.CODE_ROOT,
   });
 
   let githubCodeRepository = await GithubCodeRepository.findOne({
@@ -1172,7 +1172,7 @@ export async function githubCodeSyncActivity({
               sync_type: isBatchSync ? "batch" : "incremental",
             },
             title: f.fileName,
-            mimeType: MIME_TYPES.GITHUB["CODE.FILE"],
+            mimeType: MIME_TYPES.GITHUB.CODE_FILE,
             async: true,
           });
 
@@ -1216,7 +1216,7 @@ export async function githubCodeSyncActivity({
           parents,
           parentId: parents[1],
           title: d.dirName,
-          mimeType: MIME_TYPES.GITHUB["CODE.DIRECTORY"],
+          mimeType: MIME_TYPES.GITHUB.CODE_DIRECTORY,
         });
 
         // Find directory or create it.
@@ -1422,6 +1422,6 @@ export async function githubUpsertCodeRootFolderActivity({
     title: "Code",
     parents: [getCodeRootInternalId(repoId), getRepositoryInternalId(repoId)],
     parentId: getRepositoryInternalId(repoId),
-    mimeType: MIME_TYPES.GITHUB["CODE.ROOT"],
+    mimeType: MIME_TYPES.GITHUB.CODE_ROOT,
   });
 }
