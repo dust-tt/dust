@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-export function HubSpotForm() {
+export default function HubSpotForm() {
   useEffect(() => {
     // Add script dynamically
     const script = document.createElement("script");
@@ -21,14 +21,5 @@ export function HubSpotForm() {
       data-form-id="31e790e5-f4d5-4c79-acc5-acd770fe8f84"
       data-portal-id="144442587"
     />
-  );
-}
-
-// Add a default export that uses the HubSpot form component
-export default function Page() {
-  return (
-    <div>
-      <HubSpotForm />
-    </div>
   );
 }

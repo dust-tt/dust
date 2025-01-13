@@ -9,10 +9,11 @@ import {
   shapeNames,
 } from "@app/components/home/Particles";
 import TrustedBy from "@app/components/home/TrustedBy";
+// import HubSpotForm from "@app/components/home/HubSpotForm";
 
 const HubSpotForm = dynamic(
-  () => import("./HubSpotForm").then((mod) => mod.HubSpotForm),
-  { ssr: false }
+  () => import("@app/components/home/HubSpotForm").then((mod) => mod.default)
+  // { ssr: false }
 );
 
 export async function getServerSideProps() {
