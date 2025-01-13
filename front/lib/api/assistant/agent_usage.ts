@@ -285,7 +285,24 @@ export async function signalAgentUsage({
 
   if (agentMessageCountTTL !== TTL_KEY_NOT_EXIST) {
     // We only want to increment if the counts have already been computed
-    await redis.hIncrBy(agentMessageCountKey, agentConfigurationId, 1);
+    const usage = await redis.hGet(agentMessageCountKey, agentConfigurationId);
+    if (usage) {
+      const value = JSON.parse(usage);
+      const newValue =
+        typeof value === "object"
+          ? { ...value, messageCount: value.messageCount + 1 }
+          : {
+              messageCount: value + 1,
+              conversationCount: 0,
+              userCount: 0,
+            };
+
+      await redis.hSet(
+        agentMessageCountKey,
+        agentConfigurationId,
+        JSON.stringify(newValue)
+      );
+    }
   }
 }
 
