@@ -70,7 +70,7 @@ export const BenefitsSection: FC<BenefitsSectionProps> = ({
             key={index}
             title={<>{benefit.title}</>}
             content={<>{benefit.description}</>}
-            className="h-full"
+            className="h-full flex-1"
           >
             <Hover3D
               depth={-20}

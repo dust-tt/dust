@@ -80,7 +80,7 @@ export const UseCasesSection: FC<UseCasesSectionProps> = ({
       </H2>
     </div>
 
-    <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:gap-16">
+    <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:gap-x-16 lg:gap-y-16">
       {useCases.map((useCase, index) => (
         <ImgBlock key={index} title={useCase.title} content={useCase.content}>
           <Hover3D depth={-20} perspective={1000} className="relative">

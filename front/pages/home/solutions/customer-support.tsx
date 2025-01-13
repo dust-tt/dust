@@ -141,10 +141,10 @@ const supportUseCases: UseCase[] = [
     content:
       "Smart answer suggestions and contextual knowledge at your fingertips.",
     images: [
-      "/static/landing/solutions/front1.png",
-      "/static/landing/solutions/front1.png",
-      "/static/landing/solutions/front1.png",
-      "/static/landing/solutions/front1.png",
+      "/static/landing/solutions/support1.png",
+      "/static/landing/solutions/support1.png",
+      "/static/landing/solutions/support1.png",
+      "/static/landing/solutions/support1.png",
     ],
   },
   {
@@ -152,10 +152,10 @@ const supportUseCases: UseCase[] = [
     content:
       "Helps support agents learn best practices and company knowledge faster.",
     images: [
-      "/static/landing/slack/slack1.png",
-      "/static/landing/slack/slack2.png",
-      "/static/landing/slack/slack3.png",
-      "/static/landing/slack/slack4.png",
+      "/static/landing/solutions/support2.png",
+      "/static/landing/solutions/support2.png",
+      "/static/landing/solutions/support2.png",
+      "/static/landing/solutions/support2.png",
     ],
   },
   {
@@ -163,10 +163,10 @@ const supportUseCases: UseCase[] = [
     content:
       "Converts resolved support tickets into searchable knowledge base articles and FAQ.",
     images: [
-      "/static/landing/slack/slack1.png",
-      "/static/landing/slack/slack2.png",
-      "/static/landing/slack/slack3.png",
-      "/static/landing/slack/slack4.png",
+      "/static/landing/solutions/support3.png",
+      "/static/landing/solutions/support3.png",
+      "/static/landing/solutions/support3.png",
+      "/static/landing/solutions/support3.png",
     ],
   },
   {
@@ -174,10 +174,10 @@ const supportUseCases: UseCase[] = [
     content:
       "Turn customer feedback from every channel into actionable insights.",
     images: [
-      "/static/landing/slack/slack1.png",
-      "/static/landing/slack/slack2.png",
-      "/static/landing/slack/slack3.png",
-      "/static/landing/slack/slack4.png",
+      "/static/landing/solutions/support4.png",
+      "/static/landing/solutions/support4.png",
+      "/static/landing/solutions/support4.png",
+      "/static/landing/solutions/support4.png",
     ],
   },
 ];
@@ -313,7 +313,7 @@ export default function CustomerSupport() {
           </div>
           <div
             className={classNames(
-              "flex flex-col gap-8",
+              "flex flex-col gap-8 pb-12",
               "col-span-12",
               "lg:12 lg:col-start-1",
               "xl:col-span-12 xl:col-start-1",
