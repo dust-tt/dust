@@ -270,8 +270,6 @@ export async function processTranscriptActivity(
       assertNever(transcriptsConfiguration.provider);
   }
 
-  const tooShortToProcess = transcriptContent.length < minTranscriptsSize;
-
   const owner = auth.workspace();
 
   if (!owner) {
