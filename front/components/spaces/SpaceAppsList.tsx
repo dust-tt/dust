@@ -8,7 +8,12 @@ import {
   Spinner,
   usePaginationFromUrl,
 } from "@dust-tt/sparkle";
-import type { ConnectorType, SpaceType, WorkspaceType } from "@dust-tt/types";
+import type {
+  AppType,
+  ConnectorType,
+  SpaceType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
 import { sortBy } from "lodash";
 import { useRouter } from "next/router";
@@ -18,9 +23,16 @@ import { useState } from "react";
 import * as React from "react";
 
 import { SpaceCreateAppModal } from "@app/components/spaces/SpaceCreateAppModal";
-import { useApps } from "@app/lib/swr/apps";
+import type { Action } from "@app/lib/registry";
+import {
+  DustProdActionRegistry,
+  PRODUCTION_DUST_APPS_SPACE_ID,
+  PRODUCTION_DUST_APPS_WORKSPACE_ID,
+} from "@app/lib/registry";
+import { useApps, useSavedRunStatus } from "@app/lib/swr/apps";
 
 type RowData = {
+  app: AppType;
   category: string;
   name: string;
   icon: ComponentType;
@@ -42,6 +54,64 @@ const getTableColumns = () => {
       accessorFn: (row: RowData) => row.name,
     },
   ];
+};
+
+const getDustAppsColumns = (owner: WorkspaceType) => ({
+  id: "hash",
+  cell: (info: CellContext<RowData, string>) => {
+    const app = info.row.original.app;
+    const registryApp = Object.values(DustProdActionRegistry).find(
+      (action) => action.app.appId === app.sId
+    );
+    console.log("app", Object.values(DustProdActionRegistry), app, registryApp);
+    if (!registryApp) {
+      return (
+        <DataTable.CellContent>
+          <span>No registry app</span>
+        </DataTable.CellContent>
+      );
+    }
+    return (
+      <DataTable.CellContent>
+        <AppHashChecker owner={owner} app={app} registryApp={registryApp.app} />
+      </DataTable.CellContent>
+    );
+  },
+  accessorFn: (row: RowData) => row.name,
+});
+
+const AppHashChecker = ({
+  owner,
+  app,
+  registryApp,
+}: {
+  owner: WorkspaceType;
+  app: AppType;
+  registryApp: Action["app"];
+}) => {
+  const { run, isRunError } = useSavedRunStatus(owner, app, (data) => {
+    if (data && data.run) {
+      switch (data?.run.status.run) {
+        case "running":
+          return 100;
+        default:
+          return 0;
+      }
+    }
+    return 0;
+  });
+
+  if (isRunError) {
+    return <span>{isRunError.error?.message}</span>;
+  }
+
+  return registryApp.appHash &&
+    run?.app_hash &&
+    registryApp.appHash !== run.app_hash ? (
+    <span>Different hash</span>
+  ) : (
+    ""
+  );
 };
 
 interface SpaceAppsListProps {
@@ -73,6 +143,7 @@ export const SpaceAppsList = ({
   const rows: RowData[] = React.useMemo(
     () =>
       sortBy(apps, "name").map((app) => ({
+        app,
         sId: app.sId,
         category: "apps",
         name: app.name,
@@ -89,6 +160,14 @@ export const SpaceAppsList = ({
         <Spinner size="lg" />
       </div>
     );
+  }
+
+  const columns = getTableColumns();
+  if (
+    owner.sId === PRODUCTION_DUST_APPS_WORKSPACE_ID &&
+    space.sId === PRODUCTION_DUST_APPS_SPACE_ID
+  ) {
+    columns.push(getDustAppsColumns(owner));
   }
 
   return (
@@ -140,7 +219,7 @@ export const SpaceAppsList = ({
           </div>
           <DataTable
             data={rows}
-            columns={getTableColumns()}
+            columns={columns}
             className="pb-4"
             filter={appSearch}
             filterColumn="name"
