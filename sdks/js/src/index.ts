@@ -70,10 +70,14 @@ interface DustResponse {
   status: number;
   ok: boolean;
   url: string;
-  body: Readable;
+  body: Readable | string;
 }
 
 const textFromResponse = async (response: DustResponse): Promise<string> => {
+  if (typeof response.body === "string") {
+    return response.body;
+  }
+
   const stream = response.body;
 
   return new Promise((resolve, reject) => {
@@ -1044,7 +1048,7 @@ export class DustAPI {
   ): Promise<Result<{ response: DustResponse; duration: number }, APIError>> {
     const now = Date.now();
     try {
-      const res = await axiosNoKeepAlive<Readable>(url, {
+      const res = await axiosNoKeepAlive<Readable | string>(url, {
         validateStatus: () => true,
         responseType: "stream",
         ...config,
