@@ -947,6 +947,7 @@ export type ConversationVisibility = z.infer<
 const ConversationWithoutContentSchema = z.object({
   id: ModelIdSchema,
   created: z.number(),
+  updated: z.number().optional(),
   owner: WorkspaceSchema,
   sId: z.string(),
   title: z.string().nullable(),
