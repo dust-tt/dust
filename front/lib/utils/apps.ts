@@ -2,6 +2,7 @@ import type { ApiAppType } from "@dust-tt/client";
 import { DustAPI } from "@dust-tt/client";
 import type { CoreAPIError, Result } from "@dust-tt/types";
 import { CoreAPI, credentialsFromProviders, Err, Ok } from "@dust-tt/types";
+import _ from "lodash";
 
 import { default as apiConfig, default as config } from "@app/lib/api/config";
 import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
@@ -22,7 +23,9 @@ async function updateOrCreateApp(
     appToImport: ApiAppType;
     space: SpaceResource;
   }
-) {
+): Promise<
+  Result<{ app: AppResource; updated: boolean }, Error | CoreAPIError>
+> {
   const existingApps = await AppResource.listBySpace(auth, space, {
     includeDeleted: true,
   });
@@ -91,7 +94,7 @@ async function updateDatasets(
     app: AppResource;
     datasetsToImport: ApiAppType["datasets"];
   }
-) {
+): Promise<Result<boolean, CoreAPIError>> {
   if (datasetsToImport) {
     const owner = auth.getNonNullableWorkspace();
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
@@ -121,7 +124,7 @@ async function updateDatasets(
       );
       if (dataset) {
         if (
-          dataset.schema !== datasetToImport.schema ||
+          !_.isEqual(dataset.schema, datasetToImport.schema) ||
           dataset.description !== datasetToImport.description
         ) {
           await dataset.update({
@@ -154,7 +157,7 @@ async function updateAppSpecifications(
     savedSpecification: string;
     savedConfig: string;
   }
-) {
+): Promise<Result<{ updated: boolean; hash?: string }, CoreAPIError>> {
   // Specification and config have been modified and need to be imported
   if (
     savedSpecification !== app.savedSpecification &&
@@ -235,7 +238,12 @@ export async function importApp(
   auth: Authenticator,
   space: SpaceResource,
   appToImport: ApiAppType
-) {
+): Promise<
+  Result<
+    { app: AppResource; hash?: string; updated: boolean },
+    CoreAPIError | Error
+  >
+> {
   const appRes = await updateOrCreateApp(auth, {
     appToImport,
     space,
@@ -305,11 +313,11 @@ export async function importApp(
   return new Ok({ app, hash: undefined, updated });
 }
 
-type ImportRes = {
+interface ImportRes {
   sId: string;
   name: string;
   hash?: string;
-};
+}
 
 export async function importApps(
   auth: Authenticator,
@@ -335,15 +343,15 @@ export async function importApps(
 export async function synchronizeDustApps(
   auth: Authenticator,
   space: SpaceResource
-) {
+): Promise<Result<ImportRes[], Error | CoreAPIError>> {
   if (!apiConfig.getDustAppsSyncEnabled()) {
-    return new Ok(false);
+    return new Ok([]);
   }
 
   const syncMasterApi = new DustAPI(
     apiConfig.getDustAPIConfig(),
     {
-      apiKey: apiConfig.getDustAppsSyncMasterApiKey(), // TODO: Use a secret instead
+      apiKey: apiConfig.getDustAppsSyncMasterApiKey(),
       workspaceId: apiConfig.getDustAppsSyncMasterWorkspaceId(),
     },
     logger,
@@ -355,7 +363,8 @@ export async function synchronizeDustApps(
   });
 
   if (exportRes.isErr()) {
-    return exportRes;
+    const e = exportRes.error;
+    return new Err(new Error(`Cannot export: ${e.message}`));
   }
 
   const importRes = await importApps(auth, space, exportRes.value);
@@ -363,5 +372,5 @@ export async function synchronizeDustApps(
     return importRes;
   }
   logger.info({ importedApp: importRes.value }, "Apps imported successfully");
-  return new Ok(true);
+  return importRes;
 }

@@ -45,7 +45,7 @@ async function handler(
     case "GET":
       const apps = await AppResource.listBySpace(auth, space);
 
-      const enhancedApps = await await concurrentExecutor(
+      const enhancedApps = await concurrentExecutor(
         apps.filter((app) => app.canRead(auth)),
         async (app) => {
           const datasetsFromFront = await getDatasets(auth, app.toJSON());
@@ -57,7 +57,7 @@ async function handler(
               dataset.name,
               "latest"
             );
-            datasets.push(fromCore || dataset);
+            datasets.push(fromCore ?? dataset);
           }
           return { ...app.toJSON(), datasets };
         },

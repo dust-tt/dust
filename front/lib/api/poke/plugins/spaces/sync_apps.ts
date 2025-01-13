@@ -4,7 +4,7 @@ import { createPlugin } from "@app/lib/api/poke/types";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { synchronizeDustApps } from "@app/lib/utils/apps";
 
-export const syncApps = createPlugin(
+export const syncAppsPlugin = createPlugin(
   {
     id: "sync-apps",
     name: "Sync dust-apps",
@@ -33,8 +33,8 @@ export const syncApps = createPlugin(
     }
 
     return new Ok({
-      display: "text",
-      value: "Apps successfully synced",
+      display: "json",
+      value: { importedApp: result.value },
     });
   }
 );
