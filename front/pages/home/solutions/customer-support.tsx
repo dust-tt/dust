@@ -71,12 +71,11 @@ const pageSettings: pageSettingsProps = {
 
 // Settings for Hero section
 const supportHeroProps = {
-  uptitle: "Customer Support",
-  title: "Instant knowledge, exceptional support.",
-  description:
-    "Equip your team with AI assistants to accelerate issue resolution and increase customer satisfaction.",
-  fromColor: "from-sky-200",
-  toColor: "to-sky-500",
+  uptitle: pageSettings.uptitle,
+  title: pageSettings.title,
+  description: pageSettings.description,
+  fromColor: pageSettings.from,
+  toColor: pageSettings.to,
   visuals: [
     {
       src: "/static/landing/support/support1.png",
