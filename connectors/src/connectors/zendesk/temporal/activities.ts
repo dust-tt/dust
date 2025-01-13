@@ -192,7 +192,7 @@ export async function getZendeskHelpCenterReadAllowedBrandIdsActivity(
   const brandsWithHelpCenter =
     await ZendeskBrandResource.fetchHelpCenterReadAllowedBrandIds(connectorId);
 
-  // cleaning up brands that don't have an enabled help center anymore
+  // cleaning up Brands (resp. Help Centers) that don't exist on Zendesk anymore (resp. have been deleted)
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
