@@ -14,12 +14,17 @@ import type { AgentActionSpecification } from "@dust-tt/types";
 import type { SpecificationType } from "@dust-tt/types";
 import type { DatasetSchema } from "@dust-tt/types";
 import type { Result } from "@dust-tt/types";
-import { BaseAction, getHeaderFromGroupIds } from "@dust-tt/types";
+import {
+  BaseAction,
+  getHeaderFromGroupIds,
+  SUPPORTED_MODEL_CONFIGS,
+} from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 
 import { DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY } from "@app/lib/api/assistant/actions/constants";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
+import { renderConversationForModel } from "@app/lib/api/assistant/generation";
 import config from "@app/lib/api/config";
 import { getDatasetSchema } from "@app/lib/api/datasets";
 import type { Authenticator } from "@app/lib/auth";
@@ -341,9 +346,54 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
     // As we run the app (using a system API key here), we do force using the workspace credentials so
     // that the app executes in the exact same conditions in which they were developed.
     if (shouldIncludeConversationHistory) {
-      params[DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY] = JSON.stringify(
-        conversation.content
+      const model = SUPPORTED_MODEL_CONFIGS.find(
+        (m) =>
+          m.modelId === agentConfiguration.model.modelId &&
+          m.providerId === agentConfiguration.model.providerId
       );
+      if (!model) {
+        yield {
+          type: "dust_app_run_error",
+          created: Date.now(),
+          configurationId: agentConfiguration.sId,
+          messageId: agentMessage.sId,
+          error: {
+            code: "dust_app_run_error",
+            message: `Model not found: ${agentConfiguration.model.modelId}`,
+          },
+        };
+        return;
+      }
+      const MIN_GENERATION_TOKENS = 2048;
+      const allowedTokenCount = model.contextSize - MIN_GENERATION_TOKENS;
+      const prompt = "";
+
+      const convoRes = await renderConversationForModel(auth, {
+        conversation,
+        model,
+        prompt,
+        allowedTokenCount,
+        excludeImages: true,
+      });
+      if (convoRes.isErr()) {
+        yield {
+          type: "dust_app_run_error",
+          created: Date.now(),
+          configurationId: agentConfiguration.sId,
+          messageId: agentMessage.sId,
+          error: {
+            code: "dust_app_run_error",
+            message: `Error rendering conversation for model: ${convoRes.error.message}`,
+          },
+        };
+        return;
+      }
+
+      const renderedConvo = convoRes.value;
+      const messages = renderedConvo.modelConversation.messages;
+
+      params[DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY] =
+        JSON.stringify(messages);
     }
 
     const runRes = await api.runAppStreamed(
