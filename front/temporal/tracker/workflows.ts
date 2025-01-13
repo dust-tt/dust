@@ -45,11 +45,12 @@ export async function trackersGenerationWorkflow(
     signaled = true;
   });
 
-  const shouldRun = await shouldRunTrackersActivity(
+  const shouldRun = await shouldRunTrackersActivity({
     workspaceId,
     dataSourceId,
-    documentId
-  );
+    documentId,
+    dataSourceConnectorProvider,
+  });
 
   if (!shouldRun) {
     return;
