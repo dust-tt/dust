@@ -11,12 +11,12 @@ import type { ReactElement } from "react-markdown/lib/react-markdown";
 import {
   UseCasesSection,
   type UseCase,
-} from "@app/components/home/content/Product/UseCasesSection";
+} from "@app/components/home/content/Solutions/UseCasesSection";
 
 import {
   CustomerStoriesSection,
   type CustomerStory,
-} from "@app/components/home/content/Product/CustomerStoriesSection";
+} from "@app/components/home/content/Solutions/CustomerStoriesSection";
 
 import {
   CarousselContentBlock,
@@ -34,10 +34,10 @@ import type { SolutionSectionAssistantBlockProps } from "@app/components/home/So
 import {
   BenefitsSection,
   type Benefit,
-} from "@app/components/home/content/Product/BenefitsSection";
+} from "@app/components/home/content/Solutions/BenefitsSection";
 import TrustedBy from "@app/components/home/TrustedBy";
 import { classNames } from "@app/lib/utils";
-import { HeroSection } from "@app/components/home/content/Product/HeroSection";
+import { HeroSection } from "@app/components/home/content/Solutions/HeroSection";
 
 export async function getServerSideProps() {
   return {
@@ -231,51 +231,6 @@ export default function CustomerSupport() {
       <div className="container flex w-full flex-col gap-0 px-6 pb-12">
         <HeroSection {...supportHeroProps} />
         <Grid>
-          {/* <div
-            className={classNames(
-              "col-span-12 mx-auto py-4 pt-12 sm:max-w-[100%] md:max-w-[90%]",
-              "lg:col-span-6 lg:col-start-1 lg:h-[100%] lg:max-w-[100%]",
-              "2xl:col-span-6",
-              "flex flex-col justify-center"
-            )}
-          >
-            <P size="lg">Dust for {pageSettings.uptitle}</P>
-            <H1 from={pageSettings.from} to={pageSettings.to}>
-              {pageSettings.title}
-            </H1>
-            <P size="lg" className="pb-6 text-slate-50">
-              {pageSettings.description}
-            </P>
-            <div className="flex gap-4">
-              <Link href="/home/pricing" shallow={true}>
-                <Button
-                  variant="highlight"
-                  size="md"
-                  label="Get started"
-                  icon={RocketIcon}
-                />
-              </Link>
-              <Button
-                variant="outline"
-                size="md"
-                label="Talk to sales"
-                href="https://forms.gle/dGaQ1AZuDCbXY1ft9"
-                target="_blank"
-              />
-            </div>
-          </div>
-          <div
-            className={classNames(
-              "col-span-12 mx-auto px-4 py-4 pt-12 sm:max-w-[100%] md:max-w-[90%]",
-              "lg:col-span-6 lg:col-start-7 lg:h-[100%] lg:max-w-[100%]",
-              "2xl:col-span-6",
-              "hidden lg:block"
-            )}
-          >
-            <div className="flex h-full w-full items-center justify-center xl:px-8">
-              {MainVisualImage()}
-            </div>
-          </div> */}
           <div
             className={classNames(
               "flex flex-col gap-8",
