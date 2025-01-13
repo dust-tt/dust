@@ -122,7 +122,7 @@ async function migrateFolderDataSourcesParents(
   let staticDataSources;
   do {
     staticDataSources = await DataSourceModel.findAll({
-      where: { connectorProvider: null, id: { [Op.gte]: startId } },
+      where: { connectorProvider: null, id: { [Op.gt]: startId } },
       limit: DATASOURCE_BATCH_SIZE,
       order: [["id", "ASC"]],
     });
@@ -146,7 +146,7 @@ async function migrateFolderDataSourcesParents(
 }
 
 makeScript(
-  { nextDataSourceId: { type: "number", default: 0 } },
+  { nextDataSourceId: { type: "number", default: -1 } },
   async ({ nextDataSourceId, execute }, logger) => {
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
     await migrateFolderDataSourcesParents(
