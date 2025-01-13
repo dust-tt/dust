@@ -21,7 +21,7 @@
     "@aaronhayes/react-use-hubspot-form": "^2.1.1",
     "@auth0/nextjs-auth0": "^3.5.0",
     "@dust-tt/client": "file:../sdks/js",
-    "@dust-tt/sparkle": "^0.2.362-alpha",
+    "@dust-tt/sparkle": "^0.2.362",
     "@dust-tt/types": "file:../types",
     "@headlessui/react": "^1.7.7",
     "@heroicons/react": "^2.0.11",
