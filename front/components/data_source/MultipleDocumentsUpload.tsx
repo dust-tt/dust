@@ -152,9 +152,9 @@ export const MultipleDocumentsUpload = ({
   const { droppedFiles, setDroppedFiles } = useFileDrop();
   useEffect(() => {
     const handleDroppedFiles = async () => {
+      await uploadFiles(droppedFiles);
       // Make sure the files are cleared after processing
       setDroppedFiles([]);
-      await uploadFiles(droppedFiles);
     };
     void handleDroppedFiles();
   }, [droppedFiles, setDroppedFiles, uploadFiles]);
