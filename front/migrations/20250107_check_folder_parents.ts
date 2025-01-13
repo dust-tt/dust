@@ -66,7 +66,9 @@ async function checkStaticDataSourceParents(
         })
       );
     });
-    nextId = nodes[nodes.length - 1].id;
+    if (nodes.length > 0) {
+      nextId = nodes[nodes.length - 1].id;
+    }
   } while (nodes.length === SELECT_BATCH_SIZE);
 }
 
