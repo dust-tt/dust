@@ -200,20 +200,24 @@ export const MetricComponent = ({
   from,
   to,
 }: MetricComponentProps) => (
-  <div>
+  <div className="grid w-full grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-2">
+    {" "}
     {metrics.map((metric, index) => (
       <div
         key={index}
-        className="col-span-6 flex flex-col items-center gap-4 py-4 text-center"
+        className="flex flex-col items-center gap-4 py-4 text-center"
       >
+        {" "}
         <H1 from={from} to={to}>
-          {metric.value}
-        </H1>
+          {" "}
+          {metric.value}{" "}
+        </H1>{" "}
         <P size="lg" className="max-w-[400px] text-white">
-          {metric.description}
-        </P>
+          {" "}
+          {metric.description}{" "}
+        </P>{" "}
       </div>
-    ))}
+    ))}{" "}
   </div>
 );
 
