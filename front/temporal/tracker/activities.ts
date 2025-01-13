@@ -427,11 +427,26 @@ export async function trackersGenerationActivity(
   }
 }
 
-export async function shouldRunTrackersActivity(
-  workspaceId: string,
-  dataSourceId: string,
-  documentId: string
-): Promise<boolean> {
+export async function shouldRunTrackersActivity({
+  workspaceId,
+  dataSourceId,
+  documentId,
+  dataSourceConnectorProvider,
+}: {
+  workspaceId: string;
+  dataSourceId: string;
+  documentId: string;
+  dataSourceConnectorProvider: ConnectorProvider | null;
+}): Promise<boolean> {
+  if (
+    dataSourceConnectorProvider === "slack" &&
+    !documentId.includes("-thread-")
+  ) {
+    // Special case for Slack -- we only run trackers for threads (and not for "non-threaded messages"
+    // otherwise we end up running the tracker twice a a thread is initially a non-threaded message.
+    return false;
+  }
+
   const auth = await Authenticator.internalBuilderForWorkspace(workspaceId);
 
   const dataSource = await DataSourceResource.fetchById(auth, dataSourceId);
