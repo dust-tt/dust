@@ -56,16 +56,16 @@ const Content = () => {
     };
 
     conversations.forEach((conversation) => {
-      const createdDate = moment(conversation.created);
-      if (createdDate.isSameOrAfter(today)) {
+      const updatedAt = moment(conversation.updated ?? conversation.created);
+      if (updatedAt.isSameOrAfter(today)) {
         groups["Today"].push(conversation);
-      } else if (createdDate.isSameOrAfter(yesterday)) {
+      } else if (updatedAt.isSameOrAfter(yesterday)) {
         groups["Yesterday"].push(conversation);
-      } else if (createdDate.isSameOrAfter(lastWeek)) {
+      } else if (updatedAt.isSameOrAfter(lastWeek)) {
         groups["Last Week"].push(conversation);
-      } else if (createdDate.isSameOrAfter(lastMonth)) {
+      } else if (updatedAt.isSameOrAfter(lastMonth)) {
         groups["Last Month"].push(conversation);
-      } else if (createdDate.isSameOrAfter(lastYear)) {
+      } else if (updatedAt.isSameOrAfter(lastYear)) {
         groups["Last 12 Months"].push(conversation);
       } else {
         groups["Older"].push(conversation);

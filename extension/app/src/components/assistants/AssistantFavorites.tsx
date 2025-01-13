@@ -10,6 +10,8 @@ export function AssistantFavorites() {
     isAgentConfigurationsError,
   } = usePublicAgentConfigurations("favorites", ["authors"]);
 
+  console.log(agentConfigurations);
+
   const { setSelectedAssistant } = useContext(InputBarContext);
 
   const handleAssistantClick = useCallback(
