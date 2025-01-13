@@ -15,11 +15,12 @@ import {
   NavigationListLabel,
   PlusIcon,
   RobotIcon,
+  SearchInput,
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { useSendNotification } from "@dust-tt/sparkle";
-import type { ConversationType } from "@dust-tt/types";
+import type { ConversationWithoutContentType } from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";
 import { isBuilder, isOnlyUser } from "@dust-tt/types";
 import moment from "moment";
@@ -35,7 +36,7 @@ import {
   useConversations,
   useDeleteConversation,
 } from "@app/lib/swr/conversations";
-import { classNames } from "@app/lib/utils";
+import { classNames, removeDiacritics, subFilter } from "@app/lib/utils";
 
 type AssistantSidebarMenuProps = {
   owner: WorkspaceType;
@@ -59,7 +60,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
   });
   const [isMultiSelect, setIsMultiSelect] = useState(false);
   const [selectedConversations, setSelectedConversations] = useState<
-    ConversationType[]
+    ConversationWithoutContentType[]
   >([]);
   const doDelete = useDeleteConversation(owner);
 
@@ -67,6 +68,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
     "all" | "selection" | null
   >(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [titleFilter, setTitleFilter] = useState<string>("");
   const sendNotification = useSendNotification();
 
   const toggleMultiSelect = useCallback(() => {
@@ -75,7 +77,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
   }, [setIsMultiSelect, setSelectedConversations]);
 
   const toggleConversationSelection = useCallback(
-    (c: ConversationType) => {
+    (c: ConversationWithoutContentType) => {
       if (selectedConversations.includes(c)) {
         setSelectedConversations((prev) => prev.filter((id) => id !== c));
       } else {
@@ -122,14 +124,16 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
     setShowDeleteDialog(null);
   }, [conversations, doDelete, sendNotification]);
 
-  const groupConversationsByDate = (conversations: ConversationType[]) => {
+  const groupConversationsByDate = (
+    conversations: ConversationWithoutContentType[]
+  ) => {
     const today = moment().startOf("day");
     const yesterday = moment().subtract(1, "days").startOf("day");
     const lastWeek = moment().subtract(1, "weeks").startOf("day");
     const lastMonth = moment().subtract(1, "months").startOf("day");
     const lastYear = moment().subtract(1, "years").startOf("day");
 
-    const groups: Record<GroupLabel, ConversationType[]> = {
+    const groups: Record<GroupLabel, ConversationWithoutContentType[]> = {
       Today: [],
       Yesterday: [],
       "Last Week": [],
@@ -138,7 +142,17 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
       Older: [],
     };
 
-    conversations.forEach((conversation: ConversationType) => {
+    conversations.forEach((conversation: ConversationWithoutContentType) => {
+      if (
+        titleFilter &&
+        !subFilter(
+          removeDiacritics(titleFilter).toLowerCase(),
+          removeDiacritics(conversation.title ?? "").toLowerCase()
+        )
+      ) {
+        return;
+      }
+
       const updatedAt = moment(conversation.updated ?? conversation.created);
       if (updatedAt.isSameOrAfter(today)) {
         groups["Today"].push(conversation);
@@ -160,7 +174,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
 
   const conversationsByDate = conversations.length
     ? groupConversationsByDate(conversations)
-    : ({} as Record<GroupLabel, ConversationType[]>);
+    : ({} as Record<GroupLabel, ConversationWithoutContentType[]>);
 
   const { setAnimate } = useContext(InputBarContext);
 
@@ -204,8 +218,15 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
               </div>
             ) : (
               <div className="z-50 flex justify-end gap-2 p-2 shadow-tale">
+                <SearchInput
+                  name="search"
+                  placeholder="Search (Title)"
+                  value={titleFilter}
+                  onChange={setTitleFilter}
+                />
                 <Button
                   href={`/w/${owner.sId}/assistant/new`}
+                  shallow
                   label="New"
                   icon={ChatBubbleBottomCenterPlusIcon}
                   className="shrink"
@@ -293,11 +314,11 @@ const RenderConversations = ({
   dateLabel,
   ...props
 }: {
-  conversations: ConversationType[];
+  conversations: ConversationWithoutContentType[];
   dateLabel: string;
   isMultiSelect: boolean;
-  selectedConversations: ConversationType[];
-  toggleConversationSelection: (c: ConversationType) => void;
+  selectedConversations: ConversationWithoutContentType[];
+  toggleConversationSelection: (c: ConversationWithoutContentType) => void;
   router: NextRouter;
   owner: WorkspaceType;
 }) => {
@@ -327,10 +348,10 @@ const RenderConversation = ({
   router,
   owner,
 }: {
-  conversation: ConversationType;
+  conversation: ConversationWithoutContentType;
   isMultiSelect: boolean;
-  selectedConversations: ConversationType[];
-  toggleConversationSelection: (c: ConversationType) => void;
+  selectedConversations: ConversationWithoutContentType[];
+  toggleConversationSelection: (c: ConversationWithoutContentType) => void;
   router: NextRouter;
   owner: WorkspaceType;
 }) => {
@@ -362,6 +383,7 @@ const RenderConversation = ({
           selected={router.query.cId === conversation.sId}
           label={conversationLabel}
           href={`/w/${owner.sId}/assistant/${conversation.sId}`}
+          shallow
         />
       )}
     </>

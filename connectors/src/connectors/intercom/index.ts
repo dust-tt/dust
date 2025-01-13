@@ -1,5 +1,9 @@
-import type { ConnectorPermission, ContentNode, Result } from "@dust-tt/types";
-import type { ContentNodesViewType } from "@dust-tt/types";
+import type {
+  ConnectorPermission,
+  ContentNode,
+  ContentNodesViewType,
+  Result,
+} from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import { Op } from "sequelize";
 
@@ -39,8 +43,10 @@ import type {
   RetrievePermissionsErrorCode,
   UpdateConnectorErrorCode,
 } from "@connectors/connectors/interface";
-import { ConnectorManagerError } from "@connectors/connectors/interface";
-import { BaseConnectorManager } from "@connectors/connectors/interface";
+import {
+  BaseConnectorManager,
+  ConnectorManagerError,
+} from "@connectors/connectors/interface";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import {
@@ -613,7 +619,6 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
     const nodes: ContentNode[] = [];
     for (const helpCenter of helpCenters) {
       nodes.push({
-        provider: "intercom",
         internalId: getHelpCenterInternalId(
           this.connectorId,
           helpCenter.helpCenterId
@@ -624,13 +629,11 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
         sourceUrl: null,
         expandable: true,
         permission: helpCenter.permission,
-        dustDocumentId: null,
         lastUpdatedAt: null,
       });
     }
     for (const collection of collections) {
       nodes.push({
-        provider: "intercom",
         internalId: getHelpCenterCollectionInternalId(
           this.connectorId,
           collection.collectionId
@@ -646,13 +649,11 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
         sourceUrl: collection.url,
         expandable: true,
         permission: collection.permission,
-        dustDocumentId: null,
         lastUpdatedAt: collection.lastUpsertedTs?.getTime() || null,
       });
     }
     for (const article of articles) {
       nodes.push({
-        provider: "intercom",
         internalId: getHelpCenterArticleInternalId(
           this.connectorId,
           article.articleId
@@ -668,13 +669,11 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
         sourceUrl: article.url,
         expandable: false,
         permission: article.permission,
-        dustDocumentId: null,
         lastUpdatedAt: article.lastUpsertedTs?.getTime() || null,
       });
     }
     if (isAllConversations) {
       nodes.push({
-        provider: "intercom",
         internalId: getTeamsInternalId(this.connectorId),
         parentInternalId: null,
         type: "channel",
@@ -685,13 +684,11 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
           intercomWorkspace.syncAllConversations === "activated"
             ? "read"
             : "none",
-        dustDocumentId: null,
         lastUpdatedAt: null,
       });
     }
     for (const team of teams) {
       nodes.push({
-        provider: "intercom",
         internalId: getTeamInternalId(this.connectorId, team.teamId),
         parentInternalId: getTeamsInternalId(this.connectorId),
         type: "channel",
@@ -699,7 +696,6 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
         sourceUrl: null,
         expandable: false,
         permission: team.permission,
-        dustDocumentId: null,
         lastUpdatedAt: null,
       });
     }

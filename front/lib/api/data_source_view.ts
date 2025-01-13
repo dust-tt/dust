@@ -203,7 +203,6 @@ async function getContentNodesForStaticDataSourceView(
           }
         }
         return {
-          dustDocumentId: doc.document_id,
           expandable: false,
           internalId: doc.document_id,
           lastUpdatedAt: doc.timestamp,
@@ -238,7 +237,6 @@ async function getContentNodesForStaticDataSourceView(
 
     const tablesAsContentNodes: DataSourceViewContentNode[] =
       tablesRes.value.tables.map((table) => ({
-        dustDocumentId: table.table_id,
         expandable: false,
         internalId: getContentNodeInternalIdFromTableId(
           dataSourceView,

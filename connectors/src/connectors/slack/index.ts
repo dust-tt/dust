@@ -1,11 +1,11 @@
 import type {
   ConnectorPermission,
   ContentNode,
+  ContentNodesViewType,
   ModelId,
   Result,
   SlackConfigurationType,
 } from "@dust-tt/types";
-import type { ContentNodesViewType } from "@dust-tt/types";
 import {
   Err,
   isSlackAutoReadPatterns,
@@ -20,8 +20,10 @@ import type {
   RetrievePermissionsErrorCode,
   UpdateConnectorErrorCode,
 } from "@connectors/connectors/interface";
-import { ConnectorManagerError } from "@connectors/connectors/interface";
-import { BaseConnectorManager } from "@connectors/connectors/interface";
+import {
+  BaseConnectorManager,
+  ConnectorManagerError,
+} from "@connectors/connectors/interface";
 import { getChannels } from "@connectors/connectors/slack//temporal/activities";
 import { getBotEnabled } from "@connectors/connectors/slack/bot";
 import { joinChannel } from "@connectors/connectors/slack/lib/channels";
@@ -397,7 +399,6 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
       }
 
       const resources: ContentNode[] = slackChannels.map((ch) => ({
-        provider: "slack",
         internalId: slackChannelInternalIdFromSlackChannelId(ch.slackChannelId),
         parentInternalId: null,
         type: "channel",
@@ -405,9 +406,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
         sourceUrl: `https://app.slack.com/client/${slackConfig.slackTeamId}/${ch.slackChannelId}`,
         expandable: false,
         permission: ch.permission,
-        dustDocumentId: null,
         lastUpdatedAt: null,
-        dustTableId: null,
         providerVisibility: ch.private ? "private" : "public",
       }));
 
@@ -621,7 +620,6 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
     });
 
     const contentNodes: ContentNode[] = channels.map((ch) => ({
-      provider: "slack",
       internalId: slackChannelInternalIdFromSlackChannelId(ch.slackChannelId),
       parentInternalId: null,
       type: "channel",
@@ -629,9 +627,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
       sourceUrl: `https://app.slack.com/client/${slackConfig.slackTeamId}/${ch.slackChannelId}`,
       expandable: false,
       permission: ch.permission,
-      dustDocumentId: null,
       lastUpdatedAt: null,
-      dustTableId: null,
       providerVisibility: ch.private ? "private" : "public",
     }));
 

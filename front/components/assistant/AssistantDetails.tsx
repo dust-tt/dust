@@ -2,7 +2,6 @@ import {
   Avatar,
   BarChartIcon,
   Button,
-  Card,
   CardGrid,
   ChatBubbleLeftRightIcon,
   ChatBubbleThoughtIcon,
@@ -14,6 +13,7 @@ import {
   HandThumbDownIcon,
   HandThumbUpIcon,
   InformationCircleIcon,
+  LockIcon,
   Page,
   Sheet,
   SheetContainer,
@@ -25,6 +25,7 @@ import {
   TabsList,
   TabsTrigger,
   Tooltip,
+  ValueCard,
 } from "@dust-tt/sparkle";
 import type {
   AgentConfigurationScope,
@@ -142,48 +143,49 @@ function AssistantDetailsPerformance({
         <Spinner />
       ) : (
         <CardGrid>
-          <Card variant="primary" size="md">
-            <div className="flex h-24 w-full flex-col gap-1 text-sm">
-              <div className="flex w-full gap-1 font-medium text-foreground">
-                <div className="w-full">Active Users</div>
-              </div>
-              <div className="flex flex-col gap-1 text-lg font-bold">
-                {agentAnalytics?.users ? (
-                  <>
-                    <div className="truncate text-element-900">
-                      {agentAnalytics.users.length}
-                    </div>
+          <ValueCard
+            title="Active Users"
+            content={
+              <div className="text-lg font-semibold text-foreground">
+                <div className="flex flex-col gap-1 text-lg font-bold">
+                  {agentAnalytics?.users ? (
+                    <>
+                      <div className="truncate text-element-900">
+                        {agentAnalytics.users.length}
+                      </div>
 
-                    <Avatar.Stack size="md" hasMagnifier={false}>
-                      {removeNulls(agentAnalytics.users.map((top) => top.user))
-                        .slice(0, 5)
-                        .map((user) => (
-                          <Tooltip
-                            key={user.id}
-                            trigger={
-                              <Avatar
-                                size="sm"
-                                name={user.fullName}
-                                visual={user.image}
-                              />
-                            }
-                            label={user.fullName}
-                          />
-                        ))}
-                    </Avatar.Stack>
-                  </>
-                ) : (
-                  "-"
-                )}
+                      <Avatar.Stack size="md" hasMagnifier={false}>
+                        {removeNulls(
+                          agentAnalytics.users.map((top) => top.user)
+                        )
+                          .slice(0, 5)
+                          .map((user) => (
+                            <Tooltip
+                              key={user.id}
+                              trigger={
+                                <Avatar
+                                  size="sm"
+                                  name={user.fullName}
+                                  visual={user.image}
+                                />
+                              }
+                              label={user.fullName}
+                            />
+                          ))}
+                      </Avatar.Stack>
+                    </>
+                  ) : (
+                    "-"
+                  )}
+                </div>
               </div>
-            </div>
-          </Card>
+            }
+            className="h-32"
+          />
 
-          <Card variant="primary" size="md">
-            <div className="flex h-24 w-full flex-col gap-1 text-sm">
-              <div className="flex w-full gap-1 font-medium text-foreground">
-                <div className="w-full">Reactions</div>
-              </div>
+          <ValueCard
+            title="Reactions"
+            content={
               <div className="flex flex-row gap-2 text-lg font-bold">
                 {agentConfiguration.scope !== "global" &&
                 agentAnalytics?.feedbacks ? (
@@ -205,13 +207,12 @@ function AssistantDetailsPerformance({
                   "-"
                 )}
               </div>
-            </div>
-          </Card>
-          <Card variant="primary" size="md">
-            <div className="flex h-24 w-full flex-col gap-1 text-sm">
-              <div className="flex w-full gap-1 font-medium text-foreground">
-                <div className="w-full">Conversations</div>
-              </div>
+            }
+            className="h-32"
+          />
+          <ValueCard
+            title="Conversations"
+            content={
               <div className="flex flex-row gap-2 text-lg font-bold">
                 <div className="flex flex-row items-center">
                   <div>
@@ -224,13 +225,12 @@ function AssistantDetailsPerformance({
                   </div>
                 </div>
               </div>
-            </div>
-          </Card>
-          <Card variant="primary" size="md">
-            <div className="flex h-24 w-full flex-col gap-1 text-sm">
-              <div className="flex w-full gap-1 font-medium text-foreground">
-                <div className="w-full">Messages</div>
-              </div>
+            }
+            className="h-32"
+          />
+          <ValueCard
+            title="Messages"
+            content={
               <div className="flex flex-row gap-2 text-lg font-bold">
                 <div className="flex flex-row items-center">
                   <div>
@@ -243,18 +243,19 @@ function AssistantDetailsPerformance({
                   </div>
                 </div>
               </div>
-            </div>
-          </Card>
+            }
+            className="h-32"
+          />
         </CardGrid>
       )}
       {agentConfiguration.scope !== "global" && (
-        <>
-          <Page.SectionHeader title="Feedbacks" />
+        <div>
+          <Page.SectionHeader title="Feedback" />
           <FeedbacksSection
             owner={owner}
             agentConfigurationId={agentConfiguration.sId}
           />
-        </>
+        </div>
       )}
     </>
   );
@@ -267,11 +268,14 @@ export function AssistantDetails({
 }: AssistantDetailsProps) {
   const [isUpdatingScope, setIsUpdatingScope] = useState(false);
   const [selectedTab, setSelectedTab] = useState("info");
-  const { agentConfiguration, isAgentConfigurationValidating } =
-    useAgentConfiguration({
-      workspaceId: owner.sId,
-      agentConfigurationId: assistantId,
-    });
+  const {
+    agentConfiguration,
+    isAgentConfigurationValidating,
+    isAgentConfigurationError,
+  } = useAgentConfiguration({
+    workspaceId: owner.sId,
+    agentConfigurationId: assistantId,
+  });
 
   const doUpdateScope = useUpdateAgentScope({
     owner,
@@ -379,6 +383,18 @@ export function AssistantDetails({
                 />
               )}
             </div>
+          )}
+          {isAgentConfigurationError?.error.type ===
+            "agent_configuration_not_found" && (
+            <ContentMessage
+              variant="amber"
+              title="Not Available"
+              icon={LockIcon}
+              size="md"
+            >
+              This is a private assistant that can't be shared with other
+              workspace members.
+            </ContentMessage>
           )}
         </SheetContainer>
       </SheetContent>

@@ -141,7 +141,7 @@ export function TablesManager({
                     currentTableId={table.table_id}
                     onTableUpdate={(selectedTable) => {
                       updateTableConfig(index, {
-                        table_id: selectedTable.dustDocumentId!,
+                        table_id: selectedTable.internalId,
                       });
                     }}
                     excludeTables={getSelectedTables()}

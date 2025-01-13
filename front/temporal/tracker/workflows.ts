@@ -39,17 +39,18 @@ export async function trackersGenerationWorkflow(
   documentHash: string,
   dataSourceConnectorProvider: ConnectorProvider | null
 ) {
-  let signaled = true;
+  let lastUpsertAt = Date.now();
 
   setHandler(newUpsertSignal, () => {
-    signaled = true;
+    lastUpsertAt = Date.now();
   });
 
-  const shouldRun = await shouldRunTrackersActivity(
+  const shouldRun = await shouldRunTrackersActivity({
     workspaceId,
     dataSourceId,
-    documentId
-  );
+    documentId,
+    dataSourceConnectorProvider,
+  });
 
   if (!shouldRun) {
     return;
@@ -57,22 +58,21 @@ export async function trackersGenerationWorkflow(
 
   const debounceMs = await getDebounceMsActivity(dataSourceConnectorProvider);
 
-  while (signaled) {
-    signaled = false;
-    await sleep(debounceMs);
-
-    if (signaled) {
-      continue;
-    }
-
-    await trackersGenerationActivity(
-      workspaceId,
-      dataSourceId,
-      documentId,
-      documentHash,
-      dataSourceConnectorProvider
-    );
+  function getSleepTime() {
+    return Math.max(0, lastUpsertAt + debounceMs - Date.now());
   }
+
+  while (getSleepTime() > 0) {
+    await sleep(getSleepTime());
+  }
+
+  await trackersGenerationActivity(
+    workspaceId,
+    dataSourceId,
+    documentId,
+    documentHash,
+    dataSourceConnectorProvider
+  );
 }
 
 /**

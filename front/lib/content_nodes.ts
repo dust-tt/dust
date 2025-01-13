@@ -6,10 +6,10 @@ import {
   LockIcon,
   Square3Stack3DIcon,
 } from "@dust-tt/sparkle";
-import type { BaseContentNode } from "@dust-tt/types";
+import type { ContentNode } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 
-function getVisualForFileContentNode(node: BaseContentNode & { type: "file" }) {
+function getVisualForFileContentNode(node: ContentNode & { type: "file" }) {
   if (node.expandable) {
     return DocumentPileIcon;
   }
@@ -17,7 +17,7 @@ function getVisualForFileContentNode(node: BaseContentNode & { type: "file" }) {
   return DocumentIcon;
 }
 
-export function getVisualForContentNode(node: BaseContentNode) {
+export function getVisualForContentNode(node: ContentNode) {
   switch (node.type) {
     case "channel":
       if (node.providerVisibility === "private") {
@@ -30,7 +30,7 @@ export function getVisualForContentNode(node: BaseContentNode) {
 
     case "file":
       return getVisualForFileContentNode(
-        node as BaseContentNode & { type: "file" }
+        node as ContentNode & { type: "file" }
       );
 
     case "folder":

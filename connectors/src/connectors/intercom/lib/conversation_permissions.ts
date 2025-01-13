@@ -134,7 +134,6 @@ export async function retrieveIntercomConversationsPermissions({
   if (isReadPermissionsOnly) {
     if (isRootLevel && isAllConversationsSynced) {
       nodes.push({
-        provider: "intercom",
         internalId: allTeamsInternalId,
         parentInternalId: null,
         type: "channel",
@@ -143,12 +142,10 @@ export async function retrieveIntercomConversationsPermissions({
         expandable: false,
         preventSelection: false,
         permission: isAllConversationsSynced ? "read" : "none",
-        dustDocumentId: null,
         lastUpdatedAt: null,
       });
     } else if (isRootLevel && hasTeamsWithReadPermission) {
       nodes.push({
-        provider: "intercom",
         internalId: allTeamsInternalId,
         parentInternalId: null,
         type: "channel",
@@ -157,7 +154,6 @@ export async function retrieveIntercomConversationsPermissions({
         expandable: true,
         preventSelection: false,
         permission: "read",
-        dustDocumentId: null,
         lastUpdatedAt: null,
       });
     }
@@ -165,7 +161,6 @@ export async function retrieveIntercomConversationsPermissions({
     if (parentInternalId === allTeamsInternalId) {
       teamsWithReadPermission.forEach((team) => {
         nodes.push({
-          provider: connector.type,
           internalId: getTeamInternalId(connectorId, team.teamId),
           parentInternalId: allTeamsInternalId,
           type: "folder",
@@ -173,7 +168,6 @@ export async function retrieveIntercomConversationsPermissions({
           sourceUrl: null,
           expandable: false,
           permission: team.permission,
-          dustDocumentId: null,
           lastUpdatedAt: null,
         });
       });
@@ -183,7 +177,6 @@ export async function retrieveIntercomConversationsPermissions({
     const teams = await fetchIntercomTeams({ accessToken });
     if (isRootLevel) {
       nodes.push({
-        provider: "intercom",
         internalId: allTeamsInternalId,
         parentInternalId: null,
         type: "channel",
@@ -192,7 +185,6 @@ export async function retrieveIntercomConversationsPermissions({
         expandable: true,
         preventSelection: false,
         permission: isAllConversationsSynced ? "read" : "none",
-        dustDocumentId: null,
         lastUpdatedAt: null,
       });
     }
@@ -202,7 +194,6 @@ export async function retrieveIntercomConversationsPermissions({
           return teamFromDb.teamId === team.id;
         });
         nodes.push({
-          provider: connector.type,
           internalId: getTeamInternalId(connectorId, team.id),
           parentInternalId: allTeamsInternalId,
           type: "folder",
@@ -210,7 +201,6 @@ export async function retrieveIntercomConversationsPermissions({
           sourceUrl: null,
           expandable: false,
           permission: isTeamInDb ? "read" : "none",
-          dustDocumentId: null,
           lastUpdatedAt: null,
         });
       });

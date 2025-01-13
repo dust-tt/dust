@@ -1,4 +1,4 @@
-import { HubspotProvider } from "@aaronhayes/react-use-hubspot-form";
+import dynamic from "next/dynamic";
 import type { ReactElement } from "react";
 
 import { HeaderContentBlock } from "@app/components/home/ContentBlocks";
@@ -9,7 +9,12 @@ import {
   shapeNames,
 } from "@app/components/home/Particles";
 import TrustedBy from "@app/components/home/TrustedBy";
-import { HubSpotForm } from "@app/pages/home/contact/hubspot/HubSpotForm";
+// import HubSpotForm from "@app/components/home/HubSpotForm";
+
+const HubSpotForm = dynamic(
+  () => import("@app/components/home/HubSpotForm").then((mod) => mod.default)
+  // { ssr: false }
+);
 
 export async function getServerSideProps() {
   return {
@@ -18,7 +23,8 @@ export async function getServerSideProps() {
     },
   };
 }
-function ContactContent() {
+
+export default function Contact() {
   return (
     <div className="flex w-full flex-col justify-center gap-12">
       <HeaderContentBlock
@@ -35,7 +41,7 @@ function ContactContent() {
       />
       <div className="grid grid-cols-12 items-start sm:gap-8 md:gap-y-12">
         <div className="col-span-12 flex flex-col justify-end gap-12 sm:col-span-12 lg:col-span-8 lg:col-start-2 xl:col-span-8 xl:col-start-2 2xl:col-start-3">
-          <div className="w-full max-w-150">
+          <div className="max-w-150 w-full">
             <HubSpotForm />
           </div>
         </div>
@@ -45,14 +51,6 @@ function ContactContent() {
   );
 }
 
-export default function Index() {
-  return (
-    <HubspotProvider>
-      <ContactContent />
-    </HubspotProvider>
-  );
-}
-
-Index.getLayout = (page: ReactElement, pageProps: LandingLayoutProps) => {
+Contact.getLayout = (page: ReactElement, pageProps: LandingLayoutProps) => {
   return <LandingLayout pageProps={pageProps}>{page}</LandingLayout>;
 };

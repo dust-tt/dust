@@ -207,15 +207,6 @@ export async function fetchZendeskBrand({
 }
 
 /**
- * Finds out whether a brand has a help center enabled.
- * has_help_center can be true without having an enabled help center, which leads to 404 when retreving categories.
- * @param brand A brand fetched from the Zendesk API.
- */
-export function isBrandHelpCenterEnabled(brand: ZendeskFetchedBrand): boolean {
-  return brand.has_help_center && brand.help_center_state === "enabled";
-}
-
-/**
  * Fetches a single article from the Zendesk API.
  */
 export async function fetchZendeskArticle({
@@ -256,17 +247,24 @@ export async function fetchZendeskCategoriesInBrand(
   hasMore: boolean;
   nextLink: string | null;
 }> {
-  const response = await fetchFromZendeskWithRetries({
-    url:
-      url ?? // using the URL if we got one, reconstructing it otherwise
-      `https://${brandSubdomain}.zendesk.com/api/v2/help_center/categories?page[size]=${pageSize}`,
-    accessToken,
-  });
-  return {
-    categories: response.categories,
-    hasMore: response.meta.has_more,
-    nextLink: response.links.next,
-  };
+  try {
+    const response = await fetchFromZendeskWithRetries({
+      url:
+        url ?? // using the URL if we got one, reconstructing it otherwise
+        `https://${brandSubdomain}.zendesk.com/api/v2/help_center/categories?page[size]=${pageSize}`,
+      accessToken,
+    });
+    return {
+      categories: response.categories,
+      hasMore: response.meta.has_more,
+      nextLink: response.links.next,
+    };
+  } catch (e) {
+    if (isZendeskNotFoundError(e)) {
+      return { categories: [], hasMore: false, nextLink: null };
+    }
+    throw e;
+  }
 }
 
 /**

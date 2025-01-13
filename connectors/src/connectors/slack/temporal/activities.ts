@@ -636,7 +636,7 @@ export async function syncNonThreaded(
       sync_type: isBatchSync ? "batch" : "incremental",
     },
     title: tags.find((t) => t.startsWith("title:"))?.split(":")[1] ?? "",
-    mimeType: SLACK_MIME_TYPES.THREAD,
+    mimeType: SLACK_MIME_TYPES.MESSAGES,
     async: true,
   });
 }

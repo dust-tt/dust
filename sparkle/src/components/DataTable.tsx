@@ -363,7 +363,14 @@ DataTable.Row = function Row({
       <td className="s-flex s-w-8 s-cursor-pointer s-items-center s-pl-1 s-text-element-600">
         {moreMenuItems && moreMenuItems.length > 0 && (
           <DropdownMenu {...dropdownMenuProps}>
-            <DropdownMenuTrigger asChild>
+            <DropdownMenuTrigger
+              // Necessary to allow clicking the dropdown in a table cell without clicking on the cell
+              // See https://github.com/radix-ui/primitives/issues/1242
+              onClick={(event) => {
+                event.stopPropagation();
+              }}
+              asChild
+            >
               <IconButton
                 icon={MoreIcon}
                 size="sm"
@@ -375,7 +382,14 @@ DataTable.Row = function Row({
             <DropdownMenuContent align="end">
               <DropdownMenuGroup>
                 {moreMenuItems?.map((item, index) => (
-                  <DropdownMenuItem key={index} {...item} />
+                  <DropdownMenuItem
+                    key={index}
+                    {...item}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      item.onClick?.(event);
+                    }}
+                  />
                 ))}
               </DropdownMenuGroup>
             </DropdownMenuContent>
