@@ -1,3 +1,4 @@
+import type { GithubMimeType } from "@dust-tt/types";
 import { MIME_TYPES } from "@dust-tt/types";
 import assert from "assert";
 import type { Sequelize } from "sequelize";
@@ -9,7 +10,7 @@ import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 
 const { CORE_DATABASE_URI } = process.env;
-const BATCH_SIZE = 16;
+const BATCH_SIZE = 256;
 
 type GithubContentNodeType = "REPO_CODE" | "REPO_CODE_DIR" | "REPO_CODE_FILE";
 
@@ -49,6 +50,19 @@ function matchGithubInternalIdType(internalId: string): {
     };
   }
   throw new Error(`Invalid Github internal id (code-only): ${internalId}`);
+}
+
+function getMimeTypeForNodeId(nodeId: string): GithubMimeType {
+  switch (matchGithubInternalIdType(nodeId).type) {
+    case "REPO_CODE":
+      return MIME_TYPES.GITHUB.CODE_ROOT;
+    case "REPO_CODE_DIR":
+      return MIME_TYPES.GITHUB.CODE_DIRECTORY;
+    case "REPO_CODE_FILE":
+      return MIME_TYPES.GITHUB.CODE_FILE;
+    default:
+      throw new Error(`Unreachable: unrecognized node_id: ${nodeId}`);
+  }
 }
 
 async function backfillDataSource(
@@ -102,20 +116,7 @@ async function backfillDataSource(
          WHERE dsn.id = p.id;`,
         {
           replacements: {
-            mimeTypes: rows.map((row) => {
-              switch (matchGithubInternalIdType(row.node_id).type) {
-                case "REPO_CODE":
-                  return MIME_TYPES.GITHUB.CODE_ROOT;
-                case "REPO_CODE_DIR":
-                  return MIME_TYPES.GITHUB.CODE_DIRECTORY;
-                case "REPO_CODE_FILE":
-                  return MIME_TYPES.GITHUB.CODE_FILE;
-                default:
-                  throw new Error(
-                    `Unreachable: unrecognized node_id: ${row.node_id}`
-                  );
-              }
-            }),
+            mimeTypes: rows.map((row) => getMimeTypeForNodeId(row.node_id)),
             ids: rows.map((row) => row.id),
           },
         }
