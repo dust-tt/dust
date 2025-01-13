@@ -26,7 +26,10 @@ import { useRouter } from "next/router";
 import { useMemo, useState } from "react";
 
 import { DeleteAssistantDialog } from "@app/components/assistant/DeleteAssistantDialog";
-import { assistantUsageMessage } from "@app/components/assistant/Usage";
+import {
+  assistantActiveUsersMessage,
+  assistantUsageMessage,
+} from "@app/components/assistant/Usage";
 import { SCOPE_INFO } from "@app/components/assistant_builder/Sharing";
 import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
 
@@ -124,6 +127,29 @@ const getTableColumns = () => {
             trigger={
               <span className="px-2">
                 {info.row.original.usage?.messageCount ?? 0}
+              </span>
+            }
+          />
+        </DataTable.CellContent>
+      ),
+      meta: {
+        width: "6rem",
+      },
+    },
+    {
+      header: "Active Users",
+      accessorKey: "usage.userCount",
+      cell: (info: CellContext<RowData, AgentUsageType | undefined>) => (
+        <DataTable.CellContent>
+          <Tooltip
+            label={assistantActiveUsersMessage({
+              usage: info.row.original.usage || null,
+              isLoading: false,
+              isError: false,
+            })}
+            trigger={
+              <span className="px-2">
+                {info.row.original.usage?.userCount ?? 0}
               </span>
             }
           />
@@ -236,6 +262,8 @@ export function AssistantsTable({
           name: agentConfiguration.name,
           usage: agentConfiguration.usage ?? {
             messageCount: 0,
+            conversationCount: 0,
+            userCount: 0,
             timePeriodSec: 30 * 24 * 60 * 60,
           },
           description: agentConfiguration.description,

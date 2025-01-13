@@ -34,13 +34,8 @@ const TTL_KEY_NOT_SET = -1;
 type AgentUsageCount = {
   agentId: string;
   messageCount: number;
-  timePeriodSec: number;
-};
-
-type MentionCount = {
-  agentId: string;
-  count: number;
   conversationCount: number;
+  userCount: number;
   timePeriodSec: number;
 };
 
@@ -89,11 +84,16 @@ export async function getAgentsUsage({
   // Retrieve and parse agents usage
   const agentsUsage = await redis.hGetAll(agentMessageCountKey);
   return Object.entries(agentsUsage)
-    .map(([agentId, count]) => ({
-      agentId,
-      messageCount: parseInt(count),
-      timePeriodSec: RANKING_TIMEFRAME_SEC,
-    }))
+    .map(([agentId, value]) => {
+      const parsed = JSON.parse(value);
+      return {
+        agentId,
+        conversationCount: 0,
+        userCount: 0,
+        ...(typeof parsed === "object" ? parsed : { messageCount: parsed }),
+        timePeriodSec: RANKING_TIMEFRAME_SEC,
+      };
+    })
     .sort((a, b) => b.messageCount - a.messageCount)
     .slice(0, limit);
 }
@@ -134,6 +134,8 @@ export async function getAgentUsage(
     ? {
         agentId: agentConfiguration.sId,
         messageCount: agentUsage,
+        conversationCount: 0,
+        userCount: 0,
         timePeriodSec: RANKING_TIMEFRAME_SEC,
       }
     : null;
@@ -143,7 +145,7 @@ export async function agentMentionsCount(
   workspaceId: number,
   agentConfiguration?: LightAgentConfigurationType,
   rankingUsageDays: number = RANKING_USAGE_DAYS
-): Promise<MentionCount[]> {
+): Promise<AgentUsageCount[]> {
   // We retrieve mentions from conversations in order to optimize the query
   // Since we need to filter out by workspace id, retrieving mentions first
   // would lead to retrieve every single messages
@@ -155,11 +157,18 @@ export async function agentMentionsCount(
       ],
       [
         Sequelize.fn("COUNT", Sequelize.literal('"messages->mentions"."id"')),
-        "count",
+        "messageCount",
       ],
       [
         Sequelize.fn("COUNT", Sequelize.literal("DISTINCT conversation.id")),
         "conversationCount",
+      ],
+      [
+        Sequelize.fn(
+          "COUNT",
+          Sequelize.literal('DISTINCT "messages->userMessage"."userId"')
+        ),
+        "userCount",
       ],
     ],
     where: {
@@ -185,6 +194,12 @@ export async function agentMentionsCount(
               },
             },
           },
+          {
+            model: UserMessage,
+            as: "userMessage",
+            required: true,
+            attributes: [],
+          },
         ],
       },
     ],
@@ -196,13 +211,15 @@ export async function agentMentionsCount(
   return mentions.map((mention) => {
     const castMention = mention as unknown as {
       agentConfigurationId: string;
-      count: number;
+      messageCount: number;
       conversationCount: number;
+      userCount: number;
     };
     return {
       agentId: castMention.agentConfigurationId,
-      count: castMention.count,
+      messageCount: castMention.messageCount,
       conversationCount: castMention.conversationCount,
+      userCount: castMention.userCount,
       timePeriodSec: rankingUsageDays * 24 * 60 * 60,
     };
   });
@@ -210,7 +227,7 @@ export async function agentMentionsCount(
 
 export async function storeCountsInRedis(
   workspaceId: string,
-  agentMessageCounts: MentionCount[],
+  agentMessageCounts: AgentUsageCount[],
   redis: RedisClientType
 ) {
   const agentMessageCountKey = _getUsageKey(workspaceId);
@@ -225,8 +242,9 @@ export async function storeCountsInRedis(
     if (!amcByAgentId[agentId]) {
       amcByAgentId[agentId] = {
         agentId,
-        count: 0,
+        messageCount: 0,
         conversationCount: 0,
+        userCount: 0,
         timePeriodSec: RANKING_TIMEFRAME_SEC,
       };
     }
@@ -234,9 +252,15 @@ export async function storeCountsInRedis(
 
   const transaction = redis.multi();
 
-  Object.values(amcByAgentId).forEach(({ agentId, count }) => {
-    transaction.hSet(agentMessageCountKey, agentId, count);
-  });
+  Object.values(amcByAgentId).forEach(
+    ({ agentId, messageCount, conversationCount, userCount }) => {
+      transaction.hSet(
+        agentMessageCountKey,
+        agentId,
+        JSON.stringify({ messageCount, conversationCount, userCount })
+      );
+    }
+  );
 
   transaction.expire(agentMessageCountKey, MENTION_COUNT_TTL);
 
@@ -273,7 +297,7 @@ type UsersUsageCount = {
 
 export async function getAgentUsers(
   owner: LightWorkspaceType,
-  agentConfiguration?: LightAgentConfigurationType,
+  agentConfiguration: LightAgentConfigurationType,
   rankingUsageDays: number = RANKING_USAGE_DAYS
 ): Promise<UsersUsageCount[]> {
   const mentions = await Conversation.findAll({

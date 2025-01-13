@@ -52,3 +52,32 @@ export function assistantUsageMessage({
     );
   }
 }
+
+export function assistantActiveUsersMessage({
+  usage,
+  isLoading,
+  isError,
+}: {
+  usage: AgentUsageType | null;
+  isLoading: boolean;
+  isError: boolean;
+}): ReactNode {
+  if (isError) {
+    return "Error loading usage data.";
+  }
+
+  if (isLoading) {
+    return "Loading usage data...";
+  }
+
+  if (usage) {
+    const days = usage.timePeriodSec / (60 * 60 * 24);
+    const nb = usage.userCount || 0;
+
+    return (
+      <>
+        {nb} active user{pluralize(nb)} over the last {days} days
+      </>
+    );
+  }
+}
