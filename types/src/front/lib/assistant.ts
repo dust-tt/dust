@@ -114,6 +114,9 @@ export const MISTRAL_CODESTRAL_MODEL_ID = "codestral-latest" as const;
 export const GEMINI_1_5_PRO_LATEST_MODEL_ID = "gemini-1.5-pro-latest" as const;
 export const GEMINI_1_5_FLASH_LATEST_MODEL_ID =
   "gemini-1.5-flash-latest" as const;
+export const GEMINI_2_FLASH_PREVIEW_MODEL_ID = "gemini-2.0-flash-exp" as const;
+export const GEMINI_2_FLASH_THINKING_PREVIEW_MODEL_ID =
+  "gemini-2.0-flash-thinking-exp-1219" as const;
 export const TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_ID =
   "meta-llama/Llama-3.3-70B-Instruct-Turbo" as const;
 export const TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_ID =
@@ -145,6 +148,8 @@ export const MODEL_IDS = [
   MISTRAL_CODESTRAL_MODEL_ID,
   GEMINI_1_5_PRO_LATEST_MODEL_ID,
   GEMINI_1_5_FLASH_LATEST_MODEL_ID,
+  GEMINI_2_FLASH_PREVIEW_MODEL_ID,
+  GEMINI_2_FLASH_THINKING_PREVIEW_MODEL_ID,
   TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_ID,
   TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_ID,
   TOGETHERAI_QWEN_32B_PREVIEW_MODEL_ID,
@@ -569,6 +574,39 @@ export const GEMINI_FLASH_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   supportsVision: false,
 };
+
+export const GEMINI_2_FLASH_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "google_ai_studio",
+  modelId: GEMINI_2_FLASH_PREVIEW_MODEL_ID,
+  displayName: "Gemini Flash 2.0",
+  contextSize: 1_000_000,
+  recommendedTopK: 64,
+  recommendedExhaustiveTopK: 128,
+  largeModel: true,
+  description:
+    "Google's lightweight, fast and cost-efficient model (1m context).",
+  shortDescription: "Google's cost-effective model (preview).",
+  isLegacy: false,
+  supportsVision: true,
+  featureFlag: "google_ai_studio_experimental_models_feature",
+};
+
+export const GEMINI_2_FLASH_THINKING_PREVIEW_MODEL_CONFIG: ModelConfigurationType =
+  {
+    providerId: "google_ai_studio",
+    modelId: GEMINI_2_FLASH_THINKING_PREVIEW_MODEL_ID,
+    displayName: "Gemini Flash 2.0 Thinking",
+    contextSize: 32_000,
+    recommendedTopK: 64,
+    recommendedExhaustiveTopK: 128,
+    largeModel: true,
+    description:
+      "Google's lightweight model optimized for reasoning (1m context).",
+    shortDescription: "Google's reasoning-focused model (preview).",
+    isLegacy: false,
+    supportsVision: true,
+    featureFlag: "google_ai_studio_experimental_models_feature",
+  };
 
 export const TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_CONFIG: ModelConfigurationType =
   {

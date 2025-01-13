@@ -1,4 +1,10 @@
 import type { WithAPIErrorResponse } from "@dust-tt/types";
+import {
+  GEMINI_1_5_FLASH_LATEST_MODEL_ID,
+  GEMINI_1_5_PRO_LATEST_MODEL_ID,
+  GEMINI_2_FLASH_PREVIEW_MODEL_ID,
+  GEMINI_2_FLASH_THINKING_PREVIEW_MODEL_ID,
+} from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -237,8 +243,10 @@ async function handler(
         case "google_ai_studio":
           return res.status(200).json({
             models: [
-              { id: "gemini-1.5-flash-latest" },
-              { id: "gemini-1.5-pro-latest" },
+              { id: GEMINI_1_5_FLASH_LATEST_MODEL_ID },
+              { id: GEMINI_1_5_PRO_LATEST_MODEL_ID },
+              { id: GEMINI_2_FLASH_PREVIEW_MODEL_ID },
+              { id: GEMINI_2_FLASH_THINKING_PREVIEW_MODEL_ID },
             ],
           });
 
