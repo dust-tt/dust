@@ -8,6 +8,7 @@ import { makeScript } from "@app/scripts/helpers";
 
 const coreSequelize = getCoreReplicaDbConnection();
 const DATASOURCE_BATCH_SIZE = 25;
+const SELECT_BATCH_SIZE = 256;
 
 function checkNode(node: any, logger: typeof Logger) {
   if (node.parents.length === 0) {
@@ -41,20 +42,32 @@ async function checkStaticDataSourceParents(
     return;
   }
 
-  const nodes: any[] = await coreSequelize.query(
-    `SELECT node_id, parents, timestamp FROM data_sources_nodes WHERE data_source=:c AND parents != ARRAY[node_id]`,
-    { replacements: { c: coreDataSource.id }, type: QueryTypes.SELECT }
-  );
-  nodes.forEach((doc) => {
-    checkNode(
-      doc,
-      logger.child({
-        nodeId: doc.node_id,
-        parents: doc.parents,
-        timestamp: new Date(doc.timestamp),
-      })
+  let nextId = 0;
+  let nodes: any[];
+  do {
+    nodes = await coreSequelize.query(
+      `SELECT id, node_id, parents, timestamp FROM data_sources_nodes WHERE data_source=:c AND parents != ARRAY[node_id] AND id > :nextId LIMIT :batchSize`,
+      {
+        replacements: {
+          c: coreDataSource.id,
+          nextId,
+          batchSize: SELECT_BATCH_SIZE,
+        },
+        type: QueryTypes.SELECT,
+      }
     );
-  });
+    nodes.forEach((doc) => {
+      checkNode(
+        doc,
+        logger.child({
+          nodeId: doc.node_id,
+          parents: doc.parents,
+          timestamp: new Date(doc.timestamp),
+        })
+      );
+    });
+    nextId = nodes[nodes.length - 1].id;
+  } while (nodes.length === SELECT_BATCH_SIZE);
 }
 
 async function checkStaticDataSourcesParents(

@@ -9,6 +9,7 @@ import { makeScript } from "@app/scripts/helpers";
 
 const coreSequelize = getCoreReplicaDbConnection();
 const DATASOURCE_BATCH_SIZE = 256;
+const SELECT_BATCH_SIZE = 256;
 const NODE_CONCURRENCY = 16;
 
 async function migrateNode(
@@ -72,27 +73,40 @@ async function migrateFolderDataSourceParents(
     return;
   }
 
-  const nodes: any[] = await coreSequelize.query(
-    `SELECT node_id, parents, timestamp FROM data_sources_nodes WHERE data_source=:c AND parents != ARRAY[node_id]`,
-    { replacements: { c: coreDataSource.id }, type: QueryTypes.SELECT }
-  );
-  await concurrentExecutor(
-    nodes,
-    async (node) =>
-      migrateNode(
-        node,
-        coreAPI,
-        dustAPIProjectId,
-        dustAPIDataSourceId,
-        execute,
-        logger.child({
-          nodeId: node.node_id,
-          parents: node.parents,
-          created: new Date(node.created),
-        })
-      ),
-    { concurrency: NODE_CONCURRENCY }
-  );
+  let nextId = 0;
+  let nodes: any[];
+
+  do {
+    nodes = await coreSequelize.query(
+      `SELECT id, node_id, parents, timestamp FROM data_sources_nodes WHERE data_source=:c AND parents != ARRAY[node_id] AND id > :nextId LIMIT :batchSize`,
+      {
+        replacements: {
+          c: coreDataSource.id,
+          batchSize: SELECT_BATCH_SIZE,
+          nextId,
+        },
+        type: QueryTypes.SELECT,
+      }
+    );
+    await concurrentExecutor(
+      nodes,
+      async (node) =>
+        migrateNode(
+          node,
+          coreAPI,
+          dustAPIProjectId,
+          dustAPIDataSourceId,
+          execute,
+          logger.child({
+            nodeId: node.node_id,
+            parents: node.parents,
+            created: new Date(node.created),
+          })
+        ),
+      { concurrency: NODE_CONCURRENCY }
+    );
+    nextId = nodes[nodes.length - 1].id;
+  } while (nodes.length === SELECT_BATCH_SIZE);
 }
 
 async function migrateFolderDataSourcesParents(
