@@ -44,30 +44,24 @@ export function readableStreamToReadable(readableStream: ReadableStream) {
   let reading = false;
 
   return new Readable({
-    read() {
+    async read() {
       if (reading) {
         return;
-      } // Prevent concurrent reads
-
+      }
       reading = true;
-      reader.read().then(
-        ({ done, value }) => {
-          reading = false;
-          if (done) {
-            this.push(null);
-          } else {
-            // Only request more data if push() returns true
-            // This properly implements backpressure
-            if (!this.push(value)) {
-              reading = true; // Pause reading until more data is requested
-            }
-          }
-        },
-        (error) => {
-          reading = false;
-          this.destroy(error);
+
+      try {
+        const { done, value } = await reader.read();
+        if (done) {
+          this.push(null);
+        } else {
+          reading = !this.push(value); // Pause reading if push() returns false
         }
-      );
+      } catch (error) {
+        this.destroy(error as Error);
+      } finally {
+        reading = false;
+      }
     },
   });
 }
