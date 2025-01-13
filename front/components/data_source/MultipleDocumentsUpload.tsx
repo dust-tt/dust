@@ -152,9 +152,11 @@ export const MultipleDocumentsUpload = ({
   const { droppedFiles, setDroppedFiles } = useFileDrop();
   useEffect(() => {
     const handleDroppedFiles = async () => {
-      await uploadFiles(droppedFiles);
+      // Avoid race condition with the file input
+      const droppedFilesCopy = [...droppedFiles];
       // Make sure the files are cleared after processing
       setDroppedFiles([]);
+      await uploadFiles(droppedFilesCopy);
     };
     void handleDroppedFiles();
   }, [droppedFiles, setDroppedFiles, uploadFiles]);
