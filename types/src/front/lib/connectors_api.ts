@@ -1,4 +1,7 @@
-import { AdminCommandType, AdminResponseType } from "../../connectors/admin/cli";
+import {
+  AdminCommandType,
+  AdminResponseType,
+} from "../../connectors/admin/cli";
 import { ConnectorsAPIError, isConnectorsAPIError } from "../../connectors/api";
 import { UpdateConnectorConfigurationType } from "../../connectors/api_handlers/connector_configuration";
 import { ConnectorCreateRequestBody } from "../../connectors/api_handlers/create_connector";
@@ -489,36 +492,6 @@ export class ConnectorsAPI {
       {
         method: "GET",
         headers: this.getDefaultHeaders(),
-      }
-    );
-
-    return this._resultFromResponse(res);
-  }
-
-  async getContentNodesParents({
-    connectorId,
-    internalIds,
-  }: {
-    connectorId: string;
-    internalIds: string[];
-  }): Promise<
-    ConnectorsAPIResponse<{
-      nodes: {
-        internalId: string;
-        parents: string[];
-      }[];
-    }>
-  > {
-    const res = await this._fetchWithError(
-      `${this._url}/connectors/${encodeURIComponent(
-        connectorId
-      )}/content_nodes/parents`,
-      {
-        method: "POST",
-        headers: this.getDefaultHeaders(),
-        body: JSON.stringify({
-          internalIds,
-        }),
       }
     );
 
