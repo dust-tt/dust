@@ -117,8 +117,7 @@ async function migrateFolderDataSourcesParents(
   execute: boolean,
   logger: typeof Logger
 ) {
-  const startId = nextDataSourceId;
-
+  let startId = nextDataSourceId;
   let staticDataSources;
   do {
     staticDataSources = await DataSourceModel.findAll({
@@ -142,6 +141,9 @@ async function migrateFolderDataSourcesParents(
       },
       { concurrency: 10 }
     );
+    if (staticDataSources.length > 0) {
+      startId = staticDataSources[staticDataSources.length - 1].id;
+    }
   } while (staticDataSources.length === DATASOURCE_BATCH_SIZE);
 }
 
