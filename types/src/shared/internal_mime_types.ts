@@ -8,6 +8,14 @@ type WithoutUnderscores<T extends string> = T extends `${infer A}_${infer B}`
   ? WithoutUnderscores<`${A}${B}`> // operates recursively to remove all underscores
   : T;
 
+/**
+ * This is a utility type that indicates that we replaced all underscores with dashes in a string.
+ * We don't want underscores in mime types but want to type out the type with one: MIME_TYPE.CAT.SOU_PI_NOU
+ */
+type UnderscoreToDash<T extends string> = T extends `${infer A}_${infer B}`
+  ? UnderscoreToDash<`${A}-${B}`> // operates recursively to replace all underscores
+  : T;
+
 function getMimeTypes<
   P extends ConnectorProvider,
   T extends Uppercase<string>[]
@@ -18,15 +26,21 @@ function getMimeTypes<
   provider: P;
   resourceTypes: T;
 }): {
-  [K in T[number]]: `application/vnd.dust.${WithoutUnderscores<P>}.${Lowercase<K>}`;
+  [K in T[number]]: `application/vnd.dust.${WithoutUnderscores<P>}.${Lowercase<
+    UnderscoreToDash<K>
+  >}`;
 } {
   return resourceTypes.reduce(
     (acc, s) => ({
       ...acc,
-      s: `application/vnd.dust.${provider.replace("_", "")}.${s.toLowerCase()}`,
+      s: `application/vnd.dust.${provider.replace("_", "")}.${s
+        .replace("_", "-")
+        .toLowerCase()}`,
     }),
     {} as {
-      [K in T[number]]: `application/vnd.dust.${WithoutUnderscores<P>}.${Lowercase<K>}`;
+      [K in T[number]]: `application/vnd.dust.${WithoutUnderscores<P>}.${Lowercase<
+        UnderscoreToDash<K>
+      >}`;
     }
   );
 }
@@ -57,10 +71,10 @@ export const MIME_TYPES = {
     provider: "intercom",
     resourceTypes: [
       "COLLECTION",
-      "TEAMS-FOLDER",
+      "TEAMS_FOLDER",
       "CONVERSATION",
       "TEAM",
-      "HELP-CENTER",
+      "HELP_CENTER",
       "ARTICLE",
     ],
   }),
@@ -70,7 +84,7 @@ export const MIME_TYPES = {
   }),
   NOTION: getMimeTypes({
     provider: "notion",
-    resourceTypes: ["UNKNOWN-FOLDER", "DATABASE", "PAGE"],
+    resourceTypes: ["UNKNOWN_FOLDER", "DATABASE", "PAGE"],
   }),
   SLACK: getMimeTypes({
     provider: "slack",

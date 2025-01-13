@@ -104,7 +104,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       parents: [folderId],
       parentId: null,
       title: "Orphaned Resources",
-      mimeType: MIME_TYPES.NOTION["UNKNOWN-FOLDER"],
+      mimeType: MIME_TYPES.NOTION.UNKNOWN_FOLDER,
     });
 
     try {

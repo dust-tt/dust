@@ -36,7 +36,7 @@ async function createFolderNodes(execute: boolean) {
         parents: [getTeamsInternalId(connector.id)],
         parentId: null,
         title: "Conversations",
-        mimeType: MIME_TYPES.INTERCOM["TEAMS-FOLDER"],
+        mimeType: MIME_TYPES.INTERCOM.TEAMS_FOLDER,
       });
     }
 
@@ -99,7 +99,7 @@ async function createFolderNodes(execute: boolean) {
             parents: [helpCenterInternalId],
             parentId: null,
             title: helpCenter.name,
-            mimeType: MIME_TYPES.INTERCOM["HELP-CENTER"],
+            mimeType: MIME_TYPES.INTERCOM.HELP_CENTER,
           });
         }
 

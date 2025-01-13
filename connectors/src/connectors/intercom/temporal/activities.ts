@@ -176,7 +176,7 @@ export async function syncHelpCenterOnlyActivity({
     title: helpCenterOnIntercom.display_name || "Help Center",
     parents: [helpCenterInternalId],
     parentId: null,
-    mimeType: MIME_TYPES.INTERCOM["HELP-CENTER"],
+    mimeType: MIME_TYPES.INTERCOM.HELP_CENTER,
   });
 
   // If all children collections are not allowed anymore we delete the Help Center data
@@ -744,6 +744,6 @@ export async function upsertIntercomTeamsFolderActivity({
     title: "Conversations",
     parents: [getTeamsInternalId(connectorId)],
     parentId: null,
-    mimeType: MIME_TYPES.INTERCOM["TEAMS-FOLDER"],
+    mimeType: MIME_TYPES.INTERCOM.TEAMS_FOLDER,
   });
 }
