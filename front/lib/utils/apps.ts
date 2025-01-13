@@ -163,7 +163,7 @@ async function updateAppSpecifications(
     savedSpecification: string;
     savedConfig: string;
   }
-): Promise<Result<{ updated: boolean; hash?: string }, CoreAPIError | Error>> {
+): Promise<Result<boolean, CoreAPIError | Error>> {
   // Specification and config have been modified and need to be imported
   if (
     savedSpecification !== app.savedSpecification &&
@@ -269,13 +269,10 @@ async function updateAppSpecifications(
         return new Err(new Error(error));
       }
 
-      return new Ok({
-        hash: undefined,
-        updated: true,
-      });
+      return new Ok(true);
     }
   }
-  return new Ok({ updated: false, hash: undefined });
+  return new Ok(false);
 }
 
 export async function importApp(
@@ -283,10 +280,7 @@ export async function importApp(
   space: SpaceResource,
   appToImport: ApiAppType
 ): Promise<
-  Result<
-    { app: AppResource; hash?: string; updated: boolean },
-    CoreAPIError | Error
-  >
+  Result<{ app: AppResource; updated: boolean }, CoreAPIError | Error>
 > {
   const appRes = await updateOrCreateApp(auth, {
     appToImport,
@@ -336,16 +330,15 @@ export async function importApp(
       return updateSpecificationsRes;
     }
 
-    const { hash, updated: specUpdated } = updateSpecificationsRes.value;
-
+    const specUpdated = updateSpecificationsRes.value;
     if (updated || specUpdated) {
       logger.info(
-        { sId: app.sId, appName: app.name, hash },
+        { sId: app.sId, appName: app.name },
         "App imported successfully"
       );
     }
 
-    return new Ok({ app, hash, updated: updated || specUpdated });
+    return new Ok({ app, updated: updated || specUpdated });
   }
 
   if (updated) {
@@ -360,15 +353,14 @@ export async function importApp(
 interface ImportRes {
   sId: string;
   name: string;
-  hash?: string;
   error?: string;
 }
 
-async function importApps(
+export async function importApps(
   auth: Authenticator,
   space: SpaceResource,
   appsToImport: ApiAppType[]
-): Promise<Result<ImportRes[], Error | CoreAPIError>> {
+): Promise<ImportRes[]> {
   const apps: ImportRes[] = [];
 
   for (const appToImport of appsToImport) {
@@ -380,14 +372,14 @@ async function importApps(
         error: res.error.message,
       });
     } else {
-      const { app, hash, updated } = res.value;
+      const { app, updated } = res.value;
       if (updated) {
-        apps.push({ sId: app.sId, name: app.name, hash });
+        apps.push({ sId: app.sId, name: app.name });
       }
     }
   }
 
-  return new Ok(apps);
+  return apps;
 }
 
 export async function synchronizeDustApps(
@@ -418,9 +410,6 @@ export async function synchronizeDustApps(
   }
 
   const importRes = await importApps(auth, space, exportRes.value);
-  if (importRes.isErr()) {
-    return importRes;
-  }
-  logger.info({ importedApp: importRes.value }, "Apps imported successfully");
-  return importRes;
+  logger.info({ importedApp: importRes }, "Apps imported");
+  return new Ok(importRes);
 }
