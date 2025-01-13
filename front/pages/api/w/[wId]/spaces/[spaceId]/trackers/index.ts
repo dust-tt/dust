@@ -12,6 +12,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
+import { PRODUCTION_DUST_WORKSPACE_ID } from "@app/lib/registry";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
 import { apiError } from "@app/logger/withlogging";
@@ -106,12 +107,15 @@ async function handler(
         auth,
         space
       );
-      if (existingTrackers.length >= 3) {
+      if (
+        owner.sId !== PRODUCTION_DUST_WORKSPACE_ID &&
+        existingTrackers.length >= 1
+      ) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "You can't have more than 3 trackers in a space.",
+            message: "You can't have more than 1 tracker in a space.",
           },
         });
       }
