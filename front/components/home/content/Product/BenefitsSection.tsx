@@ -63,35 +63,34 @@ export const BenefitsSection: FC<BenefitsSectionProps> = ({
           {title}
         </H2>
       </div>
-      <div className="h-full">
-        <div className="col-span-12 grid grid-cols-1 gap-8 md:grid-cols-3">
-          {benefits.map((benefit, index) => (
-            <ImgBlock
-              key={index}
-              title={<>{benefit.title}</>}
-              content={<>{benefit.description}</>}
-              className="h-full"
+
+      <div className="col-span-12 grid grid-cols-1 gap-8 pt-8 md:grid-cols-3">
+        {benefits.map((benefit, index) => (
+          <ImgBlock
+            key={index}
+            title={<>{benefit.title}</>}
+            content={<>{benefit.description}</>}
+            className="h-full"
+          >
+            <Hover3D
+              depth={-20}
+              perspective={1000}
+              className="justify-left relative flex h-8 items-center"
             >
-              <Hover3D
-                depth={-20}
-                perspective={1000}
-                className="justify-left relative flex h-8 items-center"
-              >
-                <Avatar
-                  size="xl"
-                  visual={
-                    <Icon
-                      visual={benefit.icon}
-                      className="text-slate-300"
-                      size="xl"
-                    />
-                  }
-                  backgroundColor="bg-slate-700"
-                />
-              </Hover3D>
-            </ImgBlock>
-          ))}
-        </div>
+              <Avatar
+                size="xl"
+                visual={
+                  <Icon
+                    visual={benefit.icon}
+                    className="text-slate-300"
+                    size="xl"
+                  />
+                }
+                backgroundColor="bg-slate-700"
+              />
+            </Hover3D>
+          </ImgBlock>
+        ))}
       </div>
     </Grid>
   </section>
