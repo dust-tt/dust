@@ -1,7 +1,14 @@
 import type { ApiAppType } from "@dust-tt/client";
 import { DustAPI } from "@dust-tt/client";
-import type { CoreAPIError, Result } from "@dust-tt/types";
-import { CoreAPI, credentialsFromProviders, Err, Ok } from "@dust-tt/types";
+import type { CoreAPIError, Result, TraceType } from "@dust-tt/types";
+import {
+  CoreAPI,
+  credentialsFromProviders,
+  Err,
+  Ok,
+  removeNulls,
+} from "@dust-tt/types";
+import { createParser } from "eventsource-parser";
 import _ from "lodash";
 
 import { default as apiConfig, default as config } from "@app/lib/api/config";
@@ -145,7 +152,6 @@ async function updateDatasets(
   }
   return new Ok(true);
 }
-
 async function updateAppSpecifications(
   auth: Authenticator,
   {
@@ -157,7 +163,7 @@ async function updateAppSpecifications(
     savedSpecification: string;
     savedConfig: string;
   }
-): Promise<Result<{ updated: boolean; hash?: string }, CoreAPIError>> {
+): Promise<Result<{ updated: boolean; hash?: string }, CoreAPIError | Error>> {
   // Specification and config have been modified and need to be imported
   if (
     savedSpecification !== app.savedSpecification &&
@@ -191,7 +197,7 @@ async function updateAppSpecifications(
       ]);
 
       // Create a new run to save specifications and configs
-      const dustRun = await coreAPI.createRun(owner, auth.groups(), {
+      const dustRun = await coreAPI.createRunStream(owner, auth.groups(), {
         projectId: app.dustAPIProjectId,
         runType: "local",
         specification: dumpSpecification(
@@ -210,23 +216,61 @@ async function updateAppSpecifications(
         return dustRun;
       }
 
+      let error = undefined;
+      try {
+        // // Intercept block_execution events to store token usages.
+        const parser = createParser((event) => {
+          if (event.type === "event") {
+            if (event.data) {
+              const data = JSON.parse(event.data);
+              if (data.type === "block_execution") {
+                const traces: TraceType[][] = data.content.execution;
+                const errs = traces.flatMap((trace) =>
+                  removeNulls(trace.map((t) => t.error))
+                );
+                if (errs.length > 0) {
+                  throw new Error(errs[0]);
+                }
+              }
+            }
+          }
+        });
+
+        for await (const chunk of dustRun.value.chunkStream) {
+          parser.feed(new TextDecoder().decode(chunk));
+        }
+      } catch (err) {
+        if (err instanceof Error) {
+          error = err.message;
+        } else {
+          error = String(err);
+        }
+      }
+
+      const dustRunId = await dustRun.value.dustRunId;
+
       // Update app state
       await Promise.all([
         RunResource.makeNew({
-          dustRunId: dustRun.value.run.run_id,
+          dustRunId,
           appId: app.id,
           runType: "local",
           workspaceId: owner.id,
         }),
+
         app.updateState(auth, {
           savedSpecification,
           savedConfig,
-          savedRun: dustRun.value.run.run_id,
+          savedRun: dustRunId,
         }),
       ]);
 
+      if (error) {
+        return new Err(new Error(error));
+      }
+
       return new Ok({
-        hash: dustRun.value.run.app_hash ?? undefined,
+        hash: undefined,
         updated: true,
       });
     }
@@ -317,9 +361,10 @@ interface ImportRes {
   sId: string;
   name: string;
   hash?: string;
+  error?: string;
 }
 
-export async function importApps(
+async function importApps(
   auth: Authenticator,
   space: SpaceResource,
   appsToImport: ApiAppType[]
@@ -329,11 +374,16 @@ export async function importApps(
   for (const appToImport of appsToImport) {
     const res = await importApp(auth, space, appToImport);
     if (res.isErr()) {
-      return res;
-    }
-    const { app, hash, updated } = res.value;
-    if (updated) {
-      apps.push({ sId: app.sId, name: app.name, hash });
+      apps.push({
+        sId: appToImport.sId,
+        name: appToImport.name,
+        error: res.error.message,
+      });
+    } else {
+      const { app, hash, updated } = res.value;
+      if (updated) {
+        apps.push({ sId: app.sId, name: app.name, hash });
+      }
     }
   }
 

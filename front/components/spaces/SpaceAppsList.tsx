@@ -16,11 +16,11 @@ import type {
 } from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
 import { sortBy } from "lodash";
+import Link from "next/link";
 import { useRouter } from "next/router";
 import type { ComponentType } from "react";
-import { useRef } from "react";
-import { useState } from "react";
 import * as React from "react";
+import { useRef, useState } from "react";
 
 import { SpaceCreateAppModal } from "@app/components/spaces/SpaceCreateAppModal";
 import type { Action } from "@app/lib/registry";
@@ -63,7 +63,6 @@ const getDustAppsColumns = (owner: WorkspaceType) => ({
     const registryApp = Object.values(DustProdActionRegistry).find(
       (action) => action.app.appId === app.sId
     );
-    console.log("app", Object.values(DustProdActionRegistry), app, registryApp);
     if (!registryApp) {
       return (
         <DataTable.CellContent>
@@ -101,17 +100,40 @@ const AppHashChecker = ({
     return 0;
   });
 
-  if (isRunError) {
-    return <span>{isRunError.error?.message}</span>;
+  if (
+    registryApp.appHash &&
+    run?.app_hash &&
+    registryApp.appHash !== run.app_hash
+  ) {
+    return (
+      <span>
+        Inconsistent hashes,{" "}
+        <Link
+          className="text-blue-500"
+          href={`/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/specification?hash=${registryApp.appHash}`}
+          onClick={(e) => {
+            e.stopPropagation();
+          }}
+        >
+          compare
+        </Link>
+      </span>
+    );
   }
 
-  return registryApp.appHash &&
-    run?.app_hash &&
-    registryApp.appHash !== run.app_hash ? (
-    <span>Different hash</span>
-  ) : (
-    ""
-  );
+  if (isRunError) {
+    return <span>Error: {isRunError.error?.message}</span>;
+  }
+
+  if (!run) {
+    return <span>No run found</span>;
+  }
+
+  if (run?.status.run === "errored") {
+    return <span>Run failed</span>;
+  }
+
+  return "";
 };
 
 interface SpaceAppsListProps {
