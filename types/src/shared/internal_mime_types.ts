@@ -16,6 +16,13 @@ type UnderscoreToDash<T extends string> = T extends `${infer A}_${infer B}`
   ? UnderscoreToDash<`${A}-${B}`> // operates recursively to replace all underscores
   : T;
 
+/**
+ * This function generates mime types for a given provider and resource types.
+ * The mime types are in the format `application/vnd.dust.PROVIDER.RESOURCE_TYPE`.
+ * Notes:
+ * - The underscores in the provider name are stripped in the generated mime type.
+ * - The underscores in the resource type are replaced with dashes in the generated mime type.
+ */
 function getMimeTypes<
   P extends ConnectorProvider,
   T extends Uppercase<string>[]
