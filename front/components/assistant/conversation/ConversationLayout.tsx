@@ -1,5 +1,6 @@
 import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
-import React from "react";
+import { useRouter } from "next/router";
+import React, { useMemo } from "react";
 
 import RootLayout from "@app/components/app/RootLayout";
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
@@ -56,14 +57,22 @@ const ConversationLayoutContent = ({
   baseUrl,
   children,
 }: any) => {
+  const router = useRouter();
   const { onOpenChange: onOpenChangeAssistantModal } =
     useURLSheet("assistantDetails");
-  const { assistantIdForDetails } = useConversationsNavigation();
   const { activeConversationId } = useConversationsNavigation();
   const { conversation, conversationError } = useConversation({
     conversationId: activeConversationId,
     workspaceId: owner.sId,
   });
+
+  const assistantSId = useMemo(() => {
+    const sid = router.query.assistantDetails ?? [];
+    if (sid && typeof sid === "string") {
+      return sid;
+    }
+    return null;
+  }, [router.query.assistantDetails]);
 
   return (
     <InputBarProvider>
@@ -89,7 +98,7 @@ const ConversationLayoutContent = ({
           <>
             <AssistantDetails
               owner={owner}
-              assistantId={assistantIdForDetails}
+              assistantId={assistantSId}
               onClose={() => onOpenChangeAssistantModal(false)}
             />
             <FileDropProvider>

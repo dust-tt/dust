@@ -60,42 +60,45 @@ export function ConversationTitle({
   const titleInputFocused = useRef(false);
   const saveButtonFocused = useRef(false);
 
-  const handleClick = async () => {
+  const handleClick = useCallback(async () => {
     await navigator.clipboard.writeText(shareLink || "");
     setCopyLinkSuccess(true);
     setTimeout(() => {
       setCopyLinkSuccess(false);
     }, 1000);
-  };
+  }, [shareLink]);
 
-  const onTitleChange = async (title: string) => {
-    try {
-      const res = await fetch(
-        `/api/w/${owner.sId}/assistant/conversations/${activeConversationId}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            title,
-            visibility: conversation?.visibility,
-          }),
+  const onTitleChange = useCallback(
+    async (title: string) => {
+      try {
+        const res = await fetch(
+          `/api/w/${owner.sId}/assistant/conversations/${activeConversationId}`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              title,
+              visibility: conversation?.visibility,
+            }),
+          }
+        );
+        await mutate(
+          `/api/w/${owner.sId}/assistant/conversations/${activeConversationId}`
+        );
+        void mutate(`/api/w/${owner.sId}/assistant/conversations`);
+        if (!res.ok) {
+          throw new Error("Failed to update title");
         }
-      );
-      await mutate(
-        `/api/w/${owner.sId}/assistant/conversations/${activeConversationId}`
-      );
-      void mutate(`/api/w/${owner.sId}/assistant/conversations`);
-      if (!res.ok) {
-        throw new Error("Failed to update title");
+        setIsEditingTitle(false);
+        setEditedTitle("");
+      } catch (e) {
+        alert("Failed to update title");
       }
-      setIsEditingTitle(false);
-      setEditedTitle("");
-    } catch (e) {
-      alert("Failed to update title");
-    }
-  };
+    },
+    [activeConversationId, conversation?.visibility, mutate, owner.sId]
+  );
 
   if (!activeConversationId) {
     return null;

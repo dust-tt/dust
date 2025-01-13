@@ -1,18 +1,10 @@
 import { useRouter } from "next/router";
 import type { RefObject } from "react";
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { createContext, useCallback, useContext, useMemo, useRef } from "react";
 
 interface ConversationsNavigationContextType {
   conversationsNavigationRef: RefObject<HTMLDivElement>;
   scrollConversationsToTop: () => void;
-  assistantIdForDetails: string | null;
   activeConversationId: string | null;
 }
 
@@ -44,57 +36,21 @@ export function ConversationsNavigationProvider({
     }
   }, []);
 
-  const [assistantIdForDetails, setAssistantIdForDetails] = useState<
-    string | null
-  >(null);
-  const [activeConversationId, setActiveConversationId] = useState<
-    string | null
-  >(initialConversationId !== "new" ? initialConversationId ?? null : null);
+  const activeConversationId = useMemo(() => {
+    const conversationId = router.query.cId ?? "";
 
-  useEffect(() => {
-    const handleRouteChange = () => {
-      const assistantSId = router.query.assistantDetails ?? [];
-      // We use shallow browsing when creating a new conversation or navigating to a conversation.
-      // Monitor router to update conversation info.
-      const conversationId = router.query.cId ?? "";
+    if (conversationId && typeof conversationId === "string") {
+      return conversationId === "new" ? null : conversationId;
+    }
 
-      if (assistantSId && typeof assistantSId === "string") {
-        setAssistantIdForDetails(assistantSId);
-      } else {
-        setAssistantIdForDetails(null);
-      }
-
-      if (
-        conversationId &&
-        typeof conversationId === "string" &&
-        conversationId !== activeConversationId
-      ) {
-        setActiveConversationId(
-          conversationId !== "new" ? conversationId : null
-        );
-      }
-    };
-
-    // Initial check in case the component mounts with the query already set.
-    handleRouteChange();
-
-    router.events.on("routeChangeComplete", handleRouteChange);
-    return () => {
-      router.events.off("routeChangeComplete", handleRouteChange);
-    };
-  }, [
-    router.query,
-    router.events,
-    setActiveConversationId,
-    activeConversationId,
-  ]);
+    return initialConversationId ?? null;
+  }, [initialConversationId, router.query.cId]);
 
   return (
     <ConversationsNavigationContext.Provider
       value={{
         conversationsNavigationRef,
         scrollConversationsToTop,
-        assistantIdForDetails,
         activeConversationId,
       }}
     >
