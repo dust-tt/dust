@@ -40,7 +40,7 @@ function getMimeTypes<
   return resourceTypes.reduce(
     (acc, s) => ({
       ...acc,
-      s: `application/vnd.dust.${provider.replace("_", "")}.${s
+      [s]: `application/vnd.dust.${provider.replace("_", "")}.${s
         .replace("_", "-")
         .toLowerCase()}`,
     }),
