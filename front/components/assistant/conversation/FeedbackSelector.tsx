@@ -1,17 +1,12 @@
+import { Button } from "@dust-tt/sparkle";
+import { Checkbox } from "@dust-tt/sparkle";
+import { Page } from "@dust-tt/sparkle";
+import { PopoverContent, PopoverRoot, PopoverTrigger } from "@dust-tt/sparkle";
+import { Spinner } from "@dust-tt/sparkle";
+import { TextArea } from "@dust-tt/sparkle";
+import { Tooltip } from "@dust-tt/sparkle";
+import { HandThumbDownIcon, HandThumbUpIcon } from "@dust-tt/sparkle";
 import React, { useCallback, useEffect, useRef } from "react";
-
-import { Button } from "@sparkle/components/Button";
-import { Checkbox } from "@sparkle/components/Checkbox";
-import { Page } from "@sparkle/components/Page";
-import {
-  PopoverContent,
-  PopoverRoot,
-  PopoverTrigger,
-} from "@sparkle/components/Popover";
-import Spinner from "@sparkle/components/Spinner";
-import { TextArea } from "@sparkle/components/TextArea";
-import { Tooltip } from "@sparkle/components/Tooltip";
-import { HandThumbDownIcon, HandThumbUpIcon } from "@sparkle/icons/solid";
 
 export type ThumbReaction = "up" | "down";
 
@@ -134,10 +129,10 @@ export function FeedbackSelector({
   ]);
 
   return (
-    <div ref={containerRef} className="s-flex s-items-center">
+    <div ref={containerRef} className="flex items-center">
       <PopoverRoot open={isPopoverOpen}>
         <PopoverTrigger asChild>
-          <div className="s-flex s-items-center s-gap-2">
+          <div className="flex items-center gap-2">
             <Tooltip
               label="I found this helpful"
               trigger={
@@ -180,11 +175,11 @@ export function FeedbackSelector({
           onEscapeKeyDown={closePopover}
         >
           {isSubmittingThumb ? (
-            <div className="m-3 s-flex s-items-center s-justify-center">
+            <div className="m-3 flex items-center justify-center">
               <Spinner size="sm" />
             </div>
           ) : (
-            <div className="s-w-80 s-p-4">
+            <div className="w-80 p-4">
               <Page.H variant="h6">
                 {lastSelectedThumb === "up"
                   ? "🎉 Glad you liked it! Tell us more?"
@@ -196,14 +191,14 @@ export function FeedbackSelector({
                     ? "What did you like?"
                     : "Tell us what went wrong so we can make this assistant better."
                 }
-                className="s-mb-4 s-mt-4"
+                className="mb-4 mt-4"
                 rows={3}
                 value={localFeedbackContent ?? ""}
                 onChange={handleTextAreaChange}
               />
 
               {popOverInfo}
-              <div className="s-mt-2 s-flex s-items-center s-gap-2">
+              <div className="mt-2 flex items-center gap-2">
                 <Checkbox
                   checked={isConversationShared}
                   onCheckedChange={(value) => {
@@ -214,7 +209,7 @@ export function FeedbackSelector({
                   By clicking, you accept to share your full conversation
                 </Page.P>
               </div>
-              <div className="s-mt-4 s-flex s-justify-end s-gap-2">
+              <div className="mt-4 flex justify-end gap-2">
                 <Button
                   variant="primary"
                   label="Submit feedback"
