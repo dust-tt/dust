@@ -374,7 +374,6 @@ export async function retrieveIntercomHelpCentersPermissions({
         sourceUrl: null,
         expandable: true,
         permission: helpCenter.permission,
-        dustDocumentId: null,
         lastUpdatedAt: helpCenter.updatedAt.getTime(),
       }));
     } else {
@@ -388,7 +387,6 @@ export async function retrieveIntercomHelpCentersPermissions({
         expandable: true,
         preventSelection: true,
         permission: "none",
-        dustDocumentId: null,
         lastUpdatedAt: null,
       }));
     }
@@ -435,7 +433,6 @@ export async function retrieveIntercomHelpCentersPermissions({
         sourceUrl: collection.url,
         expandable: true,
         permission: collection.permission,
-        dustDocumentId: null,
         lastUpdatedAt: collection.updatedAt.getTime() || null,
       }));
     } else {
@@ -464,7 +461,6 @@ export async function retrieveIntercomHelpCentersPermissions({
           sourceUrl: collection.url,
           expandable: false, // WE DO NOT LET EXPAND BELOW LEVEL 1 WHEN SELECTING NODES
           permission: matchingCollectionInDb ? "read" : "none",
-          dustDocumentId: null,
           lastUpdatedAt: matchingCollectionInDb?.updatedAt.getTime() || null,
         };
       });
@@ -504,7 +500,6 @@ export async function retrieveIntercomHelpCentersPermissions({
           sourceUrl: collection.url,
           expandable: true,
           permission: collection.permission,
-          dustDocumentId: null,
           lastUpdatedAt: collection.lastUpsertedTs?.getTime() || null,
         })
       );
@@ -529,7 +524,6 @@ export async function retrieveIntercomHelpCentersPermissions({
         sourceUrl: article.url,
         expandable: false,
         permission: article.permission,
-        dustDocumentId: null,
         lastUpdatedAt: article.updatedAt.getTime(),
       }));
 

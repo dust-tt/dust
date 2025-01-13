@@ -103,7 +103,6 @@ export interface ContentNode {
   expandable: boolean;
   preventSelection?: boolean;
   permission: ConnectorPermission;
-  dustDocumentId: string | null;
   lastUpdatedAt: number | null;
   providerVisibility?: "public" | "private";
 }

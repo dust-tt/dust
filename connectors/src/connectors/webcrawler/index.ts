@@ -212,7 +212,6 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
             sourceUrl: null,
             expandable: true,
             permission: "read",
-            dustDocumentId: null,
             type: "folder",
             lastUpdatedAt: folder.updatedAt.getTime(),
           };
@@ -239,7 +238,6 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
               sourceUrl: page.url,
               expandable: isFileAndFolder ? true : false,
               permission: "read",
-              dustDocumentId: page.documentId,
               type: "file",
               lastUpdatedAt: page.updatedAt.getTime(),
             };
@@ -280,7 +278,6 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
         sourceUrl: folder.url,
         expandable: true,
         permission: "read",
-        dustDocumentId: null,
         type: "folder",
         lastUpdatedAt: folder.updatedAt.getTime(),
       });
@@ -293,7 +290,6 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
         sourceUrl: page.url,
         expandable: false,
         permission: "read",
-        dustDocumentId: page.documentId,
         type: "file",
         lastUpdatedAt: page.updatedAt.getTime(),
       });

@@ -324,7 +324,6 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
                 parentInternalId: null,
                 type,
                 title: f.name || "",
-                dustDocumentId: getGoogleDriveEntityDocumentId(f),
                 lastUpdatedAt: f.lastUpsertedTs?.getTime() || null,
                 sourceUrl: getSourceUrlForGoogleDriveFiles(f),
                 expandable: await isDriveObjectExpandable({
@@ -350,7 +349,6 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
                   parentInternalId: getInternalId(s.driveFileId),
                   type: "database" as const,
                   title: s.name || "",
-                  dustDocumentId: null,
                   lastUpdatedAt: s.updatedAt.getTime() || null,
                   sourceUrl: null,
                   expandable: false,
@@ -394,7 +392,6 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
                 type: "folder" as const,
                 title: driveObject.name,
                 sourceUrl: driveObject.webViewLink || null,
-                dustDocumentId: null,
                 lastUpdatedAt: driveObject.updatedAtMs || null,
                 expandable: await folderHasChildren(
                   this.connectorId,
@@ -420,7 +417,6 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
             preventSelection: true,
             title: "Shared with me",
             sourceUrl: null,
-            dustDocumentId: null,
             lastUpdatedAt: null,
             expandable: true,
             permission: "none",
@@ -492,7 +488,6 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
                   this.connectorId,
                   driveObject.id
                 ),
-                dustDocumentId: null,
                 lastUpdatedAt: driveObject.updatedAtMs || null,
                 permission: (await GoogleDriveFolders.findOne({
                   where: {
@@ -672,7 +667,6 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
           parentInternalId: null,
           type,
           title: f.name || "",
-          dustDocumentId: getGoogleDriveEntityDocumentId(f),
           lastUpdatedAt: f.lastUpsertedTs?.getTime() || null,
           sourceUrl,
           expandable: await isDriveObjectExpandable({
@@ -714,7 +708,6 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
       parentInternalId: getInternalId(s.driveFileId),
       type: "database",
       title: s.name || "",
-      dustDocumentId: null,
       lastUpdatedAt: s.updatedAt.getTime() || null,
       sourceUrl: `https://docs.google.com/spreadsheets/d/${s.driveFileId}/edit#gid=${s.driveSheetId}`,
       expandable: false,
@@ -972,7 +965,6 @@ async function getFoldersAsContentNodes({
         type: "folder",
         title: fd.name || "",
         sourceUrl,
-        dustDocumentId: null,
         lastUpdatedAt: fd.updatedAtMs || null,
         expandable: await isDriveObjectExpandable({
           objectId: f.folderId,
