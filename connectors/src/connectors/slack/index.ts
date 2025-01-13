@@ -406,7 +406,6 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
         sourceUrl: `https://app.slack.com/client/${slackConfig.slackTeamId}/${ch.slackChannelId}`,
         expandable: false,
         permission: ch.permission,
-        dustDocumentId: null,
         lastUpdatedAt: null,
         providerVisibility: ch.private ? "private" : "public",
       }));
@@ -628,7 +627,6 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
       sourceUrl: `https://app.slack.com/client/${slackConfig.slackTeamId}/${ch.slackChannelId}`,
       expandable: false,
       permission: ch.permission,
-      dustDocumentId: null,
       lastUpdatedAt: null,
       providerVisibility: ch.private ? "private" : "public",
     }));

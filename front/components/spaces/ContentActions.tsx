@@ -104,7 +104,7 @@ export const ContentActions = React.forwardRef<
 
     useEffect(() => {
       if (currentAction.action === "DocumentViewRawContent") {
-        setCurrentDocumentId(currentAction.contentNode?.dustDocumentId ?? "");
+        setCurrentDocumentId(currentAction.contentNode?.internalId ?? "");
       }
     }, [currentAction, setCurrentDocumentId]);
 

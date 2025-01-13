@@ -446,15 +446,15 @@ function DataSourceViewSelectedNodes({
                 size="xs"
                 icon={BracesIcon}
                 onClick={() => {
-                  if (node.dustDocumentId) {
+                  if (node.type === "file") {
                     setDataSourceViewToDisplay(dataSourceView);
-                    setDocumentToDisplay(node.dustDocumentId);
+                    setDocumentToDisplay(node.internalId);
                   }
                 }}
                 className={classNames(
-                  node.dustDocumentId ? "" : "pointer-events-none opacity-0"
+                  node.type === "file" ? "" : "pointer-events-none opacity-0"
                 )}
-                disabled={!node.dustDocumentId}
+                disabled={node.type !== "file"}
                 variant="outline"
               />
             </div>

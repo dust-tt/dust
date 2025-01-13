@@ -148,20 +148,20 @@ export default function DataSourceSelectionSection({
                               size="xs"
                               icon={BracesIcon}
                               onClick={() => {
-                                if (node.dustDocumentId) {
+                                if (node.type === "file") {
                                   setDataSourceViewToDisplay(
                                     dsConfig.dataSourceView
                                   );
-                                  setDocumentToDisplay(node.dustDocumentId);
+                                  setDocumentToDisplay(node.internalId);
                                 }
                               }}
                               className={classNames(
-                                node.dustDocumentId
+                                node.type === "file"
                                   ? ""
                                   : "pointer-events-none opacity-0"
                               )}
-                              disabled={!node.dustDocumentId}
-                              variant="ghost"
+                              disabled={node.type !== "file"}
+                              variant="outline"
                             />
                           </div>
                         }

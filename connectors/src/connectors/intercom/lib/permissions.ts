@@ -63,7 +63,6 @@ export async function retrieveSelectedNodes({
       sourceUrl: collection.url,
       expandable,
       permission: collection.permission,
-      dustDocumentId: null,
       lastUpdatedAt: collection.updatedAt.getTime() || null,
     });
   });
@@ -85,7 +84,6 @@ export async function retrieveSelectedNodes({
       sourceUrl: null,
       expandable: false,
       permission: "read",
-      dustDocumentId: null,
       lastUpdatedAt: null,
     });
   }
@@ -105,7 +103,6 @@ export async function retrieveSelectedNodes({
       sourceUrl: null,
       expandable: false,
       permission: team.permission,
-      dustDocumentId: null,
       lastUpdatedAt: team.updatedAt.getTime() || null,
     });
   });

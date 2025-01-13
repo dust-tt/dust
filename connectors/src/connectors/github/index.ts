@@ -293,7 +293,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
             sourceUrl: repo.url,
             expandable: true,
             permission: "read",
-            dustDocumentId: null,
             lastUpdatedAt: null,
           }))
         );
@@ -364,7 +363,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
               sourceUrl: repo.url + "/issues",
               expandable: false,
               permission: "read",
-              dustDocumentId: null,
               lastUpdatedAt: latestIssue.updatedAt.getTime(),
             });
           }
@@ -378,7 +376,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
               sourceUrl: repo.url + "/discussions",
               expandable: false,
               permission: "read",
-              dustDocumentId: null,
               lastUpdatedAt: latestDiscussion.updatedAt.getTime(),
             });
           }
@@ -392,7 +389,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
               sourceUrl: repo.url,
               expandable: true,
               permission: "read",
-              dustDocumentId: null,
               lastUpdatedAt: codeRepo.codeUpdatedAt.getTime(),
             });
           }
@@ -434,7 +430,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
               sourceUrl: directory.sourceUrl,
               expandable: true,
               permission: "read",
-              dustDocumentId: null,
               lastUpdatedAt: directory.codeUpdatedAt.getTime(),
             });
           });
@@ -448,7 +443,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
               sourceUrl: file.sourceUrl,
               expandable: false,
               permission: "read",
-              dustDocumentId: file.documentId,
               lastUpdatedAt: file.codeUpdatedAt.getTime(),
             });
           });
@@ -610,7 +604,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         sourceUrl: repo.url,
         expandable: true,
         permission: "read",
-        dustDocumentId: null,
         lastUpdatedAt: null,
       });
     });
@@ -629,7 +622,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         sourceUrl: repo.url + "/issues",
         expandable: false,
         permission: "read",
-        dustDocumentId: null,
         lastUpdatedAt: null,
       });
     });
@@ -646,7 +638,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         sourceUrl: repo.url + "/discussions",
         expandable: false,
         permission: "read",
-        dustDocumentId: null,
         lastUpdatedAt: null,
       });
     });
@@ -665,7 +656,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         sourceUrl: repo.url + `/issues/${issueNumber}`,
         expandable: false,
         permission: "read",
-        dustDocumentId: getIssueInternalId(repoId, issueNumber),
         lastUpdatedAt: issue.updatedAt.getTime(),
       });
     });
@@ -684,7 +674,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         sourceUrl: repo.url + `/discussions/${discussionNumber}`,
         expandable: false,
         permission: "read",
-        dustDocumentId: getDiscussionInternalId(repoId, discussionNumber),
         lastUpdatedAt: discussion.updatedAt.getTime(),
       });
     });
@@ -699,7 +688,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         sourceUrl: codeRepo.sourceUrl,
         expandable: true,
         permission: "read",
-        dustDocumentId: null,
         lastUpdatedAt: codeRepo.codeUpdatedAt.getTime(),
       });
     });
@@ -714,7 +702,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         sourceUrl: directory.sourceUrl,
         expandable: true,
         permission: "read",
-        dustDocumentId: null,
         lastUpdatedAt: directory.codeUpdatedAt.getTime(),
       });
     });
@@ -729,7 +716,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         sourceUrl: file.sourceUrl,
         expandable: false,
         permission: "read",
-        dustDocumentId: file.documentId,
         lastUpdatedAt: file.codeUpdatedAt.getTime(),
       });
     });
