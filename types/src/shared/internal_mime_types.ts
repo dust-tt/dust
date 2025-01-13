@@ -109,7 +109,7 @@ export const MIME_TYPES = {
     provider: "zendesk",
     resourceTypes: [
       "BRAND",
-      "HELPCENTER", // TODO: see if we backfill into HELP-CENTER
+      "HELP_CENTER",
       "CATEGORY",
       "ARTICLE",
       "TICKETS",

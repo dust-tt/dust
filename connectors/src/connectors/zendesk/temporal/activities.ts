@@ -148,7 +148,7 @@ export async function syncZendeskBrandActivity({
     parents: [helpCenterNode.internalId, helpCenterNode.parentInternalId],
     parentId: helpCenterNode.parentInternalId,
     title: helpCenterNode.title,
-    mimeType: MIME_TYPES.ZENDESK.HELPCENTER,
+    mimeType: MIME_TYPES.ZENDESK.HELP_CENTER,
   });
 
   // using the content node to get one source of truth regarding the parent relationship
