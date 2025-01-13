@@ -141,10 +141,10 @@ const supportUseCases: UseCase[] = [
     content:
       "Smart answer suggestions and contextual knowledge at your fingertips.",
     images: [
-      "/static/landing/support/front.png",
-      "/static/landing/support/front.png",
-      "/static/landing/support/front.png",
-      "/static/landing/support/front.png",
+      "/static/landing/solutions/front1.png",
+      "/static/landing/solutions/front1.png",
+      "/static/landing/solutions/front1.png",
+      "/static/landing/solutions/front1.png",
     ],
   },
   {
