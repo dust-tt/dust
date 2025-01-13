@@ -629,7 +629,6 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
         sourceUrl: null,
         expandable: true,
         permission: helpCenter.permission,
-        dustDocumentId: null,
         lastUpdatedAt: null,
       });
     }
@@ -650,7 +649,6 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
         sourceUrl: collection.url,
         expandable: true,
         permission: collection.permission,
-        dustDocumentId: null,
         lastUpdatedAt: collection.lastUpsertedTs?.getTime() || null,
       });
     }
@@ -671,7 +669,6 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
         sourceUrl: article.url,
         expandable: false,
         permission: article.permission,
-        dustDocumentId: null,
         lastUpdatedAt: article.lastUpsertedTs?.getTime() || null,
       });
     }
@@ -687,7 +684,6 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
           intercomWorkspace.syncAllConversations === "activated"
             ? "read"
             : "none",
-        dustDocumentId: null,
         lastUpdatedAt: null,
       });
     }
@@ -700,7 +696,6 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
         sourceUrl: null,
         expandable: false,
         permission: team.permission,
-        dustDocumentId: null,
         lastUpdatedAt: null,
       });
     }

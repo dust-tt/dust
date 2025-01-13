@@ -53,7 +53,6 @@ export function createContentNodeFromSpace(
     sourceUrl: `${baseUrl}/wiki${urlSuffix}`,
     expandable: isExpandable,
     permission,
-    dustDocumentId: null,
     lastUpdatedAt: null,
   };
 }
@@ -75,7 +74,6 @@ export function createContentNodeFromPage(
     sourceUrl: `${baseUrl}/wiki${page.externalUrl}`,
     expandable: isExpandable,
     permission: "read",
-    dustDocumentId: null,
     lastUpdatedAt: null,
   };
 }
