@@ -118,8 +118,9 @@ async function handler(
                     fetchConnectorErrorMessage: null,
                   },
                   usage: usages[dataSourceView.id] || {
-                    count: 0,
-                    agentNames: [],
+                    totalAgentCount: 0,
+                    privateAgentCount: 0,
+                    publicAgentNames: [],
                   },
                 };
               }
@@ -130,8 +131,9 @@ async function handler(
                 ...dataSourceView,
                 dataSource: augmentedDataSource,
                 usage: usages[dataSourceView.id] || {
-                  count: 0,
-                  agentNames: [],
+                  totalAgentCount: 0,
+                  privateAgentCount: 0,
+                  publicAgentNames: [],
                 },
               };
             })

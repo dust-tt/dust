@@ -121,13 +121,13 @@ async function handler(
       const force = req.query.force === "true";
       if (!force) {
         const usageRes = await dataSourceView.getUsagesByAgents(auth);
-        if (usageRes.isErr() || usageRes.value.count > 0) {
+        if (usageRes.isErr() || usageRes.value.totalAgentCount > 0) {
           return apiError(req, res, {
             status_code: 401,
             api_error: {
               type: "data_source_error",
               message: usageRes.isOk()
-                ? `The data source view is in use by ${usageRes.value.agentNames.join(", ")} and cannot be deleted.`
+                ? `The data source view is in use by ${usageRes.value.publicAgentNames.join(", ")}${usageRes.value.privateAgentCount > 0 ? `${usageRes.value.privateAgentCount} private agent(s)` : ""} and cannot be deleted.`
                 : "The data source view is in use and cannot be deleted.",
             },
           });

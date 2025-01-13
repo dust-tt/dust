@@ -1,5 +1,5 @@
 import type { DataSourceWithAgentsUsageType, Result } from "@dust-tt/types";
-import { Err, Ok, removeNulls } from "@dust-tt/types";
+import { Err, Ok, pluralize, removeNulls } from "@dust-tt/types";
 import assert from "assert";
 import { uniq } from "lodash";
 
@@ -32,7 +32,7 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
     const usage = await view.getUsagesByAgents(auth);
     if (usage.isErr()) {
       throw usage.error;
-    } else if (usage.value.count > 0) {
+    } else if (usage.value.totalAgentCount > 0) {
       usages.push(usage.value);
     }
   }
@@ -42,16 +42,20 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
     const usage = await ds.getUsagesByAgents(auth);
     if (usage.isErr()) {
       throw usage.error;
-    } else if (usage.value.count > 0) {
+    } else if (usage.value.totalAgentCount > 0) {
       usages.push(usage.value);
     }
   }
 
   if (usages.length > 0) {
-    const agentNames = uniq(usages.map((u) => u.agentNames).flat());
+    const agentNames = uniq(usages.map((u) => u.publicAgentNames).flat());
+    const privateAgentCount = usages.reduce(
+      (acc, u) => acc + u.privateAgentCount,
+      0
+    );
     return new Err(
       new Error(
-        `Cannot delete space with data source in use by assistant(s): ${agentNames.join(", ")}.`
+        `Cannot delete space with data source in use by assistant(s): ${agentNames.join(", ")}${privateAgentCount > 0 ? ` and ${privateAgentCount} private agent${pluralize(privateAgentCount)}.` : "."}.`
       )
     );
   }

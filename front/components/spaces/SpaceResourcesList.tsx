@@ -131,7 +131,8 @@ const getTableColumns = ({
 
   const usedByColumn = {
     header: "Used by",
-    accessorFn: (row: RowData) => row.dataSourceView.usage?.count ?? 0,
+    accessorFn: (row: RowData) =>
+      row.dataSourceView.usage?.totalAgentCount ?? 0,
     id: "usedBy",
     meta: {
       width: "6rem",

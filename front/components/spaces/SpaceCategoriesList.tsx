@@ -21,7 +21,11 @@ import type {
   SpaceType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { DATA_SOURCE_VIEW_CATEGORIES, removeNulls } from "@dust-tt/types";
+import {
+  DATA_SOURCE_VIEW_CATEGORIES,
+  pluralize,
+  removeNulls,
+} from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
 import type { ComponentType } from "react";
 import { useState } from "react";
@@ -80,7 +84,7 @@ const getTableColumns = () => {
     },
     {
       header: "Used by",
-      accessorFn: (row: RowData) => row.usage.count,
+      accessorFn: (row: RowData) => row.usage.totalAgentCount,
       meta: {
         width: "6rem",
       },
@@ -89,9 +93,9 @@ const getTableColumns = () => {
           {info.row.original.usage ? (
             <DataTable.CellContent
               icon={RobotIcon}
-              title={`Used by ${info.row.original.usage.agentNames.join(", ")}`}
+              title={`Used by ${info.row.original.usage.publicAgentNames.join(", ")} ${info.row.original.usage.privateAgentCount > 0 ? ` and ${info.row.original.usage.privateAgentCount} private agent${pluralize(info.row.original.usage.privateAgentCount)}.` : "."}.`}
             >
-              {info.row.original.usage.count}
+              {info.row.original.usage.totalAgentCount}
             </DataTable.CellContent>
           ) : null}
         </>

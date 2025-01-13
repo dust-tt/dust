@@ -74,11 +74,9 @@ export async function getDataSourceViewsUsageByCategory({
     default:
       assertNever(category);
   }
-
   const res = (await Promise.all([
     AgentDataSourceConfiguration.findAll({
       raw: true,
-      group: ["dataSourceView.id"],
       attributes: [
         [Sequelize.col("dataSourceView.id"), "dataSourceViewId"],
         [
@@ -90,7 +88,17 @@ export async function getDataSourceViewsUsageByCategory({
           ),
           "names",
         ],
+        [
+          Sequelize.fn(
+            "array_agg",
+            Sequelize.col(
+              "agent_retrieval_configuration->agent_configuration.scope"
+            )
+          ),
+          "scopes",
+        ],
       ],
+      group: ["dataSourceView.id", "dataSourceView.dataSourceForView.id"],
       include: [
         {
           model: DataSourceViewModel,
@@ -131,7 +139,6 @@ export async function getDataSourceViewsUsageByCategory({
     }),
     AgentDataSourceConfiguration.findAll({
       raw: true,
-      group: ["dataSourceView.id"],
       attributes: [
         [Sequelize.col("dataSourceView.id"), "dataSourceViewId"],
         [
@@ -143,7 +150,17 @@ export async function getDataSourceViewsUsageByCategory({
           ),
           "names",
         ],
+        [
+          Sequelize.fn(
+            "array_agg",
+            Sequelize.col(
+              "agent_process_configuration->agent_configuration.scope"
+            )
+          ),
+          "scopes",
+        ],
       ],
+      group: ["dataSourceView.id", "dataSourceView.dataSourceForView.id"],
       include: [
         {
           model: DataSourceViewModel,
@@ -184,7 +201,6 @@ export async function getDataSourceViewsUsageByCategory({
     }),
     AgentTablesQueryConfigurationTable.findAll({
       raw: true,
-      group: ["dataSourceView.id"],
       attributes: [
         [Sequelize.col("dataSourceView.id"), "dataSourceViewId"],
         [
@@ -196,7 +212,17 @@ export async function getDataSourceViewsUsageByCategory({
           ),
           "names",
         ],
+        [
+          Sequelize.fn(
+            "array_agg",
+            Sequelize.col(
+              "agent_tables_query_configuration->agent_configuration.scope"
+            )
+          ),
+          "scopes",
+        ],
       ],
+      group: ["dataSourceView.id", "dataSourceView.dataSourceForView.id"],
       include: [
         {
           model: DataSourceViewModel,
@@ -238,6 +264,7 @@ export async function getDataSourceViewsUsageByCategory({
   ])) as unknown as {
     dataSourceViewId: ModelId;
     names: string[];
+    scopes: string[];
   }[][];
 
   return res.flat().reduce<DataSourcesUsageByAgent>((acc, dsViewConfig) => {
@@ -245,16 +272,28 @@ export async function getDataSourceViewsUsageByCategory({
 
     if (!usage) {
       usage = {
-        count: 0,
-        agentNames: [],
+        totalAgentCount: 0,
+        privateAgentCount: 0,
+        publicAgentNames: [],
       };
     }
 
-    usage.agentNames = usage.agentNames
-      .concat(dsViewConfig.names)
-      .filter((t) => t && t.length > 0);
-    usage.agentNames = uniq(sortBy(usage.agentNames));
-    usage.count = usage.agentNames.length;
+    const validAgents = dsViewConfig.names
+      .map((name, i) => ({ name, scope: dsViewConfig.scopes[i] }))
+      .filter((agent) => agent.name && agent.name.length > 0);
+
+    usage.publicAgentNames = uniq(
+      sortBy([
+        ...usage.publicAgentNames,
+        ...validAgents
+          .filter((agent) => agent.scope !== "private")
+          .map((agent) => agent.name),
+      ])
+    );
+    usage.privateAgentCount = validAgents.filter(
+      (agent) => agent.scope === "private"
+    ).length;
+    usage.totalAgentCount = validAgents.length;
 
     acc[dsViewConfig.dataSourceViewId] = usage;
 
@@ -297,7 +336,6 @@ export async function getDataSourcesUsageByCategory({
   const res = (await Promise.all([
     AgentDataSourceConfiguration.findAll({
       raw: true,
-      group: ["dataSource.id"],
       attributes: [
         [Sequelize.col("dataSource.id"), "dataSourceId"],
         [
@@ -309,7 +347,17 @@ export async function getDataSourcesUsageByCategory({
           ),
           "names",
         ],
+        [
+          Sequelize.fn(
+            "array_agg",
+            Sequelize.col(
+              "agent_retrieval_configuration->agent_configuration.scope"
+            )
+          ),
+          "scopes",
+        ],
       ],
+      group: ["dataSource.id"],
       include: [
         {
           model: DataSourceModel,
@@ -342,7 +390,6 @@ export async function getDataSourcesUsageByCategory({
     }),
     AgentDataSourceConfiguration.findAll({
       raw: true,
-      group: ["dataSource.id"],
       attributes: [
         [Sequelize.col("dataSource.id"), "dataSourceId"],
         [
@@ -354,7 +401,17 @@ export async function getDataSourcesUsageByCategory({
           ),
           "names",
         ],
+        [
+          Sequelize.fn(
+            "array_agg",
+            Sequelize.col(
+              "agent_process_configuration->agent_configuration.scope"
+            )
+          ),
+          "scopes",
+        ],
       ],
+      group: ["dataSource.id"],
       include: [
         {
           model: DataSourceModel,
@@ -387,7 +444,6 @@ export async function getDataSourcesUsageByCategory({
     }),
     AgentTablesQueryConfigurationTable.findAll({
       raw: true,
-      group: ["dataSource.id"],
       attributes: [
         [Sequelize.col("dataSource.id"), "dataSourceId"],
         [
@@ -399,7 +455,17 @@ export async function getDataSourcesUsageByCategory({
           ),
           "names",
         ],
+        [
+          Sequelize.fn(
+            "array_agg",
+            Sequelize.col(
+              "agent_tables_query_configuration->agent_configuration.scope"
+            )
+          ),
+          "scopes",
+        ],
       ],
+      group: ["dataSource.id"],
       include: [
         {
           model: DataSourceModel,
@@ -433,22 +499,35 @@ export async function getDataSourcesUsageByCategory({
   ])) as unknown as {
     dataSourceId: ModelId;
     names: string[];
+    scopes: string[];
   }[][];
 
   return res.flat().reduce<DataSourcesUsageByAgent>((acc, dsConfig) => {
     let usage = acc[dsConfig.dataSourceId];
     if (!usage) {
       usage = {
-        count: 0,
-        agentNames: [],
+        totalAgentCount: 0,
+        privateAgentCount: 0,
+        publicAgentNames: [],
       };
     }
 
-    usage.agentNames = usage.agentNames
-      .concat(dsConfig.names)
-      .filter((t) => t && t.length > 0);
-    usage.agentNames = uniq(sortBy(usage.agentNames));
-    usage.count = usage.agentNames.length;
+    const validAgents = dsConfig.names
+      .map((name, i) => ({ name, scope: dsConfig.scopes[i] }))
+      .filter((agent) => agent.name && agent.name.length > 0);
+
+    usage.publicAgentNames = uniq(
+      sortBy([
+        ...usage.publicAgentNames,
+        ...validAgents
+          .filter((agent) => agent.scope !== "private")
+          .map((agent) => agent.name),
+      ])
+    );
+    usage.privateAgentCount = validAgents.filter(
+      (agent) => agent.scope === "private"
+    ).length;
+    usage.totalAgentCount = validAgents.length;
 
     acc[dsConfig.dataSourceId] = usage;
     return acc;
@@ -488,6 +567,15 @@ export async function getDataSourceUsage({
           ),
           "names",
         ],
+        [
+          Sequelize.fn(
+            "array_agg",
+            Sequelize.col(
+              "agent_retrieval_configuration->agent_configuration.scope"
+            )
+          ),
+          "scopes",
+        ],
       ],
       where: {
         dataSourceId: dataSource.id,
@@ -524,6 +612,15 @@ export async function getDataSourceUsage({
             )
           ),
           "names",
+        ],
+        [
+          Sequelize.fn(
+            "array_agg",
+            Sequelize.col(
+              "agent_process_configuration->agent_configuration.scope"
+            )
+          ),
+          "scopes",
         ],
       ],
       where: {
@@ -562,6 +659,15 @@ export async function getDataSourceUsage({
           ),
           "names",
         ],
+        [
+          Sequelize.fn(
+            "array_agg",
+            Sequelize.col(
+              "agent_tables_query_configuration->agent_configuration.scope"
+            )
+          ),
+          "scopes",
+        ],
       ],
       where: {
         dataSourceId: dataSource.id,
@@ -587,20 +693,43 @@ export async function getDataSourceUsage({
         },
       ],
     }),
-  ])) as unknown as { names: string[] }[] | null;
+  ])) as unknown as { names: string[]; scopes: string[] }[] | null;
 
   if (!res) {
-    return new Ok({ count: 0, agentNames: [] });
+    return new Ok({
+      totalAgentCount: 0,
+      privateAgentCount: 0,
+      publicAgentNames: [],
+    });
   } else {
-    const agentNames = uniq(
+    const validAgents = res.reduce<Array<{ name: string; scope: string }>>(
+      (acc, r) => {
+        const agents = r.names
+          .map((name, i) => ({ name, scope: r.scopes[i] }))
+          .filter((agent) => agent.name && agent.name.length > 0);
+        return acc.concat(agents);
+      },
+      []
+    );
+
+    const publicAgentNames = uniq(
       sortBy(
-        res
-          .reduce<string[]>((acc, r) => acc.concat(r.names), [])
-          .filter((t) => t && t.length > 0)
+        validAgents
+          .filter((agent) => agent.scope !== "private")
+          .map((agent) => agent.name)
       )
     );
 
-    return new Ok({ count: agentNames.length, agentNames });
+    const privateAgentCount = validAgents.filter(
+      (agent) => agent.scope === "private"
+    ).length;
+    const totalAgentCount = validAgents.length;
+
+    return new Ok({
+      totalAgentCount,
+      privateAgentCount,
+      publicAgentNames,
+    });
   }
 }
 
@@ -637,6 +766,15 @@ export async function getDataSourceViewUsage({
           ),
           "names",
         ],
+        [
+          Sequelize.fn(
+            "array_agg",
+            Sequelize.col(
+              "agent_retrieval_configuration->agent_configuration.scope"
+            )
+          ),
+          "scopes",
+        ],
       ],
       where: {
         dataSourceViewId: dataSourceView.id,
@@ -673,6 +811,15 @@ export async function getDataSourceViewUsage({
             )
           ),
           "names",
+        ],
+        [
+          Sequelize.fn(
+            "array_agg",
+            Sequelize.col(
+              "agent_process_configuration->agent_configuration.scope"
+            )
+          ),
+          "scopes",
         ],
       ],
       where: {
@@ -711,6 +858,15 @@ export async function getDataSourceViewUsage({
           ),
           "names",
         ],
+        [
+          Sequelize.fn(
+            "array_agg",
+            Sequelize.col(
+              "agent_tables_query_configuration->agent_configuration.scope"
+            )
+          ),
+          "scopes",
+        ],
       ],
       where: {
         dataSourceViewId: dataSourceView.id,
@@ -736,18 +892,42 @@ export async function getDataSourceViewUsage({
         },
       ],
     }),
-  ])) as unknown as { names: string[] }[] | null;
+  ])) as unknown as { names: string[]; scopes: string[] }[] | null;
 
   if (!res) {
-    return new Ok({ count: 0, agentNames: [] });
+    return new Ok({
+      totalAgentCount: 0,
+      privateAgentCount: 0,
+      publicAgentNames: [],
+    });
   } else {
-    const agentNames = uniq(
+    const validAgents = res.reduce<Array<{ name: string; scope: string }>>(
+      (acc, r) => {
+        const agents = r.names
+          .map((name, i) => ({ name, scope: r.scopes[i] }))
+          .filter((agent) => agent.name && agent.name.length > 0);
+        return acc.concat(agents);
+      },
+      []
+    );
+
+    const publicAgentNames = uniq(
       sortBy(
-        res
-          .reduce<string[]>((acc, r) => acc.concat(r.names), [])
-          .filter((t) => t && t.length > 0)
+        validAgents
+          .filter((agent) => agent.scope !== "private")
+          .map((agent) => agent.name)
       )
     );
-    return new Ok({ count: agentNames.length, agentNames });
+
+    const privateAgentCount = validAgents.filter(
+      (agent) => agent.scope === "private"
+    ).length;
+    const totalAgentCount = validAgents.length;
+
+    return new Ok({
+      totalAgentCount,
+      privateAgentCount,
+      publicAgentNames,
+    });
   }
 }

@@ -110,8 +110,9 @@ export type DataSourceWithConnectorDetailsType = DataSourceType &
   ConnectorStatusDetails;
 
 export type DataSourceWithAgentsUsageType = {
-  count: number;
-  agentNames: string[];
+  totalAgentCount: number;
+  privateAgentCount: number;
+  publicAgentNames: string[];
 };
 
 export function isDataSourceNameValid(name: string): Result<void, string> {

@@ -79,8 +79,11 @@ async function handler(
 
       const viewsUsedByAgentsName = viewsUsageByAgentsRes.reduce(
         (acc, usageRes) => {
-          if (usageRes.isOk() && usageRes.value.count > 0) {
-            usageRes.value.agentNames.forEach((name) => acc.add(name));
+          if (usageRes.isOk() && usageRes.value.totalAgentCount > 0) {
+            usageRes.value.publicAgentNames.forEach((name) => acc.add(name));
+            if (usageRes.value.privateAgentCount > 0) {
+              acc.add(`${usageRes.value.privateAgentCount} private agents`);
+            }
           }
 
           return acc;

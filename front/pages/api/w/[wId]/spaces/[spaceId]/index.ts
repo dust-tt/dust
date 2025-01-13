@@ -61,8 +61,9 @@ async function handler(
         categories[category] = {
           count: 0,
           usage: {
-            count: 0,
-            agentNames: [],
+            totalAgentCount: 0,
+            privateAgentCount: 0,
+            publicAgentNames: [],
           },
         };
 
@@ -83,13 +84,16 @@ async function handler(
             const usage = usages[dsView.id];
 
             if (usage) {
-              categories[category].usage.agentNames = categories[
+              categories[category].usage.publicAgentNames = categories[
                 category
-              ].usage.agentNames.concat(usage.agentNames);
-              categories[category].usage.agentNames = uniq(
-                categories[category].usage.agentNames
+              ].usage.publicAgentNames.concat(usage.publicAgentNames);
+              categories[category].usage.publicAgentNames = uniq(
+                categories[category].usage.publicAgentNames
               );
-              categories[category].usage.count += usage.count;
+              categories[category].usage.totalAgentCount +=
+                usage.totalAgentCount;
+              categories[category].usage.privateAgentCount +=
+                usage.privateAgentCount;
             }
           }
         }

@@ -8,6 +8,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { DataSourceType, LightWorkspaceType } from "@dust-tt/types";
+import { pluralize } from "@dust-tt/types";
 import { useMemo, useState } from "react";
 
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
@@ -52,8 +53,8 @@ export function DeleteStaticDataSourceDialog({
     if (!usage) {
       return "No usage data available.";
     }
-    if (usage.count > 0) {
-      return `${usage.count} assistants currently use "${name}": ${usage.agentNames.join(", ")}.`;
+    if (usage.totalAgentCount > 0) {
+      return `${usage.totalAgentCount} assistants currently use "${name}": ${usage.publicAgentNames.join(", ")}${usage.privateAgentCount > 0 ? ` and ${usage.privateAgentCount} private agent${pluralize(usage.privateAgentCount)}.` : "."}.`;
     }
     return `No assistants are using "${name}".`;
   }, [isUsageLoading, isUsageError, usage, name]);

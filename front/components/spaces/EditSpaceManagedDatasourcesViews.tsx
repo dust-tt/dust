@@ -109,7 +109,7 @@ export function EditSpaceManagedDataSourcesViews({
     );
 
     const deletedViewsWithUsage = deletedViews.filter(
-      (dv) => dv.usage.count > 0
+      (dv) => dv.usage.totalAgentCount > 0
     );
     if (deletedViewsWithUsage.length > 0) {
       const confirmed = await showDialog({
@@ -126,8 +126,8 @@ export function EditSpaceManagedDataSourcesViews({
               <p key={view.sId} className="font-medium">
                 {getDisplayNameForDataSource(view.dataSource)}{" "}
                 <span className="italic text-muted-foreground">
-                  (used by {view.usage.count} assistant
-                  {view.usage.count > 1 ? "s" : ""})
+                  (used by {view.usage.totalAgentCount} assistant
+                  {view.usage.totalAgentCount > 1 ? "s" : ""})
                 </span>
               </p>
             ))}
