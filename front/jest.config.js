@@ -23,4 +23,5 @@ module.exports = {
   setupFiles: ["./jest.setup.js", "jest-canvas-mock"],
   cache: true,
   cacheDirectory: ".jest-cache",
+  globalSetup: "./jest.globalSetup.js",
 };
