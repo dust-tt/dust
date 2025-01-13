@@ -23,3 +23,12 @@ export function HubSpotForm() {
     />
   );
 }
+
+// Add a default export that uses the HubSpot form component
+export default function Page() {
+  return (
+    <div>
+      <HubSpotForm />
+    </div>
+  );
+}
