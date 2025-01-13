@@ -76,7 +76,6 @@ async function getRootLevelContentNodes(
         brandsInDatabase
           .find((b) => b.brandId === brand.id)
           ?.toContentNode(connectorId) ?? {
-          provider: "zendesk",
           internalId: getBrandInternalId({ connectorId, brandId: brand.id }),
           parentInternalId: null,
           type: "folder",
@@ -134,7 +133,6 @@ async function getBrandChildren(
     const ticketsNode: ContentNode = brandInDb?.getTicketsContentNode(
       connector.id
     ) ?? {
-      provider: "zendesk",
       internalId: getTicketsInternalId({ connectorId: connector.id, brandId }),
       parentInternalId: parentInternalId,
       type: "folder",
@@ -152,7 +150,6 @@ async function getBrandChildren(
       const helpCenterNode: ContentNode = brandInDb?.getHelpCenterContentNode(
         connector.id
       ) ?? {
-        provider: "zendesk",
         internalId: getHelpCenterInternalId({
           connectorId: connector.id,
           brandId,
@@ -213,7 +210,6 @@ async function getHelpCenterChildren(
         categoriesInDatabase
           .find((c) => c.categoryId === category.id)
           ?.toContentNode(connectorId) ?? {
-          provider: "zendesk",
           internalId: getCategoryInternalId({
             connectorId,
             brandId,

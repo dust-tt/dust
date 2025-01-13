@@ -320,7 +320,6 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
               const type = getPermissionViewType(f);
 
               return {
-                provider: c.type,
                 internalId: getInternalId(f.driveFileId),
                 parentInternalId: null,
                 type,
@@ -344,7 +343,6 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
             nodes = nodes.concat(
               sheets.map((s) => {
                 return {
-                  provider: c.type,
                   internalId: getGoogleSheetContentNodeInternalId(
                     s.driveFileId,
                     s.driveSheetId
@@ -389,7 +387,6 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
                 );
               }
               return {
-                provider: c.type,
                 internalId: getInternalId(driveObject.id),
                 parentInternalId:
                   // note: if the parent is null, the drive object falls at top-level
@@ -417,7 +414,6 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
           // Adding a fake "Shared with me" node, to allow the user to see their shared files
           // that are not living in a shared drive.
           nodes.push({
-            provider: c.type,
             internalId: getInternalId(GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID),
             parentInternalId: null,
             type: "folder" as const,
@@ -486,7 +482,6 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
               );
 
               return {
-                provider: c.type,
                 internalId: getInternalId(driveObject.id),
                 parentInternalId:
                   driveObject.parent && getInternalId(driveObject.parent),
@@ -673,7 +668,6 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
         const sourceUrl = getSourceUrlForGoogleDriveFiles(f);
 
         return {
-          provider: "google_drive",
           internalId: getInternalId(f.driveFileId),
           parentInternalId: null,
           type,
@@ -713,7 +707,6 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
     })();
 
     const sheetNodes: ContentNode[] = sheets.map((s) => ({
-      provider: "google_drive",
       internalId: getGoogleSheetContentNodeInternalId(
         s.driveFileId,
         s.driveSheetId
@@ -974,7 +967,6 @@ async function getFoldersAsContentNodes({
       }
       const sourceUrl = `https://drive.google.com/drive/folders/${f.folderId}`;
       return {
-        provider: "google_drive",
         internalId: getInternalId(f.folderId),
         parentInternalId: null,
         type: "folder",

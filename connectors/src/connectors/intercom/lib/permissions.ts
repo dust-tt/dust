@@ -50,7 +50,6 @@ export async function retrieveSelectedNodes({
     );
 
     collectionsNodes.push({
-      provider: connector.type,
       internalId: getHelpCenterCollectionInternalId(
         connectorId,
         collection.collectionId
@@ -79,7 +78,6 @@ export async function retrieveSelectedNodes({
     intercomWorkspace?.syncAllConversations === "scheduled_activate"
   ) {
     teamsNodes.push({
-      provider: connector.type,
       internalId: getTeamsInternalId(connectorId),
       parentInternalId: null,
       type: "channel",
@@ -100,7 +98,6 @@ export async function retrieveSelectedNodes({
   });
   teams.forEach((team) => {
     teamsNodes.push({
-      provider: connector.type,
       internalId: getTeamInternalId(connectorId, team.teamId),
       parentInternalId: getTeamsInternalId(connectorId),
       type: "folder",

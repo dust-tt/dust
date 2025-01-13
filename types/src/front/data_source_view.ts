@@ -1,12 +1,7 @@
 import { ModelId } from "../shared/model_id";
 import { DataSourceViewCategory } from "./api_handlers/public/spaces";
-import {
-  ConnectorStatusDetails,
-  DataSourceType,
-  DataSourceWithAgentsUsageType,
-  EditedByUser,
-} from "./data_source";
-import { BaseContentNode } from "./lib/connectors_api";
+import { ConnectorStatusDetails, DataSourceType, DataSourceWithAgentsUsageType, EditedByUser } from "./data_source";
+import { ContentNode } from "./lib/connectors_api";
 
 export interface DataSourceViewType {
   category: DataSourceViewCategory;
@@ -26,7 +21,7 @@ export type DataSourceViewsWithDetails = DataSourceViewType & {
   usage: DataSourceWithAgentsUsageType;
 };
 
-export type DataSourceViewContentNode = BaseContentNode & {
+export type DataSourceViewContentNode = ContentNode & {
   parentInternalIds: string[] | null;
 };
 

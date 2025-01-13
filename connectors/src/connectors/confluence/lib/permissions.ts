@@ -46,7 +46,6 @@ export function createContentNodeFromSpace(
   const spaceId = isConfluenceSpaceModel(space) ? space.spaceId : space.id;
 
   return {
-    provider: "confluence",
     internalId: makeSpaceInternalId(spaceId),
     parentInternalId: null,
     type: "folder",
@@ -66,7 +65,6 @@ export function createContentNodeFromPage(
   isExpandable = false
 ): ContentNode {
   return {
-    provider: "confluence",
     internalId: makePageInternalId(page.pageId),
     parentInternalId:
       parent.type === "space"

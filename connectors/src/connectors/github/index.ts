@@ -286,7 +286,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
 
         nodes = nodes.concat(
           page.map((repo) => ({
-            provider: c.type,
             internalId: getRepositoryInternalId(repo.id),
             parentInternalId: null,
             type: "folder",
@@ -358,7 +357,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
 
           if (latestIssue) {
             nodes.push({
-              provider: c.type,
               internalId: getIssuesInternalId(repoId),
               parentInternalId,
               type: "database",
@@ -373,7 +371,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
 
           if (latestDiscussion) {
             nodes.push({
-              provider: c.type,
               internalId: getDiscussionsInternalId(repoId),
               parentInternalId,
               type: "channel",
@@ -388,7 +385,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
 
           if (codeRepo) {
             nodes.push({
-              provider: c.type,
               internalId: getCodeRootInternalId(repoId),
               parentInternalId,
               type: "folder",
@@ -431,7 +427,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
 
           directories.forEach((directory) => {
             nodes.push({
-              provider: c.type,
               internalId: directory.internalId,
               parentInternalId,
               type: "folder",
@@ -446,7 +441,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
 
           files.forEach((file) => {
             nodes.push({
-              provider: c.type,
               internalId: file.documentId,
               parentInternalId,
               type: "file",
@@ -609,7 +603,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         return;
       }
       nodes.push({
-        provider: c.type,
         internalId: getRepositoryInternalId(repoId),
         parentInternalId: null,
         type: "folder",
@@ -629,7 +622,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         return;
       }
       nodes.push({
-        provider: c.type,
         internalId: getIssuesInternalId(repoId),
         parentInternalId: getRepositoryInternalId(repoId),
         type: "database",
@@ -647,7 +639,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         return;
       }
       nodes.push({
-        provider: c.type,
         internalId: getDiscussionsInternalId(repoId),
         parentInternalId: getRepositoryInternalId(repoId),
         type: "channel",
@@ -667,7 +658,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         return;
       }
       nodes.push({
-        provider: c.type,
         internalId: getIssueInternalId(repoId, issueNumber),
         parentInternalId: getIssuesInternalId(repoId),
         type: "file",
@@ -687,7 +677,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         return;
       }
       nodes.push({
-        provider: c.type,
         internalId: getDiscussionInternalId(repoId, discussionNumber),
         parentInternalId: getDiscussionsInternalId(repoId),
         type: "file",
@@ -703,7 +692,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
     // Constructing Nodes for Code
     fullCodeInRepos.forEach((codeRepo) => {
       nodes.push({
-        provider: c.type,
         internalId: getCodeRootInternalId(codeRepo.repoId),
         parentInternalId: getRepositoryInternalId(codeRepo.repoId),
         type: "folder",
@@ -719,7 +707,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
     // Constructing Nodes for Code Directories
     codeDirectories.forEach((directory) => {
       nodes.push({
-        provider: c.type,
         internalId: directory.internalId,
         parentInternalId: directory.parentInternalId,
         type: "folder",
@@ -735,7 +722,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
     // Constructing Nodes for Code Files
     codeFiles.forEach((file) => {
       nodes.push({
-        provider: c.type,
         internalId: file.documentId,
         parentInternalId: file.parentInternalId,
         type: "file",

@@ -1,7 +1,4 @@
-import {
-  AdminCommandType,
-  AdminResponseType,
-} from "../../connectors/admin/cli";
+import { AdminCommandType, AdminResponseType } from "../../connectors/admin/cli";
 import { ConnectorsAPIError, isConnectorsAPIError } from "../../connectors/api";
 import { UpdateConnectorConfigurationType } from "../../connectors/api_handlers/connector_configuration";
 import { ConnectorCreateRequestBody } from "../../connectors/api_handlers/create_connector";
@@ -96,7 +93,7 @@ export const contentNodeTypeSortOrder: Record<ContentNodeType, number> = {
  * information. More details here:
  * https://www.notion.so/dust-tt/Design-Doc-Microsoft-ids-parents-c27726652aae45abafaac587b971a41d?pvs=4
  */
-export interface BaseContentNode {
+export interface ContentNode {
   internalId: string;
   // The direct parent ID of this content node
   parentInternalId: string | null;
@@ -110,10 +107,6 @@ export interface BaseContentNode {
   lastUpdatedAt: number | null;
   providerVisibility?: "public" | "private";
 }
-
-export type ContentNode = BaseContentNode & {
-  provider: ConnectorProvider;
-};
 
 export type ContentNodeWithParentIds = ContentNode & {
   // A list of all parent IDs up to the root node, including the direct parent
