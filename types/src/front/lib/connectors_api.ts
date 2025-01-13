@@ -497,36 +497,6 @@ export class ConnectorsAPI {
     return this._resultFromResponse(res);
   }
 
-  async getContentNodesParents({
-    connectorId,
-    internalIds,
-  }: {
-    connectorId: string;
-    internalIds: string[];
-  }): Promise<
-    ConnectorsAPIResponse<{
-      nodes: {
-        internalId: string;
-        parents: string[];
-      }[];
-    }>
-  > {
-    const res = await this._fetchWithError(
-      `${this._url}/connectors/${encodeURIComponent(
-        connectorId
-      )}/content_nodes/parents`,
-      {
-        method: "POST",
-        headers: this.getDefaultHeaders(),
-        body: JSON.stringify({
-          internalIds,
-        }),
-      }
-    );
-
-    return this._resultFromResponse(res);
-  }
-
   async getContentNodes<IncludeParents extends boolean>({
     connectorId,
     includeParents,
