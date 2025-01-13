@@ -200,7 +200,7 @@ export const MetricComponent = ({
   from,
   to,
 }: MetricComponentProps) => (
-  <>
+  <div>
     {metrics.map((metric, index) => (
       <div
         key={index}
@@ -214,7 +214,7 @@ export const MetricComponent = ({
         </P>
       </div>
     ))}
-  </>
+  </div>
 );
 
 interface QuoteProps {

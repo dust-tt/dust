@@ -291,26 +291,26 @@ export default function CustomerSupport() {
               fromColor={pageSettings.from}
               toColor={pageSettings.to}
             />
+            <MetricComponent
+              metrics={[
+                {
+                  value: "15x",
+                  description: <>15x&nbsp;faster to craft an answer</>,
+                },
+                {
+                  value: "8h",
+                  description: (
+                    <>
+                      Save 8&nbsp;hours per&nbsp;agent per&nbsp;week
+                      on&nbsp;average
+                    </>
+                  ),
+                },
+              ]}
+              from="from-amber-200"
+              to="to-amber-500"
+            />
           </div>
-          <MetricComponent
-            metrics={[
-              {
-                value: "15x",
-                description: <>15x&nbsp;faster to craft an answer</>,
-              },
-              {
-                value: "8h",
-                description: (
-                  <>
-                    Save 8&nbsp;hours per&nbsp;agent per&nbsp;week
-                    on&nbsp;average
-                  </>
-                ),
-              },
-            ]}
-            from="from-amber-200"
-            to="to-amber-500"
-          />
           <div
             className={classNames(
               "flex flex-col gap-8",
