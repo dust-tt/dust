@@ -53,6 +53,7 @@ pub struct UpsertNode<'a> {
     pub title: &'a str,
     pub mime_type: &'a str,
     pub parents: &'a Vec<String>,
+    pub source_url: &'a Option<String>,
 }
 
 impl PostgresStore {
@@ -1917,6 +1918,7 @@ impl Store for PostgresStore {
                 title: &document.title,
                 mime_type: &document.mime_type,
                 parents: &document.parents,
+                source_url: &document.source_url,
             },
             data_source_row_id,
             document_row_id,
@@ -2676,6 +2678,7 @@ impl Store for PostgresStore {
             upsert_params.tags,
             upsert_params.parents.get(1).cloned(),
             upsert_params.parents,
+            upsert_params.source_url,
             parsed_schema,
             table_schema_stale_at.map(|t| t as u64),
             upsert_params.remote_database_table_id,
@@ -2690,6 +2693,7 @@ impl Store for PostgresStore {
                 title: table.title(),
                 mime_type: table.mime_type(),
                 parents: table.parents(),
+                source_url: table.source_url(),
             },
             data_source_row_id,
             table_row_id,
@@ -2861,7 +2865,7 @@ impl Store for PostgresStore {
         let stmt = c
             .prepare(
                 "SELECT t.created, t.table_id, t.name, t.description, \
-                        t.timestamp, t.tags_array, dsn.parents, \
+                        t.timestamp, t.tags_array, dsn.parents, dsn.source_url, \
                         t.schema, t.schema_stale_at, \
                         t.remote_database_table_id, t.remote_database_secret_id, \
                         dsn.title, dsn.mime_type \
@@ -2879,6 +2883,7 @@ impl Store for PostgresStore {
             i64,
             Vec<String>,
             Vec<String>,
+            Option<String>,
             Option<String>,
             Option<i64>,
             Option<String>,
@@ -2901,6 +2906,7 @@ impl Store for PostgresStore {
                 r[0].get(10),
                 r[0].get(11),
                 r[0].get(12),
+                r[0].get(13),
             )),
             _ => unreachable!(),
         };
@@ -2915,6 +2921,7 @@ impl Store for PostgresStore {
                 timestamp,
                 tags,
                 parents,
+                source_url,
                 schema,
                 schema_stale_at,
                 remote_database_table_id,
@@ -2947,6 +2954,7 @@ impl Store for PostgresStore {
                     tags,
                     parents.get(1).cloned(),
                     parents,
+                    source_url,
                     parsed_schema,
                     schema_stale_at.map(|t| t as u64),
                     remote_database_table_id,
@@ -3021,7 +3029,7 @@ impl Store for PostgresStore {
                     t.timestamp, t.tags_array, dsn.parents, \
                     t.schema, t.schema_stale_at, \
                     t.remote_database_table_id, t.remote_database_secret_id, \
-                    dsn.title, dsn.mime_type \
+                    dsn.title, dsn.mime_type, dsn.source_url \
                 FROM tables t INNER JOIN data_sources_nodes dsn ON dsn.table=t.id \
                 WHERE {} ORDER BY t.timestamp DESC",
             where_clauses.join(" AND "),
@@ -3063,7 +3071,7 @@ impl Store for PostgresStore {
                 let remote_database_secret_id: Option<String> = r.get(10);
                 let title: String = r.get(11);
                 let mime_type: String = r.get(12);
-
+                let source_url: Option<String> = r.get(13);
                 let parsed_schema: Option<TableSchema> = match schema {
                     None => None,
                     Some(schema) => {
@@ -3089,6 +3097,7 @@ impl Store for PostgresStore {
                     tags,
                     parents.get(1).cloned(),
                     parents,
+                    source_url,
                     parsed_schema,
                     schema_stale_at.map(|t| t as u64),
                     remote_database_table_id,
@@ -3225,6 +3234,7 @@ impl Store for PostgresStore {
             upsert_params.parents.get(1).cloned(),
             upsert_params.parents,
             upsert_params.mime_type,
+            upsert_params.source_url,
         );
 
         self.upsert_data_source_node(
@@ -3235,6 +3245,7 @@ impl Store for PostgresStore {
                 title: folder.title(),
                 mime_type: folder.mime_type(),
                 parents: folder.parents(),
+                source_url: folder.source_url(),
             },
             data_source_row_id,
             folder_row_id,
@@ -3344,7 +3355,7 @@ impl Store for PostgresStore {
         }
 
         let sql = format!(
-            "SELECT dsn.node_id, dsn.title, dsn.timestamp, dsn.parents, dsn.mime_type \
+            "SELECT dsn.node_id, dsn.title, dsn.timestamp, dsn.parents, dsn.mime_type, dsn.source_url \
                FROM data_sources_nodes dsn \
                WHERE dsn.folder IS NOT NULL AND {} ORDER BY dsn.timestamp DESC",
             where_clauses.join(" AND "),
@@ -3393,7 +3404,7 @@ impl Store for PostgresStore {
                 let timestamp: i64 = r.get(2);
                 let parents: Vec<String> = r.get(3);
                 let mime_type: String = r.get(4);
-
+                let source_url: Option<String> = r.get(5);
                 Ok(Folder::new(
                     data_source_id.clone(),
                     data_source_internal_id.clone(),
@@ -3403,6 +3414,7 @@ impl Store for PostgresStore {
                     parents.get(1).cloned(),
                     parents,
                     mime_type,
+                    source_url,
                 ))
             })
             .collect::<Result<Vec<_>>>()?;
@@ -3475,7 +3487,7 @@ impl Store for PostgresStore {
 
         let stmt = c
             .prepare(
-                "SELECT timestamp, title, mime_type, parents, node_id, document, \"table\", folder \
+                "SELECT timestamp, title, mime_type, parents, node_id, document, \"table\", folder, source_url \
                    FROM data_sources_nodes \
                    WHERE data_source = $1 AND node_id = $2 LIMIT 1",
             )
@@ -3499,6 +3511,7 @@ impl Store for PostgresStore {
                     (None, None, Some(id)) => (NodeType::Folder, id),
                     _ => unreachable!(),
                 };
+                let source_url: Option<String> = row[0].get::<_, Option<String>>(8);
                 Ok(Some((
                     Node::new(
                         &data_source_id,
@@ -3510,6 +3523,7 @@ impl Store for PostgresStore {
                         &mime_type,
                         parents.get(1).cloned(),
                         parents,
+                        source_url,
                     ),
                     row_id,
                 )))
@@ -3528,7 +3542,7 @@ impl Store for PostgresStore {
 
         let stmt = c
             .prepare(
-                "SELECT dsn.timestamp, dsn.title, dsn.mime_type, dsn.parents, dsn.node_id, dsn.document, dsn.\"table\", dsn.folder, ds.data_source_id, ds.internal_id, dsn.id \
+                "SELECT dsn.timestamp, dsn.title, dsn.mime_type, dsn.parents, dsn.node_id, dsn.document, dsn.\"table\", dsn.folder, ds.data_source_id, ds.internal_id, dsn.source_url, dsn.id \
                    FROM data_sources_nodes dsn JOIN data_sources ds ON dsn.data_source = ds.id \
                    WHERE dsn.id > $1 ORDER BY dsn.id ASC LIMIT $2",
             )
@@ -3555,7 +3569,8 @@ impl Store for PostgresStore {
                         (None, None, Some(id)) => (NodeType::Folder, id),
                         _ => unreachable!(),
                     };
-                let row_id = row.get::<_, i64>(10);
+                let source_url: Option<String> = row.get::<_, Option<String>>(10);
+                let row_id = row.get::<_, i64>(11);
                 (
                     Node::new(
                         &data_source_id,
@@ -3567,6 +3582,7 @@ impl Store for PostgresStore {
                         &mime_type,
                         parents.get(1).cloned(),
                         parents,
+                        source_url,
                     ),
                     row_id,
                     element_row_id,

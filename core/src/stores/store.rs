@@ -65,6 +65,7 @@ pub struct TableUpsertParams {
     pub timestamp: u64,
     pub tags: Vec<String>,
     pub parents: Vec<String>,
+    pub source_url: Option<String>,
     pub remote_database_table_id: Option<String>,
     pub remote_database_secret_id: Option<String>,
     pub title: String,
@@ -77,6 +78,7 @@ pub struct FolderUpsertParams {
     pub title: String,
     pub parents: Vec<String>,
     pub mime_type: String,
+    pub source_url: Option<String>,
 }
 
 #[async_trait]
@@ -597,8 +599,9 @@ pub const POSTGRES_TABLES: [&'static str; 16] = [
        title                        TEXT NOT NULL,
        mime_type                    TEXT NOT NULL,
        parents                      TEXT[] NOT NULL,
+       source_url                   TEXT,
        document                     BIGINT,
-       \"table\"                      BIGINT,
+       \"table\"                    BIGINT,
        folder                       BIGINT,
        FOREIGN KEY(data_source)    REFERENCES data_sources(id),
        FOREIGN KEY(document)       REFERENCES data_sources_documents(id),
