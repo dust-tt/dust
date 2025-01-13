@@ -40,6 +40,6 @@ describe("getDatasetTypes", function () {
       bar: { whats: "up" },
     };
     const types = getDatasetTypes(datasetKeys, entry);
-    expect(types).toEqual(["string", "number", "boolean", "object", "object"]);
+    expect(types).toEqual(["string", "number", "boolean", "json", "json"]);
   });
 });

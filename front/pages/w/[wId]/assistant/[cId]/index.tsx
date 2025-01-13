@@ -24,6 +24,9 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
   const user = auth.user();
   const subscription = auth.subscription();
 
+  // Sleep for 5 seconds to emulate slow network
+  await new Promise((resolve) => setTimeout(resolve, 5000));
+
   if (!owner || !user || !auth.isUser() || !subscription) {
     const { cId } = context.query;
 
