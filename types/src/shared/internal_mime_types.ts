@@ -2,7 +2,7 @@ import { ConnectorProvider } from "../front/data_source";
 
 /**
  * This is a utility type that indicates that we removed all underscores from a string.
- * This is used because we don't want underscores in mime types.
+ * This is used because we don't want underscores in mime types and remove them from connector providers.
  */
 type WithoutUnderscores<T extends string> = T extends `${infer A}_${infer B}`
   ? WithoutUnderscores<`${A}${B}`> // operates recursively to remove all underscores
