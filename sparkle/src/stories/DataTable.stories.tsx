@@ -54,7 +54,7 @@ const data: Data[] = [
     avatarUrl: "https://avatars.githubusercontent.com/u/138893015?s=200&v=4",
     avatarTooltipLabel: "Meow",
     roundedAvatar: true,
-    onClick: () => console.log("hehe"),
+    onClick: () => alert("Soupinou clicked"),
     moreMenuItems: [
       {
         label: "Edit (disabled)",
