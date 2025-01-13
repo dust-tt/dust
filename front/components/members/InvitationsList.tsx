@@ -60,7 +60,7 @@ export function InvitationsList({
         </DataTable.CellContent>
       ),
       meta: {
-        width: "46rem",
+        className: "w-full",
       },
     },
     {
@@ -78,7 +78,7 @@ export function InvitationsList({
         </DataTable.CellContent>
       ),
       meta: {
-        width: "6rem",
+        className: "w-32",
       },
     },
   ];

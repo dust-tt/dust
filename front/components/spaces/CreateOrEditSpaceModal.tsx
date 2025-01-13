@@ -336,28 +336,33 @@ function MembersTable({
           </>
         ),
         enableSorting: true,
+        meta: {
+          className: "w-[200px]",
+        },
       },
       {
         id: "email",
         accessorKey: "email",
         cell: (info: Info) => (
-          <DataTable.CellContent>
-            <span className="text-element-700">{info.row.original.email}</span>
-          </DataTable.CellContent>
+          <DataTable.BasicCellContent label={info.row.original.email} />
         ),
+        meta: {
+          className: "w-full",
+        },
         enableSorting: true,
       },
       {
         id: "action",
         cell: (info: Info) => {
           return (
-            <div className="flex w-full justify-end">
+            <DataTable.CellContent>
               <Button
                 icon={XMarkIcon}
-                variant="ghost"
+                size="xs"
+                variant="ghost-secondary"
                 onClick={() => removeMember(info.row.original.userId)}
               />
-            </div>
+            </DataTable.CellContent>
           );
         },
       },

@@ -77,6 +77,9 @@ const getTableColumns = (showSpaceUsage: boolean): ColumnDef<RowData>[] => {
         <span>{info.getValue()}</span>
       </DataTable.CellContent>
     ),
+    meta: {
+      className: "w-full",
+    },
   });
 
   if (showSpaceUsage) {
@@ -85,17 +88,27 @@ const getTableColumns = (showSpaceUsage: boolean): ColumnDef<RowData>[] => {
       id: "spaces",
       accessorKey: "spaces",
       meta: {
-        width: "14rem",
+        className: "w-[200px]",
       },
       cell: (info: CellContext<RowData, SpaceType[]>) => (
-        <DataTable.CellContent>
-          {info.getValue().length > 0
-            ? info
-                .getValue()
-                .map((v) => v.name)
-                .join(", ")
-            : "-"}
-        </DataTable.CellContent>
+        <DataTable.BasicCellContent
+          label={
+            info.getValue().length > 0
+              ? info
+                  .getValue()
+                  .map((v) => v.name)
+                  .join(", ")
+              : "-"
+          }
+          tooltip={
+            info.getValue().length > 0
+              ? info
+                  .getValue()
+                  .map((v) => v.name)
+                  .join(", ")
+              : "-"
+          }
+        />
       ),
     });
   }
@@ -105,14 +118,16 @@ const getTableColumns = (showSpaceUsage: boolean): ColumnDef<RowData>[] => {
     id: "lastUpdatedAt",
     accessorKey: "lastUpdatedAt",
     meta: {
-      width: "12rem",
+      className: "w-[140px]",
     },
     cell: (info: CellContext<RowData, number>) => (
-      <DataTable.CellContent>
-        {info.getValue()
-          ? formatTimestampToFriendlyDate(info.getValue(), "short")
-          : "-"}
-      </DataTable.CellContent>
+      <DataTable.BasicCellContent
+        label={
+          info.getValue()
+            ? formatTimestampToFriendlyDate(info.getValue(), "short")
+            : "-"
+        }
+      />
     ),
   });
 
