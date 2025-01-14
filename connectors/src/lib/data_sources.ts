@@ -9,6 +9,7 @@ import type {
   CoreAPIFolder,
   CoreAPITable,
   PostDataSourceDocumentRequestBody,
+  ProviderVisibility,
 } from "@dust-tt/types";
 import {
   isValidDate,
@@ -1254,7 +1255,7 @@ export async function _upsertDataSourceFolder({
   title: string;
   mimeType: string;
   sourceUrl?: string;
-  providerVisibility?: string;
+  providerVisibility?: ProviderVisibility;
 }) {
   const now = new Date();
 

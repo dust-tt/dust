@@ -862,7 +862,7 @@ export class DustAPI {
     parents: string[];
     mimeType: string;
     sourceUrl: string | null;
-    providerVisibility: string | null;
+    providerVisibility: "public" | "private" | null;
   }) {
     const res = await this.request({
       method: "POST",

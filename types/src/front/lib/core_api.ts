@@ -26,6 +26,7 @@ import {
 import { LightWorkspaceType } from "../../front/user";
 import { LoggerInterface } from "../../shared/logger";
 import { Err, Ok, Result } from "../../shared/result";
+import { ProviderVisibility } from "./connectors_api";
 
 export const MAX_CHUNK_SIZE = 512;
 
@@ -1558,7 +1559,7 @@ export class CoreAPI {
     title: string;
     mimeType: string;
     sourceUrl?: string | null;
-    providerVisibility: string | null | undefined;
+    providerVisibility: ProviderVisibility | null | undefined;
   }): Promise<CoreAPIResponse<{ folder: CoreAPIFolder }>> {
     const response = await this._fetchWithError(
       `${this._url}/projects/${projectId}/data_sources/${encodeURIComponent(
