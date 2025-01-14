@@ -10,6 +10,8 @@ import {
   AgentDustAppRunAction,
   AgentDustAppRunConfiguration,
 } from "@app/lib/models/assistant/actions/dust_app_run";
+import { AgentGithubGetPullRequestAction } from "@app/lib/models/assistant/actions/github";
+import { AgentGithubConfiguration } from "@app/lib/models/assistant/actions/github";
 import {
   AgentProcessAction,
   AgentProcessConfiguration,
@@ -81,6 +83,7 @@ import {
   LabsTranscriptsHistoryModel,
 } from "@app/lib/resources/storage/models/labs_transcripts";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
+import { PlatformActionsConfigurationModel } from "@app/lib/resources/storage/models/platform_actions";
 import {
   RunModel,
   RunUsageModel,
@@ -147,6 +150,7 @@ async function main() {
   await AgentProcessConfiguration.sync({ alter: true });
   await AgentWebsearchConfiguration.sync({ alter: true });
   await AgentBrowseConfiguration.sync({ alter: true });
+  await AgentGithubConfiguration.sync({ alter: true });
 
   await AgentDataSourceConfiguration.sync({ alter: true });
 
@@ -166,6 +170,7 @@ async function main() {
   await AgentBrowseAction.sync({ alter: true });
   await AgentConversationIncludeFileAction.sync({ alter: true });
   await AgentMessageContent.sync({ alter: true });
+  await AgentGithubGetPullRequestAction.sync({ alter: true });
 
   await RetrievalDocument.sync({ alter: true });
   await RetrievalDocumentChunk.sync({ alter: true });
@@ -174,6 +179,8 @@ async function main() {
   await KillSwitchModel.sync({ alter: true });
 
   await ConversationClassification.sync({ alter: true });
+
+  await PlatformActionsConfigurationModel.sync({ alter: true });
 
   // Labs - Can be removed at all times if a solution is dropped
   await LabsTranscriptsConfigurationModel.sync({ alter: true });

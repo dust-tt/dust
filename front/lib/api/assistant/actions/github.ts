@@ -1,0 +1,391 @@
+import type {
+  AgentActionSpecification,
+  ConversationType,
+  FunctionCallType,
+  FunctionMessageTypeModel,
+  GithubGetPullRequestConfigurationType,
+  GithubGetPullRequestErrorEvent,
+  GithubGetPullRequestParamsEvent,
+  GithubGetPullRequestSuccessEvent,
+  ModelConfigurationType,
+  ModelId,
+  Result,
+} from "@dust-tt/types";
+import { BaseAction, getOAuthConnectionAccessToken, Ok } from "@dust-tt/types";
+import { Octokit } from "octokit";
+
+import {
+  DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_DESCRIPTION,
+  DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME,
+} from "@app/lib/api/assistant/actions/constants";
+import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
+import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
+import apiConfig from "@app/lib/api/config";
+import type { Authenticator } from "@app/lib/auth";
+import { AgentGithubGetPullRequestAction } from "@app/lib/models/assistant/actions/github";
+import { PlatformActionsConfigurationResource } from "@app/lib/resources/platform_actions_configuration_resource";
+import logger from "@app/logger/logger";
+
+interface GithubGetPullRequestActionBlob {
+  id: ModelId;
+  agentMessageId: ModelId;
+  params: {
+    owner: string;
+    repo: string;
+    pullNumber: number;
+  };
+  details: string | null;
+  diff: string | null;
+  functionCallId: string | null;
+  functionCallName: string | null;
+  step: number;
+}
+
+export class GithubGetPullRequestAction extends BaseAction {
+  readonly agentMessageId: ModelId;
+  readonly params: {
+    owner: string;
+    repo: string;
+    pullNumber: number;
+  };
+  readonly details: string | null;
+  readonly diff: string | null;
+  readonly functionCallId: string | null;
+  readonly functionCallName: string | null;
+  readonly step: number = -1;
+  readonly type = "github_get_pull_request_action";
+
+  constructor(blob: GithubGetPullRequestActionBlob) {
+    super(blob.id, "github_get_pull_request_action");
+    this.agentMessageId = blob.agentMessageId;
+    this.params = blob.params;
+    this.details = blob.details;
+    this.diff = blob.diff;
+    this.functionCallId = blob.functionCallId;
+    this.functionCallName = blob.functionCallName;
+    this.step = blob.step;
+  }
+
+  renderForFunctionCall(): FunctionCallType {
+    return {
+      id: this.functionCallId ?? `call_${this.id.toString()}`,
+      name:
+        this.functionCallName ?? DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME,
+      arguments: JSON.stringify(this.params),
+    };
+  }
+
+  async renderForMultiActionsModel({
+    conversation,
+    model,
+  }: {
+    conversation: ConversationType;
+    model: ModelConfigurationType;
+  }): Promise<FunctionMessageTypeModel> {
+    console.log(
+      "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< RENDER_FOR_MULTI_ACTIONS_MODEL"
+    );
+    console.log(this);
+    return {
+      role: "function" as const,
+      name:
+        this.functionCallName ?? DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME,
+      function_call_id: this.functionCallId ?? `call_${this.id.toString()}`,
+      content: `TODO`,
+    };
+  }
+}
+
+/**
+ * Params generation.
+ */
+
+export class GithubGetPullRequestConfigurationServerRunner extends BaseActionConfigurationServerRunner<GithubGetPullRequestConfigurationType> {
+  // Generates the action specification for generation of rawInputs passed to `run`.
+  async buildSpecification(
+    _auth: Authenticator,
+    { name, description }: { name: string; description: string | null }
+  ): Promise<Result<AgentActionSpecification, Error>> {
+    return new Ok({
+      name,
+      description:
+        description ?? DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_DESCRIPTION,
+      inputs: [
+        {
+          name: "owner",
+          description:
+            "The owner of the repository to get the pull request from (account or organization name)",
+          type: "string",
+        },
+        {
+          name: "repo",
+          description:
+            "The name of the repository to get the pull request from",
+          type: "string",
+        },
+        {
+          name: "pullNumber",
+          description: "The number of the pull request to get",
+          type: "number",
+        },
+      ],
+    });
+  }
+
+  async *run(
+    auth: Authenticator,
+    {
+      agentConfiguration,
+      agentMessage,
+      rawInputs,
+      functionCallId,
+      step,
+    }: BaseActionRunParams
+  ): AsyncGenerator<
+    | GithubGetPullRequestParamsEvent
+    | GithubGetPullRequestSuccessEvent
+    | GithubGetPullRequestErrorEvent,
+    void
+  > {
+    const { actionConfiguration } = this;
+
+    const platformActionsConfiguration =
+      await PlatformActionsConfigurationResource.findByWorkspaceAndProvider(
+        auth,
+        {
+          provider: "github",
+        }
+      );
+
+    if (!platformActionsConfiguration) {
+      yield {
+        type: "github_get_pull_request_error",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "github_configuration_error",
+          message: `Github actions have not been configured for this workspace.`,
+        },
+      };
+      return;
+    }
+
+    if (
+      !rawInputs.owner ||
+      !rawInputs.repo ||
+      !rawInputs.pullNumber ||
+      typeof rawInputs.owner !== "string" ||
+      typeof rawInputs.repo !== "string" ||
+      typeof rawInputs.pullNumber !== "number"
+    ) {
+      yield {
+        type: "github_get_pull_request_error",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "github_get_pull_request_parameters_generation_error",
+          message: `Error generating parameters for github get pull request action.`,
+        },
+      };
+      return;
+    }
+
+    const pullNumber = rawInputs.pullNumber as number;
+    const owner = rawInputs.owner as string;
+    const repo = rawInputs.repo as string;
+
+    // Create the action in database and yield an event
+    const action = await AgentGithubGetPullRequestAction.create({
+      owner,
+      repo,
+      pullNumber,
+      functionCallId,
+      functionCallName: actionConfiguration.name,
+      agentMessageId: agentMessage.agentMessageId,
+      step,
+    });
+
+    yield {
+      type: "github_get_pull_request_params",
+      created: Date.now(),
+      configurationId: agentConfiguration.sId,
+      messageId: agentMessage.sId,
+      action: new GithubGetPullRequestAction({
+        id: action.id,
+        params: {
+          owner,
+          repo,
+          pullNumber,
+        },
+        details: null,
+        diff: null,
+        functionCallId,
+        functionCallName: actionConfiguration.name,
+        agentMessageId: agentMessage.agentMessageId,
+        step,
+      }),
+    };
+
+    const tokRes = await getOAuthConnectionAccessToken({
+      config: apiConfig.getOAuthAPIConfig(),
+      logger,
+      provider: "github",
+      connectionId: platformActionsConfiguration.connectionId,
+    });
+
+    if (tokRes.isErr()) {
+      yield {
+        type: "github_get_pull_request_error",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "github_connection_error",
+          message: `Error getting connection token for github: ${tokRes.error.message}`,
+        },
+      };
+      return;
+    }
+
+    const octokit = new Octokit({ auth: tokRes.value.access_token });
+
+    try {
+      const query = `
+      query($owner: String!, $repo: String!, $pullNumber: Int!) {
+        repository(owner: $owner, name: $repo) {
+          pullRequest(number: $pullNumber) {
+            body
+            commits(last: 32) {
+              nodes {
+                commit {
+                  oid
+                  message
+                    author {
+                    user {
+                      login
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }`;
+
+      // Get the PR description and base/head commit
+      const pr = await octokit.graphql(query, {
+        owner,
+        repo,
+        pullNumber,
+      });
+
+      let prDetails = pr.repository.pullRequest.body;
+      prDetails += "\n\ncommits:\n";
+      prDetails += pr.repository.pullRequest.commits.nodes
+        .map((n: any) => {
+          return `${n.commit.oid} - ${n.commit.message} - ${n.commit.author.user.login}`;
+        })
+        .join("\n");
+
+      console.log("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< PR_DATA");
+      console.log(prDetails);
+
+      // const formatDiffWithLineNumbers = (diff: string) => {
+      //   const lines = diff.split("\n");
+      //   let oldLineNum = 0;
+      //   let newLineNum = 0;
+
+      //   return lines
+      //     .map((line) => {
+      //       if (
+      //         !line.startsWith("+") &&
+      //         !line.startsWith("-") &&
+      //         !line.startsWith(" ") &&
+      //         !line.startsWith("@")
+      //       ) {
+      //         return line;
+      //       }
+
+      //       if (line.startsWith("@@")) {
+      //         // Reset line numbers based on hunk header
+      //         const match = line.match(/@@ -(\d+),\d+ \+(\d+),\d+ @@/);
+      //         if (match) {
+      //           oldLineNum = parseInt(match[1]) - 1;
+      //           newLineNum = parseInt(match[2]) - 1;
+      //         }
+      //         return line;
+      //       }
+
+      //       if (line.startsWith("-")) {
+      //         oldLineNum++;
+      //         return `${oldLineNum}: ${line}`;
+      //       }
+      //       if (line.startsWith("+")) {
+      //         newLineNum++;
+      //         return `${newLineNum}: ${line}`;
+      //       }
+      //       oldLineNum++;
+      //       newLineNum++;
+      //       return `${newLineNum}: ${line}`;
+      //     })
+      //     .join("\n");
+      // };
+
+      // Get the actual diff using REST API (not available in GraphQL)
+      const diff = await octokit.rest.pulls.get({
+        owner,
+        repo,
+        pull_number: pullNumber,
+        mediaType: {
+          format: "diff",
+        },
+      });
+
+      // @ts-expect-error - the diff is a string
+      const prDiff = diff.data as string;
+
+      console.log("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< PR_DIFF");
+      console.log(prDiff);
+
+      await action.update({
+        details: prDetails,
+        diff: prDiff,
+      });
+    } catch (e) {
+      yield {
+        type: "github_get_pull_request_error",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "github_get_pull_request_error",
+          message: `Error getting pull request`,
+        },
+      };
+      return;
+    }
+
+    yield {
+      type: "github_get_pull_request_success",
+      created: Date.now(),
+      configurationId: agentConfiguration.sId,
+      messageId: agentMessage.sId,
+      action: new GithubGetPullRequestAction({
+        id: action.id,
+        params: {
+          owner: owner,
+          repo: repo,
+          pullNumber,
+        },
+        details: action.details,
+        diff: action.diff,
+        functionCallId,
+        functionCallName: actionConfiguration.name,
+        agentMessageId: agentMessage.agentMessageId,
+        step,
+      }),
+    };
+  }
+}

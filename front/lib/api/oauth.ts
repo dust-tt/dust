@@ -38,7 +38,7 @@ const PROVIDER_STRATEGIES: Record<
   {
     setupUri: (
       connection: OAuthConnectionType,
-      useCase?: OAuthUseCase
+      useCase: OAuthUseCase
     ) => string;
     codeFromQuery: (query: ParsedUrlQuery) => string | null;
     connectionIdFromQuery: (query: ParsedUrlQuery) => string | null;
@@ -46,10 +46,14 @@ const PROVIDER_STRATEGIES: Record<
   }
 > = {
   github: {
-    setupUri: (connection) => {
+    setupUri: (connection, useCase) => {
+      const app =
+        useCase === "platform_actions"
+          ? config.getOAuthGithubAppPlatformActions()
+          : config.getOAuthGithubApp();
       // Only the `installations/new` URL supports state passing.
       return (
-        `https://github.com/apps/${config.getOAuthGithubApp()}/installations/new` +
+        `https://github.com/apps/${app}/installations/new` +
         `?state=${connection.connection_id}`
       );
     },
@@ -70,7 +74,7 @@ const PROVIDER_STRATEGIES: Record<
     },
   },
   google_drive: {
-    setupUri: (connection, useCase?) => {
+    setupUri: (connection, useCase) => {
       const scopes =
         useCase === "labs_transcripts"
           ? ["https://www.googleapis.com/auth/drive.meet.readonly"]

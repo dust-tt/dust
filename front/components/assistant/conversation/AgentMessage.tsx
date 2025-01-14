@@ -247,6 +247,7 @@ export function AgentMessage({
       case "websearch_params":
       case "browse_params":
       case "conversation_include_file_params":
+      case "github_get_pull_request_params":
         setStreamedAgentMessage((m) => {
           return updateMessageWithAction(m, event.action);
         });

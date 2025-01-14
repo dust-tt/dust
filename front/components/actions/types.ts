@@ -4,6 +4,7 @@ import { ACTION_RUNNING_LABELS } from "@dust-tt/types";
 import { BrowseActionDetails } from "@app/components/actions/browse/BrowseActionDetails";
 import { ConversationIncludeFileActionDetails } from "@app/components/actions/conversation/include_file/IncludeFileActionDetails";
 import { DustAppRunActionDetails } from "@app/components/actions/dust_app_run/DustAppRunActionDetails";
+import { GithubGetPullRequestActionDetails } from "@app/components/actions/github/GithubGetPullRequestActionDetails";
 import { ProcessActionDetails } from "@app/components/actions/process/ProcessActionDetails";
 import { RetrievalActionDetails } from "@app/components/actions/retrieval/RetrievalActionDetails";
 import { TablesQueryActionDetails } from "@app/components/actions/tables_query/TablesQueryActionDetails";
@@ -60,6 +61,10 @@ const actionsSpecification: ActionSpecifications = {
   conversation_include_file_action: {
     detailsComponent: ConversationIncludeFileActionDetails,
     runningLabel: ACTION_RUNNING_LABELS.conversation_include_file_action,
+  },
+  github_get_pull_request_action: {
+    detailsComponent: GithubGetPullRequestActionDetails,
+    runningLabel: ACTION_RUNNING_LABELS.github_get_pull_request_action,
   },
 };
 

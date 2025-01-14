@@ -24,6 +24,21 @@ lazy_static! {
         let key = std::fs::read_to_string(path).unwrap();
         EncodingKey::from_rsa_pem(key.as_bytes()).unwrap()
     };
+    static ref OAUTH_GITHUB_APP_PLATFORM_ACTIONS_CLIENT_ID: String =
+        std::env::var("OAUTH_GITHUB_APP_PLATFORM_ACTIONS_CLIENT_ID").unwrap();
+    static ref OAUTH_GITHUB_APP_PLATFORM_ACTIONS_ENCODING_KEY: EncodingKey = {
+        let path = std::env::var("OAUTH_GITHUB_APP_PLATFORM_ACTIONS_PRIVATE_KEY_PATH").unwrap();
+        let key = std::fs::read_to_string(path).unwrap();
+        EncodingKey::from_rsa_pem(key.as_bytes()).unwrap()
+    };
+}
+
+/// We support two Github apps. Our default `connection` app (for data source connection) and a
+/// `platform_actions` app (for agent actions).
+#[derive(Debug, PartialEq, Clone)]
+pub enum GithubUseCase {
+    Connection,
+    PlatformActions,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -43,21 +58,42 @@ impl GithubConnectionProvider {
     // See https://docs.github.com/en
     //             /apps/creating-github-apps/authenticating-with-a-github-app
     //             /generating-a-json-web-token-jwt-for-a-github-app
-    fn jwt(&self) -> Result<String> {
+    fn jwt(&self, app_type: GithubUseCase) -> Result<String> {
         let header = Header::new(Algorithm::RS256);
-        let payload = JWTPayload {
-            iat: utils::now_secs() - 60,
-            exp: utils::now_secs() + 3 * 60,
-            iss: OAUTH_GITHUB_APP_CLIENT_ID.clone(),
-        };
 
-        let token = encode(&header, &payload, &OAUTH_GITHUB_APP_ENCODING_KEY)?;
+        match app_type {
+            GithubUseCase::Connection => {
+                let payload = JWTPayload {
+                    iat: utils::now_secs() - 60,
+                    exp: utils::now_secs() + 3 * 60,
+                    iss: OAUTH_GITHUB_APP_CLIENT_ID.clone(),
+                };
 
-        Ok(token)
+                let token = encode(&header, &payload, &OAUTH_GITHUB_APP_ENCODING_KEY)?;
+
+                Ok(token)
+            }
+            GithubUseCase::PlatformActions => {
+                let payload = JWTPayload {
+                    iat: utils::now_secs() - 60,
+                    exp: utils::now_secs() + 3 * 60,
+                    iss: OAUTH_GITHUB_APP_PLATFORM_ACTIONS_CLIENT_ID.clone(),
+                };
+
+                let token = encode(
+                    &header,
+                    &payload,
+                    &OAUTH_GITHUB_APP_PLATFORM_ACTIONS_ENCODING_KEY,
+                )?;
+
+                Ok(token)
+            }
+        }
     }
 
     async fn refresh_token(
         &self,
+        app_type: GithubUseCase,
         code: &str,
     ) -> Result<(String, u64, serde_json::Value), ProviderError> {
         // https://github.com/octokit/auth-app.js/blob/main/src/get-installation-authentication.ts
@@ -67,7 +103,7 @@ impl GithubConnectionProvider {
                 code
             ))
             .header("Accept", "application/vnd.github+json")
-            .header("Authorization", format!("Bearer {}", self.jwt()?))
+            .header("Authorization", format!("Bearer {}", self.jwt(app_type)?))
             .header("User-Agent", "dust/oauth")
             .header("X-GitHub-Api-Version", "2022-11-28");
 
@@ -108,12 +144,21 @@ impl Provider for GithubConnectionProvider {
 
     async fn finalize(
         &self,
-        _connection: &Connection,
+        connection: &Connection,
         code: &str,
         redirect_uri: &str,
     ) -> Result<FinalizeResult, ProviderError> {
+        let app_type = match connection.metadata()["use_case"].as_str() {
+            Some(use_case) => match use_case {
+                "connection" => GithubUseCase::Connection,
+                "platform_actions" => GithubUseCase::PlatformActions,
+                _ => Err(anyhow!("Github use_case format invalid"))?,
+            },
+            None => Err(anyhow!("Github use_case missing"))?,
+        };
+
         // `code` is the installation_id returned by Github.
-        let (token, expiry, raw_json) = self.refresh_token(code).await?;
+        let (token, expiry, raw_json) = self.refresh_token(app_type, code).await?;
 
         // We store the installation_id as `code` which will be used to refresh tokens.
         Ok(FinalizeResult {
@@ -127,13 +172,22 @@ impl Provider for GithubConnectionProvider {
     }
 
     async fn refresh(&self, connection: &Connection) -> Result<RefreshResult, ProviderError> {
+        let app_type = match connection.metadata()["use_case"].as_str() {
+            Some(use_case) => match use_case {
+                "connection" => GithubUseCase::Connection,
+                "platform_actions" => GithubUseCase::PlatformActions,
+                _ => Err(anyhow!("Github use_case format invalid"))?,
+            },
+            None => Err(anyhow!("Github use_case missing"))?,
+        };
+
         // `code` is the installation_id returned by Github.
         let code = match connection.unseal_authorization_code()? {
             Some(code) => code,
             None => Err(anyhow!("Missing installation_id in connection"))?,
         };
 
-        let (token, expiry, raw_json) = self.refresh_token(&code).await?;
+        let (token, expiry, raw_json) = self.refresh_token(app_type, &code).await?;
 
         Ok(RefreshResult {
             access_token: token.to_string(),

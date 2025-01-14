@@ -3,6 +3,7 @@ import {
   CommandLineIcon,
   ExternalLinkIcon,
   FolderIcon,
+  GithubIcon,
   Icon,
   IconButton,
   PlanetIcon,
@@ -24,6 +25,7 @@ import {
   GLOBAL_AGENTS_SID,
   isBrowseConfiguration,
   isDustAppRunConfiguration,
+  isGithubGetPullRequestConfiguration,
   isProcessConfiguration,
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
@@ -265,13 +267,22 @@ function renderOtherAction(
           <Icon visual={PlanetIcon} size="sm" />
           <div>
             Assistant can navigate the web (browse any provided links, make a
-            google search, etc.) to answer
+            google search, etc.) to answer.
           </div>
         </div>
       </ActionSection>
     );
   } else if (isBrowseConfiguration(action)) {
     return null;
+  } else if (isGithubGetPullRequestConfiguration(action)) {
+    return (
+      <ActionSection title="Github" key={`other-${index}`}>
+        <div className="flex gap-2 text-muted-foreground">
+          <Icon visual={GithubIcon} size="sm" />
+          <div>Assistant can retrieve pull requests from Github.</div>
+        </div>
+      </ActionSection>
+    );
   } else if (
     !isRetrievalConfiguration(action) &&
     !isTablesQueryConfiguration(action)
