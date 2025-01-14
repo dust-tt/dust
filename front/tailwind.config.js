@@ -233,9 +233,9 @@ module.exports = {
         primary: {
           DEFAULT: colors.slate[800],
           light: { DEFAULT: colors.slate[700], dark: colors.slate[300] },
-          dark: { DEFAULT: colors.slate[950], dark: colors.slate[50] },
+          dark: { DEFAULT: colors.slate[950], dark: "#F6F8FB" },
           muted: { DEFAULT: colors.slate[400], dark: colors.slate[600] },
-          950: { DEFAULT: colors.slate[950], dark: colors.slate[50] },
+          950: { DEFAULT: colors.slate[950], dark: "#F6F8FB" },
           900: { DEFAULT: colors.slate[900], dark: colors.slate[100] },
           800: { DEFAULT: colors.slate[800], dark: colors.slate[200] },
           700: { DEFAULT: colors.slate[700], dark: colors.slate[300] },
@@ -304,7 +304,7 @@ module.exports = {
           300: { DEFAULT: colors.slate[300], dark: colors.slate[600] },
         },
         element: {
-          950: { DEFAULT: colors.slate[950], dark: colors.slate[50] },
+          950: { DEFAULT: colors.slate[950], dark: "#F6F8FB" },
           900: { DEFAULT: colors.slate[900], dark: colors.slate[100] },
           800: { DEFAULT: colors.slate[700], dark: colors.slate[200] },
           700: { DEFAULT: colors.slate[500], dark: colors.slate[300] },
