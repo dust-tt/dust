@@ -1,10 +1,11 @@
 import type { FC } from "react";
+
 import {
   Carousel,
   CarouselContent,
   CarouselItem,
-  CarouselPrevious,
   CarouselNext,
+  CarouselPrevious,
 } from "@app/components/home/Carousel";
 import { BlogBlock } from "@app/components/home/ContentBlocks";
 import { Grid, H2 } from "@app/components/home/ContentComponents";

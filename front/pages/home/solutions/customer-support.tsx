@@ -34,9 +34,9 @@ import {
   BenefitsSection,
   type Benefit,
 } from "@app/components/home/content/Solutions/BenefitsSection";
+import { HeroSection } from "@app/components/home/content/Solutions/HeroSection";
 import TrustedBy from "@app/components/home/TrustedBy";
 import { classNames } from "@app/lib/utils";
-import { HeroSection } from "@app/components/home/content/Solutions/HeroSection";
 
 import Link from "next/link";
 

@@ -1,4 +1,3 @@
-import type { FC } from "react";
 import {
   Avatar,
   Hover3D,
@@ -7,6 +6,8 @@ import {
   RocketIcon,
   UserGroupIcon,
 } from "@dust-tt/sparkle";
+import type { FC } from "react";
+
 import { ImgBlock } from "@app/components/home/ContentBlocks";
 import { Grid, H2 } from "@app/components/home/ContentComponents";
 
