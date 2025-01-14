@@ -46,8 +46,7 @@ declare module "@tanstack/react-table" {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface ColumnMeta<TData, TValue> {
     className?: string;
-    width?: string;
-    flex?: number;
+    tooltip?: string;
   }
 }
 
@@ -304,7 +303,7 @@ DataTable.Head = function Head({
   column,
   ...props
 }: HeadProps) {
-  return (
+  const content = (
     <th
       className={classNames(
         "s-py-2 s-pr-3 s-text-left s-text-xs s-font-medium s-capitalize s-text-foreground",
@@ -316,6 +315,12 @@ DataTable.Head = function Head({
       {children}
     </th>
   );
+
+  if (column.columnDef.meta?.tooltip) {
+    return <Tooltip label={column.columnDef.meta.tooltip} trigger={content} />;
+  }
+
+  return content;
 };
 
 DataTable.Body = function Body({
