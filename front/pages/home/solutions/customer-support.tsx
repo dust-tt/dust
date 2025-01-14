@@ -1,4 +1,5 @@
 import {
+  Button,
   Div3D,
   Hover3D,
   RocketIcon,
@@ -37,6 +38,8 @@ import {
 import TrustedBy from "@app/components/home/TrustedBy";
 import { classNames } from "@app/lib/utils";
 import { HeroSection } from "@app/components/home/content/Solutions/HeroSection";
+
+import Link from "next/link";
 
 export async function getServerSideProps() {
   return {
@@ -227,8 +230,8 @@ export default function CustomerSupport() {
             <MetricComponent
               metrics={[
                 {
-                  value: "15x",
-                  description: <>15x&nbsp;faster to craft an answer</>,
+                  value: "50%",
+                  description: <>50%&nbsp; in ticket resolution time</>,
                 },
                 {
                   value: "8h",
@@ -306,7 +309,41 @@ export default function CustomerSupport() {
               toColor={pageSettings.to}
             />
           </div>
-          <TrustedBy />;
+          <TrustedBy />
+          <div
+            className={classNames(
+              "col-span-12 flex flex-col items-center",
+              "lg:col-span-12 lg:col-start-1",
+              "xl:col-span-10 xl:col-start-2"
+            )}
+          >
+            {supportHeroProps.ctaButtons && (
+              <div className="mt-4 flex justify-center gap-4">
+                {supportHeroProps.ctaButtons.primary && (
+                  <Link
+                    href={supportHeroProps.ctaButtons.primary.href}
+                    shallow={true}
+                  >
+                    <Button
+                      variant="highlight"
+                      size="md"
+                      label={supportHeroProps.ctaButtons.primary.label}
+                      icon={supportHeroProps.ctaButtons.primary.icon}
+                    />
+                  </Link>
+                )}
+                {supportHeroProps.ctaButtons.secondary && (
+                  <Button
+                    variant="outline"
+                    size="md"
+                    label={supportHeroProps.ctaButtons.secondary.label}
+                    href={supportHeroProps.ctaButtons.secondary.href}
+                    target={supportHeroProps.ctaButtons.secondary.target}
+                  />
+                )}
+              </div>
+            )}
+          </div>
         </Grid>
       </div>
     </>
