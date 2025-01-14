@@ -7,15 +7,11 @@ import {
 } from "@dust-tt/sparkle";
 import type { ReactElement } from "react-markdown/lib/react-markdown";
 
-import {
-  UseCasesSection,
-  type UseCase,
-} from "@app/components/home/content/Solutions/UseCasesSection";
+import { UseCasesSection } from "@app/components/home/content/Solutions/UseCasesSection";
+import type { UseCase } from "@app/components/home/content/Solutions/UseCasesSection";
 
-import {
-  CustomerStoriesSection,
-  type CustomerStory,
-} from "@app/components/home/content/Solutions/CustomerStoriesSection";
+import { CustomerStoriesSection } from "@app/components/home/content/Solutions/CustomerStoriesSection";
+import type { CustomerStory } from "@app/components/home/content/Solutions/CustomerStoriesSection";
 
 import {
   CarousselContentBlock,
@@ -30,10 +26,8 @@ import {
   shapeNames,
 } from "@app/components/home/Particles";
 import type { SolutionSectionAssistantBlockProps } from "@app/components/home/SolutionSection";
-import {
-  BenefitsSection,
-  type Benefit,
-} from "@app/components/home/content/Solutions/BenefitsSection";
+import type { Benefit } from "@app/components/home/content/Solutions/BenefitsSection";
+import { BenefitsSection } from "@app/components/home/content/Solutions/BenefitsSection";
 import { HeroSection } from "@app/components/home/content/Solutions/HeroSection";
 import TrustedBy from "@app/components/home/TrustedBy";
 import { classNames } from "@app/lib/utils";
