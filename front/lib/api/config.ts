@@ -107,9 +107,6 @@ const config = {
       apiKey: EnvironmentConfig.getOptionalEnvVariable("OAUTH_API_KEY") ?? null,
     };
   },
-  getDustWorkspaceId: (): string => {
-    return EnvironmentConfig.getEnvVariable("DUST_WORKSPACE_ID");
-  },
   getDustAppsWorkspaceId: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_APPS_WORKSPACE_ID");
   },
