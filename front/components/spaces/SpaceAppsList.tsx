@@ -60,7 +60,7 @@ const getTableColumns = () => {
 const getDustAppsColumns = (owner: WorkspaceType) => ({
   id: "hash",
   cell: (info: CellContext<RowData, string>) => {
-    const {app} = info.row.original;
+    const { app } = info.row.original;
     const registryApp = Object.values(DustProdActionRegistry).find(
       (action) => action.app.appId === app.sId
     );
