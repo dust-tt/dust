@@ -46,12 +46,9 @@ import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
-import {
-  PRODUCTION_DUST_APPS_HELPER_DATASOURCE_VIEW_ID,
-  PRODUCTION_DUST_APPS_WORKSPACE_ID,
-} from "@app/lib/registry";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
+import config from "@app/lib/api/config";
 
 // Used when returning an agent with status 'disabled_by_admin'
 const dummyModelConfiguration = {
@@ -200,8 +197,8 @@ function _getHelperGlobalAgent({
         topK: "auto",
         dataSources: [
           {
-            dataSourceViewId: PRODUCTION_DUST_APPS_HELPER_DATASOURCE_VIEW_ID,
-            workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
+            dataSourceViewId: config.getDustAppsHelperDatasourceViewId(),
+            workspaceId: config.getDustAppsWorkspaceId(),
             filter: { parents: null },
           },
         ],

@@ -1,22 +1,20 @@
 import { Workspace } from "@app/lib/models/workspace";
-import {
-  DustProdActionRegistry,
-  PRODUCTION_DUST_APPS_WORKSPACE_ID,
-} from "@app/lib/registry";
+import { DustProdActionRegistry } from "@app/lib/registry";
 import { AppModel } from "@app/lib/resources/storage/models/apps";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { makeScript } from "@app/scripts/helpers";
+import config from "@app/lib/api/config";
 
 const PUBLIC_VAULT_SQID = "vlt_rICtlrSEpWqX";
 
 makeScript({}, async ({ execute }, logger) => {
   const vaultId = getResourceIdFromSId(PUBLIC_VAULT_SQID);
   const dustAppsWorkspace = await Workspace.findOne({
-    where: { sId: PRODUCTION_DUST_APPS_WORKSPACE_ID },
+    where: { sId: config.getDustAppsWorkspaceId() },
   });
   if (!dustAppsWorkspace) {
     throw new Error(
-      `Could not find workspace with sId ${PRODUCTION_DUST_APPS_WORKSPACE_ID}`
+      `Could not find workspace with sId ${config.getDustAppsWorkspaceId()}`
     );
   }
   if (!vaultId) {
@@ -50,7 +48,7 @@ makeScript({}, async ({ execute }, logger) => {
         {
           appName,
           appId,
-          workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
+          workspaceId: config.getDustAppsWorkspaceId(),
           vaultId,
           execute,
         },

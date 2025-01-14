@@ -25,12 +25,9 @@ import { useRef, useState } from "react";
 
 import { SpaceCreateAppModal } from "@app/components/spaces/SpaceCreateAppModal";
 import type { Action } from "@app/lib/registry";
-import {
-  DustProdActionRegistry,
-  PRODUCTION_DUST_APPS_SPACE_ID,
-  PRODUCTION_DUST_APPS_WORKSPACE_ID,
-} from "@app/lib/registry";
+import { DustProdActionRegistry } from "@app/lib/registry";
 import { useApps, useSavedRunStatus } from "@app/lib/swr/apps";
+import config from "@app/lib/api/config";
 
 type RowData = {
   app: AppType;
@@ -182,8 +179,8 @@ export const SpaceAppsList = ({
 
   const columns = getTableColumns();
   if (
-    owner.sId === PRODUCTION_DUST_APPS_WORKSPACE_ID &&
-    space.sId === PRODUCTION_DUST_APPS_SPACE_ID
+    owner.sId === config.getDustAppsWorkspaceId() &&
+    space.sId === config.getDustAppsSpaceId()
   ) {
     columns.push(getDustAppsColumns(owner));
   }
