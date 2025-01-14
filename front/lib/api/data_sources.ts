@@ -226,7 +226,8 @@ export async function augmentDataSourceWithConnectorDetails(
     fetchConnectorErrorMessage,
   };
 }
-export type UpsertDocumentArgs = {
+
+export interface UpsertDocumentArgs {
   name: string;
   source_url?: string | null;
   text?: string | null;
@@ -240,7 +241,8 @@ export type UpsertDocumentArgs = {
   auth: Authenticator;
   mime_type: string;
   title: string;
-};
+}
+
 export async function upsertDocument({
   name,
   source_url,
@@ -317,7 +319,22 @@ export async function upsertDocument({
     );
   }
 
-  if (parent_id && parents && parents[1] !== parent_id) {
+  // enforcing validation on the parents and parent_id
+  const documentId = name;
+  const documentParents = parents || [documentId];
+  const documentParentId = parent_id ?? null;
+
+  // parents must comply to the invariant parents[0] === document_id
+  if (documentParents[0] !== documentId) {
+    return new Err(
+      new DustError(
+        "invalid_parents",
+        "Invalid request body, parents[0] and document_id should be equal"
+      )
+    );
+  }
+  // parents and parentId must comply to the invariant parents[1] === parentId
+  if (documentParents[1] !== documentParentId) {
     return new Err(
       new DustError(
         "invalid_parent_id",
@@ -384,24 +401,13 @@ export async function upsertDocument({
   // Data source operations are performed with our credentials.
   const credentials = dustManagedCredentials();
 
-  const documentId = name;
-  const documentParents = parents || [];
-
-  // Ensure that the documentId is included in the parents as the first item.
-  // remove it if it's already present and add it as the first item.
-  const indexOfDocumentId = documentParents.indexOf(documentId);
-  if (indexOfDocumentId !== -1) {
-    documentParents.splice(indexOfDocumentId, 1);
-  }
-  documentParents.unshift(documentId);
-
   // Create document with the Dust internal API.
   const upsertRes = await coreAPI.upsertDataSourceDocument({
     projectId: dataSource.dustAPIProjectId,
     dataSourceId: dataSource.dustAPIDataSourceId,
-    documentId: documentId,
+    documentId,
     tags: nonNullTags,
-    parentId: parent_id ?? null,
+    parentId: documentParentId,
     parents: documentParents,
     sourceUrl,
     // TEMPORARY -- need to unstuck a specific entry
@@ -426,8 +432,8 @@ export async function upsertDocument({
   return new Ok(upsertRes.value);
 }
 
-export type UpsertTableArgs = {
-  tableId?: string | null;
+export interface UpsertTableArgs {
+  tableId: string;
   name: string;
   description: string;
   truncate: boolean;
@@ -442,7 +448,8 @@ export type UpsertTableArgs = {
   useAppForHeaderDetection?: boolean;
   title: string;
   mimeType: string;
-};
+}
+
 export async function upsertTable({
   tableId,
   name,
@@ -460,16 +467,27 @@ export async function upsertTable({
   title,
   mimeType,
 }: UpsertTableArgs) {
-  const nonNullTableId = tableId ?? generateRandomModelSId();
-  const tableParents: string[] = parents ?? [];
+  const tableParents = parents ?? [tableId];
+  const tableParentId = parentId ?? null;
 
-  // Ensure that the nonNullTableId is included in the parents as the first item.
-  // remove it if it's already present and add it as the first item.
-  const indexOfTableId = tableParents.indexOf(nonNullTableId);
-  if (indexOfTableId !== -1) {
-    tableParents.splice(indexOfTableId, 1);
+  // parents must comply to the invariant parents[0] === document_id
+  if (tableParents[0] !== tableId) {
+    return new Err(
+      new DustError(
+        "invalid_parents",
+        "Invalid request body, parents[0] and table_id should be equal"
+      )
+    );
   }
-  tableParents.unshift(nonNullTableId);
+  // parents and parentId must comply to the invariant parents[1] === parentId
+  if (tableParents[1] !== tableParentId) {
+    return new Err(
+      new DustError(
+        "invalid_parent_id",
+        "Invalid request body, parents[1] and parent_id should be equal"
+      )
+    );
+  }
 
   const flags = await getFeatureFlags(auth.getNonNullableWorkspace());
 
@@ -496,12 +514,12 @@ export async function upsertTable({
       upsertTable: {
         workspaceId: auth.getNonNullableWorkspace().sId,
         dataSourceId: dataSource.sId,
-        tableId: nonNullTableId,
+        tableId,
         tableName: name,
         tableDescription: description,
         tableTimestamp: timestamp ?? null,
         tableTags: tags ?? [],
-        tableParentId: parentId ?? null,
+        tableParentId,
         tableParents,
         csv: csv ?? null,
         truncate,
@@ -521,12 +539,12 @@ export async function upsertTable({
   const tableRes = await upsertTableFromCsv({
     auth,
     dataSource: dataSource,
-    tableId: nonNullTableId,
+    tableId,
     tableName: name,
     tableDescription: description,
     tableTimestamp: timestamp ?? null,
     tableTags: tags || [],
-    tableParentId: parentId ?? null,
+    tableParentId,
     tableParents,
     csv: csv ?? null,
     truncate,
