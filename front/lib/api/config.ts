@@ -1,7 +1,6 @@
 import { EnvironmentConfig } from "@dust-tt/types";
 
 export const PRODUCTION_DUST_API = "https://dust.tt";
-export const PRODUCTION_DUST_WORKSPACE_ID = "0ec9852c2f";
 
 const config = {
   getClientFacingUrl: (): string => {
@@ -106,6 +105,9 @@ const config = {
       url: EnvironmentConfig.getEnvVariable("OAUTH_API"),
       apiKey: EnvironmentConfig.getOptionalEnvVariable("OAUTH_API_KEY") ?? null,
     };
+  },
+  getDustWorkspaceId: (): string => {
+    return EnvironmentConfig.getEnvVariable("DUST_WORKSPACE_ID");
   },
   getDustAppsWorkspaceId: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_APPS_WORKSPACE_ID");

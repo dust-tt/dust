@@ -9,7 +9,7 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { PRODUCTION_DUST_WORKSPACE_ID } from "@app/lib/api/config";
+import config from "@app/lib/api/config";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -108,7 +108,7 @@ async function handler(
         space
       );
       if (
-        owner.sId !== PRODUCTION_DUST_WORKSPACE_ID &&
+        owner.sId !== config.getDustWorkspaceId() &&
         existingTrackers.length >= 1
       ) {
         return apiError(req, res, {

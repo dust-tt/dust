@@ -16,7 +16,6 @@ import type {
 } from "@dust-tt/types";
 import {
   BaseAction,
-  isDevelopment,
   Ok,
   PROCESS_ACTION_TOP_K,
   renderSchemaPropertiesAsJSONSchema,
@@ -34,10 +33,6 @@ import {
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
-import apiConfig, {
-  PRODUCTION_DUST_API,
-  PRODUCTION_DUST_WORKSPACE_ID,
-} from "@app/lib/api/config";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentProcessAction } from "@app/lib/models/assistant/actions/process";
