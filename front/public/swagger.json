@@ -2017,7 +2017,7 @@
                   },
                   "timestamp": {
                     "type": "number",
-                    "description": "Unix timestamp (in seconds) for the document (e.g. 1698225000). Can be null or omitted."
+                    "description": "Reserved for internal use, should not be set. Unix timestamp (in seconds) of the time the document was last updated (e.g. 1698225000)."
                   },
                   "light_document_output": {
                     "type": "boolean",
@@ -3185,7 +3185,7 @@
                   },
                   "timestamp": {
                     "type": "number",
-                    "description": "Timestamp of the table"
+                    "description": "Reserved for internal use, should not be set. Unix timestamp (in seconds) of the time the document was last updated (e.g. 1698225000)."
                   },
                   "tags": {
                     "type": "array",
