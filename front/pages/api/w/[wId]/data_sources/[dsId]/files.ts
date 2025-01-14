@@ -17,15 +17,10 @@ export interface UpsertFileToDataSourceRequestBody {
   fileId: string;
   upsertArgs?:
     | Pick<UpsertDocumentArgs, "document_id" | "title" | "tags">
-    | Pick<
+    | (Pick<
         UpsertTableArgs,
-        | "name"
-        | "title"
-        | "description"
-        | "tableId"
-        | "tags"
-        | "useAppForHeaderDetection"
-      >;
+        "name" | "title" | "description" | "tags" | "useAppForHeaderDetection"
+      > & { tableId: string | undefined }); // we actually don't always have a tableId, this is very dirty, but the refactoring should be done at the level of the whole upsertArgs mechanic
 }
 
 export interface UpsertFileToDataSourceResponseBody {
