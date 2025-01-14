@@ -166,14 +166,14 @@ impl PostgresStore {
         let stmt = tx
             .prepare(
                 "INSERT INTO data_sources_nodes \
-                  (id, data_source, created, node_id, timestamp, title, mime_type, parents, \
+                  (id, data_source, created, node_id, timestamp, title, mime_type, parents, source_url, \
                    document, \"table\", folder) \
-                  VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10) \
+                  VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) \
                   ON CONFLICT (data_source, node_id) DO UPDATE \
                   SET timestamp = EXCLUDED.timestamp, title = EXCLUDED.title, \
                     mime_type = EXCLUDED.mime_type, parents = EXCLUDED.parents, \
                     document = EXCLUDED.document, \"table\" = EXCLUDED.\"table\", \
-                    folder = EXCLUDED.folder \
+                    folder = EXCLUDED.folder, source_url = EXCLUDED.source_url \
                   RETURNING id",
             )
             .await?;
@@ -189,6 +189,7 @@ impl PostgresStore {
                     &upsert_params.title,
                     &upsert_params.mime_type,
                     &upsert_params.parents,
+                    &upsert_params.source_url,
                     &document_row_id,
                     &table_row_id,
                     &folder_row_id,
