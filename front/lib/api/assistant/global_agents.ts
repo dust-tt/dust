@@ -43,12 +43,12 @@ import {
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/api/assistant/actions/constants";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
+import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
-import config from "@app/lib/api/config";
 
 // Used when returning an agent with status 'disabled_by_admin'
 const dummyModelConfiguration = {
