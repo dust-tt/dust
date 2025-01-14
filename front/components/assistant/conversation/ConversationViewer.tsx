@@ -1,4 +1,4 @@
-import { ConversationContainer, Spinner } from "@dust-tt/sparkle";
+import { Spinner } from "@dust-tt/sparkle";
 import type {
   AgentGenerationCancelledEvent,
   AgentMention,
@@ -323,9 +323,10 @@ const ConversationViewer = React.forwardRef<
   useLastMessageGroupObserver(typedGroupedMessages);
 
   return (
-    <ConversationContainer
+    <div
       className={classNames(
-        "w-full max-w-4xl justify-start pb-4",
+        "s-@container/conversation @container/conversation",
+        "flex w-full max-w-4xl flex-1 flex-col justify-start gap-8 pb-4",
         isFading ? "animate-fadeout" : "",
         isInModal ? "pt-4" : "sm:px-4"
       )}
@@ -362,7 +363,7 @@ const ConversationViewer = React.forwardRef<
             />
           );
         })}
-    </ConversationContainer>
+    </div>
   );
 });
 
