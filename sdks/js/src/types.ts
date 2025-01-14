@@ -2152,6 +2152,7 @@ export const UpsertDataSourceFolderRequestSchema = z.object({
   title: z.string(),
   mime_type: z.string(),
   source_url: z.string().nullable().optional(),
+  provider_visibility: z.string().nullable().optional(),
 });
 export type UpsertDataSourceFolderRequestType = z.infer<
   typeof UpsertDataSourceFolderRequestSchema

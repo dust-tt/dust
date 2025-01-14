@@ -1547,6 +1547,7 @@ export class CoreAPI {
     title,
     mimeType,
     sourceUrl,
+    providerVisibility,
   }: {
     projectId: string;
     dataSourceId: string;
@@ -1557,6 +1558,7 @@ export class CoreAPI {
     title: string;
     mimeType: string;
     sourceUrl?: string | null;
+    providerVisibility: string | null | undefined;
   }): Promise<CoreAPIResponse<{ folder: CoreAPIFolder }>> {
     const response = await this._fetchWithError(
       `${this._url}/projects/${projectId}/data_sources/${encodeURIComponent(
@@ -1575,6 +1577,7 @@ export class CoreAPI {
           parents,
           mime_type: mimeType,
           source_url: sourceUrl,
+          provider_visibility: providerVisibility,
         }),
       }
     );

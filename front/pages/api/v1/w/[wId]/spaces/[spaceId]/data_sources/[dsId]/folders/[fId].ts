@@ -121,6 +121,7 @@ async function handler(
         title,
         mime_type,
         source_url,
+        provider_visibility,
       } = r.data;
       if (parentId && parents && parents[1] !== parentId) {
         return apiError(req, res, {
@@ -155,6 +156,7 @@ async function handler(
         title: title,
         mimeType: mime_type,
         sourceUrl: source_url ?? null,
+        providerVisibility: provider_visibility,
       });
 
       if (upsertRes.isErr()) {
