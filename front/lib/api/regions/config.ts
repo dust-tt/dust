@@ -1,6 +1,6 @@
-import { EnvironmentConfig } from "@dust-tt/types";
+import { EnvironmentConfig, isDevelopment } from "@dust-tt/types";
 
-const SUPPORTED_REGIONS = ["local", "europe-west1", "us-central1"] as const;
+const SUPPORTED_REGIONS = ["europe-west1", "us-central1"] as const;
 export type RegionType = (typeof SUPPORTED_REGIONS)[number];
 
 interface RegionInfo {
@@ -16,7 +16,7 @@ export const config = {
     return EnvironmentConfig.getEnvVariable("REGION_RESOLVER_SECRET");
   },
   getRegionUrl(region: RegionType): string {
-    if (region === "local") {
+    if (isDevelopment()) {
       return "http://localhost:3000";
     }
 

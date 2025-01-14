@@ -77,6 +77,7 @@ export function getAuth0ManagemementClient(): ManagementClient {
   return auth0ManagemementClient;
 }
 
+// Store the region in the user's app_metadata to redirect to the right region.
 export async function setRegionForUser(session: Session, region: RegionType) {
   const managementClient = getAuth0ManagemementClient();
 
@@ -93,7 +94,9 @@ export async function setRegionForUser(session: Session, region: RegionType) {
 }
 
 export function getRegionForUserSession(session: Session): RegionType | null {
-  return session.user.app_metadata?.region ?? null;
+  const regionClaim = `${config.getAuth0NamespaceClaim()}region`;
+
+  return session.user[regionClaim] ?? null;
 }
 
 /**

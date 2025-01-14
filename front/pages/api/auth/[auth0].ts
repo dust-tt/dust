@@ -28,6 +28,7 @@ const afterCallback: AfterCallbackPageRoute = async (req, res, session) => {
 
   // If user has a region, redirect to the region page.
   const userSessionRegion = getRegionForUserSession(session);
+  console.log(">> user session region", userSessionRegion);
   if (userSessionRegion) {
     targetRegion = userSessionRegion;
   } else {
@@ -52,11 +53,7 @@ const afterCallback: AfterCallbackPageRoute = async (req, res, session) => {
     // Update Auth0 metadata only once when not set.
     await setRegionForUser(session, targetRegion);
 
-    // Update current session with new metadata.
-    session.user.app_metadata = {
-      ...session.user.app_metadata,
-      region: targetRegion,
-    };
+    // TODO: Consider updating current session with new metadata.
   }
 
   // Handle redirect to other region if needed.

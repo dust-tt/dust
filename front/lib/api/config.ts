@@ -29,6 +29,9 @@ const config = {
   getAuth0ExtensionApplicationId: (): string => {
     return EnvironmentConfig.getEnvVariable("AUTH0_EXTENSION_CLIENT_ID");
   },
+  getAuth0NamespaceClaim: (): string => {
+    return EnvironmentConfig.getEnvVariable("AUTH0_CLAIM_NAMESPACE");
+  },
   getDustInviteTokenSecret: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_INVITE_TOKEN_SECRET");
   },
