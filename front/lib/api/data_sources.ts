@@ -270,6 +270,33 @@ export async function upsertDocument({
     DustError
   >
 > {
+  // enforcing validation on the parents and parent_id
+  const documentId = name;
+  const documentParents = parents || [documentId];
+  const documentParentId = parent_id ?? null;
+
+  // parents must comply to the invariant parents[0] === document_id
+  if (documentParents[0] !== documentId) {
+    return new Err(
+      new DustError(
+        "invalid_parents",
+        "Invalid request body, parents[0] and document_id should be equal"
+      )
+    );
+  }
+  // parents and parentId must comply to the invariant parents[1] === parentId || (parentId === null && parents.length < 2)
+  if (
+    documentParents[1] !== documentParentId &&
+    (documentParents.length >= 2 || documentParentId !== null)
+  ) {
+    return new Err(
+      new DustError(
+        "invalid_parent_id",
+        "Invalid request body, parents[1] and parent_id should be equal"
+      )
+    );
+  }
+
   let sourceUrl: string | null = null;
   if (source_url) {
     const { valid: isSourceUrlValid, standardized: standardizedSourceUrl } =
@@ -315,33 +342,6 @@ export async function upsertDocument({
       new DustError(
         "text_or_section_required",
         "Invalid request body, `text` or `section` must be provided."
-      )
-    );
-  }
-
-  // enforcing validation on the parents and parent_id
-  const documentId = name;
-  const documentParents = parents || [documentId];
-  const documentParentId = parent_id ?? null;
-
-  // parents must comply to the invariant parents[0] === document_id
-  if (documentParents[0] !== documentId) {
-    return new Err(
-      new DustError(
-        "invalid_parents",
-        "Invalid request body, parents[0] and document_id should be equal"
-      )
-    );
-  }
-  // parents and parentId must comply to the invariant parents[1] === parentId || (parentId === null && parents.length < 2)
-  if (
-    documentParents[1] !== documentParentId &&
-    (documentParents.length >= 2 || documentParentId !== null)
-  ) {
-    return new Err(
-      new DustError(
-        "invalid_parent_id",
-        "Invalid request body, parents[1] and parent_id should be equal"
       )
     );
   }
