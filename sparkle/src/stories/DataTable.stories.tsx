@@ -148,6 +148,7 @@ const columns: ColumnDef<Data>[] = [
     sortingFn: "text",
     meta: {
       className: "s-w-full",
+      tooltip: "User's full name",
     },
     cell: (info) => (
       <DataTable.CellContent
