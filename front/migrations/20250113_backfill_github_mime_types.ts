@@ -109,7 +109,7 @@ async function backfillDataSource(
     if (execute) {
       await coreSequelize.query(
         `WITH pairs AS (
-            SELECT UNNEST(:ids) as id, UNNEST(:mimeTypes) as mime_type
+            SELECT UNNEST(ARRAY[:ids]) as id, UNNEST(ARRAY[:mimeTypes]) as mime_type
         )
          UPDATE data_sources_nodes dsn
          SET mime_type = p.mime_type
