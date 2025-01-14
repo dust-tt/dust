@@ -245,7 +245,7 @@ const upsertTableToDatasource: ProcessingFunction = async ({
   dataSource,
   upsertArgs,
 }) => {
-  const tableId = file.sId; // Use the file sId as the table id to make it easy to track the table back to the file.
+  const tableId = upsertArgs?.tableId ?? file.sId; // Use the file sId as a fallback for the table_id to make it easy to track the table back to the file.
   const upsertTableRes = await upsertTable({
     tableId,
     name: slugify(file.fileName),
