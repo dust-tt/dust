@@ -2,7 +2,7 @@ import type { FC } from "react";
 import { Div3D, Hover3D } from "@dust-tt/sparkle";
 
 import { ImgBlock } from "@app/components/home/ContentBlocks";
-import { H2 } from "@app/components/home/ContentComponents";
+import { H2, P } from "@app/components/home/ContentComponents";
 
 export interface UseCase {
   title: string;
@@ -12,6 +12,7 @@ export interface UseCase {
 
 interface UseCasesSectionProps {
   title?: string;
+  description?: string;
   useCases?: UseCase[];
   fromColor?: string;
   toColor?: string;
@@ -69,6 +70,7 @@ const LAYER_DEPTHS = [-20, 20, 40, 70];
 
 export const UseCasesSection: FC<UseCasesSectionProps> = ({
   title = "Top use cases",
+  description = "Description",
   useCases = defaultUseCases,
   fromColor = "from-sky-200",
   toColor = "to-sky-500",
@@ -78,6 +80,9 @@ export const UseCasesSection: FC<UseCasesSectionProps> = ({
       <H2 from={fromColor} to={toColor}>
         {title}
       </H2>
+      <P size="lg" className="pb-6 text-slate-50">
+        {description}
+      </P>
     </div>
 
     <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:gap-x-16 lg:gap-y-16">

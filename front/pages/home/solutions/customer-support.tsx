@@ -59,7 +59,7 @@ interface pageSettingsProps {
 
 const pageSettings: pageSettingsProps = {
   uptitle: "Customer Support",
-  title: <>Instant knowledge, exceptional support.</>,
+  title: <>Instant knowledge, exceptional support</>,
   from: "from-sky-200",
   to: "to-sky-500",
   description: (
@@ -119,19 +119,19 @@ const supportBenefits: Benefit[] = [
     icon: RocketIcon,
     title: "Resolve Issues Faster",
     description:
-      "Surface relevant information from all connected knowledge bases instantly and understand messages in 50+ languages.",
+      "Surface relevant information from all connected knowledge bases and draft messages in 50+ languages.",
   },
   {
     icon: UserGroupIcon,
     title: "Boost Team Productivity",
     description:
-      "Keep teams synchronized with real-time access to information across all communication channels and reduce onboarding time.",
+      "Keep teams in sync with real-time information across all channels and cut onboarding time for new joiners.",
   },
   {
     icon: LightbulbIcon,
     title: "Grasp Customer Needs",
     description:
-      "Gain insights from cross-tool interactions to understand and act on customer needs, improve documentation.",
+      "Convert support interactions into insights, driving data-backed product and documentation improvements.",
   },
 ];
 
@@ -222,7 +222,7 @@ export default function CustomerSupport() {
             )}
           >
             <BenefitsSection
-              title="Elevate support operations"
+              title="Solve faster, satisfy more"
               benefits={supportBenefits}
               fromColor={pageSettings.from}
               toColor={pageSettings.to}
@@ -253,6 +253,7 @@ export default function CustomerSupport() {
           >
             <UseCasesSection
               title="Your use cases, your way"
+              description="Customize and automate tasks without writing a single line of code."
               useCases={supportUseCases}
               fromColor={pageSettings.from}
               toColor={pageSettings.to}
