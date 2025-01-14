@@ -209,7 +209,7 @@ export default function CustomerSupport() {
   );
   return (
     <>
-      <div className="container flex w-full flex-col gap-0 px-6 pb-12">
+      <div className="container flex w-full flex-col gap-0 bg-slate-900/50 px-6 pb-12">
         <HeroSection {...supportHeroProps} />
         <Grid>
           <div
