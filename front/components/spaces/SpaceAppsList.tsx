@@ -11,6 +11,7 @@ import {
 import type {
   AppType,
   ConnectorType,
+  LightWorkspaceType,
   SpaceType,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -79,25 +80,20 @@ const getDustAppsColumns = (owner: WorkspaceType) => ({
   accessorFn: (row: RowData) => row.name,
 });
 
-const AppHashChecker = ({
-  owner,
-  app,
-  registryApp,
-}: {
-  owner: WorkspaceType;
+type AppHashCheckerProps = {
+  owner: LightWorkspaceType;
   app: AppType;
   registryApp: Action["app"];
-}) => {
+};
+
+const AppHashChecker = ({ owner, app, registryApp }: AppHashCheckerProps) => {
   const { run, isRunError } = useSavedRunStatus(owner, app, (data) => {
-    if (data && data.run) {
-      switch (data?.run.status.run) {
-        case "running":
-          return 100;
-        default:
-          return 0;
-      }
+    switch (data?.run?.status?.run) {
+      case "running":
+        return 100;
+      default:
+        return 0;
     }
-    return 0;
   });
 
   if (
@@ -139,7 +135,7 @@ const AppHashChecker = ({
 interface SpaceAppsListProps {
   canWriteInSpace: boolean;
   onSelect: (sId: string) => void;
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   space: SpaceType;
 }
 

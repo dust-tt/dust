@@ -1,23 +1,18 @@
-import {
-  AppsCheckRequestSchema,
-  type AppsCheckResponseType,
-  type GetAppsResponseType,
-} from "@dust-tt/client";
+import type { AppsCheckResponseType } from "@dust-tt/client";
+import { AppsCheckRequestSchema } from "@dust-tt/client";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import { concurrentExecutor, CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
-import { getDatasetHash, getDatasets } from "@app/lib/api/datasets";
+import config from "@app/lib/api/config";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import { apiError } from "@app/logger/withlogging";
-import { z } from "zod";
-import { fromError } from "zod-validation-error";
 import logger from "@app/logger/logger";
-import config from "@app/lib/api/config";
+import { apiError } from "@app/logger/withlogging";
 
 /**
  * @ignoreswagger
@@ -102,6 +97,6 @@ async function handler(
 
 export default withPublicAPIAuthentication(
   withResourceFetchingFromRoute(handler, {
-    space: { requireCanReadOrAdministrate: true },
+    space: { requireCanRead: true },
   })
 );

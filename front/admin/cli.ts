@@ -1,7 +1,7 @@
 import { getConversation } from "@app/lib/api/assistant/conversation";
 import { renderConversationForModel } from "@app/lib/api/assistant/generation";
 import { getTextRepresentationFromMessages } from "@app/lib/api/assistant/utils";
-import { default as apiConfig, default as config } from "@app/lib/api/config";
+import { default as config } from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { garbageCollectGoogleDriveDocument } from "@app/lib/api/poke/plugins/data_sources/garbage_collect_google_drive_document";
 import { Authenticator } from "@app/lib/auth";
@@ -501,7 +501,7 @@ const productionCheck = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error("Missing --spaceId argument");
       }
       const api = new DustAPI(
-        apiConfig.getDustAPIConfig(),
+        config.getDustAPIConfig(),
         { apiKey: args.apiKey, workspaceId: args.wId },
         logger,
         args.url

@@ -152,6 +152,7 @@ async function updateDatasets(
   }
   return new Ok(true);
 }
+
 async function updateAppSpecifications(
   auth: Authenticator,
   {
@@ -218,7 +219,7 @@ async function updateAppSpecifications(
 
       let error = undefined;
       try {
-        // // Intercept block_execution events to store token usages.
+        // Intercept block_execution events to store token usages.
         const parser = createParser((event) => {
           if (event.type === "event") {
             if (event.data) {
