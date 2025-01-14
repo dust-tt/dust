@@ -296,7 +296,7 @@ type ProcessingFunction = ({
   content: string;
   dataSource: DataSourceResource;
   upsertArgs?:
-    | Pick<UpsertDocumentArgs, "name" | "title" | "tags">
+    | Pick<UpsertDocumentArgs, "document_id" | "title" | "tags">
     | Pick<
         UpsertTableArgs,
         | "name"
@@ -422,7 +422,7 @@ export async function processAndUpsertToDataSource(
     file: FileResource;
     optionalContent?: string;
     upsertArgs?:
-      | Pick<UpsertDocumentArgs, "name" | "title" | "tags">
+      | Pick<UpsertDocumentArgs, "document_id" | "title" | "tags">
       | Pick<
           UpsertTableArgs,
           | "name"
