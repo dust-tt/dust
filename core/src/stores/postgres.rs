@@ -174,7 +174,7 @@ impl PostgresStore {
                   SET timestamp = EXCLUDED.timestamp, title = EXCLUDED.title, \
                     mime_type = EXCLUDED.mime_type, parents = EXCLUDED.parents, \
                     document = EXCLUDED.document, \"table\" = EXCLUDED.\"table\", \
-                    folder = EXCLUDED.folder \
+                    folder = EXCLUDED.folder, provider_visibility = EXCLUDED.provider_visibility \
                   RETURNING id",
             )
             .await?;
