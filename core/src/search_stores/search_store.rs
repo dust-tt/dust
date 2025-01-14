@@ -16,6 +16,7 @@ use crate::{
 };
 use tracing::{error, info};
 
+const MAX_PAGE_SIZE: usize = 250;
 #[derive(serde::Deserialize)]
 pub struct NodesSearchOptions {
     limit: Option<usize>,
@@ -106,6 +107,15 @@ impl SearchStore for ElasticsearchSearchStore {
         }
 
         let options = options.unwrap_or_default();
+
+        // check that options.limit is not greater than MAX_PAGE_SIZE
+        if options.limit.unwrap_or(100) > MAX_PAGE_SIZE {
+            return Err(anyhow::anyhow!(
+                "Limit is greater than MAX_PAGE_SIZE: {} (limit is {})",
+                options.limit.unwrap_or(100),
+                MAX_PAGE_SIZE
+            ));
+        }
 
         // then, search
         let response = self
@@ -246,6 +256,14 @@ impl ElasticsearchSearchStore {
     /// It then creates CoreContentNodes from the nodes, using the results of these queries
     /// to populate the `has_children` and `parent_title` fields
     async fn compute_core_content_nodes(&self, nodes: Vec<Node>) -> Result<Vec<CoreContentNode>> {
+        if nodes.len() > MAX_PAGE_SIZE {
+            return Err(anyhow::anyhow!(
+                "Too many nodes to compute core content nodes: {} (limit is {})",
+                nodes.len(),
+                MAX_PAGE_SIZE
+            ));
+        }
+
         // Prepare the has_children query future
         let has_children_future = self
             .client
@@ -261,7 +279,7 @@ impl ElasticsearchSearchStore {
                     "parent_nodes": {
                         "terms": {
                             "field": "parent_id",
-                            "size": 10000
+                            "size": 1000
                         }
                     }
                 }
@@ -274,7 +292,7 @@ impl ElasticsearchSearchStore {
             .client
             .search(SearchParts::Index(&[NODES_INDEX_NAME]))
             .body(json!({
-                "size": 10000,
+                "size": parent_ids.len(),
                 "query": {
                     "terms": {
                         "node_id": parent_ids
