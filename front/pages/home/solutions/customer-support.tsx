@@ -1,5 +1,4 @@
 import {
-  Button,
   Div3D,
   Hover3D,
   RocketIcon,
@@ -7,7 +6,6 @@ import {
   LightbulbIcon,
 } from "@dust-tt/sparkle";
 import type { ReactElement } from "react-markdown/lib/react-markdown";
-import Link from "next/link";
 
 import {
   UseCasesSection,
