@@ -126,7 +126,7 @@ const supportBenefits: Benefit[] = [
   },
   {
     icon: LightbulbIcon,
-    title: "Understand Customer Needs",
+    title: "Grasp Customer Needs",
     description:
       "Gain insights from cross-tool interactions to understand and act on customer needs, improve documentation.",
   },
@@ -232,12 +232,7 @@ export default function CustomerSupport() {
                 },
                 {
                   value: "8h",
-                  description: (
-                    <>
-                      Save 8&nbsp;hours per&nbsp;agent per&nbsp;week
-                      on&nbsp;average
-                    </>
-                  ),
+                  description: <>8&nbsp;hours saved weekly per&nbsp;agent</>,
                 },
               ]}
               from="from-amber-200"
@@ -254,7 +249,7 @@ export default function CustomerSupport() {
             )}
           >
             <UseCasesSection
-              title="Top use cases"
+              title="Your use cases, your way"
               useCases={supportUseCases}
               fromColor={pageSettings.from}
               toColor={pageSettings.to}
@@ -271,7 +266,7 @@ export default function CustomerSupport() {
           >
             <div>
               <H2 from={pageSettings.from} to={pageSettings.to}>
-                Dust in action
+                Watch Dust work
               </H2>
               {/* <P size="lg">See a demo of the Dust product.</P> */}
             </div>
