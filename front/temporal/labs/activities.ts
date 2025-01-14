@@ -207,6 +207,11 @@ export async function processTranscriptActivity(
   let transcriptContent = "";
   let userParticipated = true;
 
+  localLogger.info(
+    {},
+    "[processTranscriptActivity] No history found. Proceeding."
+  );
+
   switch (transcriptsConfiguration.provider) {
     case "google_drive":
       const googleResult = await retrieveGoogleTranscriptContent(

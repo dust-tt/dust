@@ -107,8 +107,7 @@ const supportHeroProps = {
     },
     secondary: {
       label: "Talk to sales",
-      href: "https://forms.gle/dGaQ1AZuDCbXY1ft9",
-      target: "_blank",
+      href: "/home/contact",
     },
   },
 };
@@ -339,7 +338,6 @@ export default function CustomerSupport() {
                     size="md"
                     label={supportHeroProps.ctaButtons.secondary.label}
                     href={supportHeroProps.ctaButtons.secondary.href}
-                    target={supportHeroProps.ctaButtons.secondary.target}
                   />
                 )}
               </div>

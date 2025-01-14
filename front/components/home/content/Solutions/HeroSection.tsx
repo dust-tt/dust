@@ -26,7 +26,6 @@ interface HeroSectionProps {
     secondary?: {
       label: string;
       href: string;
-      target?: string;
     };
   };
 }
@@ -78,13 +77,13 @@ export const HeroSection: FC<HeroSectionProps> = ({
                 </Link>
               )}
               {ctaButtons.secondary && (
-                <Button
-                  variant="outline"
-                  size="md"
-                  label={ctaButtons.secondary.label}
-                  href={ctaButtons.secondary.href}
-                  target={ctaButtons.secondary.target}
-                />
+                <Link href={ctaButtons.secondary.href} shallow={true}>
+                  <Button
+                    variant="outline"
+                    size="md"
+                    label={ctaButtons.secondary.label}
+                  />
+                </Link>
               )}
             </div>
           )}

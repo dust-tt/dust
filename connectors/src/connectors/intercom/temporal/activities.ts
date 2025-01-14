@@ -1,5 +1,5 @@
 import type { ModelId } from "@dust-tt/types";
-import { INTERCOM_MIME_TYPES } from "@dust-tt/types";
+import { MIME_TYPES } from "@dust-tt/types";
 import { Op } from "sequelize";
 
 import { getIntercomAccessToken } from "@connectors/connectors/intercom/lib/intercom_access_token";
@@ -176,7 +176,7 @@ export async function syncHelpCenterOnlyActivity({
     title: helpCenterOnIntercom.display_name || "Help Center",
     parents: [helpCenterInternalId],
     parentId: null,
-    mimeType: INTERCOM_MIME_TYPES.HELP_CENTER,
+    mimeType: MIME_TYPES.INTERCOM.HELP_CENTER,
   });
 
   // If all children collections are not allowed anymore we delete the Help Center data
@@ -509,7 +509,7 @@ export async function syncTeamOnlyActivity({
     title: teamOnIntercom.name,
     parents: [teamInternalId, getTeamsInternalId(connectorId)],
     parentId: getTeamsInternalId(connectorId),
-    mimeType: INTERCOM_MIME_TYPES.TEAM,
+    mimeType: MIME_TYPES.INTERCOM.TEAM,
   });
 
   return true;
@@ -744,6 +744,6 @@ export async function upsertIntercomTeamsFolderActivity({
     title: "Conversations",
     parents: [getTeamsInternalId(connectorId)],
     parentId: null,
-    mimeType: INTERCOM_MIME_TYPES.CONVERSATIONS,
+    mimeType: MIME_TYPES.INTERCOM.TEAMS_FOLDER,
   });
 }

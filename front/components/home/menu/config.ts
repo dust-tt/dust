@@ -146,7 +146,7 @@ const BuildMenuConfig: MenuConfig = {
     },
     {
       title: "Guides & Tutorials",
-      href: "https://dust-tt.notion.site/c3edbbd1a2e8464f9a692e9f7486af95?v=bab4f048e7a942e2b79bf434d83dc527",
+      href: "https://docs.dust.tt/docs/use-cases",
       isExternal: true,
     },
   ],

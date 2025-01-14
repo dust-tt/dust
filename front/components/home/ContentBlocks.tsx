@@ -173,13 +173,14 @@ export const HeaderContentBlock = ({
               icon={RocketIcon}
             />
           </Link>
-          <Button
-            variant="outline"
-            size="md"
-            label="Talk to sales"
-            href="https://forms.gle/dGaQ1AZuDCbXY1ft9"
-            target="_blank"
-          />
+          <Link href="/contact" shallow={true}>
+            <Button
+              variant="outline"
+              size="md"
+              label="Talk to sales"
+              target="_blank"
+            />
+          </Link>
         </div>
       )}
     </div>

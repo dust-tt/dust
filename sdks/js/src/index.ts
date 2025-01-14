@@ -7,6 +7,7 @@ import type {
   AgentErrorEvent,
   AgentMessageSuccessEvent,
   APIError,
+  AppsCheckRequestType,
   CancelMessageGenerationRequestType,
   ConversationPublicType,
   DataSourceViewType,
@@ -32,6 +33,7 @@ import type {
 } from "./types";
 import {
   APIErrorSchema,
+  AppsCheckResponseSchema,
   CancelMessageGenerationResponseSchema,
   CreateConversationResponseSchema,
   DataSourceViewResponseSchema,
@@ -41,6 +43,7 @@ import {
   FileUploadUrlRequestSchema,
   GetActiveMemberEmailsInWorkspaceResponseSchema,
   GetAgentConfigurationsResponseSchema,
+  GetAppsResponseSchema,
   GetConversationResponseSchema,
   GetConversationsResponseSchema,
   GetDataSourcesResponseSchema,
@@ -1036,6 +1039,35 @@ export class DustAPI {
     }
 
     return new Ok(r.value.dataSourceView);
+  }
+
+  async exportApps({ appSpaceId }: { appSpaceId: string }) {
+    const res = await this.request({
+      method: "GET",
+      path: `spaces/${appSpaceId}/apps/export`,
+    });
+
+    const r = await this._resultFromResponse(GetAppsResponseSchema, res);
+
+    if (r.isErr()) {
+      return r;
+    }
+    return new Ok(r.value.apps);
+  }
+
+  async checkApps(apps: AppsCheckRequestType, appSpaceId: string) {
+    const res = await this.request({
+      method: "POST",
+      path: `spaces/${appSpaceId}/apps/check`,
+      body: apps,
+    });
+
+    const r = await this._resultFromResponse(AppsCheckResponseSchema, res);
+
+    if (r.isErr()) {
+      return r;
+    }
+    return new Ok(r.value.apps);
   }
 
   private async _fetchWithError(

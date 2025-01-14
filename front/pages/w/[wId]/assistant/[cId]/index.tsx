@@ -9,7 +9,6 @@ import type { ConversationLayoutProps } from "@app/components/assistant/conversa
 import ConversationLayout from "@app/components/assistant/conversation/ConversationLayout";
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
-import { getMessageRank } from "@app/lib/api/assistant/conversation";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 
@@ -19,7 +18,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     conversationId: string | null;
     user: UserType;
     isBuilder: boolean;
-    messageRankToScrollTo: number | null;
   }
 >(async (context, auth) => {
   const owner = auth.workspace();
@@ -48,13 +46,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
 
   const { cId } = context.params;
 
-  // Extract messageId from query params and fetch its rank
-  const { messageId } = context.query;
-  let messageRankToScrollTo: number | null = null;
-  if (typeof messageId === "string") {
-    messageRankToScrollTo = (await getMessageRank(auth, messageId)) ?? null;
-  }
-
   return {
     props: {
       user,
@@ -63,7 +54,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       subscription,
       baseUrl: config.getClientFacingUrl(),
       conversationId: getValidConversationId(cId),
-      messageRankToScrollTo: messageRankToScrollTo,
     },
   };
 });
@@ -74,7 +64,6 @@ export default function AssistantConversation({
   subscription,
   user,
   isBuilder,
-  messageRankToScrollTo,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [conversationKey, setConversationKey] = useState<string | null>(null);
   const [agentIdToMention, setAgentIdToMention] = useState<string | null>(null);
@@ -128,7 +117,6 @@ export default function AssistantConversation({
       user={user}
       isBuilder={isBuilder}
       agentIdToMention={agentIdToMention}
-      messageRankToScrollTo={messageRankToScrollTo ?? undefined}
     />
   );
 }
