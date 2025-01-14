@@ -36,7 +36,10 @@ function finalizeUriForProvider(provider: OAuthProvider): string {
 const PROVIDER_STRATEGIES: Record<
   OAuthProvider,
   {
-    setupUri: (connection: OAuthConnectionType) => string;
+    setupUri: (
+      connection: OAuthConnectionType,
+      useCase?: OAuthUseCase
+    ) => string;
     codeFromQuery: (query: ParsedUrlQuery) => string | null;
     connectionIdFromQuery: (query: ParsedUrlQuery) => string | null;
     isExtraConfigValid: (extraConfig: Record<string, string>) => boolean;
@@ -67,11 +70,14 @@ const PROVIDER_STRATEGIES: Record<
     },
   },
   google_drive: {
-    setupUri: (connection) => {
-      const scopes = [
-        "https://www.googleapis.com/auth/drive.metadata.readonly",
-        "https://www.googleapis.com/auth/drive.readonly",
-      ];
+    setupUri: (connection, useCase?) => {
+      const scopes =
+        useCase === "labs_transcripts"
+          ? ["https://www.googleapis.com/auth/drive.meet.readonly"]
+          : [
+              "https://www.googleapis.com/auth/drive.metadata.readonly",
+              "https://www.googleapis.com/auth/drive.readonly",
+            ];
       const qs = querystring.stringify({
         response_type: "code",
         client_id: config.getOAuthGoogleDriveClientId(),
@@ -341,7 +347,7 @@ export async function createConnectionAndGetSetupUrl(
 
   const connection = cRes.value.connection;
 
-  return new Ok(PROVIDER_STRATEGIES[provider].setupUri(connection));
+  return new Ok(PROVIDER_STRATEGIES[provider].setupUri(connection, useCase));
 }
 
 export async function finalizeConnection(
