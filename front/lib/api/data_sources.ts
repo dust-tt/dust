@@ -286,8 +286,8 @@ export async function upsertDocument({
   }
   // parents and parentId must comply to the invariant parents[1] === parentId || (parentId === null && parents.length < 2)
   if (
-    documentParents[1] !== documentParentId &&
-    (documentParents.length >= 2 || documentParentId !== null)
+    (documentParents.length >= 2 || documentParentId !== null) &&
+    documentParents[1] !== documentParentId
   ) {
     return new Err(
       new DustError(
@@ -484,8 +484,8 @@ export async function upsertTable({
   }
   // parents and parentId must comply to the invariant parents[1] === parentId
   if (
-    tableParents[1] !== tableParentId &&
-    (tableParents.length >= 2 || tableParentId !== null)
+    (tableParents.length >= 2 || tableParentId !== null) &&
+    tableParents[1] !== tableParentId
   ) {
     return new Err(
       new DustError(
