@@ -1,6 +1,5 @@
 import type { FileType, WithAPIErrorResponse } from "@dust-tt/types";
-import type { NextApiRequest } from "next";
-import type { NextApiResponse } from "next";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type {
@@ -17,7 +16,7 @@ import { apiError } from "@app/logger/withlogging";
 export interface UpsertFileToDataSourceRequestBody {
   fileId: string;
   upsertArgs?:
-    | Pick<UpsertDocumentArgs, "name" | "title" | "tags">
+    | Pick<UpsertDocumentArgs, "document_id" | "title" | "tags">
     | Pick<
         UpsertTableArgs,
         | "name"

@@ -122,7 +122,7 @@ export const MultipleDocumentsUpload = ({
             // Have to use the filename to avoid fileId becoming apparent in the UI.
             upsertArgs: {
               title: blob.filename,
-              name: blob.filename,
+              document_id: blob.filename,
             },
           });
 

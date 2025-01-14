@@ -228,7 +228,7 @@ export async function augmentDataSourceWithConnectorDetails(
 }
 
 export interface UpsertDocumentArgs {
-  name: string;
+  document_id: string;
   source_url?: string | null;
   text?: string | null;
   section?: FrontDataSourceDocumentSectionType | null;
@@ -244,7 +244,7 @@ export interface UpsertDocumentArgs {
 }
 
 export async function upsertDocument({
-  name,
+  document_id,
   source_url,
   text,
   section,
@@ -271,7 +271,7 @@ export async function upsertDocument({
   >
 > {
   // enforcing validation on the parents and parent_id
-  const documentId = name;
+  const documentId = document_id;
   const documentParents = parents || [documentId];
   const documentParentId = parent_id ?? null;
 
