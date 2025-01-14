@@ -20,6 +20,10 @@ import { pipeline } from "stream/promises";
 
 import { runAction } from "@app/lib/actions/server";
 import config from "@app/lib/api/config";
+import type {
+  UpsertDocumentArgs,
+  UpsertTableArgs,
+} from "@app/lib/api/data_sources";
 import { upsertDocument, upsertTable } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
@@ -244,7 +248,11 @@ const upsertTableToDatasource: ProcessingFunction = async ({
   dataSource,
   upsertArgs,
 }) => {
-  const tableId = upsertArgs?.tableId ?? file.sId; // Use the file sId as a fallback for the table_id to make it easy to track the table back to the file.
+  // Use the file sId as the table id to make it easy to track the table back to the file.
+  let tableId = file.sId;
+  if (upsertArgs && "tableId" in upsertArgs) {
+    tableId = upsertArgs.tableId ?? tableId;
+  }
   const upsertTableRes = await upsertTable({
     tableId,
     name: slugify(file.fileName),
@@ -287,7 +295,17 @@ type ProcessingFunction = ({
   file: FileResource;
   content: string;
   dataSource: DataSourceResource;
-  upsertArgs?: Record<string, string>;
+  upsertArgs?:
+    | Pick<UpsertDocumentArgs, "name" | "title" | "tags">
+    | Pick<
+        UpsertTableArgs,
+        | "name"
+        | "title"
+        | "description"
+        | "tableId"
+        | "tags"
+        | "useAppForHeaderDetection"
+      >;
 }) => Promise<Result<undefined, Error>>;
 
 const getProcessingFunction = ({
