@@ -15,6 +15,7 @@ import {
 import React, { ReactNode, useEffect, useState } from "react";
 
 import {
+  Avatar,
   Button,
   DropdownMenu,
   DropdownMenuContent,
@@ -26,7 +27,6 @@ import {
   Pagination,
   Tooltip,
 } from "@sparkle/components";
-import { Avatar } from "@sparkle/components/Avatar";
 import { useCopyToClipboard } from "@sparkle/hooks";
 import {
   ArrowDownIcon,
@@ -35,7 +35,7 @@ import {
   ClipboardIcon,
   MoreIcon,
 } from "@sparkle/icons";
-import { classNames, cn } from "@sparkle/lib/utils";
+import { cn } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
 import { breakpoints, useWindowSize } from "./WindowUtility";
@@ -165,8 +165,8 @@ export function DataTable<TData extends TBaseData>({
 
   return (
     <div
-      className={classNames(
-        "s-flex s-w-full s-flex-col s-gap-2",
+      className={cn(
+        "s-flex s-flex-col s-gap-2",
         className || "",
         widthClassName
       )}
@@ -188,7 +188,7 @@ export function DataTable<TData extends TBaseData>({
                     column={header.column}
                     key={header.id}
                     onClick={header.column.getToggleSortingHandler()}
-                    className={classNames(
+                    className={cn(
                       header.column.getCanSort() ? "s-cursor-pointer" : ""
                     )}
                   >
@@ -207,7 +207,7 @@ export function DataTable<TData extends TBaseData>({
                                 : ArrowDownIcon
                           }
                           size="xs"
-                          className={classNames(
+                          className={cn(
                             "s-ml-1",
                             header.column.getIsSorted()
                               ? "s-opacity-100"
@@ -305,8 +305,8 @@ DataTable.Head = function Head({
 }: HeadProps) {
   const content = (
     <th
-      className={classNames(
-        "s-py-2 s-pr-3 s-text-left s-text-xs s-font-medium s-capitalize s-text-foreground",
+      className={cn(
+        "s-py-2 s-pl-2 s-pr-3 s-text-left s-text-xs s-font-medium s-capitalize s-text-foreground",
         column.columnDef.meta?.className || "",
         className || ""
       )}
@@ -350,7 +350,7 @@ DataTable.Row = function Row({
 }: RowProps) {
   return (
     <tr
-      className={classNames(
+      className={cn(
         "s-group/dt s-border-b s-border-separator s-transition-colors s-duration-300 s-ease-out",
         onClick ? "s-cursor-pointer hover:s-bg-muted" : "",
         widthClassName,
@@ -429,7 +429,7 @@ DataTable.Cell = function Cell({
     <td
       className={cn(
         cellHeight,
-        "s-truncate s-whitespace-nowrap s-pl-2",
+        "s-truncate s-pl-2",
         column.columnDef.meta?.className || "",
         className || ""
       )}
@@ -437,6 +437,71 @@ DataTable.Cell = function Cell({
     >
       {children}
     </td>
+  );
+};
+
+interface CellContentProps extends React.TdHTMLAttributes<HTMLDivElement> {
+  avatarUrl?: string;
+  avatarTooltipLabel?: string;
+  icon?: React.ComponentType<{ className?: string }>;
+  iconClassName?: string;
+  roundedAvatar?: boolean;
+  children?: ReactNode;
+  description?: string;
+}
+
+DataTable.CellContent = function CellContent({
+  children,
+  className,
+  avatarUrl,
+  avatarTooltipLabel,
+  roundedAvatar,
+  icon,
+  iconClassName,
+  description,
+  ...props
+}: CellContentProps) {
+  return (
+    <div className={cn("s-flex s-items-center", className || "")} {...props}>
+      {avatarUrl && avatarTooltipLabel && (
+        <Tooltip
+          trigger={
+            <Avatar
+              visual={avatarUrl}
+              size="xs"
+              className="s-mr-2"
+              isRounded={roundedAvatar ?? false}
+            />
+          }
+          label={avatarTooltipLabel}
+        />
+      )}
+      {avatarUrl && !avatarTooltipLabel && (
+        <Avatar
+          visual={avatarUrl}
+          size="xs"
+          className="s-mr-2"
+          isRounded={roundedAvatar ?? false}
+        />
+      )}
+      {icon && (
+        <Icon
+          visual={icon}
+          size="sm"
+          className={cn("s-mr-2 s-text-foreground", iconClassName || "")}
+        />
+      )}
+      <div className="s-flex s-shrink s-truncate">
+        <span className="s-truncate s-text-sm s-text-foreground">
+          {children}
+        </span>
+        {description && (
+          <span className="s-pl-2 s-text-sm s-text-muted-foreground">
+            {description}
+          </span>
+        )}
+      </div>
+    </div>
   );
 };
 
@@ -525,77 +590,6 @@ DataTable.BasicCellContent = function BasicCellContent({
   );
 };
 
-interface CellContentProps extends React.TdHTMLAttributes<HTMLDivElement> {
-  avatarUrl?: string;
-  avatarTooltipLabel?: string;
-  icon?: React.ComponentType<{ className?: string }>;
-  iconClassName?: string;
-  roundedAvatar?: boolean;
-  children?: ReactNode;
-  description?: string;
-}
-
-DataTable.CellContent = function CellContent({
-  children,
-  className,
-  avatarUrl,
-  avatarTooltipLabel,
-  roundedAvatar,
-  icon,
-  iconClassName,
-  description,
-  ...props
-}: CellContentProps) {
-  return (
-    <div
-      className={classNames("s-flex s-items-center s-py-2", className || "")}
-      {...props}
-    >
-      {avatarUrl && avatarTooltipLabel && (
-        <Tooltip
-          trigger={
-            <Avatar
-              visual={avatarUrl}
-              size="xs"
-              className="s-mr-2"
-              isRounded={roundedAvatar ?? false}
-            />
-          }
-          label={avatarTooltipLabel}
-        />
-      )}
-      {avatarUrl && !avatarTooltipLabel && (
-        <Avatar
-          visual={avatarUrl}
-          size="xs"
-          className="s-mr-2"
-          isRounded={roundedAvatar ?? false}
-        />
-      )}
-      {icon && (
-        <Icon
-          visual={icon}
-          size="sm"
-          className={classNames(
-            "s-mr-2 s-text-foreground",
-            iconClassName || ""
-          )}
-        />
-      )}
-      <div className="s-flex s-shrink s-truncate">
-        <span className="s-truncate s-text-sm s-text-foreground">
-          {children}
-        </span>
-        {description && (
-          <span className="s-pl-2 s-text-sm s-text-muted-foreground">
-            {description}
-          </span>
-        )}
-      </div>
-    </div>
-  );
-};
-
 interface CellContentWithCopyProps {
   children: React.ReactNode;
   textToCopy?: string;
@@ -620,12 +614,7 @@ DataTable.CellContentWithCopy = function CellContentWithCopy({
   };
 
   return (
-    <div
-      className={classNames(
-        "s-flex s-items-center s-space-x-2",
-        className || ""
-      )}
-    >
+    <div className={cn("s-flex s-items-center s-space-x-2", className || "")}>
       <span className="s-truncate">{children}</span>
       <IconButton
         icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
