@@ -308,7 +308,12 @@ export async function githubRepoSyncWorkflow({
   forceCodeResync?: boolean;
 }) {
   // upserting the root folder for the repository
-  await githubUpsertRepositoryFolderActivity({ connectorId, repoId, repoName });
+  await githubUpsertRepositoryFolderActivity({
+    connectorId,
+    repoId,
+    repoName,
+    repoLogin,
+  });
 
   if (!syncCodeOnly) {
     let pageNumber = 1; // 1-indexed

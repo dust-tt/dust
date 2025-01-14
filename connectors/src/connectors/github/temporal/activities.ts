@@ -1217,6 +1217,7 @@ export async function githubCodeSyncActivity({
           parentId: parents[1],
           title: d.dirName,
           mimeType: MIME_TYPES.GITHUB.CODE_DIRECTORY,
+          sourceUrl: d.sourceUrl,
         });
 
         // Find directory or create it.
@@ -1341,10 +1342,12 @@ export async function githubUpsertRepositoryFolderActivity({
   connectorId,
   repoId,
   repoName,
+  repoLogin,
 }: {
   connectorId: ModelId;
   repoId: number;
   repoName: string;
+  repoLogin: string;
 }) {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -1356,6 +1359,7 @@ export async function githubUpsertRepositoryFolderActivity({
     title: repoName,
     parents: [getRepositoryInternalId(repoId)],
     parentId: null,
+    sourceUrl: `https://github.com/${repoLogin}/${repoName}`,
     mimeType: MIME_TYPES.GITHUB.REPOSITORY,
   });
 }
