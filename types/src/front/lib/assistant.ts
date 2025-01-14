@@ -201,6 +201,9 @@ export type ModelConfigurationType = {
   // This meta-prompt is injected into the assistant's system instructions if the assistant is in a tool-use context.
   toolUseMetaPrompt?: string;
 
+  // Adjust the token count estimation by a ratio. Only needed for anthropic models, where the token count is higher than our estimate
+  tokenCountAdjustment?: number;
+
   supportsVision: boolean;
 
   // Only used for O-series OpenAI models.
@@ -400,6 +403,7 @@ export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   delimitersConfiguration: ANTHROPIC_DELIMITERS_CONFIGURATION,
   supportsVision: true,
   toolUseMetaPrompt: ANTHROPIC_TOOL_USE_META_PROMPT,
+  tokenCountAdjustment: 1.15,
 };
 
 export const CLAUDE_3_5_SONNET_20240620_DEPRECATED_MODEL_CONFIG: ModelConfigurationType =
@@ -417,6 +421,7 @@ export const CLAUDE_3_5_SONNET_20240620_DEPRECATED_MODEL_CONFIG: ModelConfigurat
     delimitersConfiguration: ANTHROPIC_DELIMITERS_CONFIGURATION,
     supportsVision: true,
     toolUseMetaPrompt: ANTHROPIC_TOOL_USE_META_PROMPT,
+    tokenCountAdjustment: 1.15,
   };
 
 export const CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
@@ -433,6 +438,7 @@ export const CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   delimitersConfiguration: ANTHROPIC_DELIMITERS_CONFIGURATION,
   supportsVision: true,
   toolUseMetaPrompt: ANTHROPIC_TOOL_USE_META_PROMPT,
+  tokenCountAdjustment: 1.15,
 };
 export const CLAUDE_3_5_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
@@ -447,6 +453,7 @@ export const CLAUDE_3_5_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   shortDescription: "Anthropic's cost-effective model.",
   isLegacy: false,
   supportsVision: false,
+  tokenCountAdjustment: 1.15,
 };
 export const CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
@@ -461,6 +468,7 @@ export const CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   shortDescription: "Anthropic's cost-effective model.",
   isLegacy: false,
   supportsVision: true,
+  tokenCountAdjustment: 1.15,
 };
 export const CLAUDE_2_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
