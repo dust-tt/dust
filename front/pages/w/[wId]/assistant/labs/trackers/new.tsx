@@ -35,7 +35,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   }
 
   const flags = await getFeatureFlags(owner);
-  if (!flags.includes("labs_trackers") || !auth.isAdmin()) {
+  if (!flags.includes("labs_trackers") || !auth.isBuilder()) {
     return {
       notFound: true,
     };
