@@ -9,6 +9,7 @@ import { ContentFragmentType } from "../content_fragment";
 import { BrowseActionType } from "./actions/browse";
 import { ConversationIncludeFileActionType } from "./actions/conversation/include_file";
 import { ConversationListFilesActionType } from "./actions/conversation/list_files";
+import { GithubGetPullRequestActionType } from "./actions/github";
 import { WebsearchActionType } from "./actions/websearch";
 
 /**
@@ -117,9 +118,12 @@ export type ConversationAgentActionType =
   | ConversationListFilesActionType
   | ConversationIncludeFileActionType;
 
+export type GithubAgentActionType = GithubGetPullRequestActionType;
+
 export type AgentActionType =
   | ConfigurableAgentActionType
-  | ConversationAgentActionType;
+  | ConversationAgentActionType
+  | GithubAgentActionType;
 
 export type AgentMessageStatus =
   | "created"
@@ -136,6 +140,7 @@ export const ACTION_RUNNING_LABELS: Record<AgentActionType["type"], string> = {
   browse_action: "Browsing page",
   conversation_list_files_action: "Listing files",
   conversation_include_file_action: "Reading file",
+  github_get_pull_request_action: "Retrieving pull request",
 };
 
 /**
