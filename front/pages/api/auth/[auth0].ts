@@ -9,11 +9,7 @@ import {
 } from "@auth0/nextjs-auth0";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import {
-  getRegionForUserSession,
-  setRegionForUser,
-  setRegionOnUserMetadata,
-} from "@app/lib/api/auth0";
+import { getRegionForUserSession, setRegionForUser } from "@app/lib/api/auth0";
 import config from "@app/lib/api/config";
 import type { RegionType } from "@app/lib/api/regions/config";
 import { config as multiRegionsConfig } from "@app/lib/api/regions/config";
