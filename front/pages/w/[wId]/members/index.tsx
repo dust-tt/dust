@@ -1,12 +1,17 @@
 import {
   Button,
-  Dialog,
+  NewDialog,
+  NewDialogContainer,
+  NewDialogContent,
+  NewDialogFooter,
+  NewDialogHeader,
+  NewDialogTitle,
   Page,
   PlusIcon,
   Popup,
   SearchInput,
+  useSendNotification,
 } from "@dust-tt/sparkle";
-import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   PlanType,
   SubscriptionPerSeatPricing,
@@ -313,18 +318,34 @@ function DomainAutoJoinModal({
   }
 
   return (
-    <Dialog
-      isOpen={isOpen}
-      title={title}
-      onValidate={async () => {
-        await handleUpdateWorkspace();
-        onClose();
+    <NewDialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose();
+        }
       }}
-      onCancel={() => onClose()}
-      validateLabel={validateLabel}
-      validateVariant={validateVariant}
     >
-      <div>{description}</div>
-    </Dialog>
+      <NewDialogContent size="md" isAlertDialog>
+        <NewDialogHeader hideButton>
+          <NewDialogTitle>{title}</NewDialogTitle>
+        </NewDialogHeader>
+        <NewDialogContainer>{description}</NewDialogContainer>
+        <NewDialogFooter
+          leftButtonProps={{
+            label: "Cancel",
+            variant: "outline",
+          }}
+          rightButtonProps={{
+            label: validateLabel,
+            variant: validateVariant,
+            onClick: async () => {
+              await handleUpdateWorkspace();
+              onClose();
+            },
+          }}
+        />
+      </NewDialogContent>
+    </NewDialog>
   );
 }

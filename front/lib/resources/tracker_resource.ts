@@ -236,15 +236,27 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
     thinking,
     dataSourceId,
     documentId,
+    maintainedDocumentId,
+    maintainedDocumentDataSourceId,
   }: {
     generation: string;
     thinking: string | null;
     dataSourceId: string;
     documentId: string;
+    maintainedDocumentId: string;
+    maintainedDocumentDataSourceId: string;
   }) {
     const dataSourceModelId = getResourceIdFromSId(dataSourceId);
     if (!dataSourceModelId) {
       throw new Error(`Invalid data source ID: ${dataSourceId}`);
+    }
+    const maintainedDocumentDataSourceModelId = getResourceIdFromSId(
+      maintainedDocumentDataSourceId
+    );
+    if (!maintainedDocumentDataSourceModelId) {
+      throw new Error(
+        `Invalid maintained data source ID: ${maintainedDocumentDataSourceId}`
+      );
     }
 
     await TrackerGenerationModel.create({
@@ -252,6 +264,8 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
       thinking,
       dataSourceId: dataSourceModelId,
       documentId,
+      maintainedDocumentId: maintainedDocumentId,
+      maintainedDocumentDataSourceId: maintainedDocumentDataSourceModelId,
       trackerConfigurationId: this.id,
     });
   }

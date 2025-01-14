@@ -142,7 +142,7 @@ export const HeaderContentBlock = ({
   <Grid>
     <div
       className={classNames(
-        "flex flex-col justify-end gap-12 pt-12",
+        "sm:pt-18 flex flex-col justify-end gap-12 pt-12 lg:pt-36",
         "col-span-12",
         "sm:col-span-12",
         "lg:col-span-8 lg:col-start-2",
@@ -173,13 +173,14 @@ export const HeaderContentBlock = ({
               icon={RocketIcon}
             />
           </Link>
-          <Button
-            variant="outline"
-            size="md"
-            label="Talk to sales"
-            href="https://forms.gle/dGaQ1AZuDCbXY1ft9"
-            target="_blank"
-          />
+          <Link href="/contact" shallow={true}>
+            <Button
+              variant="outline"
+              size="md"
+              label="Talk to sales"
+              target="_blank"
+            />
+          </Link>
         </div>
       )}
     </div>

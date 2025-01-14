@@ -1,5 +1,5 @@
 import type { ModelId } from "@dust-tt/types";
-import { INTERCOM_MIME_TYPES } from "@dust-tt/types";
+import { MIME_TYPES } from "@dust-tt/types";
 import TurndownService from "turndown";
 
 import { getIntercomAccessToken } from "@connectors/connectors/intercom/lib/intercom_access_token";
@@ -229,7 +229,7 @@ export async function upsertCollectionWithChildren({
     title: collection.name,
     parents: collectionParents,
     parentId: collectionParents[1],
-    mimeType: INTERCOM_MIME_TYPES.COLLECTION,
+    mimeType: MIME_TYPES.INTERCOM.COLLECTION,
   });
 
   // Then we call ourself recursively on the children collections
@@ -429,7 +429,7 @@ export async function upsertArticle({
         sync_type: "batch",
       },
       title: article.title,
-      mimeType: INTERCOM_MIME_TYPES.ARTICLE,
+      mimeType: MIME_TYPES.INTERCOM.ARTICLE,
       async: true,
     });
     await articleOnDb.update({

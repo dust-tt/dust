@@ -18,7 +18,6 @@ import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendes
 import {
   changeZendeskClientSubdomain,
   createZendeskClient,
-  isBrandHelpCenterEnabled,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
@@ -77,7 +76,6 @@ async function getRootLevelContentNodes(
         brandsInDatabase
           .find((b) => b.brandId === brand.id)
           ?.toContentNode(connectorId) ?? {
-          provider: "zendesk",
           internalId: getBrandInternalId({ connectorId, brandId: brand.id }),
           parentInternalId: null,
           type: "folder",
@@ -85,7 +83,6 @@ async function getRootLevelContentNodes(
           sourceUrl: brand.brand_url,
           expandable: true,
           permission: "none",
-          dustDocumentId: null,
           lastUpdatedAt: null,
         }
     );
@@ -118,7 +115,6 @@ async function getBrandChildren(
   const {
     result: { brand: fetchedBrand },
   } = await zendeskApiClient.brand.show(brandId);
-  const helpCenterEnabled = isBrandHelpCenterEnabled(fetchedBrand);
 
   if (isReadPermissionsOnly) {
     if (brandInDb?.ticketsPermission === "read") {
@@ -126,14 +122,16 @@ async function getBrandChildren(
         brandInDb.getTicketsContentNode(connector.id, { expandable: true })
       );
     }
-    if (helpCenterEnabled && brandInDb?.helpCenterPermission === "read") {
+    if (
+      fetchedBrand.has_help_center &&
+      brandInDb?.helpCenterPermission === "read"
+    ) {
       nodes.push(brandInDb.getHelpCenterContentNode(connector.id));
     }
   } else {
     const ticketsNode: ContentNode = brandInDb?.getTicketsContentNode(
       connector.id
     ) ?? {
-      provider: "zendesk",
       internalId: getTicketsInternalId({ connectorId: connector.id, brandId }),
       parentInternalId: parentInternalId,
       type: "folder",
@@ -141,17 +139,15 @@ async function getBrandChildren(
       sourceUrl: null,
       expandable: false,
       permission: "none",
-      dustDocumentId: null,
       lastUpdatedAt: null,
     };
     nodes.push(ticketsNode);
 
     // only displaying the Help Center node if the brand has an enabled Help Center
-    if (helpCenterEnabled) {
+    if (fetchedBrand.has_help_center) {
       const helpCenterNode: ContentNode = brandInDb?.getHelpCenterContentNode(
         connector.id
       ) ?? {
-        provider: "zendesk",
         internalId: getHelpCenterInternalId({
           connectorId: connector.id,
           brandId,
@@ -162,7 +158,6 @@ async function getBrandChildren(
         sourceUrl: null,
         expandable: true,
         permission: "none",
-        dustDocumentId: null,
         lastUpdatedAt: null,
       };
       nodes.push(helpCenterNode);
@@ -212,7 +207,6 @@ async function getHelpCenterChildren(
         categoriesInDatabase
           .find((c) => c.categoryId === category.id)
           ?.toContentNode(connectorId) ?? {
-          provider: "zendesk",
           internalId: getCategoryInternalId({
             connectorId,
             brandId,
@@ -224,7 +218,6 @@ async function getHelpCenterChildren(
           sourceUrl: category.html_url,
           expandable: false,
           permission: "none",
-          dustDocumentId: null,
           lastUpdatedAt: null,
         }
     );

@@ -50,7 +50,6 @@ export async function retrieveSelectedNodes({
     );
 
     collectionsNodes.push({
-      provider: connector.type,
       internalId: getHelpCenterCollectionInternalId(
         connectorId,
         collection.collectionId
@@ -64,7 +63,6 @@ export async function retrieveSelectedNodes({
       sourceUrl: collection.url,
       expandable,
       permission: collection.permission,
-      dustDocumentId: null,
       lastUpdatedAt: collection.updatedAt.getTime() || null,
     });
   });
@@ -79,7 +77,6 @@ export async function retrieveSelectedNodes({
     intercomWorkspace?.syncAllConversations === "scheduled_activate"
   ) {
     teamsNodes.push({
-      provider: connector.type,
       internalId: getTeamsInternalId(connectorId),
       parentInternalId: null,
       type: "channel",
@@ -87,7 +84,6 @@ export async function retrieveSelectedNodes({
       sourceUrl: null,
       expandable: false,
       permission: "read",
-      dustDocumentId: null,
       lastUpdatedAt: null,
     });
   }
@@ -100,7 +96,6 @@ export async function retrieveSelectedNodes({
   });
   teams.forEach((team) => {
     teamsNodes.push({
-      provider: connector.type,
       internalId: getTeamInternalId(connectorId, team.teamId),
       parentInternalId: getTeamsInternalId(connectorId),
       type: "folder",
@@ -108,7 +103,6 @@ export async function retrieveSelectedNodes({
       sourceUrl: null,
       expandable: false,
       permission: team.permission,
-      dustDocumentId: null,
       lastUpdatedAt: team.updatedAt.getTime() || null,
     });
   });

@@ -3,6 +3,7 @@ import type {
   ConversationError,
   ConversationMessageReactions,
   ConversationType,
+  ConversationWithoutContentType,
   LightWorkspaceType,
 } from "@dust-tt/types";
 import { useCallback, useMemo } from "react";
@@ -17,6 +18,7 @@ import {
   useSWRInfiniteWithDefaults,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
+import type { GetConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
 import type { FetchConversationParticipantsResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/participants";
 
 export function useConversation({
@@ -53,8 +55,7 @@ export function useConversation({
 }
 
 export function useConversations({ workspaceId }: { workspaceId: string }) {
-  const conversationFetcher: Fetcher<{ conversations: ConversationType[] }> =
-    fetcher;
+  const conversationFetcher: Fetcher<GetConversationsResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/w/${workspaceId}/assistant/conversations`,
@@ -121,7 +122,6 @@ export function useConversationMessages({
   conversationId,
   workspaceId,
   limit,
-  startAtRank,
 }: {
   conversationId: string | null;
   workspaceId: string;
@@ -147,10 +147,7 @@ export function useConversationMessages({
         }
 
         if (previousPageData === null) {
-          const startAtRankParam = startAtRank
-            ? `&lastValue=${startAtRank}`
-            : "";
-          return `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages?orderDirection=desc&orderColumn=rank&limit=${limit}${startAtRankParam}`;
+          return `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages?orderDirection=desc&orderColumn=rank&limit=${limit}`;
         }
 
         return `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages?lastValue=${previousPageData.lastValue}&orderDirection=desc&orderColumn=rank&limit=${limit}`;
@@ -208,7 +205,9 @@ export const useDeleteConversation = (owner: LightWorkspaceType) => {
     workspaceId: owner.sId,
   });
 
-  const doDelete = async (conversation: ConversationType | null) => {
+  const doDelete = async (
+    conversation: ConversationWithoutContentType | null
+  ) => {
     if (!conversation) {
       return false;
     }

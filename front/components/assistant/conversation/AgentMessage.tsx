@@ -13,7 +13,6 @@ import {
   ConversationMessage,
   DocumentDuplicateIcon,
   EyeIcon,
-  FeedbackSelector,
   Markdown,
   Page,
   Popover,
@@ -56,6 +55,7 @@ import type { PluggableList } from "react-markdown/lib/react-markdown";
 import { makeDocumentCitation } from "@app/components/actions/retrieval/utils";
 import { makeWebsearchResultsCitation } from "@app/components/actions/websearch/utils";
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
+import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import {
   CitationsContext,

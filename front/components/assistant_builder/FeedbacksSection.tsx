@@ -82,7 +82,9 @@ export const FeedbacksSection = ({
     !isAgentConfigurationFeedbacksLoading &&
     (!agentConfigurationFeedbacks || agentConfigurationFeedbacks.length === 0)
   ) {
-    return <div className="mt-3 text-sm text-element-900">No feedbacks.</div>;
+    return (
+      <div className="mt-3 text-sm text-element-700">No feedback yet.</div>
+    );
   }
 
   if (!agentConfigurationHistory) {
@@ -164,7 +166,7 @@ function AgentConfigurationVersionHeader({
   );
 
   return (
-    <div className="mb-2 mt-4 text-sm font-medium">
+    <div className="mb-2 mt-4 text-xs font-semibold text-element-800">
       {agentConfiguration
         ? getAgentConfigurationVersionString(agentConfiguration)
         : `v${agentConfigurationVersion}`}
@@ -216,9 +218,9 @@ function FeedbackCard({ owner, feedback }: FeedbackCardProps) {
           {timeSinceFeedback} ago
           <div className="flex h-8 w-8 items-center justify-center rounded">
             {feedback.thumbDirection === "up" ? (
-              <HandThumbUpIcon />
+              <HandThumbUpIcon className="h-4 w-4" />
             ) : (
-              <HandThumbDownIcon />
+              <HandThumbDownIcon className="h-4 w-4" />
             )}
           </div>
         </div>
@@ -229,12 +231,13 @@ function FeedbackCard({ owner, feedback }: FeedbackCardProps) {
           href={conversationUrl ?? ""}
           icon={ExternalLinkIcon}
           disabled={!conversationUrl}
+          tooltip="View conversation"
           target="_blank"
         />
       </div>
       {feedback.content && (
-        <div className="my-2 ml-4 flex items-center">
-          <div className="flex-grow text-sm leading-relaxed text-gray-700">
+        <div className="my-2 flex items-center">
+          <div className="flex-grow text-sm leading-relaxed text-element-800">
             {feedback.content}
           </div>
         </div>

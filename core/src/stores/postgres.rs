@@ -11,7 +11,6 @@ use std::hash::Hasher;
 use std::str::FromStr;
 use tokio_postgres::types::ToSql;
 use tokio_postgres::{NoTls, Transaction};
-use tracing::info;
 
 use crate::data_sources::data_source::DocumentStatus;
 use crate::data_sources::node::{Node, NodeType};
@@ -55,6 +54,7 @@ pub struct UpsertNode<'a> {
     pub mime_type: &'a str,
     pub provider_visibility: &'a Option<String>,
     pub parents: &'a Vec<String>,
+    pub source_url: &'a Option<String>,
 }
 
 impl PostgresStore {
@@ -156,27 +156,6 @@ impl PostgresStore {
         row_id: i64,
         tx: &Transaction<'_>,
     ) -> Result<()> {
-        // Check that all parents exist in data_sources_nodes.
-        let stmt_check = tx
-            .prepare(
-                "SELECT COUNT(*) FROM data_sources_nodes
-                 WHERE data_source = $1 AND node_id = ANY($2)",
-            )
-            .await?;
-        let count: i64 = tx
-            .query_one(&stmt_check, &[&data_source_row_id, &upsert_params.parents])
-            .await?
-            .get(0);
-        if count != upsert_params.parents.len() as i64 {
-            info!(
-                data_source_id = data_source_row_id,
-                node_id = upsert_params.node_id,
-                parents = ?upsert_params.parents,
-                operation = "upsert_node",
-                "[KWSEARCH] invariant_parents_missing_in_nodes"
-            );
-        }
-
         let created = utils::now();
 
         let (document_row_id, table_row_id, folder_row_id) = match upsert_params.node_type {
@@ -1479,24 +1458,6 @@ impl Store for PostgresStore {
 
         let tx = c.transaction().await?;
 
-        // Check that all parents exist in data_sources_nodes.
-        let count: u64 = tx
-            .execute(
-                "SELECT COUNT(*) FROM data_sources_nodes
-                 WHERE data_source = $1 AND node_id = ANY($2)",
-                &[&data_source_row_id, &parents],
-            )
-            .await?;
-        if count != parents.len() as u64 {
-            info!(
-                data_source_id = data_source_row_id,
-                node_id = document_id,
-                parents = ?parents,
-                operation = "update_document_parents",
-                "[KWSEARCH] invariant_parents_missing_in_nodes"
-            );
-        }
-
         // Update parents on nodes table.
         tx.execute(
             "UPDATE data_sources_nodes SET parents = $1 \
@@ -1966,6 +1927,7 @@ impl Store for PostgresStore {
                 mime_type: &document.mime_type,
                 provider_visibility: &document.provider_visibility,
                 parents: &document.parents,
+                source_url: &document.source_url,
             },
             data_source_row_id,
             document_row_id,
@@ -2728,6 +2690,7 @@ impl Store for PostgresStore {
             upsert_params.tags,
             upsert_params.parents.get(1).cloned(),
             upsert_params.parents,
+            upsert_params.source_url,
             parsed_schema,
             table_schema_stale_at.map(|t| t as u64),
             upsert_params.remote_database_table_id,
@@ -2743,6 +2706,7 @@ impl Store for PostgresStore {
                 mime_type: table.mime_type(),
                 provider_visibility: table.provider_visibility(),
                 parents: table.parents(),
+                source_url: table.source_url(),
             },
             data_source_row_id,
             table_row_id,
@@ -2830,24 +2794,6 @@ impl Store for PostgresStore {
 
         let tx = c.transaction().await?;
 
-        // Check that all parents exist in data_sources_nodes.
-        let count: u64 = tx
-            .execute(
-                "SELECT COUNT(*) FROM data_sources_nodes
-                 WHERE data_source = $1 AND node_id = ANY($2)",
-                &[&data_source_row_id, &parents],
-            )
-            .await?;
-        if count != parents.len() as u64 {
-            info!(
-                data_source_id = data_source_row_id,
-                node_id = table_id,
-                parents = ?parents,
-                operation = "update_table_parents",
-                "[KWSEARCH] invariant_parents_missing_in_nodes"
-            );
-        }
-
         // Update parents on nodes table.
         let stmt = tx
             .prepare(
@@ -2932,7 +2878,7 @@ impl Store for PostgresStore {
         let stmt = c
             .prepare(
                 "SELECT t.created, t.table_id, t.name, t.description, \
-                        t.timestamp, t.tags_array, dsn.parents, \
+                        t.timestamp, t.tags_array, dsn.parents, dsn.source_url, \
                         t.schema, t.schema_stale_at, \
                         t.remote_database_table_id, t.remote_database_secret_id, \
                         dsn.title, dsn.mime_type, dsn.provider_visibility \
@@ -2950,6 +2896,7 @@ impl Store for PostgresStore {
             i64,
             Vec<String>,
             Vec<String>,
+            Option<String>,
             Option<String>,
             Option<i64>,
             Option<String>,
@@ -2974,6 +2921,7 @@ impl Store for PostgresStore {
                 r[0].get(11),
                 r[0].get(12),
                 r[0].get(13),
+                r[0].get(14),
             )),
             _ => unreachable!(),
         };
@@ -2988,6 +2936,7 @@ impl Store for PostgresStore {
                 timestamp,
                 tags,
                 parents,
+                source_url,
                 schema,
                 schema_stale_at,
                 remote_database_table_id,
@@ -3022,6 +2971,7 @@ impl Store for PostgresStore {
                     tags,
                     parents.get(1).cloned(),
                     parents,
+                    source_url,
                     parsed_schema,
                     schema_stale_at.map(|t| t as u64),
                     remote_database_table_id,
@@ -3096,7 +3046,7 @@ impl Store for PostgresStore {
                     t.timestamp, t.tags_array, dsn.parents, \
                     t.schema, t.schema_stale_at, \
                     t.remote_database_table_id, t.remote_database_secret_id, \
-                    dsn.title, dsn.mime_type, dsn.provider_visibility \
+                    dsn.title, dsn.mime_type, dsn.source_url, dsn.provider_visibility \
                 FROM tables t INNER JOIN data_sources_nodes dsn ON dsn.table=t.id \
                 WHERE {} ORDER BY t.timestamp DESC",
             where_clauses.join(" AND "),
@@ -3138,7 +3088,8 @@ impl Store for PostgresStore {
                 let remote_database_secret_id: Option<String> = r.get(10);
                 let title: String = r.get(11);
                 let mime_type: String = r.get(12);
-                let provider_visibility: Option<String> = r.get(13);
+                let source_url: Option<String> = r.get(13);
+                let provider_visibility: Option<String> = r.get(14);
 
                 let parsed_schema: Option<TableSchema> = match schema {
                     None => None,
@@ -3166,6 +3117,7 @@ impl Store for PostgresStore {
                     tags,
                     parents.get(1).cloned(),
                     parents,
+                    source_url,
                     parsed_schema,
                     schema_stale_at.map(|t| t as u64),
                     remote_database_table_id,
@@ -3302,6 +3254,7 @@ impl Store for PostgresStore {
             upsert_params.parents.get(1).cloned(),
             upsert_params.parents,
             upsert_params.mime_type,
+            upsert_params.source_url,
             upsert_params.provider_visibility,
         );
 
@@ -3314,6 +3267,7 @@ impl Store for PostgresStore {
                 title: folder.title(),
                 mime_type: folder.mime_type(),
                 parents: folder.parents(),
+                source_url: folder.source_url(),
             },
             data_source_row_id,
             folder_row_id,
@@ -3423,7 +3377,7 @@ impl Store for PostgresStore {
         }
 
         let sql = format!(
-            "SELECT dsn.node_id, dsn.title, dsn.timestamp, dsn.parents, dsn.mime_type, dsn.provider_visibility \
+            "SELECT dsn.node_id, dsn.title, dsn.timestamp, dsn.parents, dsn.mime_type, dsn.source_url, dsn.provider_visibility \
                FROM data_sources_nodes dsn \
                WHERE dsn.folder IS NOT NULL AND {} ORDER BY dsn.timestamp DESC",
             where_clauses.join(" AND "),
@@ -3472,7 +3426,8 @@ impl Store for PostgresStore {
                 let timestamp: i64 = r.get(2);
                 let parents: Vec<String> = r.get(3);
                 let mime_type: String = r.get(4);
-                let provider_visibility: Option<String> = r.get(5);
+                let source_url: Option<String> = r.get(5);
+                let provider_visibility: Option<String> = r.get(6);
 
                 Ok(Folder::new(
                     data_source_id.clone(),
@@ -3483,6 +3438,7 @@ impl Store for PostgresStore {
                     parents.get(1).cloned(),
                     parents,
                     mime_type,
+                    source_url,
                     provider_visibility,
                 ))
             })
@@ -3556,7 +3512,7 @@ impl Store for PostgresStore {
 
         let stmt = c
             .prepare(
-                "SELECT timestamp, title, mime_type, provider_visibility, parents, node_id, document, \"table\", folder \
+                "SELECT timestamp, title, mime_type, provider_visibility, parents, node_id, document, \"table\", folder, source_url \
                    FROM data_sources_nodes \
                    WHERE data_source = $1 AND node_id = $2 LIMIT 1",
             )
@@ -3581,6 +3537,7 @@ impl Store for PostgresStore {
                     (None, None, Some(id)) => (NodeType::Folder, id),
                     _ => unreachable!(),
                 };
+                let source_url: Option<String> = row[0].get::<_, Option<String>>(9);
                 Ok(Some((
                     Node::new(
                         &data_source_id,
@@ -3593,6 +3550,7 @@ impl Store for PostgresStore {
                         provider_visibility,
                         parents.get(1).cloned(),
                         parents,
+                        source_url,
                     ),
                     row_id,
                 )))
@@ -3611,7 +3569,7 @@ impl Store for PostgresStore {
 
         let stmt = c
             .prepare(
-                "SELECT dsn.timestamp, dsn.title, dsn.mime_type, dsn.provider_visibility, dsn.parents, dsn.node_id, dsn.document, dsn.\"table\", dsn.folder, ds.data_source_id, ds.internal_id, dsn.id \
+                "SELECT dsn.timestamp, dsn.title, dsn.mime_type, dsn.provider_visibility, dsn.parents, dsn.node_id, dsn.document, dsn.\"table\", dsn.folder, ds.data_source_id, ds.internal_id, dsn.source_url, dsn.id \
                    FROM data_sources_nodes dsn JOIN data_sources ds ON dsn.data_source = ds.id \
                    WHERE dsn.id > $1 ORDER BY dsn.id ASC LIMIT $2",
             )
@@ -3639,7 +3597,8 @@ impl Store for PostgresStore {
                         (None, None, Some(id)) => (NodeType::Folder, id),
                         _ => unreachable!(),
                     };
-                let row_id = row.get::<_, i64>(10);
+                let source_url: Option<String> = row.get::<_, Option<String>>(11);
+                let row_id = row.get::<_, i64>(12);
                 (
                     Node::new(
                         &data_source_id,
@@ -3652,6 +3611,7 @@ impl Store for PostgresStore {
                         provider_visibility,
                         parents.get(1).cloned(),
                         parents,
+                        source_url,
                     ),
                     row_id,
                     element_row_id,

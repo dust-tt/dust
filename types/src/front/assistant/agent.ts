@@ -173,6 +173,8 @@ export type AgentsGetViewType =
 
 export type AgentUsageType = {
   messageCount: number;
+  conversationCount: number;
+  userCount: number;
   timePeriodSec: number;
 };
 

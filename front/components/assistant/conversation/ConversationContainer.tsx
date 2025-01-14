@@ -1,15 +1,14 @@
-import { Page } from "@dust-tt/sparkle";
-import { useSendNotification } from "@dust-tt/sparkle";
+import { Page, useSendNotification } from "@dust-tt/sparkle";
 import type {
   AgentMention,
   LightAgentConfigurationType,
   MentionType,
   Result,
   SubscriptionType,
+  UploadedContentFragment,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
-import type { UploadedContentFragment } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
@@ -35,26 +34,22 @@ import {
 } from "@app/lib/swr/conversations";
 
 interface ConversationContainerProps {
-  conversationId: string | null;
   owner: WorkspaceType;
   subscription: SubscriptionType;
   user: UserType;
   isBuilder: boolean;
   agentIdToMention: string | null;
-  messageRankToScrollTo: number | undefined;
 }
 
 export function ConversationContainer({
-  conversationId,
   owner,
   subscription,
   user,
   isBuilder,
   agentIdToMention,
-  messageRankToScrollTo,
 }: ConversationContainerProps) {
-  const [activeConversationId, setActiveConversationId] =
-    useState(conversationId);
+  const { activeConversationId } = useConversationsNavigation();
+
   const [planLimitReached, setPlanLimitReached] = useState(false);
   const [stickyMentions, setStickyMentions] = useState<AgentMention[]>([]);
 
@@ -76,7 +71,6 @@ export function ConversationContainer({
     conversationId: activeConversationId,
     workspaceId: owner.sId,
     limit: 50,
-    startAtRank: messageRankToScrollTo,
   });
 
   const setInputbarMention = useCallback(
@@ -242,7 +236,6 @@ export function ConversationContainer({
           undefined,
           { shallow: true }
         );
-        setActiveConversationId(conversationRes.value.sId);
         await mutateConversations();
         await scrollConversationsToTop();
 
@@ -310,7 +303,6 @@ export function ConversationContainer({
           conversationId={activeConversationId}
           // TODO(2024-06-20 flav): Fix extra-rendering loop with sticky mentions.
           onStickyMentionsChange={onStickyMentionsChange}
-          messageRankToScrollTo={messageRankToScrollTo}
         />
       ) : (
         <div></div>

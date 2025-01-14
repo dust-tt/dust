@@ -62,7 +62,7 @@ export default function TablePicker({
   });
 
   const currentTable = currentTableId
-    ? tables.find((t) => t.dustDocumentId === currentTableId)
+    ? tables.find((t) => t.internalId === currentTableId)
     : null;
 
   const [searchFilter, setSearchFilter] = useState("");
@@ -139,12 +139,12 @@ export default function TablePicker({
                         !excludeTables?.some(
                           (et) =>
                             et.dataSourceId === dataSource.data_source_id &&
-                            et.tableId === t.dustDocumentId
+                            et.tableId === t.internalId
                         )
                     )
                     .map((t) => (
                       <div
-                        key={t.dustDocumentId}
+                        key={t.internalId}
                         className="flex cursor-pointer flex-col items-start hover:opacity-80"
                         onClick={() => {
                           onTableUpdate(t);

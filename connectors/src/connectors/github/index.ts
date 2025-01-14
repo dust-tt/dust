@@ -286,7 +286,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
 
         nodes = nodes.concat(
           page.map((repo) => ({
-            provider: c.type,
             internalId: getRepositoryInternalId(repo.id),
             parentInternalId: null,
             type: "folder",
@@ -294,7 +293,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
             sourceUrl: repo.url,
             expandable: true,
             permission: "read",
-            dustDocumentId: null,
             lastUpdatedAt: null,
           }))
         );
@@ -358,7 +356,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
 
           if (latestIssue) {
             nodes.push({
-              provider: c.type,
               internalId: getIssuesInternalId(repoId),
               parentInternalId,
               type: "database",
@@ -366,14 +363,12 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
               sourceUrl: repo.url + "/issues",
               expandable: false,
               permission: "read",
-              dustDocumentId: null,
               lastUpdatedAt: latestIssue.updatedAt.getTime(),
             });
           }
 
           if (latestDiscussion) {
             nodes.push({
-              provider: c.type,
               internalId: getDiscussionsInternalId(repoId),
               parentInternalId,
               type: "channel",
@@ -381,14 +376,12 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
               sourceUrl: repo.url + "/discussions",
               expandable: false,
               permission: "read",
-              dustDocumentId: null,
               lastUpdatedAt: latestDiscussion.updatedAt.getTime(),
             });
           }
 
           if (codeRepo) {
             nodes.push({
-              provider: c.type,
               internalId: getCodeRootInternalId(repoId),
               parentInternalId,
               type: "folder",
@@ -396,7 +389,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
               sourceUrl: repo.url,
               expandable: true,
               permission: "read",
-              dustDocumentId: null,
               lastUpdatedAt: codeRepo.codeUpdatedAt.getTime(),
             });
           }
@@ -431,7 +423,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
 
           directories.forEach((directory) => {
             nodes.push({
-              provider: c.type,
               internalId: directory.internalId,
               parentInternalId,
               type: "folder",
@@ -439,14 +430,12 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
               sourceUrl: directory.sourceUrl,
               expandable: true,
               permission: "read",
-              dustDocumentId: null,
               lastUpdatedAt: directory.codeUpdatedAt.getTime(),
             });
           });
 
           files.forEach((file) => {
             nodes.push({
-              provider: c.type,
               internalId: file.documentId,
               parentInternalId,
               type: "file",
@@ -454,7 +443,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
               sourceUrl: file.sourceUrl,
               expandable: false,
               permission: "read",
-              dustDocumentId: file.documentId,
               lastUpdatedAt: file.codeUpdatedAt.getTime(),
             });
           });
@@ -609,16 +597,13 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         return;
       }
       nodes.push({
-        provider: c.type,
         internalId: getRepositoryInternalId(repoId),
         parentInternalId: null,
         type: "folder",
         title: repo.name,
-        titleWithParentsContext: `[${repo.name}] - Full repository`,
         sourceUrl: repo.url,
         expandable: true,
         permission: "read",
-        dustDocumentId: null,
         lastUpdatedAt: null,
       });
     });
@@ -630,16 +615,13 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         return;
       }
       nodes.push({
-        provider: c.type,
         internalId: getIssuesInternalId(repoId),
         parentInternalId: getRepositoryInternalId(repoId),
         type: "database",
         title: "Issues",
-        titleWithParentsContext: `[${repo.name}] Issues`,
         sourceUrl: repo.url + "/issues",
         expandable: false,
         permission: "read",
-        dustDocumentId: null,
         lastUpdatedAt: null,
       });
     });
@@ -649,16 +631,13 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         return;
       }
       nodes.push({
-        provider: c.type,
         internalId: getDiscussionsInternalId(repoId),
         parentInternalId: getRepositoryInternalId(repoId),
         type: "channel",
         title: "Discussions",
-        titleWithParentsContext: `[${repo.name}] Discussions`,
         sourceUrl: repo.url + "/discussions",
         expandable: false,
         permission: "read",
-        dustDocumentId: null,
         lastUpdatedAt: null,
       });
     });
@@ -670,7 +649,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         return;
       }
       nodes.push({
-        provider: c.type,
         internalId: getIssueInternalId(repoId, issueNumber),
         parentInternalId: getIssuesInternalId(repoId),
         type: "file",
@@ -678,7 +656,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         sourceUrl: repo.url + `/issues/${issueNumber}`,
         expandable: false,
         permission: "read",
-        dustDocumentId: getIssueInternalId(repoId, issueNumber),
         lastUpdatedAt: issue.updatedAt.getTime(),
       });
     });
@@ -690,7 +667,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         return;
       }
       nodes.push({
-        provider: c.type,
         internalId: getDiscussionInternalId(repoId, discussionNumber),
         parentInternalId: getDiscussionsInternalId(repoId),
         type: "file",
@@ -698,65 +674,48 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         sourceUrl: repo.url + `/discussions/${discussionNumber}`,
         expandable: false,
         permission: "read",
-        dustDocumentId: getDiscussionInternalId(repoId, discussionNumber),
         lastUpdatedAt: discussion.updatedAt.getTime(),
       });
     });
 
     // Constructing Nodes for Code
     fullCodeInRepos.forEach((codeRepo) => {
-      const repo = uniqueRepos[parseInt(codeRepo.repoId)];
       nodes.push({
-        provider: c.type,
         internalId: getCodeRootInternalId(codeRepo.repoId),
         parentInternalId: getRepositoryInternalId(codeRepo.repoId),
         type: "folder",
         title: "Code",
-        titleWithParentsContext: repo ? `[${repo.name}] Code` : "Code",
         sourceUrl: codeRepo.sourceUrl,
         expandable: true,
         permission: "read",
-        dustDocumentId: null,
         lastUpdatedAt: codeRepo.codeUpdatedAt.getTime(),
       });
     });
 
     // Constructing Nodes for Code Directories
     codeDirectories.forEach((directory) => {
-      const repo = uniqueRepos[parseInt(directory.repoId)];
       nodes.push({
-        provider: c.type,
         internalId: directory.internalId,
         parentInternalId: directory.parentInternalId,
         type: "folder",
         title: directory.dirName,
-        titleWithParentsContext: repo
-          ? `[${repo.name}] ${directory.dirName} (code)`
-          : directory.dirName,
         sourceUrl: directory.sourceUrl,
         expandable: true,
         permission: "read",
-        dustDocumentId: null,
         lastUpdatedAt: directory.codeUpdatedAt.getTime(),
       });
     });
 
     // Constructing Nodes for Code Files
     codeFiles.forEach((file) => {
-      const repo = uniqueRepos[parseInt(file.repoId)];
       nodes.push({
-        provider: c.type,
         internalId: file.documentId,
         parentInternalId: file.parentInternalId,
         type: "file",
         title: file.fileName,
-        titleWithParentsContext: repo
-          ? `[${repo.name}] ${file.fileName} (code)`
-          : file.fileName,
         sourceUrl: file.sourceUrl,
         expandable: false,
         permission: "read",
-        dustDocumentId: file.documentId,
         lastUpdatedAt: file.codeUpdatedAt.getTime(),
       });
     });

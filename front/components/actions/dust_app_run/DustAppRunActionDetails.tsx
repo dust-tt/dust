@@ -11,6 +11,7 @@ import { useMemo } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
+import { DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY } from "@app/lib/api/assistant/actions/constants";
 
 export function DustAppRunActionDetails({
   action,
@@ -51,12 +52,14 @@ function DustAppRunParamsDetails({ action }: { action: DustAppRunActionType }) {
 
   return (
     <div className="flex flex-col gap-0.5">
-      {Object.entries(params).map(([k, v], idx) => (
-        <p key={idx}>
-          <span className="font-semibold">{capitalize(k)}:</span>
-          {` ${v}`}
-        </p>
-      ))}
+      {Object.entries(params)
+        .filter(([k]) => k !== DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY)
+        .map(([k, v], idx) => (
+          <p key={idx}>
+            <span className="font-semibold">{capitalize(k)}:</span>
+            {` ${v}`}
+          </p>
+        ))}
     </div>
   );
 }

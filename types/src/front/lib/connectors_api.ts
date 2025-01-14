@@ -96,25 +96,19 @@ export const contentNodeTypeSortOrder: Record<ContentNodeType, number> = {
  * information. More details here:
  * https://www.notion.so/dust-tt/Design-Doc-Microsoft-ids-parents-c27726652aae45abafaac587b971a41d?pvs=4
  */
-export interface BaseContentNode {
+export interface ContentNode {
   internalId: string;
   // The direct parent ID of this content node
   parentInternalId: string | null;
   type: ContentNodeType;
   title: string;
-  titleWithParentsContext?: string;
   sourceUrl: string | null;
   expandable: boolean;
   preventSelection?: boolean;
   permission: ConnectorPermission;
-  dustDocumentId: string | null;
   lastUpdatedAt: number | null;
   providerVisibility?: "public" | "private";
 }
-
-export type ContentNode = BaseContentNode & {
-  provider: ConnectorProvider;
-};
 
 export type ContentNodeWithParentIds = ContentNode & {
   // A list of all parent IDs up to the root node, including the direct parent
@@ -497,36 +491,6 @@ export class ConnectorsAPI {
       {
         method: "GET",
         headers: this.getDefaultHeaders(),
-      }
-    );
-
-    return this._resultFromResponse(res);
-  }
-
-  async getContentNodesParents({
-    connectorId,
-    internalIds,
-  }: {
-    connectorId: string;
-    internalIds: string[];
-  }): Promise<
-    ConnectorsAPIResponse<{
-      nodes: {
-        internalId: string;
-        parents: string[];
-      }[];
-    }>
-  > {
-    const res = await this._fetchWithError(
-      `${this._url}/connectors/${encodeURIComponent(
-        connectorId
-      )}/content_nodes/parents`,
-      {
-        method: "POST",
-        headers: this.getDefaultHeaders(),
-        body: JSON.stringify({
-          internalIds,
-        }),
       }
     );
 

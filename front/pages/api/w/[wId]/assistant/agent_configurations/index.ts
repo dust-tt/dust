@@ -120,10 +120,7 @@ async function handler(
           usageMap[agentConfiguration.sId]
             ? {
                 ...agentConfiguration,
-                usage: {
-                  messageCount: usageMap[agentConfiguration.sId].messageCount,
-                  timePeriodSec: usageMap[agentConfiguration.sId].timePeriodSec,
-                },
+                usage: _.omit(usageMap[agentConfiguration.sId], ["agentId"]),
               }
             : agentConfiguration
         );

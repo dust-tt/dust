@@ -28,10 +28,10 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   APIError,
-  BaseContentNode,
   ConnectorPermission,
   ConnectorProvider,
   ConnectorType,
+  ContentNode,
   DataSourceType,
   LightWorkspaceType,
   UpdateConnectorRequestBody,
@@ -946,7 +946,7 @@ export async function confirmPrivateNodesSync({
   selectedNodes,
   confirm,
 }: {
-  selectedNodes: BaseContentNode[];
+  selectedNodes: ContentNode[];
   confirm: (n: ConfirmDataType) => Promise<boolean>;
 }): Promise<boolean> {
   // confirmation in case there are private nodes

@@ -32,6 +32,7 @@ pub struct Node {
     pub provider_visibility: Option<String>,
     pub parent_id: Option<String>,
     pub parents: Vec<String>,
+    pub source_url: Option<String>,
 }
 
 impl Node {
@@ -46,6 +47,7 @@ impl Node {
         provider_visibility: Option<String>,
         parent_id: Option<String>,
         parents: Vec<String>,
+        source_url: Option<String>,
     ) -> Self {
         Node {
             data_source_id: data_source_id.to_string(),
@@ -58,6 +60,7 @@ impl Node {
             provider_visibility: provider_visibility.clone(),
             parent_id: parent_id.clone(),
             parents,
+            source_url,
         }
     }
 
@@ -97,6 +100,7 @@ impl Node {
             self.parent_id,
             self.parents,
             self.mime_type,
+            self.source_url,
             self.provider_visibility,
         )
     }

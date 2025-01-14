@@ -21,7 +21,6 @@ export type PatchDataSourceViewType = t.TypeOf<
 >;
 
 export type LightContentNode = {
-  dustDocumentId: string | null;
   expandable: boolean;
   internalId: string;
   lastUpdatedAt: number | null;
@@ -29,7 +28,6 @@ export type LightContentNode = {
   preventSelection?: boolean;
   sourceUrl: string | null;
   title: string;
-  titleWithParentsContext?: string;
   type: ContentNodeType;
 };
 

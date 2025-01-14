@@ -1,5 +1,5 @@
 import type { ModelId } from "@dust-tt/types";
-import { ZENDESK_MIME_TYPES } from "@dust-tt/types";
+import { MIME_TYPES } from "@dust-tt/types";
 
 import type { ZendeskFetchedCategory } from "@connectors/@types/node-zendesk";
 import {
@@ -118,6 +118,6 @@ export async function syncCategory({
     parents,
     parentId: parents[1],
     title: categoryInDb.name,
-    mimeType: ZENDESK_MIME_TYPES.CATEGORY,
+    mimeType: MIME_TYPES.ZENDESK.CATEGORY,
   });
 }

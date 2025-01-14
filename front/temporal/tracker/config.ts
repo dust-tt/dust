@@ -1,4 +1,4 @@
-const RUN_QUEUE_VERSION = 2;
+const RUN_QUEUE_VERSION = 3;
 export const RUN_QUEUE_NAME = `document-tracker-queue-v${RUN_QUEUE_VERSION}`;
 
 const TRACKER_NOTIFICATION_QUEUE_VERSION = 1;

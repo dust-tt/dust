@@ -43,6 +43,8 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "codestral-latest"
   | "gemini-1.5-pro-latest"
   | "gemini-1.5-flash-latest"
+  | "gemini-2.0-flash-exp"
+  | "gemini-2.0-flash-thinking-exp-1219"
   | "meta-llama/Llama-3.3-70B-Instruct-Turbo"
   | "Qwen/Qwen2.5-Coder-32B-Instruct"
   | "Qwen/QwQ-32B-Preview"
@@ -666,6 +668,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "openai_o1_custom_assistants_feature"
   | "openai_o1_high_reasoning_custom_assistants_feature"
   | "deepseek_feature"
+  | "google_ai_studio_experimental_models_feature"
   | "snowflake_connector_feature"
   | "index_private_slack_channel"
   | "conversations_jit_actions"
@@ -781,6 +784,8 @@ export type AgentConfigurationViewType = z.infer<
 
 const AgentUsageTypeSchema = z.object({
   messageCount: z.number(),
+  conversationCount: z.number(),
+  userCount: z.number(),
   timePeriodSec: z.number(),
 });
 
@@ -945,6 +950,7 @@ export type ConversationVisibility = z.infer<
 const ConversationWithoutContentSchema = z.object({
   id: ModelIdSchema,
   created: z.number(),
+  updated: z.number().optional(),
   owner: WorkspaceSchema,
   sId: z.string(),
   title: z.string().nullable(),

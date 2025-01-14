@@ -8,6 +8,12 @@ import {
   Label,
   LockIcon,
   Modal,
+  NewDialog,
+  NewDialogContainer,
+  NewDialogContent,
+  NewDialogFooter,
+  NewDialogHeader,
+  NewDialogTitle,
   Page,
   Popup,
   RadioGroup,
@@ -889,20 +895,38 @@ function DisableEnterpriseConnectionModal({
   }
 
   return (
-    <Dialog
-      isOpen={isOpen}
-      title={`Disable ${strategyHumanReadable} Single Sign On`}
-      onValidate={async () => {
-        await handleUpdateWorkspace();
+    <NewDialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose(false);
+        }
       }}
-      onCancel={() => onClose(false)}
-      validateLabel={`Disable ${strategyHumanReadable} Single Sign On`}
-      validateVariant="warning"
     >
-      <div>
-        Anyone with an {strategyHumanReadable} account won't be able to access
-        your Dust workspace anymore.
-      </div>
-    </Dialog>
+      <NewDialogContent size="md">
+        <NewDialogHeader>
+          <NewDialogTitle>
+            Disable ${strategyHumanReadable} Single Sign On
+          </NewDialogTitle>
+        </NewDialogHeader>
+        <NewDialogContainer>
+          Anyone with an {strategyHumanReadable} account won't be able to access
+          your Dust workspace anymore.
+        </NewDialogContainer>
+        <NewDialogFooter
+          leftButtonProps={{
+            label: "Cancel",
+            variant: "outline",
+          }}
+          rightButtonProps={{
+            label: `Disable ${strategyHumanReadable} Single Sign On`,
+            variant: "warning",
+            onClick: async () => {
+              await handleUpdateWorkspace();
+            },
+          }}
+        />
+      </NewDialogContent>
+    </NewDialog>
   );
 }

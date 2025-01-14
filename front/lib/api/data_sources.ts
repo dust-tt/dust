@@ -45,13 +45,13 @@ import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
+import { Lock } from "@app/lib/lock";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { enqueueUpsertTable } from "@app/lib/upsert_queue";
-import { wakeLock, wakeLockIsFree } from "@app/lib/wake_lock";
 import logger from "@app/logger/logger";
 import { launchScrubDataSourceWorkflow } from "@app/poke/temporal/client";
 
@@ -936,12 +936,9 @@ async function getOrCreateConversationDataSource(
   }
 
   const lockName = "conversationDataSource" + conversation.id;
-  // Handle race condition when we try to create a conversation data source
-  while (!wakeLockIsFree(lockName)) {
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
 
-  const res = await wakeLock(
+  const res = await Lock.executeWithLock(
+    lockName,
     async (): Promise<
       Result<
         DataSourceResource,
@@ -984,8 +981,7 @@ async function getOrCreateConversationDataSource(
       }
 
       return new Ok(dataSource);
-    },
-    lockName
+    }
   );
 
   return res;

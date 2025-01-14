@@ -69,6 +69,7 @@ const DocTrackerRetrievalActionValueSchema = t.array(
     created: t.Integer,
     document_id: t.string,
     timestamp: t.Integer,
+    title: t.union([t.string, t.null]),
     tags: t.array(t.string),
     parents: t.array(t.string),
     source_url: t.union([t.string, t.null]),
@@ -77,12 +78,17 @@ const DocTrackerRetrievalActionValueSchema = t.array(
     text: t.union([t.string, t.null, t.undefined]),
     chunk_count: t.Integer,
     chunks: t.array(
-      t.type({
-        text: t.string,
-        hash: t.string,
-        offset: t.Integer,
-        score: t.number,
-      })
+      t.intersection([
+        t.type({
+          text: t.string,
+          hash: t.string,
+          offset: t.Integer,
+          score: t.number,
+        }),
+        t.partial({
+          expanded_offsets: t.array(t.Integer),
+        }),
+      ])
     ),
     token_count: t.Integer,
   })

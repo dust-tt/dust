@@ -19,8 +19,10 @@ import type {
   RetrievePermissionsErrorCode,
   UpdateConnectorErrorCode,
 } from "@connectors/connectors/interface";
-import { ConnectorManagerError } from "@connectors/connectors/interface";
-import { BaseConnectorManager } from "@connectors/connectors/interface";
+import {
+  BaseConnectorManager,
+  ConnectorManagerError,
+} from "@connectors/connectors/interface";
 import {
   getDisplayNameForFolder,
   getDisplayNameForPage,
@@ -199,7 +201,6 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
         .filter((f) => !excludedFoldersSet.has(f.url))
         .map((folder): ContentNode => {
           return {
-            provider: "webcrawler",
             internalId: folder.internalId,
             parentInternalId: folder.parentUrl
               ? stableIdForUrl({
@@ -211,7 +212,6 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
             sourceUrl: null,
             expandable: true,
             permission: "read",
-            dustDocumentId: null,
             type: "folder",
             lastUpdatedAt: folder.updatedAt.getTime(),
           };
@@ -222,7 +222,6 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
               normalizeFolderUrl(page.url)
             );
             return {
-              provider: "webcrawler",
               internalId: isFileAndFolder
                 ? stableIdForUrl({
                     url: normalizeFolderUrl(page.url),
@@ -239,7 +238,6 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
               sourceUrl: page.url,
               expandable: isFileAndFolder ? true : false,
               permission: "read",
-              dustDocumentId: page.documentId,
               type: "file",
               lastUpdatedAt: page.updatedAt.getTime(),
             };
@@ -274,28 +272,24 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
 
     folders.forEach((folder) => {
       nodes.push({
-        provider: "webcrawler",
         internalId: folder.internalId,
         parentInternalId: folder.parentUrl,
         title: getDisplayNameForFolder(folder),
         sourceUrl: folder.url,
         expandable: true,
         permission: "read",
-        dustDocumentId: null,
         type: "folder",
         lastUpdatedAt: folder.updatedAt.getTime(),
       });
     });
     pages.forEach((page) => {
       nodes.push({
-        provider: "webcrawler",
         internalId: page.documentId,
         parentInternalId: page.parentUrl,
         title: getDisplayNameForPage(page),
         sourceUrl: page.url,
         expandable: false,
         permission: "read",
-        dustDocumentId: page.documentId,
         type: "file",
         lastUpdatedAt: page.updatedAt.getTime(),
       });

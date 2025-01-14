@@ -99,14 +99,15 @@ export default function LandingLayout({
           </div>
           <MainNavigation />
           <div className="flex flex-grow justify-end gap-4">
-            <Button
-              className="hidden xs:block"
-              variant="outline"
-              size="sm"
-              label="Request a demo"
-              href="https://forms.gle/dGaQ1AZuDCbXY1ft9"
-              target="_blank"
-            />
+            <Link href="/home/contact" shallow={true}>
+              <Button
+                className="hidden xs:block"
+                variant="outline"
+                size="sm"
+                label="Request a demo"
+                target="_blank"
+              />
+            </Link>
             <Button
               variant="highlight"
               size="sm"

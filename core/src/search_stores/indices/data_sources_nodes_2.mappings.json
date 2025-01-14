@@ -34,6 +34,10 @@
     },
     "mime_type": {
       "type": "keyword"
+    },
+    "source_url": {
+      "type": "keyword",
+      "index": false
     }
   }
 }

@@ -83,7 +83,7 @@ export const TrackerDataSourceSelectedTree = ({
                 return (
                   <Tree.Item
                     key={`${dsConfig.dataSourceView.sId}-${node.internalId}`}
-                    label={node.titleWithParentsContext ?? node.title}
+                    label={node.title}
                     type={node.expandable ? "node" : "leaf"}
                     visual={getVisualForContentNode(node)}
                     className="whitespace-nowrap"
@@ -109,20 +109,20 @@ export const TrackerDataSourceSelectedTree = ({
                           size="xs"
                           icon={BracesIcon}
                           onClick={() => {
-                            if (node.dustDocumentId) {
+                            if (node.type === "file") {
                               setDataSourceViewToDisplay(
                                 dsConfig.dataSourceView
                               );
-                              setDocumentToDisplay(node.dustDocumentId);
+                              setDocumentToDisplay(node.internalId);
                             }
                           }}
                           className={classNames(
-                            node.dustDocumentId
+                            node.type === "file"
                               ? ""
                               : "pointer-events-none opacity-0"
                           )}
-                          disabled={!node.dustDocumentId}
-                          variant="ghost"
+                          disabled={node.type !== "file"}
+                          variant="outline"
                         />
                       </div>
                     }

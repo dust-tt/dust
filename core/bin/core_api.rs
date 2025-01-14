@@ -2187,6 +2187,7 @@ struct DatabasesTablesUpsertPayload {
     tags: Vec<String>,
     parent_id: Option<String>,
     parents: Vec<String>,
+    source_url: Option<String>,
 
     // Remote DB specifics
     remote_database_table_id: Option<String>,
@@ -2260,6 +2261,7 @@ async fn tables_upsert(
                 timestamp: payload.timestamp.unwrap_or(utils::now()),
                 tags: payload.tags,
                 parents: payload.parents,
+                source_url: payload.source_url,
                 remote_database_table_id: payload.remote_database_table_id,
                 remote_database_secret_id: payload.remote_database_secret_id,
                 title: payload.title,
@@ -2928,6 +2930,7 @@ struct FoldersUpsertPayload {
     parents: Vec<String>,
     title: String,
     mime_type: String,
+    source_url: Option<String>,
     provider_visibility: Option<String>,
 }
 
@@ -2992,6 +2995,7 @@ async fn folders_upsert(
                 parents: payload.parents,
                 title: payload.title,
                 mime_type: payload.mime_type,
+                source_url: payload.source_url,
                 provider_visibility: payload.provider_visibility,
             },
         )

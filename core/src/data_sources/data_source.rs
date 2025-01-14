@@ -235,6 +235,7 @@ impl From<Document> for Node {
             document.provider_visibility,
             document.parent_id,
             document.parents.clone(),
+            document.source_url,
         )
     }
 }

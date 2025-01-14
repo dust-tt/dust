@@ -10,30 +10,47 @@ import {
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type { ConversationType } from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";
+import { useRouter } from "next/router";
 import type { MouseEvent } from "react";
-import React, { useRef, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import { useSWRConfig } from "swr";
 
 import { ConversationParticipants } from "@app/components/assistant/conversation/ConversationParticipants";
+import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
+import {
+  useConversation,
+  useDeleteConversation,
+} from "@app/lib/swr/conversations";
 import { classNames } from "@app/lib/utils";
 
 export function ConversationTitle({
   owner,
-  conversationId,
-  conversation,
-  shareLink,
-  onDelete,
+  baseUrl,
 }: {
   owner: WorkspaceType;
-  conversationId: string;
-  conversation: ConversationType | null;
-  shareLink: string;
-  onDelete?: (conversationId: string) => void;
+  baseUrl: string;
 }) {
   const { mutate } = useSWRConfig();
+  const router = useRouter();
+  const { activeConversationId } = useConversationsNavigation();
+
+  const { conversation } = useConversation({
+    conversationId: activeConversationId,
+    workspaceId: owner.sId,
+  });
+
+  const shareLink = `${baseUrl}/w/${owner.sId}/assistant/${activeConversationId}`;
+
+  const doDelete = useDeleteConversation(owner);
+
+  const onDelete = useCallback(async () => {
+    const res = await doDelete(conversation);
+    if (res) {
+      void router.push(`/w/${owner.sId}/assistant/new`);
+    }
+  }, [conversation, doDelete, owner.sId, router]);
 
   const [copyLinkSuccess, setCopyLinkSuccess] = useState<boolean>(false);
   const [isEditingTitle, setIsEditingTitle] = useState<boolean>(false);
@@ -43,57 +60,62 @@ export function ConversationTitle({
   const titleInputFocused = useRef(false);
   const saveButtonFocused = useRef(false);
 
-  const handleClick = async () => {
+  const handleClick = useCallback(async () => {
     await navigator.clipboard.writeText(shareLink || "");
     setCopyLinkSuccess(true);
     setTimeout(() => {
       setCopyLinkSuccess(false);
     }, 1000);
-  };
+  }, [shareLink]);
 
-  const onTitleChange = async (title: string) => {
-    try {
-      const res = await fetch(
-        `/api/w/${owner.sId}/assistant/conversations/${conversationId}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            title,
-            visibility: conversation?.visibility,
-          }),
+  const onTitleChange = useCallback(
+    async (title: string) => {
+      try {
+        const res = await fetch(
+          `/api/w/${owner.sId}/assistant/conversations/${activeConversationId}`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              title,
+              visibility: conversation?.visibility,
+            }),
+          }
+        );
+        await mutate(
+          `/api/w/${owner.sId}/assistant/conversations/${activeConversationId}`
+        );
+        void mutate(`/api/w/${owner.sId}/assistant/conversations`);
+        if (!res.ok) {
+          throw new Error("Failed to update title");
         }
-      );
-      await mutate(
-        `/api/w/${owner.sId}/assistant/conversations/${conversationId}`
-      );
-      void mutate(`/api/w/${owner.sId}/assistant/conversations`);
-      if (!res.ok) {
-        throw new Error("Failed to update title");
+        setIsEditingTitle(false);
+        setEditedTitle("");
+      } catch (e) {
+        alert("Failed to update title");
       }
-      setIsEditingTitle(false);
-      setEditedTitle("");
-    } catch (e) {
-      alert("Failed to update title");
-    }
-  };
+    },
+    [activeConversationId, conversation?.visibility, mutate, owner.sId]
+  );
+
+  if (!activeConversationId) {
+    return null;
+  }
 
   return (
     <>
-      {onDelete && (
-        <DeleteConversationsDialog
-          isOpen={showDeleteDialog}
-          type="selection"
-          selectedCount={1}
-          onClose={() => setShowDeleteDialog(false)}
-          onDelete={() => {
-            setShowDeleteDialog(false);
-            onDelete(conversationId);
-          }}
-        />
-      )}
+      <DeleteConversationsDialog
+        isOpen={showDeleteDialog}
+        type="selection"
+        selectedCount={1}
+        onClose={() => setShowDeleteDialog(false)}
+        onDelete={() => {
+          setShowDeleteDialog(false);
+          void onDelete();
+        }}
+      />
       <div className="grid h-full min-w-0 max-w-full grid-cols-[1fr,auto] items-center gap-4">
         <div className="flex min-w-0 flex-row items-center gap-4">
           {!isEditingTitle ? (
@@ -177,21 +199,19 @@ export function ConversationTitle({
         <div className="flex items-center">
           <div className="hidden pr-6 lg:flex">
             <ConversationParticipants
-              conversationId={conversationId}
+              conversationId={activeConversationId}
               owner={owner}
             />
           </div>
           <div className="flex gap-2">
             <div className="hidden lg:flex">
-              {onDelete && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  tooltip="Delete Conversation"
-                  icon={TrashIcon}
-                  onClick={() => setShowDeleteDialog(true)}
-                />
-              )}
+              <Button
+                size="sm"
+                variant="ghost"
+                tooltip="Delete Conversation"
+                icon={TrashIcon}
+                onClick={() => setShowDeleteDialog(true)}
+              />
             </div>
             <Popover
               popoverTriggerAsChild
