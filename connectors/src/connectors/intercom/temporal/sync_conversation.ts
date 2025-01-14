@@ -1,5 +1,5 @@
 import type { ModelId } from "@dust-tt/types";
-import { INTERCOM_MIME_TYPES } from "@dust-tt/types";
+import { MIME_TYPES } from "@dust-tt/types";
 import TurndownService from "turndown";
 
 import { getIntercomAccessToken } from "@connectors/connectors/intercom/lib/intercom_access_token";
@@ -332,7 +332,7 @@ export async function syncConversation({
       sync_type: syncType,
     },
     title: convoTitle,
-    mimeType: INTERCOM_MIME_TYPES.CONVERSATION,
+    mimeType: MIME_TYPES.INTERCOM.CONVERSATION,
     async: true,
   });
 }

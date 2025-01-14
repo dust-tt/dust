@@ -1,8 +1,8 @@
 import type { ModelId } from "@dust-tt/types";
 import {
-  CONFLUENCE_MIME_TYPES,
   ConfluenceClientError,
   isConfluenceNotFoundError,
+  MIME_TYPES,
 } from "@dust-tt/types";
 import { Op } from "sequelize";
 import TurndownService from "turndown";
@@ -222,7 +222,7 @@ export async function confluenceUpsertSpaceFolderActivity({
     parents: [makeSpaceInternalId(spaceId)],
     parentId: null,
     title: spaceName,
-    mimeType: CONFLUENCE_MIME_TYPES.SPACE,
+    mimeType: MIME_TYPES.CONFLUENCE.SPACE,
   });
 }
 
@@ -329,7 +329,7 @@ async function upsertConfluencePageToDataSource({
       timestampMs: lastPageVersionCreatedAt.getTime(),
       upsertContext: { sync_type: syncType },
       title: page.title,
-      mimeType: CONFLUENCE_MIME_TYPES.PAGE,
+      mimeType: MIME_TYPES.CONFLUENCE.PAGE,
       async: true,
     });
   }

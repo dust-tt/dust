@@ -1,9 +1,5 @@
 import type { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
-import {
-  cacheWithRedis,
-  safeSubstring,
-  SLACK_MIME_TYPES,
-} from "@dust-tt/types";
+import { cacheWithRedis, MIME_TYPES, safeSubstring } from "@dust-tt/types";
 import type {
   CodedError,
   WebAPIPlatformError,
@@ -258,7 +254,7 @@ export async function syncChannel(
       title: `#${channel.name}`,
       parentId: null,
       parents: [slackChannelInternalIdFromSlackChannelId(channelId)],
-      mimeType: SLACK_MIME_TYPES.CHANNEL,
+      mimeType: MIME_TYPES.SLACK.CHANNEL,
     });
   }
 
@@ -636,7 +632,7 @@ export async function syncNonThreaded(
       sync_type: isBatchSync ? "batch" : "incremental",
     },
     title: tags.find((t) => t.startsWith("title:"))?.split(":")[1] ?? "",
-    mimeType: SLACK_MIME_TYPES.MESSAGES,
+    mimeType: MIME_TYPES.SLACK.MESSAGES,
     async: true,
   });
 }
@@ -850,7 +846,7 @@ export async function syncThread(
       sync_type: isBatchSync ? "batch" : "incremental",
     },
     title: tags.find((t) => t.startsWith("title:"))?.split(":")[1] ?? "",
-    mimeType: SLACK_MIME_TYPES.THREAD,
+    mimeType: MIME_TYPES.SLACK.THREAD,
     async: true,
   });
 }
