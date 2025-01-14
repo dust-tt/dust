@@ -129,7 +129,7 @@ export function ChangeMemberModal({
                         rightButtonProps={{
                           label: "Yes, revoke",
                           variant: "warning",
-                          onClick: () => async () => {
+                          onClick: async () => {
                             await handleMembersRoleChange({
                               members: [member],
                               role: "none",
