@@ -25,9 +25,7 @@ import { useRef, useState } from "react";
 
 import { SpaceCreateAppModal } from "@app/components/spaces/SpaceCreateAppModal";
 import type { Action } from "@app/lib/registry";
-import { DustProdActionRegistry } from "@app/lib/registry";
 import { useApps, useSavedRunStatus } from "@app/lib/swr/apps";
-import config from "@app/lib/api/config";
 
 type RowData = {
   app: AppType;
@@ -54,12 +52,15 @@ const getTableColumns = () => {
   ];
 };
 
-const getDustAppsColumns = (owner: WorkspaceType) => ({
-  id: "hash",
+const getDustAppsColumns = (
+  owner: WorkspaceType,
+  registryApps: Action["app"][]
+) => ({
+  id: "status",
   cell: (info: CellContext<RowData, string>) => {
     const { app } = info.row.original;
-    const registryApp = Object.values(DustProdActionRegistry).find(
-      (action) => action.app.appId === app.sId
+    const registryApp = Object.values(registryApps).find(
+      (a) => a.appId === app.sId
     );
     if (!registryApp) {
       return (
@@ -70,7 +71,7 @@ const getDustAppsColumns = (owner: WorkspaceType) => ({
     }
     return (
       <DataTable.CellContent>
-        <AppHashChecker owner={owner} app={app} registryApp={registryApp.app} />
+        <AppHashChecker owner={owner} app={app} registryApp={registryApp} />
       </DataTable.CellContent>
     );
   },
@@ -134,6 +135,8 @@ interface SpaceAppsListProps {
   onSelect: (sId: string) => void;
   owner: LightWorkspaceType;
   space: SpaceType;
+  isDustApps: boolean;
+  registryApps: Action["app"][];
 }
 
 export const SpaceAppsList = ({
@@ -141,6 +144,8 @@ export const SpaceAppsList = ({
   canWriteInSpace,
   space,
   onSelect,
+  isDustApps,
+  registryApps,
 }: SpaceAppsListProps) => {
   const router = useRouter();
   const [isCreateAppModalOpened, setIsCreateAppModalOpened] = useState(false);
@@ -178,11 +183,8 @@ export const SpaceAppsList = ({
   }
 
   const columns = getTableColumns();
-  if (
-    owner.sId === config.getDustAppsWorkspaceId() &&
-    space.sId === config.getDustAppsSpaceId()
-  ) {
-    columns.push(getDustAppsColumns(owner));
+  if (isDustApps) {
+    columns.push(getDustAppsColumns(owner, registryApps));
   }
 
   return (

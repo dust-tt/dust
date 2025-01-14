@@ -1,3 +1,12 @@
+import { DustAPI } from "@dust-tt/client";
+import {
+  assertNever,
+  ConnectorsAPI,
+  removeNulls,
+  SUPPORTED_MODEL_CONFIGS,
+} from "@dust-tt/types";
+import parseArgs from "minimist";
+
 import { getConversation } from "@app/lib/api/assistant/conversation";
 import { renderConversationForModel } from "@app/lib/api/assistant/generation";
 import { getTextRepresentationFromMessages } from "@app/lib/api/assistant/utils";
@@ -27,14 +36,6 @@ import {
   stopRetrieveTranscriptsWorkflow,
 } from "@app/temporal/labs/client";
 import { REGISTERED_CHECKS } from "@app/temporal/production_checks/activities";
-import { DustAPI } from "@dust-tt/client";
-import {
-  assertNever,
-  ConnectorsAPI,
-  removeNulls,
-  SUPPORTED_MODEL_CONFIGS,
-} from "@dust-tt/types";
-import parseArgs from "minimist";
 
 // `cli` takes an object type and a command as first two arguments and then a list of arguments.
 const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
@@ -63,7 +64,6 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       });
 
       args.wId = w.sId;
-      await workspace("show", args);
       return;
     }
 
@@ -193,7 +193,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
     default:
       console.log(`Unknown workspace command: ${command}`);
       console.log(
-        "Possible values: `find`, `show`, `create`, `set-limits`, `upgrade`, `downgrade`"
+        "Possible values: `find`, `create`, `set-limits`, `upgrade`, `downgrade`"
       );
   }
 };
