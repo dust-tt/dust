@@ -1,18 +1,7 @@
-import {
-  assertNever,
-  ConnectorsAPI,
-  removeNulls,
-  SUPPORTED_MODEL_CONFIGS,
-} from "@dust-tt/types";
-import parseArgs from "minimist";
-
 import { getConversation } from "@app/lib/api/assistant/conversation";
 import { renderConversationForModel } from "@app/lib/api/assistant/generation";
-import {
-  getTextContentFromMessage,
-  getTextRepresentationFromMessages,
-} from "@app/lib/api/assistant/utils";
-import config from "@app/lib/api/config";
+import { getTextRepresentationFromMessages } from "@app/lib/api/assistant/utils";
+import { default as config } from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { garbageCollectGoogleDriveDocument } from "@app/lib/api/poke/plugins/data_sources/garbage_collect_google_drive_document";
 import { Authenticator } from "@app/lib/auth";
@@ -38,6 +27,14 @@ import {
   stopRetrieveTranscriptsWorkflow,
 } from "@app/temporal/labs/client";
 import { REGISTERED_CHECKS } from "@app/temporal/production_checks/activities";
+import { DustAPI } from "@dust-tt/client";
+import {
+  assertNever,
+  ConnectorsAPI,
+  removeNulls,
+  SUPPORTED_MODEL_CONFIGS,
+} from "@dust-tt/types";
+import parseArgs from "minimist";
 
 // `cli` takes an object type and a command as first two arguments and then a list of arguments.
 const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
@@ -492,6 +489,45 @@ const productionCheck = async (command: string, args: parseArgs.ParsedArgs) => {
         heartbeat
       );
       return;
+    }
+    case "check-apps": {
+      if (!args.url) {
+        throw new Error("Missing --url argument");
+      }
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+      if (!args.spaceId) {
+        throw new Error("Missing --spaceId argument");
+      }
+      const api = new DustAPI(
+        config.getDustAPIConfig(),
+        { apiKey: args.apiKey, workspaceId: args.wId },
+        logger,
+        args.url
+      );
+
+      const actions = Object.values(DustProdActionRegistry);
+
+      const res = await api.checkApps(
+        {
+          apps: actions.map((action) => ({
+            appId: action.app.appId,
+            appHash: action.app.appHash,
+          })),
+        },
+        args.spaceId
+      );
+      if (res.isErr()) {
+        throw new Error(res.error.message);
+      }
+      const notDeployedApps = res.value.filter((a) => !a.deployed);
+      if (notDeployedApps.length > 0) {
+        throw new Error(
+          "Missing apps: " + notDeployedApps.map((a) => a.appId).join(", ")
+        );
+      }
+      console.log("All apps are deployed");
     }
   }
 };
