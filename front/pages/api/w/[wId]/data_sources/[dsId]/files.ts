@@ -1,6 +1,5 @@
 import type { FileType, WithAPIErrorResponse } from "@dust-tt/types";
-import type { NextApiRequest } from "next";
-import type { NextApiResponse } from "next";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type {
@@ -17,16 +16,11 @@ import { apiError } from "@app/logger/withlogging";
 export interface UpsertFileToDataSourceRequestBody {
   fileId: string;
   upsertArgs?:
-    | Pick<UpsertDocumentArgs, "name" | "title" | "tags">
-    | Pick<
+    | Pick<UpsertDocumentArgs, "document_id" | "title" | "tags">
+    | (Pick<
         UpsertTableArgs,
-        | "name"
-        | "title"
-        | "description"
-        | "tableId"
-        | "tags"
-        | "useAppForHeaderDetection"
-      >;
+        "name" | "title" | "description" | "tags" | "useAppForHeaderDetection"
+      > & { tableId: string | undefined }); // we actually don't always have a tableId, this is very dirty, but the refactoring should be done at the level of the whole upsertArgs mechanic
 }
 
 export interface UpsertFileToDataSourceResponseBody {

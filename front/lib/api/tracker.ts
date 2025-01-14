@@ -1,5 +1,5 @@
 import type { TrackerGenerationToProcess } from "@dust-tt/types";
-import { concurrentExecutor, CoreAPI } from "@dust-tt/types";
+import { concurrentExecutor, CoreAPI, removeNulls } from "@dust-tt/types";
 import _ from "lodash";
 
 import config from "@app/lib/api/config";
@@ -84,8 +84,8 @@ const sendTrackerEmail = async ({
 
   const sendEmail =
     generations.length > 0
-      ? _sendTrackerWithGenerationEmail
-      : _sendTrackerDefaultEmail;
+      ? sendTrackerWithGenerationEmail
+      : sendTrackerDefaultEmail;
 
   await Promise.all(
     Array.from(recipients).map((recipient) =>
@@ -94,7 +94,7 @@ const sendTrackerEmail = async ({
   );
 };
 
-const _sendTrackerDefaultEmail = async ({
+const sendTrackerDefaultEmail = async ({
   name,
   recipient,
 }: {
@@ -115,7 +115,7 @@ const _sendTrackerDefaultEmail = async ({
   });
 };
 
-const _sendTrackerWithGenerationEmail = async ({
+export const sendTrackerWithGenerationEmail = async ({
   name,
   recipient,
   generations,
@@ -127,15 +127,32 @@ const _sendTrackerWithGenerationEmail = async ({
   localLogger: Logger;
 }): Promise<void> => {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), localLogger);
-  const generationsByDataSources = _.groupBy(generations, "dataSource.id");
-  const documentsById = new Map();
+  const dataSourceById = _.keyBy(
+    removeNulls(
+      generations.map((g) => [g.dataSource, g.maintainedDataSource]).flat()
+    ),
+    "id"
+  );
+  const docsToFetchByDataSourceId = _.mapValues(
+    _.groupBy(
+      generations.map((g) => ({
+        dataSourceId: g.dataSource.id,
+        documentIds: removeNulls([g.documentId, g.maintainedDocumentId]),
+      })),
+      "dataSourceId"
+    ),
+    (docs) => docs.map((d) => d.documentIds).flat()
+  );
+  const documentsByIdentifier = new Map<
+    string,
+    { name: string; url: string | null }
+  >();
 
   // Fetch documents for each data source in parallel.
   await concurrentExecutor(
-    Object.entries(generationsByDataSources),
-    async ([, generations]) => {
-      const dataSource = generations[0].dataSource;
-      const documentIds = [...new Set(generations.map((g) => g.documentId))];
+    Object.entries(docsToFetchByDataSourceId),
+    async ([dataSourceId, documentIds]) => {
+      const dataSource = dataSourceById[dataSourceId];
 
       const docsResult = await coreAPI.getDataSourceDocuments({
         projectId: dataSource.dustAPIProjectId,
@@ -156,7 +173,7 @@ const _sendTrackerWithGenerationEmail = async ({
       }
 
       docsResult.value.documents.forEach((doc) => {
-        documentsById.set(doc.document_id, {
+        documentsByIdentifier.set(`${dataSource.id}__${doc.document_id}`, {
           name: doc.title ?? "Unknown document",
           url: doc.source_url ?? null,
         });
@@ -165,31 +182,56 @@ const _sendTrackerWithGenerationEmail = async ({
     { concurrency: 5 }
   );
 
-  const generationBody = generations.map((generation) => {
-    const doc = documentsById.get(generation.documentId) ?? {
-      name: "Unknown document",
-      url: null,
-    };
+  const generationBody = await Promise.all(
+    generations.map((g) => {
+      const doc = documentsByIdentifier.get(
+        `${g.dataSource.id}__${g.documentId}`
+      ) ?? {
+        name: "Unknown document",
+        url: null,
+      };
+      const maintainedDoc = g.maintainedDataSource
+        ? documentsByIdentifier.get(
+            `${g.maintainedDataSource.id}__${g.maintainedDocumentId}`
+          ) ?? null
+        : null;
 
-    const title = doc.url
-      ? `<a href="${doc.url}" target="_blank">${doc.name}</a>`
-      : `[${doc.name}]`;
+      const title = doc.url
+        ? `<a href="${doc.url}" target="_blank">${doc.name}</a>`
+        : `[${doc.name}]`;
 
-    return [
-      `<strong>Changes in document ${title} from ${generation.dataSource.name}:</strong>`,
-      generation.thinking && `<p${generation.thinking}</p>`,
-      `<p>${generation.content}.</p>`,
-    ]
-      .filter(Boolean)
-      .join("");
-  });
+      let maintainedTitle: string | null = null;
+      if (maintainedDoc) {
+        maintainedTitle = maintainedDoc.url
+          ? `<a href="${maintainedDoc.url}" target="_blank">${maintainedDoc.name}</a>`
+          : `[${maintainedDoc.name}]`;
+      }
+
+      let body = `<strong>Changes in document ${title} from ${g.dataSource.name}`;
+      if (maintainedTitle && g.maintainedDataSource) {
+        body += ` might affect ${maintainedTitle} from ${g.maintainedDataSource.name}`;
+      }
+      body += `:</strong>`;
+
+      if (g.thinking) {
+        body += `
+          <details>
+            <summary>View thinking</summary>
+            <p>${g.thinking.replace(/\n/g, "<br />")}</p>
+          </details>`;
+      }
+
+      body += `<p>${g.content.replace(/\n/g, "<br />")}.</p>`;
+      return body;
+    })
+  );
 
   const body = `
 <p>We have new suggestions for your tracker ${name}:</p>
 <p>${generations.length} recommendations were generated due to changes in watched documents.</p>
 <br />
 <br />
-${generationBody.join("<br />")}
+${generationBody.join("<hr />")}
 `;
 
   await sendEmailWithTemplate({

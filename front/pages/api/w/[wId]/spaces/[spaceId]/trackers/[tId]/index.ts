@@ -35,7 +35,7 @@ async function handler(
   const flags = await getFeatureFlags(owner);
   if (
     !flags.includes("labs_trackers") ||
-    !auth.isAdmin() ||
+    !auth.isBuilder() ||
     !space.canRead(auth)
   ) {
     return apiError(req, res, {

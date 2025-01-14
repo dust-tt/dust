@@ -42,6 +42,11 @@ export async function retrieveRecentGoogleTranscripts(
       fields: "files(id, name)",
     });
 
+  logger.info(
+    { files: files.data.files },
+    "[retrieveRecentGoogleTranscripts] Retrieved files."
+  );
+
   const { files: filesData } = files.data;
   if (!filesData || filesData.length === 0) {
     logger.info({}, "[retrieveRecentGoogleTranscripts] No new files found.");
@@ -106,6 +111,11 @@ export async function retrieveGoogleTranscriptContent(
     fileId: fileId,
     fields: "name",
   });
+
+  localLogger.info(
+    { fileId, metadataRes: metadataRes.data },
+    "Retrieved metadata for Google document."
+  );
 
   try {
     const contentRes = await drive.files.export({

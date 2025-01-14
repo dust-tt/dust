@@ -8,6 +8,7 @@ import type { ReactElement } from "react";
 
 import { DataSourceViewsDataTable } from "@app/components/poke/data_source_views/table";
 import { MembersDataTable } from "@app/components/poke/members/table";
+import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { ViewSpaceViewTable } from "@app/components/poke/spaces/view";
 import { getMembers } from "@app/lib/api/workspace";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
@@ -78,6 +79,13 @@ export default function SpacePage({
       <ViewSpaceViewTable space={space} />
       <div className="flex grow flex-col">
         <MembersDataTable members={members} owner={owner} readonly />
+        <PluginList
+          resourceType="spaces"
+          workspaceResource={{
+            workspace: owner,
+            resourceId: space.sId,
+          }}
+        />
         <DataSourceViewsDataTable owner={owner} spaceId={space.sId} />
       </div>
     </div>
