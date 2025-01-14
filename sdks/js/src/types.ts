@@ -2342,3 +2342,26 @@ export function getTitleFromRetrievedDocument(
 
   return document.documentId;
 }
+
+export const AppsCheckRequestSchema = z.object({
+  apps: z.array(
+    z.object({
+      appId: z.string(),
+      appHash: z.string(),
+    })
+  ),
+});
+
+export type AppsCheckRequestType = z.infer<typeof AppsCheckRequestSchema>;
+
+export const AppsCheckResponseSchema = z.object({
+  apps: z.array(
+    z.object({
+      appId: z.string(),
+      appHash: z.string(),
+      deployed: z.boolean(),
+    })
+  ),
+});
+
+export type AppsCheckResponseType = z.infer<typeof AppsCheckResponseSchema>;
