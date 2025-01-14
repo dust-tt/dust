@@ -21,7 +21,6 @@ interface HeroSectionProps {
     primary?: {
       label: string;
       href: string;
-      icon?: typeof RocketIcon;
     };
     secondary?: {
       label: string;
@@ -72,7 +71,7 @@ export const HeroSection: FC<HeroSectionProps> = ({
                     variant="highlight"
                     size="md"
                     label={ctaButtons.primary.label}
-                    icon={ctaButtons.primary.icon}
+                    icon={RocketIcon}
                   />
                 </Link>
               )}
