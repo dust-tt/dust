@@ -21,7 +21,12 @@ import { statsDClient } from "@app/logger/withlogging";
 
 const isString = (value: unknown): value is string => typeof value === "string";
 
-const afterCallback: AfterCallbackPageRoute = async (req, res, session) => {
+const afterCallback: AfterCallbackPageRoute = async (
+  req,
+  res,
+  session,
+  state
+) => {
   const currentRegion = multiRegionsConfig.getCurrentRegion();
 
   let targetRegion: RegionType | null = null;
@@ -55,12 +60,30 @@ const afterCallback: AfterCallbackPageRoute = async (req, res, session) => {
     // TODO: Consider updating current session with new metadata.
   }
 
-  // Handle redirect to other region if needed.
+  // If wrong region, redirect to login with prompt=none on correct domain.
   if (targetRegion !== currentRegion) {
     const targetRegionInfo = multiRegionsConfig.getOtherRegionInfo();
 
+    const params = new URLSearchParams();
+
+    // Add the silent auth params.
+    params.set("prompt", "none");
+
+    // Extract just the path from the full returnTo URL.
+    if (state?.returnTo) {
+      try {
+        const url = new URL(state.returnTo);
+        params.set("returnTo", url.pathname + url.search);
+      } catch {
+        // Fallback if URL parsing fails.
+        params.set("returnTo", "/");
+      }
+    }
+
+    params.set("returnTo", "/api/login");
+
     res.writeHead(302, {
-      Location: `${targetRegionInfo.url}${req.url}`,
+      Location: `${targetRegionInfo.url}/api/auth/login?${params.toString()}`,
     });
     res.end();
     return;
