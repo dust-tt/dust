@@ -104,7 +104,7 @@ import { apiError } from "@app/logger/withlogging";
  *                 description: Description of the table
  *               timestamp:
  *                 type: number
- *                 description: Timestamp of the table
+ *                 description: Reserved for internal use, should not be set. Unix timestamp (in seconds) of the time the document was last updated (e.g. 1698225000).
  *               tags:
  *                 type: array
  *                 items:

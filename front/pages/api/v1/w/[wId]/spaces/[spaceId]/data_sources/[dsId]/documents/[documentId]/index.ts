@@ -158,7 +158,7 @@ export const config = {
  *                 description: 'Reserved for internal use, should not be set. Document and ancestor ids, with the following convention: parents[0] === documentId, parents[1] === parent_id, and then ancestors ids in order.'
  *               timestamp:
  *                 type: number
- *                 description: Unix timestamp (in seconds) for the document (e.g. 1698225000). Can be null or omitted.
+ *                 description: Reserved for internal use, should not be set. Unix timestamp (in seconds) of the time the document was last updated (e.g. 1698225000).
  *               light_document_output:
  *                 type: boolean
  *                 description: If true, a lightweight version of the document will be returned in the response (excluding the text, chunks and vectors). Defaults to false.
