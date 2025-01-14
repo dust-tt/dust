@@ -446,7 +446,7 @@ interface BasicCellContentProps extends React.TdHTMLAttributes<HTMLDivElement> {
   textToCopy?: string | number;
 }
 
-DataTable.BasicCellContent = function CellContent({
+DataTable.BasicCellContent = function BasicCellContent({
   label,
   tooltip,
   className,
