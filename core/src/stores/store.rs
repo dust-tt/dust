@@ -11,7 +11,7 @@ use crate::{
     data_sources::{
         data_source::{DataSource, DataSourceConfig, Document, DocumentVersion},
         folder::Folder,
-        node::Node,
+        node::{Node, ProviderVisibility},
     },
     databases::{table::Table, table_schema::TableSchema, transient_database::TransientDatabase},
     dataset::Dataset,
@@ -30,7 +30,7 @@ pub struct DocumentCreateParams {
     pub document_id: String,
     pub title: Option<String>,
     pub mime_type: Option<String>,
-    pub provider_visibility: Option<String>,
+    pub provider_visibility: Option<ProviderVisibility>,
     pub timestamp: u64,
     pub tags: Vec<String>,
     pub parents: Vec<String>,
@@ -72,7 +72,7 @@ pub struct TableUpsertParams {
     pub remote_database_secret_id: Option<String>,
     pub title: String,
     pub mime_type: String,
-    pub provider_visibility: Option<String>,
+    pub provider_visibility: Option<ProviderVisibility>,
 }
 
 pub struct FolderUpsertParams {
@@ -82,7 +82,7 @@ pub struct FolderUpsertParams {
     pub parents: Vec<String>,
     pub mime_type: String,
     pub source_url: Option<String>,
-    pub provider_visibility: Option<String>,
+    pub provider_visibility: Option<ProviderVisibility>,
 }
 
 #[async_trait]

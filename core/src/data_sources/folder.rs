@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::node::{Node, NodeType};
+use super::node::{Node, NodeType, ProviderVisibility};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Folder {
@@ -13,7 +13,7 @@ pub struct Folder {
     parents: Vec<String>,
     mime_type: String,
     source_url: Option<String>,
-    provider_visibility: Option<String>,
+    provider_visibility: Option<ProviderVisibility>,
 }
 
 impl Folder {
@@ -27,7 +27,7 @@ impl Folder {
         parents: Vec<String>,
         mime_type: String,
         source_url: Option<String>,
-        provider_visibility: Option<String>,
+        provider_visibility: Option<ProviderVisibility>,
     ) -> Self {
         Folder {
             data_source_id,
@@ -70,7 +70,7 @@ impl Folder {
     pub fn mime_type(&self) -> &str {
         &self.mime_type
     }
-    pub fn provider_visibility(&self) -> &Option<String> {
+    pub fn provider_visibility(&self) -> &Option<ProviderVisibility> {
         &self.provider_visibility
     }
 }

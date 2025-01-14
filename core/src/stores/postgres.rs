@@ -13,7 +13,7 @@ use tokio_postgres::types::ToSql;
 use tokio_postgres::{NoTls, Transaction};
 
 use crate::data_sources::data_source::DocumentStatus;
-use crate::data_sources::node::{Node, NodeType};
+use crate::data_sources::node::{Node, NodeType, ProviderVisibility};
 use crate::{
     blocks::block::BlockType,
     cached_request::CachedRequest,
@@ -52,7 +52,7 @@ pub struct UpsertNode<'a> {
     pub timestamp: u64,
     pub title: &'a str,
     pub mime_type: &'a str,
-    pub provider_visibility: &'a Option<String>,
+    pub provider_visibility: &'a Option<ProviderVisibility>,
     pub parents: &'a Vec<String>,
     pub source_url: &'a Option<String>,
 }
@@ -1371,7 +1371,7 @@ impl Store for PostgresStore {
             i64,
             Option<String>,
             Option<String>,
-            Option<String>,
+            Option<ProviderVisibility>,
         )> = match r.len() {
             0 => None,
             1 => Some((
@@ -2049,7 +2049,7 @@ impl Store for PostgresStore {
                 let chunk_count: i64 = r.get(9);
                 let node_title: Option<String> = r.get(10);
                 let node_mime_type: Option<String> = r.get(11);
-                let node_provider_visibility: Option<String> = r.get(12);
+                let node_provider_visibility: Option<ProviderVisibility> = r.get(12);
 
                 let tags = if remove_system_tags {
                     // Remove tags that are prefixed with the system tag prefix.
@@ -2903,7 +2903,7 @@ impl Store for PostgresStore {
             Option<String>,
             String,
             String,
-            Option<String>,
+            Option<ProviderVisibility>,
         )> = match r.len() {
             0 => None,
             1 => Some((
@@ -3089,7 +3089,7 @@ impl Store for PostgresStore {
                 let title: String = r.get(11);
                 let mime_type: String = r.get(12);
                 let source_url: Option<String> = r.get(13);
-                let provider_visibility: Option<String> = r.get(14);
+                let provider_visibility: Option<ProviderVisibility> = r.get(14);
 
                 let parsed_schema: Option<TableSchema> = match schema {
                     None => None,
@@ -3427,7 +3427,7 @@ impl Store for PostgresStore {
                 let parents: Vec<String> = r.get(3);
                 let mime_type: String = r.get(4);
                 let source_url: Option<String> = r.get(5);
-                let provider_visibility: Option<String> = r.get(6);
+                let provider_visibility: Option<ProviderVisibility> = r.get(6);
 
                 Ok(Folder::new(
                     data_source_id.clone(),
@@ -3525,7 +3525,8 @@ impl Store for PostgresStore {
                 let timestamp: i64 = row[0].get::<_, i64>(0);
                 let title: String = row[0].get::<_, String>(1);
                 let mime_type: String = row[0].get::<_, String>(2);
-                let provider_visibility: Option<String> = row[0].get::<_, Option<String>>(3);
+                let provider_visibility: Option<ProviderVisibility> =
+                    row[0].get::<_, Option<ProviderVisibility>>(3);
                 let parents: Vec<String> = row[0].get::<_, Vec<String>>(4);
                 let node_id: String = row[0].get::<_, String>(5);
                 let document_row_id = row[0].get::<_, Option<i64>>(6);
@@ -3582,7 +3583,8 @@ impl Store for PostgresStore {
                 let timestamp: i64 = row.get::<_, i64>(0);
                 let title: String = row.get::<_, String>(1);
                 let mime_type: String = row.get::<_, String>(2);
-                let provider_visibility: Option<String> = row.get::<_, Option<String>>(3);
+                let provider_visibility: Option<ProviderVisibility> =
+                    row.get::<_, Option<ProviderVisibility>>(3);
                 let parents: Vec<String> = row.get::<_, Vec<String>>(4);
                 let node_id: String = row.get::<_, String>(5);
                 let document_row_id = row.get::<_, Option<i64>>(6);

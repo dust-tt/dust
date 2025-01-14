@@ -1,5 +1,5 @@
 use super::file_storage_document::FileStorageDocument;
-use super::node::{Node, NodeType};
+use super::node::{Node, NodeType, ProviderVisibility};
 use super::qdrant::{DustQdrantClient, QdrantCluster};
 use crate::consts::DATA_SOURCE_DOCUMENT_SYSTEM_TAG_PREFIX;
 use crate::data_sources::qdrant::{QdrantClients, QdrantDataSourceConfig};
@@ -148,7 +148,7 @@ pub struct Document {
     pub timestamp: u64,
     pub title: String,
     pub mime_type: String,
-    pub provider_visibility: Option<String>,
+    pub provider_visibility: Option<ProviderVisibility>,
     pub tags: Vec<String>,
     pub parent_id: Option<String>,
     pub parents: Vec<String>,
@@ -170,7 +170,7 @@ impl Document {
         timestamp: u64,
         title: &str,
         mime_type: &str,
-        provider_visibility: &Option<String>,
+        provider_visibility: &Option<ProviderVisibility>,
         tags: &Vec<String>,
         parent_id: &Option<String>,
         parents: &Vec<String>,
@@ -640,7 +640,7 @@ impl DataSource {
         document_id: &str,
         title: String,
         mime_type: String,
-        provider_visibility: &Option<String>,
+        provider_visibility: &Option<ProviderVisibility>,
         timestamp: Option<u64>,
         tags: &Vec<String>,
         parents: &Vec<String>,

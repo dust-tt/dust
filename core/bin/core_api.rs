@@ -36,6 +36,7 @@ use dust::{
     data_sources::{
         data_source::{self, Section},
         node::Node,
+        node::ProviderVisibility,
         qdrant::QdrantClients,
     },
     databases::{
@@ -1688,7 +1689,7 @@ struct DataSourcesDocumentsUpsertPayload {
     light_document_output: Option<bool>,
     title: String,
     mime_type: String,
-    provider_visibility: Option<String>,
+    provider_visibility: Option<ProviderVisibility>,
 }
 
 async fn data_sources_documents_upsert(
@@ -2196,7 +2197,7 @@ struct DatabasesTablesUpsertPayload {
     // Node meta:
     title: String,
     mime_type: String,
-    provider_visibility: Option<String>,
+    provider_visibility: Option<ProviderVisibility>,
 }
 
 async fn tables_upsert(
@@ -2931,7 +2932,7 @@ struct FoldersUpsertPayload {
     title: String,
     mime_type: String,
     source_url: Option<String>,
-    provider_visibility: Option<String>,
+    provider_visibility: Option<ProviderVisibility>,
 }
 
 async fn folders_upsert(
