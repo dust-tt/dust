@@ -212,7 +212,10 @@ const upsertDocumentToDatasource: ProcessingFunction = async ({
 }) => {
   // Use the file id as the document id to make it easy to track the document back to the file.
   const sourceUrl = file.getPrivateUrl(auth);
-  const documentId = upsertArgs?.document_id ?? file.sId; // Use the file sId as a fallback to make it easy to track the table back to the file.
+  let documentId = file.sId;
+  if (upsertArgs && "document_id" in upsertArgs) {
+    documentId = upsertArgs.document_id;
+  }
   const { title: upsertTitle, ...restArgs } = upsertArgs ?? {};
   const upsertDocumentRes = await upsertDocument({
     document_id: documentId,
