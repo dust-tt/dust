@@ -132,13 +132,14 @@ export default function CustomerSupport() {
                 icon={RocketIcon}
               />
             </Link>
-            <Button
-              variant="outline"
-              size="md"
-              label="Talk to sales"
-              href="https://forms.gle/dGaQ1AZuDCbXY1ft9"
-              target="_blank"
-            />
+            <Link href="/home/contact" shallow={true}>
+              <Button
+                variant="outline"
+                size="md"
+                label="Talk to sales"
+                target="_blank"
+              />
+            </Link>
           </div>
         </div>
         <div
