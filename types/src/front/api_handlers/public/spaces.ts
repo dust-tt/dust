@@ -21,7 +21,6 @@ export type PatchDataSourceViewType = t.TypeOf<
 >;
 
 export type LightContentNode = {
-  dustDocumentId: string | null;
   expandable: boolean;
   internalId: string;
   lastUpdatedAt: number | null;

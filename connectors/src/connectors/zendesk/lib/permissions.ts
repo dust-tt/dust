@@ -83,7 +83,6 @@ async function getRootLevelContentNodes(
           sourceUrl: brand.brand_url,
           expandable: true,
           permission: "none",
-          dustDocumentId: null,
           lastUpdatedAt: null,
         }
     );
@@ -140,7 +139,6 @@ async function getBrandChildren(
       sourceUrl: null,
       expandable: false,
       permission: "none",
-      dustDocumentId: null,
       lastUpdatedAt: null,
     };
     nodes.push(ticketsNode);
@@ -160,7 +158,6 @@ async function getBrandChildren(
         sourceUrl: null,
         expandable: true,
         permission: "none",
-        dustDocumentId: null,
         lastUpdatedAt: null,
       };
       nodes.push(helpCenterNode);
@@ -221,7 +218,6 @@ async function getHelpCenterChildren(
           sourceUrl: category.html_url,
           expandable: false,
           permission: "none",
-          dustDocumentId: null,
           lastUpdatedAt: null,
         }
     );

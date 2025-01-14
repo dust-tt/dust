@@ -118,7 +118,7 @@ async function handler(
       } = bodyValidation.right;
 
       const upsertResult = await upsertDocument({
-        name: documentId,
+        document_id: documentId,
         source_url,
         text,
         section,

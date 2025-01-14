@@ -42,7 +42,6 @@ export const getContentNodeFromInternalId = (
       expandable: true,
       preventSelection: false,
       permission,
-      dustDocumentId: null,
       lastUpdatedAt: null,
     };
   }
@@ -56,7 +55,6 @@ export const getContentNodeFromInternalId = (
       expandable: true,
       preventSelection: false,
       permission,
-      dustDocumentId: null,
       lastUpdatedAt: null,
     };
   }
@@ -70,7 +68,6 @@ export const getContentNodeFromInternalId = (
       expandable: false,
       preventSelection: false,
       permission,
-      dustDocumentId: null,
       lastUpdatedAt: null,
     };
   }

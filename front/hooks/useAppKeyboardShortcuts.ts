@@ -20,7 +20,9 @@ export function useAppKeyboardShortcuts(owner: LightWorkspaceType) {
 
           case "/":
             event.preventDefault();
-            void router.push(`/w/${owner.sId}/assistant/new`);
+            void router.push(`/w/${owner.sId}/assistant/new`, undefined, {
+              shallow: true,
+            });
             break;
         }
       }

@@ -1,5 +1,5 @@
 import type { ModelId } from "@dust-tt/types";
-import { GOOGLE_DRIVE_MIME_TYPES } from "@dust-tt/types";
+import { MIME_TYPES } from "@dust-tt/types";
 import { uuid4 } from "@temporalio/workflow";
 import type { drive_v3 } from "googleapis";
 import type { GaxiosResponse, OAuth2Client } from "googleapis-common";
@@ -74,7 +74,7 @@ export async function upsertSharedWithMeFolder(connectorId: ModelId) {
     parents: [folderId],
     parentId: null,
     title: "Shared with me",
-    mimeType: GOOGLE_DRIVE_MIME_TYPES.FOLDER,
+    mimeType: MIME_TYPES.GOOGLE_DRIVE.FOLDER,
   });
 }
 
@@ -515,7 +515,7 @@ export async function incrementalSync(
           parents,
           parentId: parents[1] || null,
           title: driveFile.name ?? "",
-          mimeType: GOOGLE_DRIVE_MIME_TYPES.FOLDER,
+          mimeType: MIME_TYPES.GOOGLE_DRIVE.FOLDER,
         });
 
         await GoogleDriveFiles.upsert({
@@ -860,7 +860,7 @@ export async function markFolderAsVisited(
     parents,
     parentId: parents[1] || null,
     title: file.name ?? "",
-    mimeType: GOOGLE_DRIVE_MIME_TYPES.FOLDER,
+    mimeType: MIME_TYPES.GOOGLE_DRIVE.FOLDER,
   });
 
   await GoogleDriveFiles.upsert({

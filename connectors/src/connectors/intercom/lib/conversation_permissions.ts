@@ -142,7 +142,6 @@ export async function retrieveIntercomConversationsPermissions({
         expandable: false,
         preventSelection: false,
         permission: isAllConversationsSynced ? "read" : "none",
-        dustDocumentId: null,
         lastUpdatedAt: null,
       });
     } else if (isRootLevel && hasTeamsWithReadPermission) {
@@ -155,7 +154,6 @@ export async function retrieveIntercomConversationsPermissions({
         expandable: true,
         preventSelection: false,
         permission: "read",
-        dustDocumentId: null,
         lastUpdatedAt: null,
       });
     }
@@ -170,7 +168,6 @@ export async function retrieveIntercomConversationsPermissions({
           sourceUrl: null,
           expandable: false,
           permission: team.permission,
-          dustDocumentId: null,
           lastUpdatedAt: null,
         });
       });
@@ -188,7 +185,6 @@ export async function retrieveIntercomConversationsPermissions({
         expandable: true,
         preventSelection: false,
         permission: isAllConversationsSynced ? "read" : "none",
-        dustDocumentId: null,
         lastUpdatedAt: null,
       });
     }
@@ -205,7 +201,6 @@ export async function retrieveIntercomConversationsPermissions({
           sourceUrl: null,
           expandable: false,
           permission: isTeamInDb ? "read" : "none",
-          dustDocumentId: null,
           lastUpdatedAt: null,
         });
       });

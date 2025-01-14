@@ -2,7 +2,7 @@ import type { ContentNode, ContentNodesViewType, Result } from "@dust-tt/types";
 import {
   Err,
   getOAuthConnectionAccessToken,
-  NOTION_MIME_TYPES,
+  MIME_TYPES,
   Ok,
 } from "@dust-tt/types";
 import _ from "lodash";
@@ -104,7 +104,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       parents: [folderId],
       parentId: null,
       title: "Orphaned Resources",
-      mimeType: NOTION_MIME_TYPES.UNKNOWN_FOLDER,
+      mimeType: MIME_TYPES.NOTION.UNKNOWN_FOLDER,
     });
 
     try {
@@ -464,7 +464,6 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
         sourceUrl: page.notionUrl || null,
         expandable,
         permission: "read",
-        dustDocumentId: nodeIdFromNotionId(page.notionPageId),
         lastUpdatedAt: page.lastUpsertedTs?.getTime() || null,
       };
     };
@@ -487,7 +486,6 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
         sourceUrl: db.notionUrl || null,
         expandable: true,
         permission: "read",
-        dustDocumentId: nodeIdFromNotionId(`database-${db.notionDatabaseId}`),
         lastUpdatedAt: db.structuredDataUpsertedTs?.getTime() ?? null,
       };
     };
@@ -509,7 +507,6 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
           sourceUrl: null,
           expandable: true,
           permission: "read",
-          dustDocumentId: null,
           lastUpdatedAt: null,
         });
       }
@@ -559,7 +556,6 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
         sourceUrl: page.notionUrl || null,
         expandable: Boolean(hasChildrenByPageId[page.notionPageId]),
         permission: "read",
-        dustDocumentId: nodeIdFromNotionId(page.notionPageId),
         lastUpdatedAt: page.lastUpsertedTs?.getTime() || null,
       }))
     );
@@ -575,7 +571,6 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       sourceUrl: db.notionUrl || null,
       expandable: true,
       permission: "read",
-      dustDocumentId: nodeIdFromNotionId(`database-${db.notionDatabaseId}`),
       lastUpdatedAt: null,
     }));
 
@@ -593,7 +588,6 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
           sourceUrl: null,
           expandable: true,
           permission: "read",
-          dustDocumentId: null,
           lastUpdatedAt: null,
         });
       }

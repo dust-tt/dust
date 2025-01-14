@@ -7,7 +7,7 @@ import type {
 import {
   assertNever,
   getNotionDatabaseTableId,
-  NOTION_MIME_TYPES,
+  MIME_TYPES,
   slugify,
 } from "@dust-tt/types";
 import { isFullBlock, isFullPage, isNotionClientError } from "@notionhq/client";
@@ -1829,7 +1829,7 @@ export async function renderAndUpsertPageFromCache({
               parents: parents,
               parentId: parents[1] || null,
               title: parentDb.title ?? "Untitled Notion Database",
-              mimeType: NOTION_MIME_TYPES.DATABASE,
+              mimeType: MIME_TYPES.NOTION.DATABASE,
             }),
           localLogger
         );
@@ -2053,7 +2053,7 @@ export async function renderAndUpsertPageFromCache({
         sync_type: isFullSync ? "batch" : "incremental",
       },
       title: title ?? "",
-      mimeType: NOTION_MIME_TYPES.PAGE,
+      mimeType: MIME_TYPES.NOTION.PAGE,
       async: true,
     });
   }
@@ -2550,7 +2550,7 @@ export async function upsertDatabaseStructuredDataFromCache({
         parents: parentIds,
         parentId: parentIds[1] || null,
         title: dbModel.title ?? "Untitled Notion Database",
-        mimeType: NOTION_MIME_TYPES.DATABASE,
+        mimeType: MIME_TYPES.NOTION.DATABASE,
       }),
     localLogger
   );
@@ -2611,7 +2611,7 @@ export async function upsertDatabaseStructuredDataFromCache({
           sync_type: "batch",
         },
         title: databaseName,
-        mimeType: NOTION_MIME_TYPES.DATABASE,
+        mimeType: MIME_TYPES.NOTION.DATABASE,
         async: true,
       });
     } else {

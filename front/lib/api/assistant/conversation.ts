@@ -32,20 +32,18 @@ import type {
 import {
   assertNever,
   ConversationError,
-  getSmallWhitelistedModel,
-  isContentFragmentType,
-  isProviderWhitelisted,
-  md5,
-  removeNulls,
-} from "@dust-tt/types";
-import {
   Err,
+  getSmallWhitelistedModel,
   getTimeframeSecondsFromLiteral,
   isAgentMention,
   isAgentMessageType,
+  isContentFragmentType,
+  isProviderWhitelisted,
   isUserMessageType,
+  md5,
   Ok,
   rateLimiter,
+  removeNulls,
 } from "@dust-tt/types";
 import { isEqual, sortBy } from "lodash";
 import type { Transaction } from "sequelize";
@@ -424,28 +422,6 @@ export async function getConversation(
       conversation
     ),
   });
-}
-
-export async function getMessageRank(
-  auth: Authenticator,
-  messageId: string
-): Promise<number | null> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
-
-  const message = await Message.findOne({
-    where: {
-      sId: messageId,
-    },
-  });
-
-  if (!message) {
-    return null;
-  }
-
-  return message.rank;
 }
 
 export async function getConversationMessageType(

@@ -437,6 +437,11 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
               as: "dataSource",
               required: true,
             },
+            {
+              model: DataSourceModel,
+              as: "maintainedDocumentDataSource",
+              required: false,
+            },
           ],
         },
       ],
@@ -701,6 +706,17 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
             dustAPIProjectId: g.dataSource.dustAPIProjectId,
             dustAPIDataSourceId: g.dataSource.dustAPIDataSourceId,
           },
+          maintainedDataSource: g.maintainedDocumentDataSource
+            ? {
+                id: g.maintainedDocumentDataSource.id,
+                name: dataSourceName,
+                dustAPIProjectId:
+                  g.maintainedDocumentDataSource.dustAPIProjectId,
+                dustAPIDataSourceId:
+                  g.maintainedDocumentDataSource.dustAPIDataSourceId,
+              }
+            : null,
+          maintainedDocumentId: g.maintainedDocumentId,
         };
       });
     }

@@ -7,8 +7,8 @@ import { useEffect, useState } from "react";
 import { ConversationContainer } from "@app/components/assistant/conversation/ConversationContainer";
 import type { ConversationLayoutProps } from "@app/components/assistant/conversation/ConversationLayout";
 import ConversationLayout from "@app/components/assistant/conversation/ConversationLayout";
+import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
-import { getMessageRank } from "@app/lib/api/assistant/conversation";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 
@@ -18,7 +18,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     conversationId: string | null;
     user: UserType;
     isBuilder: boolean;
-    messageRankToScrollTo: number | null;
   }
 >(async (context, auth) => {
   const owner = auth.workspace();
@@ -47,13 +46,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
 
   const { cId } = context.params;
 
-  // Extract messageId from query params and fetch its rank
-  const { messageId } = context.query;
-  let messageRankToScrollTo: number | null = null;
-  if (typeof messageId === "string") {
-    messageRankToScrollTo = (await getMessageRank(auth, messageId)) ?? null;
-  }
-
   return {
     props: {
       user,
@@ -62,7 +54,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       subscription,
       baseUrl: config.getClientFacingUrl(),
       conversationId: getValidConversationId(cId),
-      messageRankToScrollTo: messageRankToScrollTo,
     },
   };
 });
@@ -73,23 +64,24 @@ export default function AssistantConversation({
   subscription,
   user,
   isBuilder,
-  messageRankToScrollTo,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [conversationKey, setConversationKey] = useState<string | null>(null);
   const [agentIdToMention, setAgentIdToMention] = useState<string | null>(null);
   const router = useRouter();
-  const { cId, assistant } = router.query;
+
+  const { activeConversationId } = useConversationsNavigation();
+
+  const { assistant } = router.query;
+
   // This useEffect handles whether to change the key of the ConversationContainer
   // or not. Altering the key forces a re-render of the component. A random number
   // is used in the key to maintain the component during the transition from new
   // to the conversation view. The key is reset when navigating to a new conversation.
   useEffect(() => {
-    const conversationId = getValidConversationId(cId);
-
-    if (conversationId && initialConversationId) {
+    if (activeConversationId) {
       // Set conversation id as key if it exists.
-      setConversationKey(conversationId);
-    } else if (!conversationId && !initialConversationId) {
+      setConversationKey(activeConversationId);
+    } else if (!activeConversationId) {
       // Force re-render by setting a new key with a random number.
       setConversationKey(`new_${Math.random() * 1000}`);
 
@@ -109,19 +101,22 @@ export default function AssistantConversation({
     } else {
       setAgentIdToMention(null);
     }
-  }, [cId, assistant, setConversationKey, initialConversationId]);
+  }, [
+    assistant,
+    setConversationKey,
+    initialConversationId,
+    activeConversationId,
+  ]);
 
   return (
     <ConversationContainer
       // Key ensures the component re-renders when conversation changes except for shallow browse.
       key={conversationKey}
-      conversationId={initialConversationId}
       owner={owner}
       subscription={subscription}
       user={user}
       isBuilder={isBuilder}
       agentIdToMention={agentIdToMention}
-      messageRankToScrollTo={messageRankToScrollTo ?? undefined}
     />
   );
 }
