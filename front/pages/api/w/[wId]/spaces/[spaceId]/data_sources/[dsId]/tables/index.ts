@@ -10,6 +10,7 @@ import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { apiError } from "@app/logger/withlogging";
 
 export const config = {
@@ -93,11 +94,13 @@ async function handler(
         });
       }
 
+      const tableId = generateRandomModelSId();
       const upsertRes = await upsertTable({
         ...bodyValidation.right,
         async: bodyValidation.right.async ?? false,
         dataSource,
         auth,
+        tableId,
       });
 
       if (upsertRes.isErr()) {
