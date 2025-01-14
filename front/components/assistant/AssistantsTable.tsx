@@ -121,7 +121,7 @@ const getTableColumns = () => {
       meta: { className: "h-16 w-full" },
     },
     {
-      header: "Messages",
+      header: "Msgs",
       accessorKey: "usage.messageCount",
       cell: (info: CellContext<RowData, AgentUsageType | undefined>) => (
         <DataTable.BasicCellContent
@@ -136,10 +136,10 @@ const getTableColumns = () => {
           label={info.row.original.usage?.messageCount ?? 0}
         />
       ),
-      meta: { className: "w-6" },
+      meta: { className: "w-6", tooltip: "Messages on the last 30 days" },
     },
     {
-      header: "Active Users",
+      header: "Users",
       accessorKey: "usage.userCount",
       cell: (info: CellContext<RowData, AgentUsageType | undefined>) => (
         <DataTable.BasicCellContent
@@ -152,7 +152,7 @@ const getTableColumns = () => {
           })}
         />
       ),
-      meta: { className: "w-6" },
+      meta: { className: "w-6", tooltip: "Active users on the last 30 days" },
     },
     {
       header: "Feedbacks",
@@ -188,7 +188,10 @@ const getTableColumns = () => {
       sortingFn: (rowA: Row<RowData>, rowB: Row<RowData>) =>
         calculateFeedback(rowA) - calculateFeedback(rowB),
       meta: {
-        meta: { className: "w-6" },
+        meta: {
+          className: "w-12",
+          tooltip: "Feedbacks users on the last 30 days",
+        },
       },
     },
     {
