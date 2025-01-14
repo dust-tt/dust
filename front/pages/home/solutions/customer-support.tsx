@@ -23,7 +23,7 @@ import {
   MetricComponent,
   Quote,
 } from "@app/components/home/ContentBlocks";
-import { Grid, H1, H2, P } from "@app/components/home/ContentComponents";
+import { Grid, H2 } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import {
