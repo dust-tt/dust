@@ -213,6 +213,7 @@ const upsertDocumentToDatasource: ProcessingFunction = async ({
   // Use the file id as the document id to make it easy to track the document back to the file.
   const sourceUrl = file.getPrivateUrl(auth);
   const documentId = upsertArgs?.document_id ?? file.sId; // Use the file sId as a fallback to make it easy to track the table back to the file.
+  const { title: upsertTitle, ...restArgs } = upsertArgs ?? {};
   const upsertDocumentRes = await upsertDocument({
     document_id: documentId,
     source_url: sourceUrl,
@@ -223,10 +224,10 @@ const upsertDocumentToDatasource: ProcessingFunction = async ({
     dataSource,
     auth,
     mime_type: file.contentType,
-    title: file.fileName,
+    title: upsertTitle ?? file.fileName,
 
     // Used to override defaults.
-    ...(upsertArgs ?? {}),
+    ...restArgs,
   });
 
   if (upsertDocumentRes.isErr()) {
@@ -253,6 +254,7 @@ const upsertTableToDatasource: ProcessingFunction = async ({
   if (upsertArgs && "tableId" in upsertArgs) {
     tableId = upsertArgs.tableId ?? tableId;
   }
+  const { title: upsertTitle, ...restArgs } = upsertArgs ?? {};
   const upsertTableRes = await upsertTable({
     tableId,
     name: slugify(file.fileName),
@@ -265,11 +267,11 @@ const upsertTableToDatasource: ProcessingFunction = async ({
     dataSource,
     auth,
     useAppForHeaderDetection: true,
-    title: file.fileName,
+    title: upsertTitle ?? file.fileName,
     mimeType: file.contentType,
 
     // Used to override defaults, for manual file uploads where some fields are user-defined.
-    ...(upsertArgs ?? {}),
+    ...restArgs,
   });
 
   if (upsertTableRes.isErr()) {
