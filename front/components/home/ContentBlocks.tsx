@@ -1,9 +1,8 @@
+import type { ReactNode } from "react";
+import React from "react";
 import { ArrowRightIcon, Button, RocketIcon } from "@dust-tt/sparkle";
 import Image from "next/image";
 import Link from "next/link";
-import type { ReactNode } from "react";
-import React from "react";
-
 import {
   Carousel,
   CarouselContent,

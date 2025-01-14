@@ -1,7 +1,6 @@
 import type { FC } from "react";
 import { Button, Div3D, Hover3D, RocketIcon } from "@dust-tt/sparkle";
 import Link from "next/link";
-
 import { Grid, H1, P } from "@app/components/home/ContentComponents";
 
 interface Visual {

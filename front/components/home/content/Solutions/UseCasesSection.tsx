@@ -1,6 +1,5 @@
 import type { FC } from "react";
 import { Div3D, Hover3D } from "@dust-tt/sparkle";
-
 import { ImgBlock } from "@app/components/home/ContentBlocks";
 import { H2, P } from "@app/components/home/ContentComponents";
 

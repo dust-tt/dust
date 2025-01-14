@@ -7,7 +7,6 @@ import {
   RocketIcon,
   UserGroupIcon,
 } from "@dust-tt/sparkle";
-
 import { ImgBlock } from "@app/components/home/ContentBlocks";
 import { Grid, H2 } from "@app/components/home/ContentComponents";
 
