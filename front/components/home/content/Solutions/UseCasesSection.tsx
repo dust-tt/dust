@@ -83,6 +83,8 @@ export const UseCasesSection: FC<UseCasesSectionProps> = ({
     <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:gap-x-16 lg:gap-y-16">
       {useCases.map((useCase, index) => (
         <ImgBlock key={index} title={useCase.title} content={useCase.content}>
+          {" "}
+          {/* Adjust dimensions as needed */}
           <Hover3D depth={-20} perspective={1000} className="relative">
             {useCase.images.map((src, imgIndex) => (
               <Div3D
@@ -94,7 +96,7 @@ export const UseCasesSection: FC<UseCasesSectionProps> = ({
                   src={src}
                   alt={`${useCase.title} ${imgIndex + 1}`}
                   style={
-                    src.includes("front.png")
+                    src.includes("support1.png")
                       ? { width: "200%", height: "200%" }
                       : {}
                   }

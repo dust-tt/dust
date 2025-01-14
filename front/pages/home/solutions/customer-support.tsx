@@ -137,46 +137,26 @@ const supportUseCases: UseCase[] = [
   {
     title: "Ticket Resolution",
     content:
-      "Smart answer suggestions and contextual knowledge at your fingertips.",
-    images: [
-      "/static/landing/solutions/support1.png",
-      "/static/landing/solutions/support1.png",
-      "/static/landing/solutions/support1.png",
-      "/static/landing/solutions/support1.png",
-    ],
+      "Accelerate response times with dynamic answer suggestions and contextual knowledge at every step.",
+    images: ["/static/landing/solutions/support1.png"],
   },
   {
     title: "Agent Coaching",
     content:
-      "Helps support agents learn best practices and company knowledge faster.",
-    images: [
-      "/static/landing/solutions/support2.png",
-      "/static/landing/solutions/support2.png",
-      "/static/landing/solutions/support2.png",
-      "/static/landing/solutions/support2.png",
-    ],
+      "Offer feedback to support agents using real-time best practices and ticket insights for consistent, quality service.",
+    images: ["/static/landing/solutions/support2.png"],
   },
   {
     title: "Documentation Builder",
     content:
-      "Converts resolved support tickets into searchable knowledge base articles and FAQ.",
-    images: [
-      "/static/landing/solutions/support3.png",
-      "/static/landing/solutions/support3.png",
-      "/static/landing/solutions/support3.png",
-      "/static/landing/solutions/support3.png",
-    ],
+      "Convert resolved tickets into searchable articles and FAQs, capturing best practices for future use.",
+    images: ["/static/landing/solutions/support3.png"],
   },
   {
     title: "Customer Insights",
     content:
-      "Turn customer feedback from every channel into actionable insights.",
-    images: [
-      "/static/landing/solutions/support4.png",
-      "/static/landing/solutions/support4.png",
-      "/static/landing/solutions/support4.png",
-      "/static/landing/solutions/support4.png",
-    ],
+      "Identify trends from customer feedback, helping teams proactively improve service and satisfaction.",
+    images: ["/static/landing/solutions/support4.png"],
   },
 ];
 
