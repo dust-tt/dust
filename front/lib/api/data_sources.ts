@@ -333,8 +333,11 @@ export async function upsertDocument({
       )
     );
   }
-  // parents and parentId must comply to the invariant parents[1] === parentId
-  if (documentParents[1] !== documentParentId) {
+  // parents and parentId must comply to the invariant parents[1] === parentId || (parentId === null && parents.length < 2)
+  if (
+    documentParents[1] !== documentParentId &&
+    (documentParents.length >= 2 || documentParentId !== null)
+  ) {
     return new Err(
       new DustError(
         "invalid_parent_id",
@@ -480,7 +483,10 @@ export async function upsertTable({
     );
   }
   // parents and parentId must comply to the invariant parents[1] === parentId
-  if (tableParents[1] !== tableParentId) {
+  if (
+    tableParents[1] !== tableParentId &&
+    (tableParents.length >= 2 || tableParentId !== null)
+  ) {
     return new Err(
       new DustError(
         "invalid_parent_id",
