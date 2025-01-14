@@ -122,7 +122,6 @@ export function useConversationMessages({
   conversationId,
   workspaceId,
   limit,
-  startAtRank,
 }: {
   conversationId: string | null;
   workspaceId: string;
@@ -148,10 +147,7 @@ export function useConversationMessages({
         }
 
         if (previousPageData === null) {
-          const startAtRankParam = startAtRank
-            ? `&lastValue=${startAtRank}`
-            : "";
-          return `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages?orderDirection=desc&orderColumn=rank&limit=${limit}${startAtRankParam}`;
+          return `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages?orderDirection=desc&orderColumn=rank&limit=${limit}`;
         }
 
         return `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages?lastValue=${previousPageData.lastValue}&orderDirection=desc&orderColumn=rank&limit=${limit}`;

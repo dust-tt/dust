@@ -1,15 +1,14 @@
-import { Page } from "@dust-tt/sparkle";
-import { useSendNotification } from "@dust-tt/sparkle";
+import { Page, useSendNotification } from "@dust-tt/sparkle";
 import type {
   AgentMention,
   LightAgentConfigurationType,
   MentionType,
   Result,
   SubscriptionType,
+  UploadedContentFragment,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
-import type { UploadedContentFragment } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
@@ -40,7 +39,6 @@ interface ConversationContainerProps {
   user: UserType;
   isBuilder: boolean;
   agentIdToMention: string | null;
-  messageRankToScrollTo: number | undefined;
 }
 
 export function ConversationContainer({
@@ -49,7 +47,6 @@ export function ConversationContainer({
   user,
   isBuilder,
   agentIdToMention,
-  messageRankToScrollTo,
 }: ConversationContainerProps) {
   const { activeConversationId } = useConversationsNavigation();
 
@@ -74,7 +71,6 @@ export function ConversationContainer({
     conversationId: activeConversationId,
     workspaceId: owner.sId,
     limit: 50,
-    startAtRank: messageRankToScrollTo,
   });
 
   const setInputbarMention = useCallback(
@@ -307,7 +303,6 @@ export function ConversationContainer({
           conversationId={activeConversationId}
           // TODO(2024-06-20 flav): Fix extra-rendering loop with sticky mentions.
           onStickyMentionsChange={onStickyMentionsChange}
-          messageRankToScrollTo={messageRankToScrollTo}
         />
       ) : (
         <div></div>

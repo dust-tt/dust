@@ -11,10 +11,18 @@ import type {
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { isContentFragmentType } from "@dust-tt/types";
-import { isAgentMention, isUserMessageType } from "@dust-tt/types";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import React from "react";
+import {
+  isAgentMention,
+  isContentFragmentType,
+  isUserMessageType,
+} from "@dust-tt/types";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useInView } from "react-intersection-observer";
 
 import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
@@ -44,7 +52,6 @@ interface ConversationViewerProps {
   onStickyMentionsChange?: (mentions: AgentMention[]) => void;
   owner: WorkspaceType;
   user: UserType;
-  messageRankToScrollTo?: number | undefined;
 }
 
 /**
@@ -63,7 +70,6 @@ const ConversationViewer = React.forwardRef<
     onStickyMentionsChange,
     isInModal = false,
     isFading = false,
-    messageRankToScrollTo,
   },
   ref
 ) {
@@ -93,10 +99,6 @@ const ConversationViewer = React.forwardRef<
     conversationId,
     workspaceId: owner.sId,
     limit: DEFAULT_PAGE_LIMIT,
-    // Make sure that the message rank to scroll to is in the middle of the page.
-    startAtRank: messageRankToScrollTo
-      ? Math.max(0, messageRankToScrollTo - Math.floor(DEFAULT_PAGE_LIMIT / 2))
-      : undefined,
   });
 
   const { mutateConversationParticipants } = useConversationParticipants({
@@ -320,57 +322,6 @@ const ConversationViewer = React.forwardRef<
 
   useLastMessageGroupObserver(typedGroupedMessages);
 
-  // Used for auto-scrolling to the message in the anchor.
-  const [hasScrolledToMessage, setHasScrolledToMessage] = useState(false);
-  const [messageShaking, setMessageShaking] = useState(false);
-  const scrollRef = React.useRef<HTMLDivElement>(null);
-
-  // Track index of the group with message sId in anchor.
-  const groupIndexWithMessageIdInAnchor = useMemo(() => {
-    const messageToScrollTo = messages
-      .flatMap((messagePage) => messagePage.messages)
-      .find((message) => message.rank === messageRankToScrollTo);
-    if (!messageToScrollTo) {
-      return -1;
-    }
-    return typedGroupedMessages.findIndex((group) => {
-      return group.some((message) => message.sId === messageToScrollTo.sId);
-    });
-  }, [typedGroupedMessages, messageRankToScrollTo, messages]);
-
-  // Effect: scroll to the message and temporarily highlight if it is the anchor's target
-  useEffect(() => {
-    if (
-      !messageRankToScrollTo ||
-      !groupIndexWithMessageIdInAnchor ||
-      !scrollRef.current ||
-      hasScrolledToMessage
-    ) {
-      return;
-    }
-    setTimeout(() => {
-      if (scrollRef.current) {
-        setHasScrolledToMessage(true);
-        // Use ref to scroll to the message
-        scrollRef.current.scrollIntoView({
-          behavior: "instant",
-          block: "center",
-        });
-        setMessageShaking(true);
-
-        // Have the message blink for a short time
-        setTimeout(() => {
-          setMessageShaking(false);
-        }, 1000);
-      }
-    }, 100);
-  }, [
-    hasScrolledToMessage,
-    messageRankToScrollTo,
-    groupIndexWithMessageIdInAnchor,
-    scrollRef,
-  ]);
-
   return (
     <div
       className={classNames(
@@ -395,28 +346,20 @@ const ConversationViewer = React.forwardRef<
       {conversation &&
         typedGroupedMessages.map((typedGroup, index) => {
           const isLastGroup = index === typedGroupedMessages.length - 1;
-          const isGroupInAnchor = index === groupIndexWithMessageIdInAnchor;
           return (
-            <div
+            <MessageGroup
               key={`typed-group-${index}`}
-              className={
-                messageShaking && isGroupInAnchor ? "animate-shake" : ""
-              }
-              ref={isGroupInAnchor ? scrollRef : undefined}
-            >
-              <MessageGroup
-                messages={typedGroup}
-                isLastMessageGroup={isLastGroup}
-                conversationId={conversationId}
-                feedbacks={feedbacks}
-                isInModal={isInModal}
-                owner={owner}
-                prevFirstMessageId={prevFirstMessageId}
-                prevFirstMessageRef={prevFirstMessageRef}
-                user={user}
-                latestPage={latestPage}
-              />
-            </div>
+              messages={typedGroup}
+              isLastMessageGroup={isLastGroup}
+              conversationId={conversationId}
+              feedbacks={feedbacks}
+              isInModal={isInModal}
+              owner={owner}
+              prevFirstMessageId={prevFirstMessageId}
+              prevFirstMessageRef={prevFirstMessageRef}
+              user={user}
+              latestPage={latestPage}
+            />
           );
         })}
     </div>
