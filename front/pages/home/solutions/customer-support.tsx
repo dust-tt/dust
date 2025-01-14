@@ -188,24 +188,6 @@ const supportStories: CustomerStory[] = [
 ];
 
 export default function CustomerSupport() {
-  const MainVisualImage = () => (
-    <>
-      <Hover3D depth={-40} perspective={1000} className="relative">
-        <Div3D depth={-30}>
-          <img src="/static/landing/support/support1.png" alt="MainVisual1" />
-        </Div3D>
-        <Div3D depth={-10} className="absolute top-0">
-          <img src="/static/landing/support/support2.png" alt="MainVisual2" />
-        </Div3D>
-        <Div3D depth={20} className="absolute top-0">
-          <img src="/static/landing/support/support3.png" alt="MainVisual3" />
-        </Div3D>
-        <Div3D depth={50} className="absolute top-0">
-          <img src="/static/landing/support/support4.png" alt="MainVisual4" />
-        </Div3D>
-      </Hover3D>
-    </>
-  );
   return (
     <>
       <div className="container flex w-full flex-col gap-0 bg-slate-900/50 px-6 pb-12">
