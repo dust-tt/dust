@@ -28,7 +28,6 @@ const afterCallback: AfterCallbackPageRoute = async (req, res, session) => {
 
   // If user has a region, redirect to the region page.
   const userSessionRegion = getRegionForUserSession(session);
-  console.log(">> user session region", userSessionRegion);
   if (userSessionRegion) {
     targetRegion = userSessionRegion;
   } else {
@@ -38,7 +37,7 @@ const afterCallback: AfterCallbackPageRoute = async (req, res, session) => {
       email_verified: session.user.email_verified,
     });
 
-    // Throw error it will be caught by the callback wrapper.
+    // Throw error it will be caught by the login callback wrapper.
     if (regionWithAffinityRes.isErr()) {
       throw regionWithAffinityRes.error;
     }
@@ -46,7 +45,7 @@ const afterCallback: AfterCallbackPageRoute = async (req, res, session) => {
     if (regionWithAffinityRes.value.hasAffinity) {
       targetRegion = regionWithAffinityRes.value.region;
     } else {
-      // Use original region as fallback.
+      // No region affinity found - keep user in their originally accessed region (from URL).
       targetRegion = getRegionFromRequest(req);
     }
 
