@@ -1,9 +1,6 @@
 import { useSendNotification } from "@dust-tt/sparkle";
 import type { DataSourceViewType, LightWorkspaceType } from "@dust-tt/types";
-import type {
-  PatchDataSourceTableRequestBody,
-  PostDataSourceTableRequestBody,
-} from "@dust-tt/types";
+import type { PatchDataSourceTableRequestBody } from "@dust-tt/types";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
@@ -15,7 +12,6 @@ import {
 } from "@app/lib/swr/swr";
 import type { ListTablesResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables";
 import type { GetDataSourceViewTableResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables/[tableId]";
-import type { PostTableResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/tables";
 import type { PatchTableResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/tables/[tableId]";
 
 export function useDataSourceViewTable({
