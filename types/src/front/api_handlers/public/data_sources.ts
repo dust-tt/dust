@@ -81,18 +81,6 @@ export type PatchDataSourceTableRequestBody = t.TypeOf<
   typeof PatchDataSourceTableRequestBodySchema
 >;
 
-// Post and Patch require the same request body
-export type PostDataSourceTableRequestBody = t.TypeOf<
-  typeof PatchDataSourceTableRequestBodySchema
->;
-
-export const PostDataSourceTableRequestBodySchema = t.intersection([
-  PatchDataSourceTableRequestBodySchema,
-  t.type({
-    csv: t.string,
-  }),
-]);
-
 export const UpsertTableFromCsvRequestSchema = t.intersection([
   t.type({
     name: t.string,
