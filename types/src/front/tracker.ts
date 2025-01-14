@@ -68,15 +68,19 @@ export type TrackerIdWorkspaceId = {
   workspaceId: string;
 };
 
+export type TrackerDataSource = {
+  id: ModelId;
+  name: string;
+  dustAPIProjectId: string;
+  dustAPIDataSourceId: string;
+};
+
 export type TrackerGenerationToProcess = {
   id: ModelId;
   content: string;
   thinking: string | null;
   documentId: string;
-  dataSource: {
-    id: ModelId;
-    name: string;
-    dustAPIProjectId: string;
-    dustAPIDataSourceId: string;
-  };
+  dataSource: TrackerDataSource;
+  maintainedDataSource: TrackerDataSource | null;
+  maintainedDocumentId: string | null;
 };
