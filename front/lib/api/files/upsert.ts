@@ -421,7 +421,17 @@ export async function processAndUpsertToDataSource(
   }: {
     file: FileResource;
     optionalContent?: string;
-    upsertArgs?: Record<string, string>;
+    upsertArgs?:
+      | Pick<UpsertDocumentArgs, "name" | "title" | "tags">
+      | Pick<
+          UpsertTableArgs,
+          | "name"
+          | "title"
+          | "description"
+          | "tableId"
+          | "tags"
+          | "useAppForHeaderDetection"
+        >;
   }
 ): Promise<
   Result<
