@@ -44,7 +44,6 @@ export function FeedbackSelector({
   const [isConversationShared, setIsConversationShared] = React.useState(
     feedback?.isConversationShared ?? false
   );
-  // This is required to adjust the content of the popover even when feedback is null.
   const [lastSelectedThumb, setLastSelectedThumb] =
     React.useState<ThumbReaction | null>(feedback?.thumb ?? null);
 
@@ -67,16 +66,11 @@ export function FeedbackSelector({
 
   const selectThumb = useCallback(
     async (thumb: ThumbReaction) => {
-      // Whether to remove the thumb reaction
       const shouldRemoveExistingFeedback = feedback?.thumb === thumb;
       setIsPopoverOpen(!shouldRemoveExistingFeedback);
       setLastSelectedThumb(shouldRemoveExistingFeedback ? null : thumb);
-
-      // Checkbox ticked by default only for new thumbs down
       setIsConversationShared(thumb === "down");
 
-      // We enforce written feedback for thumbs down.
-      // -> Not saving the reaction until then.
       if (thumb === "down" && !shouldRemoveExistingFeedback) {
         return;
       }
@@ -85,7 +79,6 @@ export function FeedbackSelector({
         feedbackContent: localFeedbackContent,
         thumb,
         shouldRemoveExistingFeedback,
-        // The sharing option was never displayed so far -> Opt out of sharing.
         isConversationShared: false,
       });
     },
@@ -144,9 +137,7 @@ export function FeedbackSelector({
                   onClick={handleThumbUp}
                   icon={HandThumbUpIcon}
                   className={
-                    feedback?.thumb === "up"
-                      ? ""
-                      : "[&_svg]:s-text-muted-foreground"
+                    feedback?.thumb === "up" ? "" : "text-muted-foreground"
                   }
                 />
               }
@@ -161,9 +152,7 @@ export function FeedbackSelector({
                   onClick={handleThumbDown}
                   icon={HandThumbDownIcon}
                   className={
-                    feedback?.thumb === "down"
-                      ? ""
-                      : "[&_svg]:s-text-muted-foreground"
+                    feedback?.thumb === "down" ? "" : "text-muted-foreground"
                   }
                 />
               }
@@ -197,7 +186,6 @@ export function FeedbackSelector({
                 value={localFeedbackContent ?? ""}
                 onChange={handleTextAreaChange}
               />
-
               {popOverInfo}
               <div className="mt-2 flex items-center gap-2">
                 <Checkbox
