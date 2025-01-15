@@ -4,10 +4,12 @@ use std::fmt;
 use std::str::FromStr;
 use strum_macros;
 
-use tokio_postgres::types::{private::BytesMut, FromSql, IsNull, ToSql, Type};
 use super::folder::Folder;
+use tokio_postgres::types::{private::BytesMut, FromSql, IsNull, ToSql, Type};
 
-#[derive(strum_macros::Display, strum_macros::EnumString, Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(
+    strum_macros::Display, strum_macros::EnumString, Debug, Serialize, Deserialize, Clone, PartialEq,
+)]
 #[serde(rename_all = "lowercase")]
 pub enum ProviderVisibility {
     #[strum(serialize = "private")]
