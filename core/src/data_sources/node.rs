@@ -42,6 +42,7 @@ impl ToSql for ProviderVisibility {
         ty: &Type,
         out: &mut BytesMut,
     ) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
+        // note: serde serialization cannot be used here as it would cause a double serialization
         let s = match self {
             ProviderVisibility::Private => "private",
             ProviderVisibility::Public => "public",
@@ -53,6 +54,7 @@ impl ToSql for ProviderVisibility {
         <&str as ToSql>::accepts(ty)
     }
 
+    // note: serde serialization cannot be used here as it would cause a double serialization
     fn to_sql_checked(
         &self,
         ty: &Type,
