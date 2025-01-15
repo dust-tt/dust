@@ -32,6 +32,10 @@ on:
         required: false
         type: boolean
         default: true
+      run_playwright_tests:
+        required: false
+        type: boolean
+        default: false
     secrets:
       GCLOUD_US_PROJECT_ID:
         required: true
@@ -196,7 +200,9 @@ jobs:
                 component: '${{ inputs.component }}',
                 image_tag: '${{ needs.prepare.outputs.short_sha }}',
                 slack_thread_ts: "${{ needs.notify-start.outputs.thread_ts }}",
-                slack_channel: '${{ secrets.SLACK_CHANNEL_ID }}'
+                slack_channel: '${{ secrets.SLACK_CHANNEL_ID }}',
+                run_playwright: ${{ inputs.run_playwright_tests }},
+                playwright_sha: ${{ github.sha }}
               }
             })
 
