@@ -59,15 +59,14 @@ import {
   TokenizeResponseSchema,
   UpsertFolderResponseSchema,
 } from "./types";
-
-export * from "./types";
-
 import type { AxiosRequestConfig } from "axios";
 import axios from "axios";
 import { createParser } from "eventsource-parser";
 import http from "http";
 import https from "https";
 import { Readable } from "stream";
+
+export * from "./types";
 
 interface DustResponse {
   status: number;
@@ -832,6 +831,7 @@ export class DustAPI {
     parentId,
     parents,
     mimeType,
+    sourceUrl,
   }: {
     dataSourceId: string;
     folderId: string;
@@ -840,6 +840,7 @@ export class DustAPI {
     parentId: string | null;
     parents: string[];
     mimeType: string;
+    sourceUrl: string | null;
   }) {
     const res = await this.request({
       method: "POST",
@@ -852,6 +853,7 @@ export class DustAPI {
         parent_id: parentId,
         parents,
         mime_type: mimeType,
+        source_url: sourceUrl,
       },
     });
 
