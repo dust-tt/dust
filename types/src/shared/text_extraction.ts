@@ -9,7 +9,6 @@ import { PassThrough, Readable, Transform } from "stream";
 import { Err, Ok, Result } from "./result";
 import {
   readableStreamToReadable,
-  readableToReadableStream,
   RequestInitWithDuplex,
 } from "./utils/streams";
 
@@ -165,12 +164,18 @@ export class TextExtraction {
     fileStream: Readable,
     contentType: SupportedContentTypes
   ): Promise<Readable> {
+    // // Add error handler to input stream
+    // fileStream.on("error", (error) => {
+    //   console.error("Input stream error:", error);
+    //   throw error;
+    // });
+
     const response = await fetch(`${this.url}/tika/`, {
       method: "PUT",
       headers: {
         "Content-Type": contentType,
       },
-      body: readableToReadableStream(fileStream),
+      body: Readable.toWeb(fileStream),
       duplex: "half",
     } as RequestInitWithDuplex);
 
@@ -178,15 +183,15 @@ export class TextExtraction {
       throw new Error("Response body is null");
     }
 
-    const readableResponse = readableStreamToReadable(response.body);
+    const responseStream = readableStreamToReadable(response.body);
 
     const pageSelector = contentTypeConfig[contentType]?.pageSelector;
     if (pageSelector) {
       // If we have a page selector, we need to parse the stream and return another stream.
       const prefix = pagePrefixesPerMimeType[contentType];
-      return transformStream(readableResponse, prefix, pageSelector);
+      return transformStream(responseStream, prefix, pageSelector);
     } else {
-      return readableResponse;
+      return responseStream;
     }
   }
 
