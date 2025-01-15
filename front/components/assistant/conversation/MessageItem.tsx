@@ -1,4 +1,3 @@
-import type { FeedbackSelectorProps } from "@dust-tt/sparkle";
 import {
   Avatar,
   Citation,
@@ -19,6 +18,7 @@ import React from "react";
 import { useSWRConfig } from "swr";
 
 import { AgentMessage } from "@app/components/assistant/conversation/AgentMessage";
+import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
 import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import { useSubmitFunction } from "@app/lib/client/utils";

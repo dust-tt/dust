@@ -4,14 +4,14 @@ import { isLeft } from "fp-ts/Either";
 import { Parser } from "htmlparser2";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
-import { PassThrough, Readable, Transform } from "stream";
+import { Readable } from "stream";
 
-import { Err, Ok, Result } from "./result";
+import { Err, Ok, Result } from "../result";
 import {
   readableStreamToReadable,
-  readableToReadableStream,
   RequestInitWithDuplex,
-} from "./utils/streams";
+} from "../utils/streams";
+import { transformStream } from "./transform";
 
 // Define the codec for the response.
 const TikaResponseCodec = t.type({
@@ -67,83 +67,6 @@ export function isTextExtractionSupportedContentType(
 
 const DEFAULT_HANDLER = "text";
 
-async function transformStream(
-  input: Readable,
-  prefix: string,
-  pageSelector: string
-) {
-  // If we have a page selector, we need to parse the stream and return another stream.
-  let insidePage = false;
-  let pageNumber = 0;
-  let pageDepth = 0;
-  let buffer = "";
-
-  const parser = new Parser(
-    {
-      onopentag(name, attribs) {
-        // Check if the current tag is the page selector.
-        // If it is, we are inside a page.
-        // This assumes that we don't have nested pages.
-        if (name === "div" && attribs.class === pageSelector) {
-          if (!insidePage) {
-            buffer += `\n${prefix}: ${pageNumber}\n`;
-          }
-          insidePage = true;
-          pageNumber++;
-          pageDepth = 1;
-        } else if (insidePage) {
-          // If we are inside a page, increment the page depth to handle nested divs.
-          // This is required to know when we are done with the page.
-          pageDepth++;
-        }
-      },
-      ontext(text) {
-        // If we are inside a page, append the text to the current page content.
-        if (insidePage) {
-          buffer += text.replace("&#13;", "").trim() + " ";
-        }
-      },
-      onclosetag() {
-        // If we are inside a page, decrement the page depth.
-        if (insidePage) {
-          pageDepth--;
-          // If the page depth is 0, we are done with the page.
-          if (pageDepth === 0) {
-            insidePage = false;
-          }
-        }
-      },
-      onerror(err) {
-        throw new Error(err.message);
-      },
-    },
-    { decodeEntities: true }
-  );
-
-  const htmlParsingTransform = new Transform({
-    construct(callback) {
-      callback();
-    },
-
-    transform(chunk, encoding, callback) {
-      parser.write(chunk.toString());
-      callback(null, buffer);
-      buffer = "";
-    },
-
-    flush(callback) {
-      parser.end();
-      callback(null, buffer);
-    },
-  });
-
-  const streamB = new PassThrough();
-
-  input.pipe(htmlParsingTransform).pipe(streamB);
-
-  return streamB;
-}
-
 export class TextExtraction {
   constructor(readonly url: string) {}
 
@@ -170,7 +93,7 @@ export class TextExtraction {
       headers: {
         "Content-Type": contentType,
       },
-      body: readableToReadableStream(fileStream),
+      body: Readable.toWeb(fileStream),
       duplex: "half",
     } as RequestInitWithDuplex);
 
@@ -178,15 +101,15 @@ export class TextExtraction {
       throw new Error("Response body is null");
     }
 
-    const readableResponse = readableStreamToReadable(response.body);
+    const responseStream = readableStreamToReadable(response.body);
 
     const pageSelector = contentTypeConfig[contentType]?.pageSelector;
     if (pageSelector) {
       // If we have a page selector, we need to parse the stream and return another stream.
       const prefix = pagePrefixesPerMimeType[contentType];
-      return transformStream(readableResponse, prefix, pageSelector);
+      return transformStream(responseStream, prefix, pageSelector);
     } else {
-      return readableResponse;
+      return responseStream;
     }
   }
 

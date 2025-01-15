@@ -20,11 +20,13 @@ export const ConversationPage = ({
   const navigate = useNavigate();
   const { conversationId } = useParams();
 
-  const { conversation, isConversationLoading } = usePublicConversation({
-    conversationId: conversationId ?? null,
-  });
+  const { conversation, isConversationLoading, conversationError } =
+    usePublicConversation({
+      conversationId: conversationId ?? null,
+    });
 
-  if (!conversationId) {
+  // @ts-expect-error conversationError has a type
+  if (!conversationId || conversationError?.type === "conversation_not_found") {
     navigate("/");
     return;
   }

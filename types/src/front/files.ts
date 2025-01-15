@@ -109,7 +109,8 @@ const FILE_FORMATS = {
   "application/xml": { cat: "data", exts: [".xml"] },
   "text/html": { cat: "data", exts: [".html", ".htm", ".xhtml", ".xhtml+xml"] },
   "text/css": { cat: "code", exts: [".css"] },
-  "text/javascript": { cat: "code", exts: [".js", ".mjs"] },
+  "text/javascript": { cat: "code", exts: [".js", ".mjs", "*.jsx"] },
+  "text/typescript": { cat: "code", exts: [".ts", ".tsx"] },
   "application/x-sh": { cat: "code", exts: [".sh"] },
   "text/x-sh": { cat: "code", exts: [".sh"] },
   // declare type here using satisfies to allow flexible typing for keys, FileFormat type for values and yet infer the keys of FILE_FORMATS correctly below
@@ -209,6 +210,21 @@ export function extensionsForContentType(
   }
 
   return [];
+}
+
+export function contentTypeForExtension(
+  extension: string
+): SupportedFileContentType | null {
+  // Type assertion to handle the entries
+  const entries = Object.entries(FILE_FORMATS) as [
+    SupportedFileContentType,
+    FileFormat
+  ][];
+
+  return (
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    entries.find(([_, value]) => value.exts.includes(extension))?.[0] || null
+  );
 }
 
 export function getSupportedFileExtensions(
