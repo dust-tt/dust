@@ -2,21 +2,21 @@ import { faker } from "@faker-js/faker";
 import type { InferCreationAttributes } from "sequelize";
 
 import type { Workspace } from "@app/lib/models/workspace";
-import { GroupModel } from "@app/lib/resources/storage/models/groups";
+import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 
 import { Factory } from "./factories";
 
-class GroupFactory extends Factory<
-  GroupModel,
-  InferCreationAttributes<GroupModel>
+class SpaceFactory extends Factory<
+  SpaceModel,
+  InferCreationAttributes<SpaceModel>
 > {
-  async make(params: InferCreationAttributes<GroupModel>) {
-    return GroupModel.create(params);
+  async make(params: InferCreationAttributes<SpaceModel>) {
+    return SpaceModel.create(params);
   }
 
   global(workspace: Workspace) {
     return this.params({
-      name: "group " + faker.string.alphanumeric(8),
+      name: "space " + faker.string.alphanumeric(8),
       kind: "global",
       workspaceId: workspace.id,
     });
@@ -24,13 +24,13 @@ class GroupFactory extends Factory<
 
   system(workspace: Workspace) {
     return this.params({
-      name: "group " + faker.string.alphanumeric(8),
+      name: "space " + faker.string.alphanumeric(8),
       kind: "system",
       workspaceId: workspace.id,
     });
   }
 }
 
-export const groupFactory = () => {
-  return new GroupFactory();
+export const spaceFactory = () => {
+  return new SpaceFactory();
 };

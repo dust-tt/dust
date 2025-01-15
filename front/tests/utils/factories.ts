@@ -6,6 +6,12 @@ export abstract class Factory<
 > {
   attrs: Partial<A> = {};
 
+  constructor(attrs?: Partial<A>) {
+    if (attrs) {
+      this.attrs = attrs;
+    }
+  }
+
   abstract make(params: Partial<A>): Promise<M>;
 
   params(newAttrs: Partial<A>) {

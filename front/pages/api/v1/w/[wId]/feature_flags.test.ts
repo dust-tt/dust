@@ -7,11 +7,11 @@ import handler from "@app/pages/api/v1/w/[wId]/feature_flags";
 import { featureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { groupFactory } from "@app/tests/utils/GroupFactory";
 import { keyFactory } from "@app/tests/utils/KeyFactory";
-import { withTestDatabase } from "@app/tests/utils/withTestDatabase";
+import { withTestDatabase } from "@app/tests/utils/utils";
 import { workspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 
 describe(
-  "/api/v1/w/[wId]/feature_flags",
+  "handler",
   withTestDatabase(frontSequelize, async () => {
     it("returns 404 if not system key", async () => {
       const workspace = await workspaceFactory().basic().create();

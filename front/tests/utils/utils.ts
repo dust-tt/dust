@@ -2,10 +2,10 @@ import type { Sequelize, Transaction } from "sequelize";
 import { afterAll, beforeAll } from "vitest";
 
 // Wrapper to make sure that each test suite has a clean database
-export function withTestDatabase(
+export const withTestDatabase = (
   db: Sequelize,
   testSuite: { (): Promise<void>; (): void }
-) {
+) => {
   return async () => {
     let transaction: Transaction;
 
@@ -29,4 +29,4 @@ export function withTestDatabase(
 
     await testSuite();
   };
-}
+};
