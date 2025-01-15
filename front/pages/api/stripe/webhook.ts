@@ -297,7 +297,7 @@ async function handler(
                 event,
                 stripeSubscriptionId: invoice.subscription,
               },
-              `[Stripe Webhook] Subscription ${invoice.subscription} not found.`
+              "[Stripe Webhook] Subscription not found."
             );
             return res.status(200).json({ success: true });
           }
@@ -338,7 +338,7 @@ async function handler(
                 event,
                 stripeSubscriptionId: invoice.subscription,
               },
-              `[Stripe Webhook] Subscription ${invoice.subscription} not found.`
+              "[Stripe Webhook] Subscription not found."
             );
             return res.status(200).json({ success: true });
           }
@@ -449,7 +449,7 @@ async function handler(
                   event,
                   stripeSubscriptionId: stripeSubscription.id,
                 },
-                `[Stripe Webhook] Subscription ${stripeSubscription.id} not found.`
+                "[Stripe Webhook] Subscription not found."
               );
               return res.status(200).json({ success: true });
             }
@@ -533,7 +533,7 @@ async function handler(
                   event,
                   stripeSubscriptionId: stripeSubscription.id,
                 },
-                `[Stripe Webhook] Subscription ${stripeSubscription.id} not found.`
+                "[Stripe Webhook] Subscription not found."
               );
               return res.status(200).json({ success: true });
             }
@@ -665,7 +665,7 @@ async function handler(
                 event,
                 stripeSubscriptionId: stripeSubscription.id,
               },
-              `[Stripe Webhook] Subscription ${stripeSubscription.id} not found.`
+              "[Stripe Webhook] Subscription not found."
             );
             return res.status(200).json({ success: true });
           }
