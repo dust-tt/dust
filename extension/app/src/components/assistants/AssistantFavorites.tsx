@@ -1,5 +1,6 @@
 import { AssistantCard, Button, CardGrid, Page } from "@dust-tt/sparkle";
 import { usePublicAgentConfigurations } from "@extension/components/assistants/usePublicAgentConfigurations";
+import { useAuth } from "@extension/components/auth/AuthProvider";
 import { InputBarContext } from "@extension/components/input_bar/InputBarContext";
 import { useCallback, useContext } from "react";
 
@@ -11,7 +12,7 @@ export function AssistantFavorites() {
   } = usePublicAgentConfigurations("favorites", ["authors"]);
 
   const { setSelectedAssistant } = useContext(InputBarContext);
-
+  const { user } = useAuth();
   const handleAssistantClick = useCallback(
     (agentId: string) => {
       const scrollContainer = document.getElementById("assistant-input-header");
@@ -61,7 +62,7 @@ export function AssistantFavorites() {
           </p>
           <Button
             label="Add favorites on Dust"
-            href={`${process.env.DUST_DOMAIN}`}
+            href={`${user?.dustDomain}`}
             target="_blank"
           />
         </div>

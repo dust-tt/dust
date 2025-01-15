@@ -4,6 +4,7 @@ import {
   ChevronLeftIcon,
   ExternalLinkIcon,
 } from "@dust-tt/sparkle";
+import { useAuth } from "@extension/components/auth/AuthProvider";
 import type { ProtectedRouteChildrenProps } from "@extension/components/auth/ProtectedRoute";
 import { ConversationContainer } from "@extension/components/conversation/ConversationContainer";
 import { ConversationsListButton } from "@extension/components/conversation/ConversationsListButton";
@@ -59,7 +60,7 @@ export const ConversationPage = ({
               <Button
                 icon={ExternalLinkIcon}
                 variant="ghost"
-                href={`${process.env.DUST_DOMAIN}/w/${workspace.sId}/assistant/${conversationId}`}
+                href={`${user.dustDomain}/w/${workspace.sId}/assistant/${conversationId}`}
                 target="_blank"
                 size="sm"
                 tooltip="Open in Dust"

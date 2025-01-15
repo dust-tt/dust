@@ -12,12 +12,14 @@ export type UserTypeWithExtensionWorkspaces = UserType & {
 
 export type StoredTokens = {
   accessToken: string;
+  idToken: string;
   refreshToken: string;
   expiresAt: number;
 };
 
 export type StoredUser = UserTypeWithExtensionWorkspaces & {
   selectedWorkspace: string | null;
+  dustDomain: string;
 };
 
 /**
@@ -30,6 +32,7 @@ export const saveTokens = async (
 ): Promise<StoredTokens> => {
   const tokens: StoredTokens = {
     accessToken: rawTokens.accessToken,
+    idToken: rawTokens.idToken,
     refreshToken: rawTokens.refreshToken,
     expiresAt: Date.now() + rawTokens.expiresIn * 1000,
   };
@@ -40,12 +43,15 @@ export const saveTokens = async (
 export const getStoredTokens = async (): Promise<StoredTokens | null> => {
   const result = await chrome.storage.local.get([
     "accessToken",
+    "idToken",
     "refreshToken",
     "expiresAt",
   ]);
-  if (result.accessToken && result.expiresAt) {
+
+  if (result.accessToken && result.idToken && result.expiresAt) {
     return {
       accessToken: result.accessToken,
+      idToken: result.idToken,
       refreshToken: result.refreshToken,
       expiresAt: result.expiresAt,
     };
@@ -81,12 +87,14 @@ export const setConversationsContext = async (
  */
 
 export const saveUser = async (
-  user: UserTypeWithExtensionWorkspaces
+  user: UserTypeWithExtensionWorkspaces,
+  dustDomain: string
 ): Promise<StoredUser> => {
   const storedUser: StoredUser = {
     ...user,
     selectedWorkspace:
       user.workspaces.length === 1 ? user.workspaces[0].sId : null,
+    dustDomain,
   };
   await chrome.storage.local.set({ user: storedUser });
   return storedUser;

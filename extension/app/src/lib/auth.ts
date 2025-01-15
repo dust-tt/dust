@@ -16,6 +16,10 @@ import {
   saveTokens,
   saveUser,
 } from "@extension/lib/storage";
+import { jwtDecode } from "jwt-decode";
+
+const SUPPORTED_REGIONS = ["europe-west1", "us-central1"] as const;
+export type RegionType = (typeof SUPPORTED_REGIONS)[number];
 
 const log = console.error;
 
@@ -47,12 +51,13 @@ export const login = async (
       throw new Error("No access token received.");
     }
     const tokens = await saveTokens(response);
-    const res = await fetchMe(tokens.accessToken);
+    const dustDomain = getDustDomain(tokens.idToken);
+    const res = await fetchMe(tokens.accessToken, dustDomain);
     if (res.isErr()) {
       return res;
     }
 
-    const user = await saveUser(res.value.user);
+    const user = await saveUser(res.value.user, dustDomain);
     return new Ok({ tokens, user });
   } catch (error) {
     return new Err(new AuthError("not_authenticated", error?.toString()));
@@ -112,13 +117,30 @@ export const getAccessToken = async (): Promise<string | null> => {
   return tokens?.accessToken ?? null;
 };
 
+const getDustDomain = (idToken: string) => {
+  if (process.env.NODE_ENV === "development") {
+    return "http://localhost:3000";
+  } else {
+    const claims = jwtDecode<{ "https://dust.tt/region": RegionType }>(idToken);
+    const region = claims["https://dust.tt/region"];
+    switch (region) {
+      case "europe-west1":
+        return "https://eu.dust.tt";
+
+      default:
+        return "https://dust.tt";
+    }
+  }
+};
+
 // Fetch me sends a request to the /me route to get the user info.
 const fetchMe = async (
-  token: string
+  accessToken: string,
+  dustDomain: string
 ): Promise<Result<{ user: UserTypeWithExtensionWorkspaces }, AuthError>> => {
-  const response = await fetch(`${process.env.DUST_DOMAIN}/api/v1/me`, {
+  const response = await fetch(`${dustDomain}/api/v1/me`, {
     headers: {
-      Authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${accessToken}`,
       "X-Request-Origin": "extension",
     },
   });
