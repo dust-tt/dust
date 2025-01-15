@@ -3123,7 +3123,7 @@ async fn folders_delete(
 #[derive(serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 struct NodesSearchPayload {
-    query: String,
+    query: Option<String>,
     filter: NodesSearchFilter,
     options: Option<NodesSearchOptions>,
 }

@@ -34,13 +34,14 @@ pub struct DatasourceViewFilter {
 pub struct NodesSearchFilter {
     data_source_views: Vec<DatasourceViewFilter>,
     node_ids: Option<Vec<String>>,
+    parent_id: Option<String>,
 }
 
 #[async_trait]
 pub trait SearchStore {
     async fn search_nodes(
         &self,
-        query: String,
+        query: Option<String>,
         filter: NodesSearchFilter,
         options: Option<NodesSearchOptions>,
     ) -> Result<Vec<CoreContentNode>>;
@@ -94,7 +95,7 @@ const NODES_INDEX_NAME: &str = "core.data_sources_nodes";
 impl SearchStore for ElasticsearchSearchStore {
     async fn search_nodes(
         &self,
-        query: String,
+        query: Option<String>,
         filter: NodesSearchFilter,
         options: Option<NodesSearchOptions>,
     ) -> Result<Vec<CoreContentNode>> {
@@ -127,18 +128,22 @@ impl SearchStore for ElasticsearchSearchStore {
             .collect();
 
         let mut bool_query = Query::bool()
-            .must(Query::r#match("title.edge", query))
             .should(filter_conditions)
             .minimum_should_match(1);
 
-        // Add node_ids filter if present
         if let Some(node_ids) = filter.node_ids {
-            if !node_ids.is_empty() {
-                info!("Adding node_ids filter: {:?}", node_ids);
-                bool_query = bool_query.must(Query::terms("node_id", node_ids));
-            }
+            bool_query = bool_query.must(Query::terms("node_id", node_ids));
         }
 
+        if let Some(parent_id) = filter.parent_id {
+            bool_query = bool_query.must(Query::term("parent_id", parent_id));
+        }
+
+        if let Some(query) = query {
+            bool_query = bool_query.must(Query::r#match("title.edge", query));
+        }
+
+        // Build and run search
         let search = Search::new()
             .from(options.offset.unwrap_or(0))
             .size(options.limit.unwrap_or(100))
@@ -151,6 +156,7 @@ impl SearchStore for ElasticsearchSearchStore {
             .send()
             .await?;
 
+        // Parse response and return enriched nodes
         let nodes: Vec<Node> = match response.status_code().is_success() {
             true => {
                 let response_body = response.json::<serde_json::Value>().await?;
