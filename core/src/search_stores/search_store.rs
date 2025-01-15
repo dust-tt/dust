@@ -340,19 +340,19 @@ impl ElasticsearchSearchStore {
         // Process parent titles results
         let parent_titles_map = if parent_titles_response.status_code().is_success() {
             let response_body = parent_titles_response.json::<serde_json::Value>().await?;
-            let mut map = HashMap::new();
-
-            if let Some(hits) = response_body["hits"]["hits"].as_array() {
-                for hit in hits {
-                    if let (Some(node_id), Some(title)) = (
-                        hit["_source"]["node_id"].as_str(),
-                        hit["_source"]["title"].as_str(),
-                    ) {
-                        map.insert(node_id.to_string(), title.to_string());
-                    }
-                }
-            }
-            map
+            response_body["hits"]["hits"]
+                .as_array()
+                .map(|hits| {
+                    hits.iter()
+                        .filter_map(|hit| {
+                            Some((
+                                hit["_source"]["node_id"].as_str()?.to_string(),
+                                hit["_source"]["title"].as_str()?.to_string(),
+                            ))
+                        })
+                        .collect::<HashMap<_, _>>()
+                })
+                .unwrap_or_default()
         } else {
             let error = parent_titles_response.json::<serde_json::Value>().await?;
             return Err(anyhow::anyhow!("Failed to fetch parent titles: {}", error));
