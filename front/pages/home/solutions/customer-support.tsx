@@ -133,12 +133,7 @@ export default function CustomerSupport() {
               />
             </Link>
             <Link href="/home/contact" shallow={true}>
-              <Button
-                variant="outline"
-                size="md"
-                label="Talk to sales"
-                target="_blank"
-              />
+              <Button variant="outline" size="md" label="Talk to sales" />
             </Link>
           </div>
         </div>
