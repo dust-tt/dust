@@ -1,8 +1,12 @@
+use crate::utils::ParseError;
 use serde::{Deserialize, Serialize};
+use std::error::Error;
 use std::fmt;
+use std::fmt::Display;
+use std::str::FromStr;
+use tokio_postgres::types::{private::BytesMut, FromSql, IsNull, ToSql, Type};
 
 use super::folder::Folder;
-use tokio_postgres::types::{private::BytesMut, FromSql, IsNull, ToSql, Type};
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "lowercase")]
@@ -11,12 +15,33 @@ pub enum ProviderVisibility {
     Public,
 }
 
+impl Display for ProviderVisibility {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let str = match self {
+            ProviderVisibility::Private => String::from("private"),
+            ProviderVisibility::Public => String::from("public"),
+        };
+        write!(f, "{}", str)
+    }
+}
+
+impl FromStr for ProviderVisibility {
+    type Err = ParseError;
+    fn from_str(s: &str) -> anyhow::Result<Self, Self::Err> {
+        match s {
+            "private" => Ok(ProviderVisibility::Private),
+            "public" => Ok(ProviderVisibility::Public),
+            _ => Err(ParseError::with_message("Unknown ProviderVisibility"))?,
+        }
+    }
+}
+
 impl ToSql for ProviderVisibility {
     fn to_sql(
         &self,
         ty: &Type,
         out: &mut BytesMut,
-    ) -> Result<IsNull, Box<dyn std::error::Error + Sync + Send>> {
+    ) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
         let s = match self {
             ProviderVisibility::Private => "private",
             ProviderVisibility::Public => "public",
@@ -32,7 +57,7 @@ impl ToSql for ProviderVisibility {
         &self,
         ty: &Type,
         out: &mut BytesMut,
-    ) -> Result<IsNull, Box<dyn std::error::Error + Sync + Send>> {
+    ) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
         let s = match self {
             ProviderVisibility::Private => "private",
             ProviderVisibility::Public => "public",
@@ -42,10 +67,7 @@ impl ToSql for ProviderVisibility {
 }
 
 impl<'a> FromSql<'a> for ProviderVisibility {
-    fn from_sql(
-        ty: &Type,
-        raw: &'a [u8],
-    ) -> Result<Self, Box<dyn std::error::Error + Sync + Send>> {
+    fn from_sql(ty: &Type, raw: &'a [u8]) -> Result<Self, Box<dyn Error + Sync + Send>> {
         let s = <&str as FromSql>::from_sql(ty, raw)?;
         match s {
             "private" => Ok(ProviderVisibility::Private),
