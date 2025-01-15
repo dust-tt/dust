@@ -17,6 +17,13 @@ export interface CustomerStory {
   src: string;
 }
 
+export interface QuoteProps {
+  quote: string;
+  name: string;
+  title: string;
+  logo: string;
+}
+
 interface CustomerStoriesSectionProps {
   title?: string;
   stories: CustomerStory[];

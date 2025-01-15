@@ -1,6 +1,5 @@
 import {
   Button,
-  Hover3D,
   LightbulbIcon,
   RocketIcon,
   UserGroupIcon,
@@ -8,10 +7,19 @@ import {
 import Link from "next/link";
 import type { ReactElement } from "react-markdown/lib/react-markdown";
 
-import type { Benefit } from "@app/components/home/content/Solutions/BenefitsSection";
+import type {
+  Benefits,
+  MetricProps,
+} from "@app/components/home/content/Solutions/BenefitsSection";
 import { BenefitsSection } from "@app/components/home/content/Solutions/BenefitsSection";
-import type { CustomerStory } from "@app/components/home/content/Solutions/CustomerStoriesSection";
+import type {
+  CustomerStory,
+  QuoteProps,
+} from "@app/components/home/content/Solutions/CustomerStoriesSection";
 import { CustomerStoriesSection } from "@app/components/home/content/Solutions/CustomerStoriesSection";
+import type { DemoVideo } from "@app/components/home/content/Solutions/DemoVideoSection";
+import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
+
 import { HeroSection } from "@app/components/home/content/Solutions/HeroSection";
 import type { UseCase } from "@app/components/home/content/Solutions/UseCasesSection";
 import { UseCasesSection } from "@app/components/home/content/Solutions/UseCasesSection";
@@ -20,7 +28,7 @@ import {
   MetricComponent,
   Quote,
 } from "@app/components/home/ContentBlocks";
-import { Grid, H2 } from "@app/components/home/ContentComponents";
+import { Grid } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import {
@@ -65,8 +73,6 @@ const supportHeroProps = {
   uptitle: pageSettings.uptitle,
   title: pageSettings.title,
   description: pageSettings.description,
-  fromColor: pageSettings.from,
-  toColor: pageSettings.to,
   visuals: [
     {
       src: "/static/landing/support/support1.png",
@@ -103,54 +109,94 @@ const supportHeroProps = {
 };
 
 // Parameters for the Benefits Section
-const supportBenefits: Benefit[] = [
-  {
-    icon: RocketIcon,
-    title: "Resolve Issues Faster",
-    description:
-      "Surface relevant information from all connected knowledge bases and draft messages in 50+ languages.",
-  },
-  {
-    icon: UserGroupIcon,
-    title: "Boost Team Productivity",
-    description:
-      "Keep teams in sync with real-time information across all channels and cut onboarding time for new joiners.",
-  },
-  {
-    icon: LightbulbIcon,
-    title: "Grasp Customer Needs",
-    description:
-      "Convert support interactions into insights, driving data-backed product and documentation improvements.",
-  },
-];
+const supportBenefits: Benefits = {
+  sectionTitle: "Solve faster, satisfy more",
+  items: [
+    {
+      icon: RocketIcon,
+      title: "Resolve Issues Faster",
+      description:
+        "Surface relevant information from all connected knowledge bases and draft messages in 50+ languages.",
+    },
+    {
+      icon: UserGroupIcon,
+      title: "Boost Team Productivity",
+      description:
+        "Keep teams in sync with real-time information across all channels and cut onboarding time for new joiners.",
+    },
+    {
+      icon: LightbulbIcon,
+      title: "Grasp Customer Needs",
+      description:
+        "Convert support interactions into insights, driving data-backed product and documentation improvements.",
+    },
+  ],
+};
+
+// Parameters for Metrics section
+export const supportMetrics: MetricProps = {
+  metrics: [
+    {
+      value: "50%",
+      description: <>50% in ticket resolution time</>,
+    },
+    {
+      value: "8h",
+      description: <>8 hours saved weekly per agent</>,
+    },
+  ],
+  from: "from-amber-200",
+  to: "to-amber-500",
+};
 
 // Parameters for the Use Cases Section
-const supportUseCases: UseCase[] = [
-  {
-    title: "Ticket Resolution",
-    content:
-      "Accelerate response times with dynamic answer suggestions and contextual knowledge at every step.",
-    images: ["/static/landing/solutions/support1.png"],
-  },
-  {
-    title: "Agent Coaching",
-    content:
-      "Offer feedback to support agents using real-time best practices and ticket insights for consistent, quality service.",
-    images: ["/static/landing/solutions/support2.png"],
-  },
-  {
-    title: "Documentation Builder",
-    content:
-      "Convert resolved tickets into searchable articles and FAQs, capturing best practices for future use.",
-    images: ["/static/landing/solutions/support3.png"],
-  },
-  {
-    title: "Customer Insights",
-    content:
-      "Identify trends from customer feedback, helping teams proactively improve service and satisfaction.",
-    images: ["/static/landing/solutions/support4.png"],
-  },
-];
+const supportUseCases: UseCase = {
+  sectionTitle: "Your use cases, your way",
+  sectionDescription:
+    "Customize and automate tasks without writing a single line of code.",
+  items: [
+    {
+      title: "Ticket Resolution",
+      content:
+        "Accelerate response times with dynamic answer suggestions and contextual knowledge at every step.",
+      images: ["/static/landing/solutions/support1.png"],
+    },
+    {
+      title: "Agent Coaching",
+      content:
+        "Offer feedback to support agents using real-time best practices and ticket insights for consistent, quality service.",
+      images: ["/static/landing/solutions/support2.png"],
+    },
+    {
+      title: "Documentation Builder",
+      content:
+        "Convert resolved tickets into searchable articles and FAQs, capturing best practices for future use.",
+      images: ["/static/landing/solutions/support3.png"],
+    },
+    {
+      title: "Customer Insights",
+      content:
+        "Identify trends from customer feedback, helping teams proactively improve service and satisfaction.",
+      images: ["/static/landing/solutions/support4.png"],
+    },
+  ],
+};
+
+// Parameters for Quote section
+export const supportQuote: QuoteProps = {
+  quote:
+    "We're managing a higher volume of tickets and have cut processing time—from an average of 6 minutes per ticket to just a few seconds.",
+  name: "Anaïs Ghelfi",
+  title: "Head of Data Platform at Malt",
+  logo: "/static/landing/logos/malt.png",
+};
+
+// Parameters for Demo Video section
+const supportDemoVideo: DemoVideo = {
+  sectionTitle: "Watch Dust work",
+  videoUrl:
+    "https://fast.wistia.net/embed/iframe/7ynip6mgfx?seo=true&videoFoam=true",
+};
 
 // Parameters for the Customer Stories Section
 const supportStories: CustomerStory[] = [
@@ -181,7 +227,11 @@ export default function CustomerSupport() {
   return (
     <>
       <div className="container flex w-full flex-col gap-0 bg-slate-900/50 px-6 pb-12">
-        <HeroSection {...supportHeroProps} />
+        <HeroSection
+          {...supportHeroProps}
+          fromColor={pageSettings.from}
+          toColor={pageSettings.to}
+        />
         <Grid>
           <div
             className={classNames(
@@ -193,25 +243,11 @@ export default function CustomerSupport() {
             )}
           >
             <BenefitsSection
-              title="Solve faster, satisfy more"
               benefits={supportBenefits}
               fromColor={pageSettings.from}
               toColor={pageSettings.to}
             />
-            <MetricComponent
-              metrics={[
-                {
-                  value: "50%",
-                  description: <>50%&nbsp; in ticket resolution time</>,
-                },
-                {
-                  value: "8h",
-                  description: <>8&nbsp;hours saved weekly per&nbsp;agent</>,
-                },
-              ]}
-              from="from-amber-200"
-              to="to-amber-500"
-            />
+            <MetricComponent {...supportMetrics} />
           </div>
           <div
             className={classNames(
@@ -223,9 +259,7 @@ export default function CustomerSupport() {
             )}
           >
             <UseCasesSection
-              title="Your use cases, your way"
-              description="Customize and automate tasks without writing a single line of code."
-              useCases={supportUseCases}
+              useCase={supportUseCases}
               fromColor={pageSettings.from}
               toColor={pageSettings.to}
             />
@@ -239,25 +273,11 @@ export default function CustomerSupport() {
               "2xl:col-start-1"
             )}
           >
-            <div>
-              <H2 from={pageSettings.from} to={pageSettings.to}>
-                Watch Dust work
-              </H2>
-              {/* <P size="lg">See a demo of the Dust product.</P> */}
-            </div>
-            <Hover3D depth={-40} perspective={1000} className="relative w-full">
-              <div className="relative w-full pt-[56.25%]">
-                {" "}
-                {/* 16:9 aspect ratio */}
-                <iframe
-                  src="https://fast.wistia.net/embed/iframe/7ynip6mgfx?seo=true&videoFoam=true"
-                  title="Dust product tour"
-                  allow="autoplay; fullscreen"
-                  frameBorder="0"
-                  className="absolute inset-0 h-full w-full rounded-lg"
-                ></iframe>{" "}
-              </div>
-            </Hover3D>
+            <DemoVideoSection
+              demoVideo={supportDemoVideo}
+              fromColor={pageSettings.from}
+              toColor={pageSettings.to}
+            />
           </div>
           <div
             className={classNames(
@@ -268,12 +288,7 @@ export default function CustomerSupport() {
               "2xl:col-start-1"
             )}
           >
-            <Quote
-              quote="We’re managing a&nbsp;higher volume of&nbsp;tickets and have cut processing time—from an&nbsp;average of 6&nbsp;minutes per ticket to&nbsp;just a&nbsp;few seconds."
-              name="Anaïs Ghelfi"
-              title="Head of Data Platform at Malt"
-              logo="/static/landing/logos/malt.png"
-            />
+            <Quote {...supportQuote} />
             <CustomerStoriesSection
               title="Customer stories"
               stories={supportStories}

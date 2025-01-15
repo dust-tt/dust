@@ -1,11 +1,4 @@
-import {
-  Avatar,
-  Hover3D,
-  Icon,
-  LightbulbIcon,
-  RocketIcon,
-  UserGroupIcon,
-} from "@dust-tt/sparkle";
+import { Avatar, Hover3D, Icon } from "@dust-tt/sparkle";
 import type { FC } from "react";
 
 import { ImgBlock } from "@app/components/home/ContentBlocks";
@@ -16,56 +9,45 @@ type SparkleIcon = React.ComponentType<{
   size?: "sm" | "md" | "lg" | "xl";
 }>;
 
-export interface Benefit {
-  icon: SparkleIcon;
-  title: string;
-  description: string;
+export interface Benefits {
+  sectionTitle?: string;
+  items: {
+    icon: SparkleIcon;
+    title: string;
+    description: string;
+  }[];
+}
+
+export interface MetricProps {
+  metrics: {
+    value: string;
+    description: React.ReactNode;
+  }[];
+  from: string;
+  to: string;
 }
 
 interface BenefitsSectionProps {
-  title?: string;
-  benefits?: Benefit[];
-  fromColor?: string;
-  toColor?: string;
+  benefits: Benefits;
+  fromColor: string;
+  toColor: string;
 }
 
-export const defaultBenefits: Benefit[] = [
-  {
-    icon: RocketIcon,
-    title: "Resolve Issues Faster",
-    description:
-      "Surface relevant information from all connected knowledge bases instantly and understand messages in 50+ languages.",
-  },
-  {
-    icon: UserGroupIcon,
-    title: "Boost Team Productivity",
-    description:
-      "Keep teams synchronized with real-time access to information across all communication channels and reduce onboarding time.",
-  },
-  {
-    icon: LightbulbIcon,
-    title: "Understand Customer Needs",
-    description:
-      "Gain insights from cross-tool interactions to understand and act on customer needs, improve documentation.",
-  },
-];
-
 export const BenefitsSection: FC<BenefitsSectionProps> = ({
-  title = "Elevate support operations",
-  benefits = defaultBenefits,
-  fromColor = "from-sky-200",
-  toColor = "to-sky-500",
+  benefits,
+  fromColor,
+  toColor,
 }) => (
   <section className="w-full py-12 pb-0">
     <Grid>
       <div className="col-span-12 mb-2">
         <H2 from={fromColor} to={toColor}>
-          {title}
+          {benefits.sectionTitle}
         </H2>
       </div>
 
       <div className="col-span-12 grid grid-cols-1 gap-8 pt-8 md:grid-cols-3">
-        {benefits.map((benefit, index) => (
+        {benefits.items.map((benefit, index) => (
           <ImgBlock
             key={index}
             title={<>{benefit.title}</>}
