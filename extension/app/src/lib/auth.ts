@@ -18,8 +18,7 @@ import {
 } from "@extension/lib/storage";
 import { jwtDecode } from "jwt-decode";
 
-const SUPPORTED_REGIONS = ["europe-west1", "us-central1"] as const;
-export type RegionType = (typeof SUPPORTED_REGIONS)[number];
+export type RegionType = "europe-west1" | "us-central1";
 
 const log = console.error;
 
