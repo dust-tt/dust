@@ -204,7 +204,7 @@ export const supportStories: CustomerStory[] = [
   },
 ];
 
-export const assistantExamples: SolutionSectionAssistantBlockProps[] = [
+export const supportAssistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
     emoji: "🤝",
     backgroundColor: "bg-sky-300",

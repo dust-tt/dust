@@ -32,7 +32,7 @@ import {
   supportQuote,
   supportDemoVideo,
   supportStories,
-  assistantExamples,
+  supportAssistantExamples,
 } from "@app/components/home/content/Solutions/configs/supportConfig";
 
 export async function getServerSideProps() {
@@ -169,7 +169,7 @@ export function CustomerCaroussel() {
       title={pageSettings.uptitle}
       subtitle={pageSettings.title}
       description={pageSettings.description}
-      assistants={assistantExamples}
+      assistants={supportAssistantExamples}
       from={pageSettings.from}
       to={pageSettings.to}
       border="border-pink-100/60"
