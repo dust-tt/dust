@@ -1,4 +1,5 @@
 import type { LightAgentConfigurationType } from "@dust-tt/types";
+import { isEqual } from "lodash";
 import { v4 as uuidv4 } from "uuid";
 
 export const MODELS_STRING_MAX_LENGTH = 255;
@@ -264,4 +265,23 @@ export function sanitizeJSONOutput(obj: unknown): unknown {
 
 export function removeDiacritics(input: string): string {
   return input.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+/**
+ * Compares two 2D arrays for equality, ignoring the order of elements.
+ * Does not mutate input arrays.
+ */
+export function isArrayEqual2DUnordered(
+  first: unknown[][],
+  second: unknown[][]
+): boolean {
+  if (first.length !== second.length) {
+    return false;
+  }
+
+  // Sort both arrays and their inner arrays.
+  const sort2D = (arr: unknown[][]) =>
+    [...arr].map((row) => [...row].sort()).sort();
+
+  return isEqual(sort2D(first), sort2D(second));
 }

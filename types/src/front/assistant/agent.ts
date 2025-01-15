@@ -223,11 +223,6 @@ export type LightAgentConfigurationType = {
 
   templateId: string | null;
 
-  // group restrictions: if empty, no restrictions, otherwise only users who belong to all the
-  // groups can see the agent
-  // TODO(2024-11-04 flav) `groupIds` clean up.
-  groupIds: string[];
-
   // Group restrictions for accessing the agent/conversation.
   // The array of arrays represents permission requirements:
   // - If empty, no restrictions apply

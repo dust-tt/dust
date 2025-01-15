@@ -34,6 +34,7 @@ async function updateRowsForWorkspace(
   // Part 1: Migrate agent configurations.
   const agents = await AgentConfiguration.findAll({
     where: {
+      // @ts-expect-error `groupIds` was removed.
       groupIds: {
         [Op.ne]: [], // where `groupIds` is not an empty array.
       },
@@ -93,6 +94,7 @@ async function updateRowsForWorkspace(
   // Part 2: Migrate conversations.
   const conversations = await Conversation.findAll({
     where: {
+      // @ts-expect-error `groupIds` was removed.
       groupIds: {
         [Op.ne]: [], // where `groupIds` is not an empty array.
       },

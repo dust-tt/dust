@@ -155,8 +155,8 @@ export abstract class ResourceWithSpace<
 
   // Permissions.
 
-  requestedPermissions(opts?: { returnNewFormat: boolean }) {
-    return this.space.requestedPermissions(opts);
+  requestedPermissions() {
+    return this.space.requestedPermissions();
   }
 
   canAdministrate(auth: Authenticator) {

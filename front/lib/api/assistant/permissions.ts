@@ -63,34 +63,6 @@ export function getDataSourceViewIdsFromActions(
   );
 }
 
-// TODO(2024-11-04 flav) `groupId` clean-up.
-export async function getAgentConfigurationGroupIdsFromActionsLegacy(
-  auth: Authenticator,
-  actions: UnsavedAgentActionConfigurationType[]
-): Promise<number[]> {
-  const dsViews = await DataSourceViewResource.fetchByIds(
-    auth,
-    getDataSourceViewIdsFromActions(actions)
-  );
-  const dustApps = await AppResource.fetchByIds(
-    auth,
-    actions
-      .filter((action) => isDustAppRunConfiguration(action))
-      .map((action) => (action as DustAppRunConfigurationType).appId)
-  );
-
-  // TODO(2024-10-25 flav) Refactor to store a list of ResourcePermission.
-  const dataSourceViewGroupIds: ModelId[] = dsViews.flatMap((view) =>
-    view.requestedPermissions().flatMap((rp) => rp.groups.map((g) => g.id))
-  );
-
-  const dustAppGroupIds: ModelId[] = dustApps.flatMap((app) =>
-    app.requestedPermissions().flatMap((rp) => rp.groups.map((g) => g.id))
-  );
-
-  return uniq([...dataSourceViewGroupIds, ...dustAppGroupIds].flat());
-}
-
 export async function getAgentConfigurationGroupIdsFromActions(
   auth: Authenticator,
   actions: UnsavedAgentActionConfigurationType[]
@@ -116,7 +88,7 @@ export async function getAgentConfigurationGroupIdsFromActions(
       spacePermissions.set(spaceId, new Set());
     }
     const groups = view
-      .requestedPermissions({ returnNewFormat: true })
+      .requestedPermissions()
       .flatMap((rp) => rp.groups.map((g) => g.id))
       // Sort to ensure consistent ordering.
       .sort((a, b) => a - b);
@@ -132,7 +104,7 @@ export async function getAgentConfigurationGroupIdsFromActions(
     }
 
     const groups = app
-      .requestedPermissions({ returnNewFormat: true })
+      .requestedPermissions()
       .flatMap((rp) => rp.groups.map((g) => g.id))
       // Sort to ensure consistent ordering.
       .sort((a, b) => a - b);
