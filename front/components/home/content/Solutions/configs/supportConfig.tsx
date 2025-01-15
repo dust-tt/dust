@@ -1,10 +1,4 @@
-import type { ReactElement } from "react";
-import {
-  Button,
-  LightbulbIcon,
-  RocketIcon,
-  UserGroupIcon,
-} from "@dust-tt/sparkle";
+import { LightbulbIcon, RocketIcon, UserGroupIcon } from "@dust-tt/sparkle";
 import type {
   Benefits,
   MetricProps,
