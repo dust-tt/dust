@@ -202,6 +202,9 @@ export type ConversationWithoutContentType = {
   title: string | null;
   visibility: ConversationVisibility;
   requestedGroupIds: string[][];
+
+  // TODO(2024-11-04 flav) `group-id` clean-up.
+  groupIds: string[];
 };
 
 /**
