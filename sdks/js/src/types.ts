@@ -2016,6 +2016,7 @@ export const UpsertTableFromCsvRequestSchema = z.intersection(
       async: z.boolean().optional(),
       title: z.string(),
       mimeType: z.string(),
+      sourceUrl: z.string().nullable().optional(),
     })
     .transform((o) => ({
       name: o.name,
@@ -2029,6 +2030,7 @@ export const UpsertTableFromCsvRequestSchema = z.intersection(
       async: o.async,
       title: o.title,
       mimeType: o.mimeType,
+      sourceUrl: o.sourceUrl,
     })),
   z.union([
     z.object({ csv: z.string(), tableId: z.undefined() }).transform((o) => ({
