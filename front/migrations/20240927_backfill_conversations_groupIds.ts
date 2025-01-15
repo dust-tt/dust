@@ -117,11 +117,13 @@ async function updateConversation(
         where: { sId: agentConfigurationIds },
       })
     )
+      // @ts-expect-error `groupIds` was removed.
       .map((agent) => agent.groupIds)
       .flat()
   );
 
   if (execute) {
+    // @ts-expect-error `groupIds` was removed.
     await conversation.update({ groupIds });
     logger.info(
       {

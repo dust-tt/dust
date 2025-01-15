@@ -47,7 +47,6 @@ export class AgentConfiguration extends BaseModel<AgentConfiguration> {
 
   declare templateId: ForeignKey<TemplateModel["id"]> | null;
 
-  declare groupIds: number[];
   declare requestedGroupIds: number[][];
 
   declare author: NonAttribute<UserModel>;
@@ -126,14 +125,6 @@ AgentConfiguration.init(
       type: DataTypes.TEXT,
       allowNull: false,
     },
-    // TODO(2024-11-04 flav) `groupIds` clean up.
-    groupIds: {
-      type: DataTypes.ARRAY(DataTypes.INTEGER),
-      allowNull: false,
-      defaultValue: [],
-    },
-    // TODO(2025-01-15 BIGINT): This should be inferred from the relationship.
-    // This is currently Integer in US and Bigint in EU. It needs to be backfilled.
     requestedGroupIds: {
       type: DataTypes.ARRAY(DataTypes.ARRAY(DataTypes.BIGINT)),
       allowNull: false,

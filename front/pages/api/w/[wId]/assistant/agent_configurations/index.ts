@@ -25,10 +25,7 @@ import {
   getAgentConfigurations,
   unsafeHardDeleteAgentConfiguration,
 } from "@app/lib/api/assistant/configuration";
-import {
-  getAgentConfigurationGroupIdsFromActions,
-  getAgentConfigurationGroupIdsFromActionsLegacy,
-} from "@app/lib/api/assistant/permissions";
+import { getAgentConfigurationGroupIdsFromActions } from "@app/lib/api/assistant/permissions";
 import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { runOnRedis } from "@app/lib/api/redis";
@@ -331,10 +328,6 @@ export async function createOrUpgradeAgentConfiguration({
     model: assistant.model,
     agentConfigurationId,
     templateId: assistant.templateId ?? null,
-    groupIds: await getAgentConfigurationGroupIdsFromActionsLegacy(
-      auth,
-      actions
-    ),
     requestedGroupIds: await getAgentConfigurationGroupIdsFromActions(
       auth,
       actions

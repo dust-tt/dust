@@ -24,8 +24,6 @@ export class Conversation extends BaseModel<Conversation> {
   declare title: string | null;
   declare visibility: CreationOptional<ConversationVisibility>;
 
-  // TODO(2024-11-04 flav) `groupId` clean-up.
-  declare groupIds: number[];
   declare requestedGroupIds: number[][];
 
   declare workspaceId: ForeignKey<Workspace["id"]>;
@@ -56,14 +54,6 @@ Conversation.init(
       allowNull: false,
       defaultValue: "unlisted",
     },
-    // TODO(2024-11-04 flav) `groupId` clean-up.
-    groupIds: {
-      type: DataTypes.ARRAY(DataTypes.INTEGER),
-      allowNull: false,
-      defaultValue: [],
-    },
-    // TODO(2025-01-15 BIGINT): This should be inferred from the relationship.
-    // This is currently Integer in US and Bigint in EU. It needs to be backfilled.
     requestedGroupIds: {
       type: DataTypes.ARRAY(DataTypes.ARRAY(DataTypes.BIGINT)),
       allowNull: false,
