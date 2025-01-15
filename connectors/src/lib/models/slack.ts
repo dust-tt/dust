@@ -265,7 +265,10 @@ SlackChatBotMessage.init(
     indexes: [{ fields: ["connectorId", "channelId", "threadTs"] }],
   }
 );
-ConnectorModel.hasOne(SlackChatBotMessage);
+ConnectorModel.hasOne(SlackChatBotMessage, {
+  foreignKey: "connectorId",
+  onDelete: "RESTRICT",
+});
 
 export class SlackBotWhitelistModel extends BaseModel<SlackBotWhitelistModel> {
   declare createdAt: CreationOptional<Date>;
