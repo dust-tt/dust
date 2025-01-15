@@ -101,19 +101,19 @@ export const Benefits: BenefitsProps = {
   items: [
     {
       icon: RocketIcon,
-      title: "Resolve Issues Faster",
+      title: "Resolve issues faster",
       description:
         "Surface relevant information from all connected knowledge bases and draft messages in 50+ languages.",
     },
     {
       icon: UserGroupIcon,
-      title: "Boost Team Productivity",
+      title: "Boost team productivity",
       description:
         "Keep teams in sync with real-time information across all channels and cut onboarding time for new joiners.",
     },
     {
       icon: LightbulbIcon,
-      title: "Grasp Customer Needs",
+      title: "Grasp customer needs",
       description:
         "Convert support interactions into insights, driving data-backed product and documentation improvements.",
     },
@@ -141,25 +141,25 @@ export const UseCases: UseCaseProps = {
     "Customize and automate tasks without writing a single line of code.",
   items: [
     {
-      title: "Ticket Resolution",
+      title: "Ticket resolution",
       content:
         "Accelerate response times with dynamic answer suggestions and contextual knowledge at every step.",
       images: ["/static/landing/solutions/support1.png"],
     },
     {
-      title: "Agent Coaching",
+      title: "Agent coaching",
       content:
         "Offer feedback to support agents using real-time best practices and ticket insights for consistent, quality service.",
       images: ["/static/landing/solutions/support2.png"],
     },
     {
-      title: "Documentation Builder",
+      title: "Documentation builder",
       content:
         "Convert resolved tickets into searchable articles and FAQs, capturing best practices for future use.",
       images: ["/static/landing/solutions/support3.png"],
     },
     {
-      title: "Customer Insights",
+      title: "Customer insights",
       content:
         "Identify trends from customer feedback, helping teams proactively improve service and satisfaction.",
       images: ["/static/landing/solutions/support4.png"],
@@ -176,7 +176,7 @@ export const Quote: QuoteProps = {
 };
 
 export const DemoVideo: DemoVideoProps = {
-  sectionTitle: "Watch Dust work",
+  sectionTitle: "Watch Dust in motion",
   videoUrl:
     "https://fast.wistia.net/embed/iframe/r0dwaexoez?seo=true&videoFoam=true",
 };
