@@ -69,6 +69,9 @@ export const contentNodeTypeSortOrder: Record<ContentNodeType, number> = {
   channel: 4,
 };
 
+// currently used for slack, for which channels can be public or private
+export type ProviderVisibility = "private" | "public";
+
 /**
  * A ContentNode represents a connector related node. As an example:
  * - Notion: Top-level pages (possibly manually added lower level ones)
@@ -107,7 +110,7 @@ export interface ContentNode {
   preventSelection?: boolean;
   permission: ConnectorPermission;
   lastUpdatedAt: number | null;
-  providerVisibility?: "public" | "private";
+  providerVisibility?: ProviderVisibility;
 }
 
 export type ContentNodeWithParentIds = ContentNode & {
