@@ -276,9 +276,7 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
           req,
           res,
           auth,
-          (opts.allowUserOutsideCurrentWorkspace
-            ? auth
-            : null) as U extends true ? Authenticator : null
+          null as U extends true ? Authenticator : null
         );
       }
 
