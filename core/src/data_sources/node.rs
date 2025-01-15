@@ -1,7 +1,66 @@
+use crate::utils::ParseError;
 use serde::{Deserialize, Serialize};
+use std::error::Error;
 use std::fmt;
+use std::fmt::Display;
+use std::str::FromStr;
+use tokio_postgres::types::{private::BytesMut, FromSql, IsNull, ToSql, Type};
 
 use super::folder::Folder;
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum ProviderVisibility {
+    Private,
+    Public,
+}
+
+impl ToSql for ProviderVisibility {
+    fn to_sql(
+        &self,
+        ty: &Type,
+        out: &mut BytesMut,
+    ) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
+        // note: serde serialization cannot be used here as it would cause a double serialization
+        let s = match self {
+            ProviderVisibility::Private => "private",
+            ProviderVisibility::Public => "public",
+        };
+        s.to_sql(ty, out)
+    }
+
+    fn accepts(ty: &Type) -> bool {
+        <&str as ToSql>::accepts(ty)
+    }
+
+    // note: serde serialization cannot be used here as it would cause a double serialization
+    fn to_sql_checked(
+        &self,
+        ty: &Type,
+        out: &mut BytesMut,
+    ) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
+        let s = match self {
+            ProviderVisibility::Private => "private",
+            ProviderVisibility::Public => "public",
+        };
+        s.to_sql_checked(ty, out)
+    }
+}
+
+impl<'a> FromSql<'a> for ProviderVisibility {
+    fn from_sql(ty: &Type, raw: &'a [u8]) -> Result<Self, Box<dyn Error + Sync + Send>> {
+        let s = <&str as FromSql>::from_sql(ty, raw)?;
+        match s {
+            "private" => Ok(ProviderVisibility::Private),
+            "public" => Ok(ProviderVisibility::Public),
+            _ => Err("invalid provider visibility".into()),
+        }
+    }
+
+    fn accepts(ty: &Type) -> bool {
+        <&str as FromSql>::accepts(ty)
+    }
+}
 
 #[derive(Debug, Clone, Serialize, PartialEq, Deserialize, Copy)]
 pub enum NodeType {
@@ -29,6 +88,7 @@ pub struct Node {
     pub timestamp: u64,
     pub title: String,
     pub mime_type: String,
+    pub provider_visibility: Option<ProviderVisibility>,
     pub parent_id: Option<String>,
     pub parents: Vec<String>,
     pub source_url: Option<String>,
@@ -43,6 +103,7 @@ impl Node {
         timestamp: u64,
         title: &str,
         mime_type: &str,
+        provider_visibility: Option<ProviderVisibility>,
         parent_id: Option<String>,
         parents: Vec<String>,
         source_url: Option<String>,
@@ -55,6 +116,7 @@ impl Node {
             timestamp,
             title: title.to_string(),
             mime_type: mime_type.to_string(),
+            provider_visibility: provider_visibility.clone(),
             parent_id: parent_id.clone(),
             parents,
             source_url,
@@ -98,6 +160,7 @@ impl Node {
             self.parents,
             self.mime_type,
             self.source_url,
+            self.provider_visibility,
         )
     }
 

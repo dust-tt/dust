@@ -38,6 +38,10 @@
     "source_url": {
       "type": "keyword",
       "index": false
+    },
+    "provider_visibility": {
+      "type": "keyword",
+      "index": false
     }
   }
 }

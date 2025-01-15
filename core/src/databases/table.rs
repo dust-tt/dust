@@ -7,7 +7,7 @@ use serde_json::Value;
 use tracing::info;
 
 use crate::{
-    data_sources::node::{Node, NodeType},
+    data_sources::node::{Node, NodeType, ProviderVisibility},
     databases::{database::HasValue, table_schema::TableSchema},
     databases_store::store::DatabasesStore,
     project::Project,
@@ -62,6 +62,7 @@ pub struct Table {
     tags: Vec<String>,
     title: String,
     mime_type: String,
+    provider_visibility: Option<ProviderVisibility>,
     parent_id: Option<String>,
     parents: Vec<String>,
     source_url: Option<String>,
@@ -85,6 +86,7 @@ impl Table {
         timestamp: u64,
         title: String,
         mime_type: String,
+        provider_visibility: Option<ProviderVisibility>,
         tags: Vec<String>,
         parent_id: Option<String>,
         parents: Vec<String>,
@@ -106,6 +108,7 @@ impl Table {
             tags,
             title,
             mime_type,
+            provider_visibility,
             parent_id,
             parents,
             source_url,
@@ -133,6 +136,9 @@ impl Table {
     }
     pub fn mime_type(&self) -> &str {
         &self.mime_type
+    }
+    pub fn provider_visibility(&self) -> &Option<ProviderVisibility> {
+        &self.provider_visibility
     }
     pub fn parent_id(&self) -> &Option<String> {
         &self.parent_id
@@ -255,6 +261,7 @@ impl From<Table> for Node {
             table.timestamp,
             &table.title,
             &table.mime_type,
+            table.provider_visibility,
             table.parents.get(1).cloned(),
             table.parents,
             table.source_url,
@@ -603,6 +610,7 @@ mod tests {
             utils::now(),
             "test_dbml".to_string(),
             "text/plain".to_string(),
+            None,
             vec![],
             None,
             vec![],

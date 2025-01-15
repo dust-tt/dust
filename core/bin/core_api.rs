@@ -36,6 +36,7 @@ use dust::{
     data_sources::{
         data_source::{self, Section},
         node::Node,
+        node::ProviderVisibility,
         qdrant::QdrantClients,
     },
     databases::{
@@ -1677,6 +1678,7 @@ struct DataSourcesDocumentsUpsertPayload {
     light_document_output: Option<bool>,
     title: String,
     mime_type: String,
+    provider_visibility: Option<ProviderVisibility>,
 }
 
 async fn data_sources_documents_upsert(
@@ -1749,6 +1751,7 @@ async fn data_sources_documents_upsert(
                         &payload.document_id,
                         payload.title,
                         payload.mime_type,
+                        &payload.provider_visibility,
                         payload.timestamp,
                         &payload.tags,
                         &payload.parents,
@@ -2162,6 +2165,7 @@ struct DatabasesTablesUpsertPayload {
     // Node meta:
     title: String,
     mime_type: String,
+    provider_visibility: Option<ProviderVisibility>,
 }
 
 async fn tables_upsert(
@@ -2220,6 +2224,7 @@ async fn tables_upsert(
                 remote_database_secret_id: payload.remote_database_secret_id,
                 title: payload.title,
                 mime_type: payload.mime_type,
+                provider_visibility: payload.provider_visibility,
             },
         )
         .await
@@ -2873,6 +2878,7 @@ struct FoldersUpsertPayload {
     title: String,
     mime_type: String,
     source_url: Option<String>,
+    provider_visibility: Option<ProviderVisibility>,
 }
 
 async fn folders_upsert(
@@ -2926,6 +2932,7 @@ async fn folders_upsert(
                 title: payload.title,
                 mime_type: payload.mime_type,
                 source_url: payload.source_url,
+                provider_visibility: payload.provider_visibility,
             },
         )
         .await
