@@ -15,27 +15,6 @@ pub enum ProviderVisibility {
     Public,
 }
 
-impl Display for ProviderVisibility {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let str = match self {
-            ProviderVisibility::Private => String::from("private"),
-            ProviderVisibility::Public => String::from("public"),
-        };
-        write!(f, "{}", str)
-    }
-}
-
-impl FromStr for ProviderVisibility {
-    type Err = ParseError;
-    fn from_str(s: &str) -> anyhow::Result<Self, Self::Err> {
-        match s {
-            "private" => Ok(ProviderVisibility::Private),
-            "public" => Ok(ProviderVisibility::Public),
-            _ => Err(ParseError::with_message("Unknown ProviderVisibility"))?,
-        }
-    }
-}
-
 impl ToSql for ProviderVisibility {
     fn to_sql(
         &self,
