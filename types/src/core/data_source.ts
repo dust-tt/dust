@@ -56,6 +56,7 @@ export type CoreAPIContentNode = {
   parent_id: string | null;
   parents: string[];
   source_url: string | null;
+  has_children: boolean;
 };
 
 export type CoreAPIDocument = {
