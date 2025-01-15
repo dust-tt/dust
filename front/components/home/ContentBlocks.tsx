@@ -173,7 +173,7 @@ export const HeaderContentBlock = ({
               icon={RocketIcon}
             />
           </Link>
-          <Link href="/contact" shallow={true}>
+          <Link href="/home/contact" shallow={true}>
             <Button
               variant="outline"
               size="md"
