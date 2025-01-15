@@ -25,7 +25,7 @@ import { classNames } from "@app/lib/utils";
 // Import from new config location
 import {
   pageSettings,
-  heroProps,
+  supportHeroProps,
   supportBenefits,
   supportMetrics,
   supportUseCases,
@@ -48,7 +48,7 @@ export default function CustomerSupport() {
     <>
       <div className="container flex w-full flex-col gap-0 bg-slate-900/50 px-6 pb-12">
         <HeroSection
-          {...heroProps}
+          {...supportHeroProps}
           fromColor={pageSettings.from}
           toColor={pageSettings.to}
         />
@@ -124,24 +124,27 @@ export default function CustomerSupport() {
               "xl:col-span-10 xl:col-start-2"
             )}
           >
-            {heroProps.ctaButtons && (
+            {supportHeroProps.ctaButtons && (
               <div className="mt-4 flex justify-center gap-4">
-                {heroProps.ctaButtons.primary && (
-                  <Link href={heroProps.ctaButtons.primary.href} shallow={true}>
+                {supportHeroProps.ctaButtons.primary && (
+                  <Link
+                    href={supportHeroProps.ctaButtons.primary.href}
+                    shallow={true}
+                  >
                     <Button
                       variant="highlight"
                       size="md"
-                      label={heroProps.ctaButtons.primary.label}
-                      icon={heroProps.ctaButtons.primary.icon}
+                      label={supportHeroProps.ctaButtons.primary.label}
+                      icon={supportHeroProps.ctaButtons.primary.icon}
                     />
                   </Link>
                 )}
-                {heroProps.ctaButtons.secondary && (
+                {supportHeroProps.ctaButtons.secondary && (
                   <Button
                     variant="outline"
                     size="md"
-                    label={heroProps.ctaButtons.secondary.label}
-                    href={heroProps.ctaButtons.secondary.href}
+                    label={supportHeroProps.ctaButtons.secondary.label}
+                    href={supportHeroProps.ctaButtons.secondary.href}
                   />
                 )}
               </div>
