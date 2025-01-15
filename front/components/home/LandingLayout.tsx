@@ -163,6 +163,13 @@ export default function LandingLayout({
              gtag('config', '${process.env.NEXT_PUBLIC_GA_TRACKING_ID}');
             `}
             </Script>
+            <Script
+              type="text/javascript"
+              id="hs-script-loader"
+              async
+              defer
+              src="//js-eu1.hs-scripts.com/144442587.js"
+            ></Script>
           </>
         )}
         <FooterNavigation />
