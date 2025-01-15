@@ -7,20 +7,21 @@ use elasticsearch::{
     http::transport::{SingleNodeConnectionPool, TransportBuilder},
     DeleteByQueryParts, DeleteParts, Elasticsearch, IndexParts, SearchParts,
 };
+use elasticsearch_dsl::{Query, Search};
 use serde_json::json;
+use tracing::{error, info};
 use url::Url;
 
 use crate::{
     data_sources::node::{CoreContentNode, Node},
     utils,
 };
-use tracing::{error, info};
 
-const MAX_PAGE_SIZE: usize = 250;
+const MAX_PAGE_SIZE: u64 = 250;
 #[derive(serde::Deserialize)]
 pub struct NodesSearchOptions {
-    limit: Option<usize>,
-    offset: Option<usize>,
+    limit: Option<u64>,
+    offset: Option<u64>,
 }
 
 #[derive(serde::Deserialize)]
@@ -91,21 +92,6 @@ impl SearchStore for ElasticsearchSearchStore {
         filter: Vec<DatasourceViewFilter>,
         options: Option<NodesSearchOptions>,
     ) -> Result<Vec<CoreContentNode>> {
-        // First, collect all datasource_ids and their corresponding view_filters
-        let mut filter_conditions = Vec::new();
-        for f in filter {
-            let mut must_clause = Vec::new();
-            must_clause.push(json!({ "term": { "data_source_id": f.data_source_id } }));
-            if !f.view_filter.is_empty() {
-                must_clause.push(json!({ "terms": { "parents": f.view_filter } }));
-            }
-            filter_conditions.push(json!({
-                "bool": {
-                    "must": must_clause
-                }
-            }));
-        }
-
         let options = options.unwrap_or_default();
 
         // check that options.limit is not greater than MAX_PAGE_SIZE
@@ -117,31 +103,41 @@ impl SearchStore for ElasticsearchSearchStore {
             ));
         }
 
-        // then, search
+        // Build filter conditions using elasticsearch-dsl
+        let filter_conditions: Vec<Query> = filter
+            .into_iter()
+            .map(|f| {
+                let mut bool_query = Query::bool();
+
+                bool_query = bool_query.must(Query::term("data_source_id", f.data_source_id));
+
+                if !f.view_filter.is_empty() {
+                    bool_query = bool_query.must(Query::terms("parents", f.view_filter));
+                }
+
+                Query::Bool(bool_query)
+            })
+            .collect();
+
+        let search = Search::new()
+            .from(options.offset.unwrap_or(0))
+            .size(options.limit.unwrap_or(100))
+            .query(
+                Query::bool()
+                    .must(Query::r#match("title.edge", query))
+                    .should(filter_conditions)
+                    .minimum_should_match(1),
+            );
+
         let response = self
             .client
             .search(SearchParts::Index(&[NODES_INDEX_NAME]))
-            .from(options.offset.unwrap_or(0) as i64)
-            .size(options.limit.unwrap_or(100) as i64)
-            .body(json!({
-                "query": {
-                    "bool": {
-                        "must": {
-                            "match": {
-                                "title.edge": query
-                            }
-                        },
-                        "should": filter_conditions,
-                        "minimum_should_match": 1
-                    }
-                }
-            }))
+            .body(search)
             .send()
             .await?;
 
         let nodes: Vec<Node> = match response.status_code().is_success() {
             true => {
-                // get nodes from elasticsearch response in hits.hits
                 let response_body = response.json::<serde_json::Value>().await?;
                 response_body["hits"]["hits"]
                     .as_array()
@@ -256,7 +252,7 @@ impl ElasticsearchSearchStore {
     /// It then creates CoreContentNodes from the nodes, using the results of these queries
     /// to populate the `has_children` and `parent_title` fields
     async fn compute_core_content_nodes(&self, nodes: Vec<Node>) -> Result<Vec<CoreContentNode>> {
-        if nodes.len() > MAX_PAGE_SIZE {
+        if nodes.len() as u64 > MAX_PAGE_SIZE {
             return Err(anyhow::anyhow!(
                 "Too many nodes to compute core content nodes: {} (limit is {})",
                 nodes.len(),
