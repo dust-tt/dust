@@ -187,7 +187,12 @@ export async function githubRepoIssuesSyncWorkflow({
   pageNumber: number;
 }): Promise<boolean> {
   // upserting the folder with all the issues
-  await githubUpsertIssuesFolderActivity({ connectorId, repoId });
+  await githubUpsertIssuesFolderActivity({
+    connectorId,
+    repoId,
+    repoLogin,
+    repoName,
+  });
 
   const queue = new PQueue({
     concurrency: MAX_CONCURRENT_ISSUE_SYNC_ACTIVITIES_PER_WORKFLOW,
@@ -247,7 +252,12 @@ export async function githubRepoDiscussionsSyncWorkflow({
   nextCursor: string | null;
 }): Promise<string | null> {
   // upserting the folder with all the discussions
-  await githubUpsertDiscussionsFolderActivity({ connectorId, repoId });
+  await githubUpsertDiscussionsFolderActivity({
+    connectorId,
+    repoId,
+    repoLogin,
+    repoName,
+  });
 
   const queue = new PQueue({
     concurrency: MAX_CONCURRENT_ISSUE_SYNC_ACTIVITIES_PER_WORKFLOW,
