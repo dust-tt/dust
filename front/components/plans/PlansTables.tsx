@@ -7,11 +7,11 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-  UserIcon,
 } from "@dust-tt/sparkle";
 import type { BillingPeriod, PlanType } from "@dust-tt/types";
 import type { ReactNode } from "react";
 import React, { useState } from "react";
+import Link from "next/link";
 
 import { FairUsageModal } from "@app/components/FairUsageModal";
 import {
@@ -238,16 +238,14 @@ function EnterprisePriceTable({
       magnified={false}
     >
       <PriceTable.ActionContainer position="top">
-        {onClick && (
+        <Link href="/home/contact" shallow={true}>
           <Button
             variant="highlight"
             size={biggerButtonSize}
-            label="Contact sales"
-            icon={UserIcon}
             disabled={isProcessing}
-            onClick={onClick}
+            label="Contact Sales"
           />
-        )}
+        </Link>
       </PriceTable.ActionContainer>
       {ENTERPRISE_PLAN_ITEMS.map((item, index) => (
         <PriceTable.Item
