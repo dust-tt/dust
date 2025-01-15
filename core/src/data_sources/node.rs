@@ -42,11 +42,7 @@ impl ToSql for ProviderVisibility {
         ty: &Type,
         out: &mut BytesMut,
     ) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
-        let s = match self {
-            ProviderVisibility::Private => "private",
-            ProviderVisibility::Public => "public",
-        };
-        s.to_sql(ty, out)
+        serde_json::to_string(self)?.to_sql(ty, out)
     }
 
     fn accepts(ty: &Type) -> bool {
@@ -58,22 +54,14 @@ impl ToSql for ProviderVisibility {
         ty: &Type,
         out: &mut BytesMut,
     ) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
-        let s = match self {
-            ProviderVisibility::Private => "private",
-            ProviderVisibility::Public => "public",
-        };
-        s.to_sql_checked(ty, out)
+        serde_json::to_string(self)?.to_sql_checked(ty, out)
     }
 }
 
 impl<'a> FromSql<'a> for ProviderVisibility {
     fn from_sql(ty: &Type, raw: &'a [u8]) -> Result<Self, Box<dyn Error + Sync + Send>> {
-        let s = <&str as FromSql>::from_sql(ty, raw)?;
-        match s {
-            "private" => Ok(ProviderVisibility::Private),
-            "public" => Ok(ProviderVisibility::Public),
-            _ => Err("invalid provider visibility".into()),
-        }
+        let s = String::from_sql(ty, raw)?;
+        Ok(serde_json::from_str(&s)?)
     }
 
     fn accepts(ty: &Type) -> bool {
