@@ -177,7 +177,7 @@ export const supportQuote: QuoteProps = {
 export const supportDemoVideo: DemoVideo = {
   sectionTitle: "Watch Dust work",
   videoUrl:
-    "https://fast.wistia.net/embed/iframe/7ynip6mgfx?seo=true&videoFoam=true",
+    "https://fast.wistia.net/embed/iframe/r0dwaexoez?seo=true&videoFoam=true",
 };
 
 export const supportStories: CustomerStory[] = [

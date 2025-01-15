@@ -25,17 +25,19 @@ export const DemoVideoSection: FC<DemoVideoSectionProps> = ({
         {demoVideo.sectionTitle}
       </H2>
     </div>
-    <Hover3D depth={-40} perspective={1000} className="relative w-full">
-      <div className="relative w-full pt-[56.25%]">
-        {/* 16:9 aspect ratio */}
-        <iframe
-          src={demoVideo.videoUrl}
-          title="Dust product tour"
-          allow="autoplay; fullscreen"
-          frameBorder="0"
-          className="absolute inset-0 h-full w-full rounded-lg"
-        />
-      </div>
-    </Hover3D>
+    <div className="mx-auto w-[90%]">
+      <Hover3D depth={-40} perspective={1000} className="relative w-full">
+        <div className="relative w-full pt-[56.25%]">
+          {/* 16:9 aspect ratio */}
+          <iframe
+            src={demoVideo.videoUrl}
+            title="Dust product tour"
+            allow="autoplay; fullscreen"
+            frameBorder="0"
+            className="absolute inset-0 h-full w-full rounded-lg"
+          />
+        </div>
+      </Hover3D>
+    </div>
   </div>
 );
