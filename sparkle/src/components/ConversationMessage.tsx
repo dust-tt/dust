@@ -43,8 +43,8 @@ const messageVariants = cva(
   {
     variants: {
       type: {
-        user: "s-bg-muted-background s-w-full @md/conversation:s-w-[calc(100%-14%)] @md/conversation:s-ml-[14%]",
-        agent: "",
+        user: "s-bg-muted-background",
+        agent: "s-w-full",
       },
     },
     defaultVariants: {
