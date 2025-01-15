@@ -712,6 +712,7 @@ export async function handleDataSourceTableCSVUpsert({
         detectedHeaders,
         title: params.title,
         mimeType: params.mimeType,
+        sourceUrl: params.sourceUrl ?? null,
       },
     });
     if (enqueueRes.isErr()) {
