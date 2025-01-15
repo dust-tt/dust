@@ -1,5 +1,6 @@
 import type {
   ContentNodesViewType,
+  CoreAPIContentNode,
   CoreAPIError,
   DataSourceViewContentNode,
   DataSourceViewType,
@@ -10,7 +11,10 @@ import { ConnectorsAPI, CoreAPI, Err, Ok, removeNulls } from "@dust-tt/types";
 import assert from "assert";
 
 import config from "@app/lib/api/config";
-import { getContentNodeInternalIdFromTableId } from "@app/lib/api/content_nodes";
+import {
+  getContentNodeInternalIdFromTableId,
+  getContentNodeMetadata,
+} from "@app/lib/api/content_nodes";
 import type { OffsetPaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
@@ -149,6 +153,35 @@ async function getContentNodesForManagedDataSourceView(
       total: connectorsRes.value.nodes.length,
     });
   }
+}
+
+async function getContentNodesForManagedDataSourceViewFromCore(
+  dataSourceView: DataSourceViewResource | DataSourceViewType,
+  { internalIds, parentId, viewType }: GetContentNodesForDataSourceViewParams
+): Promise<Result<GetContentNodesForDataSourceViewResult, Error>> {
+  const coreContentNodes: CoreAPIContentNode[] = [];
+  return new Ok({
+    nodes: coreContentNodes.map((node) => {
+      const { type, preventSelection, expandable } = getContentNodeMetadata(
+        node,
+        viewType
+      );
+      return {
+        internalId: node.node_id,
+        parentInternalId: node.parent_id,
+        title: node.title,
+        sourceUrl: node.source_url,
+        permission: "read",
+        lastUpdatedAt: node.timestamp,
+        providerVisibility: node.provider_visibility,
+        parentInternalIds: node.parents,
+        type,
+        preventSelection,
+        expandable,
+      };
+    }),
+    total: coreContentNodes.length,
+  });
 }
 
 // Static data sources are data sources that are not managed by a connector.
