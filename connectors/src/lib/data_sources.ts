@@ -839,7 +839,7 @@ export async function upsertDataSourceTableFromCsv({
     mimeType,
     timestamp: null,
     tags: null,
-    source_url: sourceUrl,
+    sourceUrl,
   };
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
