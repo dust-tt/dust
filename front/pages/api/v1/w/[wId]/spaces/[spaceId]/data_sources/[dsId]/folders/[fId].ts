@@ -154,7 +154,7 @@ async function handler(
         parents: parents || [fId],
         title: title,
         mimeType: mime_type,
-        sourceUrl: source_url,
+        sourceUrl: source_url ?? null,
       });
 
       if (upsertRes.isErr()) {

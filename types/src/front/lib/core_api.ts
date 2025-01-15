@@ -1550,7 +1550,7 @@ export class CoreAPI {
     parents: string[];
     title: string;
     mimeType: string;
-    sourceUrl: string | null;
+    sourceUrl?: string | null;
   }): Promise<CoreAPIResponse<{ folder: CoreAPIFolder }>> {
     const response = await this._fetchWithError(
       `${this._url}/projects/${projectId}/data_sources/${encodeURIComponent(
