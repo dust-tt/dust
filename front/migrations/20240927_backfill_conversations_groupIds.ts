@@ -117,7 +117,6 @@ async function updateConversation(
         where: { sId: agentConfigurationIds },
       })
     )
-      // @ts-expect-error `groupIds` was removed.
       .map((agent) => agent.groupIds)
       .flat()
   );
