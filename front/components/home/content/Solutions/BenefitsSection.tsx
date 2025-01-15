@@ -9,7 +9,7 @@ type SparkleIcon = React.ComponentType<{
   size?: "sm" | "md" | "lg" | "xl";
 }>;
 
-export interface Benefits {
+export interface BenefitsProps {
   sectionTitle?: string;
   items: {
     icon: SparkleIcon;
@@ -28,7 +28,7 @@ export interface MetricProps {
 }
 
 interface BenefitsSectionProps {
-  benefits: Benefits;
+  benefits: BenefitsProps;
   fromColor: string;
   toColor: string;
 }

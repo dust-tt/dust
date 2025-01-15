@@ -25,14 +25,14 @@ import { classNames } from "@app/lib/utils";
 // Import from new config location
 import {
   pageSettings,
-  supportHero,
-  supportBenefits,
-  supportMetrics,
-  supportUseCases,
-  supportQuote,
-  supportDemoVideo,
-  supportStories,
-  supportAssistantExamples,
+  Hero,
+  Benefits,
+  Metrics,
+  UseCases,
+  Quote,
+  DemoVideo,
+  Stories,
+  AssistantExamples,
 } from "@app/components/home/content/Solutions/configs/supportConfig";
 
 export async function getServerSideProps() {
@@ -48,7 +48,7 @@ export default function CustomerSupport() {
     <>
       <div className="container flex w-full flex-col gap-0 bg-slate-900/50 px-6 pb-12">
         <HeroSection
-          {...supportHero}
+          {...Hero}
           fromColor={pageSettings.from}
           toColor={pageSettings.to}
         />
@@ -63,11 +63,11 @@ export default function CustomerSupport() {
             )}
           >
             <BenefitsSection
-              benefits={supportBenefits}
+              benefits={Benefits}
               fromColor={pageSettings.from}
               toColor={pageSettings.to}
             />
-            <MetricSection {...supportMetrics} />
+            <MetricSection {...Metrics} />
           </div>
           <div
             className={classNames(
@@ -79,7 +79,7 @@ export default function CustomerSupport() {
             )}
           >
             <UseCasesSection
-              useCase={supportUseCases}
+              useCase={UseCases}
               fromColor={pageSettings.from}
               toColor={pageSettings.to}
             />
@@ -94,7 +94,7 @@ export default function CustomerSupport() {
             )}
           >
             <DemoVideoSection
-              demoVideo={supportDemoVideo}
+              demoVideo={DemoVideo}
               fromColor={pageSettings.from}
               toColor={pageSettings.to}
             />
@@ -108,10 +108,10 @@ export default function CustomerSupport() {
               "2xl:col-start-1"
             )}
           >
-            <QuoteSection {...supportQuote} />
+            <QuoteSection {...Quote} />
             <CustomerStoriesSection
               title="Customer stories"
-              stories={supportStories}
+              stories={Stories}
               fromColor={pageSettings.from}
               toColor={pageSettings.to}
             />
@@ -124,27 +124,24 @@ export default function CustomerSupport() {
               "xl:col-span-10 xl:col-start-2"
             )}
           >
-            {supportHero.ctaButtons && (
+            {Hero.ctaButtons && (
               <div className="mt-4 flex justify-center gap-4">
-                {supportHero.ctaButtons.primary && (
-                  <Link
-                    href={supportHero.ctaButtons.primary.href}
-                    shallow={true}
-                  >
+                {Hero.ctaButtons.primary && (
+                  <Link href={Hero.ctaButtons.primary.href} shallow={true}>
                     <Button
                       variant="highlight"
                       size="md"
-                      label={supportHero.ctaButtons.primary.label}
-                      icon={supportHero.ctaButtons.primary.icon}
+                      label={Hero.ctaButtons.primary.label}
+                      icon={Hero.ctaButtons.primary.icon}
                     />
                   </Link>
                 )}
-                {supportHero.ctaButtons.secondary && (
+                {Hero.ctaButtons.secondary && (
                   <Button
                     variant="outline"
                     size="md"
-                    label={supportHero.ctaButtons.secondary.label}
-                    href={supportHero.ctaButtons.secondary.href}
+                    label={Hero.ctaButtons.secondary.label}
+                    href={Hero.ctaButtons.secondary.href}
                   />
                 )}
               </div>
@@ -169,7 +166,7 @@ export function CustomerCaroussel() {
       title={pageSettings.uptitle}
       subtitle={pageSettings.title}
       description={pageSettings.description}
-      assistants={supportAssistantExamples}
+      assistants={AssistantExamples}
       from={pageSettings.from}
       to={pageSettings.to}
       border="border-pink-100/60"

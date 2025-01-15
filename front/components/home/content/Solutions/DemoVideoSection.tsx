@@ -3,13 +3,13 @@ import type { FC } from "react";
 
 import { H2 } from "@app/components/home/ContentComponents";
 
-export interface DemoVideo {
+export interface DemoVideoProps {
   sectionTitle?: string;
   videoUrl: string;
 }
 
 interface DemoVideoSectionProps {
-  demoVideo: DemoVideo;
+  demoVideo: DemoVideoProps;
   fromColor: string;
   toColor: string;
 }

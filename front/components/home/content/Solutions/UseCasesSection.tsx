@@ -4,7 +4,7 @@ import type { FC } from "react";
 import { ImgBlock } from "@app/components/home/ContentBlocks";
 import { H2, P } from "@app/components/home/ContentComponents";
 
-export interface UseCase {
+export interface UseCaseProps {
   sectionTitle?: string;
   sectionDescription?: string;
   items: {
@@ -16,7 +16,7 @@ export interface UseCase {
 
 // Just like Benefits, make a simple props interface with the base type plus colors
 interface UseCaseSectionProps {
-  useCase: UseCase;
+  useCase: UseCaseProps;
   fromColor: string;
   toColor: string;
 }

@@ -1,14 +1,20 @@
-import { LightbulbIcon, RocketIcon, UserGroupIcon } from "@dust-tt/sparkle";
+import type { ReactElement } from "react";
+import {
+  Button,
+  LightbulbIcon,
+  RocketIcon,
+  UserGroupIcon,
+} from "@dust-tt/sparkle";
 import type {
-  BenefitsProps,
+  Benefits,
   MetricProps,
 } from "@app/components/home/content/Solutions/BenefitsSection";
 import type {
   CustomerStory,
   QuoteProps,
 } from "@app/components/home/content/Solutions/CustomerStoriesSection";
-import type { DemoVideoProps } from "@app/components/home/content/Solutions/DemoVideoSection";
-import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCasesSection";
+import type { DemoVideo } from "@app/components/home/content/Solutions/DemoVideoSection";
+import type { UseCase } from "@app/components/home/content/Solutions/UseCasesSection";
 import type { SolutionSectionAssistantBlockProps } from "@app/components/home/SolutionSection";
 
 // Interface definitions
@@ -44,19 +50,14 @@ interface HeroProps {
 
 // Config exports
 export const pageSettings: pageSettingsProps = {
-  uptitle: "Customer Support",
-  title: <>Instant knowledge, exceptional support</>,
-  from: "from-sky-200",
-  to: "to-sky-500",
-  description: (
-    <>
-      Equip your&nbsp;team with AI&nbsp;assistants to&nbsp;accelerate issue
-      resolution and&nbsp;increase customer satisfaction.
-    </>
-  ),
+  uptitle: "Sales",
+  title: <>Instant sales, exceptional sales</>,
+  from: "from-amber-200",
+  to: "to-amber-500",
+  description: <>We're testing Sales.</>,
 };
 
-export const Hero: HeroProps = {
+export const heroProps: HeroProps = {
   uptitle: pageSettings.uptitle,
   title: pageSettings.title,
   description: pageSettings.description,
@@ -95,18 +96,18 @@ export const Hero: HeroProps = {
   },
 };
 
-export const Benefits: BenefitsProps = {
+export const salesBenefits: Benefits = {
   sectionTitle: "Solve faster, satisfy more",
   items: [
     {
       icon: RocketIcon,
-      title: "Resolve Issues Faster",
+      title: "We're testing Sales",
       description:
         "Surface relevant information from all connected knowledge bases and draft messages in 50+ languages.",
     },
     {
       icon: UserGroupIcon,
-      title: "Boost Team Productivity",
+      title: "We're testing Sales",
       description:
         "Keep teams in sync with real-time information across all channels and cut onboarding time for new joiners.",
     },
@@ -119,10 +120,10 @@ export const Benefits: BenefitsProps = {
   ],
 };
 
-export const Metrics: MetricProps = {
+export const salesMetrics: MetricProps = {
   metrics: [
     {
-      value: "50%",
+      value: "We're testing Sales%",
       description: <>50% in ticket resolution time</>,
     },
     {
@@ -134,19 +135,19 @@ export const Metrics: MetricProps = {
   to: "to-amber-500",
 };
 
-export const UseCases: UseCaseProps = {
+export const salesUseCases: UseCase = {
   sectionTitle: "Your use cases, your way",
   sectionDescription:
     "Customize and automate tasks without writing a single line of code.",
   items: [
     {
-      title: "Ticket Resolution",
+      title: "We're testing Sales",
       content:
         "Accelerate response times with dynamic answer suggestions and contextual knowledge at every step.",
       images: ["/static/landing/solutions/support1.png"],
     },
     {
-      title: "Agent Coaching",
+      title: "We're testing Sales",
       content:
         "Offer feedback to support agents using real-time best practices and ticket insights for consistent, quality service.",
       images: ["/static/landing/solutions/support2.png"],
@@ -158,7 +159,7 @@ export const UseCases: UseCaseProps = {
       images: ["/static/landing/solutions/support3.png"],
     },
     {
-      title: "Customer Insights",
+      title: "We're testing Sales",
       content:
         "Identify trends from customer feedback, helping teams proactively improve service and satisfaction.",
       images: ["/static/landing/solutions/support4.png"],
@@ -166,30 +167,29 @@ export const UseCases: UseCaseProps = {
   ],
 };
 
-export const Quote: QuoteProps = {
-  quote:
-    "We're managing a higher volume of tickets and have cut processing time—from an average of 6 minutes per ticket to just a few seconds.",
+export const salesQuote: QuoteProps = {
+  quote: "We're testing Sales.",
   name: "Anaïs Ghelfi",
   title: "Head of Data Platform at Malt",
   logo: "/static/landing/logos/malt.png",
 };
 
-export const DemoVideo: DemoVideoProps = {
-  sectionTitle: "Watch Dust work",
+export const salesDemoVideo: DemoVideo = {
+  sectionTitle: "We're testing Sales",
   videoUrl:
-    "https://fast.wistia.net/embed/iframe/r0dwaexoez?seo=true&videoFoam=true",
+    "https://fast.wistia.net/embed/iframe/7ynip6mgfx?seo=true&videoFoam=true",
 };
 
-export const Stories: CustomerStory[] = [
+export const salesStories: CustomerStory[] = [
   {
-    title: "Malt cuts support ticket closing time by 50% with Dust",
+    title: "We're testing Sales",
     content:
       "Malt streamlines customer support using Dust's AI platform for rapid, consistent multilingual responses.",
     href: "https://blog.dust.tt/malt-customer-support/",
     src: "https://blog.dust.tt/content/images/size/w2000/2024/12/Malt_Customer_Story_Dust_Support.jpg",
   },
   {
-    title: "Pennylane's journey to deploy Dust for Customer Care teams",
+    title: "We're testing Sales",
     content:
       "Dust evolved from a simple support tool into an integral part of Pennylane's operations.",
     href: "https://blog.dust.tt/pennylane-dust-customer-support-journey/",
@@ -204,7 +204,7 @@ export const Stories: CustomerStory[] = [
   },
 ];
 
-export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
+export const assistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
     emoji: "🤝",
     backgroundColor: "bg-sky-300",
