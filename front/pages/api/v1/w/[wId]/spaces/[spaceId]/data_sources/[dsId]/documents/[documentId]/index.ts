@@ -389,9 +389,14 @@ async function handler(
       }
 
       // TODO(content-node): get rid of this once the use of timestamp columns in core has been rationalized
-      if (!auth.isSystemKey()) {
+      if (!auth.isSystemKey() && r.data.timestamp) {
         logger.info(
-          { timestamp: r.data.timestamp, currentDate: Date.now() },
+          {
+            workspaceId: owner.id,
+            dataSourceId: dataSource.sId,
+            timestamp: r.data.timestamp,
+            currentDate: Date.now(),
+          },
           "[ContentNode] User-set timestamp."
         );
       }

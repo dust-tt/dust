@@ -309,11 +309,17 @@ async function handler(
         title = r.data.title;
       } else {
         // TODO(content-node): get rid of this once the use of timestamp columns in core has been rationalized
-        logger.info(
-          { timestamp: r.data.timestamp, currentDate: Date.now() },
-          "[ContentNode] User-set timestamp."
-        );
-
+        if (r.data.timestamp) {
+          logger.info(
+            {
+              workspaceId: owner.id,
+              dataSourceId: dataSource.sId,
+              timestamp: r.data.timestamp,
+              currentDate: Date.now(),
+            },
+            "[ContentNode] User-set timestamp."
+          );
+        }
         // If the request is from a regular API key, the request must not provide mimeType.
         if (r.data.mime_type) {
           return apiError(req, res, {
