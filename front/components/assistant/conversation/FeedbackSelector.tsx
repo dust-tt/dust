@@ -62,6 +62,7 @@ export function FeedbackSelector({
     feedback?.feedbackContent,
     getPopoverInfo,
     lastSelectedThumb,
+    feedback?.thumb,
   ]);
 
   const selectThumb = useCallback(
@@ -88,7 +89,7 @@ export function FeedbackSelector({
         isConversationShared: false,
       });
     },
-    [feedback?.thumb, localFeedbackContent, onSubmitThumb, isConversationShared]
+    [feedback?.thumb, localFeedbackContent, onSubmitThumb]
   );
 
   const handleThumbUp = useCallback(async () => {
