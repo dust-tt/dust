@@ -8,7 +8,7 @@ import config from "./api/config";
 
 export async function tokenCountForTexts(
   texts: string[],
-  model: { providerId: string; modelId: string }
+  model: { providerId: string; modelId: string; tokenCountAdjustment?: number }
 ): Promise<Result<Array<number>, Error>> {
   const BATCHES_COUNT = 3;
   try {
@@ -32,7 +32,9 @@ export async function tokenCountForTexts(
         );
       }
       for (const tokens of res.value.tokens) {
-        counts.push(tokens.length);
+        counts.push(
+          Math.round(tokens.length * (model.tokenCountAdjustment ?? 1))
+        );
       }
     }
 
