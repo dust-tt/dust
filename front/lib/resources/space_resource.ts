@@ -89,7 +89,9 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   ) {
     assert(auth.isAdmin(), "Only admins can call `makeDefaultsForWorkspace`");
 
-    const existingSpaces = await this.listWorkspaceDefaultSpaces(auth);
+    const existingSpaces = await this.listWorkspaceDefaultSpaces(auth, {
+      includeConversationsSpace: true,
+    });
     const systemSpace =
       existingSpaces.find((s) => s.kind === "system") ||
       (await SpaceResource.makeNew(
