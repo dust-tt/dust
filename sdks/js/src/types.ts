@@ -2086,6 +2086,7 @@ export const UpsertDatabaseTableRequestSchema = z.object({
   remote_database_secret_id: z.string().nullable().optional(),
   title: z.string(),
   mime_type: z.string(),
+  source_url: z.string().nullable().optional(),
 });
 
 export type UpsertDatabaseTableRequestType = z.infer<
