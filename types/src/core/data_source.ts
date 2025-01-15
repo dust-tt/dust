@@ -55,7 +55,7 @@ export type CoreAPIContentNode = {
   provider_visibility: "private" | "public" | null;
   parent_id: string | null;
   parents: string[];
-  source_url: string[];
+  source_url: string | null;
 };
 
 export type CoreAPIDocument = {
