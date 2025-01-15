@@ -408,7 +408,11 @@ async function handler(
           });
         }
       }
-      if (parents?.[1] !== parentId) {
+      if (
+        parents &&
+        (parents.length >= 2 || parentId !== null) &&
+        parents[1] !== parentId
+      ) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {

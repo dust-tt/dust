@@ -522,7 +522,11 @@ async function handler(
           });
         }
       }
-      if (r.data.parents?.[1] !== r.data.parent_id) {
+      if (
+        r.data.parents &&
+        (r.data.parents.length >= 2 || r.data.parent_id !== null) &&
+        r.data.parents[1] !== r.data.parent_id
+      ) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
