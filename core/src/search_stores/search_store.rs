@@ -30,12 +30,18 @@ pub struct DatasourceViewFilter {
     view_filter: Vec<String>,
 }
 
+#[derive(serde::Deserialize)]
+pub struct NodesSearchFilter {
+    data_source_views: Vec<DatasourceViewFilter>,
+    node_ids: Option<Vec<String>>,
+}
+
 #[async_trait]
 pub trait SearchStore {
     async fn search_nodes(
         &self,
         query: String,
-        filter: Vec<DatasourceViewFilter>,
+        filter: NodesSearchFilter,
         options: Option<NodesSearchOptions>,
     ) -> Result<Vec<CoreContentNode>>;
 
@@ -89,7 +95,7 @@ impl SearchStore for ElasticsearchSearchStore {
     async fn search_nodes(
         &self,
         query: String,
-        filter: Vec<DatasourceViewFilter>,
+        filter: NodesSearchFilter,
         options: Option<NodesSearchOptions>,
     ) -> Result<Vec<CoreContentNode>> {
         let options = options.unwrap_or_default();
@@ -105,6 +111,7 @@ impl SearchStore for ElasticsearchSearchStore {
 
         // Build filter conditions using elasticsearch-dsl
         let filter_conditions: Vec<Query> = filter
+            .data_source_views
             .into_iter()
             .map(|f| {
                 let mut bool_query = Query::bool();
@@ -119,15 +126,23 @@ impl SearchStore for ElasticsearchSearchStore {
             })
             .collect();
 
+        let mut bool_query = Query::bool()
+            .must(Query::r#match("title.edge", query))
+            .should(filter_conditions)
+            .minimum_should_match(1);
+
+        // Add node_ids filter if present
+        if let Some(node_ids) = filter.node_ids {
+            if !node_ids.is_empty() {
+                info!("Adding node_ids filter: {:?}", node_ids);
+                bool_query = bool_query.must(Query::terms("node_id", node_ids));
+            }
+        }
+
         let search = Search::new()
             .from(options.offset.unwrap_or(0))
             .size(options.limit.unwrap_or(100))
-            .query(
-                Query::bool()
-                    .must(Query::r#match("title.edge", query))
-                    .should(filter_conditions)
-                    .minimum_should_match(1),
-            );
+            .query(bool_query);
 
         let response = self
             .client

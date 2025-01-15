@@ -51,7 +51,7 @@ use dust::{
     run,
     search_filter::{Filterable, SearchFilter},
     search_stores::search_store::{
-        DatasourceViewFilter, ElasticsearchSearchStore, NodesSearchOptions, SearchStore,
+        ElasticsearchSearchStore, NodesSearchFilter, NodesSearchOptions, SearchStore,
     },
     sqlite_workers::client::{self, HEARTBEAT_INTERVAL_MS},
     stores::{
@@ -3124,7 +3124,7 @@ async fn folders_delete(
 #[serde(deny_unknown_fields)]
 struct NodesSearchPayload {
     query: String,
-    filter: Vec<DatasourceViewFilter>,
+    filter: NodesSearchFilter,
     options: Option<NodesSearchOptions>,
 }
 
