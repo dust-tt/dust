@@ -4,7 +4,6 @@ import {
   ChevronLeftIcon,
   ExternalLinkIcon,
 } from "@dust-tt/sparkle";
-import { useAuth } from "@extension/components/auth/AuthProvider";
 import type { ProtectedRouteChildrenProps } from "@extension/components/auth/ProtectedRoute";
 import { ConversationContainer } from "@extension/components/conversation/ConversationContainer";
 import { ConversationsListButton } from "@extension/components/conversation/ConversationsListButton";
