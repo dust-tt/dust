@@ -62,6 +62,7 @@ Conversation.init(
       allowNull: false,
       defaultValue: [],
     },
+    // TODO(2025-01-15 BIGINT): This should be inferred from the relationship.
     requestedGroupIds: {
       type: DataTypes.ARRAY(DataTypes.ARRAY(DataTypes.INTEGER)),
       allowNull: false,
