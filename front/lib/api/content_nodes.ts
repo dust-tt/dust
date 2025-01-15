@@ -234,9 +234,11 @@ export function getContentNodeMetadata(
         type: "file",
         expandable: false,
       };
-    // need some magic for Google Drive and Microsoft files
+    // handling google drive and microsoft files
     default:
+      // the default match Google Drive
       let expandable = false;
+      let type: ContentNodeType = "file";
       if (
         node.mime_type ===
           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" &&
@@ -244,11 +246,8 @@ export function getContentNodeMetadata(
       ) {
         expandable = true;
       }
-      let type: ContentNodeType;
       if (node.mime_type === "text/csv") {
         type = viewType === "tables" ? "database" : "file";
-      } else {
-        type = "file"; // in the connector, we rely on the Microsoft-specific nodeType, which can be "channel", "folder" or "file", there is currently no way of knowing
       }
       return {
         type,
