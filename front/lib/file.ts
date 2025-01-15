@@ -1,17 +1,11 @@
-// These are the front-end helpers.
-
-function isMarkdownFile(file: File): boolean {
-  if (file.type === "") {
-    const fileExtension = file.name.split(".").at(-1)?.toLowerCase();
-    // Check if the file extension corresponds to a markdown file
-    return fileExtension === "md" || fileExtension === "markdown";
-  }
-  return file.type === "text/markdown";
-}
+import { contentTypeForExtension } from "@dust-tt/types";
 
 export function getMimeTypeFromFile(file: File): string {
-  if (isMarkdownFile(file)) {
-    return "text/markdown";
+  const fileExtension = file.name.split(".").at(-1)?.toLowerCase();
+
+  if (!file.type && fileExtension) {
+    // Lookup by extension
+    return contentTypeForExtension("." + fileExtension) ?? "";
   }
 
   return file.type;
