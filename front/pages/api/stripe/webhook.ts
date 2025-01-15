@@ -299,6 +299,8 @@ async function handler(
               },
               "[Stripe Webhook] Subscription not found."
             );
+            // We return a 200 here to handle multiple regions, DD will watch
+            // the warnings and create an alert if this log appears in all regions
             return res.status(200).json({ success: true });
           }
           await subscription.update({ paymentFailingSince: null });
@@ -340,6 +342,8 @@ async function handler(
               },
               "[Stripe Webhook] Subscription not found."
             );
+            // We return a 200 here to handle multiple regions, DD will watch
+            // the warnings and create an alert if this log appears in all regions
             return res.status(200).json({ success: true });
           }
 
@@ -451,6 +455,8 @@ async function handler(
                 },
                 "[Stripe Webhook] Subscription not found."
               );
+              // We return a 200 here to handle multiple regions, DD will watch
+              // the warnings and create an alert if this log appears in all regions
               return res.status(200).json({ success: true });
             }
             await subscription.update({
@@ -535,6 +541,8 @@ async function handler(
                 },
                 "[Stripe Webhook] Subscription not found."
               );
+              // We return a 200 here to handle multiple regions, DD will watch
+              // the warnings and create an alert if this log appears in all regions
               return res.status(200).json({ success: true });
             }
             if (subscription.trialing) {
@@ -667,6 +675,8 @@ async function handler(
               },
               "[Stripe Webhook] Subscription not found."
             );
+            // We return a 200 here to handle multiple regions, DD will watch
+            // the warnings and create an alert if this log appears in all regions
             return res.status(200).json({ success: true });
           }
 
