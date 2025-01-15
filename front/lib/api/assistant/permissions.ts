@@ -4,7 +4,6 @@ import type {
   UnsavedAgentActionConfigurationType,
 } from "@dust-tt/types";
 import { isDustAppRunConfiguration, removeNulls } from "@dust-tt/types";
-import { uniq } from "lodash";
 import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
