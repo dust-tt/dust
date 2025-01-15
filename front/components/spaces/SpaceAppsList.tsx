@@ -24,7 +24,7 @@ import * as React from "react";
 import { useRef, useState } from "react";
 
 import { SpaceCreateAppModal } from "@app/components/spaces/SpaceCreateAppModal";
-import type { Action } from "@app/lib/registry";
+import type { ActionApp } from "@app/lib/registry";
 import { useApps, useSavedRunStatus } from "@app/lib/swr/apps";
 
 type RowData = {
@@ -54,7 +54,7 @@ const getTableColumns = () => {
 
 const getDustAppsColumns = (
   owner: WorkspaceType,
-  registryApps: Action["app"][]
+  registryApps: ActionApp[]
 ) => ({
   id: "status",
   cell: (info: CellContext<RowData, string>) => {
@@ -81,7 +81,7 @@ const getDustAppsColumns = (
 type AppHashCheckerProps = {
   owner: LightWorkspaceType;
   app: AppType;
-  registryApp: Action["app"];
+  registryApp: ActionApp;
 };
 
 const AppHashChecker = ({ owner, app, registryApp }: AppHashCheckerProps) => {
@@ -135,8 +135,7 @@ interface SpaceAppsListProps {
   onSelect: (sId: string) => void;
   owner: LightWorkspaceType;
   space: SpaceType;
-  isDustApps: boolean;
-  registryApps: Action["app"][];
+  registryApps?: ActionApp[];
 }
 
 export const SpaceAppsList = ({
@@ -144,7 +143,6 @@ export const SpaceAppsList = ({
   canWriteInSpace,
   space,
   onSelect,
-  isDustApps,
   registryApps,
 }: SpaceAppsListProps) => {
   const router = useRouter();
@@ -183,7 +181,7 @@ export const SpaceAppsList = ({
   }
 
   const columns = getTableColumns();
-  if (isDustApps) {
+  if (registryApps) {
     columns.push(getDustAppsColumns(owner, registryApps));
   }
 

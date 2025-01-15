@@ -1,12 +1,14 @@
 import config from "@app/lib/api/config";
 
+export type ActionApp = {
+  workspaceId: string;
+  appId: string;
+  appHash: string;
+  appSpaceId: string;
+};
+
 export type Action = {
-  app: {
-    workspaceId: string;
-    appId: string;
-    appHash: string;
-    appSpaceId: string;
-  };
+  app: ActionApp;
   config: { [key: string]: unknown };
 };
 

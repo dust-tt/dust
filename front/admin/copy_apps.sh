@@ -76,7 +76,7 @@ then
     # Get projects matching the current specifications
     PROJECTS=$(psql $CORE_DATABASE_URI -c "copy (select distinct(project) from specifications where hash in (${IN_CLAUSE})) to stdout" | sed "s/.*/'&'/" | paste -sd, -)
     # Get appIds matching the specifications
-    LOCAL_APP_IDS=$(psql $FRONT_DATABASE_URI -c "copy (select distinct(\"sId\") from apps where \"dustAPIProjectId\" in (${PROJECTS}) and visibility!='deleted' and \"workspaceId\"=${DUST_APPS_WORKSPACE_NUMERIC_ID} order by \"sId\") to stdout" | paste -sd\  -)
+    LOCAL_APP_IDS=$(psql $FRONT_DATABASE_URI -c "copy (select distinct(\"sId\") from apps where \"dustAPIProjectId\" in (${PROJECTS}) and \"deletedAt\" is null and \"workspaceId\"=${DUST_APPS_WORKSPACE_NUMERIC_ID} order by \"sId\") to stdout" | paste -sd\  -)
 
     # Check if any app is missing
     MISSING=false
@@ -109,7 +109,7 @@ PRODBOX_POD_NAME=$(kubectl get pods |grep prodbox|grep Running |cut -d \  -f1)
 
 # ---- front
 VAULT_ID=$(psql ${FRONT_DATABASE_URI} -c "COPY (SELECT id from vaults where \"workspaceId\"=${DUST_APPS_WORKSPACE_NUMERIC_ID} and name='Public Dust Apps') TO STDOUT")
-fetch FRONT apps "id createdAt updatedAt sId name description visibility savedSpecification savedConfig savedRun dustAPIProjectId ${DUST_APPS_WORKSPACE_NUMERIC_ID} ${VAULT_ID}" "\\\"workspaceId\\\"=5069 AND \\\"vaultId\\\"=93077 and visibility='private'"
+fetch FRONT apps "id createdAt updatedAt sId name description visibility savedSpecification savedConfig savedRun dustAPIProjectId ${DUST_APPS_WORKSPACE_NUMERIC_ID} ${VAULT_ID}" "\\\"workspaceId\\\"=5069 AND \\\"vaultId\\\"=93077 and \\\"deletedAt\\\" is not null"
 PROJECT_IDS=$(cut -f 11 /tmp/dust-apps/FRONT_apps.csv |paste -sd "," -)
 
 fetch FRONT datasets "id createdAt updatedAt name description schema appId ${DUST_APPS_WORKSPACE_NUMERIC_ID}" "\\\"workspaceId\\\"=5069"

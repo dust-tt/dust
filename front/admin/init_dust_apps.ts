@@ -1,3 +1,7 @@
+import { isDevelopment } from "@dust-tt/types";
+import _ from "lodash";
+import parseArgs from "minimist";
+
 import { Authenticator } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models/workspace";
 import { internalSubscribeWorkspaceToFreePlan } from "@app/lib/plans/subscription";
@@ -8,14 +12,22 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
+import logger from "@app/logger/logger";
 
 async function main() {
-  let w = await Workspace.findOne({ where: { name: "dust-apps" } });
+  const argv = parseArgs(process.argv.slice(2));
+
+  const where = _.pick(argv, ["name", "sId"]);
+  if (!where.name && !where.sId) {
+    where.name = "dust-apps";
+  }
+  logger.info("Creating workspace");
+  let w = await Workspace.findOne({ where });
   if (!w) {
     console.log("Creating workspace");
     w = await Workspace.create({
-      sId: generateRandomModelSId(),
-      name: "dust-apps",
+      sId: argv.sId || generateRandomModelSId(),
+      name: argv.name || "dust-apps",
     });
 
     await internalSubscribeWorkspaceToFreePlan({
@@ -46,16 +58,18 @@ async function main() {
       kind: "regular",
     });
 
-    const users = await UserModel.findAll();
-    await Promise.all(
-      users.map(async (user) =>
-        MembershipResource.createMembership({
-          user: new UserResource(UserModel, user.get()),
-          workspace: lightWorkspace,
-          role: "admin",
-        })
-      )
-    );
+    if (isDevelopment()) {
+      const users = await UserModel.findAll();
+      await Promise.all(
+        users.map(async (user) =>
+          MembershipResource.createMembership({
+            user: new UserResource(UserModel, user.get()),
+            workspace: lightWorkspace,
+            role: "admin",
+          })
+        )
+      );
+    }
 
     console.log("Creating space");
     space = await SpaceResource.makeNew(

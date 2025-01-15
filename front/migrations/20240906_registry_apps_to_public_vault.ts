@@ -1,14 +1,13 @@
+import config from "@app/lib/api/config";
 import { Workspace } from "@app/lib/models/workspace";
 import { DustProdActionRegistry } from "@app/lib/registry";
 import { AppModel } from "@app/lib/resources/storage/models/apps";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { makeScript } from "@app/scripts/helpers";
-import config from "@app/lib/api/config";
-
-const PUBLIC_VAULT_SQID = "vlt_rICtlrSEpWqX";
 
 makeScript({}, async ({ execute }, logger) => {
-  const vaultId = getResourceIdFromSId(PUBLIC_VAULT_SQID);
+  const publicVaultSqid = config.getDustAppsSpaceId();
+  const vaultId = getResourceIdFromSId(publicVaultSqid);
   const dustAppsWorkspace = await Workspace.findOne({
     where: { sId: config.getDustAppsWorkspaceId() },
   });
@@ -18,7 +17,7 @@ makeScript({}, async ({ execute }, logger) => {
     );
   }
   if (!vaultId) {
-    throw new Error(`Could not find vault with SQID ${PUBLIC_VAULT_SQID}`);
+    throw new Error(`Could not find vault with SQID ${publicVaultSqid}`);
   }
 
   for (const [

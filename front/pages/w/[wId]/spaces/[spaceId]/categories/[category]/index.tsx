@@ -27,7 +27,7 @@ import {
 } from "@app/lib/api/data_sources";
 import { isManaged } from "@app/lib/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import type { Action } from "@app/lib/registry";
+import type { ActionApp } from "@app/lib/registry";
 import { DustProdActionRegistry } from "@app/lib/registry";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 export const getServerSideProps = withDefaultUserAuthRequirements<
@@ -38,8 +38,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     space: SpaceType;
     systemSpace: SpaceType;
     integrations: DataSourceIntegration[];
-    isDustApps: boolean;
-    registryApps: Action["app"][];
+    registryApps?: ActionApp[];
   }
 >(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
@@ -122,13 +121,13 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     }
   }
 
-  const isDustApps =
+  const isDustAppsSpace =
     owner.sId === config.getDustAppsWorkspaceId() &&
     space.sId === config.getDustAppsSpaceId();
 
-  const registryApps = isDustApps
+  const registryApps = isDustAppsSpace
     ? Object.values(DustProdActionRegistry).map((action) => action.app)
-    : [];
+    : undefined;
 
   return {
     props: {
@@ -142,7 +141,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       space: space.toJSON(),
       systemSpace: systemSpace.toJSON(),
       integrations,
-      isDustApps,
       registryApps,
     },
   };
@@ -157,7 +155,6 @@ export default function Space({
   space,
   systemSpace,
   integrations,
-  isDustApps,
   registryApps,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
@@ -195,7 +192,6 @@ export default function Space({
           onSelect={(sId) => {
             void router.push(`/w/${owner.sId}/spaces/${space.sId}/apps/${sId}`);
           }}
-          isDustApps={isDustApps}
           registryApps={registryApps}
         />
       ) : (
