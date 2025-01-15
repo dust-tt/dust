@@ -7,27 +7,28 @@ import {
 } from "@dust-tt/sparkle";
 import Link from "next/link";
 import type { ReactElement } from "react-markdown/lib/react-markdown";
+
+import type { Benefit } from "@app/components/home/content/Solutions/BenefitsSection";
+import { BenefitsSection } from "@app/components/home/content/Solutions/BenefitsSection";
+import type { CustomerStory } from "@app/components/home/content/Solutions/CustomerStoriesSection";
+import { CustomerStoriesSection } from "@app/components/home/content/Solutions/CustomerStoriesSection";
+import { HeroSection } from "@app/components/home/content/Solutions/HeroSection";
+import type { UseCase } from "@app/components/home/content/Solutions/UseCasesSection";
+import { UseCasesSection } from "@app/components/home/content/Solutions/UseCasesSection";
 import {
   CarousselContentBlock,
   MetricComponent,
   Quote,
 } from "@app/components/home/ContentBlocks";
 import { Grid, H2 } from "@app/components/home/ContentComponents";
-import LandingLayout from "@app/components/home/LandingLayout";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
+import LandingLayout from "@app/components/home/LandingLayout";
 import {
   getParticleShapeIndexByName,
   shapeNames,
 } from "@app/components/home/Particles";
 import type { SolutionSectionAssistantBlockProps } from "@app/components/home/SolutionSection";
 import TrustedBy from "@app/components/home/TrustedBy";
-import { BenefitsSection } from "@app/components/home/content/Solutions/BenefitsSection";
-import type { Benefit } from "@app/components/home/content/Solutions/BenefitsSection";
-import { CustomerStoriesSection } from "@app/components/home/content/Solutions/CustomerStoriesSection";
-import type { CustomerStory } from "@app/components/home/content/Solutions/CustomerStoriesSection";
-import { HeroSection } from "@app/components/home/content/Solutions/HeroSection";
-import { UseCasesSection } from "@app/components/home/content/Solutions/UseCasesSection";
-import type { UseCase } from "@app/components/home/content/Solutions/UseCasesSection";
 import { classNames } from "@app/lib/utils";
 
 export async function getServerSideProps() {
