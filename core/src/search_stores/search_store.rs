@@ -132,11 +132,11 @@ impl SearchStore for ElasticsearchSearchStore {
             .minimum_should_match(1);
 
         if let Some(node_ids) = filter.node_ids {
-            bool_query = bool_query.must(Query::terms("node_id", node_ids));
+            bool_query = bool_query.filter(Query::terms("node_id", node_ids));
         }
 
         if let Some(parent_id) = filter.parent_id {
-            bool_query = bool_query.must(Query::term("parent_id", parent_id));
+            bool_query = bool_query.filter(Query::term("parent_id", parent_id));
         }
 
         if let Some(query) = query {
@@ -284,17 +284,20 @@ impl ElasticsearchSearchStore {
         // Build has_children query
         let has_children_search = Search::new()
             .size(0)
-            .query(Query::terms(
+            .query(Query::bool().filter(Query::terms(
                 "parent_id",
                 nodes.iter().map(|n| &n.node_id).collect::<Vec<_>>(),
-            ))
-            .aggregate("parent_nodes", Aggregation::terms("parent_id").size(1000));
+            )))
+            .aggregate(
+                "parent_nodes",
+                Aggregation::terms("parent_id").size(MAX_PAGE_SIZE),
+            );
 
         // Build parent titles query
         let parent_ids: Vec<_> = nodes.iter().filter_map(|n| n.parent_id.as_ref()).collect();
         let parent_titles_search = Search::new()
             .size(parent_ids.len() as u64)
-            .query(Query::terms("node_id", parent_ids))
+            .query(Query::bool().filter(Query::terms("node_id", parent_ids)))
             .source(vec!["node_id", "title"]);
 
         // Execute both futures concurrently
@@ -309,10 +312,10 @@ impl ElasticsearchSearchStore {
                 .send()
         );
 
-        // Process respons
         let has_children_response = has_children_response?;
         let parent_titles_response = parent_titles_response?;
 
+        // Process has_children results
         let has_children_map = if has_children_response.status_code().is_success() {
             let response_body = has_children_response.json::<serde_json::Value>().await?;
             response_body["aggregations"]["parent_nodes"]["buckets"]
@@ -358,7 +361,7 @@ impl ElasticsearchSearchStore {
             return Err(anyhow::anyhow!("Failed to fetch parent titles: {}", error));
         };
 
-        // Create CoreContentNodes, consuming the nodes
+        // Create CoreContentNodes using the above results
         let core_content_nodes = nodes
             .into_iter()
             .map(|node| {
@@ -373,11 +376,7 @@ impl ElasticsearchSearchStore {
                     .cloned()
                     .unwrap_or_default();
 
-                CoreContentNode::new(
-                    node, // Node is moved here
-                    has_children,
-                    parent_title,
-                )
+                CoreContentNode::new(node, has_children, parent_title)
             })
             .collect();
 
