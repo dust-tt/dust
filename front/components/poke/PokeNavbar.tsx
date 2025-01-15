@@ -1,8 +1,7 @@
-import { Button, Logo, Spinner } from "@dust-tt/sparkle";
+import { Button, Logo } from "@dust-tt/sparkle";
 import { isDevelopment } from "@dust-tt/types";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { PokeButton } from "@app/components/poke/shadcn/ui/button";
 import {
@@ -90,15 +89,15 @@ export function PokeSearchCommand() {
             <div className="p-4 text-sm">Enter at least 2 characters...</div>
           )}
 
-          {results.map(({ id, link, name }) =>
+          {results.map(({ id, link, name }, index) =>
             link ? (
               <Link href={link} key={id}>
-                <PokeCommandItem value={name}>
+                <PokeCommandItem value={name} index={index}>
                   {name} (id: {id})
                 </PokeCommandItem>
               </Link>
             ) : (
-              <PokeCommandItem key={id} value={name}>
+              <PokeCommandItem key={id} value={name} index={index}>
                 {name} (id: {id})
               </PokeCommandItem>
             )
