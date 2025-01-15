@@ -82,6 +82,9 @@ const afterCallback: AfterCallbackPageRoute = async (
 
     params.set("returnTo", "/api/login");
 
+    // We redirect before returning the session, which prevents nextjs-auth0 from setting a session
+    // cookie on this domain. The user will get their session cookie only after silent auth
+    // completes on their correct region domain.
     res.writeHead(302, {
       Location: `${targetRegionInfo.url}/api/auth/login?${params.toString()}`,
     });
