@@ -59,14 +59,15 @@ import {
   TokenizeResponseSchema,
   UpsertFolderResponseSchema,
 } from "./types";
+
+export * from "./types";
+
 import type { AxiosRequestConfig } from "axios";
 import axios from "axios";
 import { createParser } from "eventsource-parser";
 import http from "http";
 import https from "https";
 import { Readable } from "stream";
-
-export * from "./types";
 
 interface DustResponse {
   status: number;
