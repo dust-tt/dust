@@ -6,6 +6,7 @@ import { classNames } from "@sparkle/lib/utils";
 const TooltipProvider = TooltipPrimitive.Provider;
 
 const TooltipRoot = TooltipPrimitive.Root;
+const TooltipPortal = TooltipPrimitive.Portal;
 
 const TooltipTrigger = TooltipPrimitive.Trigger;
 
@@ -59,6 +60,7 @@ TooltipContent.displayName = TooltipPrimitive.Content.displayName;
 export {
   Tooltip,
   TooltipContent,
+  TooltipPortal,
   TooltipProvider,
   TooltipRoot,
   TooltipTrigger,

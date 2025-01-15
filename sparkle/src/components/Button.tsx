@@ -8,6 +8,7 @@ import {
   LinkWrapperProps,
   Spinner,
   TooltipContent,
+  TooltipPortal,
   TooltipProvider,
   TooltipRoot,
   TooltipTrigger,
@@ -15,7 +16,6 @@ import {
 import { SpinnerProps } from "@sparkle/components/Spinner";
 import { ChevronDownIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
-import { TooltipPortal } from "@radix-ui/react-tooltip";
 
 export const BUTTON_VARIANTS = [
   "primary",

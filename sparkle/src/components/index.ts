@@ -135,6 +135,7 @@ export { TextArea } from "./TextArea";
 export {
   Tooltip,
   TooltipContent,
+  TooltipPortal,
   TooltipProvider,
   TooltipRoot,
   TooltipTrigger,
