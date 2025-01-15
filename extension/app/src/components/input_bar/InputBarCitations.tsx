@@ -31,6 +31,11 @@ export function InputBarCitations({
           key={`cf-${blob.id}`}
           className="w-48"
           isLoading={blob.isUploading}
+          action={
+            <CitationClose
+              onClick={() => fileUploaderService.removeFile(blob.id)}
+            />
+          }
         >
           {isImage ? (
             <>
@@ -45,9 +50,6 @@ export function InputBarCitations({
             </CitationIcons>
           )}
           <CitationTitle>{blob.id}</CitationTitle>
-          <CitationClose
-            onClick={() => fileUploaderService.removeFile(blob.id)}
-          />
         </Citation>
       );
     }
