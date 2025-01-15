@@ -119,6 +119,9 @@ const config = {
       "DEVELOPMENT_DUST_APPS_VAULT_ID"
     );
   },
+  getRegion: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("DUST_REGION");
+  },
   getRegionResolverSecret: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("REGION_RESOLVER_SECRET");
   },

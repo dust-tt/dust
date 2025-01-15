@@ -477,7 +477,7 @@ const authenticate = async (
     client_id: AUTH0_CLIENT_ID,
     response_type: "code",
     scope:
-      "offline_access openid read:user_profile read:conversation create:conversation update:conversation read:agent read:file create:file delete:file",
+      "offline_access read:user_profile read:conversation create:conversation update:conversation read:agent read:file create:file delete:file",
     redirect_uri: redirectUrl,
     audience: DUST_API_AUDIENCE,
     code_challenge_method: "S256",
@@ -555,7 +555,6 @@ const refreshToken = async (
       state.refreshRequests = [];
       handlers.forEach((sendResponse) => {
         sendResponse({
-          idToken: data.id_token,
           accessToken: data.access_token,
           refreshToken: data.refresh_token || refreshToken,
           expiresIn: data.expires_in,
@@ -605,7 +604,6 @@ const exchangeCodeForTokens = async (
     const data = await response.json();
 
     return {
-      idToken: data.id_token,
       accessToken: data.access_token,
       refreshToken: data.refresh_token,
       expiresIn: data.expires_in,

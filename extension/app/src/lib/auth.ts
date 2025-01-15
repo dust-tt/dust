@@ -50,7 +50,7 @@ export const login = async (
       throw new Error("No access token received.");
     }
     const tokens = await saveTokens(response);
-    const dustDomain = getDustDomain(tokens.idToken);
+    const dustDomain = getDustDomain(tokens.accessToken);
     const res = await fetchMe(tokens.accessToken, dustDomain);
     if (res.isErr()) {
       return res;
@@ -116,11 +116,13 @@ export const getAccessToken = async (): Promise<string | null> => {
   return tokens?.accessToken ?? null;
 };
 
-const getDustDomain = (idToken: string) => {
+const getDustDomain = (accessToken: string) => {
   if (process.env.NODE_ENV === "development") {
     return "http://localhost:3000";
   } else {
-    const claims = jwtDecode<{ "https://dust.tt/region": RegionType }>(idToken);
+    const claims = jwtDecode<{ "https://dust.tt/region": RegionType }>(
+      accessToken
+    );
     const region = claims["https://dust.tt/region"];
     switch (region) {
       case "europe-west1":
