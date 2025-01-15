@@ -784,6 +784,7 @@ export async function upsertDataSourceTableFromCsv({
   useAppForHeaderDetection,
   title,
   mimeType,
+  sourceUrl,
 }: {
   dataSourceConfig: DataSourceConfig;
   tableId: string;
@@ -797,6 +798,7 @@ export async function upsertDataSourceTableFromCsv({
   useAppForHeaderDetection?: boolean;
   title: string;
   mimeType: string;
+  sourceUrl?: string;
 }) {
   const localLogger = logger.child({ ...loggerArgs, tableId, tableName });
   const statsDTags = [
@@ -837,6 +839,7 @@ export async function upsertDataSourceTableFromCsv({
     mimeType,
     timestamp: null,
     tags: null,
+    source_url: sourceUrl,
   };
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
