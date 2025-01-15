@@ -5,6 +5,7 @@ use super::folder::Folder;
 use tokio_postgres::types::{private::BytesMut, FromSql, IsNull, ToSql, Type};
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[serde(rename_all = "lowercase")]
 pub enum ProviderVisibility {
     Private,
     Public,
