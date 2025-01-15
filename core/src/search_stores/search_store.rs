@@ -7,7 +7,7 @@ use elasticsearch::{
     http::transport::{SingleNodeConnectionPool, TransportBuilder},
     DeleteByQueryParts, DeleteParts, Elasticsearch, IndexParts, SearchParts,
 };
-use elasticsearch_dsl::{Query, Search};
+use elasticsearch_dsl::{Aggregation, Query, Search};
 use serde_json::json;
 use tracing::{error, info};
 use url::Url;
@@ -260,47 +260,33 @@ impl ElasticsearchSearchStore {
             ));
         }
 
-        // Prepare the has_children query future
-        let has_children_future = self
-            .client
-            .search(SearchParts::Index(&[NODES_INDEX_NAME]))
-            .body(json!({
-                "size": 0,
-                "query": {
-                    "terms": {
-                        "parent_id": nodes.iter().map(|n| &n.node_id).collect::<Vec<_>>()
-                    }
-                },
-                "aggs": {
-                    "parent_nodes": {
-                        "terms": {
-                            "field": "parent_id",
-                            "size": 1000
-                        }
-                    }
-                }
-            }))
-            .send();
+        // Build has_children query using DSL
+        let has_children_search = Search::new()
+            .size(0)
+            .query(Query::terms(
+                "parent_id",
+                nodes.iter().map(|n| &n.node_id).collect::<Vec<_>>(),
+            ))
+            .aggregate("parent_nodes", Aggregation::terms("parent_id").size(1000));
 
-        // Prepare the parent titles query future
+        // Build parent titles query using DSL
         let parent_ids: Vec<_> = nodes.iter().filter_map(|n| n.parent_id.as_ref()).collect();
-        let parent_titles_future = self
-            .client
-            .search(SearchParts::Index(&[NODES_INDEX_NAME]))
-            .body(json!({
-                "size": parent_ids.len(),
-                "query": {
-                    "terms": {
-                        "node_id": parent_ids
-                    }
-                },
-                "_source": ["node_id", "title"]
-            }))
-            .send();
+        let parent_titles_search = Search::new()
+            .size(parent_ids.len() as u64)
+            .query(Query::terms("node_id", parent_ids))
+            .source(vec!["node_id", "title"]);
 
         // Execute both futures concurrently
-        let (has_children_response, parent_titles_response) =
-            tokio::join!(has_children_future, parent_titles_future);
+        let (has_children_response, parent_titles_response) = tokio::join!(
+            self.client
+                .search(SearchParts::Index(&[NODES_INDEX_NAME]))
+                .body(has_children_search)
+                .send(),
+            self.client
+                .search(SearchParts::Index(&[NODES_INDEX_NAME]))
+                .body(parent_titles_search)
+                .send()
+        );
 
         // Process responses (rest of the function remains the same)
         let has_children_response = has_children_response?;
