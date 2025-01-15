@@ -44,6 +44,20 @@ export function sectionFullText(
   );
 }
 
+export type CoreAPIContentNode = {
+  data_source_id: string;
+  data_source_internal_id: string;
+  node_id: string;
+  node_type: "Document" | "Table" | "Folder";
+  timestamp: number;
+  title: string;
+  mime_type: string;
+  provider_visibility: "private" | "public" | null;
+  parent_id: string | null;
+  parents: string[];
+  source_url: string[];
+};
+
 export type CoreAPIDocument = {
   data_source_id: string;
   created: number;
