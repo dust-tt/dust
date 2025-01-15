@@ -165,22 +165,19 @@ export const HeaderContentBlock = ({
       )}
       {hasCTA && (
         <div className="flex gap-4">
-          <Link href="/pricing" shallow={true}>
-            <Button
-              variant="highlight"
-              size="md"
-              label="Get started"
-              icon={RocketIcon}
-            />
-          </Link>
-          <Link href="/contact" shallow={true}>
-            <Button
-              variant="outline"
-              size="md"
-              label="Talk to sales"
-              target="_blank"
-            />
-          </Link>
+          <Button
+            variant="highlight"
+            size="md"
+            label="Get started"
+            href="/pricing"
+            icon={RocketIcon}
+          />
+          <Button
+            href="/home/contact"
+            variant="outline"
+            size="md"
+            label="Talk to sales"
+          />
         </div>
       )}
     </div>

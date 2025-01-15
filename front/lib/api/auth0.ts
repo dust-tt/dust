@@ -1,3 +1,4 @@
+import type { Session } from "@auth0/nextjs-auth0";
 import type { Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import { ManagementClient } from "auth0";
@@ -8,6 +9,7 @@ import jwksClient from "jwks-rsa";
 import type { NextApiRequest } from "next";
 
 import config from "@app/lib/api/config";
+import type { RegionType } from "@app/lib/api/regions/config";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 
@@ -73,6 +75,28 @@ export function getAuth0ManagemementClient(): ManagementClient {
   }
 
   return auth0ManagemementClient;
+}
+
+// Store the region in the user's app_metadata to redirect to the right region.
+export async function setRegionForUser(session: Session, region: RegionType) {
+  const managementClient = getAuth0ManagemementClient();
+
+  return managementClient.users.update(
+    {
+      id: session.user.sub,
+    },
+    {
+      app_metadata: {
+        region,
+      },
+    }
+  );
+}
+
+export function getRegionForUserSession(session: Session): RegionType | null {
+  const regionClaim = `${config.getAuth0NamespaceClaim()}region`;
+
+  return session.user[regionClaim] ?? null;
 }
 
 /**

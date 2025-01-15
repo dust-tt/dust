@@ -32,11 +32,6 @@ export class DataSourceViewModel extends SoftDeletableModel<DataSourceViewModel>
 }
 DataSourceViewModel.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,

@@ -322,6 +322,7 @@ const getProcessingFunction = ({
     case "text/calendar":
     case "text/css":
     case "text/javascript":
+    case "text/typescript":
     case "application/json":
     case "application/xml":
     case "application/x-sh":

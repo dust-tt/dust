@@ -220,7 +220,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
               <div className="z-50 flex justify-end gap-2 p-2 shadow-tale">
                 <SearchInput
                   name="search"
-                  placeholder="Search (Title)"
+                  placeholder="Search"
                   value={titleFilter}
                   onChange={setTitleFilter}
                 />

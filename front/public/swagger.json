@@ -2006,18 +2006,18 @@
                   },
                   "parent_id": {
                     "type": "string",
-                    "description": "Direct parent document ID to associate with the document."
+                    "description": "Reserved for internal use, should not be set. Document ID of the direct parent to associate with the document."
                   },
                   "parents": {
                     "type": "array",
                     "items": {
                       "type": "string"
                     },
-                    "description": "Document and ancestor ids, with the following convention: parents[0] === documentId, parents[1] === parent_id, and then ancestors ids in order"
+                    "description": "Reserved for internal use, should not be set. Document and ancestor ids, with the following convention: parents[0] === documentId, parents[1] === parent_id, and then ancestors ids in order."
                   },
                   "timestamp": {
                     "type": "number",
-                    "description": "Unix timestamp (in seconds) for the document (e.g. 1698225000). Can be null or omitted."
+                    "description": "Reserved for internal use, should not be set. Unix timestamp (in seconds) of the time the document was last updated (e.g. 1698225000)."
                   },
                   "light_document_output": {
                     "type": "boolean",
@@ -3185,7 +3185,7 @@
                   },
                   "timestamp": {
                     "type": "number",
-                    "description": "Timestamp of the table"
+                    "description": "Reserved for internal use, should not be set. Unix timestamp (in seconds) of the time the document was last updated (e.g. 1698225000)."
                   },
                   "tags": {
                     "type": "array",
@@ -3198,12 +3198,12 @@
                     "type": "array",
                     "items": {
                       "type": "string",
-                      "description": "Table and ancestor ids, with the following convention: parents[0] === table_id, parents[1] === parent_id, and then ancestors ids in order"
+                      "description": "Reserved for internal use, should not be set. Table and ancestor ids, with the following convention: parents[0] === table_id, parents[1] === parent_id, and then ancestors ids in order"
                     }
                   },
                   "parent_id": {
                     "type": "string",
-                    "description": "Direct parent id of this table"
+                    "description": "Reserved for internal use, should not be set. ID of the direct parent to associate with the table"
                   },
                   "mime_type": {
                     "type": "string",
@@ -3296,7 +3296,7 @@
     },
     "/api/v1/w/{wId}/spaces": {
       "get": {
-        "summary": "List Spaces accessible.",
+        "summary": "List available spaces.",
         "description": "Retrieves a list of accessible spaces for the authenticated workspace.",
         "tags": [
           "Spaces"

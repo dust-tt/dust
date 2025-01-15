@@ -3,10 +3,9 @@ import type {
   Result,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
-import { Err, isDevelopment, Ok } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import config from "@app/lib/api/config";
 import { getTokenFromMembershipInvitationUrl } from "@app/lib/api/invitation";
 import { evaluateWorkspaceSeatAvailability } from "@app/lib/api/workspace";
 import { getSession } from "@app/lib/auth";
@@ -26,11 +25,6 @@ import {
 } from "@app/lib/iam/workspaces";
 import type { MembershipInvitation } from "@app/lib/models/workspace";
 import { Workspace } from "@app/lib/models/workspace";
-import {
-  config as multiRegionConfig,
-  isMultiRegions,
-} from "@app/lib/multi_regions/config";
-import { RegionLookupClient } from "@app/lib/multi_regions/region_lookup_client";
 import { subscriptionForWorkspace } from "@app/lib/plans/subscription";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
@@ -349,31 +343,6 @@ async function handler(
         message: "The method passed is not supported, GET is expected.",
       },
     });
-  }
-
-  if (
-    isMultiRegions() &&
-    (isDevelopment() ||
-      multiRegionConfig.getCurrentRegion() === "europe-west1" ||
-      config.getClientFacingUrl() === "https://front-edge.dust.tt")
-  ) {
-    // Check if the user should be redirect to another region.
-    const regionLookupClient = new RegionLookupClient();
-    const r = await regionLookupClient.lookupUser(session.user);
-    for (const [region, result] of r) {
-      if (result.response.exists) {
-        if (!result.isCurrentRegion) {
-          //TODO(multi-regions): keep the querystring when redirecting
-          res.redirect(`${result.regionUrl}/api/login`);
-          // Skip the rest of the handler
-          return;
-        } else {
-          console.log(
-            `User ${session.user.email} is already in the correct region ${region} (${result.regionUrl}).`
-          );
-        }
-      }
-    }
   }
 
   const { inviteToken, wId } = req.query;

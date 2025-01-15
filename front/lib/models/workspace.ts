@@ -173,13 +173,6 @@ MembershipInvitation.init(
       allowNull: false,
       defaultValue: "user",
     },
-    invitedUserId: {
-      type: DataTypes.INTEGER,
-      references: {
-        model: "users",
-        key: "id",
-      },
-    },
   },
   {
     modelName: "membership_invitation",

@@ -1,0 +1,9 @@
+PUT core.data_sources_nodes/_mapping
+{
+  "properties": {
+    "provider_visibility": {
+      "type": "keyword",
+      "index": false
+    }
+  }
+}
