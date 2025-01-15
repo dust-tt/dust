@@ -260,7 +260,7 @@ impl ElasticsearchSearchStore {
             ));
         }
 
-        // Build has_children query using DSL
+        // Build has_children query
         let has_children_search = Search::new()
             .size(0)
             .query(Query::terms(
@@ -269,7 +269,7 @@ impl ElasticsearchSearchStore {
             ))
             .aggregate("parent_nodes", Aggregation::terms("parent_id").size(1000));
 
-        // Build parent titles query using DSL
+        // Build parent titles query
         let parent_ids: Vec<_> = nodes.iter().filter_map(|n| n.parent_id.as_ref()).collect();
         let parent_titles_search = Search::new()
             .size(parent_ids.len() as u64)
@@ -288,25 +288,26 @@ impl ElasticsearchSearchStore {
                 .send()
         );
 
-        // Process responses (rest of the function remains the same)
+        // Process respons
         let has_children_response = has_children_response?;
         let parent_titles_response = parent_titles_response?;
 
         let has_children_map = if has_children_response.status_code().is_success() {
             let response_body = has_children_response.json::<serde_json::Value>().await?;
-            let mut map = HashMap::new();
-
-            if let Some(aggs) = response_body["aggregations"]["parent_nodes"]["buckets"].as_array()
-            {
-                for bucket in aggs {
-                    if let (Some(parent_id), Some(doc_count)) =
-                        (bucket["key"].as_str(), bucket["doc_count"].as_u64())
-                    {
-                        map.insert(parent_id.to_string(), doc_count > 0);
-                    }
-                }
-            }
-            map
+            response_body["aggregations"]["parent_nodes"]["buckets"]
+                .as_array()
+                .map(|buckets| {
+                    buckets
+                        .iter()
+                        .filter_map(|bucket| {
+                            Some((
+                                bucket["key"].as_str()?.to_string(),
+                                bucket["doc_count"].as_u64()? > 0,
+                            ))
+                        })
+                        .collect::<HashMap<_, _>>()
+                })
+                .unwrap_or_default()
         } else {
             let error = has_children_response.json::<serde_json::Value>().await?;
             return Err(anyhow::anyhow!(
