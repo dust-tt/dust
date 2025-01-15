@@ -1,4 +1,5 @@
 import * as TabsPrimitive from "@radix-ui/react-tabs";
+import { cva, VariantProps } from "class-variance-authority";
 import * as React from "react";
 
 import { ScrollArea, ScrollBar } from "@sparkle/components/";
@@ -8,24 +9,32 @@ import { cn } from "@sparkle/lib/utils";
 
 const Tabs = TabsPrimitive.Root;
 
-type TabsListProps = React.ComponentPropsWithoutRef<
-  typeof TabsPrimitive.List
-> & {
-  isFullSize?: boolean;
-};
+const tabsListVariants = cva("s-inline-flex s-h-11 s-gap-2", {
+  variants: {
+    size: {
+      full: "s-w-full",
+    },
+    border: {
+      true: "s-border-b s-border-primary-200/60",
+    },
+  },
+  defaultVariants: {
+    size: "full",
+    border: true,
+  },
+});
+
+type TabsListProps = React.ComponentPropsWithoutRef<typeof TabsPrimitive.List> &
+  VariantProps<typeof tabsListVariants>;
 
 const TabsList = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.List>,
   TabsListProps
->(({ className, isFullSize = true, ...props }, ref) => (
+>(({ className, size, border, ...props }, ref) => (
   <ScrollArea>
     <TabsPrimitive.List
       ref={ref}
-      className={cn(
-        "s-inline-flex s-h-11 s-gap-2 s-border-b s-border-primary-200/60",
-        isFullSize && "s-w-full",
-        className
-      )}
+      className={cn(tabsListVariants({ size, border }), className)}
       {...props}
     />
     <ScrollBar orientation="horizontal" className="s-hidden" />
