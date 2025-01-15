@@ -5,7 +5,6 @@
 
 # testing
 /coverage
-.jest-cache
 
 # next.js
 /.next/

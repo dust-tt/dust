@@ -31,6 +31,7 @@
     "**/*.tsx",
     "**/*.jsx",
     "**/*.js",
+    "**/*.mjs",
     "./.eslintrc.js"
   ],
   "exclude": ["node_modules", "extension"]

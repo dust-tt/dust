@@ -1,90 +1,117 @@
-import type { GetWorkspaceFeatureFlagsResponseType } from "@dust-tt/client";
-import type { WhitelistableFeature } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createMocks } from "node-mocks-http";
+import { describe, expect, it } from "vitest";
 
-import { getFeatureFlags } from "@app/lib/auth";
+import { frontSequelize } from "@app/lib/resources/storage";
 import handler from "@app/pages/api/v1/w/[wId]/feature_flags";
+import { featureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
+import { groupFactory } from "@app/tests/utils/GroupFactory";
+import { keyFactory } from "@app/tests/utils/KeyFactory";
+import { withTestDatabase } from "@app/tests/utils/withTestDatabase";
+import { workspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 
-// jest.mock("@app/lib/auth", () => ({
-//   getFeatureFlags: jest.fn(),
-// }));
+describe(
+  "/api/v1/w/[wId]/feature_flags",
+  withTestDatabase(frontSequelize, async () => {
+    it("returns 404 if not system key", async () => {
+      const workspace = await workspaceFactory().basic().create();
+      const globalGroup = await groupFactory().global(workspace).create();
+      const key = await keyFactory().regular(globalGroup).create();
 
-describe("/api/v1/w/[wId]/feature_flags", () => {
-  const mockWorkspace = {
-    id: "123",
-    sId: "workspace-123",
-  };
+      const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+        method: "GET",
+        query: { wId: workspace.sId },
+        headers: {
+          authorization: "Bearer " + key.secret,
+        },
+      });
 
-  beforeEach(() => {
-    jest.resetAllMocks();
-  });
+      await handler(req, res);
 
-  it("returns 404 if not system key", async () => {
-    const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
-      method: "GET",
-      query: { wId: mockWorkspace.sId },
-      headers: {
-        authorization: "Bearer sk-aeklraermkal",
-      },
+      expect(res._getStatusCode()).toBe(404);
+      expect(JSON.parse(res._getData())).toEqual({
+        error: {
+          type: "workspace_not_found",
+          message: "The workspace was not found.",
+        },
+      });
     });
 
-    await handler(req, res);
+    it("returns 401 if disabled key", async () => {
+      const workspace = await workspaceFactory().basic().create();
+      const globalGroup = await groupFactory().global(workspace).create();
+      const key = await keyFactory().disabled(globalGroup).create();
 
-    expect(res._getStatusCode()).toBe(401);
-    expect(JSON.parse(res._getData())).toEqual({
-      error: {
-        type: "workspace_not_found",
-        message: "The workspace was not found.",
-      },
-    });
-  });
+      const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+        method: "GET",
+        query: { wId: workspace.sId },
+        headers: {
+          authorization: "Bearer " + key.secret,
+        },
+      });
 
-  /*
-  it("returns feature flags for valid system key request", async () => {
-    const mockFlags: WhitelistableFeature[] = [
-      "usage_data_api",
-      "labs_transcripts",
-    ];
-    (getFeatureFlags as jest.Mock).mockResolvedValue(mockFlags);
+      await handler(req, res);
 
-    const { req, res } = createMocks({
-      method: "GET",
-      query: { wId: mockWorkspace.sId },
-    });
-
-    const auth = {
-      isSystemKey: () => true,
-      getNonNullableWorkspace: () => mockWorkspace,
-    };
-
-    await handler(req, res, auth);
-
-    expect(res._getStatusCode()).toBe(200);
-    expect(JSON.parse(res._getData())).toEqual({
-      feature_flags: mockFlags,
-    });
-  });
-
-  it("returns 405 for non-GET methods", async () => {
-    const { req, res } = createMocks({
-      method: "POST",
-      query: { wId: mockWorkspace.sId },
+      expect(res._getStatusCode()).toBe(401);
+      expect(JSON.parse(res._getData())).toEqual({
+        error: {
+          type: "invalid_api_key_error",
+          message: "The API key provided is invalid or disabled.",
+        },
+      });
     });
 
-    const auth = {
-      isSystemKey: () => true,
-      getNonNullableWorkspace: () => mockWorkspace,
-    };
+    it("returns 200 and an array if system key", async () => {
+      const workspace = await workspaceFactory().basic().create();
+      const globalGroup = await groupFactory().global(workspace).create();
+      const key = await keyFactory().system(globalGroup).create();
 
-    await handler(req, res, auth);
+      // Add features flag
+      await featureFlagFactory().basic("deepseek_feature", workspace).create();
+      await featureFlagFactory().basic("document_tracker", workspace).create();
 
-    expect(res._getStatusCode()).toBe(405);
-    expect(JSON.parse(res._getData())).toEqual({
-      error: {
-        type: "method_not_supported_error",
-        message: "The method passed is not supported, GET is expected.",
-      },
+      const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+        method: "GET",
+        query: { wId: workspace.sId },
+        headers: {
+          authorization: "Bearer " + key.secret,
+        },
+      });
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(200);
+      expect(JSON.parse(res._getData())).toEqual(
+        expect.objectContaining({
+          feature_flags: ["deepseek_feature", "document_tracker"],
+        })
+      );
     });
-    */
-});
+
+    it("any other methods will return 405", async () => {
+      const workspace = await workspaceFactory().basic().create();
+      const globalGroup = await groupFactory().global(workspace).create();
+      const key = await keyFactory().system(globalGroup).create();
+
+      for (const method of ["PUT", "DELETE", "PATCH"] as const) {
+        const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+          method: method,
+          query: { wId: workspace.sId },
+          headers: {
+            authorization: "Bearer " + key.secret,
+          },
+        });
+
+        await handler(req, res);
+
+        expect(res._getStatusCode()).toBe(405);
+        expect(JSON.parse(res._getData())).toEqual({
+          error: {
+            type: "method_not_supported_error",
+            message: "The method passed is not supported, GET is expected.",
+          },
+        });
+      }
+    });
+  })
+);
