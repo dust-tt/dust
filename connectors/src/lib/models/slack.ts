@@ -202,12 +202,6 @@ SlackChatBotMessage.init(
     updatedAt: {
       type: DataTypes.DATE,
     },
-    // TODO(2025-01-15 BIGINT): This should be inferred from the relationship.
-    connectorId: {
-      type: DataTypes.INTEGER,
-
-      allowNull: false,
-    },
     channelId: {
       type: DataTypes.STRING,
       allowNull: false,
