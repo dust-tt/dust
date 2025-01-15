@@ -27,11 +27,6 @@ AgentMessageContent.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    // TODO(2025-01-15 BIGINT): This should be inferred from the relationship.
-    agentMessageId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
     step: {
       type: DataTypes.INTEGER,
       allowNull: false,
