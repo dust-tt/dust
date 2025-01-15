@@ -22,7 +22,6 @@ import {
 import type {
   SubscriptionPerSeatPricing,
   SubscriptionType,
-  UserType,
   WorkspaceType,
 } from "@dust-tt/types";
 import type * as t from "io-ts";
@@ -34,7 +33,6 @@ import React, { useEffect, useState } from "react";
 import { subNavigationAdmin } from "@app/components/navigation/config";
 import { PricePlans } from "@app/components/plans/PlansTables";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { SubscriptionContactUsDrawer } from "@app/components/SubscriptionContactUsDrawer";
 import { getPriceAsString } from "@app/lib/client/subscription";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -51,7 +49,6 @@ import type { PatchSubscriptionRequestBody } from "@app/pages/api/w/[wId]/subscr
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
-  user: UserType;
   trialDaysRemaining: number | null;
   workspaceSeats: number;
   perSeatPricing: SubscriptionPerSeatPricing | null;
@@ -92,7 +89,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       owner,
       subscription,
       trialDaysRemaining,
-      user,
       workspaceSeats,
       perSeatPricing,
     },
@@ -101,7 +97,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
 export default function Subscription({
   owner,
-  user,
   subscription,
   trialDaysRemaining,
   workspaceSeats,
@@ -112,7 +107,6 @@ export default function Subscription({
   const [isWebhookProcessing, setIsWebhookProcessing] =
     React.useState<boolean>(false);
 
-  const [showContactUsDrawer, setShowContactUsDrawer] = useState(false);
   const [showSkipFreeTrialDialog, setShowSkipFreeTrialDialog] = useState(false);
   const [showCancelFreeTrialDialog, setShowCancelFreeTrialDialog] =
     useState(false);
@@ -275,9 +269,7 @@ export default function Subscription({
   const chipColor = !isUpgraded(plan) ? "emerald" : "sky";
 
   const onClickProPlan = async () => handleSubscribePlan();
-  const onClickEnterprisePlan = () => {
-    setShowContactUsDrawer(true);
-  };
+
   const planLabel =
     trialDaysRemaining === null
       ? plan.name
@@ -312,13 +304,6 @@ export default function Subscription({
         </>
       )}
 
-      <SubscriptionContactUsDrawer
-        show={showContactUsDrawer}
-        onClose={() => {
-          setShowContactUsDrawer(false);
-        }}
-        initialEmail={user.email}
-      />
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header
           title="Subscription"
@@ -427,7 +412,6 @@ export default function Subscription({
                     <PricePlans
                       plan={plan}
                       onClickProPlan={onClickProPlan}
-                      onClickEnterprisePlan={onClickEnterprisePlan}
                       isProcessing={isProcessing}
                       display="subscribe"
                     />
