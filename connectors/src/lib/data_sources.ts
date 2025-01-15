@@ -153,7 +153,7 @@ async function _upsertDataSourceDocument({
       const dustRequestPayload: PostDataSourceDocumentRequestBody = {
         text: null,
         section: documentContent,
-        source_url: documentUrl,
+        source_url: documentUrl ?? null,
         timestamp,
         title,
         mime_type: mimeType,
@@ -839,7 +839,7 @@ export async function upsertDataSourceTableFromCsv({
     mimeType,
     timestamp: null,
     tags: null,
-    sourceUrl,
+    sourceUrl: sourceUrl ?? null,
   };
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
