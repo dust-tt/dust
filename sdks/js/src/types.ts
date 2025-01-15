@@ -817,6 +817,7 @@ const LightAgentConfigurationSchema = z.object({
   maxStepsPerRun: z.number(),
   visualizationEnabled: z.boolean(),
   templateId: z.string().nullable(),
+  groupIds: z.array(z.string()).optional(),
   requestedGroupIds: z.array(z.array(z.string())),
 });
 
@@ -955,6 +956,7 @@ const ConversationWithoutContentSchema = z.object({
   sId: z.string(),
   title: z.string().nullable(),
   visibility: ConversationVisibilitySchema,
+  groupIds: z.array(z.string()).optional(),
   requestedGroupIds: z.array(z.array(z.string())),
 });
 

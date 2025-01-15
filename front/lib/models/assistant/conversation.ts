@@ -26,6 +26,9 @@ export class Conversation extends BaseModel<Conversation> {
 
   declare requestedGroupIds: number[][];
 
+  // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
+  declare groupIds?: number[];
+
   declare workspaceId: ForeignKey<Workspace["id"]>;
 }
 
@@ -56,6 +59,13 @@ Conversation.init(
     },
     requestedGroupIds: {
       type: DataTypes.ARRAY(DataTypes.ARRAY(DataTypes.BIGINT)),
+      allowNull: false,
+      defaultValue: [],
+    },
+
+    // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
+    groupIds: {
+      type: DataTypes.ARRAY(DataTypes.INTEGER),
       allowNull: false,
       defaultValue: [],
     },

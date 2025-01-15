@@ -69,12 +69,10 @@ makeScript({}, async ({ execute }, logger) => {
 
       if (execute) {
         logger.info(
-          // @ts-expect-error `groupIds` was removed.
           { agentId: agent.sId, newGroupIds, prevGroupIds: agent.groupIds },
           `Backfilling agent group IDs`
         );
         await agent.update({
-          // @ts-expect-error `groupIds` was removed.
           groupIds,
         });
       }
