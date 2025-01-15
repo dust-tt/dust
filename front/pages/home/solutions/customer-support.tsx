@@ -132,9 +132,12 @@ export default function CustomerSupport() {
                 icon={RocketIcon}
               />
             </Link>
-            <Link href="/home/contact" shallow={true}>
-              <Button variant="outline" size="md" label="Talk to sales" />
-            </Link>
+            <Button
+              variant="outline"
+              size="md"
+              label="Talk to sales"
+              href="/home/contact"
+            />
           </div>
         </div>
         <div
