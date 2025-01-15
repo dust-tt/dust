@@ -15,6 +15,7 @@ import {
 import { SpinnerProps } from "@sparkle/components/Spinner";
 import { ChevronDownIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
+import { TooltipPortal } from "@radix-ui/react-tooltip";
 
 export const BUTTON_VARIANTS = [
   "primary",
@@ -199,7 +200,9 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       <TooltipProvider>
         <TooltipRoot>
           <TooltipTrigger asChild>{innerButton}</TooltipTrigger>
-          <TooltipContent>{tooltip}</TooltipContent>
+          <TooltipPortal>
+            <TooltipContent>{tooltip}</TooltipContent>
+          </TooltipPortal>
         </TooltipRoot>
       </TooltipProvider>
     ) : (
