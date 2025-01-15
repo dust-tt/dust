@@ -23,45 +23,25 @@ export const defaultUseCases: UseCase[] = [
     title: "Ticket Resolution",
     content:
       "Smart answer suggestions and contextual knowledge at your fingertips.",
-    images: [
-      "/static/landing/support/front.png",
-      "/static/landing/support/front.png",
-      "/static/landing/support/front.png",
-      "/static/landing/support/front.png",
-    ],
+    images: ["/static/landing/solutions/support1.png"],
   },
   {
     title: "Agent Coaching",
     content:
       "Helps support agents learn best practices and company knowledge faster.",
-    images: [
-      "/static/landing/slack/slack1.png",
-      "/static/landing/slack/slack2.png",
-      "/static/landing/slack/slack3.png",
-      "/static/landing/slack/slack4.png",
-    ],
+    images: ["/static/landing/solutions/support2.png"],
   },
   {
     title: "Documentation Builder",
     content:
       "Converts resolved support tickets into searchable knowledge base articles and FAQ.",
-    images: [
-      "/static/landing/slack/slack1.png",
-      "/static/landing/slack/slack2.png",
-      "/static/landing/slack/slack3.png",
-      "/static/landing/slack/slack4.png",
-    ],
+    images: ["/static/landing/solutions/support3.png"],
   },
   {
     title: "Customer Insights",
     content:
       "Turn customer feedback from every channel into actionable insights.",
-    images: [
-      "/static/landing/slack/slack1.png",
-      "/static/landing/slack/slack2.png",
-      "/static/landing/slack/slack3.png",
-      "/static/landing/slack/slack4.png",
-    ],
+    images: ["/static/landing/solutions/support4.png"],
   },
 ];
 
