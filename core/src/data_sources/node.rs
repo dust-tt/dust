@@ -1,17 +1,18 @@
-use crate::utils::ParseError;
 use serde::{Deserialize, Serialize};
 use std::error::Error;
 use std::fmt;
-use std::fmt::Display;
 use std::str::FromStr;
-use tokio_postgres::types::{private::BytesMut, FromSql, IsNull, ToSql, Type};
+use strum_macros;
 
+use tokio_postgres::types::{private::BytesMut, FromSql, IsNull, ToSql, Type};
 use super::folder::Folder;
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(strum_macros::Display, strum_macros::EnumString, Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum ProviderVisibility {
+    #[strum(serialize = "private")]
     Private,
+    #[strum(serialize = "public")]
     Public,
 }
 
@@ -21,12 +22,7 @@ impl ToSql for ProviderVisibility {
         ty: &Type,
         out: &mut BytesMut,
     ) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
-        // note: serde serialization cannot be used here as it would cause a double serialization
-        let s = match self {
-            ProviderVisibility::Private => "private",
-            ProviderVisibility::Public => "public",
-        };
-        s.to_sql(ty, out)
+        self.to_string().to_sql(ty, out)
     }
 
     fn accepts(ty: &Type) -> bool {
@@ -39,22 +35,14 @@ impl ToSql for ProviderVisibility {
         ty: &Type,
         out: &mut BytesMut,
     ) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
-        let s = match self {
-            ProviderVisibility::Private => "private",
-            ProviderVisibility::Public => "public",
-        };
-        s.to_sql_checked(ty, out)
+        self.to_string().to_sql_checked(ty, out)
     }
 }
 
 impl<'a> FromSql<'a> for ProviderVisibility {
     fn from_sql(ty: &Type, raw: &'a [u8]) -> Result<Self, Box<dyn Error + Sync + Send>> {
-        let s = <&str as FromSql>::from_sql(ty, raw)?;
-        match s {
-            "private" => Ok(ProviderVisibility::Private),
-            "public" => Ok(ProviderVisibility::Public),
-            _ => Err("invalid provider visibility".into()),
-        }
+        Self::from_str(<&str as FromSql>::from_sql(ty, raw)?)
+            .map_err(|e| Box::new(e) as Box<dyn Error + Sync + Send>)
     }
 
     fn accepts(ty: &Type) -> bool {
