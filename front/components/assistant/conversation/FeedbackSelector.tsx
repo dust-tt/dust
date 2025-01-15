@@ -44,6 +44,7 @@ export function FeedbackSelector({
   const [isConversationShared, setIsConversationShared] = React.useState(
     feedback?.isConversationShared ?? false
   );
+  // This is required to adjust the content of the popover even when feedback is null.
   const [lastSelectedThumb, setLastSelectedThumb] =
     React.useState<ThumbReaction | null>(feedback?.thumb ?? null);
 
@@ -71,6 +72,8 @@ export function FeedbackSelector({
       setLastSelectedThumb(shouldRemoveExistingFeedback ? null : thumb);
       setIsConversationShared(thumb === "down");
 
+      // We enforce written feedback for thumbs down.
+      // -> Not saving the reaction until then.
       if (thumb === "down" && !shouldRemoveExistingFeedback) {
         return;
       }
@@ -136,6 +139,8 @@ export function FeedbackSelector({
                   disabled={isSubmittingThumb}
                   onClick={handleThumbUp}
                   icon={HandThumbUpIcon}
+                  // We enforce written feedback for thumbs down.
+                  // -> Not saving the reaction until then.
                   className={
                     feedback?.thumb === "up" ? "" : "text-muted-foreground"
                   }
@@ -151,6 +156,8 @@ export function FeedbackSelector({
                   disabled={isSubmittingThumb}
                   onClick={handleThumbDown}
                   icon={HandThumbDownIcon}
+                  // We enforce written feedback for thumbs down.
+                  // -> Not saving the reaction until then.
                   className={
                     feedback?.thumb === "down" ? "" : "text-muted-foreground"
                   }
