@@ -193,11 +193,7 @@ interface MetricComponentProps {
   to: string;
 }
 
-export const MetricComponent = ({
-  metrics,
-  from,
-  to,
-}: MetricComponentProps) => (
+export const MetricSection = ({ metrics, from, to }: MetricComponentProps) => (
   <div className="grid w-full grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-2">
     {" "}
     {metrics.map((metric, index) => (
@@ -226,7 +222,7 @@ interface QuoteProps {
   logo: string;
 }
 
-export const Quote = ({ quote, logo, name, title }: QuoteProps) => (
+export const QuoteSection = ({ quote, logo, name, title }: QuoteProps) => (
   <div className="col-span-12 flex flex-col rounded-4xl pb-2 pt-2 md:col-span-10 md:col-start-2 lg:col-span-10 lg:col-start-2">
     <div className="flex flex-col items-center rounded-4xl p-4 text-center font-objektiv text-xl italic text-white sm:text-xl lg:text-2xl">
       &ldquo; {quote} &rdquo;

@@ -56,7 +56,7 @@ export const pageSettings: pageSettingsProps = {
   ),
 };
 
-export const supportHeroProps: HeroProps = {
+export const supportHero: HeroProps = {
   uptitle: pageSettings.uptitle,
   title: pageSettings.title,
   description: pageSettings.description,

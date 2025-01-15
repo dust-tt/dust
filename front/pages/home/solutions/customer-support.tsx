@@ -9,8 +9,8 @@ import { HeroSection } from "@app/components/home/content/Solutions/HeroSection"
 import { UseCasesSection } from "@app/components/home/content/Solutions/UseCasesSection";
 import {
   CarousselContentBlock,
-  MetricComponent,
-  Quote,
+  MetricSection,
+  QuoteSection,
 } from "@app/components/home/ContentBlocks";
 import { Grid } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
@@ -25,7 +25,7 @@ import { classNames } from "@app/lib/utils";
 // Import from new config location
 import {
   pageSettings,
-  supportHeroProps,
+  supportHero,
   supportBenefits,
   supportMetrics,
   supportUseCases,
@@ -48,7 +48,7 @@ export default function CustomerSupport() {
     <>
       <div className="container flex w-full flex-col gap-0 bg-slate-900/50 px-6 pb-12">
         <HeroSection
-          {...supportHeroProps}
+          {...supportHero}
           fromColor={pageSettings.from}
           toColor={pageSettings.to}
         />
@@ -67,7 +67,7 @@ export default function CustomerSupport() {
               fromColor={pageSettings.from}
               toColor={pageSettings.to}
             />
-            <MetricComponent {...supportMetrics} />
+            <MetricSection {...supportMetrics} />
           </div>
           <div
             className={classNames(
@@ -108,7 +108,7 @@ export default function CustomerSupport() {
               "2xl:col-start-1"
             )}
           >
-            <Quote {...supportQuote} />
+            <QuoteSection {...supportQuote} />
             <CustomerStoriesSection
               title="Customer stories"
               stories={supportStories}
@@ -124,27 +124,27 @@ export default function CustomerSupport() {
               "xl:col-span-10 xl:col-start-2"
             )}
           >
-            {supportHeroProps.ctaButtons && (
+            {supportHero.ctaButtons && (
               <div className="mt-4 flex justify-center gap-4">
-                {supportHeroProps.ctaButtons.primary && (
+                {supportHero.ctaButtons.primary && (
                   <Link
-                    href={supportHeroProps.ctaButtons.primary.href}
+                    href={supportHero.ctaButtons.primary.href}
                     shallow={true}
                   >
                     <Button
                       variant="highlight"
                       size="md"
-                      label={supportHeroProps.ctaButtons.primary.label}
-                      icon={supportHeroProps.ctaButtons.primary.icon}
+                      label={supportHero.ctaButtons.primary.label}
+                      icon={supportHero.ctaButtons.primary.icon}
                     />
                   </Link>
                 )}
-                {supportHeroProps.ctaButtons.secondary && (
+                {supportHero.ctaButtons.secondary && (
                   <Button
                     variant="outline"
                     size="md"
-                    label={supportHeroProps.ctaButtons.secondary.label}
-                    href={supportHeroProps.ctaButtons.secondary.href}
+                    label={supportHero.ctaButtons.secondary.label}
+                    href={supportHero.ctaButtons.secondary.href}
                   />
                 )}
               </div>
