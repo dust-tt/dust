@@ -63,8 +63,9 @@ Conversation.init(
       defaultValue: [],
     },
     // TODO(2025-01-15 BIGINT): This should be inferred from the relationship.
+    // This is currently Integer in US and Bigint in EU. It needs to be backfilled.
     requestedGroupIds: {
-      type: DataTypes.ARRAY(DataTypes.ARRAY(DataTypes.INTEGER)),
+      type: DataTypes.ARRAY(DataTypes.ARRAY(DataTypes.BIGINT)),
       allowNull: false,
       defaultValue: [],
     },
