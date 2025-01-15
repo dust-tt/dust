@@ -3,6 +3,18 @@ import Link from "next/link";
 import type { ReactElement } from "react";
 
 import { BenefitsSection } from "@app/components/home/content/Solutions/BenefitsSection";
+// Import from new config location
+import {
+  AssistantExamples,
+  Benefits,
+  DemoVideo,
+  Hero,
+  Metrics,
+  pageSettings,
+  Quote,
+  Stories,
+  UseCases,
+} from "@app/components/home/content/Solutions/configs/supportConfig";
 import { CustomerStoriesSection } from "@app/components/home/content/Solutions/CustomerStoriesSection";
 import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
 import { HeroSection } from "@app/components/home/content/Solutions/HeroSection";
@@ -21,19 +33,6 @@ import {
 } from "@app/components/home/Particles";
 import TrustedBy from "@app/components/home/TrustedBy";
 import { classNames } from "@app/lib/utils";
-
-// Import from new config location
-import {
-  pageSettings,
-  Hero,
-  Benefits,
-  Metrics,
-  UseCases,
-  Quote,
-  DemoVideo,
-  Stories,
-  AssistantExamples,
-} from "@app/components/home/content/Solutions/configs/supportConfig";
 
 export async function getServerSideProps() {
   return {

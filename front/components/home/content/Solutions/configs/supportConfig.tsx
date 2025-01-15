@@ -1,4 +1,5 @@
 import { LightbulbIcon, RocketIcon, UserGroupIcon } from "@dust-tt/sparkle";
+
 import type {
   BenefitsProps,
   MetricProps,
