@@ -1,9 +1,6 @@
-use crate::utils::ParseError;
 use serde::{Deserialize, Serialize};
 use std::error::Error;
 use std::fmt;
-use std::fmt::Display;
-use std::str::FromStr;
 use tokio_postgres::types::{private::BytesMut, FromSql, IsNull, ToSql, Type};
 
 use super::folder::Folder;
