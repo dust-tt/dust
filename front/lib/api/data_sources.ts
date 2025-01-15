@@ -575,6 +575,7 @@ export async function upsertTable({
     useAppForHeaderDetection: useApp,
     title,
     mimeType,
+    sourceUrl: standardizedSourceUrl,
   });
 
   return tableRes;
@@ -763,6 +764,7 @@ export async function handleDataSourceTableCSVUpsert({
     useAppForHeaderDetection,
     title: params.title,
     mimeType: params.mimeType,
+    sourceUrl: params.sourceUrl ?? null,
   });
 
   if (tableRes.isErr()) {

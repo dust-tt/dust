@@ -141,6 +141,7 @@ export async function upsertTableFromCsv({
   detectedHeaders,
   title,
   mimeType,
+  sourceUrl,
 }: {
   auth: Authenticator;
   dataSource: DataSourceResource;
@@ -157,6 +158,7 @@ export async function upsertTableFromCsv({
   detectedHeaders?: DetectedHeadersType;
   title: string;
   mimeType: string;
+  sourceUrl: string | null;
 }): Promise<Result<{ table: CoreAPITable }, TableOperationError>> {
   const csvRowsRes = csv
     ? await rowsFromCsv({
@@ -253,6 +255,7 @@ export async function upsertTableFromCsv({
     parents: tableParents,
     title,
     mimeType,
+    sourceUrl,
   });
 
   if (tableRes.isErr()) {
