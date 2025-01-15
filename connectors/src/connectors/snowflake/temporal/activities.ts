@@ -189,7 +189,7 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
           remoteDatabaseTableId: internalId,
           remoteDatabaseSecretId: connector.connectionId,
           tableDescription: "",
-          parents: [table.internalId, schemaId, table.databaseName],
+          parents: [internalId, schemaId, table.databaseName],
           parentId: schemaId,
           title: table.name,
           mimeType: MIME_TYPES.SNOWFLAKE.TABLE,
