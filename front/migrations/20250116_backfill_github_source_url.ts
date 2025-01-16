@@ -8,7 +8,7 @@ import {
 import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 
-const BATCH_SIZE = 128;
+const BATCH_SIZE = 256;
 
 // Functions to get urls for GitHub resources: copied from connectors.
 

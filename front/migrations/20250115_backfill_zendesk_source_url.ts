@@ -9,7 +9,7 @@ import {
 import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 
-const BATCH_SIZE = 256;
+const BATCH_SIZE = 128;
 
 // Copy-pasted from zendesk/lib/id_conversions.ts
 function getBrandInternalId({
