@@ -1,6 +1,6 @@
 import type {
   ContentNodesViewType,
-  CoreAPIContentNode,
+  CoreAPIDatasourceViewFilter,
   CoreAPIError,
   DataSourceViewContentNode,
   DataSourceViewType,
@@ -155,22 +155,52 @@ async function getContentNodesForManagedDataSourceView(
   }
 }
 
+function makeCoreDataSourceViewFilter(
+  dataSourceView: DataSourceViewResource | DataSourceViewType
+): CoreAPIDatasourceViewFilter {
+  return {
+    data_source_id: dataSourceView.dataSource.dustAPIDataSourceId,
+    view_filter: dataSourceView.parentsIn ?? [],
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function getContentNodesForManagedDataSourceViewFromCore(
   dataSourceView: DataSourceViewResource | DataSourceViewType,
   { internalIds, parentId, viewType }: GetContentNodesForDataSourceViewParams
 ): Promise<Result<GetContentNodesForDataSourceViewResult, Error>> {
-  const coreContentNodes: CoreAPIContentNode[] = [];
+  const { dataSource } = dataSourceView;
+  assert(
+    dataSource.connectorId,
+    "Connector ID is required for managed data sources."
+  );
+
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+
+  // TODO(2025-01-16 aubin): confirm that if no internalIds nor parentIds are provided, we get the root nodes of the data source view.
+  const coreRes = await coreAPI.searchNodes({
+    filter: {
+      data_source_views: [makeCoreDataSourceViewFilter(dataSourceView)],
+      node_ids: internalIds,
+      parent_id: parentId,
+    },
+  });
+
+  if (coreRes.isErr()) {
+    return new Err(new Error(coreRes.error.message));
+  }
+
   return new Ok({
-    nodes: coreContentNodes.map((node) => {
+    nodes: coreRes.value.nodes.map((node) => {
       const { type, preventSelection, expandable } = getContentNodeMetadata(
         node,
         viewType
       );
       return {
         internalId: node.node_id,
-        parentInternalId: node.parent_id,
+        parentInternalId: node.parent_id ?? null,
         title: node.title,
-        sourceUrl: node.source_url,
+        sourceUrl: node.source_url ?? null,
         permission: "read",
         lastUpdatedAt: node.timestamp,
         providerVisibility: node.provider_visibility,
@@ -180,7 +210,7 @@ async function getContentNodesForManagedDataSourceViewFromCore(
         expandable,
       };
     }),
-    total: coreContentNodes.length,
+    total: coreRes.value.nodes.length,
   });
 }
 
