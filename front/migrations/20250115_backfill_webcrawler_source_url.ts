@@ -16,6 +16,8 @@ async function updateNodes(
   urls: string[]
 ) {
   await coreSequelize.query(
+    // No possible mismatch even though some pages are upserted in connectors' db but not as document
+    // - unnest preserves array order and creates parallel tuples,
     `UPDATE data_sources_nodes
      SET source_url = urls.url
      FROM (SELECT unnest(ARRAY [:nodeIds]::text[]) as node_id,
