@@ -77,8 +77,8 @@ async function backfillFolders(
          SET source_url = urls.url
          FROM (SELECT unnest(ARRAY [:nodeIds]::text[]) as node_id,
                       unnest(ARRAY [:urls]::text[])    as url) urls
-         WHERE data_sources_nodes.node_id = urls.node_id
-           AND data_sources_nodes.data_source = :dataSourceId;`,
+         WHERE data_sources_nodes.data_source = :dataSourceId
+           AND data_sources_nodes.node_id = urls.node_id;`,
         { replacements: { urls, nodeIds, dataSourceId: coreDataSourceId } }
       );
       logger.info(
