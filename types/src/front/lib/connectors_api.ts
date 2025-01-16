@@ -1,7 +1,4 @@
-import {
-  AdminCommandType,
-  AdminResponseType,
-} from "../../connectors/admin/cli";
+import { AdminCommandType, AdminResponseType } from "../../connectors/admin/cli";
 import { ConnectorsAPIError, isConnectorsAPIError } from "../../connectors/api";
 import { UpdateConnectorConfigurationType } from "../../connectors/api_handlers/connector_configuration";
 import { ConnectorCreateRequestBody } from "../../connectors/api_handlers/create_connector";
@@ -56,6 +53,7 @@ export type ConnectorType = {
  */
 export type ConnectorPermission = "read" | "write" | "read_write" | "none";
 export type ContentNodeType = "file" | "folder" | "database" | "channel";
+// currently used for Slack, for which channels can be public or private
 export type ProviderVisibility = "public" | "private";
 
 /*
@@ -69,9 +67,6 @@ export const contentNodeTypeSortOrder: Record<ContentNodeType, number> = {
   database: 3,
   channel: 4,
 };
-
-// currently used for slack, for which channels can be public or private
-export type ProviderVisibility = "private" | "public";
 
 /**
  * A ContentNode represents a connector related node. As an example:
