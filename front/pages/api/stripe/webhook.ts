@@ -149,6 +149,7 @@ async function handler(
                 {
                   event,
                   workspaceId,
+                  subscriptionId: stripeSubscriptionId,
                 },
                 "[Stripe Webhook] Cannot find workspace."
               );
