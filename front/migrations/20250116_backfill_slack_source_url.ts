@@ -10,7 +10,7 @@ import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 
-const BATCH_SIZE = 128;
+const BATCH_SIZE = 1024;
 
 // Copy-pasted from slack/lib/utils.ts
 function getSlackChannelSourceUrl(
