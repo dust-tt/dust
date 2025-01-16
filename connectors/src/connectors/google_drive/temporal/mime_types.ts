@@ -1,5 +1,3 @@
-import type { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
-
 export const MIME_TYPES_TO_EXPORT: { [key: string]: string } = {
   "application/vnd.google-apps.document": "text/plain",
   "application/vnd.google-apps.presentation": "text/plain",
@@ -48,7 +46,7 @@ export async function getMimeTypesToSync({
   return mimeTypes;
 }
 
-export function isGoogleDriveFolder(file: GoogleDriveFiles) {
+export function isGoogleDriveFolder(file: { mimeType: string }) {
   return file.mimeType === "application/vnd.google-apps.folder";
 }
 

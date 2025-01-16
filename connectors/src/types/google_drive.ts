@@ -17,6 +17,7 @@ export type GoogleDriveObjectType = {
   driveId: string;
   isInSharedDrive: boolean;
 };
+
 export type GoogleDriveFolderType = {
   id: string;
   name: string;
