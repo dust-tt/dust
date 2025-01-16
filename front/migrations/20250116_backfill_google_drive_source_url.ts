@@ -1,4 +1,3 @@
-import _ from "lodash";
 import type { Sequelize } from "sequelize";
 import { QueryTypes } from "sequelize";
 
