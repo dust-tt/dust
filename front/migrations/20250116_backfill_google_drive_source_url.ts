@@ -77,7 +77,9 @@ async function backfillSpreadsheets(
     const urls = rows.map((row) =>
       getSourceUrlForGoogleDriveSheet(row.driveFileId, row.driveSheetId)
     );
-    const nodeIds = rows.map((row) => getInternalId(row.driveFileId));
+    const nodeIds = rows.map((row) =>
+      getGoogleSheetTableId(row.driveFileId, row.driveSheetId)
+    );
 
     if (execute) {
       // updating on core on the nodeIds
@@ -225,7 +227,10 @@ function getSourceUrlForGoogleDriveSheet(
   return `https://docs.google.com/spreadsheets/d/${driveFileId}/edit#gid=${driveSheetId}`;
 }
 
-// Copy-pasted from connectors/src/connectors/google_drive/temporal/utils.ts
-function getInternalId(driveFileId: string): string {
-  return `gdrive-${driveFileId}`;
+// Copy-pasted from types/src/connectors/google_drive.ts
+export function getGoogleSheetTableId(
+  googleFileId: string,
+  googleSheetId: number
+): string {
+  return `google-spreadsheet-${googleFileId}-sheet-${googleSheetId}`;
 }
