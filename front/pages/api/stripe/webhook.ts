@@ -145,7 +145,16 @@ async function handler(
               where: { sId: workspaceId },
             });
             if (!workspace) {
-              throw new Error(`Cannot find workspace ${workspaceId}`);
+              logger.warn(
+                {
+                  event,
+                  workspaceId,
+                },
+                "[Stripe Webhook] Cannot find workspace."
+              );
+              // We return a 200 here to handle multiple regions, DD will watch
+              // the warnings and create an alert if this log appears in all regions
+              return res.status(200).json({ success: true });
             }
             const plan = await Plan.findOne({
               where: { code: planCode },
