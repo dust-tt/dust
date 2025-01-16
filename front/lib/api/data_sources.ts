@@ -451,7 +451,7 @@ export interface UpsertTableArgs {
   useAppForHeaderDetection?: boolean;
   title: string;
   mimeType: string;
-  sourceUrl: string | null;
+  sourceUrl?: string | null;
 }
 
 export async function upsertTable({
