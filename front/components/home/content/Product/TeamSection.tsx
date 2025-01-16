@@ -2,17 +2,15 @@ import { Div3D, Hover3D } from "@dust-tt/sparkle";
 import React from "react";
 
 import { ImgBlock } from "@app/components/home/ContentBlocks";
-import { H2, P } from "@app/components/home/ContentComponents";
+import { H2, P, Strong } from "@app/components/home/ContentComponents";
 import { classNames } from "@app/lib/utils";
 
-export function TeamSection() {
+export function CapabilitySection() {
   return (
     <div className="w-full">
       <div className="mb-6">
         <H2 from="from-amber-200" to="to-amber-400">
-          Keep your&nbsp;team
-          <br />
-          up&nbsp;to&nbsp;speed
+          Tailor AI assistants to your team needs
         </H2>
         <P size="lg">
           Anyone on your&nbsp;team can create personalized&nbsp;assistants.
@@ -21,11 +19,65 @@ export function TeamSection() {
 
       <div className="grid grid-cols-1 gap-x-8 gap-y-20 md:grid-cols-2 md:gap-y-28">
         <ImgBlock
-          title={<>Give your&nbsp;creative team members an&nbsp;edge</>}
+          title={<>Switch to the&nbsp;new best model in&nbsp;seconds.</>}
           content={
             <>
-              Empower those with a&nbsp;builder mindset the&nbsp;right tools
-              to&nbsp;accelerate your&nbsp;company's transition with&nbsp;GenAI.
+              “Choose GPT-4, Anthropic, Gemini, Mistral, or any cutting-edge
+              model to ensure your assistants stay smartest.”
+            </>
+          }
+        >
+          <Hover3D
+            depth={-20}
+            perspective={1000}
+            className={classNames("relative")}
+          >
+            <Div3D depth={-40}>
+              <img src="/static/landing/model/model1.png" />
+            </Div3D>
+            <Div3D depth={0} className="absolute top-0">
+              <img src="/static/landing/model/model2.png" />
+            </Div3D>
+            <Div3D depth={50} className="absolute top-0 drop-shadow-lg">
+              <img src="/static/landing/model/model3.png" />
+            </Div3D>
+            <Div3D depth={120} className="absolute top-0 drop-shadow-lg">
+              <img src="/static/landing/model/model4.png" />
+            </Div3D>
+          </Hover3D>
+        </ImgBlock>
+
+        <ImgBlock
+          title={<>Plug into your company context.</>}
+          content={
+            <>Notion, Slack, GitHub, external websites (…) - in minutes.</>
+          }
+        >
+          <Hover3D
+            depth={-20}
+            perspective={1000}
+            className={classNames("relative")}
+          >
+            <Div3D depth={-20}>
+              <img src="/static/landing/connect/connect1.png" />
+            </Div3D>
+            <Div3D depth={0} className="absolute top-0">
+              <img src="/static/landing/connect/connect2.png" />
+            </Div3D>
+            <Div3D depth={15} className="absolute top-0">
+              <img src="/static/landing/connect/connect3.png" />
+            </Div3D>
+            <Div3D depth={60} className="absolute top-0">
+              <img src="/static/landing/connect/connect4.png" />
+            </Div3D>
+          </Hover3D>
+        </ImgBlock>
+        <ImgBlock
+          title={<>Build for your team, act on feedback</>}
+          content={
+            <>
+              Empower those with a&nbsp;builder mindset to build assistants for
+              their teams and get immediate feedback.
             </>
           }
         >
@@ -51,11 +103,14 @@ export function TeamSection() {
             </Div3D>
           </Hover3D>
         </ImgBlock>
-
         <ImgBlock
-          title={<>Get your team started with&nbsp;templates</>}
+          title={<>Customize instructions, use pre-built tools</>}
           content={
-            <>Build upon selected practical examples straight&nbsp;away.</>
+            <>
+              Adapt instructions to your needs, with pre-built templates.
+              Empower assistants with specialized tools for data extraction,
+              transformations, or advanced operations.
+            </>
           }
         >
           <Hover3D
@@ -78,36 +133,7 @@ export function TeamSection() {
           </Hover3D>
         </ImgBlock>
 
-        <ImgBlock
-          title={<>Package powerful workflows in easy-to-use&nbsp;assistants</>}
-          content={
-            <>
-              Team members easily&nbsp;@mention the&nbsp;assistants
-              they&nbsp;need.
-            </>
-          }
-        >
-          <Hover3D
-            depth={-20}
-            perspective={1000}
-            className={classNames("relative")}
-          >
-            <Div3D depth={-40}>
-              <img src="/static/landing/sharing/sharing1.png" />
-            </Div3D>
-            <Div3D depth={0} className="absolute top-0">
-              <img src="/static/landing/sharing/sharing2.png" />
-            </Div3D>
-            <Div3D depth={50} className="absolute top-0 drop-shadow-lg">
-              <img src="/static/landing/sharing/sharing3.png" />
-            </Div3D>
-            <Div3D depth={120} className="absolute top-0 drop-shadow-lg">
-              <img src="/static/landing/sharing/sharing4.png" />
-            </Div3D>
-          </Hover3D>
-        </ImgBlock>
-
-        <ImgBlock
+        {/* <ImgBlock
           title={
             <>
               Don't change everything; Let AI fit in your existing&nbsp;workflow
@@ -138,7 +164,7 @@ export function TeamSection() {
               <img src="/static/landing/slack/slack4.png" />
             </Div3D>
           </Hover3D>
-        </ImgBlock>
+        </ImgBlock> */}
       </div>
     </div>
   );

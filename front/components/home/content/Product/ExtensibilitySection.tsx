@@ -6,18 +6,22 @@ import { ImgBlock } from "@app/components/home/ContentBlocks";
 import { A, Grid, H2, P, Strong } from "@app/components/home/ContentComponents";
 import { classNames } from "@app/lib/utils";
 
-export function UbiquitySection() {
+export function ExtensibilitySection() {
   return (
     <>
       <Grid>
         <div className="col-span-12 mb-6">
           <div>
-            <H2 from="from-sky-200" to="to-blue-400">
-              Have AI wherever you work
+            <H2 from="from-pink-200" to="to-pink-400">
+              Push further with custom code
             </H2>
             <P size="lg">
-              Leverage the power of AI and your knoweldge right where you need
-              it. No back and forth across tools.
+              Developer friendly&nbsp;platform designed to&nbsp;build custom
+              actions and&nbsp;application orchestration to&nbsp;fit your
+              team’s&nbsp;exact&nbsp;needs.{" "}
+              <Link href="/home/solutions/dust-platform" shallow={true}>
+                <A variant="primary">More about Dust's&nbsp;Platform</A>
+              </Link>
             </P>
           </div>
         </div>
@@ -29,11 +33,11 @@ export function UbiquitySection() {
           )}
         >
           <ImgBlock
-            title={<>Use in your browser</>}
+            title={<>Build your own agentic tools</>}
             content={
               <>
-                “Access Dust wherever you work via our Chrome extension—no
-                app-switching required.”.
+                Develop advanced or agentic capabilities, from document
+                auto-updates, triggered actions, or external API access.
               </>
             }
           >
@@ -43,25 +47,26 @@ export function UbiquitySection() {
               className={classNames("relative")}
             >
               <Div3D depth={-20}>
-                <img src="/static/landing/connect/connect1.png" />
+                <img src="/static/landing/apps/apps1.png" />
               </Div3D>
               <Div3D depth={0} className="absolute top-0">
-                <img src="/static/landing/connect/connect2.png" />
+                <img src="/static/landing/apps/apps2.png" />
               </Div3D>
               <Div3D depth={15} className="absolute top-0">
-                <img src="/static/landing/connect/connect3.png" />
+                <img src="/static/landing/apps/apps3.png" />
               </Div3D>
               <Div3D depth={60} className="absolute top-0">
-                <img src="/static/landing/connect/connect4.png" />
+                <img src="/static/landing/apps/apps4.png" />
               </Div3D>
             </Hover3D>
           </ImgBlock>
           <ImgBlock
-            title={<>Access from your tools</>}
+            title={<>Build your own connections</>}
             content={
               <>
-                Bring Dust’s to Slack&nbsp;, Zendesk and others to&nbsp;bring
-                Dust where you&nbsp;need&nbsp;it.
+                No ceiling on data connections. Leverage the API to import in
+                knowledge from any source and let assistants tackle more
+                ambitious use cases.
               </>
             }
           >
@@ -85,44 +90,11 @@ export function UbiquitySection() {
             </Hover3D>
           </ImgBlock>
           <ImgBlock
-            title={<>Add to automated workflows</>}
+            title={<>Build your own integrations</>}
             content={
               <>
-                Trigger AI actions via Zapier, Make or Slack workflows to
-                automate tasks end-to-end.
-              </>
-            }
-          >
-            <Hover3D
-              depth={-20}
-              perspective={1000}
-              className={classNames("relative")}
-            >
-              <Div3D depth={-40}>
-                <img src="/static/landing/model/model1.png" />
-              </Div3D>
-              <Div3D depth={0} className="absolute top-0">
-                <img src="/static/landing/model/model2.png" />
-              </Div3D>
-              <Div3D depth={50} className="absolute top-0 drop-shadow-lg">
-                <img src="/static/landing/model/model3.png" />
-              </Div3D>
-              <Div3D depth={120} className="absolute top-0 drop-shadow-lg">
-                <img src="/static/landing/model/model4.png" />
-              </Div3D>
-            </Hover3D>
-          </ImgBlock>
-          {/* <ImgBlock
-            title={<>A modular, extensible&nbsp;platform.</>}
-            content={
-              <>
-                Developer friendly&nbsp;platform designed to&nbsp;build custom
-                actions and&nbsp;application orchestration to&nbsp;fit your
-                team’s&nbsp;exact&nbsp;needs.{" "}
-                <Link href="/home/solutions/dust-platform" shallow={true}>
-                  <A variant="primary">More about Dust's&nbsp;Platform</A>
-                </Link>
-                .
+                Use our API to embed assistants in your apps or websites,
+                unlocking fully custom user experiences and deep automation.
               </>
             }
           >
@@ -132,19 +104,19 @@ export function UbiquitySection() {
               className={classNames("relative")}
             >
               <Div3D depth={-20}>
-                <img src="/static/landing/apps/apps1.png" />
+                <img src="/static/landing/connect/connect1.png" />
               </Div3D>
               <Div3D depth={0} className="absolute top-0">
-                <img src="/static/landing/apps/apps2.png" />
+                <img src="/static/landing/connect/connect2.png" />
               </Div3D>
               <Div3D depth={15} className="absolute top-0">
-                <img src="/static/landing/apps/apps3.png" />
+                <img src="/static/landing/connect/connect3.png" />
               </Div3D>
               <Div3D depth={60} className="absolute top-0">
-                <img src="/static/landing/apps/apps4.png" />
+                <img src="/static/landing/connect/connect4.png" />
               </Div3D>
             </Hover3D>
-          </ImgBlock> */}
+          </ImgBlock>
         </div>
       </Grid>
     </>
