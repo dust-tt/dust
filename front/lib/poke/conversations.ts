@@ -58,7 +58,7 @@ export async function getPokeConversation(
                         raw: true,
                       })
                     )?.runId;
-                    const app = getDustProdAction("assistant-v2-browse").app;
+                    const { app } = getDustProdAction("assistant-v2-browse");
                     a.appId = app.appId;
                     a.appSpaceId = app.appSpaceId;
                     a.appWorkspaceId = app.workspaceId;
@@ -72,7 +72,7 @@ export async function getPokeConversation(
                         raw: true,
                       })
                     )?.runId;
-                    const app = getDustProdAction("assistant-v2-process").app;
+                    const { app } = getDustProdAction("assistant-v2-process");
                     a.appId = app.appId;
                     a.appSpaceId = app.appSpaceId;
                     a.appWorkspaceId = app.workspaceId;
@@ -86,7 +86,7 @@ export async function getPokeConversation(
                         raw: true,
                       })
                     )?.runId;
-                    const app = getDustProdAction("assistant-v2-retrieval").app;
+                    const { app } = getDustProdAction("assistant-v2-retrieval");
                     a.appId = app.appId;
                     a.appSpaceId = app.appSpaceId;
                     a.appWorkspaceId = app.workspaceId;
@@ -100,9 +100,9 @@ export async function getPokeConversation(
                         raw: true,
                       })
                     )?.runId;
-                    const app = getDustProdAction(
+                    const { app } = getDustProdAction(
                       "assistant-v2-query-tables"
-                    ).app;
+                    );
                     a.appId = app.appId;
                     a.appSpaceId = app.appSpaceId;
                     a.appWorkspaceId = app.workspaceId;
@@ -116,7 +116,7 @@ export async function getPokeConversation(
                         raw: true,
                       })
                     )?.runId;
-                    const app = getDustProdAction("assistant-v2-websearch").app;
+                    const { app } = getDustProdAction("assistant-v2-websearch");
                     a.appId = app.appId;
                     a.appSpaceId = app.appSpaceId;
                     a.appWorkspaceId = app.workspaceId;
