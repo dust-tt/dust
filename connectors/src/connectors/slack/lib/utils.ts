@@ -1,4 +1,6 @@
 import _ from "lodash";
+import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
+import { SlackChannel } from "@connectors/lib/models/slack";
 
 export function getWeekStart(date: Date): Date {
   const dateCopy = new Date(date);
@@ -128,4 +130,11 @@ export function slackChannelIdFromSlackNonThreadedMessagesInternalId(
 ): string {
   const parts = internalId.split("-messages-");
   return _.last(parts[0]!.split("slack-"))!;
+}
+
+export function getSlackChannelSourceUrl(
+  slackChannelId: string,
+  slackConfig: SlackConfigurationResource
+): `https://app.slack.com/client/${SlackConfigurationResource["slackTeamId"]}/${SlackChannel["slackChannelId"]}` {
+  return `https://app.slack.com/client/${slackConfig.slackTeamId}/${slackChannelId}`;
 }
