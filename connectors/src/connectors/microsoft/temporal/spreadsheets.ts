@@ -44,6 +44,7 @@ async function upsertSpreadsheetInDb(
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     lastUpsertedTs: new Date(),
     parentInternalId,
+    webUrl: file.webUrl ?? null,
   });
 }
 
@@ -51,7 +52,7 @@ async function upsertWorksheetInDb(
   connector: ConnectorResource,
   internalId: string,
   worksheet: microsoftgraph.WorkbookWorksheet,
-  parentInternalId: string
+  spreadsheet: microsoftgraph.DriveItem
 ) {
   return MicrosoftNodeResource.upsert({
     internalId,
@@ -61,7 +62,10 @@ async function upsertWorksheetInDb(
     name: worksheet.name ?? "",
     mimeType: "text/csv",
     lastUpsertedTs: new Date(),
-    parentInternalId,
+    parentInternalId: getDriveItemInternalId(spreadsheet),
+    // At our current comprehension, there are no easily findable source url to
+    // directly access the worksheet, so we link to the parent spreadsheet
+    webUrl: spreadsheet.webUrl ?? null,
   });
 }
 
@@ -104,6 +108,9 @@ async function upsertMSTable(
     title: `${spreadsheet.name} - ${worksheet.name}`,
     mimeType:
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    // At our current comprehension, there are no easily findable source url to
+    // directly access the worksheet, so we link to the parent spreadsheet
+    sourceUrl: spreadsheet.webUrl ?? undefined,
   });
 
   logger.info(loggerArgs, "[Spreadsheet] Table upserted.");
@@ -231,7 +238,7 @@ async function processSheet({
       connector,
       worksheetInternalId,
       worksheet,
-      spreadsheetInternalId
+      spreadsheet
     );
 
     return new Ok(null);

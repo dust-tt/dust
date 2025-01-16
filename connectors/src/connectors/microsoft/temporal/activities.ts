@@ -210,6 +210,7 @@ export async function getRootNodesToSyncFromResources(
         parentId: null,
         title: createdOrUpdatedResource.name ?? "",
         mimeType: MIME_TYPES.MICROSOFT.FOLDER,
+        sourceUrl: createdOrUpdatedResource.webUrl ?? undefined,
       }),
     { concurrency: 5 }
   );
@@ -482,6 +483,7 @@ export async function syncFiles({
         parentId: parentsOfParent[0],
         title: createdOrUpdatedResource.name ?? "",
         mimeType: MIME_TYPES.MICROSOFT.FOLDER,
+        sourceUrl: createdOrUpdatedResource.webUrl ?? undefined,
       }),
     { concurrency: 5 }
   );
@@ -656,6 +658,7 @@ export async function syncDeltaForRootNodesInDrive({
           parentId: null,
           title: blob.name ?? "",
           mimeType: MIME_TYPES.MICROSOFT.FOLDER,
+          sourceUrl: blob.webUrl ?? undefined,
         });
 
         // add parent information to new node resource. for the toplevel folder,
@@ -872,6 +875,7 @@ async function updateDescendantsParentsInCore({
     parentId: parents[1] || null,
     title: folder.name ?? "",
     mimeType: MIME_TYPES.MICROSOFT.FOLDER,
+    sourceUrl: folder.webUrl ?? undefined,
   });
 
   await concurrentExecutor(
