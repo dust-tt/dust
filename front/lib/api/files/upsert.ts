@@ -272,6 +272,7 @@ const upsertTableToDatasource: ProcessingFunction = async ({
     useAppForHeaderDetection: true,
     title: upsertTitle ?? file.fileName,
     mimeType: file.contentType,
+    sourceUrl: file.getPrivateUrl(auth),
 
     // Used to override defaults, for manual file uploads where some fields are user-defined.
     ...restArgs,

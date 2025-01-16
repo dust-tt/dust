@@ -851,6 +851,7 @@ export class DustAPI {
     parentId,
     parents,
     mimeType,
+    sourceUrl,
   }: {
     dataSourceId: string;
     folderId: string;
@@ -859,6 +860,7 @@ export class DustAPI {
     parentId: string | null;
     parents: string[];
     mimeType: string;
+    sourceUrl: string | null;
   }) {
     const res = await this.request({
       method: "POST",
@@ -871,6 +873,7 @@ export class DustAPI {
         parent_id: parentId,
         parents,
         mime_type: mimeType,
+        source_url: sourceUrl,
       },
     });
 

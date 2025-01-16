@@ -280,6 +280,7 @@ async function handler(
         parent_id: parentId,
         remote_database_table_id: remoteDatabaseTableId,
         remote_database_secret_id: remoteDatabaseSecretId,
+        source_url: sourceUrl,
       } = r.data;
 
       let mimeType: string;
@@ -438,6 +439,7 @@ async function handler(
         remoteDatabaseSecretId: remoteDatabaseSecretId ?? null,
         title,
         mimeType,
+        sourceUrl: sourceUrl ?? null,
       });
 
       if (upsertRes.isErr()) {
