@@ -1,4 +1,5 @@
 import type { ModelId } from "@dust-tt/types";
+import { getZendeskGarbageCollectionWorkflowId } from "@dust-tt/types";
 
 import {
   getArticleInternalId,
@@ -16,7 +17,6 @@ import {
   fetchZendeskArticle,
   getZendeskBrandSubdomain,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
-import { getZendeskGarbageCollectionWorkflowId } from "@connectors/connectors/zendesk/temporal/client";
 import { ZENDESK_BATCH_SIZE } from "@connectors/connectors/zendesk/temporal/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
