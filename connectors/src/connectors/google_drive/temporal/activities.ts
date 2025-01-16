@@ -9,7 +9,6 @@ import PQueue from "p-queue";
 import { Op } from "sequelize";
 
 import {
-  GOOGLE_DRIVE_SHARED_WITH_ME_URL,
   GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID,
   GOOGLE_DRIVE_USER_SPACE_VIRTUAL_DRIVE_ID,
 } from "@connectors/connectors/google_drive/lib/consts";
@@ -77,7 +76,6 @@ export async function upsertSharedWithMeFolder(connectorId: ModelId) {
     parentId: null,
     title: "Shared with me",
     mimeType: MIME_TYPES.GOOGLE_DRIVE.FOLDER,
-    sourceUrl: GOOGLE_DRIVE_SHARED_WITH_ME_URL,
   });
 }
 
