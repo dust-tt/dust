@@ -103,7 +103,7 @@ export function UserMenu({
           </>
         )}
 
-        {showDebugTools(owner, featureFlags) && (
+        {showDebugTools(featureFlags) && (
           <>
             <DropdownMenuLabel label="Dev Tools" />
             {router.route === "/w/[wId]/assistant/[cId]" && (

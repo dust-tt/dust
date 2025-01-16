@@ -4,6 +4,7 @@ import type {
   ModelId,
   RequireAtLeastOne,
   Result,
+  WhitelistableFeature,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type {
@@ -18,7 +19,6 @@ import { Op } from "sequelize";
 
 import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { showDebugTools } from "@app/lib/development";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
@@ -482,6 +482,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     newRole,
     allowTerminated = false,
     transaction,
+    featureFlags,
   }: {
     user: UserResource;
     workspace: LightWorkspaceType;
@@ -489,6 +490,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     // If true, allow updating the role of a terminated membership (which will also un-terminate it).
     allowTerminated?: boolean;
     transaction?: Transaction;
+    featureFlags: WhitelistableFeature[];
   }): Promise<
     Result<
       { previousRole: MembershipRoleType; newRole: MembershipRoleType },
@@ -533,8 +535,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
         });
 
         if (adminsCount < 2) {
-          const featureFlags = await getFeatureFlags(workspace);
-          if (showDebugTools(workspace, featureFlags)) {
+          if (showDebugTools(featureFlags)) {
             logger.warn(
               {
                 panic: false,

@@ -28,7 +28,7 @@ async function handler(
   const featureFlags = await getFeatureFlags(owner);
   // Allow Dust Super User to force role for testing
   const allowForSuperUserTesting =
-    showDebugTools(owner, featureFlags) &&
+    showDebugTools(featureFlags) &&
     auth.isDustSuperUser() &&
     req.body.force === "true";
 
@@ -116,12 +116,15 @@ async function handler(
           });
         }
 
+        const featureFlags = await getFeatureFlags(owner);
+
         const updateRes = await MembershipResource.updateMembershipRole({
           user,
           workspace: owner,
           newRole: role,
           // We allow to re-activate a terminated membership when updating the role here.
           allowTerminated: true,
+          featureFlags,
         });
 
         if (updateRes.isErr()) {

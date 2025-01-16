@@ -8,7 +8,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getTokenFromMembershipInvitationUrl } from "@app/lib/api/invitation";
 import { evaluateWorkspaceSeatAvailability } from "@app/lib/api/workspace";
-import { getSession } from "@app/lib/auth";
+import { getFeatureFlags, getSession } from "@app/lib/auth";
 import { AuthFlowError, SSOEnforcedError } from "@app/lib/iam/errors";
 import {
   getPendingMembershipInvitationForEmailAndWorkspace,
@@ -94,12 +94,17 @@ async function handleMembershipInvite(
     workspace: renderLightWorkspaceType({ workspace }),
   });
 
+  const featureFlags = await getFeatureFlags(
+    renderLightWorkspaceType({ workspace })
+  );
+
   if (m?.isRevoked()) {
     const updateRes = await MembershipResource.updateMembershipRole({
       user,
       workspace: renderLightWorkspaceType({ workspace }),
       newRole: membershipInvite.initialRole,
       allowTerminated: true,
+      featureFlags,
     });
 
     if (updateRes.isErr()) {

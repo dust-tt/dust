@@ -7,7 +7,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { getUserForWorkspace } from "@app/lib/api/user";
-import { Authenticator, getSession } from "@app/lib/auth";
+import { Authenticator, getFeatureFlags, getSession } from "@app/lib/auth";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { apiError } from "@app/logger/withlogging";
@@ -68,12 +68,15 @@ async function handler(
         });
       }
 
+      const featureFlags = await getFeatureFlags(owner);
+
       const updateRes = await MembershipResource.updateMembershipRole({
         user,
         workspace: owner,
         newRole: role,
         // We allow to re-activate a terminated membership when updating the role here.
         allowTerminated: true,
+        featureFlags,
       });
 
       if (updateRes.isErr()) {
