@@ -133,35 +133,43 @@ export function FeedbackSelector({
             <Tooltip
               label="I found this helpful"
               trigger={
-                <Button
-                  variant={feedback?.thumb === "up" ? "primary" : "ghost"}
-                  size="xs"
-                  disabled={isSubmittingThumb}
+                <div
+                  role="button"
+                  tabIndex={0}
                   onClick={handleThumbUp}
-                  icon={HandThumbUpIcon}
-                  // We enforce written feedback for thumbs down.
-                  // -> Not saving the reaction until then.
-                  className={
-                    feedback?.thumb === "up" ? "" : "text-muted-foreground"
-                  }
-                />
+                  className={`s-inline-flex s-items-center s-justify-center s-whitespace-nowrap s-font-medium s-ring-offset-background s-transition-colors focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring focus-visible:s-ring-offset-2 disabled:s-pointer-events-none s-border s-border-primary-200/0 s-text-primary-950 hover:s-bg-primary-150 hover:s-text-primary-900 hover:s-border-primary-150 active:s-bg-primary-300 disabled:s-text-primary-400 s-h-7 s-px-2.5 s-rounded-lg s-text-xs s-gap-1.5 ${
+                    isSubmittingThumb
+                      ? "disabled:s-pointer-events-none opacity-50"
+                      : ""
+                  } ${
+                    feedback?.thumb === "up"
+                      ? "s-bg-primary s-text-white hover:s-bg-primary/90"
+                      : "text-muted-foreground"
+                  }`}
+                >
+                  <HandThumbUpIcon className="h-4 w-4" />
+                </div>
               }
             />
             <Tooltip
               label="Report an issue with this answer"
               trigger={
-                <Button
-                  variant={feedback?.thumb === "down" ? "primary" : "ghost"}
-                  size="xs"
-                  disabled={isSubmittingThumb}
+                <div
+                  role="button"
+                  tabIndex={0}
                   onClick={handleThumbDown}
-                  icon={HandThumbDownIcon}
-                  // We enforce written feedback for thumbs down.
-                  // -> Not saving the reaction until then.
-                  className={
-                    feedback?.thumb === "down" ? "" : "text-muted-foreground"
-                  }
-                />
+                  className={`s-inline-flex s-items-center s-justify-center s-whitespace-nowrap s-font-medium s-ring-offset-background s-transition-colors focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring focus-visible:s-ring-offset-2 disabled:s-pointer-events-none s-border s-border-primary-200/0 s-text-primary-950 hover:s-bg-primary-150 hover:s-text-primary-900 hover:s-border-primary-150 active:s-bg-primary-300 disabled:s-text-primary-400 s-h-7 s-px-2.5 s-rounded-lg s-text-xs s-gap-1.5 ${
+                    isSubmittingThumb
+                      ? "disabled:s-pointer-events-none opacity-50"
+                      : ""
+                  } ${
+                    feedback?.thumb === "down"
+                      ? "s-bg-primary s-text-white hover:s-bg-primary/90"
+                      : "text-muted-foreground"
+                  }`}
+                >
+                  <HandThumbDownIcon className="h-4 w-4" />
+                </div>
               }
             />
           </div>
