@@ -85,12 +85,12 @@ async function backfillDatabases(
     id: number;
     notionDatabaseId: string;
     notionUrl: string;
-    structuredDataEnabled: boolean;
+    structuredDataUpsertedTs: Date | null;
   }[] = [];
 
   do {
     rows = await connectorsSequelize.query(
-      `SELECT id, "notionDatabaseId", "notionUrl", "structuredDataEnabled"
+      `SELECT id, "notionDatabaseId", "notionUrl", "structuredDataUpsertedTs"
        FROM notion_databases
        WHERE id > :lastId
        ORDER BY id
@@ -108,7 +108,9 @@ async function backfillDatabases(
     const documentNodeIds = rows.map(
       (row) => `notion-database-${row.notionDatabaseId}`
     );
-    const tableRows = rows.filter((row) => row.structuredDataEnabled);
+    const tableRows = rows.filter(
+      (row) => row.structuredDataUpsertedTs !== null
+    );
     const tableUrls = tableRows.map((row) => row.notionUrl);
     const tableNodeIds = tableRows.map(
       (row) => `notion-${row.notionDatabaseId}`
