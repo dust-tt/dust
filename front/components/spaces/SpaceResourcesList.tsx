@@ -77,6 +77,19 @@ type RowData = {
   onClick?: () => void;
 };
 
+type StringColumnDef = ColumnDef<RowData, string>;
+type NumberColumnDef = ColumnDef<RowData, number>;
+type OptionalNumberColumnDef = ColumnDef<RowData, number | undefined>;
+type UsageColumnDef = ColumnDef<RowData, DataSourceWithAgentsUsageType>;
+type ActionColumnDef = ColumnDef<RowData, unknown>;
+
+type TableColumnDef =
+  | StringColumnDef
+  | NumberColumnDef
+  | OptionalNumberColumnDef
+  | UsageColumnDef
+  | ActionColumnDef;
+
 const getTableColumns = ({
   setAssistantName,
   isManaged,
@@ -87,8 +100,8 @@ const getTableColumns = ({
   isManaged: boolean;
   isWebsite: boolean;
   space: SpaceType;
-}) => {
-  const nameColumn: ColumnDef<RowData, string> = {
+}): TableColumnDef[] => {
+  const nameColumn: TableColumnDef = {
     header: "Name",
     accessorKey: "label",
     id: "name",
@@ -102,14 +115,14 @@ const getTableColumns = ({
 
   const isGlobalOrSystemSpace = ["global", "system"].includes(space.kind);
 
-  const managedByColumn = {
+  const managedByColumn: TableColumnDef = {
     header: "Managed by",
     accessorFn: (row: RowData) =>
       isGlobalOrSystemSpace
         ? row.dataSourceView.dataSource.editedByUser?.imageUrl
         : row.dataSourceView.editedByUser?.imageUrl,
     meta: {
-      width: "6rem",
+      className: "w-6",
     },
     id: "managedBy",
     accessorKey: "managedBy",
@@ -129,12 +142,12 @@ const getTableColumns = ({
     },
   };
 
-  const usedByColumn = {
+  const usedByColumn: TableColumnDef = {
     header: "Used by",
     accessorFn: (row: RowData) => row.dataSourceView.usage?.count ?? 0,
     id: "usedBy",
     meta: {
-      width: "6rem",
+      className: "w-6",
     },
     cell: (info: CellContext<RowData, DataSourceWithAgentsUsageType>) => (
       <>
@@ -150,15 +163,15 @@ const getTableColumns = ({
     ),
   };
 
-  const lastSyncedColumn = {
+  const lastSyncedColumn: TableColumnDef = {
     header: "Last sync",
     id: "lastSync",
     accessorFn: (row: RowData) =>
       row.dataSourceView.dataSource.connector?.lastSyncSuccessfulTime,
     meta: {
-      width: "14rem",
+      className: "w-14",
     },
-    cell: (info: CellContext<RowData, number>) => (
+    cell: (info: CellContext<RowData, number | undefined>) => (
       <DataTable.CellContent className="pr-2">
         <>
           {!info.row.original.dataSourceView.dataSource.connector &&
@@ -183,10 +196,10 @@ const getTableColumns = ({
     ),
   };
 
-  const actionColumn = {
+  const actionColumn: TableColumnDef = {
     id: "action",
     meta: {
-      width: "10rem",
+      className: "w-10",
     },
     cell: (info: CellContext<RowData, unknown>) => {
       const original = info.row.original;
@@ -227,11 +240,14 @@ const getTableColumns = ({
       managedByColumn,
       lastSyncedColumn,
       actionColumn,
-    ];
+    ] satisfies TableColumnDef[];
   }
-  return isManaged || isWebsite
-    ? [nameColumn, usedByColumn, managedByColumn, lastSyncedColumn]
-    : [nameColumn, usedByColumn, managedByColumn];
+
+  return (
+    isManaged || isWebsite
+      ? [nameColumn, usedByColumn, managedByColumn, lastSyncedColumn]
+      : [nameColumn, usedByColumn, managedByColumn]
+  ) satisfies TableColumnDef[];
 };
 
 interface SpaceResourcesListProps {

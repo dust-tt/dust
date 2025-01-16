@@ -15,7 +15,7 @@ import type {
   SpaceType,
   WorkspaceType,
 } from "@dust-tt/types";
-import type { CellContext } from "@tanstack/react-table";
+import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { sortBy } from "lodash";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -38,7 +38,7 @@ type RowData = {
   onClick?: () => void;
 };
 
-const getTableColumns = () => {
+const getTableColumns = (): ColumnDef<RowData, string>[] => {
   return [
     {
       id: "name",
@@ -61,7 +61,7 @@ const getTableColumns = () => {
 const getDustAppsColumns = (
   owner: WorkspaceType,
   registryApps: ActionApp[]
-) => ({
+): ColumnDef<RowData, string> => ({
   id: "status",
   cell: (info: CellContext<RowData, string>) => {
     const { app } = info.row.original;
@@ -109,7 +109,7 @@ const AppHashChecker = ({ owner, app, registryApp }: AppHashCheckerProps) => {
       <span>
         Inconsistent hashes,{" "}
         <Link
-          className="text-blue-500"
+          className="text-highlight"
           href={`/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/specification?hash=${registryApp.appHash}`}
           onClick={(e) => {
             e.stopPropagation();
