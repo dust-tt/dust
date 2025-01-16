@@ -267,7 +267,7 @@ export function useFileUploaderService(conversationId?: string) {
 
       if (fileBlob.fileId) {
         // Intentionally not awaiting the fetch call to allow it to run asynchronously.
-        void dustAPI.deleteFile(fileBlob.fileId);
+        void dustAPI.deleteFile({ fileID: fileBlob.fileId });
       }
 
       const allFilesReady = fileBlobs.every((f) => f.isUploading === false);
