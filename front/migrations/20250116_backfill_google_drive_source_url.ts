@@ -20,8 +20,25 @@ async function backfillDataSource(
 ) {
   logger.info("Processing data source");
 
+  // get datasource id from core
+  const rows: { id: number }[] = await coreSequelize.query(
+    `SELECT id FROM data_sources WHERE data_source_id = :dataSourceId;`,
+    {
+      replacements: { dataSourceId: frontDataSource.dustAPIDataSourceId },
+      type: QueryTypes.SELECT,
+    }
+  );
+
+  if (rows.length === 0) {
+    logger.error(`Data source ${frontDataSource.id} not found in core`);
+    return;
+  }
+
+  const dataSourceId = rows[0].id;
+
   await backfillFolders(
     frontDataSource,
+    dataSourceId,
     coreSequelize,
     connectorsSequelize,
     execute,
@@ -30,6 +47,7 @@ async function backfillDataSource(
 
   await backfillSpreadsheets(
     frontDataSource,
+    dataSourceId,
     coreSequelize,
     connectorsSequelize,
     execute,
@@ -39,6 +57,7 @@ async function backfillDataSource(
 
 async function backfillSpreadsheets(
   frontDataSource: DataSourceModel,
+  dataSourceId: number,
   coreSequelize: Sequelize,
   connectorsSequelize: Sequelize,
   execute: boolean,
@@ -88,8 +107,8 @@ async function backfillSpreadsheets(
          SET source_url = urls.url
          FROM (SELECT unnest(ARRAY [:nodeIds]::text[]) as node_id,
                       unnest(ARRAY [:urls]::text[])    as url) urls
-         WHERE data_sources_nodes.node_id = urls.node_id;`,
-        { replacements: { urls, nodeIds } }
+         WHERE data_sources_nodes.data_source = :dataSourceId AND data_sources_nodes.node_id = urls.node_id;`,
+        { replacements: { urls, nodeIds, dataSourceId } }
       );
       logger.info(
         `Updated ${rows.length} spreadsheets from id ${rows[0].id} to id ${rows[rows.length - 1].id}.`
@@ -106,6 +125,7 @@ async function backfillSpreadsheets(
 
 async function backfillFolders(
   frontDataSource: DataSourceModel,
+  dataSourceId: number,
   coreSequelize: Sequelize,
   connectorsSequelize: Sequelize,
   execute: boolean,
@@ -159,8 +179,8 @@ async function backfillFolders(
          SET source_url = urls.url
          FROM (SELECT unnest(ARRAY [:nodeIds]::text[]) as node_id,
                       unnest(ARRAY [:urls]::text[])    as url) urls
-         WHERE data_sources_nodes.node_id = urls.node_id;`,
-        { replacements: { urls, nodeIds } }
+         WHERE data_sources_nodes.data_source = :dataSourceId AND data_sources_nodes.node_id = urls.node_id;`,
+        { replacements: { urls, nodeIds, dataSourceId } }
       );
       logger.info(
         `Updated ${rows.length} folders from id ${rows[0].id} to id ${rows[rows.length - 1].id}.`
