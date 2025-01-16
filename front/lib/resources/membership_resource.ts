@@ -18,12 +18,14 @@ import { Op } from "sequelize";
 
 import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { showDebugTools } from "@app/lib/development";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
+import featureFlags from "@app/pages/api/w/[wId]/feature-flags";
 
 type GetMembershipsOptions = RequireAtLeastOne<{
   users: UserResource[];
@@ -532,7 +534,8 @@ export class MembershipResource extends BaseResource<MembershipModel> {
         });
 
         if (adminsCount < 2) {
-          if (showDebugTools(workspace)) {
+          const featureFlags = await getFeatureFlags(workspace);
+          if (showDebugTools(workspace, featureFlags)) {
             logger.warn(
               {
                 panic: false,

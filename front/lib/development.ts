@@ -1,17 +1,25 @@
-import type { LightWorkspaceType, UserType } from "@dust-tt/types";
+import type {
+  LightWorkspaceType,
+  UserType,
+  WhitelistableFeature,
+} from "@dust-tt/types";
 import { Err, isDevelopment, Ok } from "@dust-tt/types";
 
-export function showDebugTools(owner: LightWorkspaceType) {
-  return owner.isADustWorkspace || isDevelopment();
+export function showDebugTools(
+  owner: LightWorkspaceType,
+  flags: WhitelistableFeature[]
+) {
+  return isDevelopment() || flags.includes("show_debug_tools");
 }
 
 export async function forceUserRole(
   user: UserType,
   owner: LightWorkspaceType,
-  role: "user" | "builder" | "admin"
+  role: "user" | "builder" | "admin",
+  featureFlags: WhitelistableFeature[]
 ) {
   // Ideally we should check if the user is dust super user but we don't have this information in the front-end
-  if (!showDebugTools(owner)) {
+  if (!showDebugTools(owner, featureFlags)) {
     return new Err("Not allowed");
   }
 

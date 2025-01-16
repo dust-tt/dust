@@ -41,7 +41,7 @@ export function UserMenu({
 
   const forceRoleUpdate = useMemo(
     () => async (role: "user" | "builder" | "admin") => {
-      const result = await forceUserRole(user, owner, role);
+      const result = await forceUserRole(user, owner, role, featureFlags);
       if (result.isOk()) {
         sendNotification({
           title: "Success !",
@@ -59,7 +59,7 @@ export function UserMenu({
         });
       }
     },
-    [owner, sendNotification, user]
+    [owner, sendNotification, user, featureFlags]
   );
 
   return (
@@ -103,7 +103,7 @@ export function UserMenu({
           </>
         )}
 
-        {showDebugTools(owner) && (
+        {showDebugTools(owner, featureFlags) && (
           <>
             <DropdownMenuLabel label="Dev Tools" />
             {router.route === "/w/[wId]/assistant/[cId]" && (

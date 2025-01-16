@@ -4,7 +4,6 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { pokeUpgradeWorkspaceToPlan } from "@app/lib/plans/subscription";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { apiError } from "@app/logger/withlogging";
 
 export type UpgradeWorkspaceResponseBody = {
@@ -48,10 +47,15 @@ async function handler(
       await pokeUpgradeWorkspaceToPlan(auth, planCode);
 
       return res.status(200).json({
-        workspace: renderLightWorkspaceType({
-          workspace: owner,
+        workspace: {
+          id: owner.id,
+          sId: owner.sId,
+          name: owner.name,
           role: "admin",
-        }),
+          segmentation: owner.segmentation || null,
+          whiteListedProviders: owner.whiteListedProviders,
+          defaultEmbeddingProvider: owner.defaultEmbeddingProvider,
+        },
       });
 
     default:

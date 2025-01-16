@@ -6,18 +6,8 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 
-import config from "@app/lib/api/config";
 import { Workspace } from "@app/lib/models/workspace";
 import { UserResource } from "@app/lib/resources/user_resource";
-
-function isADustProdWorkspace(
-  workspace: Workspace | WorkspaceType | LightWorkspaceType
-) {
-  return (
-    workspace.sId === config.getDustWorkspaceId() ||
-    workspace.sId === config.getDustAppsWorkspaceId()
-  );
-}
 
 export function renderLightWorkspaceType({
   workspace,
@@ -34,7 +24,6 @@ export function renderLightWorkspaceType({
     whiteListedProviders: workspace.whiteListedProviders,
     defaultEmbeddingProvider: workspace.defaultEmbeddingProvider,
     role,
-    isADustWorkspace: isADustProdWorkspace(workspace),
   };
 }
 

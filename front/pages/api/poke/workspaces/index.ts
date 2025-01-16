@@ -28,7 +28,6 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { isDomain, isEmailValid } from "@app/lib/utils";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { apiError } from "@app/logger/withlogging";
 
 export type PokeWorkspaceType = LightWorkspaceType & {
@@ -296,10 +295,15 @@ async function handler(
               }
             );
 
-            const lightWorkspace = renderLightWorkspaceType({
-              workspace: ws,
-              role: "admin",
-            });
+            const lightWorkspace: LightWorkspaceType = {
+              id: ws.id,
+              sId: ws.sId,
+              name: ws.name,
+              role: "admin" as const, // Explicitly type this as "admin"
+              segmentation: ws.segmentation,
+              whiteListedProviders: ws.whiteListedProviders,
+              defaultEmbeddingProvider: ws.defaultEmbeddingProvider,
+            };
 
             const auth = await Authenticator.internalAdminForWorkspace(ws.sId);
             const dataSources = await DataSourceResource.listByWorkspace(auth);
