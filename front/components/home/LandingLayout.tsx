@@ -99,15 +99,14 @@ export default function LandingLayout({
           </div>
           <MainNavigation />
           <div className="flex flex-grow justify-end gap-4">
-            <Link href="/home/contact" shallow={true}>
-              <Button
-                className="hidden xs:block"
-                variant="outline"
-                size="sm"
-                label="Request a demo"
-                target="_blank"
-              />
-            </Link>
+            <Button
+              href="/home/contact"
+              className="hidden xs:block"
+              variant="outline"
+              size="sm"
+              label="Request a demo"
+              target="_blank"
+            />
             <Button
               variant="highlight"
               size="sm"
@@ -164,6 +163,13 @@ export default function LandingLayout({
              gtag('config', '${process.env.NEXT_PUBLIC_GA_TRACKING_ID}');
             `}
             </Script>
+            <Script
+              type="text/javascript"
+              id="hs-script-loader"
+              async
+              defer
+              src="//js-eu1.hs-scripts.com/144442587.js"
+            ></Script>
           </>
         )}
         <FooterNavigation />

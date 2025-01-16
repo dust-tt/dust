@@ -1,3 +1,4 @@
+import { concurrentExecutor } from "@dust-tt/types";
 import { Op, QueryTypes } from "sequelize";
 
 import { getCoreReplicaDbConnection } from "@app/lib/production_checks/utils";
@@ -7,6 +8,7 @@ import { makeScript } from "@app/scripts/helpers";
 
 const coreSequelize = getCoreReplicaDbConnection();
 const DATASOURCE_BATCH_SIZE = 25;
+const SELECT_BATCH_SIZE = 256;
 
 function checkNode(node: any, logger: typeof Logger) {
   if (node.parents.length === 0) {
@@ -22,7 +24,9 @@ async function checkStaticDataSourceParents(
   frontDataSource: DataSourceModel,
   logger: typeof Logger
 ) {
-  logger.info("CHECK");
+  if (frontDataSource.id % 100 === 0) {
+    logger.info("CHECK");
+  }
   const { dustAPIProjectId, dustAPIDataSourceId } = frontDataSource;
   const coreDataSource: any = (
     await coreSequelize.query(
@@ -38,49 +42,70 @@ async function checkStaticDataSourceParents(
     return;
   }
 
-  const nodes: any[] = await coreSequelize.query(
-    `SELECT node_id, parents, timestamp FROM data_sources_nodes WHERE data_source=:c`,
-    { replacements: { c: coreDataSource.id }, type: QueryTypes.SELECT }
-  );
-  nodes.forEach((doc) => {
-    checkNode(
-      doc,
-      logger.child({
-        nodeId: doc.node_id,
-        parents: doc.parents,
-        timestamp: new Date(doc.timestamp),
-      })
+  let nextId = 0;
+  let nodes: any[];
+  do {
+    nodes = await coreSequelize.query(
+      `SELECT id, node_id, parents, timestamp FROM data_sources_nodes WHERE data_source=:c AND parents != ARRAY[node_id] AND id > :nextId LIMIT :batchSize`,
+      {
+        replacements: {
+          c: coreDataSource.id,
+          nextId,
+          batchSize: SELECT_BATCH_SIZE,
+        },
+        type: QueryTypes.SELECT,
+      }
     );
-  });
+    nodes.forEach((doc) => {
+      checkNode(
+        doc,
+        logger.child({
+          nodeId: doc.node_id,
+          parents: doc.parents,
+          timestamp: new Date(doc.timestamp),
+        })
+      );
+    });
+    if (nodes.length > 0) {
+      nextId = nodes[nodes.length - 1].id;
+    }
+  } while (nodes.length === SELECT_BATCH_SIZE);
 }
 
 async function checkStaticDataSourcesParents(
   nextDataSourceId: number,
   logger: typeof Logger
 ) {
-  const startId = nextDataSourceId;
-
+  let startId = nextDataSourceId;
   let staticDataSources;
   do {
     staticDataSources = await DataSourceModel.findAll({
-      where: { connectorProvider: null, id: { [Op.gte]: startId } },
+      where: { connectorProvider: null, id: { [Op.gt]: startId } },
       limit: DATASOURCE_BATCH_SIZE,
+      order: [["id", "ASC"]],
     });
 
-    for (const dataSource of staticDataSources) {
-      await checkStaticDataSourceParents(
-        dataSource,
-        logger.child({
-          project: dataSource.dustAPIProjectId,
-          dataSourceId: dataSource.dustAPIDataSourceId,
-        })
-      );
+    await concurrentExecutor(
+      staticDataSources,
+      async (dataSource) => {
+        await checkStaticDataSourceParents(
+          dataSource,
+          logger.child({
+            project: dataSource.dustAPIProjectId,
+            dataSourceId: dataSource.dustAPIDataSourceId,
+          })
+        );
+      },
+      { concurrency: 10 }
+    );
+    if (staticDataSources.length > 0) {
+      startId = staticDataSources[staticDataSources.length - 1].id;
     }
   } while (staticDataSources.length === DATASOURCE_BATCH_SIZE);
 }
 
 makeScript(
-  { nextDataSourceId: { type: "number", default: 0 } },
+  { nextDataSourceId: { type: "number", default: -1 } },
   async ({ nextDataSourceId }, logger) => {
     await checkStaticDataSourcesParents(nextDataSourceId, logger);
   }

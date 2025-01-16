@@ -16,6 +16,11 @@ export const RunPage = () => {
     const run = async () => {
       const params = JSON.parse(decodeURI(location.search.substr(1)));
 
+      if (params.conversationId) {
+        await navigate(`/conversations/${params.conversationId}`);
+        return;
+      }
+
       const files = await fileUploaderService.uploadContentTab({
         includeContent: params.includeContent,
         includeCapture: params.includeCapture,

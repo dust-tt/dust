@@ -27,10 +27,6 @@ AgentMessageContent.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    agentMessageId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
     step: {
       type: DataTypes.INTEGER,
       allowNull: false,

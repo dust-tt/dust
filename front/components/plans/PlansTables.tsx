@@ -7,7 +7,6 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-  UserIcon,
 } from "@dust-tt/sparkle";
 import type { BillingPeriod, PlanType } from "@dust-tt/types";
 import type { ReactNode } from "react";
@@ -221,11 +220,9 @@ export function ProPriceTable({
 }
 function EnterprisePriceTable({
   size,
-  onClick,
   isProcessing,
 }: {
   size: "sm" | "xs";
-  onClick?: () => void;
   isProcessing?: boolean;
 }) {
   const biggerButtonSize = size === "xs" ? "sm" : "md";
@@ -238,16 +235,13 @@ function EnterprisePriceTable({
       magnified={false}
     >
       <PriceTable.ActionContainer position="top">
-        {onClick && (
-          <Button
-            variant="highlight"
-            size={biggerButtonSize}
-            label="Contact sales"
-            icon={UserIcon}
-            disabled={isProcessing}
-            onClick={onClick}
-          />
-        )}
+        <Button
+          href="/home/contact"
+          variant="highlight"
+          size={biggerButtonSize}
+          disabled={isProcessing}
+          label="Contact Sales"
+        />
       </PriceTable.ActionContainer>
       {ENTERPRISE_PLAN_ITEMS.map((item, index) => (
         <PriceTable.Item
@@ -263,7 +257,6 @@ function EnterprisePriceTable({
 interface PricePlanProps {
   plan?: PlanType;
   onClickProPlan?: () => void;
-  onClickEnterprisePlan?: () => void;
   isProcessing?: boolean;
   flexCSS?: string;
   display: PriceTableDisplay;
@@ -273,7 +266,6 @@ export function PricePlans({
   flexCSS = "mx-4 flex flex-row w-full md:-mx-12 md:gap-4 lg:gap-6 xl:mx-0 xl:gap-8 2xl:gap-10",
   plan,
   onClickProPlan,
-  onClickEnterprisePlan,
   isProcessing,
   display,
 }: PricePlanProps) {
@@ -306,11 +298,7 @@ export function PricePlans({
               />
             </TabsContent>
             <TabsContent value="enterprise">
-              <EnterprisePriceTable
-                size="xs"
-                isProcessing={isProcessing}
-                onClick={onClickEnterprisePlan}
-              />
+              <EnterprisePriceTable size="xs" isProcessing={isProcessing} />
             </TabsContent>
           </div>
         </Tabs>
@@ -325,11 +313,7 @@ export function PricePlans({
           onClick={onClickProPlan}
           display={display}
         />
-        <EnterprisePriceTable
-          size="sm"
-          isProcessing={isProcessing}
-          onClick={onClickEnterprisePlan}
-        />
+        <EnterprisePriceTable size="sm" isProcessing={isProcessing} />
       </div>
     </>
   );

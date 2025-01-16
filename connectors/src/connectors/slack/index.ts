@@ -32,6 +32,7 @@ import {
   getSlackClient,
 } from "@connectors/connectors/slack/lib/slack_client";
 import {
+  getSlackChannelSourceUrl,
   isSlackChannelInternalId,
   isSlackNonThreadedMessagesInternalId,
   isSlackThreadInternalId,
@@ -624,7 +625,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
       parentInternalId: null,
       type: "channel",
       title: `#${ch.slackChannelName}`,
-      sourceUrl: `https://app.slack.com/client/${slackConfig.slackTeamId}/${ch.slackChannelId}`,
+      sourceUrl: getSlackChannelSourceUrl(ch.slackChannelId, slackConfig),
       expandable: false,
       permission: ch.permission,
       lastUpdatedAt: null,

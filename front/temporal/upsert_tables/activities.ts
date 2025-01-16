@@ -92,6 +92,7 @@ export async function upsertTableActivity(
     detectedHeaders: upsertQueueItem.detectedHeaders,
     title: upsertQueueItem.title,
     mimeType: upsertQueueItem.mimeType,
+    sourceUrl: upsertQueueItem.sourceUrl ?? null,
   });
 
   if (tableRes.isErr()) {

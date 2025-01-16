@@ -40,7 +40,6 @@ import { getVisualForContentNode } from "@app/lib/content_nodes";
 import {
   canBeExpanded,
   getDisplayNameForDataSource,
-  isFolder,
 } from "@app/lib/data_sources";
 import {
   useDataSourceViewContentNodes,
@@ -219,12 +218,7 @@ function getDataSourceConfigurationsForTableAction(
           dsConfigs[table.dataSourceViewId] = {
             workspaceId: table.workspaceId,
             dataSourceViewId: table.dataSourceViewId,
-            filter: {
-              parents:
-                dataSourceView && isFolder(dataSourceView.dataSource)
-                  ? null
-                  : { in: [], not: [] },
-            },
+            filter: { parents: dataSourceView ? { in: [], not: [] } : null },
           };
         }
 

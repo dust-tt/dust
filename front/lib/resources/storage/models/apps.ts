@@ -32,11 +32,6 @@ export class AppModel extends SoftDeletableModel<AppModel> {
 }
 AppModel.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -159,11 +154,6 @@ export class Dataset extends BaseModel<Dataset> {
 }
 Dataset.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -222,22 +212,6 @@ Clone.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
-    },
-    fromId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      references: {
-        model: "apps",
-        key: "id",
-      },
-    },
-    toId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      references: {
-        model: "apps",
-        key: "id",
-      },
     },
   },
   {

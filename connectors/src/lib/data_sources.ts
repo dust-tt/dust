@@ -9,6 +9,7 @@ import type {
   CoreAPIFolder,
   CoreAPITable,
   PostDataSourceDocumentRequestBody,
+  ProviderVisibility,
 } from "@dust-tt/types";
 import {
   isValidDate,
@@ -153,7 +154,7 @@ async function _upsertDataSourceDocument({
       const dustRequestPayload: PostDataSourceDocumentRequestBody = {
         text: null,
         section: documentContent,
-        source_url: documentUrl,
+        source_url: documentUrl ?? null,
         timestamp,
         title,
         mime_type: mimeType,
@@ -784,6 +785,7 @@ export async function upsertDataSourceTableFromCsv({
   useAppForHeaderDetection,
   title,
   mimeType,
+  sourceUrl,
 }: {
   dataSourceConfig: DataSourceConfig;
   tableId: string;
@@ -797,6 +799,7 @@ export async function upsertDataSourceTableFromCsv({
   useAppForHeaderDetection?: boolean;
   title: string;
   mimeType: string;
+  sourceUrl?: string;
 }) {
   const localLogger = logger.child({ ...loggerArgs, tableId, tableName });
   const statsDTags = [
@@ -837,6 +840,7 @@ export async function upsertDataSourceTableFromCsv({
     mimeType,
     timestamp: null,
     tags: null,
+    sourceUrl: sourceUrl ?? null,
   };
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
@@ -1240,6 +1244,8 @@ export async function _upsertDataSourceFolder({
   parentId,
   title,
   mimeType,
+  sourceUrl,
+  providerVisibility,
 }: {
   dataSourceConfig: DataSourceConfig;
   folderId: string;
@@ -1248,6 +1254,8 @@ export async function _upsertDataSourceFolder({
   parentId: string | null;
   title: string;
   mimeType: string;
+  sourceUrl?: string;
+  providerVisibility?: ProviderVisibility;
 }) {
   const now = new Date();
 
@@ -1259,6 +1267,8 @@ export async function _upsertDataSourceFolder({
     parentId,
     parents,
     mimeType,
+    sourceUrl: sourceUrl ?? null,
+    providerVisibility: providerVisibility || null,
   });
 
   if (r.isErr()) {

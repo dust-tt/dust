@@ -1277,6 +1277,7 @@ dependencies = [
  "deno_core",
  "dns-lookup",
  "elasticsearch",
+ "elasticsearch-dsl",
  "eventsource-client",
  "fancy-regex",
  "futures",
@@ -1349,6 +1350,18 @@ dependencies = [
  "tokio",
  "url",
  "void",
+]
+
+[[package]]
+name = "elasticsearch-dsl"
+version = "0.4.22"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bec9408ccc8db1d1bd604af4cca1dd5cb308d0e5531d97947d0d69f9909fae0b"
+dependencies = [
+ "chrono",
+ "num-traits",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

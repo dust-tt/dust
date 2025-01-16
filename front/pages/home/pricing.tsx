@@ -1,6 +1,6 @@
 import { Button, RocketIcon } from "@dust-tt/sparkle";
 import type { ReactElement } from "react";
-import React, { useState } from "react";
+import React from "react";
 
 import { HeaderContentBlock } from "@app/components/home/ContentBlocks";
 import { Grid } from "@app/components/home/ContentComponents";
@@ -11,7 +11,6 @@ import {
   shapeNames,
 } from "@app/components/home/Particles";
 import { PricePlans } from "@app/components/plans/PlansTables";
-import { SubscriptionContactUsDrawer } from "@app/components/SubscriptionContactUsDrawer";
 
 export async function getServerSideProps() {
   return {
@@ -22,17 +21,8 @@ export async function getServerSideProps() {
 }
 
 export default function Pricing() {
-  const [showContactUsDrawer, setShowContactUsDrawer] =
-    useState<boolean>(false);
-
   return (
     <>
-      <SubscriptionContactUsDrawer
-        show={showContactUsDrawer}
-        onClose={() => {
-          setShowContactUsDrawer(false);
-        }}
-      />
       <HeaderContentBlock
         title="Meet our pricing plans."
         from="from-emerald-200"
@@ -63,7 +53,6 @@ export default function Pricing() {
             onClickProPlan={() => {
               window.location.href = "/api/auth/login";
             }}
-            onClickEnterprisePlan={() => setShowContactUsDrawer(true)}
           />
         </div>
       </Grid>

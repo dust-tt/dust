@@ -18,6 +18,7 @@ export type SlackChannelType = {
   slackId: string;
   permission: ConnectorPermission;
   agentConfigurationId: string | null;
+  private: boolean;
 };
 
 export async function updateSlackChannelInConnectorsDb({
@@ -60,6 +61,7 @@ export async function updateSlackChannelInConnectorsDb({
     slackId: channel.slackChannelId,
     permission: channel.permission,
     agentConfigurationId: channel.agentConfigurationId,
+    private: channel.private,
   };
 }
 

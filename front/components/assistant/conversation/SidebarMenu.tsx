@@ -220,7 +220,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
               <div className="z-50 flex justify-end gap-2 p-2 shadow-tale">
                 <SearchInput
                   name="search"
-                  placeholder="Search (Title)"
+                  placeholder="Search"
                   value={titleFilter}
                   onChange={setTitleFilter}
                 />
@@ -280,12 +280,12 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
               </div>
             )}
             {isConversationsError && (
-              <Label className="py-1 text-xs font-medium text-element-800">
+              <Label className="px-3 py-4 text-xs font-medium text-muted-foreground">
                 Error loading conversations
               </Label>
             )}
             <NavigationList
-              className="w-full px-2"
+              className="w-full px-3"
               ref={conversationsNavigationRef}
             >
               {conversationsByDate &&

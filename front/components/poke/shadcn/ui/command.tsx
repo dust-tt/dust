@@ -3,6 +3,7 @@
 import { MagnifyingGlassIcon } from "@dust-tt/sparkle";
 import type { DialogProps } from "@radix-ui/react-dialog";
 import { Command as CommandPrimitive } from "cmdk";
+import Link from "next/link";
 import * as React from "react";
 
 import { cn } from "@app/components/poke/shadcn/lib/utils";
@@ -10,6 +11,14 @@ import {
   PokeDialog,
   PokeDialogContent,
 } from "@app/components/poke/shadcn/ui/dialog";
+
+const CommandContext = React.createContext<{
+  selectedIndex: number;
+  setSelectedIndex: (index: number) => void;
+}>({
+  selectedIndex: 0,
+  setSelectedIndex: () => {},
+});
 
 const Command = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive>,
@@ -34,20 +43,91 @@ type CommandDialogProps = DialogProps & {
 const CommandDialog = ({
   children,
   className,
+  onOpenChange,
+  open,
   shouldFilter,
   ...props
 }: CommandDialogProps) => {
+  const [selectedIndex, setSelectedIndex] = React.useState(0);
+
+  // Create a context to share the selection state.
+  const commandContext = React.useMemo(
+    () => ({
+      selectedIndex,
+      setSelectedIndex,
+    }),
+    [selectedIndex]
+  );
+
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!open) {
+        return;
+      }
+
+      switch (e.key) {
+        case "ArrowDown":
+          e.preventDefault();
+          setSelectedIndex((current) => {
+            const items = document.querySelectorAll("[cmdk-item]");
+            if (current >= items.length - 1) {
+              return 0;
+            }
+            return current + 1;
+          });
+          break;
+
+        case "ArrowUp":
+          e.preventDefault();
+          setSelectedIndex((current) => {
+            const items = document.querySelectorAll("[cmdk-item]");
+            if (current <= 0) {
+              return items.length - 1;
+            }
+            return current - 1;
+          });
+          break;
+
+        case "Enter":
+          e.preventDefault();
+          const selectedItem = document.querySelector(
+            `[cmdk-item][data-index="${selectedIndex}"]`
+          );
+          if (selectedItem instanceof HTMLElement) {
+            selectedItem.click();
+          }
+          break;
+
+        case "Escape":
+          if (onOpenChange) {
+            onOpenChange(false);
+          }
+          break;
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [open, onOpenChange, selectedIndex]);
+
+  // Reset selection when dialog opens/closes.
+  React.useEffect(() => {
+    setSelectedIndex(0);
+  }, [open]);
+
   return (
-    <PokeDialog {...props}>
-      <PokeDialogContent className={cn("overflow-hidden p-0", className)}>
-        <Command
-          shouldFilter={shouldFilter}
-          className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-group]]:px-2 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5"
-        >
-          {children}
-        </Command>
-      </PokeDialogContent>
-    </PokeDialog>
+    <CommandContext.Provider value={commandContext}>
+      <PokeDialog onOpenChange={onOpenChange} open={open} {...props}>
+        <PokeDialogContent className={cn("overflow-hidden p-0", className)}>
+          <Command
+            shouldFilter={shouldFilter}
+            className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-group]]:px-2 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5"
+          >
+            {children}
+          </Command>
+        </PokeDialogContent>
+      </PokeDialog>
+    </CommandContext.Provider>
   );
 };
 
@@ -126,17 +206,47 @@ CommandSeparator.displayName = CommandPrimitive.Separator.displayName;
 
 const CommandItem = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive.Item>,
-  React.ComponentPropsWithoutRef<typeof CommandPrimitive.Item>
->(({ className, ...props }, ref) => (
-  <CommandPrimitive.Item
-    ref={ref}
-    className={cn(
-      "aria-selected:bg-accent aria-selected:text-accent-foreground relative flex cursor-pointer items-center rounded-sm px-2 py-1.5 text-sm outline-none",
-      className
-    )}
-    {...props}
-  />
-));
+  React.ComponentPropsWithoutRef<typeof CommandPrimitive.Item> & {
+    index?: number;
+    href?: string;
+  }
+>(({ children, className, href, index, ...props }, ref) => {
+  const { selectedIndex } = React.useContext(CommandContext);
+
+  const isSelected = typeof index === "number" && index === selectedIndex;
+  const linkRef = React.useRef<HTMLAnchorElement>(null);
+
+  const handleSelect = () => {
+    if (href && linkRef.current) {
+      linkRef.current.click();
+    }
+  };
+
+  const content = (
+    <CommandPrimitive.Item
+      ref={ref}
+      className={cn(
+        "aria-selected:bg-accent aria-selected:text-accent-foreground relative flex cursor-pointer",
+        "items-center rounded-sm px-2 py-1.5 text-sm outline-none",
+        isSelected && "bg-accent text-warning-800",
+        className
+      )}
+      data-index={index}
+      onSelect={handleSelect}
+      {...props}
+    >
+      {children}
+    </CommandPrimitive.Item>
+  );
+
+  return href ? (
+    <Link ref={linkRef} href={href} className="block">
+      {content}
+    </Link>
+  ) : (
+    content
+  );
+});
 
 CommandItem.displayName = CommandPrimitive.Item.displayName;
 

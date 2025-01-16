@@ -540,14 +540,13 @@ async function fetchWorkspaceAgentConfigurationsForView(
       templateId: agent.templateId
         ? TemplateResource.modelIdToSId({ id: agent.templateId })
         : null,
-      groupIds: agent.groupIds.map((id) =>
-        GroupResource.modelIdToSId({ id, workspaceId: owner.id })
-      ),
       requestedGroupIds: agent.requestedGroupIds.map((groups) =>
         groups.map((id) =>
           GroupResource.modelIdToSId({ id, workspaceId: owner.id })
         )
       ),
+      // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
+      groupIds: [],
     };
 
     agentConfigurationTypes.push(agentConfigurationType);
@@ -710,8 +709,6 @@ export async function createAgentConfiguration(
     model,
     agentConfigurationId,
     templateId,
-    // TODO(2024-11-04 flav) `groupIds` clean up.
-    groupIds,
     requestedGroupIds,
   }: {
     name: string;
@@ -725,8 +722,6 @@ export async function createAgentConfiguration(
     model: AgentModelConfigurationType;
     agentConfigurationId?: string;
     templateId: string | null;
-    // TODO(2024-11-04 flav) `groupIds` clean up.
-    groupIds: number[];
     requestedGroupIds: number[][];
   }
 ): Promise<Result<LightAgentConfigurationType, Error>> {
@@ -823,7 +818,6 @@ export async function createAgentConfiguration(
             workspaceId: owner.id,
             authorId: user.id,
             templateId: template?.id,
-            groupIds,
             requestedGroupIds,
           },
           {
@@ -857,10 +851,6 @@ export async function createAgentConfiguration(
       maxStepsPerRun: agent.maxStepsPerRun,
       visualizationEnabled: agent.visualizationEnabled ?? false,
       templateId: template?.sId ?? null,
-      // TODO(2024-11-04 flav) `groupIds` clean up.
-      groupIds: agent.groupIds.map((id) =>
-        GroupResource.modelIdToSId({ id, workspaceId: owner.id })
-      ),
       requestedGroupIds: agent.requestedGroupIds.map((groups) =>
         groups.map((id) =>
           GroupResource.modelIdToSId({ id, workspaceId: owner.id })

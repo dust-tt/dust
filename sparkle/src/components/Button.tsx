@@ -8,6 +8,7 @@ import {
   LinkWrapperProps,
   Spinner,
   TooltipContent,
+  TooltipPortal,
   TooltipProvider,
   TooltipRoot,
   TooltipTrigger,
@@ -54,8 +55,7 @@ const sizeVariants: Record<ButtonSizeType, string> = {
 
 const buttonVariants = cva(
   "s-inline-flex s-items-center s-justify-center s-whitespace-nowrap s-font-medium s-ring-offset-background s-transition-colors " +
-    "focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring focus-visible:s-ring-offset-2 " +
-    "disabled:s-pointer-events-none",
+    "focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring focus-visible:s-ring-offset-2",
   {
     variants: {
       variant: styleVariants,
@@ -199,7 +199,9 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       <TooltipProvider>
         <TooltipRoot>
           <TooltipTrigger asChild>{innerButton}</TooltipTrigger>
-          <TooltipContent>{tooltip}</TooltipContent>
+          <TooltipPortal>
+            <TooltipContent>{tooltip}</TooltipContent>
+          </TooltipPortal>
         </TooltipRoot>
       </TooltipProvider>
     ) : (

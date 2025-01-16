@@ -50,7 +50,7 @@ export const ImgBlock: React.FC<ImgBlockProps> = ({
   };
 
   return (
-    <div className={classNames("flex flex-col gap-12", className)}>
+    <div className={classNames("flex flex-col gap-2", className)}>
       <div className="ml-[10%] pr-[20%] md:m-0 md:pr-[28%]">
         {children ? children : null}
       </div>
@@ -165,22 +165,19 @@ export const HeaderContentBlock = ({
       )}
       {hasCTA && (
         <div className="flex gap-4">
-          <Link href="/pricing" shallow={true}>
-            <Button
-              variant="highlight"
-              size="md"
-              label="Get started"
-              icon={RocketIcon}
-            />
-          </Link>
-          <Link href="/contact" shallow={true}>
-            <Button
-              variant="outline"
-              size="md"
-              label="Talk to sales"
-              target="_blank"
-            />
-          </Link>
+          <Button
+            variant="highlight"
+            size="md"
+            label="Get started"
+            href="/pricing"
+            icon={RocketIcon}
+          />
+          <Button
+            href="/home/contact"
+            variant="outline"
+            size="md"
+            label="Talk to sales"
+          />
         </div>
       )}
     </div>
@@ -196,26 +193,26 @@ interface MetricComponentProps {
   to: string;
 }
 
-export const MetricComponent = ({
-  metrics,
-  from,
-  to,
-}: MetricComponentProps) => (
-  <>
+export const MetricSection = ({ metrics, from, to }: MetricComponentProps) => (
+  <div className="grid w-full grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-2">
+    {" "}
     {metrics.map((metric, index) => (
       <div
         key={index}
-        className="col-span-6 flex flex-col items-center gap-4 py-12 text-center"
+        className="flex flex-col items-center gap-4 py-4 text-center"
       >
+        {" "}
         <H1 from={from} to={to}>
-          {metric.value}
-        </H1>
+          {" "}
+          {metric.value}{" "}
+        </H1>{" "}
         <P size="lg" className="max-w-[400px] text-white">
-          {metric.description}
-        </P>
+          {" "}
+          {metric.description}{" "}
+        </P>{" "}
       </div>
-    ))}
-  </>
+    ))}{" "}
+  </div>
 );
 
 interface QuoteProps {
@@ -225,15 +222,15 @@ interface QuoteProps {
   logo: string;
 }
 
-export const Quote = ({ quote, logo, name, title }: QuoteProps) => (
-  <div className="col-span-12 flex flex-col py-20 md:col-span-10 md:col-start-2 lg:col-span-8 lg:col-start-3">
-    <div className="flex flex-col items-center text-center font-objektiv text-xl italic text-white sm:text-2xl lg:text-3xl">
+export const QuoteSection = ({ quote, logo, name, title }: QuoteProps) => (
+  <div className="col-span-12 flex flex-col rounded-4xl pb-2 pt-2 md:col-span-10 md:col-start-2 lg:col-span-10 lg:col-start-2">
+    <div className="flex flex-col items-center rounded-4xl p-4 text-center font-objektiv text-xl italic text-white sm:text-xl lg:text-2xl">
       &ldquo; {quote} &rdquo;
     </div>
-    <div className="flex justify-center pt-8">
+    <div className="flex justify-center">
       <div className="flex items-center justify-center">
         <Image src={logo} width={200} height={48} alt="Malt Logo" />
-        <P size="md" className="text-primary-400">
+        <P size="sm" className="text-primary-400">
           <Strong>
             <span className="text-pink-300">{name}</span>
           </Strong>

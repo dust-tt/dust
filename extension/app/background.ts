@@ -371,6 +371,99 @@ chrome.runtime.onMessage.addListener(
 );
 
 /**
+ * Listener for messages sent from external websites that are whitelisted on the manifest.
+ * It allows to open the side panel and navigate to a specific conversation.
+ *
+ * We return true to keep the message channel open for async response.
+ */
+chrome.runtime.onMessageExternal.addListener((request) => {
+  if (
+    request.action !== "openSidePanel" ||
+    !request.conversationId ||
+    !request.workspaceId ||
+    !/^[a-zA-Z0-9_-]{10,}$/.test(request.conversationId) ||
+    !/^[a-zA-Z0-9_-]{10,}$/.test(request.workspaceId)
+  ) {
+    log("[onMessageExternal] Invalid params:", request);
+    return true;
+  }
+
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    if (tabs[0]) {
+      void chrome.sidePanel
+        .open({
+          windowId: tabs[0].windowId,
+        })
+        .then(() => {
+          chrome.storage.local.get(
+            ["extensionReady", "user"],
+            ({ extensionReady, user }) => {
+              if (request.workspaceId != user?.selectedWorkspace) {
+                log("[onMessageExternal] User selected another workspace.");
+                return;
+              }
+
+              const sendMessage = () => {
+                const params = JSON.stringify({
+                  conversationId: request.conversationId,
+                });
+                void chrome.runtime.sendMessage({
+                  type: "EXT_ROUTE_CHANGE",
+                  pathname: "/run",
+                  search: `?${params}`,
+                });
+              };
+
+              if (!extensionReady) {
+                let retries = 0;
+                const MAX_RETRIES = 15;
+                const RETRY_INTERVAL = 500; // Check every 500ms 15 times = 7.5s total.
+
+                const checkReady = () => {
+                  if (retries >= MAX_RETRIES) {
+                    log(
+                      "[onMessageExternal] Max retries reached waiting for extension ready."
+                    );
+                    return;
+                  }
+
+                  chrome.storage.local.get(
+                    ["extensionReady"],
+                    ({ extensionReady }) => {
+                      if (chrome.runtime.lastError) {
+                        log(
+                          "[onMessageExternal] Error checking extension ready:",
+                          chrome.runtime.lastError
+                        );
+                        return;
+                      }
+
+                      if (extensionReady) {
+                        sendMessage();
+                      } else {
+                        retries++;
+                        setTimeout(checkReady, RETRY_INTERVAL);
+                      }
+                    }
+                  );
+                };
+                checkReady();
+              } else {
+                sendMessage();
+              }
+            }
+          );
+        })
+        .catch((err) => {
+          log("[onMessageExternal] Error opening side panel:", err);
+        });
+    }
+  });
+
+  return true;
+});
+
+/**
  * Authenticate the user using Auth0.
  */
 const authenticate = async (

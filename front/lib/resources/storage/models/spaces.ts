@@ -26,11 +26,6 @@ export class SpaceModel extends SoftDeletableModel<SpaceModel> {
 }
 SpaceModel.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,

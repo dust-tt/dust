@@ -524,11 +524,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
    *
    * @returns Array of ResourcePermission objects based on space type
    */
-  requestedPermissions(
-    { returnNewFormat }: { returnNewFormat: boolean } = {
-      returnNewFormat: false,
-    }
-  ): ResourcePermission[] {
+  requestedPermissions(): ResourcePermission[] {
     const globalGroup = this.isRegular()
       ? this.groups.find((group) => group.isGlobal())
       : undefined;
@@ -590,27 +586,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     // and agent_configurations. This will allow proper handling of multiple groups instead
     // of only using the global group as a temporary solution.
     if (globalGroup) {
-      // TODO(2024-11-04 flav) `groupId` clean-up.
-      if (!returnNewFormat) {
-        return [
-          {
-            workspaceId: this.workspaceId,
-            roles: [
-              { role: "admin", permissions: ["admin", "read", "write"] },
-              { role: "builder", permissions: ["read", "write"] },
-              { role: "user", permissions: ["read"] },
-            ],
-            // Temporary: Only using global group until we implement multi-group support
-            groups: [
-              {
-                id: globalGroup.id,
-                permissions: ["read"],
-              },
-            ],
-          },
-        ];
-      }
-
       return [
         {
           workspaceId: this.workspaceId,

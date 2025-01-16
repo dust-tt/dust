@@ -75,23 +75,12 @@ export const PatchDataSourceTableRequestBodySchema = t.type({
   useAppForHeaderDetection: t.union([t.boolean, t.undefined]),
   title: t.string,
   mimeType: t.string,
+  sourceUrl: t.union([t.string, t.undefined, t.null]),
 });
 
 export type PatchDataSourceTableRequestBody = t.TypeOf<
   typeof PatchDataSourceTableRequestBodySchema
 >;
-
-// Post and Patch require the same request body
-export type PostDataSourceTableRequestBody = t.TypeOf<
-  typeof PatchDataSourceTableRequestBodySchema
->;
-
-export const PostDataSourceTableRequestBodySchema = t.intersection([
-  PatchDataSourceTableRequestBodySchema,
-  t.type({
-    csv: t.string,
-  }),
-]);
 
 export const UpsertTableFromCsvRequestSchema = t.intersection([
   t.type({
@@ -106,6 +95,7 @@ export const UpsertTableFromCsvRequestSchema = t.intersection([
     async: t.union([t.boolean, t.undefined]),
     title: t.string,
     mimeType: t.string,
+    sourceUrl: t.union([t.string, t.undefined, t.null]),
   }),
   // csv is optional when editing an existing table.
   t.union([

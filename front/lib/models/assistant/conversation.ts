@@ -24,9 +24,10 @@ export class Conversation extends BaseModel<Conversation> {
   declare title: string | null;
   declare visibility: CreationOptional<ConversationVisibility>;
 
-  // TODO(2024-11-04 flav) `groupId` clean-up.
-  declare groupIds: number[];
   declare requestedGroupIds: number[][];
+
+  // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
+  declare groupIds?: number[];
 
   declare workspaceId: ForeignKey<Workspace["id"]>;
 }
@@ -56,14 +57,15 @@ Conversation.init(
       allowNull: false,
       defaultValue: "unlisted",
     },
-    // TODO(2024-11-04 flav) `groupId` clean-up.
-    groupIds: {
-      type: DataTypes.ARRAY(DataTypes.INTEGER),
+    requestedGroupIds: {
+      type: DataTypes.ARRAY(DataTypes.ARRAY(DataTypes.BIGINT)),
       allowNull: false,
       defaultValue: [],
     },
-    requestedGroupIds: {
-      type: DataTypes.ARRAY(DataTypes.ARRAY(DataTypes.INTEGER)),
+
+    // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
+    groupIds: {
+      type: DataTypes.ARRAY(DataTypes.INTEGER),
       allowNull: false,
       defaultValue: [],
     },

@@ -119,5 +119,6 @@ export async function syncCategory({
     parentId: parents[1],
     title: categoryInDb.name,
     mimeType: MIME_TYPES.ZENDESK.CATEGORY,
+    sourceUrl: categoryInDb.url,
   });
 }

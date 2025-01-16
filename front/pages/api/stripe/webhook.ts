@@ -292,12 +292,16 @@ async function handler(
             include: [Workspace],
           });
           if (!subscription) {
-            return _returnStripeApiError(
-              req,
-              res,
-              "invoice.paid",
-              "Subscription not found."
+            logger.warn(
+              {
+                event,
+                stripeSubscriptionId: invoice.subscription,
+              },
+              "[Stripe Webhook] Subscription not found."
             );
+            // We return a 200 here to handle multiple regions, DD will watch
+            // the warnings and create an alert if this log appears in all regions
+            return res.status(200).json({ success: true });
           }
           await subscription.update({ paymentFailingSince: null });
           break;
@@ -331,12 +335,16 @@ async function handler(
             include: [Workspace],
           });
           if (!subscription) {
-            return _returnStripeApiError(
-              req,
-              res,
-              "invoice.payment_failed",
-              "Subscription not found."
+            logger.warn(
+              {
+                event,
+                stripeSubscriptionId: invoice.subscription,
+              },
+              "[Stripe Webhook] Subscription not found."
             );
+            // We return a 200 here to handle multiple regions, DD will watch
+            // the warnings and create an alert if this log appears in all regions
+            return res.status(200).json({ success: true });
           }
 
           // TODO(2024-01-16 by flav) This line should be removed after all Stripe webhooks have been retried.
@@ -440,14 +448,16 @@ async function handler(
               include: [Workspace],
             });
             if (!subscription) {
-              return apiError(req, res, {
-                status_code: 500,
-                api_error: {
-                  type: "internal_server_error",
-                  message:
-                    "[Stripe Webhook] canceling subscription: Subscription not found.",
+              logger.warn(
+                {
+                  event,
+                  stripeSubscriptionId: stripeSubscription.id,
                 },
-              });
+                "[Stripe Webhook] Subscription not found."
+              );
+              // We return a 200 here to handle multiple regions, DD will watch
+              // the warnings and create an alert if this log appears in all regions
+              return res.status(200).json({ success: true });
             }
             await subscription.update({
               endDate,
@@ -524,14 +534,16 @@ async function handler(
               where: { stripeSubscriptionId: stripeSubscription.id },
             });
             if (!subscription) {
-              return apiError(req, res, {
-                status_code: 500,
-                api_error: {
-                  type: "internal_server_error",
-                  message:
-                    "[Stripe Webhook] Failed to update subscription after trial ended: Subscription not found.",
+              logger.warn(
+                {
+                  event,
+                  stripeSubscriptionId: stripeSubscription.id,
                 },
-              });
+                "[Stripe Webhook] Subscription not found."
+              );
+              // We return a 200 here to handle multiple regions, DD will watch
+              // the warnings and create an alert if this log appears in all regions
+              return res.status(200).json({ success: true });
             }
             if (subscription.trialing) {
               await subscription.update({ status: "active", trialing: false });
@@ -656,14 +668,16 @@ async function handler(
           });
 
           if (!trialingSubscription) {
-            return apiError(req, res, {
-              status_code: 500,
-              api_error: {
-                type: "internal_server_error",
-                message:
-                  "Stripe Webhook: Error handling customer.subscription.trial_will_end. Matching subscription not found on db.",
+            logger.warn(
+              {
+                event,
+                stripeSubscriptionId: stripeSubscription.id,
               },
-            });
+              "[Stripe Webhook] Subscription not found."
+            );
+            // We return a 200 here to handle multiple regions, DD will watch
+            // the warnings and create an alert if this log appears in all regions
+            return res.status(200).json({ success: true });
           }
 
           await maybeCancelInactiveTrials(

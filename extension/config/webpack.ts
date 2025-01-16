@@ -89,6 +89,8 @@ export const getConfig = async ({
         events: false,
         net: false,
         redis: false,
+        http: require.resolve("stream-http"),
+        https: require.resolve("https-browserify"),
       },
     },
     module: {
@@ -121,6 +123,9 @@ export const getConfig = async ({
       ],
     },
     plugins: [
+      new webpack.DefinePlugin({
+        global: "globalThis",
+      }),
       new WebpackBar({
         name: `DustExt [${env}]`,
         color: "#3B82F6",

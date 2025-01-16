@@ -1,4 +1,3 @@
-import type { ConversationMessageSizeType } from "@dust-tt/sparkle";
 import { ConversationMessage, Markdown } from "@dust-tt/sparkle";
 import type { UserMessageType, WorkspaceType } from "@dust-tt/types";
 import { useMemo } from "react";
@@ -21,7 +20,6 @@ interface UserMessageProps {
   isLastMessage: boolean;
   message: UserMessageType;
   owner: WorkspaceType;
-  size: ConversationMessageSizeType;
 }
 
 export function UserMessage({
@@ -30,7 +28,6 @@ export function UserMessage({
   isLastMessage,
   message,
   owner,
-  size,
 }: UserMessageProps) {
   const additionalMarkdownComponents: Components = useMemo(
     () => ({
@@ -48,11 +45,10 @@ export function UserMessage({
   return (
     <ConversationMessage
       pictureUrl={message.user?.image || message.context.profilePictureUrl}
-      name={message.context.fullName}
+      name={message.context.fullName ?? undefined}
       renderName={(name) => <div className="text-base font-medium">{name}</div>}
       type="user"
       citations={citations}
-      size={size}
     >
       <Markdown
         content={message.content}

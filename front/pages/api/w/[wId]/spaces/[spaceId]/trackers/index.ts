@@ -2,20 +2,24 @@ import type {
   TrackerConfigurationType,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
-import { ModelIdCodec, ModelProviderIdCodec } from "@dust-tt/types";
+import { md5, ModelIdCodec, ModelProviderIdCodec } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import config from "@app/lib/api/config";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
 import { apiError } from "@app/logger/withlogging";
+
+const TRACKER_LIMIT_BY_WORKSPACE: Record<string, number> = {
+  baf50ff50aa28e3b3ebb09bf21fbc29d: -1, // dust US workspace
+  "9904970eeaa283f18656c6e60b66cb19": 3,
+};
 
 export type GetTrackersResponseBody = {
   trackers: TrackerConfigurationType[];
@@ -72,7 +76,7 @@ async function handler(
   const flags = await getFeatureFlags(owner);
   if (
     !flags.includes("labs_trackers") ||
-    !auth.isAdmin() ||
+    !auth.isBuilder() ||
     !space.canRead(auth)
   ) {
     return apiError(req, res, {
@@ -107,15 +111,14 @@ async function handler(
         auth,
         space
       );
-      if (
-        owner.sId !== config.getDustWorkspaceId() &&
-        existingTrackers.length >= 1
-      ) {
+
+      const trackerLimit = TRACKER_LIMIT_BY_WORKSPACE[md5(owner.sId)] ?? 1;
+      if (trackerLimit !== -1 && existingTrackers.length >= trackerLimit) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "You can't have more than 1 tracker in a space.",
+            message: `You can't have more than ${trackerLimit} trackers in a space.`,
           },
         });
       }

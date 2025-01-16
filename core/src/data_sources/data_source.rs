@@ -1,5 +1,5 @@
 use super::file_storage_document::FileStorageDocument;
-use super::node::{Node, NodeType};
+use super::node::{Node, NodeType, ProviderVisibility};
 use super::qdrant::{DustQdrantClient, QdrantCluster};
 use crate::consts::DATA_SOURCE_DOCUMENT_SYSTEM_TAG_PREFIX;
 use crate::data_sources::qdrant::{QdrantClients, QdrantDataSourceConfig};
@@ -148,6 +148,7 @@ pub struct Document {
     pub timestamp: u64,
     pub title: String,
     pub mime_type: String,
+    pub provider_visibility: Option<ProviderVisibility>,
     pub tags: Vec<String>,
     pub parent_id: Option<String>,
     pub parents: Vec<String>,
@@ -169,6 +170,7 @@ impl Document {
         timestamp: u64,
         title: &str,
         mime_type: &str,
+        provider_visibility: &Option<ProviderVisibility>,
         tags: &Vec<String>,
         parent_id: &Option<String>,
         parents: &Vec<String>,
@@ -184,6 +186,7 @@ impl Document {
             timestamp,
             title: title.to_string(),
             mime_type: mime_type.to_string(),
+            provider_visibility: provider_visibility.clone(),
             tags: tags.clone(),
             parent_id: parent_id.clone(),
             parents: parents.clone(),
@@ -229,6 +232,7 @@ impl From<Document> for Node {
             document.timestamp,
             &document.title,
             &document.mime_type,
+            document.provider_visibility,
             document.parent_id,
             document.parents.clone(),
             document.source_url,
@@ -636,6 +640,7 @@ impl DataSource {
         document_id: &str,
         title: String,
         mime_type: String,
+        provider_visibility: &Option<ProviderVisibility>,
         timestamp: Option<u64>,
         tags: &Vec<String>,
         parents: &Vec<String>,
@@ -719,6 +724,7 @@ impl DataSource {
             timestamp,
             title.as_str(),
             mime_type.as_str(),
+            provider_visibility,
             &tags,
             &parents.get(1).cloned(),
             parents,
@@ -774,6 +780,7 @@ impl DataSource {
             document_id: main_collection_document.document_id.clone(),
             title: Some(main_collection_document.title.clone()),
             mime_type: Some(main_collection_document.mime_type.clone()),
+            provider_visibility: main_collection_document.provider_visibility.clone(),
             timestamp: main_collection_document.timestamp,
             tags: main_collection_document.tags.clone(),
             parents: main_collection_document.parents.clone(),

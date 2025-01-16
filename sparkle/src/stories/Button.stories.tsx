@@ -38,6 +38,11 @@ const meta = {
       control: { type: "text" },
       if: { arg: "size", neq: "mini" },
     },
+    disabled: {
+      description: "Whether the button should be disabled",
+      control: "boolean",
+      defaultValue: false,
+    },
     isLoading: {
       description: "Whether the button should display a loading spinner",
       control: "boolean",
@@ -74,6 +79,7 @@ export const ExampleButton: Story = {
     isLoading: false,
     isPulsing: false,
     isSelect: false,
+    disabled: false,
   },
 };
 

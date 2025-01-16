@@ -122,6 +122,7 @@ async function updateConversation(
   );
 
   if (execute) {
+    // @ts-expect-error `groupIds` was removed.
     await conversation.update({ groupIds });
     logger.info(
       {

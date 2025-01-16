@@ -1,9 +1,6 @@
 import { useSendNotification } from "@dust-tt/sparkle";
 import type { DataSourceViewType, LightWorkspaceType } from "@dust-tt/types";
-import type {
-  PatchDataSourceTableRequestBody,
-  PostDataSourceTableRequestBody,
-} from "@dust-tt/types";
+import type { PatchDataSourceTableRequestBody } from "@dust-tt/types";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
@@ -15,7 +12,6 @@ import {
 } from "@app/lib/swr/swr";
 import type { ListTablesResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables";
 import type { GetDataSourceViewTableResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables/[tableId]";
-import type { PostTableResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/tables";
 import type { PatchTableResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/tables/[tableId]";
 
 export function useDataSourceViewTable({
@@ -132,50 +128,4 @@ export function useUpdateDataSourceViewTable(
   };
 
   return doUpdate;
-}
-
-export function useCreateDataSourceTable(
-  owner: LightWorkspaceType,
-  dataSourceView: DataSourceViewType
-) {
-  const { mutateRegardlessOfQueryParams: mutateContentNodes } =
-    useDataSourceViewContentNodes({
-      owner,
-      dataSourceView,
-      disabled: true, // Needed just to mutate
-    });
-  const sendNotification = useSendNotification();
-
-  const doCreate = async (body: PostDataSourceTableRequestBody) => {
-    const tableUrl = `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_sources/${dataSourceView.dataSource.sId}/tables`;
-    const res = await fetch(tableUrl, {
-      method: "POST",
-      body: JSON.stringify(body),
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-    if (!res.ok) {
-      const errorData = await getErrorFromResponse(res);
-      sendNotification({
-        type: "error",
-        title: "Error creating table",
-        description: `Error: ${errorData.message}`,
-      });
-      return null;
-    } else {
-      void mutateContentNodes();
-
-      sendNotification({
-        type: "success",
-        title: "Table created",
-        description: "Table has been created",
-      });
-
-      const response: PostTableResponseBody = await res.json();
-      return response.table;
-    }
-  };
-
-  return doCreate;
 }

@@ -1,5 +1,5 @@
 import type { ConversationType, Result } from "@dust-tt/types";
-import { Err, Ok, removeNulls } from "@dust-tt/types";
+import { contentTypeForExtension, Err, Ok, removeNulls } from "@dust-tt/types";
 import type { File } from "formidable";
 import { IncomingForm } from "formidable";
 import type { IncomingMessage } from "http";
@@ -41,15 +41,19 @@ export const parseUploadRequest = async (
 
       // Ensure the file is of the correct type.
       filter: function (part) {
-        if (file.contentType === "text/markdown") {
-          // some setups do not detect the markdown type and return a content type of application/octet-stream
-          return (
-            part.mimetype !== null &&
-            ["text/markdown", "application/octet-stream"].includes(
-              part.mimetype
-            )
-          );
+        if (
+          part.mimetype != file.contentType &&
+          part.mimetype == "application/octet-stream"
+        ) {
+          const fileExtension = file.fileName.split(".").at(-1)?.toLowerCase();
+          if (fileExtension) {
+            // Lookup by extension
+            return (
+              contentTypeForExtension("." + fileExtension) === file.contentType
+            );
+          }
         }
+
         return part.mimetype === file.contentType;
       },
     });

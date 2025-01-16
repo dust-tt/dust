@@ -36,6 +36,7 @@ use dust::{
     data_sources::{
         data_source::{self, Section},
         node::Node,
+        node::ProviderVisibility,
         qdrant::QdrantClients,
     },
     databases::{
@@ -50,7 +51,7 @@ use dust::{
     run,
     search_filter::{Filterable, SearchFilter},
     search_stores::search_store::{
-        DatasourceViewFilter, ElasticsearchSearchStore, NodesSearchOptions, SearchStore,
+        ElasticsearchSearchStore, NodesSearchFilter, NodesSearchOptions, SearchStore,
     },
     sqlite_workers::client::{self, HEARTBEAT_INTERVAL_MS},
     stores::{
@@ -1509,13 +1510,11 @@ async fn data_sources_documents_update_parents(
     let project = project::Project::new_from_id(project_id);
 
     if payload.parents.get(0) != Some(&document_id) {
-        info!(
-            data_source_id = data_source_id,
-            node_id = document_id,
-            parents = ?payload.parents,
-            node_type = "document",
-            operation = "update_parents",
-            "[KWSEARCH] invariant_first_parent_self"
+        return error_response(
+            StatusCode::BAD_REQUEST,
+            "invalid_parents",
+            "Failed to update document parents - parents[0] and document_id should be equal",
+            None,
         );
     }
 
@@ -1532,20 +1531,11 @@ async fn data_sources_documents_update_parents(
         }
         None => {
             if payload.parents.len() > 1 {
-                // TODO(aubin) - re-enable this check when the log below does not pop
-                // return error_response(
-                //     StatusCode::BAD_REQUEST,
-                //     "invalid_parent_id",
-                //     "Failed to update document parents - parent_id should not be null if parents[1] is defined",
-                //     None,
-                // );
-                info!(
-                    data_source_id = data_source_id,
-                    node_id = document_id,
-                    parents = ?payload.parents,
-                    node_type = "document",
-                    operation = "update_parents",
-                    "[KWSEARCH] invariant_parent_id_incorrectly_none"
+                return error_response(
+                    StatusCode::BAD_REQUEST,
+                    "invalid_parent_id",
+                    "Failed to update document parents - parent_id should not be null if parents[1] is defined",
+                    None,
                 );
             }
         }
@@ -1688,6 +1678,7 @@ struct DataSourcesDocumentsUpsertPayload {
     light_document_output: Option<bool>,
     title: String,
     mime_type: String,
+    provider_visibility: Option<ProviderVisibility>,
 }
 
 async fn data_sources_documents_upsert(
@@ -1702,53 +1693,32 @@ async fn data_sources_documents_upsert(
     };
 
     if payload.parents.get(0) != Some(&payload.document_id) {
-        info!(
-            data_source_id = data_source_id,
-            node_id = payload.document_id,
-            parents = ?payload.parents,
-            node_type = "document",
-            operation = "upsert",
-            "[KWSEARCH] invariant_first_parent_self"
+        return error_response(
+            StatusCode::BAD_REQUEST,
+            "invalid_parents",
+            "Failed to upsert document - parents[0] and document_id should be equal",
+            None,
         );
     }
 
     match &payload.parent_id {
         Some(parent_id) => {
             if payload.parents.get(1) != Some(parent_id) {
-                info!(
-                    data_source_id = data_source_id,
-                    node_id = payload.document_id,
-                    parent_id = parent_id,
-                    parents = ?payload.parents,
-                    node_type = "document",
-                    operation = "upsert",
-                    "[KWSEARCH] invariant_parent_id_equal_parent_1"
+                return error_response(
+                    StatusCode::BAD_REQUEST,
+                    "invalid_parent_id",
+                    "Failed to upsert document - parents[1] and parent_id should be equal",
+                    None,
                 );
-                // TODO(fontanierh): Temporary, as we need to let some jobs go through.
-                // return error_response(
-                //     StatusCode::BAD_REQUEST,
-                //     "invalid_parent_id",
-                //     "Failed to upsert document - parents[1] and parent_id should be equal",
-                //     None,
-                // );
             }
         }
         None => {
             if payload.parents.len() > 1 {
-                // TODO(aubin) - re-enable this check when the log below does not pop
-                // return error_response(
-                //     StatusCode::BAD_REQUEST,
-                //     "invalid_parent_id",
-                //     "Failed to upsert document - parent_id should not be null if parents[1] is defined",
-                //     None,
-                // );
-                info!(
-                    data_source_id = data_source_id,
-                    node_id = payload.document_id,
-                    parents = ?payload.parents,
-                    node_type = "document",
-                    operation = "upsert",
-                    "[KWSEARCH] invariant_parent_id_incorrectly_none"
+                return error_response(
+                    StatusCode::BAD_REQUEST,
+                    "invalid_parent_id",
+                    "Failed to upsert document - parent_id should not be null if parents[1] is defined",
+                    None,
                 );
             }
         }
@@ -1781,6 +1751,7 @@ async fn data_sources_documents_upsert(
                         &payload.document_id,
                         payload.title,
                         payload.mime_type,
+                        &payload.provider_visibility,
                         payload.timestamp,
                         &payload.tags,
                         &payload.parents,
@@ -2194,6 +2165,7 @@ struct DatabasesTablesUpsertPayload {
     // Node meta:
     title: String,
     mime_type: String,
+    provider_visibility: Option<ProviderVisibility>,
 }
 
 async fn tables_upsert(
@@ -2204,13 +2176,11 @@ async fn tables_upsert(
     let project = project::Project::new_from_id(project_id);
 
     if payload.parents.get(0) != Some(&payload.table_id) {
-        info!(
-            data_source_id = data_source_id,
-            node_id = payload.table_id,
-            parents = ?payload.parents,
-            node_type = "table",
-            operation = "upsert",
-            "[KWSEARCH] invariant_first_parent_self"
+        return error_response(
+            StatusCode::BAD_REQUEST,
+            "invalid_parents",
+            "Failed to upsert table - parents[0] and table_id should be equal",
+            None,
         );
     }
 
@@ -2227,21 +2197,12 @@ async fn tables_upsert(
         }
         None => {
             if payload.parents.len() > 1 {
-                // TODO(aubin) - re-enable this check when the log below does not pop
-                //     return error_response(
-                //         StatusCode::BAD_REQUEST,
-                //         "invalid_parent_id",
-                //         "Failed to upsert table - parent_id should not be null if parents[1] is defined",
-                //         None,
-                //     );
-                info!(
-                    data_source_id = data_source_id,
-                    node_id = payload.table_id,
-                    parents = ?payload.parents,
-                    node_type = "table",
-                    operation = "upsert",
-                    "[KWSEARCH] invariant_parent_id_incorrectly_none"
-                );
+                return error_response(
+                        StatusCode::BAD_REQUEST,
+                        "invalid_parent_id",
+                        "Failed to upsert table - parent_id should not be null if parents[1] is defined",
+                        None,
+                    );
             }
         }
     }
@@ -2263,6 +2224,7 @@ async fn tables_upsert(
                 remote_database_secret_id: payload.remote_database_secret_id,
                 title: payload.title,
                 mime_type: payload.mime_type,
+                provider_visibility: payload.provider_visibility,
             },
         )
         .await
@@ -2502,13 +2464,11 @@ async fn tables_update_parents(
     let project = project::Project::new_from_id(project_id);
 
     if payload.parents.get(0) != Some(&table_id) {
-        info!(
-            data_source_id = data_source_id,
-            node_id = table_id,
-            parents = ?payload.parents,
-            node_type = "table",
-            operation = "update_parents",
-            "[KWSEARCH] invariant_first_parent_self"
+        return error_response(
+            StatusCode::BAD_REQUEST,
+            "invalid_parents",
+            "Failed to update table parents - parents[0] and table_id should be equal",
+            None,
         );
     }
 
@@ -2525,21 +2485,12 @@ async fn tables_update_parents(
         }
         None => {
             if payload.parents.len() > 1 {
-                // TODO(aubin) - re-enable this check when the log below does not pop
-                //     return error_response(
-                //         StatusCode::BAD_REQUEST,
-                //         "invalid_parent_id",
-                //         "Failed to update table parents - parent_id should not be null if parents[1] is defined",
-                //         None,
-                //     );
-                info!(
-                    data_source_id = data_source_id,
-                    node_id = table_id,
-                    parents = ?payload.parents,
-                    node_type = "table",
-                    operation = "update_parents",
-                    "[KWSEARCH] invariant_parent_id_incorrectly_none"
-                );
+                return error_response(
+                        StatusCode::BAD_REQUEST,
+                        "invalid_parent_id",
+                        "Failed to update table parents - parent_id should not be null if parents[1] is defined",
+                        None,
+                    );
             }
         }
     }
@@ -2927,6 +2878,7 @@ struct FoldersUpsertPayload {
     title: String,
     mime_type: String,
     source_url: Option<String>,
+    provider_visibility: Option<ProviderVisibility>,
 }
 
 async fn folders_upsert(
@@ -2937,13 +2889,11 @@ async fn folders_upsert(
     let project = project::Project::new_from_id(project_id);
 
     if payload.parents.get(0) != Some(&payload.folder_id) {
-        info!(
-            data_source_id = data_source_id,
-            node_id = payload.folder_id,
-            parents = ?payload.parents,
-            node_type = "folder",
-            operation = "upsert",
-            "[KWSEARCH] invariant_first_parent_self"
+        return error_response(
+            StatusCode::BAD_REQUEST,
+            "invalid_parents",
+            "Failed to upsert folder - parents[0] and folder_id should be equal",
+            None,
         );
     }
 
@@ -2960,21 +2910,12 @@ async fn folders_upsert(
         }
         None => {
             if payload.parents.len() > 1 {
-                // TODO(aubin) - re-enable this check when the log below does not pop
-                //     return error_response(
-                //         StatusCode::BAD_REQUEST,
-                //         "invalid_parent_id",
-                //         "Failed to upsert folder - parent_id should not be null if parents[1] is defined",
-                //         None,
-                //     );
-                info!(
-                    data_source_id = data_source_id,
-                    node_id = payload.folder_id,
-                    parents = ?payload.parents,
-                    node_type = "folder",
-                    operation = "upsert",
-                    "[KWSEARCH] invariant_parent_id_incorrectly_none"
-                );
+                return error_response(
+                        StatusCode::BAD_REQUEST,
+                        "invalid_parent_id",
+                        "Failed to upsert folder - parent_id should not be null if parents[1] is defined",
+                        None,
+                    );
             }
         }
     }
@@ -2991,6 +2932,7 @@ async fn folders_upsert(
                 title: payload.title,
                 mime_type: payload.mime_type,
                 source_url: payload.source_url,
+                provider_visibility: payload.provider_visibility,
             },
         )
         .await
@@ -3181,8 +3123,8 @@ async fn folders_delete(
 #[derive(serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 struct NodesSearchPayload {
-    query: String,
-    filter: Vec<DatasourceViewFilter>,
+    query: Option<String>,
+    filter: NodesSearchFilter,
     options: Option<NodesSearchOptions>,
 }
 

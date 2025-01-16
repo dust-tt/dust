@@ -1,15 +1,16 @@
 import type { WithAPIErrorResponse } from "@dust-tt/types";
+import { assertNever } from "@dust-tt/types";
 import { isLeft } from "fp-ts/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
-import { getBearerToken } from "@app/lib/auth";
 import {
-  handleLookupUser,
   handleLookupWorkspace,
-} from "@app/lib/multi_regions/lookup";
+  lookupUserRegionByEmail,
+} from "@app/lib/api/regions/lookup";
+import { getBearerToken } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type WorkspaceLookupResponse = {
@@ -25,7 +26,6 @@ export type UserLookupResponse = {
 const ExternalUserCodec = t.type({
   email: t.string,
   email_verified: t.boolean,
-  sub: t.string,
 });
 
 type LookupResponseBody = UserLookupResponse | WorkspaceLookupResponse;
@@ -122,25 +122,34 @@ async function handler(
           });
         }
         response = {
-          exists: await handleLookupUser(bodyValidation.right.user),
+          exists: await lookupUserRegionByEmail(bodyValidation.right.user),
         };
       }
       break;
-    case "workspace": {
-      const bodyValidation = WorkspaceLookupSchema.decode(req.body);
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: `Invalid request body for user lookup ${pathError}`,
-          },
-        });
+
+    case "workspace":
+      {
+        const bodyValidation = WorkspaceLookupSchema.decode(req.body);
+        if (isLeft(bodyValidation)) {
+          const pathError = reporter.formatValidationErrors(
+            bodyValidation.left
+          );
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: `Invalid request body for user lookup ${pathError}`,
+            },
+          });
+        }
+        response = await handleLookupWorkspace(bodyValidation.right);
       }
-      response = await handleLookupWorkspace(bodyValidation.right);
-    }
+      break;
+
+    default:
+      assertNever(resourceValidation.right);
   }
+
   res.status(200).json(response);
   return;
 }

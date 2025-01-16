@@ -14,11 +14,6 @@ export class KillSwitchModel extends BaseModel<KillSwitchModel> {
 }
 KillSwitchModel.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,

@@ -155,6 +155,7 @@ export async function syncZendeskArticleUpdateBatchActivity({
               parentId: parents[1],
               title: category.name,
               mimeType: MIME_TYPES.ZENDESK.CATEGORY,
+              sourceUrl: category.url,
             });
           } else {
             /// ignoring these to proceed with the other articles, but these might have to be checked at some point

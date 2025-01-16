@@ -20,6 +20,10 @@ import { pipeline } from "stream/promises";
 
 import { runAction } from "@app/lib/actions/server";
 import config from "@app/lib/api/config";
+import type {
+  UpsertDocumentArgs,
+  UpsertTableArgs,
+} from "@app/lib/api/data_sources";
 import { upsertDocument, upsertTable } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
@@ -208,21 +212,25 @@ const upsertDocumentToDatasource: ProcessingFunction = async ({
 }) => {
   // Use the file id as the document id to make it easy to track the document back to the file.
   const sourceUrl = file.getPrivateUrl(auth);
-
+  let documentId = file.sId;
+  if (upsertArgs && "document_id" in upsertArgs) {
+    documentId = upsertArgs.document_id;
+  }
+  const { title: upsertTitle, ...restArgs } = upsertArgs ?? {};
   const upsertDocumentRes = await upsertDocument({
-    document_id: file.sId,
+    document_id: documentId,
     source_url: sourceUrl,
     text: content,
-    parents: [file.sId],
+    parents: [documentId],
     tags: [`title:${file.fileName}`, `fileId:${file.sId}`],
     light_document_output: true,
     dataSource,
     auth,
     mime_type: file.contentType,
-    title: file.fileName,
+    title: upsertTitle ?? file.fileName,
 
     // Used to override defaults.
-    ...(upsertArgs ?? {}),
+    ...restArgs,
   });
 
   if (upsertDocumentRes.isErr()) {
@@ -244,7 +252,12 @@ const upsertTableToDatasource: ProcessingFunction = async ({
   dataSource,
   upsertArgs,
 }) => {
-  const tableId = upsertArgs?.tableId ?? file.sId; // Use the file sId as a fallback for the table_id to make it easy to track the table back to the file.
+  // Use the file sId as the table id to make it easy to track the table back to the file.
+  let tableId = file.sId;
+  if (upsertArgs && "tableId" in upsertArgs) {
+    tableId = upsertArgs.tableId ?? tableId;
+  }
+  const { title: upsertTitle, ...restArgs } = upsertArgs ?? {};
   const upsertTableRes = await upsertTable({
     tableId,
     name: slugify(file.fileName),
@@ -257,11 +270,12 @@ const upsertTableToDatasource: ProcessingFunction = async ({
     dataSource,
     auth,
     useAppForHeaderDetection: true,
-    title: file.fileName,
+    title: upsertTitle ?? file.fileName,
     mimeType: file.contentType,
+    sourceUrl: file.getPrivateUrl(auth),
 
     // Used to override defaults, for manual file uploads where some fields are user-defined.
-    ...(upsertArgs ?? {}),
+    ...restArgs,
   });
 
   if (upsertTableRes.isErr()) {
@@ -287,7 +301,17 @@ type ProcessingFunction = ({
   file: FileResource;
   content: string;
   dataSource: DataSourceResource;
-  upsertArgs?: Record<string, string>;
+  upsertArgs?:
+    | Pick<UpsertDocumentArgs, "document_id" | "title" | "tags">
+    | Pick<
+        UpsertTableArgs,
+        | "name"
+        | "title"
+        | "description"
+        | "tableId"
+        | "tags"
+        | "useAppForHeaderDetection"
+      >;
 }) => Promise<Result<undefined, Error>>;
 
 const getProcessingFunction = ({
@@ -374,7 +398,7 @@ const maybeApplyProcessing: ProcessingFunction = async ({
 async function getFileContent(
   auth: Authenticator,
   file: FileResource
-): Promise<string> {
+): Promise<string | null> {
   // Create a stream to hold the content of the file
   const writableStream = new MemoryWritable();
 
@@ -387,7 +411,7 @@ async function getFileContent(
   const content = writableStream.getContent();
 
   if (!content) {
-    throw new Error("No content extracted from file.");
+    return null;
   }
 
   return content;
@@ -403,7 +427,17 @@ export async function processAndUpsertToDataSource(
   }: {
     file: FileResource;
     optionalContent?: string;
-    upsertArgs?: Record<string, string>;
+    upsertArgs?:
+      | Pick<UpsertDocumentArgs, "document_id" | "title" | "tags">
+      | Pick<
+          UpsertTableArgs,
+          | "name"
+          | "title"
+          | "description"
+          | "tableId"
+          | "tags"
+          | "useAppForHeaderDetection"
+        >;
   }
 ): Promise<
   Result<
@@ -444,12 +478,12 @@ export async function processAndUpsertToDataSource(
         workspaceId: auth.workspace()?.sId,
         contentSupplied: !!optionalContent,
       },
-      "No content extracted from file for JIT processing."
+      "No content extracted from file."
     );
     return new Err({
       name: "dust_error",
       code: "internal_server_error",
-      message: "No content extracted from file for JIT processing.",
+      message: "No content extracted from file.",
     });
   }
 

@@ -47,8 +47,10 @@ export class AgentConfiguration extends BaseModel<AgentConfiguration> {
 
   declare templateId: ForeignKey<TemplateModel["id"]> | null;
 
-  declare groupIds: number[];
   declare requestedGroupIds: number[][];
+
+  // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
+  declare groupIds?: number[];
 
   declare author: NonAttribute<UserModel>;
 }
@@ -126,14 +128,15 @@ AgentConfiguration.init(
       type: DataTypes.TEXT,
       allowNull: false,
     },
-    // TODO(2024-11-04 flav) `groupIds` clean up.
-    groupIds: {
-      type: DataTypes.ARRAY(DataTypes.INTEGER),
+    requestedGroupIds: {
+      type: DataTypes.ARRAY(DataTypes.ARRAY(DataTypes.BIGINT)),
       allowNull: false,
       defaultValue: [],
     },
-    requestedGroupIds: {
-      type: DataTypes.ARRAY(DataTypes.ARRAY(DataTypes.INTEGER)),
+
+    // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
+    groupIds: {
+      type: DataTypes.ARRAY(DataTypes.INTEGER),
       allowNull: false,
       defaultValue: [],
     },

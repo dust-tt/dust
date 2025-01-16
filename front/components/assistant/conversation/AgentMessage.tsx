@@ -1,7 +1,3 @@
-import type {
-  ConversationMessageSizeType,
-  FeedbackSelectorProps,
-} from "@dust-tt/sparkle";
 import { CitationIndex } from "@dust-tt/sparkle";
 import { Citation, CitationIcons, CitationTitle } from "@dust-tt/sparkle";
 import {
@@ -55,6 +51,7 @@ import type { PluggableList } from "react-markdown/lib/react-markdown";
 import { makeDocumentCitation } from "@app/components/actions/retrieval/utils";
 import { makeWebsearchResultsCitation } from "@app/components/actions/websearch/utils";
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
+import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import {
@@ -124,7 +121,6 @@ interface AgentMessageProps {
   messageFeedback: FeedbackSelectorProps;
   owner: WorkspaceType;
   user: UserType;
-  size: ConversationMessageSizeType;
 }
 
 export type AgentStateClassification = "thinking" | "acting" | "done";
@@ -142,7 +138,6 @@ export function AgentMessage({
   messageFeedback,
   owner,
   user,
-  size,
 }: AgentMessageProps) {
   const [streamedAgentMessage, setStreamedAgentMessage] =
     useState<AgentMessageType>(message);
@@ -545,7 +540,6 @@ export function AgentMessage({
         );
       }}
       type="agent"
-      size={size}
       citations={citations}
     >
       <div>
@@ -592,7 +586,6 @@ export function AgentMessage({
           <AgentMessageActions
             agentMessage={agentMessage}
             lastAgentStateClassification={lastAgentStateClassification}
-            size={size}
             owner={owner}
           />
 
