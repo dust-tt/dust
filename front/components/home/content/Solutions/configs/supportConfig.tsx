@@ -124,7 +124,7 @@ export const Metrics: MetricProps = {
   metrics: [
     {
       value: "50%",
-      description: <>50% in ticket resolution time</>,
+      description: <>50% reduction in ticket resolution time</>,
     },
     {
       value: "8h",
