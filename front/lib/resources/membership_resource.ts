@@ -25,7 +25,6 @@ import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
-import featureFlags from "@app/pages/api/w/[wId]/feature-flags";
 
 type GetMembershipsOptions = RequireAtLeastOne<{
   users: UserResource[];
