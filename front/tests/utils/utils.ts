@@ -1,8 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import type { RequestMethod } from "node-mocks-http";
 import { createMocks } from "node-mocks-http";
 import type { Transaction } from "sequelize";
 import { afterAll, beforeAll, expect, it } from "vitest";
 
+import { SECRET_KEY_PREFIX } from "@app/lib/resources/key_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { groupFactory } from "@app/tests/utils/GroupFactory";
 import { keyFactory } from "@app/tests/utils/KeyFactory";
@@ -12,6 +14,52 @@ type NextHandler = (
   req: NextApiRequest,
   res: NextApiResponse
 ) => Promise<void> | void;
+
+/**
+ * Creates a mock request with authentication for testing public API endpoints.
+ *
+ * This helper sets up a test workspace with a global group and API key, then creates
+ * a mock request authenticated with that key. Used to simulate authenticated API calls
+ * in tests.
+ *
+ * @param options Configuration options
+ * @param options.systemKey If true, creates a system API key instead of regular key (default: false)
+ * @param options.method HTTP method to use for the request (default: "GET")
+ * @returns Object containing:
+ *   - req: Mocked NextApiRequest
+ *   - res: Mocked NextApiResponse
+ *   - workspace: Created test workspace
+ *   - globalGroup: Created global group
+ *   - key: Created API key
+ */
+export const createPublicApiMockRequest = async ({
+  systemKey = false,
+  method = "GET",
+}: { systemKey?: boolean; method?: RequestMethod } = {}) => {
+  const workspace = await workspaceFactory().basic().create();
+  const globalGroup = await groupFactory().global(workspace).create();
+  const key = systemKey
+    ? await keyFactory().system(globalGroup).create()
+    : await keyFactory().regular(globalGroup).create();
+
+  const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+    method: method,
+    query: { wId: workspace.sId },
+    headers: {
+      authorization: "Bearer " + key.secret,
+    },
+  });
+
+  return { req, res, workspace, globalGroup, key };
+};
+
+export const cloneMockRequest = (req: NextApiRequest) => {
+  return createMocks<NextApiRequest, NextApiResponse>({
+    method: req.method as RequestMethod,
+    query: req.query,
+    headers: req.headers,
+  });
+};
 
 export const expectArrayOfObjectsWithSpecificLength = (
   value: any,
@@ -24,8 +72,14 @@ export const expectArrayOfObjectsWithSpecificLength = (
   ).toBe(true);
 };
 
-// Wrapper to make sure that each test suite has a clean database
-export const withinTransaction = (testSuite) => {
+/**
+ * Helper to run test suites within a database transaction that gets rolled back.
+ * This ensures each test starts with a clean database state.
+ *
+ * @param testSuite Function containing the test suite to run within transaction
+ * @returns Async function that sets up transaction before tests and rolls back after
+ */
+export const withinTransaction = (testSuite: () => Promise<void> | void) => {
   return async () => {
     let transaction: Transaction;
 
@@ -56,22 +110,12 @@ export function createPublicApiSystemOnlyAuthenticationTests(
 ) {
   return withinTransaction(() => {
     it("returns 404 if not system key", async () => {
-      const workspace = await workspaceFactory().basic().create();
-      const globalGroup = await groupFactory().global(workspace).create();
-      const key = await keyFactory().regular(globalGroup).create();
-
-      const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
-        method: "GET",
-        query: { wId: workspace.sId },
-        headers: {
-          authorization: "Bearer " + key.secret,
-        },
-      });
+      const { req, res } = await createPublicApiMockRequest();
 
       await handler(req, res);
 
       expect(res._getStatusCode()).toBe(404);
-      expect(JSON.parse(res._getData())).toEqual({
+      expect(res._getJSONData()).toEqual({
         error: {
           type: "workspace_not_found",
           message: "The workspace was not found.",
@@ -83,7 +127,7 @@ export function createPublicApiSystemOnlyAuthenticationTests(
 
 export function createPublicApiAuthenticationTests(handler: NextHandler) {
   return withinTransaction(() => {
-    it("returns 401 if no key", async () => {
+    it("GET returns 401 if no key", async () => {
       const workspace = await workspaceFactory().basic().create();
 
       const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
@@ -94,7 +138,7 @@ export function createPublicApiAuthenticationTests(handler: NextHandler) {
       await handler(req, res);
 
       expect(res._getStatusCode()).toBe(401);
-      expect(JSON.parse(res._getData())).toEqual({
+      expect(res._getJSONData()).toEqual({
         error: {
           type: "not_authenticated",
           message:
@@ -119,7 +163,7 @@ export function createPublicApiAuthenticationTests(handler: NextHandler) {
       await handler(req, res);
 
       expect(res._getStatusCode()).toBe(401);
-      expect(JSON.parse(res._getData())).toEqual({
+      expect(res._getJSONData()).toEqual({
         error: {
           type: "invalid_api_key_error",
           message: "The API key provided is invalid or disabled.",
@@ -134,19 +178,81 @@ export function createPublicApiAuthenticationTests(handler: NextHandler) {
         method: "GET",
         query: { wId: workspace.sId },
         headers: {
-          authorization: "Bearer " + "sk-fakekey",
+          authorization: `Bearer ${SECRET_KEY_PREFIX}some_valid_key`,
         },
       });
 
       await handler(req, res);
 
       expect(res._getStatusCode()).toBe(401);
-      expect(JSON.parse(res._getData())).toEqual({
+      expect(res._getJSONData()).toEqual({
         error: {
           type: "invalid_api_key_error",
           message: "The API key provided is invalid or disabled.",
         },
       });
+    });
+
+    it("returns 404 when workspace undefined", async () => {
+      const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+        method: "GET",
+        query: { wId: undefined },
+        headers: {
+          authorization: `Bearer ${SECRET_KEY_PREFIX}some_valid_key`,
+        },
+      });
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(404);
+    });
+
+    it("returns 404 when workspace not a string", async () => {
+      const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+        method: "GET",
+        query: { wId: 1 },
+        headers: {
+          authorization: `Bearer ${SECRET_KEY_PREFIX}some_valid_key`,
+        },
+      });
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(404);
+    });
+
+    it("returns 401 when workspace does not exist", async () => {
+      const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+        method: "GET",
+        query: { wId: "does-not-exist" },
+        headers: {
+          authorization: `Bearer ${SECRET_KEY_PREFIX}some_valid_key`,
+        },
+      });
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(401);
+    });
+
+    it("returns 401 when workspace does not match the key", async () => {
+      const workspace = await workspaceFactory().basic().create();
+      const globalGroup = await groupFactory().global(workspace).create();
+      const key = await keyFactory().regular(globalGroup).create();
+
+      const workspace2 = await workspaceFactory().basic().create();
+
+      const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+        method: "GET",
+        query: { wId: workspace2.sId },
+        headers: {
+          authorization: `Bearer ${key.secret}`,
+        },
+      });
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(401);
     });
   });
 }
