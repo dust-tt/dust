@@ -511,14 +511,16 @@ pub struct OpenAIError {
     pub error: InnerError,
 }
 
+pub struct OpenAICompatibleError {
+    pub provider: String,
+    pub error: OpenAIError,
+}
+
 impl OpenAIError {
-    pub fn message(&self) -> String {
-        match self.error.internal_message {
-            Some(ref msg) => format!(
-                "OpenAIError: [{}] {} internal_message={}",
-                self.error._type, self.error.message, msg,
-            ),
-            None => format!("OpenAIError: [{}] {}", self.error._type, self.error.message,),
+    pub fn with_provider(self, provider: String) -> OpenAICompatibleError {
+        OpenAICompatibleError {
+            provider,
+            error: self,
         }
     }
 
@@ -547,6 +549,29 @@ impl OpenAIError {
             },
             _ => false,
         }
+    }
+}
+
+impl OpenAICompatibleError {
+    pub fn message(&self) -> String {
+        match &self.error.error.internal_message {
+            Some(ref msg) => format!(
+                "{}Error: [{}] {} internal_message={}",
+                self.provider, self.error.error._type, self.error.error.message, msg,
+            ),
+            None => format!(
+                "{}Error: [{}] {}",
+                self.provider, self.error.error._type, self.error.error.message,
+            ),
+        }
+    }
+
+    pub fn retryable(&self) -> bool {
+        self.error.retryable()
+    }
+
+    pub fn retryable_streamed(&self, status: StatusCode) -> bool {
+        self.error.retryable_streamed(status)
     }
 }
 
@@ -619,9 +644,7 @@ pub async fn openai_compatible_chat_completion(
 
     let openai_messages = to_openai_messages(messages, transform_system_messages)?;
 
-    // [o1] Hack for OpenAI `o1*` models to simulate streaming.
     let stream_output = event_sender.is_some();
-    // let model_is_o1 = model_id.starts_with("o1");
 
     let (c, request_id) = if !disable_provider_streaming && stream_output {
         streamed_chat_completion(
@@ -756,32 +779,29 @@ fn to_openai_messages(
             None => m,
             Some(OpenAIChatMessageContent::String(_)) => m,
             Some(OpenAIChatMessageContent::Structured(contents)) => {
-                let content = if contents.len() == 1 {
-                    match &contents[0] {
-                        OpenAIContentBlock::TextContent(OpenAITextContent {
-                            r#type: OpenAITextContentType::Text,
-                            text,
-                            ..
-                        }) => OpenAIChatMessageContent::String(text.clone()),
-                        _ => OpenAIChatMessageContent::Structured(contents),
-                    }
-                } else {
-                    OpenAIChatMessageContent::Structured(contents)
-                };
-
                 OpenAIChatMessage {
                     role: m.role,
                     name: m.name,
                     tool_call_id: m.tool_call_id,
                     tool_calls: m.tool_calls,
-                    content: Some(content),
+                    // 2 cases: if there's exactly one content and it's a text content, we
+                    // convert to string format. Otherwise keep the structured format.
+                    content: match (contents.len(), contents.iter().next()) {
+                        (
+                            1,
+                            Some(OpenAIContentBlock::TextContent(OpenAITextContent {
+                                text, ..
+                            })),
+                        ) => Some(OpenAIChatMessageContent::String(text.clone())),
+                        _ => Some(OpenAIChatMessageContent::Structured(contents)),
+                    },
                 }
             }
         })
         // Remove system messages if requested.
         .filter(|m| {
-            m.role != OpenAIChatMessageRole::System
-                || transform_system_messages != TransformSystemMessages::Remove
+            transform_system_messages != TransformSystemMessages::Remove
+                || m.role != OpenAIChatMessageRole::System
         })
         .collect::<Vec<_>>();
 
@@ -968,7 +988,9 @@ async fn streamed_chat_completion(
                                         {
                                             true => Err(ModelError {
                                                 request_id: request_id.clone(),
-                                                message: error.message(),
+                                                message: error
+                                                    .with_provider(provider_name)
+                                                    .message(),
                                                 retryable: Some(ModelErrorRetryOptions {
                                                     sleep: Duration::from_millis(500),
                                                     factor: 2,
@@ -977,7 +999,9 @@ async fn streamed_chat_completion(
                                             })?,
                                             false => Err(ModelError {
                                                 request_id: request_id.clone(),
-                                                message: error.message(),
+                                                message: error
+                                                    .with_provider(provider_name)
+                                                    .message(),
                                                 retryable: None,
                                             })?,
                                         }
@@ -1085,7 +1109,7 @@ async fn streamed_chat_completion(
                                 match error.retryable_streamed(status) {
                                     true => Err(ModelError {
                                         request_id,
-                                        message: error.message(),
+                                        message: error.with_provider(provider_name).message(),
                                         retryable: Some(ModelErrorRetryOptions {
                                             sleep: Duration::from_millis(500),
                                             factor: 2,
@@ -1094,7 +1118,7 @@ async fn streamed_chat_completion(
                                     }),
                                     false => Err(ModelError {
                                         request_id,
-                                        message: error.message(),
+                                        message: error.with_provider(provider_name).message(),
                                         retryable: None,
                                     }),
                                 }
@@ -1394,7 +1418,7 @@ async fn chat_completion(
             match error.retryable() {
                 true => Err(ModelError {
                     request_id: request_id.clone(),
-                    message: error.message(),
+                    message: error.with_provider(provider_name).message(),
                     retryable: Some(ModelErrorRetryOptions {
                         sleep: Duration::from_millis(500),
                         factor: 2,
@@ -1403,7 +1427,7 @@ async fn chat_completion(
                 }),
                 false => Err(ModelError {
                     request_id: request_id.clone(),
-                    message: error.message(),
+                    message: error.with_provider(provider_name).message(),
                     retryable: Some(ModelErrorRetryOptions {
                         sleep: Duration::from_millis(500),
                         factor: 1,
