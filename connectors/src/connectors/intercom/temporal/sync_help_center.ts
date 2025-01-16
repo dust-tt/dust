@@ -230,6 +230,7 @@ export async function upsertCollectionWithChildren({
     parents: collectionParents,
     parentId: collectionParents[1],
     mimeType: MIME_TYPES.INTERCOM.COLLECTION,
+    sourceUrl: collection.url || fallbackCollectionUrl,
   });
 
   // Then we call ourself recursively on the children collections
