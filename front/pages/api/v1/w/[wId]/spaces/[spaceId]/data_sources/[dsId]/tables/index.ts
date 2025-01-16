@@ -399,7 +399,7 @@ async function handler(
             },
           });
         }
-        if (parents[0] !== req.query.documentId) {
+        if (parents[0] !== maybeTableId) {
           return apiError(req, res, {
             status_code: 400,
             api_error: {
