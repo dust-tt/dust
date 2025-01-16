@@ -1830,6 +1830,9 @@ export async function renderAndUpsertPageFromCache({
               parentId: parents[1] || null,
               title: parentDb.title ?? "Untitled Notion Database",
               mimeType: MIME_TYPES.NOTION.DATABASE,
+              sourceUrl:
+                parentDb.notionUrl ??
+                `https://www.notion.so/${parentDb.notionDatabaseId.replace(/-/g, "")}`,
             }),
           localLogger
         );
@@ -2551,6 +2554,9 @@ export async function upsertDatabaseStructuredDataFromCache({
         parentId: parentIds[1] || null,
         title: dbModel.title ?? "Untitled Notion Database",
         mimeType: MIME_TYPES.NOTION.DATABASE,
+        sourceUrl:
+          dbModel.notionUrl ??
+          `https://www.notion.so/${dbModel.notionDatabaseId.replace(/-/g, "")}`,
       }),
     localLogger
   );
