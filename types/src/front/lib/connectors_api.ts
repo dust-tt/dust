@@ -56,6 +56,7 @@ export type ConnectorType = {
  */
 export type ConnectorPermission = "read" | "write" | "read_write" | "none";
 export type ContentNodeType = "file" | "folder" | "database" | "channel";
+export type ProviderVisibility = "public" | "private";
 
 /*
  * This constant defines the priority order for sorting content nodes by their type.
