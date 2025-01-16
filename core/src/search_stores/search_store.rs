@@ -110,6 +110,13 @@ impl SearchStore for ElasticsearchSearchStore {
             ));
         }
 
+        // check there is at least one data source view filter
+        // !! do not remove; without data source view filter this endpoint is
+        // dangerous as any data from any workspace can be retrieved
+        if filter.data_source_views.is_empty() {
+            return Err(anyhow::anyhow!("No data source views provided"));
+        }
+
         // Build filter conditions using elasticsearch-dsl
         let filter_conditions: Vec<Query> = filter
             .data_source_views
