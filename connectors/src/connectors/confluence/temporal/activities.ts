@@ -23,6 +23,7 @@ import {
   makePageInternalId,
   makeSpaceInternalId,
 } from "@connectors/connectors/confluence/lib/internal_ids";
+import { getConfluenceSpaceUrl } from "@connectors/connectors/confluence/lib/permissions";
 import { makeConfluenceDocumentUrl } from "@connectors/connectors/confluence/temporal/workflow_ids";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
@@ -209,12 +210,19 @@ export async function confluenceUpsertSpaceFolderActivity({
   connectorId,
   spaceId,
   spaceName,
+  baseUrl,
 }: {
   connectorId: ModelId;
   spaceId: string;
   spaceName: string;
+  baseUrl: string;
 }) {
   const connector = await fetchConfluenceConnector(connectorId);
+
+  const spaceInDb = await ConfluenceSpace.findOne({
+    attributes: ["urlSuffix"],
+    where: { connectorId, spaceId },
+  });
 
   await upsertDataSourceFolder({
     dataSourceConfig: dataSourceConfigFromConnector(connector),
@@ -223,6 +231,8 @@ export async function confluenceUpsertSpaceFolderActivity({
     parentId: null,
     title: spaceName,
     mimeType: MIME_TYPES.CONFLUENCE.SPACE,
+    sourceUrl:
+      spaceInDb?.urlSuffix && getConfluenceSpaceUrl(spaceInDb, baseUrl),
   });
 }
 

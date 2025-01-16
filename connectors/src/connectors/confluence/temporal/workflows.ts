@@ -148,7 +148,7 @@ export async function confluenceSpaceSyncWorkflow(
   const confluenceConfig = await fetchConfluenceConfigurationActivity(
     params.connectorId
   );
-  const { cloudId: confluenceCloudId } = confluenceConfig;
+  const { cloudId: confluenceCloudId, url: baseUrl } = confluenceConfig;
 
   const spaceName = await confluenceGetSpaceNameActivity({
     ...params,
@@ -163,6 +163,7 @@ export async function confluenceSpaceSyncWorkflow(
     connectorId,
     spaceId,
     spaceName,
+    baseUrl,
   });
 
   const allowedRootPageIds = await fetchAndUpsertRootPagesActivity({

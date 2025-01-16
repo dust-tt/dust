@@ -34,15 +34,22 @@ function isConfluenceSpaceModel(
   );
 }
 
+export function getConfluenceSpaceUrl(
+  space: ConfluenceSpace | ConfluenceSpaceType,
+  baseUrl: string
+) {
+  const urlSuffix = isConfluenceSpaceModel(space)
+    ? space.urlSuffix
+    : space._links.webui;
+  return `${baseUrl}/wiki${urlSuffix}`;
+}
+
 export function createContentNodeFromSpace(
   space: ConfluenceSpace | ConfluenceSpaceType,
   baseUrl: string,
   permission: ConnectorPermission,
   { isExpandable }: { isExpandable: boolean }
 ): ContentNode {
-  const urlSuffix = isConfluenceSpaceModel(space)
-    ? space.urlSuffix
-    : space._links.webui;
   const spaceId = isConfluenceSpaceModel(space) ? space.spaceId : space.id;
 
   return {
@@ -50,7 +57,7 @@ export function createContentNodeFromSpace(
     parentInternalId: null,
     type: "folder",
     title: space.name || "Unnamed Space",
-    sourceUrl: `${baseUrl}/wiki${urlSuffix}`,
+    sourceUrl: getConfluenceSpaceUrl(space, baseUrl),
     expandable: isExpandable,
     permission,
     lastUpdatedAt: null,
