@@ -27,6 +27,7 @@ export class Workspace extends BaseModel<Workspace> {
   declare subscriptions: NonAttribute<Subscription[]>;
   declare whiteListedProviders: ModelProviderIdType[] | null;
   declare defaultEmbeddingProvider: EmbeddingProviderIdType | null;
+  declare conversationsRetentionDays: number | null;
 }
 Workspace.init(
   {
@@ -58,6 +59,10 @@ Workspace.init(
     ssoEnforced: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
+    },
+    conversationsRetentionDays: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
     },
     whiteListedProviders: {
       type: DataTypes.ARRAY(DataTypes.STRING),
