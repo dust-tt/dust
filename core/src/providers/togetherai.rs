@@ -139,9 +139,10 @@ impl LLM for TogetherAILLM {
             top_logprobs,
             None,
             event_sender,
-            false,
+            false, // don't disable provider streaming
             TransformSystemMessages::Keep,
             "TogetherAI".to_string(),
+            true, // squash text contents (togetherai doesn't support structured messages)
         )
         .await
     }

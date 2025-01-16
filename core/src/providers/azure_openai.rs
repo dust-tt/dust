@@ -462,9 +462,10 @@ impl LLM for AzureOpenAILLM {
             top_logprobs,
             extras,
             event_sender,
-            false,
+            false, // don't disable provider streaming
             TransformSystemMessages::Keep,
             "AzureOpenAI".to_string(),
+            false, // don't squash text contents
         )
         .await
     }

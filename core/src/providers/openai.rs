@@ -153,8 +153,6 @@ pub async fn streamed_completion(
         body["stop"] = json!(stop);
     }
 
-    // println!("BODY: {}", body.to_string());
-
     let client = builder
         .body(body.to_string())
         .reconnect(
@@ -205,9 +203,7 @@ pub async fn streamed_completion(
                                         {
                                             true => Err(ModelError {
                                                 request_id: request_id.clone(),
-                                                message: error
-                                                    .with_provider("OpenAI".to_string())
-                                                    .message(),
+                                                message: error.with_provider("OpenAI").message(),
                                                 retryable: Some(ModelErrorRetryOptions {
                                                     sleep: Duration::from_millis(500),
                                                     factor: 2,
@@ -216,9 +212,7 @@ pub async fn streamed_completion(
                                             })?,
                                             false => Err(ModelError {
                                                 request_id: request_id.clone(),
-                                                message: error
-                                                    .with_provider("OpenAI".to_string())
-                                                    .message(),
+                                                message: error.with_provider("OpenAI").message(),
                                                 retryable: None,
                                             })?,
                                         }
@@ -312,9 +306,7 @@ pub async fn streamed_completion(
                                 match error.retryable_streamed(status) {
                                     true => Err(ModelError {
                                         request_id,
-                                        message: error
-                                            .with_provider("OpenAI".to_string())
-                                            .message(),
+                                        message: error.with_provider("OpenAI").message(),
                                         retryable: Some(ModelErrorRetryOptions {
                                             sleep: Duration::from_millis(500),
                                             factor: 2,
@@ -323,9 +315,7 @@ pub async fn streamed_completion(
                                     }),
                                     false => Err(ModelError {
                                         request_id,
-                                        message: error
-                                            .with_provider("OpenAI".to_string())
-                                            .message(),
+                                        message: error.with_provider("OpenAI").message(),
                                         retryable: None,
                                     }),
                                 }
@@ -490,7 +480,7 @@ pub async fn completion(
             match error.retryable() {
                 true => Err(ModelError {
                     request_id: request_id.clone(),
-                    message: error.with_provider("OpenAI".to_string()).message(),
+                    message: error.with_provider("OpenAI").message(),
                     retryable: Some(ModelErrorRetryOptions {
                         sleep: Duration::from_millis(500),
                         factor: 2,
@@ -499,7 +489,7 @@ pub async fn completion(
                 }),
                 false => Err(ModelError {
                     request_id: request_id.clone(),
-                    message: error.with_provider("OpenAI".to_string()).message(),
+                    message: error.with_provider("OpenAI").message(),
                     retryable: Some(ModelErrorRetryOptions {
                         sleep: Duration::from_millis(500),
                         factor: 1,
@@ -595,7 +585,7 @@ pub async fn embed(
             match error.retryable() {
                 true => Err(ModelError {
                     request_id,
-                    message: error.with_provider("OpenAI".to_string()).message(),
+                    message: error.with_provider("OpenAI").message(),
                     retryable: Some(ModelErrorRetryOptions {
                         sleep: Duration::from_millis(500),
                         factor: 2,
@@ -604,7 +594,7 @@ pub async fn embed(
                 }),
                 false => Err(ModelError {
                     request_id,
-                    message: error.with_provider("OpenAI".to_string()).message(),
+                    message: error.with_provider("OpenAI").message(),
                     retryable: Some(ModelErrorRetryOptions {
                         sleep: Duration::from_millis(500),
                         factor: 1,
@@ -951,7 +941,7 @@ impl LLM for OpenAILLM {
             self.chat_uri()?,
             self.id.clone(),
             self.api_key.clone().unwrap(),
-            messages,
+            &messages,
             functions,
             function_call,
             temperature,
@@ -965,8 +955,7 @@ impl LLM for OpenAILLM {
             top_logprobs,
             extras,
             event_sender,
-            // disable provider streaming if model is o1.
-            model_is_o1,
+            model_is_o1, // disable provider streaming if model is o1.
             // If model is o1-mini, we remove system messages.
             // If model is o1, we replace system messages with developer messages.
             if model_is_o1_mini {
@@ -977,6 +966,7 @@ impl LLM for OpenAILLM {
                 TransformSystemMessages::Keep
             },
             "OpenAI".to_string(),
+            false, // Don't squash text contents.
         )
         .await
     }

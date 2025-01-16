@@ -143,6 +143,7 @@ impl LLM for DeepseekLLM {
             false, // don't disable provider streaming
             TransformSystemMessages::Keep,
             "DeepSeek".to_string(),
+            false, // don't squash text contents
         )
         .await
     }

@@ -517,9 +517,9 @@ pub struct OpenAICompatibleError {
 }
 
 impl OpenAIError {
-    pub fn with_provider(self, provider: String) -> OpenAICompatibleError {
+    pub fn with_provider(self, provider: &str) -> OpenAICompatibleError {
         OpenAICompatibleError {
-            provider,
+            provider: provider.to_string(),
             error: self,
         }
     }
@@ -603,6 +603,7 @@ pub async fn openai_compatible_chat_completion(
     disable_provider_streaming: bool,
     transform_system_messages: TransformSystemMessages,
     provider_name: String,
+    squash_text_contents: bool,
 ) -> Result<LLMChatGeneration> {
     if let Some(m) = max_tokens {
         if m == -1 {
@@ -642,7 +643,8 @@ pub async fn openai_compatible_chat_completion(
         .map(OpenAITool::try_from)
         .collect::<Result<Vec<OpenAITool>, _>>()?;
 
-    let openai_messages = to_openai_messages(messages, transform_system_messages)?;
+    let openai_messages =
+        to_openai_messages(messages, transform_system_messages, squash_text_contents)?;
 
     let stream_output = event_sender.is_some();
 
@@ -764,41 +766,84 @@ pub async fn openai_compatible_chat_completion(
 fn to_openai_messages(
     messages: &Vec<ChatMessage>,
     transform_system_messages: TransformSystemMessages,
+    squash_text_contents: bool,
 ) -> Result<Vec<OpenAIChatMessage>, anyhow::Error> {
     let mut oai_messages = messages
         .into_iter()
         // First convert to OpenAI chat messages.
         .map(|m| OpenAIChatMessage::try_from(m))
-        // If there's a single text content in the structured message, convert to string format.
-        // Otherwise keep the structured format.
-        // Most providers only accept structured messages if there's more than one content block or
-        // if the content block is not a text content block.
         .collect::<Result<Vec<_>>>()?
         .into_iter()
+        // Decide which content format to use for each message (structured or string).
+        // If there are images, we need to use structured format.
+        // If there is a single text content, we can always use string format (equivalent and compatible everywhere).
+        // Otherwise, if there are multiple text contents, we either squash them or keep the structured format,
+        // depending on the `squash_text_contents` flag.
         .map(|m| match m.content {
             None => m,
             Some(OpenAIChatMessageContent::String(_)) => m,
             Some(OpenAIChatMessageContent::Structured(contents)) => {
+                let all_contents_are_text = contents
+                    .iter()
+                    .all(|c| matches!(c, OpenAIContentBlock::TextContent(_)));
+
                 OpenAIChatMessage {
                     role: m.role,
                     name: m.name,
                     tool_call_id: m.tool_call_id,
                     tool_calls: m.tool_calls,
-                    // 2 cases: if there's exactly one content and it's a text content, we
-                    // convert to string format. Otherwise keep the structured format.
-                    content: match (contents.len(), contents.iter().next()) {
-                        (
-                            1,
-                            Some(OpenAIContentBlock::TextContent(OpenAITextContent {
-                                text, ..
-                            })),
-                        ) => Some(OpenAIChatMessageContent::String(text.clone())),
-                        _ => Some(OpenAIChatMessageContent::Structured(contents)),
+                    content: match (contents.len(), all_contents_are_text, squash_text_contents) {
+                        // Case 0: there's no content => return None
+                        (0, _, _) => None,
+                        // Case 1: there's only a single text content => use string format
+                        (1, true, _) => Some(OpenAIChatMessageContent::String(
+                            match contents.into_iter().next().unwrap() {
+                                OpenAIContentBlock::TextContent(tc) => tc.text.clone(),
+                                _ => unreachable!(),
+                            },
+                        )),
+                        // Case 2: There's more than one content, all contents are text and we want to squash them => squash them
+                        (_, true, true) => Some(OpenAIChatMessageContent::String(
+                            contents
+                                .into_iter()
+                                .map(|c| match c {
+                                    OpenAIContentBlock::TextContent(tc) => tc.text.clone(),
+                                    _ => unreachable!(),
+                                })
+                                .collect::<Vec<String>>()
+                                .join("\n"),
+                        )),
+                        // Case 3: there's more than one content, the content isn't text or we don't want to squash them => keep structured format
+                        (_, _, _) => Some(OpenAIChatMessageContent::Structured(contents)),
                     },
                 }
             }
         })
+        // Truncate the tool_ids to 40 characters.
+        .map(|m| {
+            fn truncate_id(id: Option<String>) -> Option<String> {
+                id.map(|id| id.chars().take(40).collect::<String>())
+            }
+            OpenAIChatMessage {
+                role: m.role,
+                name: m.name,
+                tool_call_id: truncate_id(m.tool_call_id),
+                tool_calls: m.tool_calls.map(|tool_calls| {
+                    tool_calls
+                        .into_iter()
+                        .map(|tc| OpenAIToolCall {
+                            id: truncate_id(tc.id),
+                            function: tc.function,
+                            r#type: tc.r#type,
+                        })
+                        .collect()
+                }),
+                content: m.content,
+            }
+        })
         // Remove system messages if requested.
+        // Some models don't support system messages, so we need this to be
+        // configurable.
         .filter(|m| {
             transform_system_messages != TransformSystemMessages::Remove
                 || m.role != OpenAIChatMessageRole::System
@@ -806,6 +851,7 @@ fn to_openai_messages(
         .collect::<Vec<_>>();
 
     // Replace system messages with developer messages if requested.
+    // Some newer models no longer support "system" as a role and support a "developer" role.
     for m in oai_messages.iter_mut() {
         if m.role == OpenAIChatMessageRole::System
             && transform_system_messages == TransformSystemMessages::ReplaceWithDeveloper
@@ -989,7 +1035,7 @@ async fn streamed_chat_completion(
                                             true => Err(ModelError {
                                                 request_id: request_id.clone(),
                                                 message: error
-                                                    .with_provider(provider_name)
+                                                    .with_provider(&provider_name)
                                                     .message(),
                                                 retryable: Some(ModelErrorRetryOptions {
                                                     sleep: Duration::from_millis(500),
@@ -1000,7 +1046,7 @@ async fn streamed_chat_completion(
                                             false => Err(ModelError {
                                                 request_id: request_id.clone(),
                                                 message: error
-                                                    .with_provider(provider_name)
+                                                    .with_provider(&provider_name)
                                                     .message(),
                                                 retryable: None,
                                             })?,
@@ -1109,7 +1155,7 @@ async fn streamed_chat_completion(
                                 match error.retryable_streamed(status) {
                                     true => Err(ModelError {
                                         request_id,
-                                        message: error.with_provider(provider_name).message(),
+                                        message: error.with_provider(&provider_name).message(),
                                         retryable: Some(ModelErrorRetryOptions {
                                             sleep: Duration::from_millis(500),
                                             factor: 2,
@@ -1118,14 +1164,15 @@ async fn streamed_chat_completion(
                                     }),
                                     false => Err(ModelError {
                                         request_id,
-                                        message: error.with_provider(provider_name).message(),
+                                        message: error.with_provider(&provider_name).message(),
                                         retryable: None,
                                     }),
                                 }
                             }?,
                             Err(_) => {
                                 Err(anyhow!(
-                                    "Error streaming tokens from OpenAI: status={} data={}",
+                                    "Error streaming tokens from {}: status={} data={}",
+                                    &provider_name,
                                     status,
                                     String::from_utf8_lossy(&b)
                                 ))?;
@@ -1133,7 +1180,11 @@ async fn streamed_chat_completion(
                         }
                     }
                     _ => {
-                        Err(anyhow!("Error streaming tokens from OpenAI: {:?}", e))?;
+                        Err(anyhow!(
+                            "Error streaming tokens from {}: {:?}",
+                            &provider_name,
+                            e
+                        ))?;
                     }
                 }
                 break 'stream;
@@ -1144,7 +1195,7 @@ async fn streamed_chat_completion(
     let mut completion = {
         let guard = chunks.lock();
         let f = match guard.len() {
-            0 => Err(anyhow!("No chunks received from OpenAI")),
+            0 => Err(anyhow!("No chunks received from {}", provider_name)),
             _ => Ok(guard[0].clone()),
         }?;
 
@@ -1418,7 +1469,7 @@ async fn chat_completion(
             match error.retryable() {
                 true => Err(ModelError {
                     request_id: request_id.clone(),
-                    message: error.with_provider(provider_name).message(),
+                    message: error.with_provider(&provider_name).message(),
                     retryable: Some(ModelErrorRetryOptions {
                         sleep: Duration::from_millis(500),
                         factor: 2,
@@ -1427,7 +1478,7 @@ async fn chat_completion(
                 }),
                 false => Err(ModelError {
                     request_id: request_id.clone(),
-                    message: error.with_provider(provider_name).message(),
+                    message: error.with_provider(&provider_name).message(),
                     retryable: Some(ModelErrorRetryOptions {
                         sleep: Duration::from_millis(500),
                         factor: 1,
