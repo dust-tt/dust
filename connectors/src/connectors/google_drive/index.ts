@@ -706,7 +706,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
       type: "database",
       title: s.name || "",
       lastUpdatedAt: s.updatedAt.getTime() || null,
-      sourceUrl: `https://docs.google.com/spreadsheets/d/${s.driveFileId}/edit#gid=${s.driveSheetId}`,
+      sourceUrl: getSourceUrlForGoogleDriveSheet(s),
       expandable: false,
       permission: "read",
     }));
@@ -984,4 +984,8 @@ function getSourceUrlForGoogleDriveFiles(f: GoogleDriveFiles): string {
   }
 
   return `https://drive.google.com/file/d/${f.driveFileId}/view`;
+}
+
+function getSourceUrlForGoogleDriveSheet(s: GoogleDriveSheet): string {
+  return `https://docs.google.com/spreadsheets/d/${s.driveFileId}/edit#gid=${s.driveSheetId}`;
 }
