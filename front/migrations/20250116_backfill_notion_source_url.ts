@@ -129,15 +129,17 @@ async function backfillDatabases(
       );
     }
 
-    if (execute) {
-      await updateNodes(coreSequelize, tableNodeIds, tableUrls);
-      logger.info(
-        `Updated ${tableRows.length} databases (tables) from id ${tableRows[0].id} to id ${tableRows[tableRows.length - 1].id}.`
-      );
-    } else {
-      logger.info(
-        `Would update ${tableRows.length} databases (tables) from id ${tableRows[0].id} to id ${tableRows[tableRows.length - 1].id}.`
-      );
+    if (tableRows.length > 0) {
+      if (execute) {
+        await updateNodes(coreSequelize, tableNodeIds, tableUrls);
+        logger.info(
+          `Updated ${tableRows.length} databases (tables) from id ${tableRows[0].id} to id ${tableRows[tableRows.length - 1].id}.`
+        );
+      } else {
+        logger.info(
+          `Would update ${tableRows.length} databases (tables) from id ${tableRows[0].id} to id ${tableRows[tableRows.length - 1].id}.`
+        );
+      }
     }
 
     lastId = rows[rows.length - 1].id;
