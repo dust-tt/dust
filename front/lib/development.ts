@@ -1,17 +1,8 @@
 import type { LightWorkspaceType, UserType } from "@dust-tt/types";
 import { Err, isDevelopment, Ok } from "@dust-tt/types";
 
-import config from "@app/lib/api/config";
-
-function isADustProdWorkspace(owner: LightWorkspaceType) {
-  return (
-    owner.sId === config.getDustWorkspaceId() ||
-    owner.sId === config.getDustAppsWorkspaceId()
-  );
-}
-
 export function showDebugTools(owner: LightWorkspaceType) {
-  return isDevelopment() || isADustProdWorkspace(owner);
+  return owner.isADustWorkspace || isDevelopment();
 }
 
 export async function forceUserRole(

@@ -21,7 +21,7 @@ import { DateTime } from "luxon";
 import { callAction } from "@app/lib/actions/helpers";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
+import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import logger from "@app/logger/logger";
 
 import type { DataSourceResource } from "../resources/data_source_resource";
@@ -589,7 +589,7 @@ async function detectHeaders(
   }
   headParser.destroy();
 
-  const action = DustProdActionRegistry["table-header-detection"];
+  const action = getDustProdAction("table-header-detection");
 
   const model = getSmallWhitelistedModel(auth.getNonNullableWorkspace());
   if (!model) {

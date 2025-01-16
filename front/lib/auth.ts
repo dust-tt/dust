@@ -660,14 +660,11 @@ export class Authenticator {
   workspace(): WorkspaceType | null {
     return this._workspace
       ? {
-          id: this._workspace.id,
-          sId: this._workspace.sId,
-          name: this._workspace.name,
-          role: this._role,
-          segmentation: this._workspace.segmentation || null,
+          ...renderLightWorkspaceType({
+            workspace: this._workspace,
+            role: this._role,
+          }),
           ssoEnforced: this._workspace.ssoEnforced,
-          whiteListedProviders: this._workspace.whiteListedProviders,
-          defaultEmbeddingProvider: this._workspace.defaultEmbeddingProvider,
         }
       : null;
   }

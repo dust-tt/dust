@@ -30,7 +30,7 @@ import { getRefs } from "@app/lib/api/assistant/citations";
 import type { Authenticator } from "@app/lib/auth";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { AgentRetrievalAction } from "@app/lib/models/assistant/actions/retrieval";
-import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
+import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { RetrievalDocumentBlob } from "@app/lib/resources/retrieval_document_resource";
 import { RetrievalDocumentResource } from "@app/lib/resources/retrieval_document_resource";
@@ -392,7 +392,7 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
 
     // "assistant-v2-retrieval" has no model interaction.
     const config = cloneBaseConfig(
-      DustProdActionRegistry["assistant-v2-retrieval"].config
+      getDustProdAction("assistant-v2-retrieval").config
     );
 
     // Handle data sources list and parents/tags filtering.

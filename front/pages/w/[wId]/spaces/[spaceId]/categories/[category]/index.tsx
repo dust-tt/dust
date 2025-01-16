@@ -28,7 +28,7 @@ import {
 import { isManaged } from "@app/lib/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import type { ActionApp } from "@app/lib/registry";
-import { DustProdActionRegistry } from "@app/lib/registry";
+import { getDustProdActionRegistry } from "@app/lib/registry";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 export const getServerSideProps = withDefaultUserAuthRequirements<
   SpaceLayoutProps & {
@@ -126,7 +126,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     space.sId === config.getDustAppsSpaceId();
 
   const registryApps = isDustAppsSpace
-    ? Object.values(DustProdActionRegistry).map((action) => action.app)
+    ? Object.values(getDustProdActionRegistry()).map((action) => action.app)
     : undefined;
 
   return {

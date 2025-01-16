@@ -36,7 +36,7 @@ import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentProcessAction } from "@app/lib/models/assistant/actions/process";
-import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
+import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
 
@@ -250,7 +250,7 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
     );
 
     const config = cloneBaseConfig(
-      DustProdActionRegistry["assistant-v2-process"].config
+      getDustProdAction("assistant-v2-process").config
     );
 
     // Set the process action model configuration to the assistant model configuration.

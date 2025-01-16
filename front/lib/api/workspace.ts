@@ -36,15 +36,7 @@ export async function getWorkspaceInfos(
     return null;
   }
 
-  return {
-    id: workspace.id,
-    sId: workspace.sId,
-    name: workspace.name,
-    role: "none",
-    segmentation: workspace.segmentation,
-    whiteListedProviders: workspace.whiteListedProviders,
-    defaultEmbeddingProvider: workspace.defaultEmbeddingProvider,
-  };
+  return renderLightWorkspaceType({ workspace });
 }
 
 export async function getWorkspaceVerifiedDomain(
@@ -109,15 +101,8 @@ export async function setInternalWorkspaceSegmentation(
   await workspace.update({
     segmentation,
   });
-  return {
-    id: workspace.id,
-    sId: workspace.sId,
-    name: workspace.name,
-    role: "none",
-    segmentation: workspace.segmentation,
-    whiteListedProviders: workspace.whiteListedProviders,
-    defaultEmbeddingProvider: workspace.defaultEmbeddingProvider,
-  };
+
+  return renderLightWorkspaceType({ workspace });
 }
 
 /**
