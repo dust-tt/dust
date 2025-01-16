@@ -21,6 +21,25 @@ async function backfillFolders(
 ) {
   logger.info("Processing folders");
 
+  const coreDataSourceIds: { id: number }[] = await coreSequelize.query(
+    `SELECT id
+     FROM data_sources
+     WHERE project = :projectId
+       AND data_source_id = :dataSourceId;`,
+    {
+      replacements: {
+        dataSourceId: frontDataSource.dustAPIDataSourceId,
+        projectId: frontDataSource.dustAPIProjectId,
+      },
+      type: QueryTypes.SELECT,
+    }
+  );
+  const coreDataSourceId = coreDataSourceIds[0].id;
+  if (!coreDataSourceId) {
+    logger.error("No core data source found for the given front data source.");
+    return;
+  }
+
   let lastId = 0;
   let rows: { id: number; internalId: string; url: string }[] = [];
 
@@ -51,28 +70,6 @@ async function backfillFolders(
     const nodeIds = rows.map((row) => row.internalId);
 
     if (execute) {
-      const coreDataSourceIds: { id: number }[] = await coreSequelize.query(
-        `SELECT id
-         FROM data_sources
-         WHERE project = :projectId
-           AND data_source_id = :dataSourceId;`,
-        {
-          replacements: {
-            dataSourceId: frontDataSource.dustAPIDataSourceId,
-            projectId: frontDataSource.dustAPIProjectId,
-            nodeIds,
-          },
-          type: QueryTypes.SELECT,
-        }
-      );
-      const coreDataSourceId = coreDataSourceIds[0].id;
-      if (!coreDataSourceId) {
-        logger.error(
-          "No core data source found for the given front data source."
-        );
-        return;
-      }
-
       await coreSequelize.query(
         // No possible mismatch even though some pages are upserted in connectors' db but not as document
         // - unnest preserves array order and creates parallel tuples,
@@ -81,7 +78,7 @@ async function backfillFolders(
          FROM (SELECT unnest(ARRAY [:nodeIds]::text[]) as node_id,
                       unnest(ARRAY [:urls]::text[])    as url) urls
          WHERE data_sources_nodes.node_id = urls.node_id
-           AND data_source = :dataSourceId;`,
+           AND data_sources_nodes.data_source = :dataSourceId;`,
         { replacements: { urls, nodeIds, dataSourceId: coreDataSourceId } }
       );
       logger.info(

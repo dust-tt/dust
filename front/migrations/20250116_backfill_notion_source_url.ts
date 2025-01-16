@@ -7,6 +7,7 @@ import {
 } from "@app/lib/production_checks/utils";
 import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
+import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 
 const BATCH_SIZE = 1024;
 
@@ -14,24 +15,35 @@ async function updateNodes(
   coreSequelize: Sequelize,
   nodeIds: string[],
   urls: string[]
-) {
-  await coreSequelize.query(
-    `UPDATE data_sources_nodes
-     SET source_url = urls.url
-     FROM (SELECT unnest(ARRAY [:nodeIds]::text[]) as node_id,
-                  unnest(ARRAY [:urls]::text[])    as url) urls
-     WHERE data_sources_nodes.node_id = urls.node_id;`,
-    { replacements: { urls, nodeIds } }
-  );
-}
+) {}
 
 async function backfillDatabases(
+  frontDataSource: DataSourceModel,
   coreSequelize: Sequelize,
   connectorsSequelize: Sequelize,
   execute: boolean,
   logger: typeof Logger
 ) {
   logger.info("Processing databases");
+
+  const coreDataSourceIds: { id: number }[] = await coreSequelize.query(
+    `SELECT id
+     FROM data_sources
+     WHERE project = :projectId
+       AND data_source_id = :dataSourceId;`,
+    {
+      replacements: {
+        dataSourceId: frontDataSource.dustAPIDataSourceId,
+        projectId: frontDataSource.dustAPIProjectId,
+      },
+      type: QueryTypes.SELECT,
+    }
+  );
+  const coreDataSourceId = coreDataSourceIds[0].id;
+  if (!coreDataSourceId) {
+    logger.error("No core data source found for the given front data source.");
+    return;
+  }
 
   let lastId = 0;
   let rows: {
@@ -72,6 +84,21 @@ async function backfillDatabases(
     if (tableRows.length > 0) {
       if (execute) {
         await updateNodes(coreSequelize, tableNodeIds, tableUrls);
+        await coreSequelize.query(
+          `UPDATE data_sources_nodes
+           SET source_url = urls.url
+           FROM (SELECT unnest(ARRAY [:nodeIds]::text[]) as node_id,
+                        unnest(ARRAY [:urls]::text[])    as url) urls
+           WHERE data_sources_nodes.node_id = urls.node_id
+             AND data_sources_nodes.data_source = :dataSourceId;`,
+          {
+            replacements: {
+              urls: tableUrls,
+              nodeIds: tableNodeIds,
+              dataSourceId: coreDataSourceId,
+            },
+          }
+        );
         logger.info(
           `Updated ${tableRows.length} databases (tables) from id ${tableRows[0].id} to id ${tableRows[tableRows.length - 1].id}.`
         );
@@ -86,9 +113,39 @@ async function backfillDatabases(
   } while (rows.length === BATCH_SIZE);
 }
 
+async function backfillDataSource(
+  frontDataSource: DataSourceModel,
+  coreSequelize: Sequelize,
+  connectorsSequelize: Sequelize,
+  execute: boolean,
+  logger: typeof Logger
+) {
+  logger.info("Processing data source");
+
+  await backfillDatabases(
+    frontDataSource,
+    coreSequelize,
+    connectorsSequelize,
+    execute,
+    logger
+  );
+}
+
 makeScript({}, async ({ execute }, logger) => {
   const coreSequelize = getCorePrimaryDbConnection();
   const connectorsSequelize = getConnectorsReplicaDbConnection();
 
-  await backfillDatabases(coreSequelize, connectorsSequelize, execute, logger);
+  const frontDataSources = await DataSourceModel.findAll({
+    where: { connectorProvider: "notion" },
+  });
+  logger.info(`Found ${frontDataSources.length} Notion data sources`);
+  for (const frontDataSource of frontDataSources) {
+    await backfillDataSource(
+      frontDataSource,
+      coreSequelize,
+      connectorsSequelize,
+      execute,
+      logger
+    );
+  }
 });
