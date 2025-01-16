@@ -26,9 +26,12 @@ import {
   getCodeRootInternalId,
   getDiscussionInternalId,
   getDiscussionsInternalId,
+  getDiscussionsUrl,
   getIssueInternalId,
   getIssuesInternalId,
+  getIssuesUrl,
   getRepositoryInternalId,
+  getRepoUrl,
 } from "@connectors/connectors/github/lib/utils";
 import { QUEUE_NAME } from "@connectors/connectors/github/temporal/config";
 import { newWebhookSignal } from "@connectors/connectors/github/temporal/signals";
@@ -961,6 +964,7 @@ export async function githubCodeSyncActivity({
     parents: [getCodeRootInternalId(repoId), getRepositoryInternalId(repoId)],
     parentId: getRepositoryInternalId(repoId),
     mimeType: MIME_TYPES.GITHUB.CODE_ROOT,
+    sourceUrl: getRepoUrl(repoLogin, repoName),
   });
 
   let githubCodeRepository = await GithubCodeRepository.findOne({
@@ -979,7 +983,7 @@ export async function githubCodeSyncActivity({
       createdAt: codeSyncStartedAt,
       updatedAt: codeSyncStartedAt,
       lastSeenAt: codeSyncStartedAt,
-      sourceUrl: `https://github.com/${repoLogin}/${repoName}`,
+      sourceUrl: getRepoUrl(repoLogin, repoName),
       forceDailySync: false,
     });
   }
@@ -987,7 +991,7 @@ export async function githubCodeSyncActivity({
   // We update the repo name and source url in case they changed. We also update the lastSeenAt as
   // soon as possible to prevent further attempt to incrementally synchronize it.
   githubCodeRepository.repoName = repoName;
-  githubCodeRepository.sourceUrl = `https://github.com/${repoLogin}/${repoName}`;
+  githubCodeRepository.sourceUrl = getRepoUrl(repoLogin, repoName);
   githubCodeRepository.lastSeenAt = codeSyncStartedAt;
   await githubCodeRepository.save();
 
@@ -1217,6 +1221,7 @@ export async function githubCodeSyncActivity({
           parentId: parents[1],
           title: d.dirName,
           mimeType: MIME_TYPES.GITHUB.CODE_DIRECTORY,
+          sourceUrl: d.sourceUrl,
         });
 
         // Find directory or create it.
@@ -1341,10 +1346,12 @@ export async function githubUpsertRepositoryFolderActivity({
   connectorId,
   repoId,
   repoName,
+  repoLogin,
 }: {
   connectorId: ModelId;
   repoId: number;
   repoName: string;
+  repoLogin: string;
 }) {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -1356,6 +1363,7 @@ export async function githubUpsertRepositoryFolderActivity({
     title: repoName,
     parents: [getRepositoryInternalId(repoId)],
     parentId: null,
+    sourceUrl: getRepoUrl(repoLogin, repoName),
     mimeType: MIME_TYPES.GITHUB.REPOSITORY,
   });
 }
@@ -1363,9 +1371,13 @@ export async function githubUpsertRepositoryFolderActivity({
 export async function githubUpsertIssuesFolderActivity({
   connectorId,
   repoId,
+  repoLogin,
+  repoName,
 }: {
   connectorId: ModelId;
   repoId: number;
+  repoLogin: string;
+  repoName: string;
 }) {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -1378,15 +1390,20 @@ export async function githubUpsertIssuesFolderActivity({
     parents: [getIssuesInternalId(repoId), getRepositoryInternalId(repoId)],
     parentId: getRepositoryInternalId(repoId),
     mimeType: MIME_TYPES.GITHUB.ISSUES,
+    sourceUrl: getIssuesUrl(getRepoUrl(repoLogin, repoName)),
   });
 }
 
 export async function githubUpsertDiscussionsFolderActivity({
   connectorId,
   repoId,
+  repoLogin,
+  repoName,
 }: {
   connectorId: ModelId;
   repoId: number;
+  repoLogin: string;
+  repoName: string;
 }) {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -1402,26 +1419,6 @@ export async function githubUpsertDiscussionsFolderActivity({
     ],
     parentId: getRepositoryInternalId(repoId),
     mimeType: MIME_TYPES.GITHUB.DISCUSSIONS,
-  });
-}
-
-export async function githubUpsertCodeRootFolderActivity({
-  connectorId,
-  repoId,
-}: {
-  connectorId: ModelId;
-  repoId: number;
-}) {
-  const connector = await ConnectorResource.fetchById(connectorId);
-  if (!connector) {
-    throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
-  }
-  await upsertDataSourceFolder({
-    dataSourceConfig: dataSourceConfigFromConnector(connector),
-    folderId: getCodeRootInternalId(repoId),
-    title: "Code",
-    parents: [getCodeRootInternalId(repoId), getRepositoryInternalId(repoId)],
-    parentId: getRepositoryInternalId(repoId),
-    mimeType: MIME_TYPES.GITHUB.CODE_ROOT,
+    sourceUrl: getDiscussionsUrl(getRepoUrl(repoLogin, repoName)),
   });
 }
