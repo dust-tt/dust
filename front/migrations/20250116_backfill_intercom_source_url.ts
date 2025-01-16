@@ -12,30 +12,11 @@ import { makeScript } from "@app/scripts/helpers";
 const BATCH_SIZE = 256;
 
 // Copy-pasted from connectors
-function getConversationInternalId(
+function getHelpCenterCollectionInternalId(
   connectorId: ModelId,
-  conversationId: string
+  collectionId: string
 ): string {
-  return `intercom-conversation-${connectorId}-${conversationId}`;
-}
-
-function getIntercomDomain(region: string): string {
-  if (region === "Europe") {
-    return "https://app.eu.intercom.com";
-  }
-  if (region === "Australia") {
-    return "https://app.au.intercom.com";
-  }
-  return "https://app.intercom.com";
-}
-
-function getConversationInAppUrl(
-  workspaceId: string,
-  conversationId: string,
-  region: string
-): string {
-  const domain = getIntercomDomain(region);
-  return `${domain}/a/inbox/${workspaceId}/inbox/conversation/${conversationId}`;
+  return `intercom-collection-${connectorId}-${collectionId}`;
 }
 
 async function updateNodes(
@@ -53,108 +34,68 @@ async function updateNodes(
   );
 }
 
-async function backfillConversationsForWorkspace(
+async function backfillCollections(
   coreSequelize: Sequelize,
   connectorsSequelize: Sequelize,
-  workspaceId: string,
-  region: string,
-  connectorId: ModelId,
   execute: boolean,
   logger: typeof Logger
 ) {
-  logger.info("Processing conversations");
+  logger.info("Processing collections");
 
   let nextId = 0;
   let updatedRowsCount;
   do {
     const rows: {
-      conversationId: string;
+      collectionId: string;
       id: number;
+      url: string;
       connectorId: number;
     }[] = await connectorsSequelize.query(
       `
-          SELECT ic.id, ic."conversationId", ic."connectorId"
-          FROM intercom_conversations ic
-          WHERE ic.id > :nextId AND ic."connectorId" = :connectorId
+          SELECT ic.id, ic."collectionId", ic."url", ic."connectorId"
+          FROM intercom_collections ic
+          WHERE ic.id > :nextId
           ORDER BY ic.id
           LIMIT :batchSize;`,
       {
         replacements: {
           batchSize: BATCH_SIZE,
           nextId,
-          connectorId,
         },
         type: QueryTypes.SELECT,
       }
     );
 
     if (rows.length == 0) {
-      logger.info({ nextId }, `Finished processing conversations.`);
+      logger.info({ nextId }, `Finished processing collections.`);
       break;
     }
     nextId = rows[rows.length - 1].id;
     updatedRowsCount = rows.length;
 
-    const urls = rows.map((row) =>
-      getConversationInAppUrl(workspaceId, row.conversationId, region)
-    );
+    const urls = rows.map((row) => row.url);
     const nodeIds = rows.map((row) => {
-      return getConversationInternalId(connectorId, row.conversationId);
+      return getHelpCenterCollectionInternalId(
+        row.connectorId,
+        row.collectionId
+      );
     });
     if (execute) {
       await updateNodes(coreSequelize, nodeIds, urls);
-      logger.info(`Updated ${rows.length} conversations.`);
+      logger.info(`Updated ${rows.length} collections.`);
     } else {
       logger.info(
-        `Would update ${rows.length} conversations, sample: ${nodeIds.slice(0, 5).join(", ")}, ${urls.slice(0, 5).join(", ")}`
+        `Would update ${rows.length} collections, sample: ${nodeIds.slice(0, 5).join(", ")}, ${urls.slice(0, 5).join(", ")}`
       );
     }
   } while (updatedRowsCount === BATCH_SIZE);
-}
-
-// We need the workspace info to backfill conversations, to compute their urls
-async function backfillConversations(
-  coreSequelize: Sequelize,
-  connectorsSequelize: Sequelize,
-  execute: boolean,
-  logger: typeof Logger
-) {
-  const workspaces: {
-    id: number;
-    intercomWorkspaceId: string;
-    region: string;
-    connectorId: ModelId;
-  }[] = await connectorsSequelize.query(
-    `SELECT iw.id, iw."intercomWorkspaceId", iw."region", iw."connectorId"
-     FROM intercom_workspaces iw`,
-    {
-      type: QueryTypes.SELECT,
-    }
-  );
-
-  if (workspaces.length == 0) {
-    logger.info(`Finished processing conversations.`);
-    return;
-  }
-
-  for (const workspace of workspaces) {
-    await backfillConversationsForWorkspace(
-      coreSequelize,
-      connectorsSequelize,
-      workspace.intercomWorkspaceId,
-      workspace.region,
-      workspace.connectorId,
-      execute,
-      logger
-    );
-  }
 }
 
 makeScript({}, async ({ execute }, logger) => {
   const coreSequelize = getCorePrimaryDbConnection();
   const connectorsSequelize = getConnectorsReplicaDbConnection();
 
-  await backfillConversations(
+  await backfillCollections(
     coreSequelize,
     connectorsSequelize,
     execute,
