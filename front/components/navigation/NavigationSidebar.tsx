@@ -93,13 +93,13 @@ export const NavigationSidebar = React.forwardRef<
                   />
                 ))}
               </TabsList>
-              <NavigationList className="px-2">
-                {navs.map((tab) => (
-                  <TabsContent key={tab.id} value={tab.id}>
+              {navs.map((tab) => (
+                <TabsContent key={tab.id} value={tab.id}>
+                  <NavigationList className="px-3">
                     {subNavigation && tab.isCurrent(activePath) && (
                       <>
                         {subNavigation.map((nav) => (
-                          <div key={nav.id}>
+                          <>
                             {nav.label && (
                               <NavigationListLabel
                                 label={nav.label}
@@ -136,13 +136,13 @@ export const NavigationSidebar = React.forwardRef<
                                 )}
                               </React.Fragment>
                             ))}
-                          </div>
+                          </>
                         ))}
                       </>
                     )}
-                  </TabsContent>
-                ))}
-              </NavigationList>
+                  </NavigationList>
+                </TabsContent>
+              ))}
             </Tabs>
           </div>
         )}
