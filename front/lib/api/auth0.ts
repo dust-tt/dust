@@ -149,9 +149,7 @@ export async function verifyAuth0Token(
       ? !decoded.aud.includes(audience)
       : decoded.aud !== audience);
 
-  const region = decoded && decoded["https://dust.tt/region"];
-
-  logger.info({ useLegacy, audience: decoded?.aud, region }, "Get Auth0 token");
+  logger.info({ useLegacy, audience: decoded?.aud }, "Get Auth0 token");
 
   return new Promise((resolve) => {
     jwt.verify(
