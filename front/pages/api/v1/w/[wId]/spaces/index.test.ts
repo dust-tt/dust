@@ -1,11 +1,15 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createMocks } from "node-mocks-http";
-import { describe, expect, expectTypeOf, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { groupFactory } from "@app/tests/utils/GroupFactory";
+import { groupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { keyFactory } from "@app/tests/utils/KeyFactory";
 import { spaceFactory } from "@app/tests/utils/SpaceFactory";
-import { withinTransaction } from "@app/tests/utils/utils";
+import {
+  expectArrayOfObjectsWithSpecificLength,
+  withinTransaction,
+} from "@app/tests/utils/utils";
 import { workspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 
 import handler from "./index";
@@ -47,19 +51,37 @@ describe(
         },
       });
 
-      await spaceFactory().global(workspace).create();
+      const globalSpace = await spaceFactory().global(workspace).create();
       await spaceFactory().system(workspace).create();
+      const regularSpace1 = await spaceFactory().regular(workspace).create();
+      const regularSpace2 = await spaceFactory().regular(workspace).create();
       await spaceFactory().regular(workspace).create();
-      await spaceFactory().regular(workspace).create();
-      await spaceFactory().regular(workspace).create();
+
+      await groupSpaceFactory().associate(regularSpace1, globalGroup);
+      await groupSpaceFactory().associate(regularSpace2, globalGroup);
 
       await handler(req, res);
 
       expect(res._getStatusCode()).toBe(200);
-      console.log(res._getData());
-      expect(JSON.parse(res._getData())).toEqual({
-        spaces: expect([expect.any(Object)]).toHaveLength(5),
-      });
+
+      const response = JSON.parse(res._getData());
+
+      expectArrayOfObjectsWithSpecificLength(response["spaces"], 3);
+
+      expect(response["spaces"]).toEqual([
+        expect.objectContaining({
+          name: globalSpace.name,
+          kind: "global",
+        }),
+        expect.objectContaining({
+          name: regularSpace1.name,
+          kind: "regular",
+        }),
+        expect.objectContaining({
+          name: regularSpace2.name,
+          kind: "regular",
+        }),
+      ]);
     });
   })
 );

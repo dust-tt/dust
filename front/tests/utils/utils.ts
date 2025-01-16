@@ -13,6 +13,17 @@ type NextHandler = (
   res: NextApiResponse
 ) => Promise<void> | void;
 
+export const expectArrayOfObjectsWithSpecificLength = (
+  value: any,
+  length: number
+) => {
+  expect(Array.isArray(value)).toBe(true);
+  expect(value).toHaveLength(length);
+  expect(
+    value.every((item: unknown) => typeof item === "object" && item !== null)
+  ).toBe(true);
+};
+
 // Wrapper to make sure that each test suite has a clean database
 export const withinTransaction = (testSuite) => {
   return async () => {

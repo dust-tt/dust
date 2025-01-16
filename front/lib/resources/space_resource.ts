@@ -568,7 +568,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           workspaceId: this.workspaceId,
           roles: [
             { role: "admin", permissions: ["admin", "read", "write"] },
-            //{ role: "builder", permissions: ["read", "write"] },
+            { role: "builder", permissions: ["read", "write"] },
           ],
           groups: this.groups.map((group) => ({
             id: group.id,
