@@ -373,8 +373,7 @@ impl ElasticsearchSearchStore {
                     .parent_id
                     .as_ref()
                     .and_then(|pid| parent_titles_map.get(pid))
-                    .cloned()
-                    .unwrap_or_default();
+                    .cloned();
 
                 CoreContentNode::new(node, has_children, parent_title)
             })

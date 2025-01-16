@@ -1,5 +1,6 @@
 import { createParser } from "eventsource-parser";
 
+import { CoreAPIContentNode } from "../../core/content_node";
 import {
   CoreAPIDataSource,
   CoreAPIDataSourceConfig,
@@ -166,6 +167,22 @@ export type CoreAPISearchFilter = {
     gt: number | null;
     lt: number | null;
   } | null;
+};
+
+export type CoreAPISearchOptions = {
+  limit?: number;
+  offset?: number;
+};
+
+export type CoreAPIDatasourceViewFilter = {
+  data_source_id: string;
+  view_filter: string[];
+};
+
+export type CoreAPINodesSearchFilter = {
+  data_source_views: CoreAPIDatasourceViewFilter[];
+  node_ids?: string[];
+  parent_id?: string;
 };
 
 export class CoreAPI {
@@ -1510,6 +1527,33 @@ export class CoreAPI {
         method: "GET",
       }
     );
+    return this._resultFromResponse(response);
+  }
+
+  async searchNodes({
+    query,
+    filter,
+    options,
+  }: {
+    query?: string;
+    filter: CoreAPINodesSearchFilter;
+    options?: CoreAPISearchOptions;
+  }): Promise<
+    CoreAPIResponse<{
+      nodes: CoreAPIContentNode[];
+    }>
+  > {
+    const response = await this._fetchWithError(`${this._url}/nodes/search`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        query,
+        filter,
+        options,
+      }),
+    });
     return this._resultFromResponse(response);
   }
 
