@@ -130,6 +130,7 @@ async function fetchPrometheusMetrics(
       "resource:qdrant",
       `cluster:${clusterName}`,
       `node:${node}`,
+      `region:${process.env.DUST_REGION}`,
     ];
 
     for (const metric of metricLines) {
