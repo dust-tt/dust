@@ -7,25 +7,25 @@ import {
 
 import { getTemporalClient } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
-import { getPurgeRunExecutionsScheduleId } from "@app/temporal/hard_delete/utils";
-import { purgeRunExecutionsCronWorkflow } from "@app/temporal/hard_delete/workflows";
+import { getPurgeDataRetentionScheduleId } from "@app/temporal/data_retention/utils";
+import { purgeDataRetentionWorkflow } from "@app/temporal/data_retention/workflows";
 
 import { QUEUE_NAME } from "./config";
 
 /**
- * This function starts a schedule to purge expired run executions.
+ * This function starts a schedule to purge workspaces set up with retention policy (only concern conversations at the moment).
  */
-export async function launchPurgeRunExecutionsSchedule(): Promise<
+export async function launchPurgeDataRetentionSchedule(): Promise<
   Result<undefined, Error>
 > {
   const client = await getTemporalClient();
-  const scheduleId = getPurgeRunExecutionsScheduleId();
+  const scheduleId = getPurgeDataRetentionScheduleId();
 
   try {
     await client.schedule.create({
       action: {
         type: "startWorkflow",
-        workflowType: purgeRunExecutionsCronWorkflow,
+        workflowType: purgeDataRetentionWorkflow,
         args: [],
         taskQueue: QUEUE_NAME,
       },
@@ -39,7 +39,7 @@ export async function launchPurgeRunExecutionsSchedule(): Promise<
     });
   } catch (err) {
     if (!(err instanceof ScheduleAlreadyRunning)) {
-      logger.error({}, "Failed to start purge run executions.");
+      logger.error({}, "Failed to start purge data retention schedule.");
 
       return new Err(err as Error);
     }
