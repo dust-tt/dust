@@ -29,6 +29,14 @@ class SpaceFactory extends Factory<
       workspaceId: workspace.id,
     });
   }
+
+  regular(workspace: Workspace) {
+    return this.params({
+      name: "space " + faker.string.alphanumeric(8),
+      kind: "regular",
+      workspaceId: workspace.id,
+    });
+  }
 }
 
 export const spaceFactory = () => {

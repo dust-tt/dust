@@ -21,6 +21,6 @@ export default async function setup() {
     AUTH0_CLIENT_ID: "auth0-client-id",
     AUTH0_ISSUER_BASE_URL: "https://dust-dev.eu.auth0.com",
     AUTH0_CLIENT_SECRET: "auth0-client-secret",
-    LOG_LEVEL: "silent",
+    LOG_LEVEL: process.env.TEST_LOG_LEVEL ?? "silent",
   };
 }
