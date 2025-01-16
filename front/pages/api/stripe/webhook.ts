@@ -590,14 +590,16 @@ async function handler(
           });
 
           if (!matchingSubscription) {
-            return apiError(req, res, {
-              status_code: 500,
-              api_error: {
-                type: "internal_server_error",
-                message:
-                  "Stripe Webhook: Error handling customer.subscription.deleted. Matching subscription not found on db.",
+            logger.warn(
+              {
+                event,
+                stripeSubscriptionId: stripeSubscription.id,
               },
-            });
+              "Stripe Webhook: Error handling customer.subscription.deleted. Matching subscription not found on db."
+            );
+            // We return a 200 here to handle multiple regions, DD will watch
+            // the warnings and create an alert if this log appears in all regions
+            return res.status(200).json({ success: true });
           }
 
           switch (matchingSubscription.status) {
