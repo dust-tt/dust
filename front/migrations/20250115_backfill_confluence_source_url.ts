@@ -36,11 +36,30 @@ async function backfillDataSource(
 ) {
   logger.info("Processing data source");
 
+  const coreDataSourceIds: { id: number }[] = await coreSequelize.query(
+    `SELECT id
+     FROM data_sources
+     WHERE project = :projectId
+       AND data_source_id = :dataSourceId;`,
+    {
+      replacements: {
+        dataSourceId: frontDataSource.dustAPIDataSourceId,
+        projectId: frontDataSource.dustAPIProjectId,
+      },
+      type: QueryTypes.SELECT,
+    }
+  );
+  const coreDataSourceId = coreDataSourceIds[0]?.id;
+  if (!coreDataSourceId) {
+    logger.error("No core data source found for the given front data source.");
+    return;
+  }
+
   const configurations: { url: string }[] = await connectorsSequelize.query(
     `SELECT "url"
-       FROM confluence_configurations
-       WHERE "connectorId" = :connectorId
-       LIMIT 1;`,
+     FROM confluence_configurations
+     WHERE "connectorId" = :connectorId
+     LIMIT 1;`,
     {
       replacements: { connectorId: frontDataSource.connectorId },
       type: QueryTypes.SELECT,
@@ -54,6 +73,7 @@ async function backfillDataSource(
 
   await backfillSpaces(
     configuration,
+    coreDataSourceId,
     frontDataSource,
     coreSequelize,
     connectorsSequelize,
@@ -68,6 +88,7 @@ async function backfillDataSource(
 
 async function backfillSpaces(
   configuration: { url: string },
+  coreDataSourceId: number,
   frontDataSource: DataSourceModel,
   coreSequelize: Sequelize,
   connectorsSequelize: Sequelize,
@@ -116,8 +137,9 @@ async function backfillSpaces(
          SET source_url = urls.url
          FROM (SELECT unnest(ARRAY [:nodeIds]::text[]) as node_id,
                       unnest(ARRAY [:urls]::text[])    as url) urls
-         WHERE data_sources_nodes.node_id = urls.node_id;`,
-        { replacements: { urls, nodeIds } }
+         WHERE data_sources_nodes.data_source = :dataSourceId
+           AND data_sources_nodes.node_id = urls.node_id;`,
+        { replacements: { urls, nodeIds, dataSourceId: coreDataSourceId } }
       );
       logger.info(
         `Updated ${rows.length} spaces from id ${rows[0].id} to id ${rows[rows.length - 1].id}.`
