@@ -1,7 +1,4 @@
-import {
-  ContentNodeType,
-  ProviderVisibility,
-} from "../front/lib/connectors_api";
+import { ProviderVisibility } from "../front/lib/connectors_api";
 
 type CoreAPIContentNodeType = "Document" | "Table" | "Folder";
 
@@ -18,5 +15,5 @@ export type CoreAPIContentNode = {
   parents: string[];
   source_url?: string;
   has_children: boolean;
-  parent_title: string;
+  parent_title?: string;
 };
