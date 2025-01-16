@@ -48,7 +48,7 @@ export async function getMimeTypesToSync({
   return mimeTypes;
 }
 
-export function isGoogleDriveFolder(file: GoogleDriveFiles) {
+export function isGoogleDriveFolder(file: { mimeType: string }) {
   return file.mimeType === "application/vnd.google-apps.folder";
 }
 

@@ -67,7 +67,11 @@ import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
-import { FILE_ATTRIBUTES_TO_FETCH } from "@connectors/types/google_drive";
+import {
+  FILE_ATTRIBUTES_TO_FETCH,
+  GoogleDriveObjectType,
+} from "@connectors/types/google_drive";
+import { Sheet } from "@connectors/connectors/google_drive/temporal/spreadsheets";
 
 export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
   static async create({
@@ -976,16 +980,25 @@ async function getFoldersAsContentNodes({
   );
 }
 
-function getSourceUrlForGoogleDriveFiles(f: GoogleDriveFiles): string {
+export function getSourceUrlForGoogleDriveFiles(
+  f: GoogleDriveFiles | GoogleDriveObjectType
+): string {
+  const driveFileId = f instanceof GoogleDriveFiles ? f.driveFileId : f.id;
+
   if (isGoogleDriveSpreadSheetFile(f)) {
-    return `https://docs.google.com/spreadsheets/d/${f.driveFileId}/edit`;
+    return `https://docs.google.com/spreadsheets/d/${driveFileId}/edit`;
   } else if (isGoogleDriveFolder(f)) {
-    return `https://drive.google.com/drive/folders/${f.driveFileId}`;
+    return `https://drive.google.com/drive/folders/${driveFileId}`;
   }
 
-  return `https://drive.google.com/file/d/${f.driveFileId}/view`;
+  return `https://drive.google.com/file/d/${driveFileId}/view`;
 }
 
-function getSourceUrlForGoogleDriveSheet(s: GoogleDriveSheet): string {
-  return `https://docs.google.com/spreadsheets/d/${s.driveFileId}/edit#gid=${s.driveSheetId}`;
+export function getSourceUrlForGoogleDriveSheet(
+  s: GoogleDriveSheet | Sheet
+): string {
+  const driveFileId =
+    s instanceof GoogleDriveSheet ? s.driveFileId : s.spreadsheet.id;
+  const driveSheetId = s instanceof GoogleDriveSheet ? s.driveSheetId : s.id;
+  return `https://docs.google.com/spreadsheets/d/${driveFileId}/edit#gid=${driveSheetId}`;
 }
