@@ -8,6 +8,7 @@ import StatsD from "hot-shots";
 import PQueue from "p-queue";
 import { Op } from "sequelize";
 
+import { getSourceUrlForGoogleDriveFiles } from "@connectors/connectors/google_drive";
 import {
   GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID,
   GOOGLE_DRIVE_USER_SPACE_VIRTUAL_DRIVE_ID,
@@ -46,7 +47,6 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
 import { FILE_ATTRIBUTES_TO_FETCH } from "@connectors/types/google_drive";
-import { getSourceUrlForGoogleDriveFiles } from "@connectors/connectors/google_drive";
 
 const FILES_SYNC_CONCURRENCY = 10;
 const FILES_GC_CONCURRENCY = 5;

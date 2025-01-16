@@ -1,5 +1,3 @@
-import type { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
-
 export const MIME_TYPES_TO_EXPORT: { [key: string]: string } = {
   "application/vnd.google-apps.document": "text/plain",
   "application/vnd.google-apps.presentation": "text/plain",

@@ -38,6 +38,7 @@ import {
   isGoogleDriveFolder,
   isGoogleDriveSpreadSheetFile,
 } from "@connectors/connectors/google_drive/temporal/mime_types";
+import type { Sheet } from "@connectors/connectors/google_drive/temporal/spreadsheets";
 import {
   driveObjectToDustType,
   getAuthObject,
@@ -67,11 +68,8 @@ import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
-import {
-  FILE_ATTRIBUTES_TO_FETCH,
-  GoogleDriveObjectType,
-} from "@connectors/types/google_drive";
-import { Sheet } from "@connectors/connectors/google_drive/temporal/spreadsheets";
+import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
+import { FILE_ATTRIBUTES_TO_FETCH } from "@connectors/types/google_drive";
 
 export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
   static async create({
