@@ -1,4 +1,4 @@
-import { isDevelopment } from "@dust-tt/types";
+import { concurrentExecutor, isDevelopment } from "@dust-tt/types";
 import _ from "lodash";
 import parseArgs from "minimist";
 
@@ -19,7 +19,7 @@ async function main() {
 
   const where = _.pick(argv, ["name", "sId"]);
   if (!where.name && !where.sId) {
-    where.name = "dust-apps";
+    throw new Error("Please provide name and/or sId for the workspace");
   }
   logger.info("Creating workspace");
   let w = await Workspace.findOne({ where });
@@ -60,14 +60,15 @@ async function main() {
 
     if (isDevelopment()) {
       const users = await UserModel.findAll();
-      await Promise.all(
-        users.map(async (user) =>
+      await concurrentExecutor(
+        users,
+        async (user) =>
           MembershipResource.createMembership({
             user: new UserResource(UserModel, user.get()),
             workspace: lightWorkspace,
             role: "admin",
-          })
-        )
+          }),
+        { concurrency: 5 }
       );
     }
 

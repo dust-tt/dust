@@ -52,6 +52,9 @@ const getTableColumns = () => {
   ];
 };
 
+// A column is added for internal Dust apps, that are used to power Dust product.
+// registryApp contains the list of all these Dust apps, that are expected to live in this space.
+// For standard apps, if registryApps is not set, column is not displayed.
 const getDustAppsColumns = (
   owner: WorkspaceType,
   registryApps: ActionApp[]

@@ -51,7 +51,7 @@ function import {
 }
 
 DEVELOPMENT_DUST_APPS_WORKSPACE_ID='78bda07b39'
-npx tsx ${DIR}/init_dust_apps.ts
+npx tsx ${DIR}/init_dust_apps.ts --name dust-apps
 DUST_APPS_WORKSPACE_NUMERIC_ID=5069
 
 mkdir -p /tmp/dust-apps
@@ -109,7 +109,7 @@ PRODBOX_POD_NAME=$(kubectl get pods |grep prodbox|grep Running |cut -d \  -f1)
 
 # ---- front
 VAULT_ID=$(psql ${FRONT_DATABASE_URI} -c "COPY (SELECT id from vaults where \"workspaceId\"=${DUST_APPS_WORKSPACE_NUMERIC_ID} and name='Public Dust Apps') TO STDOUT")
-fetch FRONT apps "id createdAt updatedAt sId name description visibility savedSpecification savedConfig savedRun dustAPIProjectId ${DUST_APPS_WORKSPACE_NUMERIC_ID} ${VAULT_ID}" "\\\"workspaceId\\\"=5069 AND \\\"vaultId\\\"=93077 and \\\"deletedAt\\\" is not null"
+fetch FRONT apps "id createdAt updatedAt sId name description visibility savedSpecification savedConfig savedRun dustAPIProjectId ${DUST_APPS_WORKSPACE_NUMERIC_ID} ${VAULT_ID}" "\\\"workspaceId\\\"=5069 AND \\\"vaultId\\\"=93077 and \\\"deletedAt\\\" is null"
 PROJECT_IDS=$(cut -f 11 /tmp/dust-apps/FRONT_apps.csv |paste -sd "," -)
 
 fetch FRONT datasets "id createdAt updatedAt name description schema appId ${DUST_APPS_WORKSPACE_NUMERIC_ID}" "\\\"workspaceId\\\"=5069"
