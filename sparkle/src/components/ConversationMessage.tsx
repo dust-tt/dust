@@ -1,73 +1,187 @@
+import { cva, VariantProps } from "class-variance-authority";
 import React from "react";
 
-import { Button } from "@sparkle/components";
-import { ConversationMessageContent } from "@sparkle/components/ConversationMessageContent";
-import { ConversationMessageHeader } from "@sparkle/components/ConversationMessageHeader";
+import { Avatar, Button, CitationGrid } from "@sparkle/components";
 import { cn } from "@sparkle/lib/utils";
 
-export type ConversationMessageSizeType = "compact" | "normal";
+export const ConversationContainer = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ children, className, ...props }, ref) => {
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        "s-flex s-h-full s-w-full s-flex-col s-items-center s-@container/conversation",
+        className
+      )}
+      {...props}
+    >
+      <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6 s-p-2 @sm/conversation:s-gap-8 @md/conversation:s-gap-10">
+        {children}
+      </div>
+    </div>
+  );
+});
 
-type ConversationMessageType = "agent" | "user";
+ConversationContainer.displayName = "ConversationContainer";
 
-const messageSizeClasses: Record<ConversationMessageSizeType, string> = {
-  compact: "s-p-3",
-  normal: "s-p-4",
-};
-
-const messageTypeClasses: Record<ConversationMessageType, string> = {
-  user: "s-bg-muted-background",
-  agent: "",
-};
-
-type ConversationMessageProps = {
+interface ConversationMessageProps
+  extends React.HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof messageVariants> {
   avatarBusy?: boolean;
   buttons?: React.ReactElement<typeof Button>[];
   children?: React.ReactNode;
   citations?: React.ReactElement[];
-  name: string | null;
+  name?: string;
   pictureUrl?: string | React.ReactNode | null;
   renderName?: (name: string | null) => React.ReactNode;
-  size?: ConversationMessageSizeType;
-  type: ConversationMessageType;
-};
+}
 
+const messageVariants = cva(
+  "s-flex s-w-full s-flex-col s-gap-4 s-rounded-3xl s-p-3 @sm/conversation:s-p-4",
+  {
+    variants: {
+      type: {
+        user: "s-bg-muted-background",
+        agent: "s-w-full",
+      },
+    },
+    defaultVariants: {
+      type: "agent",
+    },
+  }
+);
 /**
  * Parent component for both UserMessage and AgentMessage, to ensure avatar,
  * side buttons and spacing are consistent between the two
  */
-export function ConversationMessage({
-  avatarBusy = false,
-  buttons,
-  children,
-  citations,
-  name,
-  pictureUrl,
-  renderName = (name) => (
-    <div className="s-text-base s-font-medium">{name}</div>
-  ),
-  size = "normal",
-  type,
-}: ConversationMessageProps) {
+export const ConversationMessage = React.forwardRef<
+  HTMLDivElement,
+  ConversationMessageProps
+>(
+  (
+    {
+      avatarBusy = false,
+      buttons,
+      children,
+      citations,
+      name,
+      pictureUrl,
+      renderName = (name) => <span>{name}</span>,
+      type,
+      className,
+      ...props
+    },
+    ref
+  ) => {
+    return (
+      <div
+        ref={ref}
+        className={cn(messageVariants({ type, className }))}
+        {...props}
+      >
+        <ConversationMessageHeader
+          avatarUrl={pictureUrl}
+          name={name}
+          isBusy={avatarBusy}
+          renderName={renderName}
+        />
+
+        <ConversationMessageContent citations={citations}>
+          {children}
+        </ConversationMessageContent>
+        {buttons && (
+          <div className="s-flex s-justify-end s-gap-2">{buttons}</div>
+        )}
+      </div>
+    );
+  }
+);
+
+ConversationMessage.displayName = "ConversationMessage";
+
+interface ConversationMessageContentProps
+  extends React.HTMLAttributes<HTMLDivElement> {
+  children: React.ReactNode;
+  citations?: React.ReactElement[];
+}
+
+export const ConversationMessageContent = React.forwardRef<
+  HTMLDivElement,
+  ConversationMessageContentProps
+>(({ children, citations, className, ...props }, ref) => {
   return (
     <div
+      ref={ref}
       className={cn(
-        "s-mt-2 s-flex s-w-full s-flex-col s-justify-stretch s-gap-4 s-rounded-3xl",
-        messageTypeClasses[type],
-        messageSizeClasses[size]
+        "s-flex s-flex-col s-gap-3 @sm/conversation:s-gap-4",
+        className
       )}
+      {...props}
     >
-      <ConversationMessageHeader
-        avatarUrl={pictureUrl}
-        name={name ?? undefined}
-        size={size}
-        isBusy={avatarBusy}
-        renderName={renderName}
-      />
-
-      <ConversationMessageContent citations={citations} size={size}>
+      <div
+        className={cn(
+          "s-px-2 s-text-sm s-text-foreground @sm:s-text-base @md:s-px-4"
+        )}
+      >
         {children}
-      </ConversationMessageContent>
-      {buttons && <div className="s-flex s-justify-end s-gap-2">{buttons}</div>}
+      </div>
+      {citations && citations.length > 0 && (
+        <CitationGrid>{citations}</CitationGrid>
+      )}
     </div>
   );
+});
+
+ConversationMessageContent.displayName = "ConversationMessageContent";
+
+interface ConversationMessageHeaderProps
+  extends React.HTMLAttributes<HTMLDivElement> {
+  avatarUrl?: string | React.ReactNode;
+  isBusy?: boolean;
+  name?: string;
+  renderName: (name: string | null) => React.ReactNode;
 }
+
+export const ConversationMessageHeader = React.forwardRef<
+  HTMLDivElement,
+  ConversationMessageHeaderProps
+>(({ avatarUrl, isBusy, name = "", renderName, className, ...props }, ref) => {
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        "s-flex s-items-center s-gap-2 s-p-1 @sm/conversation:s-p-0",
+        className
+      )}
+      {...props}
+    >
+      <Avatar
+        className="@sm:s-hidden"
+        name={name}
+        visual={avatarUrl}
+        busy={isBusy}
+        size="xs"
+      />
+      <Avatar
+        className="s-hidden @sm:s-flex"
+        name={name}
+        visual={avatarUrl}
+        busy={isBusy}
+        size="sm"
+      />
+      <div className="flex items-center gap-2">
+        <div
+          className={cn(
+            "s-text-sm s-font-medium s-text-foreground @sm:s-pb-1 @sm:s-text-base"
+          )}
+        >
+          {renderName(name)}
+        </div>
+      </div>
+    </div>
+  );
+});
+
+ConversationMessageHeader.displayName = "ConversationMessageHeader";

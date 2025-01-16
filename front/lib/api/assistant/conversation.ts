@@ -55,7 +55,6 @@ import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import { getLightAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import {
   canAccessConversation,
-  getConversationGroupIdsFromModel,
   getConversationRequestedGroupIdsFromModel,
 } from "@app/lib/api/assistant/conversation/auth";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
@@ -121,8 +120,6 @@ export async function createConversation(
     workspaceId: owner.id,
     title: title,
     visibility: visibility,
-    // TODO(2024-11-04 flav) `group-id` clean-up.
-    groupIds: [],
     requestedGroupIds: [],
   });
 
@@ -134,11 +131,12 @@ export async function createConversation(
     title: conversation.title,
     visibility: conversation.visibility,
     content: [],
-    groupIds: getConversationGroupIdsFromModel(owner, conversation),
     requestedGroupIds: getConversationRequestedGroupIdsFromModel(
       owner,
       conversation
     ),
+    // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
+    groupIds: [],
   };
 }
 
@@ -278,12 +276,12 @@ export async function getUserConversations(
         owner,
         title: p.conversation.title,
         visibility: p.conversation.visibility,
-        // TODO(2024-11-04 flav) `group-id` clean-up.
-        groupIds: getConversationGroupIdsFromModel(owner, p.conversation),
         requestedGroupIds: getConversationRequestedGroupIdsFromModel(
           owner,
           p.conversation
         ),
+        // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
+        groupIds: [],
       };
 
       return [...acc, conversation];
@@ -415,12 +413,12 @@ export async function getConversation(
     title: conversation.title,
     visibility: conversation.visibility,
     content,
-    // TODO(2024-11-04 flav) `group-id` clean-up.
-    groupIds: getConversationGroupIdsFromModel(owner, conversation),
     requestedGroupIds: getConversationRequestedGroupIdsFromModel(
       owner,
       conversation
     ),
+    // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
+    groupIds: [],
   });
 }
 
@@ -900,13 +898,6 @@ export async function* postUserMessage(
         m: AgentMessageWithRankType;
       }[];
 
-      // TODO(2024-11-04 flav) `group-id` clean-up.
-      await updateConversationGroups({
-        mentionedAgents: nonNullResults.map(({ m }) => m.configuration),
-        conversation,
-        t,
-      });
-
       await updateConversationRequestedGroupIds(
         nonNullResults.map(({ m }) => m.configuration),
         conversation,
@@ -1384,15 +1375,6 @@ export async function* editUserMessage(
         m: AgentMessageWithRankType;
       }[];
 
-      // TODO(2024-11-04 flav) `group-id` clean-up.
-      // updateConversationGroups is purely additive, this will not remove any
-      // group from the conversation (see function description)
-      await updateConversationGroups({
-        mentionedAgents: nonNullResults.map(({ m }) => m.configuration),
-        conversation,
-        t,
-      });
-
       await updateConversationRequestedGroupIds(
         nonNullResults.map(({ m }) => m.configuration),
         conversation,
@@ -1602,13 +1584,6 @@ export async function* retryAgentMessage(
           transaction: t,
         }
       );
-
-      // TODO(2024-11-04 flav) `group-id` clean-up.
-      await updateConversationGroups({
-        mentionedAgents: [message.configuration],
-        conversation,
-        t,
-      });
 
       await updateConversationRequestedGroupIds(
         [message.configuration],
@@ -2003,61 +1978,6 @@ async function isMessagesLimitReached({
     isLimitReached,
     limitType: isLimitReached ? "plan_message_limit_exceeded" : null,
   };
-}
-
-/**
- *  Update the conversation groupIds based on the mentioned agents. This
- *  function is purely additive, groupIds will never be removed from the
- *  conversation.
- *
- *  At time of writing, this is a no brainer, because messages can't be deleted
- *  from a conversation
- *
- *  Even considering message deletion, the purely additive model is simpler in
- *  code and less risky permission-wise. Considering that we version messages,
- *  and that deleting a message would likely keep its previous version in
- *  conversation, the additive model is appropriate.
- *
- */
-async function updateConversationGroups({
-  mentionedAgents,
-  conversation,
-  t,
-}: {
-  mentionedAgents: LightAgentConfigurationType[];
-  conversation: ConversationType;
-  t: Transaction;
-}): Promise<void> {
-  const newGroupIds = mentionedAgents.flatMap((agent) => agent.groupIds);
-
-  const currentGroupIds = new Set(conversation.groupIds);
-
-  // No need to update if newGroupIds is a subset of currentGroupIds.
-  if (newGroupIds.every((g) => currentGroupIds.has(g))) {
-    return;
-  }
-
-  newGroupIds.forEach((g) => currentGroupIds.add(g));
-
-  const groupIds = Array.from(currentGroupIds).map((g) => {
-    const id = getResourceIdFromSId(g);
-    if (id === null) {
-      throw new Error("Unexpected: invalid group id");
-    }
-    return id;
-  });
-
-  await Conversation.update(
-    {
-      groupIds,
-    },
-    {
-      where: {
-        id: conversation.id,
-      },
-      transaction: t,
-    }
-  );
 }
 
 /**

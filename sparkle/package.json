@@ -1,6 +1,6 @@
 {
   "name": "@dust-tt/sparkle",
-  "version": "0.2.365",
+  "version": "0.2.366",
   "scripts": {
     "build": "rm -rf dist && npm run tailwind && npm run build:esm && npm run build:cjs",
     "tailwind": "tailwindcss -i ./src/styles/tailwind.css -o dist/sparkle.css",
@@ -121,6 +121,7 @@
     "react-dropdown-menu": "^0.0.2",
     "react-katex": "^3.0.1",
     "react-markdown": "^8.0.7",
+    "react-resizable-panels": "^2.1.7",
     "react-syntax-highlighter": "^15.6.1",
     "rehype-katex": "^7.0.1",
     "remark-directive": "^2.0.1",

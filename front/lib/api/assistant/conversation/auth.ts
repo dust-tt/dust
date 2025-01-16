@@ -8,19 +8,6 @@ import { Authenticator } from "@app/lib/auth";
 import { Conversation } from "@app/lib/models/assistant/conversation";
 import { GroupResource } from "@app/lib/resources/group_resource";
 
-// TODO(2024-11-04 flav) `group-id` clean-up.
-export function getConversationGroupIdsFromModel(
-  owner: WorkspaceType,
-  conversation: Conversation
-): string[] {
-  return conversation.groupIds.map((g) =>
-    GroupResource.modelIdToSId({
-      id: g,
-      workspaceId: owner.id,
-    })
-  );
-}
-
 export function getConversationRequestedGroupIdsFromModel(
   owner: WorkspaceType,
   conversation: Conversation

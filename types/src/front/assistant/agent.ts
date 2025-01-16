@@ -223,11 +223,6 @@ export type LightAgentConfigurationType = {
 
   templateId: string | null;
 
-  // group restrictions: if empty, no restrictions, otherwise only users who belong to all the
-  // groups can see the agent
-  // TODO(2024-11-04 flav) `groupIds` clean up.
-  groupIds: string[];
-
   // Group restrictions for accessing the agent/conversation.
   // The array of arrays represents permission requirements:
   // - If empty, no restrictions apply
@@ -236,6 +231,9 @@ export type LightAgentConfigurationType = {
   //
   // Example: [[1,2], [3,4]] means (1 OR 2) AND (3 OR 4)
   requestedGroupIds: string[][];
+
+  // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
+  groupIds?: string[];
 
   reasoningEffort?: AgentReasoningEffort;
 };

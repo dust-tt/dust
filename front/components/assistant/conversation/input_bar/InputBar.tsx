@@ -254,7 +254,7 @@ export function AssistantInputBar({
   }, [isStopping, generationContext.generatingMessages, conversationId]);
 
   return (
-    <div className={cn("flex w-full flex-col", isFloating && "sm:px-3")}>
+    <div className="flex w-full flex-col">
       {generationContext.generatingMessages.some(
         (m) => m.conversationId === conversationId
       ) && (

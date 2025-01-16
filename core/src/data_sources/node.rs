@@ -178,11 +178,11 @@ pub struct CoreContentNode {
     #[serde(flatten)]
     pub base: Node,
     pub has_children: bool,
-    pub parent_title: String,
+    pub parent_title: Option<String>,
 }
 
 impl CoreContentNode {
-    pub fn new(base: Node, has_children: bool, parent_title: String) -> Self {
+    pub fn new(base: Node, has_children: bool, parent_title: Option<String>) -> Self {
         CoreContentNode {
             base,
             has_children,

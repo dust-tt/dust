@@ -139,6 +139,7 @@ export async function syncZendeskBrandActivity({
     parentId: null,
     title: brandInDb.name,
     mimeType: MIME_TYPES.ZENDESK.BRAND,
+    sourceUrl: fetchedBrand?.url || brandInDb.url,
   });
 
   // using the content node to get one source of truth regarding the parent relationship
@@ -367,6 +368,7 @@ export async function syncZendeskCategoryActivity({
     parentId: parents[1],
     title: categoryInDb.name,
     mimeType: MIME_TYPES.ZENDESK.CATEGORY,
+    sourceUrl: fetchedCategory.html_url,
   });
 
   // otherwise, we update the category name and lastUpsertedTs

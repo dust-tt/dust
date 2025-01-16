@@ -5,7 +5,6 @@ import { Op } from "sequelize";
 
 import {
   canAccessConversation,
-  getConversationGroupIdsFromModel,
   getConversationRequestedGroupIdsFromModel,
 } from "@app/lib/api/assistant/conversation/auth";
 import type { Authenticator } from "@app/lib/auth";
@@ -49,11 +48,11 @@ export async function getConversationWithoutContent(
     owner,
     title: conversation.title,
     visibility: conversation.visibility,
-    // TODO(2024-11-04 flav) `group-id` clean-up.
-    groupIds: getConversationGroupIdsFromModel(owner, conversation),
     requestedGroupIds: getConversationRequestedGroupIdsFromModel(
       owner,
       conversation
     ),
+    // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
+    groupIds: [],
   });
 }

@@ -1,10 +1,8 @@
 import assert from "assert";
-import { isEqual } from "lodash";
 
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import {
   getAgentConfigurationGroupIdsFromActions,
-  getAgentConfigurationGroupIdsFromActionsLegacy,
   listAgentConfigurationsForGroups,
 } from "@app/lib/api/assistant/permissions";
 import { Authenticator } from "@app/lib/auth";
@@ -12,6 +10,7 @@ import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { Workspace } from "@app/lib/models/workspace";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { isArrayEqual2DUnordered } from "@app/lib/utils";
 import mainLogger from "@app/logger/logger";
 
 export async function updateSpacePermissions({
@@ -88,28 +87,25 @@ export async function updateSpacePermissions({
       continue;
     }
 
-    // TODO(2024-11-04 flav) `groupId` clean-up.
-    const groupIds = await getAgentConfigurationGroupIdsFromActionsLegacy(
-      auth,
-      ac.actions
-    );
-
     const requestedGroupIds = await getAgentConfigurationGroupIdsFromActions(
       auth,
       ac.actions
     );
 
-    const groupIdsToSIds = groupIds.map((gId) =>
-      GroupResource.modelIdToSId({ id: gId, workspaceId: workspace.id })
+    const requestedGroupIdsToSIds = requestedGroupIds.map((gs) =>
+      gs.map((gId) =>
+        GroupResource.modelIdToSId({ id: gId, workspaceId: workspace.id })
+      )
     );
 
-    if (isEqual(groupIdsToSIds.sort(), ac.groupIds.sort())) {
+    if (
+      isArrayEqual2DUnordered(requestedGroupIdsToSIds, ac.requestedGroupIds)
+    ) {
       continue;
     }
 
     await AgentConfiguration.update(
       {
-        groupIds,
         requestedGroupIds,
       },
       {

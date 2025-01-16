@@ -817,7 +817,7 @@ const LightAgentConfigurationSchema = z.object({
   maxStepsPerRun: z.number(),
   visualizationEnabled: z.boolean(),
   templateId: z.string().nullable(),
-  groupIds: z.array(z.string()),
+  groupIds: z.array(z.string()).optional(),
   requestedGroupIds: z.array(z.array(z.string())),
 });
 
@@ -956,7 +956,7 @@ const ConversationWithoutContentSchema = z.object({
   sId: z.string(),
   title: z.string().nullable(),
   visibility: ConversationVisibilitySchema,
-  groupIds: z.array(z.string()),
+  groupIds: z.array(z.string()).optional(),
   requestedGroupIds: z.array(z.array(z.string())),
 });
 
@@ -2016,6 +2016,7 @@ export const UpsertTableFromCsvRequestSchema = z.intersection(
       async: z.boolean().optional(),
       title: z.string(),
       mimeType: z.string(),
+      sourceUrl: z.string().nullable().optional(),
     })
     .transform((o) => ({
       name: o.name,
@@ -2029,6 +2030,7 @@ export const UpsertTableFromCsvRequestSchema = z.intersection(
       async: o.async,
       title: o.title,
       mimeType: o.mimeType,
+      sourceUrl: o.sourceUrl,
     })),
   z.union([
     z.object({ csv: z.string(), tableId: z.undefined() }).transform((o) => ({
@@ -2084,6 +2086,7 @@ export const UpsertDatabaseTableRequestSchema = z.object({
   remote_database_secret_id: z.string().nullable().optional(),
   title: z.string(),
   mime_type: z.string(),
+  source_url: z.string().nullable().optional(),
 });
 
 export type UpsertDatabaseTableRequestType = z.infer<
@@ -2148,6 +2151,7 @@ export const UpsertDataSourceFolderRequestSchema = z.object({
   parent_id: z.string().nullable().optional(),
   title: z.string(),
   mime_type: z.string(),
+  source_url: z.string().nullable().optional(),
 });
 export type UpsertDataSourceFolderRequestType = z.infer<
   typeof UpsertDataSourceFolderRequestSchema

@@ -8,6 +8,7 @@ import {
   LinkWrapperProps,
   Spinner,
   TooltipContent,
+  TooltipPortal,
   TooltipProvider,
   TooltipRoot,
   TooltipTrigger,
@@ -198,7 +199,9 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       <TooltipProvider>
         <TooltipRoot>
           <TooltipTrigger asChild>{innerButton}</TooltipTrigger>
-          <TooltipContent>{tooltip}</TooltipContent>
+          <TooltipPortal>
+            <TooltipContent>{tooltip}</TooltipContent>
+          </TooltipPortal>
         </TooltipRoot>
       </TooltipProvider>
     ) : (

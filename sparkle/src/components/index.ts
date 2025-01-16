@@ -28,12 +28,15 @@ export { default as CollapseButton } from "./CollapseButton";
 export { Collapsible } from "./Collapsible";
 export { ColorPicker } from "./ColorPicker";
 export { default as ConfettiBackground } from "./ConfettiBackground";
+export { Container } from "./Container";
 export { ContentMessage } from "./ContentMessage";
 export { ContextItem } from "./ContextItem";
-export type { ConversationMessageSizeType } from "./ConversationMessage";
-export { ConversationMessage } from "./ConversationMessage";
-export { ConversationMessageContent } from "./ConversationMessageContent";
-export { ConversationMessageHeader } from "./ConversationMessageHeader";
+export {
+  ConversationContainer,
+  ConversationMessage,
+  ConversationMessageContent,
+  ConversationMessageHeader,
+} from "./ConversationMessage";
 export { DataTable } from "./DataTable";
 export { Dialog } from "./Dialog";
 export type { DropdownMenuItemProps } from "./Dropdown";
@@ -71,6 +74,7 @@ export { Input } from "./Input";
 export { Label } from "./Label";
 export type { LinkWrapperProps } from "./LinkWrapper";
 export { LinkWrapper } from "./LinkWrapper";
+export { LoadingBlock } from "./LoadingBlock";
 export * from "./markdown";
 export { Modal } from "./Modal";
 export * from "./NavigationList";
@@ -102,6 +106,11 @@ export { Popup } from "./Popup";
 export { PriceTable } from "./PriceTable";
 export { RadioGroup, RadioGroupChoice, RadioGroupItem } from "./RadioGroup";
 export { RainbowEffect } from "./RainbowEffect";
+export {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "./Resizable";
 export { ScrollArea, ScrollBar } from "./ScrollArea";
 export { SearchInput } from "./SearchInput";
 export { Separator } from "./Separator";
@@ -126,6 +135,7 @@ export { TextArea } from "./TextArea";
 export {
   Tooltip,
   TooltipContent,
+  TooltipPortal,
   TooltipProvider,
   TooltipRoot,
   TooltipTrigger,

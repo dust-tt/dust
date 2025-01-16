@@ -25,6 +25,7 @@ import { isSlackWebAPIPlatformError } from "@connectors/connectors/slack/lib/err
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 import { getRepliesFromThread } from "@connectors/connectors/slack/lib/thread";
 import {
+  getSlackChannelSourceUrl,
   getWeekEnd,
   getWeekStart,
   slackChannelInternalIdFromSlackChannelId,
@@ -255,6 +256,7 @@ export async function syncChannel(
       parentId: null,
       parents: [slackChannelInternalIdFromSlackChannelId(channelId)],
       mimeType: MIME_TYPES.SLACK.CHANNEL,
+      sourceUrl: getSlackChannelSourceUrl(channelId, slackConfiguration),
     });
   }
 

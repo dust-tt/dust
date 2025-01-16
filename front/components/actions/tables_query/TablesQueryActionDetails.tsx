@@ -78,15 +78,15 @@ function QueryThinking({ action }: { action: TablesQueryActionType }) {
       <div className="text-sm font-normal text-muted-foreground">
         <ContentMessage
           title="Reasoning"
-          variant="purple"
+          variant="slate"
           icon={InformationCircleIcon}
           size="lg"
         >
           <Markdown
             content={thinking}
             isStreaming={false}
-            textSize="sm"
-            textColor="purple-800"
+            forcedTextSize="text-sm"
+            textColor="text-muted-foreground"
             isLastMessage={false}
           />
         </ContentMessage>

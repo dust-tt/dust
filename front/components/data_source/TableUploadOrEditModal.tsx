@@ -112,6 +112,7 @@ export const TableUploadOrEditModal = ({
             useAppForHeaderDetection,
             title: table.name,
             mimeType: "text/csv",
+            sourceUrl: null,
             timestamp: undefined,
             tags: undefined,
             parentId: undefined,

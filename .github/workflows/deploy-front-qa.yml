@@ -23,4 +23,5 @@ jobs:
       enforce_main: false
       regions: us-central1
       working_dir: ./
+      run_playwright_tests: true
     secrets: inherit
