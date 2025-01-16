@@ -160,7 +160,7 @@ CustomerSupport.getLayout = (
   return <LandingLayout pageProps={pageProps}>{page}</LandingLayout>;
 };
 
-export function CustomerCaroussel() {
+export function SalesCaroussel() {
   return (
     <CarousselContentBlock
       title={pageSettings.uptitle}
@@ -170,7 +170,7 @@ export function CustomerCaroussel() {
       from={pageSettings.from}
       to={pageSettings.to}
       border="border-pink-100/60"
-      href="/home/solutions/customer-support"
+      href="/home/solutions/sales"
     />
   );
 }
