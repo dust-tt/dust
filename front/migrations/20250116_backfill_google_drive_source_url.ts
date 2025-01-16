@@ -90,11 +90,11 @@ async function backfillSpreadsheets(
         { replacements: { urls, nodeIds } }
       );
       logger.info(
-        `Updated ${rows.length} folders from id ${rows[0].id} to id ${rows[rows.length - 1].id}.`
+        `Updated ${rows.length} spreadsheets from id ${rows[0].id} to id ${rows[rows.length - 1].id}.`
       );
     } else {
       logger.info(
-        `Would update ${rows.length} folders from id ${rows[0].id} to id ${rows[rows.length - 1].id}.`
+        `Would update ${rows.length} spreadsheets from id ${rows[0].id} to id ${rows[rows.length - 1].id}.`
       );
     }
 
