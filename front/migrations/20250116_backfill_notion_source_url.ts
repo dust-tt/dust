@@ -11,12 +11,6 @@ import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 
 const BATCH_SIZE = 1024;
 
-async function updateNodes(
-  coreSequelize: Sequelize,
-  nodeIds: string[],
-  urls: string[]
-) {}
-
 async function backfillDatabases(
   frontDataSource: DataSourceModel,
   coreSequelize: Sequelize,
@@ -83,7 +77,6 @@ async function backfillDatabases(
 
     if (tableRows.length > 0) {
       if (execute) {
-        await updateNodes(coreSequelize, tableNodeIds, tableUrls);
         await coreSequelize.query(
           `UPDATE data_sources_nodes
            SET source_url = urls.url
