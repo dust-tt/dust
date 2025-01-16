@@ -1,3 +1,9 @@
+import type { AxiosRequestConfig } from "axios";
+import axios from "axios";
+import { createParser } from "eventsource-parser";
+import http from "http";
+import https from "https";
+import { Readable } from "stream";
 import { z } from "zod";
 
 import type {
@@ -5,6 +11,7 @@ import type {
   AgentActionSuccessEvent,
   AgentConfigurationViewType,
   AgentErrorEvent,
+  AgentMessagePublicType,
   AgentMessageSuccessEvent,
   APIError,
   AppsCheckRequestType,
@@ -40,7 +47,6 @@ import {
   DeleteFolderResponseSchema,
   Err,
   FileUploadRequestResponseSchema,
-  FileUploadUrlRequestSchema,
   GetActiveMemberEmailsInWorkspaceResponseSchema,
   GetAgentConfigurationsResponseSchema,
   GetAppsResponseSchema,
@@ -62,21 +68,18 @@ import {
 
 export * from "./types";
 
-import type { AxiosRequestConfig } from "axios";
-import axios from "axios";
-import { createParser } from "eventsource-parser";
-import http from "http";
-import https from "https";
-import { Readable } from "stream";
-
 interface DustResponse {
   status: number;
   ok: boolean;
   url: string;
-  body: Readable;
+  body: Readable | string;
 }
 
 const textFromResponse = async (response: DustResponse): Promise<string> => {
+  if (typeof response.body === "string") {
+    return response.body;
+  }
+
   const stream = response.body;
 
   return new Promise((resolve, reject) => {
@@ -631,7 +634,7 @@ export class DustAPI {
         const m = versions[versions.length - 1];
         return m;
       })
-      .filter((m) => {
+      .filter((m): m is AgentMessagePublicType => {
         return (
           m && m.type === "agent_message" && m.parentMessageId === userMessageId
         );
@@ -639,8 +642,24 @@ export class DustAPI {
     if (agentMessages.length === 0) {
       return new Err(new Error("Failed to retrieve agent message"));
     }
-    const agentMessage = agentMessages[0];
 
+    const agentMessage = agentMessages[0];
+    return this.streamAgentMessageEvents({
+      conversation,
+      agentMessage,
+      signal,
+    });
+  }
+
+  async streamAgentMessageEvents({
+    conversation,
+    agentMessage,
+    signal,
+  }: {
+    conversation: ConversationPublicType;
+    agentMessage: AgentMessagePublicType;
+    signal?: AbortSignal;
+  }) {
     const res = await this.request({
       method: "GET",
       path: `assistant/conversations/${conversation.sId}/messages/${agentMessage.sId}/events`,
@@ -893,7 +912,6 @@ export class DustAPI {
     useCaseMetadata,
     fileObject,
   }: FileUploadUrlRequestType & { fileObject: File }) {
-    FileUploadUrlRequestSchema;
     const res = await this.request({
       method: "POST",
       path: "files",
@@ -1076,7 +1094,7 @@ export class DustAPI {
   ): Promise<Result<{ response: DustResponse; duration: number }, APIError>> {
     const now = Date.now();
     try {
-      const res = await axiosNoKeepAlive<Readable>(url, {
+      const res = await axiosNoKeepAlive<Readable | string>(url, {
         validateStatus: () => true,
         responseType: "stream",
         ...config,
