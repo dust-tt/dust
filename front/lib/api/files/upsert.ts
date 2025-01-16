@@ -398,7 +398,7 @@ const maybeApplyProcessing: ProcessingFunction = async ({
 async function getFileContent(
   auth: Authenticator,
   file: FileResource
-): Promise<string> {
+): Promise<string | null> {
   // Create a stream to hold the content of the file
   const writableStream = new MemoryWritable();
 
@@ -411,7 +411,7 @@ async function getFileContent(
   const content = writableStream.getContent();
 
   if (!content) {
-    throw new Error("No content extracted from file.");
+    return null;
   }
 
   return content;
@@ -478,12 +478,12 @@ export async function processAndUpsertToDataSource(
         workspaceId: auth.workspace()?.sId,
         contentSupplied: !!optionalContent,
       },
-      "No content extracted from file for JIT processing."
+      "No content extracted from file."
     );
     return new Err({
       name: "dust_error",
       code: "internal_server_error",
-      message: "No content extracted from file for JIT processing.",
+      message: "No content extracted from file.",
     });
   }
 
