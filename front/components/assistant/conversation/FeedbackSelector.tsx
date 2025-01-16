@@ -125,6 +125,8 @@ export function FeedbackSelector({
     lastSelectedThumb,
   ]);
 
+  const baseButtonClasses = `s-inline-flex s-items-center s-justify-center s-whitespace-nowrap s-font-medium s-ring-offset-background s-transition-colors focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring focus-visible:s-ring-offset-2 disabled:s-pointer-events-none s-border s-border-primary-200/0 s-text-primary-950 hover:s-bg-primary-150 hover:s-text-primary-900 hover:s-border-primary-150 active:s-bg-primary-300 disabled:s-text-primary-400 s-h-7 s-px-2.5 s-rounded-lg s-text-xs s-gap-1.5`;
+
   return (
     <div ref={containerRef} className="flex items-center">
       <PopoverRoot open={isPopoverOpen}>
@@ -137,7 +139,7 @@ export function FeedbackSelector({
                   role="button"
                   tabIndex={0}
                   onClick={handleThumbUp}
-                  className={`s-inline-flex s-items-center s-justify-center s-whitespace-nowrap s-font-medium s-ring-offset-background s-transition-colors focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring focus-visible:s-ring-offset-2 disabled:s-pointer-events-none s-border s-border-primary-200/0 s-text-primary-950 hover:s-bg-primary-150 hover:s-text-primary-900 hover:s-border-primary-150 active:s-bg-primary-300 disabled:s-text-primary-400 s-h-7 s-px-2.5 s-rounded-lg s-text-xs s-gap-1.5 ${
+                  className={`${baseButtonClasses} ${
                     isSubmittingThumb
                       ? "disabled:s-pointer-events-none opacity-50"
                       : ""
@@ -158,7 +160,7 @@ export function FeedbackSelector({
                   role="button"
                   tabIndex={0}
                   onClick={handleThumbDown}
-                  className={`s-inline-flex s-items-center s-justify-center s-whitespace-nowrap s-font-medium s-ring-offset-background s-transition-colors focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring focus-visible:s-ring-offset-2 disabled:s-pointer-events-none s-border s-border-primary-200/0 s-text-primary-950 hover:s-bg-primary-150 hover:s-text-primary-900 hover:s-border-primary-150 active:s-bg-primary-300 disabled:s-text-primary-400 s-h-7 s-px-2.5 s-rounded-lg s-text-xs s-gap-1.5 ${
+                  className={`${baseButtonClasses} ${
                     isSubmittingThumb
                       ? "disabled:s-pointer-events-none opacity-50"
                       : ""
