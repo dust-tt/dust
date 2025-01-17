@@ -2,7 +2,7 @@ import {
   BarChartIcon,
   Button,
   ChatBubbleBottomCenterTextIcon,
-  classNames,
+  cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -137,8 +137,9 @@ export default function AssistantBuilderRightPanel({
         </Tabs>
       </div>
       <div
-        className={classNames(
-          "grow-1 mb-5 h-full overflow-y-auto border-b border-border pt-5",
+        className={cn(
+          "grow-1 mb-5 h-full overflow-y-auto",
+          rightPanelStatus.tab === "Preview" ? "" : "border-b border-border",
           shouldAnimatePreviewDrawer &&
             rightPanelStatus.tab === "Preview" &&
             rightPanelStatus.openedAt != null &&
@@ -167,7 +168,7 @@ export default function AssistantBuilderRightPanel({
                       />
                     )}
                   </div>
-                  <div className="shrink-0 pb-2">
+                  <div className="shrink-0">
                     <AssistantInputBar
                       owner={owner}
                       onSubmit={handleSubmit}
@@ -192,10 +193,6 @@ export default function AssistantBuilderRightPanel({
           screen === "instructions" && (
             <div className="mb-72 flex flex-col gap-4">
               <div className="flex items-end justify-between pt-2">
-                <Page.Header
-                  icon={LightbulbIcon}
-                  title="Template's Instructions manual"
-                />
                 <TemplateDropDownMenu
                   screen={screen}
                   removeTemplate={removeTemplate}
@@ -204,7 +201,6 @@ export default function AssistantBuilderRightPanel({
                   openRightPanelTab={openRightPanelTab}
                 />
               </div>
-              <Page.Separator />
               {template?.helpInstructions && (
                 <Markdown content={template?.helpInstructions ?? ""} />
               )}
