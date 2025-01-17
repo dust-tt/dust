@@ -16,12 +16,16 @@ import {
   DropdownMenuTrigger,
   IconButton,
   Input,
-  Modal,
   Page,
   PlusIcon,
   ScrollArea,
   ScrollBar,
   ShapesIcon,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
   Spinner,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
@@ -135,54 +139,63 @@ export function APIKeys({
 
   return (
     <>
-      <Modal
-        isOpen={isNewApiKeyCreatedOpen}
-        title="API Key Created"
-        onClose={() => {
-          setIsNewApiKeyCreatedOpen(false);
+      <Sheet
+        open={isNewApiKeyCreatedOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setIsNewApiKeyCreatedOpen(false);
+          }
         }}
-        hasChanged={false}
       >
-        <div className="mt-4">
-          <p className="text-sm text-gray-700">
-            Your API key will remain visible for 10 minutes only. You can use it
-            to authenticate with the Dust API.
-          </p>
-          <br />
-          <div className="mt-4">
-            <Page.H variant="h5">Workspace ID</Page.H>
-            <Page.Horizontal align="center">
-              <pre className="font-mono flex-grow overflow-x-auto rounded bg-slate-50 p-2">
-                {owner.sId}
-              </pre>
-              <IconButton
-                tooltip="Copy to clipboard"
-                icon={isCopiedWorkspaceId ? ClipboardCheckIcon : ClipboardIcon}
-                onClick={async () => {
-                  await copyWorkspaceId(owner.sId);
-                }}
-              />
-            </Page.Horizontal>
-          </div>
-          <div className="mt-4">
-            <Page.H variant="h5">API Key</Page.H>
-            <Page.Horizontal align="center">
-              <pre className="font-mono flex-grow overflow-x-auto rounded bg-slate-50 p-2">
-                {keys[0]?.secret}
-              </pre>
-              <IconButton
-                tooltip="Copy to clipboard"
-                icon={isCopiedApiKey ? ClipboardCheckIcon : ClipboardIcon}
-                onClick={async () => {
-                  if (keys[0]?.secret) {
-                    await copyApiKey(keys[0].secret);
-                  }
-                }}
-              />
-            </Page.Horizontal>
-          </div>
-        </div>
-      </Modal>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>API Key Created</SheetTitle>
+          </SheetHeader>
+          <SheetContainer>
+            <div className="mt-4">
+              <p className="text-sm text-gray-700">
+                Your API key will remain visible for 10 minutes only. You can
+                use it to authenticate with the Dust API.
+              </p>
+              <br />
+              <div className="mt-4">
+                <Page.H variant="h5">Workspace ID</Page.H>
+                <Page.Horizontal align="center">
+                  <pre className="font-mono flex-grow overflow-x-auto rounded bg-slate-50 p-2">
+                    {owner.sId}
+                  </pre>
+                  <IconButton
+                    tooltip="Copy to clipboard"
+                    icon={
+                      isCopiedWorkspaceId ? ClipboardCheckIcon : ClipboardIcon
+                    }
+                    onClick={async () => {
+                      await copyWorkspaceId(owner.sId);
+                    }}
+                  />
+                </Page.Horizontal>
+              </div>
+              <div className="mt-4">
+                <Page.H variant="h5">API Key</Page.H>
+                <Page.Horizontal align="center">
+                  <pre className="font-mono flex-grow overflow-x-auto rounded bg-slate-50 p-2">
+                    {keys[0]?.secret}
+                  </pre>
+                  <IconButton
+                    tooltip="Copy to clipboard"
+                    icon={isCopiedApiKey ? ClipboardCheckIcon : ClipboardIcon}
+                    onClick={async () => {
+                      if (keys[0]?.secret) {
+                        await copyApiKey(keys[0].secret);
+                      }
+                    }}
+                  />
+                </Page.Horizontal>
+              </div>
+            </div>
+          </SheetContainer>
+        </SheetContent>
+      </Sheet>
       <Page.Horizontal align="stretch">
         <div className="w-full" />
         <Button
