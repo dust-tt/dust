@@ -508,7 +508,7 @@ export async function syncSpreadSheet(
         dataSourceConfig: dataSourceConfigFromConnector(connector),
         folderId: getInternalId(file.id),
         parents,
-        parentId: parents[0] || null,
+        parentId: parents[1] || null,
         title: spreadsheet.data.properties?.title ?? "Untitled Spreadsheet",
         mimeType: "application/vnd.google-apps.spreadsheet",
       });
