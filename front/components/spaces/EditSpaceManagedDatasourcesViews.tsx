@@ -30,7 +30,10 @@ import SpaceManagedDatasourcesViewsModal from "@app/components/spaces/SpaceManag
 import { useAwaitableDialog } from "@app/hooks/useAwaitableDialog";
 import { getDisplayNameForDataSource, isManaged } from "@app/lib/data_sources";
 import { useKillSwitches } from "@app/lib/swr/kill";
-import { useSpaceDataSourceViews, useSpaceDataSourceViewsWithDetails } from "@app/lib/swr/spaces";
+import {
+  useSpaceDataSourceViews,
+  useSpaceDataSourceViewsWithDetails,
+} from "@app/lib/swr/spaces";
 
 interface EditSpaceManagedDataSourcesViewsProps {
   dataSourceView?: DataSourceViewType;
@@ -273,6 +276,16 @@ export function EditSpaceManagedDataSourcesViews({
     return false;
   }
 
+  function handleCloseDataSourcesModal() {
+    setShowDataSourcesModal(false);
+  }
+
+  function handleGoToConnectionsManagement() {
+    void router.push(
+      `/w/${owner?.sId}/spaces/${systemSpace?.sId}/categories/managed`
+    );
+  }
+
   const addToSpaceButton = (
     <Button
       label={
@@ -338,16 +351,12 @@ export function EditSpaceManagedDataSourcesViews({
             leftButtonProps={{
               label: "Close",
               variant: "outline",
-              onClick: () => setShowNoConnectionDialog(false),
+              onClick: handleCloseDataSourcesModal,
             }}
             rightButtonProps={{
               label: "Go to connections management",
               variant: "primary",
-              onClick: () => {
-                void router.push(
-                  `/w/${owner.sId}/spaces/${systemSpace.sId}/categories/managed`
-                );
-              },
+              onClick: handleGoToConnectionsManagement,
             }}
           />
         </NewDialogContent>
