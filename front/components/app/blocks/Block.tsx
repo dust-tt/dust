@@ -7,13 +7,14 @@ import {
   Tooltip,
   TrashIcon,
 } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
 import type {
   AppType,
+  BlockType,
+  RunType,
   SpecificationBlockType,
   SpecificationType,
+  WorkspaceType,
 } from "@dust-tt/types";
-import type { BlockType, RunType } from "@dust-tt/types";
 import { useEffect, useState } from "react";
 
 import NewBlock from "@app/components/app/NewBlock";
@@ -176,7 +177,6 @@ export default function Block({
                 disabled={readOnly}
                 onClick={onBlockNew}
                 spec={spec}
-                direction="down"
                 small={true}
               />
             </div>

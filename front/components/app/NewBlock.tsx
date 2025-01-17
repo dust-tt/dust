@@ -1,7 +1,12 @@
-import { Button } from "@dust-tt/sparkle";
-import type { SpecificationType } from "@dust-tt/types";
-import type { BlockType } from "@dust-tt/types";
-import { Menu } from "@headlessui/react";
+import {
+  Button,
+  cn,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@dust-tt/sparkle";
+import type { BlockType, SpecificationType } from "@dust-tt/types";
 import { PlusIcon } from "@heroicons/react/20/solid";
 
 import { classNames } from "@app/lib/utils";
@@ -10,13 +15,11 @@ export default function NewBlock({
   spec,
   disabled,
   onClick,
-  direction,
   small,
 }: {
   spec: SpecificationType;
   disabled: boolean;
   onClick: (type: BlockType | "map_reduce" | "while_end") => void;
-  direction: "up" | "down";
   small: boolean;
 }) {
   const containsInput =
@@ -120,71 +123,50 @@ export default function NewBlock({
   }
 
   return (
-    <Menu as="div" className="relative inline-block">
-      <div>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
         {small ? (
-          <Menu.Button
-            className={classNames(
-              "border-1 inline-flex items-center border-red-200 bg-transparent px-0 py-0 text-sm font-medium leading-6 text-gray-400",
-              disabled ? "text-gray-300" : "hover:text-gray-700",
-              "focus:outline-none focus:ring-0"
-            )}
-            disabled={disabled}
-          >
-            <PlusIcon className="h-4 w-4" />
-          </Menu.Button>
+          <Button icon={PlusIcon} disabled={disabled} />
         ) : (
-          <Menu.Button as="div" disabled={disabled}>
-            <Button
-              variant="outline"
-              label="Add Block"
-              icon={PlusIcon}
-              disabled={disabled}
-            />
-          </Menu.Button>
+          <Button
+            variant="outline"
+            label="Add Block"
+            icon={PlusIcon}
+            disabled={disabled}
+          />
         )}
-      </div>
-      <Menu.Items
-        className={classNames(
-          "absolute z-10 my-2 block w-max rounded-md bg-white shadow ring-1 ring-black ring-opacity-5 focus:outline-none",
-          small ? "-right-16" : "",
-          direction === "up" ? "bottom-9" : ""
-        )}
+      </DropdownMenuTrigger>
+
+      <DropdownMenuContent
+        className={classNames("my-2 block w-max", small ? "-right-16" : "")}
       >
         {blocks.map((block) => (
-          <Menu.Item
-            as="div"
+          <DropdownMenuItem
             key={block.type}
-            onClick={() => {
-              if (onClick) {
-                onClick(block.type);
-              }
-            }}
-            className="my-1 flex cursor-pointer flex-row flex-nowrap gap-4 bg-white px-0 py-1 text-gray-400 hover:bg-gray-100 hover:text-gray-500"
+            onClick={() => onClick(block.type)}
           >
-            {() => (
-              <div className="ml-4 grid max-w-md grid-cols-12 items-center">
-                <div className="col-span-4 sm:col-span-3">
-                  <div className="flex text-base font-medium text-gray-900">
-                    <div
-                      className={`mr-1 rounded-md px-1 py-0.5 text-sm font-bold ${
-                        block.type === "input" ? "bg-orange-200" : "bg-gray-200"
-                      }`}
-                    >
-                      {block.type}
-                    </div>
+            <div className="grid max-w-md grid-cols-12 items-center">
+              <div className="col-span-4 sm:col-span-3">
+                <div className="flex text-base font-medium text-gray-900">
+                  <div
+                    className={cn(
+                      "mr-1 rounded-md px-1 py-0.5 text-sm font-bold",
+                      block.type === "input" ? "bg-orange-200" : "bg-gray-200"
+                    )}
+                  >
+                    {block.type}
                   </div>
                 </div>
-                <div className="col-span-8 pr-2 text-sm text-gray-700 sm:col-span-9 sm:pl-6">
-                  <strong>{block.name}</strong>
-                  <br />
-                  <p className="text-sm">{block.description}</p>
-                </div>
               </div>
-            )}
-          </Menu.Item>
+              <div className="col-span-8 pr-2 text-sm text-gray-700 sm:col-span-9 sm:pl-6">
+                <strong>{block.name}</strong>
+                <br />
+                <p className="text-sm">{block.description}</p>
+              </div>
+            </div>
+          </DropdownMenuItem>
         ))}
-      </Menu.Items>
-    </Menu>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

@@ -1,12 +1,4 @@
-import {
-  BracesIcon,
-  Button,
-  DocumentTextIcon,
-  PlayIcon,
-  Tabs,
-  TabsList,
-  TabsTrigger,
-} from "@dust-tt/sparkle";
+import { BracesIcon, Button, DocumentTextIcon, PlayIcon, Tabs, TabsList, TabsTrigger } from "@dust-tt/sparkle";
 import type {
   APIErrorResponse,
   AppType,
@@ -34,12 +26,7 @@ import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { dustAppsListUrl } from "@app/lib/spaces";
-import {
-  addBlock,
-  deleteBlock,
-  moveBlockDown,
-  moveBlockUp,
-} from "@app/lib/specification";
+import { addBlock, deleteBlock, moveBlockDown, moveBlockUp } from "@app/lib/specification";
 import { useSavedRunStatus } from "@app/lib/swr/apps";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
@@ -367,7 +354,6 @@ export default function AppView({
                 await handleNewBlock(null, blockType);
               }}
               spec={spec}
-              direction="down"
               small={false}
             />
             <Button
@@ -475,7 +461,6 @@ export default function AppView({
                     await handleNewBlock(null, blockType);
                   }}
                   spec={spec}
-                  direction="up"
                   small={false}
                 />
               </div>
