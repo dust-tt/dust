@@ -12,6 +12,7 @@ import assert from "assert";
 
 import config from "@app/lib/api/config";
 import {
+  computeNodesDiff,
   getContentNodeInternalIdFromTableId,
   getContentNodeMetadata,
 } from "@app/lib/api/content_nodes";
@@ -164,26 +165,22 @@ function makeCoreDataSourceViewFilter(
   };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-async function getContentNodesForManagedDataSourceViewFromCore(
+async function getContentNodesForDataSourceViewFromCore(
   dataSourceView: DataSourceViewResource | DataSourceViewType,
   { internalIds, parentId, viewType }: GetContentNodesForDataSourceViewParams
 ): Promise<Result<GetContentNodesForDataSourceViewResult, Error>> {
-  const { dataSource } = dataSourceView;
-  assert(
-    dataSource.connectorId,
-    "Connector ID is required for managed data sources."
-  );
-
+  // There's an early return possible on !dataSourceView.dataSource.connectorId && internalIds?.length === 0,
+  // won't include it for now as we are shadow-reading.
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
-  // TODO(2025-01-16 aubin): confirm that if no internalIds nor parentIds are provided, we get the root nodes of the data source view.
   const coreRes = await coreAPI.searchNodes({
     filter: {
       data_source_views: [makeCoreDataSourceViewFilter(dataSourceView)],
-      node_ids: internalIds,
+      // If no internalIds are provided, we use the parentsIn
+      node_ids: internalIds ?? dataSourceView.parentsIn ?? undefined,
       parent_id: parentId,
     },
+    options: { limit: 250 },
   });
 
   if (coreRes.isErr()) {
@@ -354,6 +351,40 @@ export async function getContentNodesForDataSourceView(
     }
 
     contentNodesResult = contentNodesRes.value;
+  }
+
+  const localLogger = logger.child({
+    dataSourceId: dataSourceView.dataSource.sId,
+    dataSourceViewId: dataSourceView.sId,
+    provider: dataSourceView.dataSource.connectorProvider,
+  });
+
+  // shadow read from core
+  const coreContentNodesRes = await getContentNodesForDataSourceViewFromCore(
+    dataSourceView,
+    params
+  );
+
+  if (coreContentNodesRes.isErr()) {
+    localLogger.info(
+      { error: coreContentNodesRes.error },
+      "[CoreNodes] Could not fetch content nodes from core"
+    );
+  } else if (coreContentNodesRes.isOk()) {
+    if (coreContentNodesRes.value.total !== contentNodesResult.total) {
+      localLogger.info(
+        {
+          coreNodesCount: coreContentNodesRes.value.total,
+          connectorsNodesCount: contentNodesResult.total,
+        },
+        "[CoreNodes] Content nodes count mismatch"
+      );
+    }
+    computeNodesDiff({
+      connectorsContentNodes: contentNodesResult.nodes,
+      coreContentNodes: coreContentNodesRes.value.nodes,
+      localLogger,
+    });
   }
 
   const contentNodesInView = filterAndCropContentNodesByView(
