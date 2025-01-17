@@ -88,6 +88,7 @@ type RowData = {
   scope: AgentConfigurationScope;
   onClick?: () => void;
   moreMenuItems?: MoreMenuItem[];
+  action?: React.ReactNode;
 };
 
 const calculateFeedback = (row: Row<RowData>) => {
@@ -215,24 +216,45 @@ const getTableColumns = () => {
     },
     {
       header: "",
-      accessorKey: "action",
-      cell: (info: CellContext<RowData, number>) => (
-        <DataTable.CellContent>{info.getValue()}</DataTable.CellContent>
-      ),
+      accessorKey: "actions",
+      cell: (info: CellContext<RowData, number>) => {
+        if (info.row.original.scope === "global") {
+          return (
+            <DataTable.CellContent>
+              {info.row.original.action}
+            </DataTable.CellContent>
+          );
+        }
+        return (
+          <DataTable.MoreButton
+            moreMenuItems={info.row.original.moreMenuItems}
+          />
+        );
+      },
       meta: {
         className: "w-12",
       },
     },
-    {
-      header: "",
-      accessorKey: "moreAction",
-      cell: (info: CellContext<RowData, number>) => (
-        <DataTable.MoreButton moreMenuItems={info.row.original.moreMenuItems} />
-      ),
-      meta: {
-        className: "w-12",
-      },
-    },
+    // {
+    //   header: "",
+    //   accessorKey: "action",
+    //   cell: (info: CellContext<RowData, number>) => (
+    //     <DataTable.CellContent>{info.getValue()}</DataTable.CellContent>
+    //   ),
+    //   meta: {
+    //     className: "w-12",
+    //   },
+    // },
+    // {
+    //   header: "",
+    //   accessorKey: "moreAction",
+    //   cell: (info: CellContext<RowData, number>) => (
+    //     <DataTable.MoreButton moreMenuItems={info.row.original.moreMenuItems} />
+    //   ),
+    //   meta: {
+    //     className: "w-12",
+    //   },
+    // },
   ];
 };
 
