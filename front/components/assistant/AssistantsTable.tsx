@@ -103,15 +103,15 @@ const getTableColumns = () => {
       accessorKey: "name",
       cell: (info: CellContext<RowData, string>) => (
         <DataTable.CellContent>
-          <div className={classNames("flex flex-row items-center gap-2")}>
+          <div className={classNames("flex flex-row items-center gap-2 py-3")}>
             <div className="">
               <Avatar visual={info.row.original.pictureUrl} size="sm" />
             </div>
             <div className="flex min-w-0 grow flex-col">
-              <div className="truncated overflow-hidden text-sm font-semibold text-foreground">
+              <div className="overflow-hidden truncate text-sm font-semibold text-foreground">
                 {`@${info.getValue()}`}
               </div>
-              <div className="truncated overflow-hidden text-sm text-muted-foreground">
+              <div className="overflow-hidden truncate text-sm text-muted-foreground">
                 {info.row.original.description}
               </div>
             </div>
@@ -169,20 +169,20 @@ const getTableColumns = () => {
                 label={feedbacksCount}
                 trigger={
                   <div className="flex flex-row items-center gap-2 text-sm text-muted-foreground">
-                    <div className="flex flex-row items-center gap-1.5 font-medium">
+                    <div className="flex flex-row items-center gap-1.5">
                       {f.up}
                       <Icon
                         visual={HandThumbUpIcon}
                         size="xs"
-                        className="text-muted-background"
+                        className="text-primary-300"
                       />
                     </div>
-                    <div className="flex flex-row items-center gap-1.5 font-medium">
+                    <div className="flex flex-row items-center gap-1.5">
                       {f.down}
                       <Icon
                         visual={HandThumbDownIcon}
                         size="xs"
-                        className="text-muted-background"
+                        className="text-primary-300"
                       />
                     </div>
                   </div>
@@ -195,10 +195,8 @@ const getTableColumns = () => {
       sortingFn: (rowA: Row<RowData>, rowB: Row<RowData>) =>
         calculateFeedback(rowA) - calculateFeedback(rowB),
       meta: {
-        meta: {
-          className: "w-24",
-          tooltip: "Feedbacks users on the last 30 days",
-        },
+        className: "w-24",
+        tooltip: "Feedbacks users on the last 30 days",
       },
     },
     {
@@ -213,9 +211,7 @@ const getTableColumns = () => {
           }
         />
       ),
-      meta: {
-        meta: { className: "w-24" },
-      },
+      meta: { className: "w-32" },
     },
     {
       header: "",
@@ -414,9 +410,9 @@ function GlobalAgentAction({
   if (agent.sId === "dust") {
     return (
       <Button
-        variant="ghost-secondary"
+        variant="outline"
         icon={Cog6ToothIcon}
-        size="mini"
+        size="xs"
         disabled={!isBuilder(owner)}
         onClick={(e: Event) => {
           e.stopPropagation();
