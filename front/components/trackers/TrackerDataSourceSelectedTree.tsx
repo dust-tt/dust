@@ -23,18 +23,9 @@ import {
   getDisplayNameForDataSource,
 } from "@app/lib/data_sources";
 
-import type { ContentNodeType } from "@dust-tt/types";
+import type { ContentNodeType, DataSourceViewContentNode } from "@dust-tt/types";
 
-type ContentNode = {
-  internalId: string;
-  title: string;
-  type: ContentNodeType;
-  expandable: boolean;
-  sourceUrl?: string;
-  parentInternalId: string | null;
-  permission: string;
-  lastUpdatedAt: number | null;
-};
+type ContentNode = DataSourceViewContentNode;
 
 interface DataSourceConfig {
   dataSourceView: DataSourceViewType;
@@ -65,7 +56,7 @@ export const TrackerDataSourceSelectedTree = ({
       />
       <Tree>
         {orderDatasourceViewSelectionConfigurationByImportance(
-          Object.values(dataSourceConfigurations) as DataSourceConfig[]
+          Object.values(dataSourceConfigurations)
         ).map((dsConfig) => {
           const LogoComponent = getConnectorProviderLogoWithFallback(
             dsConfig.dataSourceView.dataSource.connectorProvider,

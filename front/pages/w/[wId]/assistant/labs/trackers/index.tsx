@@ -9,7 +9,7 @@ import {
   SearchInput,
   Spinner,
 } from "@dust-tt/sparkle";
-import { ViewColumnsIcon } from "@heroicons/react/24/outline";
+import { Columns as ViewColumnsIcon } from "lucide-react";
 import type {
   PlanType,
   SpaceType,
