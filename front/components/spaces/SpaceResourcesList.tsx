@@ -199,7 +199,7 @@ const getTableColumns = ({
   const actionColumn: TableColumnDef = {
     id: "action",
     meta: {
-      className: "w-24",
+      className: "w-28",
     },
     cell: (info: CellContext<RowData, unknown>) => {
       const original = info.row.original;
