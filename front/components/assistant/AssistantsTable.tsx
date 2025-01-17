@@ -118,7 +118,6 @@ const getTableColumns = () => {
           </div>
         </DataTable.CellContent>
       ),
-      meta: { className: "h-16 w-full" },
     },
     {
       header: "Msgs",
@@ -136,7 +135,7 @@ const getTableColumns = () => {
           label={info.row.original.usage?.messageCount ?? 0}
         />
       ),
-      meta: { className: "w-6", tooltip: "Messages on the last 30 days" },
+      meta: { className: "w-16", tooltip: "Messages on the last 30 days" },
     },
     {
       header: "Users",
@@ -152,7 +151,7 @@ const getTableColumns = () => {
           })}
         />
       ),
-      meta: { className: "w-6", tooltip: "Active users on the last 30 days" },
+      meta: { className: "w-16", tooltip: "Active users on the last 30 days" },
     },
     {
       header: "Feedback",
@@ -170,13 +169,21 @@ const getTableColumns = () => {
                 label={feedbacksCount}
                 trigger={
                   <div className="flex flex-row items-center gap-2 text-sm text-muted-foreground">
-                    <div className="flex flex-row items-center gap-1">
+                    <div className="flex flex-row items-center gap-1.5 font-medium">
                       {f.up}
-                      <Icon visual={HandThumbUpIcon} size="xs" />
+                      <Icon
+                        visual={HandThumbUpIcon}
+                        size="xs"
+                        className="text-muted-background"
+                      />
                     </div>
-                    <div className="flex flex-row items-center gap-1">
+                    <div className="flex flex-row items-center gap-1.5 font-medium">
                       {f.down}
-                      <Icon visual={HandThumbDownIcon} size="xs" />
+                      <Icon
+                        visual={HandThumbDownIcon}
+                        size="xs"
+                        className="text-muted-background"
+                      />
                     </div>
                   </div>
                 }
@@ -189,7 +196,7 @@ const getTableColumns = () => {
         calculateFeedback(rowA) - calculateFeedback(rowB),
       meta: {
         meta: {
-          className: "w-12",
+          className: "w-24",
           tooltip: "Feedbacks users on the last 30 days",
         },
       },
@@ -207,7 +214,7 @@ const getTableColumns = () => {
         />
       ),
       meta: {
-        meta: { className: "w-8" },
+        meta: { className: "w-24" },
       },
     },
     {
@@ -217,7 +224,7 @@ const getTableColumns = () => {
         <DataTable.CellContent>{info.getValue()}</DataTable.CellContent>
       ),
       meta: {
-        className: "s-w-12",
+        className: "w-12",
       },
     },
     {
@@ -227,7 +234,7 @@ const getTableColumns = () => {
         <DataTable.MoreButton moreMenuItems={info.row.original.moreMenuItems} />
       ),
       meta: {
-        className: "s-w-12",
+        className: "w-12",
       },
     },
   ];
