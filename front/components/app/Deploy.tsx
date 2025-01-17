@@ -1,9 +1,23 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
-import { Button, ClipboardIcon, CubeIcon, Modal, Page } from "@dust-tt/sparkle";
-import type { AppType, SpecificationType } from "@dust-tt/types";
-import type { RunConfig, RunType } from "@dust-tt/types";
-import type { WorkspaceType } from "@dust-tt/types";
+import {
+  Button,
+  ClipboardIcon,
+  CubeIcon,
+  Page,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@dust-tt/sparkle";
+import type {
+  AppType,
+  RunConfig,
+  RunType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -35,8 +49,7 @@ interface ViewAppAPIModalProps {
   app: AppType;
   run: RunType;
   inputs?: unknown[];
-  isOpen: boolean;
-  onClose: () => void;
+  disabled: boolean;
 }
 
 export function ViewAppAPIModal({
@@ -44,8 +57,7 @@ export function ViewAppAPIModal({
   app,
   run,
   inputs = DEFAULT_INPUTS,
-  isOpen,
-  onClose,
+  disabled,
 }: ViewAppAPIModalProps) {
   const cURLRequest = (type: "run") => {
     switch (type) {
@@ -83,144 +95,115 @@ export function ViewAppAPIModal({
   };
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      hasChanged={false}
-      variant="side-sm"
-      title={"Apps API"}
-    >
-      <Page variant="modal">
-        <div className="w-full">
-          <Page.Vertical sizing="grow">
-            <Page.P>
-              <ul className="text-gray-500">
-                <li>
-                  spaceId: <span className="font-bold">{app.space.sId}</span>{" "}
-                </li>
-                <li>
-                  appId: <span className="font-bold">{app.sId}</span>
-                </li>
-              </ul>
-            </Page.P>
+    <Sheet>
+      <SheetTrigger>
+        <Button
+          icon={CubeIcon}
+          tooltip={
+            disabled
+              ? "You need to run this app at least once successfully to view the endpoint"
+              : "View how to run this app programmatically"
+          }
+          label="API"
+          variant="primary"
+          disabled={disabled}
+        />
+      </SheetTrigger>
+      <SheetContent>
+        <SheetHeader>
+          <SheetTitle>Apps API</SheetTitle>
+        </SheetHeader>
+        <SheetContainer>
+          <div className="w-full">
+            <Page.Vertical sizing="grow">
+              <Page.P>
+                <ul className="text-gray-500">
+                  <li>
+                    spaceId: <span className="font-bold">{app.space.sId}</span>{" "}
+                  </li>
+                  <li>
+                    appId: <span className="font-bold">{app.sId}</span>
+                  </li>
+                </ul>
+              </Page.P>
 
-            <Page.Separator />
+              <Page.Separator />
 
-            <Page.SectionHeader title="Run app" />
-            <Page.P>
-              Use the following cURL command to run the app{" "}
-              <span className="italic">{app.name}</span>:
-            </Page.P>
-            <CodeEditor
-              data-color-mode="light"
-              readOnly={true}
-              value={`$ ${cURLRequest("run")}`}
-              language="shell"
-              padding={15}
-              className="font-mono mt-5 rounded-md bg-gray-700 px-4 py-4 text-[13px] text-white"
-              style={{
-                fontSize: 13,
-                fontFamily:
-                  "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
-                backgroundColor: "rgb(241 245 249)",
-                width: "100%",
-                marginTop: "0rem",
-              }}
-            />
+              <Page.SectionHeader title="Run app" />
+              <Page.P>
+                Use the following cURL command to run the app{" "}
+                <span className="italic">{app.name}</span>:
+              </Page.P>
+              <CodeEditor
+                data-color-mode="light"
+                readOnly={true}
+                value={`$ ${cURLRequest("run")}`}
+                language="shell"
+                padding={15}
+                className="font-mono mt-5 rounded-md bg-gray-700 px-4 py-4 text-[13px] text-white"
+                style={{
+                  fontSize: 13,
+                  fontFamily:
+                    "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+                  backgroundColor: "rgb(241 245 249)",
+                  width: "100%",
+                  marginTop: "0rem",
+                }}
+              />
 
-            <div className="flex w-full flex-row items-end">
-              <div className="flex-grow"></div>
-              <div className="flex">
-                <Button
-                  variant="outline"
-                  onClick={() => handleCopyClick("run")}
-                  label={copyRunButtonText}
-                  icon={ClipboardIcon}
-                />
+              <div className="flex w-full flex-row items-end">
+                <div className="flex-grow"></div>
+                <div className="flex">
+                  <Button
+                    variant="outline"
+                    onClick={() => handleCopyClick("run")}
+                    label={copyRunButtonText}
+                    icon={ClipboardIcon}
+                  />
+                </div>
               </div>
-            </div>
 
-            <Page.Separator />
+              <Page.Separator />
 
-            <Page.SectionHeader title="API Keys" />
-            <Page.P>
-              <div className="pb-2">
-                {owner.role === "admin" ? (
-                  <Link
-                    href={`/w/${owner.sId}/developers/api-keys`}
-                    className="py-1 font-bold text-action-600"
-                  >
-                    Manage workspace API keys
-                  </Link>
-                ) : (
-                  <span>API keys are managed by workspace admins.</span>
-                )}
-              </div>
-              <span>
-                Handle API keys with care as they provide access to your company
-                data.
-              </span>
-            </Page.P>
+              <Page.SectionHeader title="API Keys" />
+              <Page.P>
+                <div className="pb-2">
+                  {owner.role === "admin" ? (
+                    <Link
+                      href={`/w/${owner.sId}/developers/api-keys`}
+                      className="py-1 font-bold text-action-600"
+                    >
+                      Manage workspace API keys
+                    </Link>
+                  ) : (
+                    <span>API keys are managed by workspace admins.</span>
+                  )}
+                </div>
+                <span>
+                  Handle API keys with care as they provide access to your
+                  company data.
+                </span>
+              </Page.P>
 
-            <Page.Separator />
+              <Page.Separator />
 
-            <Page.SectionHeader title="Documentation" />
-            <Page.P>
-              For a detailed documentation of the Data source API, please refer
-              to the{" "}
-              <Link
-                href={
-                  "https://docs.dust.tt/reference/post_api-v1-w-wid-vaults-vid-apps-aid-runs"
-                }
-                className="py-1 font-bold text-action-600"
-              >
-                API Reference
-              </Link>
-            </Page.P>
-          </Page.Vertical>
-        </div>
-      </Page>
-    </Modal>
-  );
-}
-
-export default function Deploy({
-  owner,
-  app,
-  run,
-  disabled,
-}: {
-  owner: WorkspaceType;
-  app: AppType;
-  spec: SpecificationType;
-  run: RunType;
-  disabled: boolean;
-}) {
-  const [showViewAppAPIModal, setShowViewAppAPIModal] = useState(false);
-
-  return (
-    <div>
-      <ViewAppAPIModal
-        owner={owner}
-        app={app}
-        run={run}
-        isOpen={showViewAppAPIModal}
-        onClose={() => setShowViewAppAPIModal(false)}
-      />
-      <Button
-        tooltip={
-          disabled
-            ? "You need to run this app at least once successfully to view the endpoint"
-            : "View how to run this app programmatically"
-        }
-        label="API"
-        variant="primary"
-        onClick={() => {
-          setShowViewAppAPIModal(true);
-        }}
-        disabled={disabled}
-        icon={CubeIcon}
-      />
-    </div>
+              <Page.SectionHeader title="Documentation" />
+              <Page.P>
+                For a detailed documentation of the Data source API, please
+                refer to the{" "}
+                <Link
+                  href={
+                    "https://docs.dust.tt/reference/post_api-v1-w-wid-vaults-vid-apps-aid-runs"
+                  }
+                  className="py-1 font-bold text-action-600"
+                >
+                  API Reference
+                </Link>
+              </Page.P>
+            </Page.Vertical>
+          </div>
+        </SheetContainer>
+      </SheetContent>
+    </Sheet>
   );
 }

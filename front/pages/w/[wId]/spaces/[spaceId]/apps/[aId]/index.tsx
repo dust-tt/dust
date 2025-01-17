@@ -23,7 +23,7 @@ import { useRouter } from "next/router";
 import { useRef, useState } from "react";
 import { useSWRConfig } from "swr";
 
-import Deploy from "@app/components/app/Deploy";
+import { ViewAppAPIModal } from "@app/components/app/Deploy";
 import NewBlock from "@app/components/app/NewBlock";
 import SpecRunView from "@app/components/app/SpecRunView";
 import { subNavigationApp } from "@app/components/navigation/config";
@@ -418,12 +418,11 @@ export default function AppView({
             ) : null}
             {!readOnly && run ? (
               <div className="hidden flex-initial sm:block">
-                <Deploy
+                <ViewAppAPIModal
                   disabled={readOnly || !(run?.status.run == "succeeded")}
                   owner={owner}
                   app={app}
                   run={run}
-                  spec={spec}
                 />
               </div>
             ) : null}
