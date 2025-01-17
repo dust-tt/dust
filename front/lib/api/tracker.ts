@@ -129,20 +129,32 @@ export const sendTrackerWithGenerationEmail = async ({
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), localLogger);
   const dataSourceById = _.keyBy(
     removeNulls(
-      generations.map((g) => [g.dataSource, g.maintainedDataSource]).flat()
+      generations
+        .map((g) => [g.dataSource, g.maintainedDocumentDataSource])
+        .flat()
     ),
     "id"
   );
-  const docsToFetchByDataSourceId = _.mapValues(
-    _.groupBy(
-      generations.map((g) => ({
-        dataSourceId: g.dataSource.id,
-        documentIds: removeNulls([g.documentId, g.maintainedDocumentId]),
-      })),
-      "dataSourceId"
-    ),
-    (docs) => docs.map((d) => d.documentIds).flat()
-  );
+
+  const docsToFetchByDataSourceId: Record<string, string[]> = {};
+  for (const generation of generations) {
+    const dataSourceId = generation.dataSource.id;
+    if (!docsToFetchByDataSourceId[dataSourceId]) {
+      docsToFetchByDataSourceId[dataSourceId] = [];
+    }
+    docsToFetchByDataSourceId[dataSourceId].push(generation.documentId);
+
+    const maintainedDataSourceId = generation.maintainedDocumentDataSource?.id;
+    if (maintainedDataSourceId && generation.maintainedDocumentId) {
+      if (!docsToFetchByDataSourceId[maintainedDataSourceId]) {
+        docsToFetchByDataSourceId[maintainedDataSourceId] = [];
+      }
+      docsToFetchByDataSourceId[maintainedDataSourceId].push(
+        generation.maintainedDocumentId
+      );
+    }
+  }
+
   const documentsByIdentifier = new Map<
     string,
     { name: string; url: string | null }
@@ -190,9 +202,9 @@ export const sendTrackerWithGenerationEmail = async ({
         name: "Unknown document",
         url: null,
       };
-      const maintainedDoc = g.maintainedDataSource
+      const maintainedDoc = g.maintainedDocumentDataSource
         ? documentsByIdentifier.get(
-            `${g.maintainedDataSource.id}__${g.maintainedDocumentId}`
+            `${g.maintainedDocumentDataSource.id}__${g.maintainedDocumentId}`
           ) ?? null
         : null;
 
@@ -207,9 +219,9 @@ export const sendTrackerWithGenerationEmail = async ({
           : `[${maintainedDoc.name}]`;
       }
 
-      let body = `<strong>Changes in document ${title} from ${g.dataSource.name}`;
-      if (maintainedTitle && g.maintainedDataSource) {
-        body += ` might affect ${maintainedTitle} from ${g.maintainedDataSource.name}`;
+      let body = `<strong>Changes in document ${title} (${g.dataSource.name})`;
+      if (maintainedTitle && g.maintainedDocumentDataSource) {
+        body += ` might affect ${maintainedTitle} (${g.maintainedDocumentDataSource.name})`;
       }
       body += `:</strong>`;
 
