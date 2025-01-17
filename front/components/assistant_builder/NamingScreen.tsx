@@ -36,8 +36,8 @@ import {
 } from "@app/components/assistant_builder/shared";
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import { ConfirmContext } from "@app/components/Confirm";
-import { debounce } from "@app/lib/utils/debounce";
 import { useUser } from "@app/lib/swr/user";
+import { debounce } from "@app/lib/utils/debounce";
 
 export function removeLeadingAt(handle: string) {
   return handle.startsWith("@") ? handle.slice(1) : handle;
@@ -156,7 +156,7 @@ export default function NamingScreen({
       event_label: "assistantNamingPanel",
       user_sid: user?.sId,
     });
-  }, []);
+  }, [user?.sId]);
   const confirm = useContext(ConfirmContext);
   const sendNotification = useSendNotification();
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);

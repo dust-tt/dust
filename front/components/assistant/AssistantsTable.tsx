@@ -31,8 +31,8 @@ import {
   assistantUsageMessage,
 } from "@app/components/assistant/Usage";
 import { SCOPE_INFO } from "@app/components/assistant_builder/Sharing";
-import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { useUser } from "@app/lib/swr/user";
+import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
 
 export const ASSISTANT_MANAGER_TABS = [
   // default shown tab = earliest in this list with non-empty agents
@@ -325,7 +325,7 @@ export function AssistantsTable({
                         "event",
                         "assistantDuplicationButtonClicked",
                         {
-                          event_category: "engagement",
+                          event_category: "assistantBuilder",
                           event_label: "assistantsTable",
                           assistant_name: agentConfiguration.name,
                           assistant_id: agentConfiguration.sId,
@@ -358,6 +358,7 @@ export function AssistantsTable({
       setShowDetails,
       setShowDisabledFreeWorkspacePopup,
       showDisabledFreeWorkspacePopup,
+      user?.sId,
     ]
   );
 

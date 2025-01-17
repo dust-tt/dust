@@ -60,9 +60,9 @@ import {
 } from "@app/lib/client/assistant_builder/instructions";
 import { useAgentConfigurationHistory } from "@app/lib/swr/assistants";
 import { useModels } from "@app/lib/swr/models";
+import { useUser } from "@app/lib/swr/user";
 import { classNames } from "@app/lib/utils";
 import { debounce } from "@app/lib/utils/debounce";
-import { useUser } from "@app/lib/swr/user";
 
 export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
 

@@ -36,8 +36,8 @@ import {
   useConversations,
   useDeleteConversation,
 } from "@app/lib/swr/conversations";
-import { classNames, removeDiacritics, subFilter } from "@app/lib/utils";
 import { useUser } from "@app/lib/swr/user";
+import { classNames, removeDiacritics, subFilter } from "@app/lib/utils";
 
 type AssistantSidebarMenuProps = {
   owner: WorkspaceType;

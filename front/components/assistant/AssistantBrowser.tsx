@@ -26,9 +26,9 @@ import type {
 import { useRouter } from "next/router";
 import React, { useMemo, useState } from "react";
 
+import { useUser } from "@app/lib/swr/user";
 import { subFilter } from "@app/lib/utils";
 import { setQueryParam } from "@app/lib/utils/router";
-import { useUser } from "@app/lib/swr/user";
 
 function isValidTab(tab: string, visibleTabs: TabId[]): tab is TabId {
   return visibleTabs.includes(tab as TabId);
