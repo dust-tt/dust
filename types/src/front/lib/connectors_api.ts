@@ -110,6 +110,7 @@ export interface ContentNode {
   permission: ConnectorPermission;
   lastUpdatedAt: number | null;
   providerVisibility?: ProviderVisibility;
+  mimeType?: string;
 }
 
 export type ContentNodeWithParentIds = ContentNode & {
