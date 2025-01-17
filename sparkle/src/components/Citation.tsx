@@ -176,11 +176,7 @@ const CitationIcons = React.forwardRef<
   return (
     <div
       ref={ref}
-      className={cn(
-        "s-z-10",
-        "s-flex s-items-center s-gap-2 s-pb-1",
-        className
-      )}
+      className={cn("s-flex s-items-center s-gap-2 s-pb-1", className)}
       {...props}
     >
       {children}

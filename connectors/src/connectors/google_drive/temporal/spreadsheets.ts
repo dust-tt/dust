@@ -11,6 +11,7 @@ import type { sheets_v4 } from "googleapis";
 import { google } from "googleapis";
 import type { OAuth2Client } from "googleapis-common";
 
+import { getSourceUrlForGoogleDriveSheet } from "@connectors/connectors/google_drive";
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import { getInternalId } from "@connectors/connectors/google_drive/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
@@ -30,7 +31,7 @@ import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
 
 const MAXIMUM_NUMBER_OF_GSHEET_ROWS = 50000;
 
-type Sheet = sheets_v4.Schema$ValueRange & {
+export type Sheet = sheets_v4.Schema$ValueRange & {
   id: number;
   spreadsheet: {
     id: string;
@@ -87,6 +88,7 @@ async function upsertGdriveTable(
     useAppForHeaderDetection: true,
     title: `${spreadsheet.title} - ${title}`,
     mimeType: "application/vnd.google-apps.spreadsheet",
+    sourceUrl: getSourceUrlForGoogleDriveSheet(sheet),
   });
 
   logger.info(loggerArgs, "[Spreadsheet] Table upserted.");

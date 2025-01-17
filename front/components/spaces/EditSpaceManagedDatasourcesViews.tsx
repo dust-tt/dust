@@ -1,12 +1,17 @@
 import {
   Button,
   ContentMessage,
-  Dialog,
   InformationCircleIcon,
+  NewDialog,
+  NewDialogContainer,
+  NewDialogContent,
+  NewDialogFooter,
+  NewDialogHeader,
+  NewDialogTitle,
   PlusIcon,
   Tooltip,
+  useSendNotification,
 } from "@dust-tt/sparkle";
-import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   APIError,
   DataSourceViewSelectionConfigurations,
@@ -120,32 +125,34 @@ export function EditSpaceManagedDataSourcesViews({
         alertDialog: true,
         children: (
           <div className="space-y-4 text-foreground">
-            <p>The following data sources are currently in use:</p>
-
-            {deletedViewsWithUsage.map((view) => (
-              <p key={view.sId} className="font-medium">
-                {getDisplayNameForDataSource(view.dataSource)}{" "}
-                <span className="italic text-muted-foreground">
-                  (used by {view.usage.count} assistant
-                  {view.usage.count > 1 ? "s" : ""})
-                </span>
-              </p>
-            ))}
-
             <ContentMessage
               size="md"
               variant="warning"
               title="Warning"
               icon={InformationCircleIcon}
             >
-              <p>
-                Deleting these data sources will affect the assistants using
-                them. These assistants will no longer have access to this data
-                and may not work as expected.
-              </p>
+              Deleting these data sources will affect the assistants using them.
+              These assistants will no longer have access to this data and may
+              not work as expected.
             </ContentMessage>
 
-            <p>Are you sure you want to remove them?</p>
+            <div>
+              The following data sources are currently in use:
+              <ul className="ml-6 list-disc">
+                {deletedViewsWithUsage.map((view) => (
+                  <li key={view.sId} className="font-medium">
+                    {getDisplayNameForDataSource(view.dataSource)}{" "}
+                    <span className="italic text-muted-foreground">
+                      (used by {view.usage.count} assistant
+                      {view.usage.count > 1 ? "s" : ""})
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="font-semibold">
+              Are you sure you want to remove them?
+            </div>
           </div>
         ),
       });
@@ -271,6 +278,16 @@ export function EditSpaceManagedDataSourcesViews({
     return false;
   }
 
+  function handleCloseDataSourcesModal() {
+    setShowDataSourcesModal(false);
+  }
+
+  function handleGoToConnectionsManagement() {
+    void router.push(
+      `/w/${owner?.sId}/spaces/${systemSpace?.sId}/categories/managed`
+    );
+  }
+
   const addToSpaceButton = (
     <Button
       label={
@@ -320,20 +337,32 @@ export function EditSpaceManagedDataSourcesViews({
         }}
         initialSelectedDataSources={filteredDataSourceViews}
       />
-      <Dialog
-        isOpen={showNoConnectionDialog}
-        onCancel={() => setShowNoConnectionDialog(false)}
-        cancelLabel="Close"
-        validateLabel="Go to connections management"
-        onValidate={() => {
-          void router.push(
-            `/w/${owner.sId}/spaces/${systemSpace.sId}/categories/managed`
-          );
-        }}
-        title="No connection set up"
+
+      <NewDialog
+        open={showNoConnectionDialog}
+        onOpenChange={(open) => !open && setShowNoConnectionDialog(false)}
       >
-        <p>You have no connection set up.</p>
-      </Dialog>
+        <NewDialogContent>
+          <NewDialogHeader>
+            <NewDialogTitle>No connection set up</NewDialogTitle>
+          </NewDialogHeader>
+          <NewDialogContainer>
+            You have no connection set up.
+          </NewDialogContainer>
+          <NewDialogFooter
+            leftButtonProps={{
+              label: "Close",
+              variant: "outline",
+              onClick: handleCloseDataSourcesModal,
+            }}
+            rightButtonProps={{
+              label: "Go to connections management",
+              variant: "primary",
+              onClick: handleGoToConnectionsManagement,
+            }}
+          />
+        </NewDialogContent>
+      </NewDialog>
       <AwaitableDialog />
       {isSavingDisabled ? (
         <Tooltip

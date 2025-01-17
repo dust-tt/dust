@@ -18,7 +18,6 @@ import { Op } from "sequelize";
 
 import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
-import { showDebugTools } from "@app/lib/development";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -480,6 +479,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     workspace,
     newRole,
     allowTerminated = false,
+    allowLastAdminRemoval = false,
     transaction,
   }: {
     user: UserResource;
@@ -487,6 +487,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     newRole: Exclude<MembershipRoleType, "revoked">;
     // If true, allow updating the role of a terminated membership (which will also un-terminate it).
     allowTerminated?: boolean;
+    allowLastAdminRemoval?: boolean;
     transaction?: Transaction;
   }): Promise<
     Result<
@@ -532,7 +533,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
         });
 
         if (adminsCount < 2) {
-          if (showDebugTools(workspace)) {
+          if (allowLastAdminRemoval) {
             logger.warn(
               {
                 panic: false,

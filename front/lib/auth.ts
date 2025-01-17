@@ -1,17 +1,18 @@
 import { getSession as getAuth0Session } from "@auth0/nextjs-auth0";
 import type {
+  APIErrorWithStatusCode,
   GroupType,
   LightWorkspaceType,
   PermissionType,
+  PlanType,
   ResourcePermission,
+  Result,
   RoleType,
+  SubscriptionType,
   UserType,
   WhitelistableFeature,
   WorkspaceType,
 } from "@dust-tt/types";
-import type { PlanType, SubscriptionType } from "@dust-tt/types";
-import type { Result } from "@dust-tt/types";
-import type { APIErrorWithStatusCode } from "@dust-tt/types";
 import {
   Err,
   hasRolePermissions,

@@ -16,7 +16,6 @@ import type {
 } from "@dust-tt/types";
 import {
   BaseAction,
-  isDevelopment,
   Ok,
   PROCESS_ACTION_TOP_K,
   renderSchemaPropertiesAsJSONSchema,
@@ -34,15 +33,10 @@ import {
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
-import apiConfig from "@app/lib/api/config";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentProcessAction } from "@app/lib/models/assistant/actions/process";
-import {
-  cloneBaseConfig,
-  DustProdActionRegistry,
-  PRODUCTION_DUST_WORKSPACE_ID,
-} from "@app/lib/registry";
+import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
 
@@ -256,7 +250,7 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
     );
 
     const config = cloneBaseConfig(
-      DustProdActionRegistry["assistant-v2-process"].config
+      getDustProdAction("assistant-v2-process").config
     );
 
     // Set the process action model configuration to the assistant model configuration.
@@ -267,11 +261,7 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
     // Handle data sources list and parents/tags filtering.
     config.DATASOURCE.data_sources = actionConfiguration.dataSources.map(
       (d) => ({
-        workspace_id:
-          isDevelopment() && !apiConfig.getDevelopmentDustAppsWorkspaceId()
-            ? PRODUCTION_DUST_WORKSPACE_ID
-            : d.workspaceId,
-
+        workspace_id: d.workspaceId,
         // Note: This value is passed to the registry for lookup. The registry will return the
         // associated data source's dustAPIDataSourceId.
         data_source_id: d.dataSourceViewId,

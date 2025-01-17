@@ -31,7 +31,7 @@ import { internalCreateToolOutputCsvFile } from "@app/lib/api/files/tool_output"
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
-import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
+import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { sanitizeJSONOutput } from "@app/lib/utils";
@@ -381,7 +381,7 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
 
     // Generating configuration
     const config = cloneBaseConfig(
-      DustProdActionRegistry["assistant-v2-query-tables"].config
+      getDustProdAction("assistant-v2-query-tables").config
     );
     const tables = actionConfiguration.tables.map((t) => ({
       workspace_id: t.workspaceId,

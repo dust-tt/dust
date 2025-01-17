@@ -1,11 +1,15 @@
-import { Button } from "@dust-tt/sparkle";
-import { Checkbox } from "@dust-tt/sparkle";
-import { Page } from "@dust-tt/sparkle";
-import { PopoverContent, PopoverRoot, PopoverTrigger } from "@dust-tt/sparkle";
-import { Spinner } from "@dust-tt/sparkle";
-import { TextArea } from "@dust-tt/sparkle";
-import { Tooltip } from "@dust-tt/sparkle";
-import { HandThumbDownIcon, HandThumbUpIcon } from "@dust-tt/sparkle";
+import {
+  Button,
+  Checkbox,
+  HandThumbDownIcon,
+  HandThumbUpIcon,
+  Page,
+  PopoverContent,
+  PopoverRoot,
+  PopoverTrigger,
+  Spinner,
+  TextArea,
+} from "@dust-tt/sparkle";
 import React, { useCallback, useEffect, useRef } from "react";
 
 export type ThumbReaction = "up" | "down";
@@ -130,38 +134,30 @@ export function FeedbackSelector({
       <PopoverRoot open={isPopoverOpen}>
         <PopoverTrigger asChild>
           <div className="flex items-center gap-2">
-            <Tooltip
-              label="I found this helpful"
-              trigger={
-                <Button
-                  variant={feedback?.thumb === "up" ? "primary" : "ghost"}
-                  size="xs"
-                  disabled={isSubmittingThumb}
-                  onClick={handleThumbUp}
-                  icon={HandThumbUpIcon}
-                  // We enforce written feedback for thumbs down.
-                  // -> Not saving the reaction until then.
-                  className={
-                    feedback?.thumb === "up" ? "" : "text-muted-foreground"
-                  }
-                />
+            <Button
+              tooltip="I found this helpful"
+              variant={feedback?.thumb === "up" ? "primary" : "ghost"}
+              size="xs"
+              disabled={isSubmittingThumb}
+              onClick={handleThumbUp}
+              icon={HandThumbUpIcon}
+              // We enforce written feedback for thumbs down.
+              // -> Not saving the reaction until then.
+              className={
+                feedback?.thumb === "up" ? "" : "text-muted-foreground"
               }
             />
-            <Tooltip
-              label="Report an issue with this answer"
-              trigger={
-                <Button
-                  variant={feedback?.thumb === "down" ? "primary" : "ghost"}
-                  size="xs"
-                  disabled={isSubmittingThumb}
-                  onClick={handleThumbDown}
-                  icon={HandThumbDownIcon}
-                  // We enforce written feedback for thumbs down.
-                  // -> Not saving the reaction until then.
-                  className={
-                    feedback?.thumb === "down" ? "" : "text-muted-foreground"
-                  }
-                />
+            <Button
+              tooltip="Report an issue with this answer"
+              variant={feedback?.thumb === "down" ? "primary" : "ghost"}
+              size="xs"
+              disabled={isSubmittingThumb}
+              onClick={handleThumbDown}
+              icon={HandThumbDownIcon}
+              // We enforce written feedback for thumbs down.
+              // -> Not saving the reaction until then.
+              className={
+                feedback?.thumb === "down" ? "" : "text-muted-foreground"
               }
             />
           </div>
