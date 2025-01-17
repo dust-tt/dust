@@ -14,6 +14,9 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 
+const DEFAULT_WORKSPACE_NAME = "dust-apps";
+const DEFAULT_SPACE_NAME = "Public Dust Apps";
+
 async function main() {
   const argv = parseArgs(process.argv.slice(2));
 
@@ -27,7 +30,7 @@ async function main() {
     console.log("Creating workspace");
     w = await Workspace.create({
       sId: argv.sId || generateRandomModelSId(),
-      name: argv.name || "dust-apps",
+      name: argv.name || DEFAULT_WORKSPACE_NAME,
     });
 
     await internalSubscribeWorkspaceToFreePlan({
@@ -49,11 +52,11 @@ async function main() {
   });
 
   const spaces = await SpaceResource.listWorkspaceSpaces(auth);
-  let space = spaces.find((s) => s.name === "Public Dust Apps");
+  let space = spaces.find((s) => s.isPublic());
   if (!space) {
     console.log("Creating group");
     const group = await GroupResource.makeNew({
-      name: `Group for space Public Dust Apps`,
+      name: `Group for space ${DEFAULT_SPACE_NAME}`,
       workspaceId: w.id,
       kind: "regular",
     });
@@ -74,7 +77,7 @@ async function main() {
 
     console.log("Creating space");
     space = await SpaceResource.makeNew(
-      { name: "Public Dust Apps", kind: "public", workspaceId: w.id },
+      { name: DEFAULT_SPACE_NAME, kind: "public", workspaceId: w.id },
       [group]
     );
   }
