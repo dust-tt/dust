@@ -68,7 +68,7 @@ makeScript(
             dustAPIDataSourceId: g.dataSource.dustAPIDataSourceId,
           },
           maintainedDocumentId: g.maintainedDocumentId,
-          maintainedDataSource: g.maintainedDocumentDataSource
+          maintainedDocumentDataSource: g.maintainedDocumentDataSource
             ? {
                 id: g.maintainedDocumentDataSource.id,
                 name: g.maintainedDocumentDataSource.name,

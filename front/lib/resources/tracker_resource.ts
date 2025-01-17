@@ -706,7 +706,7 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
             dustAPIProjectId: g.dataSource.dustAPIProjectId,
             dustAPIDataSourceId: g.dataSource.dustAPIDataSourceId,
           },
-          maintainedDataSource: g.maintainedDocumentDataSource
+          maintainedDocumentDataSource: g.maintainedDocumentDataSource
             ? {
                 id: g.maintainedDocumentDataSource.id,
                 name: dataSourceName,
