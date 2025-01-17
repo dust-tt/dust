@@ -125,32 +125,34 @@ export function EditSpaceManagedDataSourcesViews({
         alertDialog: true,
         children: (
           <div className="space-y-4 text-foreground">
-            <p>The following data sources are currently in use:</p>
-
-            {deletedViewsWithUsage.map((view) => (
-              <p key={view.sId} className="font-medium">
-                {getDisplayNameForDataSource(view.dataSource)}{" "}
-                <span className="italic text-muted-foreground">
-                  (used by {view.usage.count} assistant
-                  {view.usage.count > 1 ? "s" : ""})
-                </span>
-              </p>
-            ))}
-
             <ContentMessage
               size="md"
               variant="warning"
               title="Warning"
               icon={InformationCircleIcon}
             >
-              <p>
-                Deleting these data sources will affect the assistants using
-                them. These assistants will no longer have access to this data
-                and may not work as expected.
-              </p>
+              Deleting these data sources will affect the assistants using them.
+              These assistants will no longer have access to this data and may
+              not work as expected.
             </ContentMessage>
 
-            <p>Are you sure you want to remove them?</p>
+            <div>
+              The following data sources are currently in use:
+              <ul className="ml-6 list-disc">
+                {deletedViewsWithUsage.map((view) => (
+                  <li key={view.sId} className="font-medium">
+                    {getDisplayNameForDataSource(view.dataSource)}{" "}
+                    <span className="italic text-muted-foreground">
+                      (used by {view.usage.count} assistant
+                      {view.usage.count > 1 ? "s" : ""})
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="font-semibold">
+              Are you sure you want to remove them?
+            </div>
           </div>
         ),
       });
