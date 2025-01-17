@@ -216,7 +216,7 @@ export default function WorkspaceAssistants({
                 </Link>
               </div>
             </div>
-            <div className="flex flex-col gap-4 pt-3">
+            <div className="flex flex-col pt-3">
               <Tabs value={activeTab}>
                 <TabsList>
                   {visibleTabs.map((tab) => (
@@ -228,9 +228,8 @@ export default function WorkspaceAssistants({
                       className={assistantSearch ? disabledTablineClass : ""}
                       onClick={() => !assistantSearch && setSelectedTab(tab.id)}
                       tooltip={
-                        ASSISTANT_MANAGER_TABS.find(
-                          (tab) => tab.id === activeTab
-                        )?.description
+                        ASSISTANT_MANAGER_TABS.find((tab) => tab.id)
+                          ?.description
                       }
                     />
                   ))}
