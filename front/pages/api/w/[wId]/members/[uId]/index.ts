@@ -117,6 +117,7 @@ async function handler(
         }
 
         const featureFlags = await getFeatureFlags(owner);
+        const allowLastAdminRemoval = showDebugTools(featureFlags);
 
         const updateRes = await MembershipResource.updateMembershipRole({
           user,
@@ -124,7 +125,7 @@ async function handler(
           newRole: role,
           // We allow to re-activate a terminated membership when updating the role here.
           allowTerminated: true,
-          featureFlags,
+          allowLastAdminRemoval,
         });
 
         if (updateRes.isErr()) {

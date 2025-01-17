@@ -4,7 +4,6 @@ import type {
   ModelId,
   RequireAtLeastOne,
   Result,
-  WhitelistableFeature,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type {
@@ -19,7 +18,6 @@ import { Op } from "sequelize";
 
 import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
-import { showDebugTools } from "@app/lib/development";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -481,16 +479,16 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     workspace,
     newRole,
     allowTerminated = false,
+    allowLastAdminRemoval = false,
     transaction,
-    featureFlags,
   }: {
     user: UserResource;
     workspace: LightWorkspaceType;
     newRole: Exclude<MembershipRoleType, "revoked">;
     // If true, allow updating the role of a terminated membership (which will also un-terminate it).
     allowTerminated?: boolean;
+    allowLastAdminRemoval?: boolean;
     transaction?: Transaction;
-    featureFlags: WhitelistableFeature[];
   }): Promise<
     Result<
       { previousRole: MembershipRoleType; newRole: MembershipRoleType },
@@ -535,7 +533,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
         });
 
         if (adminsCount < 2) {
-          if (showDebugTools(featureFlags)) {
+          if (allowLastAdminRemoval) {
             logger.warn(
               {
                 panic: false,
