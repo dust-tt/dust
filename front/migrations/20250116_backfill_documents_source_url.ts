@@ -120,7 +120,7 @@ async function migrateDataSource({
                 coreDataSourceId,
                 status: "latest",
                 nextTimestamp,
-                bachSize: QUERY_BATCH_SIZE,
+                batchSize: QUERY_BATCH_SIZE,
                 nextId,
               },
             }
@@ -140,7 +140,7 @@ async function migrateDataSource({
                 coreDataSourceId,
                 status: "latest",
                 nextTimestamp,
-                bachSize: QUERY_BATCH_SIZE,
+                batchSize: QUERY_BATCH_SIZE,
                 nextId,
               },
             }
@@ -157,7 +157,8 @@ async function migrateDataSource({
       logger.info(
         {
           firstRow: updatedRows[0],
-          lastRow: updatedRows[updatedRows.length - 1],
+          lastRow:
+            updatedRows.length > 1 && updatedRows[updatedRows.length - 1],
         },
         `Would update ${updatedRows.length} nodes.`
       );
