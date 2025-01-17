@@ -64,13 +64,19 @@ export function computeNodesDiff({
     const coreNodes = coreContentNodes.filter(
       (coreNode) => coreNode.internalId === connectorsNode.internalId
     );
-    if (coreNodes.length !== 1) {
+    if (coreNodes.length === 0) {
+      localLogger.info(
+        { internalId: connectorsNode.internalId },
+        "[CoreNodes] No core content node matching this internal ID"
+      );
+    } else if (coreNodes.length > 1) {
+      // this one should never ever happen, it's a real red flag
       localLogger.info(
         {
           internalId: connectorsNode.internalId,
           coreNodesId: coreNodes.map((n) => n.internalId),
         },
-        "[CoreNodes] Invalid match"
+        "[CoreNodes] Found more than one match"
       );
     } else {
       const coreNode = coreNodes[0];
@@ -100,6 +106,20 @@ export function computeNodesDiff({
       }
     }
   });
+  const extraCoreInternalIds = coreContentNodes
+    .filter(
+      (coreNode) =>
+        !connectorsContentNodes.some(
+          (n) => n.internalId === coreNode.internalId
+        )
+    )
+    .map((coreNode) => coreNode.internalId);
+  if (extraCoreInternalIds.length > 0) {
+    localLogger.info(
+      { extraCoreInternalIds },
+      "[CoreNodes] Received unexpected core nodes"
+    );
+  }
 }
 
 export function getContentNodeMetadata(
