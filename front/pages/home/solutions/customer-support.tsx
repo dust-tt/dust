@@ -3,7 +3,6 @@ import Link from "next/link";
 import type { ReactElement } from "react";
 
 import { BenefitsSection } from "@app/components/home/content/Solutions/BenefitsSection";
-// Import from new config location
 import {
   AssistantExamples,
   Benefits,

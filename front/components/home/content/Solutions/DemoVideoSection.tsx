@@ -1,4 +1,3 @@
-import { Hover3D } from "@dust-tt/sparkle";
 import type { FC } from "react";
 
 import { H2 } from "@app/components/home/ContentComponents";
