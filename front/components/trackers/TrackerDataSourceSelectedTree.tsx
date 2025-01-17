@@ -23,15 +23,7 @@ import {
   getDisplayNameForDataSource,
 } from "@app/lib/data_sources";
 
-import type { ContentNodeType, DataSourceViewContentNode } from "@dust-tt/types";
 
-type ContentNode = DataSourceViewContentNode;
-
-interface DataSourceConfig {
-  dataSourceView: DataSourceViewType;
-  selectedResources: ContentNode[];
-  isSelectAll: boolean;
-}
 
 export const TrackerDataSourceSelectedTree = ({
   owner,
