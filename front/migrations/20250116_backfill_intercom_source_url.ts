@@ -6,6 +6,7 @@ import {
   getConnectorsReplicaDbConnection,
   getCorePrimaryDbConnection,
 } from "@app/lib/production_checks/utils";
+import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 
@@ -21,6 +22,7 @@ function getHelpCenterCollectionInternalId(
 
 async function updateNodes(
   coreSequelize: Sequelize,
+  dataSourceId: number,
   nodeIds: string[],
   urls: string[]
 ) {
@@ -29,14 +31,15 @@ async function updateNodes(
      SET source_url = urls.url
      FROM (SELECT unnest(ARRAY [:nodeIds]::text[]) as node_id,
                   unnest(ARRAY [:urls]::text[])    as url) urls
-     WHERE data_sources_nodes.node_id = urls.node_id;`,
-    { replacements: { urls, nodeIds } }
+     WHERE data_sources_nodes.data_source = :dataSourceId AND data_sources_nodes.node_id = urls.node_id;`,
+    { replacements: { urls, nodeIds, dataSourceId } }
   );
 }
 
 async function backfillCollections(
   coreSequelize: Sequelize,
   connectorsSequelize: Sequelize,
+  dataSource: DataSourceModel,
   execute: boolean,
   logger: typeof Logger
 ) {
@@ -81,7 +84,7 @@ async function backfillCollections(
       );
     });
     if (execute) {
-      await updateNodes(coreSequelize, nodeIds, urls);
+      await updateNodes(coreSequelize, dataSource.id, nodeIds, urls);
       logger.info(`Updated ${rows.length} collections.`);
     } else {
       logger.info(
@@ -95,10 +98,18 @@ makeScript({}, async ({ execute }, logger) => {
   const coreSequelize = getCorePrimaryDbConnection();
   const connectorsSequelize = getConnectorsReplicaDbConnection();
 
-  await backfillCollections(
-    coreSequelize,
-    connectorsSequelize,
-    execute,
-    logger
-  );
+  // No need for pagination, only 33 of them
+  const frontDataSources = await DataSourceModel.findAll({
+    where: { connectorProvider: "intercom" },
+  });
+  logger.info(`Found ${frontDataSources.length} Intercom data sources`);
+  for (const frontDataSource of frontDataSources) {
+    await backfillCollections(
+      coreSequelize,
+      connectorsSequelize,
+      frontDataSource,
+      execute,
+      logger
+    );
+  }
 });
