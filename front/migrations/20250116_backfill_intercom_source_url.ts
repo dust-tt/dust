@@ -136,7 +136,9 @@ makeScript({}, async ({ execute }, logger) => {
     );
 
     if (coreDataSourceId === null) {
-      continue;
+      throw new Error(
+        `Data source ${frontDataSource.id} not found in core, skipping`
+      );
     }
 
     await backfillCollections(
