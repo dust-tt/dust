@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { groupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
-import { spaceFactory } from "@app/tests/utils/SpaceFactory";
 import {
   createPublicApiAuthenticationTests,
   createPublicApiMockRequest,
+} from "@app/tests/utils/generic_public_api_tests";
+import { groupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
+import { spaceFactory } from "@app/tests/utils/SpaceFactory";
+import {
   expectArrayOfObjectsWithSpecificLength,
   withinTransaction,
 } from "@app/tests/utils/utils";

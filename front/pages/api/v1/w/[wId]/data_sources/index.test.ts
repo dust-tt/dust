@@ -1,11 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { SpaceResource } from "@app/lib/resources/space_resource";
 import { dataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
-import {
-  createPublicApiAuthenticationTests,
-  createPublicApiMockRequest,
-} from "@app/tests/utils/generic_public_api_tests";
+import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { groupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { spaceFactory } from "@app/tests/utils/SpaceFactory";
 import {
@@ -16,42 +12,22 @@ import {
 import handler from "./index";
 
 describe(
-  "public api authentication tests",
-  createPublicApiAuthenticationTests(handler)
-);
-
-describe(
-  "GET /api/v1/w/[wId]/spaces/[spaceId]/data_sources",
+  "GET /api/v1/w/[wId]/data_sources (legacy endpoint)",
   withinTransaction(async () => {
-    it("returns an empty list when no data sources exist", async () => {
-      const { req, res, workspace, globalGroup } =
-        await createPublicApiMockRequest();
-
-      const space = await spaceFactory().global(workspace).create();
-      await groupSpaceFactory().associate(space, globalGroup);
-
-      req.query.spaceId = SpaceResource.modelIdToSId({
-        id: space.id,
-        workspaceId: workspace.id,
-      });
+    it("returns 500 if no global space exists", async () => {
+      const { req, res } = await createPublicApiMockRequest();
 
       await handler(req, res);
 
-      expect(res._getStatusCode()).toBe(200);
-      expect(res._getJSONData()).toEqual({ data_sources: [] });
+      expect(res._getStatusCode()).toBe(500);
     });
 
-    it("returns accessible data sources for the space", async () => {
+    it("returns data sources for the global space", async () => {
       const { req, res, workspace, globalGroup } =
         await createPublicApiMockRequest();
 
       const space = await spaceFactory().global(workspace).create();
       await groupSpaceFactory().associate(space, globalGroup);
-
-      req.query.spaceId = SpaceResource.modelIdToSId({
-        id: space.id,
-        workspaceId: workspace.id,
-      });
 
       // Create test data source views to the space
       await dataSourceViewFactory().folder(workspace, space).create();

@@ -50,13 +50,6 @@ jobs:
         working-directory: core
         run: cargo fmt --all -- --check
 
-      # Add this before your build steps
-      - name: Install dependencies
-        if: ${{ !github.event.act }} # skip during local actions testing
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y cmake
-
       - name: Setup Tables
         working-directory: core
         run: cargo run --bin init_db

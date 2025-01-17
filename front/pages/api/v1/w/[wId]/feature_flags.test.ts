@@ -6,8 +6,8 @@ import {
   createPublicApiAuthenticationTests,
   createPublicApiMockRequest,
   createPublicApiSystemOnlyAuthenticationTests,
-  withinTransaction,
-} from "@app/tests/utils/utils";
+} from "@app/tests/utils/generic_public_api_tests";
+import { withinTransaction } from "@app/tests/utils/utils";
 import { workspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 
 describe(
