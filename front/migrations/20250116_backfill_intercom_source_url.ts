@@ -39,7 +39,7 @@ async function updateNodes(
 async function backfillCollections(
   coreSequelize: Sequelize,
   connectorsSequelize: Sequelize,
-  dataSource: DataSourceModel,
+  dataSourceId: number,
   execute: boolean,
   logger: typeof Logger
 ) {
@@ -84,7 +84,7 @@ async function backfillCollections(
       );
     });
     if (execute) {
-      await updateNodes(coreSequelize, dataSource.id, nodeIds, urls);
+      await updateNodes(coreSequelize, dataSourceId, nodeIds, urls);
       logger.info(`Updated ${rows.length} collections.`);
     } else {
       logger.info(
@@ -92,6 +92,28 @@ async function backfillCollections(
       );
     }
   } while (updatedRowsCount === BATCH_SIZE);
+}
+
+async function getCoreDataSourceId(
+  frontDataSource: DataSourceModel,
+  coreSequelize: Sequelize,
+  logger: typeof Logger
+) {
+  // get datasource id from core
+  const rows: { id: number }[] = await coreSequelize.query(
+    `SELECT id FROM data_sources WHERE data_source_id = :dataSourceId;`,
+    {
+      replacements: { dataSourceId: frontDataSource.dustAPIDataSourceId },
+      type: QueryTypes.SELECT,
+    }
+  );
+
+  if (rows.length === 0) {
+    logger.error(`Data source ${frontDataSource.id} not found in core`);
+    return null;
+  }
+
+  return rows[0].id;
 }
 
 makeScript({}, async ({ execute }, logger) => {
@@ -102,12 +124,23 @@ makeScript({}, async ({ execute }, logger) => {
   const frontDataSources = await DataSourceModel.findAll({
     where: { connectorProvider: "intercom" },
   });
+
   logger.info(`Found ${frontDataSources.length} Intercom data sources`);
   for (const frontDataSource of frontDataSources) {
+    const coreDataSourceId = await getCoreDataSourceId(
+      frontDataSource,
+      coreSequelize,
+      logger
+    );
+
+    if (coreDataSourceId === null) {
+      continue;
+    }
+
     await backfillCollections(
       coreSequelize,
       connectorsSequelize,
-      frontDataSource,
+      coreDataSourceId,
       execute,
       logger
     );
