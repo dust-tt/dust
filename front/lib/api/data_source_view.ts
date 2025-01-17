@@ -241,7 +241,7 @@ async function getContentNodesForDataSourceViewFromCore(
 
   return new Ok({
     nodes: filteredNodes.map((node) => {
-      const { type } = getContentNodeMetadata(node, viewType);
+      const { type } = getContentNodeMetadata(node);
       return {
         internalId: node.node_id,
         parentInternalId: node.parent_id ?? null,
