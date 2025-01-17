@@ -62,6 +62,7 @@ import { useAgentConfigurationHistory } from "@app/lib/swr/assistants";
 import { useModels } from "@app/lib/swr/models";
 import { classNames } from "@app/lib/utils";
 import { debounce } from "@app/lib/utils/debounce";
+import { useUser } from "@app/lib/swr/user";
 
 export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
 
@@ -129,6 +130,16 @@ export function InstructionScreen({
   setDoTypewriterEffect: (doTypewriterEffect: boolean) => void;
   agentConfigurationId: string | null;
 }) {
+  const { user } = useUser();
+
+  useEffect(() => {
+    window.gtag("event", "panelNavigated", {
+      event_category: "assistantBuilder",
+      event_label: "assistantInstructionsPanel",
+      user_sid: user?.sId,
+    });
+  }, []);
+
   const editor = useEditor({
     extensions: [
       Document,
@@ -152,6 +163,12 @@ export function InstructionScreen({
           ...state,
           instructions: plainText,
         }));
+
+        window.gtag("event", "assistantInstructionsEdited", {
+          event_category: "assistantBuilder",
+          event_label: "assistantInstructionsPanel",
+          user_id: user?.sId,
+        });
       }
     },
   });

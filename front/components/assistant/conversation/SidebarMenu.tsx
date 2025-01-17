@@ -37,6 +37,7 @@ import {
   useDeleteConversation,
 } from "@app/lib/swr/conversations";
 import { classNames, removeDiacritics, subFilter } from "@app/lib/utils";
+import { useUser } from "@app/lib/swr/user";
 
 type AssistantSidebarMenuProps = {
   owner: WorkspaceType;
@@ -52,6 +53,7 @@ type GroupLabel =
 
 export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
   const router = useRouter();
+  const { user } = useUser();
   const { conversationsNavigationRef } = useConversationsNavigation();
 
   const { setSidebarOpen } = useContext(SidebarContext);
@@ -254,6 +256,14 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                       label="Create new assistant"
                       href={`/w/${owner.sId}/builder/assistants/create`}
                       icon={PlusIcon}
+                      onClick={() => {
+                        window.gtag("event", "assistantCreationButtonClicked", {
+                          event_category: "engagement",
+                          event_label: "sidebarMenu",
+                          user_sid: user?.sId,
+                          workspace_id: owner.sId,
+                        });
+                      }}
                     />
                     {isBuilder(owner) && (
                       <DropdownMenuItem

@@ -12,6 +12,7 @@ import Link from "next/link";
 import { ReadOnlyTextArea } from "@app/components/assistant/ReadOnlyTextArea";
 import type { BuilderFlow } from "@app/components/assistant_builder/types";
 import { useAssistantTemplate } from "@app/lib/swr/assistants";
+import { useUser } from "@app/lib/swr/user";
 
 interface AssistantTemplateModalProps {
   flow: BuilderFlow;
@@ -26,6 +27,7 @@ export function AssistantTemplateModal({
   owner,
   templateId,
 }: AssistantTemplateModalProps) {
+  const { user } = useUser();
   const { assistantTemplate, isAssistantTemplateLoading } =
     useAssistantTemplate({
       templateId,
@@ -62,7 +64,22 @@ export function AssistantTemplateModal({
               <Link
                 href={`/w/${owner.sId}/builder/assistants/new?flow=${flow}&templateId=${sId}`}
               >
-                <Button label="Use this template" variant="primary" size="sm" />
+                <Button
+                  label="Use this template"
+                  variant="primary"
+                  size="sm"
+                  onClick={() => {
+                    window.gtag("event", "useTemplateButtonClicked", {
+                      event_category: "assistantBuilder",
+                      event_label: "templateModal",
+                      template_id: sId,
+                      template_handle: handle,
+                      user_sid: user?.sId,
+                      workspace_id: owner.sId,
+                      flow: flow,
+                    });
+                  }}
+                />
               </Link>
             </div>
           </div>

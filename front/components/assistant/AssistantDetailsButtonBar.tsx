@@ -97,6 +97,13 @@ export function AssistantDetailsButtonBar({
                   label="Duplicate (New)"
                   icon={ClipboardIcon}
                   onClick={async (e) => {
+                    window.gtag("event", "assistantDuplicationButtonClicked", {
+                      event_category: "engagement",
+                      event_label: "assistantDetails",
+                      assistant_name: agentConfiguration.name,
+                      assistant_id: agentConfiguration.sId,
+                      user_sid: user?.sId,
+                    });
                     await router.push(
                       `/w/${owner.sId}/builder/assistants/new?flow=personal_assistants&duplicate=${agentConfiguration.sId}`
                     );

@@ -76,6 +76,7 @@ import {
   isDefaultActionName,
 } from "@app/components/assistant_builder/types";
 import { ACTION_SPECIFICATIONS } from "@app/lib/api/assistant/actions/utils";
+import { useUser } from "@app/lib/swr/user";
 
 const DATA_SOURCES_ACTION_CATEGORIES = [
   "RETRIEVAL_SEARCH",
@@ -156,6 +157,16 @@ export default function ActionsScreen({
   setAction,
   pendingAction,
 }: ActionScreenProps) {
+  const { user } = useUser();
+
+  useEffect(() => {
+    window.gtag("event", "panelNavigated", {
+      event_category: "assistantBuilder",
+      event_label: "assistantToolsPanel",
+      user_sid: user?.sId,
+    });
+  }, []);
+
   const { spaces } = useContext(AssistantBuilderContext);
 
   const configurableActions = builderState.actions.filter(
@@ -360,6 +371,12 @@ export default function ActionsScreen({
               <div>
                 <AddAction
                   onAddAction={(action) => {
+                    window.gtag("event", "toolAdded", {
+                      event_category: "assistantBuilder",
+                      event_label: "toolsPanel",
+                      tool_type: action.type,
+                      user_sid: user?.sId,
+                    });
                     setAction({
                       type: action.noConfigurationRequired
                         ? "insert"

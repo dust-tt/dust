@@ -28,6 +28,7 @@ import AppLayout, { appLayoutBack } from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAssistantTemplates } from "@app/lib/swr/assistants";
+import { useUser } from "@app/lib/swr/user";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   flow: BuilderFlow;
@@ -67,6 +68,7 @@ export default function CreateAssistant({
   templateTagsMapping,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
+  const { user } = useUser();
 
   const [templateSearchTerm, setTemplateSearchTerm] = useState<string | null>(
     null
@@ -212,6 +214,15 @@ export default function CreateAssistant({
                   label="New Assistant"
                   size="md"
                   variant="highlight"
+                  onClick={() => {
+                    window.gtag("event", "newAssistantCreationButtonClicked", {
+                      event_category: "engagement",
+                      event_label: "assistantCreationPage",
+                      user_sid: user?.sId,
+                      workspace_id: owner.sId,
+                      flow: flow,
+                    });
+                  }}
                 />
               </Link>
             </div>

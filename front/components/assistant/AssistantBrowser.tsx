@@ -28,6 +28,7 @@ import React, { useMemo, useState } from "react";
 
 import { subFilter } from "@app/lib/utils";
 import { setQueryParam } from "@app/lib/utils/router";
+import { useUser } from "@app/lib/swr/user";
 
 function isValidTab(tab: string, visibleTabs: TabId[]): tab is TabId {
   return visibleTabs.includes(tab as TabId);
@@ -72,6 +73,7 @@ export function AssistantBrowser({
   );
 
   const router = useRouter();
+  const { user } = useUser();
 
   const agentsByTab = useMemo(() => {
     const filteredAgents: LightAgentConfigurationType[] = agents
@@ -155,6 +157,14 @@ export function AssistantBrowser({
               icon={PlusIcon}
               label="Create"
               size="sm"
+              onClick={() => {
+                // Track button click with Google Analytics including user ID
+                window.gtag("event", "assistantCreationButtonClicked", {
+                  event_category: "engagement",
+                  event_label: "homepage",
+                  user_sid: user?.sId,
+                });
+              }}
             />
 
             {isBuilder && (
@@ -165,6 +175,14 @@ export function AssistantBrowser({
                 icon={RobotIcon}
                 label="Manage"
                 size="sm"
+                onClick={() => {
+                  // Track button click with Google Analytics including user ID
+                  window.gtag("event", "assistantManagementButtonClicked", {
+                    event_category: "engagement",
+                    event_label: "homepage",
+                    user_sid: user?.sId,
+                  });
+                }}
               />
             )}
           </div>

@@ -37,6 +37,7 @@ import {
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import { ConfirmContext } from "@app/components/Confirm";
 import { debounce } from "@app/lib/utils/debounce";
+import { useUser } from "@app/lib/swr/user";
 
 export function removeLeadingAt(handle: string) {
   return handle.startsWith("@") ? handle.slice(1) : handle;
@@ -147,6 +148,15 @@ export default function NamingScreen({
   assistantHandleError: string | null;
   descriptionError: string | null;
 }) {
+  const { user } = useUser();
+
+  useEffect(() => {
+    window.gtag("event", "panelNavigated", {
+      event_category: "assistantBuilder",
+      event_label: "assistantNamingPanel",
+      user_sid: user?.sId,
+    });
+  }, []);
   const confirm = useContext(ConfirmContext);
   const sendNotification = useSendNotification();
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
@@ -389,6 +399,12 @@ export default function NamingScreen({
                     ...state,
                     handle: e.target.value.trim(),
                   }));
+
+                  window.gtag("event", "assistantNameEdited", {
+                    event_category: "assistantBuilder",
+                    event_label: "assistantNamingPanel",
+                    user_sid: user?.sId,
+                  });
                 }}
                 name="assistantName"
                 className="text-sm"
@@ -436,6 +452,11 @@ export default function NamingScreen({
                     ...state,
                     description: e.target.value,
                   }));
+                  window.gtag("event", "assistantDescriptionEdited", {
+                    event_category: "assistantBuilder",
+                    event_label: "assistantNamingPanel",
+                    user_sid: user?.sId,
+                  });
                 }}
                 name="assistantDescription"
                 message={descriptionError}
