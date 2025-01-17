@@ -139,13 +139,14 @@ impl TryFrom<&OpenAIToolCall> for ChatFunctionCall {
     type Error = anyhow::Error;
 
     fn try_from(tc: &OpenAIToolCall) -> Result<Self, Self::Error> {
+        // Some providers don't provide a function call ID (eg google_ai_studio)
         let id = tc
             .id
-            .as_ref()
-            .ok_or_else(|| anyhow!("Missing tool call id."))?;
+            .clone()
+            .unwrap_or(format!("fc_{}", utils::new_id()[0..9].to_string()));
 
         Ok(ChatFunctionCall {
-            id: id.clone(),
+            id,
             name: tc.function.name.clone(),
             arguments: tc.function.arguments.clone(),
         })
@@ -248,6 +249,7 @@ pub enum OpenAIChatMessageContent {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct OpenAIChatMessage {
     pub role: OpenAIChatMessageRole,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub content: Option<OpenAIChatMessageContent>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
@@ -310,7 +312,7 @@ pub struct OpenAIChatChoice {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct OpenAIChatCompletion {
-    pub id: String,
+    pub id: Option<String>,
     pub object: String,
     pub created: u64,
     pub choices: Vec<OpenAIChatChoice>,
@@ -489,7 +491,7 @@ pub struct ChatDelta {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ChatChunk {
-    pub id: String,
+    pub id: Option<String>,
     pub object: String,
     pub created: u64,
     pub model: String,
@@ -665,14 +667,8 @@ pub async fn openai_compatible_chat_completion(
             n,
             stop,
             max_tokens,
-            match presence_penalty {
-                Some(p) => p,
-                None => 0.0,
-            },
-            match frequency_penalty {
-                Some(f) => f,
-                None => 0.0,
-            },
+            presence_penalty,
+            frequency_penalty,
             response_format,
             reasoning_effort,
             logprobs,
@@ -699,14 +695,8 @@ pub async fn openai_compatible_chat_completion(
             n,
             stop,
             max_tokens,
-            match presence_penalty {
-                Some(p) => p,
-                None => 0.0,
-            },
-            match frequency_penalty {
-                Some(f) => f,
-                None => 0.0,
-            },
+            presence_penalty,
+            frequency_penalty,
             response_format,
             reasoning_effort,
             logprobs,
@@ -876,8 +866,8 @@ async fn streamed_chat_completion(
     n: usize,
     stop: &Vec<String>,
     max_tokens: Option<i32>,
-    presence_penalty: f32,
-    frequency_penalty: f32,
+    presence_penalty: Option<f32>,
+    frequency_penalty: Option<f32>,
     response_format: Option<String>,
     reasoning_effort: Option<String>,
     logprobs: Option<bool>,
@@ -944,11 +934,15 @@ async fn streamed_chat_completion(
         "temperature": temperature,
         "top_p": top_p,
         "n": n,
-        "presence_penalty": presence_penalty,
-        "frequency_penalty": frequency_penalty,
         "stream": true,
         "stream_options": HashMap::from([("include_usage", true)]),
     });
+    if let Some(presence_penalty) = presence_penalty {
+        body["presence_penalty"] = json!(presence_penalty);
+    }
+    if let Some(frequency_penalty) = frequency_penalty {
+        body["frequency_penalty"] = json!(frequency_penalty);
+    }
     if user.is_some() {
         body["user"] = json!(user);
     }
@@ -1289,18 +1283,22 @@ async fn streamed_chat_completion(
                             tool_call.get("id").and_then(|v| v.as_str()),
                             tool_call.get("function"),
                         ) {
-                            (Some("function"), Some(id), Some(f)) => {
+                            (Some("function"), id, Some(f)) => {
                                 if let Some(Value::String(name)) = f.get("name") {
                                     c.choices[j]
                                         .message
                                         .tool_calls
                                         .get_or_insert_with(Vec::new)
                                         .push(OpenAIToolCall {
-                                            id: Some(id.to_string()),
+                                            // Set None if id is empty
+                                            id: id.filter(|s| !s.is_empty()).map(|s| s.to_string()),
                                             r#type: OpenAIToolType::Function,
                                             function: OpenAIToolCallFunction {
                                                 name: name.clone(),
-                                                arguments: String::new(),
+                                                arguments: match f.get("arguments") {
+                                                    Some(Value::String(a)) => a.clone(),
+                                                    _ => String::new(),
+                                                },
                                             },
                                         });
                                 }
@@ -1366,8 +1364,8 @@ async fn chat_completion(
     n: usize,
     stop: &Vec<String>,
     max_tokens: Option<i32>,
-    presence_penalty: f32,
-    frequency_penalty: f32,
+    presence_penalty: Option<f32>,
+    frequency_penalty: Option<f32>,
     response_format: Option<String>,
     reasoning_effort: Option<String>,
     logprobs: Option<bool>,
@@ -1380,9 +1378,13 @@ async fn chat_completion(
         "temperature": temperature,
         "top_p": top_p,
         "n": n,
-        "presence_penalty": presence_penalty,
-        "frequency_penalty": frequency_penalty,
     });
+    if let Some(presence_penalty) = presence_penalty {
+        body["presence_penalty"] = json!(presence_penalty);
+    }
+    if let Some(frequency_penalty) = frequency_penalty {
+        body["frequency_penalty"] = json!(frequency_penalty);
+    }
     if user.is_some() {
         body["user"] = json!(user);
     }
