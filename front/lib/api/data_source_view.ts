@@ -255,6 +255,7 @@ async function getContentNodesForDataSourceViewFromCore(
         expandable:
           !NON_EXPANDABLE_NODES_MIME_TYPES.includes(node.mime_type) &&
           node.has_children,
+        mimeType: node.mime_type,
       };
     }),
     total: coreRes.value.nodes.length,
