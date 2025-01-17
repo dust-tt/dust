@@ -14,7 +14,7 @@ export type Action = {
 
 export type ActionRegistry = Record<DustRegistryActionName, Action>;
 
-const BaseDustProdActionRegistry = {
+export const BaseDustProdActionRegistry = {
   "assistant-v2-multi-actions-agent": {
     app: {
       appId: "0e9889c787",
