@@ -7,7 +7,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  LightbulbIcon,
   MagicIcon,
   Markdown,
   MoreIcon,
@@ -192,7 +191,7 @@ export default function AssistantBuilderRightPanel({
           template &&
           screen === "instructions" && (
             <div className="mb-72 flex flex-col gap-4">
-              <div className="flex items-end justify-between pt-2">
+              <div className="flex items-end justify-end justify-between pt-2">
                 <TemplateDropDownMenu
                   screen={screen}
                   removeTemplate={removeTemplate}
@@ -210,11 +209,7 @@ export default function AssistantBuilderRightPanel({
           template &&
           screen === "actions" && (
             <div className="mb-72 flex flex-col gap-4">
-              <div className="flex items-end justify-between pt-2">
-                <Page.Header
-                  icon={LightbulbIcon}
-                  title={"Template's Tools manual"}
-                />
+              <div className="flex items-end justify-end justify-between pt-2">
                 <TemplateDropDownMenu
                   screen={screen}
                   removeTemplate={removeTemplate}
