@@ -110,6 +110,7 @@ export default handleAuth({
       LoginOptions["authorizationParams"]
     > = {
       scope: "openid profile email",
+      max_age: 0,
     };
 
     // Set the Auth0 connection based on the provided connection param, redirecting the user to the correct screen.
