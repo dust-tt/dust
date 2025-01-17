@@ -180,6 +180,7 @@ async function getContentNodesForDataSourceViewFromCore(
       node_ids: internalIds ?? dataSourceView.parentsIn ?? undefined,
       parent_id: parentId,
     },
+    options: { limit: 250 },
   });
 
   if (coreRes.isErr()) {
