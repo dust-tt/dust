@@ -74,23 +74,23 @@ export const Hero: HeroProps = {
   description: pageSettings.description,
   visuals: [
     {
-      src: "/static/landing/support/support1.png",
-      alt: "Support Visual 1",
+      src: "/static/landing/sales/sales1.png",
+      alt: "Sales Visual 1",
       depth: -30,
     },
     {
-      src: "/static/landing/support/support2.png",
-      alt: "Support Visual 2",
+      src: "/static/landing/sales/sales2.png",
+      alt: "Sales Visual 2",
       depth: -10,
     },
     {
-      src: "/static/landing/support/support3.png",
-      alt: "Support Visual 3",
+      src: "/static/landing/sales/sales3.png",
+      alt: "Sales Visual 3",
       depth: 20,
     },
     {
-      src: "/static/landing/support/support4.png",
-      alt: "Support Visual 4",
+      src: "/static/landing/sales/sales4.png",
+      alt: "Sales Visual 4",
       depth: 50,
     },
   ],
@@ -112,20 +112,20 @@ export const Benefits: BenefitsProps = {
   items: [
     {
       icon: MagicIcon,
-      title: "Focus on Selling",
+      title: "Focus on selling",
       description:
         "Maximizing time spent selling, rather than finding, copying or pasting.",
     },
     {
       icon: CheckCircleIcon,
-      title: "Raise the Odds of Closing",
+      title: "Raise the odds of closing",
       description:
         "Instantly uncover relevant information about your product and prospects",
     },
 
     {
       icon: UserGroupIcon,
-      title: "Boost Team Performance",
+      title: "Boost team performance",
       description:
         "Give your salespeople actionable feedback from their interactions.",
     },
@@ -155,27 +155,27 @@ export const UseCases: UseCaseProps = {
     "Customize and automate tasks without writing a single line of code.",
   items: [
     {
-      title: "Account Snapshot",
+      title: "Account snapshot",
       content:
         "Create account summaries with key historical interactions, wherever they live.",
       images: ["/static/landing/solutions/sales1.png"],
     },
     {
-      title: "Meeting Recaps",
+      title: "Meeting recaps",
       content:
         "Expedite recaps from meetings or calls, tailoring them to your specific needs.",
       images: ["/static/landing/solutions/sales2.png"],
     },
     {
-      title: "Prospect Questions",
+      title: "Prospect questions",
       content:
         "Address questions or RFPs instantly with concise, up-to-date information.",
       images: ["/static/landing/solutions/sales3.png"],
     },
     {
-      title: "Sales Coaching",
+      title: "Sales coaching",
       content:
-        "Identify patterns from sales calls to coach your sales team and understand where deals fail.",
+        "Parse call transcripts to coach salespeople on their pitch and understand where deals fail.",
       images: ["/static/landing/solutions/sales4.png"],
     },
   ],

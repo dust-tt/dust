@@ -50,14 +50,16 @@ export const BenefitsSection: FC<BenefitsSectionProps> = ({
         {benefits.items.map((benefit, index) => (
           <ImgBlock
             key={index}
-            title={<>{benefit.title}</>}
+            title={
+              <div className="text-center md:text-left">{benefit.title}</div>
+            }
             content={<>{benefit.description}</>}
-            className="h-full flex-1"
+            className="h-full flex-1 text-center md:text-left"
           >
             <Hover3D
               depth={-20}
               perspective={1000}
-              className="justify-left relative flex h-8 items-center"
+              className="relative flex h-8 items-center justify-center sm:justify-start"
             >
               <Avatar
                 size="xl"

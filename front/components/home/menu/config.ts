@@ -86,6 +86,14 @@ const SolutionsMenuConfig: MenuConfig = {
       href: "/home/solutions/customer-support",
     },
     {
+      title: "Sales",
+      href: "/home/solutions/sales",
+    },
+    {
+      title: "Engineering",
+      href: "/home/solutions/engineering",
+    },
+    {
       title: "Marketing & Content",
       href: "/home/solutions/marketing",
     },
@@ -94,16 +102,8 @@ const SolutionsMenuConfig: MenuConfig = {
       href: "/home/solutions/recruiting-people",
     },
     {
-      title: "Engineering",
-      href: "/home/solutions/engineering",
-    },
-    {
       title: "Data & Analytics",
       href: "/home/solutions/data-analytics",
-    },
-    {
-      title: "Sales",
-      href: "/home/solutions/sales",
     },
     {
       title: "Knowledge Management",
