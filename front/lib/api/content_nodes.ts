@@ -1,6 +1,7 @@
 import type {
   ContentNodeType,
   CoreAPIContentNode,
+  DataSourceViewContentNode,
   DataSourceViewType,
 } from "@dust-tt/types";
 import {
@@ -12,6 +13,7 @@ import {
 } from "@dust-tt/types";
 
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import type logger from "@app/logger/logger";
 
 export function getContentNodeInternalIdFromTableId(
   dataSourceView: DataSourceViewResource | DataSourceViewType,
@@ -47,6 +49,57 @@ export function getContentNodeInternalIdFromTableId(
     default:
       assertNever(dataSource.connectorProvider);
   }
+}
+
+export function computeNodesDiff({
+  connectorsContentNodes,
+  coreContentNodes,
+  localLogger,
+}: {
+  connectorsContentNodes: DataSourceViewContentNode[];
+  coreContentNodes: DataSourceViewContentNode[];
+  localLogger: typeof logger;
+}) {
+  connectorsContentNodes.forEach((connectorsNode) => {
+    const coreNodes = coreContentNodes.filter(
+      (coreNode) => coreNode.internalId === connectorsNode.internalId
+    );
+    if (coreNodes.length !== 1) {
+      localLogger.info(
+        {
+          internalId: connectorsNode.internalId,
+          coreNodesId: coreNodes.map((n) => n.internalId),
+        },
+        "[CoreNodes] Invalid match"
+      );
+    } else {
+      const coreNode = coreNodes[0];
+      const diff = Object.fromEntries(
+        Object.entries(connectorsNode)
+          .filter(
+            ([key, value]) =>
+              value !== coreNode[key as keyof DataSourceViewContentNode]
+          )
+          .map(([key, value]) => [
+            key,
+            {
+              connectors: value,
+              core: coreNode[key as keyof DataSourceViewContentNode],
+            },
+          ])
+      );
+
+      if (Object.keys(diff).length > 0) {
+        localLogger.info(
+          {
+            internalId: connectorsNode.internalId,
+            diff,
+          },
+          "[CoreNodes] Node mismatch"
+        );
+      }
+    }
+  });
 }
 
 export function getContentNodeMetadata(

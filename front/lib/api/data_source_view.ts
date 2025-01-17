@@ -12,6 +12,7 @@ import assert from "assert";
 
 import config from "@app/lib/api/config";
 import {
+  computeNodesDiff,
   getContentNodeInternalIdFromTableId,
   getContentNodeMetadata,
 } from "@app/lib/api/content_nodes";
@@ -343,6 +344,41 @@ export async function getContentNodesForDataSourceView(
     }
 
     contentNodesResult = contentNodesRes.value;
+
+    const localLogger = logger.child({
+      dataSourceId: dataSourceView.dataSource.sId,
+      dataSourceViewId: dataSourceView.sId,
+      provider: dataSourceView.dataSource.connectorProvider,
+    });
+
+    // shadow read from core
+    const coreContentNodesRes =
+      await getContentNodesForManagedDataSourceViewFromCore(
+        dataSourceView,
+        params
+      );
+
+    if (contentNodesRes.isErr()) {
+      localLogger.info(
+        { error: contentNodesRes.error },
+        "[CoreNodes] Could not fetch content nodes from core"
+      );
+    } else if (coreContentNodesRes.isOk()) {
+      if (coreContentNodesRes.value.total !== contentNodesResult.total) {
+        localLogger.info(
+          {
+            coreNodesCount: coreContentNodesRes.value.total,
+            connectorsNodesCount: contentNodesResult.total,
+          },
+          "[CoreNodes] Content nodes count mismatch"
+        );
+      }
+      computeNodesDiff({
+        connectorsContentNodes: contentNodesResult.nodes,
+        coreContentNodes: coreContentNodesRes.value.nodes,
+        localLogger,
+      });
+    }
   } else {
     const contentNodesRes = await getContentNodesForStaticDataSourceView(
       dataSourceView,
