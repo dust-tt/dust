@@ -34,6 +34,7 @@ export type MicrosoftNode = {
   internalId: string;
   parentInternalId: string | null;
   mimeType: string | null;
+  webUrl: string | null;
 };
 
 export function isMicrosoftDriveItem(obj: unknown): obj is DriveItem {
