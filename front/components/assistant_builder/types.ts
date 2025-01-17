@@ -10,6 +10,7 @@ import type {
   TimeframeUnit,
   WorkspaceType,
 } from "@dust-tt/types";
+import { DEFAULT_MAX_STEPS_USE_PER_RUN } from "@dust-tt/types";
 import {
   assertNever,
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
@@ -220,7 +221,7 @@ export function getDefaultAssistantState() {
       },
       temperature: 0.7,
     },
-    maxStepsPerRun: 3,
+    maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,
     templateId: null,
   } satisfies AssistantBuilderState;

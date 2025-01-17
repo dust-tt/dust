@@ -20,6 +20,7 @@ import {
   CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
   DEEPSEEK_CHAT_MODEL_CONFIG,
+  DEFAULT_MAX_STEPS_USE_PER_RUN,
   GEMINI_PRO_DEFAULT_MODEL_CONFIG,
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
@@ -209,7 +210,7 @@ function _getHelperGlobalAgent({
         agentSid: GLOBAL_AGENTS_SID.HELPER,
       }),
     ],
-    maxStepsPerRun: 3,
+    maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,
     templateId: null,
     // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
@@ -247,7 +248,7 @@ function _getGPT35TurboGlobalAgent({
         agentSid: GLOBAL_AGENTS_SID.GPT35_TURBO,
       }),
     ],
-    maxStepsPerRun: 3,
+    maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,
     templateId: null,
     // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
@@ -294,7 +295,7 @@ function _getGPT4GlobalAgent({
         agentSid: GLOBAL_AGENTS_SID.GPT4,
       }),
     ],
-    maxStepsPerRun: 3,
+    maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,
     templateId: null,
     // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
@@ -333,7 +334,7 @@ function _getO1GlobalAgent({
       temperature: 1, // 1 is forced for O1
     },
     actions: [],
-    maxStepsPerRun: 3,
+    maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: false,
     templateId: null,
     // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
@@ -372,7 +373,7 @@ function _getO1MiniGlobalAgent({
       temperature: 1, // 1 is forced for O1
     },
     actions: [],
-    maxStepsPerRun: 3,
+    maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: false,
     templateId: null,
     // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
@@ -413,7 +414,7 @@ function _getO1HighReasoningGlobalAgent({
       reasoningEffort: O1_HIGH_REASONING_MODEL_CONFIG.reasoningEffort,
     },
     actions: [],
-    maxStepsPerRun: 3,
+    maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: false,
     templateId: null,
     // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
@@ -447,7 +448,7 @@ function _getClaudeInstantGlobalAgent({
       temperature: 0.7,
     },
     actions: [],
-    maxStepsPerRun: 3,
+    maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,
     templateId: null,
     // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
@@ -488,7 +489,7 @@ function _getClaude2GlobalAgent({
     },
 
     actions: [],
-    maxStepsPerRun: 3,
+    maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,
     templateId: null,
     // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
@@ -523,7 +524,7 @@ function _getClaude3HaikuGlobalAgent({
       temperature: 0.7,
     },
     actions: [],
-    maxStepsPerRun: 3,
+    maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,
     templateId: null,
     // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
@@ -563,7 +564,7 @@ function _getClaude3OpusGlobalAgent({
       temperature: 0.7,
     },
     actions: [],
-    maxStepsPerRun: 3,
+    maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,
     templateId: null,
     // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
@@ -607,7 +608,7 @@ function _getClaude3GlobalAgent({
     },
 
     actions: [],
-    maxStepsPerRun: 3,
+    maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,
     templateId: null,
     // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
@@ -651,7 +652,7 @@ function _getMistralLargeGlobalAgent({
         agentSid: GLOBAL_AGENTS_SID.MISTRAL_LARGE,
       }),
     ],
-    maxStepsPerRun: 3,
+    maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,
     templateId: null,
     // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
@@ -695,7 +696,7 @@ function _getMistralMediumGlobalAgent({
         agentSid: GLOBAL_AGENTS_SID.MISTRAL_MEDIUM,
       }),
     ],
-    maxStepsPerRun: 3,
+    maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,
     templateId: null,
     // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
@@ -733,7 +734,7 @@ function _getMistralSmallGlobalAgent({
         agentSid: GLOBAL_AGENTS_SID.MISTRAL_SMALL,
       }),
     ],
-    maxStepsPerRun: 3,
+    maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,
     templateId: null,
     // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
@@ -776,7 +777,7 @@ function _getGeminiProGlobalAgent({
         agentSid: GLOBAL_AGENTS_SID.GEMINI_PRO,
       }),
     ],
-    maxStepsPerRun: 3,
+    maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,
     templateId: null,
     // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
@@ -821,7 +822,7 @@ function _getDeepSeekGlobalAgent({
         agentSid: GLOBAL_AGENTS_SID.DEEPSEEK,
       }),
     ],
-    maxStepsPerRun: 3,
+    maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: false,
     templateId: null,
     // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
@@ -1277,7 +1278,7 @@ function _getDustGlobalAgent(
     userFavorite: false,
     model,
     actions,
-    maxStepsPerRun: 3,
+    maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,
     templateId: null,
     // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
