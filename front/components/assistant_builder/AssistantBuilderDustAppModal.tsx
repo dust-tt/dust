@@ -1,4 +1,11 @@
-import { CommandLineIcon, ContextItem, Icon, Modal, Page, Spinner } from "@dust-tt/sparkle";
+import {
+  CommandLineIcon,
+  ContextItem,
+  Icon,
+  Modal,
+  Page,
+  Spinner,
+} from "@dust-tt/sparkle";
 import type { AppType, LightWorkspaceType, SpaceType } from "@dust-tt/types";
 import { sortBy } from "lodash";
 import { useMemo } from "react";
