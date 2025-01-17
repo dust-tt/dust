@@ -1,5 +1,6 @@
 import {
   Button,
+  cn,
   MenuIcon,
   Sheet,
   SheetContent,
@@ -8,8 +9,8 @@ import {
   SheetTrigger,
 } from "@dust-tt/sparkle";
 import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
-import { Transition } from "@headlessui/react";
-import React, { Fragment, useContext } from "react";
+import React, { useContext } from "react";
+
 import type { SidebarNavigation } from "@app/components/navigation/config";
 import {
   NavigationSidebar,
@@ -56,10 +57,7 @@ export function Navigation({
             />
           </SheetTrigger>
         </div>
-        <SheetContent
-          side="left"
-          className="flex w-full max-w-xs flex-1 border-r border-slate-800 p-0"
-        >
+        <SheetContent side="left" className="flex w-full max-w-xs flex-1 p-0">
           <SheetHeader>
             <SheetTitle className="hidden" />
           </SheetHeader>
@@ -74,15 +72,11 @@ export function Navigation({
       </Sheet>
 
       {/*Desktop sidebar*/}
-      <Transition
-        show={isNavigationBarOpen}
-        as={Fragment}
-        enter="transition-all duration-150 ease-out"
-        enterFrom="flex-none lg:w-0 h-full"
-        enterTo="flex flex-1 lg:w-80"
-        leave="transition-all duration-150 ease-out"
-        leaveFrom="flex flex-1 lg:w-80"
-        leaveTo="flex-none h-full lg:w-0"
+      <div
+        className={cn(
+          "hidden flex-none overflow-hidden transition-[width] duration-150 ease-out lg:flex lg:flex-col",
+          isNavigationBarOpen ? "w-80" : "w-0"
+        )}
       >
         <div className="hidden flex-1 lg:inset-y-0 lg:z-0 lg:flex lg:w-80 lg:flex-col">
           <NavigationSidebar
@@ -93,7 +87,7 @@ export function Navigation({
             {navChildren && navChildren}
           </NavigationSidebar>
         </div>
-      </Transition>
+      </div>
 
       <div
         className={classNames(
