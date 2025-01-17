@@ -228,7 +228,7 @@ export default function WorkspaceAssistants({
                       className={assistantSearch ? disabledTablineClass : ""}
                       onClick={() => !assistantSearch && setSelectedTab(tab.id)}
                       tooltip={
-                        ASSISTANT_MANAGER_TABS.find((tab) => tab.id)
+                        ASSISTANT_MANAGER_TABS.find((t) => t.id === tab.id)
                           ?.description
                       }
                     />
