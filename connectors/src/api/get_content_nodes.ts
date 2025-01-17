@@ -72,7 +72,7 @@ const _getContentNodes = async (
 
   if (contentNodesRes.isErr()) {
     const error = contentNodesRes.error;
-    
+
     // Check for specific error types
     if (error instanceof ExternalOAuthTokenError) {
       return apiError(req, res, {
@@ -86,9 +86,13 @@ const _getContentNodes = async (
 
     // Check error message patterns
     const msg = error.message.toLowerCase();
-    
+
     // Network related errors
-    if (msg.includes("network") || msg.includes("timeout") || msg.includes("connection")) {
+    if (
+      msg.includes("network") ||
+      msg.includes("timeout") ||
+      msg.includes("connection")
+    ) {
       return apiError(req, res, {
         status_code: 503,
         api_error: {
@@ -110,8 +114,12 @@ const _getContentNodes = async (
     }
 
     // Authorization errors
-    if (msg.includes("permission") || msg.includes("unauthorized") || 
-        msg.includes("forbidden") || msg.includes("access denied")) {
+    if (
+      msg.includes("permission") ||
+      msg.includes("unauthorized") ||
+      msg.includes("forbidden") ||
+      msg.includes("access denied")
+    ) {
       return apiError(req, res, {
         status_code: 403,
         api_error: {
@@ -203,9 +211,13 @@ const _getContentNodes = async (
 
       // Check error message patterns
       const msg = error.message.toLowerCase();
-      
+
       // Network related errors
-      if (msg.includes("network") || msg.includes("timeout") || msg.includes("connection")) {
+      if (
+        msg.includes("network") ||
+        msg.includes("timeout") ||
+        msg.includes("connection")
+      ) {
         return apiError(req, res, {
           status_code: 503,
           api_error: {
@@ -227,8 +239,12 @@ const _getContentNodes = async (
       }
 
       // Authorization errors
-      if (msg.includes("permission") || msg.includes("unauthorized") || 
-          msg.includes("forbidden") || msg.includes("access denied")) {
+      if (
+        msg.includes("permission") ||
+        msg.includes("unauthorized") ||
+        msg.includes("forbidden") ||
+        msg.includes("access denied")
+      ) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {
