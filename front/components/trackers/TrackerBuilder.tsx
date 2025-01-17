@@ -30,7 +30,7 @@ import {
 import { capitalize } from "lodash";
 import { LockIcon } from "lucide-react";
 import { useRouter } from "next/router";
-import { useContext, useMemo, useState } from "react";
+import { useCallback, useContext, useMemo, useState } from "react";
 
 import { AdvancedSettings } from "@app/components/assistant_builder/InstructionScreen";
 import { ConfirmContext } from "@app/components/Confirm";
@@ -69,6 +69,20 @@ export const TrackerBuilder = ({
   const [showMaintainedDsModal, setShowMaintainedDsModal] = useState(false);
   const [showWatchedDsModal, setShowWatchedDataSourcesModal] = useState(false);
 
+  const updateTracker = useCallback(
+    (
+      updater: (
+        prev: TrackerConfigurationStateType
+      ) => TrackerConfigurationStateType
+    ) => {
+      setTracker(updater);
+      if (!edited) {
+        setEdited(true);
+      }
+    },
+    [edited]
+  );
+
   const [tracker, setTracker] = useState<TrackerConfigurationStateType>(
     initialTrackerState ?? {
       status: "active",
@@ -98,14 +112,14 @@ export const TrackerBuilder = ({
   const validateForm = () => {
     let hasValidationError = false;
     if (!tracker.name) {
-      setTracker((t) => ({
+      updateTracker((t) => ({
         ...t,
         nameError: "Name is required.",
       }));
       hasValidationError = true;
     }
     if (!tracker.recipients?.length) {
-      setTracker((t) => ({
+      updateTracker((t) => ({
         ...t,
         recipientsError: "At least one recipient is required.",
       }));
@@ -113,7 +127,7 @@ export const TrackerBuilder = ({
     } else {
       const recipients = extractEmails(tracker.recipients);
       if (recipients.map(isEmailValid).includes(false)) {
-        setTracker((t) => ({
+        updateTracker((t) => ({
           ...t,
           recipientsError:
             "Invalid email addresses: " +
@@ -123,7 +137,7 @@ export const TrackerBuilder = ({
       }
     }
     if (!tracker.prompt) {
-      setTracker((t) => ({
+      updateTracker((t) => ({
         ...t,
         promptError: "Prompt is required.",
       }));
@@ -310,7 +324,7 @@ export const TrackerBuilder = ({
         setOpen={(isOpen) => setShowMaintainedDsModal(isOpen)}
         owner={owner}
         onSave={async (dsConfigs) => {
-          setTracker((t) => ({
+          updateTracker((t) => ({
             ...t,
             maintainedDataSources: dsConfigs,
           }));
@@ -328,7 +342,7 @@ export const TrackerBuilder = ({
         setOpen={(isOpen) => setShowWatchedDataSourcesModal(isOpen)}
         owner={owner}
         onSave={async (dsConfigs) => {
-          setTracker((t) => ({
+          updateTracker((t) => ({
             ...t,
             watchedDataSources: dsConfigs,
           }));
@@ -365,7 +379,7 @@ export const TrackerBuilder = ({
                       tracker.status === "active" ? "Deactivate" : "Activate"
                     }
                     onClick={() => {
-                      setTracker((t) => ({
+                      updateTracker((t) => ({
                         ...t,
                         status:
                           tracker.status === "active" ? "inactive" : "active",
@@ -391,7 +405,7 @@ export const TrackerBuilder = ({
                 modelSettings: SupportedModel;
                 temperature: number;
               }) => {
-                setTracker((t) => ({
+                updateTracker((t) => ({
                   ...t,
                   modelId: g.modelSettings.modelId,
                   providerId: g.modelSettings.providerId,
@@ -431,7 +445,7 @@ export const TrackerBuilder = ({
                 label="Name"
                 value={tracker.name || ""}
                 onChange={(e) => {
-                  setTracker((t) => ({
+                  updateTracker((t) => ({
                     ...t,
                     name: e.target.value,
                     nameError: null,
@@ -451,7 +465,7 @@ export const TrackerBuilder = ({
                 label="Description"
                 value={tracker.description || ""}
                 onChange={(e) => {
-                  setTracker((t) => ({
+                  updateTracker((t) => ({
                     ...t,
                     description: e.target.value,
                     descriptionError: null,
@@ -503,7 +517,7 @@ export const TrackerBuilder = ({
                         key={label}
                         label={label}
                         onClick={() => {
-                          setTracker((t) => ({
+                          updateTracker((t) => ({
                             ...t,
                             frequency: value,
                           }));
@@ -523,7 +537,7 @@ export const TrackerBuilder = ({
                 placeholder="Enter email addresses (separate multiple addresses with commas)."
                 value={tracker.recipients}
                 onChange={(e) => {
-                  setTracker((t) => ({
+                  updateTracker((t) => ({
                     ...t,
                     recipients: e.target.value,
                     recipientsError: null,
@@ -548,7 +562,7 @@ export const TrackerBuilder = ({
                   label="Send me a copy of the email"
                   checked={tracker.skipEmptyEmails}
                   onCheckedChange={() => {
-                    setTracker((t) => ({
+                    updateTracker((t) => ({
                       ...t,
                       skipEmptyEmails: !t.skipEmptyEmails,
                     }));
@@ -582,7 +596,7 @@ export const TrackerBuilder = ({
               placeholder="Describe what changes or updates you want to track (be as specific as possible)."
               value={tracker.prompt || ""}
               onChange={(e) => {
-                setTracker((t) => ({
+                updateTracker((t) => ({
                   ...t,
                   prompt: e.target.value,
                   promptError: null,

@@ -23,6 +23,18 @@ import {
   getDisplayNameForDataSource,
 } from "@app/lib/data_sources";
 
+interface DataSourceConfig {
+  dataSourceView: DataSourceViewType;
+  selectedResources: Array<{
+    internalId: string;
+    title: string;
+    type: string;
+    expandable: boolean;
+    sourceUrl?: string;
+  }>;
+  isSelectAll: boolean;
+}
+
 export const TrackerDataSourceSelectedTree = ({
   owner,
   dataSourceConfigurations,
@@ -46,7 +58,7 @@ export const TrackerDataSourceSelectedTree = ({
       />
       <Tree>
         {orderDatasourceViewSelectionConfigurationByImportance(
-          Object.values(dataSourceConfigurations)
+          Object.values(dataSourceConfigurations) as DataSourceConfig[]
         ).map((dsConfig) => {
           const LogoComponent = getConnectorProviderLogoWithFallback(
             dsConfig.dataSourceView.dataSource.connectorProvider,

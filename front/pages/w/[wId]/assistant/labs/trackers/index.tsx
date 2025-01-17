@@ -25,6 +25,7 @@ import React, { useMemo } from "react";
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import AppLayout from "@app/components/sparkle/AppLayout";
+import { ChangeSuggestionsPanel } from "@app/components/trackers";
 import config from "@app/lib/api/config";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -211,6 +212,11 @@ export default function TrackerConfigurations({
                         onChange={(e) => setFilter(e)}
                       />
                       <Button
+                        label="View Change Suggestions"
+                        icon={ViewColumnsIcon}
+                        onClick={() => setShowSuggestions(true)}
+                      />
+                      <Button
                         label="New tracker"
                         icon={PlusIcon}
                         onClick={() =>
@@ -234,6 +240,12 @@ export default function TrackerConfigurations({
             )}
           </div>
         </Page.Vertical>
+        {showSuggestions && (
+          <ChangeSuggestionsPanel
+            suggestions={suggestions}
+            onClose={() => setShowSuggestions(false)}
+          />
+        )}
       </AppLayout>
     </ConversationsNavigationProvider>
   );
