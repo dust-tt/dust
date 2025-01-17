@@ -1,11 +1,18 @@
-import type { WorkspaceType } from "@dust-tt/types";
-import type { SpecificationBlockType, SpecificationType } from "@dust-tt/types";
-import type { AppType } from "@dust-tt/types";
-import type { BlockType } from "@dust-tt/types";
-import type { RunType } from "@dust-tt/types";
-import { Menu } from "@headlessui/react";
-import { ChevronDownIcon } from "@heroicons/react/20/solid";
-import Link from "next/link";
+import {
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@dust-tt/sparkle";
+import type {
+  AppType,
+  BlockType,
+  RunType,
+  SpecificationBlockType,
+  SpecificationType,
+  WorkspaceType,
+} from "@dust-tt/types";
 
 import { filterServiceProviders } from "@app/lib/providers";
 import { useProviders } from "@app/lib/swr/apps";
@@ -116,19 +123,12 @@ export default function Search({
               <div className="px-2">
                 {searchProviders?.length === 0 &&
                   (isAdmin ? (
-                    <Link
+                    <Button
+                      variant="outline"
                       href={`/w/${owner.sId}/developers/providers?t=providers`}
-                      className={classNames(
-                        "inline-flex items-center rounded-md py-1 text-sm font-normal",
-                        "border px-3",
-                        readOnly
-                          ? "border-white text-gray-300"
-                          : "border-orange-400 text-gray-700",
-                        "focus:outline-none focus:ring-0"
-                      )}
-                    >
-                      Setup provider
-                    </Link>
+                      label="Setup provider"
+                      disabled={readOnly}
+                    />
                   ) : (
                     <div
                       className={classNames(
@@ -144,56 +144,24 @@ export default function Search({
             )}
 
           {!isProvidersLoading && !readOnly && searchProviders?.length > 0 && (
-            <Menu as="div" className="relative inline-block text-left">
-              <Menu.Button
-                className={classNames(
-                  "inline-flex items-center rounded-md py-1 text-sm font-bold",
-                  currentProvider?.providerId ? "px-0" : "border px-3",
-                  readOnly
-                    ? "border-white text-gray-300"
-                    : "border-orange-400 text-gray-700",
-                  "focus:outline-none focus:ring-0"
-                )}
-              >
-                {currentProvider?.providerId ? (
-                  <>
-                    {currentProvider.providerId}&nbsp;
-                    <ChevronDownIcon className="mt-0.5 h-4 w-4 hover:text-gray-700" />
-                  </>
-                ) : (
-                  "Select provider"
-                )}
-              </Menu.Button>
-
-              <Menu.Items
-                className={classNames(
-                  "absolute z-10 mt-1 w-max origin-top-left rounded-md bg-white shadow ring-1 ring-black ring-opacity-5 focus:outline-none",
-                  currentProvider?.providerId ? "-left-4" : "left-1"
-                )}
-              >
-                <div className="py-1">
-                  {(searchProviders || []).map((p) => {
-                    return (
-                      <Menu.Item key={p.providerId}>
-                        {({ active }) => (
-                          <span
-                            className={classNames(
-                              active
-                                ? "bg-gray-50 text-gray-900"
-                                : "text-gray-700",
-                              "block cursor-pointer px-4 py-2 text-sm"
-                            )}
-                            onClick={() => handleSelectProvider(p.providerId)}
-                          >
-                            {p.providerId}
-                          </span>
-                        )}
-                      </Menu.Item>
-                    );
-                  })}
-                </div>
-              </Menu.Items>
-            </Menu>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  isSelect
+                  variant="outline"
+                  label={currentProvider?.providerId ?? "Select provider"}
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                {(searchProviders || []).map((p) => (
+                  <DropdownMenuItem
+                    key={p.providerId}
+                    label={p.providerId}
+                    onClick={() => handleSelectProvider(p.providerId)}
+                  />
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
         </div>
         <div className="flex flex-col xl:flex-row xl:space-x-2">

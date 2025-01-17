@@ -145,7 +145,6 @@ export function ActionDustAppRun({
           </div>
           <DustAppSelectionSection
             owner={owner}
-            show={true}
             dustAppConfiguration={
               action.configuration as AssistantBuilderDustAppConfiguration
             }

@@ -53,6 +53,10 @@ module.exports = {
         ...theme("spacing"),
       }),
       keyframes: {
+        appear: {
+          "0%": { opacity: "0", width: "0" },
+          "100%": { opacity: "1", width: "320px" },
+        },
         "move-square": {
           "0%": {
             paddingLeft: "0",

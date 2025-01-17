@@ -1,14 +1,20 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
-import { ChevronDownIcon } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
+import {
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@dust-tt/sparkle";
 import type {
   AppType,
+  BlockType,
+  RunType,
   SpecificationBlockType,
   SpecificationType,
+  WorkspaceType,
 } from "@dust-tt/types";
-import type { BlockType, RunType } from "@dust-tt/types";
-import { Menu } from "@headlessui/react";
 import dynamic from "next/dynamic";
 import { useEffect } from "react";
 
@@ -120,52 +126,30 @@ export default function Curl({
       <div className="mx-4 flex w-full flex-col">
         <div className="mt-1 flex flex-row space-x-2">
           <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
-            <Menu as="div" className="relative inline-block text-left">
-              <div>
-                <Menu.Button
-                  className={classNames(
-                    "inline-flex items-center rounded-md border border-gray-300 bg-gray-50 px-1 py-1 text-sm font-normal",
-                    "focus:outline-none focus:ring-0",
-                    readOnly ? "cursor-default" : "cursor-pointer"
-                  )}
-                >
-                  {block.spec.method}
-                  <ChevronDownIcon className="mt-0.5 h-4 w-4 hover:text-gray-700" />
-                </Menu.Button>
-              </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  isSelect
+                  variant="outline"
+                  disabled={readOnly}
+                  label={block.spec.method}
+                />
+              </DropdownMenuTrigger>
 
-              {readOnly ? null : (
-                <Menu.Items
-                  className={classNames(
-                    "absolute left-1 z-10 mt-1 origin-top-left rounded-md bg-white shadow ring-1 ring-black ring-opacity-5 focus:outline-none"
-                  )}
-                >
-                  <div className="py-1">
-                    {availableMethods.map((method) => {
-                      return (
-                        <Menu.Item key={method}>
-                          {({ active }) => (
-                            <span
-                              className={classNames(
-                                active
-                                  ? "bg-gray-50 text-gray-900"
-                                  : "text-gray-700",
-                                "block cursor-pointer whitespace-nowrap px-4 py-1 text-sm"
-                              )}
-                              onClick={() => handleMethodChange(method)}
-                            >
-                              {method}
-                            </span>
-                          )}
-                        </Menu.Item>
-                      );
-                    })}
-                  </div>
-                </Menu.Items>
+              {!readOnly && (
+                <DropdownMenuContent className="mt-1" align="start">
+                  {availableMethods.map((method) => (
+                    <DropdownMenuItem
+                      key={method}
+                      label={method}
+                      onClick={() => handleMethodChange(method)}
+                    />
+                  ))}
+                </DropdownMenuContent>
               )}
-            </Menu>
+            </DropdownMenu>
           </div>
-          <div className="flex w-full flex-1 flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
+          <div className="flex w-full flex-1 flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
             <div className="flex flex-1 font-normal">
               <div className="flex flex-1 rounded-md">
                 <span
