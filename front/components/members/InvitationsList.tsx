@@ -59,9 +59,6 @@ export function InvitationsList({
           <span>{info.row.original.inviteEmail}</span>
         </DataTable.CellContent>
       ),
-      meta: {
-        className: "w-full",
-      },
     },
     {
       id: "initialRole",

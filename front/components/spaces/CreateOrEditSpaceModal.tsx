@@ -296,7 +296,7 @@ function MembersTable({
   const sendNotifications = useSendNotification();
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
-    pageSize: 10,
+    pageSize: 50,
   });
   const [sorting, setSorting] = useState<SortingState>([
     { id: "email", desc: false },
@@ -336,9 +336,6 @@ function MembersTable({
           </>
         ),
         enableSorting: true,
-        meta: {
-          className: "w-[200px]",
-        },
       },
       {
         id: "email",
@@ -346,9 +343,6 @@ function MembersTable({
         cell: (info: Info) => (
           <DataTable.BasicCellContent label={info.row.original.email} />
         ),
-        meta: {
-          className: "w-full",
-        },
         enableSorting: true,
       },
       {
