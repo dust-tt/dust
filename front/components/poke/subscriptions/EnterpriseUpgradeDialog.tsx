@@ -1,4 +1,13 @@
-import { Spinner } from "@dust-tt/sparkle";
+import {
+  NewDialog,
+  NewDialogContent,
+  NewDialogDescription,
+  NewDialogFooter,
+  NewDialogHeader,
+  NewDialogTitle,
+  NewDialogTrigger,
+  Spinner,
+} from "@dust-tt/sparkle";
 import type { EnterpriseUpgradeFormType, WorkspaceType } from "@dust-tt/types";
 import { EnterpriseUpgradeFormSchema, removeNulls } from "@dust-tt/types";
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
@@ -7,15 +16,6 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 
 import { PokeButton } from "@app/components/poke/shadcn/ui/button";
-import {
-  PokeDialog,
-  PokeDialogContent,
-  PokeDialogDescription,
-  PokeDialogFooter,
-  PokeDialogHeader,
-  PokeDialogTitle,
-  PokeDialogTrigger,
-} from "@app/components/poke/shadcn/ui/dialog";
 import { PokeForm } from "@app/components/poke/shadcn/ui/form";
 import {
   InputField,
@@ -95,18 +95,18 @@ export default function EnterpriseUpgradeDialog({
   };
 
   return (
-    <PokeDialog open={open} onOpenChange={setOpen}>
-      <PokeDialogTrigger asChild>
+    <NewDialog open={open} onOpenChange={setOpen}>
+      <NewDialogTrigger asChild>
         <PokeButton variant="outline">🏢 Upgrade to Enterprise</PokeButton>
-      </PokeDialogTrigger>
-      <PokeDialogContent className="bg-structure-50 sm:max-w-[600px]">
-        <PokeDialogHeader>
-          <PokeDialogTitle>Upgrade {owner.name} to Enterprise.</PokeDialogTitle>
-          <PokeDialogDescription>
+      </NewDialogTrigger>
+      <NewDialogContent className="bg-structure-50 sm:max-w-[600px]">
+        <NewDialogHeader>
+          <NewDialogTitle>Upgrade {owner.name} to Enterprise.</NewDialogTitle>
+          <NewDialogDescription>
             Select the enterprise plan and provide the Stripe subscription id of
             the customer.
-          </PokeDialogDescription>
-        </PokeDialogHeader>
+          </NewDialogDescription>
+        </NewDialogHeader>
         {error && <div className="text-red-500">{error}</div>}
         {isSubmitting && <Spinner />}
         {!isSubmitting && (
@@ -135,18 +135,18 @@ export default function EnterpriseUpgradeDialog({
                   />
                 </div>
               </div>
-              <PokeDialogFooter>
+              <NewDialogFooter>
                 <PokeButton
                   type="submit"
                   className="border-warning-600 bg-warning-500 text-white"
                 >
                   Upgrade
                 </PokeButton>
-              </PokeDialogFooter>
+              </NewDialogFooter>
             </form>
           </PokeForm>
         )}
-      </PokeDialogContent>
-    </PokeDialog>
+      </NewDialogContent>
+    </NewDialog>
   );
 }

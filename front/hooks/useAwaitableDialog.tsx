@@ -8,8 +8,7 @@ import {
   NewDialogTitle,
 } from "@dust-tt/sparkle";
 import React, { useState } from "react";
-// Define whichever props you need your dialog to support.
-// Adapt these to match your old usage: title, children, alertDialog, etc.
+
 type ShowDialogProps = {
   title: string;
   children: React.ReactNode;
