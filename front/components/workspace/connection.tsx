@@ -1,6 +1,5 @@
 import {
   Button,
-  Dialog,
   ExternalLinkIcon,
   Icon,
   IconButton,
@@ -837,18 +836,35 @@ function ToggleEnforceEnterpriseConnectionModal({
   const dialog = titleAndContent[owner.ssoEnforced ? "remove" : "enforce"];
 
   return (
-    <Dialog
-      isOpen={isOpen}
-      title={dialog.title}
-      onValidate={async () => {
-        await handleToggleSsoEnforced(!owner.ssoEnforced);
+    <NewDialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose(false);
+        }
       }}
-      onCancel={() => onClose(false)}
-      validateLabel={dialog.validateLabel}
-      validateVariant="warning"
     >
-      <div>{dialog.content}</div>
-    </Dialog>
+      <NewDialogContent>
+        <NewDialogHeader>
+          <NewDialogTitle>{dialog.title}</NewDialogTitle>
+        </NewDialogHeader>
+        <NewDialogContainer>{dialog.content}</NewDialogContainer>
+        <NewDialogFooter
+          leftButtonProps={{
+            label: "Cancel",
+            variant: "outline",
+            onClick: () => onClose(false),
+          }}
+          rightButtonProps={{
+            label: dialog.validateLabel,
+            variant: "warning",
+            onClick: async () => {
+              await handleToggleSsoEnforced(!owner.ssoEnforced);
+            },
+          }}
+        />
+      </NewDialogContent>
+    </NewDialog>
   );
 }
 

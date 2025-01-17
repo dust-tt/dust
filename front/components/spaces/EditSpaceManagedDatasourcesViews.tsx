@@ -1,12 +1,17 @@
 import {
   Button,
   ContentMessage,
-  Dialog,
   InformationCircleIcon,
+  NewDialog,
+  NewDialogContainer,
+  NewDialogContent,
+  NewDialogFooter,
+  NewDialogHeader,
+  NewDialogTitle,
   PlusIcon,
   Tooltip,
+  useSendNotification,
 } from "@dust-tt/sparkle";
-import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   APIError,
   DataSourceViewSelectionConfigurations,
@@ -271,6 +276,16 @@ export function EditSpaceManagedDataSourcesViews({
     return false;
   }
 
+  function handleCloseDataSourcesModal() {
+    setShowDataSourcesModal(false);
+  }
+
+  function handleGoToConnectionsManagement() {
+    void router.push(
+      `/w/${owner?.sId}/spaces/${systemSpace?.sId}/categories/managed`
+    );
+  }
+
   const addToSpaceButton = (
     <Button
       label={
@@ -320,20 +335,32 @@ export function EditSpaceManagedDataSourcesViews({
         }}
         initialSelectedDataSources={filteredDataSourceViews}
       />
-      <Dialog
-        isOpen={showNoConnectionDialog}
-        onCancel={() => setShowNoConnectionDialog(false)}
-        cancelLabel="Close"
-        validateLabel="Go to connections management"
-        onValidate={() => {
-          void router.push(
-            `/w/${owner.sId}/spaces/${systemSpace.sId}/categories/managed`
-          );
-        }}
-        title="No connection set up"
+
+      <NewDialog
+        open={showNoConnectionDialog}
+        onOpenChange={(open) => !open && setShowNoConnectionDialog(false)}
       >
-        <p>You have no connection set up.</p>
-      </Dialog>
+        <NewDialogContent>
+          <NewDialogHeader>
+            <NewDialogTitle>No connection set up</NewDialogTitle>
+          </NewDialogHeader>
+          <NewDialogContainer>
+            You have no connection set up.
+          </NewDialogContainer>
+          <NewDialogFooter
+            leftButtonProps={{
+              label: "Close",
+              variant: "outline",
+              onClick: handleCloseDataSourcesModal,
+            }}
+            rightButtonProps={{
+              label: "Go to connections management",
+              variant: "primary",
+              onClick: handleGoToConnectionsManagement,
+            }}
+          />
+        </NewDialogContent>
+      </NewDialog>
       <AwaitableDialog />
       {isSavingDisabled ? (
         <Tooltip
