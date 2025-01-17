@@ -23,7 +23,6 @@ import {
   makePageInternalId,
   makeSpaceInternalId,
 } from "@connectors/connectors/confluence/lib/internal_ids";
-import { getConfluenceSpaceUrl } from "@connectors/connectors/confluence/lib/permissions";
 import { makeConfluenceDocumentUrl } from "@connectors/connectors/confluence/temporal/workflow_ids";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
@@ -231,8 +230,7 @@ export async function confluenceUpsertSpaceFolderActivity({
     parentId: null,
     title: spaceName,
     mimeType: MIME_TYPES.CONFLUENCE.SPACE,
-    sourceUrl:
-      spaceInDb?.urlSuffix && getConfluenceSpaceUrl(spaceInDb, baseUrl),
+    sourceUrl: spaceInDb?.urlSuffix && `${baseUrl}/wiki${spaceInDb.urlSuffix}`,
   });
 }
 
