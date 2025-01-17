@@ -24,7 +24,6 @@ async function main() {
   if (!where.name && !where.sId) {
     throw new Error("Please provide name and/or sId for the workspace");
   }
-  logger.info("Creating workspace");
   let w = await Workspace.findOne({ where });
   if (!w) {
     console.log("Creating workspace");
