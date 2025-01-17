@@ -34,21 +34,22 @@ export function IntroSection() {
         <div className="flex flex-col items-center gap-16 md:flex-row">
           <div className="flex flex-col gap-8">
             <H1 className="text-red-400">
-              Build custom AI&nbsp;assistants to speed up your work
+              Be superhuman at work with context-aware AI assistants
             </H1>
             <div className="w-full md:hidden">
               <MainVisual />
             </div>
             <P size="lg" className="text-slate-50">
-              Amplify your team's performance with personalized assistants
-              connected to your proprietary knowledge and data.
+              Craft AI assistants for your teams to automate tedious tasks,
+              retrieve vital knowledge, and help you create —right where you
+              work, no coding required.
             </P>
             <div>
               <Link href="/home/pricing" shallow={true}>
                 <Button
                   variant="highlight"
                   size="md"
-                  label="Get started"
+                  label="Try Dust Now"
                   icon={RocketIcon}
                 />
               </Link>
@@ -61,23 +62,35 @@ export function IntroSection() {
         <TrustedBy />
         <div className="grid grid-cols-1 gap-12 sm:grid-cols-2 lg:grid-cols-4">
           <P size="md" dotCSS="text-amber-300" shape="triangle">
-            Connect <Strong>your team's data</Strong> and{" "}
-            <Strong>break&nbsp;down knowledge silos</Strong> with
-            context&#8209;aware&nbsp;assistants.
+            <Strong>Automate Knowledge Work</Strong>
+            <br></br>
+            <br></br>
+            Stop wasting time on data entry, CRM updates, or filling out
+            questionnaires. Teach Dust your workflow—and watch it handle
+            repetitive tasks for you.
           </P>
           <P size="md" dotCSS="text-red-400" shape="rectangle">
-            Empower your teams with&nbsp;
-            <Strong>assistants tailored to&nbsp;their needs</Strong>{" "}
-            on&nbsp;concrete use&nbsp;cases.
+            <Strong>Surface Critical Information</Strong>
+            <br></br>
+            <br></br>
+            Dust reads faster than you. Enjoy effortless summarization, targeted
+            extractions, and crisp insights from docs, tickets, chat
+            logs—whatever is relevant.
           </P>
           <P size="md" dotCSS="text-sky-400" shape="circle">
-            Remain model agnostic: effortlessly{" "}
-            <Strong>switch to the most advanced AI&nbsp;models</Strong> without
-            touching your&nbsp;workflows.
+            <Strong>Analyze & Visualize Anything</Strong>
+            <br></br>
+            <br></br>
+            From spreadsheets to data warehouses. Your questions are turned into
+            SQL queries, charts, pivots, or deep dives, in seconds.
           </P>
           <P size="md" dotCSS="text-emerald-400" shape="hexagon">
-            <Strong>Control data access granularly</Strong> with a{" "}
-            <Strong>safe and privacy-obsessed</Strong> application.
+            <Strong>Create with Confidence</Strong>
+            <br></br>
+            <br></br>
+            Co-edit with AI that has full context of your internal knowledge
+            base, so you never waste time hunting for data or rewriting outdated
+            content.
           </P>
         </div>
       </div>
