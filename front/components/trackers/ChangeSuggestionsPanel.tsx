@@ -32,7 +32,7 @@ export default function ChangeSuggestionsPanel({
 
   // Sort suggestions by createdAt in descending order (most recent first)
   const sortedSuggestions = [...suggestions].sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
   );
 
   return (

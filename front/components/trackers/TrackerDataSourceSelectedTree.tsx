@@ -23,15 +23,17 @@ import {
   getDisplayNameForDataSource,
 } from "@app/lib/data_sources";
 
+import type { ContentNodeType } from "@dust-tt/types";
+
 type ContentNode = {
   internalId: string;
   title: string;
-  type: string;
+  type: ContentNodeType;
   expandable: boolean;
   sourceUrl?: string;
   parentInternalId: string | null;
   permission: string;
-  lastUpdatedAt: string;
+  lastUpdatedAt: number | null;
 };
 
 interface DataSourceConfig {

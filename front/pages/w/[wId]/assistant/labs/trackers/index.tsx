@@ -8,8 +8,8 @@ import {
   PlusIcon,
   SearchInput,
   Spinner,
-  ViewColumnsIcon,
 } from "@dust-tt/sparkle";
+import { ViewColumnsIcon } from "@heroicons/react/24/outline";
 import type {
   PlanType,
   SpaceType,
