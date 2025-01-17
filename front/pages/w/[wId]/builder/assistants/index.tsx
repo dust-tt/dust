@@ -227,16 +227,15 @@ export default function WorkspaceAssistants({
                       icon={tab.icon}
                       className={assistantSearch ? disabledTablineClass : ""}
                       onClick={() => !assistantSearch && setSelectedTab(tab.id)}
+                      tooltip={
+                        ASSISTANT_MANAGER_TABS.find(
+                          (tab) => tab.id === activeTab
+                        )?.description
+                      }
                     />
                   ))}
                 </TabsList>
               </Tabs>
-              <Page.P>
-                {
-                  ASSISTANT_MANAGER_TABS.find((tab) => tab.id === activeTab)
-                    ?.description
-                }
-              </Page.P>
               {filteredAgents.length > 0 || isAgentConfigurationsLoading ? (
                 <AssistantsTable
                   owner={owner}

@@ -258,6 +258,7 @@ export default function WorkspaceAdmin({
           perSeatPricing={perSeatPricing}
         />
         {popup}
+        <div className="h-6 w-6" />
       </Page.Vertical>
     </AppLayout>
   );

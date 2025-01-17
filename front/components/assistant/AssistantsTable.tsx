@@ -235,26 +235,6 @@ const getTableColumns = () => {
         className: "w-12",
       },
     },
-    // {
-    //   header: "",
-    //   accessorKey: "action",
-    //   cell: (info: CellContext<RowData, number>) => (
-    //     <DataTable.CellContent>{info.getValue()}</DataTable.CellContent>
-    //   ),
-    //   meta: {
-    //     className: "w-12",
-    //   },
-    // },
-    // {
-    //   header: "",
-    //   accessorKey: "moreAction",
-    //   cell: (info: CellContext<RowData, number>) => (
-    //     <DataTable.MoreButton moreMenuItems={info.row.original.moreMenuItems} />
-    //   ),
-    //   meta: {
-    //     className: "w-12",
-    //   },
-    // },
   ];
 };
 

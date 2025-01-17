@@ -72,9 +72,6 @@ const getTableColumns = () => {
     {
       header: "Name",
       accessorKey: "name",
-      meta: {
-        className: "w-full",
-      },
       cell: (info: Info) => (
         <DataTable.CellContent
           icon={info.row.original.icon}
