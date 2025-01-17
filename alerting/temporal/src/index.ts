@@ -233,6 +233,7 @@ const convertPrometheusHistogramToDatadogGuageSeries = (
     const metric = metricName.split("_bucket")[0] + "_P" + quantile * 100;
     const tags = Object.entries(prometheusMetric.metric)
       .filter(([key]) => key !== "__rollup__")
+      // Datadog tags can't be longer than 200 characters
       .map(([key, value]) => `${key}:${value.substring(0, 200)}`);
 
     prometheusMetric.values.forEach(([_timestamp, value]) => {
