@@ -31,6 +31,7 @@ import {
   assistantUsageMessage,
 } from "@app/components/assistant/Usage";
 import { SCOPE_INFO } from "@app/components/assistant_builder/Sharing";
+import { useUser } from "@app/lib/swr/user";
 import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
 
 export const ASSISTANT_MANAGER_TABS = [
@@ -253,7 +254,7 @@ export function AssistantsTable({
     open: false,
     agentConfiguration: undefined,
   });
-
+  const { user } = useUser();
   const router = useRouter();
   const rows: RowData[] = useMemo(
     () =>
@@ -320,6 +321,17 @@ export function AssistantsTable({
                     icon: ClipboardIcon,
                     onClick: (e: React.MouseEvent) => {
                       e.stopPropagation();
+                      window.gtag(
+                        "event",
+                        "assistantDuplicationButtonClicked",
+                        {
+                          event_category: "assistantBuilder",
+                          event_label: "assistantsTable",
+                          assistant_name: agentConfiguration.name,
+                          assistant_id: agentConfiguration.sId,
+                          user_sid: user?.sId,
+                        }
+                      );
                       void router.push(
                         `/w/${owner.sId}/builder/assistants/new?flow=personal_assistants&duplicate=${agentConfiguration.sId}`
                       );
@@ -346,6 +358,7 @@ export function AssistantsTable({
       setShowDetails,
       setShowDisabledFreeWorkspacePopup,
       showDisabledFreeWorkspacePopup,
+      user?.sId,
     ]
   );
 
