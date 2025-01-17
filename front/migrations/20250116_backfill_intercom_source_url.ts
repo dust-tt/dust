@@ -39,7 +39,8 @@ async function updateNodes(
 async function backfillCollections(
   coreSequelize: Sequelize,
   connectorsSequelize: Sequelize,
-  dataSourceId: number,
+  frontDataSource: DataSourceModel,
+  coreDataSourceId: number,
   execute: boolean,
   logger: typeof Logger
 ) {
@@ -57,13 +58,14 @@ async function backfillCollections(
       `
           SELECT ic.id, ic."collectionId", ic."url", ic."connectorId"
           FROM intercom_collections ic
-          WHERE ic.id > :nextId
+          WHERE ic.id > :nextId AND ic."connectorId" = :connectorId
           ORDER BY ic.id
           LIMIT :batchSize;`,
       {
         replacements: {
           batchSize: BATCH_SIZE,
           nextId,
+          connectorId: frontDataSource.connectorId,
         },
         type: QueryTypes.SELECT,
       }
@@ -84,7 +86,7 @@ async function backfillCollections(
       );
     });
     if (execute) {
-      await updateNodes(coreSequelize, dataSourceId, nodeIds, urls);
+      await updateNodes(coreSequelize, coreDataSourceId, nodeIds, urls);
       logger.info(`Updated ${rows.length} collections.`);
     } else {
       logger.info(
@@ -134,12 +136,15 @@ makeScript({}, async ({ execute }, logger) => {
     );
 
     if (coreDataSourceId === null) {
-      continue;
+      throw new Error(
+        `Data source ${frontDataSource.id} not found in core, skipping`
+      );
     }
 
     await backfillCollections(
       coreSequelize,
       connectorsSequelize,
+      frontDataSource,
       coreDataSourceId,
       execute,
       logger
