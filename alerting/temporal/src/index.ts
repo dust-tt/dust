@@ -193,7 +193,7 @@ const convertPrometheusCountToDatadogRateSeries = (
       .map(([key, value]) => `${key}:${value.substring(0, 200)}`);
 
     prometheusMetric.values.forEach(([_timestamp, value]) => {
-      statsD.gauge(metric, parseFloat(value), tags);
+      statsD.increment(metric, parseFloat(value), 1.0, tags);
     });
   });
 };

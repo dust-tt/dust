@@ -107,11 +107,7 @@ async function fetchPrometheusMetrics(clusterNodeUrl: string): Promise<void> {
       // Ignore comments.
       .filter((l: string) => !l.startsWith("#"));
 
-    const tags = [
-      `cluster:${clusterName}`,
-      `node:${node}`,
-      `region:${process.env.DUST_REGION}`,
-    ];
+    const tags = [`cluster:${clusterName}`, `node:${node}`];
 
     for (const metric of metricLines) {
       const metricDetails = extractMetricDetails(metric);
