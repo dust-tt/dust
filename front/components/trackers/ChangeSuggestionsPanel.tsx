@@ -30,11 +30,10 @@ export default function ChangeSuggestionsPanel({
     });
   }, []);
 
-  // Sort suggestions by createdAt in descending order (most recent first)
-  // Sort by most recent first
+  // Sort suggestions by consumedAt/createdAt in descending order (most recent first)
   const sortedSuggestions = [...suggestions].sort((a, b) => {
-    const dateA = new Date(b.updatedAt).getTime();
-    const dateB = new Date(a.updatedAt).getTime();
+    const dateA = new Date(b.consumedAt || b.createdAt).getTime();
+    const dateB = new Date(a.consumedAt || a.createdAt).getTime();
     return dateA - dateB;
   });
 
