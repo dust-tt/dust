@@ -36,11 +36,7 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { getPriceAsString } from "@app/lib/client/subscription";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import {
-  FREE_TEST_PLAN_CODE,
-  FREE_UPGRADED_PLAN_CODE,
-  isUpgraded,
-} from "@app/lib/plans/plan_codes";
+import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { getPerSeatSubscriptionPricing } from "@app/lib/plans/subscription";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
@@ -275,6 +271,8 @@ export default function Subscription({
       ? plan.name
       : `${plan.name}: ${trialDaysRemaining} days of trial remaining`;
 
+  const displayPricingTable = subscription.stripeSubscriptionId === null;
+
   return (
     <AppLayout
       subscription={subscription}
@@ -401,27 +399,24 @@ export default function Subscription({
               </div>
             </Page.Vertical>
           )}
-          {!plan ||
-            ([FREE_TEST_PLAN_CODE, FREE_UPGRADED_PLAN_CODE].includes(
-              plan.code
-            ) && (
-              <>
-                <div className="pt-2">
-                  <Page.H variant="h5">Manage my plan</Page.H>
-                  <div className="h-full w-full pt-2">
-                    <PricePlans
-                      plan={plan}
-                      onClickProPlan={onClickProPlan}
-                      isProcessing={isProcessing}
-                      display="subscribe"
-                    />
-                  </div>
+          {displayPricingTable && (
+            <>
+              <div className="pt-2">
+                <Page.H variant="h5">Manage my plan</Page.H>
+                <div className="h-full w-full pt-2">
+                  <PricePlans
+                    plan={plan}
+                    onClickProPlan={onClickProPlan}
+                    isProcessing={isProcessing}
+                    display="subscribe"
+                  />
                 </div>
-                <Link href="/terms" target="_blank" className="text-sm">
-                  Terms of use apply to all plans.
-                </Link>
-              </>
-            ))}
+              </div>
+              <Link href="/terms" target="_blank" className="text-sm">
+                Terms of use apply to all plans.
+              </Link>
+            </>
+          )}
         </Page.Vertical>
       </Page.Vertical>
       <div className="h-12" />
