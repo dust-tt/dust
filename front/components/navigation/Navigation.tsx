@@ -74,7 +74,7 @@ export function Navigation({
       {/*Desktop sidebar*/}
       <div
         className={cn(
-          "hidden flex-none overflow-hidden transition-[width] duration-150 ease-out lg:flex lg:flex-col",
+          "transition-width hidden flex-none overflow-hidden duration-150 ease-out lg:flex lg:flex-col",
           isNavigationBarOpen ? "w-80" : "w-0"
         )}
       >

@@ -138,6 +138,9 @@ module.exports = {
             opacity: 0,
           },
         },
+        transitionProperty: {
+          width: "width",
+        },
         fadeout: {
           "0%": {
             opacity: "1",
