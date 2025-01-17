@@ -96,7 +96,7 @@ export default function DataSourceSelectionSection({
                 <Tree.Item
                   key={dsConfig.dataSourceView.sId}
                   type={
-                    canBeExpanded(viewType, dsConfig.dataSourceView.dataSource)
+                    canBeExpanded(dsConfig.dataSourceView.dataSource)
                       ? "node"
                       : "leaf"
                   } // todo make useConnectorPermissions hook work for non managed ds (Folders)
