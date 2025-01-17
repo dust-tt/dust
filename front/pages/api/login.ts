@@ -499,4 +499,5 @@ export async function createAndLogMembership({
   return m;
 }
 
+// Note from seb: Should it be withSessionAuthentication?
 export default withLogging(handler);

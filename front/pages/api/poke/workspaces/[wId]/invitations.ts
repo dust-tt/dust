@@ -9,7 +9,8 @@ import {
   getPendingInvitations,
   updateInvitationStatusAndRole,
 } from "@app/lib/api/invitation";
-import { Authenticator, getSession } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
+import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
 
 const PokeDeleteInvitationRequestBodySchema = t.type({
@@ -24,9 +25,9 @@ type PokePostInvitationResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<PokePostInvitationResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<PokePostInvitationResponseBody>>,
+  session: SessionWithUser
 ): Promise<void> {
-  const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
     session,
     req.query.wId as string

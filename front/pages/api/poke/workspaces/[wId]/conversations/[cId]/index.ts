@@ -6,7 +6,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
-import { Authenticator, getSession } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
+import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getPokeConversation } from "@app/lib/poke/conversations";
 import { apiError } from "@app/logger/withlogging";
 
@@ -16,9 +17,9 @@ export type GetConversationResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetConversationResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<GetConversationResponseBody>>,
+  session: SessionWithUser
 ): Promise<void> {
-  const session = await getSession(req, res);
   const auth = await Authenticator.fromSuperUserSession(
     session,
     req.query.wId as string
