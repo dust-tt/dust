@@ -30,10 +30,7 @@ import SpaceManagedDatasourcesViewsModal from "@app/components/spaces/SpaceManag
 import { useAwaitableDialog } from "@app/hooks/useAwaitableDialog";
 import { getDisplayNameForDataSource, isManaged } from "@app/lib/data_sources";
 import { useKillSwitches } from "@app/lib/swr/kill";
-import {
-  useSpaceDataSourceViews,
-  useSpaceDataSourceViewsWithDetails,
-} from "@app/lib/swr/spaces";
+import { useSpaceDataSourceViews, useSpaceDataSourceViewsWithDetails } from "@app/lib/swr/spaces";
 
 interface EditSpaceManagedDataSourcesViewsProps {
   dataSourceView?: DataSourceViewType;
@@ -297,7 +294,6 @@ export function EditSpaceManagedDataSourcesViews({
     />
   );
 
-  console.log("HELLO");
   return isAdmin ? (
     <>
       <SpaceManagedDatasourcesViewsModal
