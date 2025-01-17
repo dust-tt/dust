@@ -6,7 +6,7 @@ import {
   getDustStatusMemoized,
   getProviderStatusMemoized,
 } from "@app/lib/api/status";
-import { getSession } from "@app/lib/auth";
+import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
 
 export interface GetAppStatusResponseBody {
@@ -24,14 +24,10 @@ export interface GetAppStatusResponseBody {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetAppStatusResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<GetAppStatusResponseBody>>,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- session is passed by the auth wrapper
+  session: SessionWithUser
 ): Promise<void> {
-  const session = await getSession(req, res);
-  if (!session) {
-    res.status(401).end();
-    return;
-  }
-
   if (req.method !== "GET") {
     return apiError(req, res, {
       status_code: 405,

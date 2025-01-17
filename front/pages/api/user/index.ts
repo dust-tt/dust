@@ -9,7 +9,7 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
-import { getSession } from "@app/lib/auth";
+import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
@@ -33,10 +33,9 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
     WithAPIErrorResponse<PostUserMetadataResponseBody | GetUserResponseBody>
-  >
+  >,
+  session: SessionWithUser
 ): Promise<void> {
-  const session = await getSession(req, res);
-
   // This functions retrieves the full user including all workspaces.
   const user = await getUserFromSession(session);
 

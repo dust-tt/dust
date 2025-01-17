@@ -11,7 +11,8 @@ import { Op } from "sequelize";
 
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { getWorkspaceVerifiedDomain } from "@app/lib/api/workspace";
-import { Authenticator, getSession } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
+import type { SessionWithUser } from "@app/lib/iam/provider";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import { Workspace, WorkspaceHasDomain } from "@app/lib/models/workspace";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
@@ -69,9 +70,9 @@ const getPlanPriority = (planCode: string) => {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetPokeWorkspacesResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<GetPokeWorkspacesResponseBody>>,
+  session: SessionWithUser
 ): Promise<void> {
-  const session = await getSession(req, res);
   const auth = await Authenticator.fromSuperUserSession(session, null);
 
   if (!auth.isDustSuperUser()) {
