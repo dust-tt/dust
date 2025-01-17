@@ -349,11 +349,7 @@ function DataSourceViewsSection({
           return (
             <Tree.Item
               key={`${dsConfig.dataSourceViewId}-${JSON.stringify(dsConfig.filter)}`}
-              type={
-                canBeExpanded(viewType, dataSourceView?.dataSource)
-                  ? "node"
-                  : "leaf"
-              }
+              type={canBeExpanded(dataSourceView?.dataSource) ? "node" : "leaf"}
               label={dataSourceName}
               visual={dsLogo ?? FolderIcon}
               className="whitespace-nowrap"
