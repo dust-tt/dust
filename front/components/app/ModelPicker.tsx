@@ -10,12 +10,10 @@ import {
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
-import Link from "next/link";
 import { useCallback, useState } from "react";
 
 import { filterModelProviders, getProviderLLMModels } from "@app/lib/providers";
 import { useProviders } from "@app/lib/swr/apps";
-import { classNames } from "@app/lib/utils";
 
 export default function ModelPicker({
   owner,
@@ -84,16 +82,10 @@ export default function ModelPicker({
       !(model.provider_id && model.provider_id.length > 0) &&
       !readOnly ? (
         isAdmin ? (
-          <Link
+          <Button
             href={`/w/${owner.sId}/developers/providers`}
-            className={classNames(
-              "inline-flex items-center rounded-md py-1 text-sm font-bold",
-              "border border-orange-400 px-3 text-gray-700",
-              "focus:outline-none focus:ring-0"
-            )}
-          >
-            {isProvidersLoading ? "Loading..." : "Setup provider"}
-          </Link>
+            label={isProvidersLoading ? "Loading..." : "Setup provider"}
+          />
         ) : (
           <div className="inline-flex items-center rounded-md border border-white px-3 py-1 text-sm font-normal text-gray-300">
             No Provider available
@@ -119,7 +111,6 @@ export default function ModelPicker({
             <Button
               isSelect
               variant="outline"
-              className="py-1 text-sm font-bold"
               label={
                 model.provider_id
                   ? `${model.provider_id}${model.model_id ? ` / ${model.model_id}` : ""}`

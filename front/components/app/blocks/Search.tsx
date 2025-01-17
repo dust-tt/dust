@@ -13,7 +13,6 @@ import type {
   SpecificationType,
   WorkspaceType,
 } from "@dust-tt/types";
-import Link from "next/link";
 
 import { filterServiceProviders } from "@app/lib/providers";
 import { useProviders } from "@app/lib/swr/apps";
@@ -124,19 +123,12 @@ export default function Search({
               <div className="px-2">
                 {searchProviders?.length === 0 &&
                   (isAdmin ? (
-                    <Link
+                    <Button
+                      variant="outline"
                       href={`/w/${owner.sId}/developers/providers?t=providers`}
-                      className={classNames(
-                        "inline-flex items-center rounded-md py-1 text-sm font-normal",
-                        "border px-3",
-                        readOnly
-                          ? "border-white text-gray-300"
-                          : "border-orange-400 text-gray-700",
-                        "focus:outline-none focus:ring-0"
-                      )}
-                    >
-                      Setup provider
-                    </Link>
+                      label="Setup provider"
+                      disabled={readOnly}
+                    />
                   ) : (
                     <div
                       className={classNames(
@@ -157,19 +149,10 @@ export default function Search({
                 <Button
                   isSelect
                   variant="outline"
-                  className={classNames(
-                    "py-1 text-sm font-bold",
-                    currentProvider?.providerId ? "px-0" : "px-3"
-                  )}
                   label={currentProvider?.providerId ?? "Select provider"}
                 />
               </DropdownMenuTrigger>
-              <DropdownMenuContent
-                className={classNames(
-                  "mt-1",
-                  currentProvider?.providerId ? "-left-4" : "left-1"
-                )}
-              >
+              <DropdownMenuContent>
                 {(searchProviders || []).map((p) => (
                   <DropdownMenuItem
                     key={p.providerId}
