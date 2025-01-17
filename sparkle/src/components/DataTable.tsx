@@ -303,7 +303,7 @@ DataTable.Head = function Head({
   column,
   ...props
 }: HeadProps) {
-  const content = (
+  return (
     <th
       className={cn(
         "s-py-2 s-pl-2 s-pr-3 s-text-left s-text-xs s-font-medium s-capitalize s-text-foreground",
@@ -312,15 +312,13 @@ DataTable.Head = function Head({
       )}
       {...props}
     >
-      {children}
+      {column.columnDef.meta?.tooltip ? (
+        <Tooltip label={column.columnDef.meta.tooltip} trigger={children} />
+      ) : (
+        children
+      )}
     </th>
   );
-
-  if (column.columnDef.meta?.tooltip) {
-    return <Tooltip label={column.columnDef.meta.tooltip} trigger={content} />;
-  }
-
-  return content;
 };
 
 DataTable.Body = function Body({
