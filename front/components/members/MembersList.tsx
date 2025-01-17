@@ -82,7 +82,7 @@ export function MembersList({
       ),
       enableSorting: false,
       meta: {
-        width: "46rem",
+        className: "w-full",
       },
     },
     {
@@ -101,7 +101,7 @@ export function MembersList({
         </DataTable.CellContent>
       ),
       meta: {
-        width: "6rem",
+        className: "w-32",
       },
     },
   ];
