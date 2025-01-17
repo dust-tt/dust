@@ -165,7 +165,7 @@ export default function ActionsScreen({
       event_label: "assistantToolsPanel",
       user_sid: user?.sId,
     });
-  }, []);
+  }, [user?.sId]);
 
   const { spaces } = useContext(AssistantBuilderContext);
 

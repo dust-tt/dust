@@ -98,7 +98,7 @@ export function AssistantDetailsButtonBar({
                   icon={ClipboardIcon}
                   onClick={async (e) => {
                     window.gtag("event", "assistantDuplicationButtonClicked", {
-                      event_category: "engagement",
+                      event_category: "assistantBuilder",
                       event_label: "assistantDetails",
                       assistant_name: agentConfiguration.name,
                       assistant_id: agentConfiguration.sId,

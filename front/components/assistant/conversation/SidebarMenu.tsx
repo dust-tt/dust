@@ -258,7 +258,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                       icon={PlusIcon}
                       onClick={() => {
                         window.gtag("event", "assistantCreationButtonClicked", {
-                          event_category: "engagement",
+                          event_category: "assistantBuilder",
                           event_label: "sidebarMenu",
                           user_sid: user?.sId,
                           workspace_id: owner.sId,

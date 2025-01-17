@@ -160,7 +160,7 @@ export function AssistantBrowser({
               onClick={() => {
                 // Track button click with Google Analytics including user ID
                 window.gtag("event", "assistantCreationButtonClicked", {
-                  event_category: "engagement",
+                  event_category: "assistantBuilder",
                   event_label: "homepage",
                   user_sid: user?.sId,
                 });
@@ -178,7 +178,7 @@ export function AssistantBrowser({
                 onClick={() => {
                   // Track button click with Google Analytics including user ID
                   window.gtag("event", "assistantManagementButtonClicked", {
-                    event_category: "engagement",
+                    event_category: "assistantBuilder",
                     event_label: "homepage",
                     user_sid: user?.sId,
                   });

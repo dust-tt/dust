@@ -216,7 +216,7 @@ export default function CreateAssistant({
                   variant="highlight"
                   onClick={() => {
                     window.gtag("event", "newAssistantCreationButtonClicked", {
-                      event_category: "engagement",
+                      event_category: "assistantBuilder",
                       event_label: "assistantCreationPage",
                       user_sid: user?.sId,
                       workspace_id: owner.sId,

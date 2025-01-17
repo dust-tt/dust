@@ -138,7 +138,7 @@ export function InstructionScreen({
       event_label: "assistantInstructionsPanel",
       user_sid: user?.sId,
     });
-  }, []);
+  }, [user?.sId]);
 
   const editor = useEditor({
     extensions: [
