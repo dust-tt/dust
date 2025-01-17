@@ -160,7 +160,13 @@ impl LLM for GoogleAiStudioLLM {
             logprobs,
             top_logprobs,
             None,
-            event_sender,
+            // Non-streaming API of gemini does not work correctly with hyper client.
+            // We create a dummy event sender to use the streaming API.
+            // TODO(@fontanierh): use ureq instead of hyper to fix this.
+            event_sender.or_else(|| {
+                let (sender, _) = tokio::sync::mpsc::unbounded_channel::<Value>();
+                Some(sender)
+            }),
             false, // don't disable provider streaming
             TransformSystemMessages::Keep,
             "GoogleAIStudio".to_string(),
