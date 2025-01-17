@@ -169,6 +169,8 @@ async function getContentNodesForDataSourceViewFromCore(
   dataSourceView: DataSourceViewResource | DataSourceViewType,
   { internalIds, parentId, viewType }: GetContentNodesForDataSourceViewParams
 ): Promise<Result<GetContentNodesForDataSourceViewResult, Error>> {
+  // There's an early return possible on !dataSourceView.dataSource.connectorId && internalIds?.length === 0,
+  // won't include it for now as we are shadow-reading.
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
   const coreRes = await coreAPI.searchNodes({
