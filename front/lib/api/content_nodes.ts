@@ -82,10 +82,13 @@ export function computeNodesDiff({
       const coreNode = coreNodes[0];
       const diff = Object.fromEntries(
         Object.entries(connectorsNode)
-          .filter(
-            ([key, value]) =>
-              value !== coreNode[key as keyof DataSourceViewContentNode]
-          )
+          .filter(([key, value]) => {
+            const coreValue = coreNode[key as keyof DataSourceViewContentNode];
+            if (Array.isArray(value) && Array.isArray(coreValue)) {
+              return JSON.stringify(value) !== JSON.stringify(coreValue);
+            }
+            return value !== coreValue;
+          })
           .map(([key, value]) => [
             key,
             {
