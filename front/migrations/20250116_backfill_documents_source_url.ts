@@ -7,7 +7,7 @@ import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 
 const DATA_SOURCE_BATCH_SIZE = 16; // putting a larger batch size here doesn't really do anything
-const QUERY_BATCH_SIZE = 512; // here it does a lot
+const QUERY_BATCH_SIZE = 1024; // here it does a lot
 
 async function migrateDataSource({
   frontDataSource,
