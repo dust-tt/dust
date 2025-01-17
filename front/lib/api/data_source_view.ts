@@ -178,11 +178,11 @@ async function getContentNodesForManagedDataSourceViewFromCore(
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
-  // TODO(2025-01-16 aubin): confirm that if no internalIds nor parentIds are provided, we get the root nodes of the data source view.
   const coreRes = await coreAPI.searchNodes({
     filter: {
       data_source_views: [makeCoreDataSourceViewFilter(dataSourceView)],
-      node_ids: internalIds,
+      // If no internalIds are provided, we use the parentsIn
+      node_ids: internalIds ?? dataSourceView.parentsIn ?? undefined,
       parent_id: parentId,
     },
   });
