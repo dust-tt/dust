@@ -38,7 +38,6 @@ export {
   ConversationMessageHeader,
 } from "./ConversationMessage";
 export { DataTable } from "./DataTable";
-export { Dialog } from "./Dialog";
 export type { DropdownMenuItemProps } from "./Dropdown";
 export {
   DropdownMenu,
