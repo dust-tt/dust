@@ -122,7 +122,7 @@ const getTableColumns = ({
         ? row.dataSourceView.dataSource.editedByUser?.imageUrl
         : row.dataSourceView.editedByUser?.imageUrl,
     meta: {
-      className: "w-6",
+      className: "w-24",
     },
     id: "managedBy",
     accessorKey: "managedBy",
@@ -147,7 +147,7 @@ const getTableColumns = ({
     accessorFn: (row: RowData) => row.dataSourceView.usage?.count ?? 0,
     id: "usedBy",
     meta: {
-      className: "w-6",
+      className: "w-32",
     },
     cell: (info: CellContext<RowData, DataSourceWithAgentsUsageType>) => (
       <>
@@ -169,7 +169,7 @@ const getTableColumns = ({
     accessorFn: (row: RowData) =>
       row.dataSourceView.dataSource.connector?.lastSyncSuccessfulTime,
     meta: {
-      className: "w-14",
+      className: "w-48",
     },
     cell: (info: CellContext<RowData, number | undefined>) => (
       <DataTable.CellContent className="pr-2">
@@ -199,7 +199,7 @@ const getTableColumns = ({
   const actionColumn: TableColumnDef = {
     id: "action",
     meta: {
-      className: "w-10",
+      className: "w-24",
     },
     cell: (info: CellContext<RowData, unknown>) => {
       const original = info.row.original;
@@ -210,6 +210,7 @@ const getTableColumns = ({
           <DataTable.CellContent>
             <Button
               variant="primary"
+              size="xs"
               icon={CloudArrowLeftRightIcon}
               disabled={disabled}
               onClick={original.buttonOnClick}
@@ -226,6 +227,7 @@ const getTableColumns = ({
               disabled={disabled}
               onClick={original.buttonOnClick}
               label={original.isAdmin ? "Manage" : "View"}
+              size="xs"
             />
           </DataTable.CellContent>
         );
