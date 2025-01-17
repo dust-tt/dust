@@ -225,15 +225,7 @@ export const sendTrackerWithGenerationEmail = async ({
       }
       body += `:</strong>`;
 
-      if (g.thinking) {
-        body += `
-          <details>
-            <summary>View thinking</summary>
-            <p>${g.thinking.replace(/\n/g, "<br />")}</p>
-          </details>`;
-      }
-
-      body += `<p>${g.content.replace(/\n/g, "<br />")}.</p>`;
+      body += `<p>${g.content.replace(/\n/g, "<br />")}</p>`;
       return body;
     })
   );
