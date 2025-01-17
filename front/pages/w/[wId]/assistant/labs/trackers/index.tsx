@@ -27,7 +27,7 @@ import React, { useMemo } from "react";
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { ChangeSuggestionsPanel } from "@app/components/trackers";
+import ChangeSuggestionsPanel from "@app/components/trackers/ChangeSuggestionsPanel";
 import config from "@app/lib/api/config";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
