@@ -510,7 +510,7 @@ export async function syncSpreadSheet(
         parents,
         parentId: parents[0] || null,
         title: spreadsheet.data.properties?.title ?? "Untitled Spreadsheet",
-        mimeType: file.mimeType,
+        mimeType: "application/vnd.google-apps.spreadsheet",
       });
 
       const successfulSheetIdImports: number[] = [];
