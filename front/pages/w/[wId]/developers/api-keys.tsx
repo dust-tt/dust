@@ -23,7 +23,14 @@ import {
   ShapesIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import type { GroupType, KeyType, ModelId, SubscriptionType, UserType, WorkspaceType } from "@dust-tt/types";
+import type {
+  GroupType,
+  KeyType,
+  ModelId,
+  SubscriptionType,
+  UserType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import { prettifyGroupName } from "@dust-tt/types";
 import _ from "lodash";
 import type { InferGetServerSidePropsType } from "next";
