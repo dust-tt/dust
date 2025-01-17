@@ -4,11 +4,11 @@ import {
   ChevronUpIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type { TrackerGenerationType } from "@dust-tt/types";
+import type { TrackerGenerationToProcess } from "@dust-tt/types";
 import { useCallback, useState } from "react";
 
 interface ChangeSuggestionsPanelProps {
-  suggestions: TrackerGenerationType[];
+  suggestions: TrackerGenerationToProcess[];
   onClose: () => void;
 }
 

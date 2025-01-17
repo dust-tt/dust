@@ -8,6 +8,7 @@ import {
   PlusIcon,
   SearchInput,
   Spinner,
+  ViewColumnsIcon,
 } from "@dust-tt/sparkle";
 import type {
   PlanType,
@@ -82,6 +83,8 @@ export default function TrackerConfigurations({
   const router = useRouter();
 
   const [filter, setFilter] = React.useState<string>("");
+  const [showSuggestions, setShowSuggestions] = React.useState<boolean>(false);
+  const [suggestions, setSuggestions] = React.useState<TrackerGenerationToProcess[]>([]);
 
   const { trackers, isTrackersLoading } = useTrackers({
     disabled: !owner,

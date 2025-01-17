@@ -31,6 +31,9 @@ interface DataSourceConfig {
     type: string;
     expandable: boolean;
     sourceUrl?: string;
+    parentInternalId: string | null;
+    permission: string;
+    lastUpdatedAt: string;
   }>;
   isSelectAll: boolean;
 }
