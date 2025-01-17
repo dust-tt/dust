@@ -41,6 +41,7 @@ makeScript(
             {
               model: DataSourceModel,
               required: true,
+              as: "dataSource",
             },
             {
               model: DataSourceModel,
