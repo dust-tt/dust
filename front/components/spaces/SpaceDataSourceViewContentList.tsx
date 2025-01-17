@@ -77,9 +77,6 @@ const getTableColumns = (showSpaceUsage: boolean): ColumnDef<RowData>[] => {
         <span>{info.getValue()}</span>
       </DataTable.CellContent>
     ),
-    meta: {
-      className: "w-full",
-    },
   });
 
   if (showSpaceUsage) {
@@ -88,7 +85,7 @@ const getTableColumns = (showSpaceUsage: boolean): ColumnDef<RowData>[] => {
       id: "spaces",
       accessorKey: "spaces",
       meta: {
-        className: "w-[200px]",
+        className: "w-48",
       },
       cell: (info: CellContext<RowData, SpaceType[]>) => (
         <DataTable.BasicCellContent
@@ -118,7 +115,7 @@ const getTableColumns = (showSpaceUsage: boolean): ColumnDef<RowData>[] => {
     id: "lastUpdatedAt",
     accessorKey: "lastUpdatedAt",
     meta: {
-      className: "w-[140px]",
+      className: "w-36",
     },
     cell: (info: CellContext<RowData, number>) => (
       <DataTable.BasicCellContent
