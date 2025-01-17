@@ -175,7 +175,7 @@ const getTableColumns = () => {
                       <Icon
                         visual={HandThumbUpIcon}
                         size="xs"
-                        className="text-primary-300"
+                        className="text-primary-400"
                       />
                     </div>
                     <div className="flex flex-row items-center gap-1.5">
@@ -183,7 +183,7 @@ const getTableColumns = () => {
                       <Icon
                         visual={HandThumbDownIcon}
                         size="xs"
-                        className="text-primary-300"
+                        className="text-primary-400"
                       />
                     </div>
                   </div>
