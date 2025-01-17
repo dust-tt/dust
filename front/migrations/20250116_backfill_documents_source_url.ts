@@ -6,7 +6,6 @@ import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 
-const DATA_SOURCE_BATCH_SIZE = 16; // putting a larger batch size here doesn't really do anything
 const QUERY_BATCH_SIZE = 1024; // here it does a lot
 
 async function migrateDataSource({
@@ -183,27 +182,21 @@ async function migrateAll({
   execute: boolean;
   logger: typeof Logger;
 }) {
-  const lastDataSourceId = nextDataSourceId;
-  let frontDataSources;
+  const frontDataSources = await DataSourceModel.findAll({
+    where: { id: { [Op.gt]: nextDataSourceId } },
+    order: [["id", "ASC"]],
+  });
 
-  do {
-    frontDataSources = await DataSourceModel.findAll({
-      where: { id: { [Op.gt]: lastDataSourceId } },
-      order: [["id", "ASC"]],
-      limit: DATA_SOURCE_BATCH_SIZE,
+  for (const frontDataSource of frontDataSources) {
+    await migrateDataSource({
+      frontDataSource,
+      execute,
+      logger: logger.child({
+        dataSourceId: frontDataSource.id,
+        connectorProvider: frontDataSource.connectorProvider,
+      }),
     });
-
-    for (const frontDataSource of frontDataSources) {
-      await migrateDataSource({
-        frontDataSource,
-        execute,
-        logger: logger.child({
-          dataSourceId: frontDataSource.id,
-          connectorProvider: frontDataSource.connectorProvider,
-        }),
-      });
-    }
-  } while (frontDataSources.length === DATA_SOURCE_BATCH_SIZE);
+  }
 }
 
 makeScript(
