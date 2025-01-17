@@ -189,10 +189,7 @@ async function getContentNodesForDataSourceViewFromCore(
 
   return new Ok({
     nodes: coreRes.value.nodes.map((node) => {
-      const { type, preventSelection, expandable } = getContentNodeMetadata(
-        node,
-        viewType
-      );
+      const { type } = getContentNodeMetadata(node, viewType);
       return {
         internalId: node.node_id,
         parentInternalId: node.parent_id ?? null,
@@ -203,8 +200,7 @@ async function getContentNodesForDataSourceViewFromCore(
         providerVisibility: node.provider_visibility,
         parentInternalIds: node.parents,
         type,
-        preventSelection,
-        expandable,
+        expandable: node.has_children,
       };
     }),
     total: coreRes.value.nodes.length,
