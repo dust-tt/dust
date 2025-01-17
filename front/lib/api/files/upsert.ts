@@ -27,7 +27,7 @@ import type {
 import { upsertDocument, upsertTable } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
-import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
+import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
@@ -100,7 +100,7 @@ async function generateSnippet(
     }
 
     const appConfig = cloneBaseConfig(
-      DustProdActionRegistry["conversation-file-summarizer"].config
+      getDustProdAction("conversation-file-summarizer").config
     );
     appConfig.MODEL.provider_id = model.providerId;
     appConfig.MODEL.model_id = model.modelId;

@@ -1,23 +1,20 @@
 import type {
   ActionConfigurationType,
+  AgentActionSpecification,
   FunctionCallType,
   FunctionMessageTypeModel,
   ModelId,
+  Result,
+  RetrievalActionType,
+  RetrievalConfigurationType,
   RetrievalDocumentChunkType,
+  RetrievalDocumentType,
   RetrievalErrorEvent,
   RetrievalParamsEvent,
   RetrievalSuccessEvent,
-} from "@dust-tt/types";
-import type {
-  RetrievalActionType,
-  RetrievalConfigurationType,
-  RetrievalDocumentType,
   TimeFrame,
 } from "@dust-tt/types";
-import type { AgentActionSpecification } from "@dust-tt/types";
-import type { Result } from "@dust-tt/types";
-import { BaseAction, isDevelopment } from "@dust-tt/types";
-import { Ok } from "@dust-tt/types";
+import { BaseAction, Ok } from "@dust-tt/types";
 import assert from "assert";
 import _ from "lodash";
 
@@ -30,15 +27,10 @@ import {
   getRetrievalTopK,
 } from "@app/lib/api/assistant/actions/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
-import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { AgentRetrievalAction } from "@app/lib/models/assistant/actions/retrieval";
-import {
-  cloneBaseConfig,
-  DustProdActionRegistry,
-  PRODUCTION_DUST_WORKSPACE_ID,
-} from "@app/lib/registry";
+import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { RetrievalDocumentBlob } from "@app/lib/resources/retrieval_document_resource";
 import { RetrievalDocumentResource } from "@app/lib/resources/retrieval_document_resource";
@@ -400,16 +392,13 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
 
     // "assistant-v2-retrieval" has no model interaction.
     const config = cloneBaseConfig(
-      DustProdActionRegistry["assistant-v2-retrieval"].config
+      getDustProdAction("assistant-v2-retrieval").config
     );
 
     // Handle data sources list and parents/tags filtering.
     config.DATASOURCE.data_sources = actionConfiguration.dataSources.map(
       (d) => ({
-        workspace_id:
-          isDevelopment() && !apiConfig.getDevelopmentDustAppsWorkspaceId()
-            ? PRODUCTION_DUST_WORKSPACE_ID
-            : d.workspaceId,
+        workspace_id: d.workspaceId,
         // Note: This value is passed to the registry for lookup. The registry will return the
         // associated data source's dustAPIDataSourceId.
         data_source_id: d.dataSourceViewId,

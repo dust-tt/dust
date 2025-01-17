@@ -2,7 +2,7 @@ import * as t from "io-ts";
 
 import { callAction } from "@app/lib/actions/helpers";
 import type { Authenticator } from "@app/lib/auth";
-import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
+import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 
 export async function callDocTrackerScoreDocsAction(
   auth: Authenticator,
@@ -26,7 +26,7 @@ export async function callDocTrackerScoreDocsAction(
     modelId: string;
   }
 ): Promise<DocTrackerScoreDocsActionResult> {
-  const action = DustProdActionRegistry["doc-tracker-score-docs"];
+  const action = getDustProdAction("doc-tracker-score-docs");
 
   const config = cloneBaseConfig(action.config);
   config.MODEL.provider_id = providerId;

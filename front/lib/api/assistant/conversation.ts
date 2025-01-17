@@ -81,7 +81,7 @@ import {
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
-import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
+import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -510,7 +510,7 @@ export async function generateConversationTitle(
   // `assistant-v2-title-generator` app.
 
   const config = cloneBaseConfig(
-    DustProdActionRegistry["assistant-v2-title-generator"].config
+    getDustProdAction("assistant-v2-title-generator").config
   );
   config.MODEL.provider_id = model.providerId;
   config.MODEL.model_id = model.modelId;

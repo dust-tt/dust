@@ -1,3 +1,7 @@
+import { concurrentExecutor, isDevelopment } from "@dust-tt/types";
+import _ from "lodash";
+import parseArgs from "minimist";
+
 import { Authenticator } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models/workspace";
 import { internalSubscribeWorkspaceToFreePlan } from "@app/lib/plans/subscription";
@@ -5,22 +9,34 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
+import logger from "@app/logger/logger";
+
+const DEFAULT_WORKSPACE_NAME = "dust-apps";
+const DEFAULT_SPACE_NAME = "Public Dust Apps";
 
 async function main() {
-  let w = await Workspace.findOne({ where: { sId: "78bda07b39" } });
-  if (w) {
-    console.log(w.id);
-    process.exit(0);
+  const argv = parseArgs(process.argv.slice(2));
+
+  const where = _.pick(argv, ["name", "sId"]);
+  if (!where.name && !where.sId) {
+    throw new Error("Please provide name and/or sId for the workspace");
   }
+  let w = await Workspace.findOne({ where });
+  if (!w) {
+    console.log("Creating workspace");
+    w = await Workspace.create({
+      sId: argv.sId || generateRandomModelSId(),
+      name: argv.name || DEFAULT_WORKSPACE_NAME,
+    });
 
-  w = await Workspace.create({
-    id: 5069,
-    sId: "78bda07b39",
-    name: "dust-apps",
-  });
-
+    await internalSubscribeWorkspaceToFreePlan({
+      workspaceId: w.sId,
+      planCode: "FREE_UPGRADED_PLAN",
+    });
+  }
   const lightWorkspace = renderLightWorkspaceType({ workspace: w });
 
   const { systemGroup, globalGroup } =
@@ -34,34 +50,39 @@ async function main() {
     globalGroup,
   });
 
-  const group = await GroupResource.makeNew({
-    name: `Group for space Public Dust Apps`,
-    workspaceId: w.id,
-    kind: "regular",
-  });
+  const spaces = await SpaceResource.listWorkspaceSpaces(auth);
+  let space = spaces.find((s) => s.isPublic());
+  if (!space) {
+    console.log("Creating group");
+    const group = await GroupResource.makeNew({
+      name: `Group for space ${DEFAULT_SPACE_NAME}`,
+      workspaceId: w.id,
+      kind: "regular",
+    });
 
-  await SpaceResource.makeNew(
-    { id: 93077, name: "Public Dust Apps", kind: "public", workspaceId: w.id },
-    [group]
-  );
+    if (isDevelopment()) {
+      const users = await UserModel.findAll();
+      await concurrentExecutor(
+        users,
+        async (user) =>
+          MembershipResource.createMembership({
+            user: new UserResource(UserModel, user.get()),
+            workspace: lightWorkspace,
+            role: "admin",
+          }),
+        { concurrency: 5 }
+      );
+    }
 
-  await internalSubscribeWorkspaceToFreePlan({
-    workspaceId: w.sId,
-    planCode: "FREE_UPGRADED_PLAN",
-  });
+    console.log("Creating space");
+    space = await SpaceResource.makeNew(
+      { name: DEFAULT_SPACE_NAME, kind: "public", workspaceId: w.id },
+      [group]
+    );
+  }
 
-  const users = await UserModel.findAll();
-  await Promise.all(
-    users.map(async (user) =>
-      MembershipResource.createMembership({
-        user: new UserResource(UserModel, user.get()),
-        workspace: lightWorkspace,
-        role: "admin",
-      })
-    )
-  );
-
-  console.log(w.id);
+  console.log(`export DUST_APPS_WORKSPACE_ID=${w.sId}`);
+  console.log(`export DUST_APPS_SPACE_ID=${space.sId}`);
 }
 
 main()

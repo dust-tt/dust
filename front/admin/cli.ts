@@ -1,3 +1,12 @@
+import { DustAPI } from "@dust-tt/client";
+import {
+  assertNever,
+  ConnectorsAPI,
+  removeNulls,
+  SUPPORTED_MODEL_CONFIGS,
+} from "@dust-tt/types";
+import parseArgs from "minimist";
+
 import { getConversation } from "@app/lib/api/assistant/conversation";
 import { renderConversationForModel } from "@app/lib/api/assistant/generation";
 import { getTextRepresentationFromMessages } from "@app/lib/api/assistant/utils";
@@ -11,7 +20,7 @@ import {
   internalSubscribeWorkspaceToFreeNoPlan,
   internalSubscribeWorkspaceToFreePlan,
 } from "@app/lib/plans/subscription";
-import { DustProdActionRegistry } from "@app/lib/registry";
+import { getDustProdActionRegistry } from "@app/lib/registry";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
@@ -27,14 +36,6 @@ import {
   stopRetrieveTranscriptsWorkflow,
 } from "@app/temporal/labs/client";
 import { REGISTERED_CHECKS } from "@app/temporal/production_checks/activities";
-import { DustAPI } from "@dust-tt/client";
-import {
-  assertNever,
-  ConnectorsAPI,
-  removeNulls,
-  SUPPORTED_MODEL_CONFIGS,
-} from "@dust-tt/types";
-import parseArgs from "minimist";
 
 // `cli` takes an object type and a command as first two arguments and then a list of arguments.
 const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
@@ -63,7 +64,6 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       });
 
       args.wId = w.sId;
-      await workspace("show", args);
       return;
     }
 
@@ -193,7 +193,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
     default:
       console.log(`Unknown workspace command: ${command}`);
       console.log(
-        "Possible values: `find`, `show`, `create`, `set-limits`, `upgrade`, `downgrade`"
+        "Possible values: `find`, `create`, `set-limits`, `upgrade`, `downgrade`"
       );
   }
 };
@@ -445,7 +445,7 @@ const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
 const registry = async (command: string) => {
   switch (command) {
     case "dump": {
-      console.log(JSON.stringify(DustProdActionRegistry));
+      console.log(JSON.stringify(getDustProdActionRegistry()));
       return;
     }
 
@@ -507,7 +507,7 @@ const productionCheck = async (command: string, args: parseArgs.ParsedArgs) => {
         args.url
       );
 
-      const actions = Object.values(DustProdActionRegistry);
+      const actions = Object.values(getDustProdActionRegistry());
 
       const res = await api.checkApps(
         {
