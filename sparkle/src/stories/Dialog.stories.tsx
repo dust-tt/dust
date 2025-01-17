@@ -4,43 +4,43 @@ import React from "react";
 import { Button } from "@sparkle/components";
 
 import {
-  NewDialog,
-  NewDialogContainer,
-  NewDialogContent,
-  NewDialogDescription,
-  NewDialogFooter,
-  NewDialogHeader,
-  NewDialogTitle,
-  NewDialogTrigger,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
 } from "../index_with_tw_base";
 
-const meta: Meta<typeof NewDialog> = {
-  title: "Components/NewDialog",
-  component: NewDialog,
+const meta: Meta<typeof Dialog> = {
+  title: "Components/Dialog",
+  component: Dialog,
   tags: ["autodocs"],
 };
 
 export default meta;
-type Story = StoryObj<typeof NewDialog>;
+type Story = StoryObj<typeof Dialog>;
 
 export const Basic: Story = {
   render: () => (
-    <NewDialog>
-      <NewDialogTrigger asChild>
-        <Button label="Open NewDialog" />
-      </NewDialogTrigger>
-      <NewDialogContent>
-        <NewDialogHeader>
-          <NewDialogTitle>Edit Profile</NewDialogTitle>
-          <NewDialogDescription>
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button label="Open Dialog" />
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit Profile</DialogTitle>
+          <DialogDescription>
             Make changes to your profile settings here
-          </NewDialogDescription>
-        </NewDialogHeader>
-        <NewDialogContainer>
+          </DialogDescription>
+        </DialogHeader>
+        <DialogContainer>
           Your profile details will be updated based on the information you
           provide.
-        </NewDialogContainer>
-        <NewDialogFooter
+        </DialogContainer>
+        <DialogFooter
           leftButtonProps={{
             label: "Cancel",
             variant: "outline",
@@ -50,22 +50,22 @@ export const Basic: Story = {
             variant: "highlight",
           }}
         />
-      </NewDialogContent>
-    </NewDialog>
+      </DialogContent>
+    </Dialog>
   ),
 };
 
 export const WithForm: Story = {
   render: () => (
-    <NewDialog>
-      <NewDialogTrigger asChild>
+    <Dialog>
+      <DialogTrigger asChild>
         <Button label="Edit User" />
-      </NewDialogTrigger>
-      <NewDialogContent size="lg">
-        <NewDialogHeader>
-          <NewDialogTitle>Edit User Settings</NewDialogTitle>
-        </NewDialogHeader>
-        <NewDialogContainer>
+      </DialogTrigger>
+      <DialogContent size="lg">
+        <DialogHeader>
+          <DialogTitle>Edit User Settings</DialogTitle>
+        </DialogHeader>
+        <DialogContainer>
           <div className="s-grid s-gap-4 s-py-4">
             <div className="s-grid s-gap-2">
               <label className="s-text-sm s-font-medium">Name</label>
@@ -83,8 +83,8 @@ export const WithForm: Story = {
               />
             </div>
           </div>
-        </NewDialogContainer>
-        <NewDialogFooter
+        </DialogContainer>
+        <DialogFooter
           leftButtonProps={{
             label: "Cancel",
             variant: "ghost",
@@ -94,26 +94,26 @@ export const WithForm: Story = {
             variant: "primary",
           }}
         />
-      </NewDialogContent>
-    </NewDialog>
+      </DialogContent>
+    </Dialog>
   ),
 };
 
-export const AlertNewDialog: Story = {
+export const AlertDialog: Story = {
   render: () => (
-    <NewDialog>
-      <NewDialogTrigger asChild>
+    <Dialog>
+      <DialogTrigger asChild>
         <Button variant="warning" label="Delete Account" />
-      </NewDialogTrigger>
-      <NewDialogContent size="md">
-        <NewDialogHeader>
-          <NewDialogTitle>Are you absolutely sure?</NewDialogTitle>
-          <NewDialogDescription>
+      </DialogTrigger>
+      <DialogContent size="md">
+        <DialogHeader>
+          <DialogTitle>Are you absolutely sure?</DialogTitle>
+          <DialogDescription>
             This action cannot be undone. This will permanently delete your
             account and remove your data from our servers.
-          </NewDialogDescription>
-        </NewDialogHeader>
-        <NewDialogFooter
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter
           leftButtonProps={{
             label: "Cancel",
             variant: "ghost",
@@ -123,22 +123,22 @@ export const AlertNewDialog: Story = {
             variant: "warning",
           }}
         />
-      </NewDialogContent>
-    </NewDialog>
+      </DialogContent>
+    </Dialog>
   ),
 };
 
 export const LargeContent: Story = {
   render: () => (
-    <NewDialog>
-      <NewDialogTrigger asChild>
+    <Dialog>
+      <DialogTrigger asChild>
         <Button label="View Terms" />
-      </NewDialogTrigger>
-      <NewDialogContent size="xl">
-        <NewDialogHeader>
-          <NewDialogTitle>Terms of Service</NewDialogTitle>
-        </NewDialogHeader>
-        <NewDialogContainer>
+      </DialogTrigger>
+      <DialogContent size="xl">
+        <DialogHeader>
+          <DialogTitle>Terms of Service</DialogTitle>
+        </DialogHeader>
+        <DialogContainer>
           <div className="s-space-y-4">
             <h3 className="s-font-semibold">1. Introduction</h3>
             <p className="s-text-sm s-text-muted-foreground">
@@ -159,8 +159,8 @@ export const LargeContent: Story = {
               dignissimos tempora eligendi!
             </p>
           </div>
-        </NewDialogContainer>
-      </NewDialogContent>
-    </NewDialog>
+        </DialogContainer>
+      </DialogContent>
+    </Dialog>
   ),
 };

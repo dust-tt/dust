@@ -7,12 +7,12 @@ import { Button, ScrollArea } from "@sparkle/components";
 import { XMarkIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 
-const NewDialog = DialogPrimitive.Root;
-const NewDialogTrigger = DialogPrimitive.Trigger;
-const NewDialogClose = DialogPrimitive.Close;
-const NewDialogPortal = DialogPrimitive.Portal;
+const Dialog = DialogPrimitive.Root;
+const DialogTrigger = DialogPrimitive.Trigger;
+const DialogClose = DialogPrimitive.Close;
+const DialogPortal = DialogPrimitive.Portal;
 
-const NewDialogOverlay = React.forwardRef<
+const DialogOverlay = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Overlay>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
 >(({ className, ...props }, ref) => (
@@ -25,7 +25,7 @@ const NewDialogOverlay = React.forwardRef<
     ref={ref}
   />
 ));
-NewDialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
+DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
 const DIALOG_SIZES = ["md", "lg", "xl"] as const;
 type DialogSizeType = (typeof DIALOG_SIZES)[number];
@@ -48,23 +48,23 @@ const dialogVariants = cva(
   }
 );
 
-interface NewDialogContentProps
+interface DialogContentProps
   extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
   size?: DialogSizeType;
   trapFocusScope?: boolean;
   isAlertDialog?: boolean;
 }
 
-const NewDialogContent = React.forwardRef<
+const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
-  NewDialogContentProps
+  DialogContentProps
 >(
   (
     { className, children, size, trapFocusScope, isAlertDialog, ...props },
     ref
   ) => (
-    <NewDialogPortal>
-      <NewDialogOverlay />
+    <DialogPortal>
+      <DialogOverlay />
       <FocusScope trapped={trapFocusScope} asChild>
         <DialogPrimitive.Content
           ref={ref}
@@ -77,21 +77,21 @@ const NewDialogContent = React.forwardRef<
           {children}
         </DialogPrimitive.Content>
       </FocusScope>
-    </NewDialogPortal>
+    </DialogPortal>
   )
 );
-NewDialogContent.displayName = DialogPrimitive.Content.displayName;
+DialogContent.displayName = DialogPrimitive.Content.displayName;
 
-interface NewNewDialogHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
+interface NewDialogHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
   hideButton?: boolean;
 }
 
-const NewDialogHeader = ({
+const DialogHeader = ({
   className,
   children,
   hideButton = false,
   ...props
-}: NewNewDialogHeaderProps) => (
+}: NewDialogHeaderProps) => (
   <div
     className={cn(
       "s-z-50 s-flex s-flex-none s-flex-col s-gap-0 s-p-5 s-text-left",
@@ -100,14 +100,14 @@ const NewDialogHeader = ({
     {...props}
   >
     {children}
-    <NewDialogClose asChild className="s-absolute s-right-3 s-top-3">
+    <DialogClose asChild className="s-absolute s-right-3 s-top-3">
       {!hideButton && <Button icon={XMarkIcon} variant="ghost" size="sm" />}
-    </NewDialogClose>
+    </DialogClose>
   </div>
 );
-NewDialogHeader.displayName = "NewDialogHeader";
+DialogHeader.displayName = "DialogHeader";
 
-const NewDialogContainer = ({
+const DialogContainer = ({
   children,
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <ScrollArea className="s-w-full s-flex-grow">
@@ -116,22 +116,22 @@ const NewDialogContainer = ({
     </div>
   </ScrollArea>
 );
-NewDialogContainer.displayName = "DialogContainer";
+DialogContainer.displayName = "DialogContainer";
 
-interface NewDialogFooterProps extends React.HTMLAttributes<HTMLDivElement> {
+interface DialogFooterProps extends React.HTMLAttributes<HTMLDivElement> {
   leftButtonProps?: React.ComponentProps<typeof Button>;
   rightButtonProps?: React.ComponentProps<typeof Button>;
   dialogCloseClassName?: string;
 }
 
-const NewDialogFooter = ({
+const DialogFooter = ({
   className,
   children,
   leftButtonProps,
   rightButtonProps,
   dialogCloseClassName,
   ...props
-}: NewDialogFooterProps) => (
+}: DialogFooterProps) => (
   <div
     className={cn(
       "s-flex s-flex-none s-flex-row s-justify-end s-gap-2 s-px-3 s-py-3",
@@ -143,24 +143,24 @@ const NewDialogFooter = ({
       (leftButtonProps.disabled ? (
         <Button {...leftButtonProps} />
       ) : (
-        <NewDialogClose className={dialogCloseClassName} asChild>
+        <DialogClose className={dialogCloseClassName} asChild>
           <Button {...leftButtonProps} />
-        </NewDialogClose>
+        </DialogClose>
       ))}
     {rightButtonProps &&
       (rightButtonProps.disabled ? (
         <Button {...rightButtonProps} />
       ) : (
-        <NewDialogClose className={dialogCloseClassName} asChild>
+        <DialogClose className={dialogCloseClassName} asChild>
           <Button {...rightButtonProps} />
-        </NewDialogClose>
+        </DialogClose>
       ))}
     {children}
   </div>
 );
-NewDialogFooter.displayName = "DialogFooter";
+DialogFooter.displayName = "DialogFooter";
 
-const NewDialogTitle = React.forwardRef<
+const DialogTitle = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Title>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
 >(({ className, ...props }, ref) => (
@@ -170,9 +170,9 @@ const NewDialogTitle = React.forwardRef<
     {...props}
   />
 ));
-NewDialogTitle.displayName = DialogPrimitive.Title.displayName;
+DialogTitle.displayName = DialogPrimitive.Title.displayName;
 
-const NewDialogDescription = React.forwardRef<
+const DialogDescription = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Description>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description>
 >(({ className, ...props }, ref) => (
@@ -182,18 +182,18 @@ const NewDialogDescription = React.forwardRef<
     {...props}
   />
 ));
-NewDialogDescription.displayName = DialogPrimitive.Description.displayName;
+DialogDescription.displayName = DialogPrimitive.Description.displayName;
 
 export {
-  NewDialog,
-  NewDialogClose,
-  NewDialogContainer,
-  NewDialogContent,
-  NewDialogDescription,
-  NewDialogFooter,
-  NewDialogHeader,
-  NewDialogOverlay,
-  NewDialogPortal,
-  NewDialogTitle,
-  NewDialogTrigger,
+  Dialog,
+  DialogClose,
+  DialogContainer,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogOverlay,
+  DialogPortal,
+  DialogTitle,
+  DialogTrigger,
 };

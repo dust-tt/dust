@@ -78,18 +78,18 @@ export * from "./markdown";
 export { Modal } from "./Modal";
 export * from "./NavigationList";
 export {
-  NewDialog,
-  NewDialogClose,
-  NewDialogContainer,
-  NewDialogContent,
-  NewDialogDescription,
-  NewDialogFooter,
-  NewDialogHeader,
-  NewDialogOverlay,
-  NewDialogPortal,
-  NewDialogTitle,
-  NewDialogTrigger,
-} from "./NewDialog";
+  Dialog,
+  DialogClose,
+  DialogContainer,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogOverlay,
+  DialogPortal,
+  DialogTitle,
+  DialogTrigger,
+} from "./Dialog";
 export type { NotificationType } from "./Notification";
 export { Notification, useSendNotification } from "./Notification";
 export { Page } from "./Page";
