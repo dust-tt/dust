@@ -32,6 +32,7 @@ import config from "@app/lib/api/config";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { useTrackerGenerations } from "@app/lib/swr/trackerGenerations";
 import { useTrackers } from "@app/lib/swr/trackers";
 
 type RowData = TrackerConfigurationType & {
@@ -85,7 +86,14 @@ export default function TrackerConfigurations({
 
   const [filter, setFilter] = React.useState<string>("");
   const [showSuggestions, setShowSuggestions] = React.useState<boolean>(false);
-  const [suggestions, setSuggestions] = React.useState<TrackerGenerationToProcess[]>([]);
+  const [selectedTrackerId, setSelectedTrackerId] = React.useState<string | null>(null);
+
+  const { generations, isGenerationsLoading } = useTrackerGenerations({
+    disabled: !showSuggestions,
+    owner,
+    space: globalSpace,
+    trackerId: selectedTrackerId,
+  });
 
   const { trackers, isTrackersLoading } = useTrackers({
     disabled: !owner,
@@ -218,7 +226,10 @@ export default function TrackerConfigurations({
                       <Button
                         label="View Change Suggestions"
                         icon={ViewColumnsIcon}
-                        onClick={() => setShowSuggestions(true)}
+                        onClick={() => {
+                          setSelectedTrackerId(rows[0]?.sId || null);
+                          setShowSuggestions(true);
+                        }}
                       />
                       <Button
                         label="New tracker"
@@ -246,8 +257,11 @@ export default function TrackerConfigurations({
         </Page.Vertical>
         {showSuggestions && (
           <ChangeSuggestionsPanel
-            suggestions={suggestions}
-            onClose={() => setShowSuggestions(false)}
+            suggestions={generations || []}
+            onClose={() => {
+              setShowSuggestions(false);
+              setSelectedTrackerId(null);
+            }}
           />
         )}
       </AppLayout>
