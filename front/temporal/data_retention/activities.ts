@@ -28,11 +28,19 @@ export async function getWorkspacesWithConversationsRetentionActivity(): Promise
  * Purge conversations for workspaces with retention policy.
  * We chunk the workspaces to avoid hitting the database with too many queries at once.
  */
+type PurgeConversationsBatchActivityReturnType = {
+  workspaceModelId: number;
+  workspaceId: string;
+  nbConversationsDeleted: number;
+};
+
 export async function purgeConversationsBatchActivity({
   workspaceIds,
 }: {
   workspaceIds: number[];
-}) {
+}): Promise<PurgeConversationsBatchActivityReturnType[]> {
+  const res: PurgeConversationsBatchActivityReturnType[] = [];
+
   for (const workspaceId of workspaceIds) {
     const workspace = await Workspace.findByPk(workspaceId);
     if (!workspace) {
@@ -77,5 +85,13 @@ export async function purgeConversationsBatchActivity({
         })
       );
     }
+
+    res.push({
+      workspaceModelId: workspace.id,
+      workspaceId: workspace.sId,
+      nbConversationsDeleted: conversations.length,
+    });
   }
+
+  return res;
 }
