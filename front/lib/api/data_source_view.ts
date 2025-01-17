@@ -167,7 +167,7 @@ function makeCoreDataSourceViewFilter(
 
 async function getContentNodesForDataSourceViewFromCore(
   dataSourceView: DataSourceViewResource | DataSourceViewType,
-  { internalIds, parentId, viewType }: GetContentNodesForDataSourceViewParams
+  { internalIds, parentId }: GetContentNodesForDataSourceViewParams
 ): Promise<Result<GetContentNodesForDataSourceViewResult, Error>> {
   // There's an early return possible on !dataSourceView.dataSource.connectorId && internalIds?.length === 0,
   // won't include it for now as we are shadow-reading.
@@ -189,7 +189,7 @@ async function getContentNodesForDataSourceViewFromCore(
 
   return new Ok({
     nodes: coreRes.value.nodes.map((node) => {
-      const { type } = getContentNodeMetadata(node, viewType);
+      const { type } = getContentNodeMetadata(node);
       return {
         internalId: node.node_id,
         parentInternalId: node.parent_id ?? null,
