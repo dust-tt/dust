@@ -108,7 +108,7 @@ export const Hero: HeroProps = {
 };
 
 export const Benefits: BenefitsProps = {
-  sectionTitle: "Solve faster, satisfy more",
+  sectionTitle: "Write less, sell more",
   items: [
     {
       icon: MagicIcon,
