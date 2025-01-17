@@ -105,7 +105,6 @@ export default function LandingLayout({
               variant="outline"
               size="sm"
               label="Request a demo"
-              target="_blank"
             />
             <Button
               variant="highlight"
