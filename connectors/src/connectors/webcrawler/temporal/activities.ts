@@ -353,17 +353,19 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
               return;
             }
 
+            // Use the original request URL to preserve subpage information
+            // while still ensuring the URL is valid through validation
             const formattedDocumentContent = formatDocumentContent({
               title: pageTitle,
               content: extracted,
-              url: validatedUrl.standardized,
+              url: request.url,
             });
 
             await upsertDataSourceDocument({
               dataSourceConfig,
               documentId: documentId,
               documentContent: formattedDocumentContent,
-              documentUrl: validatedUrl.standardized,
+              documentUrl: request.url,
               timestampMs: new Date().getTime(),
               tags: [`title:${stripNullBytes(pageTitle)}`],
               parents: parentFolderIds,
