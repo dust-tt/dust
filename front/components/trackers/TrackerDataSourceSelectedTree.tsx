@@ -23,18 +23,20 @@ import {
   getDisplayNameForDataSource,
 } from "@app/lib/data_sources";
 
+type ContentNode = {
+  internalId: string;
+  title: string;
+  type: string;
+  expandable: boolean;
+  sourceUrl?: string;
+  parentInternalId: string | null;
+  permission: string;
+  lastUpdatedAt: string;
+};
+
 interface DataSourceConfig {
   dataSourceView: DataSourceViewType;
-  selectedResources: Array<{
-    internalId: string;
-    title: string;
-    type: string;
-    expandable: boolean;
-    sourceUrl?: string;
-    parentInternalId: string | null;
-    permission: string;
-    lastUpdatedAt: string;
-  }>;
+  selectedResources: ContentNode[];
   isSelectAll: boolean;
 }
 
