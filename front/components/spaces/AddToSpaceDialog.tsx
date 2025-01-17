@@ -1,14 +1,19 @@
 import {
   Button,
-  Dialog,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  NewDialog,
+  NewDialogContainer,
+  NewDialogContent,
+  NewDialogFooter,
+  NewDialogHeader,
+  NewDialogTitle,
   ScrollArea,
   ScrollBar,
+  useSendNotification,
 } from "@dust-tt/sparkle";
-import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   APIError,
   DataSourceViewContentNode,
@@ -16,7 +21,7 @@ import type {
   LightWorkspaceType,
   SpaceType,
 } from "@dust-tt/types";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 
 import { useDataSourceViews } from "@app/lib/swr/data_source_views";
 import { useSpaces } from "@app/lib/swr/spaces";
@@ -133,45 +138,64 @@ export const AddToSpaceDialog = ({
   };
 
   return (
-    <Dialog
-      disabled={space === undefined}
-      isOpen={isOpen}
-      onCancel={() => onClose(false)}
-      onValidate={addToSpace}
-      title="Add to Space"
-      validateLabel="Save"
+    <NewDialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose(false);
+        }
+      }}
     >
-      {availableSpaces.length === 0 ? (
-        <div className="mt-1 text-left">
-          This data is already available in all spaces.
-        </div>
-      ) : (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              label={space ? space.name : "Select space"}
-              size="sm"
-              isSelect
-              variant="outline"
-            />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="min-w-48 p-2">
-            <ScrollArea
-              className="flex max-h-72 flex-col overflow-y-auto"
-              hideScrollBar
-            >
-              {availableSpaces.map((currentSpace) => (
-                <DropdownMenuItem
-                  key={currentSpace.sId}
-                  label={currentSpace.name}
-                  onClick={() => setSpace(currentSpace)}
+      <NewDialogContent size="md">
+        <NewDialogHeader>
+          <NewDialogTitle>Add to Space</NewDialogTitle>
+        </NewDialogHeader>
+        <NewDialogContainer>
+          {availableSpaces.length === 0 ? (
+            <div className="mt-1 text-left">
+              This data is already available in all spaces.
+            </div>
+          ) : (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  label={space ? space.name : "Select space"}
+                  size="sm"
+                  isSelect
+                  variant="outline"
                 />
-              ))}
-              <ScrollBar className="py-0" />
-            </ScrollArea>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )}
-    </Dialog>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="min-w-48 p-2">
+                <ScrollArea
+                  className="flex max-h-72 flex-col overflow-y-auto"
+                  hideScrollBar
+                >
+                  {availableSpaces.map((currentSpace) => (
+                    <DropdownMenuItem
+                      key={currentSpace.sId}
+                      label={currentSpace.name}
+                      onClick={() => setSpace(currentSpace)}
+                    />
+                  ))}
+                  <ScrollBar className="py-0" />
+                </ScrollArea>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </NewDialogContainer>
+        <NewDialogFooter
+          leftButtonProps={{
+            label: "Cancel",
+            variant: "outline",
+            onClick: onClose,
+          }}
+          rightButtonProps={{
+            label: "Save",
+            variant: "primary",
+            onClick: addToSpace,
+          }}
+        />
+      </NewDialogContent>
+    </NewDialog>
   );
 };
