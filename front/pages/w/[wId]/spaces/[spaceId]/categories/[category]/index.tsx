@@ -38,7 +38,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     space: SpaceType;
     systemSpace: SpaceType;
     integrations: DataSourceIntegration[];
-    registryApps?: ActionApp[];
+    registryApps: ActionApp[] | null;
   }
 >(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
@@ -127,7 +127,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
 
   const registryApps = isDustAppsSpace
     ? Object.values(getDustProdActionRegistry()).map((action) => action.app)
-    : undefined;
+    : null;
 
   return {
     props: {
