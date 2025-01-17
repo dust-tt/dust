@@ -4,15 +4,15 @@ import type { ReactElement } from "react";
 
 import { BenefitsSection } from "@app/components/home/content/Solutions/BenefitsSection";
 import {
-  pageSettings,
-  Hero,
-  Benefits,
-  Metrics,
-  UseCases,
-  Quote,
-  DemoVideo,
-  Stories,
   AssistantExamples,
+  Benefits,
+  DemoVideo,
+  Hero,
+  Metrics,
+  pageSettings,
+  Quote,
+  Stories,
+  UseCases,
 } from "@app/components/home/content/Solutions/configs/salesConfig";
 import { CustomerStoriesSection } from "@app/components/home/content/Solutions/CustomerStoriesSection";
 import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
