@@ -54,13 +54,21 @@ async function updateNodes(
   );
 }
 
-async function backfillAllCodeDirs(
-  coreSequelize: Sequelize,
-  connectorsSequelize: Sequelize,
-  dataSource: DataSourceModel,
-  execute: boolean,
-  logger: typeof Logger
-) {
+async function backfillAllCodeDirs({
+  coreSequelize,
+  connectorsSequelize,
+  frontDataSource,
+  coreDataSourceId,
+  execute,
+  logger,
+}: {
+  coreSequelize: Sequelize;
+  connectorsSequelize: Sequelize;
+  frontDataSource: DataSourceModel;
+  coreDataSourceId: number;
+  execute: boolean;
+  logger: typeof Logger;
+}) {
   logger.info("Processing directories");
 
   let nextId = 0;
@@ -79,7 +87,7 @@ async function backfillAllCodeDirs(
           replacements: {
             batchSize: BATCH_SIZE,
             nextId,
-            connectorId: dataSource.connectorId,
+            connectorId: frontDataSource.connectorId,
           },
           type: QueryTypes.SELECT,
         }
@@ -97,7 +105,7 @@ async function backfillAllCodeDirs(
       return row.internalId;
     });
     if (execute) {
-      await updateNodes(coreSequelize, dataSource.id, nodeIds, urls);
+      await updateNodes(coreSequelize, coreDataSourceId, nodeIds, urls);
       logger.info(`Updated ${rows.length} code directories.`);
     } else {
       logger.info(
@@ -107,13 +115,21 @@ async function backfillAllCodeDirs(
   } while (updatedRowsCount === BATCH_SIZE);
 }
 
-async function backfillAllMetaNodes(
-  coreSequelize: Sequelize,
-  connectorsSequelize: Sequelize,
-  dataSource: DataSourceModel,
-  execute: boolean,
-  logger: typeof Logger
-) {
+async function backfillAllMetaNodes({
+  coreSequelize,
+  connectorsSequelize,
+  frontDataSource,
+  coreDataSourceId,
+  execute,
+  logger,
+}: {
+  coreSequelize: Sequelize;
+  connectorsSequelize: Sequelize;
+  frontDataSource: DataSourceModel;
+  coreDataSourceId: number;
+  execute: boolean;
+  logger: typeof Logger;
+}) {
   logger.info("Processing repo nodes");
 
   let nextId = 0;
@@ -132,7 +148,7 @@ async function backfillAllMetaNodes(
           replacements: {
             batchSize: BATCH_SIZE,
             nextId,
-            connectorId: dataSource.connectorId,
+            connectorId: frontDataSource.connectorId,
           },
           type: QueryTypes.SELECT,
         }
@@ -167,32 +183,54 @@ async function backfillAllMetaNodes(
     });
     const codeRootUrls = repoUrls;
     if (execute) {
-      await updateNodes(coreSequelize, dataSource.id, repoNodeIds, repoUrls);
+      await updateNodes(coreSequelize, coreDataSourceId, repoNodeIds, repoUrls);
       await updateNodes(
         coreSequelize,
-        dataSource.id,
+        coreDataSourceId,
         discussionNodeIds,
         discussionUrls
       );
       await updateNodes(
         coreSequelize,
-        dataSource.id,
+        coreDataSourceId,
         issuesNodeIds,
         issuesUrls
       );
       await updateNodes(
         coreSequelize,
-        dataSource.id,
+        coreDataSourceId,
         codeRootNodeIds,
         codeRootUrls
       );
-      logger.info(`Updated ${rows.length} repo nodes.`);
+      logger.info(`Updated ${rows.length * 4} meta nodes.`);
     } else {
       logger.info(
         `Would update ${rows.length * 4} meta nodes, sample for repo: ${repoNodeIds.slice(0, 5).join(", ")}, ${repoUrls.slice(0, 5).join(", ")}`
       );
     }
   } while (updatedRowsCount === BATCH_SIZE);
+}
+
+async function getCoreDataSourceId(
+  frontDataSource: DataSourceModel,
+  coreSequelize: Sequelize,
+  logger: typeof Logger
+) {
+  // get datasource id from core
+  const rows: { id: number }[] = await coreSequelize.query(
+    `SELECT id FROM data_sources WHERE data_source_id = :dataSourceId;`,
+    {
+      replacements: { dataSourceId: frontDataSource.dustAPIDataSourceId },
+      type: QueryTypes.SELECT,
+    }
+  );
+
+  if (rows.length === 0) {
+    logger.error(`Data source ${frontDataSource.id} not found in core`);
+    return null;
+  }
+
+  return rows[0].id;
 }
 
 makeScript({}, async ({ execute }, logger) => {
@@ -205,19 +243,31 @@ makeScript({}, async ({ execute }, logger) => {
   });
   logger.info(`Found ${frontDataSources.length} GitHub data sources`);
   for (const frontDataSource of frontDataSources) {
-    await backfillAllMetaNodes(
+    const coreDataSourceId = await getCoreDataSourceId(
+      frontDataSource,
+      coreSequelize,
+      logger
+    );
+
+    if (coreDataSourceId === null) {
+      continue;
+    }
+
+    await backfillAllMetaNodes({
       coreSequelize,
       connectorsSequelize,
       frontDataSource,
+      coreDataSourceId,
       execute,
-      logger
-    );
-    await backfillAllCodeDirs(
+      logger,
+    });
+    await backfillAllCodeDirs({
       coreSequelize,
       connectorsSequelize,
       frontDataSource,
+      coreDataSourceId,
       execute,
-      logger
-    );
+      logger,
+    });
   }
 });
