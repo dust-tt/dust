@@ -225,7 +225,7 @@ export const sendTrackerWithGenerationEmail = async ({
       }
       body += `:</strong>`;
 
-      body += `<p>${g.content.replace(/\n/g, "<br />")}</p>`;
+      body += `<p>${g.content.replace(/\\n/g, "\n").replace(/\n/g, "<br />")}</p>`;
       return body;
     })
   );
