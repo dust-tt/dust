@@ -2,12 +2,11 @@ import {
   BarChartIcon,
   Button,
   ChatBubbleBottomCenterTextIcon,
-  classNames,
+  cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  LightbulbIcon,
   MagicIcon,
   Markdown,
   MoreIcon,
@@ -114,13 +113,18 @@ export default function AssistantBuilderRightPanel({
           onValueChange={(t) =>
             openRightPanelTab(t as AssistantBuilderRightPanelTab)
           }
-          className="hidden lg:flex"
+          className="hidden lg:block"
         >
-          <TabsList className="inline-flex items-center gap-2 border-b border-separator">
+          <TabsList>
             {template && (
               <TabsTrigger value="Template" label="Template" icon={MagicIcon} />
             )}
-            {/* The agentConfigurationId is truthy iff not a new assistant */}
+            <TabsTrigger
+              value="Preview"
+              label="Preview"
+              icon={ChatBubbleBottomCenterTextIcon}
+            />
+            {/* The agentConfigurationId is truthy if not a new assistant */}
             {agentConfigurationId && (
               <TabsTrigger
                 value="Performance"
@@ -128,19 +132,13 @@ export default function AssistantBuilderRightPanel({
                 icon={BarChartIcon}
               />
             )}
-            <TabsTrigger
-              value="Preview"
-              label="Preview"
-              icon={ChatBubbleBottomCenterTextIcon}
-            />
           </TabsList>
         </Tabs>
       </div>
       <div
-        className={classNames(
-          template !== null
-            ? "grow-1 mb-5 h-full overflow-y-auto rounded-b-xl border-x border-b border-structure-200 pt-5"
-            : "grow-1 mb-5 mt-5 h-full overflow-y-auto rounded-xl border border-structure-200",
+        className={cn(
+          "grow-1 mb-5 h-full overflow-y-auto",
+          rightPanelStatus.tab === "Preview" ? "" : "border-b border-border",
           shouldAnimatePreviewDrawer &&
             rightPanelStatus.tab === "Preview" &&
             rightPanelStatus.openedAt != null &&
@@ -148,8 +146,7 @@ export default function AssistantBuilderRightPanel({
             // This is to prevent the animation from triggering right after the drawer is opened.
             Date.now() - rightPanelStatus.openedAt > 1000
             ? "animate-reload"
-            : "",
-          rightPanelStatus.tab !== "Performance" ? "bg-structure-50" : ""
+            : ""
         )}
       >
         {(rightPanelStatus.tab === "Preview" || screen === "naming") &&
@@ -193,12 +190,8 @@ export default function AssistantBuilderRightPanel({
         {rightPanelStatus.tab === "Template" &&
           template &&
           screen === "instructions" && (
-            <div className="mb-72 flex flex-col gap-4 px-6">
-              <div className="flex items-end justify-between pt-2">
-                <Page.Header
-                  icon={LightbulbIcon}
-                  title="Template's Instructions manual"
-                />
+            <div className="mb-72 flex flex-col gap-4">
+              <div className="flex items-end justify-end justify-between pt-2">
                 <TemplateDropDownMenu
                   screen={screen}
                   removeTemplate={removeTemplate}
@@ -207,7 +200,6 @@ export default function AssistantBuilderRightPanel({
                   openRightPanelTab={openRightPanelTab}
                 />
               </div>
-              <Page.Separator />
               {template?.helpInstructions && (
                 <Markdown content={template?.helpInstructions ?? ""} />
               )}
@@ -216,12 +208,8 @@ export default function AssistantBuilderRightPanel({
         {rightPanelStatus.tab === "Template" &&
           template &&
           screen === "actions" && (
-            <div className="mb-72 flex flex-col gap-4 px-6">
-              <div className="flex items-end justify-between pt-2">
-                <Page.Header
-                  icon={LightbulbIcon}
-                  title={"Template's Tools manual"}
-                />
+            <div className="mb-72 flex flex-col gap-4">
+              <div className="flex items-end justify-end justify-between pt-2">
                 <TemplateDropDownMenu
                   screen={screen}
                   removeTemplate={removeTemplate}
