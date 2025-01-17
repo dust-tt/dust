@@ -147,7 +147,7 @@ async function migrateDataSource({
           );
         }
       }
-    })()) as { id: number; source_url: string; timestamp: number }[][];
+    })()) as { id: number; timestamp: number }[][];
 
     if (updatedRows.length === 0) {
       break;
