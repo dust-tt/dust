@@ -70,6 +70,9 @@ export function computeNodesDiff({
       const diff = Object.fromEntries(
         Object.entries(connectorsNode)
           .filter(([key, value]) => {
+            if (key === "preventSelection") {
+              return false;
+            }
             const coreValue = coreNode[key as keyof DataSourceViewContentNode];
             if (Array.isArray(value) && Array.isArray(coreValue)) {
               return JSON.stringify(value) !== JSON.stringify(coreValue);
