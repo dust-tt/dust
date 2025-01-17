@@ -16,6 +16,7 @@ import type {
   TrackerConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
+import type { ColumnDef } from "@tanstack/react-table";
 import type { CellContext } from "@tanstack/react-table";
 import { capitalize } from "lodash";
 import type { InferGetServerSidePropsType } from "next";
@@ -100,13 +101,13 @@ export default function TrackerConfigurations({
     [trackers, owner, router]
   );
 
-  const columns = [
+  const columns: ColumnDef<RowData, any>[] = [
     {
       id: "name",
       header: "Name",
       accessorKey: "name",
       meta: {
-        width: "14rem",
+        className: "w-14",
       },
       cell: (info: CellContext<RowData, string>) => (
         <DataTable.CellContent>
@@ -118,10 +119,15 @@ export default function TrackerConfigurations({
       id: "description",
       header: "Description",
       accessorKey: "description",
+      meta: {
+        className: "", // Add className to match ColumnMeta interface
+      },
       cell: (info: CellContext<RowData, string>) => (
-        <DataTable.CellContent>
-          <span>{info.row.original.description}</span>
-        </DataTable.CellContent>
+        <DataTable.BasicCellContent
+          label={
+            info.row.original.description ? info.row.original.description : ""
+          }
+        />
       ),
     },
     {
@@ -129,7 +135,7 @@ export default function TrackerConfigurations({
       header: "Status",
       accessorKey: "status",
       meta: {
-        width: "6rem",
+        className: "w-6",
       },
       cell: (info: CellContext<RowData, string>) => (
         <DataTable.CellContent>
@@ -148,7 +154,7 @@ export default function TrackerConfigurations({
       header: "Edit",
       accessorKey: "id",
       meta: {
-        width: "6rem",
+        className: "w-6",
       },
       cell: (info: CellContext<RowData, string>) => (
         <Button
