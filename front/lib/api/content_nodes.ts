@@ -44,18 +44,16 @@ export function getContentNodeMetadata(
   expandable: boolean;
   preventSelection?: boolean;
 } {
-  // TODO(2025-01-15 aubin) - remove the dev comments
-  // unless mentioned otherwise, the following is taken from retrieveBatchContentNodes in each connector's index.ts
   switch (node.mime_type) {
-    case MIME_TYPES.CONFLUENCE.PAGE: // taken from createContentNodeFromPage
+    case MIME_TYPES.CONFLUENCE.PAGE:
       return {
         type: "file",
-        expandable: node.has_children, // this should match checkPageHasChildren in confluence/lib/permissions.ts, which does a check in db
+        expandable: node.has_children,
       };
-    case MIME_TYPES.CONFLUENCE.SPACE: // taken from createContentNodeFromSpace
+    case MIME_TYPES.CONFLUENCE.SPACE:
       return {
         type: "folder",
-        expandable: true, // isExpandable set to false only in getPermissions with permissions = none (which we won't replace)
+        expandable: true,
       };
     case MIME_TYPES.GITHUB.REPOSITORY:
       return {
@@ -80,7 +78,7 @@ export function getContentNodeMetadata(
     case MIME_TYPES.GITHUB.ISSUES:
       return {
         type: "database",
-        expandable: false, // surprising
+        expandable: false,
       };
     case MIME_TYPES.GITHUB.ISSUE:
       return {
@@ -90,17 +88,17 @@ export function getContentNodeMetadata(
     case MIME_TYPES.GITHUB.DISCUSSIONS:
       return {
         type: "channel",
-        expandable: false, // surprising
+        expandable: false,
       };
     case MIME_TYPES.GITHUB.DISCUSSION:
       return {
         type: "file",
         expandable: false,
       };
-    case MIME_TYPES.GOOGLE_DRIVE.FOLDER: // see isDriveObjectExpandable
+    case MIME_TYPES.GOOGLE_DRIVE.FOLDER:
       return {
         type: "folder",
-        expandable: node.has_children, // tricky since it's actually false if the node only has directories as descendants
+        expandable: node.has_children,
       };
     case MIME_TYPES.INTERCOM.COLLECTION:
       return {
@@ -119,7 +117,7 @@ export function getContentNodeMetadata(
       };
     case MIME_TYPES.INTERCOM.TEAM:
       return {
-        type: "folder", // actually set to "channel" in retrieveBatchContentNodes, but folder in retrievePermissions, have to check with the author
+        type: "folder",
         expandable: false,
       };
     case MIME_TYPES.INTERCOM.HELP_CENTER:
@@ -132,12 +130,11 @@ export function getContentNodeMetadata(
         type: "file",
         expandable: false,
       };
-    case MIME_TYPES.MICROSOFT.FOLDER: // see getMicrosoftNodeAsContentNode
+    case MIME_TYPES.MICROSOFT.FOLDER:
       return {
         type: "folder",
         expandable: true,
       };
-    // we have to do something for other microsoft objects, there is some logic in getMicrosoftNodeAsContentNode
     case MIME_TYPES.NOTION.UNKNOWN_FOLDER:
       return {
         type: "folder",
@@ -151,36 +148,36 @@ export function getContentNodeMetadata(
     case MIME_TYPES.NOTION.PAGE:
       return {
         type: "file",
-        expandable: node.has_children, // hoping that this matches the output of hasChildren in notion/lib/parents.ts
+        expandable: node.has_children,
       };
     case MIME_TYPES.SLACK.CHANNEL:
       return {
         type: "channel",
-        expandable: false, // surprising
+        expandable: false,
       };
-    case MIME_TYPES.SLACK.THREAD: // these are never showed, not implement in retrieveBatchContentNodes
+    case MIME_TYPES.SLACK.THREAD:
       return {
         type: "file",
         expandable: false,
       };
-    case MIME_TYPES.SLACK.MESSAGES: // these are never showed, not implement in retrieveBatchContentNodes
+    case MIME_TYPES.SLACK.MESSAGES:
       return {
         type: "file",
         expandable: true,
       };
-    case MIME_TYPES.SNOWFLAKE.DATABASE: // see getContentNodeFromInternalId in snowflake/lib/content_nodes.ts
+    case MIME_TYPES.SNOWFLAKE.DATABASE:
       return {
         type: "folder",
         expandable: true,
         preventSelection: false,
       };
-    case MIME_TYPES.SNOWFLAKE.SCHEMA: // see getContentNodeFromInternalId in snowflake/lib/content_nodes.ts
+    case MIME_TYPES.SNOWFLAKE.SCHEMA:
       return {
         type: "folder",
         expandable: true,
         preventSelection: false,
       };
-    case MIME_TYPES.SNOWFLAKE.TABLE: // see getContentNodeFromInternalId in snowflake/lib/content_nodes.ts
+    case MIME_TYPES.SNOWFLAKE.TABLE:
       return {
         type: "database",
         expandable: false,
@@ -191,39 +188,37 @@ export function getContentNodeMetadata(
         type: "folder",
         expandable: true,
       };
-    case MIME_TYPES.ZENDESK.BRAND: // see toContentNode method in zendesk_resources.ts
+    case MIME_TYPES.ZENDESK.BRAND:
       return {
         type: "folder",
         expandable: true,
       };
-    case MIME_TYPES.ZENDESK.HELP_CENTER: // see toContentNode method in zendesk_resources.ts
+    case MIME_TYPES.ZENDESK.HELP_CENTER:
       return {
         type: "folder",
         expandable: true,
       };
-    case MIME_TYPES.ZENDESK.CATEGORY: // see toContentNode method in zendesk_resources.ts
+    case MIME_TYPES.ZENDESK.CATEGORY:
       return {
         type: "folder",
         expandable: true,
       };
-    case MIME_TYPES.ZENDESK.ARTICLE: // see toContentNode method in zendesk_resources.ts
+    case MIME_TYPES.ZENDESK.ARTICLE:
       return {
         type: "file",
         expandable: false,
       };
-    case MIME_TYPES.ZENDESK.TICKETS: // see toContentNode method in zendesk_resources.ts
+    case MIME_TYPES.ZENDESK.TICKETS:
       return {
         type: "folder",
         expandable: true,
       };
-    case MIME_TYPES.ZENDESK.TICKET: // see toContentNode method in zendesk_resources.ts
+    case MIME_TYPES.ZENDESK.TICKET:
       return {
         type: "file",
         expandable: false,
       };
-    // handling google drive and microsoft files
     default:
-      // the default match Google Drive
       let expandable = false;
       let type: ContentNodeType = "file";
       if (
