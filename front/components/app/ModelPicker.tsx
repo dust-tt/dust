@@ -1,6 +1,5 @@
 import {
   Button,
-  ChevronDownIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -118,9 +117,9 @@ export default function ModelPicker({
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
+              isSelect
               variant="outline"
               className="py-1 text-sm font-bold"
-              endIcon={ChevronDownIcon}
               label={
                 model.provider_id
                   ? `${model.provider_id}${model.model_id ? ` / ${model.model_id}` : ""}`
