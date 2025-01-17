@@ -107,7 +107,7 @@ export default function TrackerConfigurations({
       header: "Name",
       accessorKey: "name",
       meta: {
-        className: "w-14",
+        className: "w-48",
       },
       cell: (info: CellContext<RowData, string>) => (
         <DataTable.CellContent>
@@ -119,9 +119,6 @@ export default function TrackerConfigurations({
       id: "description",
       header: "Description",
       accessorKey: "description",
-      meta: {
-        className: "", // Add className to match ColumnMeta interface
-      },
       cell: (info: CellContext<RowData, string>) => (
         <DataTable.BasicCellContent
           label={
@@ -135,7 +132,7 @@ export default function TrackerConfigurations({
       header: "Status",
       accessorKey: "status",
       meta: {
-        className: "w-6",
+        className: "w-24",
       },
       cell: (info: CellContext<RowData, string>) => (
         <DataTable.CellContent>
@@ -154,7 +151,7 @@ export default function TrackerConfigurations({
       header: "Edit",
       accessorKey: "id",
       meta: {
-        className: "w-6",
+        className: "w-14",
       },
       cell: (info: CellContext<RowData, string>) => (
         <Button
