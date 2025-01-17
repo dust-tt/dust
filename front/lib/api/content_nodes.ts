@@ -3,13 +3,7 @@ import type {
   CoreAPIContentNode,
   DataSourceViewType,
 } from "@dust-tt/types";
-import {
-  assertNever,
-  getGoogleSheetContentNodeInternalIdFromTableId,
-  getMicrosoftSheetContentNodeInternalIdFromTableId,
-  getNotionDatabaseContentNodeInternalIdFromTableId,
-  MIME_TYPES,
-} from "@dust-tt/types";
+import { assertNever, MIME_TYPES } from "@dust-tt/types";
 
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 
@@ -20,18 +14,11 @@ export function getContentNodeInternalIdFromTableId(
   const { dataSource } = dataSourceView;
 
   switch (dataSource.connectorProvider) {
-    case "google_drive":
-      return getGoogleSheetContentNodeInternalIdFromTableId(tableId);
-
-    case "notion":
-      return getNotionDatabaseContentNodeInternalIdFromTableId(tableId);
-
-    case "microsoft":
-      return getMicrosoftSheetContentNodeInternalIdFromTableId(tableId);
-
-    // For static and snowflake tables, the contentNode internalId is the tableId.
     case null:
+    case "microsoft":
     case "snowflake":
+    case "google_drive":
+    case "notion":
       return tableId;
 
     case "intercom":
