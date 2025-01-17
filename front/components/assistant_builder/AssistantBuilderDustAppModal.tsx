@@ -1,13 +1,5 @@
-import {
-  CommandLineIcon,
-  ContextItem,
-  Icon,
-  Modal,
-  Page,
-  Spinner,
-} from "@dust-tt/sparkle";
+import { CommandLineIcon, ContextItem, Icon, Modal, Page, Spinner } from "@dust-tt/sparkle";
 import type { AppType, LightWorkspaceType, SpaceType } from "@dust-tt/types";
-import { Transition } from "@headlessui/react";
 import { sortBy } from "lodash";
 import { useMemo } from "react";
 
@@ -48,7 +40,6 @@ export default function AssistantBuilderDustAppModal({
         <PickDustApp
           allowedSpaces={allowedSpaces}
           owner={owner}
-          show={true}
           dustApps={dustApps}
           onPick={(app) => {
             onSave(app);
@@ -65,14 +56,12 @@ interface PickDustAppProps {
   dustApps: AppType[];
   onPick: (app: AppType) => void;
   owner: LightWorkspaceType;
-  show: boolean;
 }
 
 function PickDustApp({
   owner,
   allowedSpaces,
   dustApps,
-  show,
   onPick,
 }: PickDustAppProps) {
   const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
@@ -90,7 +79,8 @@ function PickDustApp({
   );
 
   return (
-    <Transition show={show} className="mx-auto max-w-6xl">
+    // TODO (jules): this should be refactored as a Sheet
+    <div className="mx-auto max-w-6xl">
       <Page variant="modal">
         <Page.Header title="Select Dust App" icon={CommandLineIcon} />
         {hasSomeUnselectableApps && (
@@ -155,6 +145,6 @@ function PickDustApp({
           />
         )}
       </Page>
-    </Transition>
+    </div>
   );
 }
