@@ -32,8 +32,15 @@ interface GithubGetPullRequestActionBlob {
     repo: string;
     pullNumber: number;
   };
-  details: string | null;
-  diff: string | null;
+  pullBody: string | null;
+  pullCommits:
+    | {
+        oid: string;
+        author: string;
+        message: string;
+      }[]
+    | null;
+  pullDiff: string | null;
   functionCallId: string | null;
   functionCallName: string | null;
   step: number;
@@ -46,8 +53,15 @@ export class GithubGetPullRequestAction extends BaseAction {
     repo: string;
     pullNumber: number;
   };
-  readonly details: string | null;
-  readonly diff: string | null;
+  readonly pullBody: string | null;
+  readonly pullCommits:
+    | {
+        oid: string;
+        author: string;
+        message: string;
+      }[]
+    | null;
+  readonly pullDiff: string | null;
   readonly functionCallId: string | null;
   readonly functionCallName: string | null;
   readonly step: number = -1;
@@ -57,8 +71,9 @@ export class GithubGetPullRequestAction extends BaseAction {
     super(blob.id, "github_get_pull_request_action");
     this.agentMessageId = blob.agentMessageId;
     this.params = blob.params;
-    this.details = blob.details;
-    this.diff = blob.diff;
+    this.pullBody = blob.pullBody;
+    this.pullCommits = blob.pullCommits;
+    this.pullDiff = blob.pullDiff;
     this.functionCallId = blob.functionCallId;
     this.functionCallName = blob.functionCallName;
     this.step = blob.step;
@@ -74,7 +89,7 @@ export class GithubGetPullRequestAction extends BaseAction {
   }
 
   async renderForMultiActionsModel(): Promise<FunctionMessageTypeModel> {
-    const content = `${this.details}\n\n${this.diff}`;
+    const content = `${this.pullBody}\n\n${this.pullDiff}`;
 
     console.log(this);
     return {
@@ -210,8 +225,9 @@ export class GithubGetPullRequestConfigurationServerRunner extends BaseActionCon
           repo,
           pullNumber,
         },
-        details: null,
-        diff: null,
+        pullBody: null,
+        pullCommits: null,
+        pullDiff: null,
         functionCallId,
         functionCallName: actionConfiguration.name,
         agentMessageId: agentMessage.agentMessageId,
@@ -272,16 +288,14 @@ export class GithubGetPullRequestConfigurationServerRunner extends BaseActionCon
         pullNumber,
       });
 
-      let prDetails = pr.repository.pullRequest.body;
-      prDetails += "\n\ncommits:\n";
-      prDetails += pr.repository.pullRequest.commits.nodes
-        .map((n: any) => {
-          return `${n.commit.oid} - ${n.commit.message} - ${n.commit.author.user.login}`;
-        })
-        .join("\n");
-
-      console.log("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< PR_DATA");
-      console.log(prDetails);
+      const prBody = pr.repository.pullRequest.body;
+      const prCommits = pr.repository.pullRequest.commits.nodes.map((n: any) => {
+        return {
+          oid: n.commit.oid,
+          mesage: n.commit.message,
+          author: n.commit.author.user.login,
+        };
+      });
 
       // const formatDiffWithLineNumbers = (diff: string) => {
       //   const lines = diff.split("\n");
@@ -341,8 +355,9 @@ export class GithubGetPullRequestConfigurationServerRunner extends BaseActionCon
       console.log(prDiff);
 
       await action.update({
-        details: prDetails,
-        diff: prDiff,
+        pullBody: prBody,
+        pullCommits: prCommits,
+        pullDiff: prDiff,
       });
     } catch (e) {
       yield {
@@ -370,8 +385,9 @@ export class GithubGetPullRequestConfigurationServerRunner extends BaseActionCon
           repo: repo,
           pullNumber,
         },
-        details: action.details,
-        diff: action.diff,
+        pullBody: action.pullBody,
+        pullCommits: action.pullCommits,
+        pullDiff: action.pullDiff,
         functionCallId,
         functionCallName: actionConfiguration.name,
         agentMessageId: agentMessage.agentMessageId,
