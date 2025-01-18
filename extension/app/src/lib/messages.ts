@@ -2,7 +2,6 @@ import { saveTokens } from "@extension/lib/storage";
 
 export type Auth0AuthorizeResponse = {
   accessToken: string;
-  idToken: string;
   refreshToken: string;
   expiresIn: number;
 };

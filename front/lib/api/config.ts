@@ -120,6 +120,9 @@ const config = {
       "DUST_APPS_HELPER_DATASOURCE_VIEW_ID"
     );
   },
+  getRegion: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("DUST_REGION");
+  },
   getRegionResolverSecret: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("REGION_RESOLVER_SECRET");
   },

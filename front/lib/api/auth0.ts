@@ -43,6 +43,7 @@ export const Auth0JwtPayloadSchema = t.type({
   exp: t.number,
   scope: t.string,
   sub: t.string,
+  ["https://dust.tt/region"]: t.union([t.string, t.undefined]),
 });
 
 export type Auth0JwtPayload = t.TypeOf<typeof Auth0JwtPayloadSchema> &
@@ -141,9 +142,14 @@ export async function verifyAuth0Token(
   // TODO(thomas): Remove this when all clients are updated.
   const legacyAudience = `https://${auth0Domain}/api/v2/`;
   const decoded = jwt.decode(accessToken, { json: true });
-  const useLegacy = !decoded || decoded.aud !== audience;
 
-  logger.info({ useLegacy, audience: decoded?.aud }, "Using legacy audience.");
+  const useLegacy =
+    !decoded ||
+    (Array.isArray(decoded.aud)
+      ? !decoded.aud.includes(audience)
+      : decoded.aud !== audience);
+
+  logger.info({ useLegacy, audience: decoded?.aud }, "Get Auth0 token");
 
   return new Promise((resolve) => {
     jwt.verify(
@@ -176,6 +182,12 @@ export async function verifyAuth0Token(
         if (isLeft(payloadValidation)) {
           logger.error("Invalid token payload.");
           return resolve(new Err(Error("Invalid token payload.")));
+        }
+
+        const region = payloadValidation.right["https://dust.tt/region"];
+        if (region && config.getRegion() !== region) {
+          logger.error({ requiredScopes: requiredScope }, "Invalid region.");
+          return resolve(new Err(Error("Invalid region.")));
         }
 
         if (requiredScope && !useLegacy) {

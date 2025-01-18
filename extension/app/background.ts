@@ -555,7 +555,6 @@ const refreshToken = async (
       state.refreshRequests = [];
       handlers.forEach((sendResponse) => {
         sendResponse({
-          idToken: data.id_token,
           accessToken: data.access_token,
           refreshToken: data.refresh_token || refreshToken,
           expiresIn: data.expires_in,
@@ -603,8 +602,8 @@ const exchangeCodeForTokens = async (
     }
 
     const data = await response.json();
+
     return {
-      idToken: data.id_token,
       accessToken: data.access_token,
       refreshToken: data.refresh_token,
       expiresIn: data.expires_in,

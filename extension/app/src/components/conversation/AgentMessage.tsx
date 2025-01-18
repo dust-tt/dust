@@ -44,6 +44,7 @@ import {
   Popover,
   useSendNotification,
 } from "@dust-tt/sparkle";
+import { useAuth } from "@extension/components/auth/AuthProvider";
 import { AgentMessageActions } from "@extension/components/conversation/AgentMessageActions";
 import { GenerationContext } from "@extension/components/conversation/GenerationContextProvider";
 import {
@@ -133,6 +134,7 @@ export function AgentMessage({
   size,
 }: AgentMessageProps) {
   const sendNotification = useSendNotification();
+  const { user } = useAuth();
 
   const [streamedAgentMessage, setStreamedAgentMessage] =
     useState<AgentMessagePublicType>(message);
@@ -171,7 +173,7 @@ export function AgentMessage({
 
   const buildEventSourceURL = useCallback(
     (lastEvent: string | null) => {
-      const esURL = `${process.env.DUST_DOMAIN}/api/v1/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${message.sId}/events`;
+      const esURL = `${user?.dustDomain}/api/v1/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${message.sId}/events`;
       let lastEventId = "";
       if (lastEvent) {
         const eventPayload: {
@@ -428,7 +430,7 @@ export function AgentMessage({
             label="See visualization on Dust website"
             onClick={() => {
               window.open(
-                `${process.env.DUST_DOMAIN}/w/${owner.sId}/assistant/${conversationId}`
+                `${user?.dustDomain}/w/${owner.sId}/assistant/${conversationId}`
               );
             }}
           />
