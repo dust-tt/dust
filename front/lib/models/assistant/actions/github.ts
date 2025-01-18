@@ -88,8 +88,13 @@ export class AgentGithubGetPullRequestAction extends BaseModel<AgentGithubGetPul
   declare repo: string;
   declare pullNumber: number;
 
-  declare details: string | null;
-  declare diff: string | null;
+  declare pullBody: string | null;
+  declare pullCommits: Array<{
+    oid: string;
+    message: string;
+    author: string;
+  }> | null;
+  declare pullDiff: string | null;
 
   declare functionCallId: string | null;
   declare functionCallName: string | null;
