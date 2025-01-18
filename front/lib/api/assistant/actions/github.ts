@@ -1,13 +1,11 @@
 import type {
   AgentActionSpecification,
-  ConversationType,
   FunctionCallType,
   FunctionMessageTypeModel,
   GithubGetPullRequestConfigurationType,
   GithubGetPullRequestErrorEvent,
   GithubGetPullRequestParamsEvent,
   GithubGetPullRequestSuccessEvent,
-  ModelConfigurationType,
   ModelId,
   Result,
 } from "@dust-tt/types";
@@ -75,23 +73,16 @@ export class GithubGetPullRequestAction extends BaseAction {
     };
   }
 
-  async renderForMultiActionsModel({
-    conversation,
-    model,
-  }: {
-    conversation: ConversationType;
-    model: ModelConfigurationType;
-  }): Promise<FunctionMessageTypeModel> {
-    console.log(
-      "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< RENDER_FOR_MULTI_ACTIONS_MODEL"
-    );
+  async renderForMultiActionsModel(): Promise<FunctionMessageTypeModel> {
+    const content = `${this.details}\n\n${this.diff}`;
+
     console.log(this);
     return {
       role: "function" as const,
       name:
         this.functionCallName ?? DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME,
       function_call_id: this.functionCallId ?? `call_${this.id.toString()}`,
-      content: `TODO`,
+      content,
     };
   }
 }

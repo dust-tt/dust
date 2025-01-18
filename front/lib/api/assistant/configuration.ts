@@ -58,10 +58,7 @@ import { getPublicUploadBucket } from "@app/lib/file_storage";
 import { AgentBrowseConfiguration } from "@app/lib/models/assistant/actions/browse";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
-import {
-  AgentGithubConfiguration,
-  AgentGithubGetPullRequestAction,
-} from "@app/lib/models/assistant/actions/github";
+import { AgentGithubConfiguration } from "@app/lib/models/assistant/actions/github";
 import { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/process";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import { AgentTablesQueryConfiguration } from "@app/lib/models/assistant/actions/tables_query";
