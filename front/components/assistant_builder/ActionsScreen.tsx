@@ -14,7 +14,6 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  GithubIcon,
   Icon,
   InformationCircleIcon,
   Input,

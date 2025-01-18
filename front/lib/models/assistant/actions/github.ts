@@ -121,11 +121,15 @@ AgentGithubGetPullRequestAction.init(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
-    details: {
+    pullBody: {
       type: DataTypes.TEXT,
       allowNull: true,
     },
-    diff: {
+    pullCommits: {
+      type: DataTypes.ARRAY(DataTypes.JSONB),
+      allowNull: true,
+    },
+    pullDiff: {
       type: DataTypes.TEXT,
       allowNull: true,
     },
