@@ -1336,7 +1336,7 @@ impl Store for PostgresStore {
             None => {
                 c.query(
                     "SELECT dsd.id, dsd.created, dsd.timestamp, dsd.tags_array, dsn.parents, \
-                       dsd.source_url, dsd.hash, dsd.text_size, dsd.chunk_count, dsn.title, \
+                       dsn.source_url, dsd.hash, dsd.text_size, dsd.chunk_count, dsn.title, \
                        dsn.mime_type, dsn.provider_visibility \
                        FROM data_sources_documents dsd \
                        INNER JOIN data_sources_nodes dsn ON dsn.document=dsd.id \
@@ -1349,7 +1349,7 @@ impl Store for PostgresStore {
             Some(version_hash) => {
                 c.query(
                     "SELECT dsd.id, dsd.created, dsd.timestamp, dsd.tags_array, dsn.parents, \
-                       dsd.source_url, dsd.hash, dsd.text_size, dsd.chunk_count, dsn.title, \
+                       dsn.source_url, dsd.hash, dsd.text_size, dsd.chunk_count, dsn.title, \
                        dsn.mime_type, dsn.provider_visibility \
                        FROM data_sources_documents dsd \
                        INNER JOIN data_sources_nodes dsn ON dsn.document=dsd.id \
@@ -2009,7 +2009,7 @@ impl Store for PostgresStore {
 
         let sql = format!(
             "SELECT dsd.id, dsd.created, dsd.document_id, dsd.timestamp, dsd.tags_array, \
-               dsn.parents, dsd.source_url, dsd.hash, dsd.text_size, dsd.chunk_count, \
+               dsn.parents, dsn.source_url, dsd.hash, dsd.text_size, dsd.chunk_count, \
                dsn.title, dsn.mime_type, dsn.provider_visibility \
                FROM data_sources_documents dsd \
                INNER JOIN data_sources_nodes dsn ON dsn.document=dsd.id \
