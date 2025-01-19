@@ -143,6 +143,7 @@ export async function streamConversationToSlack(
       case "websearch_params":
       case "browse_params":
       case "conversation_include_file_params":
+      case "github_get_pull_request_params":
         await postSlackMessageUpdate(
           {
             isComplete: false,
