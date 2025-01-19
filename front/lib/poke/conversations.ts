@@ -140,6 +140,7 @@ export async function getPokeConversation(
 
                   case "conversation_include_file_action":
                   case "conversation_list_files_action":
+                  case "github_get_pull_request_action":
                     // Theses actions do not call a dust app
                     break;
 
