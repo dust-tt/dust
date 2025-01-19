@@ -13,6 +13,7 @@ import {
   assertNever,
   isBrowseConfiguration,
   isDustAppRunConfiguration,
+  isGithubGetPullRequestConfiguration,
   isProcessConfiguration,
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
@@ -23,6 +24,7 @@ import {
 import type { AssistantBuilderActionConfiguration } from "@app/components/assistant_builder/types";
 import {
   getDefaultDustAppRunActionConfiguration,
+  getDefaultGithubhGetPullRequestActionConfiguration,
   getDefaultProcessActionConfiguration,
   getDefaultRetrievalExhaustiveActionConfiguration,
   getDefaultRetrievalSearchActionConfiguration,
@@ -105,6 +107,8 @@ async function initializeBuilderAction(
     return getDefaultWebsearchActionConfiguration();
   } else if (isBrowseConfiguration(action)) {
     return null; // Ignore browse actions
+  } else if (isGithubGetPullRequestConfiguration(action)) {
+    return getDefaultGithubhGetPullRequestActionConfiguration();
   } else {
     assertNever(action);
   }

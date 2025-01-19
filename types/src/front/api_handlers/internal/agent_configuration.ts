@@ -105,6 +105,10 @@ const BrowseActionConfigurationSchema = t.type({
   type: t.literal("browse_configuration"),
 });
 
+const GithubGetPullRequestActionConfigurationSchema = t.type({
+  type: t.literal("github_get_pull_request_configuration"),
+});
+
 const ProcessActionConfigurationSchema = t.type({
   type: t.literal("process_configuration"),
   dataSources: t.array(
@@ -167,6 +171,7 @@ const ActionConfigurationSchema = t.intersection([
     ProcessActionConfigurationSchema,
     WebsearchActionConfigurationSchema,
     BrowseActionConfigurationSchema,
+    GithubGetPullRequestActionConfigurationSchema,
   ]),
   requiredMultiActionsCommonFields,
 ]);

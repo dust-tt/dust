@@ -65,6 +65,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { deleteAllConversations } from "@app/temporal/scrub_workspace/activities";
+import { PlatformActionsConfigurationModel } from "@app/lib/resources/storage/models/platform_actions";
 
 const hardDeleteLogger = logger.child({ activity: "hard-delete" });
 
@@ -539,6 +540,11 @@ export async function deleteWorkspaceActivity({
     },
   });
   await FeatureFlag.destroy({
+    where: {
+      workspaceId: workspace.id,
+    },
+  });
+  await PlatformActionsConfigurationModel.destroy({
     where: {
       workspaceId: workspace.id,
     },

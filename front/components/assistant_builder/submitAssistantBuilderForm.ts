@@ -19,6 +19,8 @@ import type {
 import {
   DEFAULT_BROWSE_ACTION_DESCRIPTION,
   DEFAULT_BROWSE_ACTION_NAME,
+  DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_DESCRIPTION,
+  DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/api/assistant/actions/constants";
@@ -190,6 +192,15 @@ export async function submitAssistantBuilderForm({
             tagsFilter: a.configuration.tagsFilter,
             relativeTimeFrame: timeFrame,
             schema: a.configuration.schema,
+          },
+        ];
+
+      case "GITHUB_GET_PULL_REQUEST":
+        return [
+          {
+            type: "github_get_pull_request_configuration",
+            name: DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME,
+            description: DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_DESCRIPTION,
           },
         ];
 

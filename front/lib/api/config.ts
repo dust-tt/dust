@@ -127,6 +127,11 @@ const config = {
   getOAuthGithubApp: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_GITHUB_APP");
   },
+  getOAuthGithubAppPlatformActions: (): string => {
+    return EnvironmentConfig.getEnvVariable(
+      "OAUTH_GITHUB_APP_PLATFORM_ACTIONS"
+    );
+  },
   getOAuthNotionClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_NOTION_CLIENT_ID");
   },

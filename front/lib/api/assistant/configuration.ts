@@ -32,6 +32,7 @@ import { Op, Sequelize, UniqueConstraintError } from "sequelize";
 
 import {
   DEFAULT_BROWSE_ACTION_NAME,
+  DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME,
   DEFAULT_PROCESS_ACTION_NAME,
   DEFAULT_RETRIEVAL_ACTION_NAME,
   DEFAULT_TABLES_QUERY_ACTION_NAME,
@@ -57,6 +58,7 @@ import { getPublicUploadBucket } from "@app/lib/file_storage";
 import { AgentBrowseConfiguration } from "@app/lib/models/assistant/actions/browse";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
+import { AgentGithubConfiguration } from "@app/lib/models/assistant/actions/github";
 import { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/process";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import { AgentTablesQueryConfiguration } from "@app/lib/models/assistant/actions/tables_query";
@@ -70,6 +72,8 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { TemplateResource } from "@app/lib/resources/template_resource";
+
+import { fetchGithubActionConfigurations } from "./configuration/github";
 
 type SortStrategyType = "alphabetical" | "priority" | "updatedAt";
 
@@ -461,6 +465,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
     tableQueryActionsConfigurationsPerAgent,
     websearchActionsConfigurationsPerAgent,
     browseActionsConfigurationsPerAgent,
+    githubActionsConfigurationsPerAgent,
     favoriteStatePerAgent,
   ] = await Promise.all([
     fetchAgentRetrievalActionConfigurations({ configurationIds, variant }),
@@ -469,6 +474,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
     fetchTableQueryActionConfigurations({ configurationIds, variant }),
     fetchWebsearchActionConfigurations({ configurationIds, variant }),
     fetchBrowseActionConfigurations({ configurationIds, variant }),
+    fetchGithubActionConfigurations({ configurationIds, variant }),
     user
       ? getFavoriteStates(auth, { configurationIds: configurationSIds })
       : Promise.resolve(new Map<string, boolean>()),
@@ -482,38 +488,37 @@ async function fetchWorkspaceAgentConfigurationsForView(
       // Retrieval configurations.
       const retrievalActionsConfigurations =
         retrievalActionsConfigurationsPerAgent.get(agent.id) ?? [];
-
       actions.push(...retrievalActionsConfigurations);
 
       // Dust app run configurations.
       const dustAppRunActionsConfigurations =
         dustAppRunActionsConfigurationsPerAgent.get(agent.id) ?? [];
-
       actions.push(...dustAppRunActionsConfigurations);
 
       // Websearch configurations.
       const websearchActionsConfigurations =
         websearchActionsConfigurationsPerAgent.get(agent.id) ?? [];
-
       actions.push(...websearchActionsConfigurations);
 
       // Browse configurations.
       const browseActionsConfigurations =
         browseActionsConfigurationsPerAgent.get(agent.id) ?? [];
-
       actions.push(...browseActionsConfigurations);
 
       // Table query configurations.
       const tableQueryActionsConfigurations =
         tableQueryActionsConfigurationsPerAgent.get(agent.id) ?? [];
-
       actions.push(...tableQueryActionsConfigurations);
 
       // Process configurations.
-      const processActionConfigurations =
+      const processActionsConfigurations =
         processActionsConfigurationsPerAgent.get(agent.id) ?? [];
+      actions.push(...processActionsConfigurations);
 
-      actions.push(...processActionConfigurations);
+      // Github configurations
+      const githubActionsConfigurations =
+        githubActionsConfigurationsPerAgent.get(agent.id) ?? [];
+      actions.push(...githubActionsConfigurations);
     }
 
     const agentConfigurationType: AgentConfigurationType = {
@@ -970,6 +975,9 @@ export async function createAgentActionConfiguration(
     | {
         type: "browse_configuration";
       }
+    | {
+        type: "github_get_pull_request_configuration";
+      }
   ) & {
     name: string | null;
     description: string | null;
@@ -1141,6 +1149,23 @@ export async function createAgentActionConfiguration(
         sId: browseConfig.sId,
         type: "browse_configuration",
         name: action.name || DEFAULT_BROWSE_ACTION_NAME,
+        description: action.description,
+      });
+    }
+    case "github_get_pull_request_configuration": {
+      const githubConfig = await AgentGithubConfiguration.create({
+        sId: generateRandomModelSId(),
+        agentConfigurationId: agentConfiguration.id,
+        actionType: "github_get_pull_request_action",
+        name: action.name,
+        description: action.description,
+      });
+
+      return new Ok({
+        id: githubConfig.id,
+        sId: githubConfig.sId,
+        type: "github_get_pull_request_configuration",
+        name: action.name || DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME,
         description: action.description,
       });
     }

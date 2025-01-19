@@ -1,6 +1,10 @@
 import * as t from "io-ts";
 
-export const OAUTH_USE_CASES = ["connection", "labs_transcripts"] as const;
+export const OAUTH_USE_CASES = [
+  "connection",
+  "labs_transcripts",
+  "platform_actions",
+] as const;
 
 export type OAuthUseCase = (typeof OAUTH_USE_CASES)[number];
 
