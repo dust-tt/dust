@@ -90,7 +90,7 @@ export class AgentGithubGetPullRequestAction extends BaseModel<AgentGithubGetPul
 
   declare pullBody: string | null;
   declare pullCommits: Array<{
-    oid: string;
+    sha: string;
     message: string;
     author: string;
   }> | null;
