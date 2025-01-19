@@ -37,7 +37,7 @@ export const frontSequelize = new Sequelize(
   {
     pool: {
       // Default is 5.
-      max: isDevelopment() ? 5 : 30,
+      max: isDevelopment() ? 5 : 20,
     },
     logging: isDevelopment() && DB_LOGGING_ENABLED ? sequelizeLogger : false,
     hooks: {
