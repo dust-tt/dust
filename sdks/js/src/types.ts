@@ -679,6 +679,30 @@ const TablesQueryActionTypeSchema = BaseActionSchema.extend({
 });
 type TablesQueryActionPublicType = z.infer<typeof TablesQueryActionTypeSchema>;
 
+const GithubPullRequestParamsSchema = z.object({
+  owner: z.string(),
+  repo: z.string(),
+  pullNumber: z.number(),
+});
+
+const GithubPullCommitsSchema = z.object({
+  sha: z.string(),
+  message: z.string(),
+  author: z.string(),
+});
+
+const GithubGetPullRequestActionSchema = BaseActionSchema.extend({
+  params: GithubPullRequestParamsSchema,
+  pullBody: z.string().nullable(),
+  pullCommits: GithubPullCommitsSchema.array().nullable(),
+  pullDiff: z.string().nullable(),
+  functionCallId: z.string().nullable(),
+  functionCallName: z.string().nullable(),
+  agentMessageId: ModelIdSchema,
+  step: z.number(),
+  type: z.literal("github_get_pull_request_action"),
+});
+
 const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "usage_data_api"
   | "okta_enterprise_connection"
@@ -930,6 +954,7 @@ const AgentActionTypeSchema = z.union([
   BrowseActionTypeSchema,
   ConversationListFilesActionTypeSchema,
   ConversationIncludeFileActionTypeSchema,
+  GithubGetPullRequestActionSchema,
 ]);
 export type AgentActionPublicType = z.infer<typeof AgentActionTypeSchema>;
 

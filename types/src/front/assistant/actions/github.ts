@@ -18,6 +18,15 @@ export interface GithubGetPullRequestActionType extends BaseAction {
     repo: string;
     pullNumber: number;
   };
+  pullBody: string | null;
+  pullCommits:
+    | {
+        sha: string;
+        message: string;
+        author: string;
+      }[]
+    | null;
+  pullDiff: string | null;
   functionCallId: string | null;
   functionCallName: string | null;
   step: number;
