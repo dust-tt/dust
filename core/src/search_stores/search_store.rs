@@ -90,6 +90,7 @@ impl ElasticsearchSearchStore {
 }
 
 const NODES_INDEX_NAME: &str = "core.data_sources_nodes";
+const ROOT_PARENT_ID: &str = "root";
 
 #[async_trait]
 impl SearchStore for ElasticsearchSearchStore {
@@ -143,7 +144,13 @@ impl SearchStore for ElasticsearchSearchStore {
         }
 
         if let Some(parent_id) = filter.parent_id {
-            bool_query = bool_query.filter(Query::term("parent_id", parent_id));
+            // if parent_id is root, we filter on all nodes whose parent_id is null
+            // otherwise, we filter on all nodes whose parent_id is the given parent_id
+            if parent_id == ROOT_PARENT_ID {
+                bool_query = bool_query.filter(Query::bool().must_not(Query::exists("parent_id")));
+            } else {
+                bool_query = bool_query.filter(Query::term("parent_id", parent_id));
+            }
         }
 
         if let Some(query) = query {
