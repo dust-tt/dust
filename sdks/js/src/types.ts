@@ -724,6 +724,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "conversations_jit_actions"
   | "disable_run_logs"
   | "show_debug_tools"
+  | "labs_github_actions"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -1092,6 +1093,14 @@ const DustAppRunBlockEventSchema = z.object({
   action: DustAppRunActionTypeSchema,
 });
 
+const GithubGetPullRequestParamsEventSchema = z.object({
+  type: z.literal("github_get_pull_request_params"),
+  created: z.number(),
+  configurationId: z.string(),
+  messageId: z.string(),
+  action: GithubGetPullRequestActionSchema,
+});
+
 const ProcessParamsEventSchema = z.object({
   type: z.literal("process_params"),
   created: z.number(),
@@ -1165,6 +1174,7 @@ const AgentActionSpecificEventSchema = z.union([
   WebsearchParamsEventSchema,
   BrowseParamsEventSchema,
   ConversationIncludeFileParamsEventSchema,
+  GithubGetPullRequestParamsEventSchema,
 ]);
 export type AgentActionSpecificEvent = z.infer<
   typeof AgentActionSpecificEventSchema
