@@ -35,7 +35,7 @@ interface GithubGetPullRequestActionBlob {
   pullBody: string | null;
   pullCommits:
     | {
-        oid: string;
+        sha: string;
         author: string;
         message: string;
       }[]
@@ -56,7 +56,7 @@ export class GithubGetPullRequestAction extends BaseAction {
   readonly pullBody: string | null;
   readonly pullCommits:
     | {
-        oid: string;
+        sha: string;
         author: string;
         message: string;
       }[]
@@ -89,9 +89,10 @@ export class GithubGetPullRequestAction extends BaseAction {
   }
 
   async renderForMultiActionsModel(): Promise<FunctionMessageTypeModel> {
-    const content = `${this.pullBody}\n\n${this.pullDiff}`;
+    const content = `${this.pullBody}\n\n${(this.pullCommits || [])
+      .map((c) => `${c.sha} ${c.author}: ${c.message}`)
+      .join("\n")}\n\n${this.pullDiff}`;
 
-    console.log(this);
     return {
       role: "function" as const,
       name:
@@ -269,7 +270,7 @@ export class GithubGetPullRequestConfigurationServerRunner extends BaseActionCon
                 commit {
                   oid
                   message
-                    author {
+                  author {
                     user {
                       login
                     }
@@ -282,17 +283,36 @@ export class GithubGetPullRequestConfigurationServerRunner extends BaseActionCon
       }`;
 
       // Get the PR description and base/head commit
-      const pr = await octokit.graphql(query, {
+      const pr = (await octokit.graphql(query, {
         owner,
         repo,
         pullNumber,
-      });
+      })) as {
+        repository: {
+          pullRequest: {
+            body: string;
+            commits: {
+              nodes: {
+                commit: {
+                  oid: string;
+                  message: string;
+                  author: {
+                    user: {
+                      login: string;
+                    };
+                  };
+                };
+              }[];
+            };
+          };
+        };
+      };
 
       const prBody = pr.repository.pullRequest.body;
-      const prCommits = pr.repository.pullRequest.commits.nodes.map((n: any) => {
+      const prCommits = pr.repository.pullRequest.commits.nodes.map((n) => {
         return {
-          oid: n.commit.oid,
-          mesage: n.commit.message,
+          sha: n.commit.oid,
+          message: n.commit.message,
           author: n.commit.author.user.login,
         };
       });
@@ -350,9 +370,6 @@ export class GithubGetPullRequestConfigurationServerRunner extends BaseActionCon
 
       // @ts-expect-error - the diff is a string
       const prDiff = diff.data as string;
-
-      console.log("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< PR_DIFF");
-      console.log(prDiff);
 
       await action.update({
         pullBody: prBody,
