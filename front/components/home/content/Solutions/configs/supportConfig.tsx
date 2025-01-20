@@ -127,8 +127,8 @@ export const Metrics: MetricProps = {
       description: <>50% reduction in ticket resolution time</>,
     },
     {
-      value: "8h",
-      description: <>8 hours saved weekly per agent</>,
+      value: "6h",
+      description: <>6 hours saved weekly per agent</>,
     },
   ],
   from: "from-amber-200",
@@ -143,7 +143,7 @@ export const UseCases: UseCaseProps = {
     {
       title: "Ticket resolution",
       content:
-        "Accelerate response times with dynamic answer suggestions and contextual knowledge at every step.",
+        "Speed up resolution by suggesting tailored responses drawn from your knowledge base and past solutions.",
       images: ["/static/landing/solutions/support1.png"],
     },
     {
