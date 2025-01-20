@@ -332,7 +332,6 @@ export class Authenticator {
       strategy &&
       !isSupportedEnterpriseConnectionStrategy(strategy)
     ) {
-      console.log("strat", strategy);
       return new Err({
         code: "sso_enforced",
       });
