@@ -20,7 +20,10 @@ import {
 import { ZENDESK_BATCH_SIZE } from "@connectors/connectors/zendesk/temporal/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
-import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
+import {
+  deleteDataSourceFolder,
+  upsertDataSourceFolder,
+} from "@connectors/lib/data_sources";
 import { ZendeskTimestampCursor } from "@connectors/lib/models/zendesk";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import { heartbeat } from "@connectors/lib/temporal";
@@ -130,11 +133,11 @@ export async function syncZendeskBrandActivity({
   // upserting three folders to data_sources_folders (core): brand, help center, tickets
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
+  // using the content node to get one source of truth regarding the parent relationship
+  const helpCenterNode = brandInDb.getHelpCenterContentNode(connectorId, {
+    richTitle: true,
+  });
   if (brandInDb.helpCenterPermission === "read") {
-    // using the content node to get one source of truth regarding the parent relationship
-    const helpCenterNode = brandInDb.getHelpCenterContentNode(connectorId, {
-      richTitle: true,
-    });
     await upsertDataSourceFolder({
       dataSourceConfig,
       folderId: helpCenterNode.internalId,
@@ -143,13 +146,18 @@ export async function syncZendeskBrandActivity({
       title: helpCenterNode.title,
       mimeType: MIME_TYPES.ZENDESK.HELP_CENTER,
     });
+  } else {
+    await deleteDataSourceFolder({
+      dataSourceConfig,
+      folderId: helpCenterNode.internalId,
+    });
   }
 
+  // using the content node to get one source of truth regarding the parent relationship
+  const ticketsNode = brandInDb.getTicketsContentNode(connectorId, {
+    richTitle: true,
+  });
   if (brandInDb.ticketsPermission === "read") {
-    // using the content node to get one source of truth regarding the parent relationship
-    const ticketsNode = brandInDb.getTicketsContentNode(connectorId, {
-      richTitle: true,
-    });
     await upsertDataSourceFolder({
       dataSourceConfig,
       folderId: ticketsNode.internalId,
@@ -158,7 +166,13 @@ export async function syncZendeskBrandActivity({
       title: ticketsNode.title,
       mimeType: MIME_TYPES.ZENDESK.TICKETS,
     });
+  } else {
+    await deleteDataSourceFolder({
+      dataSourceConfig,
+      folderId: ticketsNode.internalId,
+    });
   }
+
   // updating the entry in db
   await brandInDb.update({
     name: fetchedBrand.name || "Brand",
