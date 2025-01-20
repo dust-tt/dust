@@ -165,6 +165,8 @@ function makeCoreDataSourceViewFilter(
   };
 }
 
+const ROOT_PARENT_ID = "root";
+
 async function getContentNodesForDataSourceViewFromCore(
   dataSourceView: DataSourceViewResource | DataSourceViewType,
   { internalIds, parentId, viewType }: GetContentNodesForDataSourceViewParams
@@ -188,7 +190,8 @@ async function getContentNodesForDataSourceViewFromCore(
   // In any case, there is a data_source_view filter, which is always applied.
   const node_ids =
     internalIds ?? parentId ? undefined : dataSourceView.parentsIn ?? undefined;
-  const parent_id = parentId ?? (dataSourceView.parentsIn ? undefined : "root");
+  const parent_id =
+    parentId ?? (dataSourceView.parentsIn ? undefined : ROOT_PARENT_ID);
 
   const coreRes = await coreAPI.searchNodes({
     filter: {
