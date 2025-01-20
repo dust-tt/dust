@@ -160,7 +160,7 @@ export default function Security() {
           </div>
         </Grid>
 
-        <Grid className="md:gap-y-4">
+        <Grid className="mt-12 md:gap-y-4">
           <div className="col-span-12 flex flex-col justify-center py-4 sm:max-w-[100%] md:max-w-[90%]">
             <H2 from="from-yellow-200" to="to-amber-400">
               Select trusted models, keep data protected
@@ -201,7 +201,7 @@ export default function Security() {
           </div>
         </Grid>
 
-        <Grid className="md:gap-y-4">
+        <Grid className="mt-12 md:gap-y-4">
           <div className="col-span-12 flex flex-col justify-center py-4 sm:max-w-[100%] md:max-w-[90%]">
             <H2 from="from-yellow-200" to="to-amber-400">
               Maintain rigorous access control at all levels
