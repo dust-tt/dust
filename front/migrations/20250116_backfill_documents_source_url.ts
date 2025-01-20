@@ -48,6 +48,13 @@ async function migrateDataSource({
   let nextId = null;
 
   for (;;) {
+    if (nextId === null) {
+      logger.info(`Fetching documents with timestamp >= ${nextTimestamp}`);
+    } else {
+      logger.info(
+        `Fetching documents with timestamp >= ${nextTimestamp} and id > ${nextId}`
+      );
+    }
     const [updatedRows] = (await (async () => {
       // If nextId is null, we only filter by timestamp.
       if (nextId === null) {
@@ -149,19 +156,17 @@ async function migrateDataSource({
     })()) as { id: number; timestamp: number }[][];
 
     if (updatedRows.length === 0) {
+      logger.info("DONE");
       break;
     }
 
-    if (!execute) {
-      logger.info(
-        {
-          firstRow: updatedRows[0],
-          lastRow:
-            updatedRows.length > 1 && updatedRows[updatedRows.length - 1],
-        },
-        `Would update ${updatedRows.length} nodes.`
-      );
-    }
+    logger.info(
+      {
+        firstRow: updatedRows[0],
+        lastRow: updatedRows.length > 1 && updatedRows[updatedRows.length - 1],
+      },
+      `Update ${updatedRows.length} nodes.`
+    );
 
     // If all documents have the same timestamp, we set nextId to the last id.
     nextId =
