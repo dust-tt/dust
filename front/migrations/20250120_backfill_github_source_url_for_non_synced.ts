@@ -47,20 +47,20 @@ async function backfillMetaNodes({
     await updateNodes(
       coreSequelize,
       coreDataSourceId,
-      [getRepositoryInternalId(repoId)],
-      [repoUrl]
+      getRepositoryInternalId(repoId),
+      repoUrl
     );
     await updateNodes(
       coreSequelize,
       coreDataSourceId,
-      [getDiscussionsInternalId(repoId)],
-      [getDiscussionsUrl(repoUrl)]
+      getDiscussionsInternalId(repoId),
+      getDiscussionsUrl(repoUrl)
     );
     await updateNodes(
       coreSequelize,
       coreDataSourceId,
-      [getIssuesInternalId(repoId)],
-      [getIssuesUrl(repoUrl)]
+      getIssuesInternalId(repoId),
+      getIssuesUrl(repoUrl)
     );
     logger.info(`Updated source urls for repo ${repoId} -> ${repoUrl}.`);
   } else {
@@ -77,38 +77,39 @@ async function getCodeNonSyncedRepos(coreSequelize: Sequelize) {
       }
     );
   return rows.map((row) => {
-    const repoId = row.node_id.split("-")[2];
+    if (!/^github-issues-\d+$/.test(row.node_id)) {
+      throw new Error(`Invalid node_id: ${row.node_id}`);
+    }
+    const repoId = row.node_id.replace(/^github-issues-/, "");
     return { repoId, dataSourceId: row.data_source };
   });
 }
 
 async function getRepoUrl(repoId: string, coreSequelize: Sequelize) {
   const issueIdLike = `github-issue-${repoId}-%`;
-  const discussionIdLike = `github-discussion-${repoId}-%`;
-  const rows: { source_url: string; mime_type: string }[] =
+  const rows: { source_url: string; node_id: string; mime_type: string }[] =
     await coreSequelize.query(
-      // Get source url for issues or discussions, but not PRs
-      `SELECT source_url, mime_type 
+      `SELECT source_url, node_id, mime_type 
     FROM data_sources_nodes 
-    WHERE (node_id LIKE :issueIdLike OR node_id LIKE :discussionIdLike) AND source_url IS NOT NULL AND source_url NOT LIKE '%/pull/%' 
+    WHERE node_id LIKE :issueIdLike AND source_url IS NOT NULL 
     LIMIT 1;`,
       {
-        replacements: { issueIdLike, discussionIdLike },
+        replacements: { issueIdLike },
         type: QueryTypes.SELECT,
       }
     );
   if (rows.length === 0) {
     return null;
   }
-  if (rows[0].mime_type.includes("issue")) {
+  if (rows[0].source_url.includes("/issues/")) {
     // turn the issue url into a repo url, e.g. https://github.com/dust-tt/dust/issues/10083 -> https://github.com/dust-tt/dust
     const issueUrl = rows[0].source_url;
     const repoUrl = issueUrl.replace(/\/issues\/\d+$/, "");
     return repoUrl;
-  } else if (rows[0].mime_type.includes("discussion")) {
-    // turn the discussion url into a repo url, e.g. https://github.com/dust-tt/dust/discussions/10083 -> https://github.com/dust-tt/dust
-    const discussionUrl = rows[0].source_url;
-    const repoUrl = discussionUrl.replace(/\/discussions\/\d+$/, "");
+  } else if (rows[0].source_url.includes("/pull/")) {
+    // turn the pr url into a repo url, e.g. https://github.com/dust-tt/dust/pull/10083 -> https://github.com/dust-tt/dust
+    const prUrl = rows[0].source_url;
+    const repoUrl = prUrl.replace(/\/pull\/\d+$/, "");
     return repoUrl;
   }
   return null;
@@ -117,16 +118,14 @@ async function getRepoUrl(repoId: string, coreSequelize: Sequelize) {
 async function updateNodes(
   coreSequelize: Sequelize,
   dataSourceId: number,
-  nodeIds: string[],
-  urls: string[]
+  nodeId: string,
+  url: string
 ) {
   await coreSequelize.query(
     `UPDATE data_sources_nodes
-     SET source_url = urls.url
-     FROM (SELECT unnest(ARRAY [:nodeIds]::text[]) as node_id,
-                  unnest(ARRAY [:urls]::text[])    as url) urls
-     WHERE data_sources_nodes.data_source = :dataSourceId AND data_sources_nodes.node_id = urls.node_id;`,
-    { replacements: { urls, nodeIds, dataSourceId } }
+     SET source_url = :url
+     WHERE data_source = :dataSourceId AND node_id = :nodeId;`,
+    { replacements: { url, dataSourceId, nodeId } }
   );
 }
 
