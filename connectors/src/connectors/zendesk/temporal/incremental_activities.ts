@@ -141,7 +141,7 @@ export async function syncZendeskArticleUpdateBatchActivity({
                 brandId,
                 name: fetchedCategory.name || "Category",
                 categoryId,
-                permission: "read",
+                permission: "none",
                 url: fetchedCategory.html_url,
                 description: fetchedCategory.description,
               },
@@ -166,7 +166,10 @@ export async function syncZendeskArticleUpdateBatchActivity({
           }
         }
         /// syncing the article if the category exists and is selected
-        if (category && category.permission === "read") {
+        if (
+          category &&
+          (category.permission === "read" || hasHelpCenterPermissions)
+        ) {
           return syncArticle({
             connectorId,
             category,
