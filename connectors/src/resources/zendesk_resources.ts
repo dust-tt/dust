@@ -646,13 +646,12 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     };
   }
 
-  getParentInternalIds(connectorId: number): [string, string, string] {
+  getParentInternalIds(connectorId: number): [string, string] {
     /// Categories have two parents: the Help Center and the Brand.
     const { brandId, categoryId } = this;
     return [
       getCategoryInternalId({ connectorId, brandId, categoryId }),
       getHelpCenterInternalId({ connectorId, brandId }),
-      getBrandInternalId({ connectorId, brandId }),
     ];
   }
 }
