@@ -191,7 +191,11 @@ async function getContentNodesForDataSourceViewFromCore(
   const node_ids =
     internalIds ?? parentId ? undefined : dataSourceView.parentsIn ?? undefined;
   const parent_id =
-    parentId ?? (dataSourceView.parentsIn ? undefined : ROOT_PARENT_ID);
+    parentId ?? internalIds
+      ? undefined
+      : dataSourceView.parentsIn
+        ? undefined
+        : ROOT_PARENT_ID;
 
   const coreRes = await coreAPI.searchNodes({
     filter: {
