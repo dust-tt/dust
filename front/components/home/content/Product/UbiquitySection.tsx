@@ -25,7 +25,7 @@ export function UbiquitySection() {
           className={classNames(
             "col-span-12 pt-8",
             "grid grid-cols-1 gap-x-8 gap-y-20",
-            "md:grid-cols-3 md:gap-y-16"
+            "sm:grid-cols-3 md:gap-y-16"
           )}
         >
           <ImgBlock
@@ -85,7 +85,7 @@ export function UbiquitySection() {
             </Hover3D>
           </ImgBlock>
           <ImgBlock
-            title={<>Add to automated workflows</>}
+            title={<>Add to workflows</>}
             content={
               <>
                 Trigger AI actions via Zapier, Make or Slack workflows to

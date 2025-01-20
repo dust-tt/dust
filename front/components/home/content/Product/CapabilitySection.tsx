@@ -2,7 +2,7 @@ import { Div3D, Hover3D } from "@dust-tt/sparkle";
 import React from "react";
 
 import { ImgBlock } from "@app/components/home/ContentBlocks";
-import { H2, P, Strong } from "@app/components/home/ContentComponents";
+import { H2, P } from "@app/components/home/ContentComponents";
 import { classNames } from "@app/lib/utils";
 
 export function CapabilitySection() {
@@ -17,7 +17,7 @@ export function CapabilitySection() {
         </P>
       </div>
 
-      <div className="grid grid-cols-1 gap-x-8 gap-y-20 md:grid-cols-2 md:gap-y-28">
+      <div className="grid grid-cols-1 gap-12 sm:grid-cols-2 md:gap-24">
         <ImgBlock
           title={<>Switch to the&nbsp;new best model in&nbsp;seconds.</>}
           content={

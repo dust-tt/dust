@@ -29,7 +29,7 @@ export function ExtensibilitySection() {
           className={classNames(
             "col-span-12 pt-8",
             "grid grid-cols-1 gap-x-8 gap-y-20",
-            "md:grid-cols-3 md:gap-y-16"
+            "sm:grid-cols-3 md:gap-y-16"
           )}
         >
           <ImgBlock
