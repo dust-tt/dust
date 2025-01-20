@@ -247,9 +247,7 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
             api_error: {
               type: authRes.error.code,
               message:
-                authRes.error.code === "sso_enforced"
-                  ? "Access requires Single Sign-On (SSO) authentication. Use your SSO provider to sign in."
-                  : "The user does not have an active session or is not authenticated.",
+                "The user does not have an active session or is not authenticated.",
             },
           });
         }

@@ -1,4 +1,5 @@
-import type { AuthError } from "@extension/lib/auth";
+import type { WorkspaceType } from "@dust-tt/client";
+import { AuthError } from "@extension/lib/auth";
 import { login, logout, refreshToken } from "@extension/lib/auth";
 import type { StoredTokens, StoredUser } from "@extension/lib/storage";
 import {
@@ -6,10 +7,21 @@ import {
   getStoredTokens,
   getStoredUser,
   saveSelectedWorkspace,
+  saveUser,
 } from "@extension/lib/storage";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const log = console.error;
+
+export const SUPPORTED_ENTERPRISE_CONNECTIONS_STRATEGIES = [
+  "okta",
+  "samlp",
+  "waad",
+];
+
+export function makeEnterpriseConnectionName(workspaceId: string) {
+  return `workspace-${workspaceId}`;
+}
 
 export const useAuthHook = () => {
   const [tokens, setTokens] = useState<StoredTokens | null>(null);
@@ -121,6 +133,43 @@ export const useAuthHook = () => {
     };
   }, [handleRefreshToken, scheduleTokenRefresh]);
 
+  const workspace = useMemo(
+    () => user?.workspaces.find((w) => w.sId === user.selectedWorkspace),
+    [user]
+  );
+
+  const enforceSSO = useCallback(
+    (workspace: WorkspaceType) => {
+      setAuthError(
+        new AuthError(
+          "sso_enforced",
+          "Access requires Single Sign-On (SSO) authentication. Use your SSO provider to sign in."
+        )
+      );
+      setForcedConnection(makeEnterpriseConnectionName(workspace.sId));
+      void logout();
+    },
+    [workspace]
+  );
+
+  useEffect(() => {
+    if (workspace) {
+      if (
+        workspace.ssoEnforced &&
+        user?.provider &&
+        !SUPPORTED_ENTERPRISE_CONNECTIONS_STRATEGIES.includes(user?.provider)
+      ) {
+        enforceSSO(workspace);
+        return;
+      }
+    }
+  }, [workspace]);
+
+  const handleSelectWorkspace = async (workspace: WorkspaceType) => {
+    const updatedUser = await saveSelectedWorkspace(workspace.sId);
+    setUser(updatedUser);
+  };
+
   const handleLogin = useCallback(
     async (isForceLogin?: boolean) => {
       setIsLoading(true);
@@ -142,19 +191,14 @@ export const useAuthHook = () => {
     [scheduleTokenRefresh, forcedConnection]
   );
 
-  const handleSelectWorkspace = async (workspaceId: string) => {
-    const updatedUser = await saveSelectedWorkspace(workspaceId);
-    setUser(updatedUser);
-  };
-
   return {
     token: tokens?.accessToken ?? null,
     isAuthenticated,
     setAuthError,
     authError,
-    setForcedConnection,
+    enforceSSO,
     user,
-    workspace: user?.workspaces.find((w) => w.sId === user.selectedWorkspace),
+    workspace,
     isUserSetup,
     isLoading,
     handleLogin,

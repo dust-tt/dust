@@ -39,6 +39,7 @@ const log = console.error;
 
 type AuthErrorCode =
   | "user_not_found"
+  | "sso_enforced"
   | "not_authenticated"
   | "invalid_oauth_token_error"
   | "expired_oauth_token_error";
