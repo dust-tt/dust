@@ -43,7 +43,10 @@ export const Auth0JwtPayloadSchema = t.type({
   exp: t.number,
   scope: t.string,
   sub: t.string,
-  ["https://dust.tt/region"]: t.union([t.string, t.undefined]),
+  [`${process.env.AUTH0_CLAIM_NAMESPACE}region`]: t.union([
+    t.string,
+    t.undefined,
+  ]),
 });
 
 export type Auth0JwtPayload = t.TypeOf<typeof Auth0JwtPayloadSchema> &
@@ -184,9 +187,13 @@ export async function verifyAuth0Token(
           return resolve(new Err(Error("Invalid token payload.")));
         }
 
-        const region = payloadValidation.right["https://dust.tt/region"];
+        const region =
+          payloadValidation.right[`${config.getAuth0NamespaceClaim()}region`];
         if (region && config.getRegion() !== region) {
-          logger.error({ requiredScopes: requiredScope }, "Invalid region.");
+          logger.error(
+            { region, requiredRegion: config.getRegion() },
+            "Invalid region."
+          );
           return resolve(new Err(Error("Invalid region.")));
         }
 

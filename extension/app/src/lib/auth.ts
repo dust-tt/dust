@@ -20,6 +20,16 @@ import { jwtDecode } from "jwt-decode";
 
 export type RegionType = "europe-west1" | "us-central1";
 
+const REGION_CLAIM = "https://dust.tt/region";
+
+const DEV_DUST_API_DOMAIN = "http://localhost:3000";
+const DEFAULT_DUST_API_DOMAIN = "https://dust.tt";
+
+const DOMAIN_FOR_REGION: Record<RegionType, string> = {
+  "us-central1": "https://dust.tt",
+  "europe-west1": "https://eu.dust.tt",
+};
+
 const log = console.error;
 
 type AuthErrorCode =
@@ -118,19 +128,12 @@ export const getAccessToken = async (): Promise<string | null> => {
 
 const getDustDomain = (accessToken: string) => {
   if (process.env.NODE_ENV === "development") {
-    return "http://localhost:3000";
+    return DEV_DUST_API_DOMAIN;
   } else {
-    const claims = jwtDecode<{ "https://dust.tt/region": RegionType }>(
-      accessToken
-    );
-    const region = claims["https://dust.tt/region"];
-    switch (region) {
-      case "europe-west1":
-        return "https://eu.dust.tt";
+    const claims = jwtDecode<{ [REGION_CLAIM]: RegionType }>(accessToken);
+    const region = claims[REGION_CLAIM];
 
-      default:
-        return "https://dust.tt";
-    }
+    return DOMAIN_FOR_REGION[region] ?? DEFAULT_DUST_API_DOMAIN;
   }
 };
 
