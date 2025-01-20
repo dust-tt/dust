@@ -260,7 +260,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                         window.gtag("event", "assistantCreationButtonClicked", {
                           event_category: "assistantBuilder",
                           event_label: "sidebarMenu",
-                          user_sid: user?.sId,
+                          user_id: user?.sId,
                           workspace_id: owner.sId,
                         });
                       }}

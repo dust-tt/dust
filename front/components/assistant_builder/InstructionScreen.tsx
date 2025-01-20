@@ -136,7 +136,7 @@ export function InstructionScreen({
     window.gtag("event", "panelNavigated", {
       event_category: "assistantBuilder",
       event_label: "assistantInstructionsPanel",
-      user_sid: user?.sId,
+      user_id: user?.sId,
     });
   }, [user?.sId]);
 

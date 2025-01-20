@@ -218,7 +218,7 @@ export default function CreateAssistant({
                     window.gtag("event", "newAssistantCreationButtonClicked", {
                       event_category: "assistantBuilder",
                       event_label: "assistantCreationPage",
-                      user_sid: user?.sId,
+                      user_id: user?.sId,
                       workspace_id: owner.sId,
                       flow: flow,
                     });

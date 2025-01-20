@@ -162,7 +162,7 @@ export function AssistantBrowser({
                 window.gtag("event", "assistantCreationButtonClicked", {
                   event_category: "assistantBuilder",
                   event_label: "homepage",
-                  user_sid: user?.sId,
+                  user_id: user?.sId,
                 });
               }}
             />
@@ -180,7 +180,7 @@ export function AssistantBrowser({
                   window.gtag("event", "assistantManagementButtonClicked", {
                     event_category: "assistantBuilder",
                     event_label: "homepage",
-                    user_sid: user?.sId,
+                    user_id: user?.sId,
                   });
                 }}
               />

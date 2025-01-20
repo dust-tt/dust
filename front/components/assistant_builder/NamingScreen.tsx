@@ -154,7 +154,7 @@ export default function NamingScreen({
     window.gtag("event", "panelNavigated", {
       event_category: "assistantBuilder",
       event_label: "assistantNamingPanel",
-      user_sid: user?.sId,
+      user_id: user?.sId,
     });
   }, [user?.sId]);
   const confirm = useContext(ConfirmContext);
@@ -403,7 +403,7 @@ export default function NamingScreen({
                   window.gtag("event", "assistantNameEdited", {
                     event_category: "assistantBuilder",
                     event_label: "assistantNamingPanel",
-                    user_sid: user?.sId,
+                    user_id: user?.sId,
                   });
                 }}
                 name="assistantName"
@@ -455,7 +455,7 @@ export default function NamingScreen({
                   window.gtag("event", "assistantDescriptionEdited", {
                     event_category: "assistantBuilder",
                     event_label: "assistantNamingPanel",
-                    user_sid: user?.sId,
+                    user_id: user?.sId,
                   });
                 }}
                 name="assistantDescription"

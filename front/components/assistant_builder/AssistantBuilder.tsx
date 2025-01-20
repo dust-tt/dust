@@ -318,7 +318,7 @@ export default function AssistantBuilder({
       event_category: "assistantBuilder",
       event_label: "assistantBuilder",
       is_new: !agentConfigurationId, // track if it's a new assistant or an edit
-      user_sid: user?.sId,
+      user_id: user?.sId,
     });
     // Redirect to the right screen if there are errors.
     if (instructionsError) {

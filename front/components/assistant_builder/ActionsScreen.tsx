@@ -163,7 +163,7 @@ export default function ActionsScreen({
     window.gtag("event", "panelNavigated", {
       event_category: "assistantBuilder",
       event_label: "assistantToolsPanel",
-      user_sid: user?.sId,
+      user_id: user?.sId,
     });
   }, [user?.sId]);
 
@@ -375,7 +375,7 @@ export default function ActionsScreen({
                       event_category: "assistantBuilder",
                       event_label: "toolsPanel",
                       tool_type: action.type,
-                      user_sid: user?.sId,
+                      user_id: user?.sId,
                     });
                     setAction({
                       type: action.noConfigurationRequired

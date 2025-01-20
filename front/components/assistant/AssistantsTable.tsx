@@ -329,7 +329,7 @@ export function AssistantsTable({
                           event_label: "assistantsTable",
                           assistant_name: agentConfiguration.name,
                           assistant_id: agentConfiguration.sId,
-                          user_sid: user?.sId,
+                          user_id: user?.sId,
                         }
                       );
                       void router.push(

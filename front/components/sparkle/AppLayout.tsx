@@ -171,7 +171,7 @@ export default function AppLayout({
           gtag('js', new Date());
 
           gtag('config', '${process.env.NEXT_PUBLIC_GA_TRACKING_ID}', {
-            user_sid: '${user?.sId}'
+            user_id: '${user?.sId}'
           });
           `}
         </Script>

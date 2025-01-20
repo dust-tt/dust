@@ -74,7 +74,7 @@ export function AssistantTemplateModal({
                       event_label: "templateModal",
                       template_id: sId,
                       template_handle: handle,
-                      user_sid: user?.sId,
+                      user_id: user?.sId,
                       workspace_id: owner.sId,
                       flow: flow,
                     });
