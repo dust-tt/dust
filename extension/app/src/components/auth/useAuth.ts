@@ -1,13 +1,11 @@
 import type { WorkspaceType } from "@dust-tt/client";
-import { AuthError } from "@extension/lib/auth";
-import { login, logout, refreshToken } from "@extension/lib/auth";
+import { AuthError, login, logout, refreshToken } from "@extension/lib/auth";
 import type { StoredTokens, StoredUser } from "@extension/lib/storage";
 import {
   clearStoredData,
   getStoredTokens,
   getStoredUser,
   saveSelectedWorkspace,
-  saveUser,
 } from "@extension/lib/storage";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
