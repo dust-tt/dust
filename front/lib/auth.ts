@@ -19,6 +19,7 @@ import {
   isAdmin,
   isBuilder,
   isDevelopment,
+  isSupportedEnterpriseConnectionStrategy,
   isUser,
   Ok,
   WHITELISTABLE_FEATURES,
@@ -307,7 +308,7 @@ export class Authenticator {
     Result<
       Authenticator,
       {
-        code: "user_not_found" | "workspace_not_found";
+        code: "user_not_found" | "workspace_not_found" | "sso_enforced";
       }
     >
   > {
@@ -323,6 +324,18 @@ export class Authenticator {
     });
     if (!workspace) {
       return new Err({ code: "workspace_not_found" });
+    }
+
+    const strategy = token["https://dust.tt/connection.strategy"];
+    if (
+      workspace.ssoEnforced &&
+      strategy &&
+      !isSupportedEnterpriseConnectionStrategy(strategy)
+    ) {
+      console.log("strat", strategy);
+      return new Err({
+        code: "sso_enforced",
+      });
     }
 
     let role = "none" as RoleType;

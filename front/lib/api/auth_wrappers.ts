@@ -21,8 +21,8 @@ import {
   getAPIKey,
   getAuthType,
   getBearerToken,
+  getSession,
 } from "@app/lib/auth";
-import { getSession } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -247,7 +247,9 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
             api_error: {
               type: "not_authenticated",
               message:
-                "The user does not have an active session or is not authenticated.",
+                authRes.error.code === "sso_enforced"
+                  ? "Access requires Single Sign-On (SSO) authentication. Use your SSO provider to sign in."
+                  : "The user does not have an active session or is not authenticated.",
             },
           });
         }
