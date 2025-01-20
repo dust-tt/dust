@@ -326,7 +326,8 @@ export class Authenticator {
       return new Err({ code: "workspace_not_found" });
     }
 
-    const strategy = token["https://dust.tt/connection.strategy"];
+    const strategy =
+      token[`${config.getAuth0NamespaceClaim()}connection.strategy`];
     if (
       workspace.ssoEnforced &&
       strategy &&

@@ -15,6 +15,9 @@ export const useAuthHook = () => {
   const [tokens, setTokens] = useState<StoredTokens | null>(null);
   const [user, setUser] = useState<StoredUser | null>(null);
   const [authError, setAuthError] = useState<AuthError | null>(null);
+  const [forcedConnection, setForcedConnection] = useState<
+    string | undefined
+  >();
 
   const isAuthenticated = useMemo(
     () =>
@@ -121,8 +124,7 @@ export const useAuthHook = () => {
   const handleLogin = useCallback(
     async (isForceLogin?: boolean) => {
       setIsLoading(true);
-
-      const response = await login(isForceLogin);
+      const response = await login(isForceLogin, forcedConnection);
       if (response.isErr()) {
         setAuthError(response.error);
         setIsLoading(false);
@@ -137,7 +139,7 @@ export const useAuthHook = () => {
       setUser(user);
       setIsLoading(false);
     },
-    [scheduleTokenRefresh]
+    [scheduleTokenRefresh, forcedConnection]
   );
 
   const handleSelectWorkspace = async (workspaceId: string) => {
@@ -150,6 +152,7 @@ export const useAuthHook = () => {
     isAuthenticated,
     setAuthError,
     authError,
+    setForcedConnection,
     user,
     workspace: user?.workspaces.find((w) => w.sId === user.selectedWorkspace),
     isUserSetup,

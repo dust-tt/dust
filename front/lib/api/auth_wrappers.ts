@@ -245,7 +245,7 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
           return apiError(req, res, {
             status_code: 403,
             api_error: {
-              type: "not_authenticated",
+              type: authRes.error.code,
               message:
                 authRes.error.code === "sso_enforced"
                   ? "Access requires Single Sign-On (SSO) authentication. Use your SSO provider to sign in."

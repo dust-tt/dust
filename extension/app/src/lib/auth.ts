@@ -57,10 +57,11 @@ export class AuthError extends Error {
 // It saves the tokens in the extension and schedules a token refresh.
 // Then it calls the /me route to get the user info.
 export const login = async (
-  isForceLogin?: boolean
+  isForceLogin?: boolean,
+  connection?: string
 ): Promise<Result<{ tokens: StoredTokens; user: StoredUser }, AuthError>> => {
   try {
-    const response = await sendAuthMessage(isForceLogin);
+    const response = await sendAuthMessage(isForceLogin, connection);
     if (!response.accessToken) {
       throw new Error("No access token received.");
     }

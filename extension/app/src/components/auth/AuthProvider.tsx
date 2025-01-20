@@ -10,6 +10,7 @@ type AuthContextType = {
   isAuthenticated: boolean;
   authError: AuthError | null;
   setAuthError: (error: AuthError | null) => void;
+  setForcedConnection: (connection: string | undefined) => void;
   user: StoredUser | null;
   workspace: ExtensionWorkspaceType | undefined;
   isUserSetup: boolean;
@@ -27,6 +28,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     isAuthenticated,
     authError,
     setAuthError,
+    setForcedConnection,
     user,
     workspace,
     isUserSetup,
@@ -43,6 +45,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         isAuthenticated,
         authError,
         setAuthError,
+        setForcedConnection,
         user,
         workspace,
         isUserSetup,

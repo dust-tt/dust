@@ -8,6 +8,7 @@ export type InternalErrorWithStatusCode = {
 
 export type APIErrorType =
   | "not_authenticated"
+  | "sso_enforced"
   | "missing_authorization_header_error"
   | "malformed_authorization_header_error"
   | "invalid_basic_authorization_error"
