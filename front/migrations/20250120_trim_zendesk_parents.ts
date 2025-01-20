@@ -12,11 +12,13 @@ async function migrateDataSource({
   frontDataSource,
   coreSequelize,
   pattern,
+  parentsLength,
   execute,
   logger,
 }: {
   frontDataSource: DataSourceModel;
   coreSequelize: Sequelize;
+  parentsLength: number;
   pattern: string;
   execute: boolean;
   logger: typeof Logger;
@@ -53,7 +55,7 @@ async function migrateDataSource({
       if (execute) {
         return coreSequelize.query(
           `UPDATE data_sources_nodes
-             SET parents = parents[1:ARRAY_LENGTH(parents, 1) - 1]
+             SET parents = parents[1: :parentsLength]
              WHERE id IN (
                  SELECT id
                  FROM data_sources_nodes
@@ -68,6 +70,7 @@ async function migrateDataSource({
             replacements: {
               nextId,
               coreDataSourceId,
+              parentsLength,
               batchSize: QUERY_BATCH_SIZE,
               pattern,
             },
@@ -106,6 +109,7 @@ makeScript({}, async ({ execute }, logger) => {
       frontDataSource,
       coreSequelize,
       pattern: "zendesk-ticket-%",
+      parentsLength: 2,
       execute,
       logger: logger.child({
         dataSourceId: frontDataSource.id,
@@ -117,6 +121,7 @@ makeScript({}, async ({ execute }, logger) => {
       frontDataSource,
       coreSequelize,
       pattern: "zendesk-article-%",
+      parentsLength: 3,
       execute,
       logger: logger.child({
         dataSourceId: frontDataSource.id,
