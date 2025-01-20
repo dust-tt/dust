@@ -108,7 +108,10 @@ export default function Security() {
             </P>
             <div className="flex flex-col items-center gap-12 py-8 lg:flex-row">
               <div className="hidden gap-6 py-8 lg:flex">
-                <img src="/static/landing/security/gdpr.svg" className="h-28" />
+                <img
+                  src="/static/landing/security/gdpr.svg"
+                  className="h-28"
+                />
                 <img src="/static/landing/security/soc2.svg" className="h-28" />
               </div>
               <Button
