@@ -55,6 +55,7 @@ export const useAuthHook = () => {
     }
     setTokens(null);
     setAuthError(null);
+    setForcedConnection(undefined);
     if (refreshTimerRef.current) {
       clearTimeout(refreshTimerRef.current);
     }
