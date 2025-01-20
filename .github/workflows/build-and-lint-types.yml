@@ -18,4 +18,3 @@ jobs:
           cache-dependency-path: ./types/package-lock.json
       - working-directory: types
         run: npm install && npm run lint && npm run build
-

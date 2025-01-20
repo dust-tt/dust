@@ -53,7 +53,7 @@ const supportedPrometheusLabels = [
 type SupportedPrometheusLabels = (typeof supportedPrometheusLabels)[number];
 
 function isSupportedPrometheusLabel(
-  label: string
+  label: string,
 ): label is SupportedPrometheusLabels {
   return supportedPrometheusLabels.includes(label as SupportedPrometheusLabels);
 }
@@ -65,13 +65,16 @@ function extractMetricDetails(line: string) {
 
     // Labels are optional.
     const labels =
-      match[2]?.split(",").reduce((acc, label) => {
-        const [key, value] = label.split("=");
-        if (isSupportedPrometheusLabel(key)) {
-          acc[key] = value.replace(/"/g, "");
-        }
-        return acc;
-      }, {} as { [key: string]: string }) ?? {};
+      match[2]?.split(",").reduce(
+        (acc, label) => {
+          const [key, value] = label.split("=");
+          if (isSupportedPrometheusLabel(key)) {
+            acc[key] = value.replace(/"/g, "");
+          }
+          return acc;
+        },
+        {} as { [key: string]: string },
+      ) ?? {};
 
     const value = match[3];
 

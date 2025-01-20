@@ -1,15 +1,15 @@
-name: 'Slack Check Deployment Blocked'
-description: 'Check the Slack #deployments channel title if deployment should be blocked'
+name: "Slack Check Deployment Blocked"
+description: "Check the Slack #deployments channel title if deployment should be blocked"
 
 inputs:
   component:
-    description: 'Component being deployed'
+    description: "Component being deployed"
     required: true
   channel:
-    description: 'Slack channel'
+    description: "Slack channel"
     required: true
   slack_token:
-    description: 'Slack bot token'
+    description: "Slack bot token"
     required: true
 outputs:
   blocked:
@@ -38,7 +38,7 @@ runs:
           echo "Failed to extract Slack channel topic" >&2
           exit 0
         fi
-      
+
         echo "topic=$TOPIC" >> $GITHUB_OUTPUT
 
     - name: Parse channel topic for blocked deployments
