@@ -1,7 +1,7 @@
 import type { ExtensionWorkspaceType } from "@dust-tt/client";
 import { Button, CameraIcon, DocumentPlusIcon } from "@dust-tt/sparkle";
 import { InputBarContext } from "@extension/components/input_bar/InputBarContext";
-import { useCurrentDomain } from "@extension/hooks/useCurrentDomain";
+import { useCurrentUrlAndDomain } from "@extension/hooks/useCurrentDomain";
 import type { FileUploaderService } from "@extension/hooks/useFileUploaderService";
 import { useContext, useEffect } from "react";
 
@@ -30,11 +30,16 @@ export const AttachFragment = ({
   }, [attachPageBlinking]);
 
   // Blacklisting logic to disable share buttons.
-  const currentDomain = useCurrentDomain();
-  const blacklistedDomains: string[] = owner.blacklistedDomains ?? [];
+  const { currentDomain, currentUrl } = useCurrentUrlAndDomain();
+  const blacklistedConfig: string[] = owner.blacklistedDomains ?? [];
+
   const isBlacklisted =
     currentDomain === "chrome" ||
-    blacklistedDomains.some((d) => currentDomain.endsWith(d));
+    blacklistedConfig.some((d) =>
+      d.startsWith("http://") || d.startsWith("https://")
+        ? currentUrl.startsWith(d)
+        : currentDomain.endsWith(d)
+    );
 
   return (
     <>
