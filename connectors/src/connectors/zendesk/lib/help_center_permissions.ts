@@ -64,29 +64,6 @@ export async function allowSyncZendeskHelpCenter({
     });
   }
 
-  // updating permissions for all the children categories
-  await changeZendeskClientSubdomain(zendeskApiClient, {
-    connectorId,
-    brandId,
-  });
-  try {
-    const categories = await zendeskApiClient.helpcenter.categories.list();
-    categories.forEach((category) =>
-      allowSyncZendeskCategory({
-        connectionId,
-        connectorId,
-        categoryId: category.id,
-        brandId,
-      })
-    );
-  } catch (e) {
-    logger.error(
-      { connectorId, brandId },
-      "[Zendesk] Categories could not be fetched."
-    );
-    return false;
-  }
-
   return true;
 }
 
