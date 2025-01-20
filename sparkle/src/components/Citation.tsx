@@ -38,8 +38,8 @@ const Citation = React.forwardRef<HTMLDivElement, CitationProps>(
 
     const contentWithDescription = (
       <>
-        {!hasDescription && <CitationDescription>&nbsp;</CitationDescription>}
         {children}
+        {!hasDescription && <CitationDescription>&nbsp;</CitationDescription>}
       </>
     );
     const cardButton = (
