@@ -1,15 +1,14 @@
 import { Slot } from "@radix-ui/react-slot";
-import { cva, VariantProps } from "class-variance-authority";
 import * as React from "react";
 
 import {
   Button,
   Icon,
   Input,
+  LoadingBlock,
   Separator,
   Sheet,
   SheetContent,
-  Skeleton,
   TooltipContent,
   TooltipProvider,
   TooltipRoot,
@@ -626,7 +625,7 @@ const SidebarMenuBadge = React.forwardRef<
 ));
 SidebarMenuBadge.displayName = "SidebarMenuBadge";
 
-const SidebarMenuSkeleton = React.forwardRef<
+const SidebarMenuLoadingBlock = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<"div"> & {
     showIcon?: boolean;
@@ -639,7 +638,7 @@ const SidebarMenuSkeleton = React.forwardRef<
   return (
     <div
       ref={ref}
-      data-sidebar="menu-skeleton"
+      data-sidebar="menu-LoadingBlock"
       className={cn(
         "s-flex s-h-8 s-items-center s-gap-2 s-rounded-md s-px-2",
         className
@@ -647,24 +646,24 @@ const SidebarMenuSkeleton = React.forwardRef<
       {...props}
     >
       {showIcon && (
-        <Skeleton
+        <LoadingBlock
           className="s-size-4 s-rounded-md"
-          data-sidebar="menu-skeleton-icon"
+          data-sidebar="menu-LoadingBlock-icon"
         />
       )}
-      <Skeleton
-        className="s-h-4 s-max-w-[--skeleton-width] s-flex-1"
-        data-sidebar="menu-skeleton-text"
+      <LoadingBlock
+        className="s-h-4 s-max-w-[--LoadingBlock-width] s-flex-1"
+        data-sidebar="menu-LoadingBlock-text"
         style={
           {
-            "--skeleton-width": width,
+            "--LoadingBlock-width": width,
           } as React.CSSProperties
         }
       />
     </div>
   );
 });
-SidebarMenuSkeleton.displayName = "SidebarMenuSkeleton";
+SidebarMenuLoadingBlock.displayName = "SidebarMenuLoadingBlock";
 
 const SidebarMenuSub = React.forwardRef<
   HTMLUListElement,
@@ -735,7 +734,7 @@ export {
   SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuSkeleton,
+  SidebarMenuLoadingBlock,
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,

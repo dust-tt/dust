@@ -25,7 +25,7 @@ const ContextMenuSubTrigger = React.forwardRef<
   <ContextMenuPrimitive.SubTrigger
     ref={ref}
     className={classNames(
-      menuStyleClasses.item,
+      menuStyleClasses.item(),
       inset ? menuStyleClasses.inset : "",
       className || ""
     )}
@@ -87,7 +87,7 @@ const ContextMenuItem = React.forwardRef<
   <ContextMenuPrimitive.Item
     ref={ref}
     className={classNames(
-      menuStyleClasses.item,
+      menuStyleClasses.item(),
       inset ? menuStyleClasses.inset : "",
       className || ""
     )}
@@ -107,7 +107,7 @@ const ContextMenuCheckboxItem = React.forwardRef<
   <ContextMenuPrimitive.CheckboxItem
     ref={ref}
     className={classNames(
-      menuStyleClasses.item,
+      menuStyleClasses.item(),
       menuStyleClasses.inset,
       className || ""
     )}
@@ -132,7 +132,7 @@ const ContextMenuRadioItem = React.forwardRef<
   <ContextMenuPrimitive.RadioItem
     ref={ref}
     className={classNames(
-      menuStyleClasses.item,
+      menuStyleClasses.item(),
       menuStyleClasses.inset,
       className || ""
     )}
