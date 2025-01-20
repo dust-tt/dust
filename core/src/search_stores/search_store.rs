@@ -153,15 +153,19 @@ impl SearchStore for ElasticsearchSearchStore {
             }
         }
 
-        if let Some(query) = query {
-            bool_query = bool_query.must(Query::r#match("title.edge", query));
+        if let Some(query_string) = query.clone() {
+            bool_query = bool_query.must(Query::r#match("title.edge", query_string));
         }
 
-        // Build and run search
+        // Build and run search (sort by title if no query)
         let search = Search::new()
             .from(options.offset.unwrap_or(0))
             .size(options.limit.unwrap_or(100))
-            .query(bool_query);
+            .query(bool_query)
+            .sort(match query {
+                None => vec!["title.keyword"],
+                Some(_) => vec![],
+            });
 
         let response = self
             .client
