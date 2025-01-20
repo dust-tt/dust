@@ -34,6 +34,7 @@ import {
   ZendeskCategoryResource,
   ZendeskConfigurationResource,
 } from "@connectors/resources/zendesk_resources";
+import { getCategoryInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
 
 /**
  * This activity is responsible for updating the lastSyncStartTime of the connector to now.
@@ -349,6 +350,10 @@ export async function syncZendeskCategoryActivity({
 
   // if all rights were revoked, we have nothing to sync
   if (categoryInDb.permission === "none") {
+    await deleteDataSourceFolder({
+      dataSourceConfig: dataSourceConfigFromConnector(connector),
+      folderId: getCategoryInternalId({ connectorId, brandId, categoryId }),
+    });
     return { shouldSyncArticles: false };
   }
 
