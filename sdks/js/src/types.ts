@@ -50,6 +50,7 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "Qwen/QwQ-32B-Preview"
   | "Qwen/Qwen2-72B-Instruct"
   | "deepseek-chat"
+  | "deepseek-reasoner"
 >();
 
 const EmbeddingProviderIdSchema = FlexibleEnumSchema<"openai" | "mistral">();
