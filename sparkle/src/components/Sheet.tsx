@@ -66,27 +66,27 @@ const sheetVariants = cva(
 );
 
 interface SheetContentProps
-  extends React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content> {}
+  extends React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content> {
+  size?: SheetSizeType;
+  trapFocusScope?: boolean;
+  side?: SheetSideType;
+}
 
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
->(({ className, children, ...props }, ref) => (
+>(({ className, children, size, side, trapFocusScope, ...props }, ref) => (
   <SheetPortal>
     <SheetOverlay />
-    <SheetPrimitive.Content
-      ref={ref}
-      className={cn(
-        "s-fixed s-z-50 s-overflow-hidden s-bg-background s-transition s-ease-in-out data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-duration-300 data-[state=open]:s-duration-500",
-        "s-flex s-flex-col",
-        "s-inset-y-0 s-right-0 s-h-full s-w-full data-[state=closed]:s-slide-out-to-right data-[state=open]:s-slide-in-from-right",
-        sizeClasses[size],
-        className
-      )}
-      {...props}
-    >
-      {children}
-    </SheetPrimitive.Content>
+    <FocusScope trapped={trapFocusScope} asChild>
+      <SheetPrimitive.Content
+        ref={ref}
+        className={cn(sheetVariants({ size, side }), className)}
+        {...props}
+      >
+        {children}
+      </SheetPrimitive.Content>
+    </FocusScope>
   </SheetPortal>
 ));
 SheetContent.displayName = SheetPrimitive.Content.displayName;
@@ -103,7 +103,7 @@ const SheetHeader = ({
 }: SheetHeaderProps) => (
   <div
     className={cn(
-      "s-z-50 s-flex s-flex-none s-flex-col s-gap-2 s-bg-background s-p-5 s-text-left s-shadow-tale",
+      "s-z-50 s-flex s-flex-none s-flex-col s-gap-2 s-bg-background s-p-5 s-text-left s-shadow-tale-white",
       className
     )}
     {...props}

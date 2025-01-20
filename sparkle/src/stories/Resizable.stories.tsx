@@ -5,10 +5,10 @@ import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
-} from "../index_with_tw_base";
+} from "../components/Resizable";
 
 const meta = {
-  title: "NewLayouts/Resizable",
+  title: "Layouts/Resizable",
 } satisfies Meta;
 
 export default meta;
