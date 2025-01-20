@@ -131,7 +131,9 @@ export async function syncZendeskBrandActivity({
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
   // using the content node to get one source of truth regarding the parent relationship
-  const helpCenterNode = brandInDb.getHelpCenterContentNode(connectorId);
+  const helpCenterNode = brandInDb.getHelpCenterContentNode(connectorId, {
+    richTitle: true,
+  });
   await upsertDataSourceFolder({
     dataSourceConfig,
     folderId: helpCenterNode.internalId,
@@ -142,7 +144,9 @@ export async function syncZendeskBrandActivity({
   });
 
   // using the content node to get one source of truth regarding the parent relationship
-  const ticketsNode = brandInDb.getTicketsContentNode(connectorId);
+  const ticketsNode = brandInDb.getTicketsContentNode(connectorId, {
+    richTitle: true,
+  });
   await upsertDataSourceFolder({
     dataSourceConfig,
     folderId: ticketsNode.internalId,
