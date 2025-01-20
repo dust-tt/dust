@@ -102,7 +102,7 @@ export function AssistantDetailsButtonBar({
                       event_label: "assistantDetails",
                       assistant_name: agentConfiguration.name,
                       assistant_id: agentConfiguration.sId,
-                      user_sid: user?.sId,
+                      user_id: user?.sId,
                     });
                     await router.push(
                       `/w/${owner.sId}/builder/assistants/new?flow=personal_assistants&duplicate=${agentConfiguration.sId}`
