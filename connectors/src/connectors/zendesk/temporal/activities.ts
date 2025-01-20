@@ -135,8 +135,8 @@ export async function syncZendeskBrandActivity({
   await upsertDataSourceFolder({
     dataSourceConfig,
     folderId: helpCenterNode.internalId,
-    parents: [helpCenterNode.internalId, helpCenterNode.parentInternalId],
-    parentId: helpCenterNode.parentInternalId,
+    parents: [helpCenterNode.internalId],
+    parentId: null,
     title: helpCenterNode.title,
     mimeType: MIME_TYPES.ZENDESK.HELP_CENTER,
   });
@@ -146,8 +146,8 @@ export async function syncZendeskBrandActivity({
   await upsertDataSourceFolder({
     dataSourceConfig,
     folderId: ticketsNode.internalId,
-    parents: [ticketsNode.internalId, ticketsNode.parentInternalId],
-    parentId: ticketsNode.parentInternalId,
+    parents: [ticketsNode.internalId],
+    parentId: null,
     title: ticketsNode.title,
     mimeType: MIME_TYPES.ZENDESK.TICKETS,
   });
