@@ -168,13 +168,24 @@ async function migrateDataSource({
       `Update ${updatedRows.length} nodes.`
     );
 
+    // If we are just getting out of a pagination on ids,
+    // we have to set a conservative value for the timestamp
+    // as we may have reached a timestamp too high due to having filtered on the ids.
+    if (
+      nextId !== null &&
+      updatedRows[0].timestamp !== updatedRows[updatedRows.length - 1].timestamp
+    ) {
+      // There is no way to set the timestamp based on updatedRows, setting the most conservative value possible here.
+      nextTimestamp += 1;
+    } else {
+      // If we are scrolling through the timestamps, we can set the nextTimestamp to the last timestamp (same if all documents have the same timestamp, which is a no-op).
+      nextTimestamp = updatedRows[updatedRows.length - 1].timestamp;
+    }
     // If all documents have the same timestamp, we set nextId to the last id.
     nextId =
       updatedRows[0].timestamp === updatedRows[updatedRows.length - 1].timestamp
         ? updatedRows[updatedRows.length - 1].id
         : null;
-
-    nextTimestamp = updatedRows[updatedRows.length - 1].timestamp;
   }
 }
 
