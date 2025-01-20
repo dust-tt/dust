@@ -146,7 +146,7 @@ export async function syncZendeskArticleUpdateBatchActivity({
                 description: fetchedCategory.description,
               },
             });
-            // upserting a folder to data_sources_folders (core)
+            // upserting a folder to data_sources_folders: here the Help Center is selected so it should appear in the parents
             const parents = category.getParentInternalIds(connectorId);
             await upsertDataSourceFolder({
               dataSourceConfig,

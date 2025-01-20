@@ -2,6 +2,10 @@ import type { ModelId } from "@dust-tt/types";
 import { MIME_TYPES } from "@dust-tt/types";
 import _ from "lodash";
 
+import {
+  getCategoryInternalId,
+  getHelpCenterInternalId,
+} from "@connectors/connectors/zendesk/lib/id_conversions";
 import { syncArticle } from "@connectors/connectors/zendesk/lib/sync_article";
 import { syncCategory } from "@connectors/connectors/zendesk/lib/sync_category";
 import { syncTicket } from "@connectors/connectors/zendesk/lib/sync_ticket";
@@ -34,7 +38,6 @@ import {
   ZendeskCategoryResource,
   ZendeskConfigurationResource,
 } from "@connectors/resources/zendesk_resources";
-import { getCategoryInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
 
 /**
  * This activity is responsible for updating the lastSyncStartTime of the connector to now.
@@ -374,12 +377,22 @@ export async function syncZendeskCategoryActivity({
   }
 
   // upserting a folder to data_sources_folders (core)
-  const parents = categoryInDb.getParentInternalIds(connectorId);
+  const brandInDb = await ZendeskBrandResource.fetchByBrandId({
+    connectorId,
+    brandId,
+  });
+  const folderId = getCategoryInternalId({ connectorId, brandId, categoryId });
+  const parentId =
+    brandInDb?.helpCenterPermission === "read"
+      ? getHelpCenterInternalId({ connectorId, brandId })
+      : null;
+  const parents = parentId ? [folderId, parentId] : [folderId];
+
   await upsertDataSourceFolder({
     dataSourceConfig: dataSourceConfigFromConnector(connector),
-    folderId: parents[0],
+    folderId,
     parents,
-    parentId: parents[1],
+    parentId,
     title: categoryInDb.name,
     mimeType: MIME_TYPES.ZENDESK.CATEGORY,
     sourceUrl: fetchedCategory.html_url,
