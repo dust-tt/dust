@@ -130,32 +130,35 @@ export async function syncZendeskBrandActivity({
   // upserting three folders to data_sources_folders (core): brand, help center, tickets
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
-  // using the content node to get one source of truth regarding the parent relationship
-  const helpCenterNode = brandInDb.getHelpCenterContentNode(connectorId, {
-    richTitle: true,
-  });
-  await upsertDataSourceFolder({
-    dataSourceConfig,
-    folderId: helpCenterNode.internalId,
-    parents: [helpCenterNode.internalId],
-    parentId: null,
-    title: helpCenterNode.title,
-    mimeType: MIME_TYPES.ZENDESK.HELP_CENTER,
-  });
+  if (brandInDb.helpCenterPermission === "read") {
+    // using the content node to get one source of truth regarding the parent relationship
+    const helpCenterNode = brandInDb.getHelpCenterContentNode(connectorId, {
+      richTitle: true,
+    });
+    await upsertDataSourceFolder({
+      dataSourceConfig,
+      folderId: helpCenterNode.internalId,
+      parents: [helpCenterNode.internalId],
+      parentId: null,
+      title: helpCenterNode.title,
+      mimeType: MIME_TYPES.ZENDESK.HELP_CENTER,
+    });
+  }
 
-  // using the content node to get one source of truth regarding the parent relationship
-  const ticketsNode = brandInDb.getTicketsContentNode(connectorId, {
-    richTitle: true,
-  });
-  await upsertDataSourceFolder({
-    dataSourceConfig,
-    folderId: ticketsNode.internalId,
-    parents: [ticketsNode.internalId],
-    parentId: null,
-    title: ticketsNode.title,
-    mimeType: MIME_TYPES.ZENDESK.TICKETS,
-  });
-
+  if (brandInDb.ticketsPermission === "read") {
+    // using the content node to get one source of truth regarding the parent relationship
+    const ticketsNode = brandInDb.getTicketsContentNode(connectorId, {
+      richTitle: true,
+    });
+    await upsertDataSourceFolder({
+      dataSourceConfig,
+      folderId: ticketsNode.internalId,
+      parents: [ticketsNode.internalId],
+      parentId: null,
+      title: ticketsNode.title,
+      mimeType: MIME_TYPES.ZENDESK.TICKETS,
+    });
+  }
   // updating the entry in db
   await brandInDb.update({
     name: fetchedBrand.name || "Brand",
