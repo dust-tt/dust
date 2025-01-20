@@ -95,16 +95,23 @@ const afterCallback: AfterCallbackPageRoute = async (
   return session;
 };
 
+type QueryParam = string | string[] | undefined;
+type AuthQuery = Record<
+  "connection" | "screen_hint" | "login_hint" | "prompt",
+  QueryParam
+>;
+
 export default handleAuth({
   login: handleLogin((req) => {
-    const { connection, screen_hint, login_hint } =
-      "query" in req
-        ? req.query
-        : {
-            connection: undefined,
-            login_hint: undefined,
-            screen_hint: undefined,
-          };
+    // req.query is defined on NextApiRequest (page-router), but not on NextRequest (app-router).
+    const query = ("query" in req ? req.query : {}) as Partial<AuthQuery>;
+
+    const {
+      connection,
+      screen_hint,
+      login_hint,
+      prompt = "select_account",
+    } = query;
 
     const defaultAuthorizationParams: Partial<
       LoginOptions["authorizationParams"]
@@ -123,6 +130,10 @@ export default handleAuth({
 
     if (isString(login_hint) && isEmailValid(login_hint)) {
       defaultAuthorizationParams.login_hint = login_hint;
+    }
+
+    if (isString(prompt)) {
+      defaultAuthorizationParams.prompt = prompt;
     }
 
     return {
