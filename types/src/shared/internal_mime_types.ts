@@ -110,7 +110,6 @@ export const MIME_TYPES = {
   ZENDESK: getMimeTypes({
     provider: "zendesk",
     resourceTypes: [
-      "BRAND",
       "HELP_CENTER",
       "CATEGORY",
       "ARTICLE",
