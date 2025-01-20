@@ -102,7 +102,7 @@ export default function PlatformActionsConfiguration({
       <AppLayout
         subscription={subscription}
         owner={owner}
-        pageTitle="Dust - Github Actions"
+        pageTitle="Dust - Platform Actions"
         navChildren={<AssistantSidebarMenu owner={owner} />}
       >
         <Dialog
@@ -131,7 +131,7 @@ export default function PlatformActionsConfiguration({
             description="Configure platform actions for your assistants"
           />
           <Page.Layout direction="vertical">
-            <Page.SectionHeader title="Github Actions" />
+            <Page.SectionHeader title="Github" />
 
             {!isConfigurationsLoading && (
               <>
