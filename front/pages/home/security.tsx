@@ -2,7 +2,13 @@ import { ArrowRightIcon, Button, Div3D, Hover3D } from "@dust-tt/sparkle";
 import type { ReactElement } from "react";
 import React from "react";
 
-import { Grid, H1, P, Strong } from "@app/components/home/ContentComponents";
+import {
+  Grid,
+  H1,
+  H2,
+  P,
+  Strong,
+} from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import {
@@ -73,17 +79,12 @@ const MainVisualUsers = () => (
 export default function Security() {
   return (
     <>
-      {" "}
-      <div className="container flex w-full flex-col gap-16 px-6 pb-12 md:gap-32">
-        <Grid className="md:gap-y-4">
+      <div className="container flex w-full flex-col gap-4 px-6 md:gap-0">
+        <Grid>
           <div
             className={classNames(
-              "sm:pt-18 flex flex-col justify-end gap-12 pt-12 lg:pt-36",
-              "col-span-12",
-              "sm:col-span-12",
-              "lg:col-span-12",
-              "xl:col-span-12",
-              "2xl:col-span-12"
+              "flex flex-col justify-end gap-4 pt-12 sm:pt-12 lg:pt-24",
+              "col-span-10"
             )}
           >
             <P size="lg" className="text-muted-foreground">
@@ -92,16 +93,21 @@ export default function Security() {
             <H1 from="from-yellow-200" to="to-amber-400">
               {<>Enterprise-grade Security</>}
             </H1>
-            <P size="lg" className="pb-6 text-slate-50">
+            <P size="lg" className="text-slate-50">
               We've made security our core focus from day&nbsp;one to safeguard
               your&nbsp;company&nbsp;data and workspace&nbsp;privacy. <br></br>
               <Strong>GDPR Compliant & SOC2 Type II Certified.</Strong>
             </P>
-            <div className="flex gap-6 py-8">
-              <img src="/static/landing/security/gdpr.svg" className="h-28" />
-              <img src="/static/landing/security/soc2.svg" className="h-28" />
-            </div>
-            <div className="flex gap-4">
+            <div className="flex flex-col items-center gap-12 py-8 lg:flex-row">
+              {" "}
+              <div className="hidden gap-6 py-8 lg:flex">
+                {" "}
+                <img
+                  src="/static/landing/security/gdpr.svg"
+                  className="h-28"
+                />{" "}
+                <img src="/static/landing/security/soc2.svg" className="h-28" />{" "}
+              </div>{" "}
               <Button
                 href="https://app.vanta.com/dust.tt/trust/f3ytzxpay31bwsiyuqjto"
                 variant="highlight"
@@ -109,15 +115,16 @@ export default function Security() {
                 icon={ArrowRightIcon}
                 label="Visit our Trust Center"
                 target="_blank"
-              />
+              />{" "}
             </div>
+            <div className="flex gap-4"></div>
           </div>
         </Grid>
         <Grid className="md:gap-y-4">
           <div className="col-span-12 flex flex-col justify-center py-4 sm:max-w-[100%] md:max-w-[90%]">
-            <H1 from="from-yellow-200" to="to-amber-400">
+            <H2 from="from-yellow-200" to="to-amber-400">
               Ingest data on your terms
-            </H1>
+            </H2>
             <P size="lg" className="pb-6 text-slate-50">
               Select the data you wish to ingest, stored in your preferred
               region, under the highest security standards.
@@ -155,9 +162,9 @@ export default function Security() {
 
         <Grid className="md:gap-y-4">
           <div className="col-span-12 flex flex-col justify-center py-4 sm:max-w-[100%] md:max-w-[90%]">
-            <H1 from="from-yellow-200" to="to-amber-400">
+            <H2 from="from-yellow-200" to="to-amber-400">
               Select trusted models, keep data protected
-            </H1>
+            </H2>
             <P size="lg" className="pb-6 text-slate-50">
               Eliminate risks of shadow IT by leveraging our provider
               agreements, ensuring your data is never repurposed for model
@@ -196,9 +203,9 @@ export default function Security() {
 
         <Grid className="md:gap-y-4">
           <div className="col-span-12 flex flex-col justify-center py-4 sm:max-w-[100%] md:max-w-[90%]">
-            <H1 from="from-yellow-200" to="to-amber-400">
+            <H2 from="from-yellow-200" to="to-amber-400">
               Maintain rigorous access control at all levels
-            </H1>
+            </H2>
             <P size="lg" className="pb-6 text-slate-50">
               Tailor Dust's features to each user according to specified access
               rights.
