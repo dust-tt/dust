@@ -126,7 +126,12 @@ export default function NewBlock({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         {small ? (
-          <Button icon={PlusIcon} disabled={disabled} />
+          <Button
+            icon={PlusIcon}
+            disabled={disabled}
+            variant="ghost-secondary"
+            size="mini"
+          />
         ) : (
           <Button
             variant="outline"

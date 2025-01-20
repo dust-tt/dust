@@ -1,10 +1,10 @@
 import {
   ArrowPathIcon,
+  Button,
   ChevronDownIcon,
   ChevronUpIcon,
   Spinner,
   Square3Stack3DIcon,
-  Tooltip,
   TrashIcon,
 } from "@dust-tt/sparkle";
 import type {
@@ -133,34 +133,24 @@ export default function Block({
             )}
           >
             {block.config && block.config.use_cache ? (
-              <Tooltip
-                label="Results are cached (faster)"
-                side="top"
-                trigger={
-                  <div
-                    className="flex flex-initial cursor-pointer text-gray-400"
-                    onClick={() => {
-                      handleUseCacheChange(false);
-                    }}
-                  >
-                    <Square3Stack3DIcon className="h-4 w-4" />
-                  </div>
-                }
+              <Button
+                tooltip="Results are cached (faster)"
+                variant="ghost-secondary"
+                size="mini"
+                icon={Square3Stack3DIcon}
+                onClick={() => {
+                  handleUseCacheChange(false);
+                }}
               />
             ) : (
-              <Tooltip
-                label="Results are computed at each run"
-                side="right"
-                trigger={
-                  <div
-                    className="flex flex-initial cursor-pointer text-gray-400"
-                    onClick={() => {
-                      handleUseCacheChange(true);
-                    }}
-                  >
-                    <ArrowPathIcon className="h-4 w-4" />
-                  </div>
-                }
+              <Button
+                tooltip="Results are computed at each run"
+                variant="ghost-secondary"
+                size="mini"
+                icon={ArrowPathIcon}
+                onClick={() => {
+                  handleUseCacheChange(true);
+                }}
               />
             )}
           </div>
@@ -180,24 +170,24 @@ export default function Block({
                 small={true}
               />
             </div>
-            <div
-              className="flex-initial cursor-pointer text-gray-400"
+            <Button
+              variant="ghost-secondary"
+              icon={ChevronUpIcon}
               onClick={onBlockUp}
-            >
-              <ChevronUpIcon className="h-4 w-4 hover:text-gray-700" />
-            </div>
-            <div
-              className="flex-initial cursor-pointer text-gray-400"
+              size="mini"
+            />
+            <Button
+              variant="ghost-secondary"
+              icon={ChevronDownIcon}
               onClick={onBlockDown}
-            >
-              <ChevronDownIcon className="h-4 w-4 hover:text-gray-700" />
-            </div>
-            <div
-              className="flex-initial cursor-pointer text-gray-400"
+              size="mini"
+            />
+            <Button
+              variant="ghost-secondary"
+              icon={TrashIcon}
               onClick={onBlockDelete}
-            >
-              <TrashIcon className="ml-2 h-4 w-4 hover:text-red-600" />
-            </div>
+              size="mini"
+            />
           </div>
         </div>
         <div className="flex">{children}</div>

@@ -58,7 +58,7 @@ export default function DatasetPicker({
               isSelect
               variant="outline"
               disabled={readOnly}
-              label={dataset ?? "Select dataset"}
+              label={dataset ? dataset : "Select dataset"}
             />
           </DropdownMenuTrigger>
 
