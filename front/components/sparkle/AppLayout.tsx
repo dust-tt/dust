@@ -9,6 +9,7 @@ import type { SidebarNavigation } from "@app/components/navigation/config";
 import { Navigation } from "@app/components/navigation/Navigation";
 import { QuickStartGuide } from "@app/components/QuickStartGuide";
 import { useAppKeyboardShortcuts } from "@app/hooks/useAppKeyboardShortcuts";
+import { useUser } from "@app/lib/swr/user";
 import { classNames } from "@app/lib/utils";
 
 // This function is used to navigate back to the previous page (eg modal like page close) and
@@ -51,7 +52,7 @@ export default function AppLayout({
   hasTopPadding?: boolean;
 }) {
   const [loaded, setLoaded] = useState(false);
-
+  const { user } = useUser();
   const { isNavigationBarOpen, setIsNavigationBarOpen } =
     useAppKeyboardShortcuts(owner);
 
@@ -169,7 +170,9 @@ export default function AppLayout({
           function gtag(){window.dataLayer.push(arguments);}
           gtag('js', new Date());
 
-          gtag('config', '${process.env.NEXT_PUBLIC_GA_TRACKING_ID}');
+          gtag('config', '${process.env.NEXT_PUBLIC_GA_TRACKING_ID}', {
+            user_sid: '${user?.sId}'
+          });
           `}
         </Script>
       </>
