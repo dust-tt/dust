@@ -242,7 +242,7 @@ export default function Security() {
         </Grid>
         <div
           className={classNames(
-            "col-span-12 flex flex-col items-center",
+            "col-span-12 mt-8 flex flex-col items-center",
             "lg:col-span-12 lg:col-start-1",
             "xl:col-span-10 xl:col-start-2"
           )}
