@@ -1,6 +1,10 @@
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import {
+  AUTH0_CLAIM_NAMESPACE,
+  DEFAULT_DUST_API_DOMAIN,
+} from "@extension/lib/config";
+import {
   sendAuthMessage,
   sendRefreshTokenMessage,
   sentLogoutMessage,
@@ -18,12 +22,13 @@ import {
 } from "@extension/lib/storage";
 import { jwtDecode } from "jwt-decode";
 
-export type RegionType = "europe-west1" | "us-central1";
+const REGIONS = ["europe-west1", "us-central1"] as const;
+export type RegionType = (typeof REGIONS)[number];
 
-const REGION_CLAIM = "https://dust.tt/region";
+const isRegionType = (region: string): region is RegionType =>
+  REGIONS.includes(region as RegionType);
 
-const DEV_DUST_API_DOMAIN = "http://localhost:3000";
-const DEFAULT_DUST_API_DOMAIN = "https://dust.tt";
+const REGION_CLAIM = `${AUTH0_CLAIM_NAMESPACE}region`;
 
 const DOMAIN_FOR_REGION: Record<RegionType, string> = {
   "us-central1": "https://dust.tt",
@@ -127,14 +132,13 @@ export const getAccessToken = async (): Promise<string | null> => {
 };
 
 const getDustDomain = (accessToken: string) => {
-  if (process.env.NODE_ENV === "development") {
-    return DEV_DUST_API_DOMAIN;
-  } else {
-    const claims = jwtDecode<{ [REGION_CLAIM]: RegionType }>(accessToken);
-    const region = claims[REGION_CLAIM];
+  const claims = jwtDecode<Record<string, string>>(accessToken);
+  const region = claims[REGION_CLAIM];
 
-    return DOMAIN_FOR_REGION[region] ?? DEFAULT_DUST_API_DOMAIN;
-  }
+  return (
+    (isRegionType(region) && DOMAIN_FOR_REGION[region]) ||
+    DEFAULT_DUST_API_DOMAIN
+  );
 };
 
 // Fetch me sends a request to the /me route to get the user info.

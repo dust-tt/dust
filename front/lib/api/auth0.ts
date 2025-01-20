@@ -10,6 +10,7 @@ import type { NextApiRequest } from "next";
 
 import config from "@app/lib/api/config";
 import type { RegionType } from "@app/lib/api/regions/config";
+import { config as regionsConfig } from "@app/lib/api/regions/config";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 
@@ -103,6 +104,14 @@ export function getRegionForUserSession(session: Session): RegionType | null {
   return session.user[regionClaim] ?? null;
 }
 
+export function getRegionForJwtToken(
+  token: Auth0JwtPayload
+): RegionType | null {
+  const regionClaim = `${config.getAuth0NamespaceClaim()}region`;
+
+  return token[regionClaim] ?? null;
+}
+
 /**
  * Get the public key to verify an Auth0 token.
  * key id (kid) is used to find the right key in the JWKS.
@@ -187,11 +196,10 @@ export async function verifyAuth0Token(
           return resolve(new Err(Error("Invalid token payload.")));
         }
 
-        const region =
-          payloadValidation.right[`${config.getAuth0NamespaceClaim()}region`];
-        if (region && config.getRegion() !== region) {
-          logger.error(
-            { region, requiredRegion: config.getRegion() },
+        const region = getRegionForJwtToken(payloadValidation.right);
+        if (region && regionsConfig.getCurrentRegion() !== region) {
+          logger.info(
+            { region, requiredRegion: regionsConfig.getCurrentRegion() },
             "Invalid region."
           );
           return resolve(new Err(Error("Invalid region.")));
