@@ -33,8 +33,6 @@ export const AttachFragment = ({
   const { currentDomain, currentUrl } = useCurrentUrlAndDomain();
   const blacklistedConfig: string[] = owner.blacklistedDomains ?? [];
 
-  console.log(blacklistedConfig);
-
   const isBlacklisted =
     currentDomain === "chrome" ||
     blacklistedConfig.some((d) =>
