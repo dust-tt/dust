@@ -108,7 +108,6 @@ export class GithubGetPullRequestAction extends BaseAction {
  */
 
 export class GithubGetPullRequestConfigurationServerRunner extends BaseActionConfigurationServerRunner<GithubGetPullRequestConfigurationType> {
-  // Generates the action specification for generation of rawInputs passed to `run`.
   async buildSpecification(
     _auth: Authenticator,
     { name, description }: { name: string; description: string | null }
