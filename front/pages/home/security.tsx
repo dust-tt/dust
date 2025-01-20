@@ -2,7 +2,7 @@ import { ArrowRightIcon, Button, Div3D, Hover3D } from "@dust-tt/sparkle";
 import type { ReactElement } from "react";
 import React from "react";
 
-import { A, Grid, H1, P, Strong } from "@app/components/home/ContentComponents";
+import { Grid, H1, P, Strong } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import {
