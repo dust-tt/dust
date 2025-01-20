@@ -171,22 +171,24 @@ export default function LandingLayout({
             ></Script>
             <Script id="commonroom-script" strategy="afterInteractive">
               {`
-                if (typeof window === 'undefined') return;
-                if (typeof window.signals !== 'undefined') return;
-                var script = document.createElement('script');
-                script.src = 'https://cdn.cr-relay.com/v1/site/3b08027e-3b79-422e-99d4-5153387c2885/signals.js';
-                script.async = true;
-                window.signals = Object.assign(
-                  [],
-                  ['page', 'identify', 'form'].reduce(function (acc, method){
-                    acc[method] = function () {
-                      signals.push([method, arguments]);
-                      return signals;
-                    };
-                   return acc;
-                  }, {})
-                );
-                document.head.appendChild(script);
+                (function() {
+                  if (typeof window === "undefined") return;
+                  if (typeof window.signals !== "undefined") return;
+                  var script = document.createElement("script");
+                  script.src = 'https://cdn.cr-relay.com/v1/site/3b08027e-3b79-422e-99d4-5153387c2885/signals.js';
+                  script.async = true;
+                  window.signals = Object.assign(
+                    [],
+                    ['page', 'identify', 'form'].reduce(function (acc, method){
+                      acc[method] = function () {
+                        signals.push([method, arguments]);
+                        return signals;
+                      };
+                     return acc;
+                    }, {})
+                  );
+                  document.head.appendChild(script);
+                })();
               `}
             </Script>
           </>

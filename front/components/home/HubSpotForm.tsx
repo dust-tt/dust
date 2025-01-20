@@ -9,9 +9,13 @@ declare global {
           portalId: string;
           formId: string;
           target: string;
+          onFormSubmitted?: (form: any) => void;
         }) => void;
       };
     };
+    signals?: {
+      form: (event: string, data: Record<string, any>) => void;
+    } & any[];
   }
 }
 
@@ -25,6 +29,15 @@ export default function HubSpotForm() {
           portalId: "144442587",
           formId: "31e790e5-f4d5-4c79-acc5-acd770fe8f84",
           target: "#hubspotForm",
+          onFormSubmitted: (form) => {
+            // Track form submission in CommonRoom if it exists
+            if (window.signals && typeof window.signals.form === "function") {
+              window.signals.form("hubspot_contact_form_submitted", {
+                formId: form.formId,
+                portalId: form.portalId,
+              });
+            }
+          },
         });
       }
     };
