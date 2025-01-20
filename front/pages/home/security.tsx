@@ -122,12 +122,12 @@ export default function Security() {
         </Grid>
         <Grid className="md:gap-y-4">
           <div className="col-span-12 flex flex-col justify-center py-4 sm:max-w-[100%] md:max-w-[90%]">
-            <H2 from="from-yellow-200" to="to-amber-400">
+            <H2 from="from-slate-200" to="to-slate-400">
               Ingest data on your terms
             </H2>
             <P size="lg" className="pb-6 text-slate-50">
-              Select the data you wish to ingest, stored in your preferred
-              region, under the highest security standards.
+              Control data selection and hosting location within rigorous
+              security parameters.
             </P>
           </div>
           <div
@@ -162,12 +162,11 @@ export default function Security() {
 
         <Grid className="mt-12 md:gap-y-4">
           <div className="col-span-12 flex flex-col justify-center py-4 sm:max-w-[100%] md:max-w-[90%]">
-            <H2 from="from-yellow-200" to="to-amber-400">
+            <H2 from="from-slate-200" to="to-slate-400">
               Select trusted models, keep data protected
             </H2>
             <P size="lg" className="pb-6 text-slate-50">
-              Eliminate risks of shadow IT by leveraging our provider
-              agreements, ensuring your data is never repurposed for model
+              Control risk: only trusted providers, with no data fed into
               training.
             </P>
           </div>
@@ -203,7 +202,7 @@ export default function Security() {
 
         <Grid className="mt-12 md:gap-y-4">
           <div className="col-span-12 flex flex-col justify-center py-4 sm:max-w-[100%] md:max-w-[90%]">
-            <H2 from="from-yellow-200" to="to-amber-400">
+            <H2 from="from-slate-200" to="to-slate-400">
               Maintain rigorous access control at all levels
             </H2>
             <P size="lg" className="pb-6 text-slate-50">
