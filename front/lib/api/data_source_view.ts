@@ -165,6 +165,8 @@ function makeCoreDataSourceViewFilter(
   };
 }
 
+const ROOT_PARENT_ID = "root";
+
 async function getContentNodesForDataSourceViewFromCore(
   dataSourceView: DataSourceViewResource | DataSourceViewType,
   { internalIds, parentId, viewType }: GetContentNodesForDataSourceViewParams
@@ -173,12 +175,33 @@ async function getContentNodesForDataSourceViewFromCore(
   // won't include it for now as we are shadow-reading.
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
+  // We use searchNodes to fetch the content nodes from core:
+  // - either a specific list of nodes provided by internalIds if they are set;
+  // - or all the direct children of the parent_id, if specified;
+  // - or all the roots of the data source view, if no parent_id nor internalIds
+  //   are provided.
+
+  // In the latter case, the view might either have "parentsIn" set, in which
+  // case the "roots" of the data source view are the nodes in parentsIn, so we
+  // set node_ids to parentsIn. Otherwise, the "roots" of the data source view
+  // are the root nodes of the data source, obtained by the special parent_id
+  // "root".
+
+  // In any case, there is a data_source_view filter, which is always applied.
+  const node_ids =
+    internalIds ?? parentId ? undefined : dataSourceView.parentsIn ?? undefined;
+  const parent_id =
+    parentId ?? internalIds
+      ? undefined
+      : dataSourceView.parentsIn
+        ? undefined
+        : ROOT_PARENT_ID;
+
   const coreRes = await coreAPI.searchNodes({
     filter: {
       data_source_views: [makeCoreDataSourceViewFilter(dataSourceView)],
-      // If no internalIds are provided, we use the parentsIn
-      node_ids: internalIds ?? dataSourceView.parentsIn ?? undefined,
-      parent_id: parentId,
+      node_ids,
+      parent_id,
     },
     options: { limit: 250 },
   });
