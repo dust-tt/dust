@@ -55,7 +55,7 @@ export const pageSettings: pageSettingsProps = {
     <>
       Less busywork,
       <br />
-      more deals.
+      more deals
     </>
   ),
   from: "from-emerald-200",
@@ -192,7 +192,7 @@ export const Quote: QuoteProps = {
 export const DemoVideo: DemoVideoProps = {
   sectionTitle: "Watch Dust in motion",
   videoUrl:
-    "https://fast.wistia.net/embed/iframe/0hizroojjb?seo=true&videoFoam=true",
+    "https://fast.wistia.net/embed/iframe/0hizroojjb?seo=true&videoFoam=true&captions=on",
 };
 
 export const Stories: CustomerStory[] = [
