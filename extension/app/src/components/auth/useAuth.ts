@@ -1,5 +1,12 @@
 import type { WorkspaceType } from "@dust-tt/client";
-import { AuthError, login, logout, refreshToken } from "@extension/lib/auth";
+import {
+  AuthError,
+  isValidEnterpriseConnectionName as isValidEnterpriseConnection,
+  login,
+  logout,
+  makeEnterpriseConnectionName,
+  refreshToken,
+} from "@extension/lib/auth";
 import type { StoredTokens, StoredUser } from "@extension/lib/storage";
 import {
   clearStoredData,
@@ -10,16 +17,6 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const log = console.error;
-
-export const SUPPORTED_ENTERPRISE_CONNECTIONS_STRATEGIES = [
-  "okta",
-  "samlp",
-  "waad",
-];
-
-export function makeEnterpriseConnectionName(workspaceId: string) {
-  return `workspace-${workspaceId}`;
-}
 
 export const useAuthHook = () => {
   const [tokens, setTokens] = useState<StoredTokens | null>(null);
@@ -89,7 +86,7 @@ export const useAuthHook = () => {
       [key: string]: chrome.storage.StorageChange;
     }) => {
       if (changes.accessToken && !changes.accessToken.newValue) {
-        console.log("Access token removed from storage.");
+        log("Access token removed from storage.");
         setTokens(null);
         setUser(null);
       }
@@ -138,7 +135,8 @@ export const useAuthHook = () => {
   );
 
   const enforceSSO = useCallback(
-    (workspace: WorkspaceType) => {
+    async (workspace: WorkspaceType) => {
+      log("Enforcing SSO for", workspace);
       setAuthError(
         new AuthError(
           "sso_enforced",
@@ -146,26 +144,17 @@ export const useAuthHook = () => {
         )
       );
       setForcedConnection(makeEnterpriseConnectionName(workspace.sId));
-      void logout();
+      await logout();
     },
-    [workspace]
+    [setAuthError, setForcedConnection]
   );
-
-  useEffect(() => {
-    if (workspace) {
-      if (
-        workspace.ssoEnforced &&
-        user?.provider &&
-        !SUPPORTED_ENTERPRISE_CONNECTIONS_STRATEGIES.includes(user?.provider)
-      ) {
-        enforceSSO(workspace);
-        return;
-      }
-    }
-  }, [workspace]);
 
   const handleSelectWorkspace = async (workspace: WorkspaceType) => {
     const updatedUser = await saveSelectedWorkspace(workspace.sId);
+    if (!isValidEnterpriseConnection(updatedUser, workspace)) {
+      await enforceSSO(workspace);
+      return;
+    }
     setUser(updatedUser);
   };
 
@@ -181,6 +170,21 @@ export const useAuthHook = () => {
       }
 
       const { tokens, user } = response.value;
+
+      if (user.selectedWorkspace) {
+        const selectedWorkspace = user.workspaces.find(
+          (w) => w.sId === user.selectedWorkspace
+        );
+        if (
+          selectedWorkspace &&
+          !isValidEnterpriseConnection(user, selectedWorkspace)
+        ) {
+          await enforceSSO(selectedWorkspace);
+          setIsLoading(false);
+          return;
+        }
+      }
+
       setTokens(tokens);
       setAuthError(null);
       scheduleTokenRefresh(tokens.expiresAt);

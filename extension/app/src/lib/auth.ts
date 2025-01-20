@@ -1,4 +1,4 @@
-import type { Result } from "@dust-tt/client";
+import type { Result, WorkspaceType } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import {
   AUTH0_CLAIM_NAMESPACE,
@@ -29,11 +29,19 @@ const isRegionType = (region: string): region is RegionType =>
   REGIONS.includes(region as RegionType);
 
 const REGION_CLAIM = `${AUTH0_CLAIM_NAMESPACE}region`;
+const CONNECTION_STRATEGY_CLAIM = `${AUTH0_CLAIM_NAMESPACE}connection.strategy`;
+const WORKSPACE_ID_CLAIM = `${AUTH0_CLAIM_NAMESPACE}workspaceId`;
 
 const DOMAIN_FOR_REGION: Record<RegionType, string> = {
   "us-central1": "https://dust.tt",
   "europe-west1": "https://eu.dust.tt",
 };
+
+export const SUPPORTED_ENTERPRISE_CONNECTIONS_STRATEGIES = [
+  "okta",
+  "samlp",
+  "waad",
+];
 
 const log = console.error;
 
@@ -59,21 +67,31 @@ export class AuthError extends Error {
 // Then it calls the /me route to get the user info.
 export const login = async (
   isForceLogin?: boolean,
-  connection?: string
+  forcedConnection?: string
 ): Promise<Result<{ tokens: StoredTokens; user: StoredUser }, AuthError>> => {
   try {
-    const response = await sendAuthMessage(isForceLogin, connection);
+    const response = await sendAuthMessage(isForceLogin, forcedConnection);
     if (!response.accessToken) {
       throw new Error("No access token received.");
     }
     const tokens = await saveTokens(response);
-    const dustDomain = getDustDomain(tokens.accessToken);
+
+    const claims = jwtDecode<Record<string, string>>(tokens.accessToken);
+
+    const dustDomain = getDustDomain(claims);
+    const connectionDetails = getConnectionDetails(claims);
+
     const res = await fetchMe(tokens.accessToken, dustDomain);
     if (res.isErr()) {
       return res;
     }
 
-    const user = await saveUser(res.value.user, dustDomain);
+    const user = await saveUser(
+      res.value.user,
+      dustDomain,
+      connectionDetails.connectionStrategy,
+      connectionDetails.connection
+    );
     return new Ok({ tokens, user });
   } catch (error) {
     return new Err(new AuthError("not_authenticated", error?.toString()));
@@ -133,14 +151,41 @@ export const getAccessToken = async (): Promise<string | null> => {
   return tokens?.accessToken ?? null;
 };
 
-const getDustDomain = (accessToken: string) => {
-  const claims = jwtDecode<Record<string, string>>(accessToken);
+export function makeEnterpriseConnectionName(workspaceId: string) {
+  return `workspace-${workspaceId}`;
+}
+
+export function isValidEnterpriseConnectionName(
+  user: StoredUser,
+  workspace: WorkspaceType
+) {
+  if (!workspace.ssoEnforced) {
+    return true;
+  }
+
+  return (
+    SUPPORTED_ENTERPRISE_CONNECTIONS_STRATEGIES.includes(
+      user.connectionStrategy
+    ) && makeEnterpriseConnectionName(workspace.sId) === user.connection
+  );
+}
+
+const getDustDomain = (claims: Record<string, string>) => {
   const region = claims[REGION_CLAIM];
 
   return (
     (isRegionType(region) && DOMAIN_FOR_REGION[region]) ||
     DEFAULT_DUST_API_DOMAIN
   );
+};
+
+const getConnectionDetails = (claims: Record<string, string>) => {
+  const connectionStrategy = claims[CONNECTION_STRATEGY_CLAIM];
+  const ws = claims[WORKSPACE_ID_CLAIM];
+  return {
+    connectionStrategy,
+    connection: ws ? makeEnterpriseConnectionName(ws) : undefined,
+  };
 };
 
 // Fetch me sends a request to the /me route to get the user info.

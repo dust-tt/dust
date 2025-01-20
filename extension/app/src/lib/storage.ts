@@ -19,6 +19,8 @@ export type StoredTokens = {
 export type StoredUser = UserTypeWithExtensionWorkspaces & {
   selectedWorkspace: string | null;
   dustDomain: string;
+  connectionStrategy: string;
+  connection?: string;
 };
 
 /**
@@ -84,13 +86,17 @@ export const setConversationsContext = async (
 
 export const saveUser = async (
   user: UserTypeWithExtensionWorkspaces,
-  dustDomain: string
+  dustDomain: string,
+  connectionStrategy: string,
+  connection?: string
 ): Promise<StoredUser> => {
   const storedUser: StoredUser = {
     ...user,
     selectedWorkspace:
-      user.workspaces.length === 1 ? user.workspaces[0].sId : null,
+      user.workspaces.length === 3 ? user.workspaces[2].sId : null,
     dustDomain,
+    connectionStrategy,
+    connection,
   };
   await chrome.storage.local.set({ user: storedUser });
   return storedUser;
