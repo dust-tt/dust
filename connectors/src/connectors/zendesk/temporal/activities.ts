@@ -382,6 +382,7 @@ export async function syncZendeskCategoryActivity({
     brandId,
   });
   const folderId = getCategoryInternalId({ connectorId, brandId, categoryId });
+  // adding the parents to the array of parents iff the Help Center was selected
   const parentId =
     brandInDb?.helpCenterPermission === "read"
       ? getHelpCenterInternalId({ connectorId, brandId })
