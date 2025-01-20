@@ -24,6 +24,8 @@ import { AgentGithubGetPullRequestAction } from "@app/lib/models/assistant/actio
 import { PlatformActionsConfigurationResource } from "@app/lib/resources/platform_actions_configuration_resource";
 import logger from "@app/logger/logger";
 
+export const GITHUB_GET_PULL_REQUEST_ACTION_MAX_COMMITS = 32;
+
 interface GithubGetPullRequestActionBlob {
   id: ModelId;
   agentMessageId: ModelId;
@@ -264,7 +266,7 @@ export class GithubGetPullRequestConfigurationServerRunner extends BaseActionCon
         repository(owner: $owner, name: $repo) {
           pullRequest(number: $pullNumber) {
             body
-            commits(last: 32) {
+            commits(last: ${GITHUB_GET_PULL_REQUEST_ACTION_MAX_COMMITS}) {
               nodes {
                 commit {
                   oid
@@ -367,7 +369,8 @@ export class GithubGetPullRequestConfigurationServerRunner extends BaseActionCon
         },
       });
 
-      // @ts-expect-error - the diff is a string
+      // @ts-expect-error - data is a string when mediatType.format is `diff` (wrongly typed as
+      // their defauilt response type)
       const prDiff = diff.data as string;
 
       await action.update({
