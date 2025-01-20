@@ -125,10 +125,10 @@ impl SearchStore for ElasticsearchSearchStore {
             .map(|f| {
                 let mut bool_query = Query::bool();
 
-                bool_query = bool_query.must(Query::term("data_source_id", f.data_source_id));
+                bool_query = bool_query.filter(Query::term("data_source_id", f.data_source_id));
 
                 if !f.view_filter.is_empty() {
-                    bool_query = bool_query.must(Query::terms("parents", f.view_filter));
+                    bool_query = bool_query.filter(Query::terms("parents", f.view_filter));
                 }
 
                 Query::Bool(bool_query)
