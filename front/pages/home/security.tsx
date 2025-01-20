@@ -91,7 +91,7 @@ export default function Security() {
               {<>Designed for enterprises</>}
             </P>
             <H1 from="from-yellow-200" to="to-amber-400">
-              {<>Enterprise-grade Security</>}
+              Enterprise-grade Security
             </H1>
             <P size="lg" className="text-slate-50">
               We've made security our core focus from day&nbsp;one to safeguard
