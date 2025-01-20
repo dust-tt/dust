@@ -93,7 +93,7 @@ export const saveUser = async (
   const storedUser: StoredUser = {
     ...user,
     selectedWorkspace:
-      user.workspaces.length === 3 ? user.workspaces[2].sId : null,
+      user.workspaces.length === 1 ? user.workspaces[0].sId : null,
     dustDomain,
     connectionStrategy,
     connection,
