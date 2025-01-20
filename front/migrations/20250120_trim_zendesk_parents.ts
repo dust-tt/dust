@@ -57,11 +57,11 @@ async function migrateDataSource({
              WHERE id IN (
                  SELECT id
                  FROM data_sources_nodes
-                 WHERE data_source = 1
-                   AND node_id LIKE 'zendesk-ticket-%'
-                   AND id > 1
+                 WHERE data_source = :coreDataSourceId
+                   AND node_id LIKE :pattern
+                   AND id > :nextId
                  ORDER BY timestamp, id
-                 LIMIT 100
+                 LIMIT :batchSize
              )
              RETURNING id;`,
           {
