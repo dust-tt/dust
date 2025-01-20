@@ -25,6 +25,14 @@ export async function getServerSideProps() {
   };
 }
 
+const GRID_SECTION_CLASSES = classNames(
+  "col-span-12",
+  "grid grid-cols-1 gap-12 px-6",
+  "sm:grid-cols-2 sm:gap-6 sm:pr-0",
+  "lg:col-span-10 lg:col-start-2",
+  "xl:col-span-12 xl:grid-cols-4"
+);
+
 const MainVisualModels = () => (
   <Hover3D depth={-20} perspective={1000} className={classNames("relative")}>
     <Div3D depth={-20}>
@@ -130,15 +138,7 @@ export default function Security() {
               security parameters.
             </P>
           </div>
-          <div
-            className={classNames(
-              "col-span-12",
-              "grid grid-cols-1 gap-12 px-6",
-              "sm:grid-cols-2 sm:gap-6 sm:pr-0",
-              "lg:col-span-10 lg:col-start-2",
-              "xl:col-span-12 xl:grid-cols-4"
-            )}
-          >
+          <div className={GRID_SECTION_CLASSES}>
             <div className="hidden sm:block">
               <MainVisualData />
             </div>
@@ -170,15 +170,7 @@ export default function Security() {
               training.
             </P>
           </div>
-          <div
-            className={classNames(
-              "col-span-12",
-              "grid grid-cols-1 gap-12 px-6",
-              "sm:grid-cols-2 sm:gap-6 sm:pr-0",
-              "lg:col-span-10 lg:col-start-2",
-              "xl:col-span-12 xl:grid-cols-4"
-            )}
-          >
+          <div className={GRID_SECTION_CLASSES}>
             <div className="hidden sm:block">
               <MainVisualModels />
             </div>
@@ -210,15 +202,7 @@ export default function Security() {
               rights.
             </P>
           </div>
-          <div
-            className={classNames(
-              "col-span-12",
-              "grid grid-cols-1 gap-12 px-6",
-              "sm:grid-cols-2 sm:gap-6 sm:pr-0",
-              "lg:col-span-10 lg:col-start-2",
-              "xl:col-span-12 xl:grid-cols-4"
-            )}
-          >
+          <div className={GRID_SECTION_CLASSES}>
             <div className="hidden sm:block">
               <MainVisualUsers />
             </div>
