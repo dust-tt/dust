@@ -99,15 +99,13 @@ export default function Security() {
               <Strong>GDPR Compliant & SOC2 Type II Certified.</Strong>
             </P>
             <div className="flex flex-col items-center gap-12 py-8 lg:flex-row">
-              {" "}
               <div className="hidden gap-6 py-8 lg:flex">
-                {" "}
                 <img
                   src="/static/landing/security/gdpr.svg"
                   className="h-28"
-                />{" "}
-                <img src="/static/landing/security/soc2.svg" className="h-28" />{" "}
-              </div>{" "}
+                />
+                <img src="/static/landing/security/soc2.svg" className="h-28" />
+              </div>
               <Button
                 href="https://app.vanta.com/dust.tt/trust/f3ytzxpay31bwsiyuqjto"
                 variant="highlight"
@@ -115,7 +113,7 @@ export default function Security() {
                 icon={ArrowRightIcon}
                 label="Visit our Trust Center"
                 target="_blank"
-              />{" "}
+              />
             </div>
             <div className="flex gap-4"></div>
           </div>
