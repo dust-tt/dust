@@ -10,7 +10,7 @@ export function usePublicAgentConfigurations(
   const dustAPI = useDustAPI();
 
   const agentConfigurationsFetcher = async () => {
-    const res = await dustAPI.getAgentConfigurations(view, includes);
+    const res = await dustAPI.getAgentConfigurations({ view, includes });
     if (res.isOk()) {
       return res.value;
     }

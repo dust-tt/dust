@@ -1,9 +1,10 @@
-import { client, v2 } from "@datadog/datadog-api-client";
+import assert from "assert";
 import axios from "axios";
 import { Agent } from "https";
 import { z } from "zod";
 import * as fs from "fs";
 import { collectMetricsFromQdrant } from "./qdrant";
+import statsDClient from "hot-shots";
 
 /**
  * This service polls the Temporal Cloud Prometheus endpoint and submits the metrics to Datadog.
@@ -21,22 +22,12 @@ const TARGET_METRIC_NAMES = [
   "temporal_cloud_v0_schedule_rate_limited_count",
 ];
 
-const requireEnvVar = (variableName: string): string => {
-  const value = process.env[variableName];
-  if (!value) {
-    throw new Error(`Missing environment variable ${variableName}`);
-  }
-  return value;
-};
+const { METRICS_CLIENT_CERT, METRICS_CLIENT_KEY, TEMPORAL_CLOUD_BASE_URL } =
+  process.env;
 
-// Required env variables
-const METRICS_CLIENT_CERT = requireEnvVar("METRICS_CLIENT_CERT");
-const METRICS_CLIENT_KEY = requireEnvVar("METRICS_CLIENT_KEY");
-const TEMPORAL_CLOUD_BASE_URL = requireEnvVar("TEMPORAL_CLOUD_BASE_URL");
-
-// This automatically pulls API keys from env vars DD_API_KEY
-const configuration = client.createConfiguration();
-//End Required env variables
+assert(METRICS_CLIENT_CERT, "METRICS_CLIENT_CERT env var is not set.");
+assert(METRICS_CLIENT_KEY, "METRICS_CLIENT_KEY env var is not set.");
+assert(TEMPORAL_CLOUD_BASE_URL, "TEMPORAL_CLOUD_BASE_URL env var is not set.");
 
 const PROM_LABELS_URL = `${TEMPORAL_CLOUD_BASE_URL}/prometheus/api/v1/label/__name__/values`;
 const PROM_QUERY_URL = `${TEMPORAL_CLOUD_BASE_URL}/prometheus/api/v1/query_range`;
@@ -53,11 +44,9 @@ const QUERY_WINDOW_SECONDS = 1 * 60;
 
 const HISTOGRAM_QUANTILES = [0.5, 0.9, 0.95, 0.99];
 
-configuration.setServerVariables({
-  site: "datadoghq.eu", // We're using the EU site for Datadog
+const statsD = new statsDClient({
+  prefix: DATADOG_METRIC_PREFIX,
 });
-const datadogMetricsApi = new v2.MetricsApi(configuration);
-const logApi = new v2.LogsApi(configuration);
 
 const setTimeoutAsync = async (millis: number): Promise<void> => {
   return new Promise((resolve) => setTimeout(resolve, millis));
@@ -196,25 +185,18 @@ const queryPrometheusCount = async (
 const convertPrometheusCountToDatadogRateSeries = (
   metricName: string,
   metricData: MetricData
-): v2.MetricSeries[] =>
-  metricData.result.map((prometheusMetric) => ({
-    // We need to inform datadog of the interval for this metric
-    interval: PROMETHEUS_STEP_SECONDS,
-    // Make it easier for the datadog user to understand what this metric is
-    metric: DATADOG_METRIC_PREFIX + metricName.split("_count")[0] + "_rate1m",
-    // Type 2 is a "rate" metric
-    type: 2,
-    points: prometheusMetric.values.map(([timestamp, value]) => {
-      return {
-        timestamp: timestamp,
-        value: parseFloat(value),
-      };
-    }),
-    tags: Object.entries(prometheusMetric.metric)
+): void => {
+  metricData.result.forEach((prometheusMetric) => {
+    const metric = metricName.split("_count")[0] + "_rate1m";
+    const tags = Object.entries(prometheusMetric.metric)
       .filter(([key]) => key !== "__rollup__")
-      // Datadog tags can't be longer than 200 characters
-      .map(([key, value]) => `${key}:${value.substring(0, 200)}`),
-  }));
+      .map(([key, value]) => `${key}:${value.substring(0, 200)}`);
+
+    prometheusMetric.values.forEach(([_timestamp, value]) => {
+      statsD.increment(metric, parseFloat(value), 1.0, tags);
+    });
+  });
+};
 
 const queryPrometheusHistogram = async (
   metricName: string,
@@ -246,27 +228,19 @@ const convertPrometheusHistogramToDatadogGuageSeries = (
   metricName: string,
   quantile: number,
   metricData: MetricData
-): v2.MetricSeries[] =>
-  metricData.result.map((prometheusMetric) => ({
-    // Make it easier for the datadog user to understand what this metric is
-    metric:
-      DATADOG_METRIC_PREFIX +
-      metricName.split("_bucket")[0] +
-      "_P" +
-      quantile * 100,
-    // Type 2 is a "guage" metric
-    type: 3,
-    points: prometheusMetric.values.map(([timestamp, value]) => {
-      return {
-        timestamp: timestamp,
-        value: parseFloat(value),
-      };
-    }),
-    tags: Object.entries(prometheusMetric.metric)
+): void => {
+  metricData.result.forEach((prometheusMetric) => {
+    const metric = metricName.split("_bucket")[0] + "_P" + quantile * 100;
+    const tags = Object.entries(prometheusMetric.metric)
       .filter(([key]) => key !== "__rollup__")
       // Datadog tags can't be longer than 200 characters
-      .map(([key, value]) => `${key}:${value.substring(0, 200)}`),
-  }));
+      .map(([key, value]) => `${key}:${value.substring(0, 200)}`);
+
+    prometheusMetric.values.forEach(([_timestamp, value]) => {
+      statsD.gauge(metric, parseFloat(value), tags);
+    });
+  });
+};
 
 const main = async () => {
   const metricsName = await getMetricNames();
@@ -278,69 +252,49 @@ const main = async () => {
   while (true) {
     const queryWindow = generateQueryWindow();
 
-    console.log({
-      level: "info",
-      message: "Collecting metrics from temporal cloud.",
-      startDate: new Date(
-        queryWindow.startSecondsSinceEpoch * 1000
-      ).toISOString(),
-      endDate: new Date(queryWindow.endSecondsSinceEpoch * 1000).toISOString(),
-    });
+    statsD.increment("temporal_metrics.collection.start");
 
-    const countSeries = (
-      await Promise.all(
-        countMetricNames.map(async (metricName) =>
-          convertPrometheusCountToDatadogRateSeries(
-            metricName,
-            await queryPrometheusCount(metricName, generateQueryWindow())
-          )
+    // Process count metrics
+    await Promise.all(
+      countMetricNames.map(async (metricName) => {
+        const data = await queryPrometheusCount(
+          metricName,
+          generateQueryWindow()
+        );
+        convertPrometheusCountToDatadogRateSeries(metricName, data);
+      })
+    );
+
+    // Process histogram metrics
+    await Promise.all(
+      histogramMetricNames.map(async (metricName) =>
+        Promise.all(
+          HISTOGRAM_QUANTILES.map(async (quantile) => {
+            const data = await queryPrometheusHistogram(
+              metricName,
+              quantile,
+              generateQueryWindow()
+            );
+            convertPrometheusHistogramToDatadogGuageSeries(
+              metricName,
+              quantile,
+              data
+            );
+          })
         )
       )
-    ).flat();
+    );
 
-    const guageSeries = (
-      await Promise.all(
-        histogramMetricNames.map(async (metricName) =>
-          Promise.all(
-            HISTOGRAM_QUANTILES.map(async (quantile) =>
-              convertPrometheusHistogramToDatadogGuageSeries(
-                metricName,
-                quantile,
-                await queryPrometheusHistogram(
-                  metricName,
-                  quantile,
-                  generateQueryWindow()
-                )
-              )
-            )
-          )
-        )
-      )
-    ).flat(2);
+    statsD.increment("temporal_metrics.collection.success");
 
-    console.log({
-      level: "info",
-      message: "Submitting Temporal metrics to Datadog",
-    });
-    await datadogMetricsApi.submitMetrics({
-      body: { series: [...countSeries, ...guageSeries] },
-    });
-
-    console.log({
-      level: "info",
-      message: "Submitting Qdrant metrics to Datadog",
-    });
+    // Collect Qdrant metrics
     await collectMetricsFromQdrant();
-
-    console.log({ level: "info", message: "Pausing for 60s" });
     await setTimeoutAsync(60 * 1000);
   }
 };
 
+// Update error handling to use StatsD
 main().catch((error) => {
-  console.log({
-    level: "error",
-    message: "Error in main loop. Closing healthcheck server.",
-    error,
-  });
+  statsD.increment("temporal_metrics.collection.error");
+  console.error("Error in main loop:", error);
 });

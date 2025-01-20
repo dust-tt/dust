@@ -90,6 +90,7 @@ impl ElasticsearchSearchStore {
 }
 
 const NODES_INDEX_NAME: &str = "core.data_sources_nodes";
+const ROOT_PARENT_ID: &str = "root";
 
 #[async_trait]
 impl SearchStore for ElasticsearchSearchStore {
@@ -108,6 +109,13 @@ impl SearchStore for ElasticsearchSearchStore {
                 options.limit.unwrap_or(100),
                 MAX_PAGE_SIZE
             ));
+        }
+
+        // check there is at least one data source view filter
+        // !! do not remove; without data source view filter this endpoint is
+        // dangerous as any data from any workspace can be retrieved
+        if filter.data_source_views.is_empty() {
+            return Err(anyhow::anyhow!("No data source views provided"));
         }
 
         // Build filter conditions using elasticsearch-dsl
@@ -136,7 +144,13 @@ impl SearchStore for ElasticsearchSearchStore {
         }
 
         if let Some(parent_id) = filter.parent_id {
-            bool_query = bool_query.filter(Query::term("parent_id", parent_id));
+            // if parent_id is root, we filter on all nodes whose parent_id is null
+            // otherwise, we filter on all nodes whose parent_id is the given parent_id
+            if parent_id == ROOT_PARENT_ID {
+                bool_query = bool_query.filter(Query::bool().must_not(Query::exists("parent_id")));
+            } else {
+                bool_query = bool_query.filter(Query::term("parent_id", parent_id));
+            }
         }
 
         if let Some(query) = query {
@@ -373,8 +387,7 @@ impl ElasticsearchSearchStore {
                     .parent_id
                     .as_ref()
                     .and_then(|pid| parent_titles_map.get(pid))
-                    .cloned()
-                    .unwrap_or_default();
+                    .cloned();
 
                 CoreContentNode::new(node, has_children, parent_title)
             })

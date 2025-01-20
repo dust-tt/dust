@@ -20,7 +20,7 @@ import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentBrowseAction } from "@app/lib/models/assistant/actions/browse";
-import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
+import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import logger from "@app/logger/logger";
 
 interface BrowseActionBlob {
@@ -188,7 +188,7 @@ export class BrowseConfigurationServerRunner extends BaseActionConfigurationServ
     };
 
     const config = cloneBaseConfig(
-      DustProdActionRegistry["assistant-v2-browse"].config
+      getDustProdAction("assistant-v2-browse").config
     );
 
     // Execute the browse action.

@@ -2,7 +2,7 @@ import * as t from "io-ts";
 
 import { callAction } from "@app/lib/actions/helpers";
 import type { Authenticator } from "@app/lib/auth";
-import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
+import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 
 // Part of the new doc tracker pipeline, suggest changes  based on a "source_document" (new incoming doc)
 // and a "target_document" (the tracked doc)
@@ -24,7 +24,7 @@ export async function callDocTrackerSuggestChangesAction(
     modelId: string;
   }
 ): Promise<DocTrackerSuggestChangesActionResult> {
-  const action = DustProdActionRegistry["doc-tracker-suggest-changes"];
+  const action = getDustProdAction("doc-tracker-suggest-changes");
 
   const config = cloneBaseConfig(action.config);
   config.SUGGEST_CHANGES.provider_id = providerId;

@@ -851,6 +851,8 @@ export class DustAPI {
     parentId,
     parents,
     mimeType,
+    sourceUrl,
+    providerVisibility,
   }: {
     dataSourceId: string;
     folderId: string;
@@ -859,6 +861,8 @@ export class DustAPI {
     parentId: string | null;
     parents: string[];
     mimeType: string;
+    sourceUrl: string | null;
+    providerVisibility: "public" | "private" | null;
   }) {
     const res = await this.request({
       method: "POST",
@@ -871,6 +875,8 @@ export class DustAPI {
         parent_id: parentId,
         parents,
         mime_type: mimeType,
+        source_url: sourceUrl,
+        provider_visibility: providerVisibility,
       },
     });
 

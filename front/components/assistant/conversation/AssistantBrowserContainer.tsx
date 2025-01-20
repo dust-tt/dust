@@ -65,7 +65,7 @@ export function AssistantBrowserContainer({
         isLoading ? "opacity-0" : "opacity-100"
       )}
     >
-      <div id="assistants-list-header" className="px-4">
+      <div id="assistants-list-header">
         <Page.SectionHeader title="Chat with..." />
       </div>
       <AssistantBrowser

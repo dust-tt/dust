@@ -34,6 +34,10 @@ const SHEET_SIZES = ["md", "lg", "xl"] as const;
 
 type SheetSizeType = (typeof SHEET_SIZES)[number];
 
+const SHEET_SIDES = ["top", "bottom", "left", "right"] as const;
+
+type SheetSideType = (typeof SHEET_SIDES)[number];
+
 const sizeClasses: Record<SheetSizeType, string> = {
   md: "sm:s-max-w-md",
   lg: "sm:s-max-w-xl",
@@ -41,12 +45,21 @@ const sizeClasses: Record<SheetSizeType, string> = {
 };
 
 const sheetVariants = cva(
-  "s-fixed s-z-50 s-overflow-hidden s-bg-background s-transition s-ease-in-out data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-duration-300 data-[state=open]:s-duration-500 s-flex s-flex-col s-inset-y-0 s-right-0 s-h-full s-w-full data-[state=closed]:s-slide-out-to-right data-[state=open]:s-slide-in-from-right",
+  "s-fixed s-z-50 s-overflow-hidden s-bg-background s-transition s-ease-in-out data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-duration-300 data-[state=open]:s-duration-500 s-flex s-flex-col s-h-full s-w-full",
   {
     variants: {
+      side: {
+        top: "s-inset-x-0 s-top-0 s-border-b data-[state=closed]:s-slide-out-to-top data-[state=open]:s-slide-in-from-top",
+        bottom:
+          "s-inset-x-0 s-bottom-0 s-border-t data-[state=closed]:s-slide-out-to-bottom data-[state=open]:s-slide-in-from-bottom",
+        left: "s-inset-y-0 s-left-0 s-border-r data-[state=closed]:s-slide-out-to-left data-[state=open]:s-slide-in-from-left",
+        right:
+          "s-inset-y-0 s-right-0 s-border-l data-[state=closed]:s-slide-out-to-right data-[state=open]:s-slide-in-from-right",
+      },
       size: sizeClasses,
     },
     defaultVariants: {
+      side: "right",
       size: "md",
     },
   }
@@ -56,18 +69,19 @@ interface SheetContentProps
   extends React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content> {
   size?: SheetSizeType;
   trapFocusScope?: boolean;
+  side?: SheetSideType;
 }
 
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
->(({ className, children, size, trapFocusScope, ...props }, ref) => (
+>(({ className, children, size, side, trapFocusScope, ...props }, ref) => (
   <SheetPortal>
     <SheetOverlay />
     <FocusScope trapped={trapFocusScope} asChild>
       <SheetPrimitive.Content
         ref={ref}
-        className={cn(sheetVariants({ size }), className)}
+        className={cn(sheetVariants({ size, side }), className)}
         {...props}
       >
         {children}

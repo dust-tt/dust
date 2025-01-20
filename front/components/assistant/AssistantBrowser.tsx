@@ -138,7 +138,7 @@ export function AssistantBrowser({
       {/* Search bar */}
       <div
         id="search-container"
-        className="flex w-full flex-row items-center justify-center gap-2 px-4 align-middle"
+        className="flex w-full flex-row items-center justify-center gap-2 align-middle"
       >
         <SearchInput
           name="search"
@@ -172,7 +172,7 @@ export function AssistantBrowser({
       </div>
 
       {/* Assistant tabs */}
-      <div className="w-full px-4">
+      <div className="w-full">
         <ScrollArea aria-orientation="horizontal">
           <Tabs value={viewTab} onValueChange={setSelectedTab}>
             <TabsList>

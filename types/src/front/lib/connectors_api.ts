@@ -14,7 +14,7 @@ import { Err, Ok, Result } from "../../shared/result";
 
 export type ConnectorsAPIResponse<T> = Result<T, ConnectorsAPIError>;
 export type ConnectorSyncStatus = "succeeded" | "failed";
-const CONNECTORS_ERROR_TYPES = [
+export const CONNECTORS_ERROR_TYPES = [
   "oauth_token_revoked",
   "third_party_internal_error",
   "webcrawling_error",
@@ -56,6 +56,8 @@ export type ConnectorType = {
  */
 export type ConnectorPermission = "read" | "write" | "read_write" | "none";
 export type ContentNodeType = "file" | "folder" | "database" | "channel";
+// currently used for Slack, for which channels can be public or private
+export type ProviderVisibility = "public" | "private";
 
 /*
  * This constant defines the priority order for sorting content nodes by their type.
@@ -107,7 +109,7 @@ export interface ContentNode {
   preventSelection?: boolean;
   permission: ConnectorPermission;
   lastUpdatedAt: number | null;
-  providerVisibility?: "public" | "private";
+  providerVisibility?: ProviderVisibility;
 }
 
 export type ContentNodeWithParentIds = ContentNode & {

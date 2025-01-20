@@ -13,6 +13,7 @@ export * from "./connectors/notion";
 export * from "./connectors/slack";
 export * from "./connectors/snowflake";
 export * from "./connectors/webcrawler";
+export * from "./core/content_node";
 export * from "./core/data_source";
 export * from "./front/api_handlers/internal/agent_configuration";
 export * from "./front/api_handlers/internal/assistant";

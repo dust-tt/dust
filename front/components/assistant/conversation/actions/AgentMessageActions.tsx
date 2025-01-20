@@ -1,4 +1,3 @@
-import type { ConversationMessageSizeType } from "@dust-tt/sparkle";
 import { Button, Chip, CommandLineIcon, Spinner } from "@dust-tt/sparkle";
 import type {
   AgentActionType,
@@ -16,7 +15,6 @@ import { classNames } from "@app/lib/utils";
 interface AgentMessageActionsProps {
   agentMessage: AgentMessageType;
   lastAgentStateClassification: AgentStateClassification;
-  size?: ConversationMessageSizeType;
   owner: LightWorkspaceType;
 }
 
@@ -24,7 +22,6 @@ export function AgentMessageActions({
   agentMessage,
   lastAgentStateClassification,
   owner,
-  size = "normal",
 }: AgentMessageActionsProps) {
   const [chipLabel, setChipLabel] = useState<string | undefined>("Thinking");
   const [isActionDrawerOpened, setIsActionDrawerOpened] = useState(false);
@@ -66,7 +63,6 @@ export function AgentMessageActions({
         isActionStepDone={!isThinkingOrActing}
         label={chipLabel}
         onClick={() => setIsActionDrawerOpened(true)}
-        size={size}
       />
     </div>
   );
@@ -77,13 +73,11 @@ function ActionDetails({
   label,
   isActionStepDone,
   onClick,
-  size,
 }: {
   hasActions: boolean;
   label?: string;
   isActionStepDone: boolean;
   onClick: () => void;
-  size: ConversationMessageSizeType;
 }) {
   // We memoize the spinner as otherwise its state gets resetted on each token emission (despite
   // memoization of label in the parent component).
@@ -119,7 +113,7 @@ function ActionDetails({
     </div>
   ) : (
     <Button
-      size={size === "normal" ? "sm" : "xs"}
+      size="sm"
       label="Tools inspection"
       icon={CommandLineIcon}
       variant="outline"

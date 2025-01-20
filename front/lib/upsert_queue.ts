@@ -52,6 +52,7 @@ export const EnqueueUpsertTable = t.type({
   detectedHeaders: t.union([DetectedHeaders, t.undefined]),
   title: t.string,
   mimeType: t.string,
+  sourceUrl: t.union([t.string, t.undefined, t.null]),
 });
 
 type EnqueueUpsertDocumentType = t.TypeOf<typeof EnqueueUpsertDocument>;

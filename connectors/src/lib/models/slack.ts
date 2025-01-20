@@ -202,12 +202,6 @@ SlackChatBotMessage.init(
     updatedAt: {
       type: DataTypes.DATE,
     },
-    // TODO(2025-01-15 BIGINT): This should be inferred from the relationship.
-    connectorId: {
-      type: DataTypes.INTEGER,
-
-      allowNull: false,
-    },
     channelId: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -271,7 +265,10 @@ SlackChatBotMessage.init(
     indexes: [{ fields: ["connectorId", "channelId", "threadTs"] }],
   }
 );
-ConnectorModel.hasOne(SlackChatBotMessage);
+ConnectorModel.hasOne(SlackChatBotMessage, {
+  foreignKey: "connectorId",
+  onDelete: "RESTRICT",
+});
 
 export class SlackBotWhitelistModel extends BaseModel<SlackBotWhitelistModel> {
   declare createdAt: CreationOptional<Date>;

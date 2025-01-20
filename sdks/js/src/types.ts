@@ -674,6 +674,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "index_private_slack_channel"
   | "conversations_jit_actions"
   | "disable_run_logs"
+  | "show_debug_tools"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -2016,6 +2017,7 @@ export const UpsertTableFromCsvRequestSchema = z.intersection(
       async: z.boolean().optional(),
       title: z.string(),
       mimeType: z.string(),
+      sourceUrl: z.string().nullable().optional(),
     })
     .transform((o) => ({
       name: o.name,
@@ -2029,6 +2031,7 @@ export const UpsertTableFromCsvRequestSchema = z.intersection(
       async: o.async,
       title: o.title,
       mimeType: o.mimeType,
+      sourceUrl: o.sourceUrl,
     })),
   z.union([
     z.object({ csv: z.string(), tableId: z.undefined() }).transform((o) => ({
@@ -2084,6 +2087,7 @@ export const UpsertDatabaseTableRequestSchema = z.object({
   remote_database_secret_id: z.string().nullable().optional(),
   title: z.string(),
   mime_type: z.string(),
+  source_url: z.string().nullable().optional(),
 });
 
 export type UpsertDatabaseTableRequestType = z.infer<
@@ -2142,12 +2146,16 @@ export type UpsertFolderResponseType = z.infer<
   typeof UpsertFolderResponseSchema
 >;
 
+const ProviderVisibilitySchema = FlexibleEnumSchema<"public" | "private">();
+
 export const UpsertDataSourceFolderRequestSchema = z.object({
   timestamp: z.number(),
   parents: z.array(z.string()).nullable().optional(),
   parent_id: z.string().nullable().optional(),
   title: z.string(),
   mime_type: z.string(),
+  source_url: z.string().nullable().optional(),
+  provider_visibility: ProviderVisibilitySchema.nullable().optional(),
 });
 export type UpsertDataSourceFolderRequestType = z.infer<
   typeof UpsertDataSourceFolderRequestSchema

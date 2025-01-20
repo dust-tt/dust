@@ -736,7 +736,11 @@ export async function createAgentConfiguration(
   }
 
   if (maxStepsPerRun < 0 || maxStepsPerRun > MAX_STEPS_USE_PER_RUN_LIMIT) {
-    return new Err(new Error("maxStepsPerRun must be between 0 and 8."));
+    return new Err(
+      new Error(
+        `maxStepsPerRun must be between 0 and ${MAX_STEPS_USE_PER_RUN_LIMIT}.`
+      )
+    );
   }
 
   const isValidPictureUrl =

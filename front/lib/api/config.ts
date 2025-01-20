@@ -109,14 +109,15 @@ const config = {
       apiKey: EnvironmentConfig.getOptionalEnvVariable("OAUTH_API_KEY") ?? null,
     };
   },
-  getDevelopmentDustAppsWorkspaceId: (): string | undefined => {
-    return EnvironmentConfig.getOptionalEnvVariable(
-      "DEVELOPMENT_DUST_APPS_WORKSPACE_ID"
-    );
+  getDustAppsWorkspaceId: (): string => {
+    return EnvironmentConfig.getEnvVariable("DUST_APPS_WORKSPACE_ID");
   },
-  getDevelopmentDustAppsSpaceId: (): string | undefined => {
-    return EnvironmentConfig.getOptionalEnvVariable(
-      "DEVELOPMENT_DUST_APPS_VAULT_ID"
+  getDustAppsSpaceId: (): string => {
+    return EnvironmentConfig.getEnvVariable("DUST_APPS_SPACE_ID");
+  },
+  getDustAppsHelperDatasourceViewId: (): string => {
+    return EnvironmentConfig.getEnvVariable(
+      "DUST_APPS_HELPER_DATASOURCE_VIEW_ID"
     );
   },
   getRegionResolverSecret: (): string | undefined => {

@@ -209,12 +209,19 @@ export async function confluenceUpsertSpaceFolderActivity({
   connectorId,
   spaceId,
   spaceName,
+  baseUrl,
 }: {
   connectorId: ModelId;
   spaceId: string;
   spaceName: string;
+  baseUrl: string;
 }) {
   const connector = await fetchConfluenceConnector(connectorId);
+
+  const spaceInDb = await ConfluenceSpace.findOne({
+    attributes: ["urlSuffix"],
+    where: { connectorId, spaceId },
+  });
 
   await upsertDataSourceFolder({
     dataSourceConfig: dataSourceConfigFromConnector(connector),
@@ -223,6 +230,7 @@ export async function confluenceUpsertSpaceFolderActivity({
     parentId: null,
     title: spaceName,
     mimeType: MIME_TYPES.CONFLUENCE.SPACE,
+    sourceUrl: spaceInDb?.urlSuffix && `${baseUrl}/wiki${spaceInDb.urlSuffix}`,
   });
 }
 
