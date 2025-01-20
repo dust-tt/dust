@@ -5,6 +5,7 @@ import type { ZendeskFetchedCategory } from "@connectors/@types/node-zendesk";
 import {
   getArticleInternalId,
   getCategoryInternalId,
+  getHelpCenterInternalId,
 } from "@connectors/connectors/zendesk/lib/id_conversions";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
@@ -14,6 +15,7 @@ import {
 } from "@connectors/lib/data_sources";
 import {
   ZendeskArticleResource,
+  ZendeskBrandResource,
   ZendeskCategoryResource,
 } from "@connectors/resources/zendesk_resources";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
@@ -110,13 +112,29 @@ export async function syncCategory({
       lastUpsertedTs: new Date(currentSyncDateMs),
     });
   }
+
   // upserting a folder to data_sources_folders (core)
-  const parents = categoryInDb.getParentInternalIds(connectorId);
+  const brandInDb = await ZendeskBrandResource.fetchByBrandId({
+    connectorId,
+    brandId,
+  });
+  const folderId = getCategoryInternalId({
+    connectorId,
+    brandId,
+    categoryId: categoryInDb.categoryId,
+  });
+  // adding the parents to the array of parents iff the Help Center was selected
+  const parentId =
+    brandInDb?.helpCenterPermission === "read"
+      ? getHelpCenterInternalId({ connectorId, brandId })
+      : null;
+  const parents = parentId ? [folderId, parentId] : [folderId];
+
   await upsertDataSourceFolder({
     dataSourceConfig,
-    folderId: parents[0],
+    folderId,
     parents,
-    parentId: parents[1],
+    parentId: parentId,
     title: categoryInDb.name,
     mimeType: MIME_TYPES.ZENDESK.CATEGORY,
     sourceUrl: categoryInDb.url,
