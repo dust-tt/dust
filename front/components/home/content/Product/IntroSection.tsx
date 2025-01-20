@@ -62,7 +62,7 @@ export function IntroSection() {
         <TrustedBy />
         <div className="grid grid-cols-1 gap-12 sm:grid-cols-2 lg:grid-cols-4">
           <P size="md" dotCSS="text-amber-300" shape="triangle">
-            <Strong>Automate Knowledge Work</Strong>
+            <Strong className="s-text-2xl">Automate Knowledge Work</Strong>
             <br></br>
             <br></br>
             Stop wasting time on data entry, CRM updates, or filling out
@@ -70,7 +70,7 @@ export function IntroSection() {
             repetitive tasks for you.
           </P>
           <P size="md" dotCSS="text-red-400" shape="rectangle">
-            <Strong>Surface Critical Information</Strong>
+            <Strong className="s-text-2xl">Surface Critical Information</Strong>
             <br></br>
             <br></br>
             Dust reads faster than you. Enjoy effortless summarization, targeted
@@ -78,14 +78,14 @@ export function IntroSection() {
             logs—whatever is relevant.
           </P>
           <P size="md" dotCSS="text-sky-400" shape="circle">
-            <Strong>Analyze & Visualize Anything</Strong>
+            <Strong className="s-text-2xl">Analyze & Visualize Anything</Strong>
             <br></br>
             <br></br>
             From spreadsheets to data warehouses. Your questions are turned into
             SQL queries, charts, pivots, or deep dives, in seconds.
           </P>
           <P size="md" dotCSS="text-emerald-400" shape="hexagon">
-            <Strong>Create with Confidence</Strong>
+            <Strong className="s-text-2xl">Create with Confidence</Strong>
             <br></br>
             <br></br>
             Co-edit with AI that has full context of your internal knowledge

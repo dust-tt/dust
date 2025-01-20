@@ -6,21 +6,20 @@ import { ImgBlock } from "@app/components/home/ContentBlocks";
 import { A, Grid, H2, P, Strong } from "@app/components/home/ContentComponents";
 import { classNames } from "@app/lib/utils";
 
-export function ExtensibilitySection() {
+export function SecuritySection() {
   return (
     <>
       <Grid>
         <div className="col-span-12 mb-6">
           <div>
-            <H2 from="from-red-400" to="to-pink-200">
-              Push further with custom code
+            <H2 from="from-yellow-200" to="to-amber-400">
+              Built with enterprise-grade security
             </H2>
             <P size="lg">
-              Developer friendly&nbsp;platform designed to&nbsp;build custom
-              actions and&nbsp;application orchestration to&nbsp;fit your
-              team’s&nbsp;exact&nbsp;needs.{" "}
-              <Link href="/home/solutions/dust-platform" shallow={true}>
-                <A variant="primary">More about Dust's&nbsp;Platform</A>
+              We've made security our core focus from day&nbsp;one to safeguard
+              your&nbsp;company&nbsp;data and workspace&nbsp;privacy.<br></br>{" "}
+              <Link href="/home/security" shallow={true}>
+                <A variant="primary">More about Security</A>
               </Link>
             </P>
           </div>
@@ -33,11 +32,11 @@ export function ExtensibilitySection() {
           )}
         >
           <ImgBlock
-            title={<>Build your own agentic tools</>}
+            title={<>Ingest data on your terms</>}
             content={
               <>
-                Develop advanced or agentic capabilities, from document
-                auto-updates, triggered actions, or external API access.
+                Control data selection and hosting location within rigorous
+                security parameters.
               </>
             }
           >
@@ -47,26 +46,25 @@ export function ExtensibilitySection() {
               className={classNames("relative")}
             >
               <Div3D depth={-20}>
-                <img src="/static/landing/apps/apps1.png" />
+                <img src="/static/landing/selection/selection1.png" />
               </Div3D>
               <Div3D depth={0} className="absolute top-0">
-                <img src="/static/landing/apps/apps2.png" />
+                <img src="/static/landing/selection/selection2.png" />
               </Div3D>
               <Div3D depth={15} className="absolute top-0">
-                <img src="/static/landing/apps/apps3.png" />
+                <img src="/static/landing/selection/selection3.png" />
               </Div3D>
               <Div3D depth={60} className="absolute top-0">
-                <img src="/static/landing/apps/apps4.png" />
+                <img src="/static/landing/selection/selection4.png" />
               </Div3D>
             </Hover3D>
           </ImgBlock>
           <ImgBlock
-            title={<>Build your own connections</>}
+            title={<>Select trusted models only</>}
             content={
               <>
-                No ceiling on data connections. Leverage the API to import in
-                knowledge from any source and let assistants tackle more
-                ambitious use cases.
+                Control risk: only trusted providers, data is not retained by
+                providers or fed into training.
               </>
             }
           >
@@ -76,25 +74,25 @@ export function ExtensibilitySection() {
               className={classNames("relative")}
             >
               <Div3D depth={-20}>
-                <img src="/static/landing/slack/slack1.png" />
+                <img src="/static/landing/provider/provider1.png" />
               </Div3D>
               <Div3D depth={20} className="absolute top-0">
-                <img src="/static/landing/slack/slack2.png" />
+                <img src="/static/landing/provider/provider2.png" />
               </Div3D>
               <Div3D depth={40} className="absolute top-0">
-                <img src="/static/landing/slack/slack3.png" />
+                <img src="/static/landing/provider/provider3.png" />
               </Div3D>
               <Div3D depth={70} className="absolute top-0">
-                <img src="/static/landing/slack/slack4.png" />
+                <img src="/static/landing/provider/provider4.png" />
               </Div3D>
             </Hover3D>
           </ImgBlock>
           <ImgBlock
-            title={<>Build your own integrations</>}
+            title={<>Maintain rigorous access control</>}
             content={
               <>
-                Use our API to embed assistants in your apps or websites,
-                unlocking fully custom user experiences and deep automation.
+                Tailor Dust's features to each user according to specified
+                access rights.
               </>
             }
           >
@@ -104,16 +102,16 @@ export function ExtensibilitySection() {
               className={classNames("relative")}
             >
               <Div3D depth={-20}>
-                <img src="/static/landing/connect/connect1.png" />
+                <img src="/static/landing/member/member1.png" />
               </Div3D>
               <Div3D depth={0} className="absolute top-0">
-                <img src="/static/landing/connect/connect2.png" />
+                <img src="/static/landing/member/member2.png" />
               </Div3D>
               <Div3D depth={15} className="absolute top-0">
-                <img src="/static/landing/connect/connect3.png" />
+                <img src="/static/landing/member/member3.png" />
               </Div3D>
               <Div3D depth={60} className="absolute top-0">
-                <img src="/static/landing/connect/connect4.png" />
+                <img src="/static/landing/member/member4.png" />
               </Div3D>
             </Hover3D>
           </ImgBlock>

@@ -3,6 +3,7 @@ import React from "react";
 
 import { BlogSection } from "@app/components/home/content/Product/BlogSection";
 import { ExtensibilitySection } from "@app/components/home/content/Product/ExtensibilitySection";
+import { SecuritySection } from "@app/components/home/content/Product/SecuritySection";
 import { UbiquitySection } from "@app/components/home/content/Product/FutureSection";
 import type { DemoVideoProps } from "@app/components/home/content/Solutions/DemoVideoSection";
 import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
@@ -33,6 +34,7 @@ export function Landing() {
       <CapabilitySection />
       <UbiquitySection />
       <ExtensibilitySection />
+      <SecuritySection />
       <DemoVideoSection
         demoVideo={DemoVideo}
         fromColor="from-sky-200"
