@@ -139,7 +139,7 @@ export default function Security() {
               "xl:col-span-12 xl:grid-cols-4"
             )}
           >
-            <div className="hidden lg:block">
+            <div className="hidden sm:block">
               <MainVisualData />
             </div>
             <P size="md" dotCSS="text-amber-300" shape="triangle">
@@ -180,7 +180,7 @@ export default function Security() {
               "xl:col-span-12 xl:grid-cols-4"
             )}
           >
-            <div className="hidden lg:block">
+            <div className="hidden sm:block">
               <MainVisualModels />
             </div>
             <P size="md" dotCSS="text-amber-300" shape="triangle">
@@ -220,7 +220,7 @@ export default function Security() {
               "xl:col-span-12 xl:grid-cols-4"
             )}
           >
-            <div className="hidden lg:block">
+            <div className="hidden sm:block">
               <MainVisualUsers />
             </div>
             <P size="md" dotCSS="text-amber-300" shape="triangle">
