@@ -41,7 +41,7 @@ export const CitationsExample = () => (
         <CitationIcons>
           <Icon visual={SlackLogo} size="sm" />
         </CitationIcons>
-        <CitationTitle>Slack thread</CitationTitle>
+        <CitationTitle>Citation w/ tooltip</CitationTitle>
         <CitationDescription>
           @ed at 16:32 This is the latest ve
         </CitationDescription>
