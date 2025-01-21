@@ -1,6 +1,10 @@
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import {
+  AUTH0_CLAIM_NAMESPACE,
+  DEFAULT_DUST_API_DOMAIN,
+} from "@extension/lib/config";
+import {
   sendAuthMessage,
   sendRefreshTokenMessage,
   sentLogoutMessage,
@@ -16,6 +20,20 @@ import {
   saveTokens,
   saveUser,
 } from "@extension/lib/storage";
+import { jwtDecode } from "jwt-decode";
+
+const REGIONS = ["europe-west1", "us-central1"] as const;
+export type RegionType = (typeof REGIONS)[number];
+
+const isRegionType = (region: string): region is RegionType =>
+  REGIONS.includes(region as RegionType);
+
+const REGION_CLAIM = `${AUTH0_CLAIM_NAMESPACE}region`;
+
+const DOMAIN_FOR_REGION: Record<RegionType, string> = {
+  "us-central1": "https://dust.tt",
+  "europe-west1": "https://eu.dust.tt",
+};
 
 const log = console.error;
 
@@ -47,12 +65,13 @@ export const login = async (
       throw new Error("No access token received.");
     }
     const tokens = await saveTokens(response);
-    const res = await fetchMe(tokens.accessToken);
+    const dustDomain = getDustDomain(tokens.accessToken);
+    const res = await fetchMe(tokens.accessToken, dustDomain);
     if (res.isErr()) {
       return res;
     }
 
-    const user = await saveUser(res.value.user);
+    const user = await saveUser(res.value.user, dustDomain);
     return new Ok({ tokens, user });
   } catch (error) {
     return new Err(new AuthError("not_authenticated", error?.toString()));
@@ -112,13 +131,24 @@ export const getAccessToken = async (): Promise<string | null> => {
   return tokens?.accessToken ?? null;
 };
 
+const getDustDomain = (accessToken: string) => {
+  const claims = jwtDecode<Record<string, string>>(accessToken);
+  const region = claims[REGION_CLAIM];
+
+  return (
+    (isRegionType(region) && DOMAIN_FOR_REGION[region]) ||
+    DEFAULT_DUST_API_DOMAIN
+  );
+};
+
 // Fetch me sends a request to the /me route to get the user info.
 const fetchMe = async (
-  token: string
+  accessToken: string,
+  dustDomain: string
 ): Promise<Result<{ user: UserTypeWithExtensionWorkspaces }, AuthError>> => {
-  const response = await fetch(`${process.env.DUST_DOMAIN}/api/v1/me`, {
+  const response = await fetch(`${dustDomain}/api/v1/me`, {
     headers: {
-      Authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${accessToken}`,
       "X-Request-Origin": "extension",
     },
   });

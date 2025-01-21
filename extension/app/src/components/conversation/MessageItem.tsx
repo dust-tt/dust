@@ -31,7 +31,7 @@ interface MessageItemProps {
 
 const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
   function MessageItem(
-    { conversationId, isLastMessage, message, owner }: MessageItemProps,
+    { conversationId, isLastMessage, message, owner, user }: MessageItemProps,
     ref
   ) {
     const { sId, type } = message;
@@ -108,6 +108,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               message={message}
               owner={owner}
               size="compact"
+              user={user}
             />
           </div>
         );
