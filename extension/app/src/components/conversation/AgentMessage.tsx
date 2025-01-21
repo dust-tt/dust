@@ -90,8 +90,7 @@ export const FeedbackSelectorPopoverContent = ({
   return (
     <div className="mb-4 mt-2 flex flex-col gap-2">
       <Page.P variant="secondary">
-        Your feedback is available to editors of the assistant. The last
-        assistant editor is:
+        Your feedback is available to editors of the assistant.
       </Page.P>
     </div>
   );
