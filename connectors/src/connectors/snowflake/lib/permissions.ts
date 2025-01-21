@@ -313,7 +313,7 @@ export const saveNodesFromPermissions = async ({
             permission: "selected",
           });
         }
-        // pushing the schemas in db with permission: "inherited"
+        // pushing the schemas in db with permission: "inherited" if they don't already exist
         const fetchedSchemasRes = await fetchSchemas({
           credentials,
           fromDatabase: database,
@@ -422,6 +422,10 @@ export const saveNodesFromPermissions = async ({
  * Retrieves the parent IDs of a content node in hierarchical order.
  * The first ID is the internal ID of the content node itself.
  * Quite straightforward for Snowflake as we can extract the parent IDs from the internalId.
+ *
+ * Note that this part may cause discrepancies between the response of core and the response of the connector since
+ * core will consider parents starting from the root (what was selected by the user).
+ * If such logs were to pop up they will be ignored.
  */
 export const getContentNodeParents = ({
   internalId,
