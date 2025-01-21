@@ -83,7 +83,11 @@ function ActionDetails({
   }
 
   return label ? (
-    <div key={label} onClick={hasActions ? onClick : undefined}>
+    <div
+      key={label}
+      onClick={hasActions ? onClick : undefined}
+      className={hasActions ? "cursor-pointer" : ""}
+    >
       <Chip
         size="sm"
         color="slate"
