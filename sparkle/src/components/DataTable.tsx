@@ -359,7 +359,10 @@ DataTable.Row = function Row({
 interface MoreButtonProps {
   className?: string;
   moreMenuItems?: DropdownMenuItemProps[];
-  dropdownMenuProps?: React.ComponentPropsWithoutRef<typeof DropdownMenu>;
+  dropdownMenuProps?: Omit<
+    React.ComponentPropsWithoutRef<typeof DropdownMenu>,
+    "modal"
+  >;
 }
 
 DataTable.MoreButton = function MoreButton({
@@ -372,7 +375,7 @@ DataTable.MoreButton = function MoreButton({
   }
 
   return (
-    <DropdownMenu {...dropdownMenuProps}>
+    <DropdownMenu modal={false} {...dropdownMenuProps}>
       <DropdownMenuTrigger // Necessary to allow clicking the dropdown in a table cell without clicking on the cell
         // See https://github.com/radix-ui/primitives/issues/1242
         onClick={(event) => {
