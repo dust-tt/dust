@@ -79,37 +79,18 @@ function ActionDetails({
   isActionStepDone: boolean;
   onClick: () => void;
 }) {
-  // We memoize the spinner as otherwise its state gets resetted on each token emission (despite
-  // memoization of label in the parent component).
-  const MemoizedSpinner = useMemo(
-    () => <Spinner variant="dark" size="xs" />,
-    []
-  );
-
   if (!label && (!isActionStepDone || !hasActions)) {
     return null;
   }
 
   return label ? (
-    <div key={label}>
-      <Chip size="sm" color="slate" isBusy>
-        <div
-          className={classNames(
-            "flex flex-row items-center gap-x-2 py-2",
-            hasActions ? "cursor-pointer" : ""
-          )}
-          onClick={hasActions ? onClick : undefined}
-        >
-          {MemoizedSpinner}
-          {label === "Thinking" ? (
-            <span>{label}</span>
-          ) : (
-            <span>
-              Thinking <span className="text-regular pl-1">{label}</span>
-            </span>
-          )}
-        </div>
-      </Chip>
+    <div key={label} onClick={hasActions ? onClick : undefined}>
+      <Chip
+        size="sm"
+        color="slate"
+        isBusy
+        label={label === "Thinking" ? label : `Thinking, ${label}`}
+      />
     </div>
   ) : (
     <Button
