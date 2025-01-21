@@ -299,14 +299,11 @@ export const saveNodesFromPermissions = async ({
   for (const [internalId, permission] of Object.entries(permissions)) {
     const [database, schema, table] = internalId.split(".");
     const internalType = getContentNodeTypeFromInternalId(internalId);
+    const existingDb = await RemoteDatabaseModel.findOne({
+      where: { connectorId, name: database },
+    });
 
     if (internalType === "database") {
-      const existingDb = await RemoteDatabaseModel.findOne({
-        where: {
-          connectorId,
-          internalId,
-        },
-      });
       if (permission === "read") {
         if (!existingDb) {
           await RemoteDatabaseModel.create({
@@ -375,7 +372,8 @@ export const saveNodesFromPermissions = async ({
           await existingSchema.update({ permission: "selected" });
         }
       } else if (permission === "none" && existingSchema) {
-        await existingSchema.update({ permission: "unselected" });
+        const permission = existingDb ? "inherited" : "unselected";
+        await existingSchema.update({ permission });
       } else {
         logger.error(
           { internalId, permission, existingSchema },
