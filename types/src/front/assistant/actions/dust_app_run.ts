@@ -87,5 +87,10 @@ export function getDustAppRunResultsFileTitle({
   appName: string;
   resultsFileContentType: SupportedFileContentType;
 }): string {
-  return `${appName}_output.${resultsFileContentType}`;
+  const extension = resultsFileContentType.split("/").pop();
+  let title = `${appName}_output`;
+  if (extension) {
+    title += `.${extension}`;
+  }
+  return title;
 }
