@@ -150,6 +150,25 @@ export async function syncZendeskBrandActivity({
       title: helpCenterNode.title,
       mimeType: MIME_TYPES.ZENDESK.HELP_CENTER,
     });
+
+    // updating the parents for the already selected categories to add the Help Center
+    const selectedCategories =
+      await ZendeskCategoryResource.fetchByBrandIdReadOnly({
+        connectorId,
+        brandId,
+      });
+    for (const category of selectedCategories) {
+      const parents = category.getParentInternalIds(connectorId);
+      await upsertDataSourceFolder({
+        dataSourceConfig,
+        folderId: parents[0],
+        parents,
+        parentId: parents[1],
+        title: category.name,
+        mimeType: MIME_TYPES.ZENDESK.CATEGORY,
+        sourceUrl: category.url,
+      });
+    }
   } else {
     await deleteDataSourceFolder({
       dataSourceConfig,

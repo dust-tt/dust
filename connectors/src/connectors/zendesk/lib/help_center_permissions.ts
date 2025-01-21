@@ -75,26 +75,6 @@ export async function allowSyncZendeskHelpCenter({
     });
   }
 
-  // updating the parents for the already selected categories to add the Help Center
-  const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const selectedCategories =
-    await ZendeskCategoryResource.fetchByBrandIdReadOnly({
-      connectorId,
-      brandId,
-    });
-  for (const category of selectedCategories) {
-    const parents = category.getParentInternalIds(connectorId);
-    await upsertDataSourceFolder({
-      dataSourceConfig,
-      folderId: parents[0],
-      parents,
-      parentId: parents[1],
-      title: category.name,
-      mimeType: MIME_TYPES.ZENDESK.CATEGORY,
-      sourceUrl: category.url,
-    });
-  }
-
   return true;
 }
 
