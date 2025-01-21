@@ -1,8 +1,10 @@
 import type { ModelId } from "@dust-tt/types";
 import { isSnowflakeCredentials, MIME_TYPES } from "@dust-tt/types";
+import { EXCLUDE_SCHEMAS } from "@dust-tt/types/src";
 
 import {
   connectToSnowflake,
+  fetchSchemas,
   fetchTables,
   isConnectionReadonly,
 } from "@connectors/connectors/snowflake/lib/snowflake_api";
@@ -158,6 +160,31 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
         parentId: null,
         mimeType: MIME_TYPES.SNOWFLAKE.DATABASE,
       });
+
+      // adding all the schemas in db if not already found
+      const fetchedSchemasRes = await fetchSchemas({
+        credentials,
+        fromDatabase: db.name,
+      });
+      if (fetchedSchemasRes.isErr()) {
+        throw new Error(fetchedSchemasRes.error.message);
+      }
+
+      const schemasMissingFromDb = fetchedSchemasRes.value
+        .filter((row) => !EXCLUDE_SCHEMAS.includes(row.name))
+        // we only upsert schemas that are not already in the database, which prevents us from overriding the permissions of a schema that was selected in the UI
+        .filter((row) => !allSchemas.map((s) => s.name).includes(row.name));
+
+      for (const schema of schemasMissingFromDb) {
+        const internalId = [db.name, schema.name].join(".");
+        await RemoteSchemaModel.create({
+          connectorId,
+          internalId,
+          name: schema.name,
+          databaseName: db.name,
+          permission: "inherited",
+        });
+      }
     }
   }
 
