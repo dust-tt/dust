@@ -1,6 +1,9 @@
 import type { ModelId } from "@dust-tt/types";
-import { isSnowflakeCredentials, MIME_TYPES } from "@dust-tt/types";
-import { EXCLUDE_SCHEMAS } from "@dust-tt/types/src";
+import {
+  EXCLUDE_SCHEMAS,
+  isSnowflakeCredentials,
+  MIME_TYPES,
+} from "@dust-tt/types";
 
 import {
   connectToSnowflake,
