@@ -614,7 +614,7 @@ export async function deleteSpreadsheet(
     "[Spreadsheet] Deleting Google Spreadsheet."
   );
 
-  // Delete the folder that contains the sheets.
+  // Delete the spreadsheet folder, that contains the sheets.
   await deleteDataSourceFolder({
     dataSourceConfig: dataSourceConfigFromConnector(connector),
     folderId: getInternalId(file.driveFileId),

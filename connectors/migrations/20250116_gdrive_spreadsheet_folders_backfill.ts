@@ -22,7 +22,8 @@ async function upsertFoldersForConnector(
   execute: boolean,
   logger: Logger
 ) {
-  logger.info(`Processing Spreadsheets for connector ${connector.id}`);
+  const loggerForConnector = logger.child({ connectorId: connector.id });
+  loggerForConnector.info("Processing Spreadsheets");
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const spreadsheetMimeType = "application/vnd.google-apps.spreadsheet";
@@ -34,23 +35,24 @@ async function upsertFoldersForConnector(
   });
 
   if (!spreadsheets || spreadsheets.length === 0) {
-    logger.info(`No spreadsheets found for connector ${connector.id}`);
+    loggerForConnector.info("No spreadsheets found");
     return;
   }
 
   // Upsert spreadsheets as folders
   const startSyncTs = new Date().getTime();
+  const authCredentials = await getAuthObject(connector.connectionId);
+
   await concurrentExecutor(
     spreadsheets,
     async (spreadsheet) => {
       const { connectorId, driveFileId } = spreadsheet;
-      const authCredentials = await getAuthObject(connector.connectionId);
       const driveSpreadsheet = await getGoogleDriveObject(
         authCredentials,
         driveFileId
       );
       if (!driveSpreadsheet) {
-        logger.error(`Spreadsheet ${driveFileId} not found`);
+        loggerForConnector.error("Spreadsheet not found");
         return;
       }
       const parentGoogleIds = await getFileParentsMemoized(
@@ -70,11 +72,11 @@ async function upsertFoldersForConnector(
           mimeType: MIME_TYPES.GOOGLE_DRIVE.SPREADSHEET,
           sourceUrl: getSourceUrlForGoogleDriveFiles(driveSpreadsheet),
         });
-        logger.info(
+        loggerForConnector.info(
           `Upserted spreadsheet folder ${getInternalId(driveSpreadsheet.id)} for ${spreadsheet.name}`
         );
       } else {
-        logger.info(
+        loggerForConnector.info(
           `Would upsert spreadsheet folder ${getInternalId(driveSpreadsheet.id)} for ${spreadsheet.name}`
         );
       }
