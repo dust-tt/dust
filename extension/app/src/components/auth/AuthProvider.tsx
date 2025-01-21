@@ -10,7 +10,7 @@ type AuthContextType = {
   isAuthenticated: boolean;
   authError: AuthError | null;
   setAuthError: (error: AuthError | null) => void;
-  enforceSSO: (workspace: WorkspaceType) => void;
+  redirectToSSOLogin: (workspace: WorkspaceType) => void;
   user: StoredUser | null;
   workspace: ExtensionWorkspaceType | undefined;
   isUserSetup: boolean;
@@ -28,7 +28,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     isAuthenticated,
     authError,
     setAuthError,
-    enforceSSO,
+    redirectToSSOLogin,
     user,
     workspace,
     isUserSetup,
@@ -45,7 +45,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         isAuthenticated,
         authError,
         setAuthError,
-        enforceSSO,
+        redirectToSSOLogin,
         user,
         workspace,
         isUserSetup,

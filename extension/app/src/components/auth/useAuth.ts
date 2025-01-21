@@ -134,7 +134,7 @@ export const useAuthHook = () => {
     [user]
   );
 
-  const enforceSSO = useCallback(
+  const redirectToSSOLogin = useCallback(
     async (workspace: WorkspaceType) => {
       log("Enforcing SSO for", workspace);
       setAuthError(
@@ -152,7 +152,7 @@ export const useAuthHook = () => {
   const handleSelectWorkspace = async (workspace: WorkspaceType) => {
     const updatedUser = await saveSelectedWorkspace(workspace.sId);
     if (!isValidEnterpriseConnection(updatedUser, workspace)) {
-      await enforceSSO(workspace);
+      await redirectToSSOLogin(workspace);
       return;
     }
     setUser(updatedUser);
@@ -179,7 +179,7 @@ export const useAuthHook = () => {
           selectedWorkspace &&
           !isValidEnterpriseConnection(user, selectedWorkspace)
         ) {
-          await enforceSSO(selectedWorkspace);
+          await redirectToSSOLogin(selectedWorkspace);
           setIsLoading(false);
           return;
         }
@@ -199,7 +199,7 @@ export const useAuthHook = () => {
     isAuthenticated,
     setAuthError,
     authError,
-    enforceSSO,
+    redirectToSSOLogin,
     user,
     workspace,
     isUserSetup,

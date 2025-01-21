@@ -127,7 +127,7 @@ export const LoginPage = () => {
                 return (
                   <DropdownMenuItem
                     key={w.sId}
-                    onClick={() => handleSelectWorkspace(w)}
+                    onClick={() => void handleSelectWorkspace(w)}
                     label={w.name}
                   />
                 );
