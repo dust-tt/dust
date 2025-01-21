@@ -519,7 +519,7 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
       }
     }
 
-    function isValidStructuredOutput(output: unknown): output is {
+    function containsValidStructuredOutput(output: unknown): output is {
       __dust_structured_output?: Array<
         Record<string, string | number | boolean>
       >;
@@ -560,7 +560,7 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
 
     // Check for structured output that should be converted to CSV
     if (
-      isValidStructuredOutput(sanitizedOutput) &&
+      containsValidStructuredOutput(sanitizedOutput) &&
       sanitizedOutput.__dust_structured_output
     ) {
       const fileTitle = getDustAppRunResultsFileTitle({
