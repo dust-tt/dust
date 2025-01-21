@@ -319,7 +319,7 @@ export const saveNodesFromPermissions = async ({
           fromDatabase: database,
         });
         if (fetchedSchemasRes.isErr()) {
-          throw new Error(fetchedSchemasRes.error.message);
+          return new Err(new Error(fetchedSchemasRes.error.message));
         }
         for (const schema of fetchedSchemasRes.value) {
           const existingSchema = await RemoteSchemaModel.findOne({
