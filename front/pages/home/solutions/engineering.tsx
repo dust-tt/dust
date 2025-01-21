@@ -178,28 +178,6 @@ Engineering.getLayout = (page: ReactElement, pageProps: LandingLayoutProps) => {
 
 const assistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
-    emoji: "⭐️",
-    name: "@engGeneral",
-    backgroundColor: "bg-emerald-300",
-    description: (
-      <>
-        Answers general questions about code architecture and&nbsp;engineering
-        team processes
-      </>
-    ),
-  },
-  {
-    emoji: "🏴‍☠️",
-    name: "@codeGenius",
-    backgroundColor: "bg-emerald-300",
-    description: (
-      <>
-        Answers general questions about code to&nbsp;avoid a&nbsp;trip
-        to&nbsp;StackOverflow
-      </>
-    ),
-  },
-  {
     emoji: "📚",
     name: "@codebase",
     backgroundColor: "bg-emerald-300",

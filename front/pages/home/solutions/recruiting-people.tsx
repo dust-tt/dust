@@ -212,7 +212,7 @@ const assistantExamples: SolutionSectionAssistantBlockProps[] = [
   },
   {
     emoji: "👋",
-    name: "@peopleGeneral",
+    name: "@askHR",
     backgroundColor: "bg-amber-300",
     description: (
       <>
@@ -234,40 +234,6 @@ const assistantExamples: SolutionSectionAssistantBlockProps[] = [
     ),
   },
   {
-    emoji: "🔬",
-    name: "@screeningPrep",
-    backgroundColor: "bg-amber-300",
-    description: (
-      <>
-        Provides a&nbsp;suggested analysis of&nbsp;a candidate CV given
-        a&nbsp;role description to&nbsp;highlight questions for a&nbsp;screening
-        interview
-      </>
-    ),
-  },
-  {
-    emoji: "💬",
-    name: "@hiringQuestions",
-    backgroundColor: "bg-amber-300",
-    description: (
-      <>
-        Suggests interviews questions based on&nbsp;roles, stage of&nbsp;the
-        interview and&nbsp;the company's culture
-      </>
-    ),
-  },
-  {
-    emoji: "🧐",
-    name: "@candidateInfo",
-    backgroundColor: "bg-amber-300",
-    description: (
-      <>
-        Summarize available information about a&nbsp;candidate based
-        on&nbsp;your&nbsp;company database
-      </>
-    ),
-  },
-  {
     emoji: "🏅",
     name: "@reviewPrep",
     backgroundColor: "bg-amber-300",
@@ -276,14 +242,6 @@ const assistantExamples: SolutionSectionAssistantBlockProps[] = [
         Collects achievements, drafts actionable reviews, helps formulate
         feedback
       </>
-    ),
-  },
-  {
-    emoji: "🧑‍🏫",
-    name: "@trainingDraft",
-    backgroundColor: "bg-amber-300",
-    description: (
-      <>Designs training modules and&nbsp;crafts employee development plans</>
     ),
   },
 ];

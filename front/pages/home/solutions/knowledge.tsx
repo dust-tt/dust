@@ -159,47 +159,23 @@ Knowledge.getLayout = (page: ReactElement, pageProps: LandingLayoutProps) => {
 const assistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
     emoji: "🖋️",
-    name: "@docsNew",
+    name: "@askTeam",
     backgroundColor: "bg-sky-300",
     description: (
       <>
-        Creates documentation based on&nbsp;product and&nbsp;tech team's
-        knowledge
-      </>
-    ),
-  },
-  {
-    emoji: "🔬",
-    name: "@docsUpdate",
-    backgroundColor: "bg-sky-300",
-    description: (
-      <>
-        Analyzes existing documentation in&nbsp;the context of&nbsp;internal
-        discussions on&nbsp;product launches to&nbsp;highlight update
-        requirements
-      </>
-    ),
-  },
-  {
-    emoji: "🔎",
-    name: "@docsFromTickets",
-    backgroundColor: "bg-sky-300",
-    description: (
-      <>
-        Explores support tickets and&nbsp;support team conversations
-        to&nbsp;spot tribal operational knowledge that should be&nbsp;formalized
-        once and for&nbsp;all
+        Provide employees with a go-to person to answer questions about a
+        specific department.
       </>
     ),
   },
   {
     emoji: "🚀",
-    name: "@First90Days",
+    name: "@weeklyHighlights",
     backgroundColor: "bg-sky-300",
     description: (
       <>
-        Quizzes new team members on&nbsp;company knowledge as&nbsp;they onboard
-        on&nbsp;their specific team
+        Provide recurring recaps of projects, discussion channels or topics,
+        making it easy to scan over insights.
       </>
     ),
   },
@@ -216,12 +192,13 @@ const assistantExamples: SolutionSectionAssistantBlockProps[] = [
   },
   {
     emoji: "👨‍🎤",
-    name: "@LikeImOnSales",
+    name: "@onboardingBuddy",
     backgroundColor: "bg-sky-300",
     description: (
       <>
-        Explains technical concepts in&nbsp;the context of&nbsp;the company's
-        infrastructure and&nbsp;data model
+        Acts as&nbsp;a friendly guide to&nbsp;help new team members feel welcome
+        and&nbsp;properly informed from&nbsp;day one and&nbsp;as they learn
+        about the&nbsp;company.
       </>
     ),
   },

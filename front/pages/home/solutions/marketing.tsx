@@ -194,39 +194,6 @@ const assistantExamples: SolutionSectionAssistantBlockProps[] = [
     ),
   },
   {
-    emoji: "⭐️",
-    name: "@marketing",
-    backgroundColor: "bg-pink-300",
-    description: (
-      <>
-        Answer any question about your&nbsp;team's marketing knowledge base.
-        Resurface past ideas and&nbsp;create new ones
-      </>
-    ),
-  },
-  {
-    emoji: "🔬",
-    name: "@dataInsights",
-    backgroundColor: "bg-pink-300",
-    description: (
-      <>
-        Analyzes user and&nbsp;customer surveys quantitatively based
-        on&nbsp;your natural language questions
-      </>
-    ),
-  },
-  {
-    emoji: "🧐",
-    name: "@competitive",
-    backgroundColor: "bg-pink-300",
-    description: (
-      <>
-        Tracks competitors websites to highlight changes and pro-actively detect
-        market positioning opportunities
-      </>
-    ),
-  },
-  {
     emoji: "♠️",
     name: "@battleCard",
     backgroundColor: "bg-pink-300",

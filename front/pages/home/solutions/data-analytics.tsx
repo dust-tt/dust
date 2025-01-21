@@ -175,12 +175,12 @@ const assistantExamples: SolutionSectionAssistantBlockProps[] = [
   },
   {
     emoji: "🔬",
-    name: "@userMetrics",
+    name: "@analyst",
     backgroundColor: "bg-amber-300",
     description: (
       <>
-        Answers advanced questions about existing users by&nbsp;querying
-        internal data.
+        Answers advanced data questions on your behalf by writing and executing
+        queries and providing visualizations.
       </>
     ),
   },
