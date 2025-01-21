@@ -44,6 +44,8 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
     );
   }
 
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
   const connectionRes = await connectToSnowflake(credentials);
   if (connectionRes.isErr()) {
     throw connectionRes.error;
@@ -143,12 +145,56 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
   };
 
   for (const internalId of internalIdsOnSnowflake) {
-    if (isTableReadGranted(internalId)) {
+    const [dbName, schemaName, tableName] = parseTableInternalId(internalId);
+    const schemaInternalId = [dbName, schemaName].join(".");
+
+    let tableShouldBeSynced = false;
+    let parents = [internalId];
+
+    if (readGrantedInternalIds.has(dbName)) {
+      tableShouldBeSynced = true;
+      parents = [internalId, schemaInternalId, dbName];
+
+      // upserting a data_sources_folder for the database
+      await upsertDataSourceFolder({
+        dataSourceConfig,
+        folderId: dbName,
+        title: dbName,
+        parents: [dbName],
+        parentId: null,
+        mimeType: MIME_TYPES.SNOWFLAKE.DATABASE,
+      });
+      // upserting a data_sources_folder for the database schema with the database as parent
+      await upsertDataSourceFolder({
+        dataSourceConfig,
+        folderId: schemaInternalId,
+        title: schemaName,
+        parents: [schemaInternalId, dbName],
+        parentId: dbName,
+        mimeType: MIME_TYPES.SNOWFLAKE.SCHEMA,
+      });
+    } else if (readGrantedInternalIds.has(schemaInternalId)) {
+      tableShouldBeSynced = true;
+      parents = [internalId, schemaInternalId];
+
+      // upserting a data_sources_folder for the database schema without a parent (root)
+      await upsertDataSourceFolder({
+        dataSourceConfig,
+        folderId: schemaInternalId,
+        title: schemaName,
+        parents: [schemaInternalId],
+        parentId: null,
+        mimeType: MIME_TYPES.SNOWFLAKE.SCHEMA,
+      });
+    } else if (readGrantedInternalIds.has(internalId)) {
+      tableShouldBeSynced = true;
+      parents = [internalId];
+    }
+
+    if (tableShouldBeSynced) {
       let table = tableByInternalId[internalId];
       if (!table || !table.lastUpsertedAt) {
         if (!table) {
-          const [dbName, schemaName, tableName] =
-            parseTableInternalId(internalId);
           table = await RemoteTableModel.create({
             connectorId,
             internalId,
@@ -159,29 +205,6 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
           });
         }
 
-        const dataSourceConfig = dataSourceConfigFromConnector(connector);
-
-        // upsert a folder for the database (top level node)
-        await upsertDataSourceFolder({
-          dataSourceConfig,
-          folderId: table.databaseName,
-          title: table.databaseName,
-          parents: [table.databaseName],
-          parentId: null,
-          mimeType: MIME_TYPES.SNOWFLAKE.DATABASE,
-        });
-
-        // upsert a folder for the schema (child of the database)
-        const schemaId = `${table.databaseName}.${table.schemaName}`;
-        await upsertDataSourceFolder({
-          dataSourceConfig,
-          folderId: schemaId,
-          title: table.schemaName,
-          parents: [schemaId, table.databaseName],
-          parentId: table.databaseName,
-          mimeType: MIME_TYPES.SNOWFLAKE.SCHEMA,
-        });
-
         await upsertDataSourceRemoteTable({
           dataSourceConfig,
           tableId: internalId,
@@ -189,8 +212,8 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
           remoteDatabaseTableId: internalId,
           remoteDatabaseSecretId: connector.connectionId,
           tableDescription: "",
-          parents: [internalId, schemaId, table.databaseName],
-          parentId: schemaId,
+          parents,
+          parentId: parents[1] || null,
           title: table.name,
           mimeType: MIME_TYPES.SNOWFLAKE.TABLE,
         });
