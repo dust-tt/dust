@@ -109,7 +109,7 @@ export const MainPage = ({
                 conversationId={null}
                 user={user}
               />
-              <AssistantFavorites />
+              <AssistantFavorites user={user} />
             </InputBarProvider>
           </DropzoneContainer>
         </FileDropProvider>

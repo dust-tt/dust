@@ -46,7 +46,7 @@ export const Auth0JwtPayloadSchema = t.intersection([
     scope: t.string,
     sub: t.string,
   }),
-  t.record(t.string, t.union([t.string, t.undefined])),
+  t.record(t.string, t.union([t.string, t.number, t.undefined])),
 ]);
 
 export type Auth0JwtPayload = t.TypeOf<typeof Auth0JwtPayloadSchema> &

@@ -23,28 +23,24 @@ import {
   removeNulls,
 } from "@dust-tt/client";
 import type { ConversationMessageSizeType } from "@dust-tt/sparkle";
-import { DocumentTextIcon } from "@dust-tt/sparkle";
 import {
+  ArrowPathIcon,
+  Button,
+  Chip,
   Citation,
   CitationIcons,
   CitationIndex,
   CitationTitle,
-} from "@dust-tt/sparkle";
-import {
-  ArrowPathIcon,
-  Button,
-  ChatBubbleThoughtIcon,
-  Chip,
   ClipboardIcon,
   ContentMessage,
   ConversationMessage,
   DocumentDuplicateIcon,
+  DocumentTextIcon,
   EyeIcon,
   Markdown,
   Popover,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import { useAuth } from "@extension/components/auth/AuthProvider";
 import { AgentMessageActions } from "@extension/components/conversation/AgentMessageActions";
 import { GenerationContext } from "@extension/components/conversation/GenerationContextProvider";
 import {
@@ -62,6 +58,7 @@ import { useSubmitFunction } from "@extension/components/utils/useSubmitFunction
 import { useEventSource } from "@extension/hooks/useEventSource";
 import { assertNeverAndIgnore } from "@extension/lib/assertNeverAndIgnore";
 import { retryMessage } from "@extension/lib/conversation";
+import type { StoredUser } from "@extension/lib/storage";
 import {
   useCallback,
   useContext,
@@ -118,6 +115,7 @@ interface AgentMessageProps {
   message: AgentMessagePublicType;
   owner: LightWorkspaceType;
   size: ConversationMessageSizeType;
+  user: StoredUser;
 }
 
 /**
@@ -132,9 +130,9 @@ export function AgentMessage({
   message,
   owner,
   size,
+  user,
 }: AgentMessageProps) {
   const sendNotification = useSendNotification();
-  const { user } = useAuth();
 
   const [streamedAgentMessage, setStreamedAgentMessage] =
     useState<AgentMessagePublicType>(message);
@@ -173,7 +171,7 @@ export function AgentMessage({
 
   const buildEventSourceURL = useCallback(
     (lastEvent: string | null) => {
-      const esURL = `${user?.dustDomain}/api/v1/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${message.sId}/events`;
+      const esURL = `${user.dustDomain}/api/v1/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${message.sId}/events`;
       let lastEventId = "";
       if (lastEvent) {
         const eventPayload: {
@@ -430,7 +428,7 @@ export function AgentMessage({
             label="See visualization on Dust website"
             onClick={() => {
               window.open(
-                `${user?.dustDomain}/w/${owner.sId}/assistant/${conversationId}`
+                `${user.dustDomain}/w/${owner.sId}/assistant/${conversationId}`
               );
             }}
           />
