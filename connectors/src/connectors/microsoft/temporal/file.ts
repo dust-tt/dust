@@ -282,7 +282,7 @@ export async function syncOneFile({
           updatedAt,
           createdAt,
           lastEditor: file.lastModifiedBy?.user
-            ? (file.lastModifiedBy.user.displayName ?? undefined)
+            ? file.lastModifiedBy.user.displayName ?? undefined
             : undefined,
           content: documentSection,
         });
