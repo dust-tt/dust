@@ -8,7 +8,7 @@ on:
         type: choice
         options:
           - "us-central1"
-        default: "all"
+        default: "us-central1"
         required: true
       component:
         description: "Component to deploy"
