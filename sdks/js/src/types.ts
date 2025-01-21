@@ -50,6 +50,7 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "Qwen/QwQ-32B-Preview"
   | "Qwen/Qwen2-72B-Instruct"
   | "deepseek-chat"
+  | "deepseek-reasoner"
 >();
 
 const EmbeddingProviderIdSchema = FlexibleEnumSchema<"openai" | "mistral">();
@@ -93,11 +94,16 @@ export const supportedOtherFileFormats = {
     ".doc",
     ".docx",
   ],
+  "application/vnd.ms-powerpoint": [".ppt", ".pptx"],
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation": [
+    ".ppt",
+    ".pptx",
+  ],
   "application/pdf": [".pdf"],
   "text/comma-separated-values": [".csv"],
   "text/csv": [".csv"],
   "text/markdown": [".md", ".markdown"],
-  "text/plain": [".txt"],
+  "text/plain": [".txt", ".log", ".cfg", ".conf"],
   "text/tab-separated-values": [".tsv"],
   "text/tsv": [".tsv"],
   "text/vnd.dust.attachment.slack.thread": [".txt"],
@@ -111,6 +117,25 @@ export const supportedOtherFileFormats = {
   "application/xml": [".xml"],
   "application/x-sh": [".sh"],
   "text/x-sh": [".sh"],
+  "text/x-python": [".py"],
+  "text/x-python-script": [".py"],
+  "application/x-yaml": [".yaml", ".yml"],
+  "text/yaml": [".yaml", ".yml"],
+  "text/vnd.yaml": [".yaml", ".yml"],
+  "text/x-c": [".c", ".cc", ".cpp", ".cxx", ".dic", ".h", ".hh"],
+  "text/x-csharp": [".cs"],
+  "text/x-java-source": [".java"],
+  "text/x-php": [".php"],
+  "text/x-ruby": [".rb"],
+  "text/x-sql": [".sql"],
+  "text/x-swift": [".swift"],
+  "text/x-rust": [".rs"],
+  "text/x-go": [".go"],
+  "text/x-kotlin": [".kt", ".kts"],
+  "text/x-scala": [".scala"],
+  "text/x-groovy": [".groovy"],
+  "text/x-perl": [".pl", ".pm"],
+  "text/x-perl-script": [".pl", ".pm"],
 } as const;
 
 // Supported content types for images.
@@ -941,6 +966,18 @@ const AgentMessageTypeSchema = z.object({
 });
 export type AgentMessagePublicType = z.infer<typeof AgentMessageTypeSchema>;
 
+const AgentMesssageFeedbackSchema = z.object({
+  messageId: z.string(),
+  agentMessageId: z.number(),
+  userId: z.number(),
+  thumbDirection: z.union([z.literal("up"), z.literal("down")]),
+  content: z.string().nullable(),
+  createdAt: z.number(),
+  agentConfigurationId: z.string(),
+  agentConfigurationVersion: z.number(),
+  isConversationShared: z.boolean(),
+});
+
 const ConversationVisibilitySchema = FlexibleEnumSchema<
   "unlisted" | "workspace" | "deleted" | "test"
 >();
@@ -1553,6 +1590,28 @@ export const CreateConversationResponseSchema = z.object({
 export type CreateConversationResponseType = z.infer<
   typeof CreateConversationResponseSchema
 >;
+
+export const GetFeedbacksResponseSchema = z.object({
+  feedbacks: z.array(AgentMesssageFeedbackSchema),
+});
+
+export type GetFeedbacksResponseType = z.infer<
+  typeof GetFeedbacksResponseSchema
+>;
+
+export const PublicPostMessageFeedbackRequestBodySchema = z.object({
+  thumbDirection: z.string(),
+  feedbackContent: z.string().nullable().optional(),
+  isConversationShared: z.boolean().optional(),
+});
+
+export type PublicPostMessageFeedbackRequestBody = z.infer<
+  typeof PublicPostMessageFeedbackRequestBodySchema
+>;
+
+export const PostMessageFeedbackResponseSchema = z.object({
+  success: z.literal(true),
+});
 
 export const PostUserMessageResponseSchema = z.object({
   message: UserMessageSchema,

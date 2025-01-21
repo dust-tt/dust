@@ -1,12 +1,9 @@
 import type { ConnectorProvider, UpsertContext } from "@dust-tt/types";
-import { isDevelopment } from "@dust-tt/types";
 
 import type { Authenticator } from "@app/lib/auth";
 import { trackerUpsertHook } from "@app/lib/document_upsert_hooks/hooks/tracker";
 import { wakeLock } from "@app/lib/wake_lock";
 import logger from "@app/logger/logger";
-
-const DUST_WORKSPACE = "0ec9852c2f";
 
 const _hooks = {
   tracker: trackerUpsertHook,
@@ -30,11 +27,6 @@ export type DocumentUpsertHook = {
 export function runDocumentUpsertHooks(
   params: Parameters<DocumentUpsertHook["fn"]>[0]
 ): void {
-  // TODO(document-tracker): remove this once we have a way to enable/disable
-  if (params.auth.workspace()?.sId !== DUST_WORKSPACE && !isDevelopment()) {
-    return;
-  }
-
   if (params.upsertContext?.sync_type !== "incremental") {
     // Skip hooks for batch syncs
     return;

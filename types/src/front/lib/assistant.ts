@@ -126,6 +126,7 @@ export const TOGETHERAI_QWEN_32B_PREVIEW_MODEL_ID =
 export const TOGETHERAI_QWEN_72B_INSTRUCT_MODEL_ID =
   "Qwen/Qwen2-72B-Instruct" as const;
 export const DEEPSEEK_CHAT_MODEL_ID = "deepseek-chat" as const;
+export const DEEPSEEK_REASONER_MODEL_ID = "deepseek-reasoner" as const;
 
 export const MODEL_IDS = [
   GPT_3_5_TURBO_MODEL_ID,
@@ -155,6 +156,7 @@ export const MODEL_IDS = [
   TOGETHERAI_QWEN_32B_PREVIEW_MODEL_ID,
   TOGETHERAI_QWEN_72B_INSTRUCT_MODEL_ID,
   DEEPSEEK_CHAT_MODEL_ID,
+  DEEPSEEK_REASONER_MODEL_ID,
 ] as const;
 export type ModelIdType = (typeof MODEL_IDS)[number];
 
@@ -686,6 +688,21 @@ export const DEEPSEEK_CHAT_MODEL_CONFIG: ModelConfigurationType = {
   largeModel: true,
   description: "DeepSeek's best model (v3, 64k context).",
   shortDescription: "DeepSeek's best model.",
+  isLegacy: false,
+  supportsVision: false,
+  featureFlag: "deepseek_feature",
+};
+
+export const DEEPSEEK_REASONER_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "deepseek",
+  modelId: DEEPSEEK_REASONER_MODEL_ID,
+  displayName: "DeepSeek R1",
+  contextSize: 64_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 64,
+  largeModel: true,
+  description: "DeepSeek's reasoning model (R1, 64k context).",
+  shortDescription: "DeepSeek's reasoning model.",
   isLegacy: false,
   supportsVision: false,
   featureFlag: "deepseek_feature",

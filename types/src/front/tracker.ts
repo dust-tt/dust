@@ -22,6 +22,7 @@ export type TrackerConfigurationType = {
   maintainedDataSources: TrackerDataSourceConfigurationType[];
   watchedDataSources: TrackerDataSourceConfigurationType[];
   generations?: TrackerGenerationToProcess[];
+  createdAt: number;
 };
 
 export type TrackerDataSourceConfigurationType = {
