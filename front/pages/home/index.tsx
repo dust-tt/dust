@@ -3,10 +3,7 @@ import React from "react";
 import { Button, RocketIcon } from "@dust-tt/sparkle";
 import Link from "next/link";
 
-import {
-  MetricSection,
-  QuoteSection,
-} from "@app/components/home/ContentBlocks";
+import { QuoteSection } from "@app/components/home/ContentBlocks";
 import { BlogSection } from "@app/components/home/content/Product/BlogSection";
 import { DifferentiationSection } from "@app/components/home/content/Product/DifferentiationSection";
 import { ValuePropSection } from "@app/components/home/content/Product/ValuePropSection";
@@ -35,26 +32,10 @@ export async function getServerSideProps() {
 //     "https://fast.wistia.net/embed/iframe/r0dwaexoez?seo=true&videoFoam=true",
 // };
 
-const METRICS = {
-  metrics: [
-    {
-      value: "90%",
-      description: <>Weekly active users at Alan</>,
-    },
-    {
-      value: "50,000",
-      description: <>Annual hours saved at Qonto</>,
-    },
-  ],
-  from: "from-amber-200",
-  to: "to-amber-500",
-};
-
 export function Landing() {
   return (
     <>
       <IntroSection />
-      <MetricSection {...METRICS}></MetricSection>
       <CapabilitySection />
       <VerticalSection />
       <DifferentiationSection />
