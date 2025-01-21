@@ -85,13 +85,13 @@ export const login = async (
     if (res.isErr()) {
       return res;
     }
-
-    const user = await saveUser(
-      res.value.user,
+    const workspaces = res.value.user.workspaces;
+    const user = await saveUser({
+      ...res.value.user,
+      ...connectionDetails,
       dustDomain,
-      connectionDetails.connectionStrategy,
-      connectionDetails.connection
-    );
+      selectedWorkspace: workspaces.length === 1 ? workspaces[0].sId : null,
+    });
     return new Ok({ tokens, user });
   } catch (error) {
     return new Err(new AuthError("not_authenticated", error?.toString()));
