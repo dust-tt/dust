@@ -6,7 +6,7 @@ on:
       regions:
         description: "Regions to deploy to"
         required: true
-        default: "us-central1"
+        default: "all"
         type: choice
         options:
           - "us-central1"
