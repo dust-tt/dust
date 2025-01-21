@@ -55,7 +55,7 @@ export const ASSISTANT_MANAGER_TABS = [
   },
   {
     id: "global",
-    label: "Default Assistant",
+    label: "Default",
     icon: SCOPE_INFO["global"].icon,
     description: SCOPE_INFO["global"].text,
   },
