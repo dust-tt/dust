@@ -1,7 +1,7 @@
 import { stringify } from "csv-stringify";
 
 import { generateCSVSnippet } from "@app/lib/api/csv";
-import { internalCreateToolOutputCsvFile } from "@app/lib/api/files/tool_output";
+import { internalCreateToolOutputFile } from "@app/lib/api/files/tool_output";
 import type { Authenticator } from "@app/lib/auth";
 import type { FileResource } from "@app/lib/resources/file_resource";
 
@@ -40,7 +40,7 @@ export async function getToolResultOutputCsvFileAndSnippet(
 
   const csvOutput = await toCsv(results);
 
-  const file = await internalCreateToolOutputCsvFile(auth, {
+  const file = await internalCreateToolOutputFile(auth, {
     title,
     conversationId: conversationId,
     content: csvOutput,
@@ -48,4 +48,26 @@ export async function getToolResultOutputCsvFileAndSnippet(
   });
 
   return { file, snippet: generateCSVSnippet(csvOutput) };
+}
+
+export async function getToolResultOutputPlainTextFileAndSnippet(
+  auth: Authenticator,
+  {
+    title,
+    conversationId,
+    content,
+  }: {
+    title: string;
+    conversationId: string;
+    content: string;
+  }
+): Promise<{ file: FileResource; snippet: string | null }> {
+  const file = await internalCreateToolOutputFile(auth, {
+    title,
+    conversationId,
+    content,
+    contentType: "text/plain",
+  });
+
+  return { file, snippet: file.snippet };
 }
