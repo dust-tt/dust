@@ -1,7 +1,7 @@
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import * as React from "react";
 
-import { classNames, cn } from "@sparkle/lib/utils";
+import { classNames } from "@sparkle/lib/utils";
 
 const TooltipProvider = TooltipPrimitive.Provider;
 
@@ -35,26 +35,16 @@ interface TooltipProps extends TooltipContentProps {
   tooltipTriggerAsChild?: boolean;
   label: React.ReactNode;
   triggerAsChild?: boolean;
-  tooltipTriggerClassName?: string;
 }
 
 const Tooltip = React.forwardRef<HTMLDivElement, TooltipProps>(
   (
-    {
-      trigger,
-      tooltipTriggerAsChild = false,
-      label,
-      tooltipTriggerClassName,
-      ...props
-    }: TooltipProps,
+    { trigger, tooltipTriggerAsChild = false, label, ...props }: TooltipProps,
     ref
   ) => (
     <TooltipProvider>
       <TooltipRoot>
-        <TooltipTrigger
-          className={cn(tooltipTriggerClassName)}
-          asChild={tooltipTriggerAsChild}
-        >
+        <TooltipTrigger asChild={tooltipTriggerAsChild}>
           {trigger}
         </TooltipTrigger>
         <TooltipPortal>

@@ -164,13 +164,7 @@ export function DataTable<TData extends TBaseData>({
   }, [filter, filterColumn]);
 
   return (
-    <div
-      className={cn(
-        "s-flex s-flex-col s-gap-2",
-        className || "",
-        widthClassName
-      )}
-    >
+    <div className={cn("s-flex s-flex-col s-gap-2", className, widthClassName)}>
       <DataTable.Root>
         <DataTable.Header>
           {table.getHeaderGroups().map((headerGroup) => (
@@ -307,8 +301,8 @@ DataTable.Head = function Head({
     <th
       className={cn(
         "s-py-2 s-pl-2 s-pr-3 s-text-left s-text-xs s-font-medium s-capitalize s-text-foreground",
-        column.columnDef.meta?.className || "",
-        className || ""
+        column.columnDef.meta?.className,
+        className
       )}
       {...props}
     >
@@ -352,7 +346,7 @@ DataTable.Row = function Row({
         "s-group/dt s-border-b s-border-separator s-transition-colors s-duration-300 s-ease-out",
         onClick ? "s-cursor-pointer hover:s-bg-muted" : "",
         widthClassName,
-        className || ""
+        className
       )}
       onClick={onClick ? onClick : undefined}
       {...props}
@@ -428,8 +422,8 @@ DataTable.Cell = function Cell({
       className={cn(
         cellHeight,
         "s-truncate s-pl-2",
-        column.columnDef.meta?.className || "",
-        className || ""
+        column.columnDef.meta?.className,
+        className
       )}
       {...props}
     >
@@ -460,7 +454,7 @@ DataTable.CellContent = function CellContent({
   ...props
 }: CellContentProps) {
   return (
-    <div className={cn("s-flex s-items-center", className || "")} {...props}>
+    <div className={cn("s-flex s-items-center", className)} {...props}>
       {avatarUrl && avatarTooltipLabel && (
         <Tooltip
           trigger={
@@ -486,7 +480,7 @@ DataTable.CellContent = function CellContent({
         <Icon
           visual={icon}
           size="sm"
-          className={cn("s-mr-2 s-text-foreground", iconClassName || "")}
+          className={cn("s-mr-2 s-text-foreground", iconClassName)}
         />
       )}
       <div className="s-flex s-shrink s-truncate">
@@ -533,13 +527,13 @@ DataTable.BasicCellContent = function BasicCellContent({
     <>
       {tooltip ? (
         <Tooltip
-          tooltipTriggerClassName="s-w-full"
+          tooltipTriggerAsChild
           trigger={
             <div
               className={cn(
                 cellHeight,
                 "s-group s-flex s-items-center s-gap-2 s-text-sm s-text-muted-foreground",
-                className || ""
+                className
               )}
               {...props}
             >
@@ -565,7 +559,7 @@ DataTable.BasicCellContent = function BasicCellContent({
           className={cn(
             cellHeight,
             "s-group s-flex s-items-center s-gap-2 s-text-sm s-text-muted-foreground",
-            className || ""
+            className
           )}
           {...props}
         >
@@ -612,7 +606,7 @@ DataTable.CellContentWithCopy = function CellContentWithCopy({
   };
 
   return (
-    <div className={cn("s-flex s-items-center s-space-x-2", className || "")}>
+    <div className={cn("s-flex s-items-center s-space-x-2", className)}>
       <span className="s-truncate">{children}</span>
       <IconButton
         icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
