@@ -11,8 +11,10 @@ import type {
   RetrievePermissionsErrorCode,
   UpdateConnectorErrorCode,
 } from "@connectors/connectors/interface";
-import { ConnectorManagerError } from "@connectors/connectors/interface";
-import { BaseConnectorManager } from "@connectors/connectors/interface";
+import {
+  BaseConnectorManager,
+  ConnectorManagerError,
+} from "@connectors/connectors/interface";
 import {
   fetchAvailableChildrenInSnowflake,
   fetchReadNodes,
@@ -340,9 +342,43 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
   }: {
     permissions: Record<string, ConnectorPermission>;
   }): Promise<Result<void, Error>> {
+    const connectorAndCredentialsRes = await getConnectorAndCredentials({
+      connectorId: this.connectorId,
+      logger,
+    });
+    if (connectorAndCredentialsRes.isErr()) {
+      switch (connectorAndCredentialsRes.error.code) {
+        case "connector_not_found":
+          return new Err(
+            new ConnectorManagerError(
+              "CONNECTOR_NOT_FOUND",
+              "Connector not found"
+            )
+          );
+        case "invalid_credentials":
+          return new Err(
+            new ConnectorManagerError(
+              "EXTERNAL_OAUTH_TOKEN_ERROR",
+              "Snowflake authorization error, please re-authorize."
+            )
+          );
+        default:
+          assertNever(connectorAndCredentialsRes.error.code);
+      }
+    }
+
+    const { credentials } = connectorAndCredentialsRes.value;
+
+    if (!isSnowflakeCredentials(credentials)) {
+      throw new Error(
+        "Invalid credentials type - expected snowflake credentials"
+      );
+    }
+
     await saveNodesFromPermissions({
       connectorId: this.connectorId,
       permissions,
+      credentials,
       logger,
     });
 

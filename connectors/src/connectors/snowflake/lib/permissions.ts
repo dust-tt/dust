@@ -286,11 +286,13 @@ export const getBatchContentNodes = async ({
  */
 export const saveNodesFromPermissions = async ({
   connectorId,
+  credentials,
   permissions,
   logger,
 }: {
   permissions: Record<string, string>;
   connectorId: ModelId;
+  credentials: SnowflakeCredentials;
   logger: Logger;
 }): Promise<Result<void, Error>> => {
   for (const [internalId, permission] of Object.entries(permissions)) {
@@ -304,13 +306,44 @@ export const saveNodesFromPermissions = async ({
           internalId,
         },
       });
-      if (permission === "read" && !existingDb) {
-        await RemoteDatabaseModel.create({
-          connectorId,
-          internalId,
-          name: database as string,
-          permission: "selected",
+      if (permission === "read") {
+        if (!existingDb) {
+          await RemoteDatabaseModel.create({
+            connectorId,
+            internalId,
+            name: database as string,
+            permission: "selected",
+          });
+        }
+        // pushing the schemas in db with permission: "inherited"
+        const fetchedSchemasRes = await fetchSchemas({
+          credentials,
+          fromDatabase: database,
         });
+        if (fetchedSchemasRes.isErr()) {
+          throw new Error(fetchedSchemasRes.error.message);
+        }
+        for (const schema of fetchedSchemasRes.value) {
+          const existingSchema = await RemoteSchemaModel.findOne({
+            where: {
+              connectorId,
+              internalId,
+            },
+          });
+          if (!existingSchema) {
+            await RemoteSchemaModel.create({
+              connectorId,
+              internalId: [database, schema.name].join("."),
+              name: schema.name,
+              databaseName: database as string,
+              permission: "inherited",
+            });
+          } else if (existingSchema.permission === "unselected") {
+            // we update the permission to prevent it from being deleted
+            // if it was selected we keep it that way, this way unselecting the database will not unselect the schema
+            await existingSchema.update({ permission: "inherited" });
+          }
+        }
       } else if (permission === "none" && existingDb) {
         await existingDb.update({ permission: "unselected" });
       } else {
