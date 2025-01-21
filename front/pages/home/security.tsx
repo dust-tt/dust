@@ -30,11 +30,8 @@ const MainVisualModels = () => (
     <Div3D depth={-20}>
       <img src="/static/landing/provider/provider1.png" />
     </Div3D>
-    <Div3D depth={20} className="absolute top-0">
-      <img src="/static/landing/provider/provider2.png" />
-    </Div3D>
     <Div3D depth={40} className="absolute top-0">
-      <img src="/static/landing/provider/provider4.png" />
+      <img src="/static/landing/provider/provider2.png" />
     </Div3D>
     <Div3D depth={70} className="absolute top-0">
       <img src="/static/landing/provider/provider3.png" />
