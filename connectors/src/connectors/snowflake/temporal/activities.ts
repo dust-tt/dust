@@ -121,6 +121,59 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
     allTables.map((table) => [table.internalId, table])
   );
 
+  // upserting data_sources_folders for the databases
+  for (const db of allDatabases) {
+    if (readGrantedInternalIds.has(db.internalId)) {
+      await upsertDataSourceFolder({
+        dataSourceConfig,
+        folderId: db.internalId,
+        title: db.name,
+        parents: [db.internalId],
+        parentId: null,
+        mimeType: MIME_TYPES.SNOWFLAKE.DATABASE,
+      });
+    }
+  }
+
+  const parseSchemaInternalId = (
+    schemaInternalId: string
+  ): [string, string] => {
+    const [dbName, schemaName] = schemaInternalId.split(".");
+    if (!dbName || !schemaName) {
+      throw new Error(`Invalid schema internalId: ${schemaInternalId}`);
+    }
+
+    return [dbName, schemaName];
+  };
+
+  // upserting data_sources_folders for the schemas
+  for (const schema of allSchemas) {
+    const [dbName, schemaName] = parseSchemaInternalId(schema.internalId);
+
+    let parents = [schema.internalId];
+    let schemaShouldBeSynced = false;
+
+    if (readGrantedInternalIds.has(dbName)) {
+      schemaShouldBeSynced = true;
+      parents = [schema.internalId, dbName];
+    } else if (readGrantedInternalIds.has(schema.internalId)) {
+      schemaShouldBeSynced = true;
+      parents = [schema.internalId];
+    }
+
+    if (schemaShouldBeSynced) {
+      // if the parent database is selected, it should be added as a parent, otherwise the schema is a root
+      await upsertDataSourceFolder({
+        dataSourceConfig,
+        folderId: schema.internalId,
+        title: schemaName,
+        parents: parents,
+        parentId: parents[1] || null,
+        mimeType: MIME_TYPES.SNOWFLAKE.SCHEMA,
+      });
+    }
+  }
+
   const parseTableInternalId = (
     tableInternalId: string
   ): [string, string, string] => {
@@ -154,38 +207,9 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
     if (readGrantedInternalIds.has(dbName)) {
       tableShouldBeSynced = true;
       parents = [internalId, schemaInternalId, dbName];
-
-      // upserting a data_sources_folder for the database
-      await upsertDataSourceFolder({
-        dataSourceConfig,
-        folderId: dbName,
-        title: dbName,
-        parents: [dbName],
-        parentId: null,
-        mimeType: MIME_TYPES.SNOWFLAKE.DATABASE,
-      });
-      // upserting a data_sources_folder for the database schema with the database as parent
-      await upsertDataSourceFolder({
-        dataSourceConfig,
-        folderId: schemaInternalId,
-        title: schemaName,
-        parents: [schemaInternalId, dbName],
-        parentId: dbName,
-        mimeType: MIME_TYPES.SNOWFLAKE.SCHEMA,
-      });
     } else if (readGrantedInternalIds.has(schemaInternalId)) {
       tableShouldBeSynced = true;
       parents = [internalId, schemaInternalId];
-
-      // upserting a data_sources_folder for the database schema without a parent (root)
-      await upsertDataSourceFolder({
-        dataSourceConfig,
-        folderId: schemaInternalId,
-        title: schemaName,
-        parents: [schemaInternalId],
-        parentId: null,
-        mimeType: MIME_TYPES.SNOWFLAKE.SCHEMA,
-      });
     } else if (readGrantedInternalIds.has(internalId)) {
       tableShouldBeSynced = true;
       parents = [internalId];
