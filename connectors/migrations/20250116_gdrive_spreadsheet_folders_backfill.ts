@@ -1,13 +1,8 @@
 import { MIME_TYPES } from "@dust-tt/types";
 import { makeScript } from "scripts/helpers";
+import { v4 as uuidv4 } from "uuid";
 
-import { getSourceUrlForGoogleDriveFiles } from "@connectors/connectors/google_drive";
-import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
-import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
-import {
-  getAuthObject,
-  getInternalId,
-} from "@connectors/connectors/google_drive/temporal/utils";
+import { getLocalParents } from "@connectors/connectors/google_drive/lib";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
@@ -22,12 +17,15 @@ async function upsertFoldersForConnector(
   execute: boolean,
   logger: Logger
 ) {
-  const loggerForConnector = logger.child({ connectorId: connector.id });
-  loggerForConnector.info("Processing Spreadsheets");
+  const localLogger = logger.child({ connectorId: connector.id });
+  localLogger.info("Processing Spreadsheets");
+
+  // generating a memoization key for the duration of the backfill
+  const memo = uuidv4();
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const spreadsheetMimeType = "application/vnd.google-apps.spreadsheet";
-  // The 5 connectors with the most spreadsheets: 35k, 20k, 13k, 8k, 7k -> No need fo batching
+  // The 5 connectors with the most spreadsheets: 35k, 20k, 13k, 8k, 7k -> no need for batching
   const spreadsheets = await GoogleDriveFiles.findAll({
     where: {
       connectorId: connector.id,
@@ -35,50 +33,40 @@ async function upsertFoldersForConnector(
     },
   });
 
-  if (!spreadsheets || spreadsheets.length === 0) {
-    loggerForConnector.info("No spreadsheets found");
+  if (spreadsheets.length === 0) {
+    localLogger.info("No spreadsheet found");
     return;
   }
 
   // Upsert spreadsheets as folders
-  const startSyncTs = new Date().getTime();
-  const authCredentials = await getAuthObject(connector.connectionId);
-
   await concurrentExecutor(
     spreadsheets,
     async (spreadsheet) => {
-      const { connectorId, driveFileId } = spreadsheet;
-      const driveSpreadsheet = await getGoogleDriveObject(
-        authCredentials,
-        driveFileId
-      );
-      if (!driveSpreadsheet) {
-        loggerForConnector.error("Spreadsheet not found");
-        return;
-      }
-      const parentGoogleIds = await getFileParentsMemoized(
+      const {
         connectorId,
-        authCredentials,
-        driveSpreadsheet,
-        startSyncTs
-      );
-      const parents = parentGoogleIds.map((parent) => getInternalId(parent));
+        driveFileId,
+        dustFileId,
+        name: spreadsheetName,
+      } = spreadsheet;
+      // getLocalParents returns internal IDs
+      const parents = await getLocalParents(connectorId, dustFileId, memo);
+
       if (execute) {
         await upsertDataSourceFolder({
           dataSourceConfig,
-          folderId: getInternalId(driveSpreadsheet.id),
+          folderId: dustFileId,
           parents,
           parentId: parents[1] || null,
-          title: spreadsheet.name,
+          title: spreadsheetName,
           mimeType: MIME_TYPES.GOOGLE_DRIVE.SPREADSHEET,
-          sourceUrl: getSourceUrlForGoogleDriveFiles(driveSpreadsheet),
+          sourceUrl: getSourceUrlForGoogleDriveSheet(driveFileId),
         });
-        loggerForConnector.info(
-          `Upserted spreadsheet folder ${getInternalId(driveSpreadsheet.id)} for ${spreadsheet.name}`
+        localLogger.info(
+          `Upserted spreadsheet folder ${dustFileId} for ${spreadsheetName}`
         );
       } else {
-        loggerForConnector.info(
-          `Would upsert spreadsheet folder ${getInternalId(driveSpreadsheet.id)} for ${spreadsheet.name}`
+        localLogger.info(
+          `Would upsert spreadsheet folder ${dustFileId} for ${spreadsheetName}`
         );
       }
     },
@@ -93,3 +81,8 @@ makeScript({}, async ({ execute }, logger) => {
     await upsertFoldersForConnector(connector, execute, logger);
   }
 });
+
+// Copy-pasted from the migration script for source URLs
+function getSourceUrlForGoogleDriveSheet(driveFileId: string): string {
+  return `https://docs.google.com/spreadsheets/d/${driveFileId}/edit`;
+}

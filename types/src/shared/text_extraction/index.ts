@@ -38,6 +38,7 @@ export const pagePrefixesPerMimeType: Record<string, string> = {
 const supportedContentTypes = [
   "application/pdf",
   "application/msword",
+  "application/vnd.ms-powerpoint",
   "application/vnd.openxmlformats-officedocument.presentationml.presentation",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ] as const;
@@ -53,6 +54,10 @@ type ContentTypeConfig = {
 
 const contentTypeConfig: ContentTypeConfig = {
   "application/pdf": { handler: "html", pageSelector: "page" },
+  "application/vnd.ms-powerpoint": {
+    handler: "html",
+    pageSelector: "slide-content",
+  },
   "application/vnd.openxmlformats-officedocument.presentationml.presentation": {
     handler: "html",
     pageSelector: "slide-content",
