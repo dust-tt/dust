@@ -1,5 +1,6 @@
 import { BaseAction } from "../../../front/assistant/actions/index";
 import { ModelId } from "../../../shared/model_id";
+import { SupportedFileContentType } from "../../files";
 
 export type DustAppRunConfigurationType = {
   id: ModelId;
@@ -35,6 +36,7 @@ export interface DustAppRunActionType extends BaseAction {
   step: number;
   resultsFileId: string | null;
   resultsFileSnippet: string | null;
+  resultsFileContentType: SupportedFileContentType | null;
   type: "dust_app_run_action";
 }
 
@@ -80,8 +82,10 @@ export type DustAppRunSuccessEvent = {
 
 export function getDustAppRunResultsFileTitle({
   appName,
+  resultsFileContentType,
 }: {
   appName: string;
+  resultsFileContentType: SupportedFileContentType;
 }): string {
-  return `${appName}_output.csv`;
+  return `${appName}_output.${resultsFileContentType}`;
 }

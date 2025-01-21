@@ -90,45 +90,51 @@ function DustAppRunOutputDetails({ action }: { action: DustAppRunActionType }) {
 
   return (
     <div className="flex flex-col gap-4">
-      {action.resultsFileId && action.resultsFileSnippet && (
-        <div>
-          <span className="text-sm font-semibold text-foreground">Results</span>
-          <Citation
-            className="w-48 min-w-48 max-w-48"
-            containerClassName="my-2"
-            tooltip={getDustAppRunResultsFileTitle({
-              appName: action.appName,
-            })}
-          >
-            <CitationIcons>
-              <Icon visual={TableIcon} />
-            </CitationIcons>
-            <CitationTitle>
-              {getDustAppRunResultsFileTitle({
+      {action.resultsFileId &&
+        action.resultsFileSnippet &&
+        action.resultsFileContentType && (
+          <div>
+            <span className="text-sm font-semibold text-foreground">
+              Results
+            </span>
+            <Citation
+              className="w-48 min-w-48 max-w-48"
+              containerClassName="my-2"
+              tooltip={getDustAppRunResultsFileTitle({
                 appName: action.appName,
+                resultsFileContentType: action.resultsFileContentType,
               })}
-            </CitationTitle>
-          </Citation>
+            >
+              <CitationIcons>
+                <Icon visual={TableIcon} />
+              </CitationIcons>
+              <CitationTitle>
+                {getDustAppRunResultsFileTitle({
+                  appName: action.appName,
+                  resultsFileContentType: action.resultsFileContentType,
+                })}
+              </CitationTitle>
+            </Citation>
 
-          <Collapsible defaultOpen={false}>
-            <Collapsible.Button>
-              <span className="text-sm font-semibold text-muted-foreground">
-                Preview
-              </span>
-            </Collapsible.Button>
-            <Collapsible.Panel>
-              <div className="py-2">
-                <CodeBlock
-                  className="language-csv max-h-60 overflow-y-auto"
-                  wrapLongLines={true}
-                >
-                  {action.resultsFileSnippet}
-                </CodeBlock>
-              </div>
-            </Collapsible.Panel>
-          </Collapsible>
-        </div>
-      )}
+            <Collapsible defaultOpen={false}>
+              <Collapsible.Button>
+                <span className="text-sm font-semibold text-muted-foreground">
+                  Preview
+                </span>
+              </Collapsible.Button>
+              <Collapsible.Panel>
+                <div className="py-2">
+                  <CodeBlock
+                    className="language-csv max-h-60 overflow-y-auto"
+                    wrapLongLines={true}
+                  >
+                    {action.resultsFileSnippet}
+                  </CodeBlock>
+                </div>
+              </Collapsible.Panel>
+            </Collapsible>
+          </div>
+        )}
 
       <ContentBlockWrapper
         content={stringifiedOutput}

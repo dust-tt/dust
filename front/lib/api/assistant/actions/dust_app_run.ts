@@ -15,6 +15,7 @@ import type {
   ModelId,
   Result,
   SpecificationType,
+  SupportedFileContentType,
 } from "@dust-tt/types";
 import {
   BaseAction,
@@ -60,6 +61,7 @@ interface DustAppRunActionBlob {
   step: number;
   resultsFileId: string | null;
   resultsFileSnippet: string | null;
+  resultsFileContentType: SupportedFileContentType | null;
   generatedFiles: ActionGeneratedFileType[];
 }
 
@@ -80,6 +82,7 @@ export class DustAppRunAction extends BaseAction {
   readonly step: number;
   readonly resultsFileId: string | null;
   readonly resultsFileSnippet: string | null;
+  readonly resultsFileContentType: SupportedFileContentType | null;
   readonly type = "dust_app_run_action";
 
   constructor(blob: DustAppRunActionBlob) {
@@ -97,6 +100,7 @@ export class DustAppRunAction extends BaseAction {
     this.step = blob.step;
     this.resultsFileId = blob.resultsFileId;
     this.resultsFileSnippet = blob.resultsFileSnippet;
+    this.resultsFileContentType = blob.resultsFileContentType;
   }
 
   renderForFunctionCall(): FunctionCallType {
@@ -110,11 +114,16 @@ export class DustAppRunAction extends BaseAction {
   async renderForMultiActionsModel(): Promise<FunctionMessageTypeModel> {
     let content = "";
 
-    const hasResultsFile = this.resultsFileId && this.resultsFileSnippet;
+    const hasResultsFile =
+      this.resultsFileId &&
+      this.resultsFileSnippet &&
+      this.resultsFileContentType;
+
     if (hasResultsFile) {
       const attachment = getDustAppRunResultsFileAttachment({
         resultsFileId: this.resultsFileId,
         resultsFileSnippet: this.resultsFileSnippet,
+        resultsFileContentType: this.resultsFileContentType,
         includeSnippet: true,
         appName: this.appName,
       });
@@ -352,6 +361,7 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
         step,
         resultsFileId: null,
         resultsFileSnippet: null,
+        resultsFileContentType: null,
         generatedFiles: [],
       }),
     };
@@ -495,6 +505,7 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
             step: action.step,
             resultsFileId: null,
             resultsFileSnippet: null,
+            resultsFileContentType: null,
             generatedFiles: [],
           }),
         };
@@ -574,6 +585,7 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
     ) {
       const fileTitle = getDustAppRunResultsFileTitle({
         appName: app.name,
+        resultsFileContentType: "text/csv",
       });
 
       const { file, snippet } = await getToolResultOutputCsvFileAndSnippet(
@@ -632,6 +644,7 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
         step: action.step,
         resultsFileId: resultFile?.fileId ?? null,
         resultsFileSnippet: updateParams.resultsFileSnippet,
+        resultsFileContentType: resultFile?.contentType ?? null,
         generatedFiles: resultFile ? [resultFile] : [],
       }),
     };
@@ -719,6 +732,7 @@ export async function dustAppRunTypesFromAgentMessageIds(
           }),
           title: getDustAppRunResultsFileTitle({
             appName: action.appName,
+            resultsFileContentType: action.resultsFile.contentType,
           }),
           contentType: action.resultsFile.contentType,
           snippet: action.resultsFileSnippet,
@@ -739,6 +753,7 @@ export async function dustAppRunTypesFromAgentMessageIds(
       step: action.step,
       resultsFileId: resultsFile?.fileId ?? null,
       resultsFileSnippet: action.resultsFileSnippet,
+      resultsFileContentType: resultsFile?.contentType ?? null,
       generatedFiles: resultsFile ? [resultsFile] : [],
     });
   });
@@ -747,11 +762,13 @@ export async function dustAppRunTypesFromAgentMessageIds(
 export function getDustAppRunResultsFileAttachment({
   resultsFileId,
   resultsFileSnippet,
+  resultsFileContentType,
   includeSnippet = true,
   appName,
 }: {
   resultsFileId: string | null;
   resultsFileSnippet: string | null;
+  resultsFileContentType: SupportedFileContentType;
   includeSnippet: boolean;
   appName: string;
 }): string | null {
@@ -761,8 +778,8 @@ export function getDustAppRunResultsFileAttachment({
 
   const attachment =
     `<file ` +
-    `id="${resultsFileId}" type="text/csv" title=${getDustAppRunResultsFileTitle(
-      { appName }
+    `id="${resultsFileId}" type="${resultsFileContentType}" title=${getDustAppRunResultsFileTitle(
+      { appName, resultsFileContentType }
     )}`;
 
   if (!includeSnippet) {
