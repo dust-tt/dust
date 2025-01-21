@@ -173,6 +173,7 @@ export async function getUserWithWorkspaces<T extends boolean>(
         segmentation: w.segmentation || null,
         whiteListedProviders: w.whiteListedProviders,
         defaultEmbeddingProvider: w.defaultEmbeddingProvider,
+        ssoEnforced: w.ssoEnforced,
         ...(populateExtensionConfig && {
           blacklistedDomains:
             configs.find((c) => c.workspaceId === w.id)?.blacklistedDomains ??

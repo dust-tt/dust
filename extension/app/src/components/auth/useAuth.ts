@@ -1,5 +1,12 @@
-import type { AuthError } from "@extension/lib/auth";
-import { login, logout, refreshToken } from "@extension/lib/auth";
+import type { WorkspaceType } from "@dust-tt/client";
+import {
+  AuthError,
+  isValidEnterpriseConnectionName as isValidEnterpriseConnection,
+  login,
+  logout,
+  makeEnterpriseConnectionName,
+  refreshToken,
+} from "@extension/lib/auth";
 import type { StoredTokens, StoredUser } from "@extension/lib/storage";
 import {
   clearStoredData,
@@ -15,6 +22,9 @@ export const useAuthHook = () => {
   const [tokens, setTokens] = useState<StoredTokens | null>(null);
   const [user, setUser] = useState<StoredUser | null>(null);
   const [authError, setAuthError] = useState<AuthError | null>(null);
+  const [forcedConnection, setForcedConnection] = useState<
+    string | undefined
+  >();
 
   const isAuthenticated = useMemo(
     () =>
@@ -40,6 +50,7 @@ export const useAuthHook = () => {
     }
     setTokens(null);
     setAuthError(null);
+    setForcedConnection(undefined);
     if (refreshTimerRef.current) {
       clearTimeout(refreshTimerRef.current);
     }
@@ -75,7 +86,7 @@ export const useAuthHook = () => {
       [key: string]: chrome.storage.StorageChange;
     }) => {
       if (changes.accessToken && !changes.accessToken.newValue) {
-        console.log("Access token removed from storage.");
+        log("Access token removed from storage.");
         setTokens(null);
         setUser(null);
       }
@@ -118,11 +129,39 @@ export const useAuthHook = () => {
     };
   }, [handleRefreshToken, scheduleTokenRefresh]);
 
+  const workspace = useMemo(
+    () => user?.workspaces.find((w) => w.sId === user.selectedWorkspace),
+    [user]
+  );
+
+  const redirectToSSOLogin = useCallback(
+    async (workspace: WorkspaceType) => {
+      log("Enforcing SSO for", workspace);
+      setAuthError(
+        new AuthError(
+          "sso_enforced",
+          "Access requires Single Sign-On (SSO) authentication. Use your SSO provider to sign in."
+        )
+      );
+      setForcedConnection(makeEnterpriseConnectionName(workspace.sId));
+      await logout();
+    },
+    [setAuthError, setForcedConnection]
+  );
+
+  const handleSelectWorkspace = async (workspace: WorkspaceType) => {
+    const updatedUser = await saveSelectedWorkspace(workspace.sId);
+    if (!isValidEnterpriseConnection(updatedUser, workspace)) {
+      await redirectToSSOLogin(workspace);
+      return;
+    }
+    setUser(updatedUser);
+  };
+
   const handleLogin = useCallback(
     async (isForceLogin?: boolean) => {
       setIsLoading(true);
-
-      const response = await login(isForceLogin);
+      const response = await login(isForceLogin, forcedConnection);
       if (response.isErr()) {
         setAuthError(response.error);
         setIsLoading(false);
@@ -131,27 +170,38 @@ export const useAuthHook = () => {
       }
 
       const { tokens, user } = response.value;
+
+      if (user.selectedWorkspace) {
+        const selectedWorkspace = user.workspaces.find(
+          (w) => w.sId === user.selectedWorkspace
+        );
+        if (
+          selectedWorkspace &&
+          !isValidEnterpriseConnection(user, selectedWorkspace)
+        ) {
+          await redirectToSSOLogin(selectedWorkspace);
+          setIsLoading(false);
+          return;
+        }
+      }
+
       setTokens(tokens);
       setAuthError(null);
       scheduleTokenRefresh(tokens.expiresAt);
       setUser(user);
       setIsLoading(false);
     },
-    [scheduleTokenRefresh]
+    [scheduleTokenRefresh, forcedConnection]
   );
-
-  const handleSelectWorkspace = async (workspaceId: string) => {
-    const updatedUser = await saveSelectedWorkspace(workspaceId);
-    setUser(updatedUser);
-  };
 
   return {
     token: tokens?.accessToken ?? null,
     isAuthenticated,
     setAuthError,
     authError,
+    redirectToSSOLogin,
     user,
-    workspace: user?.workspaces.find((w) => w.sId === user.selectedWorkspace),
+    workspace,
     isUserSetup,
     isLoading,
     handleLogin,
