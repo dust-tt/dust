@@ -47,9 +47,11 @@ const Tooltip = React.forwardRef<HTMLDivElement, TooltipProps>(
         <TooltipTrigger asChild={tooltipTriggerAsChild}>
           {trigger}
         </TooltipTrigger>
-        <TooltipContent {...props} ref={ref}>
-          {label}
-        </TooltipContent>
+        <TooltipPortal>
+          <TooltipContent {...props} ref={ref}>
+            {label}
+          </TooltipContent>
+        </TooltipPortal>
       </TooltipRoot>
     </TooltipProvider>
   )

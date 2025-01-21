@@ -201,8 +201,8 @@ export const getMenuItems = (
   const actions: ContentActionsMenu = [];
 
   // View in source:
-  // We have a source for all types of docs excepts folder docs unless manually set by the user.
-  if (!isFolder(dataSourceView.dataSource) || contentNode.sourceUrl) {
+  // We only push the view in if the content has a source URL.
+  if (contentNode.sourceUrl) {
     actions.push(makeViewSourceUrlContentAction(contentNode, dataSourceView));
   }
 

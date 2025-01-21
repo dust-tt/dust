@@ -123,6 +123,7 @@ const fetchMe = async (
     },
   });
   const me = await response.json();
+
   if (!response.ok) {
     return new Err(new AuthError(me.error.type, me.error.message));
   }
