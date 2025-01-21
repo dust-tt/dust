@@ -2,6 +2,7 @@ import type { ModelId } from "@dust-tt/types";
 import {
   getGoogleSheetTableId,
   InvalidStructuredDataHeaderError,
+  MIME_TYPES,
   slugify,
 } from "@dust-tt/types";
 import { Context } from "@temporalio/activity";
@@ -11,14 +12,19 @@ import type { sheets_v4 } from "googleapis";
 import { google } from "googleapis";
 import type { OAuth2Client } from "googleapis-common";
 
-import { getSourceUrlForGoogleDriveSheet } from "@connectors/connectors/google_drive";
+import {
+  getSourceUrlForGoogleDriveFiles,
+  getSourceUrlForGoogleDriveSheet,
+} from "@connectors/connectors/google_drive";
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import { getInternalId } from "@connectors/connectors/google_drive/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
+  deleteDataSourceFolder,
   deleteDataSourceTable,
   MAX_FILE_SIZE_TO_DOWNLOAD,
+  upsertDataSourceFolder,
   upsertDataSourceTableFromCsv,
 } from "@connectors/lib/data_sources";
 import { ProviderWorkflowError, TablesError } from "@connectors/lib/error";
@@ -499,8 +505,18 @@ export async function syncSpreadSheet(
         file,
         startSyncTs
       );
-
       const parents = parentGoogleIds.map((parent) => getInternalId(parent));
+
+      // Upsert spreadsheet as a folder, because it is a parent of the sheets.
+      await upsertDataSourceFolder({
+        dataSourceConfig: dataSourceConfigFromConnector(connector),
+        folderId: getInternalId(file.id),
+        parents,
+        parentId: parents[1] || null,
+        title: spreadsheet.data.properties?.title ?? "Untitled Spreadsheet",
+        mimeType: MIME_TYPES.GOOGLE_DRIVE.SPREADSHEET,
+        sourceUrl: getSourceUrlForGoogleDriveFiles(file),
+      });
 
       const successfulSheetIdImports: number[] = [];
       for (const sheet of sheets) {
@@ -597,6 +613,16 @@ export async function deleteSpreadsheet(
     },
     "[Spreadsheet] Deleting Google Spreadsheet."
   );
+
+  // Delete the spreadsheet folder, that contains the sheets.
+  await deleteDataSourceFolder({
+    dataSourceConfig: dataSourceConfigFromConnector(connector),
+    folderId: getInternalId(file.driveFileId),
+    loggerArgs: {
+      connectorId: connector.id,
+      spreadsheetId: file.driveFileId,
+    },
+  });
 
   if (sheetsInSpreadsheet.length > 0) {
     await deleteAllSheets(connector, sheetsInSpreadsheet, file);
