@@ -3,13 +3,11 @@ import type {
   AgentMessagePublicType,
   LightWorkspaceType,
 } from "@dust-tt/client";
-import type { ConversationMessageSizeType } from "@dust-tt/sparkle";
 import { Chip, Spinner } from "@dust-tt/sparkle";
 import { classNames } from "@extension/lib/utils";
 import { useEffect, useMemo, useState } from "react";
 interface AgentMessageActionsProps {
   agentMessage: AgentMessagePublicType;
-  size?: ConversationMessageSizeType;
   owner: LightWorkspaceType;
 }
 

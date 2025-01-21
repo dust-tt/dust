@@ -33,7 +33,14 @@ struct Args {
  *
  */
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() {
+    if let Err(e) = run().await {
+        eprintln!("Error: {}", e);
+        std::process::exit(1);
+    }
+}
+
+async fn run() -> Result<(), Box<dyn std::error::Error>> {
     // parse args and env vars
     let args = Args::parse();
     let index_name = "data_sources_nodes";
@@ -86,13 +93,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut next_cursor = start_cursor;
     let now = utils::now();
     loop {
-        println!(
-            "Processing {} nodes, starting at id {}",
+        print!(
+            "Processing {} nodes, starting at id {}. ",
             batch_size, next_cursor
         );
         let (nodes, cursor) =
             get_node_batch(next_cursor, batch_size, Box::new(store.clone())).await?;
         if nodes.is_empty() || nodes.first().unwrap().timestamp > now {
+            println!("No nodes left. \nBackfill complete.");
             break;
         }
         next_cursor = cursor;
@@ -113,6 +121,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .body(nodes_body)
             .send()
             .await?;
+        match response.status_code() {
+            StatusCode::OK => println!("Succeeded."),
+            _ => {
+                let body = response.json::<serde_json::Value>().await?;
+                eprintln!("\n{:?}", body);
+                return Err(anyhow::anyhow!("Failed to insert nodes").into());
+            }
+        }
     }
 
     Ok(())

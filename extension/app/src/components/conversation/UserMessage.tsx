@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import type { LightWorkspaceType, UserMessageType } from "@dust-tt/client";
-import type { ConversationMessageSizeType } from "@dust-tt/sparkle";
 import { ConversationMessage, Markdown } from "@dust-tt/sparkle";
 import { AgentSuggestion } from "@extension/components/conversation/AgentSuggestion";
 import {
@@ -21,7 +20,6 @@ interface UserMessageProps {
   isLastMessage: boolean;
   message: UserMessageType;
   owner: LightWorkspaceType;
-  size: ConversationMessageSizeType;
 }
 
 export function UserMessage({
@@ -30,7 +28,6 @@ export function UserMessage({
   isLastMessage,
   message,
   owner,
-  size,
 }: UserMessageProps) {
   const additionalMarkdownComponents: Components = useMemo(
     () => ({
@@ -48,11 +45,10 @@ export function UserMessage({
   return (
     <ConversationMessage
       pictureUrl={message.user?.image || message.context.profilePictureUrl}
-      name={message.context.fullName ?? null}
+      name={message.context.fullName ?? undefined}
       renderName={(name) => <div className="text-base font-medium">{name}</div>}
       type="user"
       citations={citations}
-      size={size}
     >
       <div className="flex flex-col gap-4">
         <div>
