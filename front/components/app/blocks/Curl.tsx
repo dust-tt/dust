@@ -133,6 +133,7 @@ export default function Curl({
                   variant="outline"
                   disabled={readOnly}
                   label={block.spec.method}
+                  size="xs"
                 />
               </DropdownMenuTrigger>
 

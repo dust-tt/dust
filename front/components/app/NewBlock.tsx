@@ -5,9 +5,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  PlusIcon,
 } from "@dust-tt/sparkle";
 import type { BlockType, SpecificationType } from "@dust-tt/types";
-import { PlusIcon } from "@heroicons/react/20/solid";
 
 import { classNames } from "@app/lib/utils";
 
@@ -134,7 +134,7 @@ export default function NewBlock({
           />
         ) : (
           <Button
-            variant="outline"
+            variant="ghost-secondary"
             label="Add Block"
             icon={PlusIcon}
             disabled={disabled}

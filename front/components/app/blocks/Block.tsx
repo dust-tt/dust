@@ -162,14 +162,12 @@ export default function Block({
                 : "flex flex-initial flex-row items-center space-x-1"
             )}
           >
-            <div className="mr-1 mt-1 flex-initial text-gray-400">
-              <NewBlock
-                disabled={readOnly}
-                onClick={onBlockNew}
-                spec={spec}
-                small={true}
-              />
-            </div>
+            <NewBlock
+              disabled={readOnly}
+              onClick={onBlockNew}
+              spec={spec}
+              small={true}
+            />
             <Button
               variant="ghost-secondary"
               icon={ChevronUpIcon}
