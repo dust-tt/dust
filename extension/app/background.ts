@@ -467,7 +467,7 @@ chrome.runtime.onMessageExternal.addListener((request) => {
  * Authenticate the user using Auth0.
  */
 const authenticate = async (
-  { isForceLogin }: AuthBackgroundMessage,
+  { isForceLogin, connection }: AuthBackgroundMessage,
   sendResponse: (auth: Auth0AuthorizeResponse | AuthBackgroundResponse) => void
 ) => {
   // First we call /authorize endpoint to get the authorization code (PKCE flow).
@@ -483,6 +483,7 @@ const authenticate = async (
     code_challenge_method: "S256",
     code_challenge: codeChallenge,
     prompt: isForceLogin ? "login" : "",
+    connection: connection ?? "",
   };
 
   const queryString = new URLSearchParams(options).toString();

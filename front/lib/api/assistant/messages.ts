@@ -144,7 +144,7 @@ async function batchRenderAgentMessages(
     })(),
     (async () =>
       retrievalActionTypesFromAgentMessageIds(auth, agentMessageIds))(),
-    (async () => dustAppRunTypesFromAgentMessageIds(agentMessageIds))(),
+    (async () => dustAppRunTypesFromAgentMessageIds(auth, agentMessageIds))(),
     (async () => tableQueryTypesFromAgentMessageIds(auth, agentMessageIds))(),
     (async () => processActionTypesFromAgentMessageIds(agentMessageIds))(),
     (async () => websearchActionTypesFromAgentMessageIds(agentMessageIds))(),

@@ -515,6 +515,118 @@
         }
       }
     },
+    "/api/v1/w/{wId}/assistant/conversations/{cId}/feedbacks": {
+      "get": {
+        "summary": "Get feedbacks for a conversation",
+        "description": "Retrieves all feedback entries for a specific conversation.\nRequires authentication and read:conversation scope.\n",
+        "tags": [
+          "assistant"
+        ],
+        "parameters": [
+          {
+            "name": "wId",
+            "in": "path",
+            "description": "Workspace ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cId",
+            "in": "path",
+            "description": "Conversation ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of feedback entries for the conversation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "feedbacks": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "messageId": {
+                            "type": "string",
+                            "description": "ID of the message that received feedback"
+                          },
+                          "agentMessageId": {
+                            "type": "number",
+                            "description": "ID of the agent message"
+                          },
+                          "userId": {
+                            "type": "number",
+                            "description": "ID of the user who gave feedback"
+                          },
+                          "thumbDirection": {
+                            "type": "string",
+                            "enum": [
+                              "up",
+                              "down"
+                            ],
+                            "description": "Direction of the thumb feedback"
+                          },
+                          "content": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "Optional feedback content/comment"
+                          },
+                          "createdAt": {
+                            "type": "number",
+                            "description": "Timestamp when feedback was created"
+                          },
+                          "agentConfigurationId": {
+                            "type": "string",
+                            "description": "ID of the agent configuration"
+                          },
+                          "agentConfigurationVersion": {
+                            "type": "number",
+                            "description": "Version of the agent configuration"
+                          },
+                          "isConversationShared": {
+                            "type": "boolean",
+                            "description": "Whether the conversation was shared"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Conversation not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
     "/api/v1/w/{wId}/assistant/conversations/{cId}": {
       "get": {
         "summary": "Get a conversation",
@@ -774,6 +886,173 @@
           },
           "500": {
             "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/v1/w/{wId}/assistant/conversations/{cId}/messages/{mId}/feedbacks": {
+      "post": {
+        "summary": "Submit feedback for a specific message in a conversation",
+        "description": "Submit user feedback (thumbs up/down) for a specific message in a conversation.\nRequires authentication and update:conversation scope.\n",
+        "tags": [
+          "assistant"
+        ],
+        "parameters": [
+          {
+            "name": "wId",
+            "in": "path",
+            "description": "Workspace ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cId",
+            "in": "path",
+            "description": "Conversation ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "mId",
+            "in": "path",
+            "description": "Message ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "thumbDirection"
+                ],
+                "properties": {
+                  "thumbDirection": {
+                    "type": "string",
+                    "enum": [
+                      "up",
+                      "down"
+                    ],
+                    "description": "Direction of the thumb feedback"
+                  },
+                  "feedbackContent": {
+                    "type": "string",
+                    "description": "Optional feedback text content"
+                  },
+                  "isConversationShared": {
+                    "type": "boolean",
+                    "description": "Whether the conversation is shared"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Feedback submitted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters or body"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Conversation or message not found"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete feedback for a specific message",
+        "description": "Delete user feedback for a specific message in a conversation.\nRequires authentication and update:conversation scope.\n",
+        "tags": [
+          "assistant"
+        ],
+        "parameters": [
+          {
+            "name": "wId",
+            "in": "path",
+            "description": "Workspace ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cId",
+            "in": "path",
+            "description": "Conversation ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "mId",
+            "in": "path",
+            "description": "Message ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Feedback deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Conversation, message or feedback not found"
           }
         }
       }

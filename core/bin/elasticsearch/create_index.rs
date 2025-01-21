@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use clap::Parser;
 use dust::search_stores::search_store::ElasticsearchSearchStore;
-use elasticsearch::indices::{IndicesCreateParts, IndicesDeleteAliasParts, IndicesExistsParts};
+use elasticsearch::indices::{IndicesCreateParts, IndicesExistsParts};
 use http::StatusCode;
 
 #[derive(Parser, Debug)]

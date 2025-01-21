@@ -30,6 +30,7 @@ use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::timeout;
 
+use super::azure_openai::AzureOpenAIEmbedder;
 use super::openai_compatible_helpers::{
     openai_compatible_chat_completion, OpenAIError, TransformSystemMessages,
 };
@@ -508,7 +509,7 @@ pub async fn completion(
 /// AzureOpenAILLM).
 ///
 
-fn get_model_id_from_internal_embeddings_id(model_id: &str) -> &str {
+pub fn get_model_id_from_internal_embeddings_id(model_id: &str) -> &str {
     match model_id {
         "text-embedding-3-large-1536" => "text-embedding-3-large",
         _ => model_id,
@@ -1114,11 +1115,19 @@ impl Embedder for OpenAIEmbedder {
     }
 }
 
-pub struct OpenAIProvider {}
+pub struct OpenAIProvider {
+    fallback_embeddings_to_azure: bool,
+}
 
 impl OpenAIProvider {
     pub fn new() -> Self {
-        OpenAIProvider {}
+        let fallback_embeddings_to_azure = std::env::var("OPENAI_EMBEDDINGS_AZURE_FALLBACK")
+            .map(|value| value.to_lowercase() == "true")
+            .unwrap_or(false);
+
+        OpenAIProvider {
+            fallback_embeddings_to_azure,
+        }
     }
 }
 
@@ -1177,6 +1186,10 @@ impl Provider for OpenAIProvider {
     }
 
     fn embedder(&self, id: String) -> Box<dyn Embedder + Sync + Send> {
-        Box::new(OpenAIEmbedder::new(id))
+        if self.fallback_embeddings_to_azure {
+            Box::new(AzureOpenAIEmbedder::new(id))
+        } else {
+            Box::new(OpenAIEmbedder::new(id))
+        }
     }
 }
