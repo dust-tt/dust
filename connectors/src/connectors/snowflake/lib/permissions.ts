@@ -174,7 +174,7 @@ export const fetchSyncedChildren = async ({
   if (parentType === "database") {
     // If the database is in db with permission: "selected" we have full access to it (it means the user selected this node).
     // That means we have access to all schemas and tables.
-    // In that case we can just loop on all tables and get the schemas.
+    // In that case we loop on all schemas.
     const availableDatabase = await RemoteDatabaseModel.findOne({
       where: {
         connectorId,
@@ -183,20 +183,20 @@ export const fetchSyncedChildren = async ({
       },
     });
     if (availableDatabase) {
-      const availableTables = await RemoteTableModel.findAll({
+      const schemas = await RemoteSchemaModel.findAll({
         where: {
           connectorId,
           databaseName: parentInternalId,
+          permission: ["selected", "inherited"],
         },
       });
-      const schemas: ContentNode[] = [];
-      availableTables.forEach((table) => {
-        const schemaToAdd = `${table.databaseName}.${table.schemaName}`;
-        if (!schemas.find((s) => s.internalId === schemaToAdd)) {
-          schemas.push(getContentNodeFromInternalId(schemaToAdd, "read"));
-        }
-      });
-      return new Ok(schemas);
+      const schemaContentNodes = schemas.map((schema) =>
+        getContentNodeFromInternalId(
+          [schema.databaseName, schema.name].join("."),
+          "read"
+        )
+      );
+      return new Ok(schemaContentNodes);
     }
 
     // Otherwise we will fetch all the schemas we have full access to (the one in db with permission: "selected"),
