@@ -535,6 +535,7 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
             typeof r === "object" &&
             Object.values(r).every(
               (v) =>
+                !v ||
                 typeof v === "string" ||
                 typeof v === "number" ||
                 typeof v === "boolean"
