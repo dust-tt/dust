@@ -310,6 +310,8 @@ const getProcessingFunction = ({
   switch (contentType) {
     case "application/msword":
     case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+    case "application/vnd.ms-powerpoint":
+    case "application/vnd.openxmlformats-officedocument.presentationml.presentation":
     case "application/pdf":
       if (useCase === "conversation" || useCase === "folder_document") {
         return extractTextFromFileAndUpload;

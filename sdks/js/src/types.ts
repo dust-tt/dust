@@ -94,6 +94,11 @@ export const supportedOtherFileFormats = {
     ".doc",
     ".docx",
   ],
+  "application/vnd.ms-powerpoint": [".ppt", ".pptx"],
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation": [
+    ".ppt",
+    ".pptx",
+  ],
   "application/pdf": [".pdf"],
   "text/comma-separated-values": [".csv"],
   "text/csv": [".csv"],

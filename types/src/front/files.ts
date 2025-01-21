@@ -102,6 +102,11 @@ const FILE_FORMATS = {
     cat: "data",
     exts: [".doc", ".docx"],
   },
+  "application/vnd.ms-powerpoint": { cat: "data", exts: [".ppt", ".pptx"] },
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation": {
+    cat: "data",
+    exts: [".ppt", ".pptx"],
+  },
   "application/pdf": { cat: "data", exts: [".pdf"] },
 
   // Code
