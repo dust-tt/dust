@@ -34,11 +34,13 @@ export async function retrieveAllSelectedNodes(
   connectorId: ModelId
 ): Promise<ContentNode[]> {
   const brands = await ZendeskBrandResource.fetchAllReadOnly(connectorId);
-  const helpCenterNodes: ContentNode[] = brands
-    .filter((brand) => brand.helpCenterPermission === "read")
-    .map((brand) =>
-      brand.getHelpCenterContentNode(connectorId, { richTitle: true })
-    );
+  const brandsWithHelpCenter = brands.filter(
+    (brand) => brand.helpCenterPermission === "read"
+  );
+
+  const helpCenterNodes: ContentNode[] = brandsWithHelpCenter.map((brand) =>
+    brand.getHelpCenterContentNode(connectorId, { richTitle: true })
+  );
 
   const ticketNodes: ContentNode[] = brands
     .filter((brand) => brand.ticketsPermission === "read")
@@ -49,7 +51,19 @@ export async function retrieveAllSelectedNodes(
       })
     );
 
-  return [...helpCenterNodes, ...ticketNodes];
+  // retrieving the categories that are not already shown through their Help Center being selected
+  const categories =
+    await ZendeskCategoryResource.fetchAllReadOnly(connectorId);
+  const categoryNodes: ContentNode[] = categories
+    .filter(
+      (category) =>
+        !brandsWithHelpCenter
+          .map((brand) => brand.brandId)
+          .includes(category.brandId)
+    )
+    .map((category) => category.toContentNode(connectorId));
+
+  return [...helpCenterNodes, ...ticketNodes, ...categoryNodes];
 }
 
 /**
