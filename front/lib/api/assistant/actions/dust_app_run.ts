@@ -521,17 +521,25 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
     }
 
     function containsValidStructuredOutput(output: unknown): output is {
-      __dust_structured_output?: Array<
-        Record<string, string | number | boolean>
-      >;
+      __dust_file?: {
+        content: Array<
+          Record<string, string | number | boolean | null | undefined>
+        >;
+        type: "structured";
+      };
     } {
       return (
         typeof output === "object" &&
         output !== null &&
-        "__dust_structured_output" in output &&
-        Array.isArray(output.__dust_structured_output) &&
-        output.__dust_structured_output.length > 0 &&
-        output.__dust_structured_output.every(
+        "__dust_file" in output &&
+        typeof output.__dust_file === "object" &&
+        output.__dust_file !== null &&
+        "type" in output.__dust_file &&
+        output.__dust_file.type === "structured" &&
+        "content" in output.__dust_file &&
+        Array.isArray(output.__dust_file.content) &&
+        output.__dust_file.content.length > 0 &&
+        output.__dust_file.content.every(
           (r) =>
             typeof r === "object" &&
             Object.values(r).every(
@@ -562,7 +570,7 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
     // Check for structured output that should be converted to CSV
     if (
       containsValidStructuredOutput(sanitizedOutput) &&
-      sanitizedOutput.__dust_structured_output
+      sanitizedOutput.__dust_file
     ) {
       const fileTitle = getDustAppRunResultsFileTitle({
         appName: app.name,
@@ -573,7 +581,7 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
         {
           title: fileTitle,
           conversationId: conversation.sId,
-          results: sanitizedOutput.__dust_structured_output,
+          results: sanitizedOutput.__dust_file.content,
         }
       );
 
@@ -584,7 +592,7 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
         snippet: file.snippet,
       };
 
-      delete sanitizedOutput.__dust_structured_output;
+      delete sanitizedOutput.__dust_file;
       updateParams.resultsFileId = file.id;
       updateParams.resultsFileSnippet = snippet;
     }

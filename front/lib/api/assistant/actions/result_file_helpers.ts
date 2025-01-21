@@ -14,14 +14,18 @@ export async function getToolResultOutputCsvFileAndSnippet(
   }: {
     title: string;
     conversationId: string;
-    results: Array<Record<string, string | number | boolean>>;
+    results: Array<
+      Record<string, string | number | boolean | null | undefined>
+    >;
   }
 ): Promise<{
   file: FileResource;
   snippet: string;
 }> {
   const toCsv = (
-    records: Array<Record<string, string | number | boolean>>,
+    records: Array<
+      Record<string, string | number | boolean | null | undefined>
+    >,
     options: { header: boolean } = { header: true }
   ): Promise<string> => {
     return new Promise((resolve, reject) => {
