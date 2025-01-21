@@ -509,7 +509,7 @@ pub async fn completion(
 /// AzureOpenAILLM).
 ///
 
-fn get_model_id_from_internal_embeddings_id(model_id: &str) -> &str {
+pub fn get_model_id_from_internal_embeddings_id(model_id: &str) -> &str {
     match model_id {
         "text-embedding-3-large-1536" => "text-embedding-3-large",
         _ => model_id,
