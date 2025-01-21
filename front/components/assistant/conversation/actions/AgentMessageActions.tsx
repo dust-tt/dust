@@ -1,4 +1,4 @@
-import { Button, Chip, CommandLineIcon, Spinner } from "@dust-tt/sparkle";
+import { Button, Chip, CommandLineIcon } from "@dust-tt/sparkle";
 import type {
   AgentActionType,
   AgentMessageType,
@@ -10,7 +10,6 @@ import { useEffect, useMemo, useState } from "react";
 import { getActionSpecification } from "@app/components/actions/types";
 import { AgentMessageActionsDrawer } from "@app/components/assistant/conversation/actions/AgentMessageActionsDrawer";
 import type { AgentStateClassification } from "@app/components/assistant/conversation/AgentMessage";
-import { classNames } from "@app/lib/utils";
 
 interface AgentMessageActionsProps {
   agentMessage: AgentMessageType;

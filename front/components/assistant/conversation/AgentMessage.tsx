@@ -720,7 +720,7 @@ function ErrorMessage({
         <Popover
           trigger={
             <Button
-              variant="ghost"
+              variant="outline"
               size="xs"
               icon={EyeIcon}
               label="See the error"
@@ -748,7 +748,7 @@ function ErrorMessage({
       </div>
       <div>
         <Button
-          variant="ghost"
+          variant="outline"
           size="sm"
           icon={ArrowPathIcon}
           label="Retry"
