@@ -15,12 +15,15 @@ import {
   fetchSchemas,
   fetchTables,
 } from "@connectors/connectors/snowflake/lib/snowflake_api";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { deleteDataSourceFolder } from "@connectors/lib/data_sources";
 import {
   RemoteDatabaseModel,
   RemoteSchemaModel,
   RemoteTableModel,
 } from "@connectors/lib/models/remote_databases";
 import type { Logger } from "@connectors/logger/logger";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 /**
  * Retrieves the existing content nodes for a parent in the Snowflake account.
@@ -281,6 +284,12 @@ export const saveNodesFromPermissions = async ({
   connectorId: ModelId;
   logger: Logger;
 }): Promise<Result<void, Error>> => {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    return new Err(new Error("Connector not found"));
+  }
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
   Object.entries(permissions).forEach(async ([internalId, permission]) => {
     const [database, schema, table] = internalId.split(".");
     const internalType = getContentNodeTypeFromInternalId(internalId);
@@ -299,6 +308,10 @@ export const saveNodesFromPermissions = async ({
           name: database as string,
         });
       } else if (permission === "none" && existingDb) {
+        await deleteDataSourceFolder({
+          dataSourceConfig,
+          folderId: existingDb.internalId,
+        });
         await existingDb.destroy();
       } else {
         logger.error(
@@ -323,6 +336,10 @@ export const saveNodesFromPermissions = async ({
           databaseName: database as string,
         });
       } else if (permission === "none" && existingSchema) {
+        await deleteDataSourceFolder({
+          dataSourceConfig,
+          folderId: existingSchema.internalId,
+        });
         await existingSchema.destroy();
       } else {
         logger.error(
