@@ -3,6 +3,10 @@ import { useDustAPI } from "@extension/lib/dust_api";
 import { useSWRWithDefaults } from "@extension/lib/swr";
 import type { KeyedMutator } from "swr";
 
+type ConversationKey =
+  | ["getConversation", string, { conversationId: string }]
+  | null;
+
 export function usePublicConversation({
   conversationId,
 }: {
@@ -16,7 +20,7 @@ export function usePublicConversation({
     | KeyedMutator<ConversationPublicType>;
 } {
   const dustAPI = useDustAPI();
-  const conversationFetcher = async (key: any[]) => {
+  const conversationFetcher = async (key: ConversationKey) => {
     if (!key) {
       return null;
     }
@@ -27,7 +31,10 @@ export function usePublicConversation({
     throw res.error;
   };
 
-  const { data, error, mutate } = useSWRWithDefaults(
+  const { data, error, mutate } = useSWRWithDefaults<
+    ConversationKey,
+    ConversationPublicType | null
+  >(
     conversationId
       ? ["getConversation", dustAPI.workspaceId(), { conversationId }]
       : null,
