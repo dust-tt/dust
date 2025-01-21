@@ -1,4 +1,3 @@
-import assert from "assert";
 import type { Sequelize } from "sequelize";
 
 import { getCorePrimaryDbConnection } from "@app/lib/production_checks/utils";
@@ -23,7 +22,13 @@ async function migrateDataSource({
   execute: boolean;
   logger: typeof Logger;
 }) {
-  logger.info("MIGRATE");
+  const localLogger = logger.child({
+    dataSourceId: frontDataSource.id,
+    connectorProvider: frontDataSource.connectorProvider,
+    pattern,
+  });
+
+  localLogger.info("MIGRATE");
 
   // Retrieve the core data source.
   const [coreDataSourceRows] = (await coreSequelize.query(
@@ -39,12 +44,14 @@ async function migrateDataSource({
     }
   )) as { id: number; data_source_id: string }[][];
 
-  assert(
-    coreDataSourceRows.length === 1 &&
-      coreDataSourceRows[0].data_source_id ===
-        frontDataSource.dustAPIDataSourceId,
-    "Core data source mismatch"
-  );
+  if (
+    coreDataSourceRows.length !== 1 ||
+    coreDataSourceRows[0].data_source_id !== frontDataSource.dustAPIDataSourceId
+  ) {
+    logger.error("Core data source mismatch");
+    return;
+  }
+
   const coreDataSourceId = coreDataSourceRows[0].id;
 
   // Loop over all the documents in the data source (can be a big loop).
@@ -80,11 +87,11 @@ async function migrateDataSource({
     })()) as { id: number }[][];
 
     if (updatedRows.length === 0) {
-      logger.info("DONE");
+      localLogger.info("DONE");
       break;
     }
 
-    logger.info(
+    localLogger.info(
       {
         firstRow: updatedRows[0],
         lastRow: updatedRows.length > 1 && updatedRows[updatedRows.length - 1],
@@ -111,11 +118,7 @@ makeScript({}, async ({ execute }, logger) => {
       pattern: "zendesk-ticket-%",
       parentsLength: 2,
       execute,
-      logger: logger.child({
-        dataSourceId: frontDataSource.id,
-        connectorProvider: frontDataSource.connectorProvider,
-        pattern: "zendesk-ticket-%",
-      }),
+      logger,
     });
     await migrateDataSource({
       frontDataSource,
@@ -123,11 +126,7 @@ makeScript({}, async ({ execute }, logger) => {
       pattern: "zendesk-article-%",
       parentsLength: 3,
       execute,
-      logger: logger.child({
-        dataSourceId: frontDataSource.id,
-        connectorProvider: frontDataSource.connectorProvider,
-        pattern: "zendesk-article-%",
-      }),
+      logger,
     });
   }
 });
