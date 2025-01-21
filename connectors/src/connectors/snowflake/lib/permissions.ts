@@ -123,7 +123,7 @@ export const fetchAvailableChildrenInSnowflake = async ({
 };
 
 /**
- * Retrieves the existing content nodes for a parent in our database.
+ * Retrieves the selected content nodes for a parent in our database.
  * They are the content nodes that we were given access to by the admin.
  */
 export const fetchReadNodes = async ({
