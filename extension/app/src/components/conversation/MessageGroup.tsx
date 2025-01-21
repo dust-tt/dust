@@ -4,6 +4,7 @@ import type {
 } from "@dust-tt/client";
 import MessageItem from "@extension/components/conversation/MessageItem";
 import type { MessageWithContentFragmentsType } from "@extension/lib/conversation";
+import type { AgentMessageFeedbackType } from "@extension/lib/feedbacks";
 import type { StoredUser } from "@extension/lib/storage";
 import React, { useEffect, useRef } from "react";
 
@@ -11,6 +12,7 @@ interface MessageGroupProps {
   messages: MessageWithContentFragmentsType[];
   isLastMessageGroup: boolean;
   conversationId: string;
+  feedbacks: AgentMessageFeedbackType[];
   hideReactions: boolean;
   isInModal: boolean;
   owner: LightWorkspaceType;
@@ -28,6 +30,7 @@ export default function MessageGroup({
   messages,
   isLastMessageGroup,
   conversationId,
+  feedbacks,
   hideReactions,
   isInModal,
   owner,
@@ -58,6 +61,9 @@ export default function MessageGroup({
         <MessageItem
           key={`message-${message.sId}`}
           conversationId={conversationId}
+          messageFeedback={feedbacks.find(
+            (feedback) => feedback.messageId === message.sId
+          )}
           hideReactions={hideReactions}
           isInModal={isInModal}
           message={message}
