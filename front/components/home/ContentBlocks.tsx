@@ -269,13 +269,13 @@ export const CarousselContentBlock = ({
 }: CarousselContentBlockProps) => (
   <div
     className={classNames(
-      "flex h-full flex-col gap-6 rounded-3xl border bg-gradient-to-br py-8",
+      "flex flex-col gap-6 rounded-3xl border bg-gradient-to-br py-8 md:h-full",
       from,
       to,
       border
     )}
   >
-    <div className="flex flex-1 flex-col gap-6 px-8">
+    <div className="flex flex-col gap-6 px-8 md:flex-1">
       <H3 className="text-slate-800">{"Dust for " + title}</H3>
       <div className="flex flex-col gap-2">
         <H2 className="max-w-[600px] text-white">{subtitle}</H2>
@@ -310,10 +310,10 @@ export const CarousselContentBlock = ({
           </CarouselItem>
         ))}
       </CarouselContent>
-      {/* <div className="flex w-full flex-row items-center justify-end gap-3 px-8">
+      <div className="flex w-full flex-row items-center justify-end gap-3 px-8 md:hidden">
         <CarouselPrevious />
         <CarouselNext />
-      </div> */}
+      </div>
     </Carousel>
   </div>
 );
