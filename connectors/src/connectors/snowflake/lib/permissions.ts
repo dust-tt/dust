@@ -199,8 +199,9 @@ export const fetchSyncedChildren = async ({
       return new Ok(schemaContentNodes);
     }
 
-    // Otherwise we will fetch all the schemas we have full access to (the one in db with permission: "selected"),
-    // + the schemas for the tables that was explicitly selected.
+    // Otherwise, we will fetch all the schemas we have full access to,
+    // which are the ones in db with permission: "selected" (the ones with "inherited" are absorbed in the case above).
+    // + the schemas for the tables that were explicitly selected.
     const [availableSchemas, availableTables] = await Promise.all([
       RemoteSchemaModel.findAll({
         where: {
