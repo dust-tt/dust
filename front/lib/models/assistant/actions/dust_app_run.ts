@@ -1,10 +1,11 @@
 import type { DustAppParameters } from "@dust-tt/types";
-import type { CreationOptional, ForeignKey } from "sequelize";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { FileModel } from "@app/lib/resources/storage/models/files";
 import { BaseModel } from "@app/lib/resources/storage/wrappers";
 
 export class AgentDustAppRunConfiguration extends BaseModel<AgentDustAppRunConfiguration> {
@@ -88,7 +89,11 @@ export class AgentDustAppRunAction extends BaseModel<AgentDustAppRunAction> {
 
   declare step: number;
   declare agentMessageId: ForeignKey<AgentMessage["id"]>;
+  declare resultsFileId: ForeignKey<FileModel["id"]> | null;
+  declare resultsFileSnippet: string | null;
+  declare resultsFile: NonAttribute<FileModel>;
 }
+
 AgentDustAppRunAction.init(
   {
     createdAt: {
@@ -109,7 +114,6 @@ AgentDustAppRunAction.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-
     appWorkspaceId: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -142,6 +146,10 @@ AgentDustAppRunAction.init(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
+    resultsFileSnippet: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
   },
   {
     modelName: "agent_dust_app_run_action",
@@ -149,6 +157,10 @@ AgentDustAppRunAction.init(
     indexes: [
       {
         fields: ["agentMessageId"],
+        concurrently: true,
+      },
+      {
+        fields: ["resultsFileId"],
         concurrently: true,
       },
     ],
@@ -161,4 +173,14 @@ AgentDustAppRunAction.belongsTo(AgentMessage, {
 
 AgentMessage.hasMany(AgentDustAppRunAction, {
   foreignKey: { name: "agentMessageId", allowNull: false },
+});
+
+FileModel.hasMany(AgentDustAppRunAction, {
+  foreignKey: { name: "resultsFileId", allowNull: true },
+  onDelete: "SET NULL",
+});
+AgentDustAppRunAction.belongsTo(FileModel, {
+  as: "resultsFile",
+  foreignKey: { name: "resultsFileId", allowNull: true },
+  onDelete: "SET NULL",
 });
