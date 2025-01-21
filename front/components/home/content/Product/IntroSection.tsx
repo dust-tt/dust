@@ -1,9 +1,13 @@
-import { Button, Hover3D, RocketIcon } from "@dust-tt/sparkle";
+import { Div3D, Button, Hover3D, RocketIcon } from "@dust-tt/sparkle";
 import Link from "next/link";
 import React from "react";
 
+import { ImgBlock } from "@app/components/home/ContentBlocks";
+
 import { H1, P, Strong } from "@app/components/home/ContentComponents";
 import TrustedBy from "@app/components/home/TrustedBy";
+import { classNames } from "@app/lib/utils";
+import { ValuePropSection } from "@app/components/home/content/Product/ValuePropSection";
 
 const VideoPlayer = () => {
   return (
@@ -60,39 +64,7 @@ export function IntroSection() {
           </div>
         </div>
         <TrustedBy />
-        <div className="grid grid-cols-1 gap-12 sm:grid-cols-2 lg:grid-cols-4">
-          <P size="md" dotCSS="text-amber-300" shape="triangle">
-            <Strong className="s-text-2xl">Automate Knowledge Work</Strong>
-            <br></br>
-            <br></br>
-            Stop wasting time on data entry, CRM updates, or filling out
-            questionnaires. Teach Dust your workflow—and watch it handle
-            repetitive tasks for you.
-          </P>
-          <P size="md" dotCSS="text-red-400" shape="rectangle">
-            <Strong className="s-text-2xl">Surface Critical Information</Strong>
-            <br></br>
-            <br></br>
-            Dust reads faster than you. Enjoy effortless summarization, targeted
-            extractions, and crisp insights from docs, tickets, chat
-            logs—whatever is relevant.
-          </P>
-          <P size="md" dotCSS="text-sky-400" shape="circle">
-            <Strong className="s-text-2xl">Analyze & Visualize Anything</Strong>
-            <br></br>
-            <br></br>
-            From spreadsheets to data warehouses. Your questions are turned into
-            SQL queries, charts, pivots, or deep dives, in seconds.
-          </P>
-          <P size="md" dotCSS="text-emerald-400" shape="hexagon">
-            <Strong className="s-text-2xl">Create with Confidence</Strong>
-            <br></br>
-            <br></br>
-            Co-edit with AI that has full context of your internal knowledge
-            base, so you never waste time hunting for data or rewriting outdated
-            content.
-          </P>
-        </div>
+        <ValuePropSection />
       </div>
     </div>
   );

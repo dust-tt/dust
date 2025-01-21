@@ -5,28 +5,26 @@ import { ImgBlock } from "@app/components/home/ContentBlocks";
 import { H2, P } from "@app/components/home/ContentComponents";
 import { classNames } from "@app/lib/utils";
 
-export function CapabilitySection() {
+export function ValuePropSection() {
   return (
     <div className="w-full">
-      <div className="mb-6">
+      {/* <div className="mb-6">
         <H2 from="from-amber-200" to="to-amber-400">
           Tailor AI assistants to your team needs
         </H2>
         <P size="lg">
           Anyone on your&nbsp;team can create personalized&nbsp;assistants.
         </P>
-      </div>
+      </div> */}
 
       <div className="grid grid-cols-1 gap-12 sm:grid-cols-2 md:gap-24">
         <ImgBlock
-          title={
-            <>Build assistants with custom instructions and pre-built tools</>
-          }
+          title={<>Automate Knowledge Work</>}
           content={
             <>
-              Adapt instructions to your needs, with pre-built templates.
-              Empower assistants with specialized tools for data extraction,
-              transformations, or advanced operations.
+              Stop wasting time on data entry, CRM updates, or filling out
+              questionnaires. Teach Dust your workflow—and watch it handle
+              repetitive tasks for you.
             </>
           }
         >
@@ -50,11 +48,12 @@ export function CapabilitySection() {
           </Hover3D>
         </ImgBlock>
         <ImgBlock
-          title={<>Leverage the best models on the market.</>}
+          title={<>Surface Critical Information</>}
           content={
             <>
-              “Choose GPT-4, Anthropic, Gemini, Mistral, or any cutting-edge
-              model to ensure your assistants stay smartest.”
+              Dust reads faster than you. Enjoy effortless summarization,
+              targeted extractions, and crisp insights from docs, tickets, chat
+              logs—whatever is relevant.
             </>
           }
         >
@@ -79,11 +78,11 @@ export function CapabilitySection() {
         </ImgBlock>
 
         <ImgBlock
-          title={<>Feed your company context</>}
+          title={<>Analyze & Visualize Anything</>}
           content={
             <>
-              Notion, Slack, GitHub, external websites (…) natively in minutes.
-              Integrate anything via API.
+              From spreadsheets to data warehouses. Your questions are turned
+              into SQL queries, charts, pivots, or deep dives, in seconds.
             </>
           }
         >
@@ -107,11 +106,12 @@ export function CapabilitySection() {
           </Hover3D>
         </ImgBlock>
         <ImgBlock
-          title={<>Share with your team, collect feedback</>}
+          title={<>Create with Confidence</>}
           content={
             <>
-              Empower those with a&nbsp;builder mindset to build assistants for
-              their teams and get actionable feedback.
+              Co-edit with AI that has full context of your internal knowledge
+              base, so you never waste time hunting for data or rewriting
+              outdated content.
             </>
           }
         >
