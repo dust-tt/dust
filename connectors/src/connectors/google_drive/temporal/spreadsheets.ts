@@ -2,6 +2,7 @@ import type { ModelId } from "@dust-tt/types";
 import {
   getGoogleSheetTableId,
   InvalidStructuredDataHeaderError,
+  MIME_TYPES,
   slugify,
 } from "@dust-tt/types";
 import { Context } from "@temporalio/activity";
@@ -513,7 +514,7 @@ export async function syncSpreadSheet(
         parents,
         parentId: parents[1] || null,
         title: spreadsheet.data.properties?.title ?? "Untitled Spreadsheet",
-        mimeType: "application/vnd.google-apps.spreadsheet",
+        mimeType: MIME_TYPES.GOOGLE_DRIVE.SPREADSHEET,
         sourceUrl: getSourceUrlForGoogleDriveFiles(file),
       });
 

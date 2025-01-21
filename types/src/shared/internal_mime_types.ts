@@ -72,7 +72,7 @@ export const MIME_TYPES = {
   }),
   GOOGLE_DRIVE: getMimeTypes({
     provider: "google_drive",
-    resourceTypes: ["FOLDER"], // for files and spreadsheets, we keep Google's mime types
+    resourceTypes: ["FOLDER", "SPREADSHEET"], // for files and spreadsheets, we keep Google's mime types
   }),
   INTERCOM: getMimeTypes({
     provider: "intercom",

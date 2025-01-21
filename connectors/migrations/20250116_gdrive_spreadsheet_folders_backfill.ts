@@ -1,3 +1,4 @@
+import { MIME_TYPES } from "@dust-tt/types";
 import { makeScript } from "scripts/helpers";
 
 import { getSourceUrlForGoogleDriveFiles } from "@connectors/connectors/google_drive";
@@ -66,7 +67,7 @@ async function upsertFoldersForConnector(
           parents,
           parentId: parents[1] || null,
           title: spreadsheet.name,
-          mimeType: "application/vnd.google-apps.spreadsheet",
+          mimeType: MIME_TYPES.GOOGLE_DRIVE.SPREADSHEET,
           sourceUrl: getSourceUrlForGoogleDriveFiles(driveSpreadsheet),
         });
         logger.info(
