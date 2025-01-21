@@ -16,7 +16,6 @@ import type {
   TrackerConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
-import type { ColumnDef } from "@tanstack/react-table";
 import type { CellContext } from "@tanstack/react-table";
 import { capitalize } from "lodash";
 import type { InferGetServerSidePropsType } from "next";
@@ -101,7 +100,7 @@ export default function TrackerConfigurations({
     [trackers, owner, router]
   );
 
-  const columns: ColumnDef<RowData, any>[] = [
+  const columns = [
     {
       id: "name",
       header: "Name",
@@ -230,6 +229,9 @@ export default function TrackerConfigurations({
                       filter={filter}
                       filterColumn="name"
                       columns={columns}
+                      columnsBreakpoints={{
+                        description: "md",
+                      }}
                     />
                   </>
                 )}
