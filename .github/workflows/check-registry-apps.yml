@@ -19,10 +19,8 @@ jobs:
         run: |
           git diff --name-only origin/main HEAD | grep -q "front/lib/registry.ts"
           if [ $? -eq 0 ]; then
-            echo "Registry changed"
             echo "file_changed=true" >> $GITHUB_OUTPUT
           else
-            echo "Registry unchanged"
             echo "file_changed=false" >> $GITHUB_OUTPUT
           fi
 
@@ -41,6 +39,7 @@ jobs:
 
       - name: Run validation
         id: validate
+        working-directory: front
         run: |
           npm install
           npx tsx ./admin/check_registry_apps.ts --url https://dust.tt --wId 78bda07b39 --spaceId vlt_rICtlrSEpWqX --apiKey ${{ secrets.DUST_APPS_US_API_KEY }} | exit 1
