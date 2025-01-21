@@ -347,6 +347,9 @@ function MembersTable({
       },
       {
         id: "action",
+        meta: {
+          className: "w-12",
+        },
         cell: (info: Info) => {
           return (
             <DataTable.CellContent>

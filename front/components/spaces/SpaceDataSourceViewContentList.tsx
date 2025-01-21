@@ -1,3 +1,4 @@
+import type {DropdownMenuItemProps} from "@dust-tt/sparkle";
 import {
   Button,
   Cog6ToothIcon,
@@ -9,7 +10,7 @@ import {
   SearchInput,
   Spinner,
   useHashParam,
-  usePaginationFromUrl,
+  usePaginationFromUrl
 } from "@dust-tt/sparkle";
 import type {
   ConnectorType,
@@ -28,8 +29,15 @@ import type {
   SortingState,
 } from "@tanstack/react-table";
 import { useRouter } from "next/router";
+import type {MouseEventHandler} from "react";
 import * as React from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState
+} from "react";
 
 import { FileDropProvider } from "@app/components/assistant/conversation/FileUploaderContext";
 import { ConnectorPermissionsModal } from "@app/components/ConnectorPermissionsModal";
@@ -55,9 +63,17 @@ import {
 import { useSpaces } from "@app/lib/swr/spaces";
 import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
 
+type MoreMenuItem = Omit<DropdownMenuItemProps, "children" | "onClick"> & {
+  label: string;
+  variant?: "default" | "warning";
+  onClick?: MouseEventHandler<HTMLDivElement>;
+  children?: undefined;
+};
+
 type RowData = DataSourceViewContentNode & {
   icon: React.ComponentType;
   onClick?: () => void;
+  moreMenuItems?: MoreMenuItem[];
 };
 
 const columnsBreakpoints = {
@@ -125,6 +141,14 @@ const getTableColumns = (showSpaceUsage: boolean): ColumnDef<RowData>[] => {
             : "-"
         }
       />
+    ),
+  });
+
+  columns.push({
+    id: "actions",
+    header: "",
+    cell: (info) => (
+      <DataTable.MoreButton moreMenuItems={info.row.original.moreMenuItems} />
     ),
   });
 
