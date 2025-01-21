@@ -7,10 +7,14 @@ import {
   Collapsible,
   CommandLineIcon,
   ContentBlockWrapper,
+  DocumentIcon,
   Icon,
   TableIcon,
 } from "@dust-tt/sparkle";
-import type { DustAppRunActionType } from "@dust-tt/types";
+import type {
+  DustAppRunActionType,
+  SupportedFileContentType,
+} from "@dust-tt/types";
 import { getDustAppRunResultsFileTitle } from "@dust-tt/types";
 import { capitalize } from "lodash";
 import { useMemo } from "react";
@@ -18,6 +22,19 @@ import { useMemo } from "react";
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
 import { DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY } from "@app/lib/api/assistant/actions/constants";
+
+function ContentTypeIcon({
+  contentType,
+}: {
+  contentType: SupportedFileContentType;
+}) {
+  switch (contentType) {
+    case "text/csv":
+      return <Icon visual={TableIcon} />;
+    default:
+      return <Icon visual={DocumentIcon} />;
+  }
+}
 
 export function DustAppRunActionDetails({
   action,
@@ -106,7 +123,7 @@ function DustAppRunOutputDetails({ action }: { action: DustAppRunActionType }) {
               })}
             >
               <CitationIcons>
-                <Icon visual={TableIcon} />
+                <ContentTypeIcon contentType={action.resultsFileContentType} />
               </CitationIcons>
               <CitationTitle>
                 {getDustAppRunResultsFileTitle({
