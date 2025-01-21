@@ -105,15 +105,16 @@ function DustAppRunOutputDetails({ action }: { action: DustAppRunActionType }) {
     return null;
   }
 
+  const shouldDisplayRawOutput =
+    !action.resultsFileId ||
+    (stringifiedOutput.length && stringifiedOutput != "{}");
+
   return (
     <div className="flex flex-col gap-4">
       {action.resultsFileId &&
         action.resultsFileSnippet &&
         action.resultsFileContentType && (
           <div>
-            <span className="text-sm font-semibold text-foreground">
-              Results
-            </span>
             <Citation
               className="w-48 min-w-48 max-w-48"
               containerClassName="my-2"
@@ -153,17 +154,19 @@ function DustAppRunOutputDetails({ action }: { action: DustAppRunActionType }) {
           </div>
         )}
 
-      <ContentBlockWrapper
-        content={stringifiedOutput}
-        getContentToDownload={getContentToDownload}
-      >
-        <CodeBlock
-          className="language-json max-h-60 overflow-y-auto"
-          wrapLongLines={true}
+      {shouldDisplayRawOutput && (
+        <ContentBlockWrapper
+          content={stringifiedOutput}
+          getContentToDownload={getContentToDownload}
         >
-          {stringifiedOutput}
-        </CodeBlock>
-      </ContentBlockWrapper>
+          <CodeBlock
+            className="language-json max-h-60 overflow-y-auto"
+            wrapLongLines={true}
+          >
+            {stringifiedOutput}
+          </CodeBlock>
+        </ContentBlockWrapper>
+      )}
     </div>
   );
 }
