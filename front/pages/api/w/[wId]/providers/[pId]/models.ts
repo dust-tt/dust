@@ -272,7 +272,7 @@ async function handler(
             return;
           }
           return res.status(200).json({
-            models: [{ id: "deepseek-chat" }],
+            models: [{ id: "deepseek-chat" }, { id: "deepseek-reasoner" }],
           });
 
         default:

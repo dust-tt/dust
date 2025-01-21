@@ -50,7 +50,7 @@ export const MainPage = ({
                       return (
                         <DropdownMenuItem
                           key={w.sId}
-                          onClick={() => void handleSelectWorkspace(w.sId)}
+                          onClick={() => void handleSelectWorkspace(w)}
                           label={w.name}
                         />
                       );
@@ -109,7 +109,7 @@ export const MainPage = ({
                 conversationId={null}
                 user={user}
               />
-              <AssistantFavorites />
+              <AssistantFavorites user={user} />
             </InputBarProvider>
           </DropzoneContainer>
         </FileDropProvider>

@@ -21,8 +21,8 @@ import {
   getAPIKey,
   getAuthType,
   getBearerToken,
+  getSession,
 } from "@app/lib/auth";
-import { getSession } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -245,7 +245,7 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
           return apiError(req, res, {
             status_code: 403,
             api_error: {
-              type: "not_authenticated",
+              type: authRes.error.code,
               message:
                 "The user does not have an active session or is not authenticated.",
             },

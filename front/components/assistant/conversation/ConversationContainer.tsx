@@ -65,6 +65,9 @@ export function ConversationContainer({
 
   const { mutateConversations } = useConversations({
     workspaceId: owner.sId,
+    options: {
+      disabled: true, // We don't need to fetch conversations here.
+    },
   });
 
   const { mutateMessages } = useConversationMessages({
@@ -168,7 +171,7 @@ export function ConversationContainer({
         }
       );
       await mutateConversations();
-      await scrollConversationsToTop();
+      scrollConversationsToTop();
     } catch (err) {
       // If the API errors, the original data will be
       // rolled back by SWR automatically.
@@ -237,7 +240,7 @@ export function ConversationContainer({
           { shallow: true }
         );
         await mutateConversations();
-        await scrollConversationsToTop();
+        scrollConversationsToTop();
 
         return new Ok(undefined);
       }

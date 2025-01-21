@@ -73,7 +73,7 @@ export function ConversationViewer({
 
   const buildEventSourceURL = useCallback(
     (lastEvent: string | null) => {
-      const esURL = `${process.env.DUST_DOMAIN}/api/v1/w/${owner.sId}/assistant/conversations/${conversationId}/events`;
+      const esURL = `${user.dustDomain}/api/v1/w/${owner.sId}/assistant/conversations/${conversationId}/events`;
       let lastEventId = "";
       if (lastEvent) {
         const eventPayload: {

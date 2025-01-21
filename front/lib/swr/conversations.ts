@@ -54,12 +54,19 @@ export function useConversation({
   };
 }
 
-export function useConversations({ workspaceId }: { workspaceId: string }) {
+export function useConversations({
+  workspaceId,
+  options,
+}: {
+  workspaceId: string;
+  options?: { disabled: boolean };
+}) {
   const conversationFetcher: Fetcher<GetConversationsResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/w/${workspaceId}/assistant/conversations`,
-    conversationFetcher
+    conversationFetcher,
+    options
   );
 
   return {

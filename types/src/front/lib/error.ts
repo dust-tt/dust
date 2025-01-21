@@ -8,6 +8,7 @@ export type InternalErrorWithStatusCode = {
 
 export type APIErrorType =
   | "not_authenticated"
+  | "sso_enforced"
   | "missing_authorization_header_error"
   | "malformed_authorization_header_error"
   | "invalid_basic_authorization_error"
@@ -103,7 +104,9 @@ export type APIErrorType =
   | ConversationErrorType
   // Plugins:
   | "plugin_not_found"
-  | "plugin_execution_failed";
+  | "plugin_execution_failed"
+  // Trackers:
+  | "tracker_not_found";
 
 export type APIError = {
   type: APIErrorType;

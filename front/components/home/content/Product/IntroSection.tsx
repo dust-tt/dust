@@ -48,7 +48,7 @@ export function IntroSection() {
               retrieve vital knowledge, and help you create —right where you
               work, no coding required.
             </P>
-            <div>
+            <div className="flex justify-center gap-4 sm:justify-start">
               <Link href="/home/pricing" shallow={true}>
                 <Button
                   variant="highlight"
@@ -56,6 +56,9 @@ export function IntroSection() {
                   label="Try Dust Now"
                   icon={RocketIcon}
                 />
+              </Link>
+              <Link href="/home/contact" shallow={true}>
+                <Button variant="outline" size="md" label="Contact Sales" />
               </Link>
             </div>
           </div>

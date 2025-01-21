@@ -25,7 +25,7 @@ use std::io::prelude::*;
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
 
-use super::openai::OpenAILLM;
+use super::openai::{get_model_id_from_internal_embeddings_id, OpenAILLM};
 use super::openai_compatible_helpers::openai_compatible_chat_completion;
 use super::openai_compatible_helpers::TransformSystemMessages;
 
@@ -472,17 +472,17 @@ impl LLM for AzureOpenAILLM {
 }
 
 pub struct AzureOpenAIEmbedder {
-    deployment_id: String,
-    model_id: Option<String>,
+    deployment_id: Option<String>,
+    model_id: String,
     endpoint: Option<String>,
     api_key: Option<String>,
 }
 
 impl AzureOpenAIEmbedder {
-    pub fn new(deployment_id: String) -> Self {
+    pub fn new(model_id: String) -> Self {
         AzureOpenAIEmbedder {
-            deployment_id,
-            model_id: None,
+            deployment_id: None,
+            model_id,
             endpoint: None,
             api_key: None,
         }
@@ -492,21 +492,18 @@ impl AzureOpenAIEmbedder {
         assert!(self.endpoint.is_some());
 
         Ok(format!(
-            "{}openai/deployments/{}/embeddings?api-version=2023-08-01-preview",
+            "{}openai/deployments/{}/embeddings?api-version=2023-05-15",
             self.endpoint.as_ref().unwrap(),
-            self.deployment_id
+            get_model_id_from_internal_embeddings_id(&self.model_id)
         )
         .parse::<Uri>()?)
     }
 
     fn tokenizer(&self) -> Arc<RwLock<CoreBPE>> {
-        match self.model_id.as_ref() {
-            Some(model_id) => match model_id.as_str() {
-                "text-embedding-3-small" => cl100k_base_singleton(),
-                "text-embedding-3-large-1536" => cl100k_base_singleton(),
-                _ => unimplemented!(),
-            },
-            None => unimplemented!(),
+        match self.model_id.as_str() {
+            "text-embedding-3-small" => cl100k_base_singleton(),
+            "text-embedding-3-large-1536" => cl100k_base_singleton(),
+            _ => unimplemented!(),
         }
     }
 }
@@ -514,7 +511,7 @@ impl AzureOpenAIEmbedder {
 #[async_trait]
 impl Embedder for AzureOpenAIEmbedder {
     fn id(&self) -> String {
-        self.deployment_id.clone()
+        self.model_id.clone()
     }
 
     async fn initialize(&mut self, credentials: Credentials) -> Result<()> {
@@ -549,44 +546,39 @@ impl Embedder for AzureOpenAIEmbedder {
             },
         }
 
+        // We ensure at initialize that we only use supported models.
+        match self.model_id.as_str() {
+            "text-embedding-3-small" => (),
+            "text-embedding-3-large-1536" => (),
+            _ => Err(anyhow!("Unsupported model: {}", self.model_id))?,
+        }
+
+        // Ensure the deployment exists and is supported.
         let d = get_deployment(
             self.endpoint.as_ref().unwrap(),
             self.api_key.as_ref().unwrap(),
-            &self.deployment_id,
+            get_model_id_from_internal_embeddings_id(&self.model_id),
         )
         .await?;
 
-        // We ensure at initialize that we only use supported models.
-        match d.model.as_str() {
-            "text-embedding-3-small" => (),
-            "text-embedding-3-large-1536" => (),
-            _ => Err(anyhow!("Unsupported model: {}", d.model))?,
-        }
-
-        self.model_id = Some(d.model);
+        self.deployment_id = Some(d.id);
 
         Ok(())
     }
 
     fn context_size(&self) -> usize {
-        match self.model_id.as_ref() {
-            Some(model_id) => match model_id.as_str() {
-                "text-embedding-3-small" => 8191,
-                "text-embedding-3-large-1536" => 8191,
-                _ => unimplemented!(),
-            },
-            None => unimplemented!(),
+        match self.model_id.as_str() {
+            "text-embedding-3-small" => 8191,
+            "text-embedding-3-large-1536" => 8191,
+            _ => unimplemented!(),
         }
     }
 
     fn embedding_size(&self) -> usize {
-        match self.model_id.as_ref() {
-            Some(model_id) => match model_id.as_str() {
-                "text-embedding-3-small" => 1536,
-                "text-embedding-3-large-1536" => 1536,
-                _ => unimplemented!(),
-            },
-            None => unimplemented!(),
+        match self.model_id.as_str() {
+            "text-embedding-3-small" => 1536,
+            "text-embedding-3-large-1536" => 1536,
+            _ => unimplemented!(),
         }
     }
 
@@ -607,7 +599,7 @@ impl Embedder for AzureOpenAIEmbedder {
             self.uri()?,
             self.api_key.clone().unwrap(),
             None,
-            None,
+            Some(self.model_id.clone()),
             text,
             match extras {
                 Some(e) => match e.get("openai_user") {
@@ -626,10 +618,7 @@ impl Embedder for AzureOpenAIEmbedder {
             .map(|v| EmbedderVector {
                 created: utils::now(),
                 provider: ProviderID::OpenAI.to_string(),
-                model: match self.model_id {
-                    Some(ref model_id) => model_id.clone(),
-                    None => unimplemented!(),
-                },
+                model: self.model_id.clone(),
                 vector: v.embedding,
             })
             .collect::<Vec<_>>())
