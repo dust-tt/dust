@@ -1,9 +1,14 @@
 import type { GetContentToDownloadFunction } from "@dust-tt/sparkle";
 import {
+  Citation,
+  CitationIcons,
+  CitationTitle,
   CodeBlock,
   Collapsible,
   CommandLineIcon,
   ContentBlockWrapper,
+  Icon,
+  TableIcon,
 } from "@dust-tt/sparkle";
 import type { DustAppRunActionType } from "@dust-tt/types";
 import { capitalize } from "lodash";
@@ -83,16 +88,52 @@ function DustAppRunOutputDetails({ action }: { action: DustAppRunActionType }) {
   }
 
   return (
-    <ContentBlockWrapper
-      content={stringifiedOutput}
-      getContentToDownload={getContentToDownload}
-    >
-      <CodeBlock
-        className="language-json max-h-60 overflow-y-auto"
-        wrapLongLines={true}
+    <div className="flex flex-col gap-4">
+      {action.resultsFileId && action.resultsFileSnippet && (
+        <div>
+          <span className="text-sm font-semibold text-foreground">Results</span>
+          <Citation
+            className="w-48 min-w-48 max-w-48"
+            containerClassName="my-2"
+            tooltip={`${action.appName}_output.csv`}
+          >
+            <CitationIcons>
+              <Icon visual={TableIcon} />
+            </CitationIcons>
+            <CitationTitle>{`${action.appName}_output.csv`}</CitationTitle>
+          </Citation>
+
+          <Collapsible defaultOpen={false}>
+            <Collapsible.Button>
+              <span className="text-sm font-semibold text-muted-foreground">
+                Preview
+              </span>
+            </Collapsible.Button>
+            <Collapsible.Panel>
+              <div className="py-2">
+                <CodeBlock
+                  className="language-csv max-h-60 overflow-y-auto"
+                  wrapLongLines={true}
+                >
+                  {action.resultsFileSnippet}
+                </CodeBlock>
+              </div>
+            </Collapsible.Panel>
+          </Collapsible>
+        </div>
+      )}
+
+      <ContentBlockWrapper
+        content={stringifiedOutput}
+        getContentToDownload={getContentToDownload}
       >
-        {stringifiedOutput}
-      </CodeBlock>
-    </ContentBlockWrapper>
+        <CodeBlock
+          className="language-json max-h-60 overflow-y-auto"
+          wrapLongLines={true}
+        >
+          {stringifiedOutput}
+        </CodeBlock>
+      </ContentBlockWrapper>
+    </div>
   );
 }

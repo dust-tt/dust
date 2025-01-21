@@ -33,6 +33,8 @@ export interface DustAppRunActionType extends BaseAction {
   functionCallId: string | null;
   functionCallName: string | null;
   step: number;
+  resultsFileId: string | null;
+  resultsFileSnippet: string | null;
   type: "dust_app_run_action";
 }
 

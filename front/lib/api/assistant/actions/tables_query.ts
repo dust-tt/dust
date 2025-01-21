@@ -19,15 +19,13 @@ import {
   getTablesQueryResultsFileTitle,
   Ok,
 } from "@dust-tt/types";
-import { stringify } from "csv-stringify";
 
 import { runActionStreamed } from "@app/lib/actions/server";
 import { DEFAULT_TABLES_QUERY_ACTION_NAME } from "@app/lib/api/assistant/actions/constants";
+import { getToolResultOutputCsvFileAndSnippet } from "@app/lib/api/assistant/actions/result_file_helpers";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
 import { renderConversationForModel } from "@app/lib/api/assistant/generation";
-import { generateCSVSnippet } from "@app/lib/api/csv";
-import { internalCreateToolOutputCsvFile } from "@app/lib/api/files/tool_output";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
@@ -567,7 +565,7 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
         output: sanitizedOutput,
       });
 
-      const { file, snippet } = await getTablesQueryOutputCsvFileAndSnippet(
+      const { file, snippet } = await getToolResultOutputCsvFileAndSnippet(
         auth,
         {
           title: queryTitle,
@@ -615,44 +613,4 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
     };
     return;
   }
-}
-
-async function getTablesQueryOutputCsvFileAndSnippet(
-  auth: Authenticator,
-  {
-    title,
-    conversationId,
-    results,
-  }: {
-    title: string;
-    conversationId: string;
-    results: Array<Record<string, string | number | boolean>>;
-  }
-): Promise<{
-  file: FileResource;
-  snippet: string;
-}> {
-  const toCsv = (
-    records: Array<Record<string, string | number | boolean>>,
-    options: { header: boolean } = { header: true }
-  ): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      stringify(records, options, (err, data) => {
-        if (err) {
-          reject(err);
-        }
-        resolve(data);
-      });
-    });
-  };
-  const csvOutput = await toCsv(results);
-
-  const file = await internalCreateToolOutputCsvFile(auth, {
-    title,
-    conversationId: conversationId,
-    content: csvOutput,
-    contentType: "text/csv",
-  });
-
-  return { file, snippet: generateCSVSnippet(csvOutput) };
 }
