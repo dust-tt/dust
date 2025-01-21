@@ -36,7 +36,6 @@ export function Landing() {
       <CapabilitySection />
       <UbiquitySection />
       <ExtensibilitySection />
-
       <DemoVideoSection
         demoVideo={DemoVideo}
         fromColor="from-sky-200"
