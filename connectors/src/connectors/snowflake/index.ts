@@ -168,7 +168,6 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
       },
       { where: { connectorId: c.id } }
     );
-    await launchSnowflakeSyncWorkflow(c.id);
     // We launch the workflow again so it syncs immediately.
     await launchSnowflakeSyncWorkflow(c.id);
 
