@@ -9,6 +9,7 @@ import {
 import { getConnectorAndCredentials } from "@connectors/connectors/snowflake/lib/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
+  deleteDataSourceFolder,
   deleteDataSourceTable,
   upsertDataSourceFolder,
   upsertDataSourceRemoteTable,
@@ -70,6 +71,27 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
     }),
   ]);
 
+  // removing the unselected databases (from core and connectors)
+  const unselectedDatabases = allDatabases.filter(
+    (db) => db.permission === "unselected"
+  );
+  for (const db of unselectedDatabases) {
+    await deleteDataSourceFolder({ dataSourceConfig, folderId: db.internalId });
+    await db.destroy();
+  }
+
+  // removing the unselected schemas (from core and connectors)
+  const unselectedSchema = allSchemas.filter(
+    (schema) => schema.permission === "unselected"
+  );
+  for (const schema of unselectedSchema) {
+    await deleteDataSourceFolder({
+      dataSourceConfig,
+      folderId: schema.internalId,
+    });
+    await schema.destroy();
+  }
+
   const readonlyConnectionCheck = await isConnectionReadonly({
     credentials,
     connection,
@@ -111,8 +133,12 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
   );
 
   const readGrantedInternalIds = new Set([
-    ...allDatabases.map((db) => db.internalId),
-    ...allSchemas.map((s) => s.internalId),
+    ...allDatabases
+      .filter((db) => db.permission === "selected")
+      .map((db) => db.internalId),
+    ...allSchemas
+      .filter((s) => s.permission === "selected")
+      .map((s) => s.internalId),
     ...allTables
       .filter((t) => t.permission === "selected")
       .map((t) => t.internalId),

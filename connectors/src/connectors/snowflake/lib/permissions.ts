@@ -15,15 +15,12 @@ import {
   fetchSchemas,
   fetchTables,
 } from "@connectors/connectors/snowflake/lib/snowflake_api";
-import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { deleteDataSourceFolder } from "@connectors/lib/data_sources";
 import {
   RemoteDatabaseModel,
   RemoteSchemaModel,
   RemoteTableModel,
 } from "@connectors/lib/models/remote_databases";
 import type { Logger } from "@connectors/logger/logger";
-import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 /**
  * Retrieves the existing content nodes for a parent in the Snowflake account.
@@ -284,13 +281,7 @@ export const saveNodesFromPermissions = async ({
   connectorId: ModelId;
   logger: Logger;
 }): Promise<Result<void, Error>> => {
-  const connector = await ConnectorResource.fetchById(connectorId);
-  if (!connector) {
-    return new Err(new Error("Connector not found"));
-  }
-  const dataSourceConfig = dataSourceConfigFromConnector(connector);
-
-  Object.entries(permissions).forEach(async ([internalId, permission]) => {
+  for (const [internalId, permission] of Object.entries(permissions)) {
     const [database, schema, table] = internalId.split(".");
     const internalType = getContentNodeTypeFromInternalId(internalId);
 
@@ -306,20 +297,17 @@ export const saveNodesFromPermissions = async ({
           connectorId,
           internalId,
           name: database as string,
+          permission: "selected",
         });
       } else if (permission === "none" && existingDb) {
-        await deleteDataSourceFolder({
-          dataSourceConfig,
-          folderId: existingDb.internalId,
-        });
-        await existingDb.destroy();
+        await existingDb.update({ permission: "unselected" });
       } else {
         logger.error(
           { internalId, permission, existingDb },
           "Invalid permission for database."
         );
       }
-      return;
+      continue;
     }
     if (internalType === "schema") {
       const existingSchema = await RemoteSchemaModel.findOne({
@@ -328,26 +316,27 @@ export const saveNodesFromPermissions = async ({
           internalId,
         },
       });
-      if (permission === "read" && !existingSchema) {
-        await RemoteSchemaModel.create({
-          connectorId,
-          internalId,
-          name: schema as string,
-          databaseName: database as string,
-        });
+      if (permission === "read") {
+        if (!existingSchema) {
+          await RemoteSchemaModel.create({
+            connectorId,
+            internalId,
+            name: schema as string,
+            databaseName: database as string,
+            permission: "selected",
+          });
+        } else {
+          await existingSchema.update({ permission: "selected" });
+        }
       } else if (permission === "none" && existingSchema) {
-        await deleteDataSourceFolder({
-          dataSourceConfig,
-          folderId: existingSchema.internalId,
-        });
-        await existingSchema.destroy();
+        await existingSchema.update({ permission: "unselected" });
       } else {
         logger.error(
           { internalId, permission, existingSchema },
           "Invalid permission for schema."
         );
       }
-      return;
+      continue;
     }
     if (internalType === "table") {
       const existingTable = await RemoteTableModel.findOne({
@@ -378,9 +367,9 @@ export const saveNodesFromPermissions = async ({
           "Invalid permission for table."
         );
       }
-      return;
+      continue;
     }
-  });
+  }
 
   return new Ok(undefined);
 };
