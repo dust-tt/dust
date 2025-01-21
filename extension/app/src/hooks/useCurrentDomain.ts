@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 
-export const useCurrentDomain = () => {
+export const useCurrentUrlAndDomain = () => {
   const [currentDomain, setCurrentDomain] = useState<string>("");
+  const [currentUrl, setCurrentUrl] = useState<string>("");
 
   useEffect(() => {
     // Function to update domain from tab.
@@ -10,13 +11,16 @@ export const useCurrentDomain = () => {
         try {
           const url = new URL(tab.url);
           if (url.protocol.startsWith("http")) {
+            setCurrentUrl(tab.url);
             setCurrentDomain(url.hostname);
           }
           if (url.protocol.startsWith("chrome")) {
+            setCurrentUrl("");
             setCurrentDomain("chrome");
           }
         } catch (e) {
           console.error("Invalid URL:", e);
+          setCurrentUrl("");
           setCurrentDomain("");
         }
       }
@@ -62,5 +66,5 @@ export const useCurrentDomain = () => {
     };
   }, []);
 
-  return currentDomain;
+  return { currentDomain, currentUrl };
 };

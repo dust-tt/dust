@@ -8,6 +8,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getUserForWorkspace } from "@app/lib/api/user";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { showDebugTools } from "@app/lib/development";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
@@ -24,10 +25,10 @@ async function handler(
   auth: Authenticator
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
-
+  const featureFlags = await getFeatureFlags(owner);
   // Allow Dust Super User to force role for testing
   const allowForSuperUserTesting =
-    showDebugTools(owner) &&
+    showDebugTools(featureFlags) &&
     auth.isDustSuperUser() &&
     req.body.force === "true";
 
@@ -115,12 +116,16 @@ async function handler(
           });
         }
 
+        const featureFlags = await getFeatureFlags(owner);
+        const allowLastAdminRemoval = showDebugTools(featureFlags);
+
         const updateRes = await MembershipResource.updateMembershipRole({
           user,
           workspace: owner,
           newRole: role,
           // We allow to re-activate a terminated membership when updating the role here.
           allowTerminated: true,
+          allowLastAdminRemoval,
         });
 
         if (updateRes.isErr()) {

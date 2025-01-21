@@ -2,12 +2,17 @@ import {
   BookOpenIcon,
   BracesIcon,
   Button,
-  Dialog,
   Input,
+  NewDialog,
+  NewDialogContainer,
+  NewDialogContent,
+  NewDialogFooter,
+  NewDialogHeader,
+  NewDialogTitle,
   Page,
   PlusIcon,
+  useSendNotification,
 } from "@dust-tt/sparkle";
-import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   DustAppSecretType,
   SubscriptionType,
@@ -122,53 +127,94 @@ export default function SecretsPage({
   return (
     <>
       {secretToRevoke ? (
-        <Dialog
-          isOpen={true}
-          title={`Delete ${secretToRevoke?.name}`}
-          onValidate={() => handleRevoke(secretToRevoke)}
-          onCancel={() => setSecretToRevoke(null)}
+        <NewDialog
+          open={true}
+          onOpenChange={(open) => {
+            if (!open) {
+              setSecretToRevoke(null);
+            }
+          }}
         >
-          <p className="text-sm text-gray-700">
-            Are you sure you want to delete the secret{" "}
-            <strong>{secretToRevoke?.name}</strong>?
-          </p>
-        </Dialog>
+          <NewDialogContent>
+            <NewDialogHeader>
+              <NewDialogTitle>Delete {secretToRevoke?.name}</NewDialogTitle>
+            </NewDialogHeader>
+            <NewDialogContainer>
+              Are you sure you want to delete the secret{" "}
+              <strong>{secretToRevoke?.name}</strong>?
+            </NewDialogContainer>
+            <NewDialogFooter
+              leftButtonProps={{
+                label: "Cancel",
+                variant: "outline",
+                onClick: () => setSecretToRevoke(null),
+              }}
+              rightButtonProps={{
+                label: "Delete",
+                variant: "warning",
+                onClick: () => handleRevoke(secretToRevoke),
+              }}
+            />
+          </NewDialogContent>
+        </NewDialog>
       ) : null}
-      <Dialog
-        isOpen={isNewSecretPromptOpen}
-        title={`${isInputNameDisabled ? "Update" : "New"} Developer Secret`}
-        onValidate={() => handleGenerate(newDustAppSecret)}
-        onCancel={() => setIsNewSecretPromptOpen(false)}
+      <NewDialog
+        open={isNewSecretPromptOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setIsNewSecretPromptOpen(false);
+          }
+        }}
       >
-        <Input
-          name="Secret Name"
-          placeholder="SECRET_NAME"
-          value={newDustAppSecret.name}
-          disabled={isInputNameDisabled}
-          onChange={(e) =>
-            setNewDustAppSecret({
-              ...newDustAppSecret,
-              name: cleanSecretName(e.target.value),
-            })
-          }
-        />
-        <p className="text-xs text-gray-500">
-          Secret names must be alphanumeric and underscore characters only.
-        </p>
-        <br />
+        <NewDialogContent size="lg">
+          <NewDialogHeader>
+            <NewDialogTitle>
+              {isInputNameDisabled ? "Update" : "New"} Developer Secret
+            </NewDialogTitle>
+          </NewDialogHeader>
+          <NewDialogContainer>
+            <Input
+              message="Secret names must be alphanumeric and underscore characters only."
+              name="Secret Name"
+              placeholder="SECRET_NAME"
+              value={newDustAppSecret.name}
+              disabled={isInputNameDisabled}
+              onChange={(e) =>
+                setNewDustAppSecret({
+                  ...newDustAppSecret,
+                  name: cleanSecretName(e.target.value),
+                })
+              }
+            />
+            <Input
+              message="Secret values are encrypted and stored securely in our database."
+              name="Secret value"
+              placeholder="Type the secret value"
+              value={newDustAppSecret.value}
+              onChange={(e) =>
+                setNewDustAppSecret({
+                  ...newDustAppSecret,
+                  value: e.target.value,
+                })
+              }
+            />
+            <p className="text-xs text-gray-500"></p>
+          </NewDialogContainer>
+          <NewDialogFooter
+            leftButtonProps={{
+              label: "Cancel",
+              variant: "outline",
+              onClick: () => setIsNewSecretPromptOpen(false),
+            }}
+            rightButtonProps={{
+              label: isInputNameDisabled ? "Update" : "Create",
+              variant: "primary",
+              onClick: () => handleGenerate(newDustAppSecret),
+            }}
+          />
+        </NewDialogContent>
+      </NewDialog>
 
-        <Input
-          name="Secret value"
-          placeholder="Type the secret value"
-          value={newDustAppSecret.value}
-          onChange={(e) =>
-            setNewDustAppSecret({ ...newDustAppSecret, value: e.target.value })
-          }
-        />
-        <p className="text-xs text-gray-500">
-          Secret values are encrypted and stored securely in our database.
-        </p>
-      </Dialog>
       <AppLayout
         subscription={subscription}
         owner={owner}

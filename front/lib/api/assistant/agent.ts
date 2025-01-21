@@ -49,7 +49,7 @@ import { getRedisClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
-import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
+import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import logger from "@app/logger/logger";
 
 const CANCELLATION_CHECK_INTERVAL = 500;
@@ -481,7 +481,7 @@ async function* runMultiActionsAgent(
   }
 
   const config = cloneBaseConfig(
-    DustProdActionRegistry["assistant-v2-multi-actions-agent"].config
+    getDustProdAction("assistant-v2-multi-actions-agent").config
   );
   if (isLegacyAgent) {
     config.MODEL.function_call =

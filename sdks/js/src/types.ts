@@ -674,6 +674,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "index_private_slack_channel"
   | "conversations_jit_actions"
   | "disable_run_logs"
+  | "show_debug_tools"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;

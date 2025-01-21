@@ -46,7 +46,8 @@ import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import { FREE_NO_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { renderSubscriptionFromModels } from "@app/lib/plans/renderers";
-import { DustProdActionRegistry } from "@app/lib/registry";
+import type { ActionRegistry } from "@app/lib/registry";
+import { getDustProdActionRegistry } from "@app/lib/registry";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
@@ -55,7 +56,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   subscriptions: SubscriptionType[];
   dataSources: DataSourceType[];
   whitelistableFeatures: WhitelistableFeature[];
-  registry: typeof DustProdActionRegistry;
+  registry: ActionRegistry;
   workspaceVerifiedDomain: WorkspaceDomain | null;
   worspaceCreationDay: string;
   extensionConfig: ExtensionConfigurationType | null;
@@ -109,7 +110,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
       ),
       whitelistableFeatures:
         WHITELISTABLE_FEATURES as unknown as WhitelistableFeature[],
-      registry: DustProdActionRegistry,
+      registry: getDustProdActionRegistry(),
       workspaceVerifiedDomain,
       worspaceCreationDay: format(worspaceCreationDate, "yyyy-MM-dd"),
       extensionConfig: extensionConfig?.toJSON() ?? null,
@@ -292,7 +293,7 @@ function DustAppLogsModal({
   show: boolean;
   onClose: () => void;
   owner: WorkspaceType;
-  registry: typeof DustProdActionRegistry;
+  registry: ActionRegistry;
   baseUrl: string;
 }) {
   return (

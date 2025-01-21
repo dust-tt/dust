@@ -472,9 +472,7 @@ export function DataSourceViewSelector({
         label={getDisplayNameForDataSource(dataSourceView.dataSource)}
         visual={LogoComponent}
         defaultCollapsed={defaultCollapsed}
-        type={
-          canBeExpanded(viewType, dataSourceView.dataSource) ? "node" : "leaf"
-        }
+        type={canBeExpanded(dataSourceView.dataSource) ? "node" : "leaf"}
         checkbox={
           hideCheckbox || (!isRootSelectable && !hasActiveSelection)
             ? undefined

@@ -1,4 +1,12 @@
-import { Breadcrumbs, Dialog } from "@dust-tt/sparkle";
+import {
+  Breadcrumbs,
+  NewDialog,
+  NewDialogContainer,
+  NewDialogContent,
+  NewDialogFooter,
+  NewDialogHeader,
+  NewDialogTitle,
+} from "@dust-tt/sparkle";
 import type {
   DataSourceViewCategory,
   DataSourceViewType,
@@ -110,18 +118,32 @@ export function SpaceLayout({
           />
         )}
         {isAdmin && isLimitReached && (
-          <Dialog
-            alertDialog
-            isOpen={isLimitReached && spaceCreationModalState.isOpen}
-            title="You can't create more spaces."
-            onValidate={closeSpaceCreationModal}
+          <NewDialog
+            open={isLimitReached && spaceCreationModalState.isOpen}
+            onOpenChange={(open) => {
+              if (!open) {
+                closeSpaceCreationModal();
+              }
+            }}
           >
-            <div>
-              {isEnterprise
-                ? "We're going to make changes to data permissions spaces soon and are limiting the creation of spaces for that reason. Reach out to us to learn more."
-                : "The maximum number of spaces for this workspace has been reached. Please reach out at support@dust.tt to learn more."}
-            </div>
-          </Dialog>
+            <NewDialogContent size="md" isAlertDialog>
+              <NewDialogHeader hideButton>
+                <NewDialogTitle>You can't create more spaces.</NewDialogTitle>
+              </NewDialogHeader>
+              <NewDialogContainer>
+                {isEnterprise
+                  ? "We're going to make changes to data permissions spaces soon and are limiting the creation of spaces for that reason. Reach out to us to learn more."
+                  : "The maximum number of spaces for this workspace has been reached. Please reach out at support@dust.tt to learn more."}
+              </NewDialogContainer>
+              <NewDialogFooter
+                rightButtonProps={{
+                  label: "Ok",
+                  variant: "outline",
+                  onClick: closeSpaceCreationModal,
+                }}
+              />
+            </NewDialogContent>
+          </NewDialog>
         )}
       </AppLayout>
     </RootLayout>

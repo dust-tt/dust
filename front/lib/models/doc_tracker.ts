@@ -315,6 +315,6 @@ DataSourceModel.hasMany(TrackerGenerationModel, {
   as: "maintainedDocumentDataSource",
 });
 TrackerGenerationModel.belongsTo(DataSourceModel, {
-  foreignKey: { allowNull: false },
+  foreignKey: { allowNull: true },
   as: "maintainedDocumentDataSource",
 });

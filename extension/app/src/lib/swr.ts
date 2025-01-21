@@ -1,5 +1,4 @@
 import { useAuthErrorCheck } from "@extension/hooks/useAuthErrorCheck";
-import { getAccessToken } from "@extension/lib/auth";
 import { useCallback } from "react";
 import type { Fetcher, Key, SWRConfiguration } from "swr";
 import useSWR, { useSWRConfig } from "swr";
@@ -123,22 +122,4 @@ export const resHandler = async (res: Response) => {
     error
   );
   throw new Error(error);
-};
-
-export const fetcher = async (...args: Parameters<typeof fetch>) => {
-  const [url, config] = args;
-
-  const token = await getAccessToken();
-  if (!token) {
-    // TODO(ext): Handle this error in a better way.
-    // We want to silently refresh or redirect to login page.
-    throw new Error("No access token found");
-  }
-  const res = await fetch(`${process.env.DUST_DOMAIN}/${url}`, {
-    ...config,
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  return resHandler(res);
 };

@@ -44,7 +44,7 @@ export async function getServerSideProps() {
 export default function CustomerSupport() {
   return (
     <>
-      <div className="container flex w-full flex-col gap-0 bg-slate-900/50 px-2 py-2 pb-12">
+      <div className="container flex w-full flex-col gap-0 px-6 pb-12">
         <HeroSection
           {...Hero}
           fromColor={pageSettings.from}

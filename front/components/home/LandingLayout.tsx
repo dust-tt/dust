@@ -7,7 +7,6 @@ import {
   LogoHorizontalColorLayer2Logo,
   LogoHorizontalColorLogo,
 } from "@dust-tt/sparkle";
-import { Transition } from "@headlessui/react";
 import Head from "next/head";
 import Link from "next/link";
 import Script from "next/script";
@@ -105,7 +104,6 @@ export default function LandingLayout({
               variant="outline"
               size="sm"
               label="Request a demo"
-              target="_blank"
             />
             <Button
               variant="highlight"
@@ -121,6 +119,7 @@ export default function LandingLayout({
       </ScrollingHeader>
       {/* Keeping the background dark */}
       <div className="fixed bottom-0 left-0 right-0 top-0 -z-50 bg-slate-900" />
+      <div className="fixed inset-0 -z-30 bg-slate-900/50" />
       <div className="fixed bottom-0 left-0 right-0 top-0 -z-40 overflow-hidden transition duration-1000">
         <Particles currentShape={currentShape} />
       </div>
@@ -189,18 +188,22 @@ const CookieBanner = ({
   onClickRefuse: () => void;
   className?: string;
 }) => {
+  const [isVisible, setIsVisible] = useState(show);
+
+  useEffect(() => {
+    if (show) {
+      setIsVisible(true);
+    } else {
+      setIsVisible(true);
+    }
+  }, [show]);
+
   return (
-    <Transition
-      show={show}
-      enter="transition-opacity duration-300"
-      appear={true}
-      enterFrom="opacity-0"
-      enterTo="opacity-100"
-      leave="transition-opacity duration-300"
-      leaveFrom="opacity-100"
-      leaveTo="opacity-0"
+    <div
       className={classNames(
         "z-30 flex w-64 flex-col gap-3 rounded-xl border border-structure-100 bg-white p-4 shadow-xl",
+        "s-transition-opacity s-duration-300 s-ease-in-out",
+        isVisible ? "s-opacity-100" : "s-opacity-0",
         className || ""
       )}
     >
@@ -221,19 +224,24 @@ const CookieBanner = ({
           variant="outline"
           size="sm"
           label="Reject"
-          onClick={onClickRefuse}
+          onClick={() => {
+            setIsVisible(false);
+            onClickRefuse();
+          }}
         />
         <Button
           variant="highlight"
           size="sm"
           label="Accept All"
-          onClick={onClickAccept}
+          onClick={() => {
+            setIsVisible(false);
+            onClickAccept();
+          }}
         />
       </div>
-    </Transition>
+    </div>
   );
 };
-
 const Header = () => {
   return (
     <Head>

@@ -20,14 +20,16 @@ import { SpaceAppsList } from "@app/components/spaces/SpaceAppsList";
 import type { SpaceLayoutProps } from "@app/components/spaces/SpaceLayout";
 import { SpaceLayout } from "@app/components/spaces/SpaceLayout";
 import { SpaceResourcesList } from "@app/components/spaces/SpaceResourcesList";
+import config from "@app/lib/api/config";
 import {
   augmentDataSourceWithConnectorDetails,
   getDataSources,
 } from "@app/lib/api/data_sources";
 import { isManaged } from "@app/lib/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import type { ActionApp } from "@app/lib/registry";
+import { getDustProdActionRegistry } from "@app/lib/registry";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-
 export const getServerSideProps = withDefaultUserAuthRequirements<
   SpaceLayoutProps & {
     category: DataSourceViewCategory;
@@ -36,6 +38,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     space: SpaceType;
     systemSpace: SpaceType;
     integrations: DataSourceIntegration[];
+    registryApps: ActionApp[] | null;
   }
 >(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
@@ -118,6 +121,14 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     }
   }
 
+  const isDustAppsSpace =
+    owner.sId === config.getDustAppsWorkspaceId() &&
+    space.sId === config.getDustAppsSpaceId();
+
+  const registryApps = isDustAppsSpace
+    ? Object.values(getDustProdActionRegistry()).map((action) => action.app)
+    : null;
+
   return {
     props: {
       category: context.query.category as DataSourceViewCategory,
@@ -130,6 +141,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       space: space.toJSON(),
       systemSpace: systemSpace.toJSON(),
       integrations,
+      registryApps,
     },
   };
 });
@@ -143,6 +155,7 @@ export default function Space({
   space,
   systemSpace,
   integrations,
+  registryApps,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   return (
@@ -179,6 +192,7 @@ export default function Space({
           onSelect={(sId) => {
             void router.push(`/w/${owner.sId}/spaces/${space.sId}/apps/${sId}`);
           }}
+          registryApps={registryApps}
         />
       ) : (
         <SpaceResourcesList

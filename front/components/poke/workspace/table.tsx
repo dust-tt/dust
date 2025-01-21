@@ -68,7 +68,9 @@ export function WorkspaceInfoTable({
               <PokeTableCell>{workspaceVerifiedDomain?.domain}</PokeTableCell>
             </PokeTableRow>
             <PokeTableRow>
-              <PokeTableCell>Extension blacklisted domains</PokeTableCell>
+              <PokeTableCell className="max-w-48">
+                Extension blacklisted domains/URLs
+              </PokeTableCell>
               <PokeTableCell>
                 {extensionConfig?.blacklistedDomains.length
                   ? extensionConfig.blacklistedDomains.join(", ")

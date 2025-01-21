@@ -27,7 +27,7 @@ import {
 import { getRefs } from "@app/lib/api/assistant/citations";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentWebsearchAction } from "@app/lib/models/assistant/actions/websearch";
-import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
+import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import logger from "@app/logger/logger";
 
 interface WebsearchActionBlob {
@@ -211,7 +211,7 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
 
     // "assitsant-v2-websearch" has no model interaction.
     const config = cloneBaseConfig(
-      DustProdActionRegistry["assistant-v2-websearch"].config
+      getDustProdAction("assistant-v2-websearch").config
     );
 
     config.SEARCH.num = numResults;

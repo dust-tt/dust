@@ -944,7 +944,7 @@ impl LLM for OpenAILLM {
             &messages,
             functions,
             function_call,
-            temperature,
+            if model_is_o1 { 1.0 } else { temperature },
             top_p,
             n,
             stop,

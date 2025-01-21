@@ -18,6 +18,7 @@ export type StoredTokens = {
 
 export type StoredUser = UserTypeWithExtensionWorkspaces & {
   selectedWorkspace: string | null;
+  dustDomain: string;
 };
 
 /**
@@ -43,6 +44,7 @@ export const getStoredTokens = async (): Promise<StoredTokens | null> => {
     "refreshToken",
     "expiresAt",
   ]);
+
   if (result.accessToken && result.expiresAt) {
     return {
       accessToken: result.accessToken,
@@ -81,12 +83,14 @@ export const setConversationsContext = async (
  */
 
 export const saveUser = async (
-  user: UserTypeWithExtensionWorkspaces
+  user: UserTypeWithExtensionWorkspaces,
+  dustDomain: string
 ): Promise<StoredUser> => {
   const storedUser: StoredUser = {
     ...user,
     selectedWorkspace:
       user.workspaces.length === 1 ? user.workspaces[0].sId : null,
+    dustDomain,
   };
   await chrome.storage.local.set({ user: storedUser });
   return storedUser;

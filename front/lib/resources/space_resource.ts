@@ -89,9 +89,11 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   ) {
     assert(auth.isAdmin(), "Only admins can call `makeDefaultsForWorkspace`");
 
-    const existingSpaces = await this.listWorkspaceDefaultSpaces(auth);
+    const existingSpaces = await this.listWorkspaceDefaultSpaces(auth, {
+      includeConversationsSpace: true,
+    });
     const systemSpace =
-      existingSpaces.find((s) => s.kind === "system") ||
+      existingSpaces.find((s) => s.isSystem()) ||
       (await SpaceResource.makeNew(
         {
           name: "System",
@@ -102,7 +104,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       ));
 
     const globalSpace =
-      existingSpaces.find((s) => s.kind === "global") ||
+      existingSpaces.find((s) => s.isGlobal()) ||
       (await SpaceResource.makeNew(
         {
           name: "Company Data",
@@ -113,7 +115,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       ));
 
     const conversationsSpace =
-      existingSpaces.find((s) => s.kind === "conversations") ||
+      existingSpaces.find((s) => s.isConversations()) ||
       (await SpaceResource.makeNew(
         {
           name: "Conversations",

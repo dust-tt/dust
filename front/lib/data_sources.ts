@@ -1,6 +1,5 @@
 import type {
   ConnectorProvider,
-  ContentNodesViewType,
   CoreAPIDocument,
   DataSourceType,
   DataSourceViewType,
@@ -96,16 +95,11 @@ export function supportsStructuredData(ds: DataSource): boolean {
   );
 }
 
-export function canBeExpanded(
-  viewType: ContentNodesViewType,
-  ds?: DataSource
-): boolean {
+export function canBeExpanded(ds?: DataSource): boolean {
   if (!ds) {
     return false;
   }
-  // Folders with viewType "documents" are always considered leaf items.
-  // For viewType "tables", folders are not leaf items because users need to select a specific table.
-  return !isFolder(ds) || viewType === "tables";
+  return true;
 }
 
 export function getDataSourceNameFromView(dsv: DataSourceViewType): string {
