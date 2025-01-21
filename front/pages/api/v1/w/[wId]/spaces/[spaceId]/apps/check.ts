@@ -16,7 +16,7 @@ import { apiError } from "@app/logger/withlogging";
 
 /**
  * @ignoreswagger
- * System API key only endpoint. Undocumented.
+ * Internal endpoint for CI. Undocumented.
  */
 async function handler(
   req: NextApiRequest,
