@@ -92,7 +92,7 @@ const FILE_FORMATS = {
   "text/tab-separated-values": { cat: "delimited", exts: [".tsv"] },
 
   // Data
-  "text/plain": { cat: "data", exts: [".txt"] },
+  "text/plain": { cat: "data", exts: [".txt", ".log", ".cfg", ".conf"] },
   "text/markdown": { cat: "data", exts: [".md", ".markdown"] },
   "text/vnd.dust.attachment.slack.thread": { cat: "data", exts: [".txt"] },
   "text/calendar": { cat: "data", exts: [".ics"] },
@@ -118,6 +118,28 @@ const FILE_FORMATS = {
   "text/typescript": { cat: "code", exts: [".ts", ".tsx"] },
   "application/x-sh": { cat: "code", exts: [".sh"] },
   "text/x-sh": { cat: "code", exts: [".sh"] },
+  "text/x-python": { cat: "code", exts: [".py"] },
+  "text/x-python-script": { cat: "code", exts: [".py"] },
+  "application/x-yaml": { cat: "code", exts: [".yaml", ".yml"] },
+  "text/yaml": { cat: "code", exts: [".yaml", ".yml"] },
+  "text/vnd.yaml": { cat: "code", exts: [".yaml", ".yml"] },
+  "text/x-c": {
+    cat: "code",
+    exts: [".c", ".cc", ".cpp", ".cxx", ".dic", ".h", ".hh"],
+  },
+  "text/x-csharp": { cat: "code", exts: [".cs"] },
+  "text/x-java-source": { cat: "code", exts: [".java"] },
+  "text/x-php": { cat: "code", exts: [".php"] },
+  "text/x-ruby": { cat: "code", exts: [".rb"] },
+  "text/x-sql": { cat: "code", exts: [".sql"] },
+  "text/x-swift": { cat: "code", exts: [".swift"] },
+  "text/x-rust": { cat: "code", exts: [".rs"] },
+  "text/x-go": { cat: "code", exts: [".go"] },
+  "text/x-kotlin": { cat: "code", exts: [".kt", ".kts"] },
+  "text/x-scala": { cat: "code", exts: [".scala"] },
+  "text/x-groovy": { cat: "code", exts: [".groovy"] },
+  "text/x-perl": { cat: "code", exts: [".pl", ".pm"] },
+  "text/x-perl-script": { cat: "code", exts: [".pl", ".pm"] },
   // declare type here using satisfies to allow flexible typing for keys, FileFormat type for values and yet infer the keys of FILE_FORMATS correctly below
 } as const satisfies Record<string, FileFormat>;
 
