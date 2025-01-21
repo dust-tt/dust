@@ -401,6 +401,7 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
         name: node.name,
         parentInternalId: node.parentInternalId,
         mimeType: node.mimeType,
+        webUrl: node.webUrl,
       }))
     );
 

@@ -13,12 +13,18 @@ const log = console.error;
 
 export const useAuthHook = () => {
   const [tokens, setTokens] = useState<StoredTokens | null>(null);
-  const isAuthenticated = useMemo(
-    () => !!(tokens?.accessToken && tokens.expiresAt > Date.now()),
-    [tokens]
-  );
   const [user, setUser] = useState<StoredUser | null>(null);
   const [authError, setAuthError] = useState<AuthError | null>(null);
+
+  const isAuthenticated = useMemo(
+    () =>
+      !!(
+        tokens?.accessToken &&
+        tokens.expiresAt > Date.now() &&
+        user?.dustDomain
+      ),
+    [tokens, user]
+  );
 
   const isUserSetup = !!(user && user.sId && user.selectedWorkspace);
   const [isLoading, setIsLoading] = useState<boolean>(true);

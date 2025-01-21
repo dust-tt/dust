@@ -1,11 +1,6 @@
-import axios from "axios";
-
-import { client, v2 } from "@datadog/datadog-api-client";
 import assert from "assert";
-import {
-  COUNT,
-  GAUGE,
-} from "@datadog/datadog-api-client/dist/packages/datadog-api-client-v2/models/MetricIntakeType";
+import axios from "axios";
+import { StatsD } from "hot-shots";
 
 const { QDRANT_NODES, QDRANT_MONITORING_API_KEY } = process.env;
 
@@ -35,15 +30,8 @@ const QDRANT_METRICS_TO_WATCH: Record<
   ],
 };
 
-// This automatically pulls API keys from env vars DD_API_KEY.
-const configuration = client.createConfiguration();
-
-configuration.setServerVariables({
-  site: "datadoghq.eu", // We're using the EU site for Datadog.
-});
-
-const datadogMetricsApi = new v2.MetricsApi(configuration);
 const qdrantClusters = QDRANT_NODES.split(",");
+const statsClient = new StatsD();
 
 // Example: "https://node-3-xyz123abc-456-789-xyz-cloud.example.com:6333".
 const NODE_AND_CLUSTER_REGEXP = /https:\/\/(node-\d+)-(.+)\:\d+/;
@@ -97,16 +85,11 @@ function formatMetricName(rawMetricName: string) {
   return `qdrant.${rawMetricName.replace("_", ".")}`;
 }
 
-async function fetchPrometheusMetrics(
-  clusterNodeUrl: string
-): Promise<v2.MetricSeries[]> {
-  const metrics: v2.MetricSeries[] = [];
-
+async function fetchPrometheusMetrics(clusterNodeUrl: string): Promise<void> {
   const found = clusterNodeUrl.match(NODE_AND_CLUSTER_REGEXP);
   if (!found) {
     console.error(`Invalid node url ${clusterNodeUrl} -- skipping`);
-
-    return [];
+    return;
   }
 
   const [, node, clusterName] = found;
@@ -124,13 +107,7 @@ async function fetchPrometheusMetrics(
       // Ignore comments.
       .filter((l: string) => !l.startsWith("#"));
 
-    // Create a single timestamp for all Prometheus metrics retrievals to ensure histogram consistency.
-    const timestamp = Math.floor(Date.now() / 1000);
-    const clusterTags = [
-      "resource:qdrant",
-      `cluster:${clusterName}`,
-      `node:${node}`,
-    ];
+    const tags = [`cluster:${clusterName}`, `node:${node}`];
 
     for (const metric of metricLines) {
       const metricDetails = extractMetricDetails(metric);
@@ -140,62 +117,25 @@ async function fetchPrometheusMetrics(
       }
 
       const { name, labels, value } = metricDetails;
-
       const metricName = formatMetricName(name);
-      const metricTags: Array<string> = [
-        ...clusterTags,
+      const metricTags = [
+        ...tags,
         ...Object.entries(labels).map(([key, value]) => `${key}:${value}`),
       ];
 
-      // Use the raw metric name to determine if it should be reported.
       if (QDRANT_METRICS_TO_WATCH.gauge_metrics.includes(name)) {
-        metrics.push({
-          metric: metricName,
-          points: [
-            {
-              timestamp,
-              value: parseFloat(value),
-            },
-          ],
-          tags: metricTags,
-          type: GAUGE,
-        });
+        statsClient.gauge(metricName, parseFloat(value), metricTags);
       } else if (QDRANT_METRICS_TO_WATCH.count_metrics.includes(name)) {
-        metrics.push({
-          metric: metricName,
-          points: [
-            {
-              timestamp,
-              value: parseInt(value),
-            },
-          ],
-          tags: metricTags,
-          type: COUNT,
-        });
+        statsClient.increment(metricName, parseInt(value), metricTags);
       }
     }
   } catch (error) {
     console.error("Error fetching Prometheus metrics:", error);
   }
-
-  return metrics;
-}
-
-// Send metrics to Datadog.
-async function sendMetricsToDatadog(metrics: v2.MetricSeries[]) {
-  try {
-    await datadogMetricsApi.submitMetrics({ body: { series: metrics } });
-  } catch (error) {
-    console.error("Error sending metrics to Datadog:", error);
-  }
 }
 
 export async function collectMetricsFromQdrant() {
   for (const clusterNodeUrl of qdrantClusters) {
-    const metricsForCluster = await fetchPrometheusMetrics(clusterNodeUrl);
-
-    if (metricsForCluster.length > 0) {
-      await sendMetricsToDatadog(metricsForCluster);
-    }
+    await fetchPrometheusMetrics(clusterNodeUrl);
   }
 }

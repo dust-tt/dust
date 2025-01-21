@@ -367,7 +367,6 @@ export default function AppView({
                 await handleNewBlock(null, blockType);
               }}
               spec={spec}
-              direction="down"
               small={false}
             />
             <Button
@@ -475,7 +474,6 @@ export default function AppView({
                     await handleNewBlock(null, blockType);
                   }}
                   spec={spec}
-                  direction="up"
                   small={false}
                 />
               </div>

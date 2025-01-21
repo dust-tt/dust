@@ -7,7 +7,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { getUserForWorkspace } from "@app/lib/api/user";
-import { Authenticator, getSession } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
+import type { SessionWithUser } from "@app/lib/iam/provider";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { apiError } from "@app/logger/withlogging";
@@ -23,9 +24,9 @@ const PostRoleUserRequestBody = t.type({
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<PostRoleUserResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<PostRoleUserResponseBody>>,
+  session: SessionWithUser
 ): Promise<void> {
-  const session = await getSession(req, res);
   const auth = await Authenticator.fromSuperUserSession(
     session,
     req.query.wId as string

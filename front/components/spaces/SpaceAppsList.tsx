@@ -138,7 +138,7 @@ interface SpaceAppsListProps {
   onSelect: (sId: string) => void;
   owner: LightWorkspaceType;
   space: SpaceType;
-  registryApps?: ActionApp[];
+  registryApps?: ActionApp[] | null;
 }
 
 export const SpaceAppsList = ({
