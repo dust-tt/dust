@@ -39,16 +39,15 @@ export type ScopeType =
   | "delete:file"
   | "read:agent";
 
-export const Auth0JwtPayloadSchema = t.type({
-  azp: t.string,
-  exp: t.number,
-  scope: t.string,
-  sub: t.string,
-  [`${process.env.AUTH0_CLAIM_NAMESPACE}region`]: t.union([
-    t.string,
-    t.undefined,
-  ]),
-});
+export const Auth0JwtPayloadSchema = t.intersection([
+  t.type({
+    azp: t.string,
+    exp: t.number,
+    scope: t.string,
+    sub: t.string,
+  }),
+  t.record(t.string, t.union([t.string, t.undefined])),
+]);
 
 export type Auth0JwtPayload = t.TypeOf<typeof Auth0JwtPayloadSchema> &
   jwt.JwtPayload;
