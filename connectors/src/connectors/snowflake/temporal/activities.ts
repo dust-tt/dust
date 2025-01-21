@@ -177,13 +177,14 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
 
       for (const schema of schemasMissingFromDb) {
         const internalId = [db.name, schema.name].join(".");
-        await RemoteSchemaModel.create({
+        const createdSchema = await RemoteSchemaModel.create({
           connectorId,
           internalId,
           name: schema.name,
           databaseName: db.name,
           permission: "inherited",
         });
+        allSchemas.push(createdSchema);
       }
     }
   }
