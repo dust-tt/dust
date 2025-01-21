@@ -11,7 +11,10 @@ import type { sheets_v4 } from "googleapis";
 import { google } from "googleapis";
 import type { OAuth2Client } from "googleapis-common";
 
-import { getSourceUrlForGoogleDriveSheet } from "@connectors/connectors/google_drive";
+import {
+  getSourceUrlForGoogleDriveFiles,
+  getSourceUrlForGoogleDriveSheet,
+} from "@connectors/connectors/google_drive";
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import { getInternalId } from "@connectors/connectors/google_drive/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
@@ -511,6 +514,7 @@ export async function syncSpreadSheet(
         parentId: parents[1] || null,
         title: spreadsheet.data.properties?.title ?? "Untitled Spreadsheet",
         mimeType: "application/vnd.google-apps.spreadsheet",
+        sourceUrl: getSourceUrlForGoogleDriveFiles(file),
       });
 
       const successfulSheetIdImports: number[] = [];
