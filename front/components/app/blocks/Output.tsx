@@ -1,7 +1,10 @@
-import { ClipboardIcon, Hoverable, Tooltip } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
-import type { AppType, SpecificationBlockType } from "@dust-tt/types";
-import type { TraceType } from "@dust-tt/types";
+import { Button, ClipboardIcon } from "@dust-tt/sparkle";
+import type {
+  AppType,
+  SpecificationBlockType,
+  TraceType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import {
   CheckCircleIcon,
   ChevronDownIcon,
@@ -339,16 +342,12 @@ const JsonCopyLink = ({ value }: { value: string }) => {
       {copied ? (
         <div className="text-sm text-gray-400">Copied!</div>
       ) : (
-        <Tooltip
-          label="Copy JSON to clipboard"
-          trigger={
-            <Hoverable
-              className="cursor-pointer text-sm font-bold text-gray-400"
-              onClick={handleClick}
-            >
-              <ClipboardIcon />
-            </Hoverable>
-          }
+        <Button
+          onClick={handleClick}
+          tooltip="Copy JSON to clipboard"
+          icon={ClipboardIcon}
+          size="mini"
+          variant="ghost-secondary"
         />
       )}
     </div>
