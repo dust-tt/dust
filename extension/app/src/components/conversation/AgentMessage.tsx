@@ -174,11 +174,7 @@ export function AgentMessage({
     { index: number; document: MarkdownCitation }[]
   >([]);
 
-  const isGlobalAgent = useMemo(() => {
-    return Object.values(GLOBAL_AGENTS_SID).includes(
-      message.configuration.sId as GLOBAL_AGENTS_SID
-    );
-  }, [message.configuration.sId]);
+  const isGlobalAgent = message.configuration.id === -1;
 
   const shouldStream = (() => {
     if (message.status !== "created") {
