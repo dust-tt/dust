@@ -1,5 +1,4 @@
 import React from "react";
-
 import {
   Carousel,
   CarouselContent,
@@ -15,40 +14,68 @@ import { KnowledgeCaroussel } from "@app/pages/home/solutions/knowledge";
 import { MarketingCaroussel } from "@app/pages/home/solutions/marketing";
 import { RecruitingCaroussel } from "@app/pages/home/solutions/recruiting-people";
 import { SalesCaroussel } from "@app/pages/home/solutions/sales";
+import { Button } from "@dust-tt/sparkle";
 
 export function VerticalSection() {
+  const carouselSections = [
+    { title: "Customer Support", component: CustomerCaroussel },
+    { title: "Marketing", component: MarketingCaroussel },
+    { title: "Recruiting", component: RecruitingCaroussel },
+    { title: "Engineering", component: EngineeringCaroussel },
+    { title: "Knowledge", component: KnowledgeCaroussel },
+    { title: "Data Analytics", component: DataCaroussel },
+    { title: "Sales", component: SalesCaroussel },
+  ];
+
+  const [api, setApi] = React.useState<any>(null);
+  const [activeIndex, setActiveIndex] = React.useState(0);
+
+  // Update active index when carousel moves
+  React.useEffect(() => {
+    if (!api) return;
+
+    const onSelect = () => {
+      setActiveIndex(api.selectedScrollSnap());
+    };
+
+    api.on("select", onSelect);
+    return () => {
+      api.off("select", onSelect);
+    };
+  }, [api]);
+
+  const handleButtonClick = React.useCallback(
+    (index: number) => {
+      if (api) {
+        api.scrollTo(index);
+      }
+    },
+    [api]
+  );
+
   return (
     <div className="w-full">
-      <Carousel className="w-full rounded-3xl" isLooping={true}>
-        <div className="mb-6 flex items-center justify-between">
-          <H2 className="text-white">Accelerate every team</H2>
-          <div className="flex space-x-2">
-            <CarouselPrevious />
-            <CarouselNext />
+      <Carousel className="w-full" isLooping={true} setApi={setApi}>
+        <div className="mb-6">
+          <H2 className="mb-4 text-white">Accelerate every team</H2>
+          <div className="mb-4 flex flex-wrap gap-2">
+            {carouselSections.map((section, index) => (
+              <Button
+                key={index}
+                variant={activeIndex === index ? "primary" : "outline"}
+                size="sm"
+                label={section.title}
+                onClick={() => handleButtonClick(index)}
+              />
+            ))}
           </div>
         </div>
         <CarouselContent className="rounded-xl">
-          <CarouselItem className="basis-full">
-            <CustomerCaroussel />
-          </CarouselItem>
-          <CarouselItem className="basis-full">
-            <MarketingCaroussel />
-          </CarouselItem>
-          <CarouselItem className="basis-full">
-            <RecruitingCaroussel />
-          </CarouselItem>
-          <CarouselItem className="basis-full">
-            <EngineeringCaroussel />
-          </CarouselItem>
-          <CarouselItem className="basis-full">
-            <KnowledgeCaroussel />
-          </CarouselItem>
-          <CarouselItem className="basis-full">
-            <DataCaroussel />
-          </CarouselItem>
-          <CarouselItem className="basis-full">
-            <SalesCaroussel />
-          </CarouselItem>
+          {carouselSections.map(({ component: Component }, index) => (
+            <CarouselItem key={index}>
+              <Component />
+            </CarouselItem>
+          ))}
         </CarouselContent>
       </Carousel>
     </div>

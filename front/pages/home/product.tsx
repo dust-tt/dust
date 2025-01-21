@@ -9,12 +9,13 @@ import {
 } from "@app/components/home/ContentBlocks";
 import { BlogSection } from "@app/components/home/content/Product/BlogSection";
 import { DifferentiationSection } from "@app/components/home/content/Product/DifferentiationSection";
+import { ExtensibilitySection } from "@app/components/home/content/Product/ExtensibilitySection";
 import { ValuePropSection } from "@app/components/home/content/Product/ValuePropSection";
-// import { SecuritySection } from "@app/components/home/content/Product/SecuritySection";
-// import { UbiquitySection } from "@app/components/home/content/Product/UbiquitySection";
-// import type { DemoVideoProps } from "@app/components/home/content/Solutions/DemoVideoSection";
-// import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
-import { IntroSection } from "@app/components/home/content/Product/IntroSection";
+import { SecuritySection } from "@app/components/home/content/Product/SecuritySection";
+import { UbiquitySection } from "@app/components/home/content/Product/UbiquitySection";
+import type { DemoVideoProps } from "@app/components/home/content/Solutions/DemoVideoSection";
+import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
+import { ProductIntroSection } from "@app/components/home/content/Product/ProductIntroSection";
 import { CapabilitySection } from "@app/components/home/content/Product/CapabilitySection";
 import { VerticalSection } from "@app/components/home/content/Product/VerticalSection";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
@@ -29,11 +30,11 @@ export async function getServerSideProps() {
   };
 }
 
-// export const DemoVideo: DemoVideoProps = {
-//   sectionTitle: "Dust in motion",
-//   videoUrl:
-//     "https://fast.wistia.net/embed/iframe/r0dwaexoez?seo=true&videoFoam=true",
-// };
+export const DemoVideo: DemoVideoProps = {
+  sectionTitle: "Dust in motion",
+  videoUrl:
+    "https://fast.wistia.net/embed/iframe/r0dwaexoez?seo=true&videoFoam=true",
+};
 
 const METRICS = {
   metrics: [
@@ -53,23 +54,22 @@ const METRICS = {
 export function Landing() {
   return (
     <>
-      <IntroSection />
-      <MetricSection {...METRICS}></MetricSection>
+      <ProductIntroSection />
       <CapabilitySection />
-      <VerticalSection />
-      <DifferentiationSection />
-      {/* <DemoVideoSection
+      <DemoVideoSection
         demoVideo={DemoVideo}
         fromColor="from-sky-200"
         toColor="to-sky-500"
-      /> */}
+      />
+      <UbiquitySection />
+      <ExtensibilitySection />
+      <SecuritySection />
       <QuoteSection
-        quote="We estimate that Dust AI assistants removes at least 50,000 hours of work per year, and perhaps a lot more. Some use cases pay off in a matter of hours!"
+        quote="Dust is so easy to use!"
         name="Aymeric Augustin"
         title="CTO at Qonto"
         logo="/static/landing/logos/qonto.png"
       />
-      <BlogSection />
       <div
         className={classNames(
           "col-span-12 flex flex-col items-center",
@@ -92,6 +92,7 @@ export function Landing() {
           </Link>
         </div>
       </div>
+      {/* <VerticalSection /> */}
     </>
   );
 }

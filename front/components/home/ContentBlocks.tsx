@@ -310,10 +310,10 @@ export const CarousselContentBlock = ({
           </CarouselItem>
         ))}
       </CarouselContent>
-      <div className="flex w-full flex-row items-center justify-end gap-3 px-8">
+      {/* <div className="flex w-full flex-row items-center justify-end gap-3 px-8">
         <CarouselPrevious />
         <CarouselNext />
-      </div>
+      </div> */}
     </Carousel>
   </div>
 );
