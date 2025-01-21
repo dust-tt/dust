@@ -27,6 +27,7 @@ async function upsertFoldersForConnector(
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const spreadsheetMimeType = "application/vnd.google-apps.spreadsheet";
+  // The 5 connectors with the most spreadsheets: 35k, 20k, 13k, 8k, 7k -> No need fo batching
   const spreadsheets = await GoogleDriveFiles.findAll({
     where: {
       connectorId: connector.id,
