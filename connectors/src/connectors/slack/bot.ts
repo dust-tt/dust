@@ -825,6 +825,7 @@ async function makeContentFragment(
   return new Ok({
     title: `Thread content from #${channel.channel.name}`,
     url: url,
+    sourceUrl: url, // Explicitly set sourceUrl to match ContentFragmentType
     fileId: fileRes.value.id,
     context: null,
   });
