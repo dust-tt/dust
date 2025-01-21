@@ -44,12 +44,8 @@ async function upsertFoldersForConnector(
     spreadsheets,
     async (spreadsheet) => {
       const { connectorId, driveFileId, name: spreadsheetName } = spreadsheet;
-      const parentGoogleIds = await getLocalParents(
-        connectorId,
-        driveFileId,
-        memo
-      );
-      const parents = parentGoogleIds.map((parent) => getInternalId(parent));
+      // getLocalParents returns internal IDs
+      const parents = await getLocalParents(connectorId, driveFileId, memo);
       if (execute) {
         await upsertDataSourceFolder({
           dataSourceConfig,
