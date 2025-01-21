@@ -1,29 +1,63 @@
 name: Check apps registry
 
 on:
-  push:
-    paths:
-      - front/lib/registry.ts
+  pull_request:
+    types: [opened, synchronize, reopened]
 
 jobs:
-  check-apps-registry:
+  check-changes:
     runs-on: ubuntu-latest
+    outputs:
+      file_changed: ${{ steps.check_modified.outputs.file_changed }}
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
         with:
-          node-version: 20.13.0
-          cache: "npm"
-          cache-dependency-path: ./front/package-lock.json
-      - name: Build types
-        working-directory: types
-        run: npm install && npm run build
-      - name: Build sdks/js
-        working-directory: sdks/js
-        run: npm install && npm run build
-      - name: Check registry apps against production environments
-        working-directory: front
+          fetch-depth: 0
+
+      - name: Check if file was modified
+        id: check_modified
+        run: |
+          git diff --name-only origin/main HEAD | grep -q "front/lib/registry.ts"
+          if [ $? -eq 0 ]; then
+            echo "file_changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "file_changed=false" >> $GITHUB_OUTPUT
+          fi
+
+  validate:
+    needs: check-changes
+    runs-on: ubuntu-latest
+    if: |
+      needs.check-changes.outputs.file_changed == 'true'
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup validation environment
+        run: |
+          # Setup any dependencies needed for validation
+          echo "Setting up validation environment"
+
+      - name: Run validation
+        id: validate
         run: |
           npm install
           npx tsx ./admin/check_registry_apps.ts --url https://dust.tt --wId 78bda07b39 --spaceId vlt_rICtlrSEpWqX --apiKey ${{ secrets.DUST_APPS_US_API_KEY }} | exit 1
           npx tsx ./admin/check_registry_apps.ts --url https://eu.dust.tt --wId W1YzXC9nhN --spaceId vlt_p5kel5XkwVqEnpKcdXzC --apiKey ${{ secrets.DUST_APPS_EU_API_KEY }} | exit 1
+
+      - name: Report Status
+        if: always()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const conclusion = '${{ steps.validate.outcome }}' === 'success' ? 'success' : 'failure';
+            await github.rest.checks.create({
+              ...context.repo,
+              name: 'Registry apps validation',
+              head_sha: context.sha,
+              status: 'completed',
+              conclusion: conclusion,
+              output: {
+                title: 'Registry apps validation',
+                summary: conclusion === 'success' ? 'Registry apps are ok' : 'Registry apps are not deployed in production'
+              }
+            });
