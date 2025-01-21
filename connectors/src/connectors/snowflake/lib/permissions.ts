@@ -39,7 +39,7 @@ export const fetchAvailableChildrenInSnowflake = async ({
 }): Promise<Result<ContentNode[], Error>> => {
   if (parentInternalId === null) {
     const syncedDatabases = await RemoteDatabaseModel.findAll({
-      where: { connectorId },
+      where: { connectorId, permission: "selected" },
     });
     const syncedDatabasesInternalIds = syncedDatabases.map(
       (db) => db.internalId
@@ -68,7 +68,7 @@ export const fetchAvailableChildrenInSnowflake = async ({
 
   if (parentType === "database") {
     const syncedSchemas = await RemoteSchemaModel.findAll({
-      where: { connectorId },
+      where: { connectorId, permission: "selected" },
     });
     const syncedSchemasInternalIds = syncedSchemas.map((db) => db.internalId);
 
@@ -133,8 +133,12 @@ export const fetchReadNodes = async ({
 }): Promise<Result<ContentNode[], Error>> => {
   const [availableDatabases, availableSchemas, availableTables] =
     await Promise.all([
-      RemoteDatabaseModel.findAll({ where: { connectorId } }),
-      RemoteSchemaModel.findAll({ where: { connectorId } }),
+      RemoteDatabaseModel.findAll({
+        where: { connectorId, permission: "selected" },
+      }),
+      RemoteSchemaModel.findAll({
+        where: { connectorId, permission: "selected" },
+      }),
       RemoteTableModel.findAll({
         where: { connectorId, permission: "selected" },
       }),
@@ -168,11 +172,15 @@ export const fetchSyncedChildren = async ({
 
   // We want to fetch all the schemas for which we have access to at least one table.
   if (parentType === "database") {
-    // If the database is in db we have full access to it (it means the user selected this node).
+    // If the database is in db with permission: "selected" we have full access to it (it means the user selected this node).
     // That means we have access to all schemas and tables.
     // In that case we can just loop on all tables and get the schemas.
     const availableDatabase = await RemoteDatabaseModel.findOne({
-      where: { connectorId, internalId: parentInternalId },
+      where: {
+        connectorId,
+        internalId: parentInternalId,
+        permission: "selected",
+      },
     });
     if (availableDatabase) {
       const availableTables = await RemoteTableModel.findAll({
@@ -191,11 +199,15 @@ export const fetchSyncedChildren = async ({
       return new Ok(schemas);
     }
 
-    // Otherwise we will fetch all the schemas we have full access to (the one in db),
+    // Otherwise we will fetch all the schemas we have full access to (the one in db with permission: "selected"),
     // + the schemas for the tables that was explicitly selected.
     const [availableSchemas, availableTables] = await Promise.all([
       RemoteSchemaModel.findAll({
-        where: { connectorId, databaseName: parentInternalId },
+        where: {
+          connectorId,
+          databaseName: parentInternalId,
+          permission: "selected",
+        },
       }),
       RemoteTableModel.findAll({
         where: {
