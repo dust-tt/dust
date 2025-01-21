@@ -27,7 +27,10 @@ import {
 } from "@dust-tt/types";
 
 import { DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY } from "@app/lib/api/assistant/actions/constants";
-import { getToolResultOutputCsvFileAndSnippet } from "@app/lib/api/assistant/actions/result_file_helpers";
+import {
+  getToolResultOutputCsvFileAndSnippet,
+  getToolResultOutputPlainTextFileAndSnippet,
+} from "@app/lib/api/assistant/actions/result_file_helpers";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
 import { renderConversationForModel } from "@app/lib/api/assistant/generation";
@@ -531,12 +534,10 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
       }
     }
 
-    function containsValidStructuredOutput(output: unknown): output is {
+    function containsFileOutput(output: unknown): output is {
       __dust_file?: {
-        content: Array<
-          Record<string, string | number | boolean | null | undefined>
-        >;
-        type: "structured";
+        type: string;
+        content: unknown;
       };
     } {
       return (
@@ -546,8 +547,22 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
         typeof output.__dust_file === "object" &&
         output.__dust_file !== null &&
         "type" in output.__dust_file &&
-        output.__dust_file.type === "structured" &&
-        "content" in output.__dust_file &&
+        "content" in output.__dust_file
+      );
+    }
+
+    function containsValidStructuredOutput(output: {
+      __dust_file?: { type: string; content: unknown };
+    }): output is {
+      __dust_file?: {
+        type: "structured";
+        content: Array<
+          Record<string, string | number | boolean | null | undefined>
+        >;
+      };
+    } {
+      return (
+        output.__dust_file?.type === "structured" &&
         Array.isArray(output.__dust_file.content) &&
         output.__dust_file.content.length > 0 &&
         output.__dust_file.content.every(
@@ -561,6 +576,20 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
                 typeof v === "boolean"
             )
         )
+      );
+    }
+
+    function containsValidDocumentOutput(output: {
+      __dust_file?: { type: string; content: unknown };
+    }): output is {
+      __dust_file?: {
+        type: "document";
+        content: string;
+      };
+    } {
+      return (
+        output.__dust_file?.type === "document" &&
+        typeof output.__dust_file.content === "string"
       );
     }
 
@@ -578,35 +607,56 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
 
     let resultFile: ActionGeneratedFileType | null = null;
 
-    // Check for structured output that should be converted to CSV
-    if (
-      containsValidStructuredOutput(sanitizedOutput) &&
-      sanitizedOutput.__dust_file
-    ) {
-      const fileTitle = getDustAppRunResultsFileTitle({
-        appName: app.name,
-        resultsFileContentType: "text/csv",
-      });
+    if (containsFileOutput(sanitizedOutput) && sanitizedOutput.__dust_file) {
+      if (containsValidStructuredOutput(sanitizedOutput)) {
+        const fileTitle = getDustAppRunResultsFileTitle({
+          appName: app.name,
+          resultsFileContentType: "text/csv",
+        });
 
-      const { file, snippet } = await getToolResultOutputCsvFileAndSnippet(
-        auth,
-        {
+        const { file, snippet } = await getToolResultOutputCsvFileAndSnippet(
+          auth,
+          {
+            title: fileTitle,
+            conversationId: conversation.sId,
+            results: sanitizedOutput.__dust_file.content,
+          }
+        );
+
+        resultFile = {
+          fileId: file.sId,
           title: fileTitle,
-          conversationId: conversation.sId,
-          results: sanitizedOutput.__dust_file.content,
-        }
-      );
+          contentType: file.contentType,
+          snippet: file.snippet,
+        };
 
-      resultFile = {
-        fileId: file.sId,
-        title: fileTitle,
-        contentType: file.contentType,
-        snippet: file.snippet,
-      };
+        delete sanitizedOutput.__dust_file;
+        updateParams.resultsFileId = file.id;
+        updateParams.resultsFileSnippet = snippet;
+      } else if (containsValidDocumentOutput(sanitizedOutput)) {
+        const fileTitle = getDustAppRunResultsFileTitle({
+          appName: app.name,
+          resultsFileContentType: "text/plain",
+        });
 
-      delete sanitizedOutput.__dust_file;
-      updateParams.resultsFileId = file.id;
-      updateParams.resultsFileSnippet = snippet;
+        const { file, snippet } =
+          await getToolResultOutputPlainTextFileAndSnippet(auth, {
+            title: fileTitle,
+            conversationId: conversation.sId,
+            content: sanitizedOutput.__dust_file.content,
+          });
+
+        resultFile = {
+          fileId: file.sId,
+          title: fileTitle,
+          contentType: file.contentType,
+          snippet: file.snippet,
+        };
+
+        delete sanitizedOutput.__dust_file;
+        updateParams.resultsFileId = file.id;
+        updateParams.resultsFileSnippet = snippet;
+      }
     }
 
     // Update DustAppRunAction with the output and file references
@@ -622,7 +672,7 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
         conversationId: conversation.sId,
         elapsed: Date.now() - now,
       },
-      "[ASSISTANT_TRACE] DustAppRun acion run execution"
+      "[ASSISTANT_TRACE] DustAppRun action run execution"
     );
 
     yield {
