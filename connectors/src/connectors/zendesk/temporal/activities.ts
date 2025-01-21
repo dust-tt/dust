@@ -2,7 +2,6 @@ import type { ModelId } from "@dust-tt/types";
 import { MIME_TYPES } from "@dust-tt/types";
 import _ from "lodash";
 
-import { getBrandInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
 import { syncArticle } from "@connectors/connectors/zendesk/lib/sync_article";
 import { syncCategory } from "@connectors/connectors/zendesk/lib/sync_category";
 import { syncTicket } from "@connectors/connectors/zendesk/lib/sync_ticket";
@@ -131,35 +130,28 @@ export async function syncZendeskBrandActivity({
   // upserting three folders to data_sources_folders (core): brand, help center, tickets
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
-  const brandInternalId = getBrandInternalId({ connectorId, brandId });
-  await upsertDataSourceFolder({
-    dataSourceConfig,
-    folderId: brandInternalId,
-    parents: [brandInternalId],
-    parentId: null,
-    title: brandInDb.name,
-    mimeType: MIME_TYPES.ZENDESK.BRAND,
-    sourceUrl: fetchedBrand?.url || brandInDb.url,
-  });
-
   // using the content node to get one source of truth regarding the parent relationship
-  const helpCenterNode = brandInDb.getHelpCenterContentNode(connectorId);
+  const helpCenterNode = brandInDb.getHelpCenterContentNode(connectorId, {
+    richTitle: true,
+  });
   await upsertDataSourceFolder({
     dataSourceConfig,
     folderId: helpCenterNode.internalId,
-    parents: [helpCenterNode.internalId, helpCenterNode.parentInternalId],
-    parentId: helpCenterNode.parentInternalId,
+    parents: [helpCenterNode.internalId],
+    parentId: null,
     title: helpCenterNode.title,
     mimeType: MIME_TYPES.ZENDESK.HELP_CENTER,
   });
 
   // using the content node to get one source of truth regarding the parent relationship
-  const ticketsNode = brandInDb.getTicketsContentNode(connectorId);
+  const ticketsNode = brandInDb.getTicketsContentNode(connectorId, {
+    richTitle: true,
+  });
   await upsertDataSourceFolder({
     dataSourceConfig,
     folderId: ticketsNode.internalId,
-    parents: [ticketsNode.internalId, ticketsNode.parentInternalId],
-    parentId: ticketsNode.parentInternalId,
+    parents: [ticketsNode.internalId],
+    parentId: null,
     title: ticketsNode.title,
     mimeType: MIME_TYPES.ZENDESK.TICKETS,
   });
