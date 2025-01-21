@@ -225,66 +225,46 @@ export const Stories: CustomerStory[] = [
 
 export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
-    emoji: "🖋️",
-    name: "@outboundDraft",
-    backgroundColor: "bg-emerald-300",
-    description: (
-      <>
-        Generates personalized and&nbsp;effective cold emails or&nbsp;follow-up
-        emails with the&nbsp;context of&nbsp;the relationship
-      </>
-    ),
-  },
-  {
-    emoji: "🔎",
-    name: "@accountSummary",
-    backgroundColor: "bg-emerald-300",
-    description: (
-      <>
-        Creates a&nbsp;snapshot by&nbsp;retrieving data from&nbsp;your CRM,
-        Slack, Notion, including health and&nbsp;sentiment to&nbsp;understand
-        where to&nbsp;focus attention
-      </>
-    ),
-  },
-  {
-    emoji: "📞",
-    name: "@callCoach",
-    backgroundColor: "bg-emerald-300",
-    description: (
-      <>
-        Points to&nbsp;battle cards, competitive intelligence,
-        and&nbsp;objection handling documentation to&nbsp;increase conversion
-      </>
-    ),
-  },
-  {
     emoji: "📊",
-    name: "@salesMetrics",
-    backgroundColor: "bg-emerald-300",
-    description: (
-      <>Answers any question on&nbsp;revenue metrics directly from&nbsp;Slack</>
-    ),
-  },
-  {
-    emoji: "🔮",
-    name: "@salesWisdom",
+    name: "@accountSnapshot",
     backgroundColor: "bg-emerald-300",
     description: (
       <>
-        Processes all call transcripts to&nbsp;extract recurring themes
-        or&nbsp;insights
+        Creates comprehensive account summaries by aggregating key historical
+        interactions from multiple data sources
       </>
     ),
   },
   {
-    emoji: "🚀",
-    name: "@salesShoutout",
+    emoji: "📝",
+    name: "@meetingRecap",
     backgroundColor: "bg-emerald-300",
     description: (
       <>
-        Highlights performance outliers across the&nbsp;team based on&nbsp;CRM
-        data and&nbsp;growth priorities
+        Automatically generates customized meeting summaries and follow-up
+        emails from call transcripts with enriched prospect information
+      </>
+    ),
+  },
+  {
+    emoji: "📋",
+    name: "@prospectHelper",
+    backgroundColor: "bg-emerald-300",
+    description: (
+      <>
+        Streamlines response process for security questionnaires and RFPs by
+        auto-populating with current company data
+      </>
+    ),
+  },
+  {
+    emoji: "🎯",
+    name: "@salesCoach",
+    backgroundColor: "bg-emerald-300",
+    description: (
+      <>
+        Analyzes call transcripts to provide pitch optimization feedback and
+        identify patterns in deal outcomes
       </>
     ),
   },

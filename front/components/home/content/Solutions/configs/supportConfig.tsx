@@ -209,72 +209,44 @@ export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
     emoji: "🤝",
     backgroundColor: "bg-sky-300",
-    name: "@supportExpert",
+    name: "@ticketSolver",
     description: (
       <>
-        Surfaces relevant information from&nbsp;your Help Center, FAQs,
-        knowledge base, online documentation, and&nbsp;tickets. Understands
-        errors codes without help from&nbsp;the tech&nbsp;team
+        Speeds up resolution by suggesting tailored responses drawn from your
+        knowledge base and past solutions.
       </>
     ),
   },
   {
     emoji: "📡",
     backgroundColor: "bg-sky-300",
-    name: "@productInfo",
+    name: "@supportAnalyst",
     description: (
       <>
-        Answer questions on&nbsp;product evolutions, engineering activity,
-        alerts, and&nbsp;downtime
+        Offers feedback to support agents using real-time best practices and
+        ticket insights for consistent, quality service.
       </>
     ),
   },
   {
     emoji: "🔮",
     backgroundColor: "bg-sky-300",
-    name: "@supportAnalyst",
+    name: "@docExpert",
     description: (
       <>
-        Identifies patterns and&nbsp;sentiment in&nbsp;support interactions
-        to&nbsp;highlight recurring needs and&nbsp;actionable initiatives based
-        on&nbsp;the internal product team nomenclature and&nbsp;infrastructure
+        Converts resolved tickets into searchable articles and FAQs, capturing
+        best practices for future use.
       </>
     ),
   },
   {
     emoji: "💡",
     backgroundColor: "bg-sky-300",
-    name: "@supportOnboarding",
+    name: "@CSInsights",
     description: (
       <>
-        Helps new members of&nbsp;the support team navigate the&nbsp;tools
-        and&nbsp;processes in&nbsp;their first weeks to&nbsp;set them up for
-        success
-      </>
-    ),
-  },
-  {
-    emoji: "🚨",
-    backgroundColor: "bg-sky-300",
-    name: "@supportAlerts",
-    description: (
-      <>
-        Connects to&nbsp;product and&nbsp;engineering communication channels
-        to&nbsp;surface ongoing engineering activity, incidents or&nbsp;issues
-        and&nbsp;highlight the&nbsp;possible impact on&nbsp;users
-        and&nbsp;customers
-      </>
-    ),
-  },
-  {
-    emoji: "😳",
-    backgroundColor: "bg-sky-300",
-    name: "@whatWouldUserDo",
-    description: (
-      <>
-        Crafts training, product documentation and&nbsp;training materials
-        through the&nbsp;eyes of&nbsp;your users to&nbsp;help improve content
-        ahead of&nbsp;issues
+        Identifies trends from customer feedback, helping teams proactively
+        improve service and satisfaction.
       </>
     ),
   },

@@ -305,7 +305,7 @@ export const CarousselContentBlock = ({
     <Carousel className="w-full" isLooping={true}>
       <CarouselContent>
         {assistants.map((block, index) => (
-          <CarouselItem key={index} className="basis-1/2 px-8 md:basis-1/3">
+          <CarouselItem key={index} className="basis-1/2 px-8 md:basis-1/4">
             <SolutionSectionAssistantBlock {...block} />
           </CarouselItem>
         ))}

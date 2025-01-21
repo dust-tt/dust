@@ -19,12 +19,12 @@ import { Button } from "@dust-tt/sparkle";
 export function VerticalSection() {
   const carouselSections = [
     { title: "Customer Support", component: CustomerCaroussel },
+    { title: "Sales", component: SalesCaroussel },
     { title: "Marketing", component: MarketingCaroussel },
     { title: "Recruiting", component: RecruitingCaroussel },
     { title: "Engineering", component: EngineeringCaroussel },
     { title: "Knowledge", component: KnowledgeCaroussel },
     { title: "Data Analytics", component: DataCaroussel },
-    { title: "Sales", component: SalesCaroussel },
   ];
 
   const [api, setApi] = React.useState<any>(null);
