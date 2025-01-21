@@ -5,6 +5,13 @@ import type { OAuth2Client } from "googleapis-common";
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
 import mainLogger from "@connectors/logger/logger";
 import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
+import { GoogleDriveFolders } from "@connectors/lib/models/google_drive";
+import { Op } from "sequelize";
+import {
+  getDriveFileId,
+  getInternalId,
+} from "@connectors/connectors/google_drive/temporal/utils";
+import assert from "assert";
 
 // Please consider using the memoized version getFileParentsMemoized instead of this one.
 async function getFileParents(
@@ -38,7 +45,26 @@ async function getFileParents(
     currentObject = parent;
   }
 
-  return parents;
+  // Avoid inserting parents outside of what we sync by checking GoogleDriveFolder.
+  const syncedFolders = await GoogleDriveFolders.findAll({
+    where: {
+      connectorId: connectorId,
+      folderId: {
+        [Op.in]: parents.map(getDriveFileId),
+      },
+    },
+  });
+  // we should return parents up to the most toplevel folder that is synced
+  // e.g. parents = [node_itself, A, B, C, D, E] and user selected C for sync:
+  // we should return [node_itself, A, B, C]
+  const syncedFolderIds = syncedFolders.map((folder) =>
+    getInternalId(folder.folderId)
+  );
+  const sliceIndex = parents
+    .reverse()
+    .findIndex((parent) => syncedFolderIds.includes(parent));
+  assert(sliceIndex !== -1, "No synced folder in node parents");
+  return parents.slice(0, parents.length - sliceIndex);
 }
 
 /**

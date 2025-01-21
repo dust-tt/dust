@@ -43,7 +43,7 @@ import {
   driveObjectToDustType,
   getAuthObject,
   getDriveClient,
-  getDriveId,
+  getDriveFileId,
   getInternalId,
 } from "@connectors/connectors/google_drive/temporal/utils";
 import type {
@@ -263,7 +263,8 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
     }
 
     try {
-      const parentDriveId = parentInternalId && getDriveId(parentInternalId);
+      const parentDriveId =
+        parentInternalId && getDriveFileId(parentInternalId);
       if (filterPermission === "read") {
         if (parentDriveId === null) {
           // Return the list of folders explicitly selected by the user.
@@ -543,7 +544,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
     const addedFolderIds: string[] = [];
     const removedFolderIds: string[] = [];
     for (const [internalId, permission] of Object.entries(permissions)) {
-      const id = getDriveId(internalId);
+      const id = getDriveFileId(internalId);
       if (permission === "none") {
         removedFolderIds.push(id);
         await GoogleDriveFolders.destroy({
@@ -601,7 +602,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
   }): Promise<Result<ContentNode[], Error>> {
     const driveFileIds = internalIds
       .filter((id) => !isGoogleSheetContentNodeInternalId(id))
-      .map(getDriveId);
+      .map(getDriveFileId);
     const sheetIds = internalIds
       .filter((id) => isGoogleSheetContentNodeInternalId(id))
       .map(getGoogleIdsFromSheetContentNodeInternalId);
