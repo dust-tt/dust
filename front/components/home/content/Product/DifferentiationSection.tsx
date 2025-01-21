@@ -43,16 +43,16 @@ export function DifferentiationSection() {
               className={classNames("relative")}
             >
               <Div3D depth={-20}>
-                <img src="/static/landing/slack/slack1.png" />
+                <img src="/static/landing/solutions/support1.png" />
               </Div3D>
               <Div3D depth={20} className="absolute top-0">
-                <img src="/static/landing/slack/slack2.png" />
+                <img src="/static/landing/solutions/support1.png" />
               </Div3D>
               <Div3D depth={40} className="absolute top-0">
-                <img src="/static/landing/slack/slack3.png" />
+                <img src="/static/landing/solutions/support1.png" />
               </Div3D>
               <Div3D depth={70} className="absolute top-0">
-                <img src="/static/landing/slack/slack4.png" />
+                <img src="/static/landing/solutions/support1.png" />
               </Div3D>
             </Hover3D>
           </ImgBlock>
