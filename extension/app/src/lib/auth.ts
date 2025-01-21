@@ -37,19 +37,11 @@ const DOMAIN_FOR_REGION: Record<RegionType, string> = {
   "europe-west1": "https://eu.dust.tt",
 };
 
-export const CONNECTION_STRATEGIES = [
-  "auth0",
-  "github",
-  "google",
+export const SUPPORTED_ENTERPRISE_CONNECTIONS_STRATEGIES = [
   "okta",
   "samlp",
   "waad",
 ];
-
-export type ConnectionStrategy = (typeof CONNECTION_STRATEGIES)[number];
-
-export const SUPPORTED_ENTERPRISE_CONNECTIONS_STRATEGIES: ConnectionStrategy[] =
-  ["okta", "samlp", "waad"];
 
 const log = console.error;
 
@@ -172,11 +164,9 @@ export function isValidEnterpriseConnectionName(
   }
 
   return (
-    user.connectionStrategy &&
     SUPPORTED_ENTERPRISE_CONNECTIONS_STRATEGIES.includes(
       user.connectionStrategy
-    ) &&
-    makeEnterpriseConnectionName(workspace.sId) === user.connection
+    ) && makeEnterpriseConnectionName(workspace.sId) === user.connection
   );
 }
 
@@ -192,18 +182,8 @@ const getDustDomain = (claims: Record<string, string>) => {
 const getConnectionDetails = (claims: Record<string, string>) => {
   const connectionStrategy = claims[CONNECTION_STRATEGY_CLAIM];
   const ws = claims[WORKSPACE_ID_CLAIM];
-
-  if (
-    !CONNECTION_STRATEGIES.includes(connectionStrategy as ConnectionStrategy)
-  ) {
-    return {
-      connectionStrategy: undefined,
-      connection: ws ? makeEnterpriseConnectionName(ws) : undefined,
-    };
-  }
-
   return {
-    connectionStrategy: connectionStrategy as ConnectionStrategy,
+    connectionStrategy,
     connection: ws ? makeEnterpriseConnectionName(ws) : undefined,
   };
 };

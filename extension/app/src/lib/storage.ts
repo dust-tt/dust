@@ -3,7 +3,6 @@ import type {
   ExtensionWorkspaceType,
   UserType,
 } from "@dust-tt/client";
-import type { ConnectionStrategy } from "@extension/lib/auth";
 import type { Auth0AuthorizeResponse } from "@extension/lib/messages";
 import type { UploadedFileWithKind } from "@extension/lib/types";
 
@@ -20,7 +19,7 @@ export type StoredTokens = {
 export type StoredUser = UserTypeWithExtensionWorkspaces & {
   selectedWorkspace: string | null;
   dustDomain: string;
-  connectionStrategy?: ConnectionStrategy;
+  connectionStrategy: string;
   connection?: string;
 };
 
@@ -88,7 +87,7 @@ export const setConversationsContext = async (
 export const saveUser = async (
   user: UserTypeWithExtensionWorkspaces,
   dustDomain: string,
-  connectionStrategy?: ConnectionStrategy,
+  connectionStrategy: string,
   connection?: string
 ): Promise<StoredUser> => {
   const storedUser: StoredUser = {
