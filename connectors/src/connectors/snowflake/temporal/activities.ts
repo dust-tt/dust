@@ -83,6 +83,16 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
   for (const db of unselectedDatabases) {
     await deleteDataSourceFolder({ dataSourceConfig, folderId: db.internalId });
     await db.destroy();
+    for (const schema of allSchemas.filter(
+      (schema) =>
+        schema.databaseName === db.name && schema.permission === "inherited"
+    )) {
+      await deleteDataSourceFolder({
+        dataSourceConfig,
+        folderId: schema.internalId,
+      });
+      await schema.destroy();
+    }
   }
 
   // removing the unselected schemas (from core and connectors)
