@@ -62,7 +62,7 @@ async function migrateDataSource({
                  WHERE data_source = :coreDataSourceId
                    AND node_id LIKE :pattern
                    AND id > :nextId
-                 ORDER BY timestamp, id
+                 ORDER BY id
                  LIMIT :batchSize
              )
              RETURNING id;`,
