@@ -77,3 +77,11 @@ export type DustAppRunSuccessEvent = {
   messageId: string;
   action: DustAppRunActionType;
 };
+
+export function getDustAppRunResultsFileTitle({
+  appName,
+}: {
+  appName: string;
+}): string {
+  return `${appName}_output.csv`;
+}

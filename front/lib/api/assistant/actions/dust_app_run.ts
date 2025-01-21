@@ -19,6 +19,7 @@ import type {
 import {
   BaseAction,
   Err,
+  getDustAppRunResultsFileTitle,
   getHeaderFromGroupIds,
   Ok,
   SUPPORTED_MODEL_CONFIGS,
@@ -733,14 +734,6 @@ export async function dustAppRunTypesFromAgentMessageIds(
       generatedFiles: resultsFile ? [resultsFile] : [],
     });
   });
-}
-
-export function getDustAppRunResultsFileTitle({
-  appName,
-}: {
-  appName: string;
-}): string {
-  return `${appName}_output.csv`;
 }
 
 export function getDustAppRunResultsFileAttachment({

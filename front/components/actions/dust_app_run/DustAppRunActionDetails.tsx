@@ -11,6 +11,7 @@ import {
   TableIcon,
 } from "@dust-tt/sparkle";
 import type { DustAppRunActionType } from "@dust-tt/types";
+import { getDustAppRunResultsFileTitle } from "@dust-tt/types";
 import { capitalize } from "lodash";
 import { useMemo } from "react";
 
@@ -95,12 +96,18 @@ function DustAppRunOutputDetails({ action }: { action: DustAppRunActionType }) {
           <Citation
             className="w-48 min-w-48 max-w-48"
             containerClassName="my-2"
-            tooltip={`${action.appName}_output.csv`}
+            tooltip={getDustAppRunResultsFileTitle({
+              appName: action.appName,
+            })}
           >
             <CitationIcons>
               <Icon visual={TableIcon} />
             </CitationIcons>
-            <CitationTitle>{`${action.appName}_output.csv`}</CitationTitle>
+            <CitationTitle>
+              {getDustAppRunResultsFileTitle({
+                appName: action.appName,
+              })}
+            </CitationTitle>
           </Citation>
 
           <Collapsible defaultOpen={false}>
