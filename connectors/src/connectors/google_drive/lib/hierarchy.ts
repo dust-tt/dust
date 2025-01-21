@@ -7,11 +7,13 @@ import mainLogger from "@connectors/logger/logger";
 import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
 import { GoogleDriveFolders } from "@connectors/lib/models/google_drive";
 import { Op } from "sequelize";
-import {
-  getDriveFileId,
-  getInternalId,
-} from "@connectors/connectors/google_drive/temporal/utils";
-import assert from "assert";
+
+// TODO(nodes-core): monitor and follow-up with either normalizing
+// the situation or throwing an error
+//
+// special id for nodes that are outside of users selection This should never
+// happen, but it does so for now we monitor
+const GOOGLE_OUTSIDE_SYNC_PARENT_ID = "gdrive_outside_sync";
 
 // Please consider using the memoized version getFileParentsMemoized instead of this one.
 async function getFileParents(
@@ -50,20 +52,28 @@ async function getFileParents(
     where: {
       connectorId: connectorId,
       folderId: {
-        [Op.in]: parents.map(getDriveFileId),
+        [Op.in]: parents,
       },
     },
+    attributes: ["folderId"],
   });
   // we should return parents up to the most toplevel folder that is synced
   // e.g. parents = [node_itself, A, B, C, D, E] and user selected C for sync:
   // we should return [node_itself, A, B, C]
-  const syncedFolderIds = syncedFolders.map((folder) =>
-    getInternalId(folder.folderId)
-  );
-  const sliceIndex = parents
+  const syncedFolderIds = syncedFolders.map((folder) => folder.folderId);
+  const sliceIndex = [...parents]
     .reverse()
     .findIndex((parent) => syncedFolderIds.includes(parent));
-  assert(sliceIndex !== -1, "No synced folder in node parents");
+
+  if (sliceIndex === -1) {
+    logger.info(
+      {
+        parents: parents.join(", "),
+      },
+      "Node outside of selected sync folders"
+    );
+    return [driveFile.id, GOOGLE_OUTSIDE_SYNC_PARENT_ID];
+  }
   return parents.slice(0, parents.length - sliceIndex);
 }
 
