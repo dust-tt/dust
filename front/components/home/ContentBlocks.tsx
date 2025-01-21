@@ -223,7 +223,7 @@ interface QuoteProps {
 }
 
 export const QuoteSection = ({ quote, logo, name, title }: QuoteProps) => (
-  <div className="col-span-12 flex flex-col rounded-4xl pb-2 pt-2 md:col-span-10 md:col-start-2 lg:col-span-10 lg:col-start-2">
+  <div className="col-span-12 flex flex-col rounded-4xl pb-2 pt-4 md:col-span-10 md:col-start-2 lg:col-span-10 lg:col-start-2">
     <div className="flex justify-center">
       <div className="flex items-center justify-center">
         <Image src={logo} width={200} height={48} alt="Malt Logo" />
