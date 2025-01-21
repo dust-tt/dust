@@ -13,7 +13,7 @@ export default function TrustedBy() {
       )}
     >
       <H3 className="w-full text-center text-white">
-        Trusted by 1000+ organizations
+        Trusted by 1,000+ organizations
       </H3>
 
       <div className="mx-auto mt-8 w-full max-w-screen-2xl px-8">

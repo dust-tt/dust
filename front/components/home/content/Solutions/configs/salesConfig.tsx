@@ -53,17 +53,15 @@ export const pageSettings: pageSettingsProps = {
   uptitle: "Sales",
   title: (
     <>
-      Less busywork,
-      <br />
-      more deals
+      Smart automations, <br></br>more deals
     </>
   ),
   from: "from-emerald-200",
   to: "to-emerald-500",
   description: (
     <>
-      Boost qualification, prospecting, and&nbsp;closing. Practice techniques
-      from&nbsp;demos to&nbsp;objection handling.
+      Optimize every touchpoint, automate administrative overhead, and close
+      deals faster.
     </>
   ),
 };
@@ -108,26 +106,26 @@ export const Hero: HeroProps = {
 };
 
 export const Benefits: BenefitsProps = {
-  sectionTitle: "Write less, sell more",
+  sectionTitle: "Elevate your sales reps to new possibilities ",
   items: [
     {
       icon: MagicIcon,
       title: "Focus on selling",
       description:
-        "Maximizing time spent selling, rather than finding, copying or pasting.",
+        "Maximize selling time by automating admin tasks and data entry.",
     },
     {
       icon: CheckCircleIcon,
       title: "Raise the odds of closing",
       description:
-        "Instantly uncover relevant information about your product and prospects",
+        "Instantly uncover relevant product or prospect insights to deliver personalized responses",
     },
 
     {
       icon: UserGroupIcon,
       title: "Boost team performance",
       description:
-        "Give your salespeople actionable feedback from their interactions.",
+        "Turn every rep into a top performer by sharing feedback and best practices.",
     },
   ],
 };
@@ -135,14 +133,12 @@ export const Benefits: BenefitsProps = {
 export const Metrics: MetricProps = {
   metrics: [
     {
-      value: "20%",
-      description: <>20% more time spent selling at Alan</>,
+      value: "90%",
+      description: <>faster RFP response times</>,
     },
     {
-      value: "5 min",
-      description: (
-        <>5 minutes to finalize all forms from 3h prior at Watershed</>
-      ),
+      value: "8h",
+      description: <> saved weekly per rep for selling</>,
     },
   ],
   from: "from-amber-200",
@@ -161,15 +157,15 @@ export const UseCases: UseCaseProps = {
       images: ["/static/landing/solutions/sales1.png"],
     },
     {
-      title: "Meeting recaps",
+      title: "Meeting follow-ups",
       content:
-        "Expedite recaps from meetings or calls, tailoring them to your specific needs.",
+        "Convert call transcripts into custom recaps and follow-up emails, enriched with prospect data.",
       images: ["/static/landing/solutions/sales2.png"],
     },
     {
       title: "Prospect questions",
       content:
-        "Address questions or RFPs instantly with concise, up-to-date information.",
+        "Auto-complete security forms & RFPs with up-to-date company information.",
       images: ["/static/landing/solutions/sales3.png"],
     },
     {
@@ -181,12 +177,20 @@ export const UseCases: UseCaseProps = {
   ],
 };
 
+// export const Quote: QuoteProps = {
+//   quote:
+//     "It's pretty miraculous. The assistant answers (correctly!) tons of questions that I used to deal with. It gets the nuance right and cites its sources.",
+//   name: "Everett Berry ",
+//   title: "Head of GTM Engineering at Clay",
+//   logo: "/static/landing/logos/clay.png",
+// };
+
 export const Quote: QuoteProps = {
   quote:
-    "It's pretty miraculous. The assistant answers (correctly!) tons of questions that I used to deal with. It gets the nuance right and cites its sources.",
-  name: "Everett Berry ",
-  title: "Head of GTM Engineering at Clay",
-  logo: "/static/landing/logos/clay.png",
+    "We built Dust assistants that do account summaries, meeting transcripts, CRM updates, follow-up email generation... This allowed Alan to reach 20%+ productivity gains in Sales productivity gains.",
+  name: "Charles Gorintin ",
+  title: "Co-founder at Alan",
+  logo: "/static/landing/logos/alan.png",
 };
 
 export const DemoVideo: DemoVideoProps = {
