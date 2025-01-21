@@ -3,7 +3,6 @@ import { makeScript } from "scripts/helpers";
 import { v4 as uuidv4 } from "uuid";
 
 import { getLocalParents } from "@connectors/connectors/google_drive/lib";
-import { getInternalId } from "@connectors/connectors/google_drive/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
@@ -43,13 +42,19 @@ async function upsertFoldersForConnector(
   await concurrentExecutor(
     spreadsheets,
     async (spreadsheet) => {
-      const { connectorId, driveFileId, name: spreadsheetName } = spreadsheet;
+      const {
+        connectorId,
+        driveFileId,
+        dustFileId,
+        name: spreadsheetName,
+      } = spreadsheet;
       // getLocalParents returns internal IDs
-      const parents = await getLocalParents(connectorId, driveFileId, memo);
+      const parents = await getLocalParents(connectorId, dustFileId, memo);
+
       if (execute) {
         await upsertDataSourceFolder({
           dataSourceConfig,
-          folderId: getInternalId(driveFileId),
+          folderId: dustFileId,
           parents,
           parentId: parents[1] || null,
           title: spreadsheetName,
@@ -57,11 +62,11 @@ async function upsertFoldersForConnector(
           sourceUrl: getSourceUrlForGoogleDriveSheet(driveFileId),
         });
         localLogger.info(
-          `Upserted spreadsheet folder ${getInternalId(driveFileId)} for ${spreadsheetName}`
+          `Upserted spreadsheet folder ${dustFileId} for ${spreadsheetName}`
         );
       } else {
         localLogger.info(
-          `Would upsert spreadsheet folder ${getInternalId(driveFileId)} for ${spreadsheetName}`
+          `Would upsert spreadsheet folder ${dustFileId} for ${spreadsheetName}`
         );
       }
     },
