@@ -19,7 +19,6 @@ import {
   assertNever,
   getProviderFromRetrievedDocument,
   getTitleFromRetrievedDocument,
-  GLOBAL_AGENTS_SID,
   isRetrievalActionType,
   isWebsearchActionType,
   removeNulls,
