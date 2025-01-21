@@ -2,8 +2,8 @@ import type {
   ConversationType,
   ConversationWithoutContentType,
   Result,
+  UserType,
 } from "@dust-tt/types";
-import type { UserType } from "@dust-tt/types";
 import { ConversationError, Err, Ok } from "@dust-tt/types";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";

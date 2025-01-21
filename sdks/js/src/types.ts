@@ -122,6 +122,34 @@ export const supportedImageFileFormats = {
   "image/webp": [".webp"],
 } as const;
 
+export enum GLOBAL_AGENTS_SID {
+  HELPER = "helper",
+  DUST = "dust",
+  SLACK = "slack",
+  GOOGLE_DRIVE = "google_drive",
+  NOTION = "notion",
+  GITHUB = "github",
+  INTERCOM = "intercom",
+  GPT35_TURBO = "gpt-3.5-turbo",
+  GPT4 = "gpt-4",
+  O1 = "o1",
+  O1_MINI = "o1-mini",
+  O1_HIGH_REASONING = "o1_high",
+  CLAUDE_3_OPUS = "claude-3-opus",
+  CLAUDE_3_SONNET = "claude-3-sonnet",
+  CLAUDE_3_HAIKU = "claude-3-haiku",
+  CLAUDE_2 = "claude-2",
+  CLAUDE_INSTANT = "claude-instant-1",
+  MISTRAL_LARGE = "mistral-large",
+  MISTRAL_MEDIUM = "mistral-medium",
+  //!\ TEMPORARY WORKAROUND: Renaming 'mistral' to 'mistral-small' is not feasible since
+  // it interferes with the retrieval of ongoing conversations involving this agent.
+  // Needed to preserve ongoing chat integrity due to 'sId=mistral' references in legacy messages.
+  MISTRAL_SMALL = "mistral",
+  GEMINI_PRO = "gemini-pro",
+  DEEPSEEK = "deepseek",
+}
+
 type OtherContentType = keyof typeof supportedOtherFileFormats;
 type ImageContentType = keyof typeof supportedImageFileFormats;
 
@@ -942,6 +970,18 @@ const AgentMessageTypeSchema = z.object({
 });
 export type AgentMessagePublicType = z.infer<typeof AgentMessageTypeSchema>;
 
+const AgentMesssageFeedbackSchema = z.object({
+  messageId: z.string(),
+  agentMessageId: z.number(),
+  userId: z.number(),
+  thumbDirection: z.union([z.literal("up"), z.literal("down")]),
+  content: z.string().nullable(),
+  createdAt: z.number(),
+  agentConfigurationId: z.string(),
+  agentConfigurationVersion: z.number(),
+  isConversationShared: z.boolean(),
+});
+
 const ConversationVisibilitySchema = FlexibleEnumSchema<
   "unlisted" | "workspace" | "deleted" | "test"
 >();
@@ -1554,6 +1594,28 @@ export const CreateConversationResponseSchema = z.object({
 export type CreateConversationResponseType = z.infer<
   typeof CreateConversationResponseSchema
 >;
+
+export const GetFeedbacksResponseSchema = z.object({
+  feedbacks: z.array(AgentMesssageFeedbackSchema),
+});
+
+export type GetFeedbacksResponseType = z.infer<
+  typeof GetFeedbacksResponseSchema
+>;
+
+export const PublicPostMessageFeedbackRequestBodySchema = z.object({
+  thumbDirection: z.string(),
+  feedbackContent: z.string().nullable().optional(),
+  isConversationShared: z.boolean().optional(),
+});
+
+export type PublicPostMessageFeedbackRequestBody = z.infer<
+  typeof PublicPostMessageFeedbackRequestBodySchema
+>;
+
+export const PostMessageFeedbackResponseSchema = z.object({
+  success: z.literal(true),
+});
 
 export const PostUserMessageResponseSchema = z.object({
   message: UserMessageSchema,
