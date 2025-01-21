@@ -130,10 +130,6 @@ export default handleAuth({
       defaultAuthorizationParams.login_hint = login_hint;
     }
 
-    if (isString(prompt)) {
-      defaultAuthorizationParams.prompt = prompt;
-    }
-
     return {
       authorizationParams: defaultAuthorizationParams,
       returnTo: "/api/login", // Note from seb, I think this is not used
