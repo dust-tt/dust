@@ -24,18 +24,15 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import {
-  CLAUDE_3_5_SONNET_20241022_MODEL_ID,
-  GPT_4O_MODEL_ID,
-  MISTRAL_LARGE_MODEL_ID,
-} from "@dust-tt/types";
-import {
   ASSISTANT_CREATIVITY_LEVEL_DISPLAY_NAMES,
   ASSISTANT_CREATIVITY_LEVEL_TEMPERATURES,
+  CLAUDE_3_5_SONNET_20241022_MODEL_ID,
   Err,
+  GPT_4O_MODEL_ID,
   md5,
+  MISTRAL_LARGE_MODEL_ID,
   Ok,
 } from "@dust-tt/types";
-import { Transition } from "@headlessui/react";
 import { CharacterCount } from "@tiptap/extension-character-count";
 import Document from "@tiptap/extension-document";
 import { History } from "@tiptap/extension-history";
@@ -243,7 +240,7 @@ export function InstructionScreen({
       editorProps: {
         attributes: {
           class:
-            "overflow-auto min-h-[240px] h-full border bg-structure-50 transition-all " +
+            "overflow-auto min-h-60 h-full border bg-structure-50 transition-all " +
             "duration-200 rounded-xl " +
             (instructionsError ||
             currentCharacterCount >= INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT
@@ -330,7 +327,7 @@ export function InstructionScreen({
         </div>
       </div>
       <div className="flex h-full flex-col gap-1">
-        <div className="relative h-full min-h-[240px] grow gap-1 p-px">
+        <div className="relative h-full min-h-60 grow gap-1 p-px">
           <EditorContent
             editor={editor}
             className="absolute bottom-0 left-0 right-0 top-0"
@@ -477,10 +474,7 @@ export function AdvancedSettings({
               </DropdownMenuTrigger>
               <DropdownMenuContent>
                 <DropdownMenuLabel label="Best performing models" />
-                <ScrollArea
-                  className="flex max-h-[300px] flex-col"
-                  hideScrollBar
-                >
+                <ScrollArea className="flex max-h-72 flex-col" hideScrollBar>
                   <ModelList
                     modelConfigs={bestPerformingModelConfigs}
                     onClick={(modelSettings) => {
@@ -586,7 +580,7 @@ function PromptHistory({
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent>
-        <ScrollArea className="flex max-h-[300px] flex-col">
+        <ScrollArea className="flex max-h-72 flex-col">
           {history.map((config) => (
             <DropdownMenuItem
               key={config.version}
@@ -639,6 +633,16 @@ function Suggestions({
   // the ref allows comparing previous instructions to current instructions
   // in the effect below
   const previousInstructions = useRef<string | null>(instructions);
+
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    if (suggestionsStatus !== "no_suggestions") {
+      setIsVisible(true);
+    } else {
+      setIsVisible(false);
+    }
+  }, [suggestionsStatus]);
 
   useEffect(() => {
     // update suggestions when (and only when) instructions change
@@ -723,14 +727,11 @@ function Suggestions({
   };
 
   return (
-    <Transition
-      show={suggestionsStatus !== "no_suggestions"}
-      enter="transition-[max-height] duration-1000"
-      enterFrom="max-h-0"
-      enterTo="max-h-full"
-      leave="transition-[max-height] duration-1000"
-      leaveFrom="max-h-full"
-      leaveTo="max-h-0"
+    <div
+      className={classNames(
+        "transition-all duration-1000 ease-in-out",
+        isVisible ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
+      )}
     >
       <div className="relative flex flex-col">
         <div className="flex items-center gap-2 text-base font-bold text-element-800">
@@ -785,7 +786,7 @@ function Suggestions({
           })()}
         </div>
       </div>
-    </Transition>
+    </div>
   );
 }
 
@@ -799,25 +800,19 @@ function AnimatedSuggestion({
   afterEnter?: () => void;
 }) {
   return (
-    <Transition
-      appear={true}
-      enter="transition-all ease-out duration-300"
-      enterFrom="opacity-0 w-0"
-      enterTo="opacity-100 w-[320px]"
-      leave="ease-in duration-300"
-      leaveFrom="opacity-100 w-[320px]"
-      leaveTo="opacity-0 w-0"
-      afterEnter={afterEnter}
+    <div
+      className="w-80 animate-[appear_0.3s_ease-out]"
+      onAnimationEnd={afterEnter}
     >
       <ContentMessage
         size="sm"
         title=""
         variant={variant}
-        className="h-full w-[308px]"
+        className="h-full w-80"
       >
         {suggestion}
       </ContentMessage>
-    </Transition>
+    </div>
   );
 }
 
