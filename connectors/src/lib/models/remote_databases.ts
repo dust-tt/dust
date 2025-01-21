@@ -13,6 +13,7 @@ export class RemoteDatabaseModel extends BaseModel<RemoteDatabaseModel> {
 
   declare internalId: string;
   declare name: string;
+  declare permission: "selected" | "unselected";
 
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
@@ -36,6 +37,10 @@ RemoteDatabaseModel.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
+    permission: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
   },
   {
     sequelize: sequelizeConnection,
@@ -55,6 +60,7 @@ export class RemoteSchemaModel extends BaseModel<RemoteSchemaModel> {
 
   declare internalId: string;
   declare name: string;
+  declare permission: "selected" | "unselected" | "inherited";
 
   declare databaseName: string;
 
@@ -67,6 +73,10 @@ RemoteSchemaModel.init(
       allowNull: false,
     },
     name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    permission: {
       type: DataTypes.STRING,
       allowNull: false,
     },
