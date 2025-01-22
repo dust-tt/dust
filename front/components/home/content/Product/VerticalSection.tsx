@@ -1,6 +1,5 @@
 import React from "react";
 import { Button } from "@dust-tt/sparkle";
-
 import {
   Carousel,
   CarouselContent,
@@ -31,7 +30,9 @@ export function VerticalSection() {
 
   // Update active index when carousel moves
   React.useEffect(() => {
-    if (!api) return;
+    if (!api) {
+      return;
+    }
 
     const onSelect = () => {
       setActiveIndex(api.selectedScrollSnap());
