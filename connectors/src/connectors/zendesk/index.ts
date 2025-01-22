@@ -635,7 +635,9 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       ...brandTickets.map((brand) =>
         brand.getTicketsContentNode(connectorId, { richTitle: true })
       ),
-      ...categories.map((category) => category.toContentNode(connectorId)),
+      ...categories.map((category) =>
+        category.toContentNode(connectorId, { expandable: true })
+      ),
       ...articles.map((article) => article.toContentNode(connectorId)),
       ...tickets.map((ticket) => ticket.toContentNode(connectorId)),
     ]);
