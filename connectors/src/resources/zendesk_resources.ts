@@ -537,7 +537,7 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     return categories.map((category) => category.get().brandId);
   }
 
-  static async fetchByBrandId({
+  static async fetchCategoriesNotSelectedInBrand({
     connectorId,
     brandId,
     batchSize = null,

@@ -403,11 +403,12 @@ export async function deleteCategoryBatchActivity({
     dataSourceId: dataSourceConfig.dataSourceId,
   };
 
-  const categoryIds = await ZendeskCategoryResource.fetchByBrandId({
-    connectorId,
-    brandId,
-    batchSize: ZENDESK_BATCH_SIZE,
-  });
+  const categoryIds =
+    await ZendeskCategoryResource.fetchCategoriesNotSelectedInBrand({
+      connectorId,
+      brandId,
+      batchSize: ZENDESK_BATCH_SIZE,
+    });
 
   await concurrentExecutor(
     categoryIds,
