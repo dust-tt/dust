@@ -177,6 +177,7 @@ export async function syncHelpCenterOnlyActivity({
     parents: [helpCenterInternalId],
     parentId: null,
     mimeType: MIME_TYPES.INTERCOM.HELP_CENTER,
+    timestampMs: currentSyncMs,
   });
 
   // If all children collections are not allowed anymore we delete the Help Center data
@@ -510,6 +511,7 @@ export async function syncTeamOnlyActivity({
     parents: [teamInternalId, getTeamsInternalId(connectorId)],
     parentId: getTeamsInternalId(connectorId),
     mimeType: MIME_TYPES.INTERCOM.TEAM,
+    timestampMs: currentSyncMs,
   });
 
   return true;
