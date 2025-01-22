@@ -1,14 +1,10 @@
 import type { ModelId } from "@dust-tt/types";
-import { MIME_TYPES } from "@dust-tt/types";
 
-import { getCategoryInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
   changeZendeskClientSubdomain,
   createZendeskClient,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
-import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
@@ -108,30 +104,6 @@ export async function forbidSyncZendeskHelpCenter({
 
   // updating the field helpCenterPermission to "none" for the brand
   await brand.revokeHelpCenterPermissions();
-
-  // updating the parents for the already selected categories to remove the Help Center
-  const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const selectedCategories =
-    await ZendeskCategoryResource.fetchByBrandIdReadOnly({
-      connectorId,
-      brandId,
-    });
-  for (const category of selectedCategories) {
-    const folderId = getCategoryInternalId({
-      connectorId,
-      brandId,
-      categoryId: category.categoryId,
-    });
-    await upsertDataSourceFolder({
-      dataSourceConfig,
-      folderId,
-      parents: [folderId],
-      parentId: null,
-      title: category.name,
-      mimeType: MIME_TYPES.ZENDESK.CATEGORY,
-      sourceUrl: category.url,
-    });
-  }
 
   return brand;
 }
