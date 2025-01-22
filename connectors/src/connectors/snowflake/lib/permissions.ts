@@ -191,10 +191,7 @@ export const fetchSyncedChildren = async ({
         },
       });
       const schemaContentNodes = schemas.map((schema) =>
-        getContentNodeFromInternalId(
-          [schema.databaseName, schema.name].join("."),
-          "read"
-        )
+        getContentNodeFromInternalId(schema.internalId, "read")
       );
       return new Ok(schemaContentNodes);
     }
