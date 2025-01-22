@@ -388,21 +388,21 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         // The brand is just a shortcut to set permissions for Help Center and Tickets at once.
         case "brand": {
           if (permission === "none") {
-            const updatedBrand = await forbidSyncZendeskBrand({
+            const brandWasUnselected = await forbidSyncZendeskBrand({
               connectorId,
               brandId,
             });
-            if (updatedBrand) {
+            if (brandWasUnselected) {
               toBeSignaledBrandIds.add(brandId);
             }
           }
           if (permission === "read") {
-            const wasBrandUpdated = await allowSyncZendeskBrand({
+            const brandWasSelected = await allowSyncZendeskBrand({
               connectorId,
               connectionId,
               brandId,
             });
-            if (wasBrandUpdated) {
+            if (brandWasSelected) {
               toBeSignaledBrandIds.add(brandId);
             }
           }
@@ -410,20 +410,21 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         }
         case "help-center": {
           if (permission === "none") {
-            const wasBrandHelpCenterUpdated = await forbidSyncZendeskHelpCenter(
-              { connectorId, brandId }
-            );
-            if (wasBrandHelpCenterUpdated) {
+            const helpCenterWasUnselected = await forbidSyncZendeskHelpCenter({
+              connectorId,
+              brandId,
+            });
+            if (helpCenterWasUnselected) {
               toBeSignaledHelpCenterIds.add(brandId);
             }
           }
           if (permission === "read") {
-            const wasBrandUpdated = await allowSyncZendeskHelpCenter({
+            const helpCenterWasSelected = await allowSyncZendeskHelpCenter({
               connectorId,
               connectionId,
               brandId,
             });
-            if (wasBrandUpdated) {
+            if (helpCenterWasSelected) {
               toBeSignaledHelpCenterIds.add(brandId);
             }
           }
@@ -431,21 +432,21 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         }
         case "tickets": {
           if (permission === "none") {
-            const wasBrandUpdated = await forbidSyncZendeskTickets({
+            const ticketsWereUnselected = await forbidSyncZendeskTickets({
               connectorId,
               brandId,
             });
-            if (wasBrandUpdated) {
+            if (ticketsWereUnselected) {
               toBeSignaledTicketsIds.add(brandId);
             }
           }
           if (permission === "read") {
-            const wasBrandUpdated = await allowSyncZendeskTickets({
+            const ticketsWereSelected = await allowSyncZendeskTickets({
               connectorId,
               connectionId,
               brandId,
             });
-            if (wasBrandUpdated) {
+            if (ticketsWereSelected) {
               toBeSignaledTicketsIds.add(brandId);
             }
           }
