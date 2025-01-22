@@ -193,7 +193,7 @@ makeScript(
     // start from startId if provided
     const startIndex = startId
       ? connectors.findIndex((c) => c.id === startId)
-      : -1;
+      : 0;
     if (startIndex === -1) {
       throw new Error(`Connector with id ${startId} not found`);
     }
