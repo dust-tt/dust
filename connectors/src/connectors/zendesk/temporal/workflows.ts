@@ -43,7 +43,6 @@ const {
   deleteBrandsWithNoPermissionActivity,
   deleteCategoryBatchActivity,
   deleteTicketBatchActivity,
-  deleteArticleBatchActivity,
   removeForbiddenCategoriesActivity,
 } = proxyActivities<typeof gc_activities>({
   startToCloseTimeout: "15 minutes",
@@ -448,14 +447,6 @@ export async function zendeskGarbageCollectionWorkflow({
   // cleaning the articles and categories of the brands that have no permission on their Help Center anymore
   brandIds = await getZendeskBrandsWithHelpCenterToDeleteActivity(connectorId);
   for (const brandId of brandIds) {
-    let hasMoreArticles = true;
-    while (hasMoreArticles) {
-      const { hasMore } = await deleteArticleBatchActivity({
-        connectorId,
-        brandId,
-      });
-      hasMoreArticles = hasMore;
-    }
     let hasMoreCategories = true;
     while (hasMoreCategories) {
       const { hasMore } = await deleteCategoryBatchActivity({

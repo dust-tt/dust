@@ -327,60 +327,6 @@ export async function deleteTicketBatchActivity({
 }
 
 /**
- * Deletes a batch of articles from the db and the data source for a brand.
- */
-export async function deleteArticleBatchActivity({
-  connectorId,
-  brandId,
-}: {
-  connectorId: number;
-  brandId: number;
-}): Promise<{ hasMore: boolean }> {
-  const connector = await ConnectorResource.fetchById(connectorId);
-  if (!connector) {
-    throw new Error("[Zendesk] Connector not found.");
-  }
-  const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const loggerArgs = {
-    workspaceId: dataSourceConfig.workspaceId,
-    connectorId,
-    provider: "zendesk",
-    workflowId: getZendeskGarbageCollectionWorkflowId(connectorId),
-    dataSourceId: dataSourceConfig.dataSourceId,
-  };
-
-  /// deleting the articles in the data source
-  const articleIds = await ZendeskArticleResource.fetchArticleIdsByBrandId({
-    connectorId,
-    brandId,
-    batchSize: ZENDESK_BATCH_SIZE,
-  });
-  logger.info(
-    { ...loggerArgs, brandId, articleCount: articleIds.length },
-    "[Zendesk] Deleting a batch of articles."
-  );
-
-  await concurrentExecutor(
-    articleIds,
-    (articleId) =>
-      deleteDataSourceDocument(
-        dataSourceConfig,
-        getArticleInternalId({ connectorId, brandId, articleId })
-      ),
-    { concurrency: 10 }
-  );
-  /// deleting the articles stored in the db
-  await ZendeskArticleResource.deleteByArticleIds({
-    connectorId,
-    brandId,
-    articleIds,
-  });
-
-  /// returning false if we know for sure there isn't any more article to process
-  return { hasMore: articleIds.length === ZENDESK_BATCH_SIZE };
-}
-
-/**
  * Deletes a batch of categories from the db and from core.
  */
 export async function deleteCategoryBatchActivity({
@@ -410,16 +356,38 @@ export async function deleteCategoryBatchActivity({
       batchSize: ZENDESK_BATCH_SIZE,
     });
 
-  await concurrentExecutor(
-    categoryIds,
-    async (categoryId) => {
-      await deleteDataSourceFolder({
-        dataSourceConfig,
-        folderId: getCategoryInternalId({ connectorId, brandId, categoryId }),
-      });
-    },
-    { concurrency: 10 }
-  );
+  for (const categoryId of categoryIds) {
+    await deleteDataSourceFolder({
+      dataSourceConfig,
+      folderId: getCategoryInternalId({ connectorId, brandId, categoryId }),
+    });
+
+    const articlesInCategory = await ZendeskArticleResource.fetchByCategoryId({
+      categoryId,
+      brandId,
+      connectorId,
+    });
+
+    await concurrentExecutor(
+      articlesInCategory,
+      (article) =>
+        deleteDataSourceDocument(
+          dataSourceConfig,
+          getArticleInternalId({
+            connectorId,
+            brandId,
+            articleId: article.articleId,
+          })
+        ),
+      { concurrency: 10 }
+    );
+    /// deleting the articles stored in the db
+    await ZendeskArticleResource.deleteByArticleIds({
+      connectorId,
+      brandId,
+      articleIds: articlesInCategory.map((a) => a.articleId),
+    });
+  }
 
   const deletedCount = await ZendeskCategoryResource.deleteByCategoryIds({
     connectorId,
