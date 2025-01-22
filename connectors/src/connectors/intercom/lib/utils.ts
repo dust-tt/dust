@@ -4,7 +4,10 @@ import type {
   IntercomArticleType,
   IntercomCollectionType,
 } from "@connectors/connectors/intercom/lib/types";
-import { IntercomCollection } from "@connectors/lib/models/intercom";
+import {
+  IntercomCollection,
+  IntercomHelpCenter,
+} from "@connectors/lib/models/intercom";
 
 /**
  * From id to internalId
@@ -127,7 +130,7 @@ export async function getParentIdsForArticle({
   connectorId: number;
   parentCollectionId: string;
   helpCenterId: string;
-}): Promise<[string, string, ...string[], string]> {
+}): Promise<[string, string, ...string[]]> {
   // Get collection parents
   const collectionParents = await getParentIdsForCollection({
     connectorId,
@@ -146,13 +149,15 @@ export async function getParentIdsForCollection({
   connectorId: number;
   collectionId: string;
   helpCenterId: string;
-}): Promise<[string, ...string[], string]> {
+}): Promise<[string, ...string[]]> {
   const parentIds = [];
 
   // Fetch and add any parent collection Ids.
   let currentParentId = collectionId;
 
   // There's max 2-levels on Intercom.
+  // The user can only select top level collections; every collection found
+  // here should be added to the parents (the last one in this loop will be the one selected).
   for (let i = 0; i < 2; i++) {
     const currentParent = await IntercomCollection.findOne({
       where: {
@@ -170,11 +175,18 @@ export async function getParentIdsForCollection({
       getHelpCenterCollectionInternalId(connectorId, currentParentId)
     );
   }
+  // adding the Help Center iff it was explicitly selected by the user
+  // not adding it if the collection is synced because it was selected or if a parent collection was selected
+  const helpCenter = await IntercomHelpCenter.findOne({
+    where: { connectorId, helpCenterId },
+  });
+  if (helpCenter?.permission === "read") {
+    parentIds.push(getHelpCenterInternalId(connectorId, helpCenterId));
+  }
 
   // Add the collection ID and the help center internal ID.
   return [
     getHelpCenterCollectionInternalId(connectorId, collectionId),
     ...parentIds,
-    getHelpCenterInternalId(connectorId, helpCenterId),
   ];
 }

@@ -228,7 +228,7 @@ export async function upsertCollectionWithChildren({
     folderId: internalCollectionId,
     title: collection.name,
     parents: collectionParents,
-    parentId: collectionParents[1],
+    parentId: collectionParents[1] || null,
     mimeType: MIME_TYPES.INTERCOM.COLLECTION,
     sourceUrl: collection.url || fallbackCollectionUrl,
     timestampMs: currentSyncMs,
