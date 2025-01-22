@@ -14,7 +14,8 @@ import {
   getUserFromSession,
   withDefaultUserAuthPaywallWhitelisted,
 } from "@app/lib/iam/session";
-import { Workspace, WorkspaceHasDomain } from "@app/lib/models/workspace";
+import { Workspace } from "@app/lib/models/workspace";
+import { WorkspaceHasDomain } from "@app/lib/models/workspace_has_domain";
 import logger from "@app/logger/logger";
 
 // Fetch workspace details for scenarios where auto-join is disabled.

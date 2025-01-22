@@ -7,11 +7,11 @@ import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 import {
   ModelWithWorkspace,
-  SoftDeletableModelWithWorkspace,
+  WorkspaceSoftDeletableModel,
 } from "@app/lib/resources/storage/wrappers/model_with_workspace";
 
 // TODO(2024-10-04 flav) Remove visibility from here.
-export class AppModel extends SoftDeletableModelWithWorkspace<AppModel> {
+export class AppModel extends WorkspaceSoftDeletableModel<AppModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 

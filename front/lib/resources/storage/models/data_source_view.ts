@@ -2,14 +2,13 @@ import type { DataSourceViewKind } from "@dust-tt/types";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";
-import { SoftDeletableModel } from "@app/lib/resources/storage/wrappers/base";
+import { WorkspaceSoftDeletableModel } from "@app/lib/resources/storage/wrappers/model_with_workspace";
 
-export class DataSourceViewModel extends SoftDeletableModel<DataSourceViewModel> {
+export class DataSourceViewModel extends WorkspaceSoftDeletableModel<DataSourceViewModel> {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -23,12 +22,10 @@ export class DataSourceViewModel extends SoftDeletableModel<DataSourceViewModel>
 
   declare dataSourceId: ForeignKey<DataSourceModel["id"]>;
   declare vaultId: ForeignKey<SpaceModel["id"]>;
-  declare workspaceId: ForeignKey<Workspace["id"]>;
 
   declare dataSourceForView: NonAttribute<DataSourceModel>;
   declare editedByUser: NonAttribute<UserModel>;
   declare space: NonAttribute<SpaceModel>;
-  declare workspace: NonAttribute<Workspace>;
 }
 DataSourceViewModel.init(
   {
@@ -73,11 +70,6 @@ DataSourceViewModel.init(
     ],
   }
 );
-Workspace.hasMany(DataSourceViewModel, {
-  foreignKey: { allowNull: false },
-  onDelete: "RESTRICT",
-});
-DataSourceViewModel.belongsTo(Workspace);
 
 SpaceModel.hasMany(DataSourceViewModel, {
   foreignKey: { allowNull: false, name: "vaultId" },

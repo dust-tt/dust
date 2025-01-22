@@ -26,7 +26,7 @@ import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces"
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import type { ModelStaticSoftDeletable } from "@app/lib/resources/storage/wrappers";
+import type { ModelStaticSoftDeletable } from "@app/lib/resources/storage/wrappers/model_with_workspace";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";

@@ -1,15 +1,13 @@
 import type {
   EmbeddingProviderIdType,
-  RoleType,
   WorkspaceSegmentationType,
 } from "@dust-tt/types";
 import { MODEL_PROVIDER_IDS } from "@dust-tt/types";
-import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import type { CreationOptional, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import type { Subscription } from "@app/lib/models/plan";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { UserModel } from "@app/lib/resources/storage/models/user";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 
 const modelProviders = [...MODEL_PROVIDER_IDS] as string[];
