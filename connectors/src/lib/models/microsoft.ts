@@ -1,15 +1,14 @@
-import type { CreationOptional, ForeignKey } from "sequelize";
+import type { CreationOptional } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import type { MicrosoftNodeType } from "@connectors/connectors/microsoft/lib/types";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
-import { BaseModel } from "@connectors/resources/storage/wrappers/base";
+import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 
-export class MicrosoftConfigurationModel extends BaseModel<MicrosoftConfigurationModel> {
+export class MicrosoftConfigurationModel extends ConnectorBaseModel<MicrosoftConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
   declare pdfEnabled: boolean;
   declare csvEnabled: boolean;
   declare largeFilesEnabled: boolean;
@@ -46,22 +45,17 @@ MicrosoftConfigurationModel.init(
     sequelize: sequelizeConnection,
     modelName: "microsoft_configurations",
     indexes: [{ fields: ["connectorId"], unique: true }],
+    relationship: "hasOne",
   }
 );
-
-ConnectorModel.hasMany(MicrosoftConfigurationModel, {
-  foreignKey: "connectorId",
-  onDelete: "RESTRICT",
-});
 
 // MicrosoftRoot stores the drive/folders/channels selected by the user to sync.
 // In order to be able to uniquely identify each node, we store the GET path
 // to the item in the itemApiPath field (e.g. /drives/{drive-id}), except for the toplevel
 // sites-root and teams-root, which are stored as "sites-root" and "teams-root" respectively.
-export class MicrosoftRootModel extends BaseModel<MicrosoftRootModel> {
+export class MicrosoftRootModel extends ConnectorBaseModel<MicrosoftRootModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
   declare internalId: string;
   declare nodeType: MicrosoftNodeType;
 }
@@ -95,19 +89,14 @@ MicrosoftRootModel.init(
     ],
   }
 );
-ConnectorModel.hasMany(MicrosoftRootModel, {
-  foreignKey: "connectorId",
-  onDelete: "RESTRICT",
-});
 
 // MicrosftNode stores nodes (e.g. files, folder, channels, ...) synced from Microsoft.
-export class MicrosoftNodeModel extends BaseModel<MicrosoftNodeModel> {
+export class MicrosoftNodeModel extends ConnectorBaseModel<MicrosoftNodeModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare lastSeenTs: Date | null;
   declare lastUpsertedTs: Date | null;
   declare skipReason: string | null;
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
   declare internalId: string;
   declare nodeType: MicrosoftNodeType;
   declare name: string | null;
@@ -180,7 +169,3 @@ MicrosoftNodeModel.init(
     ],
   }
 );
-ConnectorModel.hasMany(MicrosoftNodeModel, {
-  foreignKey: "connectorId",
-  onDelete: "RESTRICT",
-});

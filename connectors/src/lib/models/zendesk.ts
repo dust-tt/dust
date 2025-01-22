@@ -1,9 +1,8 @@
-import type { CreationOptional, ForeignKey } from "sequelize";
+import type { CreationOptional } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { sequelizeConnection } from "@connectors/resources/storage";
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
-import { BaseModel } from "@connectors/resources/storage/wrappers/base";
+import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 
 function throwOnUnsafeInteger(value: number | null) {
   if (value !== null && !Number.isSafeInteger(value)) {
@@ -11,14 +10,12 @@ function throwOnUnsafeInteger(value: number | null) {
   }
 }
 
-export class ZendeskTimestampCursor extends BaseModel<ZendeskTimestampCursor> {
+export class ZendeskTimestampCursor extends ConnectorBaseModel<ZendeskTimestampCursor> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
   // start date of the last successful sync
   declare timestampCursor: Date;
-
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 
 ZendeskTimestampCursor.init(
@@ -44,20 +41,13 @@ ZendeskTimestampCursor.init(
     indexes: [{ fields: ["connectorId"], unique: true }],
   }
 );
-ConnectorModel.hasMany(ZendeskTimestampCursor, {
-  foreignKey: { allowNull: false },
-  onDelete: "RESTRICT",
-});
-ZendeskTimestampCursor.belongsTo(ConnectorModel);
 
-export class ZendeskConfiguration extends BaseModel<ZendeskConfiguration> {
+export class ZendeskConfiguration extends ConnectorBaseModel<ZendeskConfiguration> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
   declare subdomain: string;
   declare retentionPeriodDays: number;
-
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 
 ZendeskConfiguration.init(
@@ -86,15 +76,11 @@ ZendeskConfiguration.init(
     sequelize: sequelizeConnection,
     modelName: "zendesk_configurations",
     indexes: [{ fields: ["connectorId"], unique: true }],
+    relationship: "hasOne",
   }
 );
-ConnectorModel.hasMany(ZendeskConfiguration, {
-  foreignKey: { allowNull: false },
-  onDelete: "RESTRICT",
-});
-ZendeskConfiguration.belongsTo(ConnectorModel);
 
-export class ZendeskBrand extends BaseModel<ZendeskBrand> {
+export class ZendeskBrand extends ConnectorBaseModel<ZendeskBrand> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -107,8 +93,6 @@ export class ZendeskBrand extends BaseModel<ZendeskBrand> {
   declare subdomain: string;
 
   declare lastUpsertedTs?: Date;
-
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 
 ZendeskBrand.init(
@@ -166,12 +150,8 @@ ZendeskBrand.init(
     ],
   }
 );
-ConnectorModel.hasMany(ZendeskBrand, {
-  foreignKey: { allowNull: false },
-  onDelete: "RESTRICT",
-});
 
-export class ZendeskCategory extends BaseModel<ZendeskCategory> {
+export class ZendeskCategory extends ConnectorBaseModel<ZendeskCategory> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -184,8 +164,6 @@ export class ZendeskCategory extends BaseModel<ZendeskCategory> {
   declare url: string;
 
   declare lastUpsertedTs?: Date;
-
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 
 ZendeskCategory.init(
@@ -248,12 +226,8 @@ ZendeskCategory.init(
     ],
   }
 );
-ConnectorModel.hasMany(ZendeskCategory, {
-  foreignKey: { allowNull: false },
-  onDelete: "RESTRICT",
-});
 
-export class ZendeskArticle extends BaseModel<ZendeskArticle> {
+export class ZendeskArticle extends ConnectorBaseModel<ZendeskArticle> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -266,8 +240,6 @@ export class ZendeskArticle extends BaseModel<ZendeskArticle> {
   declare url: string;
 
   declare lastUpsertedTs: Date | null;
-
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 
 ZendeskArticle.init(
@@ -335,12 +307,8 @@ ZendeskArticle.init(
     ],
   }
 );
-ConnectorModel.hasMany(ZendeskArticle, {
-  foreignKey: { allowNull: false },
-  onDelete: "RESTRICT",
-});
 
-export class ZendeskTicket extends BaseModel<ZendeskTicket> {
+export class ZendeskTicket extends ConnectorBaseModel<ZendeskTicket> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -353,8 +321,6 @@ export class ZendeskTicket extends BaseModel<ZendeskTicket> {
 
   declare ticketUpdatedAt: Date;
   declare lastUpsertedTs: Date;
-
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 
 ZendeskTicket.init(
@@ -417,8 +383,3 @@ ZendeskTicket.init(
     ],
   }
 );
-
-ConnectorModel.hasMany(ZendeskTicket, {
-  foreignKey: { allowNull: false },
-  onDelete: "RESTRICT",
-});
