@@ -296,11 +296,10 @@ export async function retrieveChildrenNodes({
     // If the parent is a category, we retrieve the list of articles for this category.
     case "category": {
       if (isReadPermissionsOnly) {
-        const articlesInDb =
-          await ZendeskArticleResource.fetchByCategoryIdReadOnly({
-            connectorId: connector.id,
-            ...objectIds,
-          });
+        const articlesInDb = await ZendeskArticleResource.fetchByCategoryId({
+          connectorId: connector.id,
+          ...objectIds,
+        });
         return articlesInDb.map((article) =>
           article.toContentNode(connector.id)
         );
