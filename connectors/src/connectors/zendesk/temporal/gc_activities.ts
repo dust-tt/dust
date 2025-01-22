@@ -2,7 +2,6 @@ import type { ModelId } from "@dust-tt/types";
 
 import {
   getArticleInternalId,
-  getBrandInternalId,
   getCategoryInternalId,
   getHelpCenterInternalId,
   getTicketInternalId,
@@ -246,10 +245,6 @@ export async function deleteBrandsWithNoPermissionActivity(
   await concurrentExecutor(
     brands,
     async (brandId) => {
-      await deleteDataSourceFolder({
-        dataSourceConfig,
-        folderId: getBrandInternalId({ connectorId, brandId }),
-      });
       await deleteDataSourceFolder({
         dataSourceConfig,
         folderId: getHelpCenterInternalId({ connectorId, brandId }),
