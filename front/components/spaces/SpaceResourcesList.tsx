@@ -41,7 +41,10 @@ import { UsedByButton } from "@app/components/spaces/UsedByButton";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getDataSourceNameFromView, isManaged } from "@app/lib/data_sources";
 import { useAgentConfigurationSIdLookup } from "@app/lib/swr/assistants";
-import { useDeleteFolderOrWebsite, useSpaceDataSourceViewsWithDetails } from "@app/lib/swr/spaces";
+import {
+  useDeleteFolderOrWebsite,
+  useSpaceDataSourceViewsWithDetails,
+} from "@app/lib/swr/spaces";
 import { classNames } from "@app/lib/utils";
 
 import { ViewFolderAPIModal } from "../ViewFolderAPIModal";
