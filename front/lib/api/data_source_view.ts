@@ -402,6 +402,7 @@ export async function getContentNodesForDataSourceView(
     computeNodesDiff({
       connectorsContentNodes: contentNodesResult.nodes,
       coreContentNodes: coreContentNodesRes.value.nodes,
+      provider: dataSourceView.dataSource.connectorProvider,
       localLogger,
     });
   }
