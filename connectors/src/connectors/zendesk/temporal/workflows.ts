@@ -40,7 +40,6 @@ const {
   removeMissingArticleBatchActivity,
   getZendeskBrandsWithHelpCenterToDeleteActivity,
   getZendeskBrandsWithTicketsToDeleteActivity,
-  checkEmptyHelpCentersActivity,
   deleteBrandsWithNoPermissionActivity,
   deleteCategoryBatchActivity,
   deleteTicketBatchActivity,
@@ -449,9 +448,6 @@ export async function zendeskGarbageCollectionWorkflow({
 
   // deleting the categories that have no article anymore
   await removeEmptyCategoriesActivity(connectorId);
-
-  // updating the permissions of the Help Centers that have no category anymore for a cleanup at the next step
-  await checkEmptyHelpCentersActivity(connectorId);
 
   // cleaning the articles and categories of the brands that have no permission on their Help Center anymore
   brandIds = await getZendeskBrandsWithHelpCenterToDeleteActivity(connectorId);

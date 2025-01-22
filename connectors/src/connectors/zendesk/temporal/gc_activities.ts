@@ -35,28 +35,6 @@ import {
 } from "@connectors/resources/zendesk_resources";
 
 /**
- * Looks for empty Help Centers (no category with read permissions) and removes their permissions.
- */
-export async function checkEmptyHelpCentersActivity(
-  connectorId: ModelId
-): Promise<void> {
-  const brands =
-    await ZendeskBrandResource.fetchHelpCenterReadAllowedBrands(connectorId);
-
-  for (const brand of brands) {
-    const categoriesWithReadPermissions =
-      await ZendeskCategoryResource.fetchByBrandIdReadOnly({
-        connectorId,
-        brandId: brand.brandId,
-      });
-    const noMoreAllowedCategories = categoriesWithReadPermissions.length === 0;
-    if (noMoreAllowedCategories) {
-      await brand.revokeHelpCenterPermissions();
-    }
-  }
-}
-
-/**
  * Retrieves the IDs of the Brands whose tickets are to be deleted.
  */
 export async function getZendeskBrandsWithTicketsToDeleteActivity(
