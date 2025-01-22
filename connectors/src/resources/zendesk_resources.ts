@@ -1084,32 +1084,4 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
   ) {
     await ZendeskArticle.destroy({ where: { connectorId }, transaction });
   }
-
-  static async revokePermissionsForBrand({
-    connectorId,
-    brandId,
-  }: {
-    connectorId: number;
-    brandId: number;
-  }) {
-    await ZendeskArticle.update(
-      { permission: "none" },
-      { where: { connectorId, brandId } }
-    );
-  }
-
-  static async revokePermissionsForCategory({
-    connectorId,
-    brandId,
-    categoryId,
-  }: {
-    connectorId: number;
-    brandId: number;
-    categoryId: number;
-  }) {
-    await ZendeskArticle.update(
-      { permission: "none" },
-      { where: { connectorId, brandId, categoryId } }
-    );
-  }
 }
