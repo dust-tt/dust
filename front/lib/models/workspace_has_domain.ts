@@ -1,18 +1,16 @@
-import type { WhitelistableFeature } from "@dust-tt/types";
 import type { CreationOptional } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ModelWithWorkspace } from "@app/lib/resources/storage/wrappers/model_with_workspace";
 
-export class FeatureFlag extends ModelWithWorkspace<FeatureFlag> {
+export class WorkspaceHasDomain extends ModelWithWorkspace<WorkspaceHasDomain> {
   declare createdAt: CreationOptional<Date>;
+  declare domain: string;
+  declare domainAutoJoinEnabled: CreationOptional<boolean>;
   declare updatedAt: CreationOptional<Date>;
-
-  declare name: WhitelistableFeature;
 }
-
-FeatureFlag.init(
+WorkspaceHasDomain.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -24,22 +22,18 @@ FeatureFlag.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    name: {
+    domainAutoJoinEnabled: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    domain: {
       type: DataTypes.STRING,
       allowNull: false,
     },
   },
   {
+    modelName: "workspace_has_domains",
     sequelize: frontSequelize,
-    modelName: "feature_flags",
-    indexes: [
-      {
-        unique: true,
-        fields: ["workspaceId", "name"],
-      },
-      {
-        fields: ["workspaceId"],
-      },
-    ],
+    indexes: [{ unique: true, fields: ["domain"] }],
   }
 );

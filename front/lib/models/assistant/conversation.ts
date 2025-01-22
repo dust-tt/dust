@@ -15,8 +15,9 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
+import { ModelWithWorkspace } from "@app/lib/resources/storage/wrappers/model_with_workspace";
 
-export class Conversation extends BaseModel<Conversation> {
+export class Conversation extends ModelWithWorkspace<Conversation> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -28,8 +29,6 @@ export class Conversation extends BaseModel<Conversation> {
 
   // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
   declare groupIds?: number[];
-
-  declare workspaceId: ForeignKey<Workspace["id"]>;
 }
 
 Conversation.init(
@@ -85,15 +84,6 @@ Conversation.init(
     sequelize: frontSequelize,
   }
 );
-
-Workspace.hasMany(Conversation, {
-  foreignKey: { name: "workspaceId", allowNull: false },
-  onDelete: "RESTRICT",
-});
-
-Conversation.belongsTo(Workspace, {
-  foreignKey: { name: "workspaceId", allowNull: false },
-});
 
 export class ConversationParticipant extends BaseModel<ConversationParticipant> {
   declare createdAt: CreationOptional<Date>;
@@ -295,11 +285,10 @@ AgentMessage.init(
   }
 );
 
-export class AgentMessageFeedback extends BaseModel<AgentMessageFeedback> {
+export class AgentMessageFeedback extends ModelWithWorkspace<AgentMessageFeedback> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare workspaceId: ForeignKey<Workspace["id"]>;
   declare agentConfigurationId: string;
   declare agentConfigurationVersion: number;
   declare agentMessageId: ForeignKey<AgentMessage["id"]>;
@@ -369,10 +358,6 @@ AgentMessageFeedback.init(
   }
 );
 
-Workspace.hasMany(AgentMessageFeedback, {
-  foreignKey: { name: "workspaceId", allowNull: false },
-  onDelete: "RESTRICT",
-});
 AgentMessage.hasMany(AgentMessageFeedback, {
   as: "feedbacks",
   onDelete: "RESTRICT",

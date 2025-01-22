@@ -1,20 +1,17 @@
 import type { GroupKind } from "@dust-tt/types";
 import { isGlobalGroupKind, isSystemGroupKind } from "@dust-tt/types";
-import type { CreationOptional, ForeignKey, Transaction } from "sequelize";
+import type { CreationOptional, Transaction } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
+import { ModelWithWorkspace } from "@app/lib/resources/storage/wrappers/model_with_workspace";
 
-export class GroupModel extends BaseModel<GroupModel> {
+export class GroupModel extends ModelWithWorkspace<GroupModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
   declare name: string;
   declare kind: GroupKind;
-
-  declare workspaceId: ForeignKey<Workspace["id"]>;
 }
 
 GroupModel.init(
@@ -67,9 +64,3 @@ GroupModel.addHook(
     }
   }
 );
-
-Workspace.hasMany(GroupModel, {
-  foreignKey: { allowNull: false },
-  onDelete: "RESTRICT",
-});
-GroupModel.belongsTo(Workspace);

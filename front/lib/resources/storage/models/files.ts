@@ -7,12 +7,11 @@ import type {
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
-import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
+import { ModelWithWorkspace } from "@app/lib/resources/storage/wrappers/model_with_workspace";
 
-export class FileModel extends BaseModel<FileModel> {
+export class FileModel extends ModelWithWorkspace<FileModel> {
   declare createdAt: CreationOptional<Date>;
 
   declare contentType: SupportedFileContentType;
@@ -24,7 +23,6 @@ export class FileModel extends BaseModel<FileModel> {
   declare snippet: string | null;
 
   declare userId: ForeignKey<UserModel["id"]> | null;
-  declare workspaceId: ForeignKey<Workspace["id"]>;
 
   declare user: NonAttribute<UserModel>;
 }
@@ -72,10 +70,6 @@ FileModel.init(
     indexes: [{ fields: ["workspaceId", "id"] }],
   }
 );
-Workspace.hasMany(FileModel, {
-  foreignKey: { allowNull: false },
-  onDelete: "RESTRICT",
-});
 UserModel.hasMany(FileModel, {
   foreignKey: { allowNull: true },
   onDelete: "RESTRICT",

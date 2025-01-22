@@ -3,13 +3,13 @@ import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import type { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
+import { ModelWithWorkspace } from "@app/lib/resources/storage/wrappers/model_with_workspace";
 
-export class LabsTranscriptsConfigurationModel extends BaseModel<LabsTranscriptsConfigurationModel> {
+export class LabsTranscriptsConfigurationModel extends ModelWithWorkspace<LabsTranscriptsConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -20,7 +20,6 @@ export class LabsTranscriptsConfigurationModel extends BaseModel<LabsTranscripts
   declare isDefaultFullStorage: boolean;
 
   declare userId: ForeignKey<UserModel["id"]>;
-  declare workspaceId: ForeignKey<Workspace["id"]>;
   declare dataSourceViewId: ForeignKey<DataSourceViewModel["id"]> | null;
   declare credentialId: string | null;
 }
@@ -80,14 +79,6 @@ UserModel.hasMany(LabsTranscriptsConfigurationModel, {
 });
 LabsTranscriptsConfigurationModel.belongsTo(UserModel, {
   foreignKey: { name: "userId", allowNull: false },
-});
-
-Workspace.hasMany(LabsTranscriptsConfigurationModel, {
-  foreignKey: { name: "workspaceId", allowNull: false },
-  onDelete: "RESTRICT",
-});
-LabsTranscriptsConfigurationModel.belongsTo(Workspace, {
-  foreignKey: { name: "workspaceId", allowNull: false },
 });
 
 DataSourceViewModel.hasMany(LabsTranscriptsConfigurationModel, {
