@@ -1,4 +1,4 @@
-import type { DataTable } from "@dust-tt/sparkle";
+import type { DropdownMenuItemProps } from "@dust-tt/sparkle";
 import {
   ExternalLinkIcon,
   EyeIcon,
@@ -14,11 +14,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { capitalize } from "lodash";
-import type {
-  ComponentProps,
-  MouseEvent as ReactMouseEvent,
-  RefObject,
-} from "react";
+import type { MouseEvent as ReactMouseEvent, RefObject } from "react";
 import React, {
   useCallback,
   useEffect,
@@ -189,7 +185,7 @@ export const ContentActions = React.forwardRef<
 
 ContentActions.displayName = "ContentActions";
 
-type ContentActionsMenu = ComponentProps<typeof DataTable.Row>["moreMenuItems"];
+type ContentActionsMenu = DropdownMenuItemProps[];
 
 export const getMenuItems = (
   canReadInSpace: boolean,

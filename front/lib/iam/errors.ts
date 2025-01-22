@@ -1,4 +1,5 @@
 export class SSOEnforcedError extends Error {
+  code = "sso_enforced" as const;
   constructor(
     message: string,
     readonly workspaceId: string

@@ -108,7 +108,7 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   }
 
   return (
-    <div className="flex h-screen flex-col gap-2 px-4">
+    <div className="flex h-screen flex-col gap-2 px-4 overflow-y-auto">
       {typeof children === "function"
         ? children({ user, workspace, handleLogout })
         : children}

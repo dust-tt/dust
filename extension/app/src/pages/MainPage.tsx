@@ -50,7 +50,7 @@ export const MainPage = ({
                       return (
                         <DropdownMenuItem
                           key={w.sId}
-                          onClick={() => void handleSelectWorkspace(w.sId)}
+                          onClick={() => void handleSelectWorkspace(w)}
                           label={w.name}
                         />
                       );

@@ -6,7 +6,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 
-export async function internalCreateToolOutputCsvFile(
+export async function internalCreateToolOutputFile(
   auth: Authenticator,
   {
     title,
@@ -17,7 +17,7 @@ export async function internalCreateToolOutputCsvFile(
     title: string;
     conversationId: string;
     content: string;
-    contentType: "text/csv";
+    contentType: "text/csv" | "text/plain";
   }
 ): Promise<FileResource> {
   const workspace = auth.getNonNullableWorkspace();

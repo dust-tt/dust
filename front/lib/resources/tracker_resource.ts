@@ -687,6 +687,7 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
       watchedDataSources: this.dataSourceConfigurations
         .filter((dsc) => dsc.scope === "watched")
         .map(dataSourceToJSON),
+      createdAt: this.createdAt.getTime(),
     };
 
     if (this.generations?.length) {

@@ -195,23 +195,19 @@ interface MetricComponentProps {
 
 export const MetricSection = ({ metrics, from, to }: MetricComponentProps) => (
   <div className="grid w-full grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-2">
-    {" "}
     {metrics.map((metric, index) => (
       <div
         key={index}
         className="flex flex-col items-center gap-4 py-4 text-center"
       >
-        {" "}
         <H1 from={from} to={to}>
-          {" "}
-          {metric.value}{" "}
-        </H1>{" "}
+          {metric.value}
+        </H1>
         <P size="lg" className="max-w-[400px] text-white">
-          {" "}
-          {metric.description}{" "}
-        </P>{" "}
+          {metric.description}
+        </P>
       </div>
-    ))}{" "}
+    ))}
   </div>
 );
 
@@ -223,20 +219,28 @@ interface QuoteProps {
 }
 
 export const QuoteSection = ({ quote, logo, name, title }: QuoteProps) => (
-  <div className="col-span-12 flex flex-col rounded-4xl pb-2 pt-2 md:col-span-10 md:col-start-2 lg:col-span-10 lg:col-start-2">
+  <div className="col-span-12 flex flex-col rounded-4xl pb-2 pt-4 md:col-span-10 md:col-start-2 lg:col-span-10 lg:col-start-2">
     <div className="flex justify-center">
       <div className="flex items-center justify-center">
-        <Image src={logo} width={200} height={48} alt="Malt Logo" />
-        <P size="sm" className="text-primary-400">
+        <Image
+          src={logo}
+          width={200}
+          height={48}
+          alt="Company Logo"
+          className="h-auto w-[140px] xs:w-[160px] sm:w-[200px]"
+        />
+        <P
+          size="sm"
+          className="text-sm text-primary-400 xs:text-left xs:text-base sm:text-lg"
+        >
           <Strong>
             <span className="text-pink-300">{name}</span>
           </Strong>
-          <br />
-          {title}
+          <br /> {title}
         </P>
       </div>
     </div>
-    <div className="flex flex-col items-center rounded-4xl p-4 text-center font-objektiv text-xl italic text-white sm:text-xl lg:text-2xl">
+    <div className="flex flex-col items-center rounded-4xl p-4 text-center font-objektiv text-base italic text-white xs:text-lg sm:text-xl lg:text-2xl">
       &ldquo; {quote} &rdquo;
     </div>
   </div>

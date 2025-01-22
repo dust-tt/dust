@@ -85,6 +85,9 @@ const ConversationViewer = React.forwardRef<
 
   const { mutateConversations } = useConversations({
     workspaceId: owner.sId,
+    options: {
+      disabled: true,
+    },
   });
 
   const {
@@ -104,6 +107,7 @@ const ConversationViewer = React.forwardRef<
   const { mutateConversationParticipants } = useConversationParticipants({
     conversationId,
     workspaceId: owner.sId,
+    options: { disabled: true }, // We don't need the participants, only the mutator.
   });
 
   const { hasMore, latestPage, oldestPage } = useMemo(() => {

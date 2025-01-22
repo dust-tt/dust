@@ -26,6 +26,10 @@ inputs:
   region:
     description: "Region being deployed to"
     required: false
+  is_revert:
+    description: "Whether reverting or deploying"
+    required: false
+    default: "false"
 
 outputs:
   thread_ts:
@@ -81,7 +85,7 @@ runs:
         payload: |
           channel: ${{ inputs.channel }}
           text: |
-            🚀 Starting deployment of ${{ inputs.component }} `${{ inputs.image_tag }}`
+            ${{ inputs.is_revert == 'true' && '⏮️' || '🚀' }} ${{ inputs.is_revert == 'true' && 'Starting revert of' || 'Starting deployment of' }} ${{ inputs.component }} `${{ inputs.image_tag }}`
             • Region: `${{ inputs.region }}`
             • Commit: <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ inputs.image_tag }}>
             • Workflow: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View build>
@@ -97,6 +101,6 @@ runs:
           channel: ${{ inputs.channel }}
           thread_ts: "${{ inputs.thread_ts }}"
           text: |
-            ❌ Build pipeline failed
+            ❌ ${{ inputs.is_revert == 'true' && 'Revert' || 'Build' }} pipeline failed
             ${{ inputs.blocked == 'true' && format('Is blocked by channel topic: {0}', inputs.blocked) }}
             • Check logs: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View details>

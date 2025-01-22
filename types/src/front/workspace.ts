@@ -14,6 +14,13 @@ export type SupportedEnterpriseConnectionStrategies = "okta" | "samlp" | "waad";
 export const supportedEnterpriseConnectionStrategies: SupportedEnterpriseConnectionStrategies[] =
   ["okta", "samlp", "waad"];
 
+export const isSupportedEnterpriseConnectionStrategy = (
+  strategy: string
+): strategy is SupportedEnterpriseConnectionStrategies =>
+  supportedEnterpriseConnectionStrategies.includes(
+    strategy as SupportedEnterpriseConnectionStrategies
+  );
+
 export function connectionStrategyToHumanReadable(
   strategy: SupportedEnterpriseConnectionStrategies
 ) {
