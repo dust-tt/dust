@@ -66,7 +66,6 @@ export const TrackerBuilder = ({
   const [edited, setEdited] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [showWatchedDsModal, setShowWatchedDataSourcesModal] = useState(false);
 
   const [tracker, setTracker] = useState<TrackerConfigurationStateType>(
     initialTrackerState ?? {
