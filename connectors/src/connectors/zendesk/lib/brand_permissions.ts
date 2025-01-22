@@ -1,7 +1,5 @@
 import type { ModelId } from "@dust-tt/types";
 
-import { forbidSyncZendeskHelpCenter } from "@connectors/connectors/zendesk/lib/help_center_permissions";
-import { forbidSyncZendeskTickets } from "@connectors/connectors/zendesk/lib/ticket_permissions";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import { createZendeskClient } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import logger from "@connectors/logger/logger";
@@ -86,9 +84,9 @@ export async function forbidSyncZendeskBrand({
     return null;
   }
 
-  // revoke permissions for the two children resources (help center and tickets + respective children)
-  await forbidSyncZendeskHelpCenter({ connectorId, brandId });
-  await forbidSyncZendeskTickets({ connectorId, brandId });
+  // updating the fields helpCenterPermission and ticketsPermission to "none" for the brand
+  await brand.revokeHelpCenterPermissions();
+  await brand.revokeTicketsPermissions();
 
   return brand;
 }
