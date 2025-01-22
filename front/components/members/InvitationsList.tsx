@@ -54,6 +54,7 @@ export function InvitationsList({
     {
       id: "inviteEmail",
       header: "Invitation Email",
+      accessorKey: "inviteEmail",
       cell: (info: CellContext<RowData, string>) => (
         <DataTable.CellContent>
           <span>{info.row.original.inviteEmail}</span>
@@ -63,6 +64,7 @@ export function InvitationsList({
     {
       id: "initialRole",
       header: "Role",
+      accessorFn: (row: RowData) => row.initialRole,
       cell: (info: CellContext<RowData, string>) => (
         <DataTable.CellContent>
           <Chip
