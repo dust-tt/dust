@@ -10,7 +10,7 @@ import type {
 import type {
   BaseModel,
   SoftDeletableModel,
-} from "@app/lib/resources/storage/wrappers";
+} from "@app/lib/resources/storage/wrappers/base";
 
 export type NonAttributeKeys<M> = {
   [K in keyof M]: M[K] extends NonAttribute<infer T>

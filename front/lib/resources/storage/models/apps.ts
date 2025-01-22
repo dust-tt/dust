@@ -8,7 +8,7 @@ import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import {
   BaseModel,
   SoftDeletableModel,
-} from "@app/lib/resources/storage/wrappers";
+} from "@app/lib/resources/storage/wrappers/base";
 
 // TODO(2024-10-04 flav) Remove visibility from here.
 export class AppModel extends SoftDeletableModel<AppModel> {

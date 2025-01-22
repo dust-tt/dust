@@ -6,7 +6,7 @@ import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/r
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
-import { BaseModel } from "@app/lib/resources/storage/wrappers";
+import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 
 /**
  * Configuration of Datasources used for Retrieval Action.

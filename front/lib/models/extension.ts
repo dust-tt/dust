@@ -3,7 +3,7 @@ import { DataTypes } from "sequelize";
 
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { BaseModel } from "@app/lib/resources/storage/wrappers";
+import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 
 export class ExtensionConfigurationModel extends BaseModel<ExtensionConfigurationModel> {
   declare createdAt: CreationOptional<Date>;

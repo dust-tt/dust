@@ -3,7 +3,7 @@ import { DataTypes } from "sequelize";
 
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { BaseModel } from "@app/lib/resources/storage/wrappers";
+import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 
 /**
  * ConversationIncludeFile Action

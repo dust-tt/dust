@@ -10,7 +10,7 @@ import { DataTypes } from "sequelize";
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
-import { BaseModel } from "@app/lib/resources/storage/wrappers";
+import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 
 export class FileModel extends BaseModel<FileModel> {
   declare createdAt: CreationOptional<Date>;

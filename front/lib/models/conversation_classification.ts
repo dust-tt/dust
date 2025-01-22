@@ -4,7 +4,7 @@ import { DataTypes } from "sequelize";
 
 import { Conversation } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { BaseModel } from "@app/lib/resources/storage/wrappers";
+import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 
 export class ConversationClassification extends BaseModel<ConversationClassification> {
   declare createdAt: CreationOptional<Date>;
