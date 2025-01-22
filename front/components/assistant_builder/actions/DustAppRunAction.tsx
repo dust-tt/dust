@@ -156,7 +156,7 @@ export function ActionDustAppRun({
                       appsInSpace,
                       (a) => !a.description || a.description.length === 0,
                       "name"
-                    ).map((app) => {
+                    ).map((app, index) => {
                       const disabled =
                         !app.description || app.description.length === 0;
                       return (
@@ -165,8 +165,9 @@ export function ActionDustAppRun({
                             value={app.sId}
                             disabled={disabled}
                             iconPosition="start"
+                            className={classNames(index === 0 ? "pt-3" : "")}
                             label={
-                              <div className={"flex items-center gap-1 pl-2"}>
+                              <div className="flex items-center gap-1 pl-2">
                                 <Icon
                                   visual={CommandLineIcon}
                                   size="md"

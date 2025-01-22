@@ -109,7 +109,7 @@ export function SpaceSelector({
                     </div>
                   }
                 >
-                  <div className="flex flex-col">
+                  <div className="flex w-full flex-col">
                     {selectedSpace === space.sId && (
                       <div className="ml-4 mt-1">
                         {renderChildren(selectedSpaceObj)}
