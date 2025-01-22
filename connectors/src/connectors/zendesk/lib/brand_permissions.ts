@@ -1,13 +1,7 @@
 import type { ModelId } from "@dust-tt/types";
 
-import {
-  allowSyncZendeskHelpCenter,
-  forbidSyncZendeskHelpCenter,
-} from "@connectors/connectors/zendesk/lib/help_center_permissions";
-import {
-  allowSyncZendeskTickets,
-  forbidSyncZendeskTickets,
-} from "@connectors/connectors/zendesk/lib/ticket_permissions";
+import { forbidSyncZendeskHelpCenter } from "@connectors/connectors/zendesk/lib/help_center_permissions";
+import { forbidSyncZendeskTickets } from "@connectors/connectors/zendesk/lib/ticket_permissions";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import { createZendeskClient } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import logger from "@connectors/logger/logger";
@@ -48,7 +42,12 @@ export async function allowSyncZendeskBrand({
   }
 
   // creating the brand if it does not exist yet in db
-  if (!brand) {
+  if (brand) {
+    await brand.grantTicketsPermissions();
+    if (fetchedBrand.has_help_center) {
+      await brand.grantHelpCenterPermissions();
+    }
+  } else {
     await ZendeskBrandResource.makeNew({
       blob: {
         subdomain: fetchedBrand.subdomain,
@@ -61,22 +60,6 @@ export async function allowSyncZendeskBrand({
       },
     });
   }
-
-  // setting the permissions for the brand:
-  // can be redundant if already set when creating the brand but necessary because of the categories.
-  if (fetchedBrand.has_help_center) {
-    // allow the categories
-    await allowSyncZendeskHelpCenter({
-      connectorId,
-      connectionId,
-      brandId,
-    });
-  }
-  await allowSyncZendeskTickets({
-    connectorId,
-    connectionId,
-    brandId,
-  });
 
   return true;
 }
