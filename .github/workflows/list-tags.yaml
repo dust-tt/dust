@@ -3,8 +3,8 @@ name: List Image Tags
 on:
   workflow_dispatch:
     inputs:
-      regions:
-        description: "Comma-separated list of regions to deploy"
+      region:
+        description: "Region to list images from"
         type: choice
         options:
           - "us-central1"
@@ -62,9 +62,9 @@ jobs:
 
       - name: List available tags
         run: |
-          echo "Latest tags for ${{ inputs.component }} in ${{ inputs.regions }}:"
+          echo "Latest tags for ${{ inputs.component }} in ${{ inputs.region }}:"
           echo "-------------------------------------------"
-          gcloud container images list-tags ${{ inputs.regions }}-docker.pkg.dev/${{ env.GCLOUD_PROJECT_ID }}/dust-images/${{ inputs.component }} \
+          gcloud container images list-tags "${{ inputs.region }}-docker.pkg.dev/${{ steps.project.outputs.PROJECT_ID }}/dust-images/${{ inputs.component }}" \
             --limit=10 \
             --sort-by=~timestamp \
             --format="table(timestamp.date('%Y-%m-%d %H:%M:%S'),tags[0])"
