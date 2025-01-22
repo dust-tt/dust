@@ -408,10 +408,10 @@ export const SpaceDataSourceViewContentList = ({
       >
         <div
           className={classNames(
-            "flex gap-2",
+            "flex w-full gap-2",
             isEmpty
-              ? "h-36 w-full items-center justify-center rounded-xl bg-muted-background"
-              : ""
+              ? "h-36 items-center justify-center rounded-xl bg-muted-background"
+              : "pb-2"
           )}
         >
           {!isEmpty && (

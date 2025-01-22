@@ -72,22 +72,25 @@ export function MembersList({
       id: "name",
       header: "Name",
       cell: (info: Info) => (
-        <DataTable.CellContent
-          avatarUrl={info.row.original.icon}
-          description={info.row.original.email}
-        >
+        <DataTable.CellContent avatarUrl={info.row.original.icon}>
           {info.row.original.name}{" "}
           {info.row.original.userId === currentUserId ? " (you)" : ""}
         </DataTable.CellContent>
       ),
       enableSorting: false,
-      meta: {
-        className: "w-full",
-      },
+    },
+    {
+      id: "email",
+      accessorKey: "email",
+      header: "Email",
+      cell: (info: Info) => (
+        <DataTable.CellContent>{info.row.original.email}</DataTable.CellContent>
+      ),
     },
     {
       id: "role",
       header: "Role",
+      accessorFn: (row: RowData) => row.role,
       cell: (info: Info) => (
         <DataTable.CellContent>
           <Chip
