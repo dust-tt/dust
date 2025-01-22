@@ -1036,23 +1036,6 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
     return articles.map((article) => new this(this.model, article.get()));
   }
 
-  static async fetchArticleIdsByBrandId({
-    connectorId,
-    brandId,
-    batchSize = null,
-  }: {
-    connectorId: number;
-    brandId: number;
-    batchSize?: number | null;
-  }): Promise<number[]> {
-    const articles = await ZendeskArticle.findAll({
-      attributes: ["articleId"],
-      where: { connectorId, brandId },
-      ...(batchSize && { limit: batchSize }),
-    });
-    return articles.map((article) => article.get().articleId);
-  }
-
   static async deleteByArticleId({
     connectorId,
     brandId,
