@@ -465,6 +465,14 @@ export async function syncTeamOnlyActivity({
     dataSourceId: dataSourceConfig.dataSourceId,
   };
 
+  const intercomWorkspace = await IntercomWorkspace.findOne({
+    where: { connectorId: connector.id },
+  });
+
+  if (!intercomWorkspace) {
+    throw new Error("Error retrieving intercom workspace to update connector");
+  }
+
   const teamOnDB = await IntercomTeam.findOne({
     where: {
       connectorId,
@@ -506,12 +514,18 @@ export async function syncTeamOnlyActivity({
 
   // Also make sure a datasource folder node is created for the team
   const teamInternalId = getTeamInternalId(connectorId, teamOnDB.teamId);
+  const syncAllActivated =
+    intercomWorkspace.syncAllConversations === "activated" ||
+    intercomWorkspace.syncAllConversations === "scheduled_activate";
   await upsertDataSourceFolder({
     dataSourceConfig: dataSourceConfigFromConnector(connector),
     folderId: teamInternalId,
     title: teamOnIntercom.name,
-    parents: [teamInternalId, getTeamsInternalId(connectorId)],
-    parentId: getTeamsInternalId(connectorId),
+    parents: [
+      teamInternalId,
+      ...(syncAllActivated ? [getTeamsInternalId(connectorId)] : []),
+    ],
+    parentId: syncAllActivated ? getTeamsInternalId(connectorId) : null,
     mimeType: MIME_TYPES.INTERCOM.TEAM,
     timestampMs: currentSyncMs,
   });
