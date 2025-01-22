@@ -11,7 +11,6 @@ import {
   Err,
   GPT_4O_MODEL_CONFIG,
   Ok,
-  removeNulls,
 } from "@dust-tt/types";
 import { Context } from "@temporalio/activity";
 import _ from "lodash";
@@ -485,19 +484,18 @@ async function getTrackersToRun(
       config.getConnectorsAPIConfig(),
       logger
     );
-    const parentsResult = await connectorsAPI.getContentNodes({
+    const parentsResult = await connectorsAPI.getContentNodesParents({
       connectorId: dataSource.connectorId,
       internalIds: [documentId],
-      includeParents: true,
     });
     if (parentsResult.isErr()) {
       throw parentsResult.error;
     }
 
-    docParentIds = removeNulls([
+    docParentIds = [
       documentId,
-      ...parentsResult.value.nodes.flatMap((node) => node.parentInternalIds),
-    ]);
+      ...parentsResult.value.nodes.flatMap((node) => node.parents),
+    ];
   }
 
   return TrackerConfigurationResource.fetchAllWatchedForDocument(auth, {
