@@ -3,7 +3,7 @@ import { DataTypes } from "sequelize";
 
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
-import { BaseModel } from "@connectors/resources/storage/wrappers";
+import { BaseModel } from "@connectors/resources/storage/wrappers/base";
 
 type RemoteTablePermission = "selected" | "inherited"; // todo Daph move in next PR
 

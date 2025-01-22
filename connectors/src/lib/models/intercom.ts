@@ -4,7 +4,7 @@ import { DataTypes } from "sequelize";
 import type { IntercomSyncAllConversationsStatus } from "@connectors/connectors/intercom/lib/types";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
-import { BaseModel } from "@connectors/resources/storage/wrappers";
+import { BaseModel } from "@connectors/resources/storage/wrappers/base";
 
 export class IntercomWorkspace extends BaseModel<IntercomWorkspace> {
   declare createdAt: CreationOptional<Date>;

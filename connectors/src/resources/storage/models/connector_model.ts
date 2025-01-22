@@ -7,7 +7,7 @@ import type { CreationOptional } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { sequelizeConnection } from "@connectors/resources/storage";
-import { BaseModel } from "@connectors/resources/storage/wrappers";
+import { BaseModel } from "@connectors/resources/storage/wrappers/base";
 
 export class ConnectorModel extends BaseModel<ConnectorModel> {
   declare createdAt: CreationOptional<Date>;

@@ -2,10 +2,10 @@ import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { sequelizeConnection } from "@connectors/resources/storage";
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
-import { BaseModel } from "@connectors/resources/storage/wrappers";
+import type { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 
-export class GoogleDriveConfig extends BaseModel<GoogleDriveConfig> {
+export class GoogleDriveConfig extends ConnectorBaseModel<GoogleDriveConfig> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
@@ -45,15 +45,12 @@ GoogleDriveConfig.init(
     sequelize: sequelizeConnection,
     modelName: "google_drive_configs",
     indexes: [{ fields: ["connectorId"], unique: true }],
+    relationship: "hasOne",
   }
 );
-ConnectorModel.hasOne(GoogleDriveConfig, {
-  foreignKey: "connectorId",
-  onDelete: "RESTRICT",
-});
 
 // GoogleDriveFolders stores the folders selected by the user to sync.
-export class GoogleDriveFolders extends BaseModel<GoogleDriveFolders> {
+export class GoogleDriveFolders extends ConnectorBaseModel<GoogleDriveFolders> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
@@ -82,13 +79,9 @@ GoogleDriveFolders.init(
     indexes: [{ fields: ["connectorId", "folderId"], unique: true }],
   }
 );
-ConnectorModel.hasOne(GoogleDriveFolders, {
-  foreignKey: "connectorId",
-  onDelete: "RESTRICT",
-});
 
 // GoogleDriveFiles stores files and folders synced from Google Drive.
-export class GoogleDriveFiles extends BaseModel<GoogleDriveFiles> {
+export class GoogleDriveFiles extends ConnectorBaseModel<GoogleDriveFiles> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare lastSeenTs: Date | null;
@@ -157,12 +150,8 @@ GoogleDriveFiles.init(
     ],
   }
 );
-ConnectorModel.hasOne(GoogleDriveFiles, {
-  foreignKey: "connectorId",
-  onDelete: "RESTRICT",
-});
 
-export class GoogleDriveSheet extends BaseModel<GoogleDriveSheet> {
+export class GoogleDriveSheet extends ConnectorBaseModel<GoogleDriveSheet> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
@@ -203,14 +192,10 @@ GoogleDriveSheet.init(
     ],
   }
 );
-ConnectorModel.hasOne(GoogleDriveSheet, {
-  foreignKey: "connectorId",
-  onDelete: "RESTRICT",
-});
 
 // Sync Token are the equivalent of a timestamp for syncing the delta
 // between the last sync and the current sync.
-export class GoogleDriveSyncToken extends BaseModel<GoogleDriveSyncToken> {
+export class GoogleDriveSyncToken extends ConnectorBaseModel<GoogleDriveSyncToken> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   // The driveId is the Google Drive Id of the user's drive.
@@ -248,7 +233,3 @@ GoogleDriveSyncToken.init(
     indexes: [{ fields: ["connectorId", "driveId"], unique: true }],
   }
 );
-ConnectorModel.hasOne(GoogleDriveSyncToken, {
-  foreignKey: "connectorId",
-  onDelete: "RESTRICT",
-});

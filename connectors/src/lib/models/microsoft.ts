@@ -4,7 +4,7 @@ import { DataTypes } from "sequelize";
 import type { MicrosoftNodeType } from "@connectors/connectors/microsoft/lib/types";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
-import { BaseModel } from "@connectors/resources/storage/wrappers";
+import { BaseModel } from "@connectors/resources/storage/wrappers/base";
 
 export class MicrosoftConfigurationModel extends BaseModel<MicrosoftConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
