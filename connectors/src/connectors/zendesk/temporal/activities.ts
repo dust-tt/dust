@@ -134,13 +134,12 @@ export async function syncZendeskBrandActivity({
     return { helpCenterAllowed: false, ticketsAllowed: false };
   }
 
-  // upserting three folders to data_sources_folders (core): brand, help center, tickets
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
-  // using the content node to get one source of truth regarding the parent relationship
   const helpCenterNode = brandInDb.getHelpCenterContentNode(connectorId, {
     richTitle: true,
   });
+  // syncing the folders in data_sources_folders (core) for the nodes that are selected among the Help Center and the Tickets
   if (brandInDb.helpCenterPermission === "read") {
     await upsertDataSourceFolder({
       dataSourceConfig,
@@ -176,7 +175,6 @@ export async function syncZendeskBrandActivity({
     });
   }
 
-  // using the content node to get one source of truth regarding the parent relationship
   const ticketsNode = brandInDb.getTicketsContentNode(connectorId, {
     richTitle: true,
   });
