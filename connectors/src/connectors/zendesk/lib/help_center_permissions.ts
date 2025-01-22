@@ -116,6 +116,7 @@ export async function allowSyncZendeskCategory({
 
   if (category) {
     await category.grantPermissions();
+    return true;
   } else {
     const zendeskApiClient = createZendeskClient(
       await getZendeskSubdomainAndAccessToken(connectionId)
@@ -177,8 +178,8 @@ export async function allowSyncZendeskCategory({
       );
       return false;
     }
+    return true;
   }
-  return true;
 }
 
 /**
