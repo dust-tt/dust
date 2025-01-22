@@ -41,18 +41,17 @@ export default function LandingLayout({
     gtmTrackingId,
   } = pageProps;
 
-  const [currentShape, setCurrentShape] = useState(shape);
-  const [showCookieBanner, setShowCookieBanner] = useState<boolean>(true);
-  const [hasAcceptedCookies, setHasAcceptedCookies] = useState<boolean>(false);
-
   const [acceptedCookie, setAcceptedCookie, removeAcceptedCookie] = useCookies([
     "dust-cookies-accepted",
   ]);
+  const [currentShape, setCurrentShape] = useState(shape);
+  const [showCookieBanner, setShowCookieBanner] = useState<boolean>(false);
+  const [hasAcceptedCookies, setHasAcceptedCookies] = useState<boolean>(false);
+
   useEffect(() => {
-    if (acceptedCookie["dust-cookies-accepted"]) {
-      setHasAcceptedCookies(true);
-      setShowCookieBanner(false);
-    }
+    const hasAccepted = Boolean(acceptedCookie["dust-cookies-accepted"]);
+    setHasAcceptedCookies(hasAccepted);
+    setShowCookieBanner(!hasAccepted);
   }, [acceptedCookie]);
 
   useEffect(() => {
@@ -143,12 +142,16 @@ export default function LandingLayout({
           className="fixed bottom-4 right-4"
           show={showCookieBanner}
           onClickAccept={() => {
-            setAcceptedCookie("dust-cookies-accepted", "true");
+            setAcceptedCookie("dust-cookies-accepted", "true", {
+              path: "/",
+              maxAge: 365 * 24 * 60 * 60, // 1 year in seconds
+              sameSite: "lax",
+            });
             setHasAcceptedCookies(true);
             setShowCookieBanner(false);
           }}
           onClickRefuse={() => {
-            removeAcceptedCookie("dust-cookies-accepted");
+            removeAcceptedCookie("dust-cookies-accepted", { path: "/" });
             setShowCookieBanner(false);
           }}
         />
@@ -183,12 +186,12 @@ const CookieBanner = ({
   const [isVisible, setIsVisible] = useState(show);
 
   useEffect(() => {
-    if (show) {
-      setIsVisible(true);
-    } else {
-      setIsVisible(true);
-    }
+    setIsVisible(show);
   }, [show]);
+
+  if (!isVisible) {
+    return null;
+  }
 
   return (
     <div
