@@ -50,8 +50,8 @@ async function migrateConnector(
       if (execute) {
         // check if file is a folder
         if (
-          file.mimeType === MIME_TYPES.GOOGLE_DRIVE.FOLDER ||
-          file.mimeType === MIME_TYPES.GOOGLE_DRIVE.SPREADSHEET
+          file.mimeType === "application/vnd.google-apps.folder" ||
+          file.mimeType === "application/vnd.google-apps.spreadsheet"
         ) {
           await upsertDataSourceFolder({
             dataSourceConfig,
@@ -59,7 +59,10 @@ async function migrateConnector(
             parents,
             parentId: parents[1] || null,
             title: file.name,
-            mimeType: file.mimeType,
+            mimeType:
+              file.mimeType === "application/vnd.google-apps.folder"
+                ? MIME_TYPES.GOOGLE_DRIVE.FOLDER
+                : MIME_TYPES.GOOGLE_DRIVE.SPREADSHEET,
             sourceUrl: getSourceUrlForGoogleDriveFiles(file),
           });
         } else {
