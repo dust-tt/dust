@@ -757,6 +757,7 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
       expandable: false,
       permission: this.permission,
       lastUpdatedAt: this.updatedAt.getTime(),
+      preventSelection: true,
     };
   }
 
@@ -957,6 +958,7 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
       expandable: false,
       permission: this.permission,
       lastUpdatedAt: this.updatedAt.getTime(),
+      preventSelection: true,
     };
   }
 
