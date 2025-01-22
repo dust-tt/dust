@@ -7,7 +7,6 @@ import {
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import logger from "@connectors/logger/logger";
 import {
-  ZendeskArticleResource,
   ZendeskBrandResource,
   ZendeskCategoryResource,
 } from "@connectors/resources/zendesk_resources";
@@ -205,13 +204,6 @@ export async function forbidSyncZendeskCategory({
     return null;
   }
   await category.revokePermissions();
-
-  // revoking the permissions for all the children articles
-  await ZendeskArticleResource.revokePermissionsForCategory({
-    connectorId,
-    brandId,
-    categoryId,
-  });
 
   return category;
 }
