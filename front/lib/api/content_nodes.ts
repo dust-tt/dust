@@ -185,8 +185,6 @@ export function getContentNodeMetadata(
       return { type: "database" };
     case MIME_TYPES.WEBCRAWLER.FOLDER:
       return { type: "folder" };
-    case MIME_TYPES.ZENDESK.BRAND:
-      return { type: "folder" };
     case MIME_TYPES.ZENDESK.HELP_CENTER:
       return { type: "folder" };
     case MIME_TYPES.ZENDESK.CATEGORY:
