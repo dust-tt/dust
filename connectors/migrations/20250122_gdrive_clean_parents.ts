@@ -1,44 +1,43 @@
-import { concurrentExecutor, EnvironmentConfig } from "@dust-tt/types";
+import {
+  concurrentExecutor,
+  getGoogleSheetTableId,
+  MIME_TYPES,
+} from "@dust-tt/types";
 import type { LoggerOptions } from "pino";
 import type pino from "pino";
 import { makeScript } from "scripts/helpers";
-import { QueryTypes, Sequelize } from "sequelize";
 
+import { getSourceUrlForGoogleDriveFiles } from "@connectors/connectors/google_drive";
 import { getLocalParents } from "@connectors/connectors/google_drive/lib";
-import { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import {
+  updateDataSourceDocumentParents,
+  updateDataSourceTableParents,
+  upsertDataSourceFolder,
+} from "@connectors/lib/data_sources";
+import {
+  GoogleDriveFiles,
+  GoogleDriveSheet,
+} from "@connectors/lib/models/google_drive";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 async function migrateConnector(
-  coreSequelize: Sequelize,
   connector: ConnectorResource,
   execute: boolean,
   parentLogger: pino.Logger<LoggerOptions & pino.ChildLoggerOptions>
 ) {
   const logger = parentLogger.child({ connectorId: connector.id });
   logger.info("Starting migration");
+
   const files = await GoogleDriveFiles.findAll({
     where: {
       connectorId: connector.id,
     },
-    attributes: ["id", "dustFileId"],
   });
 
-  // get datasource id from core
-  const rows: { id: number }[] = await coreSequelize.query(
-    `SELECT id FROM data_sources WHERE data_source_id = :dataSourceId;`,
-    {
-      replacements: { dataSourceId: connector.dataSourceId },
-      type: QueryTypes.SELECT,
-    }
-  );
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
-  if (rows.length === 0) {
-    logger.error(`Data source ${connector.dataSourceId} not found in core`);
-    return;
-  }
-
-  const dataSourceId = rows[0]?.id;
-
+  // update using front API to update both elasticsearch and postgres
   await concurrentExecutor(
     files,
     async (file) => {
@@ -48,41 +47,76 @@ async function migrateConnector(
         "migrate_parents"
       );
       if (execute) {
-        await coreSequelize.query(
-          `UPDATE data_sources_nodes SET parents = :parents WHERE data_source = :dataSourceId AND node_id = :nodeId`,
-          {
-            replacements: {
-              parents: parents,
-              dataSourceId,
-              nodeId: file.dustFileId,
-            },
-          }
-        );
+        // check if file is a folder
+        if (
+          file.mimeType === MIME_TYPES.GOOGLE_DRIVE.FOLDER ||
+          file.mimeType === MIME_TYPES.GOOGLE_DRIVE.SPREADSHEET
+        ) {
+          await upsertDataSourceFolder({
+            dataSourceConfig,
+            folderId: file.dustFileId,
+            parents,
+            parentId: parents[1] || null,
+            title: file.name,
+            mimeType: file.mimeType,
+            sourceUrl: getSourceUrlForGoogleDriveFiles(file),
+          });
+        } else {
+          await updateDataSourceDocumentParents({
+            dataSourceConfig,
+            documentId: file.dustFileId,
+            parents,
+            parentId: parents[1] || null,
+          });
+        }
       }
     },
     { concurrency: 32 }
   );
+
   if (execute) {
-    logger.info({ numberOfFiles: files.length }, "Migration completed");
+    logger.info({ numberOfFiles: files.length }, "Migrated files");
   } else {
-    logger.info(
-      { numberOfFiles: files.length },
-      "Migration completed (dry run)"
-    );
+    logger.info({ numberOfFiles: files.length }, "Migrated files (dry run)");
+  }
+
+  const sheets = await GoogleDriveSheet.findAll({
+    where: {
+      connectorId: connector.id,
+    },
+  });
+
+  await concurrentExecutor(
+    sheets,
+    async (sheet) => {
+      const parents = await getLocalParents(
+        connector.id,
+        getGoogleSheetTableId(sheet.driveFileId, sheet.driveSheetId),
+        "migrate_parents"
+      );
+      if (execute) {
+        await updateDataSourceTableParents({
+          dataSourceConfig,
+          tableId: getGoogleSheetTableId(sheet.driveFileId, sheet.driveSheetId),
+          parents,
+          parentId: parents[1] || null,
+        });
+      }
+    },
+    { concurrency: 32 }
+  );
+
+  if (execute) {
+    logger.info({ numberOfSheets: sheets.length }, "Migrated sheets");
+  } else {
+    logger.info({ numberOfSheets: sheets.length }, "Migrated sheets (dry run)");
   }
 }
 
 makeScript({}, async ({ execute }, logger) => {
   const connectors = await ConnectorResource.listByType("google_drive", {});
-  const coreSequelize = getCorePrimaryDbConnection();
 
   for (const connector of connectors) {
-    await migrateConnector(coreSequelize, connector, execute, logger);
+    await migrateConnector(connector, execute, logger);
   }
 });
-
-function getCorePrimaryDbConnection() {
-  return new Sequelize(EnvironmentConfig.getEnvVariable("CORE_DATABASE_URI"), {
-    logging: false,
-  });
-}
