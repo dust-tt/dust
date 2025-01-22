@@ -34,6 +34,10 @@ on:
 
 jobs:
   list-tags:
+    permissions:
+      contents: read
+      id-token: write
+
     runs-on: ubuntu-latest
     steps:
       - name: Set project ID
