@@ -1,10 +1,12 @@
+import { concurrentExecutor, EnvironmentConfig } from "@dust-tt/types";
+import type { LoggerOptions } from "pino";
+import type pino from "pino";
+import { makeScript } from "scripts/helpers";
+import { QueryTypes, Sequelize } from "sequelize";
+
 import { getLocalParents } from "@connectors/connectors/google_drive/lib";
 import { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import { concurrentExecutor, CoreAPI, EnvironmentConfig } from "@dust-tt/types";
-import pino, { LoggerOptions } from "pino";
-import { makeScript } from "scripts/helpers";
-import { QueryTypes, Sequelize } from "sequelize";
 
 async function migrateConnector(
   coreSequelize: Sequelize,
@@ -37,7 +39,7 @@ async function migrateConnector(
 
   const dataSourceId = rows[0]?.id;
 
-  concurrentExecutor(
+  await concurrentExecutor(
     files,
     async (file) => {
       const parents = await getLocalParents(
@@ -46,7 +48,7 @@ async function migrateConnector(
         "migrate_parents"
       );
       if (execute) {
-        coreSequelize.query(
+        await coreSequelize.query(
           `UPDATE data_sources_nodes SET parents = :parents WHERE data_source = :dataSourceId AND node_id = :nodeId`,
           {
             replacements: {
@@ -60,6 +62,14 @@ async function migrateConnector(
     },
     { concurrency: 32 }
   );
+  if (execute) {
+    logger.info({ numberOfFiles: files.length }, "Migration completed");
+  } else {
+    logger.info(
+      { numberOfFiles: files.length },
+      "Migration completed (dry run)"
+    );
+  }
 }
 
 makeScript({}, async ({ execute }, logger) => {
