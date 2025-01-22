@@ -1,17 +1,23 @@
-import { ContentMessage, InformationCircleIcon } from "@dust-tt/sparkle";
+import {
+  CommandLineIcon,
+  ContentMessage,
+  Icon,
+  InformationCircleIcon,
+  RadioGroup,
+  RadioGroupChoice,
+  Separator,
+  Spinner,
+} from "@dust-tt/sparkle";
 import type { LightWorkspaceType, SpaceType } from "@dust-tt/types";
 import { assertNever, slugify } from "@dust-tt/types";
-import React, { useContext, useState } from "react";
+import { sortBy } from "lodash";
+import React, { useContext, useMemo } from "react";
 
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
-import {
-  ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_DESCRIPTION,
-  ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_NAME,
-  AssistantBuilderActionConfiguration,
-  AssistantBuilderDustAppConfiguration,
-} from "@app/components/assistant_builder/types";
-import DustAppSelectionSection from "@app/components/assistant_builder/DustAppSelectionSection";
-import AssistantBuilderDustAppModal from "@app/components/assistant_builder/AssistantBuilderDustAppModal";
+import { SpaceSelector } from "@app/components/assistant_builder/spaces/SpaceSelector";
+import type { AssistantBuilderActionConfiguration } from "@app/components/assistant_builder/types";
+import { useSpaces } from "@app/lib/swr/spaces";
+import { classNames } from "@app/lib/utils";
 
 export function isActionDustAppRunValid(
   action: AssistantBuilderActionConfiguration
@@ -43,22 +49,18 @@ export function ActionDustAppRun({
   updateAction,
 }: ActionDustAppRunProps) {
   const { dustApps } = useContext(AssistantBuilderContext);
-  const [showDustAppsModal, setShowDustAppsModal] = useState(false);
 
-  const deleteDustApp = () => {
-    setEdited(true);
-
-    updateAction({
-      actionName:
-        ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_NAME,
-      actionDescription:
-        ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_DESCRIPTION,
-      getNewActionConfig: (previousAction) => ({
-        ...previousAction,
-        app: null,
-      }),
-    });
-  };
+  const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
+  const filteredSpaces = useMemo(
+    () =>
+      spaces.filter((space) =>
+        dustApps.some((app) => app.space.sId === space.sId)
+      ),
+    [spaces, dustApps]
+  );
+  const hasSomeUnselectableApps = dustApps.some(
+    (app) => !app.description || app.description.length === 0
+  );
 
   const noDustApp = dustApps.length === 0;
 
@@ -68,27 +70,6 @@ export function ActionDustAppRun({
 
   return (
     <>
-      <AssistantBuilderDustAppModal
-        allowedSpaces={allowedSpaces}
-        owner={owner}
-        isOpen={showDustAppsModal}
-        setOpen={(isOpen) => {
-          setShowDustAppsModal(isOpen);
-        }}
-        dustApps={dustApps}
-        onSave={(app) => {
-          setEdited(true);
-          updateAction({
-            actionName: slugify(app.name),
-            actionDescription: app.description ?? "",
-            getNewActionConfig: (previousAction) => ({
-              ...previousAction,
-              app,
-            }),
-          });
-        }}
-      />
-
       {noDustApp ? (
         <ContentMessage
           title="You don't have any Dust Application available"
@@ -141,17 +122,102 @@ export function ActionDustAppRun({
             of the conversation based on the descriptions you provided in the
             application's input block dataset schema.
           </div>
-          <DustAppSelectionSection
-            owner={owner}
-            dustAppConfiguration={
-              action.configuration as AssistantBuilderDustAppConfiguration
-            }
-            openDustAppModal={() => {
-              setShowDustAppsModal(true);
-            }}
-            onDelete={deleteDustApp}
-            canSelectDustApp={!noDustApp}
-          />
+
+          {hasSomeUnselectableApps && (
+            <div className="mb-4 text-sm text-element-700">
+              Dust apps without a description are not selectable. To make a Dust
+              App selectable, edit it and add a description.
+            </div>
+          )}
+          {isSpacesLoading ? (
+            <Spinner />
+          ) : (
+            <SpaceSelector
+              spaces={filteredSpaces}
+              allowedSpaces={allowedSpaces}
+              defaultSpace={allowedSpaces[0].sId}
+              renderChildren={(space) => {
+                const appsInSpace = space
+                  ? dustApps.filter((app) => app.space.sId === space.sId)
+                  : dustApps;
+                if (appsInSpace.length === 0) {
+                  return <>No Dust Apps available.</>;
+                }
+
+                return (
+                  <RadioGroup
+                    defaultValue={
+                      action.type === "DUST_APP_RUN"
+                        ? action.configuration.app?.sId
+                        : undefined
+                    }
+                  >
+                    {sortBy(
+                      appsInSpace,
+                      (a) => !a.description || a.description.length === 0,
+                      "name"
+                    ).map((app) => {
+                      const disabled =
+                        !app.description || app.description.length === 0;
+                      return (
+                        <React.Fragment key={app.sId}>
+                          <RadioGroupChoice
+                            value={app.sId}
+                            disabled={disabled}
+                            iconPosition="start"
+                            label={
+                              <div className={"flex items-center gap-1 pl-2"}>
+                                <Icon
+                                  visual={CommandLineIcon}
+                                  size="md"
+                                  className={classNames(
+                                    "inline-block flex-shrink-0 align-middle",
+                                    disabled ? "text-element-700" : ""
+                                  )}
+                                />
+                                <span
+                                  className={classNames(
+                                    "font-bold",
+                                    "align-middle",
+                                    disabled
+                                      ? "text-element-700"
+                                      : "text-foreground"
+                                  )}
+                                >
+                                  {app.name +
+                                    (disabled ? " (No description)" : "")}
+                                </span>
+                              </div>
+                            }
+                            onClick={() => {
+                              if (!disabled) {
+                                setEdited(true);
+                                updateAction({
+                                  actionName: slugify(app.name),
+                                  actionDescription: app.description ?? "",
+                                  getNewActionConfig: (previousAction) => ({
+                                    ...previousAction,
+                                    app,
+                                  }),
+                                });
+                              }
+                            }}
+                          >
+                            {app.description && (
+                              <div className="ml-10 mt-1 text-sm text-element-700">
+                                {app.description}
+                              </div>
+                            )}
+                          </RadioGroupChoice>
+                          <Separator />
+                        </React.Fragment>
+                      );
+                    })}
+                  </RadioGroup>
+                );
+              }}
+            />
+          )}
         </>
       )}
     </>
