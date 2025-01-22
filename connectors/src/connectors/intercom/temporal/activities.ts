@@ -404,7 +404,7 @@ export async function syncArticleBatchActivity({
     where: {
       connectorId,
       helpCenterId,
-      permission: "read",
+      permission: ["read", "inherited"],
     },
   });
 
@@ -426,6 +426,8 @@ export async function syncArticleBatchActivity({
           parentCollection,
           region: intercomWorkspace.region,
           isHelpCenterWebsiteTurnedOn: helpCenter.websiteTurnedOn,
+          shouldAddHelpCenterToParents:
+            parentCollection.permission === "inherited",
           currentSyncMs,
           forceResync,
           dataSourceConfig,

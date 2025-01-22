@@ -122,6 +122,7 @@ async function createFolderNodes(execute: boolean) {
               connectorId: connector.id,
               collectionId: collection.collectionId,
               helpCenterId: helpCenter.helpCenterId,
+              permission: collection.permission,
             });
             console.log(
               `[${connector.id}] -> ${JSON.stringify({ folderId: collectionInternalId, parents: collectionParents })}`

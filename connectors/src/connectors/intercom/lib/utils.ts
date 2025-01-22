@@ -4,10 +4,7 @@ import type {
   IntercomArticleType,
   IntercomCollectionType,
 } from "@connectors/connectors/intercom/lib/types";
-import {
-  IntercomCollection,
-  IntercomHelpCenter,
-} from "@connectors/lib/models/intercom";
+import { IntercomCollection } from "@connectors/lib/models/intercom";
 
 /**
  * From id to internalId
@@ -125,17 +122,20 @@ export async function getParentIdsForArticle({
   connectorId,
   parentCollectionId,
   helpCenterId,
+  shouldAddHelpCenterToParents,
 }: {
   documentId: string;
   connectorId: number;
   parentCollectionId: string;
   helpCenterId: string;
+  shouldAddHelpCenterToParents: boolean;
 }): Promise<[string, string, ...string[]]> {
   // Get collection parents
   const collectionParents = await getParentIdsForCollection({
     connectorId,
     collectionId: parentCollectionId,
     helpCenterId,
+    permission: shouldAddHelpCenterToParents ? "inherited" : "read",
   });
 
   return [documentId, ...collectionParents];
@@ -145,10 +145,12 @@ export async function getParentIdsForCollection({
   connectorId,
   collectionId,
   helpCenterId,
+  permission,
 }: {
   connectorId: number;
   collectionId: string;
   helpCenterId: string;
+  permission: "inherited" | "read" | "none";
 }): Promise<[string, ...string[]]> {
   const parentIds = [];
 
@@ -175,12 +177,8 @@ export async function getParentIdsForCollection({
       getHelpCenterCollectionInternalId(connectorId, currentParentId)
     );
   }
-  // adding the Help Center iff it was explicitly selected by the user
-  // not adding it if the collection is synced because it was selected or if a parent collection was selected
-  const helpCenter = await IntercomHelpCenter.findOne({
-    where: { connectorId, helpCenterId },
-  });
-  if (helpCenter?.permission === "read") {
+  // if the collection has inherited its right, it means we have to add the Help Center to the parents
+  if (permission === "inherited") {
     parentIds.push(getHelpCenterInternalId(connectorId, helpCenterId));
   }
 

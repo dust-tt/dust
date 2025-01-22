@@ -204,7 +204,7 @@ export async function upsertCollectionWithChildren({
       name: collection.name,
       description: collection.description,
       url: collection.url || fallbackCollectionUrl,
-      permission: "read",
+      permission: "inherited", // if the collection does not already exist here, it means we selected the whole Help Center
       lastUpsertedTs: new Date(currentSyncMs),
     });
   }
@@ -222,6 +222,7 @@ export async function upsertCollectionWithChildren({
     connectorId,
     collectionId,
     helpCenterId,
+    permission: collectionOnDb.permission,
   });
   await upsertDataSourceFolder({
     dataSourceConfig,
@@ -266,6 +267,7 @@ export async function upsertArticle({
   region,
   parentCollection,
   isHelpCenterWebsiteTurnedOn,
+  shouldAddHelpCenterToParents,
   currentSyncMs,
   forceResync,
   dataSourceConfig,
@@ -277,6 +279,7 @@ export async function upsertArticle({
   region: string;
   parentCollection: IntercomCollection;
   isHelpCenterWebsiteTurnedOn: boolean;
+  shouldAddHelpCenterToParents: boolean;
   currentSyncMs: number;
   forceResync: boolean;
   dataSourceConfig: DataSourceConfig;
@@ -408,6 +411,7 @@ export async function upsertArticle({
       connectorId,
       parentCollectionId,
       helpCenterId,
+      shouldAddHelpCenterToParents,
     });
 
     await upsertDataSourceDocument({
