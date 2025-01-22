@@ -1,0 +1,134 @@
+name: Revert Workflow
+
+on:
+  workflow_call:
+    inputs:
+      regions:
+        description: "Regions to revert"
+        type: string
+        required: true
+      component:
+        description: "Component to revert"
+        type: choice
+        options:
+          - alerting-temporal
+          - connectors
+          - core
+          - front
+          - front-edge
+          - metabase
+          - oauth
+          - prodbox
+          - viz
+        required: true
+    secrets:
+      SLACK_CHANNEL_ID:
+        required: true
+      SLACK_BOT_TOKEN:
+        required: true
+      INFRA_DISPATCH_APP_ID:
+        required: true
+      INFRA_DISPATCH_APP_PRIVATE_KEY:
+        required: true
+
+jobs:
+  check-branch:
+    runs-on: ubuntu-latest
+    if: ${{ !inputs.enforce_main || github.ref == 'refs/heads/main' }}
+    steps:
+      - name: Check branch condition
+        run: |
+          if [[ "${{ inputs.enforce_main }}" == "true" && "${{ github.ref }}" != "refs/heads/main" ]]; then
+            echo "Reverts are only allowed from the main branch"
+            exit 1
+          fi
+
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      short_sha: ${{ steps.short_sha.outputs.short_sha }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Get short sha
+        id: short_sha
+        run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+  notify-start:
+    needs: [prepare]
+    runs-on: ubuntu-latest
+    outputs:
+      thread_ts: ${{ steps.build_message.outputs.thread_ts }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Notify Start
+        id: build_message
+        uses: ./.github/actions/slack-notify
+        with:
+          step: "start"
+          channel: ${{ secrets.SLACK_CHANNEL_ID }}
+          component: ${{ inputs.component }}
+          image_tag: ${{ needs.prepare.outputs.short_sha }}
+          region: ${{ inputs.regions }}
+          slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          is_revert: true
+
+  create-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - id: set-matrix
+        run: |
+          if [ "${{ inputs.regions }}" = "all" ]; then
+            echo "matrix=[\"us-central1\",\"europe-west1\"]" >> $GITHUB_OUTPUT
+          else
+            echo "matrix=[\"${{ inputs.regions }}\"]" >> $GITHUB_OUTPUT
+          fi
+
+  revert:
+    needs: [prepare, notify-start]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Generate token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.INFRA_DISPATCH_APP_ID }}
+          private-key: ${{ secrets.INFRA_DISPATCH_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: dust-infra
+
+      - name: Trigger dust-infra workflow
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ steps.generate-token.outputs.token }}
+          script: |
+            await github.rest.repos.createDispatchEvent({
+              owner: '${{ github.repository_owner }}',
+              repo: 'dust-infra',
+              event_type: 'trigger-component-revert',
+              client_payload: {
+                regions: '${{ inputs.regions }}',
+                component: '${{ inputs.component }}',
+                image_tag: '${{ needs.prepare.outputs.short_sha }}',
+                slack_thread_ts: "${{ needs.notify-start.outputs.thread_ts }}",
+                slack_channel: '${{ secrets.SLACK_CHANNEL_ID }}',
+                run_playwright: false,
+              }
+            })
+
+      - name: Notify Failure
+        if: failure()
+        uses: ./.github/actions/slack-notify
+        with:
+          step: "failure"
+          channel: ${{ secrets.SLACK_CHANNEL_ID }}
+          component: ${{ inputs.component }}
+          image_tag: ${{ needs.prepare.outputs.short_sha }}
+          region: ${{ inputs.regions }}
+          slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          thread_ts: "${{ needs.notify-start.outputs.thread_ts }}"
+          is_revert: true
