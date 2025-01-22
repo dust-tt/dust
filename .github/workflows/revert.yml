@@ -8,8 +8,19 @@ on:
         type: string
         required: true
       component:
-        description: "Component name"
-        type: string
+        description: "Component to deploy"
+        type: choice
+        options:
+          - alerting-temporal
+          - connectors
+          - core
+          - front
+          - front-edge
+          - front-qa
+          - metabase
+          - oauth
+          - prodbox
+          - viz
         required: true
     secrets:
       GCLOUD_US_PROJECT_ID:
