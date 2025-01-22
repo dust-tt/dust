@@ -1,21 +1,18 @@
-import type { CreationOptional, ForeignKey } from "sequelize";
+import type { CreationOptional } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { sequelizeConnection } from "@connectors/resources/storage";
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
-import { BaseModel } from "@connectors/resources/storage/wrappers";
+import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 
 type RemoteTablePermission = "selected" | "inherited"; // todo Daph move in next PR
 
-export class RemoteDatabaseModel extends BaseModel<RemoteDatabaseModel> {
+export class RemoteDatabaseModel extends ConnectorBaseModel<RemoteDatabaseModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
   declare internalId: string;
   declare name: string;
   declare permission: "selected" | "unselected";
-
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 RemoteDatabaseModel.init(
   {
@@ -48,13 +45,8 @@ RemoteDatabaseModel.init(
     indexes: [{ fields: ["connectorId", "internalId"], unique: true }],
   }
 );
-ConnectorModel.hasMany(RemoteDatabaseModel, {
-  foreignKey: { allowNull: false },
-  onDelete: "RESTRICT",
-});
-RemoteDatabaseModel.belongsTo(ConnectorModel);
 
-export class RemoteSchemaModel extends BaseModel<RemoteSchemaModel> {
+export class RemoteSchemaModel extends ConnectorBaseModel<RemoteSchemaModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -63,8 +55,6 @@ export class RemoteSchemaModel extends BaseModel<RemoteSchemaModel> {
   declare permission: "selected" | "unselected" | "inherited";
 
   declare databaseName: string;
-
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 RemoteSchemaModel.init(
   {
@@ -101,13 +91,8 @@ RemoteSchemaModel.init(
     indexes: [{ fields: ["connectorId", "internalId"], unique: true }],
   }
 );
-ConnectorModel.hasMany(RemoteSchemaModel, {
-  foreignKey: { allowNull: false },
-  onDelete: "RESTRICT",
-});
-RemoteSchemaModel.belongsTo(ConnectorModel);
 
-export class RemoteTableModel extends BaseModel<RemoteTableModel> {
+export class RemoteTableModel extends ConnectorBaseModel<RemoteTableModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare lastUpsertedAt: CreationOptional<Date> | null;
@@ -118,8 +103,6 @@ export class RemoteTableModel extends BaseModel<RemoteTableModel> {
   declare schemaName: string;
   declare databaseName: string;
   declare permission: RemoteTablePermission;
-
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 RemoteTableModel.init(
   {
@@ -164,8 +147,3 @@ RemoteTableModel.init(
     indexes: [{ fields: ["connectorId", "internalId"], unique: true }],
   }
 );
-ConnectorModel.hasMany(RemoteTableModel, {
-  foreignKey: { allowNull: false },
-  onDelete: "RESTRICT",
-});
-RemoteTableModel.belongsTo(ConnectorModel);

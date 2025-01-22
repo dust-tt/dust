@@ -7,15 +7,13 @@ import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { sequelizeConnection } from "@connectors/resources/storage";
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
-import { BaseModel } from "@connectors/resources/storage/wrappers";
+import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 
-export class SlackConfigurationModel extends BaseModel<SlackConfigurationModel> {
+export class SlackConfigurationModel extends ConnectorBaseModel<SlackConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare slackTeamId: string;
   declare botEnabled: boolean;
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
   // Whitelisted domains are in the format "domain:group_id".
   declare whitelistedDomains?: readonly string[];
   declare autoReadChannelPatterns: SlackAutoReadPattern[];
@@ -64,14 +62,13 @@ SlackConfigurationModel.init(
       },
     ],
     modelName: "slack_configurations",
+    relationship: "hasOne",
   }
 );
-ConnectorModel.hasOne(SlackConfigurationModel);
 
-export class SlackMessages extends BaseModel<SlackMessages> {
+export class SlackMessages extends ConnectorBaseModel<SlackMessages> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
   declare channelId: string;
   declare messageTs?: string;
   declare documentId: string;
@@ -109,16 +106,11 @@ SlackMessages.init(
     ],
   }
 );
-ConnectorModel.hasOne(SlackMessages, {
-  foreignKey: "connectorId",
-  onDelete: "RESTRICT",
-});
 
-export class SlackChannel extends BaseModel<SlackChannel> {
+export class SlackChannel extends ConnectorBaseModel<SlackChannel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
   declare slackChannelId: string;
   declare slackChannelName: string;
 
@@ -170,15 +162,10 @@ SlackChannel.init(
     ],
   }
 );
-ConnectorModel.hasMany(SlackChannel, {
-  foreignKey: "connectorId",
-  onDelete: "RESTRICT",
-});
 
-export class SlackChatBotMessage extends BaseModel<SlackChatBotMessage> {
+export class SlackChatBotMessage extends ConnectorBaseModel<SlackChatBotMessage> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
   declare channelId: string;
   declare message: string;
   declare slackUserId: string;
@@ -265,18 +252,13 @@ SlackChatBotMessage.init(
     indexes: [{ fields: ["connectorId", "channelId", "threadTs"] }],
   }
 );
-ConnectorModel.hasOne(SlackChatBotMessage, {
-  foreignKey: "connectorId",
-  onDelete: "RESTRICT",
-});
 
-export class SlackBotWhitelistModel extends BaseModel<SlackBotWhitelistModel> {
+export class SlackBotWhitelistModel extends ConnectorBaseModel<SlackBotWhitelistModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare botName: string;
   declare groupIds: string[];
   declare whitelistType: SlackbotWhitelistType;
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
   declare slackConfigurationId: ForeignKey<SlackConfigurationModel["id"]>;
 }
 
@@ -314,5 +296,4 @@ SlackBotWhitelistModel.init(
   }
 );
 
-ConnectorModel.hasMany(SlackBotWhitelistModel);
 SlackConfigurationModel.hasMany(SlackBotWhitelistModel);

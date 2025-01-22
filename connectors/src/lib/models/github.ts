@@ -1,19 +1,16 @@
-import type { CreationOptional, ForeignKey } from "sequelize";
+import type { CreationOptional } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { sequelizeConnection } from "@connectors/resources/storage";
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
-import { BaseModel } from "@connectors/resources/storage/wrappers";
+import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 
-export class GithubConnectorState extends BaseModel<GithubConnectorState> {
+export class GithubConnectorState extends ConnectorBaseModel<GithubConnectorState> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
   declare installationId: string | null;
   declare webhooksEnabledAt?: Date | null;
   declare codeSyncEnabled: boolean;
-
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 GithubConnectorState.init(
   {
@@ -48,11 +45,11 @@ GithubConnectorState.init(
       { fields: ["connectorId"], unique: true },
       { fields: ["installationId"] },
     ],
+    relationship: "hasOne",
   }
 );
-ConnectorModel.hasOne(GithubConnectorState);
 
-export class GithubIssue extends BaseModel<GithubIssue> {
+export class GithubIssue extends ConnectorBaseModel<GithubIssue> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -60,8 +57,6 @@ export class GithubIssue extends BaseModel<GithubIssue> {
 
   declare repoId: string;
   declare issueNumber: number;
-
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 GithubIssue.init(
   {
@@ -98,16 +93,13 @@ GithubIssue.init(
     modelName: "github_issues",
   }
 );
-ConnectorModel.hasMany(GithubIssue);
 
-export class GithubDiscussion extends BaseModel<GithubDiscussion> {
+export class GithubDiscussion extends ConnectorBaseModel<GithubDiscussion> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
   declare repoId: string;
   declare discussionNumber: number;
-
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 GithubDiscussion.init(
   {
@@ -140,9 +132,8 @@ GithubDiscussion.init(
     modelName: "github_discussions",
   }
 );
-ConnectorModel.hasMany(GithubDiscussion);
 
-export class GithubCodeRepository extends BaseModel<GithubCodeRepository> {
+export class GithubCodeRepository extends ConnectorBaseModel<GithubCodeRepository> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare lastSeenAt: CreationOptional<Date>;
@@ -154,8 +145,6 @@ export class GithubCodeRepository extends BaseModel<GithubCodeRepository> {
   declare repoName: string;
 
   declare sourceUrl: string;
-
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 GithubCodeRepository.init(
   {
@@ -207,9 +196,8 @@ GithubCodeRepository.init(
     modelName: "github_code_repositories",
   }
 );
-ConnectorModel.hasMany(GithubCodeRepository);
 
-export class GithubCodeFile extends BaseModel<GithubCodeFile> {
+export class GithubCodeFile extends ConnectorBaseModel<GithubCodeFile> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare lastSeenAt: CreationOptional<Date>;
@@ -222,8 +210,6 @@ export class GithubCodeFile extends BaseModel<GithubCodeFile> {
   declare fileName: string;
   declare sourceUrl: string;
   declare contentHash: string;
-
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 GithubCodeFile.init(
   {
@@ -281,9 +267,8 @@ GithubCodeFile.init(
     modelName: "github_code_files",
   }
 );
-ConnectorModel.hasMany(GithubCodeFile);
 
-export class GithubCodeDirectory extends BaseModel<GithubCodeDirectory> {
+export class GithubCodeDirectory extends ConnectorBaseModel<GithubCodeDirectory> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare lastSeenAt: CreationOptional<Date>;
@@ -295,8 +280,6 @@ export class GithubCodeDirectory extends BaseModel<GithubCodeDirectory> {
 
   declare dirName: string;
   declare sourceUrl: string;
-
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 GithubCodeDirectory.init(
   {
@@ -350,4 +333,3 @@ GithubCodeDirectory.init(
     modelName: "github_code_directories",
   }
 );
-ConnectorModel.hasMany(GithubCodeDirectory);
