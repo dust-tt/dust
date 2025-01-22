@@ -116,6 +116,14 @@ export async function joinChannel(
           )
         );
       }
+      logger.error(
+        {
+          connectorId,
+          channelId,
+          error: e,
+        },
+        "Can't join the channel"
+      );
       return new Err(e as Error);
     }
   }
