@@ -37,6 +37,7 @@ export async function getServerSideProps() {
   return {
     props: {
       shape: getParticleShapeIndexByName(shapeNames.octahedron),
+      gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
     },
   };
 }
