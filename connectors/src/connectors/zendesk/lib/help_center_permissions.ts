@@ -6,7 +6,6 @@ import {
   createZendeskClient,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import logger from "@connectors/logger/logger";
-import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
   ZendeskArticleResource,
   ZendeskBrandResource,
@@ -14,7 +13,7 @@ import {
 } from "@connectors/resources/zendesk_resources";
 
 /**
- * Marks a help center as permission "read", optionally alongside all its children (categories and articles).
+ * Marks a help center as permission "read".
  * If we are in this function, it means that the user selected the Help Center in the UI.
  * Therefore, we don't need to check for the help_center_state and has_help_center attributes
  * since the box does not appear in the UI then.
@@ -28,12 +27,6 @@ export async function allowSyncZendeskHelpCenter({
   connectionId: string;
   brandId: number;
 }): Promise<boolean> {
-  const connector = await ConnectorResource.fetchById(connectorId);
-  if (!connector) {
-    logger.error({ connectorId }, "[Zendesk] Connector not found.");
-    throw new Error("Connector not found");
-  }
-
   const zendeskApiClient = createZendeskClient(
     await getZendeskSubdomainAndAccessToken(connectionId)
   );
@@ -84,12 +77,6 @@ export async function forbidSyncZendeskHelpCenter({
   connectorId: ModelId;
   brandId: number;
 }): Promise<ZendeskBrandResource | null> {
-  const connector = await ConnectorResource.fetchById(connectorId);
-  if (!connector) {
-    logger.error({ connectorId }, "[Zendesk] Connector not found.");
-    throw new Error("Connector not found");
-  }
-
   const brand = await ZendeskBrandResource.fetchByBrandId({
     connectorId,
     brandId,
