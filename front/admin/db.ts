@@ -45,7 +45,6 @@ import {
   MessageReaction,
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
-import { ConversationClassification } from "@app/lib/models/conversation_classification";
 import {
   TrackerConfigurationModel,
   TrackerDataSourceConfigurationModel,
@@ -172,8 +171,6 @@ async function main() {
 
   await FeatureFlag.sync({ alter: true });
   await KillSwitchModel.sync({ alter: true });
-
-  await ConversationClassification.sync({ alter: true });
 
   // Labs - Can be removed at all times if a solution is dropped
   await LabsTranscriptsConfigurationModel.sync({ alter: true });
