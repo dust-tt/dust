@@ -5,7 +5,7 @@ const CONTENT_SECURITY_POLICIES = [
   `script-src 'self' 'unsafe-inline' 'unsafe-eval' *.googletagmanager.com *.google-analytics.com *.hsforms.net *.hs-scripts.com *.hs-analytics.net *.hubspot.com *.hs-banner.com *.hscollectedforms.net *.cr-relay.com;`,
   `style-src 'self' 'unsafe-inline' *.typekit.net;`,
   `img-src 'self' data: https:;`,
-  `connect-src 'self' blob: *.google-analytics.com cdn.jsdelivr.net *.hsforms.com *.hscollectedforms.net forms-eu1.hscollectedforms.net *.hubspot.com cta-eu1.hubspot.com;`,
+  `connect-src 'self' blob: *.google-analytics.com cdn.jsdelivr.net *.hsforms.com *.hscollectedforms.net forms-eu1.hscollectedforms.net *.hubspot.com;`,
   `frame-src 'self' *.wistia.net eu.viz.dust.tt viz.dust.tt *.hsforms.net;`,
   `font-src 'self' data: *.typekit.net;`,
   `object-src 'none';`,
