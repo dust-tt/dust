@@ -3,8 +3,16 @@ name: Revert Workflow
 on:
   workflow_dispatch:
     inputs:
-      regions:
-        description: "Regions to revert"
+      region:
+        description: "Region to revert"
+        required: true
+        default: "us-central1"
+        type: choice
+        options:
+          - "us-central1"
+          - "europe-west1"
+      image_tag:
+        description: "The image tag/SHA to deploy"
         type: string
         required: true
       component:
@@ -43,18 +51,7 @@ jobs:
             exit 1
           fi
 
-  prepare:
-    runs-on: ubuntu-latest
-    outputs:
-      short_sha: ${{ steps.short_sha.outputs.short_sha }}
-    steps:
-      - uses: actions/checkout@v3
-      - name: Get short sha
-        id: short_sha
-        run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-
   notify-start:
-    needs: [prepare]
     runs-on: ubuntu-latest
     outputs:
       thread_ts: ${{ steps.build_message.outputs.thread_ts }}
@@ -68,26 +65,13 @@ jobs:
           step: "start"
           channel: ${{ secrets.SLACK_CHANNEL_ID }}
           component: ${{ inputs.component }}
-          image_tag: ${{ needs.prepare.outputs.short_sha }}
-          region: ${{ inputs.regions }}
+          image_tag: ${{ inputs.image_tag }}
+          region: ${{ inputs.region }}
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
           is_revert: true
 
-  create-matrix:
-    runs-on: ubuntu-latest
-    outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
-    steps:
-      - id: set-matrix
-        run: |
-          if [ "${{ inputs.regions }}" = "all" ]; then
-            echo "matrix=[\"us-central1\",\"europe-west1\"]" >> $GITHUB_OUTPUT
-          else
-            echo "matrix=[\"${{ inputs.regions }}\"]" >> $GITHUB_OUTPUT
-          fi
-
   revert:
-    needs: [prepare, notify-start]
+    needs: [notify-start]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -111,9 +95,9 @@ jobs:
               repo: 'dust-infra',
               event_type: 'trigger-component-revert',
               client_payload: {
-                regions: '${{ inputs.regions }}',
+                regions: '${{ inputs.region }}',
                 component: '${{ inputs.component }}',
-                image_tag: '${{ needs.prepare.outputs.short_sha }}',
+                image_tag: '${{ inputs.image_tag }}',
                 slack_thread_ts: "${{ needs.notify-start.outputs.thread_ts }}",
                 slack_channel: '${{ secrets.SLACK_CHANNEL_ID }}',
                 run_playwright: false,
@@ -127,8 +111,8 @@ jobs:
           step: "failure"
           channel: ${{ secrets.SLACK_CHANNEL_ID }}
           component: ${{ inputs.component }}
-          image_tag: ${{ needs.prepare.outputs.short_sha }}
-          region: ${{ inputs.regions }}
+          image_tag: ${{ inputs.image_tag }}
+          region: ${{ inputs.region }}
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
           thread_ts: "${{ needs.notify-start.outputs.thread_ts }}"
           is_revert: true
