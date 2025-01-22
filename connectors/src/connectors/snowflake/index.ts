@@ -348,12 +348,7 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
     if (connectorAndCredentialsRes.isErr()) {
       switch (connectorAndCredentialsRes.error.code) {
         case "connector_not_found":
-          return new Err(
-            new ConnectorManagerError(
-              "CONNECTOR_NOT_FOUND",
-              "Connector not found"
-            )
-          );
+          throw new Error("Snowflake connector not found");
         case "invalid_credentials":
           return new Err(
             new ConnectorManagerError(
