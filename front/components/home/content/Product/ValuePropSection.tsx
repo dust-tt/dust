@@ -2,7 +2,6 @@ import { Div3D, Hover3D } from "@dust-tt/sparkle";
 import React from "react";
 
 import { ImgBlock } from "@app/components/home/ContentBlocks";
-import { H2, P } from "@app/components/home/ContentComponents";
 import { classNames } from "@app/lib/utils";
 
 export function ValuePropSection() {

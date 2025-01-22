@@ -3,7 +3,7 @@ import Link from "next/link";
 import React from "react";
 
 import { ImgBlock } from "@app/components/home/ContentBlocks";
-import { A, Grid, H2, P, Strong } from "@app/components/home/ContentComponents";
+import { A, Grid, H2, P } from "@app/components/home/ContentComponents";
 import { classNames } from "@app/lib/utils";
 
 export function ExtensibilitySection() {

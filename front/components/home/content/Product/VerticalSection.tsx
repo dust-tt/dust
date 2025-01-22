@@ -1,10 +1,10 @@
 import React from "react";
+import { Button } from "@dust-tt/sparkle";
+
 import {
   Carousel,
   CarouselContent,
   CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
 } from "@app/components/home/Carousel";
 import { H2 } from "@app/components/home/ContentComponents";
 import { CustomerCaroussel } from "@app/pages/home/solutions/customer-support";
@@ -14,7 +14,6 @@ import { KnowledgeCaroussel } from "@app/pages/home/solutions/knowledge";
 import { MarketingCaroussel } from "@app/pages/home/solutions/marketing";
 import { RecruitingCaroussel } from "@app/pages/home/solutions/recruiting-people";
 import { SalesCaroussel } from "@app/pages/home/solutions/sales";
-import { Button } from "@dust-tt/sparkle";
 
 export function VerticalSection() {
   const carouselSections = [

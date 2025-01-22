@@ -3,21 +3,14 @@ import React from "react";
 import { Button, RocketIcon } from "@dust-tt/sparkle";
 import Link from "next/link";
 
-import {
-  MetricSection,
-  QuoteSection,
-} from "@app/components/home/ContentBlocks";
-import { BlogSection } from "@app/components/home/content/Product/BlogSection";
-import { DifferentiationSection } from "@app/components/home/content/Product/DifferentiationSection";
+import { CapabilitySection } from "@app/components/home/content/Product/CapabilitySection";
+import { QuoteSection } from "@app/components/home/ContentBlocks";
 import { ExtensibilitySection } from "@app/components/home/content/Product/ExtensibilitySection";
-import { ValuePropSection } from "@app/components/home/content/Product/ValuePropSection";
+import { ProductIntroSection } from "@app/components/home/content/Product/ProductIntroSection";
 import { SecuritySection } from "@app/components/home/content/Product/SecuritySection";
 import { UbiquitySection } from "@app/components/home/content/Product/UbiquitySection";
 import type { DemoVideoProps } from "@app/components/home/content/Solutions/DemoVideoSection";
 import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
-import { ProductIntroSection } from "@app/components/home/content/Product/ProductIntroSection";
-import { CapabilitySection } from "@app/components/home/content/Product/CapabilitySection";
-import { VerticalSection } from "@app/components/home/content/Product/VerticalSection";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { classNames } from "@app/lib/utils";
@@ -34,21 +27,6 @@ export const DemoVideo: DemoVideoProps = {
   sectionTitle: "Dust in motion",
   videoUrl:
     "https://fast.wistia.net/embed/iframe/r0dwaexoez?seo=true&videoFoam=true",
-};
-
-const METRICS = {
-  metrics: [
-    {
-      value: "90%",
-      description: <>Weekly active users at Alan</>,
-    },
-    {
-      value: "50,000",
-      description: <>Annual hours saved at Qonto</>,
-    },
-  ],
-  from: "from-amber-200",
-  to: "to-amber-500",
 };
 
 export function Landing() {

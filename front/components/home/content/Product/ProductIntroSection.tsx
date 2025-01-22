@@ -1,13 +1,9 @@
-import { Div3D, Button, Hover3D, RocketIcon } from "@dust-tt/sparkle";
+import { Button, Hover3D, RocketIcon } from "@dust-tt/sparkle";
 import Link from "next/link";
 import React from "react";
 
-import { ImgBlock } from "@app/components/home/ContentBlocks";
-
-import { H1, P, Strong } from "@app/components/home/ContentComponents";
+import { H1, P } from "@app/components/home/ContentComponents";
 import TrustedBy from "@app/components/home/TrustedBy";
-import { classNames } from "@app/lib/utils";
-import { ValuePropSection } from "@app/components/home/content/Product/ValuePropSection";
 
 const VideoPlayer = () => {
   return (

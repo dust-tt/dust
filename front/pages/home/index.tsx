@@ -5,14 +5,13 @@ import Link from "next/link";
 
 import { QuoteSection } from "@app/components/home/ContentBlocks";
 import { BlogSection } from "@app/components/home/content/Product/BlogSection";
+import { CapabilitySection } from "@app/components/home/content/Product/CapabilitySection";
 import { DifferentiationSection } from "@app/components/home/content/Product/DifferentiationSection";
-import { ValuePropSection } from "@app/components/home/content/Product/ValuePropSection";
 // import { SecuritySection } from "@app/components/home/content/Product/SecuritySection";
 // import { UbiquitySection } from "@app/components/home/content/Product/UbiquitySection";
 // import type { DemoVideoProps } from "@app/components/home/content/Solutions/DemoVideoSection";
 // import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
 import { IntroSection } from "@app/components/home/content/Product/IntroSection";
-import { CapabilitySection } from "@app/components/home/content/Product/CapabilitySection";
 import { VerticalSection } from "@app/components/home/content/Product/VerticalSection";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
