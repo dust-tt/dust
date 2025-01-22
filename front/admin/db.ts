@@ -1,10 +1,19 @@
 import { sendInitDbMessage } from "@dust-tt/types";
 
-import { AgentBrowseAction, AgentBrowseConfiguration } from "@app/lib/models/assistant/actions/browse";
+import {
+  AgentBrowseAction,
+  AgentBrowseConfiguration,
+} from "@app/lib/models/assistant/actions/browse";
 import { AgentConversationIncludeFileAction } from "@app/lib/models/assistant/actions/conversation/include_file";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
-import { AgentDustAppRunAction, AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
-import { AgentProcessAction, AgentProcessConfiguration } from "@app/lib/models/assistant/actions/process";
+import {
+  AgentDustAppRunAction,
+  AgentDustAppRunConfiguration,
+} from "@app/lib/models/assistant/actions/dust_app_run";
+import {
+  AgentProcessAction,
+  AgentProcessConfiguration,
+} from "@app/lib/models/assistant/actions/process";
 import {
   AgentRetrievalAction,
   AgentRetrievalConfiguration,
@@ -16,8 +25,15 @@ import {
   AgentTablesQueryConfiguration,
   AgentTablesQueryConfigurationTable,
 } from "@app/lib/models/assistant/actions/tables_query";
-import { AgentWebsearchAction, AgentWebsearchConfiguration } from "@app/lib/models/assistant/actions/websearch";
-import { AgentConfiguration, AgentUserRelation, GlobalAgentSettings } from "@app/lib/models/assistant/agent";
+import {
+  AgentWebsearchAction,
+  AgentWebsearchConfiguration,
+} from "@app/lib/models/assistant/actions/websearch";
+import {
+  AgentConfiguration,
+  AgentUserRelation,
+  GlobalAgentSettings,
+} from "@app/lib/models/assistant/agent";
 import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import {
   AgentMessage,
@@ -37,8 +53,18 @@ import {
 import { ExtensionConfigurationModel } from "@app/lib/models/extension";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { Plan, Subscription } from "@app/lib/models/plan";
-import { DustAppSecret, MembershipInvitation, Workspace, WorkspaceHasDomain } from "@app/lib/models/workspace";
-import { AppModel, Clone, Dataset, Provider } from "@app/lib/resources/storage/models/apps";
+import {
+  DustAppSecret,
+  MembershipInvitation,
+  Workspace,
+  WorkspaceHasDomain,
+} from "@app/lib/models/workspace";
+import {
+  AppModel,
+  Clone,
+  Dataset,
+  Provider,
+} from "@app/lib/resources/storage/models/apps";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
@@ -54,10 +80,16 @@ import {
   LabsTranscriptsHistoryModel,
 } from "@app/lib/resources/storage/models/labs_transcripts";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
-import { RunModel, RunUsageModel } from "@app/lib/resources/storage/models/runs";
+import {
+  RunModel,
+  RunUsageModel,
+} from "@app/lib/resources/storage/models/runs";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { TemplateModel } from "@app/lib/resources/storage/models/templates";
-import { UserMetadataModel, UserModel } from "@app/lib/resources/storage/models/user";
+import {
+  UserMetadataModel,
+  UserModel,
+} from "@app/lib/resources/storage/models/user";
 import logger from "@app/logger/logger";
 
 async function main() {
