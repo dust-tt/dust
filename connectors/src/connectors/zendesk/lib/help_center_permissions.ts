@@ -82,7 +82,7 @@ export async function forbidSyncZendeskHelpCenter({
   });
   if (!brand) {
     logger.error(
-      { brandId },
+      { connectorId, brandId },
       "[Zendesk] Brand not found, could not disable sync."
     );
     return null;
@@ -171,7 +171,10 @@ export async function allowSyncZendeskCategory({
         },
       });
     } else {
-      logger.error({ categoryId }, "[Zendesk] Category could not be fetched.");
+      logger.error(
+        { connectorId, categoryId },
+        "[Zendesk] Category could not be fetched."
+      );
       return null;
     }
   }
@@ -198,7 +201,7 @@ export async function forbidSyncZendeskCategory({
   });
   if (!category) {
     logger.error(
-      { categoryId },
+      { connectorId, categoryId },
       "[Zendesk] Category not found, could not disable sync."
     );
     return null;

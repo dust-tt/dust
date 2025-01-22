@@ -78,7 +78,7 @@ export async function forbidSyncZendeskBrand({
   });
   if (!brand) {
     logger.error(
-      { brandId },
+      { connectorId, brandId },
       "[Zendesk] Brand not found, could not disable sync."
     );
     return null;
