@@ -103,13 +103,11 @@ function getTableColumns(
   };
   const managedByColumn: ColumnDef<RowData, string | undefined> = {
     id: "managedBy",
+    header: "Managed by",
     accessorFn: (row) =>
       isGlobalOrSystemSpace
         ? row.dataSourceView.dataSource.editedByUser?.imageUrl ?? undefined
         : row.dataSourceView.editedByUser?.imageUrl ?? undefined,
-    meta: {
-      className: "w-24",
-    },
     cell: (ctx) => {
       const { dataSourceView } = ctx.row.original;
       const editedByUser = isGlobalOrSystemSpace
@@ -126,8 +124,9 @@ function getTableColumns(
   };
   const usedByColumn: ColumnDef<RowData, number> = {
     id: "usedBy",
+    header: "Used by",
     meta: {
-      className: "w-32",
+      className: "w-96",
     },
     // Return a numeric count to allow numeric sorts if we want
     accessorFn: (row) => row.dataSourceView.usage?.count ?? 0,
@@ -143,6 +142,7 @@ function getTableColumns(
   // For lastSynced, we store a number or undefined in accessorFn
   const lastSyncedColumn: ColumnDef<RowData, number | undefined> = {
     id: "lastSync",
+    header: "Last sync",
     meta: {
       className: "w-48",
     },
@@ -172,9 +172,9 @@ function getTableColumns(
   // The "Connect" or "Manage" button
   const actionColumn: ColumnDef<RowData, unknown> = {
     id: "action",
-    meta: {
-      className: "w-28",
-    },
+    // meta: {
+    //   className: "w-28",
+    // },
     cell: (ctx) => {
       const { dataSourceView, isLoading, isAdmin, buttonOnClick } =
         ctx.row.original;
@@ -212,6 +212,9 @@ function getTableColumns(
   const moreActions: ColumnDef<RowData, unknown> = {
     id: "actions",
     header: "",
+    meta: {
+      className: "flex justify-end items-center",
+    },
     cell: (ctx) => (
       <DataTable.MoreButton moreMenuItems={ctx.row.original.moreMenuItems} />
     ),
