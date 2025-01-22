@@ -45,7 +45,7 @@ async function migrateConnector(
   const chunks = _.chunk(files, 1024);
 
   for (const chunk of chunks) {
-    await processBatch({
+    await processFilesBatch({
       connector,
       dataSourceConfig,
       files: chunk,
@@ -56,9 +56,28 @@ async function migrateConnector(
     logger.info({ numberOfFiles: chunk.length }, "Processed batch");
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
+
+  const sheets = await GoogleDriveSheet.findAll({
+    where: {
+      connectorId: connector.id,
+    },
+  });
+
+  const sheetsChunks = _.chunk(sheets, 1024);
+
+  for (const chunk of sheetsChunks) {
+    await processSheetsBatch({
+      connector,
+      dataSourceConfig,
+      sheets: chunk,
+      logger,
+      execute,
+      startTimeTs,
+    });
+  }
 }
 
-async function processBatch({
+async function processFilesBatch({
   connector,
   dataSourceConfig,
   files,
@@ -118,13 +137,23 @@ async function processBatch({
   } else {
     logger.info({ numberOfFiles: files.length }, "Migrated files (dry run)");
   }
+}
 
-  const sheets = await GoogleDriveSheet.findAll({
-    where: {
-      connectorId: connector.id,
-    },
-  });
-
+async function processSheetsBatch({
+  connector,
+  dataSourceConfig,
+  sheets,
+  logger,
+  execute,
+  startTimeTs,
+}: {
+  connector: ConnectorResource;
+  dataSourceConfig: DataSourceConfig;
+  sheets: GoogleDriveSheet[];
+  logger: pino.Logger<LoggerOptions & pino.ChildLoggerOptions>;
+  execute: boolean;
+  startTimeTs: number;
+}) {
   await concurrentExecutor(
     sheets,
     async (sheet) => {
