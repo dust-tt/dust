@@ -29,7 +29,7 @@ export class ModelWithWorkspace<M extends Model> extends BaseModel<M> {
         type: DataTypes.BIGINT,
         allowNull: false,
         references: {
-          model: "workspaces", // TODO: Use Workspace.name,
+          model: Workspace.tableName,
           key: "id",
         },
       },
