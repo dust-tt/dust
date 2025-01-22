@@ -51,17 +51,11 @@ export async function retrieveAllSelectedNodes(
       })
     );
 
-  // retrieving the categories that are not already shown through their Help Center being selected
   const categories =
     await ZendeskCategoryResource.fetchAllReadOnly(connectorId);
-  const categoryNodes: ContentNode[] = categories
-    .filter(
-      (category) =>
-        !brandsWithHelpCenter
-          .map((brand) => brand.brandId)
-          .includes(category.brandId)
-    )
-    .map((category) => category.toContentNode(connectorId));
+  const categoryNodes: ContentNode[] = categories.map((category) =>
+    category.toContentNode(connectorId)
+  );
 
   return [...helpCenterNodes, ...ticketNodes, ...categoryNodes];
 }
