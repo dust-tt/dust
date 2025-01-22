@@ -810,7 +810,7 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
     return tickets.map((ticket) => new this(this.model, ticket.get()));
   }
 
-  static async fetchByBrandIdReadOnly({
+  static async fetchByBrandId({
     connectorId,
     brandId,
   }: {
@@ -818,7 +818,7 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
     brandId: number;
   }): Promise<ZendeskTicketResource[]> {
     const tickets = await ZendeskTicket.findAll({
-      where: { connectorId, brandId, permission: "read" },
+      where: { connectorId, brandId },
     });
     return tickets.map((ticket) => new this(this.model, ticket.get()));
   }
@@ -871,19 +871,6 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
     transaction: Transaction
   ) {
     await ZendeskTicket.destroy({ where: { connectorId }, transaction });
-  }
-
-  static async revokePermissionsForBrand({
-    connectorId,
-    brandId,
-  }: {
-    connectorId: number;
-    brandId: number;
-  }): Promise<void> {
-    await ZendeskTicket.update(
-      { permission: "none" },
-      { where: { connectorId, brandId } }
-    );
   }
 }
 

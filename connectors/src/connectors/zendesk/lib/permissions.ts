@@ -285,7 +285,7 @@ export async function retrieveChildrenNodes({
     // If the parent is a brand's tickets, we retrieve the list of tickets for the brand.
     case "tickets": {
       if (isReadPermissionsOnly) {
-        const ticketsInDb = await ZendeskTicketResource.fetchByBrandIdReadOnly({
+        const ticketsInDb = await ZendeskTicketResource.fetchByBrandId({
           connectorId: connector.id,
           brandId: objectIds.brandId,
         });
