@@ -175,6 +175,23 @@ export async function syncZendeskBrandActivity({
       dataSourceConfig,
       folderId: helpCenterNode.internalId,
     });
+
+    // deleting categories that were only synced because the Help Center was selected but were not explicitely selected by the user in the UI
+    const categoriesNotSelected =
+      await ZendeskCategoryResource.fetchBrandUnselectedCategories({
+        connectorId,
+        brandId,
+      });
+    for (const category of categoriesNotSelected) {
+      await deleteDataSourceFolder({
+        dataSourceConfig,
+        folderId: getCategoryInternalId({
+          connectorId,
+          brandId,
+          categoryId: category.categoryId,
+        }),
+      });
+    }
   }
 
   const ticketsNode = brandInDb.getTicketsContentNode(connectorId, {
