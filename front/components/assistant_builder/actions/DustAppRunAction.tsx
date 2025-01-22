@@ -1,19 +1,17 @@
 import { ContentMessage, InformationCircleIcon } from "@dust-tt/sparkle";
 import type { LightWorkspaceType, SpaceType } from "@dust-tt/types";
 import { assertNever, slugify } from "@dust-tt/types";
-import { useContext, useState } from "react";
+import React, { useContext, useState } from "react";
 
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
-import AssistantBuilderDustAppModal from "@app/components/assistant_builder/AssistantBuilderDustAppModal";
-import DustAppSelectionSection from "@app/components/assistant_builder/DustAppSelectionSection";
-import type {
-  AssistantBuilderActionConfiguration,
-  AssistantBuilderDustAppConfiguration,
-} from "@app/components/assistant_builder/types";
 import {
   ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_DESCRIPTION,
   ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_NAME,
+  AssistantBuilderActionConfiguration,
+  AssistantBuilderDustAppConfiguration,
 } from "@app/components/assistant_builder/types";
+import DustAppSelectionSection from "@app/components/assistant_builder/DustAppSelectionSection";
+import AssistantBuilderDustAppModal from "@app/components/assistant_builder/AssistantBuilderDustAppModal";
 
 export function isActionDustAppRunValid(
   action: AssistantBuilderActionConfiguration
