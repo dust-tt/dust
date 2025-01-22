@@ -440,6 +440,7 @@ export async function syncZendeskCategoryActivity({
     title: categoryInDb.name,
     mimeType: MIME_TYPES.ZENDESK.CATEGORY,
     sourceUrl: fetchedCategory.html_url,
+    timestampMs: currentSyncDateMs,
   });
 
   // otherwise, we update the category name and lastUpsertedTs
