@@ -1,15 +1,15 @@
 import {
   Button,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  NewDialog,
-  NewDialogContainer,
-  NewDialogContent,
-  NewDialogFooter,
-  NewDialogHeader,
-  NewDialogTitle,
   ScrollArea,
   ScrollBar,
   useSendNotification,
@@ -138,7 +138,7 @@ export const AddToSpaceDialog = ({
   };
 
   return (
-    <NewDialog
+    <Dialog
       open={isOpen}
       onOpenChange={(open) => {
         if (!open) {
@@ -146,11 +146,11 @@ export const AddToSpaceDialog = ({
         }
       }}
     >
-      <NewDialogContent size="md">
-        <NewDialogHeader>
-          <NewDialogTitle>Add to Space</NewDialogTitle>
-        </NewDialogHeader>
-        <NewDialogContainer>
+      <DialogContent size="md">
+        <DialogHeader>
+          <DialogTitle>Add to Space</DialogTitle>
+        </DialogHeader>
+        <DialogContainer>
           {availableSpaces.length === 0 ? (
             <div className="mt-1 text-left">
               This data is already available in all spaces.
@@ -182,8 +182,8 @@ export const AddToSpaceDialog = ({
               </DropdownMenuContent>
             </DropdownMenu>
           )}
-        </NewDialogContainer>
-        <NewDialogFooter
+        </DialogContainer>
+        <DialogFooter
           leftButtonProps={{
             label: "Cancel",
             variant: "outline",
@@ -195,7 +195,7 @@ export const AddToSpaceDialog = ({
             onClick: addToSpace,
           }}
         />
-      </NewDialogContent>
-    </NewDialog>
+      </DialogContent>
+    </Dialog>
   );
 };

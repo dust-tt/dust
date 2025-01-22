@@ -1,11 +1,11 @@
 import {
-  NewDialog,
-  NewDialogContainer,
-  NewDialogContent,
-  NewDialogDescription,
-  NewDialogFooter,
-  NewDialogHeader,
-  NewDialogTitle,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { MouseEvent } from "react";
@@ -378,18 +378,18 @@ export function ProviderSetup({
       };
 
   return (
-    <NewDialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <NewDialogContent>
-        <NewDialogHeader>
-          <NewDialogTitle>{title}</NewDialogTitle>
-          <NewDialogDescription>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>
             {instructions || (
               <p>Provide the necessary configuration for {title}.</p>
             )}
-          </NewDialogDescription>
-        </NewDialogHeader>
+          </DialogDescription>
+        </DialogHeader>
 
-        <NewDialogContainer>
+        <DialogContainer>
           <div className="flex flex-col gap-4">
             {renderFields()}
             <div className="text-sm">
@@ -405,9 +405,9 @@ export function ProviderSetup({
               )}
             </div>
           </div>
-        </NewDialogContainer>
+        </DialogContainer>
 
-        <NewDialogFooter
+        <DialogFooter
           leftButtonProps={
             enabled
               ? {
@@ -422,7 +422,7 @@ export function ProviderSetup({
           }
           rightButtonProps={rightButtonProps}
         />
-      </NewDialogContent>
-    </NewDialog>
+      </DialogContent>
+    </Dialog>
   );
 }
