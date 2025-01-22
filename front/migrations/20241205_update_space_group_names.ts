@@ -1,7 +1,7 @@
 import { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { makeScript, runOnAllWorkspaces } from "@app/scripts/helpers";
-
+import { makeScript } from "@app/scripts/helpers";
+import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 makeScript({}, async ({ execute }) => {
   await runOnAllWorkspaces(async (w) => {
     const auth = await Authenticator.internalAdminForWorkspace(w.sId);

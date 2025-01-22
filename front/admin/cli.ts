@@ -1,4 +1,3 @@
-import { DustAPI } from "@dust-tt/client";
 import {
   assertNever,
   ConnectorsAPI,
@@ -489,45 +488,6 @@ const productionCheck = async (command: string, args: parseArgs.ParsedArgs) => {
         heartbeat
       );
       return;
-    }
-    case "check-apps": {
-      if (!args.url) {
-        throw new Error("Missing --url argument");
-      }
-      if (!args.wId) {
-        throw new Error("Missing --wId argument");
-      }
-      if (!args.spaceId) {
-        throw new Error("Missing --spaceId argument");
-      }
-      const api = new DustAPI(
-        config.getDustAPIConfig(),
-        { apiKey: args.apiKey, workspaceId: args.wId },
-        logger,
-        args.url
-      );
-
-      const actions = Object.values(getDustProdActionRegistry());
-
-      const res = await api.checkApps(
-        {
-          apps: actions.map((action) => ({
-            appId: action.app.appId,
-            appHash: action.app.appHash,
-          })),
-        },
-        args.spaceId
-      );
-      if (res.isErr()) {
-        throw new Error(res.error.message);
-      }
-      const notDeployedApps = res.value.filter((a) => !a.deployed);
-      if (notDeployedApps.length > 0) {
-        throw new Error(
-          "Missing apps: " + notDeployedApps.map((a) => a.appId).join(", ")
-        );
-      }
-      console.log("All apps are deployed");
     }
   }
 };
