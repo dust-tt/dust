@@ -30,6 +30,7 @@ import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import type { ActionApp } from "@app/lib/registry";
 import { getDustProdActionRegistry } from "@app/lib/registry";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+
 export const getServerSideProps = withDefaultUserAuthRequirements<
   SpaceLayoutProps & {
     category: DataSourceViewCategory;

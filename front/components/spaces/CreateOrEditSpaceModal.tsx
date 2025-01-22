@@ -296,7 +296,7 @@ function MembersTable({
   const sendNotifications = useSendNotification();
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
-    pageSize: 10,
+    pageSize: 50,
   });
   const [sorting, setSorting] = useState<SortingState>([
     { id: "email", desc: false },
@@ -341,23 +341,25 @@ function MembersTable({
         id: "email",
         accessorKey: "email",
         cell: (info: Info) => (
-          <DataTable.CellContent>
-            <span className="text-element-700">{info.row.original.email}</span>
-          </DataTable.CellContent>
+          <DataTable.BasicCellContent label={info.row.original.email} />
         ),
         enableSorting: true,
       },
       {
         id: "action",
+        meta: {
+          className: "w-12",
+        },
         cell: (info: Info) => {
           return (
-            <div className="flex w-full justify-end">
+            <DataTable.CellContent>
               <Button
                 icon={XMarkIcon}
-                variant="ghost"
+                size="xs"
+                variant="ghost-secondary"
                 onClick={() => removeMember(info.row.original.userId)}
               />
-            </div>
+            </DataTable.CellContent>
           );
         },
       },
