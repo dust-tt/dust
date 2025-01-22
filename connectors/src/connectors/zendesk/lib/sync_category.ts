@@ -71,7 +71,7 @@ export async function deleteCategory({
 }
 
 /**
- * Syncs a category from Zendesk to the postgres db.
+ * Syncs a category from Zendesk to the postgres db and to the data_sources_folders.
  */
 export async function syncCategory({
   connectorId,
