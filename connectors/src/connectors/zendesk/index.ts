@@ -385,6 +385,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       const { type, objectIds } = getIdsFromInternalId(connectorId, id);
       const { brandId } = objectIds;
       switch (type) {
+        // The brand is just a shortcut to set permissions for Help Center and Tickets at once.
         case "brand": {
           if (permission === "none") {
             const updatedBrand = await forbidSyncZendeskBrand({
