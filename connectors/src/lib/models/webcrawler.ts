@@ -3,7 +3,6 @@ import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { sequelizeConnection } from "@connectors/resources/storage";
-import { BaseModel } from "@connectors/resources/storage/wrappers/base";
 import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 
 export class WebCrawlerConfigurationModel extends ConnectorBaseModel<WebCrawlerConfigurationModel> {
@@ -63,8 +62,7 @@ WebCrawlerConfigurationModel.init(
   }
 );
 
-// TODO(2025-01-22 flav) Add `connectorId` field.
-export class WebCrawlerConfigurationHeader extends BaseModel<WebCrawlerConfigurationHeader> {
+export class WebCrawlerConfigurationHeader extends ConnectorBaseModel<WebCrawlerConfigurationHeader> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare key: string;
