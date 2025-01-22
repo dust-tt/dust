@@ -75,7 +75,7 @@ export async function forbidSyncZendeskHelpCenter({
 }: {
   connectorId: ModelId;
   brandId: number;
-}): Promise<ZendeskBrandResource | null> {
+}): Promise<boolean> {
   const brand = await ZendeskBrandResource.fetchByBrandId({
     connectorId,
     brandId,
@@ -85,13 +85,13 @@ export async function forbidSyncZendeskHelpCenter({
       { connectorId, brandId },
       "[Zendesk] Brand not found, could not disable sync."
     );
-    return null;
+    return false;
   }
 
   // updating the field helpCenterPermission to "none" for the brand
   await brand.revokeHelpCenterPermissions();
 
-  return brand;
+  return true;
 }
 
 /**
@@ -107,7 +107,7 @@ export async function allowSyncZendeskCategory({
   connectionId: string;
   brandId: number;
   categoryId: number;
-}): Promise<ZendeskCategoryResource | null> {
+}): Promise<boolean> {
   let category = await ZendeskCategoryResource.fetchByCategoryId({
     connectorId,
     brandId,
@@ -136,7 +136,7 @@ export async function allowSyncZendeskCategory({
           { connectorId, brandId },
           "[Zendesk] Brand could not be fetched."
         );
-        return null;
+        return false;
       }
 
       await ZendeskBrandResource.makeNew({
@@ -175,10 +175,10 @@ export async function allowSyncZendeskCategory({
         { connectorId, categoryId },
         "[Zendesk] Category could not be fetched."
       );
-      return null;
+      return false;
     }
   }
-  return category;
+  return true;
 }
 
 /**
@@ -192,7 +192,7 @@ export async function forbidSyncZendeskCategory({
   connectorId: ModelId;
   brandId: number;
   categoryId: number;
-}): Promise<ZendeskCategoryResource | null> {
+}): Promise<boolean> {
   // revoking the permissions for the category
   const category = await ZendeskCategoryResource.fetchByCategoryId({
     connectorId,
@@ -204,9 +204,9 @@ export async function forbidSyncZendeskCategory({
       { connectorId, categoryId },
       "[Zendesk] Category not found, could not disable sync."
     );
-    return null;
+    return false;
   }
   await category.revokePermissions();
 
-  return category;
+  return true;
 }

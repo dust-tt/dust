@@ -71,7 +71,7 @@ export async function forbidSyncZendeskBrand({
 }: {
   connectorId: ModelId;
   brandId: number;
-}): Promise<ZendeskBrandResource | null> {
+}): Promise<boolean> {
   const brand = await ZendeskBrandResource.fetchByBrandId({
     connectorId,
     brandId,
@@ -81,12 +81,11 @@ export async function forbidSyncZendeskBrand({
       { connectorId, brandId },
       "[Zendesk] Brand not found, could not disable sync."
     );
-    return null;
+    return false;
   }
 
-  // updating the fields helpCenterPermission and ticketsPermission to "none" for the brand
   await brand.revokeHelpCenterPermissions();
   await brand.revokeTicketsPermissions();
 
-  return brand;
+  return true;
 }

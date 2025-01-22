@@ -410,11 +410,10 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         }
         case "help-center": {
           if (permission === "none") {
-            const updatedBrandHelpCenter = await forbidSyncZendeskHelpCenter({
-              connectorId,
-              brandId,
-            });
-            if (updatedBrandHelpCenter) {
+            const wasBrandHelpCenterUpdated = await forbidSyncZendeskHelpCenter(
+              { connectorId, brandId }
+            );
+            if (wasBrandHelpCenterUpdated) {
               toBeSignaledHelpCenterIds.add(brandId);
             }
           }
@@ -432,11 +431,11 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         }
         case "tickets": {
           if (permission === "none") {
-            const updatedBrandTickets = await forbidSyncZendeskTickets({
+            const wasBrandUpdated = await forbidSyncZendeskTickets({
               connectorId,
               brandId,
             });
-            if (updatedBrandTickets) {
+            if (wasBrandUpdated) {
               toBeSignaledTicketsIds.add(brandId);
             }
           }
@@ -455,23 +454,23 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         case "category": {
           const { brandId, categoryId } = objectIds;
           if (permission === "none") {
-            const updatedCategory = await forbidSyncZendeskCategory({
+            const categoryWasUpdated = await forbidSyncZendeskCategory({
               connectorId,
               brandId,
               categoryId,
             });
-            if (updatedCategory) {
+            if (categoryWasUpdated) {
               toBeSignaledCategoryIds.add([brandId, categoryId]);
             }
           }
           if (permission === "read") {
-            const newCategory = await allowSyncZendeskCategory({
+            const categoryWasUpdated = await allowSyncZendeskCategory({
               connectorId,
               connectionId,
               categoryId,
               brandId,
             });
-            if (newCategory) {
+            if (categoryWasUpdated) {
               toBeSignaledCategoryIds.add([brandId, categoryId]);
             }
           }
