@@ -47,7 +47,7 @@ export function computeNodesDiff({
 }: {
   connectorsContentNodes: DataSourceViewContentNode[];
   coreContentNodes: DataSourceViewContentNode[];
-  provider: ConnectorProvider;
+  provider: ConnectorProvider | null;
   localLogger: typeof logger;
 }) {
   connectorsContentNodes.forEach((connectorsNode) => {
