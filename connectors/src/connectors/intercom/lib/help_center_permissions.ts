@@ -318,7 +318,7 @@ export async function revokeSyncCollection({
     where: {
       helpCenterId: collection.helpCenterId,
       parentId: null,
-      permission: "read",
+      permission: ["read", "inherited"],
     },
   });
   if (level1Collections.length === 0) {
@@ -417,7 +417,7 @@ export async function retrieveIntercomHelpCentersPermissions({
         connectorId: connectorId,
         helpCenterId: helpCenterParentId,
         parentId,
-        permission: "read",
+        permission: ["read", "inherited"],
       },
     });
     if (isReadPermissionsOnly) {
@@ -484,7 +484,7 @@ export async function retrieveIntercomHelpCentersPermissions({
         where: {
           connectorId: connectorId,
           parentId,
-          permission: "read",
+          permission: ["read", "inherited"],
         },
       });
       const collectionNodes: ContentNode[] = collectionsInDb.map(

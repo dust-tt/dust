@@ -185,7 +185,7 @@ export async function syncHelpCenterOnlyActivity({
     where: {
       connectorId,
       helpCenterId: helpCenterId,
-      permission: "read",
+      permission: ["read", "inherited"],
       parentId: null,
     },
   });

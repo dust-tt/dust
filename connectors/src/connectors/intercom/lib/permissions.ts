@@ -35,7 +35,7 @@ export async function retrieveSelectedNodes({
   const collections = await IntercomCollection.findAll({
     where: {
       connectorId: connectorId,
-      permission: "read",
+      permission: ["read", "inherited"],
     },
   });
   const collectionsNodes: ContentNode[] = [];
