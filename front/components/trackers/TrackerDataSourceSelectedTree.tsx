@@ -57,7 +57,7 @@ export const TrackerDataSourceSelectedTree = ({
             <Tree.Item
               key={dsConfig.dataSourceView.sId}
               type={
-                canBeExpanded("documents", dsConfig.dataSourceView.dataSource)
+                canBeExpanded(dsConfig.dataSourceView.dataSource)
                   ? "node"
                   : "leaf"
               } // todo make useConnectorPermissions hook work for non managed ds (Folders)

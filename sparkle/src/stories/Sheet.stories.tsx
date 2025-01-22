@@ -56,7 +56,7 @@ export function SheetDemo() {
         <SheetTrigger asChild>
           <Button variant="outline" label="Edit demo" />
         </SheetTrigger>
-        <SheetContent>
+        <SheetContent side="left">
           <SheetHeader hideButton>
             <SheetTitle>About me</SheetTitle>
           </SheetHeader>

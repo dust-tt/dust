@@ -72,7 +72,9 @@ export const MIME_TYPES = {
   }),
   GOOGLE_DRIVE: getMimeTypes({
     provider: "google_drive",
-    resourceTypes: ["FOLDER"], // for files and spreadsheets, we keep Google's mime types
+    // Spreadsheets are handled as data_source_folders for sheets
+    // For other files and sheets, we keep Google's mime types
+    resourceTypes: ["FOLDER", "SPREADSHEET"],
   }),
   INTERCOM: getMimeTypes({
     provider: "intercom",
@@ -107,14 +109,7 @@ export const MIME_TYPES = {
   }),
   ZENDESK: getMimeTypes({
     provider: "zendesk",
-    resourceTypes: [
-      "BRAND",
-      "HELP_CENTER",
-      "CATEGORY",
-      "ARTICLE",
-      "TICKETS",
-      "TICKET",
-    ],
+    resourceTypes: ["HELP_CENTER", "CATEGORY", "ARTICLE", "TICKETS", "TICKET"],
   }),
 };
 

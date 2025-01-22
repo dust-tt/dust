@@ -1,10 +1,12 @@
+import type { LightWorkspaceType } from "@dust-tt/types";
+
 import { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import logger from "@app/logger/logger";
-import { makeScript, runOnAllWorkspaces } from "@app/scripts/helpers";
-import { LightWorkspaceType } from "@dust-tt/types";
+import { makeScript } from "@app/scripts/helpers";
+import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 
 const cleanDanglingGroups = async (
   workspace: LightWorkspaceType,

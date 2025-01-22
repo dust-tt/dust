@@ -254,7 +254,7 @@ export function AssistantInputBar({
   }, [isStopping, generationContext.generatingMessages, conversationId]);
 
   return (
-    <div className={cn("flex w-full flex-col", isFloating && "sm:px-3")}>
+    <div className="flex w-full flex-col">
       {generationContext.generatingMessages.some(
         (m) => m.conversationId === conversationId
       ) && (
@@ -280,11 +280,11 @@ export function AssistantInputBar({
           <div
             className={classNames(
               "relative flex w-full flex-1 flex-col items-stretch gap-0 self-stretch pl-3 sm:flex-row",
-              "bg-primary-50",
-              "transition-all",
+              "rounded-3xl bg-muted-background transition-all",
+              "border border-border-dark sm:border-border-dark/50 sm:focus-within:border-border-dark",
               isFloating
-                ? "rounded-3xl border border-border-dark focus-within:ring-1 focus-within:ring-highlight/30 sm:border-border-dark/50 sm:focus-within:border-border-dark sm:focus-within:ring-2"
-                : "border-t",
+                ? "focus-within:ring-highlight/30sm:focus-within:ring-2 focus-within:ring-1"
+                : "focus-within:border-highlight-300",
               isAnimating ? "duration-600 animate-shake" : "duration-300"
             )}
           >

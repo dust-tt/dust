@@ -1,5 +1,6 @@
 import type {
   ContentNodesViewType,
+  CoreAPIDatasourceViewFilter,
   CoreAPIError,
   DataSourceViewContentNode,
   DataSourceViewType,
@@ -10,7 +11,11 @@ import { ConnectorsAPI, CoreAPI, Err, Ok, removeNulls } from "@dust-tt/types";
 import assert from "assert";
 
 import config from "@app/lib/api/config";
-import { getContentNodeInternalIdFromTableId } from "@app/lib/api/content_nodes";
+import {
+  computeNodesDiff,
+  getContentNodeInternalIdFromTableId,
+  getContentNodeMetadata,
+} from "@app/lib/api/content_nodes";
 import type { OffsetPaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
@@ -149,6 +154,82 @@ async function getContentNodesForManagedDataSourceView(
       total: connectorsRes.value.nodes.length,
     });
   }
+}
+
+function makeCoreDataSourceViewFilter(
+  dataSourceView: DataSourceViewResource | DataSourceViewType
+): CoreAPIDatasourceViewFilter {
+  return {
+    data_source_id: dataSourceView.dataSource.dustAPIDataSourceId,
+    view_filter: dataSourceView.parentsIn ?? [],
+  };
+}
+
+const ROOT_PARENT_ID = "root";
+
+async function getContentNodesForDataSourceViewFromCore(
+  dataSourceView: DataSourceViewResource | DataSourceViewType,
+  { internalIds, parentId, viewType }: GetContentNodesForDataSourceViewParams
+): Promise<Result<GetContentNodesForDataSourceViewResult, Error>> {
+  // There's an early return possible on !dataSourceView.dataSource.connectorId && internalIds?.length === 0,
+  // won't include it for now as we are shadow-reading.
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+
+  // We use searchNodes to fetch the content nodes from core:
+  // - either a specific list of nodes provided by internalIds if they are set;
+  // - or all the direct children of the parent_id, if specified;
+  // - or all the roots of the data source view, if no parent_id nor internalIds
+  //   are provided.
+
+  // In the latter case, the view might either have "parentsIn" set, in which
+  // case the "roots" of the data source view are the nodes in parentsIn, so we
+  // set node_ids to parentsIn. Otherwise, the "roots" of the data source view
+  // are the root nodes of the data source, obtained by the special parent_id
+  // "root".
+
+  // In any case, there is a data_source_view filter, which is always applied.
+  const node_ids =
+    internalIds ??
+    (parentId ? undefined : dataSourceView.parentsIn ?? undefined);
+  const parent_id =
+    parentId ??
+    (internalIds
+      ? undefined
+      : dataSourceView.parentsIn
+        ? undefined
+        : ROOT_PARENT_ID);
+
+  const coreRes = await coreAPI.searchNodes({
+    filter: {
+      data_source_views: [makeCoreDataSourceViewFilter(dataSourceView)],
+      node_ids,
+      parent_id,
+    },
+    options: { limit: 250 },
+  });
+
+  if (coreRes.isErr()) {
+    return new Err(new Error(coreRes.error.message));
+  }
+
+  return new Ok({
+    nodes: coreRes.value.nodes.map((node) => {
+      const { type } = getContentNodeMetadata(node, viewType);
+      return {
+        internalId: node.node_id,
+        parentInternalId: node.parent_id ?? null,
+        title: node.title,
+        sourceUrl: node.source_url ?? null,
+        permission: "read",
+        lastUpdatedAt: node.timestamp,
+        providerVisibility: node.provider_visibility,
+        parentInternalIds: node.parents,
+        type,
+        expandable: node.has_children,
+      };
+    }),
+    total: coreRes.value.nodes.length,
+  });
 }
 
 // Static data sources are data sources that are not managed by a connector.
@@ -291,6 +372,41 @@ export async function getContentNodesForDataSourceView(
     }
 
     contentNodesResult = contentNodesRes.value;
+  }
+
+  const localLogger = logger.child({
+    dataSourceId: dataSourceView.dataSource.sId,
+    dataSourceViewId: dataSourceView.sId,
+    provider: dataSourceView.dataSource.connectorProvider,
+  });
+
+  // shadow read from core
+  const coreContentNodesRes = await getContentNodesForDataSourceViewFromCore(
+    dataSourceView,
+    params
+  );
+
+  if (coreContentNodesRes.isErr()) {
+    localLogger.info(
+      { error: coreContentNodesRes.error },
+      "[CoreNodes] Could not fetch content nodes from core"
+    );
+  } else if (coreContentNodesRes.isOk()) {
+    if (coreContentNodesRes.value.total !== contentNodesResult.total) {
+      localLogger.info(
+        {
+          coreNodesCount: coreContentNodesRes.value.total,
+          connectorsNodesCount: contentNodesResult.total,
+        },
+        "[CoreNodes] Content nodes count mismatch"
+      );
+    }
+    computeNodesDiff({
+      connectorsContentNodes: contentNodesResult.nodes,
+      coreContentNodes: coreContentNodesRes.value.nodes,
+      provider: dataSourceView.dataSource.connectorProvider,
+      localLogger,
+    });
   }
 
   const contentNodesInView = filterAndCropContentNodesByView(

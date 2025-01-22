@@ -3,7 +3,6 @@ import Link from "next/link";
 import type { ReactElement } from "react";
 
 import { BenefitsSection } from "@app/components/home/content/Solutions/BenefitsSection";
-// Import from new config location
 import {
   AssistantExamples,
   Benefits,
@@ -38,29 +37,30 @@ export async function getServerSideProps() {
   return {
     props: {
       shape: getParticleShapeIndexByName(shapeNames.octahedron),
+      gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
     },
   };
 }
 
+const GRID_SECTION_CLASSES = classNames(
+  "flex flex-col gap-8",
+  "col-span-12",
+  "lg:col-span-12 lg:col-start-1",
+  "xl:col-span-12 xl:col-start-1",
+  "2xl:col-start-1"
+);
+
 export default function CustomerSupport() {
   return (
     <>
-      <div className="container flex w-full flex-col gap-0 bg-slate-900/50 px-6 pb-12">
+      <div className="container flex w-full flex-col gap-0 px-2 py-2 pb-12">
         <HeroSection
           {...Hero}
           fromColor={pageSettings.from}
           toColor={pageSettings.to}
         />
         <Grid>
-          <div
-            className={classNames(
-              "flex flex-col gap-8",
-              "col-span-12",
-              "lg:col-span-12 lg:col-start-1",
-              "xl:col-span-12 xl:col-start-1",
-              "2xl:col-start-1"
-            )}
-          >
+          <div className={GRID_SECTION_CLASSES}>
             <BenefitsSection
               benefits={Benefits}
               fromColor={pageSettings.from}
@@ -68,45 +68,21 @@ export default function CustomerSupport() {
             />
             <MetricSection {...Metrics} />
           </div>
-          <div
-            className={classNames(
-              "flex flex-col gap-8",
-              "col-span-12",
-              "lg:col-span-12 lg:col-start-1",
-              "xl:col-span-12 xl:col-start-1",
-              "2xl:col-start-1"
-            )}
-          >
+          <div className={GRID_SECTION_CLASSES}>
             <UseCasesSection
               useCase={UseCases}
               fromColor={pageSettings.from}
               toColor={pageSettings.to}
             />
           </div>
-          <div
-            className={classNames(
-              "flex flex-col justify-center gap-8 pb-4",
-              "col-span-12",
-              "lg:col-span-12 lg:col-start-1",
-              "xl:col-span-12 xl:col-start-1",
-              "2xl:col-start-1"
-            )}
-          >
+          <div className={GRID_SECTION_CLASSES}>
             <DemoVideoSection
               demoVideo={DemoVideo}
               fromColor={pageSettings.from}
               toColor={pageSettings.to}
             />
           </div>
-          <div
-            className={classNames(
-              "flex flex-col gap-8 pb-12",
-              "col-span-12",
-              "lg:12 lg:col-start-1",
-              "xl:col-span-12 xl:col-start-1",
-              "2xl:col-start-1"
-            )}
-          >
+          <div className={GRID_SECTION_CLASSES}>
             <QuoteSection {...Quote} />
             <CustomerStoriesSection
               title="Customer stories"
@@ -116,13 +92,7 @@ export default function CustomerSupport() {
             />
           </div>
           <TrustedBy />
-          <div
-            className={classNames(
-              "col-span-12 flex flex-col items-center",
-              "lg:col-span-12 lg:col-start-1",
-              "xl:col-span-10 xl:col-start-2"
-            )}
-          >
+          <div className={GRID_SECTION_CLASSES}>
             {Hero.ctaButtons && (
               <div className="mt-4 flex justify-center gap-4">
                 {Hero.ctaButtons.primary && (

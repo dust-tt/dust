@@ -8,6 +8,7 @@ import StatsD from "hot-shots";
 import PQueue from "p-queue";
 import { Op } from "sequelize";
 
+import { getSourceUrlForGoogleDriveFiles } from "@connectors/connectors/google_drive";
 import {
   GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID,
   GOOGLE_DRIVE_USER_SPACE_VIRTUAL_DRIVE_ID,
@@ -516,6 +517,7 @@ export async function incrementalSync(
           parentId: parents[1] || null,
           title: driveFile.name ?? "",
           mimeType: MIME_TYPES.GOOGLE_DRIVE.FOLDER,
+          sourceUrl: getSourceUrlForGoogleDriveFiles(driveFile),
         });
 
         await GoogleDriveFiles.upsert({
@@ -861,6 +863,7 @@ export async function markFolderAsVisited(
     parentId: parents[1] || null,
     title: file.name ?? "",
     mimeType: MIME_TYPES.GOOGLE_DRIVE.FOLDER,
+    sourceUrl: getSourceUrlForGoogleDriveFiles(file),
   });
 
   await GoogleDriveFiles.upsert({

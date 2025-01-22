@@ -293,6 +293,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
             parentId: parents[1] || null,
             title: folder,
             mimeType: MIME_TYPES.WEBCRAWLER.FOLDER,
+            sourceUrl: webCrawlerFolder.url,
           });
 
           createdFolders.add(folder);

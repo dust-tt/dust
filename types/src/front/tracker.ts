@@ -22,6 +22,7 @@ export type TrackerConfigurationType = {
   maintainedDataSources: TrackerDataSourceConfigurationType[];
   watchedDataSources: TrackerDataSourceConfigurationType[];
   generations?: TrackerGenerationToProcess[];
+  createdAt: number;
 };
 
 export type TrackerDataSourceConfigurationType = {
@@ -81,6 +82,6 @@ export type TrackerGenerationToProcess = {
   thinking: string | null;
   documentId: string;
   dataSource: TrackerDataSource;
-  maintainedDataSource: TrackerDataSource | null;
+  maintainedDocumentDataSource: TrackerDataSource | null;
   maintainedDocumentId: string | null;
 };

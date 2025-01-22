@@ -1,4 +1,4 @@
-import type { ExtensionWorkspaceType } from "@dust-tt/client";
+import type { ExtensionWorkspaceType, WorkspaceType } from "@dust-tt/client";
 import { useAuthHook } from "@extension/components/auth/useAuth";
 import type { AuthError } from "@extension/lib/auth";
 import type { StoredUser } from "@extension/lib/storage";
@@ -10,13 +10,14 @@ type AuthContextType = {
   isAuthenticated: boolean;
   authError: AuthError | null;
   setAuthError: (error: AuthError | null) => void;
+  redirectToSSOLogin: (workspace: WorkspaceType) => void;
   user: StoredUser | null;
   workspace: ExtensionWorkspaceType | undefined;
   isUserSetup: boolean;
   isLoading: boolean;
   handleLogin: (isForceLogin: boolean) => void;
   handleLogout: () => void;
-  handleSelectWorkspace: (workspaceId: string) => void;
+  handleSelectWorkspace: (workspace: WorkspaceType) => void;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -27,6 +28,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     isAuthenticated,
     authError,
     setAuthError,
+    redirectToSSOLogin,
     user,
     workspace,
     isUserSetup,
@@ -43,6 +45,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         isAuthenticated,
         authError,
         setAuthError,
+        redirectToSSOLogin,
         user,
         workspace,
         isUserSetup,

@@ -8,8 +8,8 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { Logger } from "@app/logger/logger";
-import { makeScript, runOnAllWorkspaces } from "@app/scripts/helpers";
-
+import { makeScript } from "@app/scripts/helpers";
+import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 async function backfillViewsInAgentDataSourceConfigurationForWorkspace(
   workspace: LightWorkspaceType,
   logger: Logger,

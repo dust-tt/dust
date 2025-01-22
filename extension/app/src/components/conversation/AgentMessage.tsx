@@ -13,6 +13,7 @@ import type {
   RetrievalDocumentPublicType,
   WebsearchActionPublicType,
   WebsearchResultPublicType,
+  WorkspaceType,
 } from "@dust-tt/client";
 import {
   assertNever,
@@ -22,29 +23,28 @@ import {
   isWebsearchActionType,
   removeNulls,
 } from "@dust-tt/client";
-import type { ConversationMessageSizeType } from "@dust-tt/sparkle";
-import { DocumentTextIcon } from "@dust-tt/sparkle";
 import {
+  ArrowPathIcon,
+  Button,
+  Chip,
   Citation,
   CitationIcons,
   CitationIndex,
   CitationTitle,
-} from "@dust-tt/sparkle";
-import {
-  ArrowPathIcon,
-  Button,
-  ChatBubbleThoughtIcon,
-  Chip,
   ClipboardIcon,
   ContentMessage,
   ConversationMessage,
   DocumentDuplicateIcon,
+  DocumentTextIcon,
   EyeIcon,
   Markdown,
+  Page,
   Popover,
   useSendNotification,
 } from "@dust-tt/sparkle";
 import { AgentMessageActions } from "@extension/components/conversation/AgentMessageActions";
+import type { FeedbackSelectorProps } from "@extension/components/conversation/FeedbackSelector";
+import { FeedbackSelector } from "@extension/components/conversation/FeedbackSelector";
 import { GenerationContext } from "@extension/components/conversation/GenerationContextProvider";
 import {
   CitationsContext,
@@ -61,6 +61,7 @@ import { useSubmitFunction } from "@extension/components/utils/useSubmitFunction
 import { useEventSource } from "@extension/hooks/useEventSource";
 import { assertNeverAndIgnore } from "@extension/lib/assertNeverAndIgnore";
 import { retryMessage } from "@extension/lib/conversation";
+import type { StoredUser } from "@extension/lib/storage";
 import {
   useCallback,
   useContext,
@@ -73,6 +74,27 @@ import type { Components } from "react-markdown";
 import type { ReactMarkdownProps } from "react-markdown/lib/complex-types";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 import { visit } from "unist-util-visit";
+
+function cleanUpCitations(message: string): string {
+  const regex = / ?:cite\[[a-zA-Z0-9, ]+\]/g;
+  return message.replace(regex, "");
+}
+
+export const FeedbackSelectorPopoverContent = ({
+  owner,
+  agentMessageToRender,
+}: {
+  owner: WorkspaceType;
+  agentMessageToRender: AgentMessagePublicType;
+}) => {
+  return (
+    <div className="mb-4 mt-2 flex flex-col gap-2">
+      <Page.P variant="secondary">
+        Your feedback is available to editors of the assistant.
+      </Page.P>
+    </div>
+  );
+};
 
 export function visualizationDirective() {
   return (tree: any) => {
@@ -115,8 +137,9 @@ interface AgentMessageProps {
   conversationId: string;
   isLastMessage: boolean;
   message: AgentMessagePublicType;
+  messageFeedback: FeedbackSelectorProps;
   owner: LightWorkspaceType;
-  size: ConversationMessageSizeType;
+  user: StoredUser;
 }
 
 /**
@@ -129,8 +152,9 @@ export function AgentMessage({
   conversationId,
   isLastMessage,
   message,
+  messageFeedback,
   owner,
-  size,
+  user,
 }: AgentMessageProps) {
   const sendNotification = useSendNotification();
 
@@ -147,6 +171,8 @@ export function AgentMessage({
   const [activeReferences, setActiveReferences] = useState<
     { index: number; document: MarkdownCitation }[]
   >([]);
+
+  const isGlobalAgent = message.configuration.id === -1;
 
   const shouldStream = (() => {
     if (message.status !== "created") {
@@ -171,7 +197,7 @@ export function AgentMessage({
 
   const buildEventSourceURL = useCallback(
     (lastEvent: string | null) => {
-      const esURL = `${process.env.DUST_DOMAIN}/api/v1/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${message.sId}/events`;
+      const esURL = `${user.dustDomain}/api/v1/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${message.sId}/events`;
       let lastEventId = "";
       if (lastEvent) {
         const eventPayload: {
@@ -428,7 +454,7 @@ export function AgentMessage({
             label="See visualization on Dust website"
             onClick={() => {
               window.open(
-                `${process.env.DUST_DOMAIN}/w/${owner.sId}/assistant/${conversationId}`
+                `${user.dustDomain}/w/${owner.sId}/assistant/${conversationId}`
               );
             }}
           />
@@ -450,10 +476,15 @@ export function AgentMessage({
     [activeReferences]
   );
 
-  function cleanUpCitations(message: string): string {
-    const regex = / ?:cite\[[a-zA-Z0-9, ]+\]/g;
-    return message.replace(regex, "");
-  }
+  const PopoverContent = useCallback(
+    () => (
+      <FeedbackSelectorPopoverContent
+        owner={owner}
+        agentMessageToRender={agentMessageToRender}
+      />
+    ),
+    [owner, agentMessageToRender]
+  );
 
   const buttons =
     message.status === "failed"
@@ -462,7 +493,7 @@ export function AgentMessage({
           <Button
             key="copy-msg-button"
             tooltip="Copy to clipboard"
-            variant="outline"
+            variant="ghost"
             size="xs"
             onClick={() => {
               void navigator.clipboard.writeText(
@@ -470,18 +501,34 @@ export function AgentMessage({
               );
             }}
             icon={ClipboardIcon}
+            className="text-muted-foreground"
           />,
           <Button
             key="retry-msg-button"
             tooltip="Retry"
-            variant="outline"
+            variant="ghost"
             size="xs"
             onClick={() => {
               void retryHandler(agentMessageToRender);
             }}
             icon={ArrowPathIcon}
+            className="text-muted-foreground"
             disabled={isRetryHandlerProcessing || shouldStream}
           />,
+          // One cannot leave feedback on global agents.
+          ...(isGlobalAgent ||
+          agentMessageToRender.configuration.status === "draft"
+            ? []
+            : [
+                <div key="separator" className="flex items-center">
+                  <div className="h-5 w-px bg-border" />
+                </div>,
+                <FeedbackSelector
+                  key="feedback-selector"
+                  {...messageFeedback}
+                  getPopoverInfo={PopoverContent}
+                />,
+              ]),
         ];
 
   return (
@@ -500,7 +547,6 @@ export function AgentMessage({
         );
       }}
       type="agent"
-      size={size}
       citations={citations}
     >
       <div>
@@ -544,11 +590,7 @@ export function AgentMessage({
     return (
       <div className="flex flex-col gap-y-4">
         <div className="flex flex-col gap-2">
-          <AgentMessageActions
-            agentMessage={agentMessage}
-            size={size}
-            owner={owner}
-          />
+          <AgentMessageActions agentMessage={agentMessage} owner={owner} />
 
           {agentMessage.chainOfThought?.length ? (
             <ContentMessage title="Assistant thoughts" variant="slate">

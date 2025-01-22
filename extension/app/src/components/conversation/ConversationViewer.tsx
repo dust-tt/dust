@@ -11,6 +11,7 @@ import type {
 } from "@dust-tt/client";
 import { isAgentMention } from "@dust-tt/client";
 import MessageGroup from "@extension/components/conversation/MessageGroup";
+import { useConversationFeedbacks } from "@extension/components/conversation/useConversationFeedbacks";
 import { usePublicConversation } from "@extension/components/conversation/usePublicConversation";
 import { useEventSource } from "@extension/hooks/useEventSource";
 import type { MessageWithContentFragmentsType } from "@extension/lib/conversation";
@@ -69,11 +70,13 @@ export function ConversationViewer({
     }
   }, [agentMentions, onStickyMentionsChange]);
 
+  const { feedbacks } = useConversationFeedbacks({ conversationId });
+
   // Hooks related to message streaming.
 
   const buildEventSourceURL = useCallback(
     (lastEvent: string | null) => {
-      const esURL = `${process.env.DUST_DOMAIN}/api/v1/w/${owner.sId}/assistant/conversations/${conversationId}/events`;
+      const esURL = `${user.dustDomain}/api/v1/w/${owner.sId}/assistant/conversations/${conversationId}/events`;
       let lastEventId = "";
       if (lastEvent) {
         const eventPayload: {
@@ -155,6 +158,7 @@ export function ConversationViewer({
             <MessageGroup
               key={`typed-group-${index}`}
               messages={typedGroup}
+              feedbacks={feedbacks}
               isLastMessageGroup={isLastGroup}
               conversationId={conversationId}
               hideReactions={true}

@@ -309,7 +309,7 @@ export async function retryMessage({
   }
 
   const mRes = await fetch(
-    `${process.env.DUST_DOMAIN}/api/v1/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/retry`,
+    `${user.dustDomain}/api/v1/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/retry`,
     {
       method: "POST",
       headers: {

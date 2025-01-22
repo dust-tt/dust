@@ -15,7 +15,7 @@ import type {
   SpaceType,
   WorkspaceType,
 } from "@dust-tt/types";
-import type { CellContext } from "@tanstack/react-table";
+import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { sortBy } from "lodash";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -24,12 +24,7 @@ import * as React from "react";
 import { useRef, useState } from "react";
 
 import { SpaceCreateAppModal } from "@app/components/spaces/SpaceCreateAppModal";
-import type { Action } from "@app/lib/registry";
-import {
-  DustProdActionRegistry,
-  PRODUCTION_DUST_APPS_SPACE_ID,
-  PRODUCTION_DUST_APPS_WORKSPACE_ID,
-} from "@app/lib/registry";
+import type { ActionApp } from "@app/lib/registry";
 import { useApps, useSavedRunStatus } from "@app/lib/swr/apps";
 
 type RowData = {
@@ -43,7 +38,7 @@ type RowData = {
   onClick?: () => void;
 };
 
-const getTableColumns = () => {
+const getTableColumns = (): ColumnDef<RowData, string>[] => {
   return [
     {
       id: "name",
@@ -53,16 +48,25 @@ const getTableColumns = () => {
         </DataTable.CellContent>
       ),
       accessorFn: (row: RowData) => row.name,
+      meta: {
+        className: "w-full",
+      },
     },
   ];
 };
 
-const getDustAppsColumns = (owner: WorkspaceType) => ({
-  id: "hash",
+// A column is added for internal Dust apps, that are used to power Dust product.
+// registryApp contains the list of all these Dust apps, that are expected to live in this space.
+// For standard apps, if registryApps is not set, column is not displayed.
+const getDustAppsColumns = (
+  owner: WorkspaceType,
+  registryApps: ActionApp[]
+): ColumnDef<RowData, string> => ({
+  id: "status",
   cell: (info: CellContext<RowData, string>) => {
     const { app } = info.row.original;
-    const registryApp = Object.values(DustProdActionRegistry).find(
-      (action) => action.app.appId === app.sId
+    const registryApp = Object.values(registryApps).find(
+      (a) => a.appId === app.sId
     );
     if (!registryApp) {
       return (
@@ -73,7 +77,7 @@ const getDustAppsColumns = (owner: WorkspaceType) => ({
     }
     return (
       <DataTable.CellContent>
-        <AppHashChecker owner={owner} app={app} registryApp={registryApp.app} />
+        <AppHashChecker owner={owner} app={app} registryApp={registryApp} />
       </DataTable.CellContent>
     );
   },
@@ -83,7 +87,7 @@ const getDustAppsColumns = (owner: WorkspaceType) => ({
 type AppHashCheckerProps = {
   owner: LightWorkspaceType;
   app: AppType;
-  registryApp: Action["app"];
+  registryApp: ActionApp;
 };
 
 const AppHashChecker = ({ owner, app, registryApp }: AppHashCheckerProps) => {
@@ -105,7 +109,7 @@ const AppHashChecker = ({ owner, app, registryApp }: AppHashCheckerProps) => {
       <span>
         Inconsistent hashes,{" "}
         <Link
-          className="text-blue-500"
+          className="text-highlight"
           href={`/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/specification?hash=${registryApp.appHash}`}
           onClick={(e) => {
             e.stopPropagation();
@@ -137,6 +141,7 @@ interface SpaceAppsListProps {
   onSelect: (sId: string) => void;
   owner: LightWorkspaceType;
   space: SpaceType;
+  registryApps?: ActionApp[] | null;
 }
 
 export const SpaceAppsList = ({
@@ -144,6 +149,7 @@ export const SpaceAppsList = ({
   canWriteInSpace,
   space,
   onSelect,
+  registryApps,
 }: SpaceAppsListProps) => {
   const router = useRouter();
   const [isCreateAppModalOpened, setIsCreateAppModalOpened] = useState(false);
@@ -181,11 +187,8 @@ export const SpaceAppsList = ({
   }
 
   const columns = getTableColumns();
-  if (
-    owner.sId === PRODUCTION_DUST_APPS_WORKSPACE_ID &&
-    space.sId === PRODUCTION_DUST_APPS_SPACE_ID
-  ) {
-    columns.push(getDustAppsColumns(owner));
+  if (registryApps) {
+    columns.push(getDustAppsColumns(owner, registryApps));
   }
 
   return (

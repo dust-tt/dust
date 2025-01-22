@@ -32,6 +32,8 @@ import {
 import {
   getCodeDirInternalId,
   getCodeFileInternalId,
+  getDirectoryUrl,
+  getFileUrl,
 } from "@connectors/connectors/github/lib/utils";
 import { apiConfig } from "@connectors/lib/api/config";
 import {
@@ -896,10 +898,13 @@ export async function processRepository({
       files.push({
         fileName,
         filePath: path,
-        sourceUrl: `https://github.com/${repoLogin}/${repoName}/blob/${defaultBranch}/${join(
-          path.join("/"),
+        sourceUrl: getFileUrl(
+          repoLogin,
+          repoName,
+          defaultBranch,
+          path,
           fileName
-        )}`,
+        ),
         sizeBytes: size,
         documentId,
         parentInternalId,
@@ -919,10 +924,13 @@ export async function processRepository({
           directories.push({
             dirName: p.dirName,
             dirPath: p.dirPath,
-            sourceUrl: `https://github.com/${repoLogin}/${repoName}/blob/${defaultBranch}/${join(
-              p.dirPath.join("/"),
+            sourceUrl: getDirectoryUrl(
+              repoLogin,
+              repoName,
+              defaultBranch,
+              p.dirPath,
               p.dirName
-            )}`,
+            ),
             internalId: p.internalId,
             parentInternalId: dirParentInternalId,
             parents: parents.slice(i).map((p) => p.internalId),

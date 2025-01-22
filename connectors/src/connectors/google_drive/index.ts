@@ -38,11 +38,12 @@ import {
   isGoogleDriveFolder,
   isGoogleDriveSpreadSheetFile,
 } from "@connectors/connectors/google_drive/temporal/mime_types";
+import type { Sheet } from "@connectors/connectors/google_drive/temporal/spreadsheets";
 import {
   driveObjectToDustType,
   getAuthObject,
   getDriveClient,
-  getDriveId,
+  getDriveFileId,
   getInternalId,
 } from "@connectors/connectors/google_drive/temporal/utils";
 import type {
@@ -67,6 +68,7 @@ import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
+import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
 import { FILE_ATTRIBUTES_TO_FETCH } from "@connectors/types/google_drive";
 
 export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
@@ -261,7 +263,8 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
     }
 
     try {
-      const parentDriveId = parentInternalId && getDriveId(parentInternalId);
+      const parentDriveId =
+        parentInternalId && getDriveFileId(parentInternalId);
       if (filterPermission === "read") {
         if (parentDriveId === null) {
           // Return the list of folders explicitly selected by the user.
@@ -541,7 +544,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
     const addedFolderIds: string[] = [];
     const removedFolderIds: string[] = [];
     for (const [internalId, permission] of Object.entries(permissions)) {
-      const id = getDriveId(internalId);
+      const id = getDriveFileId(internalId);
       if (permission === "none") {
         removedFolderIds.push(id);
         await GoogleDriveFolders.destroy({
@@ -599,7 +602,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
   }): Promise<Result<ContentNode[], Error>> {
     const driveFileIds = internalIds
       .filter((id) => !isGoogleSheetContentNodeInternalId(id))
-      .map(getDriveId);
+      .map(getDriveFileId);
     const sheetIds = internalIds
       .filter((id) => isGoogleSheetContentNodeInternalId(id))
       .map(getGoogleIdsFromSheetContentNodeInternalId);
@@ -706,7 +709,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
       type: "database",
       title: s.name || "",
       lastUpdatedAt: s.updatedAt.getTime() || null,
-      sourceUrl: `https://docs.google.com/spreadsheets/d/${s.driveFileId}/edit#gid=${s.driveSheetId}`,
+      sourceUrl: getSourceUrlForGoogleDriveSheet(s),
       expandable: false,
       permission: "read",
     }));
@@ -976,12 +979,25 @@ async function getFoldersAsContentNodes({
   );
 }
 
-function getSourceUrlForGoogleDriveFiles(f: GoogleDriveFiles): string {
+export function getSourceUrlForGoogleDriveFiles(
+  f: GoogleDriveFiles | GoogleDriveObjectType
+): string {
+  const driveFileId = f instanceof GoogleDriveFiles ? f.driveFileId : f.id;
+
   if (isGoogleDriveSpreadSheetFile(f)) {
-    return `https://docs.google.com/spreadsheets/d/${f.driveFileId}/edit`;
+    return `https://docs.google.com/spreadsheets/d/${driveFileId}/edit`;
   } else if (isGoogleDriveFolder(f)) {
-    return `https://drive.google.com/drive/folders/${f.driveFileId}`;
+    return `https://drive.google.com/drive/folders/${driveFileId}`;
   }
 
-  return `https://drive.google.com/file/d/${f.driveFileId}/view`;
+  return `https://drive.google.com/file/d/${driveFileId}/view`;
+}
+
+export function getSourceUrlForGoogleDriveSheet(
+  s: GoogleDriveSheet | Sheet
+): string {
+  const driveFileId =
+    s instanceof GoogleDriveSheet ? s.driveFileId : s.spreadsheet.id;
+  const driveSheetId = s instanceof GoogleDriveSheet ? s.driveSheetId : s.id;
+  return `https://docs.google.com/spreadsheets/d/${driveFileId}/edit#gid=${driveSheetId}`;
 }

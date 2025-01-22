@@ -141,12 +141,12 @@ export async function syncZendeskArticleUpdateBatchActivity({
                 brandId,
                 name: fetchedCategory.name || "Category",
                 categoryId,
-                permission: "read",
+                permission: "none",
                 url: fetchedCategory.html_url,
                 description: fetchedCategory.description,
               },
             });
-            // upserting a folder to data_sources_folders (core)
+            // upserting a folder to data_sources_folders: here the Help Center is selected so it should appear in the parents
             const parents = category.getParentInternalIds(connectorId);
             await upsertDataSourceFolder({
               dataSourceConfig,
@@ -155,6 +155,7 @@ export async function syncZendeskArticleUpdateBatchActivity({
               parentId: parents[1],
               title: category.name,
               mimeType: MIME_TYPES.ZENDESK.CATEGORY,
+              sourceUrl: category.url,
             });
           } else {
             /// ignoring these to proceed with the other articles, but these might have to be checked at some point
@@ -165,7 +166,10 @@ export async function syncZendeskArticleUpdateBatchActivity({
           }
         }
         /// syncing the article if the category exists and is selected
-        if (category && category.permission === "read") {
+        if (
+          category &&
+          (category.permission === "read" || hasHelpCenterPermissions)
+        ) {
           return syncArticle({
             connectorId,
             category,

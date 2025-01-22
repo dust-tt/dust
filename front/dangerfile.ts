@@ -1,5 +1,6 @@
 import { danger, fail, warn } from "danger";
 
+const sdkAckLabel = "sdk-ack";
 const migrationAckLabel = "migration-ack";
 const documentationAckLabel = "documentation-ack";
 const auth0UpdateLabelAck = "auth0-update-ack";
@@ -32,6 +33,22 @@ function checkMigrationLabel() {
     failMigrationAck();
   } else {
     warnMigrationAck(migrationAckLabel);
+  }
+}
+
+function failSDKAck() {
+  fail(
+    "Files in `**/sdks/js/` have been modified. " +
+      `Changing the types defined in the SDK could break existing client.\n` +
+      `Additions (new types, new values) are generally fine but **removals are NOT OK** : it would break the contract of the Public API.\n` +
+      `Please add the \`${sdkAckLabel}\` label to acknowledge ` +
+      `that your are not breaking the existing Public API contract.`
+  );
+}
+
+function checkSDKLabel() {
+  if (!hasLabel(sdkAckLabel)) {
+    failSDKAck();
   }
 }
 
@@ -127,6 +144,14 @@ function checkModifiedFiles() {
 
   if (modifiedAuth0Files.length > 0) {
     checkAuth0UpdateLabel();
+  }
+
+  const modifiedSdksFiles = danger.git.modified_files.filter((path) => {
+    return path.startsWith("sdks/js/");
+  });
+
+  if (modifiedSdksFiles.length > 0) {
+    checkSDKLabel();
   }
 }
 

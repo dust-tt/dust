@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
   FolderIcon,
   GlobeAltIcon,
+  Icon,
   PlusIcon,
   RobotIcon,
   SearchInput,
@@ -72,9 +73,11 @@ const getTableColumns = () => {
       header: "Name",
       accessorKey: "name",
       cell: (info: Info) => (
-        <DataTable.CellContent icon={info.row.original.icon}>
-          <span>{info.row.original.name}</span> ({info.row.original.count}{" "}
-          items)
+        <DataTable.CellContent
+          icon={info.row.original.icon}
+          description={`(${info.row.original.count})`}
+        >
+          {info.row.original.name}
         </DataTable.CellContent>
       ),
     },
@@ -82,16 +85,22 @@ const getTableColumns = () => {
       header: "Used by",
       accessorFn: (row: RowData) => row.usage.count,
       meta: {
-        width: "6rem",
+        className: "w-24",
       },
       cell: (info: Info) => (
         <>
           {info.row.original.usage ? (
             <DataTable.CellContent
-              icon={RobotIcon}
-              title={`Used by ${info.row.original.usage.agentNames.join(", ")}`}
+              title={
+                info.row.original.usage.count === 0
+                  ? "Un-used"
+                  : `Used by ${info.row.original.usage.agentNames.join(", ")}`
+              }
             >
-              {info.row.original.usage.count}
+              <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Icon visual={RobotIcon} size="xs" />
+                {info.row.original.usage.count}
+              </span>
             </DataTable.CellContent>
           ) : null}
         </>

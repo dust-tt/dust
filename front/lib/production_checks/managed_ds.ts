@@ -10,7 +10,6 @@ import {
 export type CoreDSDocument = {
   id: number;
   document_id: string;
-  parents: string[];
 };
 
 export async function getCoreDocuments(
@@ -55,7 +54,7 @@ export async function getCoreDocuments(
     );
   }
   const coreDocumentsData = await coreReplica.query(
-    `SELECT id, document_id, parents FROM data_sources_documents WHERE "data_source" = :coreDsId AND status = 'latest'`,
+    `SELECT id, document_id FROM data_sources_documents WHERE "data_source" = :coreDsId AND status = 'latest'`,
     {
       replacements: {
         coreDsId: coreDs[0].id,

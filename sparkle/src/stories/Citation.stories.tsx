@@ -33,7 +33,26 @@ export const CitationsExample = () => (
   <div className="s-flex s-flex-col s-gap-8">
     Example of attachement
     <CitationGrid>
-      <Citation onClick={() => alert("Card clicked")} className="s-w-48">
+      <Citation
+        onClick={() => alert("Card clicked")}
+        className="s-w-48"
+        tooltip="@ed at 16:32 This is the latest ve"
+      >
+        <CitationIcons>
+          <Icon visual={SlackLogo} size="sm" />
+        </CitationIcons>
+        <CitationTitle>Citation w/ tooltip</CitationTitle>
+        <CitationDescription>
+          @ed at 16:32 This is the latest ve
+        </CitationDescription>
+      </Citation>
+    </CitationGrid>
+    <CitationGrid>
+      <Citation
+        onClick={() => alert("Card clicked")}
+        className="s-w-48"
+        tooltip="@ed at 16:32 This is the latest ve"
+      >
         <CitationIcons>
           <Icon visual={SlackLogo} size="sm" />
         </CitationIcons>

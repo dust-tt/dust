@@ -50,6 +50,7 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "Qwen/QwQ-32B-Preview"
   | "Qwen/Qwen2-72B-Instruct"
   | "deepseek-chat"
+  | "deepseek-reasoner"
 >();
 
 const EmbeddingProviderIdSchema = FlexibleEnumSchema<"openai" | "mistral">();
@@ -93,11 +94,16 @@ export const supportedOtherFileFormats = {
     ".doc",
     ".docx",
   ],
+  "application/vnd.ms-powerpoint": [".ppt", ".pptx"],
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation": [
+    ".ppt",
+    ".pptx",
+  ],
   "application/pdf": [".pdf"],
   "text/comma-separated-values": [".csv"],
   "text/csv": [".csv"],
   "text/markdown": [".md", ".markdown"],
-  "text/plain": [".txt"],
+  "text/plain": [".txt", ".log", ".cfg", ".conf"],
   "text/tab-separated-values": [".tsv"],
   "text/tsv": [".tsv"],
   "text/vnd.dust.attachment.slack.thread": [".txt"],
@@ -111,6 +117,25 @@ export const supportedOtherFileFormats = {
   "application/xml": [".xml"],
   "application/x-sh": [".sh"],
   "text/x-sh": [".sh"],
+  "text/x-python": [".py"],
+  "text/x-python-script": [".py"],
+  "application/x-yaml": [".yaml", ".yml"],
+  "text/yaml": [".yaml", ".yml"],
+  "text/vnd.yaml": [".yaml", ".yml"],
+  "text/x-c": [".c", ".cc", ".cpp", ".cxx", ".dic", ".h", ".hh"],
+  "text/x-csharp": [".cs"],
+  "text/x-java-source": [".java"],
+  "text/x-php": [".php"],
+  "text/x-ruby": [".rb"],
+  "text/x-sql": [".sql"],
+  "text/x-swift": [".swift"],
+  "text/x-rust": [".rs"],
+  "text/x-go": [".go"],
+  "text/x-kotlin": [".kt", ".kts"],
+  "text/x-scala": [".scala"],
+  "text/x-groovy": [".groovy"],
+  "text/x-perl": [".pl", ".pm"],
+  "text/x-perl-script": [".pl", ".pm"],
 } as const;
 
 // Supported content types for images.
@@ -674,6 +699,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "index_private_slack_channel"
   | "conversations_jit_actions"
   | "disable_run_logs"
+  | "show_debug_tools"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -939,6 +965,18 @@ const AgentMessageTypeSchema = z.object({
     .nullable(),
 });
 export type AgentMessagePublicType = z.infer<typeof AgentMessageTypeSchema>;
+
+const AgentMesssageFeedbackSchema = z.object({
+  messageId: z.string(),
+  agentMessageId: z.number(),
+  userId: z.number(),
+  thumbDirection: z.union([z.literal("up"), z.literal("down")]),
+  content: z.string().nullable(),
+  createdAt: z.number(),
+  agentConfigurationId: z.string(),
+  agentConfigurationVersion: z.number(),
+  isConversationShared: z.boolean(),
+});
 
 const ConversationVisibilitySchema = FlexibleEnumSchema<
   "unlisted" | "workspace" | "deleted" | "test"
@@ -1553,6 +1591,28 @@ export type CreateConversationResponseType = z.infer<
   typeof CreateConversationResponseSchema
 >;
 
+export const GetFeedbacksResponseSchema = z.object({
+  feedbacks: z.array(AgentMesssageFeedbackSchema),
+});
+
+export type GetFeedbacksResponseType = z.infer<
+  typeof GetFeedbacksResponseSchema
+>;
+
+export const PublicPostMessageFeedbackRequestBodySchema = z.object({
+  thumbDirection: z.string(),
+  feedbackContent: z.string().nullable().optional(),
+  isConversationShared: z.boolean().optional(),
+});
+
+export type PublicPostMessageFeedbackRequestBody = z.infer<
+  typeof PublicPostMessageFeedbackRequestBodySchema
+>;
+
+export const PostMessageFeedbackResponseSchema = z.object({
+  success: z.literal(true),
+});
+
 export const PostUserMessageResponseSchema = z.object({
   message: UserMessageSchema,
 });
@@ -2016,6 +2076,7 @@ export const UpsertTableFromCsvRequestSchema = z.intersection(
       async: z.boolean().optional(),
       title: z.string(),
       mimeType: z.string(),
+      sourceUrl: z.string().nullable().optional(),
     })
     .transform((o) => ({
       name: o.name,
@@ -2029,6 +2090,7 @@ export const UpsertTableFromCsvRequestSchema = z.intersection(
       async: o.async,
       title: o.title,
       mimeType: o.mimeType,
+      sourceUrl: o.sourceUrl,
     })),
   z.union([
     z.object({ csv: z.string(), tableId: z.undefined() }).transform((o) => ({
@@ -2084,6 +2146,7 @@ export const UpsertDatabaseTableRequestSchema = z.object({
   remote_database_secret_id: z.string().nullable().optional(),
   title: z.string(),
   mime_type: z.string(),
+  source_url: z.string().nullable().optional(),
 });
 
 export type UpsertDatabaseTableRequestType = z.infer<
@@ -2142,12 +2205,16 @@ export type UpsertFolderResponseType = z.infer<
   typeof UpsertFolderResponseSchema
 >;
 
+const ProviderVisibilitySchema = FlexibleEnumSchema<"public" | "private">();
+
 export const UpsertDataSourceFolderRequestSchema = z.object({
   timestamp: z.number(),
   parents: z.array(z.string()).nullable().optional(),
   parent_id: z.string().nullable().optional(),
   title: z.string(),
   mime_type: z.string(),
+  source_url: z.string().nullable().optional(),
+  provider_visibility: ProviderVisibilitySchema.nullable().optional(),
 });
 export type UpsertDataSourceFolderRequestType = z.infer<
   typeof UpsertDataSourceFolderRequestSchema

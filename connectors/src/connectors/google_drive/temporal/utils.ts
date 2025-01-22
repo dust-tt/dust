@@ -13,7 +13,7 @@ export function getInternalId(driveFileId: string): string {
   return `gdrive-${driveFileId}`;
 }
 
-export function getDriveId(documentId: string): string {
+export function getDriveFileId(documentId: string): string {
   return documentId.replace(/^gdrive-/, "");
 }
 

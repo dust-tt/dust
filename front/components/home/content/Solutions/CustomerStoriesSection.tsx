@@ -62,9 +62,9 @@ export const CustomerStoriesSection: FC<CustomerStoriesSectionProps> = ({
   toColor = "to-sky-500",
 }) => (
   <Grid gap="gap-8">
-    <div className="col-span-12">
+    <div className="col-span-11 sm:col-span-12">
       <Carousel className="w-full">
-        <div className="mb-6 flex items-end justify-between">
+        <div className="mb-6 flex items-center justify-between">
           <div>
             <H2 from={fromColor} to={toColor}>
               {title}

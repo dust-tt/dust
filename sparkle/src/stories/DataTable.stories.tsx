@@ -6,13 +6,11 @@ import {
 } from "@tanstack/react-table";
 import React, { useMemo } from "react";
 
-import { Input } from "@sparkle/components/Input";
-
 import {
   DataTable,
   DropdownMenu,
   DropdownMenuItemProps,
-  FolderIcon,
+  Input,
   NewDialog,
   NewDialogContainer,
   NewDialogContent,
@@ -20,7 +18,8 @@ import {
   NewDialogFooter,
   NewDialogHeader,
   NewDialogTitle,
-} from "../index_with_tw_base";
+} from "@sparkle/components/";
+import { FolderIcon } from "@sparkle/icons";
 
 const meta = {
   title: "Components/DataTable",
@@ -55,7 +54,14 @@ const data: Data[] = [
     avatarUrl: "https://avatars.githubusercontent.com/u/138893015?s=200&v=4",
     avatarTooltipLabel: "Meow",
     roundedAvatar: true,
-    onClick: () => console.log("hehe"),
+    onClick: () => alert("Soupinou clicked"),
+    moreMenuItems: [
+      {
+        label: "Edit (disabled)",
+        onClick: () => alert("Soupinou clicked"),
+        disabled: true,
+      },
+    ],
   },
   {
     name: "Marketing",
@@ -140,6 +146,10 @@ const columns: ColumnDef<Data>[] = [
     accessorKey: "name",
     header: "Name",
     sortingFn: "text",
+    meta: {
+      className: "s-w-full",
+      tooltip: "User's full name",
+    },
     cell: (info) => (
       <DataTable.CellContent
         avatarUrl={info.row.original.avatarUrl}
@@ -154,38 +164,36 @@ const columns: ColumnDef<Data>[] = [
   },
   {
     accessorKey: "usedBy",
-    minSize: 100,
-    size: 100,
-    header: "Used by",
     meta: {
-      width: "100px",
+      className: "s-w-[82px]",
     },
+    header: "Used by",
     cell: (info) => (
-      <DataTable.CellContent>{info.row.original.usedBy}</DataTable.CellContent>
+      <DataTable.BasicCellContent label={info.row.original.usedBy} />
     ),
   },
   {
     accessorKey: "addedBy",
     header: "Added by",
     meta: {
-      width: "100px",
+      className: "s-w-[128px]",
     },
     cell: (info) => (
-      <DataTable.CellContentWithCopy>
-        {info.row.original.addedBy}
-      </DataTable.CellContentWithCopy>
+      <DataTable.BasicCellContent
+        label={info.row.original.addedBy}
+        textToCopy={info.row.original.addedBy}
+        tooltip={info.row.original.addedBy}
+      />
     ),
   },
   {
     accessorKey: "lastUpdated",
     header: "Last updated",
     meta: {
-      width: "200px",
+      className: "s-w-[128px]",
     },
     cell: (info) => (
-      <DataTable.CellContent>
-        {info.row.original.lastUpdated}
-      </DataTable.CellContent>
+      <DataTable.BasicCellContent label={info.row.original.lastUpdated} />
     ),
     enableSorting: false,
   },
@@ -193,11 +201,21 @@ const columns: ColumnDef<Data>[] = [
     accessorKey: "size",
     header: "Size",
     meta: {
-      width: "100px",
+      className: "s-w-[48px]",
     },
     cell: (info) => (
-      <DataTable.CellContent>{info.row.original.size}</DataTable.CellContent>
+      <DataTable.BasicCellContent label={info.row.original.size} />
     ),
+  },
+  {
+    id: "actions",
+    header: "",
+    cell: (info) => (
+      <DataTable.MoreButton moreMenuItems={info.row.original.moreMenuItems} />
+    ),
+    meta: {
+      className: "s-w-12 s-cursor-pointer s-text-foreground",
+    },
   },
 ];
 
@@ -228,7 +246,7 @@ export const DataTableExample = () => {
   );
 
   return (
-    <div className="s-w-full s-max-w-4xl s-overflow-x-auto">
+    <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6">
       <Input
         name="filter"
         placeholder="Filter"

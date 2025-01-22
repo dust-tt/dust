@@ -1,23 +1,25 @@
 import { getSession as getAuth0Session } from "@auth0/nextjs-auth0";
 import type {
+  APIErrorWithStatusCode,
   GroupType,
   LightWorkspaceType,
   PermissionType,
+  PlanType,
   ResourcePermission,
+  Result,
   RoleType,
+  SubscriptionType,
   UserType,
   WhitelistableFeature,
   WorkspaceType,
 } from "@dust-tt/types";
-import type { PlanType, SubscriptionType } from "@dust-tt/types";
-import type { Result } from "@dust-tt/types";
-import type { APIErrorWithStatusCode } from "@dust-tt/types";
 import {
   Err,
   hasRolePermissions,
   isAdmin,
   isBuilder,
   isDevelopment,
+  isSupportedEnterpriseConnectionStrategy,
   isUser,
   Ok,
   WHITELISTABLE_FEATURES,
@@ -32,6 +34,7 @@ import type {
 import type { Auth0JwtPayload } from "@app/lib/api/auth0";
 import { getUserFromAuth0Token } from "@app/lib/api/auth0";
 import config from "@app/lib/api/config";
+import { SSOEnforcedError } from "@app/lib/iam/errors";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { isValidSession } from "@app/lib/iam/provider";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
@@ -306,7 +309,7 @@ export class Authenticator {
     Result<
       Authenticator,
       {
-        code: "user_not_found" | "workspace_not_found";
+        code: "user_not_found" | "workspace_not_found" | "sso_enforced";
       }
     >
   > {
@@ -322,6 +325,21 @@ export class Authenticator {
     });
     if (!workspace) {
       return new Err({ code: "workspace_not_found" });
+    }
+
+    const strategy =
+      token[`${config.getAuth0NamespaceClaim()}connection.strategy`];
+    if (
+      workspace.ssoEnforced &&
+      strategy &&
+      !isSupportedEnterpriseConnectionStrategy(strategy)
+    ) {
+      return new Err(
+        new SSOEnforcedError(
+          "Access requires Single Sign-On (SSO) authentication. Use your SSO provider to sign in.",
+          workspace.sId
+        )
+      );
     }
 
     let role = "none" as RoleType;

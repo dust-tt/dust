@@ -310,6 +310,8 @@ const getProcessingFunction = ({
   switch (contentType) {
     case "application/msword":
     case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+    case "application/vnd.ms-powerpoint":
+    case "application/vnd.openxmlformats-officedocument.presentationml.presentation":
     case "application/pdf":
       if (useCase === "conversation" || useCase === "folder_document") {
         return extractTextFromFileAndUpload;
@@ -327,6 +329,25 @@ const getProcessingFunction = ({
     case "application/xml":
     case "application/x-sh":
     case "text/x-sh":
+    case "text/x-python":
+    case "text/x-python-script":
+    case "application/x-yaml":
+    case "text/yaml":
+    case "text/vnd.yaml":
+    case "text/x-c":
+    case "text/x-csharp":
+    case "text/x-java-source":
+    case "text/x-php":
+    case "text/x-ruby":
+    case "text/x-sql":
+    case "text/x-swift":
+    case "text/x-rust":
+    case "text/x-go":
+    case "text/x-kotlin":
+    case "text/x-scala":
+    case "text/x-groovy":
+    case "text/x-perl":
+    case "text/x-perl-script":
       if (
         useCase === "conversation" ||
         useCase === "folder_document" ||

@@ -65,6 +65,9 @@ export function ConversationContainer({
 
   const { mutateConversations } = useConversations({
     workspaceId: owner.sId,
+    options: {
+      disabled: true, // We don't need to fetch conversations here.
+    },
   });
 
   const { mutateMessages } = useConversationMessages({
@@ -168,7 +171,7 @@ export function ConversationContainer({
         }
       );
       await mutateConversations();
-      await scrollConversationsToTop();
+      scrollConversationsToTop();
     } catch (err) {
       // If the API errors, the original data will be
       // rolled back by SWR automatically.
@@ -237,7 +240,7 @@ export function ConversationContainer({
           { shallow: true }
         );
         await mutateConversations();
-        await scrollConversationsToTop();
+        scrollConversationsToTop();
 
         return new Ok(undefined);
       }
@@ -311,7 +314,7 @@ export function ConversationContainer({
       {!activeConversationId && (
         <div
           id="assistant-input-header"
-          className="flex h-fit min-h-[20vh] w-full max-w-4xl flex-col justify-end gap-8 px-4 py-2"
+          className="flex h-fit min-h-[20vh] w-full max-w-4xl flex-col justify-end gap-8 py-2"
         >
           <Page.Header title={greeting} />
           <Page.SectionHeader title="Start a conversation" />

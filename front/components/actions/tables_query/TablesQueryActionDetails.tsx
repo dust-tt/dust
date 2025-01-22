@@ -78,15 +78,15 @@ function QueryThinking({ action }: { action: TablesQueryActionType }) {
       <div className="text-sm font-normal text-muted-foreground">
         <ContentMessage
           title="Reasoning"
-          variant="purple"
+          variant="slate"
           icon={InformationCircleIcon}
           size="lg"
         >
           <Markdown
             content={thinking}
             isStreaming={false}
-            textSize="sm"
-            textColor="purple-800"
+            forcedTextSize="text-sm"
+            textColor="text-muted-foreground"
             isLastMessage={false}
           />
         </ContentMessage>
@@ -145,19 +145,21 @@ function QueryTablesResults({
   }
 
   return (
-    <div>
+    <div className="flex flex-col">
       <span className="text-sm font-semibold text-foreground">Results</span>
-      <Citation
-        className="w-48 min-w-48 max-w-48"
-        containerClassName="my-2"
-        onClick={handleDownload}
-        tooltip={title}
-      >
-        <CitationIcons>
-          <Icon visual={TableIcon} />
-        </CitationIcons>
-        <CitationTitle>{title}</CitationTitle>
-      </Citation>
+      <div>
+        <Citation
+          className="w-48 min-w-48 max-w-48"
+          containerClassName="my-2"
+          onClick={handleDownload}
+          tooltip={title}
+        >
+          <CitationIcons>
+            <Icon visual={TableIcon} />
+          </CitationIcons>
+          <CitationTitle>{title}</CitationTitle>
+        </Citation>
+      </div>
 
       <Collapsible defaultOpen={false}>
         <Collapsible.Button>

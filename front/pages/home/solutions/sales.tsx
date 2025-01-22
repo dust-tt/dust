@@ -1,10 +1,27 @@
+import { Button } from "@dust-tt/sparkle";
+import Link from "next/link";
 import type { ReactElement } from "react";
-import React from "react";
 
-import { BlogSection } from "@app/components/home/content/Product/BlogSection";
+import { BenefitsSection } from "@app/components/home/content/Solutions/BenefitsSection";
+import {
+  AssistantExamples,
+  Benefits,
+  DemoVideo,
+  Hero,
+  Metrics,
+  pageSettings,
+  Quote,
+  Stories,
+  UseCases,
+} from "@app/components/home/content/Solutions/configs/salesConfig";
+import { CustomerStoriesSection } from "@app/components/home/content/Solutions/CustomerStoriesSection";
+import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
+import { HeroSection } from "@app/components/home/content/Solutions/HeroSection";
+import { UseCasesSection } from "@app/components/home/content/Solutions/UseCasesSection";
 import {
   CarousselContentBlock,
-  HeaderContentBlock,
+  MetricSection,
+  QuoteSection,
 } from "@app/components/home/ContentBlocks";
 import { Grid } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
@@ -13,159 +30,94 @@ import {
   getParticleShapeIndexByName,
   shapeNames,
 } from "@app/components/home/Particles";
-import type { SolutionSectionAssistantBlockProps } from "@app/components/home/SolutionSection";
-import { SolutionSection } from "@app/components/home/SolutionSection";
 import TrustedBy from "@app/components/home/TrustedBy";
+import { classNames } from "@app/lib/utils";
 
 export async function getServerSideProps() {
   return {
     props: {
-      shape: getParticleShapeIndexByName(shapeNames.bigSphere),
+      shape: getParticleShapeIndexByName(shapeNames.octahedron),
+      gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
     },
   };
 }
 
-interface pageSettingsProps {
-  uptitle: string;
-  title: React.ReactNode;
-  description: React.ReactNode;
-  from: string;
-  to: string;
-}
-
-const pageSettings: pageSettingsProps = {
-  uptitle: "Sales",
-  title: (
-    <>
-      Less busywork,
-      <br />
-      more deals.
-    </>
-  ),
-  from: "from-emerald-200",
-  to: "to-emerald-500",
-  description: (
-    <>
-      Boost qualification, prospecting, and&nbsp;closing.
-      <br />
-      Practice techniques from&nbsp;demos to&nbsp;objection handling.
-    </>
-  ),
-};
+const GRID_SECTION_CLASSES = classNames(
+  "flex flex-col gap-8",
+  "col-span-12",
+  "lg:col-span-12 lg:col-start-1",
+  "xl:col-span-12 xl:col-start-1",
+  "2xl:col-start-1"
+);
 
 export default function Sales() {
   return (
     <>
-      <HeaderContentBlock
-        uptitle={"Dust for " + pageSettings.uptitle}
-        title={pageSettings.title}
-        from={pageSettings.from}
-        to={pageSettings.to}
-        subtitle={pageSettings.description}
-      />
-      <TrustedBy />
-      <Grid>
-        <SolutionSection
-          title={
-            <>
-              Drop the&nbsp;cut-and-paste,
-              <br />
-              Hone your&nbsp;personal touch.
-            </>
-          }
-          blocks={[
-            {
-              color: "emerald",
-              contentBlocks: [
-                {
-                  title: <>Personalized outreach at&nbsp;scale</>,
-                  content: [
-                    <>
-                      Craft optimized cold emails or&nbsp;follow-ups
-                      effortlessly.
-                    </>,
-                    <>
-                      Ensure your&nbsp;sales reps connect more effectively with
-                      prospects, with personalized drafts ready for
-                      their&nbsp;email outbox.
-                    </>,
-                  ],
-                },
-                {
-                  title: <>Account snapshots and&nbsp;reports</>,
-                  content: [
-                    <>
-                      Generate account summaries and&nbsp;reports
-                      from&nbsp;across your&nbsp;CRM, Slack, and&nbsp;Notion.
-                    </>,
-                    <>
-                      Keep every pipeline review focused on&nbsp;the strategic
-                      outlook rather than administrative housekeeping.
-                    </>,
-                  ],
-                },
-              ],
-              assistantBlocks: [
-                assistantExamples[0],
-                assistantExamples[1],
-                assistantExamples[2],
-              ],
-            },
-          ]}
+      <div className="container flex w-full flex-col gap-0 px-2 py-2 pb-12">
+        <HeroSection
+          {...Hero}
+          fromColor={pageSettings.from}
+          toColor={pageSettings.to}
         />
-        <SolutionSection
-          title={
-            <>
-              Scale Sales Operations team
-              <br />
-              for fun and&nbsp;profit.
-            </>
-          }
-          blocks={[
-            {
-              color: "emerald",
-              contentBlocks: [
-                {
-                  title: <>Keep everyone on&nbsp;the same page</>,
-                  content: [
-                    <>
-                      Ramping up and&nbsp;aligning fast-growing
-                      or&nbsp;distributed teams gets harder.
-                    </>,
-                    <>
-                      Enshrine templates and&nbsp;playbooks into assistants
-                      to&nbsp;roll out a&nbsp;consistent and&nbsp;efficient
-                      sales motion.
-                    </>,
-                  ],
-                },
-                {
-                  title: <>Improve decision-making for sales leadership</>,
-                  content: [
-                    <>
-                      Generate real-time insights on&nbsp;sales metrics
-                      and&nbsp;team trends.
-                    </>,
-                    <>
-                      Have your&nbsp;weekly reports and&nbsp;summaries ready
-                      in&nbsp;a few seconds.
-                    </>,
-                  ],
-                },
-              ],
-              assistantBlocks: [
-                assistantExamples[3],
-                assistantExamples[4],
-                assistantExamples[5],
-              ],
-            },
-          ]}
-        />
-      </Grid>
-      <BlogSection
-        headerColorFrom="from-emerald-200"
-        headerColorTo="to-emerald-500"
-      />
+        <Grid>
+          <div className={GRID_SECTION_CLASSES}>
+            <BenefitsSection
+              benefits={Benefits}
+              fromColor={pageSettings.from}
+              toColor={pageSettings.to}
+            />
+            <MetricSection {...Metrics} />
+          </div>
+          <div className={GRID_SECTION_CLASSES}>
+            <UseCasesSection
+              useCase={UseCases}
+              fromColor={pageSettings.from}
+              toColor={pageSettings.to}
+            />
+          </div>
+          <div className={GRID_SECTION_CLASSES}>
+            <DemoVideoSection
+              demoVideo={DemoVideo}
+              fromColor={pageSettings.from}
+              toColor={pageSettings.to}
+            />
+          </div>
+          <div className={GRID_SECTION_CLASSES}>
+            <QuoteSection {...Quote} />
+            <CustomerStoriesSection
+              title="Customer stories"
+              stories={Stories}
+              fromColor={pageSettings.from}
+              toColor={pageSettings.to}
+            />
+          </div>
+          <TrustedBy />
+          <div className={GRID_SECTION_CLASSES}>
+            {Hero.ctaButtons && (
+              <div className="mt-4 flex justify-center gap-4">
+                {Hero.ctaButtons.primary && (
+                  <Link href={Hero.ctaButtons.primary.href} shallow={true}>
+                    <Button
+                      variant="highlight"
+                      size="md"
+                      label={Hero.ctaButtons.primary.label}
+                      icon={Hero.ctaButtons.primary.icon}
+                    />
+                  </Link>
+                )}
+                {Hero.ctaButtons.secondary && (
+                  <Button
+                    variant="outline"
+                    size="md"
+                    label={Hero.ctaButtons.secondary.label}
+                    href={Hero.ctaButtons.secondary.href}
+                  />
+                )}
+              </div>
+            )}
+          </div>
+        </Grid>
+      </div>
     </>
   );
 }
@@ -174,80 +126,13 @@ Sales.getLayout = (page: ReactElement, pageProps: LandingLayoutProps) => {
   return <LandingLayout pageProps={pageProps}>{page}</LandingLayout>;
 };
 
-const assistantExamples: SolutionSectionAssistantBlockProps[] = [
-  {
-    emoji: "🖋️",
-    name: "@outboundDraft",
-    backgroundColor: "bg-emerald-300",
-    description: (
-      <>
-        Generates personalized and&nbsp;effective cold emails or&nbsp;follow-up
-        emails with the&nbsp;context of&nbsp;the relationship
-      </>
-    ),
-  },
-  {
-    emoji: "🔎",
-    name: "@accountSummary",
-    backgroundColor: "bg-emerald-300",
-    description: (
-      <>
-        Creates a&nbsp;snapshot by&nbsp;retrieving data from&nbsp;your CRM,
-        Slack, Notion, including health and&nbsp;sentiment to&nbsp;understand
-        where to&nbsp;focus attention
-      </>
-    ),
-  },
-  {
-    emoji: "📞",
-    name: "@callCoach",
-    backgroundColor: "bg-emerald-300",
-    description: (
-      <>
-        Points to&nbsp;battle cards, competitive intelligence,
-        and&nbsp;objection handling documentation to&nbsp;increase conversion
-      </>
-    ),
-  },
-  {
-    emoji: "📊",
-    name: "@salesMetrics",
-    backgroundColor: "bg-emerald-300",
-    description: (
-      <>Answers any question on&nbsp;revenue metrics directly from&nbsp;Slack</>
-    ),
-  },
-  {
-    emoji: "🔮",
-    name: "@salesWisdom",
-    backgroundColor: "bg-emerald-300",
-    description: (
-      <>
-        Processes all call transcripts to&nbsp;extract recurring themes
-        or&nbsp;insights
-      </>
-    ),
-  },
-  {
-    emoji: "🚀",
-    name: "@salesShoutout",
-    backgroundColor: "bg-emerald-300",
-    description: (
-      <>
-        Highlights performance outliers across the&nbsp;team based on&nbsp;CRM
-        data and&nbsp;growth priorities
-      </>
-    ),
-  },
-];
-
 export function SalesCaroussel() {
   return (
     <CarousselContentBlock
       title={pageSettings.uptitle}
       subtitle={pageSettings.title}
       description={pageSettings.description}
-      assistants={assistantExamples}
+      assistants={AssistantExamples}
       from={pageSettings.from}
       to={pageSettings.to}
       border="border-pink-100/60"

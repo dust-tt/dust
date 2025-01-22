@@ -85,6 +85,9 @@ const ConversationViewer = React.forwardRef<
 
   const { mutateConversations } = useConversations({
     workspaceId: owner.sId,
+    options: {
+      disabled: true,
+    },
   });
 
   const {
@@ -104,6 +107,7 @@ const ConversationViewer = React.forwardRef<
   const { mutateConversationParticipants } = useConversationParticipants({
     conversationId,
     workspaceId: owner.sId,
+    options: { disabled: true }, // We don't need the participants, only the mutator.
   });
 
   const { hasMore, latestPage, oldestPage } = useMemo(() => {
@@ -325,7 +329,8 @@ const ConversationViewer = React.forwardRef<
   return (
     <div
       className={classNames(
-        "flex w-full max-w-4xl flex-1 flex-col justify-start gap-2 pb-4",
+        "s-@container/conversation",
+        "flex w-full max-w-4xl flex-1 flex-col justify-start gap-8 py-4",
         isFading ? "animate-fadeout" : "",
         isInModal ? "pt-4" : "sm:px-4"
       )}

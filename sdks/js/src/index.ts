@@ -35,6 +35,7 @@ import type {
   PatchDataSourceViewRequestType,
   PublicPostContentFragmentRequestBody,
   PublicPostConversationsRequestBody,
+  PublicPostMessageFeedbackRequestBody,
   PublicPostMessagesRequestBody,
   UserMessageErrorEvent,
 } from "./types";
@@ -53,11 +54,13 @@ import {
   GetConversationResponseSchema,
   GetConversationsResponseSchema,
   GetDataSourcesResponseSchema,
+  GetFeedbacksResponseSchema,
   GetWorkspaceFeatureFlagsResponseSchema,
   GetWorkspaceVerifiedDomainsResponseSchema,
   MeResponseSchema,
   Ok,
   PostContentFragmentResponseSchema,
+  PostMessageFeedbackResponseSchema,
   PostUserMessageResponseSchema,
   Result,
   RunAppResponseSchema,
@@ -829,6 +832,46 @@ export class DustAPI {
     return new Ok(r.value.conversation);
   }
 
+  async getConversationFeedback({
+    conversationId,
+  }: {
+    conversationId: string;
+  }) {
+    const res = await this.request({
+      method: "GET",
+      path: `assistant/conversations/${conversationId}/feedbacks`,
+    });
+
+    const r = await this._resultFromResponse(GetFeedbacksResponseSchema, res);
+    if (r.isErr()) {
+      return r;
+    }
+    return new Ok(r.value.feedbacks);
+  }
+
+  async postFeedback(
+    conversationId: string,
+    messageId: string,
+    feedback: PublicPostMessageFeedbackRequestBody
+  ) {
+    const res = await this.request({
+      method: "POST",
+      path: `assistant/conversations/${conversationId}/messages/${messageId}/feedbacks`,
+      body: feedback,
+    });
+
+    return this._resultFromResponse(PostMessageFeedbackResponseSchema, res);
+  }
+
+  async deleteFeedback(conversationId: string, messageId: string) {
+    const res = await this.request({
+      method: "DELETE",
+      path: `assistant/conversations/${conversationId}/messages/${messageId}/feedbacks`,
+    });
+
+    return this._resultFromResponse(PostMessageFeedbackResponseSchema, res);
+  }
+
   async tokenize(text: string, dataSourceId: string) {
     const res = await this.request({
       method: "POST",
@@ -851,6 +894,8 @@ export class DustAPI {
     parentId,
     parents,
     mimeType,
+    sourceUrl,
+    providerVisibility,
   }: {
     dataSourceId: string;
     folderId: string;
@@ -859,6 +904,8 @@ export class DustAPI {
     parentId: string | null;
     parents: string[];
     mimeType: string;
+    sourceUrl: string | null;
+    providerVisibility: "public" | "private" | null;
   }) {
     const res = await this.request({
       method: "POST",
@@ -871,6 +918,8 @@ export class DustAPI {
         parent_id: parentId,
         parents,
         mime_type: mimeType,
+        source_url: sourceUrl,
+        provider_visibility: providerVisibility,
       },
     });
 

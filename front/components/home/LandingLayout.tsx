@@ -7,7 +7,6 @@ import {
   LogoHorizontalColorLayer2Logo,
   LogoHorizontalColorLogo,
 } from "@dust-tt/sparkle";
-import { Transition } from "@headlessui/react";
 import Head from "next/head";
 import Link from "next/link";
 import Script from "next/script";
@@ -26,6 +25,7 @@ import { classNames } from "@app/lib/utils";
 export interface LandingLayoutProps {
   shape: number;
   postLoginReturnToUrl?: string;
+  gtmTrackingId?: string;
 }
 
 export default function LandingLayout({
@@ -35,7 +35,11 @@ export default function LandingLayout({
   children: React.ReactNode;
   pageProps: LandingLayoutProps;
 }) {
-  const { postLoginReturnToUrl = "/api/login", shape } = pageProps;
+  const {
+    postLoginReturnToUrl = "/api/login",
+    shape,
+    gtmTrackingId,
+  } = pageProps;
 
   const [currentShape, setCurrentShape] = useState(shape);
   const [showCookieBanner, setShowCookieBanner] = useState<boolean>(true);
@@ -105,7 +109,6 @@ export default function LandingLayout({
               variant="outline"
               size="sm"
               label="Request a demo"
-              target="_blank"
             />
             <Button
               variant="highlight"
@@ -121,6 +124,7 @@ export default function LandingLayout({
       </ScrollingHeader>
       {/* Keeping the background dark */}
       <div className="fixed bottom-0 left-0 right-0 top-0 -z-50 bg-slate-900" />
+      <div className="fixed inset-0 -z-30 bg-slate-900/50" />
       <div className="fixed bottom-0 left-0 right-0 top-0 -z-40 overflow-hidden transition duration-1000">
         <Particles currentShape={currentShape} />
       </div>
@@ -149,28 +153,15 @@ export default function LandingLayout({
           }}
         />
         {hasAcceptedCookies && (
-          <>
-            <Script
-              src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GA_TRACKING_ID}`}
-              strategy="afterInteractive"
-            />
-            <Script id="google-analytics" strategy="afterInteractive">
-              {`
-             window.dataLayer = window.dataLayer || [];
-             function gtag(){window.dataLayer.push(arguments);}
-             gtag('js', new Date());
-
-             gtag('config', '${process.env.NEXT_PUBLIC_GA_TRACKING_ID}');
+          <Script id="google-tag-manager" strategy="afterInteractive">
+            {`
+              (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+              new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+              j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+              'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+              })(window,document,'script','dataLayer','${gtmTrackingId}');
             `}
-            </Script>
-            <Script
-              type="text/javascript"
-              id="hs-script-loader"
-              async
-              defer
-              src="//js-eu1.hs-scripts.com/144442587.js"
-            ></Script>
-          </>
+          </Script>
         )}
         <FooterNavigation />
       </main>
@@ -189,18 +180,22 @@ const CookieBanner = ({
   onClickRefuse: () => void;
   className?: string;
 }) => {
+  const [isVisible, setIsVisible] = useState(show);
+
+  useEffect(() => {
+    if (show) {
+      setIsVisible(true);
+    } else {
+      setIsVisible(true);
+    }
+  }, [show]);
+
   return (
-    <Transition
-      show={show}
-      enter="transition-opacity duration-300"
-      appear={true}
-      enterFrom="opacity-0"
-      enterTo="opacity-100"
-      leave="transition-opacity duration-300"
-      leaveFrom="opacity-100"
-      leaveTo="opacity-0"
+    <div
       className={classNames(
         "z-30 flex w-64 flex-col gap-3 rounded-xl border border-structure-100 bg-white p-4 shadow-xl",
+        "s-transition-opacity s-duration-300 s-ease-in-out",
+        isVisible ? "s-opacity-100" : "s-opacity-0",
         className || ""
       )}
     >
@@ -221,19 +216,24 @@ const CookieBanner = ({
           variant="outline"
           size="sm"
           label="Reject"
-          onClick={onClickRefuse}
+          onClick={() => {
+            setIsVisible(false);
+            onClickRefuse();
+          }}
         />
         <Button
           variant="highlight"
           size="sm"
           label="Accept All"
-          onClick={onClickAccept}
+          onClick={() => {
+            setIsVisible(false);
+            onClickAccept();
+          }}
         />
       </div>
-    </Transition>
+    </div>
   );
 };
-
 const Header = () => {
   return (
     <Head>

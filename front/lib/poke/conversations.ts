@@ -14,7 +14,7 @@ import { AgentRetrievalAction } from "@app/lib/models/assistant/actions/retrieva
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import { AgentWebsearchAction } from "@app/lib/models/assistant/actions/websearch";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
-import { DustProdActionRegistry } from "@app/lib/registry";
+import { getDustProdAction } from "@app/lib/registry";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 
 export async function getPokeConversation(
@@ -58,8 +58,7 @@ export async function getPokeConversation(
                         raw: true,
                       })
                     )?.runId;
-                    const app =
-                      DustProdActionRegistry["assistant-v2-browse"].app;
+                    const { app } = getDustProdAction("assistant-v2-browse");
                     a.appId = app.appId;
                     a.appSpaceId = app.appSpaceId;
                     a.appWorkspaceId = app.workspaceId;
@@ -73,8 +72,7 @@ export async function getPokeConversation(
                         raw: true,
                       })
                     )?.runId;
-                    const app =
-                      DustProdActionRegistry["assistant-v2-process"].app;
+                    const { app } = getDustProdAction("assistant-v2-process");
                     a.appId = app.appId;
                     a.appSpaceId = app.appSpaceId;
                     a.appWorkspaceId = app.workspaceId;
@@ -88,8 +86,7 @@ export async function getPokeConversation(
                         raw: true,
                       })
                     )?.runId;
-                    const app =
-                      DustProdActionRegistry["assistant-v2-retrieval"].app;
+                    const { app } = getDustProdAction("assistant-v2-retrieval");
                     a.appId = app.appId;
                     a.appSpaceId = app.appSpaceId;
                     a.appWorkspaceId = app.workspaceId;
@@ -103,8 +100,9 @@ export async function getPokeConversation(
                         raw: true,
                       })
                     )?.runId;
-                    const app =
-                      DustProdActionRegistry["assistant-v2-query-tables"].app;
+                    const { app } = getDustProdAction(
+                      "assistant-v2-query-tables"
+                    );
                     a.appId = app.appId;
                     a.appSpaceId = app.appSpaceId;
                     a.appWorkspaceId = app.workspaceId;
@@ -118,8 +116,7 @@ export async function getPokeConversation(
                         raw: true,
                       })
                     )?.runId;
-                    const app =
-                      DustProdActionRegistry["assistant-v2-websearch"].app;
+                    const { app } = getDustProdAction("assistant-v2-websearch");
                     a.appId = app.appId;
                     a.appSpaceId = app.appSpaceId;
                     a.appWorkspaceId = app.workspaceId;

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use clap::Parser;
 use dust::search_stores::search_store::ElasticsearchSearchStore;
-use elasticsearch::indices::{IndicesCreateParts, IndicesDeleteAliasParts, IndicesExistsParts};
+use elasticsearch::indices::{IndicesCreateParts, IndicesExistsParts};
 use http::StatusCode;
 
 #[derive(Parser, Debug)]
@@ -105,11 +105,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let body = serde_json::json!({
         "settings": settings,
         "mappings": mappings,
-        "aliases": {
-            index_alias.clone(): {
-                "is_write_index": true,
-            }
-        }
     });
 
     // confirm creation
@@ -125,20 +120,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    // remove alias from old index
-    if remove_previous_alias {
-        search_store
-            .client
-            .indices()
-            .delete_alias(IndicesDeleteAliasParts::IndexName(
-                &[index_previous_fullname.as_str()],
-                &[index_alias.as_str()],
-            ))
-            .send()
-            .await?;
-    }
-
-    // create index with settings, mappings and alias
+    // create index with settings and mappings
     let response = search_store
         .client
         .indices()
@@ -148,14 +130,44 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await?;
 
     match response.status_code() {
-        StatusCode::OK => {
-            println!("Index created: {}", index_fullname);
-            Ok(())
-        }
+        StatusCode::OK => println!("Index created: {}", index_fullname),
         _ => {
             let body = response.json::<serde_json::Value>().await?;
             eprintln!("{:?}", body);
-            Err(anyhow::anyhow!("Failed to create index").into())
+            return Err(anyhow::anyhow!("Failed to create index").into());
+        }
+    }
+
+    // create alias, and remove previous alias if needed
+    let body = match remove_previous_alias {
+        true => serde_json::json!({
+            "actions": [
+                { "add": { "index": index_fullname, "alias": index_alias, "is_write_index": true } },
+                { "remove": { "index": index_previous_fullname, "alias": index_alias } }
+            ]
+        }),
+        false => serde_json::json!({
+            "actions": [
+                { "add": { "index": index_fullname, "alias": index_alias, "is_write_index": true } },
+                { "add": { "index": index_previous_fullname, "alias": index_alias, "is_write_index": false } }
+            ]
+        }),
+    };
+
+    search_store
+        .client
+        .indices()
+        .update_aliases()
+        .body(body)
+        .send()
+        .await?;
+
+    match response.status_code() {
+        StatusCode::OK => Ok(()),
+        _ => {
+            let body = response.json::<serde_json::Value>().await?;
+            eprintln!("{:?}", body);
+            Err(anyhow::anyhow!("Failed to create alias").into())
         }
     }
 }

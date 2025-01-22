@@ -4,8 +4,8 @@ import { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import type { Logger } from "@app/logger/logger";
-import { makeScript, runOnAllWorkspaces } from "@app/scripts/helpers";
-
+import { makeScript } from "@app/scripts/helpers";
+import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 async function backfillApiKeys(
   workspace: LightWorkspaceType,
   logger: Logger,

@@ -687,6 +687,7 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
       watchedDataSources: this.dataSourceConfigurations
         .filter((dsc) => dsc.scope === "watched")
         .map(dataSourceToJSON),
+      createdAt: this.createdAt.getTime(),
     };
 
     if (this.generations?.length) {
@@ -706,7 +707,7 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
             dustAPIProjectId: g.dataSource.dustAPIProjectId,
             dustAPIDataSourceId: g.dataSource.dustAPIDataSourceId,
           },
-          maintainedDataSource: g.maintainedDocumentDataSource
+          maintainedDocumentDataSource: g.maintainedDocumentDataSource
             ? {
                 id: g.maintainedDocumentDataSource.id,
                 name: dataSourceName,

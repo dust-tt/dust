@@ -106,7 +106,7 @@ export default function TrackerConfigurations({
       header: "Name",
       accessorKey: "name",
       meta: {
-        width: "14rem",
+        className: "w-48",
       },
       cell: (info: CellContext<RowData, string>) => (
         <DataTable.CellContent>
@@ -119,9 +119,11 @@ export default function TrackerConfigurations({
       header: "Description",
       accessorKey: "description",
       cell: (info: CellContext<RowData, string>) => (
-        <DataTable.CellContent>
-          <span>{info.row.original.description}</span>
-        </DataTable.CellContent>
+        <DataTable.BasicCellContent
+          label={
+            info.row.original.description ? info.row.original.description : ""
+          }
+        />
       ),
     },
     {
@@ -129,7 +131,7 @@ export default function TrackerConfigurations({
       header: "Status",
       accessorKey: "status",
       meta: {
-        width: "6rem",
+        className: "w-24",
       },
       cell: (info: CellContext<RowData, string>) => (
         <DataTable.CellContent>
@@ -148,7 +150,7 @@ export default function TrackerConfigurations({
       header: "Edit",
       accessorKey: "id",
       meta: {
-        width: "6rem",
+        className: "w-14",
       },
       cell: (info: CellContext<RowData, string>) => (
         <Button
@@ -227,6 +229,9 @@ export default function TrackerConfigurations({
                       filter={filter}
                       filterColumn="name"
                       columns={columns}
+                      columnsBreakpoints={{
+                        description: "md",
+                      }}
                     />
                   </>
                 )}

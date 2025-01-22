@@ -36,10 +36,14 @@ const Citation = React.forwardRef<HTMLDivElement, CitationProps>(
       );
     }, [children]);
 
+    // IMPORTANT: The order of elements is crucial for event handling.
+    // The CitationDescription must always come after other elements to ensure
+    // proper event propagation (especially for the close button's click events).
+    // If auto-inserting a description, it must be appended after children.
     const contentWithDescription = (
       <>
-        {!hasDescription && <CitationDescription>&nbsp;</CitationDescription>}
         {children}
+        {!hasDescription && <CitationDescription>&nbsp;</CitationDescription>}
       </>
     );
     const cardButton = (
@@ -176,11 +180,7 @@ const CitationIcons = React.forwardRef<
   return (
     <div
       ref={ref}
-      className={cn(
-        "s-z-10",
-        "s-flex s-items-center s-gap-2 s-pb-1",
-        className
-      )}
+      className={cn("s-flex s-items-center s-gap-2 s-pb-1", className)}
       {...props}
     >
       {children}

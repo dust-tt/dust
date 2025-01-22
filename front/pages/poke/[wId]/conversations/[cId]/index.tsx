@@ -10,7 +10,8 @@ import type { InferGetServerSidePropsType } from "next";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation/without_content";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
-import { DustProdActionRegistry } from "@app/lib/registry";
+import type { Action } from "@app/lib/registry";
+import { getDustProdAction } from "@app/lib/registry";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { useConversation } from "@app/poke/swr";
 
@@ -18,6 +19,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   workspaceId: string;
   conversationId: string;
   conversationDataSourceId: string | null;
+  multiActionsApp: Action;
 }>(async (context, auth) => {
   const cId = context.params?.cId;
   if (!cId || typeof cId !== "string") {
@@ -45,11 +47,14 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     cRes.value
   );
 
+  const multiActionsApp = getDustProdAction("assistant-v2-multi-actions-agent");
+
   return {
     props: {
       workspaceId: wId,
       conversationId: cId,
       conversationDataSourceId: conversationDataSource?.sId ?? null,
+      multiActionsApp,
     },
   };
 });
@@ -70,9 +75,13 @@ const UserMessageView = ({ message }: { message: UserMessageType }) => {
   );
 };
 
-const AgentMessageView = ({ message }: { message: PokeAgentMessageType }) => {
-  const multiActionsApp =
-    DustProdActionRegistry["assistant-v2-multi-actions-agent"];
+const AgentMessageView = ({
+  message,
+  multiActionsApp,
+}: {
+  message: PokeAgentMessageType;
+  multiActionsApp: Action;
+}) => {
   return (
     <div className="ml-4 pt-2 text-sm text-element-700">
       <div className="font-bold">
@@ -163,6 +172,7 @@ const ConversationPage = ({
   workspaceId,
   conversationId,
   conversationDataSourceId,
+  multiActionsApp,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
   const { conversation } = useConversation({ workspaceId, conversationId });
   return (
@@ -196,8 +206,9 @@ const ConversationPage = ({
                       case "agent_message": {
                         return (
                           <AgentMessageView
-                            message={m}
                             key={`message-${i}-${j}`}
+                            multiActionsApp={multiActionsApp}
+                            message={m}
                           />
                         );
                       }

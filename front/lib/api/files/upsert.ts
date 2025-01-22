@@ -27,7 +27,7 @@ import type {
 import { upsertDocument, upsertTable } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
-import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
+import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
@@ -100,7 +100,7 @@ async function generateSnippet(
     }
 
     const appConfig = cloneBaseConfig(
-      DustProdActionRegistry["conversation-file-summarizer"].config
+      getDustProdAction("conversation-file-summarizer").config
     );
     appConfig.MODEL.provider_id = model.providerId;
     appConfig.MODEL.model_id = model.modelId;
@@ -272,6 +272,7 @@ const upsertTableToDatasource: ProcessingFunction = async ({
     useAppForHeaderDetection: true,
     title: upsertTitle ?? file.fileName,
     mimeType: file.contentType,
+    sourceUrl: file.getPrivateUrl(auth),
 
     // Used to override defaults, for manual file uploads where some fields are user-defined.
     ...restArgs,
@@ -397,7 +398,7 @@ const maybeApplyProcessing: ProcessingFunction = async ({
 async function getFileContent(
   auth: Authenticator,
   file: FileResource
-): Promise<string> {
+): Promise<string | null> {
   // Create a stream to hold the content of the file
   const writableStream = new MemoryWritable();
 
@@ -410,7 +411,7 @@ async function getFileContent(
   const content = writableStream.getContent();
 
   if (!content) {
-    throw new Error("No content extracted from file.");
+    return null;
   }
 
   return content;
@@ -477,12 +478,12 @@ export async function processAndUpsertToDataSource(
         workspaceId: auth.workspace()?.sId,
         contentSupplied: !!optionalContent,
       },
-      "No content extracted from file for JIT processing."
+      "No content extracted from file."
     );
     return new Err({
       name: "dust_error",
       code: "internal_server_error",
-      message: "No content extracted from file for JIT processing.",
+      message: "No content extracted from file.",
     });
   }
 

@@ -1,5 +1,6 @@
 html {
-  font-size: 14px;
+  font-size: 16px;
+  container-type: inline-size;
 }
 
 body {
@@ -38,6 +39,7 @@ body {
   from {
     color: currentColor;
   }
+
   to {
     color: transparent;
   }
@@ -47,6 +49,7 @@ body {
   0% {
     background-position: 0% center;
   }
+
   100% {
     background-position: -200% center;
   }

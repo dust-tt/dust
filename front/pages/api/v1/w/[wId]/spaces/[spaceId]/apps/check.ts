@@ -16,7 +16,7 @@ import { apiError } from "@app/logger/withlogging";
 
 /**
  * @ignoreswagger
- * System API key only endpoint. Undocumented.
+ * Internal endpoint for CI. Undocumented.
  */
 async function handler(
   req: NextApiRequest,
@@ -24,16 +24,6 @@ async function handler(
   auth: Authenticator,
   { space }: { space: SpaceResource }
 ): Promise<void> {
-  if (!auth.isSystemKey()) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "invalid_oauth_token_error",
-        message: "Only system keys are allowed to use this endpoint.",
-      },
-    });
-  }
-
   if (!space.canRead(auth)) {
     return apiError(req, res, {
       status_code: 404,

@@ -54,12 +54,19 @@ export function useConversation({
   };
 }
 
-export function useConversations({ workspaceId }: { workspaceId: string }) {
+export function useConversations({
+  workspaceId,
+  options,
+}: {
+  workspaceId: string;
+  options?: { disabled: boolean };
+}) {
   const conversationFetcher: Fetcher<GetConversationsResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/w/${workspaceId}/assistant/conversations`,
-    conversationFetcher
+    conversationFetcher,
+    options
   );
 
   return {
@@ -174,9 +181,11 @@ export function useConversationMessages({
 export function useConversationParticipants({
   conversationId,
   workspaceId,
+  options,
 }: {
   conversationId: string | null;
   workspaceId: string;
+  options?: { disabled: boolean };
 }) {
   const conversationParticipantsFetcher: Fetcher<FetchConversationParticipantsResponse> =
     fetcher;
@@ -185,7 +194,8 @@ export function useConversationParticipants({
     conversationId
       ? `/api/w/${workspaceId}/assistant/conversations/${conversationId}/participants`
       : null,
-    conversationParticipantsFetcher
+    conversationParticipantsFetcher,
+    options
   );
 
   return {

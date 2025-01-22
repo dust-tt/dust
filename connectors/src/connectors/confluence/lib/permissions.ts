@@ -40,10 +40,10 @@ export function createContentNodeFromSpace(
   permission: ConnectorPermission,
   { isExpandable }: { isExpandable: boolean }
 ): ContentNode {
+  const spaceId = isConfluenceSpaceModel(space) ? space.spaceId : space.id;
   const urlSuffix = isConfluenceSpaceModel(space)
     ? space.urlSuffix
     : space._links.webui;
-  const spaceId = isConfluenceSpaceModel(space) ? space.spaceId : space.id;
 
   return {
     internalId: makeSpaceInternalId(spaceId),

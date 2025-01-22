@@ -451,6 +451,7 @@ export interface UpsertTableArgs {
   useAppForHeaderDetection?: boolean;
   title: string;
   mimeType: string;
+  sourceUrl?: string | null;
 }
 
 export async function upsertTable({
@@ -469,6 +470,7 @@ export async function upsertTable({
   useAppForHeaderDetection,
   title,
   mimeType,
+  sourceUrl,
 }: UpsertTableArgs) {
   const tableParents = parents ?? [tableId];
   const tableParentId = parentId ?? null;
@@ -493,6 +495,21 @@ export async function upsertTable({
         "Invalid request body, parents[1] and parent_id should be equal"
       )
     );
+  }
+
+  let standardizedSourceUrl: string | null = null;
+  if (sourceUrl) {
+    const { valid: isSourceUrlValid, standardized } = validateUrl(sourceUrl);
+
+    if (!isSourceUrlValid) {
+      return new Err(
+        new DustError(
+          "invalid_url",
+          "Invalid request body, `source_url` if provided must be a valid URL."
+        )
+      );
+    }
+    standardizedSourceUrl = standardized;
   }
 
   const flags = await getFeatureFlags(auth.getNonNullableWorkspace());
@@ -533,6 +550,7 @@ export async function upsertTable({
         detectedHeaders,
         title,
         mimeType,
+        sourceUrl: standardizedSourceUrl,
       },
     });
     if (enqueueRes.isErr()) {
@@ -557,6 +575,7 @@ export async function upsertTable({
     useAppForHeaderDetection: useApp,
     title,
     mimeType,
+    sourceUrl: standardizedSourceUrl,
   });
 
   return tableRes;
@@ -712,6 +731,7 @@ export async function handleDataSourceTableCSVUpsert({
         detectedHeaders,
         title: params.title,
         mimeType: params.mimeType,
+        sourceUrl: params.sourceUrl ?? null,
       },
     });
     if (enqueueRes.isErr()) {
@@ -744,6 +764,7 @@ export async function handleDataSourceTableCSVUpsert({
     useAppForHeaderDetection,
     title: params.title,
     mimeType: params.mimeType,
+    sourceUrl: params.sourceUrl ?? null,
   });
 
   if (tableRes.isErr()) {

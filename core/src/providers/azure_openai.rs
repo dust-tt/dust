@@ -1,14 +1,11 @@
-use crate::providers::chat_messages::AssistantChatMessage;
 use crate::providers::chat_messages::ChatMessage;
 use crate::providers::embedder::{Embedder, EmbedderVector};
 use crate::providers::llm::ChatFunction;
 use crate::providers::llm::Tokens;
 use crate::providers::llm::{LLMChatGeneration, LLMGeneration, LLMTokenUsage, LLM};
-use crate::providers::openai::logprobs_from_choices;
-use crate::providers::openai::{
-    chat_completion, completion, embed, streamed_chat_completion, streamed_completion,
-    to_openai_messages, OpenAILLM, OpenAITool, OpenAIToolChoice,
-};
+use crate::providers::openai::completion;
+use crate::providers::openai::embed;
+use crate::providers::openai::streamed_completion;
 use crate::providers::provider::{Provider, ProviderID};
 use crate::providers::tiktoken::tiktoken::{batch_tokenize_async, decode_async, encode_async};
 use crate::providers::tiktoken::tiktoken::{
@@ -25,9 +22,12 @@ use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::io::prelude::*;
-use std::str::FromStr;
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
+
+use super::openai::{get_model_id_from_internal_embeddings_id, OpenAILLM};
+use super::openai_compatible_helpers::openai_compatible_chat_completion;
+use super::openai_compatible_helpers::TransformSystemMessages;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct AzureOpenAIScaleSettings {
@@ -436,7 +436,7 @@ impl LLM for AzureOpenAILLM {
         top_p: Option<f32>,
         n: usize,
         stop: &Vec<String>,
-        mut max_tokens: Option<i32>,
+        max_tokens: Option<i32>,
         presence_penalty: Option<f32>,
         frequency_penalty: Option<f32>,
         logprobs: Option<bool>,
@@ -444,147 +444,45 @@ impl LLM for AzureOpenAILLM {
         extras: Option<Value>,
         event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMChatGeneration> {
-        if let Some(m) = max_tokens {
-            if m == -1 {
-                max_tokens = None;
-            }
-        }
-
-        let (openai_user, response_format, reasoning_effort) = match &extras {
-            None => (None, None, None),
-            Some(v) => (
-                match v.get("openai_user") {
-                    Some(Value::String(u)) => Some(u.to_string()),
-                    _ => None,
-                },
-                match v.get("response_format") {
-                    Some(Value::String(f)) => Some(f.to_string()),
-                    _ => None,
-                },
-                match v.get("reasoning_effort") {
-                    Some(Value::String(r)) => Some(r.to_string()),
-                    _ => None,
-                },
-            ),
-        };
-
-        let tool_choice = match function_call.as_ref() {
-            Some(fc) => Some(OpenAIToolChoice::from_str(fc)?),
-            None => None,
-        };
-
-        let tools = functions
-            .iter()
-            .map(OpenAITool::try_from)
-            .collect::<Result<Vec<OpenAITool>, _>>()?;
-
-        let openai_messages = to_openai_messages(messages, &self.model_id.clone().unwrap())?;
-
-        let (c, request_id) = match event_sender {
-            Some(_) => {
-                streamed_chat_completion(
-                    self.chat_uri()?,
-                    self.api_key.clone().unwrap(),
-                    None,
-                    None,
-                    &openai_messages,
-                    tools,
-                    tool_choice,
-                    temperature,
-                    match top_p {
-                        Some(t) => t,
-                        None => 1.0,
-                    },
-                    n,
-                    stop,
-                    max_tokens,
-                    match presence_penalty {
-                        Some(p) => p,
-                        None => 0.0,
-                    },
-                    match frequency_penalty {
-                        Some(f) => f,
-                        None => 0.0,
-                    },
-                    response_format,
-                    reasoning_effort,
-                    logprobs,
-                    top_logprobs,
-                    openai_user,
-                    event_sender,
-                )
-                .await?
-            }
-            None => {
-                chat_completion(
-                    self.chat_uri()?,
-                    self.api_key.clone().unwrap(),
-                    None,
-                    None,
-                    &openai_messages,
-                    tools,
-                    tool_choice,
-                    temperature,
-                    match top_p {
-                        Some(t) => t,
-                        None => 1.0,
-                    },
-                    n,
-                    stop,
-                    max_tokens,
-                    match presence_penalty {
-                        Some(p) => p,
-                        None => 0.0,
-                    },
-                    match frequency_penalty {
-                        Some(f) => f,
-                        None => 0.0,
-                    },
-                    response_format,
-                    reasoning_effort,
-                    logprobs,
-                    top_logprobs,
-                    openai_user,
-                )
-                .await?
-            }
-        };
-
-        // println!("COMPLETION: {:?}", c);
-
-        assert!(c.choices.len() > 0);
-
-        Ok(LLMChatGeneration {
-            created: utils::now(),
-            provider: ProviderID::AzureOpenAI.to_string(),
-            model: self.model_id.clone().unwrap(),
-            completions: c
-                .choices
-                .iter()
-                .map(|c| AssistantChatMessage::try_from(&c.message))
-                .collect::<Result<Vec<_>>>()?,
-            usage: c.usage.map(|usage| LLMTokenUsage {
-                prompt_tokens: usage.prompt_tokens,
-                completion_tokens: usage.completion_tokens.unwrap_or(0),
-            }),
-            provider_request_id: request_id,
-            logprobs: logprobs_from_choices(&c.choices),
-        })
+        openai_compatible_chat_completion(
+            self.chat_uri()?,
+            self.model_id.clone().unwrap(),
+            self.api_key.clone().unwrap(),
+            messages,
+            functions,
+            function_call,
+            temperature,
+            top_p,
+            n,
+            stop,
+            max_tokens,
+            presence_penalty,
+            frequency_penalty,
+            logprobs,
+            top_logprobs,
+            extras,
+            event_sender,
+            false, // don't disable provider streaming
+            TransformSystemMessages::Keep,
+            "AzureOpenAI".to_string(),
+            false, // don't squash text contents
+        )
+        .await
     }
 }
 
 pub struct AzureOpenAIEmbedder {
-    deployment_id: String,
-    model_id: Option<String>,
+    deployment_id: Option<String>,
+    model_id: String,
     endpoint: Option<String>,
     api_key: Option<String>,
 }
 
 impl AzureOpenAIEmbedder {
-    pub fn new(deployment_id: String) -> Self {
+    pub fn new(model_id: String) -> Self {
         AzureOpenAIEmbedder {
-            deployment_id,
-            model_id: None,
+            deployment_id: None,
+            model_id,
             endpoint: None,
             api_key: None,
         }
@@ -594,21 +492,18 @@ impl AzureOpenAIEmbedder {
         assert!(self.endpoint.is_some());
 
         Ok(format!(
-            "{}openai/deployments/{}/embeddings?api-version=2023-08-01-preview",
+            "{}openai/deployments/{}/embeddings?api-version=2023-05-15",
             self.endpoint.as_ref().unwrap(),
-            self.deployment_id
+            get_model_id_from_internal_embeddings_id(&self.model_id)
         )
         .parse::<Uri>()?)
     }
 
     fn tokenizer(&self) -> Arc<RwLock<CoreBPE>> {
-        match self.model_id.as_ref() {
-            Some(model_id) => match model_id.as_str() {
-                "text-embedding-3-small" => cl100k_base_singleton(),
-                "text-embedding-3-large-1536" => cl100k_base_singleton(),
-                _ => unimplemented!(),
-            },
-            None => unimplemented!(),
+        match self.model_id.as_str() {
+            "text-embedding-3-small" => cl100k_base_singleton(),
+            "text-embedding-3-large-1536" => cl100k_base_singleton(),
+            _ => unimplemented!(),
         }
     }
 }
@@ -616,7 +511,7 @@ impl AzureOpenAIEmbedder {
 #[async_trait]
 impl Embedder for AzureOpenAIEmbedder {
     fn id(&self) -> String {
-        self.deployment_id.clone()
+        self.model_id.clone()
     }
 
     async fn initialize(&mut self, credentials: Credentials) -> Result<()> {
@@ -651,44 +546,39 @@ impl Embedder for AzureOpenAIEmbedder {
             },
         }
 
+        // We ensure at initialize that we only use supported models.
+        match self.model_id.as_str() {
+            "text-embedding-3-small" => (),
+            "text-embedding-3-large-1536" => (),
+            _ => Err(anyhow!("Unsupported model: {}", self.model_id))?,
+        }
+
+        // Ensure the deployment exists and is supported.
         let d = get_deployment(
             self.endpoint.as_ref().unwrap(),
             self.api_key.as_ref().unwrap(),
-            &self.deployment_id,
+            get_model_id_from_internal_embeddings_id(&self.model_id),
         )
         .await?;
 
-        // We ensure at initialize that we only use supported models.
-        match d.model.as_str() {
-            "text-embedding-3-small" => (),
-            "text-embedding-3-large-1536" => (),
-            _ => Err(anyhow!("Unsupported model: {}", d.model))?,
-        }
-
-        self.model_id = Some(d.model);
+        self.deployment_id = Some(d.id);
 
         Ok(())
     }
 
     fn context_size(&self) -> usize {
-        match self.model_id.as_ref() {
-            Some(model_id) => match model_id.as_str() {
-                "text-embedding-3-small" => 8191,
-                "text-embedding-3-large-1536" => 8191,
-                _ => unimplemented!(),
-            },
-            None => unimplemented!(),
+        match self.model_id.as_str() {
+            "text-embedding-3-small" => 8191,
+            "text-embedding-3-large-1536" => 8191,
+            _ => unimplemented!(),
         }
     }
 
     fn embedding_size(&self) -> usize {
-        match self.model_id.as_ref() {
-            Some(model_id) => match model_id.as_str() {
-                "text-embedding-3-small" => 1536,
-                "text-embedding-3-large-1536" => 1536,
-                _ => unimplemented!(),
-            },
-            None => unimplemented!(),
+        match self.model_id.as_str() {
+            "text-embedding-3-small" => 1536,
+            "text-embedding-3-large-1536" => 1536,
+            _ => unimplemented!(),
         }
     }
 
@@ -709,7 +599,7 @@ impl Embedder for AzureOpenAIEmbedder {
             self.uri()?,
             self.api_key.clone().unwrap(),
             None,
-            None,
+            Some(self.model_id.clone()),
             text,
             match extras {
                 Some(e) => match e.get("openai_user") {
@@ -728,10 +618,7 @@ impl Embedder for AzureOpenAIEmbedder {
             .map(|v| EmbedderVector {
                 created: utils::now(),
                 provider: ProviderID::OpenAI.to_string(),
-                model: match self.model_id {
-                    Some(ref model_id) => model_id.clone(),
-                    None => unimplemented!(),
-                },
+                model: self.model_id.clone(),
                 vector: v.embedding,
             })
             .collect::<Vec<_>>())

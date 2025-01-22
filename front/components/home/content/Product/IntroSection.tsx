@@ -43,7 +43,7 @@ export function IntroSection() {
               Amplify your team's performance with personalized assistants
               connected to your proprietary knowledge and data.
             </P>
-            <div>
+            <div className="flex justify-center gap-4 sm:justify-start">
               <Link href="/home/pricing" shallow={true}>
                 <Button
                   variant="highlight"
@@ -51,6 +51,9 @@ export function IntroSection() {
                   label="Get started"
                   icon={RocketIcon}
                 />
+              </Link>
+              <Link href="/home/contact" shallow={true}>
+                <Button variant="outline" size="md" label="Contact Sales" />
               </Link>
             </div>
           </div>

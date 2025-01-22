@@ -54,18 +54,17 @@ export function InvitationsList({
     {
       id: "inviteEmail",
       header: "Invitation Email",
+      accessorKey: "inviteEmail",
       cell: (info: CellContext<RowData, string>) => (
         <DataTable.CellContent>
           <span>{info.row.original.inviteEmail}</span>
         </DataTable.CellContent>
       ),
-      meta: {
-        width: "46rem",
-      },
     },
     {
       id: "initialRole",
       header: "Role",
+      accessorFn: (row: RowData) => row.initialRole,
       cell: (info: CellContext<RowData, string>) => (
         <DataTable.CellContent>
           <Chip
@@ -78,7 +77,7 @@ export function InvitationsList({
         </DataTable.CellContent>
       ),
       meta: {
-        width: "6rem",
+        className: "w-32",
       },
     },
   ];

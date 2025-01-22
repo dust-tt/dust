@@ -185,41 +185,17 @@ export class UserResource extends BaseResource<UserModel> {
     };
   }
 
-  async updateAuth0Sub(sub: string): Promise<void> {
-    await this.model.update(
-      {
-        auth0Sub: sub,
-      },
-      {
-        where: {
-          id: this.id,
-        },
-      }
-    );
+  async updateAuth0Sub(sub: string) {
+    return this.update({
+      auth0Sub: sub,
+    });
   }
 
-  async updateName(
-    firstName: string,
-    lastName: string | null
-  ): Promise<Result<undefined, Error>> {
-    try {
-      await this.model.update(
-        {
-          firstName,
-          lastName,
-        },
-        {
-          where: {
-            id: this.id,
-          },
-          returning: true,
-        }
-      );
-
-      return new Ok(undefined);
-    } catch (err) {
-      return new Err(err as Error);
-    }
+  async updateName(firstName: string, lastName: string | null) {
+    return this.update({
+      firstName,
+      lastName,
+    });
   }
 
   async updateInfo(
@@ -227,19 +203,14 @@ export class UserResource extends BaseResource<UserModel> {
     firstName: string,
     lastName: string | null,
     email: string
-  ): Promise<void> {
+  ) {
     const lowerCaseEmail = email.toLowerCase();
-    const [, affectedRows] = await this.model.update(
-      { username, firstName, lastName, email: lowerCaseEmail },
-      {
-        where: {
-          id: this.id,
-        },
-        returning: true,
-      }
-    );
-
-    Object.assign(this, affectedRows[0].get());
+    return this.update({
+      username,
+      firstName,
+      lastName,
+      email: lowerCaseEmail,
+    });
   }
 
   async delete(

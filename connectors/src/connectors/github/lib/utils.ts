@@ -1,4 +1,5 @@
 import { hash as blake3 } from "blake3/esm/node/hash-fn";
+import { join } from "path";
 
 export const GITHUB_CONTENT_NODE_TYPES = [
   "REPO_FULL",
@@ -168,4 +169,55 @@ export function getCodeFileInternalId(
   )
     .toString("hex")
     .substring(0, 16)}`;
+}
+
+// Must match https://docs.github.com/en/rest/apps/installations
+export function getRepoUrl(repoLogin: string, repoName: string): string {
+  return `https://github.com/${repoLogin}/${repoName}`;
+}
+
+export function getIssuesUrl(repoUrl: string): string {
+  return `${repoUrl}/issues`;
+}
+
+export function getDiscussionsUrl(repoUrl: string): string {
+  return `${repoUrl}/discussions`;
+}
+
+// Must match https://docs.github.com/en/rest/issues/issues#get-an-issue
+export function getIssueUrl(repoUrl: string, issueNumber: number): string {
+  return `${repoUrl}/issues/${issueNumber}`;
+}
+
+export function getDiscussionUrl(
+  repoUrl: string,
+  discussionNumber: number
+): string {
+  return `${repoUrl}/discussions/${discussionNumber}`;
+}
+
+export function getFileUrl(
+  repoLogin: string,
+  repoName: string,
+  branch: string,
+  path: string[],
+  fileName: string
+): string {
+  return `https://github.com/${repoLogin}/${repoName}/blob/${branch}/${join(
+    path.join("/"),
+    fileName
+  )}`;
+}
+
+export function getDirectoryUrl(
+  repoLogin: string,
+  repoName: string,
+  branch: string,
+  path: string[],
+  dirName: string
+): string {
+  return `https://github.com/${repoLogin}/${repoName}/tree/${branch}/${join(
+    path.join("/"),
+    dirName
+  )}`;
 }

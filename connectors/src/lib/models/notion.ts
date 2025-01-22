@@ -1,12 +1,11 @@
 import type { NotionBlockType, PageObjectProperties } from "@dust-tt/types";
-import type { CreationOptional, ForeignKey } from "sequelize";
+import type { CreationOptional } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { sequelizeConnection } from "@connectors/resources/storage";
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
-import { BaseModel } from "@connectors/resources/storage/wrappers";
+import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 
-export class NotionConnectorState extends BaseModel<NotionConnectorState> {
+export class NotionConnectorState extends ConnectorBaseModel<NotionConnectorState> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -14,8 +13,6 @@ export class NotionConnectorState extends BaseModel<NotionConnectorState> {
 
   declare lastGarbageCollectionFinishTime?: Date;
   declare parentsLastUpdatedAt?: Date;
-
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 NotionConnectorState.init(
   {
@@ -46,11 +43,11 @@ NotionConnectorState.init(
     sequelize: sequelizeConnection,
     modelName: "notion_connector_states",
     indexes: [{ fields: ["connectorId"], unique: true }],
+    relationship: "hasOne",
   }
 );
-ConnectorModel.hasOne(NotionConnectorState);
 
-export class NotionPage extends BaseModel<NotionPage> {
+export class NotionPage extends ConnectorBaseModel<NotionPage> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -66,8 +63,6 @@ export class NotionPage extends BaseModel<NotionPage> {
   declare title?: string | null;
   declare titleSearchVector: unknown;
   declare notionUrl?: string | null;
-
-  declare connectorId: ForeignKey<ConnectorModel["id"]> | null;
 }
 NotionPage.init(
   {
@@ -138,9 +133,8 @@ NotionPage.init(
     modelName: "notion_pages",
   }
 );
-ConnectorModel.hasMany(NotionPage);
 
-export class NotionDatabase extends BaseModel<NotionDatabase> {
+export class NotionDatabase extends ConnectorBaseModel<NotionDatabase> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -159,8 +153,6 @@ export class NotionDatabase extends BaseModel<NotionDatabase> {
 
   declare structuredDataEnabled: CreationOptional<boolean>;
   declare structuredDataUpsertedTs: CreationOptional<Date | null>;
-
-  declare connectorId: ForeignKey<ConnectorModel["id"]> | null;
 }
 
 NotionDatabase.init(
@@ -244,13 +236,12 @@ NotionDatabase.init(
     modelName: "notion_databases",
   }
 );
-ConnectorModel.hasMany(NotionDatabase);
 
 // This table is unlogged, meaning it doesn't generate WAL entries.
 // This is because it's a cache table that generates a lot of writes and we don't want to fill up the WAL.
 // It's also a cache table, so we don't care if we lose data.
 // This table is not replicated to the read replica, and all data is lost on a failover.
-export class NotionConnectorPageCacheEntry extends BaseModel<NotionConnectorPageCacheEntry> {
+export class NotionConnectorPageCacheEntry extends ConnectorBaseModel<NotionConnectorPageCacheEntry> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -266,8 +257,6 @@ export class NotionConnectorPageCacheEntry extends BaseModel<NotionConnectorPage
   declare url: string;
 
   declare workflowId: string;
-
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 NotionConnectorPageCacheEntry.init(
   {
@@ -342,13 +331,12 @@ NotionConnectorPageCacheEntry.init(
     ],
   }
 );
-ConnectorModel.hasMany(NotionConnectorPageCacheEntry);
 
 // This table is unlogged, meaning it doesn't generate WAL entries.
 // This is because it's a cache table that generates a lot of writes and we don't want to fill up the WAL.
 // It's also a cache table, so we don't care if we lose data.
 // This table is not replicated to the read replica, and all data is lost on a failover.
-export class NotionConnectorBlockCacheEntry extends BaseModel<NotionConnectorBlockCacheEntry> {
+export class NotionConnectorBlockCacheEntry extends ConnectorBaseModel<NotionConnectorBlockCacheEntry> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -363,8 +351,6 @@ export class NotionConnectorBlockCacheEntry extends BaseModel<NotionConnectorBlo
   declare childDatabaseTitle?: string | null;
 
   declare workflowId: string;
-
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 NotionConnectorBlockCacheEntry.init(
   {
@@ -427,13 +413,12 @@ NotionConnectorBlockCacheEntry.init(
     ],
   }
 );
-ConnectorModel.hasMany(NotionConnectorBlockCacheEntry);
 
 // This table is unlogged, meaning it doesn't generate WAL entries.
 // This is because it's a cache table that generates a lot of writes and we don't want to fill up the WAL.
 // It's also a cache table, so we don't care if we lose data.
 // This table is not replicated to the read replica, and all data is lost on a failover.
-export class NotionConnectorResourcesToCheckCacheEntry extends BaseModel<NotionConnectorResourcesToCheckCacheEntry> {
+export class NotionConnectorResourcesToCheckCacheEntry extends ConnectorBaseModel<NotionConnectorResourcesToCheckCacheEntry> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -441,8 +426,6 @@ export class NotionConnectorResourcesToCheckCacheEntry extends BaseModel<NotionC
   declare resourceType: "page" | "database";
 
   declare workflowId: string;
-
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 NotionConnectorResourcesToCheckCacheEntry.init(
   {
@@ -483,4 +466,3 @@ NotionConnectorResourcesToCheckCacheEntry.init(
     ],
   }
 );
-ConnectorModel.hasMany(NotionConnectorResourcesToCheckCacheEntry);

@@ -1,5 +1,6 @@
 import { createParser } from "eventsource-parser";
 
+import { CoreAPIContentNode } from "../../core/content_node";
 import {
   CoreAPIDataSource,
   CoreAPIDataSourceConfig,
@@ -26,6 +27,7 @@ import {
 import { LightWorkspaceType } from "../../front/user";
 import { LoggerInterface } from "../../shared/logger";
 import { Err, Ok, Result } from "../../shared/result";
+import { ProviderVisibility } from "./connectors_api";
 
 export const MAX_CHUNK_SIZE = 512;
 
@@ -166,6 +168,22 @@ export type CoreAPISearchFilter = {
     gt: number | null;
     lt: number | null;
   } | null;
+};
+
+export type CoreAPISearchOptions = {
+  limit?: number;
+  offset?: number;
+};
+
+export type CoreAPIDatasourceViewFilter = {
+  data_source_id: string;
+  view_filter: string[];
+};
+
+export type CoreAPINodesSearchFilter = {
+  data_source_views: CoreAPIDatasourceViewFilter[];
+  node_ids?: string[];
+  parent_id?: string;
 };
 
 export class CoreAPI {
@@ -1113,6 +1131,7 @@ export class CoreAPI {
     remoteDatabaseSecretId,
     title,
     mimeType,
+    sourceUrl,
   }: {
     projectId: string;
     dataSourceId: string;
@@ -1127,6 +1146,7 @@ export class CoreAPI {
     remoteDatabaseSecretId?: string | null;
     title: string;
     mimeType: string;
+    sourceUrl: string | null;
   }): Promise<CoreAPIResponse<{ table: CoreAPITable }>> {
     const response = await this._fetchWithError(
       `${this._url}/projects/${encodeURIComponent(
@@ -1149,6 +1169,7 @@ export class CoreAPI {
           remote_database_secret_id: remoteDatabaseSecretId ?? null,
           title,
           mime_type: mimeType,
+          source_url: sourceUrl,
         }),
       }
     );
@@ -1510,6 +1531,33 @@ export class CoreAPI {
     return this._resultFromResponse(response);
   }
 
+  async searchNodes({
+    query,
+    filter,
+    options,
+  }: {
+    query?: string;
+    filter: CoreAPINodesSearchFilter;
+    options?: CoreAPISearchOptions;
+  }): Promise<
+    CoreAPIResponse<{
+      nodes: CoreAPIContentNode[];
+    }>
+  > {
+    const response = await this._fetchWithError(`${this._url}/nodes/search`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        query,
+        filter,
+        options,
+      }),
+    });
+    return this._resultFromResponse(response);
+  }
+
   async getDataSourceFolder({
     projectId,
     dataSourceId,
@@ -1543,6 +1591,8 @@ export class CoreAPI {
     parents,
     title,
     mimeType,
+    sourceUrl,
+    providerVisibility,
   }: {
     projectId: string;
     dataSourceId: string;
@@ -1552,6 +1602,8 @@ export class CoreAPI {
     parents: string[];
     title: string;
     mimeType: string;
+    sourceUrl?: string | null;
+    providerVisibility: ProviderVisibility | null | undefined;
   }): Promise<CoreAPIResponse<{ folder: CoreAPIFolder }>> {
     const response = await this._fetchWithError(
       `${this._url}/projects/${projectId}/data_sources/${encodeURIComponent(
@@ -1569,6 +1621,8 @@ export class CoreAPI {
           parent_id: parentId,
           parents,
           mime_type: mimeType,
+          source_url: sourceUrl,
+          provider_visibility: providerVisibility,
         }),
       }
     );

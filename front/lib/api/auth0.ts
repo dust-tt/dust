@@ -10,6 +10,7 @@ import type { NextApiRequest } from "next";
 
 import config from "@app/lib/api/config";
 import type { RegionType } from "@app/lib/api/regions/config";
+import { config as regionsConfig } from "@app/lib/api/regions/config";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 
@@ -38,12 +39,15 @@ export type ScopeType =
   | "delete:file"
   | "read:agent";
 
-export const Auth0JwtPayloadSchema = t.type({
-  azp: t.string,
-  exp: t.number,
-  scope: t.string,
-  sub: t.string,
-});
+export const Auth0JwtPayloadSchema = t.intersection([
+  t.type({
+    azp: t.string,
+    exp: t.number,
+    scope: t.string,
+    sub: t.string,
+  }),
+  t.record(t.string, t.union([t.string, t.number, t.undefined])),
+]);
 
 export type Auth0JwtPayload = t.TypeOf<typeof Auth0JwtPayloadSchema> &
   jwt.JwtPayload;
@@ -99,6 +103,14 @@ export function getRegionForUserSession(session: Session): RegionType | null {
   return session.user[regionClaim] ?? null;
 }
 
+export function getRegionForJwtToken(
+  token: Auth0JwtPayload
+): RegionType | null {
+  const regionClaim = `${config.getAuth0NamespaceClaim()}region`;
+
+  return token[regionClaim] ?? null;
+}
+
 /**
  * Get the public key to verify an Auth0 token.
  * key id (kid) is used to find the right key in the JWKS.
@@ -141,9 +153,14 @@ export async function verifyAuth0Token(
   // TODO(thomas): Remove this when all clients are updated.
   const legacyAudience = `https://${auth0Domain}/api/v2/`;
   const decoded = jwt.decode(accessToken, { json: true });
-  const useLegacy = !decoded || decoded.aud !== audience;
 
-  logger.info({ useLegacy, audience: decoded?.aud }, "Using legacy audience.");
+  const useLegacy =
+    !decoded ||
+    (Array.isArray(decoded.aud)
+      ? !decoded.aud.includes(audience)
+      : decoded.aud !== audience);
+
+  logger.info({ useLegacy, audience: decoded?.aud }, "Get Auth0 token");
 
   return new Promise((resolve) => {
     jwt.verify(
@@ -176,6 +193,15 @@ export async function verifyAuth0Token(
         if (isLeft(payloadValidation)) {
           logger.error("Invalid token payload.");
           return resolve(new Err(Error("Invalid token payload.")));
+        }
+
+        const region = getRegionForJwtToken(payloadValidation.right);
+        if (region && regionsConfig.getCurrentRegion() !== region) {
+          logger.info(
+            { region, requiredRegion: regionsConfig.getCurrentRegion() },
+            "Invalid region."
+          );
+          return resolve(new Err(Error("Invalid region.")));
         }
 
         if (requiredScope && !useLegacy) {

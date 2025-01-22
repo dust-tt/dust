@@ -101,19 +101,19 @@ export const Benefits: BenefitsProps = {
   items: [
     {
       icon: RocketIcon,
-      title: "Resolve Issues Faster",
+      title: "Resolve issues faster",
       description:
         "Surface relevant information from all connected knowledge bases and draft messages in 50+ languages.",
     },
     {
       icon: UserGroupIcon,
-      title: "Boost Team Productivity",
+      title: "Boost team productivity",
       description:
         "Keep teams in sync with real-time information across all channels and cut onboarding time for new joiners.",
     },
     {
       icon: LightbulbIcon,
-      title: "Grasp Customer Needs",
+      title: "Grasp customer needs",
       description:
         "Convert support interactions into insights, driving data-backed product and documentation improvements.",
     },
@@ -124,11 +124,11 @@ export const Metrics: MetricProps = {
   metrics: [
     {
       value: "50%",
-      description: <>50% in ticket resolution time</>,
+      description: <>reduction in ticket resolution time</>,
     },
     {
-      value: "8h",
-      description: <>8 hours saved weekly per agent</>,
+      value: "6h",
+      description: <>saved weekly per agent</>,
     },
   ],
   from: "from-amber-200",
@@ -141,25 +141,25 @@ export const UseCases: UseCaseProps = {
     "Customize and automate tasks without writing a single line of code.",
   items: [
     {
-      title: "Ticket Resolution",
+      title: "Ticket resolution",
       content:
-        "Accelerate response times with dynamic answer suggestions and contextual knowledge at every step.",
+        "Speed up resolution by suggesting tailored responses drawn from your knowledge base and past solutions.",
       images: ["/static/landing/solutions/support1.png"],
     },
     {
-      title: "Agent Coaching",
+      title: "Agent coaching",
       content:
         "Offer feedback to support agents using real-time best practices and ticket insights for consistent, quality service.",
       images: ["/static/landing/solutions/support2.png"],
     },
     {
-      title: "Documentation Builder",
+      title: "Documentation builder",
       content:
         "Convert resolved tickets into searchable articles and FAQs, capturing best practices for future use.",
       images: ["/static/landing/solutions/support3.png"],
     },
     {
-      title: "Customer Insights",
+      title: "Customer insights",
       content:
         "Identify trends from customer feedback, helping teams proactively improve service and satisfaction.",
       images: ["/static/landing/solutions/support4.png"],
@@ -176,9 +176,9 @@ export const Quote: QuoteProps = {
 };
 
 export const DemoVideo: DemoVideoProps = {
-  sectionTitle: "Watch Dust work",
+  sectionTitle: "Watch Dust in motion",
   videoUrl:
-    "https://fast.wistia.net/embed/iframe/r0dwaexoez?seo=true&videoFoam=true",
+    "https://fast.wistia.net/embed/iframe/r0dwaexoez?seo=true&videoFoam=true&captions=on",
 };
 
 export const Stories: CustomerStory[] = [
@@ -193,7 +193,7 @@ export const Stories: CustomerStory[] = [
     title: "Pennylane's journey to deploy Dust for Customer Care teams",
     content:
       "Dust evolved from a simple support tool into an integral part of Pennylane's operations.",
-    href: "https://blog.dust.tt/pennylane-dust-customer-support-journey/",
+    href: "https://blog.dust.tt/pennylane-customer-support-journey/",
     src: "https://blog.dust.tt/content/images/size/w2000/2024/12/pennylane_dust_customer_story.png",
   },
   {

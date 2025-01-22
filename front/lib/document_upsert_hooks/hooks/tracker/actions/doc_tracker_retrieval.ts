@@ -3,7 +3,7 @@ import _ from "lodash";
 
 import { callAction } from "@app/lib/actions/helpers";
 import type { Authenticator } from "@app/lib/auth";
-import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
+import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import type { TrackerMaintainedScopeType } from "@app/lib/resources/tracker_resource";
 
 export async function callDocTrackerRetrievalAction(
@@ -34,7 +34,7 @@ export async function callDocTrackerRetrievalAction(
     throw new Error("Duplicate data source ids in maintained scope");
   }
 
-  const action = DustProdActionRegistry["doc-tracker-retrieval"];
+  const action = getDustProdAction("doc-tracker-retrieval");
   const config = cloneBaseConfig(action.config);
 
   config.SEMANTIC_SEARCH.data_sources = maintainedScope.map((view) => ({
