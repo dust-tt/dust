@@ -54,7 +54,7 @@ export async function retrieveAllSelectedNodes(
   const categories =
     await ZendeskCategoryResource.fetchAllReadOnly(connectorId);
   const categoryNodes: ContentNode[] = categories.map((category) =>
-    category.toContentNode(connectorId)
+    category.toContentNode(connectorId, { expandable: true })
   );
 
   return [...helpCenterNodes, ...ticketNodes, ...categoryNodes];
