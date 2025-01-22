@@ -191,13 +191,10 @@ async function getHelpCenterChildren(
     isReadPermissionsOnly: boolean;
   }
 ): Promise<ContentNode[]> {
-  /// it's ok to fetch read-only data here, if !isReadPermissionsOnly, we are only using the categories in db to
-  // check if they have read permissions
-  const categoriesInDatabase =
-    await ZendeskCategoryResource.fetchByBrandIdReadOnly({
-      connectorId,
-      brandId,
-    });
+  const categoriesInDatabase = await ZendeskCategoryResource.fetchByBrandId({
+    connectorId,
+    brandId,
+  });
   if (isReadPermissionsOnly) {
     return categoriesInDatabase.map((category) =>
       category.toContentNode(connectorId, { expandable: true })
