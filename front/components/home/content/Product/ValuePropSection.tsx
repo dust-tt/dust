@@ -18,7 +18,7 @@ export function ValuePropSection() {
 
       <div className="grid grid-cols-1 gap-12 sm:grid-cols-2 md:gap-24">
         <ImgBlock
-          title={<>Automate Knowledge Work</>}
+          title={<>Automate knowledge work</>}
           content={
             <>
               Stop wasting time on data entry, CRM updates, or filling out
@@ -47,7 +47,7 @@ export function ValuePropSection() {
           </Hover3D>
         </ImgBlock>
         <ImgBlock
-          title={<>Surface Critical Information</>}
+          title={<>Surface critical information</>}
           content={
             <>
               Dust reads faster than you. Enjoy effortless summarization,
@@ -77,7 +77,7 @@ export function ValuePropSection() {
         </ImgBlock>
 
         <ImgBlock
-          title={<>Analyze & Visualize Anything</>}
+          title={<>Analyze & visualize anything</>}
           content={
             <>
               From spreadsheets to data warehouses. Your questions are turned
@@ -105,7 +105,7 @@ export function ValuePropSection() {
           </Hover3D>
         </ImgBlock>
         <ImgBlock
-          title={<>Create with Confidence</>}
+          title={<>Create with confidence</>}
           content={
             <>
               Co-edit with AI that has full context of your internal knowledge

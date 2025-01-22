@@ -275,11 +275,11 @@ export const CarousselContentBlock = ({
       border
     )}
   >
-    <div className="flex flex-col gap-6 px-8 md:flex-1">
+    <div className="flex flex-col gap-4 px-8 md:flex-1">
       <H3 className="text-slate-800">{"Dust for " + title}</H3>
       <div className="flex flex-col gap-2">
-        <H2 className="max-w-[600px] text-white">{subtitle}</H2>
-        <P size="md" className="max-w-[720px] text-slate-700">
+        <H2 className="w-full text-white">{subtitle}</H2>
+        <P size="md" className="w-full text-slate-700">
           {description}
         </P>
       </div>
@@ -305,7 +305,7 @@ export const CarousselContentBlock = ({
     <Carousel className="w-full" isLooping={true}>
       <CarouselContent>
         {assistants.map((block, index) => (
-          <CarouselItem key={index} className="basis-1/2 px-8 md:basis-1/4">
+          <CarouselItem key={index} className="basis-1/2 px-6 md:basis-1/4">
             <SolutionSectionAssistantBlock {...block} />
           </CarouselItem>
         ))}

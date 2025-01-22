@@ -55,9 +55,9 @@ export function VerticalSection() {
   return (
     <div className="w-full">
       <Carousel className="w-full" isLooping={true} setApi={setApi}>
-        <div className="mb-6">
+        <div>
           <H2 className="mb-4 text-white">Accelerate every team</H2>
-          <div className="mb-4 flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2">
             {carouselSections.map((section, index) => (
               <Button
                 key={index}
