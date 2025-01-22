@@ -25,6 +25,7 @@ import { classNames } from "@app/lib/utils";
 export interface LandingLayoutProps {
   shape: number;
   postLoginReturnToUrl?: string;
+  gtmTrackingId?: string;
 }
 
 export default function LandingLayout({
@@ -34,7 +35,11 @@ export default function LandingLayout({
   children: React.ReactNode;
   pageProps: LandingLayoutProps;
 }) {
-  const { postLoginReturnToUrl = "/api/login", shape } = pageProps;
+  const {
+    postLoginReturnToUrl = "/api/login",
+    shape,
+    gtmTrackingId,
+  } = pageProps;
 
   const [currentShape, setCurrentShape] = useState(shape);
   const [showCookieBanner, setShowCookieBanner] = useState<boolean>(true);
@@ -154,7 +159,7 @@ export default function LandingLayout({
               new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
               j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
               'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-              })(window,document,'script','dataLayer','${process.env.NEXT_PUBLIC_GTM_TRACKING_ID}');
+              })(window,document,'script','dataLayer','${gtmTrackingId}');
             `}
           </Script>
         )}
