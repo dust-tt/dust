@@ -221,51 +221,6 @@ export async function removeForbiddenCategoriesActivity(
 }
 
 /**
- * This activity is responsible for removing all the empty categories (category with no readable article).
- */
-export async function removeEmptyCategoriesActivity(connectorId: number) {
-  const connector = await ConnectorResource.fetchById(connectorId);
-  if (!connector) {
-    throw new Error("[Zendesk] Connector not found.");
-  }
-  const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const loggerArgs = {
-    workspaceId: dataSourceConfig.workspaceId,
-    connectorId,
-    provider: "zendesk",
-    workflowId: getZendeskGarbageCollectionWorkflowId(connectorId),
-    dataSourceId: dataSourceConfig.dataSourceId,
-  };
-
-  const categoryIdsWithBrand =
-    await ZendeskCategoryResource.fetchIdsForConnector(connectorId);
-
-  const categoriesToDelete = new Set<{ categoryId: number; brandId: number }>();
-  await concurrentExecutor(
-    categoryIdsWithBrand,
-    async ({ categoryId, brandId }) => {
-      const articles = await ZendeskArticleResource.fetchByCategoryIdReadOnly({
-        connectorId,
-        brandId,
-        categoryId,
-      });
-      if (articles.length === 0) {
-        categoriesToDelete.add({ categoryId, brandId });
-      }
-    },
-    { concurrency: 10 }
-  );
-  logger.info(
-    { ...loggerArgs, categoryCount: categoriesToDelete.size },
-    "[Zendesk] Removing empty categories."
-  );
-
-  for (const ids of categoriesToDelete) {
-    await deleteCategory({ connectorId, ...ids, dataSourceConfig });
-  }
-}
-
-/**
  * This activity is responsible for cleaning up Brands that have no permission anymore.
  */
 export async function deleteBrandsWithNoPermissionActivity(

@@ -1049,21 +1049,6 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
     return articles.map((article) => new this(this.model, article.get()));
   }
 
-  static async fetchByCategoryIdReadOnly({
-    connectorId,
-    brandId,
-    categoryId,
-  }: {
-    connectorId: number;
-    brandId: number;
-    categoryId: number;
-  }): Promise<ZendeskArticleResource[]> {
-    const articles = await ZendeskArticle.findAll({
-      where: { connectorId, brandId, categoryId, permission: "read" },
-    });
-    return articles.map((article) => new this(this.model, article.get()));
-  }
-
   static async fetchArticleIdsByBrandId({
     connectorId,
     brandId,
