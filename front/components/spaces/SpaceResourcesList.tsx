@@ -41,10 +41,7 @@ import { UsedByButton } from "@app/components/spaces/UsedByButton";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getDataSourceNameFromView, isManaged } from "@app/lib/data_sources";
 import { useAgentConfigurationSIdLookup } from "@app/lib/swr/assistants";
-import {
-  useDeleteFolderOrWebsite,
-  useSpaceDataSourceViewsWithDetails,
-} from "@app/lib/swr/spaces";
+import { useDeleteFolderOrWebsite, useSpaceDataSourceViewsWithDetails } from "@app/lib/swr/spaces";
 import { classNames } from "@app/lib/utils";
 
 import { ViewFolderAPIModal } from "../ViewFolderAPIModal";
@@ -92,6 +89,9 @@ function getTableColumns(
   const isGlobalOrSystemSpace = ["global", "system"].includes(space.kind);
   const nameColumn: ColumnDef<RowData, string> = {
     id: "name",
+    meta: {
+      className: "w-96",
+    },
     // We can define an accessorFn to read row.label:
     accessorFn: (row) => row.label,
     sortingFn: "text",
@@ -125,9 +125,6 @@ function getTableColumns(
   const usedByColumn: ColumnDef<RowData, number> = {
     id: "usedBy",
     header: "Used by",
-    meta: {
-      className: "w-96",
-    },
     // Return a numeric count to allow numeric sorts if we want
     accessorFn: (row) => row.dataSourceView.usage?.count ?? 0,
     cell: (ctx) => {
