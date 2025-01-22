@@ -3,7 +3,6 @@ import { DataTypes } from "sequelize";
 
 import type { MicrosoftNodeType } from "@connectors/connectors/microsoft/lib/types";
 import { sequelizeConnection } from "@connectors/resources/storage";
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 
 export class MicrosoftConfigurationModel extends ConnectorBaseModel<MicrosoftConfigurationModel> {
