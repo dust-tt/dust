@@ -400,6 +400,7 @@ export async function syncZendeskCategoryActivity({
       dataSourceConfig: dataSourceConfigFromConnector(connector),
       folderId: getCategoryInternalId({ connectorId, brandId, categoryId }),
     });
+    // note that the articles will be deleted in the garbage collection
     return { shouldSyncArticles: false };
   }
 
