@@ -327,7 +327,8 @@ export async function deleteTicketBatchActivity({
 }
 
 /**
- * Deletes a batch of categories from the db and from core.
+ * Deletes a batch of categories from connectors (zendesk_categories) and from core (data_sources_folders/nodes) for a brand.
+ * Only delete categories that are not explicitly selected by the user and that were synced through their Help Center.
  */
 export async function deleteCategoryBatchActivity({
   connectorId,
