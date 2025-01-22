@@ -381,7 +381,7 @@ export async function deleteArticleBatchActivity({
 }
 
 /**
- * Deletes a batch of categories from the db.
+ * Deletes a batch of categories from the db and from core.
  */
 export async function deleteCategoryBatchActivity({
   connectorId,
