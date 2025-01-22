@@ -7,7 +7,7 @@ import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";
-import { SoftDeletableModel } from "@app/lib/resources/storage/wrappers";
+import { SoftDeletableModel } from "@app/lib/resources/storage/wrappers/base";
 
 export class DataSourceModel extends SoftDeletableModel<DataSourceModel> {
   declare id: CreationOptional<number>;

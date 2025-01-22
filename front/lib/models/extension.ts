@@ -1,18 +1,14 @@
-import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import type { CreationOptional } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
+import { ModelWithWorkspace } from "@app/lib/resources/storage/wrappers/model_with_workspace";
 
-export class ExtensionConfigurationModel extends BaseModel<ExtensionConfigurationModel> {
+export class ExtensionConfigurationModel extends ModelWithWorkspace<ExtensionConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
   declare blacklistedDomains: string[];
-
-  declare workspaceId: ForeignKey<Workspace["id"]>;
-  declare workspace: NonAttribute<Workspace>;
 }
 ExtensionConfigurationModel.init(
   {
@@ -38,12 +34,3 @@ ExtensionConfigurationModel.init(
     indexes: [{ unique: true, fields: ["workspaceId"] }],
   }
 );
-
-Workspace.hasOne(ExtensionConfigurationModel, {
-  foreignKey: { allowNull: false },
-  onDelete: "RESTRICT",
-});
-
-ExtensionConfigurationModel.belongsTo(Workspace, {
-  foreignKey: { allowNull: false },
-});

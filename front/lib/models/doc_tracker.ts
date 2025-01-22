@@ -8,7 +8,7 @@ import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";
-import { SoftDeletableModel } from "@app/lib/resources/storage/wrappers";
+import { SoftDeletableModel } from "@app/lib/resources/storage/wrappers/base";
 
 export class TrackerConfigurationModel extends SoftDeletableModel<TrackerConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
