@@ -158,6 +158,7 @@ export async function syncZendeskBrandActivity({
         brandId,
       });
     for (const category of selectedCategories) {
+      // here we can just take all the possible parents since we are syncing the categories through their Help Center
       const parents = category.getParentInternalIds(connectorId);
       await upsertDataSourceFolder({
         dataSourceConfig,
