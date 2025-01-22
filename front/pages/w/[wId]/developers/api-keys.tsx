@@ -84,6 +84,7 @@ export function APIKeys({
 }) {
   const { mutate } = useSWRConfig();
   const [isCopiedWorkspaceId, copyWorkspaceId] = useCopyToClipboard();
+  const [isCopiedDomain, copyDomain] = useCopyToClipboard();
   const [isCopiedApiKey, copyApiKey] = useCopyToClipboard();
   const [newApiKeyName, setNewApiKeyName] = useState("");
   const [newApiKeyGroup, setNewApiKeyGroup] = useState<GroupType>(
@@ -149,6 +150,23 @@ export function APIKeys({
             to authenticate with the Dust API.
           </p>
           <br />
+          <div className="mt-4">
+            <Page.H variant="h5">Domain</Page.H>
+            <Page.Horizontal align="center">
+              <pre className="font-mono flex-grow overflow-x-auto rounded bg-slate-50 p-2">
+                {process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}
+              </pre>
+              <IconButton
+                tooltip="Copy to clipboard"
+                icon={isCopiedDomain ? ClipboardCheckIcon : ClipboardIcon}
+                onClick={async () => {
+                  await copyDomain(
+                    process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL ?? ""
+                  );
+                }}
+              />
+            </Page.Horizontal>
+          </div>
           <div className="mt-4">
             <Page.H variant="h5">Workspace ID</Page.H>
             <Page.Horizontal align="center">
@@ -308,6 +326,17 @@ export function APIKeys({
                             Name:{" "}
                             <strong>{key.name ? key.name : "Unnamed"}</strong>
                           </p>
+                          <p
+                            className={classNames(
+                              "font-mono truncate text-sm text-slate-700"
+                            )}
+                          >
+                            Domain:{" "}
+                            <strong>
+                              {process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}
+                            </strong>
+                          </p>
+
                           {key.groupId && (
                             <p
                               className={classNames(
