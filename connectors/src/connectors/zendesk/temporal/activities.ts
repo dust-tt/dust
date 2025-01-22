@@ -148,6 +148,7 @@ export async function syncZendeskBrandActivity({
       parentId: null,
       title: helpCenterNode.title,
       mimeType: MIME_TYPES.ZENDESK.HELP_CENTER,
+      timestampMs: currentSyncDateMs,
     });
 
     // updating the parents for the already selected categories to add the Help Center
@@ -166,6 +167,7 @@ export async function syncZendeskBrandActivity({
         title: category.name,
         mimeType: MIME_TYPES.ZENDESK.CATEGORY,
         sourceUrl: category.url,
+        timestampMs: currentSyncDateMs,
       });
     }
   } else {
@@ -186,6 +188,7 @@ export async function syncZendeskBrandActivity({
       parentId: null,
       title: ticketsNode.title,
       mimeType: MIME_TYPES.ZENDESK.TICKETS,
+      timestampMs: currentSyncDateMs,
     });
   } else {
     await deleteDataSourceFolder({
