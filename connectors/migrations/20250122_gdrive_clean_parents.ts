@@ -53,7 +53,10 @@ async function migrateConnector(
       execute,
       startTimeTs,
     });
-    logger.info({ numberOfFiles: chunk.length }, "Processed batch");
+    logger.info(
+      { numberOfFiles: chunk.length, execute },
+      "Processed files batch"
+    );
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
 
@@ -74,6 +77,11 @@ async function migrateConnector(
       execute,
       startTimeTs,
     });
+    logger.info(
+      { numberOfSheets: chunk.length, execute },
+      "Processed sheets batch"
+    );
+    await new Promise((resolve) => setTimeout(resolve, 50));
   }
 }
 
@@ -131,12 +139,6 @@ async function processFilesBatch({
     },
     { concurrency: 16 }
   );
-
-  if (execute) {
-    logger.info({ numberOfFiles: files.length }, "Migrated files");
-  } else {
-    logger.info({ numberOfFiles: files.length }, "Migrated files (dry run)");
-  }
 }
 
 async function processSheetsBatch({
@@ -173,12 +175,6 @@ async function processSheetsBatch({
     },
     { concurrency: 16 }
   );
-
-  if (execute) {
-    logger.info({ numberOfSheets: sheets.length }, "Migrated sheets");
-  } else {
-    logger.info({ numberOfSheets: sheets.length }, "Migrated sheets (dry run)");
-  }
 }
 
 makeScript(
@@ -200,6 +196,7 @@ makeScript(
     const slicedConnectors = connectors.slice(startIndex);
     for (const connector of slicedConnectors) {
       await migrateConnector(connector, execute, logger);
+      logger.info({ connectorId: connector.id }, "Backfilled connector");
     }
   }
 );
