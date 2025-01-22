@@ -1,4 +1,4 @@
-name: Lint & Build (front)
+name: Lint & Build & Test (front)
 
 on:
   push:
@@ -45,6 +45,7 @@ jobs:
           NODE_ENV: test
         run: npx tsx admin/db.ts && npm run test:ci
       - name: Tests Report
+        if: always()
         uses: dorny/test-reporter@1a288b62f8b75c0f433cbfdbc2e4800fbae50bd7 # Specific hash because of https://github.com/dorny/test-reporter/issues/67
         with:
           name: Front Tests # Name of the check run which will be created
