@@ -144,7 +144,7 @@ export default function LandingLayout({
           onClickAccept={() => {
             setAcceptedCookie("dust-cookies-accepted", "true", {
               path: "/",
-              maxAge: 365 * 24 * 60 * 60, // 1 year in seconds
+              maxAge: 183 * 24 * 60 * 60, // 6 months in seconds
               sameSite: "lax",
             });
             setHasAcceptedCookies(true);
