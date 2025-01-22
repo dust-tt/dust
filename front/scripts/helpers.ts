@@ -1,11 +1,7 @@
-import type { LightWorkspaceType } from "@dust-tt/types";
-import { concurrentExecutor } from "@dust-tt/types";
 import type { Options } from "yargs";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 
-import { Workspace } from "@app/lib/models/workspace";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import logger from "@app/logger/logger";
 
@@ -76,17 +72,4 @@ export function makeScript<T extends ArgumentSpecs>(
       console.error("An error occurred:", error);
       process.exit(1);
     });
-}
-
-export async function runOnAllWorkspaces(
-  worker: (workspace: LightWorkspaceType) => Promise<void>,
-  { concurrency }: { concurrency: number } = { concurrency: 1 }
-) {
-  const workspaces = await Workspace.findAll({});
-
-  await concurrentExecutor(
-    workspaces,
-    (workspace) => worker(renderLightWorkspaceType({ workspace })),
-    { concurrency }
-  );
 }

@@ -6,8 +6,8 @@ import { isManaged } from "@app/lib/data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { Logger } from "@app/logger/logger";
-import { makeScript, runOnAllWorkspaces } from "@app/scripts/helpers";
-
+import { makeScript } from "@app/scripts/helpers";
+import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 async function deleteUnmanagedDataSourceViewsForWorkspace(
   workspace: LightWorkspaceType,
   logger: Logger,
