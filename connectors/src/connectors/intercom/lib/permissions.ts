@@ -62,7 +62,8 @@ export async function retrieveSelectedNodes({
       title: collection.name,
       sourceUrl: collection.url,
       expandable,
-      permission: collection.permission,
+      permission:
+        collection.permission === "inherited" ? "read" : collection.permission,
       lastUpdatedAt: collection.updatedAt.getTime() || null,
     });
   });
