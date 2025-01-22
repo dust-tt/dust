@@ -1,7 +1,7 @@
 name: Revert Workflow
 
 on:
-  workflow_call:
+  workflow_dispatch:
     inputs:
       regions:
         description: "Regions to revert"
