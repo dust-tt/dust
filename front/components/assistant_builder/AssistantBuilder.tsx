@@ -67,7 +67,6 @@ import {
 } from "@app/components/sparkle/AppLayoutTitle";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useKillSwitches } from "@app/lib/swr/kill";
-import { useUser } from "@app/lib/swr/user";
 
 function isValidTab(tab: string): tab is BuilderScreen {
   return BUILDER_SCREENS.includes(tab as BuilderScreen);
@@ -84,7 +83,6 @@ export default function AssistantBuilder({
   baseUrl,
   defaultTemplate,
 }: AssistantBuilderProps) {
-  const { user } = useUser();
   const router = useRouter();
   const sendNotification = useSendNotification();
 
@@ -314,12 +312,6 @@ export default function AssistantBuilder({
   );
 
   const onAssistantSave = async () => {
-    window.gtag("event", "assistantSaved", {
-      event_category: "assistantBuilder",
-      event_label: "assistantBuilder",
-      is_new: !agentConfigurationId, // track if it's a new assistant or an edit
-      user_id: user?.sId,
-    });
     // Redirect to the right screen if there are errors.
     if (instructionsError) {
       setScreen("instructions");
@@ -426,6 +418,8 @@ export default function AssistantBuilder({
                         value={tab.id}
                         label={tab.label}
                         icon={tab.icon}
+                        data-gtm-label={tab.dataGtm.label}
+                        data-gtm-location={tab.dataGtm.location}
                       />
                     ))}
                     <div className="flex w-full items-center justify-end">

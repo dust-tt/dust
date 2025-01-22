@@ -95,15 +95,10 @@ export function AssistantDetailsButtonBar({
               <>
                 <DropdownMenuItem
                   label="Duplicate (New)"
+                  data-gtm-label="assistantDuplicationButton"
+                  data-gtm-location="assistantDetails"
                   icon={ClipboardIcon}
                   onClick={async (e) => {
-                    window.gtag("event", "assistantDuplicationButtonClicked", {
-                      event_category: "assistantBuilder",
-                      event_label: "assistantDetails",
-                      assistant_name: agentConfiguration.name,
-                      assistant_id: agentConfiguration.sId,
-                      user_id: user?.sId,
-                    });
                     await router.push(
                       `/w/${owner.sId}/builder/assistants/new?flow=personal_assistants&duplicate=${agentConfiguration.sId}`
                     );

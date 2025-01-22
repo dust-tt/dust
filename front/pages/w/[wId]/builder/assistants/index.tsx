@@ -212,6 +212,8 @@ export default function WorkspaceAssistants({
                     variant="primary"
                     icon={PlusIcon}
                     label="Create an assistant"
+                    data-gtm-label="assistantCreationButton"
+                    data-gtm-location="assistantsWorkspace"
                   />
                 </Link>
               </div>
@@ -257,6 +259,8 @@ export default function WorkspaceAssistants({
                       href={`/w/${owner.sId}/builder/assistants/create?flow=workspace_assistants`}
                       label="Create an Assistant"
                       icon={PlusIcon}
+                      data-gtm-label="assistantCreationButton"
+                      data-gtm-location="assistantsWorkspace"
                     />
                   </div>
                 )

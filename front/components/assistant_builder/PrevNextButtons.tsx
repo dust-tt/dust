@@ -21,6 +21,8 @@ export function PrevNextButtons({
           label="Previous"
           size="md"
           variant="primary"
+          data-gtm-label="prevButton"
+          data-gtm-location="assistantBuilder"
           onClick={() => {
             const newScreen = screen === "actions" ? "instructions" : "actions";
             setScreen(newScreen);
@@ -34,6 +36,8 @@ export function PrevNextButtons({
           label="Next"
           size="md"
           variant="primary"
+          data-gtm-label="nextButton"
+          data-gtm-location="assistantBuilder"
           onClick={() => {
             const newScreen = screen === "instructions" ? "actions" : "naming";
             setScreen(newScreen);

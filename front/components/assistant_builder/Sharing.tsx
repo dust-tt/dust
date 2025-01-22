@@ -184,6 +184,8 @@ export function SharingButton({
             icon={ArrowUpOnSquareIcon}
             variant="outline"
             isSelect
+            data-gtm-label="sharingButton"
+            data-gtm-location="assistantBuilder"
             onClick={() => setIsPopoverOpen(!isPopoverOpen)}
           />
         </PopoverTrigger>

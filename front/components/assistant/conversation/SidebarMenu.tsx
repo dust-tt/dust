@@ -36,7 +36,6 @@ import {
   useConversations,
   useDeleteConversation,
 } from "@app/lib/swr/conversations";
-import { useUser } from "@app/lib/swr/user";
 import { classNames, removeDiacritics, subFilter } from "@app/lib/utils";
 
 type AssistantSidebarMenuProps = {
@@ -53,7 +52,6 @@ type GroupLabel =
 
 export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
   const router = useRouter();
-  const { user } = useUser();
   const { conversationsNavigationRef } = useConversationsNavigation();
 
   const { setSidebarOpen } = useContext(SidebarContext);
@@ -253,23 +251,19 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                   <DropdownMenuContent>
                     <DropdownMenuLabel>Assistants</DropdownMenuLabel>
                     <DropdownMenuItem
-                      label="Create new assistant"
                       href={`/w/${owner.sId}/builder/assistants/create`}
                       icon={PlusIcon}
-                      onClick={() => {
-                        window.gtag("event", "assistantCreationButtonClicked", {
-                          event_category: "assistantBuilder",
-                          event_label: "sidebarMenu",
-                          user_id: user?.sId,
-                          workspace_id: owner.sId,
-                        });
-                      }}
+                      label="Create new assistant"
+                      data-gtm-label="assistantCreationButton"
+                      data-gtm-location="sidebarMenu"
                     />
                     {isBuilder(owner) && (
                       <DropdownMenuItem
                         href={`/w/${owner.sId}/builder/assistants`}
-                        label="Manage assistants"
                         icon={RobotIcon}
+                        label="Manage assistants"
+                        data-gtm-label="assistantManagementButton"
+                        data-gtm-location="sidebarMenu"
                       />
                     )}
                     <DropdownMenuLabel>Conversations</DropdownMenuLabel>

@@ -26,7 +26,6 @@ import type {
 import { useRouter } from "next/router";
 import React, { useMemo, useState } from "react";
 
-import { useUser } from "@app/lib/swr/user";
 import { subFilter } from "@app/lib/utils";
 import { setQueryParam } from "@app/lib/utils/router";
 
@@ -73,7 +72,6 @@ export function AssistantBrowser({
   );
 
   const router = useRouter();
-  const { user } = useUser();
 
   const agentsByTab = useMemo(() => {
     const filteredAgents: LightAgentConfigurationType[] = agents
@@ -156,15 +154,9 @@ export function AssistantBrowser({
               variant="primary"
               icon={PlusIcon}
               label="Create"
+              data-gtm-label="assistantCreationButton"
+              data-gtm-location="homepage"
               size="sm"
-              onClick={() => {
-                // Track button click with Google Analytics including user ID
-                window.gtag("event", "assistantCreationButtonClicked", {
-                  event_category: "assistantBuilder",
-                  event_label: "homepage",
-                  user_id: user?.sId,
-                });
-              }}
             />
 
             {isBuilder && (
@@ -174,15 +166,9 @@ export function AssistantBrowser({
                 variant="primary"
                 icon={RobotIcon}
                 label="Manage"
+                data-gtm-label="assistantManagementButton"
+                data-gtm-location="homepage"
                 size="sm"
-                onClick={() => {
-                  // Track button click with Google Analytics including user ID
-                  window.gtag("event", "assistantManagementButtonClicked", {
-                    event_category: "assistantBuilder",
-                    event_label: "homepage",
-                    user_id: user?.sId,
-                  });
-                }}
               />
             )}
           </div>

@@ -76,7 +76,6 @@ import {
   isDefaultActionName,
 } from "@app/components/assistant_builder/types";
 import { ACTION_SPECIFICATIONS } from "@app/lib/api/assistant/actions/utils";
-import { useUser } from "@app/lib/swr/user";
 
 const DATA_SOURCES_ACTION_CATEGORIES = [
   "RETRIEVAL_SEARCH",
@@ -157,16 +156,6 @@ export default function ActionsScreen({
   setAction,
   pendingAction,
 }: ActionScreenProps) {
-  const { user } = useUser();
-
-  useEffect(() => {
-    window.gtag("event", "panelNavigated", {
-      event_category: "assistantBuilder",
-      event_label: "assistantToolsPanel",
-      user_id: user?.sId,
-    });
-  }, [user?.sId]);
-
   const { spaces } = useContext(AssistantBuilderContext);
 
   const configurableActions = builderState.actions.filter(
@@ -371,12 +360,6 @@ export default function ActionsScreen({
               <div>
                 <AddAction
                   onAddAction={(action) => {
-                    window.gtag("event", "toolAdded", {
-                      event_category: "assistantBuilder",
-                      event_label: "toolsPanel",
-                      tool_type: action.type,
-                      user_id: user?.sId,
-                    });
                     setAction({
                       type: action.noConfigurationRequired
                         ? "insert"
@@ -1053,7 +1036,13 @@ function AddAction({ onAddAction }: AddActionProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="primary" label="Add a tool" icon={PlusIcon} />
+        <Button
+          variant="primary"
+          label="Add a tool"
+          data-gtm-label="toolAddingButton"
+          data-gtm-location="toolsPanel"
+          icon={PlusIcon}
+        />
       </DropdownMenuTrigger>
 
       <DropdownMenuContent>
