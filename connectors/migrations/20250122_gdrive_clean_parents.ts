@@ -49,7 +49,6 @@ async function migrateConnector(
       connector,
       dataSourceConfig,
       files: chunk,
-      logger,
       execute,
       startTimeTs,
     });
@@ -73,7 +72,6 @@ async function migrateConnector(
       connector,
       dataSourceConfig,
       sheets: chunk,
-      logger,
       execute,
       startTimeTs,
     });
@@ -89,14 +87,12 @@ async function processFilesBatch({
   connector,
   dataSourceConfig,
   files,
-  logger,
   execute,
   startTimeTs,
 }: {
   connector: ConnectorResource;
   dataSourceConfig: DataSourceConfig;
   files: GoogleDriveFiles[];
-  logger: pino.Logger<LoggerOptions & pino.ChildLoggerOptions>;
   execute: boolean;
   startTimeTs: number;
 }) {
@@ -145,14 +141,12 @@ async function processSheetsBatch({
   connector,
   dataSourceConfig,
   sheets,
-  logger,
   execute,
   startTimeTs,
 }: {
   connector: ConnectorResource;
   dataSourceConfig: DataSourceConfig;
   sheets: GoogleDriveSheet[];
-  logger: pino.Logger<LoggerOptions & pino.ChildLoggerOptions>;
   execute: boolean;
   startTimeTs: number;
 }) {
