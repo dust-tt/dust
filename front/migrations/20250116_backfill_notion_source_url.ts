@@ -5,9 +5,9 @@ import {
   getConnectorsReplicaDbConnection,
   getCorePrimaryDbConnection,
 } from "@app/lib/production_checks/utils";
+import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
-import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 
 const BATCH_SIZE = 1024;
 

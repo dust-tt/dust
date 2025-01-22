@@ -1,3 +1,4 @@
+import type { DropdownMenuItemProps } from "@dust-tt/sparkle";
 import {
   Button,
   Chip,
@@ -17,24 +18,16 @@ import type {
   DataSourceViewCategory,
   DataSourceViewsWithDetails,
   DataSourceViewType,
-  DataSourceWithAgentsUsageType,
   DataSourceWithConnectorDetailsType,
   PlanType,
   SpaceType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { isWebsiteOrFolderCategory } from "@dust-tt/types";
-import type {
-  CellContext,
-  ColumnDef,
-  SortingState,
-} from "@tanstack/react-table";
+import type { ColumnDef, SortingState } from "@tanstack/react-table";
 import { useRouter } from "next/router";
-import type { ComponentType } from "react";
-import { useCallback, useMemo } from "react";
-import { useRef } from "react";
-import { useState } from "react";
-import * as React from "react";
+import type { MouseEventHandler } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { ConnectorPermissionsModal } from "@app/components/ConnectorPermissionsModal";
@@ -56,6 +49,25 @@ import { classNames } from "@app/lib/utils";
 
 import { ViewFolderAPIModal } from "../ViewFolderAPIModal";
 
+type MoreMenuItem = Omit<DropdownMenuItemProps, "children" | "onClick"> & {
+  label: string;
+  variant?: "default" | "warning";
+  onClick?: MouseEventHandler<HTMLDivElement>;
+  children?: undefined;
+};
+
+export interface RowData {
+  dataSourceView: DataSourceViewsWithDetails;
+  label: string;
+  icon: React.ComponentType;
+  workspaceId: string;
+  isAdmin: boolean;
+  isLoading?: boolean;
+  buttonOnClick?: (e: MouseEvent) => void;
+  onClick?: () => void;
+  moreMenuItems?: MoreMenuItem[];
+}
+
 const REDIRECT_TO_EDIT_PERMISSIONS = [
   "confluence",
   "google_drive",
@@ -66,160 +78,149 @@ const REDIRECT_TO_EDIT_PERMISSIONS = [
   "zendesk",
 ];
 
-type RowData = {
-  dataSourceView: DataSourceViewsWithDetails;
-  label: string;
-  icon: ComponentType;
-  workspaceId: string;
-  isAdmin: boolean;
-  isLoading?: boolean;
-  buttonOnClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
-  onClick?: () => void;
-};
+type StringColumnDef = ColumnDef<RowData, string>;
+type NumberColumnDef = ColumnDef<RowData, number>;
 
-const getTableColumns = ({
-  setAssistantName,
-  isManaged,
-  isWebsite,
-  space,
-}: {
-  setAssistantName: (name: string | null) => void;
-  isManaged: boolean;
-  isWebsite: boolean;
-  space: SpaceType;
-}) => {
+type TableColumnDef = StringColumnDef | NumberColumnDef;
+
+function getTableColumns(
+  setAssistantName: (a: string | null) => void,
+  isManaged: boolean,
+  isWebsite: boolean,
+  space: SpaceType
+): TableColumnDef[] {
+  const isGlobalOrSystemSpace = ["global", "system"].includes(space.kind);
   const nameColumn: ColumnDef<RowData, string> = {
-    header: "Name",
-    accessorKey: "label",
     id: "name",
-    sortingFn: "text", // built-in sorting function case-insensitive
-    cell: (info: CellContext<RowData, string>) => (
+    meta: {
+      className: "w-96",
+    },
+    // We can define an accessorFn to read row.label:
+    accessorFn: (row) => row.label,
+    sortingFn: "text",
+    cell: (info) => (
       <DataTable.CellContent icon={info.row.original.icon}>
         <span>{info.getValue()}</span>
       </DataTable.CellContent>
     ),
   };
-
-  const isGlobalOrSystemSpace = ["global", "system"].includes(space.kind);
-
-  const managedByColumn = {
-    header: "Managed by",
-    accessorFn: (row: RowData) =>
-      isGlobalOrSystemSpace
-        ? row.dataSourceView.dataSource.editedByUser?.imageUrl
-        : row.dataSourceView.editedByUser?.imageUrl,
-    meta: {
-      width: "6rem",
-    },
+  const managedByColumn: ColumnDef<RowData, string | undefined> = {
     id: "managedBy",
-    accessorKey: "managedBy",
-    cell: (info: CellContext<RowData, string>) => {
-      const dsv = info.row.original.dataSourceView;
+    header: "Managed by",
+    accessorFn: (row) =>
+      isGlobalOrSystemSpace
+        ? row.dataSourceView.dataSource.editedByUser?.imageUrl ?? undefined
+        : row.dataSourceView.editedByUser?.imageUrl ?? undefined,
+    cell: (ctx) => {
+      const { dataSourceView } = ctx.row.original;
       const editedByUser = isGlobalOrSystemSpace
-        ? dsv.dataSource.editedByUser
-        : dsv.editedByUser;
-
+        ? dataSourceView.dataSource.editedByUser
+        : dataSourceView.editedByUser;
       return (
         <DataTable.CellContent
-          avatarUrl={info.getValue()}
+          avatarUrl={ctx.getValue()}
           avatarTooltipLabel={editedByUser?.fullName ?? undefined}
-          roundedAvatar={true}
+          roundedAvatar
         />
       );
     },
   };
-
-  const usedByColumn = {
-    header: "Used by",
-    accessorFn: (row: RowData) => row.dataSourceView.usage?.count ?? 0,
+  const usedByColumn: ColumnDef<RowData, number> = {
     id: "usedBy",
-    meta: {
-      width: "6rem",
+    header: "Used by",
+    // Return a numeric count to allow numeric sorts if we want
+    accessorFn: (row) => row.dataSourceView.usage?.count ?? 0,
+    cell: (ctx) => {
+      const usage = ctx.row.original.dataSourceView.usage;
+      return (
+        <DataTable.CellContent>
+          <UsedByButton usage={usage} onItemClick={setAssistantName} />
+        </DataTable.CellContent>
+      );
     },
-    cell: (info: CellContext<RowData, DataSourceWithAgentsUsageType>) => (
-      <>
-        {info.row.original.dataSourceView.usage ? (
-          <DataTable.CellContent>
-            <UsedByButton
-              usage={info.row.original.dataSourceView.usage}
-              onItemClick={setAssistantName}
-            />
-          </DataTable.CellContent>
-        ) : null}
-      </>
-    ),
   };
-
-  const lastSyncedColumn = {
-    header: "Last sync",
+  // For lastSynced, we store a number or undefined in accessorFn
+  const lastSyncedColumn: ColumnDef<RowData, number | undefined> = {
     id: "lastSync",
-    accessorFn: (row: RowData) =>
-      row.dataSourceView.dataSource.connector?.lastSyncSuccessfulTime,
+    header: "Last sync",
     meta: {
-      width: "14rem",
+      className: "w-48",
     },
-    cell: (info: CellContext<RowData, number>) => (
-      <DataTable.CellContent className="pr-2">
-        <>
-          {!info.row.original.dataSourceView.dataSource.connector &&
-            !info.row.original.dataSourceView.dataSource
-              .fetchConnectorError && <Chip color="amber">Never</Chip>}
-          {info.row.original.dataSourceView.dataSource.fetchConnectorError && (
+    accessorFn: (row) =>
+      row.dataSourceView.dataSource.connector?.lastSyncSuccessfulTime,
+    cell: (info) => {
+      const ds = info.row.original.dataSourceView.dataSource;
+      return (
+        <DataTable.CellContent className="pr-2">
+          {!ds.connector && !ds.fetchConnectorError && (
+            <Chip color="amber">Never</Chip>
+          )}
+          {ds.fetchConnectorError && (
             <Chip color="warning">Retry in a few minutes</Chip>
           )}
-          {info.row.original.dataSourceView.dataSource.connector &&
-            info.row.original.workspaceId &&
-            info.row.original.dataSourceView.dataSource.name && (
-              <ConnectorSyncingChip
-                initialState={
-                  info.row.original.dataSourceView.dataSource.connector
-                }
-                workspaceId={info.row.original.workspaceId}
-                dataSource={info.row.original.dataSourceView.dataSource}
-              />
-            )}
-        </>
-      </DataTable.CellContent>
-    ),
-  };
-
-  const actionColumn = {
-    id: "action",
-    meta: {
-      width: "10rem",
+          {ds.connector && info.row.original.workspaceId && ds.name && (
+            <ConnectorSyncingChip
+              initialState={ds.connector}
+              workspaceId={info.row.original.workspaceId}
+              dataSource={ds}
+            />
+          )}
+        </DataTable.CellContent>
+      );
     },
-    cell: (info: CellContext<RowData, unknown>) => {
-      const original = info.row.original;
-      const disabled = original.isLoading || !original.isAdmin;
-
-      if (!original.dataSourceView.dataSource.connector) {
+  };
+  // The "Connect" or "Manage" button
+  const actionColumn: ColumnDef<RowData, unknown> = {
+    id: "action",
+    // meta: {
+    //   className: "w-28",
+    // },
+    cell: (ctx) => {
+      const { dataSourceView, isLoading, isAdmin, buttonOnClick } =
+        ctx.row.original;
+      const disabled = isLoading || !isAdmin;
+      const connector = dataSourceView.dataSource.connector;
+      if (!connector) {
         return (
           <DataTable.CellContent>
             <Button
               variant="primary"
+              size="xs"
               icon={CloudArrowLeftRightIcon}
               disabled={disabled}
-              onClick={original.buttonOnClick}
-              label={original.isLoading ? "Connecting..." : "Connect"}
-            />
-          </DataTable.CellContent>
-        );
-      } else {
-        return (
-          <DataTable.CellContent>
-            <Button
-              variant="outline"
-              icon={Cog6ToothIcon}
-              disabled={disabled}
-              onClick={original.buttonOnClick}
-              label={original.isAdmin ? "Manage" : "View"}
+              onClick={buttonOnClick}
+              label={isLoading ? "Connecting..." : "Connect"}
             />
           </DataTable.CellContent>
         );
       }
+      return (
+        <DataTable.CellContent>
+          <Button
+            variant="outline"
+            icon={Cog6ToothIcon}
+            disabled={disabled}
+            onClick={buttonOnClick}
+            label={isAdmin ? "Manage" : "View"}
+            size="xs"
+          />
+        </DataTable.CellContent>
+      );
     },
   };
 
+  const moreActions: ColumnDef<RowData, unknown> = {
+    id: "actions",
+    header: "",
+    meta: {
+      className: "flex justify-end items-center",
+    },
+    cell: (ctx) => (
+      <DataTable.MoreButton moreMenuItems={ctx.row.original.moreMenuItems} />
+    ),
+  };
+
+  // Decide which columns to return
   if (space.kind === "system" && isManaged) {
     return [
       nameColumn,
@@ -229,10 +230,17 @@ const getTableColumns = ({
       actionColumn,
     ];
   }
-  return isManaged || isWebsite
-    ? [nameColumn, usedByColumn, managedByColumn, lastSyncedColumn]
-    : [nameColumn, usedByColumn, managedByColumn];
-};
+  if (isManaged || isWebsite) {
+    return [
+      nameColumn,
+      usedByColumn,
+      managedByColumn,
+      lastSyncedColumn,
+      moreActions,
+    ];
+  }
+  return [nameColumn, usedByColumn, managedByColumn, moreActions];
+}
 
 interface SpaceResourcesListProps {
   owner: WorkspaceType;
@@ -257,51 +265,44 @@ export const SpaceResourcesList = ({
   onSelect,
   integrations,
 }: SpaceResourcesListProps) => {
-  const [assistantName, setAssistantName] = useState<string | null>(null); // To show the assistant details
+  const [assistantName, setAssistantName] = useState<string | null>(null);
   const { sId: assistantSId } = useAgentConfigurationSIdLookup({
     workspaceId: owner.sId,
     agentConfigurationName: assistantName,
   });
-
-  const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
+  const [dataSourceSearch, setDataSourceSearch] = useState("");
   const [showConnectorPermissionsModal, setShowConnectorPermissionsModal] =
     useState(false);
   const [selectedDataSourceView, setSelectedDataSourceView] =
     useState<DataSourceViewsWithDetails | null>(null);
-
   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
   const [showFolderOrWebsiteModal, setShowFolderOrWebsiteModal] =
     useState(false);
   const [showViewFolderAPIModal, setShowViewFolderAPIModal] = useState(false);
   const [isNewConnectorLoading, setIsNewConnectorLoading] = useState(false);
-  const [sorting, setSorting] = React.useState<SortingState>([
+  const [sorting, setSorting] = useState<SortingState>([
     { id: "name", desc: false },
   ]);
-  const router = useRouter();
+  const [isLoadingByProvider, setIsLoadingByProvider] = useState<
+    Partial<Record<ConnectorProvider, boolean>>
+  >({});
 
   const searchBarRef = useRef<HTMLInputElement>(null);
-
+  const router = useRouter();
   const isSystemSpace = systemSpace.sId === space.sId;
   const isManagedCategory = category === "managed";
   const isWebsite = category === "website";
   const isFolder = category === "folder";
   const isWebsiteOrFolder = isWebsiteOrFolderCategory(category);
 
-  const [isLoadingByProvider, setIsLoadingByProvider] = useState<
-    Partial<Record<ConnectorProvider, boolean>>
-  >({});
-
   const { pagination, setPagination } = usePaginationFromUrl({
     urlPrefix: "table",
   });
-
   const doDelete = useDeleteFolderOrWebsite({
     owner,
     spaceId: space.sId,
     category,
   });
-
-  // DataSources Views of the current space.
   const {
     spaceDataSourceViews,
     isSpaceDataSourceViewsLoading,
@@ -309,74 +310,77 @@ export const SpaceResourcesList = ({
   } = useSpaceDataSourceViewsWithDetails({
     workspaceId: owner.sId,
     spaceId: space.sId,
-    category: category,
+    category,
   });
 
-  const rows: RowData[] = useMemo(
-    () =>
-      spaceDataSourceViews?.map((dataSourceView) => {
-        const moreMenuItems = [];
-        if (isWebsiteOrFolder && canWriteInSpace) {
+  const rows: RowData[] = useMemo(() => {
+    if (!spaceDataSourceViews) {
+      return [];
+    }
+    return spaceDataSourceViews.map((dataSourceView) => {
+      const provider = dataSourceView.dataSource.connectorProvider;
+
+      const moreMenuItems: MoreMenuItem[] = [];
+
+      if (isWebsiteOrFolder && canWriteInSpace) {
+        moreMenuItems.push({
+          label: "Edit",
+          icon: PencilSquareIcon,
+          onClick: (e) => {
+            e.stopPropagation();
+            setSelectedDataSourceView(dataSourceView);
+            setShowFolderOrWebsiteModal(true);
+          },
+        });
+        if (isFolder) {
           moreMenuItems.push({
-            label: "Edit",
-            icon: PencilSquareIcon,
-            onClick: (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+            label: "API",
+            icon: CubeIcon,
+            onClick: (e) => {
               e.stopPropagation();
               setSelectedDataSourceView(dataSourceView);
-              setShowFolderOrWebsiteModal(true);
-            },
-          });
-          if (isFolder) {
-            moreMenuItems.push({
-              label: "API",
-              icon: CubeIcon,
-              onClick: (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
-                e.stopPropagation();
-                setSelectedDataSourceView(dataSourceView);
-                setShowViewFolderAPIModal(true);
-              },
-            });
-          }
-          moreMenuItems.push({
-            label: "Delete",
-            icon: TrashIcon,
-            variant: "warning",
-            onClick: (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
-              e.stopPropagation();
-              setSelectedDataSourceView(dataSourceView);
-              setShowDeleteConfirmDialog(true);
+              setShowViewFolderAPIModal(true);
             },
           });
         }
-        const provider = dataSourceView.dataSource.connectorProvider;
-
-        return {
-          dataSourceView,
-          label: getDataSourceNameFromView(dataSourceView),
-          icon: getConnectorProviderLogoWithFallback(provider, FolderIcon),
-          workspaceId: owner.sId,
-          isAdmin,
-          isLoading: provider ? isLoadingByProvider[provider] : false,
-          moreMenuItems,
-          buttonOnClick: (e) => {
+        moreMenuItems.push({
+          label: "Delete",
+          icon: TrashIcon,
+          variant: "warning",
+          onClick: (e) => {
             e.stopPropagation();
             setSelectedDataSourceView(dataSourceView);
-            setShowConnectorPermissionsModal(true);
+            setShowDeleteConfirmDialog(true);
           },
-          onClick: () => onSelect(dataSourceView.sId),
-        };
-      }) || [],
-    [
-      isLoadingByProvider,
-      onSelect,
-      owner,
-      spaceDataSourceViews,
-      isAdmin,
-      isFolder,
-      isWebsiteOrFolder,
-      canWriteInSpace,
-    ]
-  );
+        });
+      }
+
+      return {
+        dataSourceView,
+        label: getDataSourceNameFromView(dataSourceView),
+        icon: getConnectorProviderLogoWithFallback(provider, FolderIcon),
+        workspaceId: owner.sId,
+        isAdmin,
+        isLoading: provider ? isLoadingByProvider[provider] : false,
+        moreMenuItems,
+        buttonOnClick: (e) => {
+          e.stopPropagation();
+          setSelectedDataSourceView(dataSourceView);
+          setShowConnectorPermissionsModal(true);
+        },
+        onClick: () => onSelect(dataSourceView.sId),
+      };
+    });
+  }, [
+    spaceDataSourceViews,
+    owner.sId,
+    isAdmin,
+    isLoadingByProvider,
+    isWebsiteOrFolder,
+    canWriteInSpace,
+    isFolder,
+    onSelect,
+  ]);
 
   const onSelectedDataUpdated = useCallback(async () => {
     await mutateSpaceDataSourceViews();
@@ -417,9 +421,7 @@ export const SpaceResourcesList = ({
             ref={searchBarRef}
             placeholder="Search (Name)"
             value={dataSourceSearch}
-            onChange={(s) => {
-              setDataSourceSearch(s);
-            }}
+            onChange={(s) => setDataSourceSearch(s)}
           />
         )}
         {isSystemSpace && category === "managed" && (
@@ -484,7 +486,7 @@ export const SpaceResourcesList = ({
             isOpen={showViewFolderAPIModal}
             owner={owner}
             space={space}
-            dataSource={selectedDataSourceView?.dataSource}
+            dataSource={selectedDataSourceView.dataSource}
             onClose={() => setShowViewFolderAPIModal(false)}
           />
         )}
@@ -501,9 +503,7 @@ export const SpaceResourcesList = ({
               canWriteInSpace={canWriteInSpace}
               dataSourceView={selectedDataSourceView}
               category={category}
-              onClose={() => {
-                setShowFolderOrWebsiteModal(false);
-              }}
+              onClose={() => setShowFolderOrWebsiteModal(false)}
             />
             {selectedDataSourceView && (
               <DeleteStaticDataSourceDialog
@@ -523,14 +523,14 @@ export const SpaceResourcesList = ({
         />
       </div>
       {rows.length > 0 && (
-        <DataTable
+        <DataTable<RowData>
           data={rows}
-          columns={getTableColumns({
+          columns={getTableColumns(
             setAssistantName,
-            isManaged: isManagedCategory,
-            isWebsite: isWebsite,
-            space,
-          })}
+            isManagedCategory,
+            isWebsite,
+            space
+          )}
           filter={dataSourceSearch}
           filterColumn="name"
           sorting={sorting}
@@ -543,20 +543,18 @@ export const SpaceResourcesList = ({
           }}
         />
       )}
-      {selectedDataSourceView?.dataSource &&
-        selectedDataSourceView.dataSource.connector && (
-          <ConnectorPermissionsModal
-            owner={owner}
-            connector={selectedDataSourceView.dataSource.connector}
-            dataSource={selectedDataSourceView.dataSource}
-            isOpen={showConnectorPermissionsModal && !!selectedDataSourceView}
-            onClose={() => {
-              setShowConnectorPermissionsModal(false);
-            }}
-            readOnly={false}
-            isAdmin={isAdmin}
-          />
-        )}
+
+      {selectedDataSourceView?.dataSource?.connector && (
+        <ConnectorPermissionsModal
+          owner={owner}
+          connector={selectedDataSourceView.dataSource.connector}
+          dataSource={selectedDataSourceView.dataSource}
+          isOpen={showConnectorPermissionsModal && !!selectedDataSourceView}
+          onClose={() => setShowConnectorPermissionsModal(false)}
+          readOnly={false}
+          isAdmin={isAdmin}
+        />
+      )}
     </>
   );
 };

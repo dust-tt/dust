@@ -14,18 +14,19 @@ import {
 } from "@tanstack/react-table";
 import React, { ReactNode, useEffect, useState } from "react";
 
-import { Avatar } from "@sparkle/components/Avatar";
 import {
+  Avatar,
+  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuItemProps,
   DropdownMenuTrigger,
-} from "@sparkle/components/Dropdown";
-import { IconButton } from "@sparkle/components/IconButton";
-import { Pagination } from "@sparkle/components/Pagination";
-import { Tooltip } from "@sparkle/components/Tooltip";
+  IconButton,
+  Pagination,
+  Tooltip,
+} from "@sparkle/components";
 import { useCopyToClipboard } from "@sparkle/hooks";
 import {
   ArrowDownIcon,
@@ -34,17 +35,18 @@ import {
   ClipboardIcon,
   MoreIcon,
 } from "@sparkle/icons";
-import { classNames } from "@sparkle/lib/utils";
+import { cn } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
 import { breakpoints, useWindowSize } from "./WindowUtility";
+
+const cellHeight = "s-h-12";
 
 declare module "@tanstack/react-table" {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface ColumnMeta<TData, TValue> {
     className?: string;
-    width?: string;
-    flex?: number;
+    tooltip?: string;
   }
 }
 
@@ -89,7 +91,7 @@ export function DataTable<TData extends TBaseData>({
   totalRowCount,
   columns,
   className,
-  widthClassName = "s-w-full s-max-w-4xl",
+  widthClassName = "s-w-full",
   filter,
   filterColumn,
   columnsBreakpoints = {},
@@ -162,13 +164,7 @@ export function DataTable<TData extends TBaseData>({
   }, [filter, filterColumn]);
 
   return (
-    <div
-      className={classNames(
-        "s-flex s-flex-col s-gap-2",
-        className || "",
-        widthClassName
-      )}
-    >
+    <div className={cn("s-flex s-flex-col s-gap-2", className, widthClassName)}>
       <DataTable.Root>
         <DataTable.Header>
           {table.getHeaderGroups().map((headerGroup) => (
@@ -186,7 +182,7 @@ export function DataTable<TData extends TBaseData>({
                     column={header.column}
                     key={header.id}
                     onClick={header.column.getToggleSortingHandler()}
-                    className={classNames(
+                    className={cn(
                       header.column.getCanSort() ? "s-cursor-pointer" : ""
                     )}
                   >
@@ -205,7 +201,7 @@ export function DataTable<TData extends TBaseData>({
                                 : ArrowDownIcon
                           }
                           size="xs"
-                          className={classNames(
+                          className={cn(
                             "s-ml-1",
                             header.column.getIsSorted()
                               ? "s-opacity-100"
@@ -226,8 +222,6 @@ export function DataTable<TData extends TBaseData>({
               widthClassName={widthClassName}
               key={row.id}
               onClick={row.original.onClick}
-              moreMenuItems={row.original.moreMenuItems}
-              dropdownMenuProps={row.original.dropdownMenuProps}
             >
               {row.getVisibleCells().map((cell) => {
                 const breakpoint = columnsBreakpoints[cell.column.id];
@@ -250,6 +244,7 @@ export function DataTable<TData extends TBaseData>({
       {pagination && (
         <div className="s-p-1">
           <Pagination
+            size="xs"
             pagination={table.getState().pagination}
             setPagination={table.setPagination}
             rowCount={table.getRowCount()}
@@ -269,7 +264,7 @@ DataTable.Root = function DataTableRoot({
   ...props
 }: DataTableRootProps) {
   return (
-    <table className="s-w-full s-border-collapse" {...props}>
+    <table className="s-w-full s-table-fixed s-border-collapse" {...props}>
       {children}
     </table>
   );
@@ -285,10 +280,7 @@ DataTable.Header = function Header({
   ...props
 }: HeaderProps) {
   return (
-    <thead
-      className={classNames("s-text-xs s-capitalize", className || "")}
-      {...props}
-    >
+    <thead className={cn(className)} {...props}>
       {children}
     </thead>
   );
@@ -307,14 +299,18 @@ DataTable.Head = function Head({
 }: HeadProps) {
   return (
     <th
-      style={getSize(column.columnDef)}
-      className={classNames(
-        "s-py-1 s-pr-3 s-text-left s-font-medium s-text-element-800",
-        className || ""
+      className={cn(
+        "s-py-2 s-pl-2 s-pr-3 s-text-left s-text-xs s-font-medium s-capitalize s-text-foreground",
+        column.columnDef.meta?.className,
+        className
       )}
       {...props}
     >
-      {children}
+      {column.columnDef.meta?.tooltip ? (
+        <Tooltip label={column.columnDef.meta.tooltip} trigger={children} />
+      ) : (
+        children
+      )}
     </th>
   );
 };
@@ -334,69 +330,82 @@ DataTable.Body = function Body({
 interface RowProps extends React.HTMLAttributes<HTMLTableRowElement> {
   children: ReactNode;
   onClick?: () => void;
-  moreMenuItems?: DropdownMenuItemProps[];
   widthClassName: string;
-  dropdownMenuProps?: React.ComponentPropsWithoutRef<typeof DropdownMenu>;
 }
 
 DataTable.Row = function Row({
   children,
   className,
   onClick,
-  moreMenuItems,
   widthClassName,
-  dropdownMenuProps,
   ...props
 }: RowProps) {
   return (
     <tr
-      className={classNames(
-        "s-group/dt s-flex s-items-center s-border-b s-border-structure-200 s-text-sm s-transition-colors s-duration-300 s-ease-out",
-        onClick ? "s-cursor-pointer hover:s-bg-structure-50" : "",
+      className={cn(
+        "s-group/dt s-border-b s-border-separator s-transition-colors s-duration-300 s-ease-out",
+        onClick ? "s-cursor-pointer hover:s-bg-muted" : "",
         widthClassName,
-        className || ""
+        className
       )}
       onClick={onClick ? onClick : undefined}
       {...props}
     >
       {children}
-      <td className="s-flex s-w-8 s-cursor-pointer s-items-center s-pl-1 s-text-element-600">
-        {moreMenuItems && moreMenuItems.length > 0 && (
-          <DropdownMenu {...dropdownMenuProps}>
-            <DropdownMenuTrigger
-              // Necessary to allow clicking the dropdown in a table cell without clicking on the cell
-              // See https://github.com/radix-ui/primitives/issues/1242
+    </tr>
+  );
+};
+
+interface MoreButtonProps {
+  className?: string;
+  moreMenuItems?: DropdownMenuItemProps[];
+  dropdownMenuProps?: Omit<
+    React.ComponentPropsWithoutRef<typeof DropdownMenu>,
+    "modal"
+  >;
+}
+
+DataTable.MoreButton = function MoreButton({
+  className,
+  moreMenuItems,
+  dropdownMenuProps,
+}: MoreButtonProps) {
+  if (!moreMenuItems || moreMenuItems.length === 0) {
+    return null;
+  }
+
+  return (
+    <DropdownMenu modal={false} {...dropdownMenuProps}>
+      <DropdownMenuTrigger // Necessary to allow clicking the dropdown in a table cell without clicking on the cell
+        // See https://github.com/radix-ui/primitives/issues/1242
+        onClick={(event) => {
+          event.stopPropagation();
+        }}
+        asChild
+      >
+        <Button
+          icon={MoreIcon}
+          size="mini"
+          variant="ghost-secondary"
+          className={cn(className)}
+        />
+      </DropdownMenuTrigger>
+
+      <DropdownMenuContent align="end">
+        <DropdownMenuGroup>
+          {moreMenuItems.map((item, index) => (
+            <DropdownMenuItem
+              key={index}
+              {...item}
               onClick={(event) => {
                 event.stopPropagation();
+                item.onClick?.(event);
               }}
-              asChild
-            >
-              <IconButton
-                icon={MoreIcon}
-                size="sm"
-                variant="outline"
-                className="s-m-1"
-              />
-            </DropdownMenuTrigger>
-
-            <DropdownMenuContent align="end">
-              <DropdownMenuGroup>
-                {moreMenuItems?.map((item, index) => (
-                  <DropdownMenuItem
-                    key={index}
-                    {...item}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      item.onClick?.(event);
-                    }}
-                  />
-                ))}
-              </DropdownMenuGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-      </td>
-    </tr>
+            />
+          ))}
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 };
 
@@ -413,11 +422,11 @@ DataTable.Cell = function Cell({
 }: CellProps) {
   return (
     <td
-      style={getSize(column.columnDef)}
-      className={classNames(
-        "s-flex s-h-12 s-items-center s-truncate s-whitespace-nowrap s-pl-1.5 s-text-element-800",
-        column.columnDef.meta?.className || "",
-        className || ""
+      className={cn(
+        cellHeight,
+        "s-truncate s-pl-2",
+        column.columnDef.meta?.className,
+        className
       )}
       {...props}
     >
@@ -425,16 +434,6 @@ DataTable.Cell = function Cell({
     </td>
   );
 };
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function getSize(columnDef: ColumnDef<any>) {
-  if (columnDef.meta?.width) {
-    return { width: columnDef.meta.width };
-  }
-  return {
-    flex: columnDef.meta?.flex ?? 1,
-  };
-}
 
 interface CellContentProps extends React.TdHTMLAttributes<HTMLDivElement> {
   avatarUrl?: string;
@@ -458,13 +457,7 @@ DataTable.CellContent = function CellContent({
   ...props
 }: CellContentProps) {
   return (
-    <div
-      className={classNames(
-        "s-flex s-w-full s-items-center s-py-2",
-        className || ""
-      )}
-      {...props}
-    >
+    <div className={cn("s-flex s-items-center", className)} {...props}>
       {avatarUrl && avatarTooltipLabel && (
         <Tooltip
           trigger={
@@ -490,23 +483,105 @@ DataTable.CellContent = function CellContent({
         <Icon
           visual={icon}
           size="sm"
-          className={classNames(
-            "s-mr-2 s-text-element-800",
-            iconClassName || ""
-          )}
+          className={cn("s-mr-2 s-text-foreground", iconClassName)}
         />
       )}
       <div className="s-flex s-shrink s-truncate">
-        <span className="s-truncate s-text-sm s-text-element-800">
+        <span className="s-truncate s-text-sm s-text-foreground">
           {children}
         </span>
         {description && (
-          <span className="s-pl-2 s-text-sm s-text-element-600">
+          <span className="s-pl-2 s-text-sm s-text-muted-foreground">
             {description}
           </span>
         )}
       </div>
     </div>
+  );
+};
+
+interface BasicCellContentProps extends React.TdHTMLAttributes<HTMLDivElement> {
+  label: string | number;
+  tooltip?: string | number;
+  textToCopy?: string | number;
+}
+
+DataTable.BasicCellContent = function BasicCellContent({
+  label,
+  tooltip,
+  className,
+  textToCopy,
+  ...props
+}: BasicCellContentProps) {
+  const [isCopied, copyToClipboard] = useCopyToClipboard();
+
+  const handleCopy = async () => {
+    const textToUse = textToCopy ?? String(label);
+    void copyToClipboard(
+      new ClipboardItem({
+        "text/plain": new Blob([String(textToUse)], {
+          type: "text/plain",
+        }),
+      })
+    );
+  };
+
+  return (
+    <>
+      {tooltip ? (
+        <Tooltip
+          tooltipTriggerAsChild
+          trigger={
+            <div
+              className={cn(
+                cellHeight,
+                "s-group s-flex s-items-center s-gap-2 s-text-sm s-text-muted-foreground",
+                className
+              )}
+              {...props}
+            >
+              <span className="s-truncate">{label}</span>
+              {textToCopy && (
+                <Button
+                  icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+                  className="s-hidden group-hover:s-block"
+                  variant="outline"
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    await handleCopy();
+                  }}
+                  size="xs"
+                />
+              )}
+            </div>
+          }
+          label={tooltip}
+        />
+      ) : (
+        <div
+          className={cn(
+            cellHeight,
+            "s-group s-flex s-items-center s-gap-2 s-text-sm s-text-muted-foreground",
+            className
+          )}
+          {...props}
+        >
+          <span className="s-truncate">{label}</span>
+          {textToCopy && (
+            <Button
+              icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+              className="s-hidden group-hover:s-block"
+              variant="outline"
+              onClick={async (e) => {
+                e.stopPropagation();
+                await handleCopy();
+              }}
+              size="xs"
+            />
+          )}
+        </div>
+      )}
+    </>
   );
 };
 
@@ -534,12 +609,7 @@ DataTable.CellContentWithCopy = function CellContentWithCopy({
   };
 
   return (
-    <div
-      className={classNames(
-        "s-flex s-items-center s-space-x-2",
-        className || ""
-      )}
-    >
+    <div className={cn("s-flex s-items-center s-space-x-2", className)}>
       <span className="s-truncate">{children}</span>
       <IconButton
         icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}

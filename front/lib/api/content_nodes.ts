@@ -1,4 +1,5 @@
 import type {
+  ConnectorProvider,
   ContentNodeType,
   CoreAPIContentNode,
   DataSourceViewContentNode,
@@ -41,10 +42,12 @@ export function getContentNodeInternalIdFromTableId(
 export function computeNodesDiff({
   connectorsContentNodes,
   coreContentNodes,
+  provider,
   localLogger,
 }: {
   connectorsContentNodes: DataSourceViewContentNode[];
   coreContentNodes: DataSourceViewContentNode[];
+  provider: ConnectorProvider | null;
   localLogger: typeof logger;
 }) {
   connectorsContentNodes.forEach((connectorsNode) => {
@@ -70,7 +73,11 @@ export function computeNodesDiff({
       const diff = Object.fromEntries(
         Object.entries(connectorsNode)
           .filter(([key, value]) => {
-            if (key === "preventSelection") {
+            if (["preventSelection", "lastUpdatedAt"].includes(key)) {
+              return false;
+            }
+            // Custom exclusion rules. The goal here is to avoid logging irrelevant differences, scoping by connector.
+            if (key === "parentInternalId" && provider === "snowflake") {
               return false;
             }
             const coreValue = coreNode[key as keyof DataSourceViewContentNode];
@@ -177,8 +184,6 @@ export function getContentNodeMetadata(
     case MIME_TYPES.SNOWFLAKE.TABLE:
       return { type: "database" };
     case MIME_TYPES.WEBCRAWLER.FOLDER:
-      return { type: "folder" };
-    case MIME_TYPES.ZENDESK.BRAND:
       return { type: "folder" };
     case MIME_TYPES.ZENDESK.HELP_CENTER:
       return { type: "folder" };

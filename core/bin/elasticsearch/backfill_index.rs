@@ -3,7 +3,6 @@ use dust::{
     data_sources::node::Node,
     search_stores::search_store::ElasticsearchSearchStore,
     stores::{postgres::PostgresStore, store::Store},
-    utils::{self},
 };
 use elasticsearch::{http::request::JsonBody, indices::IndicesExistsParts, BulkParts};
 use http::StatusCode;
@@ -22,7 +21,7 @@ struct Args {
     start_cursor: i64,
 
     #[arg(long, help = "The batch size", default_value = "100")]
-    batch_size: i64,
+    batch_size: usize,
 }
 
 /*
@@ -88,23 +87,36 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let db_uri = std::env::var("CORE_DATABASE_READ_REPLICA_URI")
         .expect("CORE_DATABASE_READ_REPLICA_URI must be set");
     let store = PostgresStore::new(&db_uri).await?;
-    // loop on all nodes in postgres using id as cursor, stopping when timestamp
-    // is greater than now
+    // loop on all nodes in postgres using id as cursor, stopping when id is
+    // greated than the last id in data_sources_nodes at start of backfill
     let mut next_cursor = start_cursor;
-    let now = utils::now();
-    loop {
+
+    // grab last id in data_sources_nodes
+    let pool = store.raw_pool();
+    let c = pool.get().await?;
+    let last_id = c
+        .query_one("SELECT MAX(id) FROM data_sources_nodes", &[])
+        .await?;
+    let last_id: i64 = last_id.get(0);
+    println!("Last id in data_sources_nodes: {}", last_id);
+    while next_cursor <= last_id {
         print!(
             "Processing {} nodes, starting at id {}. ",
             batch_size, next_cursor
         );
-        let (nodes, cursor) =
+        let (nodes, next_id_cursor) =
             get_node_batch(next_cursor, batch_size, Box::new(store.clone())).await?;
-        if nodes.is_empty() || nodes.first().unwrap().timestamp > now {
-            println!("No nodes left. \nBackfill complete.");
-            break;
-        }
-        next_cursor = cursor;
 
+        next_cursor = match next_id_cursor {
+            Some(cursor) => cursor,
+            None => {
+                println!(
+                    "No more nodes to process (last id: {}). \nBackfill complete.",
+                    last_id
+                );
+                break;
+            }
+        };
         //
         let nodes_body: Vec<JsonBody<_>> = nodes
             .into_iter()
@@ -136,18 +148,22 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
 
 async fn get_node_batch(
     next_cursor: i64,
-    batch_size: i64,
+    batch_size: usize,
     store: Box<dyn Store + Sync + Send>,
-) -> Result<(Vec<Node>, i64), Box<dyn std::error::Error>> {
+) -> Result<(Vec<Node>, Option<i64>), Box<dyn std::error::Error>> {
     let nodes = store
-        .list_data_source_nodes(next_cursor, batch_size)
+        .list_data_source_nodes(next_cursor, batch_size.try_into().unwrap())
         .await?;
     let last_node = nodes.last().cloned();
+    let nodes_length = nodes.len();
     match last_node {
         Some((_, last_row_id, _)) => Ok((
             nodes.into_iter().map(|(node, _, _)| node).collect(),
-            last_row_id,
+            match nodes_length == batch_size {
+                true => Some(last_row_id),
+                false => None,
+            },
         )),
-        None => Ok((vec![], 0)),
+        None => Ok((vec![], None)),
     }
 }

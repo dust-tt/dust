@@ -1,3 +1,4 @@
+import type { DropdownMenuItemProps } from "@dust-tt/sparkle";
 import {
   Button,
   Cog6ToothIcon,
@@ -58,6 +59,7 @@ import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
 type RowData = DataSourceViewContentNode & {
   icon: React.ComponentType;
   onClick?: () => void;
+  moreMenuItems?: DropdownMenuItemProps[];
 };
 
 const columnsBreakpoints = {
@@ -85,17 +87,27 @@ const getTableColumns = (showSpaceUsage: boolean): ColumnDef<RowData>[] => {
       id: "spaces",
       accessorKey: "spaces",
       meta: {
-        width: "14rem",
+        className: "w-48",
       },
       cell: (info: CellContext<RowData, SpaceType[]>) => (
-        <DataTable.CellContent>
-          {info.getValue().length > 0
-            ? info
-                .getValue()
-                .map((v) => v.name)
-                .join(", ")
-            : "-"}
-        </DataTable.CellContent>
+        <DataTable.BasicCellContent
+          label={
+            info.getValue().length > 0
+              ? info
+                  .getValue()
+                  .map((v) => v.name)
+                  .join(", ")
+              : "-"
+          }
+          tooltip={
+            info.getValue().length > 0
+              ? info
+                  .getValue()
+                  .map((v) => v.name)
+                  .join(", ")
+              : "-"
+          }
+        />
       ),
     });
   }
@@ -105,15 +117,29 @@ const getTableColumns = (showSpaceUsage: boolean): ColumnDef<RowData>[] => {
     id: "lastUpdatedAt",
     accessorKey: "lastUpdatedAt",
     meta: {
-      width: "12rem",
+      className: "w-48",
     },
     cell: (info: CellContext<RowData, number>) => (
-      <DataTable.CellContent>
-        {info.getValue()
-          ? formatTimestampToFriendlyDate(info.getValue(), "short")
-          : "-"}
-      </DataTable.CellContent>
+      <DataTable.BasicCellContent
+        label={
+          info.getValue()
+            ? formatTimestampToFriendlyDate(info.getValue(), "short")
+            : "-"
+        }
+      />
     ),
+  });
+
+  columns.push({
+    id: "actions",
+    header: "",
+    meta: {
+      className: "flex justify-end items-center",
+    },
+    cell: (info) =>
+      info.row.original.moreMenuItems && (
+        <DataTable.MoreButton moreMenuItems={info.row.original.moreMenuItems} />
+      ),
   });
 
   return columns;

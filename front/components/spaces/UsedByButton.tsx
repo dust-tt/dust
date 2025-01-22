@@ -19,9 +19,9 @@ export const UsedByButton = ({
   return usage.count === 0 ? (
     <Button
       icon={RobotIcon}
-      variant="ghost"
+      variant="ghost-secondary"
       isSelect={false}
-      size="sm"
+      size="xs"
       label={`${usage.count}`}
       disabled
     />
@@ -30,9 +30,9 @@ export const UsedByButton = ({
       <DropdownMenuTrigger asChild>
         <Button
           icon={RobotIcon}
-          variant="ghost"
+          variant="ghost-secondary"
           isSelect={true}
-          size="sm"
+          size="xs"
           label={`${usage.count}`}
         />
       </DropdownMenuTrigger>
