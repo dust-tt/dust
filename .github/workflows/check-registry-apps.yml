@@ -53,5 +53,5 @@ jobs:
         run: |
           set -eo pipefail
           npm install
-          npx tsx ./admin/check_registry_apps.ts --url https://dust.tt --wId 78bda07b39 --spaceId vlt_rICtlrSEpWqX --apiKey ${{ secrets.DUST_APPS_US_API_KEY }}
-          npx tsx ./admin/check_registry_apps.ts --url https://eu.dust.tt --wId W1YzXC9nhN --spaceId vlt_p5kel5XkwVqEnpKcdXzC --apiKey ${{ secrets.DUST_APPS_EU_API_KEY }}
+          npx tsx ./admin/check_registry_apps.ts --execute --url https://dust.tt --wId 78bda07b39 --spaceId vlt_rICtlrSEpWqX --apiKey ${{ secrets.DUST_APPS_US_API_KEY }}
+          npx tsx ./admin/check_registry_apps.ts --execute --url https://eu.dust.tt --wId W1YzXC9nhN --spaceId vlt_p5kel5XkwVqEnpKcdXzC --apiKey ${{ secrets.DUST_APPS_EU_API_KEY }}
