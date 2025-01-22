@@ -1,4 +1,4 @@
-name: Reusable Deploy Workflow
+name: Revert Workflow
 
 on:
   workflow_call:
@@ -8,7 +8,7 @@ on:
         type: string
         required: true
       component:
-        description: "Component to deploy"
+        description: "Component to revert"
         type: choice
         options:
           - alerting-temporal
@@ -22,10 +22,6 @@ on:
           - viz
         required: true
     secrets:
-      GCLOUD_US_PROJECT_ID:
-        required: true
-      GCLOUD_EU_PROJECT_ID:
-        required: true
       SLACK_CHANNEL_ID:
         required: true
       SLACK_BOT_TOKEN:
@@ -43,7 +39,7 @@ jobs:
       - name: Check branch condition
         run: |
           if [[ "${{ inputs.enforce_main }}" == "true" && "${{ github.ref }}" != "refs/heads/main" ]]; then
-            echo "Deployments are only allowed from the main branch"
+            echo "Reverts are only allowed from the main branch"
             exit 1
           fi
 
@@ -65,7 +61,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Notify Build And Deploy Start
+      - name: Notify Start
         id: build_message
         uses: ./.github/actions/slack-notify
         with:
@@ -90,42 +86,8 @@ jobs:
             echo "matrix=[\"${{ inputs.regions }}\"]" >> $GITHUB_OUTPUT
           fi
 
-  build:
-    permissions:
-      contents: read
-      id-token: write
-    needs: [prepare, notify-start, create-matrix]
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        region: ${{ fromJson(needs.create-matrix.outputs.matrix) }}
-      fail-fast: true
-
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Set project ID
-        id: project
-        run: |
-          if [ "${{ matrix.region }}" = "us-central1" ]; then
-            echo "PROJECT_ID=${{ secrets.GCLOUD_US_PROJECT_ID }}" >> $GITHUB_OUTPUT
-          else
-            echo "PROJECT_ID=${{ secrets.GCLOUD_EU_PROJECT_ID }}" >> $GITHUB_OUTPUT
-          fi
-
-      - id: "auth"
-        name: "Authenticate to Google Cloud"
-        uses: "google-github-actions/auth@v2"
-        with:
-          create_credentials_file: true
-          workload_identity_provider: "projects/357744735673/locations/global/workloadIdentityPools/github-pool-apps/providers/github-provider-apps"
-          service_account: "github-build-invoker@${{ steps.project.outputs.PROJECT_ID }}.iam.gserviceaccount.com"
-
-      - name: "Set up Cloud SDK"
-        uses: "google-github-actions/setup-gcloud@v2"
-
   revert:
-    needs: [prepare, notify-start, build]
+    needs: [prepare, notify-start]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -169,3 +131,4 @@ jobs:
           region: ${{ inputs.regions }}
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
           thread_ts: "${{ needs.notify-start.outputs.thread_ts }}"
+          is_revert: true
