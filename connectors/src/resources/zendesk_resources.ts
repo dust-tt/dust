@@ -508,9 +508,7 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     const categories = await ZendeskCategory.findAll({
       where: { connectorId, brandId, categoryId: { [Op.in]: categoryIds } },
     });
-    return categories.map(
-      (category) => category && new this(this.model, category.get())
-    );
+    return categories.map((category) => new this(this.model, category.get()));
   }
 
   static async fetchReadOnlyCategoryIdsByBrandId({
@@ -564,9 +562,7 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     const categories = await ZendeskCategory.findAll({
       where: { connectorId, brandId, permission: "read" },
     });
-    return categories.map(
-      (category) => category && new this(this.model, category.get())
-    );
+    return categories.map((category) => new this(this.model, category.get()));
   }
 
   static async fetchBrandUnselectedCategories({
