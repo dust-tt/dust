@@ -71,7 +71,6 @@ export {
   DropdownMenuTrigger,
 } from "./Dropdown";
 export { default as DropzoneOverlay } from "./DropzoneOverlay";
-export { ElementDialog } from "./ElementDialog";
 export { ElementModal } from "./ElementModal";
 export type { EmojiMartData } from "./EmojiPicker";
 export { DataEmojiMart, EmojiPicker } from "./EmojiPicker";
