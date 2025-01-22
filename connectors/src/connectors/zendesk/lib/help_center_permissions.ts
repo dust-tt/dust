@@ -7,15 +7,14 @@ import {
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import logger from "@connectors/logger/logger";
 import {
-  ZendeskArticleResource,
   ZendeskBrandResource,
   ZendeskCategoryResource,
 } from "@connectors/resources/zendesk_resources";
 
 /**
- * Marks a help center as permission "read", optionally alongside all its children (categories and articles).
+ * Marks a help center as permission "read".
  * If we are in this function, it means that the user selected the Help Center in the UI.
- * Therefore, we don't need to check for the help_center_state and has_help_center attributes
+ * Therefore, we don't need to check for the has_help_center attributes
  * since the box does not appear in the UI then.
  */
 export async function allowSyncZendeskHelpCenter({
@@ -64,34 +63,11 @@ export async function allowSyncZendeskHelpCenter({
     });
   }
 
-  // updating permissions for all the children categories
-  await changeZendeskClientSubdomain(zendeskApiClient, {
-    connectorId,
-    brandId,
-  });
-  try {
-    const categories = await zendeskApiClient.helpcenter.categories.list();
-    categories.forEach((category) =>
-      allowSyncZendeskCategory({
-        connectionId,
-        connectorId,
-        categoryId: category.id,
-        brandId,
-      })
-    );
-  } catch (e) {
-    logger.error(
-      { connectorId, brandId },
-      "[Zendesk] Categories could not be fetched."
-    );
-    return false;
-  }
-
   return true;
 }
 
 /**
- * Mark a help center as permission "none", optionally alongside all its children (categories and articles).
+ * Mark a help center as permission "none" in db to indicate it was explicitly selected by the user.
  */
 export async function forbidSyncZendeskHelpCenter({
   connectorId,
@@ -99,37 +75,27 @@ export async function forbidSyncZendeskHelpCenter({
 }: {
   connectorId: ModelId;
   brandId: number;
-}): Promise<ZendeskBrandResource | null> {
+}): Promise<boolean> {
   const brand = await ZendeskBrandResource.fetchByBrandId({
     connectorId,
     brandId,
   });
   if (!brand) {
     logger.error(
-      { brandId },
+      { connectorId, brandId },
       "[Zendesk] Brand not found, could not disable sync."
     );
-    return null;
+    return false;
   }
 
   // updating the field helpCenterPermission to "none" for the brand
   await brand.revokeHelpCenterPermissions();
 
-  // revoking the permissions for all the children categories and articles
-  await ZendeskCategoryResource.revokePermissionsForBrand({
-    connectorId,
-    brandId,
-  });
-  await ZendeskArticleResource.revokePermissionsForBrand({
-    connectorId,
-    brandId,
-  });
-
-  return brand;
+  return true;
 }
 
 /**
- * Marks a category with "read" permissions, alongside all its children articles.
+ * Marks a category with "read" permissions in db to indicate it was explicitly selected by the user.
  */
 export async function allowSyncZendeskCategory({
   connectorId,
@@ -141,8 +107,8 @@ export async function allowSyncZendeskCategory({
   connectionId: string;
   brandId: number;
   categoryId: number;
-}): Promise<ZendeskCategoryResource | null> {
-  let category = await ZendeskCategoryResource.fetchByCategoryId({
+}): Promise<boolean> {
+  const category = await ZendeskCategoryResource.fetchByCategoryId({
     connectorId,
     brandId,
     categoryId,
@@ -150,6 +116,7 @@ export async function allowSyncZendeskCategory({
 
   if (category) {
     await category.grantPermissions();
+    return true;
   } else {
     const zendeskApiClient = createZendeskClient(
       await getZendeskSubdomainAndAccessToken(connectionId)
@@ -170,7 +137,7 @@ export async function allowSyncZendeskCategory({
           { connectorId, brandId },
           "[Zendesk] Brand could not be fetched."
         );
-        return null;
+        return false;
       }
 
       await ZendeskBrandResource.makeNew({
@@ -180,7 +147,7 @@ export async function allowSyncZendeskCategory({
           brandId: fetchedBrand.id,
           name: fetchedBrand.name || "Brand",
           ticketsPermission: "none",
-          helpCenterPermission: "read",
+          helpCenterPermission: "none",
           url: fetchedBrand.url,
         },
       });
@@ -193,7 +160,7 @@ export async function allowSyncZendeskCategory({
     const { result: fetchedCategory } =
       await zendeskApiClient.helpcenter.categories.show(categoryId);
     if (fetchedCategory) {
-      category = await ZendeskCategoryResource.makeNew({
+      await ZendeskCategoryResource.makeNew({
         blob: {
           connectorId,
           brandId,
@@ -205,15 +172,18 @@ export async function allowSyncZendeskCategory({
         },
       });
     } else {
-      logger.error({ categoryId }, "[Zendesk] Category could not be fetched.");
-      return null;
+      logger.error(
+        { connectorId, categoryId },
+        "[Zendesk] Category could not be fetched."
+      );
+      return false;
     }
+    return true;
   }
-  return category;
 }
 
 /**
- * Mark a category with "none" permissions alongside all its children articles.
+ * Mark a category with "none" permissions in db to indicate it was explicitly unselected by the user.
  */
 export async function forbidSyncZendeskCategory({
   connectorId,
@@ -223,7 +193,7 @@ export async function forbidSyncZendeskCategory({
   connectorId: ModelId;
   brandId: number;
   categoryId: number;
-}): Promise<ZendeskCategoryResource | null> {
+}): Promise<boolean> {
   // revoking the permissions for the category
   const category = await ZendeskCategoryResource.fetchByCategoryId({
     connectorId,
@@ -232,19 +202,12 @@ export async function forbidSyncZendeskCategory({
   });
   if (!category) {
     logger.error(
-      { categoryId },
+      { connectorId, categoryId },
       "[Zendesk] Category not found, could not disable sync."
     );
-    return null;
+    return false;
   }
   await category.revokePermissions();
 
-  // revoking the permissions for all the children articles
-  await ZendeskArticleResource.revokePermissionsForCategory({
-    connectorId,
-    brandId,
-    categoryId,
-  });
-
-  return category;
+  return true;
 }

@@ -34,11 +34,13 @@ export async function retrieveAllSelectedNodes(
   connectorId: ModelId
 ): Promise<ContentNode[]> {
   const brands = await ZendeskBrandResource.fetchAllReadOnly(connectorId);
-  const helpCenterNodes: ContentNode[] = brands
-    .filter((brand) => brand.helpCenterPermission === "read")
-    .map((brand) =>
-      brand.getHelpCenterContentNode(connectorId, { richTitle: true })
-    );
+  const brandsWithHelpCenter = brands.filter(
+    (brand) => brand.helpCenterPermission === "read"
+  );
+
+  const helpCenterNodes: ContentNode[] = brandsWithHelpCenter.map((brand) =>
+    brand.getHelpCenterContentNode(connectorId, { richTitle: true })
+  );
 
   const ticketNodes: ContentNode[] = brands
     .filter((brand) => brand.ticketsPermission === "read")
@@ -49,7 +51,13 @@ export async function retrieveAllSelectedNodes(
       })
     );
 
-  return [...helpCenterNodes, ...ticketNodes];
+  const categories =
+    await ZendeskCategoryResource.fetchAllReadOnly(connectorId);
+  const categoryNodes: ContentNode[] = categories.map((category) =>
+    category.toContentNode(connectorId, { expandable: true })
+  );
+
+  return [...helpCenterNodes, ...ticketNodes, ...categoryNodes];
 }
 
 /**
@@ -183,13 +191,10 @@ async function getHelpCenterChildren(
     isReadPermissionsOnly: boolean;
   }
 ): Promise<ContentNode[]> {
-  /// it's ok to fetch read-only data here, if !isReadPermissionsOnly, we are only using the categories in db to
-  // check if they have read permissions
-  const categoriesInDatabase =
-    await ZendeskCategoryResource.fetchByBrandIdReadOnly({
-      connectorId,
-      brandId,
-    });
+  const categoriesInDatabase = await ZendeskCategoryResource.fetchByBrandId({
+    connectorId,
+    brandId,
+  });
   if (isReadPermissionsOnly) {
     return categoriesInDatabase.map((category) =>
       category.toContentNode(connectorId, { expandable: true })
@@ -271,7 +276,7 @@ export async function retrieveChildrenNodes({
     // If the parent is a brand's tickets, we retrieve the list of tickets for the brand.
     case "tickets": {
       if (isReadPermissionsOnly) {
-        const ticketsInDb = await ZendeskTicketResource.fetchByBrandIdReadOnly({
+        const ticketsInDb = await ZendeskTicketResource.fetchByBrandId({
           connectorId: connector.id,
           brandId: objectIds.brandId,
         });
@@ -282,11 +287,10 @@ export async function retrieveChildrenNodes({
     // If the parent is a category, we retrieve the list of articles for this category.
     case "category": {
       if (isReadPermissionsOnly) {
-        const articlesInDb =
-          await ZendeskArticleResource.fetchByCategoryIdReadOnly({
-            connectorId: connector.id,
-            ...objectIds,
-          });
+        const articlesInDb = await ZendeskArticleResource.fetchByCategoryId({
+          connectorId: connector.id,
+          ...objectIds,
+        });
         return articlesInDb.map((article) =>
           article.toContentNode(connector.id)
         );

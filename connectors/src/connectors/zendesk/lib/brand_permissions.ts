@@ -1,20 +1,12 @@
 import type { ModelId } from "@dust-tt/types";
 
-import {
-  allowSyncZendeskHelpCenter,
-  forbidSyncZendeskHelpCenter,
-} from "@connectors/connectors/zendesk/lib/help_center_permissions";
-import {
-  allowSyncZendeskTickets,
-  forbidSyncZendeskTickets,
-} from "@connectors/connectors/zendesk/lib/ticket_permissions";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import { createZendeskClient } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import logger from "@connectors/logger/logger";
 import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
 
 /**
- * Mark a brand as permission "read", with all its children (help center and tickets + children).
+ * Mark a brand as permission "read" in db to indicate it was explicitly selected by the user.
  * Creates the brand by fetching it from Zendesk if it does not exist in db.
  */
 export async function allowSyncZendeskBrand({
@@ -48,7 +40,12 @@ export async function allowSyncZendeskBrand({
   }
 
   // creating the brand if it does not exist yet in db
-  if (!brand) {
+  if (brand) {
+    await brand.grantTicketsPermissions();
+    if (fetchedBrand.has_help_center) {
+      await brand.grantHelpCenterPermissions();
+    }
+  } else {
     await ZendeskBrandResource.makeNew({
       blob: {
         subdomain: fetchedBrand.subdomain,
@@ -62,27 +59,11 @@ export async function allowSyncZendeskBrand({
     });
   }
 
-  // setting the permissions for the brand:
-  // can be redundant if already set when creating the brand but necessary because of the categories.
-  if (fetchedBrand.has_help_center) {
-    // allow the categories
-    await allowSyncZendeskHelpCenter({
-      connectorId,
-      connectionId,
-      brandId,
-    });
-  }
-  await allowSyncZendeskTickets({
-    connectorId,
-    connectionId,
-    brandId,
-  });
-
   return true;
 }
 
 /**
- * Mark a brand as permission "none", with all its children (help center and tickets + children).
+ * Mark a brand as permission "none" in db to indicate it was explicitly unselected by the user.
  */
 export async function forbidSyncZendeskBrand({
   connectorId,
@@ -90,22 +71,21 @@ export async function forbidSyncZendeskBrand({
 }: {
   connectorId: ModelId;
   brandId: number;
-}): Promise<ZendeskBrandResource | null> {
+}): Promise<boolean> {
   const brand = await ZendeskBrandResource.fetchByBrandId({
     connectorId,
     brandId,
   });
   if (!brand) {
     logger.error(
-      { brandId },
+      { connectorId, brandId },
       "[Zendesk] Brand not found, could not disable sync."
     );
-    return null;
+    return false;
   }
 
-  // revoke permissions for the two children resources (help center and tickets + respective children)
-  await forbidSyncZendeskHelpCenter({ connectorId, brandId });
-  await forbidSyncZendeskTickets({ connectorId, brandId });
+  await brand.revokeHelpCenterPermissions();
+  await brand.revokeTicketsPermissions();
 
-  return brand;
+  return true;
 }

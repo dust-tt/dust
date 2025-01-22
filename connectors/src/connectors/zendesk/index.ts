@@ -385,23 +385,24 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       const { type, objectIds } = getIdsFromInternalId(connectorId, id);
       const { brandId } = objectIds;
       switch (type) {
+        // The brand is just a shortcut to set permissions for Help Center and Tickets at once.
         case "brand": {
           if (permission === "none") {
-            const updatedBrand = await forbidSyncZendeskBrand({
+            const brandWasUnselected = await forbidSyncZendeskBrand({
               connectorId,
               brandId,
             });
-            if (updatedBrand) {
+            if (brandWasUnselected) {
               toBeSignaledBrandIds.add(brandId);
             }
           }
           if (permission === "read") {
-            const wasBrandUpdated = await allowSyncZendeskBrand({
+            const brandWasSelected = await allowSyncZendeskBrand({
               connectorId,
               connectionId,
               brandId,
             });
-            if (wasBrandUpdated) {
+            if (brandWasSelected) {
               toBeSignaledBrandIds.add(brandId);
             }
           }
@@ -409,21 +410,21 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         }
         case "help-center": {
           if (permission === "none") {
-            const updatedBrandHelpCenter = await forbidSyncZendeskHelpCenter({
+            const helpCenterWasUnselected = await forbidSyncZendeskHelpCenter({
               connectorId,
               brandId,
             });
-            if (updatedBrandHelpCenter) {
+            if (helpCenterWasUnselected) {
               toBeSignaledHelpCenterIds.add(brandId);
             }
           }
           if (permission === "read") {
-            const wasBrandUpdated = await allowSyncZendeskHelpCenter({
+            const helpCenterWasSelected = await allowSyncZendeskHelpCenter({
               connectorId,
               connectionId,
               brandId,
             });
-            if (wasBrandUpdated) {
+            if (helpCenterWasSelected) {
               toBeSignaledHelpCenterIds.add(brandId);
             }
           }
@@ -431,21 +432,21 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         }
         case "tickets": {
           if (permission === "none") {
-            const updatedBrandTickets = await forbidSyncZendeskTickets({
+            const ticketsWereUnselected = await forbidSyncZendeskTickets({
               connectorId,
               brandId,
             });
-            if (updatedBrandTickets) {
+            if (ticketsWereUnselected) {
               toBeSignaledTicketsIds.add(brandId);
             }
           }
           if (permission === "read") {
-            const wasBrandUpdated = await allowSyncZendeskTickets({
+            const ticketsWereSelected = await allowSyncZendeskTickets({
               connectorId,
               connectionId,
               brandId,
             });
-            if (wasBrandUpdated) {
+            if (ticketsWereSelected) {
               toBeSignaledTicketsIds.add(brandId);
             }
           }
@@ -454,23 +455,23 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         case "category": {
           const { brandId, categoryId } = objectIds;
           if (permission === "none") {
-            const updatedCategory = await forbidSyncZendeskCategory({
+            const categoryWasUpdated = await forbidSyncZendeskCategory({
               connectorId,
               brandId,
               categoryId,
             });
-            if (updatedCategory) {
+            if (categoryWasUpdated) {
               toBeSignaledCategoryIds.add([brandId, categoryId]);
             }
           }
           if (permission === "read") {
-            const newCategory = await allowSyncZendeskCategory({
+            const categoryWasUpdated = await allowSyncZendeskCategory({
               connectorId,
               connectionId,
               categoryId,
               brandId,
             });
-            if (newCategory) {
+            if (categoryWasUpdated) {
               toBeSignaledCategoryIds.add([brandId, categoryId]);
             }
           }
@@ -634,7 +635,9 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       ...brandTickets.map((brand) =>
         brand.getTicketsContentNode(connectorId, { richTitle: true })
       ),
-      ...categories.map((category) => category.toContentNode(connectorId)),
+      ...categories.map((category) =>
+        category.toContentNode(connectorId, { expandable: true })
+      ),
       ...articles.map((article) => article.toContentNode(connectorId)),
       ...tickets.map((ticket) => ticket.toContentNode(connectorId)),
     ]);

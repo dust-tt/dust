@@ -508,9 +508,7 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     const categories = await ZendeskCategory.findAll({
       where: { connectorId, brandId, categoryId: { [Op.in]: categoryIds } },
     });
-    return categories.map(
-      (category) => category && new this(this.model, category.get())
-    );
+    return categories.map((category) => new this(this.model, category.get()));
   }
 
   static async fetchReadOnlyCategoryIdsByBrandId({
@@ -537,7 +535,7 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     return categories.map((category) => category.get().brandId);
   }
 
-  static async fetchByBrandId({
+  static async fetchCategoriesNotSelectedInBrand({
     connectorId,
     brandId,
     batchSize = null,
@@ -554,6 +552,19 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     return categories.map((category) => category.get().categoryId);
   }
 
+  static async fetchByBrandId({
+    connectorId,
+    brandId,
+  }: {
+    connectorId: number;
+    brandId: number;
+  }): Promise<ZendeskCategoryResource[]> {
+    const categories = await ZendeskCategory.findAll({
+      where: { connectorId, brandId },
+    });
+    return categories.map((category) => new this(this.model, category.get()));
+  }
+
   static async fetchByBrandIdReadOnly({
     connectorId,
     brandId,
@@ -564,9 +575,29 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     const categories = await ZendeskCategory.findAll({
       where: { connectorId, brandId, permission: "read" },
     });
-    return categories.map(
-      (category) => category && new this(this.model, category.get())
-    );
+    return categories.map((category) => new this(this.model, category.get()));
+  }
+
+  static async fetchBrandUnselectedCategories({
+    connectorId,
+    brandId,
+  }: {
+    connectorId: number;
+    brandId: number;
+  }): Promise<ZendeskCategoryResource[]> {
+    const categories = await ZendeskCategory.findAll({
+      where: { connectorId, brandId, permission: "none" },
+    });
+    return categories.map((category) => new this(this.model, category.get()));
+  }
+
+  static async fetchAllReadOnly(
+    connectorId: number
+  ): Promise<ZendeskCategoryResource[]> {
+    const categories = await ZendeskCategory.findAll({
+      where: { connectorId, permission: "read" },
+    });
+    return categories.map((category) => new this(this.model, category.get()));
   }
 
   static async deleteByCategoryId({
@@ -726,6 +757,7 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
       expandable: false,
       permission: this.permission,
       lastUpdatedAt: this.updatedAt.getTime(),
+      preventSelection: true,
     };
   }
 
@@ -788,7 +820,7 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
     return tickets.map((ticket) => new this(this.model, ticket.get()));
   }
 
-  static async fetchByBrandIdReadOnly({
+  static async fetchByBrandId({
     connectorId,
     brandId,
   }: {
@@ -796,7 +828,7 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
     brandId: number;
   }): Promise<ZendeskTicketResource[]> {
     const tickets = await ZendeskTicket.findAll({
-      where: { connectorId, brandId, permission: "read" },
+      where: { connectorId, brandId },
     });
     return tickets.map((ticket) => new this(this.model, ticket.get()));
   }
@@ -849,19 +881,6 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
     transaction: Transaction
   ) {
     await ZendeskTicket.destroy({ where: { connectorId }, transaction });
-  }
-
-  static async revokePermissionsForBrand({
-    connectorId,
-    brandId,
-  }: {
-    connectorId: number;
-    brandId: number;
-  }): Promise<void> {
-    await ZendeskTicket.update(
-      { permission: "none" },
-      { where: { connectorId, brandId } }
-    );
   }
 }
 
@@ -939,6 +958,7 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
       expandable: false,
       permission: this.permission,
       lastUpdatedAt: this.updatedAt.getTime(),
+      preventSelection: true,
     };
   }
 
@@ -1027,38 +1047,6 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
     return articles.map((article) => new this(this.model, article.get()));
   }
 
-  static async fetchByCategoryIdReadOnly({
-    connectorId,
-    brandId,
-    categoryId,
-  }: {
-    connectorId: number;
-    brandId: number;
-    categoryId: number;
-  }): Promise<ZendeskArticleResource[]> {
-    const articles = await ZendeskArticle.findAll({
-      where: { connectorId, brandId, categoryId, permission: "read" },
-    });
-    return articles.map((article) => new this(this.model, article.get()));
-  }
-
-  static async fetchArticleIdsByBrandId({
-    connectorId,
-    brandId,
-    batchSize = null,
-  }: {
-    connectorId: number;
-    brandId: number;
-    batchSize?: number | null;
-  }): Promise<number[]> {
-    const articles = await ZendeskArticle.findAll({
-      attributes: ["articleId"],
-      where: { connectorId, brandId },
-      ...(batchSize && { limit: batchSize }),
-    });
-    return articles.map((article) => article.get().articleId);
-  }
-
   static async deleteByArticleId({
     connectorId,
     brandId,
@@ -1106,33 +1094,5 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
     transaction: Transaction
   ) {
     await ZendeskArticle.destroy({ where: { connectorId }, transaction });
-  }
-
-  static async revokePermissionsForBrand({
-    connectorId,
-    brandId,
-  }: {
-    connectorId: number;
-    brandId: number;
-  }) {
-    await ZendeskArticle.update(
-      { permission: "none" },
-      { where: { connectorId, brandId } }
-    );
-  }
-
-  static async revokePermissionsForCategory({
-    connectorId,
-    brandId,
-    categoryId,
-  }: {
-    connectorId: number;
-    brandId: number;
-    categoryId: number;
-  }) {
-    await ZendeskArticle.update(
-      { permission: "none" },
-      { where: { connectorId, brandId, categoryId } }
-    );
   }
 }
