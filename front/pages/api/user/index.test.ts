@@ -37,6 +37,7 @@ describe(
               segmentation: workspace.segmentation,
               whiteListedProviders: workspace.whiteListedProviders,
               defaultEmbeddingProvider: workspace.defaultEmbeddingProvider,
+              ssoEnforced: workspace.ssoEnforced,
             },
           ],
         },
