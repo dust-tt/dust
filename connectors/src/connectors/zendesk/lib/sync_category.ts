@@ -101,7 +101,7 @@ export async function syncCategory({
         connectorId,
         brandId,
         categoryId: category.id,
-        permission: "read",
+        permission: "none",
       },
     });
   } else {
