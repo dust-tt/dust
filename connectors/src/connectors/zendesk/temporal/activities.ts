@@ -314,6 +314,7 @@ export async function syncZendeskCategoryBatchActivity({
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
   }
+
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
   const { accessToken, subdomain } = await getZendeskSubdomainAndAccessToken(
@@ -324,6 +325,10 @@ export async function syncZendeskCategoryBatchActivity({
     connectorId,
     accessToken,
     subdomain,
+  });
+  const brandInDb = await ZendeskBrandResource.fetchByBrandId({
+    connectorId,
+    brandId,
   });
 
   const { categories, hasMore, nextLink } = await fetchZendeskCategoriesInBrand(
@@ -338,6 +343,7 @@ export async function syncZendeskCategoryBatchActivity({
         connectorId,
         brandId,
         category,
+        isHelpCenterSelected: brandInDb?.helpCenterPermission === "read",
         currentSyncDateMs,
         dataSourceConfig,
       });

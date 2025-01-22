@@ -15,7 +15,6 @@ import {
 } from "@connectors/lib/data_sources";
 import {
   ZendeskArticleResource,
-  ZendeskBrandResource,
   ZendeskCategoryResource,
 } from "@connectors/resources/zendesk_resources";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
@@ -77,12 +76,14 @@ export async function syncCategory({
   connectorId,
   brandId,
   category,
+  isHelpCenterSelected,
   currentSyncDateMs,
   dataSourceConfig,
 }: {
   connectorId: ModelId;
   brandId: number;
   category: ZendeskFetchedCategory;
+  isHelpCenterSelected: boolean;
   currentSyncDateMs: number;
   dataSourceConfig: DataSourceConfig;
 }): Promise<void> {
@@ -114,20 +115,15 @@ export async function syncCategory({
   }
 
   // upserting a folder to data_sources_folders (core)
-  const brandInDb = await ZendeskBrandResource.fetchByBrandId({
-    connectorId,
-    brandId,
-  });
   const folderId = getCategoryInternalId({
     connectorId,
     brandId,
     categoryId: categoryInDb.categoryId,
   });
   // adding the parents to the array of parents iff the Help Center was selected
-  const parentId =
-    brandInDb?.helpCenterPermission === "read"
-      ? getHelpCenterInternalId({ connectorId, brandId })
-      : null;
+  const parentId = isHelpCenterSelected
+    ? getHelpCenterInternalId({ connectorId, brandId })
+    : null;
   const parents = parentId ? [folderId, parentId] : [folderId];
 
   await upsertDataSourceFolder({
