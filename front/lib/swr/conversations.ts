@@ -181,9 +181,11 @@ export function useConversationMessages({
 export function useConversationParticipants({
   conversationId,
   workspaceId,
+  options,
 }: {
   conversationId: string | null;
   workspaceId: string;
+  options?: { disabled: boolean };
 }) {
   const conversationParticipantsFetcher: Fetcher<FetchConversationParticipantsResponse> =
     fetcher;
@@ -192,7 +194,8 @@ export function useConversationParticipants({
     conversationId
       ? `/api/w/${workspaceId}/assistant/conversations/${conversationId}/participants`
       : null,
-    conversationParticipantsFetcher
+    conversationParticipantsFetcher,
+    options
   );
 
   return {
