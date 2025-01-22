@@ -116,7 +116,7 @@ export async function joinChannel(
           )
         );
       }
-      throw e;
+      return new Err(e as Error);
     }
   }
 
