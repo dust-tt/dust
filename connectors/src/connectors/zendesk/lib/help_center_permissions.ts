@@ -14,7 +14,7 @@ import {
 /**
  * Marks a help center as permission "read".
  * If we are in this function, it means that the user selected the Help Center in the UI.
- * Therefore, we don't need to check for the help_center_state and has_help_center attributes
+ * Therefore, we don't need to check for the has_help_center attributes
  * since the box does not appear in the UI then.
  */
 export async function allowSyncZendeskHelpCenter({
@@ -67,7 +67,7 @@ export async function allowSyncZendeskHelpCenter({
 }
 
 /**
- * Mark a help center as permission "none", optionally alongside all its children (categories and articles).
+ * Mark a help center as permission "none" in db to indicate it was explicitly selected by the user.
  */
 export async function forbidSyncZendeskHelpCenter({
   connectorId,
@@ -95,7 +95,7 @@ export async function forbidSyncZendeskHelpCenter({
 }
 
 /**
- * Marks a category with "read" permissions, alongside all its children articles.
+ * Marks a category with "read" permissions in db to indicate it was explicitly selected by the user.
  */
 export async function allowSyncZendeskCategory({
   connectorId,
@@ -182,7 +182,7 @@ export async function allowSyncZendeskCategory({
 }
 
 /**
- * Mark a category with "none" permissions alongside all its children articles.
+ * Mark a category with "none" permissions in db to indicate it was explicitly unselected by the user.
  */
 export async function forbidSyncZendeskCategory({
   connectorId,

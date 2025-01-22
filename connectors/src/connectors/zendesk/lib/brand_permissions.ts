@@ -6,7 +6,7 @@ import logger from "@connectors/logger/logger";
 import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
 
 /**
- * Mark a brand as permission "read", with all its children (help center and tickets + children).
+ * Mark a brand as permission "read" in db to indicate it was explicitly selected by the user.
  * Creates the brand by fetching it from Zendesk if it does not exist in db.
  */
 export async function allowSyncZendeskBrand({
@@ -63,7 +63,7 @@ export async function allowSyncZendeskBrand({
 }
 
 /**
- * Mark a brand as permission "none", with all its children (help center and tickets + children).
+ * Mark a brand as permission "none" in db to indicate it was explicitly unselected by the user.
  */
 export async function forbidSyncZendeskBrand({
   connectorId,
