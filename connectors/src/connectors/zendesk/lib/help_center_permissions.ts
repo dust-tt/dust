@@ -108,7 +108,7 @@ export async function allowSyncZendeskCategory({
   brandId: number;
   categoryId: number;
 }): Promise<boolean> {
-  let category = await ZendeskCategoryResource.fetchByCategoryId({
+  const category = await ZendeskCategoryResource.fetchByCategoryId({
     connectorId,
     brandId,
     categoryId,
@@ -146,7 +146,7 @@ export async function allowSyncZendeskCategory({
           brandId: fetchedBrand.id,
           name: fetchedBrand.name || "Brand",
           ticketsPermission: "none",
-          helpCenterPermission: "read",
+          helpCenterPermission: "none",
           url: fetchedBrand.url,
         },
       });
@@ -159,7 +159,7 @@ export async function allowSyncZendeskCategory({
     const { result: fetchedCategory } =
       await zendeskApiClient.helpcenter.categories.show(categoryId);
     if (fetchedCategory) {
-      category = await ZendeskCategoryResource.makeNew({
+      await ZendeskCategoryResource.makeNew({
         blob: {
           connectorId,
           brandId,

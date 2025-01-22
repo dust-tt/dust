@@ -79,5 +79,6 @@ export async function forbidSyncZendeskTickets({
 
   // updating the field ticketsPermission to "none" for the brand
   await brand.revokeTicketsPermissions();
+
   return true;
 }
