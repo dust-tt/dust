@@ -36,6 +36,7 @@ async function migrateConnector(
   });
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const startTimeTs = new Date().getTime();
 
   // update using front API to update both elasticsearch and postgres
   await concurrentExecutor(
@@ -44,7 +45,7 @@ async function migrateConnector(
       const parents = await getLocalParents(
         connector.id,
         file.dustFileId,
-        "migrate_parents"
+        `${connector.id}:${startTimeTs}:migrate_parents`
       );
       if (execute) {
         // check if file is a folder
@@ -92,7 +93,7 @@ async function migrateConnector(
       const parents = await getLocalParents(
         connector.id,
         getGoogleSheetTableId(sheet.driveFileId, sheet.driveSheetId),
-        "migrate_parents"
+        `${connector.id}:${startTimeTs}:migrate_parents`
       );
       if (execute) {
         await updateDataSourceTableParents({

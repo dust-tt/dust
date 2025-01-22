@@ -63,8 +63,6 @@ async function _getLocalParents(
   contentNodeInternalId: string,
   memoizationKey: string
 ): Promise<string[]> {
-  const parents: string[] = [contentNodeInternalId];
-
   let parentId: string | null = null;
 
   if (isGoogleSheetContentNodeInternalId(contentNodeInternalId)) {
@@ -81,8 +79,15 @@ async function _getLocalParents(
         driveFileId: getDriveFileId(contentNodeInternalId),
       },
     });
-    parentId = object?.parentId ? getInternalId(object.parentId) : null;
+    if (!object) {
+      // edge case: If the object is not in our database, it has no local
+      // parents.
+      return [];
+    }
+    parentId = object.parentId ? getInternalId(object.parentId) : null;
   }
+
+  const parents: string[] = [contentNodeInternalId];
 
   if (!parentId) {
     return parents;
