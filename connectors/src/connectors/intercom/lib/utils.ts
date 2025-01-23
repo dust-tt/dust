@@ -121,21 +121,15 @@ export async function getParentIdsForArticle({
   documentId,
   connectorId,
   parentCollectionId,
-  helpCenterId,
-  shouldAddHelpCenterToParents,
 }: {
   documentId: string;
   connectorId: number;
   parentCollectionId: string;
-  helpCenterId: string;
-  shouldAddHelpCenterToParents: boolean;
 }): Promise<[string, string, ...string[]]> {
   // Get collection parents
   const collectionParents = await getParentIdsForCollection({
     connectorId,
     collectionId: parentCollectionId,
-    helpCenterId,
-    permission: shouldAddHelpCenterToParents ? "inherited" : "read",
   });
 
   return [documentId, ...collectionParents];
@@ -144,13 +138,9 @@ export async function getParentIdsForArticle({
 export async function getParentIdsForCollection({
   connectorId,
   collectionId,
-  helpCenterId,
-  permission,
 }: {
   connectorId: number;
   collectionId: string;
-  helpCenterId: string;
-  permission: "inherited" | "read" | "none";
 }): Promise<[string, ...string[]]> {
   const parentIds = [];
 
@@ -176,10 +166,6 @@ export async function getParentIdsForCollection({
     parentIds.push(
       getHelpCenterCollectionInternalId(connectorId, currentParentId)
     );
-  }
-  // if the collection has inherited its right, it means we have to add the Help Center to the parents
-  if (permission === "inherited") {
-    parentIds.push(getHelpCenterInternalId(connectorId, helpCenterId));
   }
 
   // Add the collection ID and the help center internal ID.

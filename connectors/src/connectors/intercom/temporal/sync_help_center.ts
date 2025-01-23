@@ -177,7 +177,7 @@ export async function upsertCollectionWithChildren({
   }
 
   // Sync the Collection
-  let collectionOnDb = await IntercomCollection.findOne({
+  const collectionOnDb = await IntercomCollection.findOne({
     where: {
       connectorId,
       collectionId,
@@ -195,7 +195,7 @@ export async function upsertCollectionWithChildren({
       lastUpsertedTs: new Date(currentSyncMs),
     });
   } else {
-    collectionOnDb = await IntercomCollection.create({
+    await IntercomCollection.create({
       connectorId: connectorId,
       collectionId: collection.id,
       intercomWorkspaceId: collection.workspace_id,
@@ -204,7 +204,7 @@ export async function upsertCollectionWithChildren({
       name: collection.name,
       description: collection.description,
       url: collection.url || fallbackCollectionUrl,
-      permission: "inherited", // if the collection does not already exist here, it means we selected the whole Help Center
+      permission: "read",
       lastUpsertedTs: new Date(currentSyncMs),
     });
   }
@@ -221,8 +221,6 @@ export async function upsertCollectionWithChildren({
   const collectionParents = await getParentIdsForCollection({
     connectorId,
     collectionId,
-    helpCenterId,
-    permission: collectionOnDb.permission,
   });
   await upsertDataSourceFolder({
     dataSourceConfig,
@@ -267,7 +265,6 @@ export async function upsertArticle({
   region,
   parentCollection,
   isHelpCenterWebsiteTurnedOn,
-  shouldAddHelpCenterToParents,
   currentSyncMs,
   forceResync,
   dataSourceConfig,
@@ -279,7 +276,6 @@ export async function upsertArticle({
   region: string;
   parentCollection: IntercomCollection;
   isHelpCenterWebsiteTurnedOn: boolean;
-  shouldAddHelpCenterToParents: boolean;
   currentSyncMs: number;
   forceResync: boolean;
   dataSourceConfig: DataSourceConfig;
@@ -410,8 +406,6 @@ export async function upsertArticle({
       documentId,
       connectorId,
       parentCollectionId,
-      helpCenterId,
-      shouldAddHelpCenterToParents,
     });
 
     await upsertDataSourceDocument({
