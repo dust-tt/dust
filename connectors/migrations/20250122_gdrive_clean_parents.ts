@@ -2,6 +2,7 @@ import {
   concurrentExecutor,
   getGoogleSheetTableId,
   MIME_TYPES,
+  removeNulls,
 } from "@dust-tt/types";
 import _ from "lodash";
 import type { LoggerOptions } from "pino";
@@ -10,6 +11,11 @@ import { makeScript } from "scripts/helpers";
 
 import { getSourceUrlForGoogleDriveFiles } from "@connectors/connectors/google_drive";
 import { getLocalParents } from "@connectors/connectors/google_drive/lib";
+import {
+  getAuthObject,
+  getDriveClient,
+  getInternalId,
+} from "@connectors/connectors/google_drive/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
   updateDataSourceDocumentParents,
@@ -18,8 +24,10 @@ import {
 } from "@connectors/lib/data_sources";
 import {
   GoogleDriveFiles,
+  GoogleDriveFolders,
   GoogleDriveSheet,
 } from "@connectors/lib/models/google_drive";
+import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
@@ -37,6 +45,37 @@ async function migrateConnector(
     },
   });
 
+  const roots = await GoogleDriveFolders.findAll({
+    where: {
+      connectorId: connector.id,
+    },
+  });
+
+  // isolate roots that are drives
+  // no need to update parents for anything whose parent is a drive
+  const authCredentials = await getAuthObject(connector.connectionId);
+  const driveClient = await getDriveClient(authCredentials);
+  const driveRoots = removeNulls(
+    await concurrentExecutor(
+      roots,
+      async (root) => {
+        try {
+          const drive = await driveClient.drives.get({
+            driveId: root.folderId,
+          });
+          if (drive.status !== 200) {
+            return null;
+          }
+          return getInternalId(root.folderId);
+        } catch (e) {
+          return null;
+        }
+      },
+      { concurrency: 4 }
+    )
+  );
+
+  logger.info({ driveRoots }, "Excluded drive roots");
   logger.info({ numberOfFiles: files.length }, "Found files");
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
@@ -45,15 +84,16 @@ async function migrateConnector(
   const chunks = _.chunk(files, 1024);
 
   for (const chunk of chunks) {
-    await processFilesBatch({
+    const result = await processFilesBatch({
       connector,
       dataSourceConfig,
       files: chunk,
       execute,
       startTimeTs,
+      driveRoots,
     });
     logger.info(
-      { numberOfFiles: chunk.length, execute },
+      { numberOfFiles: result, execute, batchSize: chunk.length },
       "Processed files batch"
     );
     await new Promise((resolve) => setTimeout(resolve, 50));
@@ -68,15 +108,16 @@ async function migrateConnector(
   const sheetsChunks = _.chunk(sheets, 1024);
 
   for (const chunk of sheetsChunks) {
-    await processSheetsBatch({
+    const result = await processSheetsBatch({
       connector,
       dataSourceConfig,
       sheets: chunk,
       execute,
       startTimeTs,
+      driveRoots,
     });
     logger.info(
-      { numberOfSheets: chunk.length, execute },
+      { numberOfSheets: result, execute, batchSize: chunk.length },
       "Processed sheets batch"
     );
     await new Promise((resolve) => setTimeout(resolve, 50));
@@ -89,22 +130,35 @@ async function processFilesBatch({
   files,
   execute,
   startTimeTs,
+  driveRoots,
 }: {
   connector: ConnectorResource;
   dataSourceConfig: DataSourceConfig;
   files: GoogleDriveFiles[];
   execute: boolean;
   startTimeTs: number;
+  driveRoots: string[];
 }) {
   // update using front API to update both elasticsearch and postgres
-  await concurrentExecutor(
+  const result: number[] = await concurrentExecutor(
     files,
-    async (file) => {
+    async (file): Promise<number> => {
       const parents = await getLocalParents(
         connector.id,
         file.dustFileId,
         `${connector.id}:${startTimeTs}:migrate_parents`
       );
+      if (!parents[0]) {
+        logger.error(
+          { fileId: file.dustFileId },
+          "Unexpected error: no parent found"
+        );
+        throw new Error("Unexpected error: no parent found");
+      }
+      const topParent = parents[parents.length - 1];
+      if (topParent && driveRoots.includes(topParent)) {
+        return 0;
+      }
       if (execute) {
         // check if file is a folder
         if (
@@ -132,9 +186,11 @@ async function processFilesBatch({
           });
         }
       }
+      return 1;
     },
     { concurrency: 16 }
   );
+  return result.reduce((acc, curr) => acc + curr, 0);
 }
 
 async function processSheetsBatch({
@@ -143,21 +199,30 @@ async function processSheetsBatch({
   sheets,
   execute,
   startTimeTs,
+  driveRoots,
 }: {
   connector: ConnectorResource;
   dataSourceConfig: DataSourceConfig;
   sheets: GoogleDriveSheet[];
   execute: boolean;
   startTimeTs: number;
+  driveRoots: string[];
 }) {
-  await concurrentExecutor(
+  const result: number[] = await concurrentExecutor(
     sheets,
-    async (sheet) => {
+    async (sheet): Promise<number> => {
       const parents = await getLocalParents(
         connector.id,
         getGoogleSheetTableId(sheet.driveFileId, sheet.driveSheetId),
         `${connector.id}:${startTimeTs}:migrate_parents`
       );
+      if (!parents[0]) {
+        throw new Error("Unexpected error: no parent found");
+      }
+      const topParent = parents[parents.length - 1];
+      if (topParent && driveRoots.includes(topParent)) {
+        return 0;
+      }
       if (execute) {
         await updateDataSourceTableParents({
           dataSourceConfig,
@@ -166,9 +231,11 @@ async function processSheetsBatch({
           parentId: parents[1] || null,
         });
       }
+      return 1;
     },
     { concurrency: 16 }
   );
+  return result.reduce((acc, curr) => acc + curr, 0);
 }
 
 makeScript(
