@@ -2,7 +2,6 @@ import {
   concurrentExecutor,
   getGoogleSheetTableId,
   MIME_TYPES,
-  removeNulls,
 } from "@dust-tt/types";
 import _ from "lodash";
 import type { LoggerOptions } from "pino";
@@ -11,11 +10,7 @@ import { makeScript } from "scripts/helpers";
 
 import { getSourceUrlForGoogleDriveFiles } from "@connectors/connectors/google_drive";
 import { getLocalParents } from "@connectors/connectors/google_drive/lib";
-import {
-  getAuthObject,
-  getDriveClient,
-  getInternalId,
-} from "@connectors/connectors/google_drive/temporal/utils";
+import { getInternalId } from "@connectors/connectors/google_drive/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
   updateDataSourceDocumentParents,
@@ -53,27 +48,11 @@ async function migrateConnector(
 
   // isolate roots that are drives
   // no need to update parents for anything whose parent is a drive
-  const authCredentials = await getAuthObject(connector.connectionId);
-  const driveClient = await getDriveClient(authCredentials);
-  const driveRoots = removeNulls(
-    await concurrentExecutor(
-      roots,
-      async (root) => {
-        try {
-          const drive = await driveClient.drives.get({
-            driveId: root.folderId,
-          });
-          if (drive.status !== 200) {
-            return null;
-          }
-          return getInternalId(root.folderId);
-        } catch (e) {
-          return null;
-        }
-      },
-      { concurrency: 4 }
+  const driveRoots = roots
+    .filter(
+      (root) => root.folderId.startsWith("0A") && root.folderId.length < 27
     )
-  );
+    .map((root) => getInternalId(root.folderId));
 
   logger.info({ driveRoots }, "Excluded drive roots");
   logger.info({ numberOfFiles: files.length }, "Found files");
@@ -83,6 +62,7 @@ async function migrateConnector(
 
   const chunks = _.chunk(files, 1024);
 
+  let totalProcessed = 0;
   for (const chunk of chunks) {
     const result = await processFilesBatch({
       connector,
@@ -92,13 +72,14 @@ async function migrateConnector(
       startTimeTs,
       driveRoots,
     });
+    totalProcessed += result;
     logger.info(
       { numberOfFiles: result, execute, batchSize: chunk.length },
       "Processed files batch"
     );
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
-
+  logger.info({ totalProcessed }, "Files: total processed");
   const sheets = await GoogleDriveSheet.findAll({
     where: {
       connectorId: connector.id,
@@ -106,7 +87,7 @@ async function migrateConnector(
   });
 
   const sheetsChunks = _.chunk(sheets, 1024);
-
+  totalProcessed = 0;
   for (const chunk of sheetsChunks) {
     const result = await processSheetsBatch({
       connector,
@@ -116,12 +97,14 @@ async function migrateConnector(
       startTimeTs,
       driveRoots,
     });
+    totalProcessed += result;
     logger.info(
       { numberOfSheets: result, execute, batchSize: chunk.length },
       "Processed sheets batch"
     );
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
+  logger.info({ totalProcessed }, "Sheets: total processed");
 }
 
 async function processFilesBatch({
