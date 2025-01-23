@@ -36,7 +36,7 @@ jobs:
       - name: Install Postgres
         uses: dust-tt/postgresql-action@6730e69fe23f4f2989c19edf9e6e0d7ffeb0a05c
         with:
-          postgresql docker image: ghcr.io/cached/library/postgres
+          postgresql docker image: ghcr.io/cached/postgres
           postgresql version: "14.13"
           postgresql db: oauth
           postgresql user: test
