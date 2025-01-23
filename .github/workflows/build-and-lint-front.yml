@@ -8,7 +8,6 @@ on:
       - front/**
       - .github/workflows/build-and-lint-front.yml
 permissions:
-  packages: read
   contents: read
   actions: read
   checks: write
