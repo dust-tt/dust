@@ -2,6 +2,11 @@ import {
   Button,
   CloudArrowLeftRightIcon,
   Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   GithubIcon,
   Page,
   XMarkIcon,
@@ -106,22 +111,40 @@ export default function PlatformActionsConfiguration({
         navChildren={<AssistantSidebarMenu owner={owner} />}
       >
         <Dialog
-          isOpen={providerToDelete !== null}
-          title="Disconnect platform actions provider"
-          onValidate={async () => {
-            if (providerToDelete !== null) {
-              await doDeletePlatformActionsConfiguration({
-                provider: providerToDelete,
-              });
+          open={providerToDelete !== null}
+          onOpenChange={(open) => {
+            if (!open) {
+              setProviderToDelete(null);
             }
-            setProviderToDelete(null);
           }}
-          onCancel={() => setProviderToDelete(null)}
         >
-          <div>
-            This will prevent assistants from taking platform actions. You can
-            reconnect at anytime.
-          </div>
+          <DialogContent size="md">
+            <DialogHeader>
+              <DialogTitle>Disconnect platform actions provider</DialogTitle>
+            </DialogHeader>
+            <DialogContainer>
+              This will prevent assistants from taking platform actions. You can
+              reconnect at anytime.
+            </DialogContainer>
+            <DialogFooter
+              leftButtonProps={{
+                label: "Cancel",
+                variant: "outline",
+              }}
+              rightButtonProps={{
+                label: "Ok",
+                variant: "warning",
+                onClick: async () => {
+                  if (providerToDelete !== null) {
+                    await doDeletePlatformActionsConfiguration({
+                      provider: providerToDelete,
+                    });
+                  }
+                  setProviderToDelete(null);
+                },
+              }}
+            />
+          </DialogContent>
         </Dialog>
 
         <Page>
