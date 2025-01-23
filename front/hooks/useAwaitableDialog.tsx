@@ -1,11 +1,11 @@
 import type { Button } from "@dust-tt/sparkle";
 import {
-  NewDialog,
-  NewDialogContainer,
-  NewDialogContent,
-  NewDialogFooter,
-  NewDialogHeader,
-  NewDialogTitle,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@dust-tt/sparkle";
 import React, { useState } from "react";
 
@@ -65,7 +65,7 @@ export function useAwaitableDialog() {
     } = dialogState.props;
 
     return (
-      <NewDialog
+      <Dialog
         open={dialogState.isOpen}
         // If user dismisses the dialog some other way (e.g. clicking outside when not alert), treat it as cancel:
         onOpenChange={(open) => {
@@ -74,16 +74,16 @@ export function useAwaitableDialog() {
           }
         }}
       >
-        <NewDialogContent
+        <DialogContent
           isAlertDialog={alertDialog}
           trapFocusScope={!!alertDialog}
         >
-          <NewDialogHeader hideButton={true}>
-            <NewDialogTitle>{title}</NewDialogTitle>
-          </NewDialogHeader>
-          <NewDialogContainer>{children}</NewDialogContainer>
+          <DialogHeader hideButton={true}>
+            <DialogTitle>{title}</DialogTitle>
+          </DialogHeader>
+          <DialogContainer>{children}</DialogContainer>
 
-          <NewDialogFooter
+          <DialogFooter
             leftButtonProps={
               cancelLabel
                 ? {
@@ -99,8 +99,8 @@ export function useAwaitableDialog() {
               onClick: handleConfirm,
             }}
           />
-        </NewDialogContent>
-      </NewDialog>
+        </DialogContent>
+      </Dialog>
     );
   };
 

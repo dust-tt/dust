@@ -3,6 +3,13 @@ import {
   Button,
   ClipboardCheckIcon,
   ClipboardIcon,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -10,13 +17,6 @@ import {
   IconButton,
   Input,
   Modal,
-  NewDialog,
-  NewDialogContainer,
-  NewDialogContent,
-  NewDialogFooter,
-  NewDialogHeader,
-  NewDialogTitle,
-  NewDialogTrigger,
   Page,
   PlusIcon,
   ScrollArea,
@@ -194,19 +194,19 @@ export function APIKeys({
             window.open("https://docs.dust.tt/reference", "_blank");
           }}
         />
-        <NewDialog>
-          <NewDialogTrigger asChild>
+        <Dialog>
+          <DialogTrigger asChild>
             <Button
               label="Create API Key"
               icon={PlusIcon}
               disabled={isGenerating || isRevoking}
             />
-          </NewDialogTrigger>
-          <NewDialogContent size="md">
-            <NewDialogHeader>
-              <NewDialogTitle>New API Key</NewDialogTitle>
-            </NewDialogHeader>
-            <NewDialogContainer>
+          </DialogTrigger>
+          <DialogContent size="md">
+            <DialogHeader>
+              <DialogTitle>New API Key</DialogTitle>
+            </DialogHeader>
+            <DialogContainer>
               <Input
                 name="API Key"
                 placeholder="Type an API key name"
@@ -257,8 +257,8 @@ export function APIKeys({
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
-            </NewDialogContainer>
-            <NewDialogFooter
+            </DialogContainer>
+            <DialogFooter
               leftButtonProps={{
                 label: "Cancel",
                 variant: "outline",
@@ -274,8 +274,8 @@ export function APIKeys({
                 },
               }}
             />
-          </NewDialogContent>
-        </NewDialog>
+          </DialogContent>
+        </Dialog>
       </Page.Horizontal>
       <div className="space-y-4 divide-y divide-gray-200">
         <ul role="list" className="pt-4">

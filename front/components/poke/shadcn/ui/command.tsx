@@ -1,10 +1,6 @@
 "use client";
 
-import {
-  MagnifyingGlassIcon,
-  NewDialog,
-  NewDialogContent,
-} from "@dust-tt/sparkle";
+import { Dialog, DialogContent, MagnifyingGlassIcon } from "@dust-tt/sparkle";
 import type { DialogProps } from "@radix-ui/react-dialog";
 import { Command as CommandPrimitive } from "cmdk";
 import Link from "next/link";
@@ -117,16 +113,16 @@ const CommandDialog = ({
 
   return (
     <CommandContext.Provider value={commandContext}>
-      <NewDialog onOpenChange={onOpenChange} open={open} {...props}>
-        <NewDialogContent className={cn("overflow-hidden p-0", className)}>
+      <Dialog onOpenChange={onOpenChange} open={open} {...props}>
+        <DialogContent className={cn("overflow-hidden p-0", className)}>
           <Command
             shouldFilter={shouldFilter}
             className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-group]]:px-2 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5"
           >
             {children}
           </Command>
-        </NewDialogContent>
-      </NewDialog>
+        </DialogContent>
+      </Dialog>
     </CommandContext.Provider>
   );
 };

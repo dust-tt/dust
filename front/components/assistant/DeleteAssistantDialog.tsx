@@ -1,11 +1,11 @@
 import {
-  NewDialog,
-  NewDialogContainer,
-  NewDialogContent,
-  NewDialogDescription,
-  NewDialogFooter,
-  NewDialogHeader,
-  NewDialogTitle,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@dust-tt/sparkle";
 import type {
   LightAgentConfigurationType,
@@ -42,7 +42,7 @@ export function DeleteAssistantDialog({
   const doDelete = useDeleteAgentConfiguration({ owner, agentConfiguration });
 
   return (
-    <NewDialog
+    <Dialog
       open={isOpen}
       onOpenChange={(open) => {
         if (!open) {
@@ -50,10 +50,10 @@ export function DeleteAssistantDialog({
         }
       }}
     >
-      <NewDialogContent size="md" isAlertDialog>
-        <NewDialogHeader hideButton>
-          <NewDialogTitle>Deleting the assistant</NewDialogTitle>
-          <NewDialogDescription>
+      <DialogContent size="md" isAlertDialog>
+        <DialogHeader hideButton>
+          <DialogTitle>Deleting the assistant</DialogTitle>
+          <DialogDescription>
             {isPrivateAssistant ? (
               "Deleting the assistant will be permanent."
             ) : (
@@ -70,12 +70,12 @@ export function DeleteAssistantDialog({
                 This will permanently delete the assistant for everyone.
               </div>
             )}
-          </NewDialogDescription>
-        </NewDialogHeader>
-        <NewDialogContainer>
+          </DialogDescription>
+        </DialogHeader>
+        <DialogContainer>
           <div className="font-bold">Are you sure you want to proceed?</div>
-        </NewDialogContainer>
-        <NewDialogFooter
+        </DialogContainer>
+        <DialogFooter
           leftButtonProps={{
             label: "Cancel",
             variant: "outline",
@@ -91,7 +91,7 @@ export function DeleteAssistantDialog({
             },
           }}
         />
-      </NewDialogContent>
-    </NewDialog>
+      </DialogContent>
+    </Dialog>
   );
 }

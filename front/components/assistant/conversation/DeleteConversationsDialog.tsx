@@ -1,11 +1,11 @@
 import {
-  NewDialog,
-  NewDialogContainer,
-  NewDialogContent,
-  NewDialogDescription,
-  NewDialogFooter,
-  NewDialogHeader,
-  NewDialogTitle,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   Spinner,
 } from "@dust-tt/sparkle";
 import React from "react";
@@ -38,22 +38,22 @@ export const DeleteConversationsDialog = ({
       : `Are you sure you want to delete ${selectedCount} conversation${selectedCount && selectedCount > 1 ? "s" : ""}?`;
 
   return (
-    <NewDialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <NewDialogContent>
-        <NewDialogHeader>
-          <NewDialogTitle>{title}</NewDialogTitle>
-          <NewDialogDescription>{description}</NewDialogDescription>
-        </NewDialogHeader>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
+        </DialogHeader>
         {isDeleting ? (
           <div className="flex justify-center py-8">
             <Spinner variant="dark" size="md" />
           </div>
         ) : (
           <>
-            <NewDialogContainer>
+            <DialogContainer>
               <b>This action cannot be undone.</b>
-            </NewDialogContainer>
-            <NewDialogFooter
+            </DialogContainer>
+            <DialogFooter
               leftButtonProps={{
                 label: "Cancel",
                 variant: "outline",
@@ -69,7 +69,7 @@ export const DeleteConversationsDialog = ({
             />
           </>
         )}
-      </NewDialogContent>
-    </NewDialog>
+      </DialogContent>
+    </Dialog>
   );
 };

@@ -4,13 +4,13 @@ import {
   ChatBubbleThoughtIcon,
   CloudArrowLeftRightIcon,
   ContentMessage,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   Input,
-  NewDialog,
-  NewDialogContainer,
-  NewDialogContent,
-  NewDialogFooter,
-  NewDialogHeader,
-  NewDialogTitle,
   Page,
   SliderToggle,
   Spinner,
@@ -637,7 +637,7 @@ export default function LabsTranscriptsIndex({
         pageTitle="Dust - Transcripts processing"
         navChildren={<AssistantSidebarMenu owner={owner} />}
       >
-        <NewDialog
+        <Dialog
           open={isDeleteProviderDialogOpened}
           onOpenChange={(open) => {
             if (!open) {
@@ -645,15 +645,15 @@ export default function LabsTranscriptsIndex({
             }
           }}
         >
-          <NewDialogContent size="md">
-            <NewDialogHeader>
-              <NewDialogTitle>Disconnect transcripts provider</NewDialogTitle>
-            </NewDialogHeader>
-            <NewDialogContainer>
+          <DialogContent size="md">
+            <DialogHeader>
+              <DialogTitle>Disconnect transcripts provider</DialogTitle>
+            </DialogHeader>
+            <DialogContainer>
               This will stop the processing of your meeting transcripts and
               delete all history. You can reconnect anytime.
-            </NewDialogContainer>
-            <NewDialogFooter
+            </DialogContainer>
+            <DialogFooter
               leftButtonProps={{
                 label: "Cancel",
                 variant: "outline",
@@ -667,8 +667,8 @@ export default function LabsTranscriptsIndex({
                 },
               }}
             />
-          </NewDialogContent>
-        </NewDialog>
+          </DialogContent>
+        </Dialog>
         <Page>
           <Page.Header
             title="Meeting transcripts processing"
