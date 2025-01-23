@@ -1159,6 +1159,7 @@ export async function createAgentActionConfiguration(
         actionType: "github_get_pull_request_action",
         name: action.name,
         description: action.description,
+        workspaceId: owner.id,
       });
 
       return new Ok({

@@ -185,6 +185,8 @@ async function backfillTable(
           },
           // Required to avoid hitting validation hook, which does not play nice with bulk updates.
           hooks: false,
+          // Do not update `updatedAt.
+          silent: true,
           fields: ["workspaceId"],
         }
       );
@@ -220,7 +222,10 @@ async function backfillTablesForWorkspace(
 }
 
 makeScript({}, async ({ execute }, logger) => {
-  return runOnAllWorkspaces(async (workspace) => {
-    await backfillTablesForWorkspace(workspace, { execute, logger });
-  });
+  return runOnAllWorkspaces(
+    async (workspace) => {
+      await backfillTablesForWorkspace(workspace, { execute, logger });
+    },
+    { concurrency: 10 }
+  );
 });

@@ -6,7 +6,6 @@ import type { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { UserModel } from "@app/lib/resources/storage/models/user";
-import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
 export class LabsTranscriptsConfigurationModel extends WorkspaceAwareModel<LabsTranscriptsConfigurationModel> {
@@ -89,7 +88,7 @@ LabsTranscriptsConfigurationModel.belongsTo(DataSourceViewModel, {
   foreignKey: { name: "dataSourceViewId", allowNull: true },
 });
 
-export class LabsTranscriptsHistoryModel extends BaseModel<LabsTranscriptsHistoryModel> {
+export class LabsTranscriptsHistoryModel extends WorkspaceAwareModel<LabsTranscriptsHistoryModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
