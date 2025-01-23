@@ -1,0 +1,211 @@
+import type { LightWorkspaceType } from "@dust-tt/types";
+import _ from "lodash";
+import { Op } from "sequelize";
+
+import {
+  AgentMessage,
+  Conversation,
+  ConversationParticipant,
+  Mention,
+  Message,
+  MessageReaction,
+  UserMessage,
+} from "@app/lib/models/assistant/conversation";
+import type { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type { Logger } from "@app/logger/logger";
+import { makeScript } from "@app/scripts/helpers";
+import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
+
+type TableConfig = {
+  model: typeof WorkspaceAwareModel<any>;
+  name: string;
+  include: (workspaceId: number) => any[];
+};
+
+const TABLES: TableConfig[] = [
+  {
+    model: ConversationParticipant,
+    name: "conversation_participants",
+    include: (workspaceId: number) => [
+      {
+        model: Conversation,
+        required: true,
+        where: { workspaceId },
+      },
+    ],
+  },
+  {
+    model: Message,
+    name: "messages",
+    include: (workspaceId: number) => [
+      {
+        as: "conversation",
+        model: Conversation,
+        required: true,
+        where: { workspaceId },
+      },
+    ],
+  },
+  {
+    model: UserMessage,
+    name: "user_messages",
+    include: (workspaceId: number) => [
+      {
+        as: "message",
+        model: Message,
+        required: true,
+        include: [
+          {
+            as: "conversation",
+            model: Conversation,
+            required: true,
+            where: { workspaceId },
+          },
+        ],
+      },
+    ],
+  },
+  {
+    model: AgentMessage,
+    name: "agent_messages",
+    include: (workspaceId: number) => [
+      {
+        as: "message",
+        model: Message,
+        required: true,
+        include: [
+          {
+            as: "conversation",
+            model: Conversation,
+            required: true,
+            where: { workspaceId },
+          },
+        ],
+      },
+    ],
+  },
+  {
+    model: MessageReaction,
+    name: "message_reactions",
+    include: (workspaceId: number) => [
+      {
+        model: Message,
+        required: true,
+        include: [
+          {
+            as: "conversation",
+            model: Conversation,
+            required: true,
+            where: { workspaceId },
+          },
+        ],
+      },
+    ],
+  },
+  {
+    model: Mention,
+    name: "mentions",
+    include: (workspaceId: number) => [
+      {
+        model: Message,
+        required: true,
+        include: [
+          {
+            as: "conversation",
+            model: Conversation,
+            required: true,
+            where: { workspaceId },
+          },
+        ],
+      },
+    ],
+  },
+];
+
+async function backfillTable(
+  workspace: LightWorkspaceType,
+  table: TableConfig,
+  { execute, logger }: { execute: boolean; logger: Logger }
+) {
+  let lastSeenId = 0;
+  const batchSize = 1000;
+  let totalProcessed = 0;
+
+  logger.info(
+    { workspaceId: workspace.sId, table: table.name },
+    "Starting table backfill"
+  );
+
+  for (;;) {
+    const records = await table.model.findAll({
+      where: {
+        id: { [Op.gt]: lastSeenId },
+        workspaceId: { [Op.is]: null },
+      },
+      order: [["id", "ASC"]],
+      limit: batchSize,
+      include: table.include(workspace.id),
+    });
+
+    if (records.length === 0) {
+      break;
+    }
+
+    totalProcessed += records.length;
+    logger.info(
+      {
+        workspaceId: workspace.sId,
+        table: table.name,
+        batchSize: records.length,
+        totalProcessed,
+        lastId: lastSeenId,
+      },
+      "Processing batch"
+    );
+
+    if (execute) {
+      const recordIds = records.map((r) => r.id);
+      await table.model.update(
+        { workspaceId: workspace.id },
+        {
+          where: {
+            id: { [Op.in]: recordIds },
+          },
+        }
+      );
+    }
+
+    lastSeenId = records[records.length - 1].id;
+  }
+
+  return totalProcessed;
+}
+
+async function backfillTablesForWorkspace(
+  workspace: LightWorkspaceType,
+  { execute, logger }: { execute: boolean; logger: Logger }
+) {
+  logger.info(
+    { workspaceId: workspace.sId, execute },
+    "Starting workspace backfill"
+  );
+
+  const stats: any = {};
+  for (const table of TABLES) {
+    stats[table.name] = await backfillTable(workspace, table, {
+      execute,
+      logger,
+    });
+  }
+
+  logger.info(
+    { workspaceId: workspace.sId, stats },
+    "Completed workspace backfill"
+  );
+}
+
+makeScript({}, async ({ execute }, logger) => {
+  return runOnAllWorkspaces(async (workspace) => {
+    await backfillTablesForWorkspace(workspace, { execute, logger });
+  });
+});
