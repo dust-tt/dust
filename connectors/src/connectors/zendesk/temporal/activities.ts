@@ -471,7 +471,6 @@ export async function syncZendeskArticleBatchActivity({
   categoryId,
   currentSyncDateMs,
   helpCenterIsAllowed,
-  forceResync,
   url,
 }: {
   connectorId: ModelId;
@@ -479,7 +478,6 @@ export async function syncZendeskArticleBatchActivity({
   categoryId: number;
   currentSyncDateMs: number;
   helpCenterIsAllowed: boolean;
-  forceResync: boolean;
   url: string | null;
 }): Promise<{ hasMore: boolean; nextLink: string | null }> {
   const connector = await ConnectorResource.fetchById(connectorId);
@@ -546,7 +544,6 @@ export async function syncZendeskArticleBatchActivity({
         helpCenterIsAllowed,
         currentSyncDateMs,
         loggerArgs,
-        forceResync,
       }),
     {
       concurrency: 10,

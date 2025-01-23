@@ -166,13 +166,10 @@ export async function zendeskSyncWorkflow({
   while (brandHelpCenterIds.size > 0) {
     const brandIdsToProcess = new Set(brandHelpCenterIds);
     for (const brandId of brandIdsToProcess) {
-      const relatedSignal = brandHelpCenterSignals.get(brandId);
-      const forceResync = relatedSignal?.forceResync || false;
-
       await executeChild(zendeskBrandHelpCenterSyncWorkflow, {
         workflowId: `${workflowId}-help-center-${brandId}`,
         searchAttributes: parentSearchAttributes,
-        args: [{ connectorId, brandId, currentSyncDateMs, forceResync }],
+        args: [{ connectorId, brandId, currentSyncDateMs }],
         memo,
       });
       brandHelpCenterIds.delete(brandId);
@@ -196,8 +193,6 @@ export async function zendeskSyncWorkflow({
   while (categoryIds.size > 0) {
     const categoryIdsToProcess = new Set(categoryIds);
     for (const categoryId of categoryIdsToProcess) {
-      const relatedSignal = categorySignals.get(categoryId);
-      const forceResync = relatedSignal?.forceResync || false;
       const brandId = categoryBrands[categoryId];
       if (!brandId) {
         throw new Error(
@@ -208,9 +203,7 @@ export async function zendeskSyncWorkflow({
       await executeChild(zendeskCategorySyncWorkflow, {
         workflowId: `${workflowId}-category-${categoryId}`,
         searchAttributes: parentSearchAttributes,
-        args: [
-          { connectorId, categoryId, brandId, currentSyncDateMs, forceResync },
-        ],
+        args: [{ connectorId, categoryId, brandId, currentSyncDateMs }],
         memo,
       });
       categoryIds.delete(categoryId);
@@ -290,7 +283,6 @@ export async function zendeskBrandSyncWorkflow({
       connectorId,
       brandId,
       currentSyncDateMs,
-      forceResync,
     });
   }
   if (ticketsAllowed) {
@@ -311,12 +303,10 @@ export async function zendeskBrandHelpCenterSyncWorkflow({
   connectorId,
   brandId,
   currentSyncDateMs,
-  forceResync,
 }: {
   connectorId: ModelId;
   brandId: number;
   currentSyncDateMs: number;
-  forceResync: boolean;
 }) {
   const { helpCenterAllowed } = await syncZendeskBrandActivity({
     connectorId,
@@ -328,7 +318,6 @@ export async function zendeskBrandHelpCenterSyncWorkflow({
       connectorId,
       brandId,
       currentSyncDateMs,
-      forceResync,
     });
   }
 }
@@ -371,13 +360,11 @@ export async function zendeskCategorySyncWorkflow({
   categoryId,
   brandId,
   currentSyncDateMs,
-  forceResync,
 }: {
   connectorId: ModelId;
   categoryId: number;
   brandId: number;
   currentSyncDateMs: number;
-  forceResync: boolean;
 }) {
   const { shouldSyncArticles, helpCenterIsAllowed } =
     await syncZendeskCategoryActivity({
@@ -394,7 +381,6 @@ export async function zendeskCategorySyncWorkflow({
         categoryId,
         currentSyncDateMs,
         helpCenterIsAllowed: helpCenterIsAllowed === true,
-        forceResync,
         url,
       })
     );
@@ -483,12 +469,10 @@ async function runZendeskBrandHelpCenterSyncActivities({
   connectorId,
   brandId,
   currentSyncDateMs,
-  forceResync,
 }: {
   connectorId: ModelId;
   brandId: number;
   currentSyncDateMs: number;
-  forceResync: boolean;
 }) {
   const categoryIdsToSync = new Set<number>();
 
@@ -517,7 +501,6 @@ async function runZendeskBrandHelpCenterSyncActivities({
         categoryId,
         helpCenterIsAllowed: true, // We know the Help Center is allowed because we're in this function.
         currentSyncDateMs,
-        forceResync,
         url,
       })
     );

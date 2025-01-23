@@ -180,7 +180,6 @@ export async function syncZendeskArticleUpdateBatchActivity({
             dataSourceConfig,
             currentSyncDateMs,
             loggerArgs,
-            forceResync: false,
           });
         }
       }
