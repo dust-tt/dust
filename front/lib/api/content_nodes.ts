@@ -164,8 +164,6 @@ export function getContentNodeMetadata(
       return { type: "file" };
     case MIME_TYPES.INTERCOM.TEAM:
       return { type: "folder" };
-    case MIME_TYPES.INTERCOM.HELP_CENTER:
-      return { type: "database" };
     case MIME_TYPES.INTERCOM.ARTICLE:
       return { type: "file" };
     case MIME_TYPES.MICROSOFT.FOLDER:

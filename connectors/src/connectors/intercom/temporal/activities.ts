@@ -12,7 +12,6 @@ import {
 } from "@connectors/connectors/intercom/lib/intercom_api";
 import type { IntercomSyncAllConversationsStatus } from "@connectors/connectors/intercom/lib/types";
 import {
-  getHelpCenterInternalId,
   getTeamInternalId,
   getTeamsInternalId,
 } from "@connectors/connectors/intercom/lib/utils";
@@ -165,27 +164,12 @@ export async function syncHelpCenterOnlyActivity({
     return false;
   }
 
-  // Create datasource folder node
-  const helpCenterInternalId = getHelpCenterInternalId(
-    connectorId,
-    helpCenterOnIntercom.id
-  );
-  await upsertDataSourceFolder({
-    dataSourceConfig,
-    folderId: helpCenterInternalId,
-    title: helpCenterOnIntercom.display_name || "Help Center",
-    parents: [helpCenterInternalId],
-    parentId: null,
-    mimeType: MIME_TYPES.INTERCOM.HELP_CENTER,
-    timestampMs: currentSyncMs,
-  });
-
   // If all children collections are not allowed anymore we delete the Help Center data
   const collectionsWithReadPermission = await IntercomCollection.findAll({
     where: {
       connectorId,
       helpCenterId: helpCenterId,
-      permission: ["read", "inherited"],
+      permission: "read",
       parentId: null,
     },
   });
