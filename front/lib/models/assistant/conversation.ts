@@ -13,7 +13,6 @@ import type { AgentMessageContent } from "@app/lib/models/assistant/agent_messag
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { UserModel } from "@app/lib/resources/storage/models/user";
-import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
 export class Conversation extends WorkspaceAwareModel<Conversation> {
@@ -84,7 +83,7 @@ Conversation.init(
   }
 );
 
-export class ConversationParticipant extends BaseModel<ConversationParticipant> {
+export class ConversationParticipant extends WorkspaceAwareModel<ConversationParticipant> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -150,7 +149,7 @@ ConversationParticipant.belongsTo(UserModel, {
   foreignKey: { name: "userId", allowNull: false },
 });
 
-export class UserMessage extends BaseModel<UserMessage> {
+export class UserMessage extends WorkspaceAwareModel<UserMessage> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -220,7 +219,7 @@ UserMessage.belongsTo(UserModel, {
   foreignKey: { name: "userId", allowNull: true },
 });
 
-export class AgentMessage extends BaseModel<AgentMessage> {
+export class AgentMessage extends WorkspaceAwareModel<AgentMessage> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare runIds: string[] | null;
@@ -371,7 +370,7 @@ AgentMessageFeedback.belongsTo(AgentMessage, {
   as: "agentMessage",
 });
 
-export class Message extends BaseModel<Message> {
+export class Message extends WorkspaceAwareModel<Message> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -512,7 +511,7 @@ Message.belongsTo(ContentFragmentModel, {
   foreignKey: { name: "contentFragmentId", allowNull: true },
 });
 
-export class MessageReaction extends BaseModel<MessageReaction> {
+export class MessageReaction extends WorkspaceAwareModel<MessageReaction> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -583,7 +582,7 @@ MessageReaction.belongsTo(UserModel, {
   foreignKey: { name: "userId", allowNull: true }, // null = mention is not a user using a Slackbot
 });
 
-export class Mention extends BaseModel<Mention> {
+export class Mention extends WorkspaceAwareModel<Mention> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
