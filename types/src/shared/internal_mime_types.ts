@@ -88,7 +88,7 @@ export const MIME_TYPES = {
   }),
   MICROSOFT: getMimeTypes({
     provider: "microsoft",
-    resourceTypes: ["FOLDER"], // for files and spreadsheets, we keep Microsoft's mime types
+    resourceTypes: ["FOLDER", "SPREADSHEET"], // for files and spreadsheets, we keep Microsoft's mime types
   }),
   NOTION: getMimeTypes({
     provider: "notion",
