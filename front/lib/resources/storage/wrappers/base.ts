@@ -1,19 +1,12 @@
 import type {
-  Attributes,
-  CountWithOptions,
   CreationOptional,
-  DestroyOptions,
-  FindOptions,
-  GroupedCountResultItem,
   InferAttributes,
   InferCreationAttributes,
   InitOptions,
   ModelAttributes,
   ModelStatic,
-  UpdateOptions,
-  WhereOptions,
 } from "sequelize";
-import { DataTypes, Model, Op } from "sequelize";
+import { DataTypes, Model } from "sequelize";
 
 interface BaseModelAttributes {
   id?: {
