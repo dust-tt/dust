@@ -66,8 +66,6 @@ export const TrackerBuilder = ({
   const [edited, setEdited] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [showMaintainedDsModal, setShowMaintainedDsModal] = useState(false);
-  const [showWatchedDsModal, setShowWatchedDataSourcesModal] = useState(false);
 
   const [tracker, setTracker] = useState<TrackerConfigurationStateType>(
     initialTrackerState ?? {
@@ -305,43 +303,6 @@ export const TrackerBuilder = ({
         )
       }
     >
-      <TrackerBuilderDataSourceModal
-        isOpen={showMaintainedDsModal}
-        setOpen={(isOpen) => setShowMaintainedDsModal(isOpen)}
-        owner={owner}
-        onSave={async (dsConfigs) => {
-          setTracker((t) => ({
-            ...t,
-            maintainedDataSources: dsConfigs,
-          }));
-          if (!edited) {
-            setEdited(true);
-          }
-        }}
-        dataSourceViews={trackableDataSourcesViews} // Only show trackable data sources.
-        initialDataSourceConfigurations={tracker.maintainedDataSources}
-        allowedSpaces={[globalSpace]}
-        viewType="documents"
-      />
-      <TrackerBuilderDataSourceModal
-        isOpen={showWatchedDsModal}
-        setOpen={(isOpen) => setShowWatchedDataSourcesModal(isOpen)}
-        owner={owner}
-        onSave={async (dsConfigs) => {
-          setTracker((t) => ({
-            ...t,
-            watchedDataSources: dsConfigs,
-          }));
-          if (!edited) {
-            setEdited(true);
-          }
-        }}
-        dataSourceViews={dataSourceViews}
-        initialDataSourceConfigurations={tracker.watchedDataSources}
-        allowedSpaces={[globalSpace]}
-        viewType="documents"
-      />
-
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-16 pb-12 pt-2">
         <div className="flex">
           <div className="flex flex-grow" />
@@ -600,12 +561,23 @@ export const TrackerBuilder = ({
             <div className="md:col-span-1">
               <div className="flex flex-col space-y-2">
                 <Label className="mb-1">Documents to maintain</Label>
-                <Button
-                  label="Select Documents"
-                  onClick={() => {
-                    setShowMaintainedDsModal(true);
+                <TrackerBuilderDataSourceModal
+                  owner={owner}
+                  onSave={async (dsConfigs) => {
+                    setTracker((t) => ({
+                      ...t,
+                      maintainedDataSources: dsConfigs,
+                    }));
+                    if (!edited) {
+                      setEdited(true);
+                    }
                   }}
-                  className="w-fit"
+                  dataSourceViews={trackableDataSourcesViews} // Only show trackable data sources.
+                  initialDataSourceConfigurations={
+                    tracker.maintainedDataSources
+                  }
+                  allowedSpaces={[globalSpace]}
+                  viewType="documents"
                   disabled={tracker.status === "inactive"}
                 />
               </div>
@@ -631,12 +603,21 @@ export const TrackerBuilder = ({
             <div className="md:col-span-1">
               <div className="flex flex-col space-y-2">
                 <Label className="mb-1">Documents to watch</Label>
-                <Button
-                  label="Select Documents"
-                  onClick={() => {
-                    setShowWatchedDataSourcesModal(true);
+                <TrackerBuilderDataSourceModal
+                  owner={owner}
+                  onSave={async (dsConfigs) => {
+                    setTracker((t) => ({
+                      ...t,
+                      watchedDataSources: dsConfigs,
+                    }));
+                    if (!edited) {
+                      setEdited(true);
+                    }
                   }}
-                  className="w-fit"
+                  dataSourceViews={dataSourceViews}
+                  initialDataSourceConfigurations={tracker.watchedDataSources}
+                  allowedSpaces={[globalSpace]}
+                  viewType="documents"
                   disabled={tracker.status === "inactive"}
                 />
               </div>

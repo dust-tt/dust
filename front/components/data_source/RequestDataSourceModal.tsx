@@ -4,11 +4,17 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Modal,
   PlusIcon,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
   TextArea,
+  useSendNotification,
 } from "@dust-tt/sparkle";
-import { useSendNotification } from "@dust-tt/sparkle";
 import type { DataSourceType, LightWorkspaceType } from "@dust-tt/types";
 import * as _ from "lodash";
 import { useEffect, useState } from "react";
@@ -27,9 +33,6 @@ export function RequestDataSourceModal({
   dataSources,
   owner,
 }: RequestDataSourceModal) {
-  const [showRequestDataSourceModal, setShowRequestDataSourceModal] =
-    useState(false);
-
   const [selectedDataSource, setSelectedDataSource] =
     useState<DataSourceType | null>(null);
 
@@ -43,149 +46,154 @@ export function RequestDataSourceModal({
   }, [dataSources]);
 
   const onClose = () => {
-    setShowRequestDataSourceModal(false);
     setMessage("");
     if (dataSources.length === 1) {
       setSelectedDataSource(dataSources[0]);
     }
   };
 
+  const onSave = async () => {
+    const userToId = selectedDataSource?.editedByUser?.userId;
+    if (!userToId || !selectedDataSource) {
+      sendNotification({
+        type: "error",
+        title: "Error sending email",
+        description: "An unexpected error occurred while sending email.",
+      });
+    } else {
+      try {
+        await sendRequestDataSourceEmail({
+          userTo: userToId,
+          emailMessage: message,
+          dataSourceName: selectedDataSource.name,
+          owner,
+        });
+        sendNotification({
+          type: "success",
+          title: "Email sent!",
+          description: `Your request was sent to ${selectedDataSource?.editedByUser?.fullName}.`,
+        });
+      } catch (e) {
+        sendNotification({
+          type: "error",
+          title: "Error sending email",
+          description:
+            "An unexpected error occurred while sending the request.",
+        });
+        logger.error(
+          {
+            userToId,
+            dataSourceName: selectedDataSource.name,
+            error: e,
+          },
+          "Error sending email"
+        );
+      }
+      onClose();
+    }
+  };
+
   return (
-    <>
-      <Button
-        label="Request"
-        icon={PlusIcon}
-        onClick={() => setShowRequestDataSourceModal(true)}
-      />
-
-      <Modal
-        isOpen={showRequestDataSourceModal}
-        onClose={onClose}
-        hasChanged={false}
-        variant="side-md"
-        title="Requesting Data sources"
-      >
-        <div className="flex flex-col gap-4 p-4">
-          <div className="flex items-center gap-2">
-            {dataSources.length === 0 && (
-              <label className="block text-sm font-medium text-element-800">
-                <p>
-                  You have no connection set up. Ask an admin to set one up.
-                </p>
-              </label>
-            )}
-            {dataSources.length > 1 && (
-              <>
+    <Sheet>
+      <SheetTrigger asChild>
+        <Button label="Request" icon={PlusIcon} />
+      </SheetTrigger>
+      <SheetContent size="lg">
+        <SheetHeader>
+          <SheetTitle>Requesting Data sources</SheetTitle>
+        </SheetHeader>
+        <SheetContainer>
+          <div className="flex flex-col gap-4 p-4">
+            <div className="flex items-center gap-2">
+              {dataSources.length === 0 && (
                 <label className="block text-sm font-medium text-element-800">
-                  <p>Where are the requested Data hosted?</p>
+                  <p>
+                    You have no connection set up. Ask an admin to set one up.
+                  </p>
                 </label>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    {selectedDataSource && isManaged(selectedDataSource) ? (
-                      <Button
-                        variant="outline"
-                        label={getDisplayNameForDataSource(selectedDataSource)}
-                        icon={getConnectorProviderLogoWithFallback(
-                          selectedDataSource.connectorProvider
-                        )}
-                      />
-                    ) : (
-                      <Button
-                        label="Pick your platform"
-                        variant="outline"
-                        size="sm"
-                        isSelect
-                      />
-                    )}
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    {dataSources.map(
-                      (dataSource) =>
-                        dataSource.connectorProvider && (
-                          <DropdownMenuItem
-                            key={dataSource.sId}
-                            label={getDisplayNameForDataSource(dataSource)}
-                            onClick={() => setSelectedDataSource(dataSource)}
-                            icon={getConnectorProviderLogoWithFallback(
-                              dataSource.connectorProvider
-                            )}
-                          />
-                        )
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </>
-            )}
-          </div>
+              )}
+              {dataSources.length > 1 && (
+                <>
+                  <label className="block text-sm font-medium text-element-800">
+                    <p>Where are the requested Data hosted?</p>
+                  </label>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      {selectedDataSource && isManaged(selectedDataSource) ? (
+                        <Button
+                          variant="outline"
+                          label={getDisplayNameForDataSource(
+                            selectedDataSource
+                          )}
+                          icon={getConnectorProviderLogoWithFallback(
+                            selectedDataSource.connectorProvider
+                          )}
+                        />
+                      ) : (
+                        <Button
+                          label="Pick your platform"
+                          variant="outline"
+                          size="sm"
+                          isSelect
+                        />
+                      )}
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      {dataSources.map(
+                        (dataSource) =>
+                          dataSource.connectorProvider && (
+                            <DropdownMenuItem
+                              key={dataSource.sId}
+                              label={getDisplayNameForDataSource(dataSource)}
+                              onClick={() => setSelectedDataSource(dataSource)}
+                              icon={getConnectorProviderLogoWithFallback(
+                                dataSource.connectorProvider
+                              )}
+                            />
+                          )
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </>
+              )}
+            </div>
 
-          {selectedDataSource && (
-            <div className="flex flex-col gap-2">
-              <p className="mb-2 text-sm text-element-700">
-                {_.capitalize(selectedDataSource.editedByUser?.fullName ?? "")}{" "}
-                is the administrator for the{" "}
-                {getDisplayNameForDataSource(selectedDataSource)} connection
-                within Dust. Send an email to{" "}
-                {_.capitalize(selectedDataSource.editedByUser?.fullName ?? "")},
-                explaining your request.
-              </p>
-              <TextArea
-                placeholder={`Hello ${selectedDataSource.editedByUser?.fullName},`}
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                className="mb-2"
-              />
-              <div>
-                <Button
-                  label="Send"
-                  variant="primary"
-                  size="sm"
-                  onClick={async () => {
-                    const userToId = selectedDataSource?.editedByUser?.userId;
-                    if (!userToId || !selectedDataSource) {
-                      sendNotification({
-                        type: "error",
-                        title: "Error sending email",
-                        description:
-                          "An unexpected error occurred while sending email.",
-                      });
-                    } else {
-                      try {
-                        await sendRequestDataSourceEmail({
-                          userTo: userToId,
-                          emailMessage: message,
-                          dataSourceName: selectedDataSource.name,
-                          owner,
-                        });
-                        sendNotification({
-                          type: "success",
-                          title: "Email sent!",
-                          description: `Your request was sent to ${selectedDataSource?.editedByUser?.fullName}.`,
-                        });
-                      } catch (e) {
-                        sendNotification({
-                          type: "error",
-                          title: "Error sending email",
-                          description:
-                            "An unexpected error occurred while sending the request.",
-                        });
-                        logger.error(
-                          {
-                            userToId,
-                            dataSourceName: selectedDataSource.name,
-                            error: e,
-                          },
-                          "Error sending email"
-                        );
-                      }
-                      onClose();
-                    }
-                  }}
+            {selectedDataSource && (
+              <div className="flex flex-col gap-2">
+                <p className="mb-2 text-sm text-element-700">
+                  {_.capitalize(
+                    selectedDataSource.editedByUser?.fullName ?? ""
+                  )}{" "}
+                  is the administrator for the{" "}
+                  {getDisplayNameForDataSource(selectedDataSource)} connection
+                  within Dust. Send an email to{" "}
+                  {_.capitalize(
+                    selectedDataSource.editedByUser?.fullName ?? ""
+                  )}
+                  , explaining your request.
+                </p>
+                <TextArea
+                  placeholder={`Hello ${selectedDataSource.editedByUser?.fullName},`}
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  className="mb-2"
                 />
               </div>
-            </div>
-          )}
-        </div>
-      </Modal>
-    </>
+            )}
+          </div>
+        </SheetContainer>
+        <SheetFooter
+          leftButtonProps={{
+            label: "Cancel",
+            variant: "outline",
+            onClick: onClose,
+          }}
+          rightButtonProps={{
+            label: "Send",
+            onClick: onSave,
+          }}
+        />
+      </SheetContent>
+    </Sheet>
   );
 }
