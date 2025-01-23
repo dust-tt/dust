@@ -62,9 +62,9 @@ export async function retrieveGongTranscripts(
     localLogger
   );
 
-  // TEMP: Get the last 2 weeks if labs_transcripts_gong_full_storage FF is enabled.
+  // TEMP: Get the last 2 weeks if labs_transcripts_full_storage FF is enabled.
   const flags = await getFeatureFlags(auth.getNonNullableWorkspace());
-  const daysOfHistory = flags.includes("labs_transcripts_gong_full_storage")
+  const daysOfHistory = flags.includes("labs_transcripts_full_storage")
     ? 14
     : 1;
 
