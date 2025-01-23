@@ -12,7 +12,11 @@
   "servers": [
     {
       "url": "https://dust.tt",
-      "description": "Dust.tt API"
+      "description": "Dust.tt API (us-central1)"
+    },
+    {
+      "url": "https://eu.dust.tt",
+      "description": "Dust.tt API (europe-west1)"
     }
   ],
   "paths": {
