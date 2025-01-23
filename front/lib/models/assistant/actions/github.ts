@@ -5,7 +5,7 @@ import { DataTypes } from "sequelize";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { BaseModel } from "@app/lib/resources/storage/wrappers";
+import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 
 // Shared Github actions configuration. Github actions do not have any parameter for now (we might
 // want to allow pinnig the repo in the future). Their configuration is shared and used to track
