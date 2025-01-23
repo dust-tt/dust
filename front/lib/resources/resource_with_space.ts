@@ -19,8 +19,8 @@ import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import type { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import type {
   ModelStaticSoftDeletable,
-  SoftDeletableModel,
-} from "@app/lib/resources/storage/wrappers";
+  SoftDeletableWorkspaceAwareModel,
+} from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
   InferIncludeType,
   ResourceFindOptions,
@@ -34,7 +34,7 @@ interface ModelWithSpace extends ResourceWithId {
 }
 
 export abstract class ResourceWithSpace<
-  M extends SoftDeletableModel & ModelWithSpace,
+  M extends SoftDeletableWorkspaceAwareModel & ModelWithSpace,
 > extends BaseResource<M> {
   readonly workspaceId: ModelWithSpace["workspaceId"];
 
@@ -50,7 +50,7 @@ export abstract class ResourceWithSpace<
 
   protected static async baseFetchWithAuthorization<
     T extends ResourceWithSpace<M>,
-    M extends SoftDeletableModel & ModelWithSpace,
+    M extends SoftDeletableWorkspaceAwareModel & ModelWithSpace,
     IncludeType extends Partial<InferIncludeType<M>>,
   >(
     this: {

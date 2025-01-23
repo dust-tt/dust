@@ -2,15 +2,14 @@ import type { ModelIdType, ModelProviderIdType } from "@dust-tt/types";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";
-import { SoftDeletableModel } from "@app/lib/resources/storage/wrappers";
+import { SoftDeletableWorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
-export class TrackerConfigurationModel extends SoftDeletableModel<TrackerConfigurationModel> {
+export class TrackerConfigurationModel extends SoftDeletableWorkspaceAwareModel<TrackerConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -30,11 +29,9 @@ export class TrackerConfigurationModel extends SoftDeletableModel<TrackerConfigu
 
   declare recipients: string[] | null;
 
-  declare workspaceId: ForeignKey<Workspace["id"]>;
   declare vaultId: ForeignKey<SpaceModel["id"]>;
   declare userId: ForeignKey<UserModel["id"]> | null; // If a user is deleted, the tracker should still be available
 
-  declare workspace: NonAttribute<Workspace>;
   declare space: NonAttribute<SpaceModel>;
   declare user: NonAttribute<UserModel> | null;
   declare dataSourceConfigurations: NonAttribute<
@@ -113,15 +110,6 @@ TrackerConfigurationModel.init(
   }
 );
 
-Workspace.hasMany(TrackerConfigurationModel, {
-  foreignKey: { allowNull: false },
-  onDelete: "RESTRICT",
-});
-
-TrackerConfigurationModel.belongsTo(Workspace, {
-  foreignKey: { allowNull: false },
-});
-
 SpaceModel.hasMany(TrackerConfigurationModel, {
   foreignKey: { allowNull: false, name: "vaultId" },
   onDelete: "RESTRICT",
@@ -140,7 +128,8 @@ TrackerConfigurationModel.belongsTo(UserModel, {
   foreignKey: { allowNull: true },
 });
 
-export class TrackerDataSourceConfigurationModel extends SoftDeletableModel<TrackerDataSourceConfigurationModel> {
+// TODO: Add `workspaceId` in this column + backfill.
+export class TrackerDataSourceConfigurationModel extends SoftDeletableWorkspaceAwareModel<TrackerDataSourceConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -227,7 +216,8 @@ TrackerDataSourceConfigurationModel.belongsTo(DataSourceViewModel, {
   foreignKey: { allowNull: false },
 });
 
-export class TrackerGenerationModel extends SoftDeletableModel<TrackerGenerationModel> {
+// TODO: Add workspaceId.
+export class TrackerGenerationModel extends SoftDeletableWorkspaceAwareModel<TrackerGenerationModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 

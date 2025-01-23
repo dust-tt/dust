@@ -11,7 +11,7 @@ import { DataTypes } from "sequelize";
 
 import type { TemplateActionType } from "@app/components/assistant_builder/types";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { BaseModel } from "@app/lib/resources/storage/wrappers";
+import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 
 export class TemplateModel extends BaseModel<TemplateModel> {
   declare createdAt: CreationOptional<Date>;

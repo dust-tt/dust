@@ -4,7 +4,7 @@ import { DataTypes } from "sequelize";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
-import { BaseModel } from "@app/lib/resources/storage/wrappers";
+import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 
 export class GroupSpaceModel extends BaseModel<GroupSpaceModel> {
   declare createdAt: CreationOptional<Date>;

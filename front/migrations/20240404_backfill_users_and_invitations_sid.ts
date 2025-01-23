@@ -1,4 +1,4 @@
-import { MembershipInvitation } from "@app/lib/models/workspace";
+import { MembershipInvitation } from "@app/lib/models/membership_invitation";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";

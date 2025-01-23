@@ -98,6 +98,7 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
               trackerConfigurationId: tracker.id,
               dataSourceViewId: dataSourceView.id,
               dataSourceId: dataSourceView.dataSourceId,
+              workspaceId: dataSourceView.workspaceId,
             },
             { transaction }
           );
@@ -118,6 +119,7 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
               trackerConfigurationId: tracker.id,
               dataSourceViewId: dataSourceView.id,
               dataSourceId: dataSourceView.dataSourceId,
+              workspaceId: dataSourceView.workspaceId,
             },
             { transaction }
           );
@@ -197,6 +199,7 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
             trackerConfigurationId: this.id,
             dataSourceViewId: dataSourceView.id,
             dataSourceId: dataSourceView.dataSourceId,
+            workspaceId: this.workspaceId,
           },
           { transaction }
         );
@@ -215,6 +218,7 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
             trackerConfigurationId: this.id,
             dataSourceViewId: dataSourceView.id,
             dataSourceId: dataSourceView.dataSourceId,
+            workspaceId: this.workspaceId,
           },
           { transaction }
         );
@@ -267,6 +271,7 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
       maintainedDocumentId: maintainedDocumentId,
       maintainedDocumentDataSourceId: maintainedDocumentDataSourceModelId,
       trackerConfigurationId: this.id,
+      workspaceId: this.workspaceId,
     });
   }
 

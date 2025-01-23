@@ -9,16 +9,15 @@ import type {
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { TemplateModel } from "@app/lib/resources/storage/models/templates";
 import { UserModel } from "@app/lib/resources/storage/models/user";
-import { BaseModel } from "@app/lib/resources/storage/wrappers";
+import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
 /**
  * Agent configuration
  */
-export class AgentConfiguration extends BaseModel<AgentConfiguration> {
+export class AgentConfiguration extends WorkspaceAwareModel<AgentConfiguration> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -39,7 +38,6 @@ export class AgentConfiguration extends BaseModel<AgentConfiguration> {
 
   declare pictureUrl: string;
 
-  declare workspaceId: ForeignKey<Workspace["id"]>;
   declare authorId: ForeignKey<UserModel["id"]>;
 
   declare maxStepsPerRun: number;
@@ -171,15 +169,6 @@ AgentConfiguration.init(
   }
 );
 
-//  Agent config <> Workspace
-Workspace.hasMany(AgentConfiguration, {
-  foreignKey: { name: "workspaceId", allowNull: false },
-  onDelete: "RESTRICT",
-});
-AgentConfiguration.belongsTo(Workspace, {
-  foreignKey: { name: "workspaceId", allowNull: false },
-});
-
 // Agent config <> Author
 UserModel.hasMany(AgentConfiguration, {
   foreignKey: { name: "authorId", allowNull: false },
@@ -192,12 +181,11 @@ AgentConfiguration.belongsTo(UserModel, {
 /**
  * Global Agent settings
  */
-export class GlobalAgentSettings extends BaseModel<GlobalAgentSettings> {
+export class GlobalAgentSettings extends WorkspaceAwareModel<GlobalAgentSettings> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
   declare agentId: string;
-  declare workspaceId: ForeignKey<Workspace["id"]>;
 
   declare status: GlobalAgentStatus;
 }
@@ -232,15 +220,6 @@ GlobalAgentSettings.init(
     ],
   }
 );
-//  Global Agent config <> Workspace
-Workspace.hasMany(GlobalAgentSettings, {
-  foreignKey: { name: "workspaceId", allowNull: false },
-  onDelete: "RESTRICT",
-});
-GlobalAgentSettings.belongsTo(Workspace, {
-  foreignKey: { name: "workspaceId", allowNull: false },
-});
-
 TemplateModel.hasOne(AgentConfiguration, {
   foreignKey: { name: "templateId", allowNull: true },
   onDelete: "SET NULL",
@@ -250,7 +229,7 @@ AgentConfiguration.belongsTo(TemplateModel, {
   foreignKey: { name: "templateId", allowNull: true },
 });
 
-export class AgentUserRelation extends BaseModel<AgentUserRelation> {
+export class AgentUserRelation extends WorkspaceAwareModel<AgentUserRelation> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -259,7 +238,6 @@ export class AgentUserRelation extends BaseModel<AgentUserRelation> {
   declare favorite: boolean;
 
   declare userId: ForeignKey<UserModel["id"]>;
-  declare workspaceId: ForeignKey<Workspace["id"]>;
 }
 
 AgentUserRelation.init(
@@ -303,13 +281,6 @@ UserModel.hasMany(AgentUserRelation, {
   foreignKey: { allowNull: false },
   onDelete: "RESTRICT",
 });
-Workspace.hasMany(AgentUserRelation, {
-  foreignKey: { allowNull: false },
-  onDelete: "RESTRICT",
-});
 AgentUserRelation.belongsTo(UserModel, {
-  foreignKey: { allowNull: false },
-});
-AgentUserRelation.belongsTo(Workspace, {
   foreignKey: { allowNull: false },
 });
