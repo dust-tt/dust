@@ -13,7 +13,9 @@ import sgMail from "@sendgrid/mail";
 import { sign } from "jsonwebtoken";
 import { Op } from "sequelize";
 
+import { getAuth0ManagemementClient } from "@app/lib/api/auth0";
 import config from "@app/lib/api/config";
+import { config as regionConfig } from "@app/lib/api/regions/config";
 import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY } from "@app/lib/invitations";
@@ -377,6 +379,25 @@ export async function handleMembershipInvitations(
   const { members: existingMembers } = await getMembers(auth, {
     activeOnly: true,
   });
+
+  const otherRegionUsers: string[] = [];
+  for (const invite of invitationRequests) {
+    const matchingUsers =
+      await getAuth0ManagemementClient().usersByEmail.getByEmail({
+        email: invite.email,
+      });
+    if (
+      matchingUsers.data.some((user) => {
+        return (
+          user.app_metadata?.region &&
+          user.app_metadata.region !== regionConfig.getCurrentRegion()
+        );
+      })
+    ) {
+      otherRegionUsers.push(invite.email);
+    }
+  }
+
   const unconsumedInvitations =
     await getRecentPendingAndRevokedInvitations(auth);
   if (
@@ -438,6 +459,13 @@ export async function handleMembershipInvitations(
         };
       }
 
+      if (otherRegionUsers.find((m) => m === email)) {
+        return {
+          success: false,
+          email,
+          error_message: "Cannot send invitation to members in other regions.",
+        };
+      }
       try {
         const invitation = await updateOrCreateInvitation(owner, email, role);
         await sendWorkspaceInvitationEmail(owner, user, invitation);

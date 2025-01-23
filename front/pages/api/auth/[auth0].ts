@@ -14,7 +14,6 @@ import config from "@app/lib/api/config";
 import type { RegionType } from "@app/lib/api/regions/config";
 import { config as multiRegionsConfig } from "@app/lib/api/regions/config";
 import { checkUserRegionAffinity } from "@app/lib/api/regions/lookup";
-import { getRegionFromRequest } from "@app/lib/api/regions/utils";
 import { isEmailValid } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/withlogging";
@@ -51,7 +50,7 @@ const afterCallback: AfterCallbackPageRoute = async (
       targetRegion = regionWithAffinityRes.value.region;
     } else {
       // No region affinity found - keep user in their originally accessed region (from URL).
-      targetRegion = getRegionFromRequest(req);
+      targetRegion = multiRegionsConfig.getCurrentRegion();
     }
 
     // Update Auth0 metadata only once when not set.
@@ -121,8 +120,9 @@ export default handleAuth({
 
     if (isString(screen_hint) && screen_hint === "signup") {
       defaultAuthorizationParams.screen_hint = screen_hint;
-    } else if (isString(prompt)) {
-      // `screen_hint` and `prompt` are mutually exclusive.
+    }
+
+    if (isString(prompt)) {
       defaultAuthorizationParams.prompt = prompt;
     }
 

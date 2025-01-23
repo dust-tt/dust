@@ -5,7 +5,7 @@ export function getSignUpUrl({
   signupCallbackUrl: string;
   invitationEmail?: string;
 }) {
-  let signUpUrl = `/api/auth/login?returnTo=${signupCallbackUrl}&screen_hint=signup`;
+  let signUpUrl = `/api/auth/login?returnTo=${signupCallbackUrl}&prompt=login&screen_hint=signup`;
 
   if (invitationEmail) {
     signUpUrl += `&login_hint=${encodeURIComponent(invitationEmail)}`;
