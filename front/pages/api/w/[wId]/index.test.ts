@@ -1,7 +1,7 @@
 import { faker } from "@faker-js/faker";
 import { describe, expect, it } from "vitest";
 
-import { WorkspaceHasDomain } from "@app/lib/models/workspace";
+import { WorkspaceHasDomain } from "@app/lib/models/workspace_has_domain";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { withinTransaction } from "@app/tests/utils/utils";
 
