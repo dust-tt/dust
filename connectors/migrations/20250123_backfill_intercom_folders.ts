@@ -23,6 +23,9 @@ async function backfillConnector(
 
   if (intercomWorkspace.syncAllConversations) {
     if (execute) {
+      // The function below performs a fetch to the Intercom API, which is required because we are missing some data in db.
+      // For context, only the teams selected by the user were upserted to the db; we now need all of them to sync data with core
+      // (if there is no entry in db we cannot delete teams when the user unchecks All Conversations).
       await syncAllTeamsActivity({
         connectorId: connector.id,
         currentSyncMs: Date.now(),
