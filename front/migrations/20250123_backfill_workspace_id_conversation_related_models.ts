@@ -207,7 +207,7 @@ async function backfillTablesForWorkspace(
 
   const stats: any = {};
   for (const table of TABLES) {
-    stats[table.name] = await backfillTable(workspace, table, {
+    stats[table.model.tableName] = await backfillTable(workspace, table, {
       execute,
       logger,
     });
