@@ -5,9 +5,9 @@ import { DataTypes } from "sequelize";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
+import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
-export class AgentBrowseConfiguration extends BaseModel<AgentBrowseConfiguration> {
+export class AgentBrowseConfiguration extends WorkspaceAwareModel<AgentBrowseConfiguration> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -67,7 +67,7 @@ AgentBrowseConfiguration.belongsTo(AgentConfiguration, {
   foreignKey: { name: "agentConfigurationId", allowNull: false },
 });
 
-export class AgentBrowseAction extends BaseModel<AgentBrowseAction> {
+export class AgentBrowseAction extends WorkspaceAwareModel<AgentBrowseAction> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare runId: string | null;
