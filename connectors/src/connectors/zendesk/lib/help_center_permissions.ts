@@ -2,8 +2,8 @@ import type { ModelId } from "@dust-tt/types";
 
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
-  changeZendeskClientSubdomain,
-  createZendeskClient,
+  fetchZendeskBrand,
+  fetchZendeskCategory,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import logger from "@connectors/logger/logger";
 import {
@@ -26,9 +26,8 @@ export async function allowSyncZendeskHelpCenter({
   connectionId: string;
   brandId: number;
 }): Promise<boolean> {
-  const zendeskApiClient = createZendeskClient(
-    await getZendeskSubdomainAndAccessToken(connectionId)
-  );
+  const { subdomain, accessToken } =
+    await getZendeskSubdomainAndAccessToken(connectionId);
   const brand = await ZendeskBrandResource.fetchByBrandId({
     connectorId,
     brandId,
@@ -38,9 +37,11 @@ export async function allowSyncZendeskHelpCenter({
     await brand.grantHelpCenterPermissions();
   } else {
     // fetching the brand from Zendesk
-    const {
-      result: { brand: fetchedBrand },
-    } = await zendeskApiClient.brand.show(brandId);
+    const fetchedBrand = await fetchZendeskBrand({
+      brandId,
+      subdomain,
+      accessToken,
+    });
 
     if (!fetchedBrand) {
       logger.error(
@@ -118,19 +119,19 @@ export async function allowSyncZendeskCategory({
     await category.grantPermissions();
     return true;
   } else {
-    const zendeskApiClient = createZendeskClient(
-      await getZendeskSubdomainAndAccessToken(connectionId)
-    );
-
+    const { accessToken, subdomain } =
+      await getZendeskSubdomainAndAccessToken(connectionId);
     /// creating the brand if missing
-    const brand = await ZendeskBrandResource.fetchByBrandId({
+    let brand = await ZendeskBrandResource.fetchByBrandId({
       connectorId,
       brandId,
     });
     if (!brand) {
-      const {
-        result: { brand: fetchedBrand },
-      } = await zendeskApiClient.brand.show(brandId);
+      const fetchedBrand = await fetchZendeskBrand({
+        accessToken,
+        subdomain,
+        brandId,
+      });
 
       if (!fetchedBrand) {
         logger.error(
@@ -140,7 +141,7 @@ export async function allowSyncZendeskCategory({
         return false;
       }
 
-      await ZendeskBrandResource.makeNew({
+      brand = await ZendeskBrandResource.makeNew({
         blob: {
           subdomain: fetchedBrand.subdomain,
           connectorId: connectorId,
@@ -153,12 +154,11 @@ export async function allowSyncZendeskCategory({
       });
     }
 
-    await changeZendeskClientSubdomain(zendeskApiClient, {
-      connectorId,
-      brandId,
+    const fetchedCategory = await fetchZendeskCategory({
+      brandSubdomain: brand.subdomain,
+      accessToken,
+      categoryId,
     });
-    const { result: fetchedCategory } =
-      await zendeskApiClient.helpcenter.categories.show(categoryId);
     if (fetchedCategory) {
       await ZendeskCategoryResource.makeNew({
         blob: {
