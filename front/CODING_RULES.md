@@ -11,7 +11,7 @@ Reviewer: If you detect a pattern that is not consistent with an existing approa
 require the author to match the existing pattern (and possibly refactor everything in a subsequent
 PR).
 
-### [GEN2] Simple bug good is better than perfect but complex
+### [GEN2] Simple but good is better than perfect but complex
 
 Favor simple and easy to understand approaches vs overly optimized but complex ones.
 
