@@ -64,6 +64,12 @@ When introducing new endpoints or modifying existing endpoints, introduce functi
 tests are functional and focus at the endpoint level for now. Unit tests are not required nor
 desired.
 
+### [BACK7] Use ConcurrentExecutor vs PQueue
+
+We are deprecating our use of `PQueue` in favor of `ConcurrentExecutor`. Use `ConcurrentExecutor`
+for all new code and migrate to it from `PQueue` when modifying existing code that involves
+`PQueue`.
+
 ## REACT
 
 ### [REACT1] Always create `interface` for components Props
@@ -84,4 +90,31 @@ interface MyComponentProps {
 }
 
 export function Component({ name }: MyComponentProps) { }
+```
+
+### [REACT2] Standardized query parameters extraction
+
+Use `{ foo } = req.query` and then test with `typeof` to extract query parameters in endpoints.
+
+Example:
+
+```
+// BAD
+
+if(typeof req.query.aid !== "string") {
+  // error
+}
+
+const r = someFunction(req.query.aid);
+const r = someFunction(req.query.aid as string);
+
+// GOOD
+
+const { aid } = req.query;
+
+if (typeof aid !== "string") {
+  // error
+}
+
+const r = someFunction(aid);
 ```

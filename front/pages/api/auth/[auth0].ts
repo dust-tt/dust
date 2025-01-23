@@ -7,6 +7,7 @@ import {
   handleLogout,
   IdentityProviderError,
 } from "@auth0/nextjs-auth0";
+import {isString} from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getRegionForUserSession, setRegionForUser } from "@app/lib/api/auth0";
@@ -18,8 +19,6 @@ import { getRegionFromRequest } from "@app/lib/api/regions/utils";
 import { isEmailValid } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/withlogging";
-
-const isString = (value: unknown): value is string => typeof value === "string";
 
 const afterCallback: AfterCallbackPageRoute = async (
   req,
