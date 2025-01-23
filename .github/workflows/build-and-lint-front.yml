@@ -36,7 +36,7 @@ jobs:
       - name: Install Postgres
         uses: CasperWA/postgresql-action@v1.2
         with:
-          postgresql version: "14.13" # See https://hub.docker.com/_/postgres for available versions
+          postgresql version: ghcr.io/library/postgres:14.13 # See https://hub.docker.com/_/postgres for available versions
           postgresql db: front_test
           postgresql user: test
           postgresql password: test
