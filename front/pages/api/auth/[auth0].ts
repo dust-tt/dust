@@ -65,9 +65,6 @@ const afterCallback: AfterCallbackPageRoute = async (
 
     const params = new URLSearchParams();
 
-    // Add the silent auth params.
-    params.set("prompt", "none");
-
     // Extract just the path from the full returnTo URL.
     if (state?.returnTo) {
       try {
@@ -105,7 +102,7 @@ export default handleAuth({
     // req.query is defined on NextApiRequest (page-router), but not on NextRequest (app-router).
     const query = ("query" in req ? req.query : {}) as Partial<AuthQuery>;
 
-    const { connection, screen_hint, login_hint, prompt = "login" } = query;
+    const { connection, screen_hint, login_hint, prompt } = query;
 
     const defaultAuthorizationParams: Partial<
       LoginOptions["authorizationParams"]
@@ -120,9 +117,8 @@ export default handleAuth({
 
     if (isString(screen_hint) && screen_hint === "signup") {
       defaultAuthorizationParams.screen_hint = screen_hint;
-    }
-
-    if (isString(prompt)) {
+    } else if (isString(prompt)) {
+      // `screen_hint` and `prompt` are mutually exclusive.
       defaultAuthorizationParams.prompt = prompt;
     }
 
