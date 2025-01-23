@@ -78,10 +78,11 @@ export function computeNodesDiff({
             }
             // Custom exclusion rules. The goal here is to avoid logging irrelevant differences, scoping by connector.
             // For Snowflake and Zendesk we fixed how parents were computed in the core folders but not in connectors.
+            // For Intercom we keep the virtual node Help Center in connectors but not in core.
             if (
               ["parentInternalIds", "parentInternalId"].includes(key) &&
               provider &&
-              ["snowflake", "zendesk"].includes(provider)
+              ["snowflake", "zendesk", "intercom"].includes(provider)
             ) {
               return false;
             }
