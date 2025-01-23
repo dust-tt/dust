@@ -1,4 +1,4 @@
-name: Lint & Build (front)
+name: Lint & Build & Test (front)
 
 on:
   push:
@@ -7,9 +7,12 @@ on:
       - sdks/js/**
       - front/**
       - .github/workflows/build-and-lint-front.yml
-
+permissions:
+  contents: read
+  actions: read
+  checks: write
 jobs:
-  check-eslint:
+  all-checks:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -17,10 +20,40 @@ jobs:
         with:
           node-version: 20.13.0
           cache: "npm"
-          cache-dependency-path: ./front/package-lock.json
-      - working-directory: types
+          cache-dependency-path: |
+            ./front/package-lock.json
+            ./types/package-lock.json
+            ./sdks/js/package-lock.json
+      - name: Build Types
+        working-directory: types
         run: npm install && npm run build
-      - working-directory: sdks/js
+      - name: Build SDK/JS
+        working-directory: sdks/js
         run: npm install && npm run build
-      - working-directory: front
+      - name: Typecheck and Lint
+        working-directory: front
         run: npm install && npm run tsc && npm run lint && npm run format:check && npm run docs:check
+      - name: Install Postgres
+        uses: dust-tt/postgresql-action@6730e69fe23f4f2989c19edf9e6e0d7ffeb0a05c
+        with:
+          postgresql docker image: mirror.gcr.io/postgres
+          postgresql version: "14.13"
+          postgresql db: front_test
+          postgresql user: test
+          postgresql password: test
+          postgresql port: 5433
+      - name: Run Tests
+        working-directory: front
+        env:
+          FRONT_DATABASE_URI: "postgres://test:test@localhost:5433/front_test"
+          NODE_ENV: test
+        run: npx tsx admin/db.ts && npm run test:ci
+      - name: Build Tests Report
+        if: always()
+        uses: mikepenz/action-junit-report@v5
+        with:
+          report_paths: "**/front/junit*.xml"
+          detailed_summary: true
+          flaky_summary: true
+          group_suite: true
+          check_name: Tests Report

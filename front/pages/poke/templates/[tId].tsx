@@ -1,17 +1,17 @@
 import {
   AssistantCard,
   ColorPicker,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
   EmojiPicker,
   Input,
   Markdown,
-  NewDialog,
-  NewDialogContent,
-  NewDialogHeader,
-  NewDialogTitle,
-  NewDialogTrigger,
   TextArea,
   useSendNotification,
 } from "@dust-tt/sparkle";
@@ -426,22 +426,22 @@ function PreviewDialog({ form }: { form: any }) {
   );
 
   return (
-    <NewDialog open={open} onOpenChange={setOpen}>
-      <NewDialogTrigger asChild>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
         <PokeButton variant="secondary">✨ Preview Template Card</PokeButton>
-      </NewDialogTrigger>
-      <NewDialogContent className="bg-structure-50 sm:max-w-[600px]">
-        <NewDialogHeader>
-          <NewDialogTitle>Preview</NewDialogTitle>
-        </NewDialogHeader>
+      </DialogTrigger>
+      <DialogContent className="bg-structure-50 sm:max-w-[600px]">
+        <DialogHeader>
+          <DialogTitle>Preview</DialogTitle>
+        </DialogHeader>
         <AssistantCard
           title={form.getValues("handle")}
           pictureUrl={avatarVisual}
           description={form.getValues("description") ?? ""}
           onClick={() => console.log("clicked")}
         />
-      </NewDialogContent>
-    </NewDialog>
+      </DialogContent>
+    </Dialog>
   );
 }
 

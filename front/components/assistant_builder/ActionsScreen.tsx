@@ -77,6 +77,11 @@ import {
 } from "@app/components/assistant_builder/types";
 import { ACTION_SPECIFICATIONS } from "@app/lib/api/assistant/actions/utils";
 
+import {
+  ActionGithubGetPullRequest,
+  hasErrorActionGithub,
+} from "./actions/GithubAction";
+
 const DATA_SOURCES_ACTION_CATEGORIES = [
   "RETRIEVAL_SEARCH",
   "RETRIEVAL_EXHAUSTIVE",
@@ -93,6 +98,7 @@ const ADVANCED_ACTION_CATEGORIES = ["DUST_APP_RUN"] as const satisfies Array<
 // Note: not all capabilities are actions (eg: visualization)
 const CAPABILITIES_ACTION_CATEGORIES = [
   "WEB_NAVIGATION",
+  "GITHUB_GET_PULL_REQUEST",
 ] as const satisfies Array<AssistantBuilderActionConfiguration["type"]>;
 
 function ActionModeSection({
@@ -121,6 +127,8 @@ export function hasActionError(
       return hasErrorActionTablesQuery(action);
     case "WEB_NAVIGATION":
       return hasErrorActionWebNavigation(action);
+    case "GITHUB_GET_PULL_REQUEST":
+      return hasErrorActionGithub(action);
     default:
       assertNever(action);
   }
@@ -198,6 +206,7 @@ export default function ActionsScreen({
           break;
 
         case "WEB_NAVIGATION":
+        case "GITHUB_GET_PULL_REQUEST":
           break;
 
         default:
@@ -812,6 +821,9 @@ function ActionConfigEditor({
     case "WEB_NAVIGATION":
       return <ActionWebNavigation />;
 
+    case "GITHUB_GET_PULL_REQUEST":
+      return <ActionGithubGetPullRequest />;
+
     default:
       assertNever(action);
   }
@@ -1036,7 +1048,13 @@ function AddAction({ onAddAction }: AddActionProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="primary" label="Add a tool" icon={PlusIcon} />
+        <Button
+          variant="primary"
+          label="Add a tool"
+          data-gtm-label="toolAddingButton"
+          data-gtm-location="toolsPanel"
+          icon={PlusIcon}
+        />
       </DropdownMenuTrigger>
 
       <DropdownMenuContent>
@@ -1121,60 +1139,107 @@ function Capabilities({
           onCheckedChange={enabled ? onDisable : onEnable}
         />
         <div>
-          <div className="flex text-base font-semibold text-foreground">
+          <div className="flex text-sm font-semibold text-foreground">
             {name}
           </div>
-          <div className="text-base text-element-700">{description}</div>
+          <div className="text-sm text-element-700">{description}</div>
         </div>
       </div>
     );
   };
 
-  return (
-    <div className="mx-auto grid w-full grid-cols-1 md:grid-cols-2">
-      <Capability
-        name="Web Search & Browse"
-        description="Assistant can search (Google) and retrieve information from specific websites."
-        enabled={
-          !!builderState.actions.find((a) => a.type === "WEB_NAVIGATION")
-        }
-        onEnable={() => {
-          setEdited(true);
-          const defaultWebNavigationAction =
-            getDefaultActionConfiguration("WEB_NAVIGATION");
-          assert(defaultWebNavigationAction);
-          setAction({
-            type: "insert",
-            action: defaultWebNavigationAction,
-          });
-        }}
-        onDisable={() => {
-          const defaultWebNavigationAction =
-            getDefaultActionConfiguration("WEB_NAVIGATION");
-          assert(defaultWebNavigationAction);
-          deleteAction(defaultWebNavigationAction.name);
-        }}
-      />
+  const { platformActionsConfigurations } = useContext(AssistantBuilderContext);
 
-      <Capability
-        name="Data Visualization"
-        description="Assistant can generate charts and graphs."
-        enabled={builderState.visualizationEnabled}
-        onEnable={() => {
-          setEdited(true);
-          setBuilderState((state) => ({
-            ...state,
-            visualizationEnabled: true,
-          }));
-        }}
-        onDisable={() => {
-          setEdited(true);
-          setBuilderState((state) => ({
-            ...state,
-            visualizationEnabled: false,
-          }));
-        }}
-      />
-    </div>
+  const showGithubActions = useMemo(() => {
+    if (
+      builderState.actions.find((a) => a.type === "GITHUB_GET_PULL_REQUEST")
+    ) {
+      return true;
+    }
+    return platformActionsConfigurations.find((c) => c.provider === "github");
+  }, [platformActionsConfigurations, builderState]);
+
+  return (
+    <>
+      <div className="mx-auto grid w-full grid-cols-1 md:grid-cols-2">
+        <Capability
+          name="Web search & browse"
+          description="Assistant can search (Google) and retrieve information from specific websites."
+          enabled={
+            !!builderState.actions.find((a) => a.type === "WEB_NAVIGATION")
+          }
+          onEnable={() => {
+            setEdited(true);
+            const defaultWebNavigationAction =
+              getDefaultActionConfiguration("WEB_NAVIGATION");
+            assert(defaultWebNavigationAction);
+            setAction({
+              type: "insert",
+              action: defaultWebNavigationAction,
+            });
+          }}
+          onDisable={() => {
+            const defaultWebNavigationAction =
+              getDefaultActionConfiguration("WEB_NAVIGATION");
+            assert(defaultWebNavigationAction);
+            deleteAction(defaultWebNavigationAction.name);
+          }}
+        />
+
+        <Capability
+          name="Data visualization"
+          description="Assistant can generate charts and graphs."
+          enabled={builderState.visualizationEnabled}
+          onEnable={() => {
+            setEdited(true);
+            setBuilderState((state) => ({
+              ...state,
+              visualizationEnabled: true,
+            }));
+          }}
+          onDisable={() => {
+            setEdited(true);
+            setBuilderState((state) => ({
+              ...state,
+              visualizationEnabled: false,
+            }));
+          }}
+        />
+      </div>
+
+      {showGithubActions && (
+        <>
+          <Page.H variant="h6">Github Actions</Page.H>
+
+          <div className="mx-auto grid w-full grid-cols-1 md:grid-cols-2">
+            <Capability
+              name="Pull request retrieval"
+              description="Assistant can retrieve pull requests by number, including diffs"
+              enabled={
+                !!builderState.actions.find(
+                  (a) => a.type === "GITHUB_GET_PULL_REQUEST"
+                )
+              }
+              onEnable={() => {
+                setEdited(true);
+                const defaultGithubGetPullRequestAction =
+                  getDefaultActionConfiguration("GITHUB_GET_PULL_REQUEST");
+                assert(defaultGithubGetPullRequestAction);
+                setAction({
+                  type: "insert",
+                  action: defaultGithubGetPullRequestAction,
+                });
+              }}
+              onDisable={() => {
+                const defaulGithubGetPullRequestAction =
+                  getDefaultActionConfiguration("GITHUB_GET_PULL_REQUEST");
+                assert(defaulGithubGetPullRequestAction);
+                deleteAction(defaulGithubGetPullRequestAction.name);
+              }}
+            />
+          </div>
+        </>
+      )}
+    </>
   );
 }

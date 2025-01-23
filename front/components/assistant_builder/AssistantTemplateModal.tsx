@@ -62,7 +62,13 @@ export function AssistantTemplateModal({
               <Link
                 href={`/w/${owner.sId}/builder/assistants/new?flow=${flow}&templateId=${sId}`}
               >
-                <Button label="Use this template" variant="primary" size="sm" />
+                <Button
+                  label="Use this template"
+                  variant="primary"
+                  data-gtm-label="useTemplateButton"
+                  data-gtm-location="templateModal"
+                  size="sm"
+                />
               </Link>
             </div>
           </div>

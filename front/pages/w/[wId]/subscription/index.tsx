@@ -2,18 +2,18 @@ import {
   Button,
   CardIcon,
   Chip,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   MoreIcon,
-  NewDialog,
-  NewDialogContainer,
-  NewDialogContent,
-  NewDialogDescription,
-  NewDialogFooter,
-  NewDialogHeader,
-  NewDialogTitle,
   Page,
   ShapesIcon,
   Spinner,
@@ -442,7 +442,7 @@ function SkipFreeTrialDialog({
   plan: SubscriptionType["plan"];
 }) {
   return (
-    <NewDialog
+    <Dialog
       open={show}
       onOpenChange={(open) => {
         if (!open) {
@@ -450,15 +450,15 @@ function SkipFreeTrialDialog({
         }
       }}
     >
-      <NewDialogContent size="md">
-        <NewDialogHeader>
-          <NewDialogTitle>End trial</NewDialogTitle>
-          <NewDialogDescription>
+      <DialogContent size="md">
+        <DialogHeader>
+          <DialogTitle>End trial</DialogTitle>
+          <DialogDescription>
             Ending your trial will allow you to invite more than{" "}
             {plan.limits.users.maxUsers} members to your workspace.
-          </NewDialogDescription>
-        </NewDialogHeader>
-        <NewDialogContainer>
+          </DialogDescription>
+        </DialogHeader>
+        <DialogContainer>
           {isSaving ? (
             <div className="flex justify-center py-8">
               <Spinner variant="dark" size="md" />
@@ -492,8 +492,8 @@ function SkipFreeTrialDialog({
               );
             })()
           )}
-        </NewDialogContainer>
-        <NewDialogFooter
+        </DialogContainer>
+        <DialogFooter
           leftButtonProps={{
             label: "Cancel",
             variant: "outline",
@@ -504,8 +504,8 @@ function SkipFreeTrialDialog({
             onClick: onValidate,
           }}
         />
-      </NewDialogContent>
-    </NewDialog>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -521,7 +521,7 @@ function CancelFreeTrialDialog({
   isSaving: boolean;
 }) {
   return (
-    <NewDialog
+    <Dialog
       open={show}
       onOpenChange={(open) => {
         if (!open) {
@@ -529,15 +529,15 @@ function CancelFreeTrialDialog({
         }
       }}
     >
-      <NewDialogContent size="md">
-        <NewDialogHeader>
-          <NewDialogTitle>Cancel subscription</NewDialogTitle>
-          <NewDialogDescription>
+      <DialogContent size="md">
+        <DialogHeader>
+          <DialogTitle>Cancel subscription</DialogTitle>
+          <DialogDescription>
             All your workspace data will be deleted and you will lose access to
             your Dust workspace.
-          </NewDialogDescription>
-        </NewDialogHeader>
-        <NewDialogContainer>
+          </DialogDescription>
+        </DialogHeader>
+        <DialogContainer>
           {isSaving ? (
             <div className="flex justify-center py-8">
               <Spinner variant="dark" size="md" />
@@ -545,8 +545,8 @@ function CancelFreeTrialDialog({
           ) : (
             <div className="font-bold">Are you sure you want to proceed?</div>
           )}
-        </NewDialogContainer>
-        <NewDialogFooter
+        </DialogContainer>
+        <DialogFooter
           leftButtonProps={{
             label: "Cancel",
             variant: "outline",
@@ -557,7 +557,7 @@ function CancelFreeTrialDialog({
             onClick: onValidate,
           }}
         />
-      </NewDialogContent>
-    </NewDialog>
+      </DialogContent>
+    </Dialog>
   );
 }

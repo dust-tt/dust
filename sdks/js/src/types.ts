@@ -44,7 +44,7 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "gemini-1.5-pro-latest"
   | "gemini-1.5-flash-latest"
   | "gemini-2.0-flash-exp"
-  | "gemini-2.0-flash-thinking-exp-1219"
+  | "gemini-2.0-flash-thinking-exp-01-21"
   | "meta-llama/Llama-3.3-70B-Instruct-Turbo"
   | "Qwen/Qwen2.5-Coder-32B-Instruct"
   | "Qwen/QwQ-32B-Preview"
@@ -679,6 +679,30 @@ const TablesQueryActionTypeSchema = BaseActionSchema.extend({
 });
 type TablesQueryActionPublicType = z.infer<typeof TablesQueryActionTypeSchema>;
 
+const GithubPullRequestParamsSchema = z.object({
+  owner: z.string(),
+  repo: z.string(),
+  pullNumber: z.number(),
+});
+
+const GithubPullCommitsSchema = z.object({
+  sha: z.string(),
+  message: z.string(),
+  author: z.string(),
+});
+
+const GithubGetPullRequestActionSchema = BaseActionSchema.extend({
+  params: GithubPullRequestParamsSchema,
+  pullBody: z.string().nullable(),
+  pullCommits: GithubPullCommitsSchema.array().nullable(),
+  pullDiff: z.string().nullable(),
+  functionCallId: z.string().nullable(),
+  functionCallName: z.string().nullable(),
+  agentMessageId: ModelIdSchema,
+  step: z.number(),
+  type: z.literal("github_get_pull_request_action"),
+});
+
 const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "usage_data_api"
   | "okta_enterprise_connection"
@@ -700,6 +724,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "conversations_jit_actions"
   | "disable_run_logs"
   | "show_debug_tools"
+  | "labs_github_actions"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -930,6 +955,7 @@ const AgentActionTypeSchema = z.union([
   BrowseActionTypeSchema,
   ConversationListFilesActionTypeSchema,
   ConversationIncludeFileActionTypeSchema,
+  GithubGetPullRequestActionSchema,
 ]);
 export type AgentActionPublicType = z.infer<typeof AgentActionTypeSchema>;
 
@@ -1067,6 +1093,14 @@ const DustAppRunBlockEventSchema = z.object({
   action: DustAppRunActionTypeSchema,
 });
 
+const GithubGetPullRequestParamsEventSchema = z.object({
+  type: z.literal("github_get_pull_request_params"),
+  created: z.number(),
+  configurationId: z.string(),
+  messageId: z.string(),
+  action: GithubGetPullRequestActionSchema,
+});
+
 const ProcessParamsEventSchema = z.object({
   type: z.literal("process_params"),
   created: z.number(),
@@ -1140,6 +1174,7 @@ const AgentActionSpecificEventSchema = z.union([
   WebsearchParamsEventSchema,
   BrowseParamsEventSchema,
   ConversationIncludeFileParamsEventSchema,
+  GithubGetPullRequestParamsEventSchema,
 ]);
 export type AgentActionSpecificEvent = z.infer<
   typeof AgentActionSpecificEventSchema

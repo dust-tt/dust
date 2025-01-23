@@ -11,9 +11,9 @@ import type {
 } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { BaseModel } from "@app/lib/resources/storage/wrappers";
+import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
+import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
 export class Plan extends BaseModel<Plan> {
   declare createdAt: CreationOptional<Date>;
@@ -143,7 +143,7 @@ Plan.init(
   }
 );
 
-export class Subscription extends BaseModel<Subscription> {
+export class Subscription extends WorkspaceAwareModel<Subscription> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -154,9 +154,6 @@ export class Subscription extends BaseModel<Subscription> {
 
   declare startDate: Date;
   declare endDate: Date | null;
-
-  declare workspaceId: ForeignKey<Workspace["id"]>;
-  declare workspace: NonAttribute<Workspace>;
 
   declare planId: ForeignKey<Plan["id"]>;
   declare plan: NonAttribute<Plan>;
@@ -256,13 +253,4 @@ Plan.hasMany(Subscription, {
 });
 Subscription.belongsTo(Plan, {
   foreignKey: { name: "planId", allowNull: false },
-});
-
-// Subscription <> Workspace relationship: attribute "workspaceId" in Subscription
-Workspace.hasMany(Subscription, {
-  foreignKey: { name: "workspaceId", allowNull: false },
-  onDelete: "RESTRICT",
-});
-Subscription.belongsTo(Workspace, {
-  foreignKey: { name: "workspaceId", allowNull: false },
 });

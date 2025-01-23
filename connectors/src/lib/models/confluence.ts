@@ -1,19 +1,16 @@
-import type { CreationOptional, ForeignKey } from "sequelize";
+import type { CreationOptional } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { sequelizeConnection } from "@connectors/resources/storage";
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
-import { BaseModel } from "@connectors/resources/storage/wrappers";
+import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 
-export class ConfluenceConfiguration extends BaseModel<ConfluenceConfiguration> {
+export class ConfluenceConfiguration extends ConnectorBaseModel<ConfluenceConfiguration> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
   declare cloudId: string;
   declare url: string;
   declare userAccountId: string;
-
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 ConfluenceConfiguration.init(
   {
@@ -47,15 +44,14 @@ ConfluenceConfiguration.init(
       { fields: ["connectorId"], unique: true },
       { fields: ["userAccountId"] },
     ],
+    relationship: "hasOne",
   }
 );
-ConnectorModel.hasOne(ConfluenceConfiguration);
 
 // ConfluenceSpace stores the global spaces selected by the user to sync.
-export class ConfluenceSpace extends BaseModel<ConfluenceSpace> {
+export class ConfluenceSpace extends ConnectorBaseModel<ConfluenceSpace> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
   declare name: string;
   declare spaceId: string;
   declare urlSuffix?: string;
@@ -91,13 +87,9 @@ ConfluenceSpace.init(
     indexes: [{ fields: ["connectorId", "spaceId"], unique: true }],
   }
 );
-ConnectorModel.hasOne(ConfluenceSpace, {
-  foreignKey: "connectorId",
-  onDelete: "RESTRICT",
-});
 
 // ConfluencePages stores the pages.
-export class ConfluencePage extends BaseModel<ConfluencePage> {
+export class ConfluencePage extends ConnectorBaseModel<ConfluencePage> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare lastVisitedAt: CreationOptional<Date>;
@@ -109,8 +101,6 @@ export class ConfluencePage extends BaseModel<ConfluencePage> {
   declare spaceId: string;
   declare title: string;
   declare version: number;
-
-  declare connectorId: ForeignKey<ConnectorModel["id"]> | null;
 }
 ConfluencePage.init(
   {
@@ -169,4 +159,3 @@ ConfluencePage.init(
     modelName: "confluence_pages",
   }
 );
-ConnectorModel.hasMany(ConfluencePage);

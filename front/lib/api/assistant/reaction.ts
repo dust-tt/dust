@@ -106,10 +106,7 @@ export async function createMessageReaction(
     reaction: string;
   }
 ): Promise<boolean | null> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
+  const owner = auth.getNonNullableWorkspace();
 
   const message = await Message.findOne({
     where: {
@@ -128,6 +125,7 @@ export async function createMessageReaction(
     userContextUsername: context.username,
     userContextFullName: context.fullName,
     reaction,
+    workspaceId: owner.id,
   });
   return newReaction !== null;
 }

@@ -1,22 +1,26 @@
 import {
   Button,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   ExternalLinkIcon,
   Icon,
   IconButton,
   Input,
   Label,
   LockIcon,
-  Modal,
-  NewDialog,
-  NewDialogContainer,
-  NewDialogContent,
-  NewDialogFooter,
-  NewDialogHeader,
-  NewDialogTitle,
   Page,
   Popup,
   RadioGroup,
   RadioGroupChoice,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
   SliderToggle,
   useSendNotification,
 } from "@dust-tt/sparkle";
@@ -719,64 +723,72 @@ function CreateEnterpriseConnectionModal({
     useState<SupportedEnterpriseConnectionStrategies | null>(null);
 
   return (
-    <Modal
-      isOpen={isOpen}
-      title={"Create Single Sign On configuration"}
-      onClose={() => {
-        onClose(false);
-        setSelectedStrategy(null);
+    <Sheet
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose(false);
+          setSelectedStrategy(null);
+        }
       }}
-      hasChanged={false}
-      variant="side-sm"
     >
-      <Page variant="modal">
-        {selectedStrategy === null && (
-          <div className="flex flex-col gap-4">
-            <Page.P variant="secondary">
-              Dust supports Single Sign On (SSO) with Okta, Microsoft Entra Id
-              and SAML. Choose the SSO provider you'd like to integrate.
-            </Page.P>
-            <RadioGroup
-              value={selectedStrategy ?? ""}
-              onValueChange={(v) => {
-                setSelectedStrategy(
-                  v as SupportedEnterpriseConnectionStrategies
-                );
-              }}
-              className="flex-col gap-2"
-            >
-              <RadioGroupChoice
-                value="samlp"
-                label={
-                  <Label className="pl-1">
-                    SAML{" "}
-                    <span className="text-sm text-gray-600">(preferred)</span>
-                  </Label>
-                }
+      <SheetHeader>
+        <SheetTitle>Create Single Sign On configuration</SheetTitle>
+      </SheetHeader>
+      <SheetContent>
+        <SheetContainer>
+          <Page variant="modal">
+            {selectedStrategy === null && (
+              <div className="flex flex-col gap-4">
+                <Page.P variant="secondary">
+                  Dust supports Single Sign On (SSO) with Okta, Microsoft Entra
+                  Id and SAML. Choose the SSO provider you'd like to integrate.
+                </Page.P>
+                <RadioGroup
+                  value={selectedStrategy ?? ""}
+                  onValueChange={(v) => {
+                    setSelectedStrategy(
+                      v as SupportedEnterpriseConnectionStrategies
+                    );
+                  }}
+                  className="flex-col gap-2"
+                >
+                  <RadioGroupChoice
+                    value="samlp"
+                    label={
+                      <Label className="pl-1">
+                        SAML{" "}
+                        <span className="text-sm text-gray-600">
+                          (preferred)
+                        </span>
+                      </Label>
+                    }
+                  />
+                  <RadioGroupChoice
+                    value="okta"
+                    label={<Label className="pl-1">Okta SSO</Label>}
+                  />
+                  <RadioGroupChoice
+                    value="waad"
+                    label={<Label className="pl-1">Microsoft Entra Id</Label>}
+                  />
+                </RadioGroup>
+              </div>
+            )}
+            {selectedStrategy && (
+              <StrategyModalContent
+                onConnectionCreated={() => {
+                  onClose(true);
+                }}
+                owner={owner}
+                strategy={selectedStrategy}
+                strategyDetails={strategyDetails}
               />
-              <RadioGroupChoice
-                value="okta"
-                label={<Label className="pl-1">Okta SSO</Label>}
-              />
-              <RadioGroupChoice
-                value="waad"
-                label={<Label className="pl-1">Microsoft Entra Id</Label>}
-              />
-            </RadioGroup>
-          </div>
-        )}
-        {selectedStrategy && (
-          <StrategyModalContent
-            onConnectionCreated={() => {
-              onClose(true);
-            }}
-            owner={owner}
-            strategy={selectedStrategy}
-            strategyDetails={strategyDetails}
-          />
-        )}
-      </Page>
-    </Modal>
+            )}
+          </Page>
+        </SheetContainer>
+      </SheetContent>
+    </Sheet>
   );
 }
 
@@ -836,7 +848,7 @@ function ToggleEnforceEnterpriseConnectionModal({
   const dialog = titleAndContent[owner.ssoEnforced ? "remove" : "enforce"];
 
   return (
-    <NewDialog
+    <Dialog
       open={isOpen}
       onOpenChange={(open) => {
         if (!open) {
@@ -844,12 +856,12 @@ function ToggleEnforceEnterpriseConnectionModal({
         }
       }}
     >
-      <NewDialogContent>
-        <NewDialogHeader>
-          <NewDialogTitle>{dialog.title}</NewDialogTitle>
-        </NewDialogHeader>
-        <NewDialogContainer>{dialog.content}</NewDialogContainer>
-        <NewDialogFooter
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{dialog.title}</DialogTitle>
+        </DialogHeader>
+        <DialogContainer>{dialog.content}</DialogContainer>
+        <DialogFooter
           leftButtonProps={{
             label: "Cancel",
             variant: "outline",
@@ -863,8 +875,8 @@ function ToggleEnforceEnterpriseConnectionModal({
             },
           }}
         />
-      </NewDialogContent>
-    </NewDialog>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -911,7 +923,7 @@ function DisableEnterpriseConnectionModal({
   }
 
   return (
-    <NewDialog
+    <Dialog
       open={isOpen}
       onOpenChange={(open) => {
         if (!open) {
@@ -919,17 +931,17 @@ function DisableEnterpriseConnectionModal({
         }
       }}
     >
-      <NewDialogContent size="md">
-        <NewDialogHeader>
-          <NewDialogTitle>
+      <DialogContent size="md">
+        <DialogHeader>
+          <DialogTitle>
             Disable ${strategyHumanReadable} Single Sign On
-          </NewDialogTitle>
-        </NewDialogHeader>
-        <NewDialogContainer>
+          </DialogTitle>
+        </DialogHeader>
+        <DialogContainer>
           Anyone with an {strategyHumanReadable} account won't be able to access
           your Dust workspace anymore.
-        </NewDialogContainer>
-        <NewDialogFooter
+        </DialogContainer>
+        <DialogFooter
           leftButtonProps={{
             label: "Cancel",
             variant: "outline",
@@ -942,7 +954,7 @@ function DisableEnterpriseConnectionModal({
             },
           }}
         />
-      </NewDialogContent>
-    </NewDialog>
+      </DialogContent>
+    </Dialog>
   );
 }

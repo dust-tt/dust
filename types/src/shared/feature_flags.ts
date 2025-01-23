@@ -18,6 +18,7 @@ export const WHITELISTABLE_FEATURES = [
   "disable_run_logs",
   "labs_trackers",
   "show_debug_tools",
+  "labs_github_actions",
 ] as const;
 export type WhitelistableFeature = (typeof WHITELISTABLE_FEATURES)[number];
 export function isWhitelistableFeature(

@@ -1,12 +1,12 @@
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { AppModel } from "@app/lib/resources/storage/models/apps";
-import { BaseModel } from "@app/lib/resources/storage/wrappers";
+import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
+import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
-export class RunModel extends BaseModel<RunModel> {
+export class RunModel extends WorkspaceAwareModel<RunModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -14,7 +14,6 @@ export class RunModel extends BaseModel<RunModel> {
   declare runType: string;
 
   declare appId: ForeignKey<AppModel["id"]>;
-  declare workspaceId: ForeignKey<Workspace["id"]>;
 
   declare app: NonAttribute<AppModel>;
 }
@@ -57,10 +56,6 @@ AppModel.hasMany(RunModel, {
 RunModel.belongsTo(AppModel, {
   as: "app",
   foreignKey: { name: "appId", allowNull: false },
-});
-Workspace.hasMany(RunModel, {
-  foreignKey: { allowNull: false },
-  onDelete: "RESTRICT",
 });
 
 export class RunUsageModel extends BaseModel<RunUsageModel> {

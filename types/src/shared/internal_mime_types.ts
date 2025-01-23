@@ -83,7 +83,6 @@ export const MIME_TYPES = {
       "TEAMS_FOLDER",
       "CONVERSATION",
       "TEAM",
-      "HELP_CENTER",
       "ARTICLE",
     ],
   }),
@@ -109,14 +108,7 @@ export const MIME_TYPES = {
   }),
   ZENDESK: getMimeTypes({
     provider: "zendesk",
-    resourceTypes: [
-      "BRAND",
-      "HELP_CENTER",
-      "CATEGORY",
-      "ARTICLE",
-      "TICKETS",
-      "TICKET",
-    ],
+    resourceTypes: ["HELP_CENTER", "CATEGORY", "ARTICLE", "TICKETS", "TICKET"],
   }),
 };
 

@@ -1,13 +1,13 @@
 import {
   Button,
   ContentMessage,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   InformationCircleIcon,
-  NewDialog,
-  NewDialogContainer,
-  NewDialogContent,
-  NewDialogFooter,
-  NewDialogHeader,
-  NewDialogTitle,
   PlusIcon,
   Tooltip,
   useSendNotification,
@@ -338,18 +338,16 @@ export function EditSpaceManagedDataSourcesViews({
         initialSelectedDataSources={filteredDataSourceViews}
       />
 
-      <NewDialog
+      <Dialog
         open={showNoConnectionDialog}
         onOpenChange={(open) => !open && setShowNoConnectionDialog(false)}
       >
-        <NewDialogContent>
-          <NewDialogHeader>
-            <NewDialogTitle>No connection set up</NewDialogTitle>
-          </NewDialogHeader>
-          <NewDialogContainer>
-            You have no connection set up.
-          </NewDialogContainer>
-          <NewDialogFooter
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>No connection set up</DialogTitle>
+          </DialogHeader>
+          <DialogContainer>You have no connection set up.</DialogContainer>
+          <DialogFooter
             leftButtonProps={{
               label: "Close",
               variant: "outline",
@@ -361,8 +359,8 @@ export function EditSpaceManagedDataSourcesViews({
               onClick: handleGoToConnectionsManagement,
             }}
           />
-        </NewDialogContent>
-      </NewDialog>
+        </DialogContent>
+      </Dialog>
       <AwaitableDialog />
       {isSavingDisabled ? (
         <Tooltip

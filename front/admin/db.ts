@@ -10,6 +10,8 @@ import {
   AgentDustAppRunAction,
   AgentDustAppRunConfiguration,
 } from "@app/lib/models/assistant/actions/dust_app_run";
+import { AgentGithubGetPullRequestAction } from "@app/lib/models/assistant/actions/github";
+import { AgentGithubConfiguration } from "@app/lib/models/assistant/actions/github";
 import {
   AgentProcessAction,
   AgentProcessConfiguration,
@@ -45,21 +47,18 @@ import {
   MessageReaction,
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
-import { ConversationClassification } from "@app/lib/models/conversation_classification";
 import {
   TrackerConfigurationModel,
   TrackerDataSourceConfigurationModel,
   TrackerGenerationModel,
 } from "@app/lib/models/doc_tracker";
+import { DustAppSecret } from "@app/lib/models/dust_app_secret";
 import { ExtensionConfigurationModel } from "@app/lib/models/extension";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
+import { MembershipInvitation } from "@app/lib/models/membership_invitation";
 import { Plan, Subscription } from "@app/lib/models/plan";
-import {
-  DustAppSecret,
-  MembershipInvitation,
-  Workspace,
-  WorkspaceHasDomain,
-} from "@app/lib/models/workspace";
+import { Workspace } from "@app/lib/models/workspace";
+import { WorkspaceHasDomain } from "@app/lib/models/workspace_has_domain";
 import {
   AppModel,
   Clone,
@@ -81,6 +80,7 @@ import {
   LabsTranscriptsHistoryModel,
 } from "@app/lib/resources/storage/models/labs_transcripts";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
+import { PlatformActionsConfigurationModel } from "@app/lib/resources/storage/models/platform_actions";
 import {
   RunModel,
   RunUsageModel,
@@ -147,6 +147,7 @@ async function main() {
   await AgentProcessConfiguration.sync({ alter: true });
   await AgentWebsearchConfiguration.sync({ alter: true });
   await AgentBrowseConfiguration.sync({ alter: true });
+  await AgentGithubConfiguration.sync({ alter: true });
 
   await AgentDataSourceConfiguration.sync({ alter: true });
 
@@ -166,6 +167,7 @@ async function main() {
   await AgentBrowseAction.sync({ alter: true });
   await AgentConversationIncludeFileAction.sync({ alter: true });
   await AgentMessageContent.sync({ alter: true });
+  await AgentGithubGetPullRequestAction.sync({ alter: true });
 
   await RetrievalDocument.sync({ alter: true });
   await RetrievalDocumentChunk.sync({ alter: true });
@@ -173,7 +175,7 @@ async function main() {
   await FeatureFlag.sync({ alter: true });
   await KillSwitchModel.sync({ alter: true });
 
-  await ConversationClassification.sync({ alter: true });
+  await PlatformActionsConfigurationModel.sync({ alter: true });
 
   // Labs - Can be removed at all times if a solution is dropped
   await LabsTranscriptsConfigurationModel.sync({ alter: true });

@@ -189,13 +189,15 @@ async function getContentNodesForDataSourceViewFromCore(
 
   // In any case, there is a data_source_view filter, which is always applied.
   const node_ids =
-    internalIds ?? parentId ? undefined : dataSourceView.parentsIn ?? undefined;
+    internalIds ??
+    (parentId ? undefined : dataSourceView.parentsIn ?? undefined);
   const parent_id =
-    parentId ?? internalIds
+    parentId ??
+    (internalIds
       ? undefined
       : dataSourceView.parentsIn
         ? undefined
-        : ROOT_PARENT_ID;
+        : ROOT_PARENT_ID);
 
   const coreRes = await coreAPI.searchNodes({
     filter: {
@@ -390,15 +392,6 @@ export async function getContentNodesForDataSourceView(
       "[CoreNodes] Could not fetch content nodes from core"
     );
   } else if (coreContentNodesRes.isOk()) {
-    if (coreContentNodesRes.value.total !== contentNodesResult.total) {
-      localLogger.info(
-        {
-          coreNodesCount: coreContentNodesRes.value.total,
-          connectorsNodesCount: contentNodesResult.total,
-        },
-        "[CoreNodes] Content nodes count mismatch"
-      );
-    }
     computeNodesDiff({
       connectorsContentNodes: contentNodesResult.nodes,
       coreContentNodes: coreContentNodesRes.value.nodes,

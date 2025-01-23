@@ -3,6 +3,7 @@ import type {
   BrowseConfigurationType,
   ConversationIncludeFileConfigurationType,
   DustAppRunConfigurationType,
+  GithubGetPullRequestConfigurationType,
   ProcessConfigurationType,
   RetrievalConfigurationType,
   TablesQueryConfigurationType,
@@ -22,6 +23,8 @@ import type {
 } from "@app/lib/api/assistant/actions/types";
 import { WebsearchConfigurationServerRunner } from "@app/lib/api/assistant/actions/websearch";
 
+import { GithubGetPullRequestConfigurationServerRunner } from "./github";
+
 interface ActionToConfigTypeMap {
   dust_app_run_configuration: DustAppRunConfigurationType;
   process_configuration: ProcessConfigurationType;
@@ -30,6 +33,7 @@ interface ActionToConfigTypeMap {
   websearch_configuration: WebsearchConfigurationType;
   browse_configuration: BrowseConfigurationType;
   conversation_include_file_configuration: ConversationIncludeFileConfigurationType;
+  github_get_pull_request_configuration: GithubGetPullRequestConfigurationType;
 }
 
 interface ActionTypeToClassMap {
@@ -40,6 +44,7 @@ interface ActionTypeToClassMap {
   websearch_configuration: WebsearchConfigurationServerRunner;
   browse_configuration: BrowseConfigurationServerRunner;
   conversation_include_file_configuration: ConversationIncludeFileConfigurationServerRunner;
+  github_get_pull_request_configuration: GithubGetPullRequestConfigurationServerRunner;
 }
 
 // Ensure all AgentAction keys are present in ActionToConfigTypeMap.
@@ -84,6 +89,8 @@ export const ACTION_TYPE_TO_CONFIGURATION_SERVER_RUNNER: {
   retrieval_configuration: RetrievalConfigurationServerRunner,
   conversation_include_file_configuration:
     ConversationIncludeFileConfigurationServerRunner,
+  github_get_pull_request_configuration:
+    GithubGetPullRequestConfigurationServerRunner,
 } as const;
 
 export function getRunnerForActionConfiguration<K extends keyof CombinedMap>(

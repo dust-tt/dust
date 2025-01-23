@@ -178,7 +178,9 @@ export type DropdownMenuItemProps = MutuallyExclusiveProps<
     inset?: boolean;
     variant?: ItemVariantType;
   } & Omit<LinkWrapperProps, "children" | "className">,
-  LabelAndIconProps & { description?: string }
+  LabelAndIconProps & {
+    description?: string;
+  }
 >;
 
 const DropdownMenuItem = React.forwardRef<

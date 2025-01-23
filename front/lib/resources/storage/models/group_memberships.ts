@@ -1,13 +1,12 @@
 import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { UserModel } from "@app/lib/resources/storage/models/user";
-import { BaseModel } from "@app/lib/resources/storage/wrappers";
+import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
-export class GroupMembershipModel extends BaseModel<GroupMembershipModel> {
+export class GroupMembershipModel extends WorkspaceAwareModel<GroupMembershipModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -16,7 +15,6 @@ export class GroupMembershipModel extends BaseModel<GroupMembershipModel> {
 
   declare groupId: ForeignKey<GroupModel["id"]>;
   declare userId: ForeignKey<UserModel["id"]>;
-  declare workspaceId: ForeignKey<Workspace["id"]>;
 }
 GroupMembershipModel.init(
   {
@@ -53,10 +51,5 @@ GroupModel.hasMany(GroupMembershipModel, {
   foreignKey: { allowNull: false },
   onDelete: "RESTRICT",
 });
-Workspace.hasMany(GroupMembershipModel, {
-  foreignKey: { allowNull: false },
-  onDelete: "RESTRICT",
-});
 GroupMembershipModel.belongsTo(UserModel);
 GroupMembershipModel.belongsTo(GroupModel);
-GroupMembershipModel.belongsTo(Workspace);

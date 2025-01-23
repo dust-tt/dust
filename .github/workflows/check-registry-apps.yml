@@ -17,6 +17,7 @@ jobs:
       - name: Check if file was modified
         id: check_modified
         run: |
+          set +eo pipefail
           git diff --name-only origin/main HEAD | grep -q "front/lib/registry.ts"
           if [ $? -eq 0 ]; then
             echo "file_changed=true" >> $GITHUB_OUTPUT

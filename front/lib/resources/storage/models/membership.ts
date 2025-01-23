@@ -2,12 +2,11 @@ import type { MembershipRoleType } from "@dust-tt/types";
 import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
-import { BaseModel } from "@app/lib/resources/storage/wrappers";
+import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
-export class MembershipModel extends BaseModel<MembershipModel> {
+export class MembershipModel extends WorkspaceAwareModel<MembershipModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -16,7 +15,6 @@ export class MembershipModel extends BaseModel<MembershipModel> {
   declare endAt: Date | null;
 
   declare userId: ForeignKey<UserModel["id"]>;
-  declare workspaceId: ForeignKey<Workspace["id"]>;
 }
 MembershipModel.init(
   {
@@ -57,9 +55,4 @@ UserModel.hasMany(MembershipModel, {
   foreignKey: { allowNull: false },
   onDelete: "RESTRICT",
 });
-Workspace.hasMany(MembershipModel, {
-  foreignKey: { allowNull: false },
-  onDelete: "RESTRICT",
-});
-MembershipModel.belongsTo(Workspace);
 MembershipModel.belongsTo(UserModel);

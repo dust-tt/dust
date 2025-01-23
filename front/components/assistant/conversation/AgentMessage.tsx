@@ -247,6 +247,7 @@ export function AgentMessage({
       case "websearch_params":
       case "browse_params":
       case "conversation_include_file_params":
+      case "github_get_pull_request_params":
         setStreamedAgentMessage((m) => {
           return updateMessageWithAction(m, event.action);
         });
@@ -720,7 +721,7 @@ function ErrorMessage({
         <Popover
           trigger={
             <Button
-              variant="ghost"
+              variant="outline"
               size="xs"
               icon={EyeIcon}
               label="See the error"
@@ -748,7 +749,7 @@ function ErrorMessage({
       </div>
       <div>
         <Button
-          variant="ghost"
+          variant="outline"
           size="sm"
           icon={ArrowPathIcon}
           label="Retry"

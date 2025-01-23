@@ -32,6 +32,7 @@ import {
   TemplateAgentConfigurationType,
 } from "../../../front/assistant/agent";
 import { AgentActionType } from "../../../front/assistant/conversation";
+import { GithubGetPullRequestConfigurationType } from "./github";
 
 export function isTablesQueryConfiguration(
   arg: unknown
@@ -139,6 +140,23 @@ export function isBrowseActionType(
   arg: AgentActionType
 ): arg is BrowseActionType {
   return arg.type === "browse_action";
+}
+
+export function isGithubGetPullRequestConfiguration(
+  arg: unknown
+): arg is GithubGetPullRequestConfigurationType {
+  return (
+    !!arg &&
+    typeof arg === "object" &&
+    "type" in arg &&
+    arg.type === "github_get_pull_request_configuration"
+  );
+}
+
+export function isGithubGetPullRequestActionType(
+  arg: AgentActionType
+): arg is BrowseActionType {
+  return arg.type === "github_get_pull_request_action";
 }
 
 export function isConversationIncludeFileConfiguration(

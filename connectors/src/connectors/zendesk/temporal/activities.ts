@@ -2,6 +2,10 @@ import type { ModelId } from "@dust-tt/types";
 import { MIME_TYPES } from "@dust-tt/types";
 import _ from "lodash";
 
+import {
+  getCategoryInternalId,
+  getHelpCenterInternalId,
+} from "@connectors/connectors/zendesk/lib/id_conversions";
 import { syncArticle } from "@connectors/connectors/zendesk/lib/sync_article";
 import { syncCategory } from "@connectors/connectors/zendesk/lib/sync_category";
 import { syncTicket } from "@connectors/connectors/zendesk/lib/sync_ticket";
@@ -20,7 +24,10 @@ import {
 import { ZENDESK_BATCH_SIZE } from "@connectors/connectors/zendesk/temporal/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
-import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
+import {
+  deleteDataSourceFolder,
+  upsertDataSourceFolder,
+} from "@connectors/lib/data_sources";
 import { ZendeskTimestampCursor } from "@connectors/lib/models/zendesk";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import { heartbeat } from "@connectors/lib/temporal";
@@ -127,34 +134,86 @@ export async function syncZendeskBrandActivity({
     return { helpCenterAllowed: false, ticketsAllowed: false };
   }
 
-  // upserting three folders to data_sources_folders (core): brand, help center, tickets
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
-  // using the content node to get one source of truth regarding the parent relationship
   const helpCenterNode = brandInDb.getHelpCenterContentNode(connectorId, {
     richTitle: true,
   });
-  await upsertDataSourceFolder({
-    dataSourceConfig,
-    folderId: helpCenterNode.internalId,
-    parents: [helpCenterNode.internalId],
-    parentId: null,
-    title: helpCenterNode.title,
-    mimeType: MIME_TYPES.ZENDESK.HELP_CENTER,
-  });
+  // syncing the folders in data_sources_folders (core) for the nodes that are selected among the Help Center and the Tickets
+  if (brandInDb.helpCenterPermission === "read") {
+    await upsertDataSourceFolder({
+      dataSourceConfig,
+      folderId: helpCenterNode.internalId,
+      parents: [helpCenterNode.internalId],
+      parentId: null,
+      title: helpCenterNode.title,
+      mimeType: MIME_TYPES.ZENDESK.HELP_CENTER,
+      timestampMs: currentSyncDateMs,
+    });
 
-  // using the content node to get one source of truth regarding the parent relationship
+    // updating the parents for the already selected categories to add the Help Center
+    const selectedCategories =
+      await ZendeskCategoryResource.fetchByBrandIdReadOnly({
+        connectorId,
+        brandId,
+      });
+    for (const category of selectedCategories) {
+      // here we can just take all the possible parents since we are syncing the categories through their Help Center
+      const parents = category.getParentInternalIds(connectorId);
+      await upsertDataSourceFolder({
+        dataSourceConfig,
+        folderId: parents[0],
+        parents,
+        parentId: parents[1],
+        title: category.name,
+        mimeType: MIME_TYPES.ZENDESK.CATEGORY,
+        sourceUrl: category.url,
+        timestampMs: currentSyncDateMs,
+      });
+    }
+  } else {
+    await deleteDataSourceFolder({
+      dataSourceConfig,
+      folderId: helpCenterNode.internalId,
+    });
+
+    // deleting categories that were only synced because the Help Center was selected but were not explicitely selected by the user in the UI
+    const categoriesNotSelected =
+      await ZendeskCategoryResource.fetchBrandUnselectedCategories({
+        connectorId,
+        brandId,
+      });
+    for (const category of categoriesNotSelected) {
+      await deleteDataSourceFolder({
+        dataSourceConfig,
+        folderId: getCategoryInternalId({
+          connectorId,
+          brandId,
+          categoryId: category.categoryId,
+        }),
+      });
+    }
+  }
+
   const ticketsNode = brandInDb.getTicketsContentNode(connectorId, {
     richTitle: true,
   });
-  await upsertDataSourceFolder({
-    dataSourceConfig,
-    folderId: ticketsNode.internalId,
-    parents: [ticketsNode.internalId],
-    parentId: null,
-    title: ticketsNode.title,
-    mimeType: MIME_TYPES.ZENDESK.TICKETS,
-  });
+  if (brandInDb.ticketsPermission === "read") {
+    await upsertDataSourceFolder({
+      dataSourceConfig,
+      folderId: ticketsNode.internalId,
+      parents: [ticketsNode.internalId],
+      parentId: null,
+      title: ticketsNode.title,
+      mimeType: MIME_TYPES.ZENDESK.TICKETS,
+      timestampMs: currentSyncDateMs,
+    });
+  } else {
+    await deleteDataSourceFolder({
+      dataSourceConfig,
+      folderId: ticketsNode.internalId,
+    });
+  }
 
   // updating the entry in db
   await brandInDb.update({
@@ -256,6 +315,7 @@ export async function syncZendeskCategoryBatchActivity({
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
   }
+
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
   const { accessToken, subdomain } = await getZendeskSubdomainAndAccessToken(
@@ -266,6 +326,10 @@ export async function syncZendeskCategoryBatchActivity({
     connectorId,
     accessToken,
     subdomain,
+  });
+  const brandInDb = await ZendeskBrandResource.fetchByBrandId({
+    connectorId,
+    brandId,
   });
 
   const { categories, hasMore, nextLink } = await fetchZendeskCategoriesInBrand(
@@ -280,6 +344,7 @@ export async function syncZendeskCategoryBatchActivity({
         connectorId,
         brandId,
         category,
+        isHelpCenterSelected: brandInDb?.helpCenterPermission === "read",
         currentSyncDateMs,
         dataSourceConfig,
       });
@@ -314,7 +379,10 @@ export async function syncZendeskCategoryActivity({
   categoryId: number;
   brandId: number;
   currentSyncDateMs: number;
-}): Promise<{ shouldSyncArticles: boolean }> {
+}): Promise<{
+  shouldSyncArticles: boolean;
+  helpCenterIsAllowed: boolean | null;
+}> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
@@ -330,9 +398,14 @@ export async function syncZendeskCategoryActivity({
     );
   }
 
-  // if all rights were revoked, we have nothing to sync
+  // Remove the category if was explicitly unselected in the UI.
   if (categoryInDb.permission === "none") {
-    return { shouldSyncArticles: false };
+    await deleteDataSourceFolder({
+      dataSourceConfig: dataSourceConfigFromConnector(connector),
+      folderId: getCategoryInternalId({ connectorId, brandId, categoryId }),
+    });
+    // note that the articles will be deleted in the garbage collection
+    return { shouldSyncArticles: false, helpCenterIsAllowed: null };
   }
 
   const zendeskApiClient = createZendeskClient(
@@ -348,19 +421,31 @@ export async function syncZendeskCategoryActivity({
     await zendeskApiClient.helpcenter.categories.show(categoryId);
   if (!fetchedCategory) {
     await categoryInDb.revokePermissions();
-    return { shouldSyncArticles: false };
+    return { shouldSyncArticles: false, helpCenterIsAllowed: null };
   }
 
   // upserting a folder to data_sources_folders (core)
-  const parents = categoryInDb.getParentInternalIds(connectorId);
+  const brandInDb = await ZendeskBrandResource.fetchByBrandId({
+    connectorId,
+    brandId,
+  });
+  const folderId = getCategoryInternalId({ connectorId, brandId, categoryId });
+  // adding the parents to the array of parents iff the Help Center was selected
+  const parentId =
+    brandInDb?.helpCenterPermission === "read"
+      ? getHelpCenterInternalId({ connectorId, brandId })
+      : null;
+  const parents = parentId ? [folderId, parentId] : [folderId];
+
   await upsertDataSourceFolder({
     dataSourceConfig: dataSourceConfigFromConnector(connector),
-    folderId: parents[0],
+    folderId,
     parents,
-    parentId: parents[1],
+    parentId,
     title: categoryInDb.name,
     mimeType: MIME_TYPES.ZENDESK.CATEGORY,
     sourceUrl: fetchedCategory.html_url,
+    timestampMs: currentSyncDateMs,
   });
 
   // otherwise, we update the category name and lastUpsertedTs
@@ -370,7 +455,10 @@ export async function syncZendeskCategoryActivity({
     description: fetchedCategory.description,
     lastUpsertedTs: new Date(currentSyncDateMs),
   });
-  return { shouldSyncArticles: true };
+  return {
+    shouldSyncArticles: true,
+    helpCenterIsAllowed: brandInDb?.helpCenterPermission === "read",
+  };
 }
 
 /**
@@ -382,14 +470,14 @@ export async function syncZendeskArticleBatchActivity({
   brandId,
   categoryId,
   currentSyncDateMs,
-  forceResync,
+  helpCenterIsAllowed,
   url,
 }: {
   connectorId: ModelId;
   brandId: number;
   categoryId: number;
   currentSyncDateMs: number;
-  forceResync: boolean;
+  helpCenterIsAllowed: boolean;
   url: string | null;
 }): Promise<{ hasMore: boolean; nextLink: string | null }> {
   const connector = await ConnectorResource.fetchById(connectorId);
@@ -453,9 +541,9 @@ export async function syncZendeskArticleBatchActivity({
           sections.find((section) => section.id === article.section_id) || null,
         user: users.find((user) => user.id === article.author_id) || null,
         dataSourceConfig,
+        helpCenterIsAllowed,
         currentSyncDateMs,
         loggerArgs,
-        forceResync,
       }),
     {
       concurrency: 10,

@@ -10,22 +10,22 @@ import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/la
 import type { Logger } from "@app/logger/logger";
 import logger from "@app/logger/logger";
 
-const ModjoSpeakerSchema = t.type({
+const ModjoSpeakerSchema = t.partial({
   contactId: t.union([t.number, t.undefined]),
   userId: t.union([t.number, t.undefined]),
-  email: t.union([t.string, t.null]),
+  email: t.union([t.string, t.null, t.undefined]),
   name: t.string,
   phoneNumber: t.union([t.string, t.null, t.undefined]),
   speakerId: t.number,
   type: t.string,
 });
 
-const ModjoTopicSchema = t.type({
+const ModjoTopicSchema = t.partial({
   topicId: t.number,
   name: t.string,
 });
 
-const ModjoTranscriptEntrySchema = t.type({
+const ModjoTranscriptEntrySchema = t.partial({
   startTime: t.number,
   endTime: t.number,
   speakerId: t.number,
@@ -33,22 +33,23 @@ const ModjoTranscriptEntrySchema = t.type({
   topics: t.array(ModjoTopicSchema),
 });
 
-const ModjoTagSchema = t.type({
+const ModjoTagSchema = t.partial({
   name: t.string,
 });
 
-const ModjoRecordingSchema = t.type({
+const ModjoRecordingSchema = t.partial({
   url: t.string,
 });
 
 const ModjoHighlightSchema = t.union([
-  t.type({
+  t.partial({
     content: t.string,
   }),
   t.null,
+  t.undefined,
 ]);
 
-const ModjoRelationsSchema = t.type({
+const ModjoRelationsSchema = t.partial({
   recording: ModjoRecordingSchema,
   highlights: ModjoHighlightSchema,
   speakers: t.array(ModjoSpeakerSchema),
@@ -56,26 +57,30 @@ const ModjoRelationsSchema = t.type({
   tags: t.array(ModjoTagSchema),
 });
 
-const ModjoCallSchema = t.type({
+const ModjoCallSchema = t.partial({
   callId: t.number,
   title: t.string,
   startDate: t.string,
   duration: t.number,
   provider: t.string,
-  language: t.string,
-  callCrmId: t.union([t.string, t.null]),
+  language: t.union([t.string, t.null, t.undefined]),
+  callCrmId: t.union([t.string, t.null, t.undefined]),
   relations: ModjoRelationsSchema,
 });
 
-const ModjoPaginationSchema = t.type({
+const ModjoPaginationSchema = t.partial({
   totalValues: t.number,
   lastPage: t.number,
 });
 
-const ModjoApiResponseSchema = t.type({
-  pagination: ModjoPaginationSchema,
-  values: t.array(ModjoCallSchema),
-});
+const ModjoApiResponseSchema = t.intersection([
+  t.type({
+    values: t.array(ModjoCallSchema),
+  }),
+  t.partial({
+    pagination: ModjoPaginationSchema,
+  }),
+]);
 
 type ModjoApiResponseType = t.TypeOf<typeof ModjoApiResponseSchema>;
 
@@ -84,9 +89,16 @@ function validateModjoResponse(
 ): either.Either<Error, ModjoApiResponseType> {
   return pipe(
     ModjoApiResponseSchema.decode(data),
-    either.mapLeft(
-      (errors) => new Error(`Invalid API response: ${JSON.stringify(errors)}`)
-    )
+    either.mapLeft((errors) => {
+      // Format validation errors in a more readable way
+      const formattedErrors = errors.map((error) => {
+        const path = error.context.map((c) => c.key).join(".");
+        const expectedType = error.context[error.context.length - 1].type.name;
+        const value = JSON.stringify(error.value);
+        return `Path '${path}': Expected ${expectedType}, got ${value}`;
+      });
+      return new Error(`Validation errors:\n${formattedErrors.join("\n")}`);
+    })
   );
 }
 
@@ -203,7 +215,14 @@ export async function retrieveModjoTranscripts(
 
       // Process current page
       for (const call of validatedData.values) {
-        const fileId = call.callId.toString();
+        const fileId = call.callId?.toString();
+        if (!fileId) {
+          localLogger.info(
+            {},
+            "[retrieveNewTranscripts] call has no ID. Skipping."
+          );
+          continue;
+        }
         const history =
           await transcriptsConfiguration.fetchHistoryForFileId(fileId);
 
@@ -223,7 +242,10 @@ export async function retrieveModjoTranscripts(
         "[retrieveNewTranscripts] Processed page of Modjo transcripts"
       );
 
-      if (page >= validatedData.pagination.lastPage) {
+      if (
+        !validatedData.pagination?.lastPage ||
+        page >= validatedData.pagination.lastPage
+      ) {
         hasMorePages = false;
       } else {
         page++;
@@ -345,12 +367,14 @@ export async function retrieveModjoTranscriptContent(
   }
 
   const user = await findModjoUser();
-  const userParticipated = callData.relations.speakers.some(
-    (speaker) => speaker.email === user?.email
-  );
+  const userParticipated =
+    callData.relations?.speakers?.some(
+      (speaker) => speaker.email === user?.email
+    ) ?? false;
 
-  const hours = Math.floor(callData.duration / 3600);
-  const minutes = Math.floor((callData.duration % 3600) / 60);
+  const duration = callData.duration ?? 0;
+  const hours = Math.floor(duration / 3600);
+  const minutes = Math.floor((duration % 3600) / 60);
   const callDuration = `${hours} hours ${
     minutes < 10 ? "0" + minutes : minutes
   } minutes`;
@@ -358,22 +382,22 @@ export async function retrieveModjoTranscriptContent(
   const transcriptTitle = callData.title || "Untitled";
   let transcriptContent = `Meeting title: ${
     transcriptTitle || "Untitled"
-  }\n\nDate: ${callData.startDate}\n\nDuration: ${callDuration}\n\n`;
+  }\n\nDate: ${callData.startDate || "Unknown"}\n\nDuration: ${callDuration}\n\n`;
 
   // Add speakers section
   transcriptContent += "Speakers:\n";
-  callData.relations.speakers.forEach((speaker) => {
-    transcriptContent += `${speaker.name} (${speaker.type})\n`;
+  callData.relations?.speakers?.forEach((speaker) => {
+    transcriptContent += `${speaker.name || "Unknown"} (${speaker.type || "Unknown"})\n`;
   });
   transcriptContent += "\n";
 
   // Add transcript content
-  callData.relations.transcript.forEach((entry) => {
-    const speaker = callData.relations.speakers.find(
+  callData.relations?.transcript?.forEach((entry) => {
+    const speaker = callData.relations?.speakers?.find(
       (s) => s.speakerId === entry.speakerId
     );
     const speakerName = speaker ? speaker.name : `Speaker ${entry.speakerId}`;
-    transcriptContent += `${speakerName}: ${entry.content}\n`;
+    transcriptContent += `${speakerName}: ${entry.content || ""}\n`;
   });
 
   return { transcriptTitle, transcriptContent, userParticipated };

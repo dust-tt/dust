@@ -195,9 +195,7 @@ export async function allowSyncCollection({
   const accessToken = await getIntercomAccessToken(connectionId);
 
   if (collection?.permission === "none") {
-    await collection.update({
-      permission: "read",
-    });
+    await collection.update({ permission: "read" });
   } else if (!collection) {
     const intercomCollection = await fetchIntercomCollection({
       accessToken,

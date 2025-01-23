@@ -3,10 +3,7 @@ import type { ModelId } from "@dust-tt/types";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import { createZendeskClient } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import logger from "@connectors/logger/logger";
-import {
-  ZendeskBrandResource,
-  ZendeskTicketResource,
-} from "@connectors/resources/zendesk_resources";
+import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
 
 /**
  * Marks the node "Tickets" of a Brand as permission "read".
@@ -67,25 +64,21 @@ export async function forbidSyncZendeskTickets({
 }: {
   connectorId: ModelId;
   brandId: number;
-}): Promise<ZendeskBrandResource | null> {
+}): Promise<boolean> {
   const brand = await ZendeskBrandResource.fetchByBrandId({
     connectorId,
     brandId,
   });
   if (!brand) {
     logger.error(
-      { brandId },
+      { connectorId, brandId },
       "[Zendesk] Brand not found, could not disable sync."
     );
-    return null;
+    return false;
   }
 
   // updating the field ticketsPermission to "none" for the brand
   await brand.revokeTicketsPermissions();
-  // revoking the permissions for all the children tickets
-  await ZendeskTicketResource.revokePermissionsForBrand({
-    connectorId,
-    brandId,
-  });
-  return brand;
+
+  return true;
 }

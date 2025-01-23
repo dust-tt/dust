@@ -164,10 +164,10 @@ export async function syncConversation({
 
   const conversationTeamId = conversation.team_assignee_id?.toString() ?? null;
 
-  if (
-    intercomWorkspace.syncAllConversations !== "activated" &&
-    intercomWorkspace.syncAllConversations !== "scheduled_activate"
-  ) {
+  const syncAllActivated =
+    intercomWorkspace.syncAllConversations === "activated" ||
+    intercomWorkspace.syncAllConversations === "scheduled_activate";
+  if (!syncAllActivated) {
     if (!conversationTeamId) {
       logger.error(
         "[Intercom] Conversation has no team assignee & sync all convo is not activated. Skipping sync",
@@ -193,7 +193,7 @@ export async function syncConversation({
     }
   }
 
-  let conversationOnDB = await IntercomConversation.findOne({
+  const conversationOnDB = await IntercomConversation.findOne({
     where: {
       connectorId,
       conversationId: conversation.id,
@@ -204,7 +204,7 @@ export async function syncConversation({
   const updatedAtDate = new Date(conversation.updated_at * 1000);
 
   if (!conversationOnDB) {
-    conversationOnDB = await IntercomConversation.create({
+    await IntercomConversation.create({
       connectorId,
       conversationId: conversation.id,
       teamId: conversationTeamId,
@@ -307,13 +307,13 @@ export async function syncConversation({
   // parents in the Core datasource map the internal ids that are used in the permission system
   // they self reference the document id
   const documentId = getConversationInternalId(connectorId, conversation.id);
-  const parents: [string, ...string[], string] = [
-    documentId,
-    ...(conversationTeamId
-      ? [getTeamInternalId(connectorId, conversationTeamId)]
-      : []),
-    getTeamsInternalId(connectorId),
-  ];
+  const parents = [documentId];
+  if (conversationTeamId) {
+    parents.push(getTeamInternalId(connectorId, conversationTeamId));
+  }
+  if (syncAllActivated) {
+    parents.push(getTeamsInternalId(connectorId));
+  }
 
   await upsertDataSourceDocument({
     dataSourceConfig,
@@ -323,7 +323,7 @@ export async function syncConversation({
     timestampMs: updatedAtDate.getTime(),
     tags: datasourceTags,
     parents,
-    parentId: parents[1],
+    parentId: parents[1] || null,
     loggerArgs: {
       ...loggerArgs,
       conversationId: conversation.id,

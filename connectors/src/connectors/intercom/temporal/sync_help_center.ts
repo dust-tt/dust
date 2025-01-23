@@ -13,7 +13,6 @@ import {
   getCollectionInAppUrl,
   getHelpCenterArticleInternalId,
   getHelpCenterCollectionInternalId,
-  getHelpCenterInternalId,
   getParentIdsForArticle,
   getParentIdsForCollection,
 } from "@connectors/connectors/intercom/lib/utils";
@@ -68,10 +67,6 @@ export async function removeHelpCenter({
       });
     })
   );
-  await deleteDataSourceFolder({
-    dataSourceConfig,
-    folderId: getHelpCenterInternalId(connectorId, helpCenter.helpCenterId),
-  });
   await helpCenter.destroy();
 }
 
@@ -177,7 +172,7 @@ export async function upsertCollectionWithChildren({
   }
 
   // Sync the Collection
-  let collectionOnDb = await IntercomCollection.findOne({
+  const collectionOnDb = await IntercomCollection.findOne({
     where: {
       connectorId,
       collectionId,
@@ -195,7 +190,7 @@ export async function upsertCollectionWithChildren({
       lastUpsertedTs: new Date(currentSyncMs),
     });
   } else {
-    collectionOnDb = await IntercomCollection.create({
+    await IntercomCollection.create({
       connectorId: connectorId,
       collectionId: collection.id,
       intercomWorkspaceId: collection.workspace_id,
@@ -221,16 +216,16 @@ export async function upsertCollectionWithChildren({
   const collectionParents = await getParentIdsForCollection({
     connectorId,
     collectionId,
-    helpCenterId,
   });
   await upsertDataSourceFolder({
     dataSourceConfig,
     folderId: internalCollectionId,
     title: collection.name,
     parents: collectionParents,
-    parentId: collectionParents[1],
+    parentId: collectionParents[1] || null,
     mimeType: MIME_TYPES.INTERCOM.COLLECTION,
     sourceUrl: collection.url || fallbackCollectionUrl,
+    timestampMs: currentSyncMs,
   });
 
   // Then we call ourself recursively on the children collections
@@ -406,7 +401,6 @@ export async function upsertArticle({
       documentId,
       connectorId,
       parentCollectionId,
-      helpCenterId,
     });
 
     await upsertDataSourceDocument({

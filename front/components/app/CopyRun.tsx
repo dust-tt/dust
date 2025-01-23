@@ -1,12 +1,14 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
-import { Button, CubeIcon } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
-import type { AppType, SpecificationType } from "@dust-tt/types";
-import type { RunType } from "@dust-tt/types";
-import { useMemo, useState } from "react";
+import type {
+  AppType,
+  RunType,
+  SpecificationType,
+  WorkspaceType,
+} from "@dust-tt/types";
+import { useMemo } from "react";
 
-import { ViewAppAPIModal } from "@app/components/app/Deploy";
+import { ViewAppAPIModal } from "@app/components/app/ViewAppAPIModal";
 import { useRunBlock } from "@app/lib/swr/apps";
 
 interface CopyRunProps {
@@ -25,8 +27,6 @@ export default function CopyRun({
   spec,
 }: CopyRunProps) {
   const [firstBlock] = spec;
-
-  const [showViewAppAPIModal, setShowViewAppAPIModal] = useState(false);
 
   const { run: runDetails } = useRunBlock(
     owner,
@@ -50,26 +50,12 @@ export default function CopyRun({
   }, [runDetails]);
 
   return (
-    <div>
-      <ViewAppAPIModal
-        owner={owner}
-        app={app}
-        run={run}
-        isOpen={showViewAppAPIModal}
-        onClose={() => setShowViewAppAPIModal(false)}
-        inputs={inputs}
-      />
-
-      <Button
-        tooltip="Copy run specifications."
-        label="API"
-        variant="primary"
-        onClick={() => {
-          setShowViewAppAPIModal(true);
-        }}
-        disabled={disabled}
-        icon={CubeIcon}
-      />
-    </div>
+    <ViewAppAPIModal
+      owner={owner}
+      app={app}
+      run={run}
+      disabled={disabled}
+      inputs={inputs}
+    />
   );
 }

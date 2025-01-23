@@ -1,11 +1,11 @@
 import {
   Breadcrumbs,
-  NewDialog,
-  NewDialogContainer,
-  NewDialogContent,
-  NewDialogFooter,
-  NewDialogHeader,
-  NewDialogTitle,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@dust-tt/sparkle";
 import type {
   DataSourceViewCategory,
@@ -118,7 +118,7 @@ export function SpaceLayout({
           />
         )}
         {isAdmin && isLimitReached && (
-          <NewDialog
+          <Dialog
             open={isLimitReached && spaceCreationModalState.isOpen}
             onOpenChange={(open) => {
               if (!open) {
@@ -126,24 +126,24 @@ export function SpaceLayout({
               }
             }}
           >
-            <NewDialogContent size="md" isAlertDialog>
-              <NewDialogHeader hideButton>
-                <NewDialogTitle>You can't create more spaces.</NewDialogTitle>
-              </NewDialogHeader>
-              <NewDialogContainer>
+            <DialogContent size="md" isAlertDialog>
+              <DialogHeader hideButton>
+                <DialogTitle>You can't create more spaces.</DialogTitle>
+              </DialogHeader>
+              <DialogContainer>
                 {isEnterprise
                   ? "We're going to make changes to data permissions spaces soon and are limiting the creation of spaces for that reason. Reach out to us to learn more."
                   : "The maximum number of spaces for this workspace has been reached. Please reach out at support@dust.tt to learn more."}
-              </NewDialogContainer>
-              <NewDialogFooter
+              </DialogContainer>
+              <DialogFooter
                 rightButtonProps={{
                   label: "Ok",
                   variant: "outline",
                   onClick: closeSpaceCreationModal,
                 }}
               />
-            </NewDialogContent>
-          </NewDialog>
+            </DialogContent>
+          </Dialog>
         )}
       </AppLayout>
     </RootLayout>

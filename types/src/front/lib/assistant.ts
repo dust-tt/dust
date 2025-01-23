@@ -116,7 +116,7 @@ export const GEMINI_1_5_FLASH_LATEST_MODEL_ID =
   "gemini-1.5-flash-latest" as const;
 export const GEMINI_2_FLASH_PREVIEW_MODEL_ID = "gemini-2.0-flash-exp" as const;
 export const GEMINI_2_FLASH_THINKING_PREVIEW_MODEL_ID =
-  "gemini-2.0-flash-thinking-exp-1219" as const;
+  "gemini-2.0-flash-thinking-exp-01-21" as const;
 export const TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_ID =
   "meta-llama/Llama-3.3-70B-Instruct-Turbo" as const;
 export const TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_ID =
@@ -737,6 +737,7 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   TOGETHERAI_QWEN_32B_PREVIEW_MODEL_CONFIG,
   TOGETHERAI_QWEN_72B_INSTRUCT_MODEL_CONFIG,
   DEEPSEEK_CHAT_MODEL_CONFIG,
+  DEEPSEEK_REASONER_MODEL_CONFIG,
 ];
 
 export type ModelConfig = (typeof SUPPORTED_MODEL_CONFIGS)[number];

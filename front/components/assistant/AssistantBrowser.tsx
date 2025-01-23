@@ -154,6 +154,8 @@ export function AssistantBrowser({
               variant="primary"
               icon={PlusIcon}
               label="Create"
+              data-gtm-label="assistantCreationButton"
+              data-gtm-location="homepage"
               size="sm"
             />
 
@@ -164,6 +166,8 @@ export function AssistantBrowser({
                 variant="primary"
                 icon={RobotIcon}
                 label="Manage"
+                data-gtm-label="assistantManagementButton"
+                data-gtm-location="homepage"
                 size="sm"
               />
             )}

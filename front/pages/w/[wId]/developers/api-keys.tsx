@@ -3,25 +3,29 @@ import {
   Button,
   ClipboardCheckIcon,
   ClipboardIcon,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   IconButton,
   Input,
-  Modal,
-  NewDialog,
-  NewDialogContainer,
-  NewDialogContent,
-  NewDialogFooter,
-  NewDialogHeader,
-  NewDialogTitle,
-  NewDialogTrigger,
   Page,
   PlusIcon,
   ScrollArea,
   ScrollBar,
   ShapesIcon,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
   Spinner,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
@@ -136,71 +140,80 @@ export function APIKeys({
 
   return (
     <>
-      <Modal
-        isOpen={isNewApiKeyCreatedOpen}
-        title="API Key Created"
-        onClose={() => {
-          setIsNewApiKeyCreatedOpen(false);
+      <Sheet
+        open={isNewApiKeyCreatedOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setIsNewApiKeyCreatedOpen(false);
+          }
         }}
-        hasChanged={false}
       >
-        <div className="mt-4">
-          <p className="text-sm text-gray-700">
-            Your API key will remain visible for 10 minutes only. You can use it
-            to authenticate with the Dust API.
-          </p>
-          <br />
-          <div className="mt-4">
-            <Page.H variant="h5">Domain</Page.H>
-            <Page.Horizontal align="center">
-              <pre className="font-mono flex-grow overflow-x-auto rounded bg-slate-50 p-2">
-                {process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}
-              </pre>
-              <IconButton
-                tooltip="Copy to clipboard"
-                icon={isCopiedDomain ? ClipboardCheckIcon : ClipboardIcon}
-                onClick={async () => {
-                  await copyDomain(
-                    process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL ?? ""
-                  );
-                }}
-              />
-            </Page.Horizontal>
-          </div>
-          <div className="mt-4">
-            <Page.H variant="h5">Workspace ID</Page.H>
-            <Page.Horizontal align="center">
-              <pre className="font-mono flex-grow overflow-x-auto rounded bg-slate-50 p-2">
-                {owner.sId}
-              </pre>
-              <IconButton
-                tooltip="Copy to clipboard"
-                icon={isCopiedWorkspaceId ? ClipboardCheckIcon : ClipboardIcon}
-                onClick={async () => {
-                  await copyWorkspaceId(owner.sId);
-                }}
-              />
-            </Page.Horizontal>
-          </div>
-          <div className="mt-4">
-            <Page.H variant="h5">API Key</Page.H>
-            <Page.Horizontal align="center">
-              <pre className="font-mono flex-grow overflow-x-auto rounded bg-slate-50 p-2">
-                {keys[0]?.secret}
-              </pre>
-              <IconButton
-                tooltip="Copy to clipboard"
-                icon={isCopiedApiKey ? ClipboardCheckIcon : ClipboardIcon}
-                onClick={async () => {
-                  if (keys[0]?.secret) {
-                    await copyApiKey(keys[0].secret);
-                  }
-                }}
-              />
-            </Page.Horizontal>
-          </div>
-        </div>
-      </Modal>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>API Key Created</SheetTitle>
+          </SheetHeader>
+          <SheetContainer>
+            <div className="mt-4">
+              <p className="text-sm text-gray-700">
+                Your API key will remain visible for 10 minutes only. You can
+                use it to authenticate with the Dust API.
+              </p>
+              <br />
+              <div className="mt-4">
+                <Page.H variant="h5">Domain</Page.H>
+                <Page.Horizontal align="center">
+                  <pre className="font-mono flex-grow overflow-x-auto rounded bg-slate-50 p-2">
+                    {process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}
+                  </pre>
+                  <IconButton
+                    tooltip="Copy to clipboard"
+                    icon={isCopiedDomain ? ClipboardCheckIcon : ClipboardIcon}
+                    onClick={async () => {
+                      await copyDomain(
+                        process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL ?? ""
+                      );
+                    }}
+                  />
+                </Page.Horizontal>
+              </div>
+              <div className="mt-4">
+                <Page.H variant="h5">Workspace ID</Page.H>
+                <Page.Horizontal align="center">
+                  <pre className="font-mono flex-grow overflow-x-auto rounded bg-slate-50 p-2">
+                    {owner.sId}
+                  </pre>
+                  <IconButton
+                    tooltip="Copy to clipboard"
+                    icon={
+                      isCopiedWorkspaceId ? ClipboardCheckIcon : ClipboardIcon
+                    }
+                    onClick={async () => {
+                      await copyWorkspaceId(owner.sId);
+                    }}
+                  />
+                </Page.Horizontal>
+              </div>
+              <div className="mt-4">
+                <Page.H variant="h5">API Key</Page.H>
+                <Page.Horizontal align="center">
+                  <pre className="font-mono flex-grow overflow-x-auto rounded bg-slate-50 p-2">
+                    {keys[0]?.secret}
+                  </pre>
+                  <IconButton
+                    tooltip="Copy to clipboard"
+                    icon={isCopiedApiKey ? ClipboardCheckIcon : ClipboardIcon}
+                    onClick={async () => {
+                      if (keys[0]?.secret) {
+                        await copyApiKey(keys[0].secret);
+                      }
+                    }}
+                  />
+                </Page.Horizontal>
+              </div>
+            </div>
+          </SheetContainer>
+        </SheetContent>
+      </Sheet>
       <Page.Horizontal align="stretch">
         <div className="w-full" />
         <Button
@@ -212,19 +225,19 @@ export function APIKeys({
             window.open("https://docs.dust.tt/reference", "_blank");
           }}
         />
-        <NewDialog>
-          <NewDialogTrigger asChild>
+        <Dialog>
+          <DialogTrigger asChild>
             <Button
               label="Create API Key"
               icon={PlusIcon}
               disabled={isGenerating || isRevoking}
             />
-          </NewDialogTrigger>
-          <NewDialogContent size="md">
-            <NewDialogHeader>
-              <NewDialogTitle>New API Key</NewDialogTitle>
-            </NewDialogHeader>
-            <NewDialogContainer>
+          </DialogTrigger>
+          <DialogContent size="md">
+            <DialogHeader>
+              <DialogTitle>New API Key</DialogTitle>
+            </DialogHeader>
+            <DialogContainer>
               <Input
                 name="API Key"
                 placeholder="Type an API key name"
@@ -275,8 +288,8 @@ export function APIKeys({
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
-            </NewDialogContainer>
-            <NewDialogFooter
+            </DialogContainer>
+            <DialogFooter
               leftButtonProps={{
                 label: "Cancel",
                 variant: "outline",
@@ -292,8 +305,8 @@ export function APIKeys({
                 },
               }}
             />
-          </NewDialogContent>
-        </NewDialog>
+          </DialogContent>
+        </Dialog>
       </Page.Horizontal>
       <div className="space-y-4 divide-y divide-gray-200">
         <ul role="list" className="pt-4">
@@ -336,7 +349,6 @@ export function APIKeys({
                               {process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}
                             </strong>
                           </p>
-
                           {key.groupId && (
                             <p
                               className={classNames(

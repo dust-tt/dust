@@ -5,6 +5,7 @@ import type { ZendeskFetchedCategory } from "@connectors/@types/node-zendesk";
 import {
   getArticleInternalId,
   getCategoryInternalId,
+  getHelpCenterInternalId,
 } from "@connectors/connectors/zendesk/lib/id_conversions";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
@@ -69,18 +70,20 @@ export async function deleteCategory({
 }
 
 /**
- * Syncs a category from Zendesk to the postgres db.
+ * Syncs a category from Zendesk with both connectors (zendesk_categories) and core (data_sources_folders/nodes).
  */
 export async function syncCategory({
   connectorId,
   brandId,
   category,
+  isHelpCenterSelected,
   currentSyncDateMs,
   dataSourceConfig,
 }: {
   connectorId: ModelId;
   brandId: number;
   category: ZendeskFetchedCategory;
+  isHelpCenterSelected: boolean;
   currentSyncDateMs: number;
   dataSourceConfig: DataSourceConfig;
 }): Promise<void> {
@@ -99,7 +102,7 @@ export async function syncCategory({
         connectorId,
         brandId,
         categoryId: category.id,
-        permission: "read",
+        permission: "none",
       },
     });
   } else {
@@ -110,15 +113,27 @@ export async function syncCategory({
       lastUpsertedTs: new Date(currentSyncDateMs),
     });
   }
+
   // upserting a folder to data_sources_folders (core)
-  const parents = categoryInDb.getParentInternalIds(connectorId);
+  const folderId = getCategoryInternalId({
+    connectorId,
+    brandId,
+    categoryId: categoryInDb.categoryId,
+  });
+  // adding the parents to the array of parents iff the Help Center was selected
+  const parentId = isHelpCenterSelected
+    ? getHelpCenterInternalId({ connectorId, brandId })
+    : null;
+  const parents = parentId ? [folderId, parentId] : [folderId];
+
   await upsertDataSourceFolder({
     dataSourceConfig,
-    folderId: parents[0],
+    folderId,
     parents,
-    parentId: parents[1],
+    parentId: parentId,
     title: categoryInDb.name,
     mimeType: MIME_TYPES.ZENDESK.CATEGORY,
     sourceUrl: categoryInDb.url,
+    timestampMs: currentSyncDateMs,
   });
 }

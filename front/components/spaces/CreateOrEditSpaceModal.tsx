@@ -7,6 +7,7 @@ import {
   Modal,
   Page,
   ScrollArea,
+  SearchInput,
   SliderToggle,
   useSendNotification,
   XMarkIcon,
@@ -18,6 +19,7 @@ import type {
   SortingState,
 } from "@tanstack/react-table";
 import { useRouter } from "next/router";
+import * as React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { ConfirmDeleteSpaceDialog } from "@app/components/spaces/ConfirmDeleteSpaceDialog";
@@ -75,6 +77,8 @@ export function CreateOrEditSpaceModal({
   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isRestricted, setIsRestricted] = useState(false);
+  const [searchSelectedMembers, setSearchSelectedMembers] =
+    useState<string>("");
 
   const doCreate = useCreateSpace({ owner });
   const doUpdate = useUpdateSpace({ owner });
@@ -250,10 +254,19 @@ export function CreateOrEditSpaceModal({
                 selectedMembers={selectedMembers}
                 onMembersUpdated={setSelectedMembers}
               />
+              <SearchInput
+                name="search"
+                placeholder="Search (email)"
+                value={searchSelectedMembers}
+                onChange={(s) => {
+                  setSearchSelectedMembers(s);
+                }}
+              />
               <ScrollArea className="h-full">
                 <MembersTable
                   onMembersUpdated={setSelectedMembers}
                   selectedMembers={selectedMembers}
+                  searchSelectedMembers={searchSelectedMembers}
                 />
               </ScrollArea>
             </>
@@ -287,11 +300,13 @@ export function CreateOrEditSpaceModal({
 interface MembersTableProps {
   onMembersUpdated: (members: UserType[]) => void;
   selectedMembers: UserType[];
+  searchSelectedMembers: string;
 }
 
 function MembersTable({
   onMembersUpdated,
   selectedMembers,
+  searchSelectedMembers,
 }: MembersTableProps) {
   const sendNotifications = useSendNotification();
   const [pagination, setPagination] = useState<PaginationState>({
@@ -374,13 +389,15 @@ function MembersTable({
       data={rows}
       columns={columns}
       columnsBreakpoints={{
-        email: "md",
+        name: "md",
       }}
       pagination={pagination}
       setPagination={setPagination}
       sorting={sorting}
       setSorting={setSorting}
       totalRowCount={rows.length}
+      filter={searchSelectedMembers}
+      filterColumn="email"
     />
   );
 }

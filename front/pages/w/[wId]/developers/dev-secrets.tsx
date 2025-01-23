@@ -2,13 +2,13 @@ import {
   BookOpenIcon,
   BracesIcon,
   Button,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   Input,
-  NewDialog,
-  NewDialogContainer,
-  NewDialogContent,
-  NewDialogFooter,
-  NewDialogHeader,
-  NewDialogTitle,
   Page,
   PlusIcon,
   useSendNotification,
@@ -127,7 +127,7 @@ export default function SecretsPage({
   return (
     <>
       {secretToRevoke ? (
-        <NewDialog
+        <Dialog
           open={true}
           onOpenChange={(open) => {
             if (!open) {
@@ -135,15 +135,15 @@ export default function SecretsPage({
             }
           }}
         >
-          <NewDialogContent>
-            <NewDialogHeader>
-              <NewDialogTitle>Delete {secretToRevoke?.name}</NewDialogTitle>
-            </NewDialogHeader>
-            <NewDialogContainer>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete {secretToRevoke?.name}</DialogTitle>
+            </DialogHeader>
+            <DialogContainer>
               Are you sure you want to delete the secret{" "}
               <strong>{secretToRevoke?.name}</strong>?
-            </NewDialogContainer>
-            <NewDialogFooter
+            </DialogContainer>
+            <DialogFooter
               leftButtonProps={{
                 label: "Cancel",
                 variant: "outline",
@@ -155,10 +155,10 @@ export default function SecretsPage({
                 onClick: () => handleRevoke(secretToRevoke),
               }}
             />
-          </NewDialogContent>
-        </NewDialog>
+          </DialogContent>
+        </Dialog>
       ) : null}
-      <NewDialog
+      <Dialog
         open={isNewSecretPromptOpen}
         onOpenChange={(open) => {
           if (!open) {
@@ -166,13 +166,13 @@ export default function SecretsPage({
           }
         }}
       >
-        <NewDialogContent size="lg">
-          <NewDialogHeader>
-            <NewDialogTitle>
+        <DialogContent size="lg">
+          <DialogHeader>
+            <DialogTitle>
               {isInputNameDisabled ? "Update" : "New"} Developer Secret
-            </NewDialogTitle>
-          </NewDialogHeader>
-          <NewDialogContainer>
+            </DialogTitle>
+          </DialogHeader>
+          <DialogContainer>
             <Input
               message="Secret names must be alphanumeric and underscore characters only."
               name="Secret Name"
@@ -199,8 +199,8 @@ export default function SecretsPage({
               }
             />
             <p className="text-xs text-gray-500"></p>
-          </NewDialogContainer>
-          <NewDialogFooter
+          </DialogContainer>
+          <DialogFooter
             leftButtonProps={{
               label: "Cancel",
               variant: "outline",
@@ -212,8 +212,8 @@ export default function SecretsPage({
               onClick: () => handleGenerate(newDustAppSecret),
             }}
           />
-        </NewDialogContent>
-      </NewDialog>
+        </DialogContent>
+      </Dialog>
 
       <AppLayout
         subscription={subscription}

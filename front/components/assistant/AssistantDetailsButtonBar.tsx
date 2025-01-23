@@ -95,6 +95,8 @@ export function AssistantDetailsButtonBar({
               <>
                 <DropdownMenuItem
                   label="Duplicate (New)"
+                  data-gtm-label="assistantDuplicationButton"
+                  data-gtm-location="assistantDetails"
                   icon={ClipboardIcon}
                   onClick={async (e) => {
                     await router.push(

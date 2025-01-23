@@ -156,7 +156,7 @@ const getTableColumns = () => {
     },
     {
       header: "Feedback",
-      accessorKey: "feedback",
+      accessorFn: (row: RowData) => row.feedbacks,
       cell: (info: CellContext<RowData, { up: number; down: number }>) => {
         if (info.row.original.scope === "global") {
           return "-";
@@ -264,7 +264,6 @@ export function AssistantsTable({
     open: false,
     agentConfiguration: undefined,
   });
-
   const router = useRouter();
   const rows: RowData[] = useMemo(
     () =>
@@ -302,6 +301,8 @@ export function AssistantsTable({
               ? [
                   {
                     label: "Edit",
+                    "data-gtm-label": "assistantEditButton",
+                    "data-gtm-location": "assistantDetails",
                     icon: PencilSquareIcon,
                     onClick: (e: React.MouseEvent) => {
                       e.stopPropagation();
@@ -318,6 +319,8 @@ export function AssistantsTable({
                   },
                   {
                     label: "Copy assistant ID",
+                    "data-gtm-label": "assistantCopyButton",
+                    "data-gtm-location": "assistantDetails",
                     icon: ClipboardIcon,
                     onClick: (e: React.MouseEvent) => {
                       e.stopPropagation();
@@ -328,6 +331,8 @@ export function AssistantsTable({
                   },
                   {
                     label: "Duplicate (New)",
+                    "data-gtm-label": "assistantDuplicationButton",
+                    "data-gtm-location": "assistantDetails",
                     icon: ClipboardIcon,
                     onClick: (e: React.MouseEvent) => {
                       e.stopPropagation();
@@ -338,6 +343,8 @@ export function AssistantsTable({
                   },
                   {
                     label: "Delete",
+                    "data-gtm-label": "assistantDeletionButton",
+                    "data-gtm-location": "assistantDetails",
                     icon: TrashIcon,
                     variant: "warning",
                     onClick: (e: React.MouseEvent) => {
