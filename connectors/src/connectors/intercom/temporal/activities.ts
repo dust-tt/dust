@@ -388,7 +388,7 @@ export async function syncArticleBatchActivity({
     where: {
       connectorId,
       helpCenterId,
-      permission: ["read", "inherited"],
+      permission: "read",
     },
   });
 

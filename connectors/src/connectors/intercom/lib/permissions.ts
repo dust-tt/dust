@@ -35,7 +35,7 @@ export async function retrieveSelectedNodes({
   const collections = await IntercomCollection.findAll({
     where: {
       connectorId: connectorId,
-      permission: ["read", "inherited"],
+      permission: "read",
     },
   });
   const collectionsNodes: ContentNode[] = [];
@@ -62,8 +62,7 @@ export async function retrieveSelectedNodes({
       title: collection.name,
       sourceUrl: collection.url,
       expandable,
-      permission:
-        collection.permission === "inherited" ? "read" : collection.permission,
+      permission: collection.permission,
       lastUpdatedAt: collection.updatedAt.getTime() || null,
     });
   });

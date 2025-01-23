@@ -458,7 +458,6 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
               connectionId,
               collectionId,
               region: intercomWorkspace.region,
-              permission: "read",
             });
             if (newCollection) {
               toBeSignaledHelpCenterIds.add(newCollection.helpCenterId);
@@ -649,10 +648,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
         title: collection.name,
         sourceUrl: collection.url,
         expandable: true,
-        permission:
-          collection.permission === "inherited"
-            ? "read"
-            : collection.permission,
+        permission: collection.permission,
         lastUpdatedAt: collection.lastUpsertedTs?.getTime() || null,
       });
     }

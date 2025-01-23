@@ -103,7 +103,6 @@ export async function allowSyncHelpCenter({
         collectionId: c1.id,
         helpCenterId,
         region,
-        permission: "inherited",
       })
     );
     await Promise.all(permissionUpdatePromises);
@@ -172,7 +171,7 @@ export async function revokeSyncHelpCenter({
 }
 
 /**
- * Mark a collection as permission "read" or "inherited" and all children (collections & articles)
+ * Mark a collection as permission "read" and all children (collections & articles)
  */
 export async function allowSyncCollection({
   connectorId,
@@ -180,14 +179,12 @@ export async function allowSyncCollection({
   collectionId,
   helpCenterId,
   region,
-  permission,
 }: {
   connectorId: ModelId;
   connectionId: string;
   collectionId: string;
   helpCenterId?: string;
   region: string;
-  permission: "read" | "inherited";
 }): Promise<IntercomCollection | null> {
   let collection = await IntercomCollection.findOne({
     where: {
@@ -198,7 +195,7 @@ export async function allowSyncCollection({
   const accessToken = await getIntercomAccessToken(connectionId);
 
   if (collection?.permission === "none") {
-    await collection.update({ permission });
+    await collection.update({ permission: "read" });
   } else if (!collection) {
     const intercomCollection = await fetchIntercomCollection({
       accessToken,
@@ -219,7 +216,7 @@ export async function allowSyncCollection({
         url:
           intercomCollection.url ||
           getCollectionInAppUrl(intercomCollection, region),
-        permission,
+        permission: "read",
       });
     }
   }
@@ -318,7 +315,7 @@ export async function revokeSyncCollection({
     where: {
       helpCenterId: collection.helpCenterId,
       parentId: null,
-      permission: ["read", "inherited"],
+      permission: "read",
     },
   });
   if (level1Collections.length === 0) {
@@ -417,7 +414,7 @@ export async function retrieveIntercomHelpCentersPermissions({
         connectorId: connectorId,
         helpCenterId: helpCenterParentId,
         parentId,
-        permission: ["read", "inherited"],
+        permission: "read",
       },
     });
     if (isReadPermissionsOnly) {
@@ -433,10 +430,7 @@ export async function retrieveIntercomHelpCentersPermissions({
         title: collection.name,
         sourceUrl: collection.url,
         expandable: true,
-        permission:
-          collection.permission === "inherited"
-            ? "read"
-            : collection.permission,
+        permission: collection.permission,
         lastUpdatedAt: collection.updatedAt.getTime() || null,
       }));
     } else {
@@ -484,7 +478,7 @@ export async function retrieveIntercomHelpCentersPermissions({
         where: {
           connectorId: connectorId,
           parentId,
-          permission: ["read", "inherited"],
+          permission: "read",
         },
       });
       const collectionNodes: ContentNode[] = collectionsInDb.map(
@@ -503,10 +497,7 @@ export async function retrieveIntercomHelpCentersPermissions({
           title: collection.name,
           sourceUrl: collection.url,
           expandable: true,
-          permission:
-            collection.permission === "inherited"
-              ? "read"
-              : collection.permission,
+          permission: collection.permission,
           lastUpdatedAt: collection.lastUpsertedTs?.getTime() || null,
         })
       );

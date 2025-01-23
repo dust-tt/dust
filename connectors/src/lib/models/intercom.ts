@@ -157,7 +157,7 @@ export class IntercomCollection extends ConnectorBaseModel<IntercomCollection> {
   declare url: string;
 
   declare lastUpsertedTs?: Date;
-  declare permission: "read" | "none" | "inherited";
+  declare permission: "read" | "none";
 }
 
 IntercomCollection.init(
