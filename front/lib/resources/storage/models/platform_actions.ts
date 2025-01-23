@@ -2,11 +2,11 @@ import type { PlatformActionsProviderType } from "@dust-tt/types";
 import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { Workspace } from "@app/lib/models/workspace";
+import type { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
+import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
-export class PlatformActionsConfigurationModel extends BaseModel<PlatformActionsConfigurationModel> {
+export class PlatformActionsConfigurationModel extends WorkspaceAwareModel<PlatformActionsConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -43,11 +43,3 @@ PlatformActionsConfigurationModel.init(
     indexes: [{ fields: ["workspaceId", "provider"], unique: true }],
   }
 );
-
-Workspace.hasMany(PlatformActionsConfigurationModel, {
-  foreignKey: { name: "workspaceId", allowNull: false },
-  onDelete: "RESTRICT",
-});
-PlatformActionsConfigurationModel.belongsTo(Workspace, {
-  foreignKey: { name: "workspaceId", allowNull: false },
-});
