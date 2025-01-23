@@ -962,14 +962,19 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
     };
   }
 
-  getParentInternalIds(connectorId: number): [string, string, string] {
+  getParentInternalIds(
+    connectorId: number,
+    includeHelpCenter: boolean = true
+  ): [string, string, string] | [string, string] {
     const { brandId, categoryId, articleId } = this;
-    /// Articles have two parents: the Category and the Help Center.
-    return [
+    const parents: [string, string] = [
       getArticleInternalId({ connectorId, brandId, articleId }),
       getCategoryInternalId({ connectorId, brandId, categoryId }),
-      getHelpCenterInternalId({ connectorId, brandId }),
     ];
+
+    return includeHelpCenter
+      ? [...parents, getHelpCenterInternalId({ connectorId, brandId })]
+      : parents;
   }
 
   /**
