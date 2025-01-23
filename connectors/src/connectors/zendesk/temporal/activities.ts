@@ -16,6 +16,7 @@ import {
   fetchZendeskArticlesInCategory,
   fetchZendeskBrand,
   fetchZendeskCategoriesInBrand,
+  fetchZendeskCategory,
   fetchZendeskManyUsers,
   fetchZendeskTicketComments,
   fetchZendeskTickets,
@@ -410,17 +411,22 @@ export async function syncZendeskCategoryActivity({
     return { shouldSyncArticles: false, helpCenterIsAllowed: null };
   }
 
-  const zendeskApiClient = createZendeskClient(
-    await getZendeskSubdomainAndAccessToken(connector.connectionId)
+  const { accessToken, subdomain } = await getZendeskSubdomainAndAccessToken(
+    connector.connectionId
   );
-  await changeZendeskClientSubdomain(zendeskApiClient, {
+  const brandSubdomain = await getZendeskBrandSubdomain({
     connectorId,
+    accessToken,
+    subdomain,
     brandId,
   });
 
   // if the category is not on Zendesk anymore, we remove its permissions
-  const { result: fetchedCategory } =
-    await zendeskApiClient.helpcenter.categories.show(categoryId);
+  const fetchedCategory = await fetchZendeskCategory({
+    accessToken,
+    brandSubdomain,
+    categoryId,
+  });
   if (!fetchedCategory) {
     await categoryInDb.revokePermissions();
     return { shouldSyncArticles: false, helpCenterIsAllowed: null };
