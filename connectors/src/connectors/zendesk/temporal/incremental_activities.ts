@@ -176,6 +176,7 @@ export async function syncZendeskArticleUpdateBatchActivity({
             article,
             section,
             user,
+            helpCenterIsAllowed: hasHelpCenterPermissions,
             dataSourceConfig,
             currentSyncDateMs,
             loggerArgs,

@@ -379,12 +379,13 @@ export async function zendeskCategorySyncWorkflow({
   currentSyncDateMs: number;
   forceResync: boolean;
 }) {
-  const { shouldSyncArticles } = await syncZendeskCategoryActivity({
-    connectorId,
-    categoryId,
-    currentSyncDateMs,
-    brandId,
-  });
+  const { shouldSyncArticles, helpCenterIsAllowed } =
+    await syncZendeskCategoryActivity({
+      connectorId,
+      categoryId,
+      currentSyncDateMs,
+      brandId,
+    });
   if (shouldSyncArticles) {
     await runZendeskActivityWithPagination((url) =>
       syncZendeskArticleBatchActivity({
@@ -392,6 +393,7 @@ export async function zendeskCategorySyncWorkflow({
         brandId,
         categoryId,
         currentSyncDateMs,
+        helpCenterIsAllowed: helpCenterIsAllowed === true,
         forceResync,
         url,
       })
@@ -513,6 +515,7 @@ async function runZendeskBrandHelpCenterSyncActivities({
         connectorId,
         brandId,
         categoryId,
+        helpCenterIsAllowed: true, // We know the Help Center is allowed because we're in this function.
         currentSyncDateMs,
         forceResync,
         url,

@@ -56,6 +56,7 @@ export async function syncArticle({
   section,
   user,
   currentSyncDateMs,
+  helpCenterIsAllowed,
   dataSourceConfig,
   loggerArgs,
   forceResync,
@@ -66,6 +67,7 @@ export async function syncArticle({
   section: ZendeskFetchedSection | null;
   category: ZendeskCategoryResource;
   user: ZendeskFetchedUser | null;
+  helpCenterIsAllowed: boolean;
   currentSyncDateMs: number;
   loggerArgs: Record<string, string | number | null>;
   forceResync: boolean;
@@ -159,7 +161,10 @@ export async function syncArticle({
       articleId: article.id,
     });
 
-    const parents = articleInDb.getParentInternalIds(connectorId);
+    const parents = articleInDb.getParentInternalIds(
+      connectorId,
+      helpCenterIsAllowed
+    );
     await upsertDataSourceDocument({
       dataSourceConfig,
       documentId,
