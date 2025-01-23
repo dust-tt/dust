@@ -547,7 +547,7 @@ export default function SpaceWebsiteModal({
                   <Page.H variant="h3">Name</Page.H>
                   {webCrawlerConfiguration === null ? (
                     <Label className="pl-1">
-                      Give a name to this Data Source.
+                      Give a unique name to this Data Source.
                     </Label>
                   ) : (
                     <p className="mt-1 flex items-center gap-1 text-sm text-gray-500">
