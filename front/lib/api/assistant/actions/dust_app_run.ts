@@ -343,6 +343,7 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
       step,
       resultsFileId: null,
       resultsFileSnippet: null,
+      workspaceId: owner.id,
     });
 
     yield {

@@ -1030,6 +1030,7 @@ export async function createAgentActionConfiguration(
         appWorkspaceId: action.appWorkspaceId,
         appId: action.appId,
         agentConfigurationId: agentConfiguration.id,
+        workspaceId: owner.id,
       });
 
       return new Ok({
