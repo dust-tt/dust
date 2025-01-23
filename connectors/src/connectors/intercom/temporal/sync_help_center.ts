@@ -13,7 +13,6 @@ import {
   getCollectionInAppUrl,
   getHelpCenterArticleInternalId,
   getHelpCenterCollectionInternalId,
-  getHelpCenterInternalId,
   getParentIdsForArticle,
   getParentIdsForCollection,
 } from "@connectors/connectors/intercom/lib/utils";
@@ -68,10 +67,6 @@ export async function removeHelpCenter({
       });
     })
   );
-  await deleteDataSourceFolder({
-    dataSourceConfig,
-    folderId: getHelpCenterInternalId(connectorId, helpCenter.helpCenterId),
-  });
   await helpCenter.destroy();
 }
 
