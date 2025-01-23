@@ -89,9 +89,16 @@ function validateModjoResponse(
 ): either.Either<Error, ModjoApiResponseType> {
   return pipe(
     ModjoApiResponseSchema.decode(data),
-    either.mapLeft(
-      (errors) => new Error(`Invalid API response: ${JSON.stringify(errors)}`)
-    )
+    either.mapLeft((errors) => {
+      // Format validation errors in a more readable way
+      const formattedErrors = errors.map((error) => {
+        const path = error.context.map((c) => c.key).join(".");
+        const expectedType = error.context[error.context.length - 1].type.name;
+        const value = JSON.stringify(error.value);
+        return `Path '${path}': Expected ${expectedType}, got ${value}`;
+      });
+      return new Error(`Validation errors:\n${formattedErrors.join("\n")}`);
+    })
   );
 }
 
