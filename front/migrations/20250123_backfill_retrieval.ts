@@ -1,10 +1,7 @@
 import type { LightWorkspaceType } from "@dust-tt/types";
 import { Op } from "sequelize";
 
-import {
-  RetrievalDocument,
-  RetrievalDocumentChunk,
-} from "@app/lib/models/assistant/actions/retrieval";
+import { RetrievalDocument, RetrievalDocumentChunk } from "@app/lib/models/assistant/actions/retrieval";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import type { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { Logger } from "@app/logger/logger";
@@ -107,7 +104,7 @@ async function backfillTable(
           // Required to avoid hitting validation hook, which does not play nice with bulk updates.
           hooks: false,
           fields: ["workspaceId"],
-          silent: false,
+          silent: true,
         }
       );
     }
