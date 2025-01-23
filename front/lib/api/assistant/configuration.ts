@@ -1170,13 +1170,13 @@ async function _createAgentDataSourcesConfigData(
     processConfigurationId: ModelId | null;
   }
 ): Promise<AgentDataSourceConfiguration[]> {
+  const owner = auth.getNonNullableWorkspace();
+
   // Although we have the capability to support multiple workspaces,
   // currently, we only support one workspace, which is the one the user is in.
   // This allows us to use the current authenticator to fetch resources.
   assert(
-    dataSourceConfigurations.every(
-      (dsc) => dsc.workspaceId === auth.getNonNullableWorkspace().sId
-    )
+    dataSourceConfigurations.every((dsc) => dsc.workspaceId === owner.sId)
   );
 
   // DataSourceViewResource.listByWorkspace() applies the permissions check.
@@ -1206,6 +1206,7 @@ async function _createAgentDataSourcesConfigData(
             retrievalConfigurationId: retrievalConfigurationId,
             processConfigurationId: processConfigurationId,
             dataSourceViewId: dataSourceView.id,
+            workspaceId: owner.id,
           },
           { transaction: t }
         );

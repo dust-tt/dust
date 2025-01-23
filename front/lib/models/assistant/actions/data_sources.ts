@@ -6,12 +6,12 @@ import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/r
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
-import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
+import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
 /**
  * Configuration of Datasources used for Retrieval Action.
  */
-export class AgentDataSourceConfiguration extends BaseModel<AgentDataSourceConfiguration> {
+export class AgentDataSourceConfiguration extends WorkspaceAwareModel<AgentDataSourceConfiguration> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
