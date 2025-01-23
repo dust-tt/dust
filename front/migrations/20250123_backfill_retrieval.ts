@@ -1,18 +1,21 @@
 import type { LightWorkspaceType } from "@dust-tt/types";
 import { Op } from "sequelize";
 
-import { RetrievalDocument, RetrievalDocumentChunk } from "@app/lib/models/assistant/actions/retrieval";
+import {
+  RetrievalDocument,
+  RetrievalDocumentChunk,
+} from "@app/lib/models/assistant/actions/retrieval";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import type { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 
-type TableConfig = {
+interface TableConfig {
   model: typeof WorkspaceAwareModel<any>;
   include: (workspaceId: number) => any[];
   attributes: string[];
-};
+}
 
 const TABLES: TableConfig[] = [
   {
@@ -25,7 +28,12 @@ const TABLES: TableConfig[] = [
         where: { workspaceId },
       },
     ],
-    attributes: ["dataSourceView.workspaceId", "dataSourceView.id", "dataSourceViewId", "dataSourceView.workspaceId"]
+    attributes: [
+      "dataSourceView.workspaceId",
+      "dataSourceView.id",
+      "dataSourceViewId",
+      "dataSourceView.workspaceId",
+    ],
   },
   {
     model: RetrievalDocumentChunk,
@@ -37,7 +45,12 @@ const TABLES: TableConfig[] = [
         where: { workspaceId },
       },
     ],
-    attributes: ["retrieval_document.workspaceId", "retrieval_document.id", "retrievalDocumentId", "workspaceId"]
+    attributes: [
+      "retrieval_document.workspaceId",
+      "retrieval_document.id",
+      "retrievalDocumentId",
+      "workspaceId",
+    ],
   },
 ];
 
@@ -47,7 +60,7 @@ async function backfillTable(
   { execute, logger }: { execute: boolean; logger: Logger }
 ) {
   let lastSeenId = 0;
-  const batchSize = 1000;
+  const batchSize = 5000;
   let totalProcessed = 0;
 
   logger.info(
@@ -64,7 +77,7 @@ async function backfillTable(
       order: [["id", "ASC"]],
       limit: batchSize,
       include: table.include(workspace.id),
-      attributes: table.attributes
+      attributes: table.attributes,
     });
 
     if (records.length === 0) {
@@ -94,6 +107,7 @@ async function backfillTable(
           // Required to avoid hitting validation hook, which does not play nice with bulk updates.
           hooks: false,
           fields: ["workspaceId"],
+          silent: false,
         }
       );
     }
@@ -128,8 +142,10 @@ async function backfillTablesForWorkspace(
 }
 
 makeScript({}, async ({ execute }, logger) => {
-  return runOnAllWorkspaces(async (workspace) => {
-    await backfillTablesForWorkspace(workspace, { execute, logger });
-  }, {concurrency: 10 }
-    );
+  return runOnAllWorkspaces(
+    async (workspace) => {
+      await backfillTablesForWorkspace(workspace, { execute, logger });
+    },
+    { concurrency: 10 }
+  );
 });
