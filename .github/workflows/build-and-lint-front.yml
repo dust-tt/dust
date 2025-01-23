@@ -34,8 +34,9 @@ jobs:
         working-directory: front
         run: npm install && npm run tsc && npm run lint && npm run format:check && npm run docs:check
       - name: Install Postgres
-        uses: CasperWA/postgresql-action@v1.2
+        uses: dust-tt/postgresql-action
         with:
+          postgresql docker image: ghcr.io/library/postgres
           postgresql version: ghcr.io/library/postgres:14.13 # See https://hub.docker.com/_/postgres for available versions
           postgresql db: front_test
           postgresql user: test

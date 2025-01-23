@@ -28,9 +28,10 @@ jobs:
           containerPort: 6379
 
       - name: Install Postgres
-        uses: CasperWA/postgresql-action@v1.2
+        uses: dust-tt/postgresql-action
         with:
-          postgresql version: ghcr.io/library/postgres:14.13 # See https://hub.docker.com/_/postgres for available versions
+          postgresql docker image: ghcr.io/library/postgres
+          postgresql version: 14.13 # See https://hub.docker.com/_/postgres for available versions
           postgresql db: oauth
           postgresql user: test
           postgresql password: test
