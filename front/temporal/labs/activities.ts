@@ -165,8 +165,8 @@ export async function processTranscriptActivity(
     user.sId,
     workspace.sId
   );
-
-  if (!auth.workspace()) {
+  const owner = auth.workspace();
+  if (!owner) {
     await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
     throw new Error(
       `Could not find workspace for user (workspaceId: ${transcriptsConfiguration.workspaceId}).`
@@ -275,6 +275,7 @@ export async function processTranscriptActivity(
       configurationId: transcriptsConfiguration.id,
       fileId,
       fileName: transcriptTitle,
+      workspaceId: owner.id,
     });
   } catch (error) {
     if (error instanceof UniqueConstraintError) {
@@ -285,17 +286,6 @@ export async function processTranscriptActivity(
       return;
     }
     throw error;
-  }
-
-  const owner = auth.workspace();
-
-  if (!owner) {
-    localLogger.error(
-      {},
-      "[processTranscriptActivity] No owner found. Stopping."
-    );
-    await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
-    return;
   }
 
   // labs_transcripts_gong_full_storage FF enables storing all Gong transcripts in a single datasource view
@@ -624,13 +614,13 @@ export async function processTranscriptActivity(
       },
       subject: `[DUST] Meeting summary - ${transcriptTitle}`,
       body: `${htmlAnswer}<div style="text-align: center; margin-top: 20px;">
-    <a href="https://dust.tt/w/${owner.sId}/assistant/${conversation.sId}" 
-      style="display: inline-block; 
-              padding: 10px 20px; 
-              background-color: #000000; 
-              color: #ffffff; 
-              text-decoration: none; 
-              border-radius: 0.75rem; 
+    <a href="https://dust.tt/w/${owner.sId}/assistant/${conversation.sId}"
+      style="display: inline-block;
+              padding: 10px 20px;
+              background-color: #000000;
+              color: #ffffff;
+              text-decoration: none;
+              border-radius: 0.75rem;
               font-weight: bold;">
       Open this conversation in Dust
     </a>
