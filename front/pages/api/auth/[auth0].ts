@@ -7,7 +7,7 @@ import {
   handleLogout,
   IdentityProviderError,
 } from "@auth0/nextjs-auth0";
-import {isString} from "@dust-tt/types";
+import { isString } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getRegionForUserSession, setRegionForUser } from "@app/lib/api/auth0";
