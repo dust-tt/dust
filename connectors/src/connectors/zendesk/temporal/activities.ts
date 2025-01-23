@@ -120,12 +120,14 @@ export async function syncZendeskBrandActivity({
     );
   }
 
-  const zendeskApiClient = createZendeskClient(
-    await getZendeskSubdomainAndAccessToken(connector.connectionId)
+  const { subdomain, accessToken } = await getZendeskSubdomainAndAccessToken(
+    connector.connectionId
   );
-  const {
-    result: { brand: fetchedBrand },
-  } = await zendeskApiClient.brand.show(brandId);
+  const fetchedBrand = await fetchZendeskBrand({
+    subdomain,
+    accessToken,
+    brandId,
+  });
 
   // if the brand is not on Zendesk anymore, we delete it
   if (!fetchedBrand) {
