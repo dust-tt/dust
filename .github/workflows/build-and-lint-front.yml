@@ -48,4 +48,4 @@ jobs:
         if: always()
         uses: mikepenz/action-junit-report@v5
         with:
-          report_paths: "front/junit-*.xml"
+          report_paths: "**/front/junit*.xml"
