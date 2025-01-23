@@ -1048,7 +1048,13 @@ function AddAction({ onAddAction }: AddActionProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="primary" label="Add a tool" icon={PlusIcon} />
+        <Button
+          variant="primary"
+          label="Add a tool"
+          data-gtm-label="toolAddingButton"
+          data-gtm-location="toolsPanel"
+          icon={PlusIcon}
+        />
       </DropdownMenuTrigger>
 
       <DropdownMenuContent>

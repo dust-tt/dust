@@ -388,6 +388,10 @@ type BuilderScreenInfos = {
   id: string;
   label: string;
   icon: (props: SVGProps<SVGSVGElement>) => React.JSX.Element;
+  dataGtm: {
+    label: string;
+    location: string;
+  };
 };
 
 export const BUILDER_SCREENS_INFOS: Record<BuilderScreen, BuilderScreenInfos> =
@@ -395,16 +399,28 @@ export const BUILDER_SCREENS_INFOS: Record<BuilderScreen, BuilderScreenInfos> =
     instructions: {
       id: "instructions",
       label: "Instructions",
+      dataGtm: {
+        label: "assistantInstructionsButton",
+        location: "assistantBuilder",
+      },
       icon: CircleIcon,
     },
     actions: {
       id: "actions",
       label: "Tools & Data sources",
+      dataGtm: {
+        label: "assistantToolsButton",
+        location: "assistantBuilder",
+      },
       icon: SquareIcon,
     },
     naming: {
       id: "naming",
       label: "Naming",
+      dataGtm: {
+        label: "assistantNamingButton",
+        location: "assistantBuilder",
+      },
       icon: TriangleIcon,
     },
   };

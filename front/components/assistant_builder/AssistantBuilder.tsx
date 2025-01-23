@@ -418,6 +418,8 @@ export default function AssistantBuilder({
                         value={tab.id}
                         label={tab.label}
                         icon={tab.icon}
+                        data-gtm-label={tab.dataGtm.label}
+                        data-gtm-location={tab.dataGtm.location}
                       />
                     ))}
                     <div className="flex w-full items-center justify-end">

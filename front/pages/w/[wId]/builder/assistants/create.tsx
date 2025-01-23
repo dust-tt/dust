@@ -210,6 +210,8 @@ export default function CreateAssistant({
                 <Button
                   icon={DocumentIcon}
                   label="New Assistant"
+                  data-gtm-label="assistantCreationButton"
+                  data-gtm-location="assistantCreationPage"
                   size="md"
                   variant="highlight"
                 />

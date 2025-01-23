@@ -9,6 +9,7 @@ import type { SidebarNavigation } from "@app/components/navigation/config";
 import { Navigation } from "@app/components/navigation/Navigation";
 import { QuickStartGuide } from "@app/components/QuickStartGuide";
 import { useAppKeyboardShortcuts } from "@app/hooks/useAppKeyboardShortcuts";
+import { useUser } from "@app/lib/swr/user";
 import { classNames } from "@app/lib/utils";
 
 // This function is used to navigate back to the previous page (eg modal like page close) and
@@ -51,13 +52,23 @@ export default function AppLayout({
   hasTopPadding?: boolean;
 }) {
   const [loaded, setLoaded] = useState(false);
-
+  const { user } = useUser();
   const { isNavigationBarOpen, setIsNavigationBarOpen } =
     useAppKeyboardShortcuts(owner);
 
   useEffect(() => {
     setLoaded(true);
   }, []);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && user?.sId) {
+      window.dataLayer = window.dataLayer || [];
+      window.dataLayer.push({
+        userId: user.sId,
+        event: "userIdentified",
+      });
+    }
+  }, [user?.sId]);
 
   return (
     <>
@@ -113,6 +124,7 @@ export default function AppLayout({
           content="width=device-width, initial-scale=1, maximum-scale=1"
         />
       </Head>
+
       <div className="light flex h-full flex-row">
         <Navigation
           hideSidebar={hideSidebar}

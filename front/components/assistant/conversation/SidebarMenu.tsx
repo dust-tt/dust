@@ -251,15 +251,19 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                   <DropdownMenuContent>
                     <DropdownMenuLabel>Assistants</DropdownMenuLabel>
                     <DropdownMenuItem
-                      label="Create new assistant"
                       href={`/w/${owner.sId}/builder/assistants/create`}
                       icon={PlusIcon}
+                      label="Create new assistant"
+                      data-gtm-label="assistantCreationButton"
+                      data-gtm-location="sidebarMenu"
                     />
                     {isBuilder(owner) && (
                       <DropdownMenuItem
                         href={`/w/${owner.sId}/builder/assistants`}
-                        label="Manage assistants"
                         icon={RobotIcon}
+                        label="Manage assistants"
+                        data-gtm-label="assistantManagementButton"
+                        data-gtm-location="sidebarMenu"
                       />
                     )}
                     <DropdownMenuLabel>Conversations</DropdownMenuLabel>
