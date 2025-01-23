@@ -145,7 +145,7 @@ export async function retrieveModjoTranscripts(
   const modjoApiKey = modjoApiKeyRes.value.credential.content.api_key;
 
   const flags = await getFeatureFlags(workspace);
-  const daysOfHistory = flags.includes("labs_transcripts_gong_full_storage")
+  const daysOfHistory = flags.includes("labs_transcripts_full_storage")
     ? 14
     : 1;
 
