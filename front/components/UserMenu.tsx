@@ -2,6 +2,7 @@ import {
   Avatar,
   BookOpenIcon,
   ChevronDownIcon,
+  CloudArrowLeftRightIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -98,6 +99,13 @@ export function UserMenu({
                 label="Trackers"
                 icon={EyeIcon}
                 href={`/w/${owner.sId}/assistant/labs/trackers`}
+              />
+            )}
+            {featureFlags.includes("labs_github_actions") && (
+              <DropdownMenuItem
+                label="Platform Actions"
+                icon={CloudArrowLeftRightIcon}
+                href={`/w/${owner.sId}/assistant/labs/platform_actions`}
               />
             )}
           </>

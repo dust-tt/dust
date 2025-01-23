@@ -20,6 +20,8 @@ import type { SVGProps } from "react";
 import type React from "react";
 
 import {
+  DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_DESCRIPTION,
+  DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME,
   DEFAULT_PROCESS_ACTION_NAME,
   DEFAULT_RETRIEVAL_ACTION_NAME,
   DEFAULT_RETRIEVAL_NO_QUERY_ACTION_NAME,
@@ -100,8 +102,11 @@ export type AssistantBuilderProcessConfiguration = {
   schema: ProcessSchemaPropertyType[];
 };
 
-// Websearch configuration
-export type AssistantBuilderWebNavigationConfiguration = Record<string, never>; // no relevant params identified yet
+// Websearch configuration (no configuraiton)
+export type AssistantBuilderWebNavigationConfiguration = Record<string, never>;
+
+// Github configuraiton (no configuraiton)
+export type AssistantBuilderGithubConfiguration = Record<string, never>;
 
 // Builder State
 
@@ -129,6 +134,10 @@ export type AssistantBuilderActionConfiguration = (
   | {
       type: "WEB_NAVIGATION";
       configuration: AssistantBuilderWebNavigationConfiguration;
+    }
+  | {
+      type: "GITHUB_GET_PULL_REQUEST";
+      configuration: AssistantBuilderGithubConfiguration;
     }
 ) & {
   name: string;
@@ -307,6 +316,16 @@ export function getDefaultWebsearchActionConfiguration(): AssistantBuilderAction
   };
 }
 
+export function getDefaultGithubhGetPullRequestActionConfiguration(): AssistantBuilderActionConfiguration {
+  return {
+    type: "GITHUB_GET_PULL_REQUEST",
+    configuration: {},
+    name: DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME,
+    description: DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_DESCRIPTION,
+    noConfigurationRequired: true,
+  };
+}
+
 export function getDefaultActionConfiguration(
   actionType: AssistantBuilderActionType | null
 ): AssistantBuilderActionConfigurationWithId | null {
@@ -326,6 +345,8 @@ export function getDefaultActionConfiguration(
         return getDefaultProcessActionConfiguration();
       case "WEB_NAVIGATION":
         return getDefaultWebsearchActionConfiguration();
+      case "GITHUB_GET_PULL_REQUEST":
+        return getDefaultGithubhGetPullRequestActionConfiguration();
       default:
         assertNever(actionType);
     }
