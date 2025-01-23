@@ -121,10 +121,11 @@ export function computeNodesDiff({
     )
     .map((coreNode) => coreNode.internalId);
   if (extraCoreInternalIds.length > 0) {
-    // There is some specific code to Intercom in retrieveIntercomConversationsPermissions that hides the empty team folders
+    // There is some specific code to Intercom in retrieveIntercomConversationsPermissions that hides the empty team folders + the teams folder if !hasTeamsWithReadPermission
+    // Reproducing this logic in core is complicated and seems over-engineered.
     if (
       provider !== "intercom" ||
-      extraCoreInternalIds.some((id) => !id.startsWith("intercom-team-"))
+      extraCoreInternalIds.some((id) => !id.startsWith("intercom-team"))
     ) {
       localLogger.info(
         { extraCoreInternalIds },
