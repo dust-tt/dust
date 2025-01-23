@@ -213,6 +213,7 @@ export class GithubGetPullRequestConfigurationServerRunner extends BaseActionCon
       functionCallName: actionConfiguration.name,
       agentMessageId: agentMessage.agentMessageId,
       step,
+      workspaceId: auth.getNonNullableWorkspace().id,
     });
 
     yield {

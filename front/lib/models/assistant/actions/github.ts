@@ -5,12 +5,12 @@ import { DataTypes } from "sequelize";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
+import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
 // Shared Github actions configuration. Github actions do not have any parameter for now (we might
 // want to allow pinnig the repo in the future). Their configuration is shared and used to track
 // which specific action is enabled for an assistant.
-export class AgentGithubConfiguration extends BaseModel<AgentGithubConfiguration> {
+export class AgentGithubConfiguration extends WorkspaceAwareModel<AgentGithubConfiguration> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -80,7 +80,7 @@ AgentGithubConfiguration.belongsTo(AgentConfiguration, {
  * GithubGetPullRequest Action
  */
 
-export class AgentGithubGetPullRequestAction extends BaseModel<AgentGithubGetPullRequestAction> {
+export class AgentGithubGetPullRequestAction extends WorkspaceAwareModel<AgentGithubGetPullRequestAction> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
