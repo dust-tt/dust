@@ -23,9 +23,9 @@ import { useRouter } from "next/router";
 import { useRef, useState } from "react";
 import { useSWRConfig } from "swr";
 
-import { ViewAppAPIModal } from "@app/components/app/Deploy";
 import NewBlock from "@app/components/app/NewBlock";
 import SpecRunView from "@app/components/app/SpecRunView";
+import { ViewAppAPIModal } from "@app/components/app/ViewAppAPIModal";
 import { subNavigationApp } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";

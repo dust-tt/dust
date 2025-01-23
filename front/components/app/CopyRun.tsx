@@ -8,7 +8,7 @@ import type {
 } from "@dust-tt/types";
 import { useMemo } from "react";
 
-import { ViewAppAPIModal } from "@app/components/app/Deploy";
+import { ViewAppAPIModal } from "@app/components/app/ViewAppAPIModal";
 import { useRunBlock } from "@app/lib/swr/apps";
 
 interface CopyRunProps {
