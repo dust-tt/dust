@@ -58,6 +58,12 @@ Resources interface should take Resource or Types but not model objects.
 
 Any newly introduced function in `lib/api/*` should rely on Resources and not models directly.
 
+### [BACK6] Functionally test endpoints
+
+When introducing new endpoints or modifying existing endpoints, introduce functional tests. Our
+tests are functional and focus at the endpoint level for now. Unit tests are not required nor
+desired.
+
 ## REACT
 
 ### [REACT1] Always create `interface` for components Props
