@@ -16,7 +16,11 @@ async function migrateConnector(
   execute: boolean,
   parentLogger: pino.Logger<LoggerOptions & pino.ChildLoggerOptions>
 ) {
-  const logger = parentLogger.child({ connectorId: connector.id });
+  const startSyncTs = Date.now();
+  const logger = parentLogger.child({
+    connectorId: connector.id,
+    execute,
+  });
   logger.info("Starting migration");
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
@@ -49,17 +53,19 @@ async function migrateConnector(
       const parents = await getParents({
         connectorId: connector.id,
         internalId: parentSpreadsheet.internalId,
-        startSyncTs: 0,
+        startSyncTs,
       });
-      await upsertDataSourceFolder({
-        dataSourceConfig,
-        folderId: parentSpreadsheetId,
-        title: parentSpreadsheet.name ?? "Untitled spreadsheet",
-        parents,
-        parentId: parents[1] ?? null,
-        mimeType: MIME_TYPES.MICROSOFT.SPREADSHEET,
-        sourceUrl: parentSpreadsheet.webUrl ?? undefined,
-      });
+      if (execute) {
+        await upsertDataSourceFolder({
+          dataSourceConfig,
+          folderId: parentSpreadsheetId,
+          title: parentSpreadsheet.name ?? "Untitled spreadsheet",
+          parents,
+          parentId: parents[1] ?? null,
+          mimeType: MIME_TYPES.MICROSOFT.SPREADSHEET,
+          sourceUrl: parentSpreadsheet.webUrl ?? undefined,
+        });
+      }
       return 1;
     },
     { concurrency: 32 }
@@ -91,7 +97,7 @@ makeScript(
     for (const connector of slicedConnectors) {
       const result = await migrateConnector(connector, execute, logger);
       logger.info(
-        { connectorId: connector.id, result },
+        { connectorId: connector.id, result, execute },
         "Backfilled connector"
       );
     }
