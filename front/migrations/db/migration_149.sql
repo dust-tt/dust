@@ -87,19 +87,6 @@ JOIN workspaces ON conversations."workspaceId" = workspaces.id
 WHERE agent_message_contents."agentMessageId" = agent_messages.id;
 
 -----------------------------------------------
----------------- agent_messages ---------------
------------------------------------------------
--- Backfill workspaceId from the relationship chain:
--- agent_messages -> messages -> conversations -> workspaces
-UPDATE agent_messages
-SET "workspaceId" = workspaces.id
-FROM messages
-JOIN conversations ON messages."conversationId" = conversations.id
-JOIN workspaces ON conversations."workspaceId" = workspaces.id
-WHERE messages."agentMessageId" = agent_messages.id;
-
-
------------------------------------------------
 ------------ agent_process_actions ------------
 -----------------------------------------------
 -- Backfill workspaceId from the relationship chain:

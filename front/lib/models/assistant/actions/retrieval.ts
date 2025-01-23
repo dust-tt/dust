@@ -7,8 +7,9 @@ import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
+import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
-export class AgentRetrievalConfiguration extends BaseModel<AgentRetrievalConfiguration> {
+export class AgentRetrievalConfiguration extends WorkspaceAwareModel<AgentRetrievalConfiguration> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
