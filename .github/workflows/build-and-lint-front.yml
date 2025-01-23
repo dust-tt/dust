@@ -16,12 +16,6 @@ jobs:
   all-checks:
     runs-on: ubuntu-latest
     steps:
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with:
@@ -43,7 +37,7 @@ jobs:
       - name: Install Postgres
         uses: dust-tt/postgresql-action@6730e69fe23f4f2989c19edf9e6e0d7ffeb0a05c
         with:
-          postgresql docker image: ghcr.io/cached/postgres
+          postgresql docker image: mirror.gcr.io/postgres
           postgresql version: "14.13"
           postgresql db: front_test
           postgresql user: test
