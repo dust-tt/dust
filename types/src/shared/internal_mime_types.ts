@@ -83,7 +83,6 @@ export const MIME_TYPES = {
       "TEAMS_FOLDER",
       "CONVERSATION",
       "TEAM",
-      "HELP_CENTER",
       "ARTICLE",
     ],
   }),

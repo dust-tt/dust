@@ -26,6 +26,8 @@ const {
   getNextConversationBatchToSyncActivity,
   syncConversationBatchActivity,
   getNextOldConversationsBatchToDeleteActivity,
+  syncAllTeamsActivity,
+  deleteRevokedTeamsActivity,
   getNextRevokedConversationsBatchToDeleteActivity,
   deleteConversationBatchActivity,
   getSyncAllConversationsStatusActivity,
@@ -312,6 +314,8 @@ export async function intercomAllConversationsSyncWorkflow({
       // Nothing to do, we're already in the right state.
       break;
     case "scheduled_activate":
+      // Upserts teams with permission "none" if not already in db and syncs them with data_sources_folders/nodes.
+      await syncAllTeamsActivity({ connectorId, currentSyncMs });
       // We loop over the conversations to sync them all.
       do {
         const { conversationIds, nextPageCursor } =
@@ -333,6 +337,8 @@ export async function intercomAllConversationsSyncWorkflow({
       });
       break;
     case "scheduled_revoke":
+      // Delete the teams that are not explicitly allowed in db.
+      await deleteRevokedTeamsActivity({ connectorId });
       // We loop over the conversations delete all those that does not belong to a Team in "read".
       do {
         convosIdsToDelete =

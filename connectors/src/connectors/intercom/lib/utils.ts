@@ -121,18 +121,15 @@ export async function getParentIdsForArticle({
   documentId,
   connectorId,
   parentCollectionId,
-  helpCenterId,
 }: {
   documentId: string;
   connectorId: number;
   parentCollectionId: string;
-  helpCenterId: string;
-}): Promise<[string, string, ...string[], string]> {
+}): Promise<[string, string, ...string[]]> {
   // Get collection parents
   const collectionParents = await getParentIdsForCollection({
     connectorId,
     collectionId: parentCollectionId,
-    helpCenterId,
   });
 
   return [documentId, ...collectionParents];
@@ -141,18 +138,18 @@ export async function getParentIdsForArticle({
 export async function getParentIdsForCollection({
   connectorId,
   collectionId,
-  helpCenterId,
 }: {
   connectorId: number;
   collectionId: string;
-  helpCenterId: string;
-}): Promise<[string, ...string[], string]> {
+}): Promise<[string, ...string[]]> {
   const parentIds = [];
 
   // Fetch and add any parent collection Ids.
   let currentParentId = collectionId;
 
   // There's max 2-levels on Intercom.
+  // The user can only select top level collections; every collection found
+  // here should be added to the parents (the last one in this loop will be the one selected).
   for (let i = 0; i < 2; i++) {
     const currentParent = await IntercomCollection.findOne({
       where: {
@@ -175,6 +172,5 @@ export async function getParentIdsForCollection({
   return [
     getHelpCenterCollectionInternalId(connectorId, collectionId),
     ...parentIds,
-    getHelpCenterInternalId(connectorId, helpCenterId),
   ];
 }
