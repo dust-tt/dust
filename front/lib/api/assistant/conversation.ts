@@ -316,6 +316,7 @@ async function createOrUpdateParticipation({
         conversationId: conversation.id,
         action: "posted",
         userId: user.id,
+        workspaceId: conversation.owner.id,
       });
     }
   }
@@ -774,7 +775,7 @@ export async function* postUserMessage(
           transaction: t,
         })) ?? -1) + 1;
 
-      async function createMessageAndUserMessage() {
+      async function createMessageAndUserMessage(workspace: WorkspaceType) {
         return Message.create(
           {
             sId: generateRandomModelSId(),
@@ -795,14 +796,16 @@ export async function* postUserMessage(
                     ? user.id
                     : (
                         await attributeUserFromWorkspaceAndEmail(
-                          owner,
+                          workspace,
                           context.email
                         )
                       )?.id,
+                  workspaceId: workspace.id,
                 },
                 { transaction: t }
               )
             ).id,
+            workspaceId: workspace.id,
           },
           {
             transaction: t,
@@ -810,7 +813,7 @@ export async function* postUserMessage(
         );
       }
 
-      const m = await createMessageAndUserMessage();
+      const m = await createMessageAndUserMessage(owner);
       const userMessage: UserMessageWithRankType = {
         id: m.id,
         created: m.createdAt.getTime(),
@@ -843,6 +846,7 @@ export async function* postUserMessage(
                 {
                   messageId: m.id,
                   agentConfigurationId: configuration.sId,
+                  workspaceId: owner.id,
                 },
                 { transaction: t }
               );
@@ -852,6 +856,7 @@ export async function* postUserMessage(
                   status: "created",
                   agentConfigurationId: configuration.sId,
                   agentConfigurationVersion: configuration.version,
+                  workspaceId: owner.id,
                 },
                 { transaction: t }
               );
@@ -862,6 +867,7 @@ export async function* postUserMessage(
                   conversationId: conversation.id,
                   parentId: userMessage.id,
                   agentMessageId: agentMessageRow.id,
+                  workspaceId: owner.id,
                 },
                 {
                   transaction: t,
@@ -1236,7 +1242,10 @@ export async function* editUserMessage(
       }
       const userMessageRow = messageRow.userMessage;
       // adding messageRow as param otherwise Ts doesn't get it can't be null
-      async function createMessageAndUserMessage(messageRow: Message) {
+      async function createMessageAndUserMessage(
+        workspace: WorkspaceType,
+        messageRow: Message
+      ) {
         return Message.create(
           {
             sId: generateRandomModelSId(),
@@ -1259,14 +1268,16 @@ export async function* editUserMessage(
                     ? userMessageRow.userId
                     : (
                         await attributeUserFromWorkspaceAndEmail(
-                          owner,
+                          workspace,
                           userMessageRow.userContextEmail
                         )
                       )?.id,
+                  workspaceId: workspace.id,
                 },
                 { transaction: t }
               )
             ).id,
+            workspaceId: workspace.id,
           },
           {
             transaction: t,
@@ -1274,7 +1285,7 @@ export async function* editUserMessage(
         );
       }
 
-      const m = await createMessageAndUserMessage(messageRow);
+      const m = await createMessageAndUserMessage(owner, messageRow);
 
       const userMessage: UserMessageWithRankType = {
         id: m.id,
@@ -1320,6 +1331,7 @@ export async function* editUserMessage(
               {
                 messageId: m.id,
                 agentConfigurationId: configuration.sId,
+                workspaceId: owner.id,
               },
               { transaction: t }
             );
@@ -1329,6 +1341,7 @@ export async function* editUserMessage(
                 status: "created",
                 agentConfigurationId: configuration.sId,
                 agentConfigurationVersion: configuration.version,
+                workspaceId: owner.id,
               },
               { transaction: t }
             );
@@ -1339,6 +1352,7 @@ export async function* editUserMessage(
                 conversationId: conversation.id,
                 parentId: userMessage.id,
                 agentMessageId: agentMessageRow.id,
+                workspaceId: owner.id,
               },
               {
                 transaction: t,
@@ -1568,6 +1582,7 @@ export async function* retryAgentMessage(
           agentConfigurationId: messageRow.agentMessage.agentConfigurationId,
           agentConfigurationVersion:
             messageRow.agentMessage.agentConfigurationVersion,
+          workspaceId: auth.getNonNullableWorkspace().id,
         },
         { transaction: t }
       );
@@ -1579,6 +1594,7 @@ export async function* retryAgentMessage(
           parentId: messageRow.parentId,
           version: messageRow.version + 1,
           agentMessageId: agentMessageRow.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
         },
         {
           transaction: t,
@@ -1759,6 +1775,7 @@ export async function postNewContentFragment(
         userContextEmail: context?.email,
         userContextFullName: context?.fullName,
         userContextUsername: context?.username,
+        workspaceId: owner.id,
       };
 
       const contentFragment = await (() => {
@@ -1786,6 +1803,7 @@ export async function postNewContentFragment(
           rank: nextMessageRank,
           conversationId: conversation.id,
           contentFragmentId: contentFragment.id,
+          workspaceId: owner.id,
         },
         {
           transaction: t,
