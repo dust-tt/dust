@@ -380,23 +380,20 @@ export async function handleMembershipInvitations(
     activeOnly: true,
   });
 
-  const otherRegionUsers: string[] = [];
-  for (const invite of invitationRequests) {
-    const matchingUsers =
-      await getAuth0ManagemementClient().usersByEmail.getByEmail({
-        email: invite.email,
-      });
-    if (
-      matchingUsers.data.some((user) => {
-        return (
-          user.app_metadata?.region &&
-          user.app_metadata.region !== regionConfig.getCurrentRegion()
-        );
-      })
-    ) {
-      otherRegionUsers.push(invite.email);
-    }
-  }
+  const auth0Users = await getAuth0ManagemementClient().users.getAll({
+    q: invitationRequests
+      .map(
+        (invite) =>
+          `email:"${invite.email.replace(/([+\-&|!(){}[\]^"~*?:\\/])/g, "\\$1")}"`
+      )
+      .join(" OR "),
+  });
+
+  const otherRegionUsers = auth0Users.data
+    .filter(
+      (user) => user.app_metadata?.region !== regionConfig.getCurrentRegion()
+    )
+    .map((user) => user.email);
 
   const unconsumedInvitations =
     await getRecentPendingAndRevokedInvitations(auth);
