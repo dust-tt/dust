@@ -654,6 +654,12 @@ export async function syncAllTeamsActivity({
         teamId: teamOnIntercom.id,
         name: teamOnIntercom.name,
         permission: "none",
+        lastUpsertedTs: new Date(currentSyncMs),
+      });
+    } else {
+      await teamOnDb.update({
+        name: teamOnIntercom.name,
+        lastUpsertedTs: new Date(currentSyncMs),
       });
     }
   }
