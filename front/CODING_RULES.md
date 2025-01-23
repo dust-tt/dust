@@ -18,6 +18,14 @@ Favor simple and easy to understand approaches vs overly optimized but complex o
 Reviewer: If you detect an overly optimized or complex solution that can be simplified (at the cost
 of a bit of performance loss or extra code), ask the author to consider the simpler approach.
 
+### [GEN3] Favor types over typescript enums
+
+We do not use typescript enums, we use types instead, eg: `type Color = "red" | "blue";`.
+
+### [GEN4] Use of `as` is prohibited
+
+The use of `as` is prohibited in the codebase. Use typeguards or other type-safe methods instead.
+
 ## SECURITY
 
 ### [SEC1] No sensitive data outside of HTTP bodies or headers
@@ -45,6 +53,18 @@ missing). Direct Resource interaction are acceptable.
 
 Interfaces in `lib/api/*` should not expose ModelId or Sequelize Model objects.
 
+Example:
+
+```
+// BAD
+
+function doWorkspace({ id }: { id: ModelId }) { }
+
+// GOOD
+
+function doWorkspace({ workspace }: { workspace: WorkspaceType }) { }
+```
+
 ### [BACK3] Resource invariant: no models outside of resources
 
 Any new model should be abstracted to the rest of the codebase through a pre-existing or new
@@ -70,6 +90,15 @@ We are deprecating our use of `PQueue` in favor of `ConcurrentExecutor`. Use `Co
 for all new code and migrate to it from `PQueue` when modifying existing code that involves
 `PQueue`.
 
+### [BACK8] Avoid `Promise.all` on dynamic arrays
+
+Never use `Promise.all` on anything else than static arrays of promises with a known length (8 max).
+To parallelize asyncrhonous handling of dynamic arrays, use `ConcurrentExecutor`.
+
+### [BACK9] Favor typeguards over other methods
+
+When checking types, use explicit typeguards over `typeof`, `instanceof`, etc.
+
 ## REACT
 
 ### [REACT1] Always create `interface` for components Props
@@ -94,27 +123,27 @@ export function Component({ name }: MyComponentProps) { }
 
 ### [REACT2] Standardized query parameters extraction
 
-Use `{ foo } = req.query` and then test with `typeof` to extract query parameters in endpoints.
+Use `{ foo } = req.query` and then test with `isString` to extract query parameters in endpoints.
 
 Example:
 
 ```
 // BAD
 
-if(typeof req.query.aid !== "string") {
+if (typeof req.query.aId !== "string") {
   // error
 }
 
-const r = someFunction(req.query.aid);
-const r = someFunction(req.query.aid as string);
+const r = someFunction(req.query.aId);
+const r = someFunction(req.query.aId as string);
 
 // GOOD
 
-const { aid } = req.query;
+const { aId } = req.query;
 
-if (typeof aid !== "string") {
+if (isString(aId)) {
   // error
 }
 
-const r = someFunction(aid);
+const r = someFunction(aId);
 ```
