@@ -1,33 +1,15 @@
-import {
-  concurrentExecutor,
-  getGoogleSheetTableId,
-  MIME_TYPES,
-} from "@dust-tt/types";
+import { concurrentExecutor, MIME_TYPES } from "@dust-tt/types";
 import _ from "lodash";
 import type { LoggerOptions } from "pino";
 import type pino from "pino";
 import { makeScript } from "scripts/helpers";
 
-import { getSourceUrlForGoogleDriveFiles } from "@connectors/connectors/google_drive";
-import { getLocalParents } from "@connectors/connectors/google_drive/lib";
-import { getInternalId } from "@connectors/connectors/google_drive/temporal/utils";
-import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import {
-  updateDataSourceDocumentParents,
-  updateDataSourceTableParents,
-  upsertDataSourceFolder,
-} from "@connectors/lib/data_sources";
-import {
-  GoogleDriveFiles,
-  GoogleDriveFolders,
-  GoogleDriveSheet,
-} from "@connectors/lib/models/google_drive";
-import logger from "@connectors/logger/logger";
-import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
-import { MicrosoftNodeResource } from "@connectors/resources/microsoft_resource";
-import { MicrosoftNodeModel } from "@connectors/lib/models/microsoft";
 import { getParents } from "@connectors/connectors/microsoft/temporal/file";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
+import { MicrosoftNodeModel } from "@connectors/lib/models/microsoft";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { MicrosoftNodeResource } from "@connectors/resources/microsoft_resource";
 
 async function migrateConnector(
   connector: ConnectorResource,
