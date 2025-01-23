@@ -15,6 +15,7 @@ ALTER TABLE "public"."agent_messages" ALTER COLUMN "workspaceId" SET NOT NULL;
 ALTER TABLE "public"."messages" ALTER COLUMN "workspaceId" SET NOT NULL;
 ALTER TABLE "public"."message_reactions" ALTER COLUMN "workspaceId" SET NOT NULL;
 ALTER TABLE "public"."mentions" ALTER COLUMN "workspaceId" SET NOT NULL;
+ALTER TABLE "public"."content_fragments" ALTER COLUMN "workspaceId" SET NOT NULL;
 
     RETURN 'success';
 END;
@@ -24,7 +25,7 @@ $$ LANGUAGE plpgsql;
    SELECT perform_migration(:'backfilled'::boolean);
 \else
     \echo '!! Migration was NOT applied !!'
-    \echo 'The backfill script: 20240912_backfill_editedbyuser_id is required before applying this migation. If you already did it, run psql with --set=backfilled=1 argument.'
+    \echo 'The backfill script: 20250123_backfill_workspace_id_conversation_related_models is required before applying this migation. If you already did it, run psql with --set=backfilled=1 argument.'
 \endif
 
 DROP FUNCTION perform_migration(boolean);

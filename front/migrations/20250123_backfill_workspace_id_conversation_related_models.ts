@@ -11,6 +11,7 @@ import {
   MessageReaction,
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
+import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import type { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
@@ -18,14 +19,12 @@ import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 
 type TableConfig = {
   model: typeof WorkspaceAwareModel<any>;
-  name: string;
   include: (workspaceId: number) => any[];
 };
 
 const TABLES: TableConfig[] = [
   {
     model: ConversationParticipant,
-    name: "conversation_participants",
     include: (workspaceId: number) => [
       {
         model: Conversation,
@@ -36,7 +35,6 @@ const TABLES: TableConfig[] = [
   },
   {
     model: Message,
-    name: "messages",
     include: (workspaceId: number) => [
       {
         as: "conversation",
@@ -48,7 +46,6 @@ const TABLES: TableConfig[] = [
   },
   {
     model: UserMessage,
-    name: "user_messages",
     include: (workspaceId: number) => [
       {
         as: "message",
@@ -67,7 +64,24 @@ const TABLES: TableConfig[] = [
   },
   {
     model: AgentMessage,
-    name: "agent_messages",
+    include: (workspaceId: number) => [
+      {
+        as: "message",
+        model: Message,
+        required: true,
+        include: [
+          {
+            as: "conversation",
+            model: Conversation,
+            required: true,
+            where: { workspaceId },
+          },
+        ],
+      },
+    ],
+  },
+  {
+    model: ContentFragmentModel,
     include: (workspaceId: number) => [
       {
         as: "message",
@@ -86,7 +100,6 @@ const TABLES: TableConfig[] = [
   },
   {
     model: MessageReaction,
-    name: "message_reactions",
     include: (workspaceId: number) => [
       {
         model: Message,
@@ -104,7 +117,6 @@ const TABLES: TableConfig[] = [
   },
   {
     model: Mention,
-    name: "mentions",
     include: (workspaceId: number) => [
       {
         model: Message,
@@ -132,7 +144,7 @@ async function backfillTable(
   let totalProcessed = 0;
 
   logger.info(
-    { workspaceId: workspace.sId, table: table.name },
+    { workspaceId: workspace.sId, table: table.model.tableName },
     "Starting table backfill"
   );
 
@@ -155,7 +167,7 @@ async function backfillTable(
     logger.info(
       {
         workspaceId: workspace.sId,
-        table: table.name,
+        table: table.model.tableName,
         batchSize: records.length,
         totalProcessed,
         lastId: lastSeenId,

@@ -59,6 +59,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
         ...blob,
         sId: generateRandomModelSId("cf"),
         version: "latest",
+        workspaceId: blob.workspaceId,
       },
       {
         transaction,
@@ -91,6 +92,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
           ...blob,
           sId,
           version: "latest",
+          workspaceId: blob.workspaceId,
         },
         {
           transaction: t,

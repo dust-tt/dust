@@ -1775,6 +1775,7 @@ export async function postNewContentFragment(
         userContextEmail: context?.email,
         userContextFullName: context?.fullName,
         userContextUsername: context?.username,
+        workspaceId: owner.id,
       };
 
       const contentFragment = await (() => {
