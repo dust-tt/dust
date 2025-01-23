@@ -1,3 +1,5 @@
+import { GLOBAL_AGENTS_SID } from "@dust-tt/types";
+
 import { AgentUserRelation } from "@app/lib/models/assistant/agent";
 import { Workspace } from "@app/lib/models/workspace";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -38,6 +40,29 @@ makeScript(
 
     // Parse agent names
     const agents = agentConfigurationSIDs.split(",").map((sid) => sid.trim());
+
+    // Check if all agents exist by looking up in AgentConfiguration and GlobalAgentSettings
+    for (const agentConfigurationSID of agents) {
+      // Skip check for global agents
+      if (agentConfigurationSID in GLOBAL_AGENTS_SID) {
+        continue;
+      }
+
+      const agentRelation = await AgentUserRelation.findOne({
+        where: {
+          workspaceId: workspace.id,
+          agentConfiguration: agentConfigurationSID,
+        },
+      });
+
+      if (!agentRelation) {
+        logger.error(
+          { agentConfigurationSID },
+          "Agent configuration not found in workspace"
+        );
+        return;
+      }
+    }
 
     logger.info(
       { wId, agents, memberCount: memberships.length },
