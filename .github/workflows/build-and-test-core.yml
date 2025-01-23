@@ -28,7 +28,7 @@ jobs:
           containerPort: 6379
 
       - name: Install Postgres
-        uses: dust-tt/postgresql-action
+        uses: dust-tt/postgresql-action@6730e69fe23f4f2989c19edf9e6e0d7ffeb0a05c
         with:
           postgresql docker image: ghcr.io/library/postgres
           postgresql version: 14.13 # See https://hub.docker.com/_/postgres for available versions
