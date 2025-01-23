@@ -1,7 +1,7 @@
 import type { ModelId } from "@dust-tt/types";
 
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
-import { createZendeskClient } from "@connectors/connectors/zendesk/lib/zendesk_api";
+import { fetchZendeskBrand } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import logger from "@connectors/logger/logger";
 import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
 
@@ -27,12 +27,13 @@ export async function allowSyncZendeskTickets({
     return true;
   }
   // fetching the brand from Zendesk
-  const zendeskApiClient = createZendeskClient(
-    await getZendeskSubdomainAndAccessToken(connectionId)
-  );
-  const {
-    result: { brand: fetchedBrand },
-  } = await zendeskApiClient.brand.show(brandId);
+  const { subdomain, accessToken } =
+    await getZendeskSubdomainAndAccessToken(connectionId);
+  const fetchedBrand = await fetchZendeskBrand({
+    brandId,
+    subdomain,
+    accessToken,
+  });
 
   if (fetchedBrand) {
     await ZendeskBrandResource.makeNew({

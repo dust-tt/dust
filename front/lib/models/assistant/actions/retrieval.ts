@@ -7,6 +7,7 @@ import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
+import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
 export class AgentRetrievalConfiguration extends BaseModel<AgentRetrievalConfiguration> {
   declare createdAt: CreationOptional<Date>;
@@ -230,7 +231,7 @@ AgentMessage.hasMany(AgentRetrievalAction, {
   foreignKey: { name: "agentMessageId", allowNull: false },
 });
 
-export class RetrievalDocument extends BaseModel<RetrievalDocument> {
+export class RetrievalDocument extends WorkspaceAwareModel<RetrievalDocument> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -313,7 +314,7 @@ RetrievalDocument.belongsTo(DataSourceViewModel, {
   foreignKey: { allowNull: true },
 });
 
-export class RetrievalDocumentChunk extends BaseModel<RetrievalDocumentChunk> {
+export class RetrievalDocumentChunk extends WorkspaceAwareModel<RetrievalDocumentChunk> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 

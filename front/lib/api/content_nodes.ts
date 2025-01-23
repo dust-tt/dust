@@ -78,10 +78,11 @@ export function computeNodesDiff({
             }
             // Custom exclusion rules. The goal here is to avoid logging irrelevant differences, scoping by connector.
             // For Snowflake and Zendesk we fixed how parents were computed in the core folders but not in connectors.
+            // For Intercom we keep the virtual node Help Center in connectors but not in core.
             if (
               ["parentInternalIds", "parentInternalId"].includes(key) &&
               provider &&
-              ["snowflake", "zendesk"].includes(provider)
+              ["snowflake", "zendesk", "intercom"].includes(provider)
             ) {
               return false;
             }
@@ -120,10 +121,17 @@ export function computeNodesDiff({
     )
     .map((coreNode) => coreNode.internalId);
   if (extraCoreInternalIds.length > 0) {
-    localLogger.info(
-      { extraCoreInternalIds },
-      "[CoreNodes] Received unexpected core nodes"
-    );
+    // There is some specific code to Intercom in retrieveIntercomConversationsPermissions that hides the empty team folders + the teams folder if !hasTeamsWithReadPermission
+    // Reproducing this logic in core is complicated and seems over-engineered.
+    if (
+      provider !== "intercom" ||
+      extraCoreInternalIds.some((id) => !id.startsWith("intercom-team"))
+    ) {
+      localLogger.info(
+        { extraCoreInternalIds },
+        "[CoreNodes] Received extraneous core nodes"
+      );
+    }
   }
 }
 
@@ -164,8 +172,6 @@ export function getContentNodeMetadata(
       return { type: "file" };
     case MIME_TYPES.INTERCOM.TEAM:
       return { type: "folder" };
-    case MIME_TYPES.INTERCOM.HELP_CENTER:
-      return { type: "database" };
     case MIME_TYPES.INTERCOM.ARTICLE:
       return { type: "file" };
     case MIME_TYPES.MICROSOFT.FOLDER:

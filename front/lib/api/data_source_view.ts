@@ -392,15 +392,6 @@ export async function getContentNodesForDataSourceView(
       "[CoreNodes] Could not fetch content nodes from core"
     );
   } else if (coreContentNodesRes.isOk()) {
-    if (coreContentNodesRes.value.total !== contentNodesResult.total) {
-      localLogger.info(
-        {
-          coreNodesCount: coreContentNodesRes.value.total,
-          connectorsNodesCount: contentNodesResult.total,
-        },
-        "[CoreNodes] Content nodes count mismatch"
-      );
-    }
     computeNodesDiff({
       connectorsContentNodes: contentNodesResult.nodes,
       coreContentNodes: coreContentNodesRes.value.nodes,

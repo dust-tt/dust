@@ -3,7 +3,6 @@ import { makeScript } from "scripts/helpers";
 
 import {
   getHelpCenterCollectionInternalId,
-  getHelpCenterInternalId,
   getParentIdsForCollection,
   getTeamInternalId,
   getTeamsInternalId,
@@ -84,25 +83,6 @@ async function createFolderNodes(execute: boolean) {
       });
 
       for (const helpCenter of helpCenters) {
-        // Create Help Center folder
-        const helpCenterInternalId = getHelpCenterInternalId(
-          connector.id,
-          helpCenter.helpCenterId
-        );
-        console.log(
-          `[${connector.id}] -> ${JSON.stringify({ folderId: helpCenterInternalId, parents: [helpCenterInternalId] })}`
-        );
-        if (execute) {
-          await upsertDataSourceFolder({
-            dataSourceConfig,
-            folderId: helpCenterInternalId,
-            parents: [helpCenterInternalId],
-            parentId: null,
-            title: helpCenter.name,
-            mimeType: MIME_TYPES.INTERCOM.HELP_CENTER,
-          });
-        }
-
         const collections = await IntercomCollection.findAll({
           where: {
             connectorId: connector.id,
@@ -121,7 +101,6 @@ async function createFolderNodes(execute: boolean) {
             const collectionParents = await getParentIdsForCollection({
               connectorId: connector.id,
               collectionId: collection.collectionId,
-              helpCenterId: helpCenter.helpCenterId,
             });
             console.log(
               `[${connector.id}] -> ${JSON.stringify({ folderId: collectionInternalId, parents: collectionParents })}`

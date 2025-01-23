@@ -231,6 +231,30 @@ export async function fetchZendeskArticle({
 }
 
 /**
+ * Fetches a single category from the Zendesk API.
+ */
+export async function fetchZendeskCategory({
+  brandSubdomain,
+  accessToken,
+  categoryId,
+}: {
+  brandSubdomain: string;
+  accessToken: string;
+  categoryId: number;
+}): Promise<ZendeskFetchedCategory | null> {
+  const url = `https://${brandSubdomain}.zendesk.com/api/v2/help_center/categories/${categoryId}`;
+  try {
+    const response = await fetchFromZendeskWithRetries({ url, accessToken });
+    return response?.category ?? null;
+  } catch (e) {
+    if (isZendeskNotFoundError(e)) {
+      return null;
+    }
+    throw e;
+  }
+}
+
+/**
  * Fetches a batch of categories from the Zendesk API.
  */
 export async function fetchZendeskCategoriesInBrand(

@@ -288,30 +288,27 @@ export async function processTranscriptActivity(
     throw error;
   }
 
-  // labs_transcripts_gong_full_storage FF enables storing all Gong transcripts in a single datasource view
-  let gongFullStorageFF = false;
-  let gongFullStorageDataSourceViewId = null;
-  if (transcriptsConfiguration.provider === "gong") {
-    const featureFlags = await getFeatureFlags(owner);
-    gongFullStorageFF = featureFlags.includes(
-      "labs_transcripts_gong_full_storage"
-    );
+  // labs_transcripts_full_storage FF enables storing all Gong transcripts in a single datasource view
+  let fullStorageFF = false;
+  let fullStorageDataSourceViewId = null;
 
-    if (gongFullStorageFF) {
-      const defaultGongTranscriptsStorageConfiguration =
-        await LabsTranscriptsConfigurationResource.fetchDefaultFullStorageConfigurationForWorkspace(
-          auth
-        );
+  const featureFlags = await getFeatureFlags(owner);
+  fullStorageFF = featureFlags.includes("labs_transcripts_full_storage");
 
-      gongFullStorageDataSourceViewId =
-        defaultGongTranscriptsStorageConfiguration?.dataSourceViewId;
-    }
+  if (fullStorageFF) {
+    const defaultTranscriptsStorageConfiguration =
+      await LabsTranscriptsConfigurationResource.fetchDefaultFullStorageConfigurationForWorkspace(
+        auth
+      );
+
+    fullStorageDataSourceViewId =
+      defaultTranscriptsStorageConfiguration?.dataSourceViewId;
   }
 
   // Decide to store transcript or not (user might not have participated)
   const shouldStoreTranscript =
     (userParticipated && !!transcriptsConfiguration.dataSourceViewId) ||
-    (gongFullStorageFF && !!gongFullStorageDataSourceViewId);
+    (fullStorageFF && !!fullStorageDataSourceViewId);
 
   // Decide to process transcript or not (user needs to have participated)
   const shouldProcessTranscript =
@@ -323,8 +320,8 @@ export async function processTranscriptActivity(
       userParticipated,
       transcriptsConfigurationDataSourceViewId:
         transcriptsConfiguration.dataSourceViewId,
-      gongFullStorageFF,
-      gongFullStorageDataSourceViewId,
+      fullStorageFF,
+      fullStorageDataSourceViewId,
       shouldStoreTranscript,
       shouldProcessTranscript,
     },
@@ -335,8 +332,8 @@ export async function processTranscriptActivity(
     localLogger.info(
       {
         dataSourceViewId: transcriptsConfiguration.dataSourceViewId,
-        gongFullStorageFF,
-        gongFullStorageDataSourceViewId,
+        fullStorageFF,
+        fullStorageDataSourceViewId,
         transcriptsConfiguration,
         transcriptTitle,
         transcriptContentLength: transcriptContent.length,
@@ -345,8 +342,7 @@ export async function processTranscriptActivity(
     );
 
     const dataSourceViewId =
-      gongFullStorageDataSourceViewId ||
-      transcriptsConfiguration.dataSourceViewId;
+      fullStorageDataSourceViewId || transcriptsConfiguration.dataSourceViewId;
 
     if (!dataSourceViewId) {
       localLogger.error(

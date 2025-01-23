@@ -708,7 +708,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "okta_enterprise_connection"
   | "labs_transcripts"
   | "labs_transcripts_modjo"
-  | "labs_transcripts_gong_full_storage"
+  | "labs_transcripts_full_storage"
   | "labs_trackers"
   | "document_tracker"
   | "use_app_for_header_detection"
