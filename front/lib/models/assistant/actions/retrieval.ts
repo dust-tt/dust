@@ -230,7 +230,7 @@ AgentMessage.hasMany(AgentRetrievalAction, {
   foreignKey: { name: "agentMessageId", allowNull: false },
 });
 
-export class RetrievalDocument extends BaseModel<RetrievalDocument> {
+export class RetrievalDocument extends WorkspaceAwareModel<RetrievalDocument> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -313,7 +313,7 @@ RetrievalDocument.belongsTo(DataSourceViewModel, {
   foreignKey: { allowNull: true },
 });
 
-export class RetrievalDocumentChunk extends BaseModel<RetrievalDocumentChunk> {
+export class RetrievalDocumentChunk extends WorkspaceAwareModel<RetrievalDocumentChunk> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
