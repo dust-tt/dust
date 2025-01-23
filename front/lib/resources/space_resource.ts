@@ -68,6 +68,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           {
             groupId: group.id,
             vaultId: space.id,
+            workspaceId: space.workspaceId,
           },
           { transaction }
         );
@@ -486,6 +487,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     await GroupSpaceModel.create({
       groupId: group.id,
       vaultId: this.id,
+      workspaceId: this.workspaceId,
     });
   }
 

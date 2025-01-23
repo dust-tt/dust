@@ -15,6 +15,7 @@ class GroupSpaceFactory extends Factory<GroupSpaceModel> {
     return this.params({
       groupId: group.id,
       vaultId: space.id,
+      workspaceId: space.workspaceId,
     }).create();
   }
 }
