@@ -171,6 +171,8 @@ async function backfillTable(
           where: {
             id: { [Op.in]: recordIds },
           },
+          hooks: false,
+          fields: ["workspaceId"],
         }
       );
     }
