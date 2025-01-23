@@ -171,6 +171,7 @@ async function backfillTable(
           where: {
             id: { [Op.in]: recordIds },
           },
+          // Required to avoid hitting validation hook, which does not play nice with bulk updates.
           hooks: false,
           fields: ["workspaceId"],
         }
