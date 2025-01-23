@@ -1,4 +1,13 @@
-import { Modal } from "@dust-tt/sparkle";
+import {
+  Button,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@dust-tt/sparkle";
 import type {
   ContentNodesViewType,
   DataSourceViewSelectionConfigurations,
@@ -19,25 +28,21 @@ interface TrackerBuilderDataSourceModal {
   initialDataSourceConfigurations: DataSourceViewSelectionConfigurations;
   allowedSpaces: SpaceType[];
   dataSourceViews: DataSourceViewType[];
-  isOpen: boolean;
   onSave: (dsConfigs: DataSourceViewSelectionConfigurations) => void;
   owner: WorkspaceType;
-  setOpen: (isOpen: boolean) => void;
   viewType: ContentNodesViewType;
+  disabled: boolean;
 }
 
 export default function TrackerBuilderDataSourceModal({
   initialDataSourceConfigurations,
   allowedSpaces,
   dataSourceViews,
-  isOpen,
   onSave,
   owner,
-  setOpen,
   viewType,
+  disabled,
 }: TrackerBuilderDataSourceModal) {
-  const [hasChanged, setHasChanged] = useState(false);
-
   const [selectionConfigurations, setSelectionConfigurations] =
     useState<DataSourceViewSelectionConfigurations>(
       initialDataSourceConfigurations
@@ -45,7 +50,6 @@ export default function TrackerBuilderDataSourceModal({
 
   const setSelectionConfigurationsCallback = useCallback(
     (func: SetStateAction<DataSourceViewSelectionConfigurations>) => {
-      setHasChanged(true);
       setSelectionConfigurations(func);
     },
     [setSelectionConfigurations]
@@ -62,36 +66,49 @@ export default function TrackerBuilderDataSourceModal({
   );
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={() => {
-        setSelectionConfigurations(initialDataSourceConfigurations);
-        setOpen(false);
-      }}
-      onSave={() => {
-        onSave(selectionConfigurations);
-        setOpen(false);
-      }}
-      hasChanged={hasChanged}
-      variant="side-md"
-      title="Manage data sources selection"
-      className="flex flex-col overflow-hidden"
-    >
-      <div
-        id="dataSourceViewsSelector"
-        className="overflow-y-auto scrollbar-hide"
-      >
-        <DataSourceViewsSelector
-          useCase="trackerBuilder"
-          dataSourceViews={supportedDataSourceViewsForViewType}
-          allowedSpaces={allowedSpaces}
-          owner={owner}
-          selectionConfigurations={selectionConfigurations}
-          setSelectionConfigurations={setSelectionConfigurationsCallback}
-          viewType={viewType}
-          isRootSelectable={true}
+    <Sheet>
+      <SheetTrigger asChild>
+        <Button
+          label="Select Documents"
+          className="w-fit"
+          disabled={disabled}
         />
-      </div>
-    </Modal>
+      </SheetTrigger>
+      <SheetContent>
+        <SheetHeader>
+          <SheetTitle>Manage data sources selection</SheetTitle>
+        </SheetHeader>
+        <SheetContainer>
+          <div
+            id="dataSourceViewsSelector"
+            className="overflow-y-auto scrollbar-hide"
+          >
+            <DataSourceViewsSelector
+              useCase="trackerBuilder"
+              dataSourceViews={supportedDataSourceViewsForViewType}
+              allowedSpaces={allowedSpaces}
+              owner={owner}
+              selectionConfigurations={selectionConfigurations}
+              setSelectionConfigurations={setSelectionConfigurationsCallback}
+              viewType={viewType}
+              isRootSelectable={true}
+            />
+          </div>
+        </SheetContainer>
+        <SheetFooter
+          leftButtonProps={{
+            label: "Cancel",
+            variant: "outline",
+          }}
+          rightButtonProps={{
+            label: "Save",
+            onClick: () => {
+              onSave(selectionConfigurations);
+            },
+            disabled,
+          }}
+        />
+      </SheetContent>
+    </Sheet>
   );
 }

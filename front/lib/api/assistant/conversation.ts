@@ -1915,6 +1915,7 @@ async function* streamRunAgentEvents(
       case "websearch_params":
       case "browse_params":
       case "conversation_include_file_params":
+      case "github_get_pull_request_params":
       case "generation_tokens":
         yield event;
         break;

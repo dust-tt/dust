@@ -1,4 +1,13 @@
-import { AttachmentIcon, Icon, Markdown, Modal } from "@dust-tt/sparkle";
+import {
+  AttachmentIcon,
+  Icon,
+  Markdown,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@dust-tt/sparkle";
 
 interface FairUsageModalProps {
   isOpened: boolean;
@@ -24,17 +33,27 @@ For **Pro plans**, a limit at 100 messages / seat / day (Enough to cover any fai
 
 export function FairUsageModal({ isOpened, onClose }: FairUsageModalProps) {
   return (
-    <Modal
-      isOpen={isOpened}
-      onClose={onClose}
-      hasChanged={false}
-      variant="side-sm"
-      title="Dust's Fair Use Policy"
+    <Sheet
+      open={isOpened}
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose();
+        }
+      }}
     >
-      <div className="py-8">
-        <Icon visual={AttachmentIcon} size="lg" className="text-emerald-500" />
-        <Markdown content={FAIR_USE_CONTENT} forcedTextSize="text-sm" />
-      </div>
-    </Modal>
+      <SheetContent>
+        <SheetHeader>
+          <SheetTitle>Dust's Fair Use Policy</SheetTitle>
+        </SheetHeader>
+        <SheetContainer>
+          <Icon
+            visual={AttachmentIcon}
+            size="lg"
+            className="text-emerald-500"
+          />
+          <Markdown content={FAIR_USE_CONTENT} forcedTextSize="text-sm" />
+        </SheetContainer>
+      </SheetContent>
+    </Sheet>
   );
 }
