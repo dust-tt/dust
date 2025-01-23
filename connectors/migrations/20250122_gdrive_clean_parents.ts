@@ -188,7 +188,7 @@ async function processFilesBatch({
       }
       return 1;
     },
-    { concurrency: 16 }
+    { concurrency: 32 }
   );
   return result.reduce((acc, curr) => acc + curr, 0);
 }
@@ -233,7 +233,7 @@ async function processSheetsBatch({
       }
       return 1;
     },
-    { concurrency: 16 }
+    { concurrency: 32 }
   );
   return result.reduce((acc, curr) => acc + curr, 0);
 }
