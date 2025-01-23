@@ -144,7 +144,10 @@ export function ProPriceTable({
       label: (
         <>
           Unlimited messages (
-          <Hoverable onClick={() => setIsFairUseModalOpened(true)}>
+          <Hoverable
+            className="cursor-pointer text-gray-400 underline hover:text-gray-500"
+            onClick={() => setIsFairUseModalOpened(true)}
+          >
             Fair use limits apply*
           </Hoverable>
           )

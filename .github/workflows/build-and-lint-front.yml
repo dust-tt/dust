@@ -1,4 +1,4 @@
-name: Lint & Build (front)
+name: Lint & Build & Test (front)
 
 on:
   push:
@@ -7,7 +7,10 @@ on:
       - sdks/js/**
       - front/**
       - .github/workflows/build-and-lint-front.yml
-
+permissions:
+  contents: read
+  actions: read
+  checks: write
 jobs:
   check-eslint:
     runs-on: ubuntu-latest
@@ -18,9 +21,33 @@ jobs:
           node-version: 20.13.0
           cache: "npm"
           cache-dependency-path: ./front/package-lock.json
-      - working-directory: types
+      - name: Build Types
+        working-directory: types
         run: npm install && npm run build
-      - working-directory: sdks/js
+      - name: Build SDK/JS
+        working-directory: sdks/js
         run: npm install && npm run build
-      - working-directory: front
+      - name: Typecheck and Lint
+        working-directory: front
         run: npm install && npm run tsc && npm run lint && npm run format:check && npm run docs:check
+      - name: Install Postgres
+        uses: CasperWA/postgresql-action@v1.2
+        with:
+          postgresql version: "14.13" # See https://hub.docker.com/_/postgres for available versions
+          postgresql db: front_test
+          postgresql user: test
+          postgresql password: test
+          postgresql port: 5433
+      - name: Run Tests
+        working-directory: front
+        env:
+          FRONT_DATABASE_URI: "postgres://test:test@localhost:5433/front_test"
+          NODE_ENV: test
+        run: npx tsx admin/db.ts && npm run test:ci
+      - name: Tests Report
+        if: always()
+        uses: dorny/test-reporter@1a288b62f8b75c0f433cbfdbc2e4800fbae50bd7 # Specific hash because of https://github.com/dorny/test-reporter/issues/67
+        with:
+          name: Front Tests # Name of the check run which will be created
+          path: front/junit*.xml # Path to test results
+          reporter: jest-junit # Format of test results

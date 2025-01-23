@@ -1,17 +1,17 @@
 import {
   Button,
   CloudArrowLeftRightIcon,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  NewDialog,
-  NewDialogContainer,
-  NewDialogContent,
-  NewDialogDescription,
-  NewDialogFooter,
-  NewDialogHeader,
-  NewDialogTitle,
   useSendNotification,
 } from "@dust-tt/sparkle";
 import type {
@@ -282,7 +282,7 @@ export const AddConnectionMenu = ({
   return (
     availableIntegrations.length > 0 && (
       <>
-        <NewDialog
+        <Dialog
           open={showUpgradePopup}
           onOpenChange={(open) => {
             if (!open) {
@@ -290,14 +290,14 @@ export const AddConnectionMenu = ({
             }
           }}
         >
-          <NewDialogContent size="md" isAlertDialog>
-            <NewDialogHeader hideButton>
-              <NewDialogTitle>${plan.name} plan</NewDialogTitle>
-            </NewDialogHeader>
-            <NewDialogContainer>
+          <DialogContent size="md" isAlertDialog>
+            <DialogHeader hideButton>
+              <DialogTitle>${plan.name} plan</DialogTitle>
+            </DialogHeader>
+            <DialogContainer>
               Unlock this managed data source by upgrading your plan.
-            </NewDialogContainer>
-            <NewDialogFooter
+            </DialogContainer>
+            <DialogFooter
               leftButtonProps={{
                 label: "Cancel",
                 variant: "outline",
@@ -310,8 +310,8 @@ export const AddConnectionMenu = ({
                 },
               }}
             />
-          </NewDialogContent>
-        </NewDialog>
+          </DialogContent>
+        </Dialog>
 
         {connectorProvider === "snowflake" ? (
           <CreateOrUpdateConnectionSnowflakeModal
@@ -364,7 +364,7 @@ export const AddConnectionMenu = ({
             />
           )
         )}
-        <NewDialog
+        <Dialog
           open={showPreviewPopupForProvider.isOpen}
           onOpenChange={(open) => {
             if (!open) {
@@ -375,14 +375,14 @@ export const AddConnectionMenu = ({
             }
           }}
         >
-          <NewDialogContent size="md">
-            <NewDialogHeader>
-              <NewDialogTitle>Coming Soon!</NewDialogTitle>
-              <NewDialogDescription>
+          <DialogContent size="md">
+            <DialogHeader>
+              <DialogTitle>Coming Soon!</DialogTitle>
+              <DialogDescription>
                 Please email us at support@dust.tt for early access.
-              </NewDialogDescription>
-            </NewDialogHeader>
-            <NewDialogFooter
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter
               leftButtonProps={{
                 label: "Cancel",
                 variant: "outline",
@@ -403,8 +403,8 @@ export const AddConnectionMenu = ({
                 },
               }}
             />
-          </NewDialogContent>
-        </NewDialog>
+          </DialogContent>
+        </Dialog>
 
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>

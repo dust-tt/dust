@@ -77,7 +77,12 @@ export function computeNodesDiff({
               return false;
             }
             // Custom exclusion rules. The goal here is to avoid logging irrelevant differences, scoping by connector.
-            if (key === "parentInternalId" && provider === "snowflake") {
+            // For Snowflake and Zendesk we fixed how parents were computed in the core folders but not in connectors.
+            if (
+              ["parentInternalIds", "parentInternalId"].includes(key) &&
+              provider &&
+              ["snowflake", "zendesk"].includes(provider)
+            ) {
               return false;
             }
             const coreValue = coreNode[key as keyof DataSourceViewContentNode];

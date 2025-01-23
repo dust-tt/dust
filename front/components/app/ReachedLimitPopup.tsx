@@ -1,11 +1,11 @@
 import {
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   Hoverable,
-  NewDialog,
-  NewDialogContainer,
-  NewDialogContent,
-  NewDialogFooter,
-  NewDialogHeader,
-  NewDialogTitle,
   Page,
 } from "@dust-tt/sparkle";
 import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
@@ -183,7 +183,7 @@ export function ReachedLimitPopup({
         isOpened={isFairUsageModalOpened}
         onClose={() => setIsFairUsageModalOpened(false)}
       />
-      <NewDialog
+      <Dialog
         open={isOpened}
         onOpenChange={(open) => {
           if (!open) {
@@ -191,12 +191,12 @@ export function ReachedLimitPopup({
           }
         }}
       >
-        <NewDialogContent>
-          <NewDialogHeader>
-            <NewDialogTitle>{title}</NewDialogTitle>
-          </NewDialogHeader>
-          <NewDialogContainer>{children}</NewDialogContainer>
-          <NewDialogFooter
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{title}</DialogTitle>
+          </DialogHeader>
+          <DialogContainer>{children}</DialogContainer>
+          <DialogFooter
             leftButtonProps={{
               label: "Cancel",
               variant: "outline",
@@ -207,8 +207,8 @@ export function ReachedLimitPopup({
               onClick: onValidate || (() => onClose()),
             }}
           />
-        </NewDialogContent>
-      </NewDialog>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

@@ -8,16 +8,16 @@ import React, { useMemo } from "react";
 
 import {
   DataTable,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   DropdownMenu,
   DropdownMenuItemProps,
   Input,
-  NewDialog,
-  NewDialogContainer,
-  NewDialogContent,
-  NewDialogDescription,
-  NewDialogFooter,
-  NewDialogHeader,
-  NewDialogTitle,
 } from "@sparkle/components/";
 import { FolderIcon } from "@sparkle/icons";
 
@@ -259,19 +259,19 @@ export const DataTableExample = () => {
         filterColumn="name"
         columns={columns}
       />
-      <NewDialog open={dialogOpen} onOpenChange={(open) => setDialogOpen(open)}>
-        <NewDialogContent
+      <Dialog open={dialogOpen} onOpenChange={(open) => setDialogOpen(open)}>
+        <DialogContent
           onOpenAutoFocus={(e) => e.preventDefault()}
           onCloseAutoFocus={(e) => e.preventDefault()}
         >
-          <NewDialogHeader>
-            <NewDialogTitle>Edit {selectedName}</NewDialogTitle>
-            <NewDialogDescription>
+          <DialogHeader>
+            <DialogTitle>Edit {selectedName}</DialogTitle>
+            <DialogDescription>
               Make changes to your item here
-            </NewDialogDescription>
-          </NewDialogHeader>
-          <NewDialogContainer>Your dialog content here</NewDialogContainer>
-          <NewDialogFooter
+            </DialogDescription>
+          </DialogHeader>
+          <DialogContainer>Your dialog content here</DialogContainer>
+          <DialogFooter
             leftButtonProps={{
               label: "Cancel",
               variant: "outline",
@@ -282,8 +282,8 @@ export const DataTableExample = () => {
               onClick: () => setDialogOpen(false),
             }}
           />
-        </NewDialogContent>
-      </NewDialog>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

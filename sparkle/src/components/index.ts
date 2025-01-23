@@ -38,7 +38,19 @@ export {
   ConversationMessageHeader,
 } from "./ConversationMessage";
 export { DataTable } from "./DataTable";
-export { Dialog } from "./Dialog";
+export {
+  Dialog,
+  DialogClose,
+  DialogContainer,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogOverlay,
+  DialogPortal,
+  DialogTitle,
+  DialogTrigger,
+} from "./Dialog";
 export type { DropdownMenuItemProps } from "./Dropdown";
 export {
   DropdownMenu,
@@ -59,7 +71,6 @@ export {
   DropdownMenuTrigger,
 } from "./Dropdown";
 export { default as DropzoneOverlay } from "./DropzoneOverlay";
-export { ElementDialog } from "./ElementDialog";
 export { ElementModal } from "./ElementModal";
 export type { EmojiMartData } from "./EmojiPicker";
 export { DataEmojiMart, EmojiPicker } from "./EmojiPicker";
@@ -78,19 +89,6 @@ export { LoadingBlock } from "./LoadingBlock";
 export * from "./markdown";
 export { Modal } from "./Modal";
 export * from "./NavigationList";
-export {
-  NewDialog,
-  NewDialogClose,
-  NewDialogContainer,
-  NewDialogContent,
-  NewDialogDescription,
-  NewDialogFooter,
-  NewDialogHeader,
-  NewDialogOverlay,
-  NewDialogPortal,
-  NewDialogTitle,
-  NewDialogTrigger,
-} from "./NewDialog";
 export type { NotificationType } from "./Notification";
 export { Notification, useSendNotification } from "./Notification";
 export { Page } from "./Page";

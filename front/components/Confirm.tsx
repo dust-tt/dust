@@ -1,10 +1,10 @@
 import {
-  NewDialog,
-  NewDialogContent,
-  NewDialogDescription,
-  NewDialogFooter,
-  NewDialogHeader,
-  NewDialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@dust-tt/sparkle";
 import React from "react";
 import { createPortal } from "react-dom";
@@ -70,7 +70,7 @@ export function ConfirmDialog({
   closeDialogFn: () => void;
 }) {
   return (
-    <NewDialog
+    <Dialog
       open={confirmData != null}
       onOpenChange={(open) => {
         if (!open) {
@@ -79,14 +79,12 @@ export function ConfirmDialog({
         }
       }}
     >
-      <NewDialogContent size="md">
-        <NewDialogHeader hideButton>
-          <NewDialogTitle>{confirmData?.title ?? ""}</NewDialogTitle>
-          <NewDialogDescription>
-            {confirmData?.message ?? ""}
-          </NewDialogDescription>
-        </NewDialogHeader>
-        <NewDialogFooter
+      <DialogContent size="md">
+        <DialogHeader hideButton>
+          <DialogTitle>{confirmData?.title ?? ""}</DialogTitle>
+          <DialogDescription>{confirmData?.message ?? ""}</DialogDescription>
+        </DialogHeader>
+        <DialogFooter
           leftButtonProps={{
             label: "Cancel",
             variant: "outline",
@@ -104,7 +102,7 @@ export function ConfirmDialog({
             },
           }}
         />
-      </NewDialogContent>
-    </NewDialog>
+      </DialogContent>
+    </Dialog>
   );
 }

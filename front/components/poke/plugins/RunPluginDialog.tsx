@@ -1,10 +1,10 @@
 import {
-  NewDialog,
-  NewDialogContainer,
-  NewDialogContent,
-  NewDialogDescription,
-  NewDialogHeader,
-  NewDialogTitle,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
   Spinner,
 } from "@dust-tt/sparkle";
 import type { PluginWorkspaceResource } from "@dust-tt/types";
@@ -67,13 +67,13 @@ export function RunPluginDialog({
   );
 
   return (
-    <NewDialog open={true} onOpenChange={handleClose}>
-      <NewDialogContent className="w-auto bg-structure-50 sm:min-w-[600px] sm:max-w-[1000px]">
-        <NewDialogHeader>
-          <NewDialogTitle>Run {plugin.name} plugin</NewDialogTitle>
-          <NewDialogDescription>{plugin.description}</NewDialogDescription>
-        </NewDialogHeader>
-        <NewDialogContainer>
+    <Dialog open={true} onOpenChange={handleClose}>
+      <DialogContent className="w-auto bg-structure-50 sm:min-w-[600px] sm:max-w-[1000px]">
+        <DialogHeader>
+          <DialogTitle>Run {plugin.name} plugin</DialogTitle>
+          <DialogDescription>{plugin.description}</DialogDescription>
+        </DialogHeader>
+        <DialogContainer>
           {isLoading ? (
             <Spinner />
           ) : !manifest ? (
@@ -125,8 +125,8 @@ export function RunPluginDialog({
               )}
             </>
           )}
-        </NewDialogContainer>
-      </NewDialogContent>
-    </NewDialog>
+        </DialogContainer>
+      </DialogContent>
+    </Dialog>
   );
 }
