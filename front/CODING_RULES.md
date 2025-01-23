@@ -22,9 +22,11 @@ of a bit of performance loss or extra code), ask the author to consider the simp
 
 We do not use typescript enums, we use types instead, eg: `type Color = "red" | "blue";`.
 
-### [GEN4] Use of `as` is prohibited
+### [GEN4] Non type-safe use of `as` is prohibited
 
-The use of `as` is prohibited in the codebase. Use typeguards or other type-safe methods instead.
+The use non type-safe uses of `as` are prohibited in the codebase. Use typeguards or other type-safe
+methods instead. There are few exceptions where `as` is type-safe to use (eg, `as const`) and
+therefore acceptable.
 
 ## SECURITY
 
@@ -99,29 +101,7 @@ To parallelize asyncrhonous handling of dynamic arrays, use `ConcurrentExecutor`
 
 When checking types, use explicit typeguards over `typeof`, `instanceof`, etc.
 
-## REACT
-
-### [REACT1] Always create `interface` for components Props
-
-Components props should always be typed using an `interface`.
-
-Example:
-
-```
-// BAD
-
-export function Component({ name }: { name: string }) { }
-
-// GOOD
-
-interface MyComponentProps {
-  name: string;
-}
-
-export function Component({ name }: MyComponentProps) { }
-```
-
-### [REACT2] Standardized query parameters extraction
+### [BACK10] Standardized query parameters extraction
 
 Use `{ foo } = req.query` and then test with `isString` to extract query parameters in endpoints.
 
@@ -147,3 +127,62 @@ if (isString(aId)) {
 
 const r = someFunction(aId);
 ```
+
+## REACT
+
+### [REACT1] Always create `interface` for components Props
+
+Components props should always be typed using an `interface`.
+
+Example:
+
+```
+// BAD
+
+export function Component({ name }: { name: string }) { }
+
+// GOOD
+
+interface MyComponentProps {
+  name: string;
+}
+
+export function Component({ name }: MyComponentProps) { }
+```
+
+### [REACT2] All network operations should be abstracted in SWR files
+
+Data fetching should rely on useSWR hooks and be abstracted in a `lib/swr/*` file. Data posting
+should be done in hooks colocated with the SWR hooks. Do not fetch direclty in componenets.
+
+Example:
+
+```
+export function useFolders({ owner, spaceId } : { owner: LightWorkspaceType, spaceId: string }) {
+  // ...
+  const { data, error, mutate } = useSWRWithDefaults(...);
+  // ...
+  return { folders, mutate, isFoldersLoading, isFoldersError };
+}
+
+export function useCreateFolder({
+  owner,
+  spaceId,
+} : {
+  owner: LightWorkspaceType;
+  spaceId: string;
+}) {
+  const sendNotification = useSendNotification();
+  // ...
+  return doCreate = async (name: string) => {
+    // ...
+  };
+};
+
+
+```
+
+### [REACT3] Any async network operation should have a visual loading state
+
+Any load/async has a visible visual state (spinner, busy state, disabled button, etc), even if the
+load time is expected to be small.
