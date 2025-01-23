@@ -38,14 +38,12 @@ import {
   AgentUserRelation,
   GlobalAgentSettings,
 } from "@app/lib/models/assistant/agent";
+import { DustAppSecret } from "@app/lib/models/dust_app_secret";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
+import { MembershipInvitation } from "@app/lib/models/membership_invitation";
 import { Subscription } from "@app/lib/models/plan";
-import {
-  DustAppSecret,
-  MembershipInvitation,
-  Workspace,
-  WorkspaceHasDomain,
-} from "@app/lib/models/workspace";
+import { Workspace } from "@app/lib/models/workspace";
+import { WorkspaceHasDomain } from "@app/lib/models/workspace_has_domain";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
