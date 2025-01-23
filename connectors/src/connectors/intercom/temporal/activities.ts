@@ -9,6 +9,7 @@ import {
   fetchIntercomConversations,
   fetchIntercomHelpCenter,
   fetchIntercomTeam,
+  fetchIntercomTeams,
 } from "@connectors/connectors/intercom/lib/intercom_api";
 import type { IntercomSyncAllConversationsStatus } from "@connectors/connectors/intercom/lib/types";
 import {
@@ -609,6 +610,53 @@ export async function syncConversationBatchActivity({
       }),
     { concurrency: 10 }
   );
+}
+
+/**
+ * This activity is responsible for fetching all the teams and syncing them both with connectors (intercom_teams) and
+ * core db (data_sources_folders/nodes).
+ */
+export async function syncAllTeamsActivity({
+  connectorId,
+  currentSyncMs,
+}: {
+  connectorId: ModelId;
+  currentSyncMs: number;
+}): Promise<void> {
+  const connector = await _getIntercomConnectorOrRaise(connectorId);
+  const accessToken = await getIntercomAccessToken(connector.connectionId);
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  const teamsOnIntercom = await fetchIntercomTeams({ accessToken });
+
+  for (const teamOnIntercom of teamsOnIntercom) {
+    const teamOnDb = await IntercomTeam.findOne({
+      where: { connectorId, teamId: teamOnIntercom.id },
+    });
+    const folderId = getTeamInternalId(connectorId, teamOnIntercom.id);
+
+    // Upsert the folder in core to either create it or override the parents.
+    await upsertDataSourceFolder({
+      dataSourceConfig,
+      folderId,
+      title: teamOnIntercom.name,
+      parents: [folderId, getTeamsInternalId(connectorId)],
+      parentId: getTeamsInternalId(connectorId),
+      mimeType: MIME_TYPES.INTERCOM.TEAM,
+      timestampMs: currentSyncMs,
+    });
+
+    // We create a team in db with permission "none" because if it was not already in db it means that it was not explicitly selected by the user.
+    // We need to create these teams to make it possible to delete the entries in the core db when the user unselects the All Conversations button.
+    if (!teamOnDb) {
+      await IntercomTeam.create({
+        connectorId,
+        teamId: teamOnIntercom.id,
+        name: teamOnIntercom.name,
+        permission: "none",
+      });
+    }
+  }
 }
 
 /**

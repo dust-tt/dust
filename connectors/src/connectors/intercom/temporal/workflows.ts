@@ -26,6 +26,7 @@ const {
   getNextConversationBatchToSyncActivity,
   syncConversationBatchActivity,
   getNextOldConversationsBatchToDeleteActivity,
+  syncAllTeamsActivity,
   deleteRevokedTeamsActivity,
   getNextRevokedConversationsBatchToDeleteActivity,
   deleteConversationBatchActivity,
@@ -313,6 +314,8 @@ export async function intercomAllConversationsSyncWorkflow({
       // Nothing to do, we're already in the right state.
       break;
     case "scheduled_activate":
+      // Upserts teams with permission "none" if not already in db and syncs them with data_sources_folders/nodes.
+      await syncAllTeamsActivity({ connectorId, currentSyncMs });
       // We loop over the conversations to sync them all.
       do {
         const { conversationIds, nextPageCursor } =

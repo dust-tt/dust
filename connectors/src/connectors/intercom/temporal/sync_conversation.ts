@@ -193,7 +193,7 @@ export async function syncConversation({
     }
   }
 
-  let conversationOnDB = await IntercomConversation.findOne({
+  const conversationOnDB = await IntercomConversation.findOne({
     where: {
       connectorId,
       conversationId: conversation.id,
@@ -204,7 +204,7 @@ export async function syncConversation({
   const updatedAtDate = new Date(conversation.updated_at * 1000);
 
   if (!conversationOnDB) {
-    conversationOnDB = await IntercomConversation.create({
+    await IntercomConversation.create({
       connectorId,
       conversationId: conversation.id,
       teamId: conversationTeamId,
