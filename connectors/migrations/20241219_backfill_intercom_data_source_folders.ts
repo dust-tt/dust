@@ -101,8 +101,6 @@ async function createFolderNodes(execute: boolean) {
             const collectionParents = await getParentIdsForCollection({
               connectorId: connector.id,
               collectionId: collection.collectionId,
-              helpCenterId: helpCenter.helpCenterId,
-              permission: collection.permission,
             });
             console.log(
               `[${connector.id}] -> ${JSON.stringify({ folderId: collectionInternalId, parents: collectionParents })}`
