@@ -23,7 +23,7 @@ of a bit of performance loss or extra code), ask the author to consider the simp
 ### [SEC1] No sensitive data outside of HTTP bodies or headers
 
 No sensitive data should be sent to our servers through URL or query string parameters. HTTP body or
-headers only are acceptable medium for sensitive data.
+headers only are acceptable for sensitive data.
 
 ## ERROR
 
