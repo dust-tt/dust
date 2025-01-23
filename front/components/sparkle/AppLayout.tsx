@@ -64,7 +64,7 @@ export default function AppLayout({
     if (typeof window !== "undefined" && user?.sId) {
       window.dataLayer = window.dataLayer || [];
       window.dataLayer.push({
-        user_id: user.sId,
+        userId: user.sId,
         event: "userIdentified",
       });
     }
