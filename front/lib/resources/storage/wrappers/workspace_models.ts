@@ -66,12 +66,13 @@ export class WorkspaceAwareModel<M extends Model> extends BaseModel<M> {
   }
 }
 
-export type ModelStaticSoftDeletable<M extends SoftDeletableWorkspaceModel> =
-  ModelStatic<M> & {
-    findAll(
-      options: WithIncludeDeleted<FindOptions<Attributes<M>>>
-    ): Promise<M[]>;
-  };
+export type ModelStaticSoftDeletable<
+  M extends SoftDeletableWorkspaceAwareModel,
+> = ModelStatic<M> & {
+  findAll(
+    options: WithIncludeDeleted<FindOptions<Attributes<M>>>
+  ): Promise<M[]>;
+};
 
 type WithHardDelete<T> = T & {
   hardDelete: boolean;
@@ -102,7 +103,7 @@ type WithIncludeDeleted<T> = T & {
  * Extend this class for models that require soft delete functionality. The `deletedAt` field
  * is automatically declared and managed by this class.
  */
-export class SoftDeletableWorkspaceModel<
+export class SoftDeletableWorkspaceAwareModel<
   M extends Model = any,
 > extends WorkspaceAwareModel<M> {
   declare deletedAt: CreationOptional<Date | null>;

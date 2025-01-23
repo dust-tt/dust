@@ -6,9 +6,9 @@ import { Conversation } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";
-import { SoftDeletableWorkspaceModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import { SoftDeletableWorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
-export class DataSourceModel extends SoftDeletableWorkspaceModel<DataSourceModel> {
+export class DataSourceModel extends SoftDeletableWorkspaceAwareModel<DataSourceModel> {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -30,7 +30,6 @@ export class DataSourceModel extends SoftDeletableWorkspaceModel<DataSourceModel
   declare editedByUser: NonAttribute<UserModel>;
   declare conversation: NonAttribute<Conversation>;
   declare space: NonAttribute<SpaceModel>;
-  declare workspace: NonAttribute<Workspace>;
 }
 
 DataSourceModel.init(

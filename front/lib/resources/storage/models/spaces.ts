@@ -5,9 +5,9 @@ import { DataTypes } from "sequelize";
 
 import { frontSequelize } from "@app/lib/resources/storage";
 import type { GroupModel } from "@app/lib/resources/storage/models/groups";
-import { SoftDeletableWorkspaceModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import { SoftDeletableWorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
-export class SpaceModel extends SoftDeletableWorkspaceModel<SpaceModel> {
+export class SpaceModel extends SoftDeletableWorkspaceAwareModel<SpaceModel> {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;

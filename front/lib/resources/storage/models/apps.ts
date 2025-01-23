@@ -6,12 +6,12 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 import {
-  SoftDeletableWorkspaceModel,
+  SoftDeletableWorkspaceAwareModel,
   WorkspaceAwareModel,
 } from "@app/lib/resources/storage/wrappers/workspace_models";
 
 // TODO(2024-10-04 flav) Remove visibility from here.
-export class AppModel extends SoftDeletableWorkspaceModel<AppModel> {
+export class AppModel extends SoftDeletableWorkspaceAwareModel<AppModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
