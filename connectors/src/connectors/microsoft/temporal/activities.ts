@@ -933,7 +933,11 @@ export async function microsoftDeletionActivity({
   const results = await concurrentExecutor(
     nodeIdsToDelete,
     async (nodeId) =>
-      recursiveNodeDeletion(nodeId, connectorId, dataSourceConfig),
+      recursiveNodeDeletion({
+        nodeId,
+        connectorId,
+        dataSourceConfig,
+      }),
     { concurrency: DELETE_CONCURRENCY }
   );
 
@@ -1202,11 +1206,11 @@ async function scrubRemovedFolders({
         dataSourceConfig,
       });
     } else if (node.nodeType === "folder") {
-      await recursiveNodeDeletion(
-        node.internalId,
-        connector.id,
-        dataSourceConfig
-      );
+      await recursiveNodeDeletion({
+        nodeId: node.internalId,
+        connectorId: connector.id,
+        dataSourceConfig,
+      });
     }
   }
 }

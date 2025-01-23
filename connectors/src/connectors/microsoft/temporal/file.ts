@@ -482,21 +482,39 @@ export function isAlreadySeenItem({
   );
 }
 
-export async function recursiveNodeDeletion(
-  nodeId: string,
-  connectorId: ModelId,
-  dataSourceConfig: DataSourceConfig
-): Promise<string[]> {
+export async function recursiveNodeDeletion({
+  nodeId,
+  connectorId,
+  dataSourceConfig,
+}: {
+  nodeId: string;
+  connectorId: ModelId;
+  dataSourceConfig: DataSourceConfig;
+}): Promise<string[]> {
   const node = await MicrosoftNodeResource.fetchByInternalId(
     connectorId,
     nodeId
   );
-  const deletedFiles: string[] = [];
 
   if (!node) {
     logger.warn({ connectorId, nodeId }, "Node not found for deletion");
-    return deletedFiles;
+    return [];
   }
+
+  // A folder should not be deleted if it is marked as root, i.e. if the user selected it for sync
+  // recursiveNodeDeletion must therefore skip root nodes, rather than throwing:
+  // for instance, if a non-root folder A is moved out of sync, but has a child B that is a root,
+  // then we should recursively delete A, but not delete the child B
+  const root = await MicrosoftRootResource.fetchByInternalId(
+    connectorId,
+    nodeId
+  );
+
+  if (root) {
+    return [];
+  }
+
+  const deletedFiles: string[] = [];
 
   const { nodeType } = typeAndPathFromInternalId(nodeId);
 
@@ -517,11 +535,11 @@ export async function recursiveNodeDeletion(
   } else if (nodeType === "folder" || nodeType === "drive") {
     const children = await node.fetchChildren();
     for (const child of children) {
-      const result = await recursiveNodeDeletion(
-        child.internalId,
+      const result = await recursiveNodeDeletion({
+        nodeId: child.internalId,
         connectorId,
-        dataSourceConfig
-      );
+        dataSourceConfig,
+      });
       deletedFiles.push(...result);
     }
     await deleteFolder({
