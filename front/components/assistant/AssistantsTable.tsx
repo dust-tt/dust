@@ -156,7 +156,7 @@ const getTableColumns = () => {
     },
     {
       header: "Feedback",
-      accessorKey: "feedback",
+      accessorFn: (row: RowData) => row.feedbacks,
       cell: (info: CellContext<RowData, { up: number; down: number }>) => {
         if (info.row.original.scope === "global") {
           return "-";
