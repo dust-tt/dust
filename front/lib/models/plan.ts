@@ -11,10 +11,9 @@ import type {
 } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
-import { ModelWithWorkspace } from "@app/lib/resources/storage/wrappers/model_with_workspace";
+import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
 export class Plan extends BaseModel<Plan> {
   declare createdAt: CreationOptional<Date>;
@@ -144,7 +143,7 @@ Plan.init(
   }
 );
 
-export class Subscription extends ModelWithWorkspace<Subscription> {
+export class Subscription extends WorkspaceAwareModel<Subscription> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 

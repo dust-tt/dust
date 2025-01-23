@@ -12,12 +12,12 @@ import { DataTypes } from "sequelize";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { TemplateModel } from "@app/lib/resources/storage/models/templates";
 import { UserModel } from "@app/lib/resources/storage/models/user";
-import { ModelWithWorkspace } from "@app/lib/resources/storage/wrappers/model_with_workspace";
+import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
 /**
  * Agent configuration
  */
-export class AgentConfiguration extends ModelWithWorkspace<AgentConfiguration> {
+export class AgentConfiguration extends WorkspaceAwareModel<AgentConfiguration> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -181,7 +181,7 @@ AgentConfiguration.belongsTo(UserModel, {
 /**
  * Global Agent settings
  */
-export class GlobalAgentSettings extends ModelWithWorkspace<GlobalAgentSettings> {
+export class GlobalAgentSettings extends WorkspaceAwareModel<GlobalAgentSettings> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -229,7 +229,7 @@ AgentConfiguration.belongsTo(TemplateModel, {
   foreignKey: { name: "templateId", allowNull: true },
 });
 
-export class AgentUserRelation extends ModelWithWorkspace<AgentUserRelation> {
+export class AgentUserRelation extends WorkspaceAwareModel<AgentUserRelation> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 

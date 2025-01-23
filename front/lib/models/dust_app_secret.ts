@@ -3,9 +3,9 @@ import { DataTypes } from "sequelize";
 
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
-import { ModelWithWorkspace } from "@app/lib/resources/storage/wrappers/model_with_workspace";
+import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
-export class DustAppSecret extends ModelWithWorkspace<DustAppSecret> {
+export class DustAppSecret extends WorkspaceAwareModel<DustAppSecret> {
   declare createdAt: CreationOptional<Date>;
 
   declare name: string;

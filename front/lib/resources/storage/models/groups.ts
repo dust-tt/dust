@@ -4,9 +4,9 @@ import type { CreationOptional, Transaction } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { frontSequelize } from "@app/lib/resources/storage";
-import { ModelWithWorkspace } from "@app/lib/resources/storage/wrappers/model_with_workspace";
+import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
-export class GroupModel extends ModelWithWorkspace<GroupModel> {
+export class GroupModel extends WorkspaceAwareModel<GroupModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 

@@ -3,13 +3,12 @@ import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { Conversation } from "@app/lib/models/assistant/conversation";
-import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";
-import { WorkspaceSoftDeletableModel } from "@app/lib/resources/storage/wrappers/model_with_workspace";
+import { SoftDeletableWorkspaceModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
-export class DataSourceModel extends WorkspaceSoftDeletableModel<DataSourceModel> {
+export class DataSourceModel extends SoftDeletableWorkspaceModel<DataSourceModel> {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -25,7 +24,6 @@ export class DataSourceModel extends WorkspaceSoftDeletableModel<DataSourceModel
   declare dustAPIDataSourceId: string;
   declare connectorId: string | null;
   declare connectorProvider: ConnectorProvider | null;
-  declare workspaceId: ForeignKey<Workspace["id"]>;
   declare vaultId: ForeignKey<SpaceModel["id"]>;
   declare conversationId: ForeignKey<Conversation["id"]>;
 
@@ -93,19 +91,10 @@ DataSourceModel.init(
     ],
   }
 );
-Workspace.hasMany(DataSourceModel, {
-  as: "workspace",
-  foreignKey: { name: "workspaceId", allowNull: false },
-  onDelete: "RESTRICT",
-});
 Conversation.hasMany(DataSourceModel, {
   as: "conversation",
   foreignKey: { name: "conversationId", allowNull: true },
   onDelete: "RESTRICT",
-});
-DataSourceModel.belongsTo(Workspace, {
-  as: "workspace",
-  foreignKey: { name: "workspaceId", allowNull: false },
 });
 
 DataSourceModel.belongsTo(UserModel, {

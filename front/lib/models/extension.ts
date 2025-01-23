@@ -2,9 +2,9 @@ import type { CreationOptional } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { frontSequelize } from "@app/lib/resources/storage";
-import { ModelWithWorkspace } from "@app/lib/resources/storage/wrappers/model_with_workspace";
+import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
-export class ExtensionConfigurationModel extends ModelWithWorkspace<ExtensionConfigurationModel> {
+export class ExtensionConfigurationModel extends WorkspaceAwareModel<ExtensionConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 

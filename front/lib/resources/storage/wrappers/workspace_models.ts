@@ -19,7 +19,7 @@ import { DataTypes, Op } from "sequelize";
 import { Workspace } from "@app/lib/models/workspace";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 
-export class ModelWithWorkspace<M extends Model> extends BaseModel<M> {
+export class WorkspaceAwareModel<M extends Model> extends BaseModel<M> {
   declare workspaceId: ForeignKey<Workspace["id"]>;
   declare workspace: NonAttribute<Workspace>;
 
@@ -66,7 +66,7 @@ export class ModelWithWorkspace<M extends Model> extends BaseModel<M> {
   }
 }
 
-export type ModelStaticSoftDeletable<M extends WorkspaceSoftDeletableModel> =
+export type ModelStaticSoftDeletable<M extends SoftDeletableWorkspaceModel> =
   ModelStatic<M> & {
     findAll(
       options: WithIncludeDeleted<FindOptions<Attributes<M>>>
@@ -102,9 +102,9 @@ type WithIncludeDeleted<T> = T & {
  * Extend this class for models that require soft delete functionality. The `deletedAt` field
  * is automatically declared and managed by this class.
  */
-export class WorkspaceSoftDeletableModel<
+export class SoftDeletableWorkspaceModel<
   M extends Model = any,
-> extends ModelWithWorkspace<M> {
+> extends WorkspaceAwareModel<M> {
   declare deletedAt: CreationOptional<Date | null>;
 
   // Delete.

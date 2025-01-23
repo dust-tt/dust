@@ -7,9 +7,9 @@ import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";
-import { WorkspaceSoftDeletableModel } from "@app/lib/resources/storage/wrappers/model_with_workspace";
+import { SoftDeletableWorkspaceModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
-export class TrackerConfigurationModel extends WorkspaceSoftDeletableModel<TrackerConfigurationModel> {
+export class TrackerConfigurationModel extends SoftDeletableWorkspaceModel<TrackerConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -129,7 +129,7 @@ TrackerConfigurationModel.belongsTo(UserModel, {
 });
 
 // TODO: Add `workspaceId` in this column + backfill.
-export class TrackerDataSourceConfigurationModel extends WorkspaceSoftDeletableModel<TrackerDataSourceConfigurationModel> {
+export class TrackerDataSourceConfigurationModel extends SoftDeletableWorkspaceModel<TrackerDataSourceConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -217,7 +217,7 @@ TrackerDataSourceConfigurationModel.belongsTo(DataSourceViewModel, {
 });
 
 // TODO: Add workspaceId.
-export class TrackerGenerationModel extends WorkspaceSoftDeletableModel<TrackerGenerationModel> {
+export class TrackerGenerationModel extends SoftDeletableWorkspaceModel<TrackerGenerationModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 

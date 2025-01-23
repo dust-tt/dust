@@ -10,14 +10,13 @@ import { DataTypes } from "sequelize";
 
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
-import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
-import { ModelWithWorkspace } from "@app/lib/resources/storage/wrappers/model_with_workspace";
+import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
-export class Conversation extends ModelWithWorkspace<Conversation> {
+export class Conversation extends WorkspaceAwareModel<Conversation> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -285,7 +284,7 @@ AgentMessage.init(
   }
 );
 
-export class AgentMessageFeedback extends ModelWithWorkspace<AgentMessageFeedback> {
+export class AgentMessageFeedback extends WorkspaceAwareModel<AgentMessageFeedback> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 

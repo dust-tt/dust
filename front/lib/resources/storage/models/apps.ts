@@ -6,12 +6,12 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 import {
-  ModelWithWorkspace,
-  WorkspaceSoftDeletableModel,
-} from "@app/lib/resources/storage/wrappers/model_with_workspace";
+  SoftDeletableWorkspaceModel,
+  WorkspaceAwareModel,
+} from "@app/lib/resources/storage/wrappers/workspace_models";
 
 // TODO(2024-10-04 flav) Remove visibility from here.
-export class AppModel extends WorkspaceSoftDeletableModel<AppModel> {
+export class AppModel extends SoftDeletableWorkspaceModel<AppModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -91,7 +91,7 @@ AppModel.belongsTo(SpaceModel, {
   foreignKey: { allowNull: false, name: "vaultId" },
 });
 
-export class Provider extends ModelWithWorkspace<Provider> {
+export class Provider extends WorkspaceAwareModel<Provider> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -126,7 +126,7 @@ Provider.init(
   }
 );
 
-export class Dataset extends ModelWithWorkspace<Dataset> {
+export class Dataset extends WorkspaceAwareModel<Dataset> {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;

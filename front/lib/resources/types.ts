@@ -8,7 +8,7 @@ import type {
 } from "sequelize";
 
 import type { BaseModel } from "@app/lib/resources/storage/wrappers/base";
-import type { WorkspaceSoftDeletableModel } from "@app/lib/resources/storage/wrappers/model_with_workspace";
+import type { SoftDeletableWorkspaceModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
 export type NonAttributeKeys<M> = {
   [K in keyof M]: M[K] extends NonAttribute<infer T>
@@ -49,6 +49,6 @@ export type ResourceFindOptions<M extends Model> = {
   limit?: number;
   order?: FindOptions<M>["order"];
   where?: WhereOptions<M>;
-} & (M extends WorkspaceSoftDeletableModel
+} & (M extends SoftDeletableWorkspaceModel
   ? { includeDeleted?: boolean }
   : { includeDeleted?: never });

@@ -6,9 +6,9 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";
-import { WorkspaceSoftDeletableModel } from "@app/lib/resources/storage/wrappers/model_with_workspace";
+import { SoftDeletableWorkspaceModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
-export class DataSourceViewModel extends WorkspaceSoftDeletableModel<DataSourceViewModel> {
+export class DataSourceViewModel extends SoftDeletableWorkspaceModel<DataSourceViewModel> {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;

@@ -4,9 +4,9 @@ import { DataTypes } from "sequelize";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { AppModel } from "@app/lib/resources/storage/models/apps";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
-import { ModelWithWorkspace } from "@app/lib/resources/storage/wrappers/model_with_workspace";
+import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
-export class RunModel extends ModelWithWorkspace<RunModel> {
+export class RunModel extends WorkspaceAwareModel<RunModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
