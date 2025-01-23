@@ -379,7 +379,10 @@ export async function syncZendeskCategoryActivity({
   categoryId: number;
   brandId: number;
   currentSyncDateMs: number;
-}): Promise<{ shouldSyncArticles: boolean }> {
+}): Promise<{
+  shouldSyncArticles: boolean;
+  helpCenterIsAllowed: boolean | null;
+}> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
@@ -395,14 +398,14 @@ export async function syncZendeskCategoryActivity({
     );
   }
 
-  // if all rights were revoked, we have nothing to sync
+  // Remove the category if was explicitly unselected in the UI.
   if (categoryInDb.permission === "none") {
     await deleteDataSourceFolder({
       dataSourceConfig: dataSourceConfigFromConnector(connector),
       folderId: getCategoryInternalId({ connectorId, brandId, categoryId }),
     });
     // note that the articles will be deleted in the garbage collection
-    return { shouldSyncArticles: false };
+    return { shouldSyncArticles: false, helpCenterIsAllowed: null };
   }
 
   const zendeskApiClient = createZendeskClient(
@@ -418,7 +421,7 @@ export async function syncZendeskCategoryActivity({
     await zendeskApiClient.helpcenter.categories.show(categoryId);
   if (!fetchedCategory) {
     await categoryInDb.revokePermissions();
-    return { shouldSyncArticles: false };
+    return { shouldSyncArticles: false, helpCenterIsAllowed: null };
   }
 
   // upserting a folder to data_sources_folders (core)
@@ -452,7 +455,10 @@ export async function syncZendeskCategoryActivity({
     description: fetchedCategory.description,
     lastUpsertedTs: new Date(currentSyncDateMs),
   });
-  return { shouldSyncArticles: true };
+  return {
+    shouldSyncArticles: true,
+    helpCenterIsAllowed: brandInDb?.helpCenterPermission === "read",
+  };
 }
 
 /**
@@ -464,14 +470,14 @@ export async function syncZendeskArticleBatchActivity({
   brandId,
   categoryId,
   currentSyncDateMs,
-  forceResync,
+  helpCenterIsAllowed,
   url,
 }: {
   connectorId: ModelId;
   brandId: number;
   categoryId: number;
   currentSyncDateMs: number;
-  forceResync: boolean;
+  helpCenterIsAllowed: boolean;
   url: string | null;
 }): Promise<{ hasMore: boolean; nextLink: string | null }> {
   const connector = await ConnectorResource.fetchById(connectorId);
@@ -535,9 +541,9 @@ export async function syncZendeskArticleBatchActivity({
           sections.find((section) => section.id === article.section_id) || null,
         user: users.find((user) => user.id === article.author_id) || null,
         dataSourceConfig,
+        helpCenterIsAllowed,
         currentSyncDateMs,
         loggerArgs,
-        forceResync,
       }),
     {
       concurrency: 10,

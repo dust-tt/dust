@@ -4,18 +4,18 @@ import {
   Button,
   CloudArrowLeftRightIcon,
   ContentMessage,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
   Hoverable,
   Icon,
   Input,
   LockIcon,
   Modal,
-  NewDialog,
-  NewDialogContainer,
-  NewDialogContent,
-  NewDialogFooter,
-  NewDialogHeader,
-  NewDialogTitle,
-  NewDialogTrigger,
   Page,
   Sheet,
   SheetContainer,
@@ -402,25 +402,25 @@ function DataSourceEditionModal({
         )}
 
         <div className="flex items-center justify-center">
-          <NewDialog>
-            <NewDialogTrigger>
+          <Dialog>
+            <DialogTrigger>
               <Button
                 label="Edit Permissions"
                 icon={LockIcon}
                 variant="warning"
                 disabled={!isExtraConfigValid(extraConfig)}
               />
-            </NewDialogTrigger>
-            <NewDialogContent>
-              <NewDialogHeader>
-                <NewDialogTitle>Are you sure?</NewDialogTitle>
-              </NewDialogHeader>
-              <NewDialogContainer>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Are you sure?</DialogTitle>
+              </DialogHeader>
+              <DialogContainer>
                 The changes you are about to make may break existing{" "}
                 {connectorConfiguration.name} Data sources and the assistants
                 using them. Are you sure you want to continue?
-              </NewDialogContainer>
-              <NewDialogFooter
+              </DialogContainer>
+              <DialogFooter
                 leftButtonProps={{
                   label: "Cancel",
                   variant: "outline",
@@ -433,8 +433,8 @@ function DataSourceEditionModal({
                   },
                 }}
               />
-            </NewDialogContent>
-          </NewDialog>
+            </DialogContent>
+          </Dialog>
         </div>
       </>
     </DataSourceManagementModal>
@@ -537,30 +537,30 @@ function DataSourceDeletionModal({
           </div>
         </div>
         <div className="flex items-center justify-center">
-          <NewDialog>
-            <NewDialogTrigger>
+          <Dialog>
+            <DialogTrigger>
               <Button
                 label="Delete Connection"
                 icon={LockIcon}
                 variant="warning"
               />
-            </NewDialogTrigger>
-            <NewDialogContent>
-              <NewDialogHeader>
-                <NewDialogTitle>Are you sure?</NewDialogTitle>
-              </NewDialogHeader>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Are you sure?</DialogTitle>
+              </DialogHeader>
               {isLoading ? (
                 <div className="flex justify-center py-8">
                   <Spinner variant="dark" size="md" />
                 </div>
               ) : (
                 <>
-                  <NewDialogContainer>
+                  <DialogContainer>
                     The changes you are about to make will break existing
                     assistants using {connectorConfiguration.name}. Are you sure
                     you want to continue?
-                  </NewDialogContainer>
-                  <NewDialogFooter
+                  </DialogContainer>
+                  <DialogFooter
                     leftButtonProps={{
                       label: "Cancel",
                       variant: "outline",
@@ -575,8 +575,8 @@ function DataSourceDeletionModal({
                   />
                 </>
               )}
-            </NewDialogContent>
-          </NewDialog>
+            </DialogContent>
+          </Dialog>
         </div>
       </>
     </DataSourceManagementModal>

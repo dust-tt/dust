@@ -1,10 +1,10 @@
 import {
-  NewDialog,
-  NewDialogContainer,
-  NewDialogContent,
-  NewDialogDescription,
-  NewDialogHeader,
-  NewDialogTitle,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
   Spinner,
 } from "@dust-tt/sparkle";
 import type {
@@ -205,32 +205,32 @@ export const MultipleDocumentsUpload = ({
         onClose={() => setIsLimitPopupOpen(false)}
         owner={owner}
       />
-      <NewDialog open={isBulkFilesUploading !== null}>
-        <NewDialogContent
+      <Dialog open={isBulkFilesUploading !== null}>
+        <DialogContent
           size="md"
           isAlertDialog
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
-          <NewDialogHeader hideButton>
-            <NewDialogTitle>Uploading files</NewDialogTitle>
-            <NewDialogDescription>
+          <DialogHeader hideButton>
+            <DialogTitle>Uploading files</DialogTitle>
+            <DialogDescription>
               {isBulkFilesUploading && (
                 <>
                   Processing files {isBulkFilesUploading.completed} /{" "}
                   {isBulkFilesUploading.total}
                 </>
               )}
-            </NewDialogDescription>
-          </NewDialogHeader>
-          <NewDialogContainer>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogContainer>
             {isBulkFilesUploading && (
               <div className="flex justify-center">
                 <Spinner variant="dark" size="md" />
               </div>
             )}
-          </NewDialogContainer>
-        </NewDialogContent>
-      </NewDialog>
+          </DialogContainer>
+        </DialogContent>
+      </Dialog>
       <input
         className="hidden"
         type="file"

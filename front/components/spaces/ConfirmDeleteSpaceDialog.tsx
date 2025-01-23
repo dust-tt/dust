@@ -1,10 +1,10 @@
 import {
-  NewDialog,
-  NewDialogContainer,
-  NewDialogContent,
-  NewDialogFooter,
-  NewDialogHeader,
-  NewDialogTitle,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   Spinner,
 } from "@dust-tt/sparkle";
 import type { SpaceType } from "@dust-tt/types";
@@ -36,7 +36,7 @@ export function ConfirmDeleteSpaceDialog({
         : `No assistants are using this ${getSpaceName(space)}. Confirm permanent deletion?`;
 
   return (
-    <NewDialog
+    <Dialog
       open={isOpen}
       onOpenChange={(open) => {
         if (!open) {
@@ -44,18 +44,18 @@ export function ConfirmDeleteSpaceDialog({
         }
       }}
     >
-      <NewDialogContent>
-        <NewDialogHeader>
-          <NewDialogTitle>{`Deleting ${getSpaceName(space)}`}</NewDialogTitle>
-        </NewDialogHeader>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{`Deleting ${getSpaceName(space)}`}</DialogTitle>
+        </DialogHeader>
         {isDeleting ? (
           <div className="flex justify-center py-8">
             <Spinner variant="dark" size="md" />
           </div>
         ) : (
           <>
-            <NewDialogContainer>{message}</NewDialogContainer>
-            <NewDialogFooter
+            <DialogContainer>{message}</DialogContainer>
+            <DialogFooter
               leftButtonProps={{
                 label: "Cancel",
                 variant: "outline",
@@ -70,7 +70,7 @@ export function ConfirmDeleteSpaceDialog({
             />
           </>
         )}
-      </NewDialogContent>
-    </NewDialog>
+      </DialogContent>
+    </Dialog>
   );
 }

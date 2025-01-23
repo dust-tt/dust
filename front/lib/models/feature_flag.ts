@@ -1,18 +1,15 @@
 import type { WhitelistableFeature } from "@dust-tt/types";
-import type { CreationOptional, ForeignKey } from "sequelize";
+import type { CreationOptional } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { BaseModel } from "@app/lib/resources/storage/wrappers";
+import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
-export class FeatureFlag extends BaseModel<FeatureFlag> {
+export class FeatureFlag extends WorkspaceAwareModel<FeatureFlag> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
   declare name: WhitelistableFeature;
-
-  declare workspaceId: ForeignKey<Workspace["id"]>;
 }
 
 FeatureFlag.init(
@@ -46,9 +43,3 @@ FeatureFlag.init(
     ],
   }
 );
-
-Workspace.hasMany(FeatureFlag, {
-  foreignKey: { allowNull: false },
-  onDelete: "RESTRICT",
-});
-FeatureFlag.belongsTo(Workspace);

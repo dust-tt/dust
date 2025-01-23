@@ -1,19 +1,13 @@
 import type { SpaceKind } from "@dust-tt/types";
 import { isUniqueSpaceKind } from "@dust-tt/types";
-import type {
-  CreationOptional,
-  ForeignKey,
-  NonAttribute,
-  Transaction,
-} from "sequelize";
+import type { CreationOptional, NonAttribute, Transaction } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
 import type { GroupModel } from "@app/lib/resources/storage/models/groups";
-import { SoftDeletableModel } from "@app/lib/resources/storage/wrappers";
+import { SoftDeletableWorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
-export class SpaceModel extends SoftDeletableModel<SpaceModel> {
+export class SpaceModel extends SoftDeletableWorkspaceAwareModel<SpaceModel> {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -21,7 +15,6 @@ export class SpaceModel extends SoftDeletableModel<SpaceModel> {
   declare name: string;
   declare kind: SpaceKind;
 
-  declare workspaceId: ForeignKey<Workspace["id"]>;
   declare groups: NonAttribute<GroupModel[]>;
 }
 SpaceModel.init(
@@ -58,15 +51,6 @@ SpaceModel.init(
     ],
   }
 );
-
-Workspace.hasMany(SpaceModel, {
-  foreignKey: { allowNull: false },
-  onDelete: "RESTRICT",
-});
-SpaceModel.belongsTo(Workspace, {
-  foreignKey: { allowNull: false },
-  onDelete: "RESTRICT",
-});
 
 SpaceModel.addHook(
   "beforeCreate",

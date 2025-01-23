@@ -1,11 +1,11 @@
 import {
   Button,
-  NewDialog,
-  NewDialogContainer,
-  NewDialogContent,
-  NewDialogFooter,
-  NewDialogHeader,
-  NewDialogTitle,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   Page,
   PlusIcon,
   Popup,
@@ -318,7 +318,7 @@ function DomainAutoJoinModal({
   }
 
   return (
-    <NewDialog
+    <Dialog
       open={isOpen}
       onOpenChange={(open) => {
         if (!open) {
@@ -326,12 +326,12 @@ function DomainAutoJoinModal({
         }
       }}
     >
-      <NewDialogContent size="md" isAlertDialog>
-        <NewDialogHeader hideButton>
-          <NewDialogTitle>{title}</NewDialogTitle>
-        </NewDialogHeader>
-        <NewDialogContainer>{description}</NewDialogContainer>
-        <NewDialogFooter
+      <DialogContent size="md" isAlertDialog>
+        <DialogHeader hideButton>
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
+        <DialogContainer>{description}</DialogContainer>
+        <DialogFooter
           leftButtonProps={{
             label: "Cancel",
             variant: "outline",
@@ -345,7 +345,7 @@ function DomainAutoJoinModal({
             },
           }}
         />
-      </NewDialogContent>
-    </NewDialog>
+      </DialogContent>
+    </Dialog>
   );
 }

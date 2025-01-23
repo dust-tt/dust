@@ -64,7 +64,7 @@ export async function trackersGenerationActivity(
   documentHash: string,
   dataSourceConnectorProvider: ConnectorProvider | null
 ) {
-  if (Context.current().info.attempt > 1) {
+  if (Context.current().info.attempt > 3) {
     // TODO(DOC_TRACKER): mechanism to retry "manually"
     throw new Error("Too many attempts");
   }

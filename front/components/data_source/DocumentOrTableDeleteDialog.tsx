@@ -1,11 +1,11 @@
 import {
-  NewDialog,
-  NewDialogContainer,
-  NewDialogContent,
-  NewDialogDescription,
-  NewDialogFooter,
-  NewDialogHeader,
-  NewDialogTitle,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   Spinner,
   useSendNotification,
 } from "@dust-tt/sparkle";
@@ -66,7 +66,7 @@ export const DocumentOrTableDeleteDialog = ({
   };
 
   return (
-    <NewDialog
+    <Dialog
       open={isOpen}
       onOpenChange={(open) => {
         if (!open) {
@@ -74,24 +74,24 @@ export const DocumentOrTableDeleteDialog = ({
         }
       }}
     >
-      <NewDialogContent>
-        <NewDialogHeader>
-          <NewDialogTitle>Confirm deletion</NewDialogTitle>
-          <NewDialogDescription>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Confirm deletion</DialogTitle>
+          <DialogDescription>
             Are you sure you want to delete {isTable ? "table" : "document"} '
             {contentNode.title}'?
-          </NewDialogDescription>
-        </NewDialogHeader>
+          </DialogDescription>
+        </DialogHeader>
         {isLoading ? (
           <div className="flex justify-center py-8">
             <Spinner variant="dark" size="md" />
           </div>
         ) : (
           <>
-            <NewDialogContainer>
+            <DialogContainer>
               <b>This action cannot be undone.</b>
-            </NewDialogContainer>
-            <NewDialogFooter
+            </DialogContainer>
+            <DialogFooter
               leftButtonProps={{
                 label: "Cancel",
                 variant: "outline",
@@ -106,7 +106,7 @@ export const DocumentOrTableDeleteDialog = ({
             />
           </>
         )}
-      </NewDialogContent>
-    </NewDialog>
+      </DialogContent>
+    </Dialog>
   );
 };

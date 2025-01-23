@@ -1,14 +1,14 @@
 import {
   Avatar,
   Button,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
   ElementModal,
-  NewDialog,
-  NewDialogContainer,
-  NewDialogContent,
-  NewDialogFooter,
-  NewDialogHeader,
-  NewDialogTitle,
-  NewDialogTrigger,
   Page,
   Spinner,
   useSendNotification,
@@ -97,31 +97,31 @@ export function ChangeMemberModal({
           </div>
           <div className="flex flex-none flex-col gap-2">
             <div className="flex-none">
-              <NewDialog>
-                <NewDialogTrigger asChild>
+              <Dialog>
+                <DialogTrigger asChild>
                   <Button
                     variant="warning"
                     label="Revoke member access"
                     size="sm"
                   />
-                </NewDialogTrigger>
-                <NewDialogContent>
-                  <NewDialogHeader>
-                    <NewDialogTitle>Confirm deletion</NewDialogTitle>
-                  </NewDialogHeader>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Confirm deletion</DialogTitle>
+                  </DialogHeader>
                   {isSaving ? (
                     <div className="flex justify-center py-8">
                       <Spinner variant="dark" size="md" />
                     </div>
                   ) : (
                     <>
-                      <NewDialogContainer>
+                      <DialogContainer>
                         <div>
                           Revoke access for user{" "}
                           <span className="font-bold">{member.fullName}</span>?
                         </div>
-                      </NewDialogContainer>
-                      <NewDialogFooter
+                      </DialogContainer>
+                      <DialogFooter
                         leftButtonProps={{
                           label: "Cancel",
                           variant: "outline",
@@ -142,8 +142,8 @@ export function ChangeMemberModal({
                       />
                     </>
                   )}
-                </NewDialogContent>
-              </NewDialog>
+                </DialogContent>
+              </Dialog>
             </div>
             <Page.P>
               Deleting a member will remove them from the workspace. They will

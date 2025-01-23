@@ -1,11 +1,11 @@
 import {
-  NewDialog,
-  NewDialogContent,
-  NewDialogDescription,
-  NewDialogFooter,
-  NewDialogHeader,
-  NewDialogTitle,
-  NewDialogTrigger,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
   Spinner,
 } from "@dust-tt/sparkle";
 import type { EnterpriseUpgradeFormType, WorkspaceType } from "@dust-tt/types";
@@ -95,18 +95,18 @@ export default function EnterpriseUpgradeDialog({
   };
 
   return (
-    <NewDialog open={open} onOpenChange={setOpen}>
-      <NewDialogTrigger asChild>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
         <PokeButton variant="outline">🏢 Upgrade to Enterprise</PokeButton>
-      </NewDialogTrigger>
-      <NewDialogContent className="bg-structure-50 sm:max-w-[600px]">
-        <NewDialogHeader>
-          <NewDialogTitle>Upgrade {owner.name} to Enterprise.</NewDialogTitle>
-          <NewDialogDescription>
+      </DialogTrigger>
+      <DialogContent className="bg-structure-50 sm:max-w-[600px]">
+        <DialogHeader>
+          <DialogTitle>Upgrade {owner.name} to Enterprise.</DialogTitle>
+          <DialogDescription>
             Select the enterprise plan and provide the Stripe subscription id of
             the customer.
-          </NewDialogDescription>
-        </NewDialogHeader>
+          </DialogDescription>
+        </DialogHeader>
         {error && <div className="text-red-500">{error}</div>}
         {isSubmitting && <Spinner />}
         {!isSubmitting && (
@@ -135,18 +135,18 @@ export default function EnterpriseUpgradeDialog({
                   />
                 </div>
               </div>
-              <NewDialogFooter>
+              <DialogFooter>
                 <PokeButton
                   type="submit"
                   className="border-warning-600 bg-warning-500 text-white"
                 >
                   Upgrade
                 </PokeButton>
-              </NewDialogFooter>
+              </DialogFooter>
             </form>
           </PokeForm>
         )}
-      </NewDialogContent>
-    </NewDialog>
+      </DialogContent>
+    </Dialog>
   );
 }

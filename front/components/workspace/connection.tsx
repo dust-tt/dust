@@ -1,5 +1,11 @@
 import {
   Button,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   ExternalLinkIcon,
   Icon,
   IconButton,
@@ -7,12 +13,6 @@ import {
   Label,
   LockIcon,
   Modal,
-  NewDialog,
-  NewDialogContainer,
-  NewDialogContent,
-  NewDialogFooter,
-  NewDialogHeader,
-  NewDialogTitle,
   Page,
   Popup,
   RadioGroup,
@@ -836,7 +836,7 @@ function ToggleEnforceEnterpriseConnectionModal({
   const dialog = titleAndContent[owner.ssoEnforced ? "remove" : "enforce"];
 
   return (
-    <NewDialog
+    <Dialog
       open={isOpen}
       onOpenChange={(open) => {
         if (!open) {
@@ -844,12 +844,12 @@ function ToggleEnforceEnterpriseConnectionModal({
         }
       }}
     >
-      <NewDialogContent>
-        <NewDialogHeader>
-          <NewDialogTitle>{dialog.title}</NewDialogTitle>
-        </NewDialogHeader>
-        <NewDialogContainer>{dialog.content}</NewDialogContainer>
-        <NewDialogFooter
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{dialog.title}</DialogTitle>
+        </DialogHeader>
+        <DialogContainer>{dialog.content}</DialogContainer>
+        <DialogFooter
           leftButtonProps={{
             label: "Cancel",
             variant: "outline",
@@ -863,8 +863,8 @@ function ToggleEnforceEnterpriseConnectionModal({
             },
           }}
         />
-      </NewDialogContent>
-    </NewDialog>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -911,7 +911,7 @@ function DisableEnterpriseConnectionModal({
   }
 
   return (
-    <NewDialog
+    <Dialog
       open={isOpen}
       onOpenChange={(open) => {
         if (!open) {
@@ -919,17 +919,17 @@ function DisableEnterpriseConnectionModal({
         }
       }}
     >
-      <NewDialogContent size="md">
-        <NewDialogHeader>
-          <NewDialogTitle>
+      <DialogContent size="md">
+        <DialogHeader>
+          <DialogTitle>
             Disable ${strategyHumanReadable} Single Sign On
-          </NewDialogTitle>
-        </NewDialogHeader>
-        <NewDialogContainer>
+          </DialogTitle>
+        </DialogHeader>
+        <DialogContainer>
           Anyone with an {strategyHumanReadable} account won't be able to access
           your Dust workspace anymore.
-        </NewDialogContainer>
-        <NewDialogFooter
+        </DialogContainer>
+        <DialogFooter
           leftButtonProps={{
             label: "Cancel",
             variant: "outline",
@@ -942,7 +942,7 @@ function DisableEnterpriseConnectionModal({
             },
           }}
         />
-      </NewDialogContent>
-    </NewDialog>
+      </DialogContent>
+    </Dialog>
   );
 }

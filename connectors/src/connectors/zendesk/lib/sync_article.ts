@@ -56,9 +56,9 @@ export async function syncArticle({
   section,
   user,
   currentSyncDateMs,
+  helpCenterIsAllowed,
   dataSourceConfig,
   loggerArgs,
-  forceResync,
 }: {
   connectorId: ModelId;
   dataSourceConfig: DataSourceConfig;
@@ -66,9 +66,9 @@ export async function syncArticle({
   section: ZendeskFetchedSection | null;
   category: ZendeskCategoryResource;
   user: ZendeskFetchedUser | null;
+  helpCenterIsAllowed: boolean;
   currentSyncDateMs: number;
   loggerArgs: Record<string, string | number | null>;
-  forceResync: boolean;
 }) {
   let articleInDb = await ZendeskArticleResource.fetchByArticleId({
     connectorId,
@@ -76,12 +76,6 @@ export async function syncArticle({
     articleId: article.id,
   });
   const updatedAtDate = new Date(article.updated_at);
-
-  const shouldPerformUpsertion =
-    forceResync ||
-    !articleInDb ||
-    !articleInDb.lastUpsertedTs ||
-    articleInDb.lastUpsertedTs < updatedAtDate; // upserting if the article was updated after the last upsert
 
   // we either create a new article or update the existing one
   if (!articleInDb) {
@@ -112,14 +106,8 @@ export async function syncArticle({
       articleUpdatedAt: updatedAtDate,
       dataSourceLastUpsertedAt: articleInDb?.lastUpsertedTs ?? null,
     },
-    shouldPerformUpsertion
-      ? "[Zendesk] Article to sync."
-      : "[Zendesk] Article already up to date. Skipping sync."
+    "[Zendesk] Article to sync."
   );
-
-  if (!shouldPerformUpsertion) {
-    return;
-  }
 
   const articleContentInMarkdown =
     typeof article.body === "string"
@@ -159,7 +147,10 @@ export async function syncArticle({
       articleId: article.id,
     });
 
-    const parents = articleInDb.getParentInternalIds(connectorId);
+    const parents = articleInDb.getParentInternalIds(
+      connectorId,
+      helpCenterIsAllowed
+    );
     await upsertDataSourceDocument({
       dataSourceConfig,
       documentId,

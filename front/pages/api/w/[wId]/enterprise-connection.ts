@@ -15,7 +15,8 @@ import {
   getEnterpriseConnectionForWorkspace,
 } from "@app/lib/api/enterprise_connection";
 import type { Authenticator } from "@app/lib/auth";
-import { Workspace, WorkspaceHasDomain } from "@app/lib/models/workspace";
+import { Workspace } from "@app/lib/models/workspace";
+import { WorkspaceHasDomain } from "@app/lib/models/workspace_has_domain";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 

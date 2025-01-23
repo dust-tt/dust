@@ -1,11 +1,11 @@
 import {
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   Icon,
-  NewDialog,
-  NewDialogContainer,
-  NewDialogContent,
-  NewDialogFooter,
-  NewDialogHeader,
-  NewDialogTitle,
   RadioGroup,
   RadioGroupChoice,
   Separator,
@@ -109,7 +109,7 @@ export function SpaceSelector({
                     </div>
                   }
                 >
-                  <div className="flex flex-col">
+                  <div className="flex w-full flex-col">
                     {selectedSpace === space.sId && (
                       <div className="ml-4 mt-1">
                         {renderChildren(selectedSpaceObj)}
@@ -123,7 +123,7 @@ export function SpaceSelector({
         })}
       </RadioGroup>
       <Separator />
-      <NewDialog
+      <Dialog
         open={isAlertDialogOpen}
         onOpenChange={(open) => {
           if (!open) {
@@ -131,23 +131,23 @@ export function SpaceSelector({
           }
         }}
       >
-        <NewDialogContent size="md" isAlertDialog>
-          <NewDialogHeader hideButton>
-            <NewDialogTitle>Changing source selection</NewDialogTitle>
-          </NewDialogHeader>
-          <NewDialogContainer>
+        <DialogContent size="md" isAlertDialog>
+          <DialogHeader hideButton>
+            <DialogTitle>Changing source selection</DialogTitle>
+          </DialogHeader>
+          <DialogContainer>
             An assistant can access one source of data only. The other tools are
             using a different source.
-          </NewDialogContainer>
-          <NewDialogFooter
+          </DialogContainer>
+          <DialogFooter
             rightButtonProps={{
               label: "Ok",
               variant: "outline",
               onClick: () => setAlertIsDialogOpen(false),
             }}
           />
-        </NewDialogContent>
-      </NewDialog>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

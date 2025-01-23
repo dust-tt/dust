@@ -1,13 +1,12 @@
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { UserModel } from "@app/lib/resources/storage/models/user";
-import { BaseModel } from "@app/lib/resources/storage/wrappers";
+import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
-export class KeyModel extends BaseModel<KeyModel> {
+export class KeyModel extends WorkspaceAwareModel<KeyModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare lastUsedAt: CreationOptional<Date>;
@@ -18,7 +17,6 @@ export class KeyModel extends BaseModel<KeyModel> {
 
   declare userId: ForeignKey<UserModel["id"]>;
   declare groupId: ForeignKey<GroupModel["id"]>;
-  declare workspaceId: ForeignKey<Workspace["id"]>;
 
   declare name: string | null;
   declare user: NonAttribute<UserModel>;
@@ -67,10 +65,6 @@ KeyModel.init(
     ],
   }
 );
-Workspace.hasMany(KeyModel, {
-  foreignKey: { allowNull: false },
-  onDelete: "RESTRICT",
-});
 // We don't want to delete keys when a user gets deleted.
 UserModel.hasMany(KeyModel, {
   foreignKey: { allowNull: true },

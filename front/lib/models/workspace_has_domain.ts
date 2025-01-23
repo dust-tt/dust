@@ -4,13 +4,13 @@ import { DataTypes } from "sequelize";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
-export class ExtensionConfigurationModel extends WorkspaceAwareModel<ExtensionConfigurationModel> {
+export class WorkspaceHasDomain extends WorkspaceAwareModel<WorkspaceHasDomain> {
   declare createdAt: CreationOptional<Date>;
+  declare domain: string;
+  declare domainAutoJoinEnabled: CreationOptional<boolean>;
   declare updatedAt: CreationOptional<Date>;
-
-  declare blacklistedDomains: string[];
 }
-ExtensionConfigurationModel.init(
+WorkspaceHasDomain.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -22,15 +22,18 @@ ExtensionConfigurationModel.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    blacklistedDomains: {
-      type: DataTypes.ARRAY(DataTypes.STRING),
+    domainAutoJoinEnabled: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    domain: {
+      type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: [],
     },
   },
   {
-    modelName: "extension_configuration",
+    modelName: "workspace_has_domains",
     sequelize: frontSequelize,
-    indexes: [{ unique: true, fields: ["workspaceId"] }],
+    indexes: [{ unique: true, fields: ["domain"] }],
   }
 );

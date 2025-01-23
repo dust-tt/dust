@@ -4,6 +4,13 @@ import {
   ChevronDownIcon,
   Chip,
   CompanyIcon,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -11,13 +18,6 @@ import {
   DustIcon,
   IconButton,
   LockIcon,
-  NewDialog,
-  NewDialogContainer,
-  NewDialogContent,
-  NewDialogDescription,
-  NewDialogFooter,
-  NewDialogHeader,
-  NewDialogTitle,
   Page,
   PopoverContent,
   PopoverRoot,
@@ -465,7 +465,7 @@ function ScopeChangeDialog({
   setSharingScope: () => void;
 }) {
   return (
-    <NewDialog
+    <Dialog
       open={show}
       onOpenChange={(open) => {
         if (!open) {
@@ -473,20 +473,18 @@ function ScopeChangeDialog({
         }
       }}
     >
-      <NewDialogContent>
-        <NewDialogHeader hideButton>
-          <NewDialogTitle>{confirmationModalData.title}</NewDialogTitle>
-          {usageText && (
-            <NewDialogDescription>{usageText}</NewDialogDescription>
-          )}
-        </NewDialogHeader>
-        <NewDialogContainer>
+      <DialogContent>
+        <DialogHeader hideButton>
+          <DialogTitle>{confirmationModalData.title}</DialogTitle>
+          {usageText && <DialogDescription>{usageText}</DialogDescription>}
+        </DialogHeader>
+        <DialogContainer>
           <div>
             {confirmationModalData.text}
             <div className="font-bold">Are you sure you want to proceed ?</div>
           </div>
-        </NewDialogContainer>
-        <NewDialogFooter
+        </DialogContainer>
+        <DialogFooter
           leftButtonProps={{
             label: "Cancel",
             variant: "outline",
@@ -503,7 +501,7 @@ function ScopeChangeDialog({
             },
           }}
         />
-      </NewDialogContent>
-    </NewDialog>
+      </DialogContent>
+    </Dialog>
   );
 }

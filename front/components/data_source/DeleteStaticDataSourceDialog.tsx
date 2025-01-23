@@ -1,10 +1,10 @@
 import {
-  NewDialog,
-  NewDialogContainer,
-  NewDialogContent,
-  NewDialogFooter,
-  NewDialogHeader,
-  NewDialogTitle,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   Spinner,
 } from "@dust-tt/sparkle";
 import type { DataSourceType, LightWorkspaceType } from "@dust-tt/types";
@@ -59,7 +59,7 @@ export function DeleteStaticDataSourceDialog({
   }, [isUsageLoading, isUsageError, usage, name]);
 
   return (
-    <NewDialog
+    <Dialog
       open={isOpen}
       onOpenChange={(open) => {
         if (!open) {
@@ -67,21 +67,21 @@ export function DeleteStaticDataSourceDialog({
         }
       }}
     >
-      <NewDialogContent>
-        <NewDialogHeader>
-          <NewDialogTitle>Confirm deletion</NewDialogTitle>
-        </NewDialogHeader>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Confirm deletion</DialogTitle>
+        </DialogHeader>
         {isLoading ? (
           <div className="flex justify-center py-8">
             <Spinner variant="dark" size="md" />
           </div>
         ) : (
           <>
-            <NewDialogContainer>
+            <DialogContainer>
               {message}
               <b>Are you sure you want to delete ?</b>
-            </NewDialogContainer>
-            <NewDialogFooter
+            </DialogContainer>
+            <DialogFooter
               leftButtonProps={{
                 label: "Cancel",
                 variant: "outline",
@@ -96,7 +96,7 @@ export function DeleteStaticDataSourceDialog({
             />
           </>
         )}
-      </NewDialogContent>
-    </NewDialog>
+      </DialogContent>
+    </Dialog>
   );
 }

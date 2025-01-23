@@ -4,65 +4,75 @@ import type {
   CreationOptional,
   DestroyOptions,
   FindOptions,
+  ForeignKey,
   GroupedCountResultItem,
-  InferAttributes,
-  InferCreationAttributes,
   InitOptions,
+  Model,
   ModelAttributes,
   ModelStatic,
+  NonAttribute,
   UpdateOptions,
   WhereOptions,
 } from "sequelize";
-import { DataTypes, Model, Op } from "sequelize";
+import { DataTypes, Op } from "sequelize";
 
-interface BaseModelAttributes {
-  id?: {
-    type: typeof DataTypes.BIGINT;
-    primaryKey?: boolean;
-    autoIncrement?: boolean;
-  };
-}
+import { Workspace } from "@app/lib/models/workspace";
+import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 
-/**
- * A wrapper class that enforces BIGINT for all model primary keys.
- * All models should extend this class instead of Sequelize's Model.
- */
-export class BaseModel<M extends Model> extends Model<
-  InferAttributes<M>,
-  InferCreationAttributes<M>
-> {
-  declare id: CreationOptional<number>;
+export class WorkspaceAwareModel<M extends Model> extends BaseModel<M> {
+  declare workspaceId: ForeignKey<Workspace["id"]>;
+  declare workspace: NonAttribute<Workspace>;
 
   static override init<MS extends ModelStatic<Model>>(
     this: MS,
-    attributes: ModelAttributes<InstanceType<MS>> & BaseModelAttributes,
-    options: InitOptions<InstanceType<MS>>
+    attributes: ModelAttributes<InstanceType<MS>>,
+    options: InitOptions<InstanceType<MS>> & {
+      relationship?: "hasMany" | "hasOne";
+      softDeletable?: boolean;
+    }
   ): MS {
-    const attrs: ModelAttributes<InstanceType<MS>> & BaseModelAttributes = {
+    const attrs = {
       ...attributes,
-      id: {
+      workspaceId: {
         type: DataTypes.BIGINT,
-        primaryKey: true,
-        autoIncrement: true,
-        ...("id" in attributes
-          ? {
-              autoIncrement: attributes.id?.autoIncrement ?? true,
-              primaryKey: attributes.id?.primaryKey ?? true,
-            }
-          : {}),
+        allowNull: false,
+        references: {
+          model: Workspace.tableName,
+          key: "id",
+        },
       },
     };
 
-    return super.init(attrs, options) as MS;
+    const { relationship = "hasMany", ...restOptions } = options;
+    const model = super.init(attrs, restOptions);
+
+    if (relationship === "hasOne") {
+      Workspace.hasOne(model, {
+        foreignKey: { allowNull: false },
+        onDelete: "RESTRICT",
+      });
+    } else {
+      Workspace.hasMany(model, {
+        foreignKey: { allowNull: false },
+        onDelete: "RESTRICT",
+      });
+    }
+
+    model.belongsTo(Workspace, {
+      foreignKey: { allowNull: false },
+    });
+
+    return model;
   }
 }
 
-export type ModelStaticSoftDeletable<M extends SoftDeletableModel> =
-  ModelStatic<M> & {
-    findAll(
-      options: WithIncludeDeleted<FindOptions<Attributes<M>>>
-    ): Promise<M[]>;
-  };
+export type ModelStaticSoftDeletable<
+  M extends SoftDeletableWorkspaceAwareModel,
+> = ModelStatic<M> & {
+  findAll(
+    options: WithIncludeDeleted<FindOptions<Attributes<M>>>
+  ): Promise<M[]>;
+};
 
 type WithHardDelete<T> = T & {
   hardDelete: boolean;
@@ -93,7 +103,9 @@ type WithIncludeDeleted<T> = T & {
  * Extend this class for models that require soft delete functionality. The `deletedAt` field
  * is automatically declared and managed by this class.
  */
-export class SoftDeletableModel<M extends Model = any> extends BaseModel<M> {
+export class SoftDeletableWorkspaceAwareModel<
+  M extends Model = any,
+> extends WorkspaceAwareModel<M> {
   declare deletedAt: CreationOptional<Date | null>;
 
   // Delete.

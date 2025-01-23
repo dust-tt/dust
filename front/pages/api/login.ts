@@ -23,7 +23,7 @@ import {
   createWorkspace,
   findWorkspaceWithVerifiedDomain,
 } from "@app/lib/iam/workspaces";
-import type { MembershipInvitation } from "@app/lib/models/workspace";
+import type { MembershipInvitation } from "@app/lib/models/membership_invitation";
 import { Workspace } from "@app/lib/models/workspace";
 import { subscriptionForWorkspace } from "@app/lib/plans/subscription";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
