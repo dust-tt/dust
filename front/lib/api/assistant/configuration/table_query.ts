@@ -116,14 +116,11 @@ export async function createTableDataSourceConfiguration(
   tablesQueryConfig: AgentTablesQueryConfiguration,
   t: Transaction
 ) {
+  const owner = auth.getNonNullableWorkspace();
   // Although we have the capability to support multiple workspaces,
   // currently, we only support one workspace, which is the one the user is in.
   // This allows us to use the current authenticator to fetch resources.
-  assert(
-    tableConfigurations.every(
-      (tc) => tc.workspaceId === auth.getNonNullableWorkspace().sId
-    )
-  );
+  assert(tableConfigurations.every((tc) => tc.workspaceId === owner.sId));
 
   // DataSourceViewResource.listByWorkspace() applies the permissions check.
   const dataSourceViews = await DataSourceViewResource.listByWorkspace(auth);
@@ -151,6 +148,7 @@ export async function createTableDataSourceConfiguration(
           dataSourceViewId: dataSourceView.id,
           tableId: tc.tableId,
           tablesQueryConfigurationId: tablesQueryConfig.id,
+          workspaceId: owner.id,
         },
         { transaction: t }
       );
