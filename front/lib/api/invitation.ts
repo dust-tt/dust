@@ -13,7 +13,7 @@ import sgMail from "@sendgrid/mail";
 import { sign } from "jsonwebtoken";
 import { Op } from "sequelize";
 
-import { getAuth0ManagemementClient } from "@app/lib/api/auth0";
+import { getAuth0UsersFromEmail } from "@app/lib/api/auth0";
 import config from "@app/lib/api/config";
 import { config as regionConfig } from "@app/lib/api/regions/config";
 import { getMembers } from "@app/lib/api/workspace";
@@ -380,16 +380,11 @@ export async function handleMembershipInvitations(
     activeOnly: true,
   });
 
-  const auth0Users = await getAuth0ManagemementClient().users.getAll({
-    q: invitationRequests
-      .map(
-        (invite) =>
-          `email:"${invite.email.replace(/([+\-&|!(){}[\]^"~*?:\\/])/g, "\\$1")}"`
-      )
-      .join(" OR "),
-  });
+  const auth0Users = await getAuth0UsersFromEmail(
+    invitationRequests.map((invite) => invite.email)
+  );
 
-  const otherRegionUsers = auth0Users.data
+  const otherRegionUsers = auth0Users
     .filter(
       (user) => user.app_metadata?.region !== regionConfig.getCurrentRegion()
     )
