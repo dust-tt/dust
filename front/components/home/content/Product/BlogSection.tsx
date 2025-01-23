@@ -80,7 +80,7 @@ export function BlogSection({
               <BlogBlock
                 title="Pennylane's journey to deploy Dust for Customer Care teams"
                 content="Dust evolved from a simple support tool into an integral part of Pennylane's operations."
-                href="https://blog.dust.tt/pennylane-dust-customer-support-journey/"
+                href="https://blog.dust.tt/pennylane-customer-support-journey/"
               >
                 <img
                   src="https://blog.dust.tt/content/images/size/w2000/2024/12/pennylane_dust_customer_story.png"
