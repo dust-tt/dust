@@ -12,7 +12,7 @@ permissions:
   actions: read
   checks: write
 jobs:
-  check-eslint:
+  all-checks:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -20,7 +20,10 @@ jobs:
         with:
           node-version: 20.13.0
           cache: "npm"
-          cache-dependency-path: ./front/package-lock.json
+          cache-dependency-path: |
+            ./front/package-lock.json
+            ./types/package-lock.json
+            ./sdks/js/package-lock.json
       - name: Build Types
         working-directory: types
         run: npm install && npm run build
@@ -44,10 +47,12 @@ jobs:
           FRONT_DATABASE_URI: "postgres://test:test@localhost:5433/front_test"
           NODE_ENV: test
         run: npx tsx admin/db.ts && npm run test:ci
-      - name: Tests Report
+      - name: Build Tests Report
         if: always()
-        uses: dorny/test-reporter@1a288b62f8b75c0f433cbfdbc2e4800fbae50bd7 # Specific hash because of https://github.com/dorny/test-reporter/issues/67
+        uses: mikepenz/action-junit-report@v5
         with:
-          name: Front Tests # Name of the check run which will be created
-          path: front/junit*.xml # Path to test results
-          reporter: jest-junit # Format of test results
+          report_paths: "**/front/junit*.xml"
+          detailed_summary: true
+          flaky_summary: true
+          group_suite: true
+          check_name: Tests Report
