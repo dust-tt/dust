@@ -36,8 +36,9 @@ jobs:
       - name: Install Postgres
         uses: dust-tt/postgresql-action@6730e69fe23f4f2989c19edf9e6e0d7ffeb0a05c
         with:
-          postgresql docker image: ghcr.io/library/postgres
-          postgresql version: ghcr.io/library/postgres:14.13 # See https://hub.docker.com/_/postgres for available versions
+          # Note, to avoid rate limit, we re-published the official postgres image (with the specific version) to ghcr.io, if we update the version, we need to push an updated image
+          postgresql docker image: ghcr.io/dust-tt/postgres
+          postgresql version: "14.13"
           postgresql db: front_test
           postgresql user: test
           postgresql password: test
