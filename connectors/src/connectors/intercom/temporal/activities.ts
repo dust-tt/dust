@@ -28,7 +28,10 @@ import {
 } from "@connectors/connectors/intercom/temporal/sync_help_center";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
-import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
+import {
+  deleteDataSourceFolder,
+  upsertDataSourceFolder,
+} from "@connectors/lib/data_sources";
 import {
   IntercomCollection,
   IntercomConversation,
@@ -606,6 +609,32 @@ export async function syncConversationBatchActivity({
       }),
     { concurrency: 10 }
   );
+}
+
+/**
+ * This activity is responsible for deleting the data_sources_folders for the teams that are not allowed.
+ */
+export async function deleteRevokedTeamsActivity({
+  connectorId,
+}: {
+  connectorId: ModelId;
+}): Promise<void> {
+  const connector = await _getIntercomConnectorOrRaise(connectorId);
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  const unauthorizedTeams = await IntercomTeam.findAll({
+    attributes: ["teamId"],
+    where: { connectorId, permission: "none" },
+  });
+  const unauthorizedTeamIds = unauthorizedTeams.map((t) => t.teamId);
+
+  for (const teamId of unauthorizedTeamIds) {
+    await deleteDataSourceFolder({
+      dataSourceConfig,
+      folderId: getTeamInternalId(connectorId, teamId),
+      loggerArgs: { provider: "intercom" },
+    });
+  }
 }
 
 /**
