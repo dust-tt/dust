@@ -4,7 +4,6 @@ import { DataTypes } from "sequelize";
 
 import { frontSequelize } from "@app/lib/resources/storage";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
-import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 import {
   SoftDeletableWorkspaceAwareModel,
   WorkspaceAwareModel,
@@ -174,7 +173,7 @@ AppModel.hasMany(Dataset, {
 });
 Dataset.belongsTo(AppModel);
 
-export class Clone extends BaseModel<Clone> {
+export class Clone extends WorkspaceAwareModel<Clone> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
