@@ -13,7 +13,7 @@ import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { AssistantTemplateListType } from "@app/pages/api/w/[wId]/assistant/builder/templates";
+import type { AssistantTemplateListType } from "@app/pages/api/templates";
 
 export interface CreateTemplateResponseBody {
   success: boolean;

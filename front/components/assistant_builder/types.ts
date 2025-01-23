@@ -28,7 +28,7 @@ import {
   DEFAULT_TABLES_QUERY_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/api/assistant/actions/constants";
-import type { FetchAssistantTemplateResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates/[tId]";
+import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
 
 export const ACTION_MODES = [
   "GENERIC",

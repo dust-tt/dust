@@ -21,25 +21,21 @@ import {
   useSWRInfiniteWithDefaults,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
+import type { FetchAssistantTemplatesResponse } from "@app/pages/api/templates";
+import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import type { GetAgentConfigurationAnalyticsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/analytics";
 import type { PostAgentScopeRequestBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/scope";
 import type { GetAgentUsageResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/usage";
 import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/pages/api/w/[wId]/assistant/builder/slack/channels_linked_with_agent";
-import type { FetchAssistantTemplatesResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates";
-import type { FetchAssistantTemplateResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates/[tId]";
 import type { PostAgentUserFavoriteRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_favorite";
 
-export function useAssistantTemplates({
-  workspaceId,
-}: {
-  workspaceId: string;
-}) {
+export function useAssistantTemplates() {
   const assistantTemplatesFetcher: Fetcher<FetchAssistantTemplatesResponse> =
     fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/assistant/builder/templates`,
+    `/api/templates`,
     assistantTemplatesFetcher
   );
 
@@ -53,18 +49,14 @@ export function useAssistantTemplates({
 
 export function useAssistantTemplate({
   templateId,
-  workspaceId,
 }: {
   templateId: string | null;
-  workspaceId: string;
 }) {
   const assistantTemplateFetcher: Fetcher<FetchAssistantTemplateResponse> =
     fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
-    templateId !== null
-      ? `/api/w/${workspaceId}/assistant/builder/templates/${templateId}`
-      : null,
+    templateId !== null ? `/api/templates/${templateId}` : null,
     assistantTemplateFetcher
   );
 

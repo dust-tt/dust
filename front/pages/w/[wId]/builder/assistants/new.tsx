@@ -155,10 +155,7 @@ export default function CreateAssistant({
   templateId,
   platformActionsConfigurations,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const { assistantTemplate } = useAssistantTemplate({
-    templateId,
-    workspaceId: owner.sId,
-  });
+  const { assistantTemplate } = useAssistantTemplate({ templateId });
 
   if (agentConfiguration) {
     throwIfInvalidAgentConfiguration(agentConfiguration);

@@ -1,7 +1,6 @@
 import { faker } from "@faker-js/faker";
 import type { InferCreationAttributes } from "sequelize";
 
-import type { Workspace } from "@app/lib/models/workspace";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 
@@ -12,7 +11,7 @@ class UserFactory extends Factory<UserModel> {
     return UserModel.create(params);
   }
 
-  basic(workspace: Workspace) {
+  basic() {
     return this.params({
       sId: generateRandomModelSId(),
       auth0Sub: faker.string.uuid(),

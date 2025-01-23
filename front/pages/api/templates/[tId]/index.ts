@@ -1,9 +1,8 @@
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { TemplateResource } from "@app/lib/resources/template_resource";
-import { apiError } from "@app/logger/withlogging";
+import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type FetchAssistantTemplateResponse = ReturnType<
   TemplateResource["toJSON"]
@@ -50,4 +49,4 @@ async function handler(
   }
 }
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default withLogging(handler);

@@ -1,6 +1,6 @@
 import { LargeAssistantCard } from "@dust-tt/sparkle";
 
-import type { AssistantTemplateListType } from "@app/pages/api/w/[wId]/assistant/builder/templates";
+import type { AssistantTemplateListType } from "@app/pages/api/templates";
 
 interface TemplateGridProps {
   templates: AssistantTemplateListType[];

@@ -1,7 +1,37 @@
-import type { Transaction } from "sequelize";
-import { afterAll, beforeAll, expect } from "vitest";
+import { expect, it } from "vitest";
 
 import { frontSequelize } from "@app/lib/resources/storage";
+
+export const itInTransaction = function (
+  title: string,
+  fn: () => Promise<void>
+) {
+  return it(title, function () {
+    return new Promise<void>((resolve, reject) => {
+      frontSequelize
+        .transaction(() => {
+          return fn()
+            .then(() => {
+              resolve();
+            })
+            .catch((err: any) => {
+              reject(err);
+            })
+            .finally(() => {
+              throw "Rollback";
+            });
+        })
+        .catch((err: any) => {
+          if (err === "Rollback") {
+            return;
+          }
+          reject(err);
+          console.log("Error in test:");
+          console.log(err);
+        });
+    });
+  });
+};
 
 export const expectArrayOfObjectsWithSpecificLength = (
   value: any,
@@ -12,37 +42,4 @@ export const expectArrayOfObjectsWithSpecificLength = (
   expect(
     value.every((item: unknown) => typeof item === "object" && item !== null)
   ).toBe(true);
-};
-
-/**
- * Helper to run test suites within a database transaction that gets rolled back.
- * This ensures each test starts with a clean database state.
- *
- * @param testSuite Function containing the test suite to run within transaction
- * @returns Async function that sets up transaction before tests and rolls back after
- */
-export const withinTransaction = (testSuite: () => Promise<void> | void) => {
-  return async () => {
-    let transaction: Transaction;
-
-    beforeAll(async () => {
-      try {
-        transaction = await frontSequelize.transaction();
-      } catch (error) {
-        console.error("Failed to start transaction:", error);
-        throw error;
-      }
-    });
-
-    afterAll(async () => {
-      try {
-        await transaction.rollback();
-      } catch (error) {
-        console.error("Failed to rollback transaction:", error);
-        throw error;
-      }
-    });
-
-    await testSuite();
-  };
 };
