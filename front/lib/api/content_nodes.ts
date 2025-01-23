@@ -121,10 +121,16 @@ export function computeNodesDiff({
     )
     .map((coreNode) => coreNode.internalId);
   if (extraCoreInternalIds.length > 0) {
-    localLogger.info(
-      { extraCoreInternalIds },
-      "[CoreNodes] Received unexpected core nodes"
-    );
+    // There is some specific code to Intercom in retrieveIntercomConversationsPermissions that hides the empty team folders
+    if (
+      provider !== "intercom" ||
+      extraCoreInternalIds.some((id) => !id.startsWith("intercom-team-"))
+    ) {
+      localLogger.info(
+        { extraCoreInternalIds },
+        "[CoreNodes] Received extraneous core nodes"
+      );
+    }
   }
 }
 
