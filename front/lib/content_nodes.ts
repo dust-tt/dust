@@ -62,20 +62,16 @@ function getVisualForContentNodeBaseOnType(node: ContentNode) {
 }
 
 function getVisualForContentNodeBasedOnMimeType(node: ContentNode) {
-  if (!node.mimeType) {
-    // putting a default value here to please TS,
-    // but mimeType should always be defined in a world where we get it from core (currently kept for retro-compatibility with connectors' /content_nodes endpoints)
-    return getVisualForFileContentNode(node as ContentNode & { type: "file" });
-  }
-
-  if (CHANNEL_MIME_TYPES.includes(node.mimeType)) {
-    if (node.providerVisibility === "private") {
-      return LockIcon;
+  if (node.mimeType) {
+    if (CHANNEL_MIME_TYPES.includes(node.mimeType)) {
+      if (node.providerVisibility === "private") {
+        return LockIcon;
+      }
+      return ChatBubbleLeftRightIcon;
     }
-    return ChatBubbleLeftRightIcon;
-  }
-  if (DATABASE_MIME_TYPES.includes(node.mimeType)) {
-    return Square3Stack3DIcon;
+    if (DATABASE_MIME_TYPES.includes(node.mimeType)) {
+      return Square3Stack3DIcon;
+    }
   }
   switch (node.type) {
     case "database":
