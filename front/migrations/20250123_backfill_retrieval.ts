@@ -14,7 +14,6 @@ import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 interface TableConfig {
   model: typeof WorkspaceAwareModel<any>;
   include: (workspaceId: number) => any[];
-  attributes: string[];
 }
 
 const TABLES: TableConfig[] = [
@@ -28,7 +27,6 @@ const TABLES: TableConfig[] = [
         where: { workspaceId },
       },
     ],
-    attributes: [],
   },
   {
     model: RetrievalDocumentChunk,
@@ -40,7 +38,6 @@ const TABLES: TableConfig[] = [
         where: { workspaceId },
       },
     ],
-    attributes: [],
   },
 ];
 
@@ -67,7 +64,6 @@ async function backfillTable(
       order: [["id", "ASC"]],
       limit: batchSize,
       include: table.include(workspace.id),
-      attributes: table.attributes,
     });
 
     if (records.length === 0) {
