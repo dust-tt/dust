@@ -75,9 +75,7 @@ export default function CreateAssistant({
     router.query.templateId ? (router.query.templateId as string) : null
   );
 
-  const { assistantTemplates } = useAssistantTemplates({
-    workspaceId: owner.sId,
-  });
+  const { assistantTemplates } = useAssistantTemplates();
 
   const [filteredTemplates, setFilteredTemplates] = useState<{
     templates: typeof assistantTemplates;

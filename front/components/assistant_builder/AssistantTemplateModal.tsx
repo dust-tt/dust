@@ -27,10 +27,7 @@ export function AssistantTemplateModal({
   templateId,
 }: AssistantTemplateModalProps) {
   const { assistantTemplate, isAssistantTemplateLoading } =
-    useAssistantTemplate({
-      templateId,
-      workspaceId: owner.sId,
-    });
+    useAssistantTemplate({ templateId });
 
   if (!templateId) {
     return null;

@@ -42,7 +42,7 @@ export const createPrivateApiMockRequest = async ({
   role = "user",
 }: { method?: RequestMethod; role?: MembershipRoleType } = {}) => {
   const workspace = await workspaceFactory().basic().create();
-  const user = await userFactory().basic(workspace).create();
+  const user = await userFactory().basic().create();
   const globalGroup = await groupFactory().global(workspace).create();
 
   const membership = await membershipFactory()

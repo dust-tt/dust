@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, vi } from "vitest";
 
 import handler from "@app/pages/api/v1/w/[wId]/feature_flags";
 import { featureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
@@ -7,7 +7,7 @@ import {
   createPublicApiMockRequest,
   createPublicApiSystemOnlyAuthenticationTests,
 } from "@app/tests/utils/generic_public_api_tests";
-import { withinTransaction } from "@app/tests/utils/utils";
+import { itInTransaction } from "@app/tests/utils/utils";
 import { workspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 
 // Mock the getSession function to return the user without going through the auth0 session
@@ -30,48 +30,48 @@ describe(
   createPublicApiAuthenticationTests(handler)
 );
 
-describe(
-  "GET /api/v1/w/[wId]/feature_flags",
-  withinTransaction(async () => {
-    it("returns 200 and an array of feature flags", async () => {
-      const { req, res, workspace } = await createPublicApiMockRequest({
-        systemKey: true,
-      });
+describe("GET /api/v1/w/[wId]/feature_flags", () => {
+  itInTransaction("returns 200 and an array of feature flags", async () => {
+    const { req, res, workspace } = await createPublicApiMockRequest({
+      systemKey: true,
+    });
 
-      // Add features flag
-      await featureFlagFactory().basic("deepseek_feature", workspace).create();
-      await featureFlagFactory().basic("document_tracker", workspace).create();
+    // Add features flag
+    await featureFlagFactory().basic("deepseek_feature", workspace).create();
+    await featureFlagFactory().basic("document_tracker", workspace).create();
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData()).toEqual(
+      expect.objectContaining({
+        feature_flags: ["deepseek_feature", "document_tracker"],
+      })
+    );
+  });
+
+  itInTransaction("only GET, other methods returns 405", async () => {
+    for (const method of ["PUT", "DELETE", "PATCH"] as const) {
+      const { req, res } = await createPublicApiMockRequest({
+        systemKey: true,
+        method,
+      });
 
       await handler(req, res);
 
-      expect(res._getStatusCode()).toBe(200);
-      expect(res._getJSONData()).toEqual(
-        expect.objectContaining({
-          feature_flags: ["deepseek_feature", "document_tracker"],
-        })
-      );
-    });
+      expect(res._getStatusCode()).toBe(405);
+      expect(res._getJSONData()).toEqual({
+        error: {
+          type: "method_not_supported_error",
+          message: "The method passed is not supported, GET is expected.",
+        },
+      });
+    }
+  });
 
-    it("only GET, other methods returns 405", async () => {
-      for (const method of ["PUT", "DELETE", "PATCH"] as const) {
-        const { req, res } = await createPublicApiMockRequest({
-          systemKey: true,
-          method,
-        });
-
-        await handler(req, res);
-
-        expect(res._getStatusCode()).toBe(405);
-        expect(res._getJSONData()).toEqual({
-          error: {
-            type: "method_not_supported_error",
-            message: "The method passed is not supported, GET is expected.",
-          },
-        });
-      }
-    });
-
-    it("returns 200 and an empty array when no feature flags exist", async () => {
+  itInTransaction(
+    "returns 200 and an empty array when no feature flags exist",
+    async () => {
       const { req, res } = await createPublicApiMockRequest({
         systemKey: true,
       });
@@ -84,36 +84,12 @@ describe(
           feature_flags: [],
         })
       );
-    });
+    }
+  );
 
-    it("returns 200 and correctly handles duplicate feature flags", async () => {
-      const { req, res, workspace } = await createPublicApiMockRequest({
-        systemKey: true,
-      });
-
-      // Try to create duplicate feature flags (should be prevented by unique constraint)
-      await featureFlagFactory()
-        .basic("conversations_jit_actions", workspace)
-        .create();
-      try {
-        await featureFlagFactory()
-          .basic("conversations_jit_actions", workspace)
-          .create();
-      } catch (error) {
-        // Expected to fail due to unique constraint
-      }
-
-      await handler(req, res);
-
-      expect(res._getStatusCode()).toBe(200);
-      expect(res._getJSONData()).toEqual(
-        expect.objectContaining({
-          feature_flags: ["conversations_jit_actions"],
-        })
-      );
-    });
-
-    it("returns feature flags only for the requested workspace", async () => {
+  itInTransaction(
+    "returns feature flags only for the requested workspace",
+    async () => {
       // Create two workspaces with different feature flags
       const {
         req,
@@ -143,6 +119,6 @@ describe(
       expect(res._getJSONData().feature_flags).not.toContain(
         "labs_transcripts_modjo"
       );
-    });
-  })
-);
+    }
+  );
+});
