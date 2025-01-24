@@ -29,7 +29,7 @@ export default function HubSpotForm() {
 
     const checkSignalsInterval = setInterval(() => {
       if (window.signals) {
-        console.log("Signals detected");
+        console.log("✅ Signals detected");
         setSignalsReady(true);
         clearInterval(checkSignalsInterval);
       }
@@ -38,86 +38,101 @@ export default function HubSpotForm() {
     return () => clearInterval(checkSignalsInterval);
   }, []);
 
+  // Set up message listener for form submission
+  useEffect(() => {
+    console.log("Setting up form submission listener");
+
+    const handleFormSubmission = (event: MessageEvent) => {
+      console.log("Form submission event:", event);
+      if (
+        event.data.type === "hsFormCallback" &&
+        event.data.eventName === "onFormSubmitted"
+      ) {
+        console.log("🎉 HubSpot form submitted via event!", event.data);
+
+        // Push to dataLayer
+        window.dataLayer = window.dataLayer || [];
+        window.dataLayer.push({
+          event: "hubspot-form-success",
+          "hs-form-guid": event.data.id,
+        });
+        console.log("📊 Pushed to dataLayer");
+
+        // Extract email from submission values
+        const email = event.data.data?.submissionValues?.email;
+
+        console.log("Form submission processing:", {
+          email,
+          signalsReady,
+          signalsAvailable: !!window.signals,
+        });
+
+        if (email && window.signals) {
+          try {
+            window.signals.identify({ email });
+            console.log("✅ Successfully identified user with email:", email);
+          } catch (error) {
+            console.error("❌ Error identifying user:", error);
+          }
+        } else {
+          console.warn("⚠️ Cannot identify user:", {
+            hasEmail: !!email,
+            hasSignals: !!window.signals,
+            signalsReady,
+          });
+        }
+      }
+    };
+
+    window.addEventListener("message", handleFormSubmission);
+
+    return () => {
+      window.removeEventListener("message", handleFormSubmission);
+    };
+  }, [signalsReady]);
+
   // Create HubSpot form
   useEffect(() => {
+    const existingScript = document.getElementById("hubspot-script");
+
     const createForm = () => {
       console.log("Creating HubSpot form...");
 
       if (window.hbspt?.forms?.create) {
-        try {
-          window.hbspt.forms.create({
-            region: "eu1",
-            portalId: "144442587",
-            formId: "31e790e5-f4d5-4c79-acc5-acd770fe8f84",
-            target: "#hubspotForm",
-            onFormSubmitted: (form) => {
-              console.log("HubSpot form submitted!", form);
-
-              // Push to dataLayer
-              window.dataLayer = window.dataLayer || [];
-              window.dataLayer.push({
-                event: "hubspot-form-success",
-                "hs-form-guid": form.guid,
-              });
-
-              // Extract email from form fields
-              const emailField = form?.data?.find(
-                (field) => field.name === "email"
-              );
-              const email = emailField?.value;
-
-              if (email && window.signals) {
-                try {
-                  window.signals.identify({ email });
-                  console.log(
-                    "✅ Successfully identified user with email:",
-                    email
-                  );
-                } catch (error) {
-                  console.error("❌ Error identifying user:", error);
-                }
-              } else {
-                console.warn("⚠️ Cannot identify user:", {
-                  hasEmail: !!email,
-                  hasSignals: !!window.signals,
-                });
-              }
-            },
-          });
-          console.log("Form creation initiated");
-        } catch (error) {
-          console.error("Error creating form:", error);
-        }
+        window.hbspt.forms.create({
+          region: "eu1",
+          portalId: "144442587",
+          formId: "31e790e5-f4d5-4c79-acc5-acd770fe8f84",
+          target: "#hubspotForm",
+          onFormSubmitted: (form) => {
+            console.log("🎉 HubSpot form submitted via callback!", form);
+          },
+        });
+        console.log("✅ Form creation initiated");
       } else {
-        console.error("HubSpot forms API not available");
+        console.error("❌ HubSpot forms API not available");
       }
     };
 
-    const loadHubSpotScript = () => {
-      const existingScript = document.getElementById("hubspot-script");
-
-      if (!existingScript) {
-        console.log("Loading HubSpot script...");
-        const script = document.createElement("script");
-        script.id = "hubspot-script";
-        script.src = "https://js-eu1.hsforms.net/forms/v2.js";
-        script.async = true;
-        script.onload = () => {
-          console.log("HubSpot script loaded");
-          createForm();
-        };
-        script.onerror = (error) => {
-          console.error("Error loading HubSpot script:", error);
-        };
-        document.body.appendChild(script);
-      } else {
-        console.log("HubSpot script already exists");
+    if (!existingScript) {
+      console.log("Loading HubSpot script...");
+      const script = document.createElement("script");
+      script.id = "hubspot-script";
+      script.src = "https://js-eu1.hsforms.net/forms/v2.js";
+      script.defer = true;
+      script.onload = () => {
+        console.log("✅ HubSpot script loaded");
         createForm();
-      }
-    };
-
-    loadHubSpotScript();
-  }, []); // Only run once on mount
+      };
+      script.onerror = (error) => {
+        console.error("❌ Error loading HubSpot script:", error);
+      };
+      document.body.appendChild(script);
+    } else {
+      console.log("HubSpot script already exists");
+      createForm();
+    }
+  }, []);
 
   return (
     <div>
