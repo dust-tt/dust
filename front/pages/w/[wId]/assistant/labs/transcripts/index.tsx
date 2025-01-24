@@ -110,7 +110,6 @@ export default function LabsTranscriptsIndex({
   subscription,
   dataSourcesViews,
   hasDefaultStorageConfiguration,
-  featureFlags,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const sendNotification = useSendNotification();
   const {
