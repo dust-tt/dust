@@ -4,6 +4,12 @@ import {
   GEMINI_1_5_PRO_LATEST_MODEL_ID,
   GEMINI_2_FLASH_PREVIEW_MODEL_ID,
   GEMINI_2_FLASH_THINKING_PREVIEW_MODEL_ID,
+  TOGETHERAI_DEEPSEEK_R1_MODEL_ID,
+  TOGETHERAI_DEEPSEEK_V3_MODEL_ID,
+  TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_ID,
+  TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_ID,
+  TOGETHERAI_QWEN_72B_INSTRUCT_MODEL_ID,
+  TOGETHERAI_QWEN_QWQ_32B_PREVIEW_MODEL_ID,
 } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -258,11 +264,14 @@ async function handler(
           return res.status(200).json({
             models: [
               // llama
-              { id: "meta-llama/Llama-3.3-70B-Instruct-Turbo" },
+              { id: TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_ID },
               // qwen
-              { id: "Qwen/Qwen2.5-Coder-32B-Instruct" },
-              { id: "Qwen/QwQ-32B-Preview" },
-              { id: "Qwen/Qwen2-72B-Instruct" },
+              { id: TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_ID },
+              { id: TOGETHERAI_QWEN_QWQ_32B_PREVIEW_MODEL_ID },
+              { id: TOGETHERAI_QWEN_72B_INSTRUCT_MODEL_ID },
+              // deepseek
+              { id: TOGETHERAI_DEEPSEEK_V3_MODEL_ID },
+              { id: TOGETHERAI_DEEPSEEK_R1_MODEL_ID },
             ],
           });
 
