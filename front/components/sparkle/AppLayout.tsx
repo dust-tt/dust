@@ -4,14 +4,6 @@ import type { NextRouter } from "next/router";
 import Script from "next/script";
 import React, { useEffect, useState } from "react";
 
-declare global {
-  interface Window {
-    signals: {
-      identify: (data: { email: string; name: string }) => void;
-    };
-  }
-}
-
 import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
 import type { SidebarNavigation } from "@app/components/navigation/config";
 import { Navigation } from "@app/components/navigation/Navigation";
