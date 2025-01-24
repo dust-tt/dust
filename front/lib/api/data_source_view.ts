@@ -407,6 +407,7 @@ export async function getContentNodesForDataSourceView(
     dataSourceId: dataSourceView.dataSource.sId,
     dataSourceViewId: dataSourceView.sId,
     provider: dataSourceView.dataSource.connectorProvider,
+    viewType: params.viewType,
   });
 
   // shadow read from core
