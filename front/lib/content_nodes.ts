@@ -36,7 +36,7 @@ export function getVisualForContentNode(
   if (useMimeType) {
     return getVisualForContentNodeBasedOnMimeType(node);
   } else {
-    return getVisualForContentNodeBaseOnType(node);
+    return getVisualForContentNodeBasedOnType(node);
   }
 }
 
