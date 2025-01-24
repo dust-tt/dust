@@ -269,7 +269,10 @@ DataTable.Root = function DataTableRoot({
   ...props
 }: DataTableRootProps) {
   return (
-    <div className={cn("s-@container", containerClassName)} {...containerProps}>
+    <div
+      className={cn("s-@container/table", containerClassName)}
+      {...containerProps}
+    >
       <table
         className={cn("s-w-full s-table-fixed s-border-collapse", className)}
         {...props}
