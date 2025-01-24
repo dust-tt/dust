@@ -15,6 +15,7 @@ import {
   computeNodesDiff,
   getContentNodeInternalIdFromTableId,
   getContentNodeMetadata,
+  NON_EXPANDABLE_NODES_MIME_TYPES,
 } from "@app/lib/api/content_nodes";
 import type { OffsetPaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
@@ -225,7 +226,9 @@ async function getContentNodesForDataSourceViewFromCore(
         providerVisibility: node.provider_visibility,
         parentInternalIds: node.parents,
         type,
-        expandable: node.has_children,
+        expandable:
+          !NON_EXPANDABLE_NODES_MIME_TYPES.includes(node.mime_type) &&
+          node.has_children,
       };
     }),
     total: coreRes.value.nodes.length,
