@@ -18,6 +18,9 @@ const CHANNEL_MIME_TYPES = [
 // Mime types that should be represented with a Database icon but are not of type "table".
 const DATABASE_MIME_TYPES = [MIME_TYPES.GITHUB.ISSUES] as readonly string[];
 
+// Mime types that should be represented with a File icon but are not of type "document".
+const FILE_MIME_TYPES = [MIME_TYPES.WEBCRAWLER.FOLDER] as readonly string[];
+
 function getVisualForFileContentNode(node: ContentNode & { type: "file" }) {
   if (node.expandable) {
     return DocumentPileIcon;
@@ -71,6 +74,11 @@ function getVisualForContentNodeBasedOnMimeType(node: ContentNode) {
     }
     if (DATABASE_MIME_TYPES.includes(node.mimeType)) {
       return Square3Stack3DIcon;
+    }
+    if (FILE_MIME_TYPES.includes(node.mimeType)) {
+      return getVisualForFileContentNode(
+        node as ContentNode & { type: "file" }
+      );
     }
   }
   switch (node.type) {
