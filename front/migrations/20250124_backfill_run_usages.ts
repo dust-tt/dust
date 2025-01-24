@@ -20,7 +20,7 @@ async function backfillRunUsages(
   logger.info({ workspaceId: workspace.sId }, "Starting table backfill");
 
   for (;;) {
-    const records = await RunUsageModel.findAll({
+    const records: RunUsageModel[] = await RunUsageModel.findAll({
       // @ts-expect-error workspaceId is not nullable in Model definition.
       where: {
         id: { [Op.gt]: lastSeenId },
