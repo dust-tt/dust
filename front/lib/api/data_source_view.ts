@@ -1,5 +1,6 @@
 import type {
   ContentNodesViewType,
+  CoreAPIContentNode,
   CoreAPIDatasourceViewFilter,
   CoreAPIError,
   DataSourceViewContentNode,
@@ -7,7 +8,14 @@ import type {
   PatchDataSourceViewType,
   Result,
 } from "@dust-tt/types";
-import { ConnectorsAPI, CoreAPI, Err, Ok, removeNulls } from "@dust-tt/types";
+import {
+  assertNever,
+  ConnectorsAPI,
+  CoreAPI,
+  Err,
+  Ok,
+  removeNulls,
+} from "@dust-tt/types";
 import assert from "assert";
 
 import config from "@app/lib/api/config";
@@ -157,6 +165,22 @@ async function getContentNodesForManagedDataSourceView(
   }
 }
 
+function filterNodesByViewType(
+  nodes: CoreAPIContentNode[],
+  viewType: ContentNodesViewType
+) {
+  switch (viewType) {
+    case "documents":
+      return nodes;
+    case "tables":
+      return nodes.filter(
+        (node) => node.has_children || node.node_type === "Table"
+      );
+    default:
+      assertNever(viewType);
+  }
+}
+
 function makeCoreDataSourceViewFilter(
   dataSourceView: DataSourceViewResource | DataSourceViewType
 ): CoreAPIDatasourceViewFilter {
@@ -213,8 +237,10 @@ async function getContentNodesForDataSourceViewFromCore(
     return new Err(new Error(coreRes.error.message));
   }
 
+  const filteredNodes = filterNodesByViewType(coreRes.value.nodes, viewType);
+
   return new Ok({
-    nodes: coreRes.value.nodes.map((node) => {
+    nodes: filteredNodes.map((node) => {
       const { type } = getContentNodeMetadata(node, viewType);
       return {
         internalId: node.node_id,
