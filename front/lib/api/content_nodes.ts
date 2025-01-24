@@ -87,6 +87,11 @@ export function computeNodesDiff({
               return false;
             }
             const coreValue = coreNode[key as keyof DataSourceViewContentNode];
+            // Special case for expandable: if the core node is not expandable and the connectors one is, it means
+            // that the difference comes from the fact that the node has no children: we omit from the log.
+            if (key === "expandable" && value === true && coreValue === false) {
+              return false;
+            }
             if (Array.isArray(value) && Array.isArray(coreValue)) {
               return JSON.stringify(value) !== JSON.stringify(coreValue);
             }
