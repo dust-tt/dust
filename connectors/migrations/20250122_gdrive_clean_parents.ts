@@ -171,7 +171,7 @@ async function processFilesBatch({
       }
       return 1;
     },
-    { concurrency: 32 }
+    { concurrency: 4 }
   );
   return result.reduce((acc, curr) => acc + curr, 0);
 }
@@ -207,16 +207,23 @@ async function processSheetsBatch({
         return 0;
       }
       if (execute) {
-        await updateDataSourceTableParents({
-          dataSourceConfig,
-          tableId: getGoogleSheetTableId(sheet.driveFileId, sheet.driveSheetId),
-          parents,
-          parentId: parents[1] || null,
-        });
+        try {
+          await updateDataSourceTableParents({
+            dataSourceConfig,
+            tableId: getGoogleSheetTableId(
+              sheet.driveFileId,
+              sheet.driveSheetId
+            ),
+            parents,
+            parentId: parents[1] || null,
+          });
+        } catch (e) {
+          logger.error({ error: e }, "Sheet backfill issue");
+        }
       }
       return 1;
     },
-    { concurrency: 32 }
+    { concurrency: 4 }
   );
   return result.reduce((acc, curr) => acc + curr, 0);
 }
