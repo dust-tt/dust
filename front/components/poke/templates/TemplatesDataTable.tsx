@@ -97,6 +97,14 @@ export function TemplatesDataTable() {
       <div className="flex w-full items-center justify-between gap-3">
         <h2 className="text-md flex-grow pb-4 font-bold">Templates:</h2>
         <PokeButton
+          aria-label="Pull templates"
+          variant="outline"
+          size="sm"
+          asChild
+        >
+          <Link href="/poke/templates/new">Pull templates</Link>
+        </PokeButton>
+        <PokeButton
           aria-label="Create template"
           variant="outline"
           size="sm"

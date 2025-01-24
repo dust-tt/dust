@@ -51,7 +51,7 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { getTemporalConnectorsNamespaceConnection } from "@app/lib/temporal";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
-import { useDocuments, useTables } from "@app/poke/swr";
+import { usePokeDocuments, usePokeTables } from "@app/poke/swr";
 
 const { TEMPORAL_CONNECTORS_NAMESPACE = "" } = process.env;
 
@@ -318,9 +318,9 @@ const DataSourcePage = ({
     total: totalDocuments,
     isDocumentsLoading,
     isDocumentsError,
-  } = useDocuments(owner, dataSource, limit, offsetDocument);
+  } = usePokeDocuments(owner, dataSource, limit, offsetDocument);
 
-  const { tables, total: totalTables } = useTables(
+  const { tables, total: totalTables } = usePokeTables(
     owner,
     dataSource,
     limit,

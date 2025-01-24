@@ -53,7 +53,7 @@ export function usePokeAssistantTemplate({
   };
 }
 
-export function useConversation({
+export function usePokeConversation({
   workspaceId,
   conversationId,
 }: {
@@ -78,7 +78,7 @@ export function useConversation({
   };
 }
 
-export function useDocuments(
+export function usePokeDocuments(
   owner: LightWorkspaceType,
   dataSource: DataSourceType,
   limit: number,
@@ -99,7 +99,7 @@ export function useDocuments(
   };
 }
 
-export function useTables(
+export function usePokeTables(
   owner: LightWorkspaceType,
   dataSource: DataSourceType,
   limit: number,
