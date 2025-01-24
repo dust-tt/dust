@@ -5,6 +5,7 @@ import type {
 import {
   getGroupIdsFromHeaders,
   getUserEmailFromHeaders,
+  isString,
 } from "@dust-tt/types";
 import type { TokenExpiredError } from "jsonwebtoken";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -16,6 +17,7 @@ import {
   verifyAuth0Token,
 } from "@app/lib/api/auth0";
 import { getUserWithWorkspaces } from "@app/lib/api/user";
+import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import {
   Authenticator,
   getAPIKey,
@@ -189,6 +191,19 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
           api_error: {
             type: "workspace_not_found",
             message: "The workspace was not found.",
+          },
+        });
+      }
+
+      const workspace = await getWorkspaceInfos(wId);
+      const maintenance = workspace?.metadata?.maintenance;
+
+      if (maintenance) {
+        return apiError(req, res, {
+          status_code: 503,
+          api_error: {
+            type: "not_authenticated", // TODO Change this to "service_unavailable" - not_authenticated better for now as itis correctly handled by the extension
+            message: `Service is currently unavailable. [${maintenance}]`,
           },
         });
       }

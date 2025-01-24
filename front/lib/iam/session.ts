@@ -1,4 +1,5 @@
 import type { UserTypeWithWorkspaces } from "@dust-tt/types";
+import { isString } from "@dust-tt/types";
 import type {
   GetServerSidePropsContext,
   GetServerSidePropsResult,
@@ -7,6 +8,7 @@ import type {
 import type { ParsedUrlQuery } from "querystring";
 
 import { getUserWithWorkspaces } from "@app/lib/api/user";
+import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { isEnterpriseConnection } from "@app/lib/iam/enterprise";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -133,16 +135,15 @@ export function makeGetServerSidePropsRequirementsWrapper<
         requireUserPrivilege
       );
 
-      const workspace = auth?.workspace();
+      const { wId } = context.params ?? {};
+      const workspace = isString(wId) ? await getWorkspaceInfos(wId) : null;
+      const maintenance = workspace?.metadata?.maintenance;
 
-      if (
-        workspace?.metadata?.maintenance &&
-        workspace?.metadata?.maintenance !== "none"
-      ) {
+      if (maintenance) {
         return {
           redirect: {
             permanent: false,
-            destination: `/maintenance?workspace=${workspace.sId}&code=${workspace.metadata.maintenance}`,
+            destination: `/maintenance?workspace=${workspace.sId}&code=${maintenance}`,
           },
         };
       }
