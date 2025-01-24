@@ -47,7 +47,7 @@ services:
     ports:
       - 6379:6379
   apache-tika:
-    image: apache/tika:2.9.2.1
+    image: apache/tika:2.9.2.1-full
     ports:
       - "9998:9998"
   elasticsearch:
