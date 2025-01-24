@@ -12,6 +12,8 @@ import type logger from "@app/logger/logger";
 
 export const NON_EXPANDABLE_NODES_MIME_TYPES = [
   MIME_TYPES.SLACK.CHANNEL,
+  MIME_TYPES.GITHUB.DISCUSSIONS,
+  MIME_TYPES.GITHUB.ISSUES,
 ] as readonly string[];
 
 export function getContentNodeInternalIdFromTableId(
