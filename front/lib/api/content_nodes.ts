@@ -100,6 +100,14 @@ export function computeNodesDiff({
             if (key === "sourceUrl" && value === null && coreValue !== null) {
               return false;
             }
+            // Special case for the titles of Webcrawler folders: we add a trailing slash in core but not in connectors.
+            if (
+              key === "title" &&
+              provider === "webcrawler" &&
+              coreValue === `${value}/`
+            ) {
+              return false;
+            }
             // Special case for expandable: if the core node is not expandable and the connectors one is, it means
             // that the difference comes from the fact that the node has no children: we omit from the log.
             if (key === "expandable" && value === true && coreValue === false) {
