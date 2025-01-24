@@ -62,13 +62,22 @@ export default function AppLayout({
 
   useEffect(() => {
     if (typeof window !== "undefined" && user?.sId) {
+      // Identify the user with GTM
       window.dataLayer = window.dataLayer || [];
       window.dataLayer.push({
         userId: user.sId,
         event: "userIdentified",
       });
+
+      // Identify the user with Common Room
+      if (window.signals) {
+        window.signals.identify({
+          email: user.email,
+          name: user.fullName,
+        });
+      }
     }
-  }, [user?.sId]);
+  }, [user?.email, user?.fullName, user?.sId]);
 
   return (
     <>
