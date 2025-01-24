@@ -70,17 +70,13 @@ export default function AppLayout({
       });
 
       // Identify the user with Common Room
-      const checkSignals = () => {
-        if (window.signals) {
-          window.signals.identify({
-            email: user.email,
-            name: user.fullName,
-          });
-          clearInterval(interval);
-        }
-      };
-      const interval = setInterval(checkSignals, 100);
-      checkSignals();
+      if (window.signals) {
+        window.signals.identify({
+          email: user.email,
+          name: user.fullName,
+        });
+        console.log("identified with Common Room");
+      }
     }
   }, [user?.email, user?.fullName, user?.sId]);
 
