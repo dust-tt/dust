@@ -15,7 +15,6 @@ import config from "@app/lib/api/config";
 import type { RegionType } from "@app/lib/api/regions/config";
 import { config as multiRegionsConfig } from "@app/lib/api/regions/config";
 import { checkUserRegionAffinity } from "@app/lib/api/regions/lookup";
-import { getRegionFromRequest } from "@app/lib/api/regions/utils";
 import { isEmailValid } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/withlogging";
@@ -50,7 +49,7 @@ const afterCallback: AfterCallbackPageRoute = async (
       targetRegion = regionWithAffinityRes.value.region;
     } else {
       // No region affinity found - keep user in their originally accessed region (from URL).
-      targetRegion = getRegionFromRequest(req);
+      targetRegion = multiRegionsConfig.getCurrentRegion();
     }
 
     // Update Auth0 metadata only once when not set.
@@ -64,9 +63,6 @@ const afterCallback: AfterCallbackPageRoute = async (
     const targetRegionInfo = multiRegionsConfig.getOtherRegionInfo();
 
     const params = new URLSearchParams();
-
-    // Add the silent auth params.
-    params.set("prompt", "none");
 
     // Extract just the path from the full returnTo URL.
     if (state?.returnTo) {
@@ -105,7 +101,7 @@ export default handleAuth({
     // req.query is defined on NextApiRequest (page-router), but not on NextRequest (app-router).
     const query = ("query" in req ? req.query : {}) as Partial<AuthQuery>;
 
-    const { connection, screen_hint, login_hint, prompt = "login" } = query;
+    const { connection, screen_hint, login_hint, prompt } = query;
 
     const defaultAuthorizationParams: Partial<
       LoginOptions["authorizationParams"]

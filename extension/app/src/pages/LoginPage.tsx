@@ -75,7 +75,7 @@ export const LoginPage = () => {
                   label="Sign up"
                   onClick={() => {
                     window.open(
-                      "https://dust.tt/api/auth/login?returnTo=/api/login&screen_hint=signup",
+                      "https://dust.tt/api/auth/login?returnTo=/api/login&prompt=login&screen_hint=signup",
                       "_blank"
                     );
                   }}

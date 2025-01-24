@@ -230,3 +230,39 @@ export async function getUserFromAuth0Token(
 ): Promise<UserResource | null> {
   return UserResource.fetchByAuth0Sub(accessToken.sub);
 }
+
+export async function getAuth0UsersFromEmail(emails: string[]) {
+  const emailQueries = emails.map(
+    (email) => `email:"${email.replace(/([+\-&|!(){}[\]^"~*?:\\/])/g, "\\$1")}"`
+  );
+
+  // URL length limit is 2048 characters, keep some margin for base URL and encoded characters.
+  const chunkSize = 1900;
+  const emailRequestChunks: string[] = [];
+  let currentChunk = "";
+
+  for (const query of emailQueries) {
+    const separator = currentChunk ? " OR " : "";
+    if ((currentChunk + separator + query).length > chunkSize) {
+      emailRequestChunks.push(currentChunk);
+      currentChunk = query;
+    } else {
+      currentChunk = currentChunk + separator + query;
+    }
+  }
+  if (currentChunk) {
+    emailRequestChunks.push(currentChunk);
+  }
+
+  const auth0Users = [];
+  for (const chunk of emailRequestChunks) {
+    const res = await getAuth0ManagemementClient().users.getAll({
+      q: chunk,
+    });
+    if (res.data) {
+      auth0Users.push(...res.data);
+    }
+  }
+
+  return auth0Users;
+}
