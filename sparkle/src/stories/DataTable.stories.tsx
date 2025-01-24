@@ -165,7 +165,7 @@ const columns: ColumnDef<Data>[] = [
   {
     accessorKey: "usedBy",
     meta: {
-      className: "s-w-[82px]",
+      className: "s-w-[82px] s-hidden @xs:s-table-cell",
     },
     header: "Used by",
     cell: (info) => (
@@ -190,7 +190,7 @@ const columns: ColumnDef<Data>[] = [
     accessorKey: "lastUpdated",
     header: "Last updated",
     meta: {
-      className: "s-w-[128px]",
+      className: "s-w-[128px] s-hidden @sm:s-table-cell",
     },
     cell: (info) => (
       <DataTable.BasicCellContent label={info.row.original.lastUpdated} />
@@ -201,7 +201,7 @@ const columns: ColumnDef<Data>[] = [
     accessorKey: "size",
     header: "Size",
     meta: {
-      className: "s-w-[48px]",
+      className: "s-w-[48px] s-hidden @sm:s-table-cell",
     },
     cell: (info) => (
       <DataTable.BasicCellContent label={info.row.original.size} />
@@ -253,12 +253,14 @@ export const DataTableExample = () => {
         value={filter}
         onChange={(e) => setFilter(e.target.value)}
       />
-      <DataTable
-        data={tableData}
-        filter={filter}
-        filterColumn="name"
-        columns={columns}
-      />
+      <div className="">
+        <DataTable
+          data={tableData}
+          filter={filter}
+          filterColumn="name"
+          columns={columns}
+        />
+      </div>
       <Dialog open={dialogOpen} onOpenChange={(open) => setDialogOpen(open)}>
         <DialogContent
           onOpenAutoFocus={(e) => e.preventDefault()}

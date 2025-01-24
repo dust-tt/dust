@@ -384,6 +384,33 @@ const DropdownMenuSearchbar = React.forwardRef<
 
 DropdownMenuSearchbar.displayName = "DropdownMenuSearchbar";
 
+interface DropdownMenuStaticItemProps {
+  label: string;
+  value?: string;
+  children?: React.ReactNode;
+  className?: string;
+}
+
+const DropdownMenuStaticItem = React.forwardRef<
+  HTMLDivElement,
+  DropdownMenuStaticItemProps
+>(({ label, value, children, className }, ref) => (
+  <div
+    ref={ref}
+    className={cn(
+      "s-flex s-h-9 s-items-center s-gap-2 s-px-2 s-text-sm s-text-foreground",
+      className
+    )}
+  >
+    <span className="s-grow s-font-medium">{label}</span>
+    {value && (
+      <span className="s-shrink-0 s-text-muted-foreground">{value}</span>
+    )}
+    {children && <div className="s-shrink-0">{children}</div>}
+  </div>
+));
+DropdownMenuStaticItem.displayName = "DropdownMenuStaticItem";
+
 export {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -397,6 +424,7 @@ export {
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuShortcut,
+  DropdownMenuStaticItem,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,

@@ -14,6 +14,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
+  DropdownMenuStaticItem,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
@@ -33,6 +34,9 @@ import {
   ChatBubbleBottomCenterPlusIcon,
   CloudArrowDownIcon,
   Cog6ToothIcon,
+  HandThumbDownIcon,
+  HandThumbUpIcon,
+  Icon,
   LogoutIcon,
   MagicIcon,
   ScrollArea,
@@ -56,6 +60,7 @@ export const DropdownExamples = () => (
     <div>{ModelsDropdownDemo()}</div>
     <div>{ModelsDropdownRadioGroupDemo()}</div>
     <div>{DropdownMenuSearchbarDemo()}</div>
+    <div>{StaticItemDropdownDemo()}</div>
   </div>
 );
 
@@ -358,6 +363,49 @@ function DropdownMenuSearchbarDemo() {
             />
           ))}
         </ScrollArea>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function StaticItemDropdownDemo() {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button label="System Status" variant="outline" size="sm" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="s-w-[250px]">
+        <DropdownMenuLabel label="System Metrics" />
+        <DropdownMenuStaticItem label="CPU Usage" value="45%" />
+        <DropdownMenuStaticItem label="Memory" value="2.3GB/8GB" />
+        <DropdownMenuStaticItem label="Disk Space">
+          <span className="s-flex s-items-center s-gap-2 s-text-muted-foreground">
+            3
+            <Icon
+              size="xs"
+              className="s-text-muted-foreground"
+              visual={HandThumbUpIcon}
+            />
+            1
+            <Icon
+              size="xs"
+              className="s-text-muted-foreground"
+              visual={HandThumbDownIcon}
+            />
+          </span>
+        </DropdownMenuStaticItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel label="Actions" />
+        <DropdownMenuItem
+          icon={Cog6ToothIcon}
+          label="System Settings"
+          onClick={() => console.log("Settings clicked")}
+        />
+        <DropdownMenuItem
+          icon={CloudArrowDownIcon}
+          label="Download Report"
+          onClick={() => console.log("Download clicked")}
+        />
       </DropdownMenuContent>
     </DropdownMenu>
   );

@@ -91,6 +91,7 @@ const Chip = React.forwardRef<HTMLDivElement, ChipProps>(
       aria-label={label}
       ref={ref}
     >
+      {children}
       {icon && <Icon visual={icon} size={size as IconProps["size"]} />}
       {label && (
         <span className={cn("s-pointer s-grow s-cursor-default s-truncate")}>
@@ -101,7 +102,6 @@ const Chip = React.forwardRef<HTMLDivElement, ChipProps>(
           )}
         </span>
       )}
-      {children}
     </div>
   )
 );
