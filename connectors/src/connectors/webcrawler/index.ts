@@ -209,7 +209,7 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
                 })
               : null,
             title: getDisplayNameForFolder(folder),
-            sourceUrl: null,
+            sourceUrl: folder.url,
             expandable: true,
             permission: "read",
             type: "folder",

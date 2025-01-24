@@ -50,15 +50,13 @@ export function computeNodesDiff({
   provider: ConnectorProvider | null;
   localLogger: typeof logger;
 }) {
+  const missingInternalIds: string[] = [];
   connectorsContentNodes.forEach((connectorsNode) => {
     const coreNodes = coreContentNodes.filter(
       (coreNode) => coreNode.internalId === connectorsNode.internalId
     );
     if (coreNodes.length === 0) {
-      localLogger.info(
-        { internalId: connectorsNode.internalId },
-        "[CoreNodes] No core content node matching this internal ID"
-      );
+      missingInternalIds.push(connectorsNode.internalId);
     } else if (coreNodes.length > 1) {
       // this one should never ever happen, it's a real red flag
       localLogger.info(
@@ -87,6 +85,31 @@ export function computeNodesDiff({
               return false;
             }
             const coreValue = coreNode[key as keyof DataSourceViewContentNode];
+            // Special case for expandable: if the core node is not expandable and the connectors one is, it means
+            // that the difference comes from the fact that the node has no children: we omit from the log.
+            if (key === "expandable" && value === true && coreValue === false) {
+              return false;
+            }
+            // Special case for Slack's providerVisibility: we only check if providerVisibility === "private" so
+            // having a falsy value in core and "public" in connectors is the same.
+            if (
+              key === "providerVisibility" &&
+              provider === "slack" &&
+              value === "public" &&
+              !coreValue
+            ) {
+              return false;
+            }
+            // Special case for Slack's permission:
+            // connectors uses "read_write" for selected nodes whereas we always set it to "read" for nodes from core.
+            if (
+              key === "permission" &&
+              provider === "slack" &&
+              value === "read_write" &&
+              coreValue === "read"
+            ) {
+              return false;
+            }
             if (Array.isArray(value) && Array.isArray(coreValue)) {
               return JSON.stringify(value) !== JSON.stringify(coreValue);
             }
@@ -112,6 +135,12 @@ export function computeNodesDiff({
       }
     }
   });
+  if (missingInternalIds.length > 0) {
+    localLogger.info(
+      { missingInternalIds },
+      "[CoreNodes] Missing nodes from core"
+    );
+  }
   const extraCoreInternalIds = coreContentNodes
     .filter(
       (coreNode) =>
