@@ -133,6 +133,20 @@ export function makeGetServerSidePropsRequirementsWrapper<
         requireUserPrivilege
       );
 
+      const workspace = auth?.workspace();
+
+      if (
+        workspace?.metadata?.maintenance &&
+        workspace?.metadata?.maintenance !== "none"
+      ) {
+        return {
+          redirect: {
+            permanent: false,
+            destination: `/maintenance?workspace=${workspace.sId}&code=${workspace.metadata.maintenance}`,
+          },
+        };
+      }
+
       if (
         requireCanUseProduct &&
         !auth?.subscription()?.plan.limits.canUseProduct
@@ -174,11 +188,7 @@ export function makeGetServerSidePropsRequirementsWrapper<
         }
 
         // If we target a workspace and the user is not in the workspace, return not found.
-        if (
-          !allowUserOutsideCurrentWorkspace &&
-          auth?.workspace() &&
-          !auth?.isUser()
-        ) {
+        if (!allowUserOutsideCurrentWorkspace && workspace && !auth?.isUser()) {
           return {
             notFound: true,
           };

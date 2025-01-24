@@ -37,15 +37,7 @@ export async function getWorkspaceInfos(
     return null;
   }
 
-  return {
-    id: workspace.id,
-    sId: workspace.sId,
-    name: workspace.name,
-    role: "none",
-    segmentation: workspace.segmentation,
-    whiteListedProviders: workspace.whiteListedProviders,
-    defaultEmbeddingProvider: workspace.defaultEmbeddingProvider,
-  };
+  return renderLightWorkspaceType({ workspace });
 }
 
 export async function getWorkspaceVerifiedDomain(
@@ -110,15 +102,8 @@ export async function setInternalWorkspaceSegmentation(
   await workspace.update({
     segmentation,
   });
-  return {
-    id: workspace.id,
-    sId: workspace.sId,
-    name: workspace.name,
-    role: "none",
-    segmentation: workspace.segmentation,
-    whiteListedProviders: workspace.whiteListedProviders,
-    defaultEmbeddingProvider: workspace.defaultEmbeddingProvider,
-  };
+
+  return renderLightWorkspaceType({ workspace });
 }
 
 /**
@@ -378,6 +363,28 @@ export async function disableSSOEnforcement(
 
   if (affectedCount === 0) {
     return new Err(new Error("SSO enforcement is already disabled."));
+  }
+
+  return new Ok(undefined);
+}
+
+export async function updateMetadata(
+  owner: LightWorkspaceType,
+  metadata: Record<string, boolean | string | number | object>
+): Promise<Result<void, Error>> {
+  const previousMetadata = owner.metadata || {};
+  const newMetadata = { ...previousMetadata, ...metadata };
+  const [affectedCount] = await Workspace.update(
+    { metadata: newMetadata },
+    {
+      where: {
+        id: owner.id,
+      },
+    }
+  );
+
+  if (affectedCount === 0) {
+    return new Err(new Error("Workspace not found."));
   }
 
   return new Ok(undefined);

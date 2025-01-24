@@ -685,6 +685,7 @@ export class Authenticator {
           ssoEnforced: this._workspace.ssoEnforced,
           whiteListedProviders: this._workspace.whiteListedProviders,
           defaultEmbeddingProvider: this._workspace.defaultEmbeddingProvider,
+          metadata: this._workspace.metadata,
         }
       : null;
   }
