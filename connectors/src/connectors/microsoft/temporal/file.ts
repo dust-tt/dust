@@ -461,6 +461,10 @@ export async function deleteFile({
     file.mimeType === "text/csv"
   ) {
     await deleteAllSheets(dataSourceConfig, file);
+    await deleteDataSourceFolder({
+      dataSourceConfig,
+      folderId: file.internalId,
+    });
   } else {
     await deleteDataSourceDocument(dataSourceConfig, internalId);
   }
