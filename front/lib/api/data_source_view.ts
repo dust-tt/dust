@@ -22,7 +22,7 @@ import config from "@app/lib/api/config";
 import {
   computeNodesDiff,
   getContentNodeInternalIdFromTableId,
-  getContentNodeMetadata,
+  getContentNodeType,
   NON_EXPANDABLE_NODES_MIME_TYPES,
 } from "@app/lib/api/content_nodes";
 import type { OffsetPaginationParams } from "@app/lib/api/pagination";
@@ -241,7 +241,7 @@ async function getContentNodesForDataSourceViewFromCore(
 
   return new Ok({
     nodes: filteredNodes.map((node) => {
-      const { type } = getContentNodeMetadata(node);
+      const type = getContentNodeType(node);
       return {
         internalId: node.node_id,
         parentInternalId: node.parent_id ?? null,

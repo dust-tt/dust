@@ -187,18 +187,16 @@ export function computeNodesDiff({
   }
 }
 
-export function getContentNodeMetadata(node: CoreAPIContentNode): {
-  type: ContentNodeType;
-} {
+export function getContentNodeType(node: CoreAPIContentNode): ContentNodeType {
   // this is approximate and will be cleaned up when we turn ContentNodeType into the same nodeType as in core
   // the main point is that it correctly identifies documents as files as this is used in ContentNodeTree
   switch (node.node_type) {
     case "Table":
-      return { type: "database" };
+      return "database";
     case "Folder":
-      return { type: "folder" };
+      return "folder";
     case "Document":
-      return { type: "file" };
+      return "file";
     default:
       assertNever(node.node_type);
   }
