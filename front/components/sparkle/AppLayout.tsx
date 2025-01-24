@@ -75,7 +75,6 @@ export default function AppLayout({
           email: user.email,
           name: user.fullName,
         });
-        console.log("identified with Common Room");
       }
     }
   }, [user?.email, user?.fullName, user?.sId]);
