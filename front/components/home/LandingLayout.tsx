@@ -115,7 +115,7 @@ export default function LandingLayout({
               label="Sign in"
               icon={LoginIcon}
               onClick={() => {
-                window.location.href = `/api/auth/login?returnTo=${postLoginReturnToUrl}`;
+                window.location.href = `/api/auth/login?prompt=login&returnTo=${postLoginReturnToUrl}`;
               }}
             />
           </div>
