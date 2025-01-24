@@ -5,7 +5,6 @@ import {
   GlobeAltIcon,
   GoogleLogo,
   IntercomLogo,
-  Modal,
   NotionLogo,
   Page,
   Sheet,
@@ -22,7 +21,6 @@ import { Separator } from "@radix-ui/react-select";
 import { format } from "date-fns/format";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { useState } from "react";
 
 import { PokeButton } from "@app/components/poke/shadcn/ui/button";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
@@ -98,16 +96,8 @@ export function ActiveSubscriptionTable({
 }) {
   const activePlan = subscription.plan;
 
-  const [showHistoryModal, setShowHistoryModal] = useState(false);
-
   return (
     <>
-      <SubscriptionsHistoryModal
-        owner={owner}
-        subscriptions={subscriptions}
-        show={showHistoryModal}
-        onClose={() => setShowHistoryModal(false)}
-      />
       <div className="flex flex-col">
         <div className="flex justify-between gap-3">
           <div className="border-material-200 flex flex-grow flex-col rounded-lg border p-4">
@@ -115,14 +105,10 @@ export function ActiveSubscriptionTable({
               <h2 className="text-md flex-grow pb-4 font-bold">
                 Active Subscription:
               </h2>
-              <PokeButton
-                aria-label="History"
-                variant="outline"
-                size="sm"
-                onClick={() => setShowHistoryModal(true)}
-              >
-                🕰️ History
-              </PokeButton>
+              <SubscriptionsHistoryModal
+                owner={owner}
+                subscriptions={subscriptions}
+              />
               <UpgradeDowngradeModal
                 owner={owner}
                 subscription={subscription}
@@ -357,7 +343,7 @@ function UpgradeDowngradeModal({
 
   return (
     <Sheet>
-      <SheetTrigger>
+      <SheetTrigger asChild>
         <Button label="🔥 Upgrade / Downgrade" variant="outline" />
       </SheetTrigger>
       <SheetContent size="xl">
@@ -443,25 +429,25 @@ function UpgradeDowngradeModal({
 }
 
 function SubscriptionsHistoryModal({
-  show,
-  onClose,
   owner,
   subscriptions,
 }: {
-  show: boolean;
-  onClose: () => void;
   owner: WorkspaceType;
   subscriptions: SubscriptionType[];
 }) {
   return (
-    <Modal
-      isOpen={show}
-      onClose={onClose}
-      hasChanged={false}
-      title="Workspace subscriptions history"
-      variant="full-screen"
-    >
-      <SubscriptionsDataTable owner={owner} subscriptions={subscriptions} />
-    </Modal>
+    <Sheet>
+      <SheetTrigger asChild>
+        <Button label="🕰️ History" variant="outline" />
+      </SheetTrigger>
+      <SheetContent size="xl">
+        <SheetHeader>
+          <SheetTitle>Workspace subscriptions history</SheetTitle>
+        </SheetHeader>
+        <SheetContainer>
+          <SubscriptionsDataTable owner={owner} subscriptions={subscriptions} />
+        </SheetContainer>
+      </SheetContent>
+    </Sheet>
   );
 }
