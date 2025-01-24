@@ -83,7 +83,10 @@ async function backfillTablesForWorkspace(
     "Starting workspace backfill"
   );
 
-  const updated = await backfillAgentMessageContent(workspace, { execute, logger });
+  const updated = await backfillAgentMessageContent(workspace, {
+    execute,
+    logger,
+  });
 
   logger.info(
     { workspaceId: workspace.sId, updated },
