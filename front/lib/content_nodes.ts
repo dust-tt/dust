@@ -15,27 +15,8 @@ const CHANNEL_MIME_TYPES = [
   MIME_TYPES.SLACK.CHANNEL,
 ] as readonly string[];
 
-// Mime types that should be represented with a Database icon.
-const DATABASE_MIME_TYPES = [
-  MIME_TYPES.GITHUB.ISSUES,
-  MIME_TYPES.SNOWFLAKE.TABLE,
-] as readonly string[];
-
-// Mime types that should be represented with a Folder icon.
-const FOLDER_MIME_TYPES = [
-  MIME_TYPES.CONFLUENCE.SPACE,
-  MIME_TYPES.GOOGLE_DRIVE.FOLDER,
-  MIME_TYPES.INTERCOM.TEAM,
-  MIME_TYPES.MICROSOFT.FOLDER,
-  MIME_TYPES.NOTION.UNKNOWN_FOLDER,
-  MIME_TYPES.SNOWFLAKE.DATABASE,
-  MIME_TYPES.SNOWFLAKE.SCHEMA,
-  MIME_TYPES.WEBCRAWLER.FOLDER,
-  MIME_TYPES.ZENDESK.BRAND,
-  MIME_TYPES.ZENDESK.HELP_CENTER,
-  MIME_TYPES.ZENDESK.CATEGORY,
-  MIME_TYPES.ZENDESK.TICKETS,
-] as readonly string[];
+// Mime types that should be represented with a Database icon but are not of type "table".
+const DATABASE_MIME_TYPES = [MIME_TYPES.GITHUB.ISSUES] as readonly string[];
 
 function getVisualForFileContentNode(node: ContentNode & { type: "file" }) {
   if (node.expandable) {
@@ -96,9 +77,15 @@ function getVisualForContentNodeBasedOnMimeType(node: ContentNode) {
   if (DATABASE_MIME_TYPES.includes(node.mimeType)) {
     return Square3Stack3DIcon;
   }
-  if (FOLDER_MIME_TYPES.includes(node.mimeType)) {
-    return FolderIcon;
+  switch (node.type) {
+    case "database":
+      return Square3Stack3DIcon;
+    case "folder":
+      return FolderIcon;
+    // TODO(2025-01-24 aubin) once we remove the "channel" type, change this to case "file" and add an assertNever
+    default:
+      return getVisualForFileContentNode(
+        node as ContentNode & { type: "file" }
+      );
   }
-  // TODO(2025-01-17 aubin): we have an issue here in that depending on the view type we sometimes want to render "text/csv" as databases or as files
-  return getVisualForFileContentNode(node as ContentNode & { type: "file" });
 }
