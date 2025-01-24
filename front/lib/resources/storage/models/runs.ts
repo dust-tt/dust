@@ -97,3 +97,6 @@ RunModel.hasMany(RunUsageModel, {
   foreignKey: { allowNull: false },
   onDelete: "RESTRICT",
 });
+RunUsageModel.belongsTo(RunModel, {
+  foreignKey: { allowNull: false },
+});
