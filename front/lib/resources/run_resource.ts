@@ -189,6 +189,7 @@ export class RunResource extends BaseResource<RunModel> {
     await RunUsageModel.bulkCreate(
       usages.map((usage) => ({
         runId: this.id,
+        workspaceId: this.workspaceId,
         ...usage,
       }))
     );

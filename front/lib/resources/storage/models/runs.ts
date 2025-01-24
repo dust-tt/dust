@@ -3,7 +3,6 @@ import { DataTypes } from "sequelize";
 
 import { frontSequelize } from "@app/lib/resources/storage";
 import { AppModel } from "@app/lib/resources/storage/models/apps";
-import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
 export class RunModel extends WorkspaceAwareModel<RunModel> {
@@ -58,7 +57,7 @@ RunModel.belongsTo(AppModel, {
   foreignKey: { name: "appId", allowNull: false },
 });
 
-export class RunUsageModel extends BaseModel<RunUsageModel> {
+export class RunUsageModel extends WorkspaceAwareModel<RunUsageModel> {
   declare runId: ForeignKey<RunModel["id"]>;
 
   declare providerId: string; //ModelProviderIdType;
