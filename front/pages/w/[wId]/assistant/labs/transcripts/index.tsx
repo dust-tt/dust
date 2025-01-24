@@ -705,21 +705,19 @@ export default function LabsTranscriptsIndex({
                     style={{ maxHeight: "35px" }}
                   />
                 </div>
-                {featureFlags.includes("labs_transcripts_modjo") && (
-                  <div
-                    className={`cursor-pointer rounded-md border p-4 hover:border-gray-400 ${
-                      transcriptsConfigurationState.provider == "gong"
-                        ? "border-gray-400"
-                        : "border-gray-200"
-                    }`}
-                    onClick={() => handleProviderChange("modjo")}
-                  >
-                    <img
-                      src="/static/labs/transcripts/modjo.png"
-                      style={{ maxHeight: "35px" }}
-                    />
-                  </div>
-                )}
+                <div
+                  className={`cursor-pointer rounded-md border p-4 hover:border-gray-400 ${
+                    transcriptsConfigurationState.provider == "gong"
+                      ? "border-gray-400"
+                      : "border-gray-200"
+                  }`}
+                  onClick={() => handleProviderChange("modjo")}
+                >
+                  <img
+                    src="/static/labs/transcripts/modjo.png"
+                    style={{ maxHeight: "35px" }}
+                  />
+                </div>
               </Page.Layout>
             )}
 
