@@ -50,15 +50,13 @@ export function computeNodesDiff({
   provider: ConnectorProvider | null;
   localLogger: typeof logger;
 }) {
+  const missingInternalIds: string[] = [];
   connectorsContentNodes.forEach((connectorsNode) => {
     const coreNodes = coreContentNodes.filter(
       (coreNode) => coreNode.internalId === connectorsNode.internalId
     );
     if (coreNodes.length === 0) {
-      localLogger.info(
-        { internalId: connectorsNode.internalId },
-        "[CoreNodes] No core content node matching this internal ID"
-      );
+      missingInternalIds.push(connectorsNode.internalId);
     } else if (coreNodes.length > 1) {
       // this one should never ever happen, it's a real red flag
       localLogger.info(
@@ -137,6 +135,12 @@ export function computeNodesDiff({
       }
     }
   });
+  if (missingInternalIds.length > 0) {
+    localLogger.info(
+      { missingInternalIds },
+      "[CoreNodes] Missing nodes from core"
+    );
+  }
   const extraCoreInternalIds = coreContentNodes
     .filter(
       (coreNode) =>
