@@ -102,6 +102,16 @@ export function computeNodesDiff({
             ) {
               return false;
             }
+            // Special case for Slack's permission:
+            // connectors uses "read_write" for selected nodes whereas we always set it to "read" for nodes from core.
+            if (
+              key === "permission" &&
+              provider === "slack" &&
+              value === "read_write" &&
+              coreValue === "read"
+            ) {
+              return false;
+            }
             if (Array.isArray(value) && Array.isArray(coreValue)) {
               return JSON.stringify(value) !== JSON.stringify(coreValue);
             }
