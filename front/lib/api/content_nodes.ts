@@ -92,6 +92,16 @@ export function computeNodesDiff({
             if (key === "expandable" && value === true && coreValue === false) {
               return false;
             }
+            // Special case for Slack's providerVisibility: we only check if providerVisibility === "private" so
+            // having a falsy value in core and "public" in connectors is the same.
+            if (
+              key === "providerVisibility" &&
+              provider === "slack" &&
+              value === "public" &&
+              !coreValue
+            ) {
+              return false;
+            }
             if (Array.isArray(value) && Array.isArray(coreValue)) {
               return JSON.stringify(value) !== JSON.stringify(coreValue);
             }
