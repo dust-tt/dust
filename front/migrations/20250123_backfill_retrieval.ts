@@ -1,10 +1,7 @@
 import type { LightWorkspaceType } from "@dust-tt/types";
 import { Op } from "sequelize";
 
-import {
-  RetrievalDocument,
-  RetrievalDocumentChunk,
-} from "@app/lib/models/assistant/actions/retrieval";
+import { RetrievalDocument, RetrievalDocumentChunk } from "@app/lib/models/assistant/actions/retrieval";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import type { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { Logger } from "@app/logger/logger";
@@ -28,12 +25,7 @@ const TABLES: TableConfig[] = [
         where: { workspaceId },
       },
     ],
-    attributes: [
-      "dataSourceView.workspaceId",
-      "dataSourceView.id",
-      "dataSourceViewId",
-      "dataSourceView.workspaceId",
-    ],
+    attributes: [],
   },
   {
     model: RetrievalDocumentChunk,
@@ -45,12 +37,7 @@ const TABLES: TableConfig[] = [
         where: { workspaceId },
       },
     ],
-    attributes: [
-      "retrieval_document.workspaceId",
-      "retrieval_document.id",
-      "retrievalDocumentId",
-      "workspaceId",
-    ],
+    attributes: [],
   },
 ];
 
