@@ -1,10 +1,17 @@
 import {
+  Button,
   ContentMessage,
   InformationCircleIcon,
-  Modal,
+  PlusIcon,
+  Sheet,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
   TextArea,
+  useSendNotification,
 } from "@dust-tt/sparkle";
-import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   ActiveRoleType,
   SubscriptionPerSeatPricing,
@@ -25,21 +32,17 @@ import {
 import { isEmailValid } from "@app/lib/utils";
 
 export function InviteEmailModal({
-  showModal,
-  onClose,
   owner,
   prefillText,
   perSeatPricing,
 }: {
-  showModal: boolean;
-  onClose: () => void;
   owner: WorkspaceType;
   prefillText: string;
   perSeatPricing: SubscriptionPerSeatPricing | null;
 }) {
   const [inviteEmails, setInviteEmails] = useState<string>("");
-  const [isSending, setIsSending] = useState(false);
   const [emailError, setEmailError] = useState("");
+  const [open, setOpen] = useState(false);
 
   const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
@@ -51,7 +54,6 @@ export function InviteEmailModal({
       .split(/[\n,]+/)
       .map((e) => e.trim())
       .filter((e) => e !== "")
-      // remove duplicates
       .filter((e, i, self) => self.indexOf(e) === i);
     if (inviteEmailsList.map(isEmailValid).includes(false)) {
       setEmailError(
@@ -163,12 +165,12 @@ export function InviteEmailModal({
         await mutate(`/api/w/${owner.sId}/members`);
       }
       await mutate(`/api/w/${owner.sId}/invitations`);
-      onClose();
+      setOpen(false);
     }
   }
 
   useEffect(() => {
-    if (showModal && prefillText && isEmailValid(prefillText)) {
+    if (open && prefillText && isEmailValid(prefillText)) {
       setInviteEmails((prev) => {
         if (prev.includes(prefillText)) {
           return prev;
@@ -176,30 +178,17 @@ export function InviteEmailModal({
         return prev ? prev + ", " + prefillText : prefillText;
       });
     }
-  }, [prefillText, showModal]);
+  }, [prefillText, open]);
 
   return (
-    <>
-      <Modal
-        isOpen={showModal}
-        onClose={onClose}
-        hasChanged={emailError === "" && inviteEmails !== "" && !isSending}
-        title="Invite new users"
-        variant="side-sm"
-        saveLabel="Invite"
-        isSaving={isSending}
-        onSave={async () => {
-          const inviteEmailsList = getEmailsList();
-          if (!inviteEmailsList) {
-            return;
-          }
-          setIsSending(true);
-          await handleSendInvitations(inviteEmailsList);
-          setIsSending(false);
-          setInviteEmails("");
-        }}
-        className="flex"
-      >
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <Button icon={PlusIcon} label="Invite members" variant="primary" />
+      </SheetTrigger>
+      <SheetContent size="md">
+        <SheetHeader>
+          <SheetTitle>Invite new users</SheetTitle>
+        </SheetHeader>
         <div className="mt-6 flex grow flex-col gap-6 px-2 text-sm">
           <div className="flex flex-grow flex-col gap-5">
             <div className="font-semibold">
@@ -238,8 +227,26 @@ export function InviteEmailModal({
             </div>
           )}
         </div>
-      </Modal>
-    </>
+        <SheetFooter
+          leftButtonProps={{
+            label: "Cancel",
+            variant: "outline",
+          }}
+          rightButtonProps={{
+            label: "Send Invite",
+            onClick: async (event: MouseEvent) => {
+              event.preventDefault();
+              const inviteEmailsList = getEmailsList();
+              if (!inviteEmailsList) {
+                return;
+              }
+              await handleSendInvitations(inviteEmailsList);
+              setInviteEmails("");
+            },
+          }}
+        />
+      </SheetContent>
+    </Sheet>
   );
 }
 

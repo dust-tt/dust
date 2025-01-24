@@ -7,7 +7,6 @@ import {
   DialogHeader,
   DialogTitle,
   Page,
-  PlusIcon,
   Popup,
   SearchInput,
   useSendNotification,
@@ -40,10 +39,7 @@ import {
   makeEnterpriseConnectionInitiateLoginUrl,
   makeSamlAcsUrl,
 } from "@app/lib/api/enterprise_connection";
-import {
-  checkWorkspaceSeatAvailabilityUsingAuth,
-  getWorkspaceVerifiedDomain,
-} from "@app/lib/api/workspace";
+import { checkWorkspaceSeatAvailabilityUsingAuth, getWorkspaceVerifiedDomain } from "@app/lib/api/workspace";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { getPerSeatSubscriptionPricing } from "@app/lib/plans/subscription";
@@ -236,10 +232,10 @@ export default function WorkspaceAdmin({
               setSearchTerm(s);
             }}
           />
-          <Button
-            label="Invite members"
-            icon={PlusIcon}
-            onClick={onInviteClick}
+          <InviteEmailModal
+            owner={owner}
+            prefillText=""
+            perSeatPricing={perSeatPricing}
           />
         </div>
         <InvitationsList owner={owner} searchText={searchTerm} />
@@ -247,15 +243,6 @@ export default function WorkspaceAdmin({
           currentUserId={user.sId}
           owner={owner}
           searchText={searchTerm}
-        />
-        <InviteEmailModal
-          showModal={inviteEmailModalOpen}
-          onClose={() => {
-            setInviteEmailModalOpen(false);
-          }}
-          owner={owner}
-          prefillText={""}
-          perSeatPricing={perSeatPricing}
         />
         {popup}
       </Page.Vertical>
