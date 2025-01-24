@@ -241,7 +241,6 @@ async function getContentNodesForDataSourceViewFromCore(
 
   return new Ok({
     nodes: filteredNodes.map((node) => {
-      const type = getContentNodeType(node);
       return {
         internalId: node.node_id,
         parentInternalId: node.parent_id ?? null,
@@ -251,7 +250,7 @@ async function getContentNodesForDataSourceViewFromCore(
         lastUpdatedAt: node.timestamp,
         providerVisibility: node.provider_visibility,
         parentInternalIds: node.parents,
-        type,
+        type: getContentNodeType(node),
         expandable:
           !NON_EXPANDABLE_NODES_MIME_TYPES.includes(node.mime_type) &&
           node.has_children,
