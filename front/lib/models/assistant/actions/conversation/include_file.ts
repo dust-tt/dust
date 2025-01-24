@@ -3,12 +3,12 @@ import { DataTypes } from "sequelize";
 
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
+import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
 /**
  * ConversationIncludeFile Action
  */
-export class AgentConversationIncludeFileAction extends BaseModel<AgentConversationIncludeFileAction> {
+export class AgentConversationIncludeFileAction extends WorkspaceAwareModel<AgentConversationIncludeFileAction> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 

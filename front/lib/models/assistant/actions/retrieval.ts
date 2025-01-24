@@ -9,7 +9,7 @@ import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_sour
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
-export class AgentRetrievalConfiguration extends BaseModel<AgentRetrievalConfiguration> {
+export class AgentRetrievalConfiguration extends WorkspaceAwareModel<AgentRetrievalConfiguration> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 

@@ -310,6 +310,7 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
       functionCallName: actionConfiguration.name,
       agentMessageId: agentMessage.agentMessageId,
       step: step,
+      workspaceId: owner.id,
     });
 
     yield {

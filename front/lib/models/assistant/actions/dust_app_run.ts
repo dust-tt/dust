@@ -6,9 +6,9 @@ import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { FileModel } from "@app/lib/resources/storage/models/files";
-import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
+import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
-export class AgentDustAppRunConfiguration extends BaseModel<AgentDustAppRunConfiguration> {
+export class AgentDustAppRunConfiguration extends WorkspaceAwareModel<AgentDustAppRunConfiguration> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -71,7 +71,7 @@ AgentDustAppRunConfiguration.belongsTo(AgentConfiguration, {
 /**
  * DustAppRun Action
  */
-export class AgentDustAppRunAction extends BaseModel<AgentDustAppRunAction> {
+export class AgentDustAppRunAction extends WorkspaceAwareModel<AgentDustAppRunAction> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare runId: string | null;
