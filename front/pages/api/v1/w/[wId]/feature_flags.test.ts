@@ -100,24 +100,18 @@ describe("GET /api/v1/w/[wId]/feature_flags", () => {
       const workspace2 = await workspaceFactory().basic().create();
 
       await featureFlagFactory().basic("labs_trackers", workspace1).create();
-      await featureFlagFactory().basic("labs_transcripts", workspace1).create();
-      await featureFlagFactory()
-        .basic("labs_transcripts_modjo", workspace2)
-        .create();
+      await featureFlagFactory().basic("labs_transcripts", workspace2).create();
 
       await handler(req, res);
 
       expect(res._getStatusCode()).toBe(200);
       expect(res._getJSONData()).toEqual(
         expect.objectContaining({
-          feature_flags: expect.arrayContaining([
-            "labs_trackers",
-            "labs_transcripts",
-          ]),
+          feature_flags: expect.arrayContaining(["labs_trackers"]),
         })
       );
       expect(res._getJSONData().feature_flags).not.toContain(
-        "labs_transcripts_modjo"
+        "labs_transcripts"
       );
     }
   );
