@@ -292,7 +292,7 @@ export function fileAttachmentLocation({
   };
 }
 
-export async function getContentFragmentText({
+async function getContentFragmentText({
   workspaceId,
   conversationId,
   messageId,
@@ -311,7 +311,20 @@ export async function getContentFragmentText({
   return getPrivateUploadBucket().fetchFileContent(filePath);
 }
 
-export async function getProcessedFileContent(
+async function getOriginalFileContent(
+  workspace: WorkspaceType,
+  fileId: string
+): Promise<string> {
+  const fileCloudStoragePath = FileResource.getCloudStoragePathForId({
+    fileId,
+    workspaceId: workspace.sId,
+    version: "original",
+  });
+
+  return getPrivateUploadBucket().fetchFileContent(fileCloudStoragePath);
+}
+
+async function getProcessedFileContent(
   workspace: WorkspaceType,
   fileId: string
 ): Promise<string> {
@@ -324,7 +337,7 @@ export async function getProcessedFileContent(
   return getPrivateUploadBucket().fetchFileContent(fileCloudStoragePath);
 }
 
-export async function getSnippetFileContent(
+async function getSnippetFileContent(
   workspace: WorkspaceType,
   fileId: string
 ): Promise<string> {
@@ -415,9 +428,22 @@ export async function renderFromFileId(
       textBytes &&
       textBytes > MAX_BYTE_SIZE_CSV_RENDER_FULL_CONTENT;
 
-    const content = shouldRetrieveSnippetVersion
+    let content = shouldRetrieveSnippetVersion
       ? await getSnippetFileContent(workspace, fileId)
       : await getProcessedFileContent(workspace, fileId);
+
+    if (!shouldRetrieveSnippetVersion && !content) {
+      logger.warn(
+        {
+          fileId,
+          contentType,
+          workspaceId: workspace.sId,
+        },
+        "No content extracted from file processed version, we are retrieving the original file as a fallback."
+      );
+
+      content = await getOriginalFileContent(workspace, fileId);
+    }
 
     return new Ok({
       role: "content_fragment",
