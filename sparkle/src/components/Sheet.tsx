@@ -21,7 +21,7 @@ const SheetOverlay = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SheetPrimitive.Overlay
     className={cn(
-      "s-fixed s-inset-0 s-z-50 s-bg-muted-foreground/75 data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-fade-out-0 data-[state=open]:s-fade-in-0",
+      "s-fixed s-inset-0 s-bg-muted-foreground/75 data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-fade-out-0 data-[state=open]:s-fade-in-0",
       className
     )}
     {...props}
@@ -45,7 +45,7 @@ const sizeClasses: Record<SheetSizeType, string> = {
 };
 
 const sheetVariants = cva(
-  "s-fixed s-z-50 s-overflow-hidden s-bg-background s-transition s-ease-in-out data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-duration-300 data-[state=open]:s-duration-500 s-flex s-flex-col s-h-full s-w-full",
+  "s-fixed s-overflow-hidden s-bg-background s-transition s-ease-in-out data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-duration-300 data-[state=open]:s-duration-500 s-flex s-flex-col s-h-full s-w-full",
   {
     variants: {
       side: {
@@ -103,7 +103,7 @@ const SheetHeader = ({
 }: SheetHeaderProps) => (
   <div
     className={cn(
-      "s-z-50 s-flex s-flex-none s-flex-col s-gap-2 s-bg-background s-p-5 s-text-left s-shadow-tale-white",
+      "s-flex s-flex-none s-flex-col s-gap-2 s-bg-background s-p-5 s-text-left s-shadow-tale-white",
       className
     )}
     {...props}

@@ -116,7 +116,7 @@ function NotificationsList({
   notifications: (NotificationType & { id: string })[];
 }) {
   return (
-    <div className="s-pointer-events-none s-fixed s-bottom-0 s-right-0 s-z-60 s-w-96">
+    <div className="s-pointer-events-none s-fixed s-bottom-0 s-right-0 s-w-96">
       <div className="s-flex s-flex-col s-items-center s-justify-center s-gap-4 s-p-4">
         {notifications.map((n) => {
           return (

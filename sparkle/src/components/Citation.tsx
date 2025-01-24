@@ -80,7 +80,6 @@ const CitationIndex = React.forwardRef<
     <div
       ref={ref}
       className={cn(
-        "s-z-10",
         "s-flex s-h-4 s-w-4 s-items-center s-justify-center s-rounded-full s-bg-primary-600 s-text-xs s-font-medium s-text-primary-200",
         className
       )}
@@ -158,7 +157,7 @@ const CitationImage = React.forwardRef<HTMLDivElement, CitationImageProps>(
         <div
           className={cn(
             "s-absolute s-inset-0",
-            "s-z-0 s-h-full s-w-full",
+            "s-h-full s-w-full",
             "s-bg-primary-100/80",
             "s-backdrop-blur-sm",
             "s-transition s-duration-200",
@@ -197,7 +196,7 @@ const CitationLoading = React.forwardRef<
     <div
       ref={ref}
       className={cn(
-        "s-absolute s-inset-0 s-z-20 s-flex s-h-full s-w-full s-items-center s-justify-center s-rounded-xl s-bg-primary-100/80 s-backdrop-blur-sm",
+        "s-absolute s-inset-0 s-flex s-h-full s-w-full s-items-center s-justify-center s-rounded-xl s-bg-primary-100/80 s-backdrop-blur-sm",
         className
       )}
       {...props}
@@ -218,7 +217,6 @@ const CitationTitle = React.forwardRef<HTMLDivElement, CitationTitleProps>(
       <div
         ref={ref}
         className={cn(
-          "s-z-10",
           "s-line-clamp-1 s-overflow-hidden s-text-ellipsis s-break-all",
           "s-text-sm s-font-medium s-text-foreground",
           className
@@ -245,7 +243,6 @@ const CitationDescription = React.forwardRef<
     <div
       ref={ref}
       className={cn(
-        "s-z-10",
         "s-line-clamp-1 s-overflow-hidden s-text-ellipsis",
         "s-text-xs s-font-normal s-text-muted-foreground",
         className

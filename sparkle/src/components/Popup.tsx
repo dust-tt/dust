@@ -40,7 +40,7 @@ export function Popup({
     >
       <div
         className={classNames(
-          "s-z-30 s-flex s-w-64 s-flex-col s-gap-3 s-rounded-xl s-border s-border-pink-100 s-bg-pink-50 s-p-4 s-shadow-xl",
+          "s-flex s-w-64 s-flex-col s-gap-3 s-rounded-xl s-border s-border-pink-100 s-bg-pink-50 s-p-4 s-shadow-xl",
           className || ""
         )}
       >

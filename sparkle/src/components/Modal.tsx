@@ -129,7 +129,7 @@ export function Modal({
     <Transition show={isOpen} as={Fragment} appear={true}>
       <Dialog
         as="div"
-        className="s-fixed s-absolute s-inset-0 s-z-50 s-overflow-hidden"
+        className="s-fixed s-absolute s-inset-0 s-overflow-hidden"
         onClose={() => {
           // Close modal on outside click if no changes or not an alert.
           if (!hasChanged && !alertModal) {

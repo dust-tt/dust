@@ -157,7 +157,7 @@ const variantStyles = cva("", {
       secondary: "s-text-muted-foreground",
     },
     isSticky: {
-      true: "s-sticky s-top-0 s-z-10 s-border-b s-border-border-dark/80 s-bg-structure-100/90 s-backdrop-blur-sm",
+      true: "s-sticky s-top-0 s-border-b s-border-border-dark/80 s-bg-structure-100/90 s-backdrop-blur-sm",
     },
   },
   defaultVariants: {

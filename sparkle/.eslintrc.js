@@ -45,7 +45,8 @@ module.exports = {
     "no-restricted-syntax": [
       "error",
       {
-        selector: "JSXAttribute[name.name='className'] Literal[value=/\\bs-z-/]",
+        selector:
+          "JSXAttribute[name.name='className'] Literal[value=/\\bs-z-/]",
         message: "Usage of s-z- tailwind classes (z-index) is forbidden.",
       },
     ],

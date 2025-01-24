@@ -96,7 +96,7 @@ export function ContentBlockWrapper({
         className
       )}
     >
-      <div className="s-sticky s-top-11 s-z-[1] s-h-0">
+      <div className="s-sticky s-top-11 s-h-0">
         <div
           id="BlockActions"
           className="s-absolute s-bottom-0 s-right-2 s-flex s-h-11 s-items-center s-gap-1 s-py-2"
@@ -122,7 +122,7 @@ export function ContentBlockWrapper({
           )}
         </div>
       </div>
-      <div className={cn("s-z-0 s-w-full", innerClassName)}>{children}</div>
+      <div className={cn("s-w-full", innerClassName)}>{children}</div>
     </div>
   );
 }
