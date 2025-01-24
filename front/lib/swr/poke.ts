@@ -8,9 +8,22 @@ import type { Fetcher } from "swr";
 
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetPokePlansResponseBody } from "@app/pages/api/poke/plans";
+import type { GetRegionResponseType } from "@app/pages/api/poke/region";
 import type { GetPokeWorkspacesResponseBody } from "@app/pages/api/poke/workspaces";
 import type { GetPokeFeaturesResponseBody } from "@app/pages/api/poke/workspaces/[wId]/features";
 import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/permissions";
+
+export function usePokeRegion() {
+  const regionFetcher: Fetcher<GetRegionResponseType> = fetcher;
+
+  const { data, error } = useSWRWithDefaults("/api/poke/region", regionFetcher);
+
+  return {
+    region: useMemo(() => data?.region, [data]),
+    isRegionLoading: !error && !data,
+    isRegionError: error,
+  };
+}
 
 export function usePokeConnectorPermissions({
   owner,

@@ -40,9 +40,16 @@ import { getSession } from "../../lib/auth";
 export const createPrivateApiMockRequest = async ({
   method = "GET",
   role = "user",
-}: { method?: RequestMethod; role?: MembershipRoleType } = {}) => {
+  isSuperUser = false,
+}: {
+  method?: RequestMethod;
+  role?: MembershipRoleType;
+  isSuperUser?: boolean;
+} = {}) => {
   const workspace = await workspaceFactory().basic().create();
-  const user = await userFactory().basic().create();
+  const user = await (
+    isSuperUser ? userFactory().superUser() : userFactory().basic()
+  ).create();
   const globalGroup = await groupFactory().global(workspace).create();
 
   const membership = await membershipFactory()

@@ -3,15 +3,45 @@ import type {
   DataSourceType,
   LightWorkspaceType,
 } from "@dust-tt/types";
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 import useSWR from "swr";
 
 import { fetcher } from "@app/lib/swr/swr";
 import type { PokeFetchAssistantTemplateResponse } from "@app/pages/api/poke/templates/[tId]";
+import type { PullTemplatesResponseBody } from "@app/pages/api/poke/templates/pull";
 import type { GetDocumentsResponseBody } from "@app/pages/api/poke/workspaces/[wId]/data_sources/[dsId]/documents";
 import type { GetTablesResponseBody } from "@app/pages/api/poke/workspaces/[wId]/data_sources/[dsId]/tables";
 import type { FetchAssistantTemplatesResponse } from "@app/pages/api/templates";
+
+export function usePokePullTemplates() {
+  const { mutateAssistantTemplates } = usePokeAssistantTemplates();
+  const [isPulling, setIsPulling] = useState(false);
+
+  const doPull = useCallback(async () => {
+    setIsPulling(true);
+    const response = await fetch("/api/poke/templates/pull", {
+      method: "POST",
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to pull templates");
+    }
+
+    const data = (await response.json()) as PullTemplatesResponseBody;
+    setIsPulling(false);
+    if (data.success && data.count > 0) {
+      void mutateAssistantTemplates();
+      return data;
+    }
+    return data;
+  }, [mutateAssistantTemplates]);
+
+  return {
+    doPull,
+    isPulling,
+  };
+}
 
 export function usePokeAssistantTemplates() {
   const assistantTemplatesFetcher: Fetcher<FetchAssistantTemplatesResponse> =

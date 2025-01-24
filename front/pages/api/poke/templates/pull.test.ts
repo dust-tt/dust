@@ -1,0 +1,253 @@
+import { beforeEach, describe, expect, vi } from "vitest";
+
+import { config } from "@app/lib/api/regions/config";
+import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { itInTransaction } from "@app/tests/utils/utils";
+
+import handler from "./pull";
+
+const SAMPLE_TEMPLATE = {
+  backgroundColor: "bg-blue-400",
+  description: "Transform your raw written notes into a polished text.",
+  emoji: "writing_hand/270d-fe0f",
+  handle: "writeWell",
+  helpActions: null,
+  helpInstructions: null,
+  pictureUrl:
+    "https://dust.tt/static/emojis/bg-blue-400/writing_hand/270d-fe0f",
+  presetActions: [],
+  timeFrameDuration: null,
+  timeFrameUnit: null,
+  presetDescription: null,
+  presetInstructions: "my instructions",
+  presetModelId: "gpt-4o",
+  presetProviderId: "openai",
+  presetTemperature: "balanced",
+  sId: "tpl_vomozn1XNz",
+  tags: ["PRODUCTIVITY"],
+  visibility: "published",
+};
+
+vi.mock(import("../../../../lib/api/regions/config"), async (importActual) => {
+  const actualConfig = await importActual();
+  return {
+    ...actualConfig,
+    config: {
+      ...actualConfig.config,
+      getCurrentRegion: vi.fn(),
+    },
+  };
+});
+
+// Mock global fetch
+const mockFetch = vi.fn();
+global.fetch = mockFetch;
+
+describe(
+  "POST /api/poke/templates/pull",
+  {
+    sequential: true,
+  },
+  () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    itInTransaction(
+      "returns 404 when the user is not a super user",
+      async () => {
+        const { req, res } = await createPrivateApiMockRequest({
+          method: "POST",
+          isSuperUser: false,
+        });
+
+        await handler(req, res);
+
+        expect(res._getStatusCode()).toBe(404);
+        expect(res._getJSONData()).toEqual({
+          error: {
+            type: "user_not_found",
+            message: "Could not find the user.",
+          },
+        });
+      }
+    );
+
+    itInTransaction("returns 400 when called from main region", async () => {
+      vi.mocked(config.getCurrentRegion).mockReturnValue("us-central1");
+      const { req, res } = await createPrivateApiMockRequest({
+        method: "POST",
+        isSuperUser: true,
+      });
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(400);
+      expect(res._getJSONData()).toEqual({
+        error: {
+          type: "invalid_request_error",
+          message: "This endpoint can only be called from non-main regions.",
+        },
+      });
+    });
+
+    itInTransaction("only supports POST method", async () => {
+      vi.mocked(config.getCurrentRegion).mockReturnValue("europe-west1");
+      for (const method of ["DELETE", "GET", "PUT", "PATCH"] as const) {
+        const { req, res } = await createPrivateApiMockRequest({
+          method,
+          isSuperUser: true,
+        });
+
+        await handler(req, res);
+
+        expect(res._getStatusCode()).toBe(405);
+        expect(res._getJSONData()).toEqual({
+          error: {
+            type: "method_not_supported_error",
+            message: "The method passed is not supported, POST is expected.",
+          },
+        });
+      }
+    });
+
+    itInTransaction("handles failed templates list fetch", async () => {
+      vi.mocked(config.getCurrentRegion).mockReturnValue("europe-west1");
+
+      mockFetch.mockImplementationOnce(() =>
+        Promise.resolve({
+          ok: false,
+          status: 500,
+          json: () => Promise.resolve({}),
+        })
+      );
+
+      const { req, res } = await createPrivateApiMockRequest({
+        method: "POST",
+        isSuperUser: true,
+      });
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(500);
+      expect(res._getJSONData()).toEqual({
+        error: {
+          type: "internal_server_error",
+          message: "Failed to fetch templates from main region.",
+        },
+      });
+    });
+
+    itInTransaction(
+      "successfully pulls templates from main region",
+      async () => {
+        vi.mocked(config.getCurrentRegion).mockReturnValue("europe-west1");
+
+        // Mock the templates list response
+        mockFetch
+          .mockImplementationOnce(() =>
+            Promise.resolve({
+              ok: true,
+              json: () =>
+                Promise.resolve({
+                  templates: [{ sId: "template1" }, { sId: "template2" }],
+                }),
+            })
+          )
+          // Mock individual template responses
+          .mockImplementationOnce(() =>
+            Promise.resolve({
+              ok: true,
+              json: () =>
+                Promise.resolve({
+                  ...SAMPLE_TEMPLATE,
+                  sId: "template1",
+                  handle: "template1",
+                }),
+            })
+          )
+          .mockImplementationOnce(() =>
+            Promise.resolve({
+              ok: true,
+              json: () =>
+                Promise.resolve({
+                  ...SAMPLE_TEMPLATE,
+                  sId: "template2",
+                  handle: "template2",
+                }),
+            })
+          );
+
+        const { req, res } = await createPrivateApiMockRequest({
+          method: "POST",
+          isSuperUser: true,
+        });
+
+        await handler(req, res);
+
+        expect(res._getStatusCode()).toBe(200);
+        expect(res._getJSONData()).toEqual({
+          success: true,
+          count: 2,
+        });
+
+        // Verify fetch was called correctly
+        expect(mockFetch).toHaveBeenCalledTimes(3);
+        expect(mockFetch.mock.calls[0][0]).toContain("/api/templates");
+        expect(mockFetch.mock.calls[1][0]).toContain(
+          "/api/templates/template1"
+        );
+        expect(mockFetch.mock.calls[2][0]).toContain(
+          "/api/templates/template2"
+        );
+      }
+    );
+
+    itInTransaction("handles failed template fetches gracefully", async () => {
+      vi.mocked(config.getCurrentRegion).mockReturnValue("europe-west1");
+
+      // Mock the templates list response
+      mockFetch
+        .mockImplementationOnce(() =>
+          Promise.resolve({
+            ok: true,
+            json: () =>
+              Promise.resolve({
+                templates: [{ sId: "template1" }, { sId: "template2" }],
+              }),
+          })
+        )
+        // Mock one successful and one failed template fetch
+        .mockImplementationOnce(() =>
+          Promise.resolve({
+            ok: true,
+            json: () =>
+              Promise.resolve({
+                ...SAMPLE_TEMPLATE,
+                sId: "template1",
+                handle: "template1",
+              }),
+          })
+        )
+        .mockImplementationOnce(() =>
+          Promise.resolve({
+            ok: false,
+            status: 500,
+          })
+        );
+
+      const { req, res } = await createPrivateApiMockRequest({
+        method: "POST",
+        isSuperUser: true,
+      });
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(200);
+      expect(res._getJSONData()).toEqual({
+        success: true,
+        count: 1, // Only one template should be successfully processed
+      });
+    });
+  }
+);
