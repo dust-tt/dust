@@ -4,6 +4,14 @@ import type { NextRouter } from "next/router";
 import Script from "next/script";
 import React, { useEffect, useState } from "react";
 
+declare global {
+  interface Window {
+    signals: {
+      identify: (data: { email: string; name: string }) => void;
+    };
+  }
+}
+
 import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
 import type { SidebarNavigation } from "@app/components/navigation/config";
 import { Navigation } from "@app/components/navigation/Navigation";
@@ -62,13 +70,27 @@ export default function AppLayout({
 
   useEffect(() => {
     if (typeof window !== "undefined" && user?.sId) {
+      // Identify the user with GTM
       window.dataLayer = window.dataLayer || [];
       window.dataLayer.push({
         userId: user.sId,
         event: "userIdentified",
       });
+
+      // Identify the user with Common Room
+      const checkSignals = () => {
+        if (window.signals) {
+          window.signals.identify({
+            email: user.email,
+            name: user.fullName,
+          });
+          clearInterval(interval);
+        }
+      };
+      const interval = setInterval(checkSignals, 100);
+      checkSignals();
     }
-  }, [user?.sId]);
+  }, [user?.email, user?.fullName, user?.sId]);
 
   return (
     <>
