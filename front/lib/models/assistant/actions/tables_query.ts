@@ -7,9 +7,9 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { FileModel } from "@app/lib/resources/storage/models/files";
-import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
+import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
-export class AgentTablesQueryConfiguration extends BaseModel<AgentTablesQueryConfiguration> {
+export class AgentTablesQueryConfiguration extends WorkspaceAwareModel<AgentTablesQueryConfiguration> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -70,7 +70,7 @@ AgentTablesQueryConfiguration.belongsTo(AgentConfiguration, {
   foreignKey: { name: "agentConfigurationId", allowNull: false },
 });
 
-export class AgentTablesQueryConfigurationTable extends BaseModel<AgentTablesQueryConfigurationTable> {
+export class AgentTablesQueryConfigurationTable extends WorkspaceAwareModel<AgentTablesQueryConfigurationTable> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -147,7 +147,7 @@ AgentTablesQueryConfigurationTable.belongsTo(DataSourceViewModel, {
   foreignKey: { allowNull: false },
 });
 
-export class AgentTablesQueryAction extends BaseModel<AgentTablesQueryAction> {
+export class AgentTablesQueryAction extends WorkspaceAwareModel<AgentTablesQueryAction> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare runId: string | null;

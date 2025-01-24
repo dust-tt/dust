@@ -167,6 +167,7 @@ export class BrowseConfigurationServerRunner extends BaseActionConfigurationServ
       functionCallName: actionConfiguration.name,
       agentMessageId: agentMessage.agentMessageId,
       step,
+      workspaceId: owner.id,
     });
 
     const now = Date.now();

@@ -12,8 +12,7 @@ import type {
   ModelId,
   Result,
 } from "@dust-tt/types";
-import { CoreAPI, Err, Ok } from "@dust-tt/types";
-import { BaseAction, isTextContent } from "@dust-tt/types";
+import { BaseAction, CoreAPI, Err, isTextContent, Ok } from "@dust-tt/types";
 
 import {
   DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_DESCRIPTION,
@@ -278,6 +277,7 @@ export class ConversationIncludeFileConfigurationServerRunner extends BaseAction
       functionCallName: actionConfiguration.name,
       agentMessageId: agentMessage.agentMessageId,
       step,
+      workspaceId: owner.id,
     });
 
     yield {

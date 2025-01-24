@@ -1,69 +1,39 @@
 import type { LightWorkspaceType } from "@dust-tt/types";
 import { Op } from "sequelize";
 
-import {
-  RetrievalDocument,
-  RetrievalDocumentChunk,
-} from "@app/lib/models/assistant/actions/retrieval";
-import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
-import type { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
+import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 
-interface TableConfig {
-  model: typeof WorkspaceAwareModel<any>;
-  include: (workspaceId: number) => any[];
-}
-
-const TABLES: TableConfig[] = [
-  {
-    model: RetrievalDocument,
-    include: (workspaceId: number) => [
-      {
-        as: "dataSourceView",
-        model: DataSourceViewModel,
-        required: true,
-        where: { workspaceId },
-      },
-    ],
-  },
-  {
-    model: RetrievalDocumentChunk,
-    include: (workspaceId: number) => [
-      {
-        as: "retrieval_document",
-        model: RetrievalDocument,
-        required: true,
-        where: { workspaceId },
-      },
-    ],
-  },
-];
-
-async function backfillTable(
+async function backfillAgentMessageContent(
   workspace: LightWorkspaceType,
-  table: TableConfig,
   { execute, logger }: { execute: boolean; logger: Logger }
 ) {
   let lastSeenId = 0;
-  const batchSize = 5000;
+  const batchSize = 1000;
   let totalProcessed = 0;
 
-  logger.info(
-    { workspaceId: workspace.sId, table: table.model.tableName },
-    "Starting table backfill"
-  );
+  logger.info({ workspaceId: workspace.sId }, "Starting table backfill");
 
   for (;;) {
-    const records = await table.model.findAll({
+    const records: AgentMessageContent[] = await AgentMessageContent.findAll({
+      // @ts-expect-error workspaceId is not nullable in Model definition.
       where: {
         id: { [Op.gt]: lastSeenId },
         workspaceId: { [Op.is]: null },
       },
       order: [["id", "ASC"]],
       limit: batchSize,
-      include: table.include(workspace.id),
+      include: [
+        {
+          as: "agentMessage",
+          model: AgentMessage,
+          required: true,
+          where: { workspaceId: workspace.id },
+        },
+      ],
     });
 
     if (records.length === 0) {
@@ -74,7 +44,6 @@ async function backfillTable(
     logger.info(
       {
         workspaceId: workspace.sId,
-        table: table.model.tableName,
         batchSize: records.length,
         totalProcessed,
         lastId: lastSeenId,
@@ -84,7 +53,7 @@ async function backfillTable(
 
     if (execute) {
       const recordIds = records.map((r) => r.id);
-      await table.model.update(
+      await AgentMessageContent.update(
         { workspaceId: workspace.id },
         {
           where: {
@@ -92,8 +61,9 @@ async function backfillTable(
           },
           // Required to avoid hitting validation hook, which does not play nice with bulk updates.
           hooks: false,
-          fields: ["workspaceId"],
+          // Do not update `updatedAt.
           silent: true,
+          fields: ["workspaceId"],
         }
       );
     }
@@ -113,16 +83,13 @@ async function backfillTablesForWorkspace(
     "Starting workspace backfill"
   );
 
-  const stats: any = {};
-  for (const table of TABLES) {
-    stats[table.model.tableName] = await backfillTable(workspace, table, {
-      execute,
-      logger,
-    });
-  }
+  const updated = await backfillAgentMessageContent(workspace, {
+    execute,
+    logger,
+  });
 
   logger.info(
-    { workspaceId: workspace.sId, stats },
+    { workspaceId: workspace.sId, updated },
     "Completed workspace backfill"
   );
 }

@@ -232,11 +232,13 @@ async function* runMultiActionsAgentLoop(
           break;
 
         case "agent_message_content":
+          const owner = auth.getNonNullableWorkspace();
           // We store the raw content emitted by the agent.
           await AgentMessageContent.create({
             agentMessageId: agentMessage.agentMessageId,
             step: i,
             content: event.content,
+            workspaceId: owner.id,
           });
           agentMessage.rawContents.push({
             step: i,

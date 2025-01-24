@@ -45,12 +45,14 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "gemini-1.5-flash-latest"
   | "gemini-2.0-flash-exp"
   | "gemini-2.0-flash-thinking-exp-01-21"
-  | "meta-llama/Llama-3.3-70B-Instruct-Turbo"
-  | "Qwen/Qwen2.5-Coder-32B-Instruct"
-  | "Qwen/QwQ-32B-Preview"
-  | "Qwen/Qwen2-72B-Instruct"
-  | "deepseek-chat"
-  | "deepseek-reasoner"
+  | "meta-llama/Llama-3.3-70B-Instruct-Turbo" // togetherai
+  | "Qwen/Qwen2.5-Coder-32B-Instruct" // togetherai
+  | "Qwen/QwQ-32B-Preview" // togetherai
+  | "Qwen/Qwen2-72B-Instruct" // togetherai
+  | "deepseek-ai/DeepSeek-V3" // togetherai
+  | "deepseek-ai/DeepSeek-R1" // togetherai
+  | "deepseek-chat" // deepseek api
+  | "deepseek-reasoner" // deepseek api
 >();
 
 const EmbeddingProviderIdSchema = FlexibleEnumSchema<"openai" | "mistral">();

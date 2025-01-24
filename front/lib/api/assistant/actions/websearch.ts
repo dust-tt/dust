@@ -189,6 +189,7 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
       functionCallName: actionConfiguration.name,
       agentMessageId: agentMessage.agentMessageId,
       step,
+      workspaceId: owner.id,
     });
 
     const now = Date.now();
