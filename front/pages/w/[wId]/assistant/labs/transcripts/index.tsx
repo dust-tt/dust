@@ -707,7 +707,7 @@ export default function LabsTranscriptsIndex({
                 </div>
                 <div
                   className={`cursor-pointer rounded-md border p-4 hover:border-gray-400 ${
-                    transcriptsConfigurationState.provider == "gong"
+                    transcriptsConfigurationState.provider == "modjo"
                       ? "border-gray-400"
                       : "border-gray-200"
                   }`}
