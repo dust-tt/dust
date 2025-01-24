@@ -10,6 +10,12 @@ import { assertNever, MIME_TYPES } from "@dust-tt/types";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type logger from "@app/logger/logger";
 
+export const NON_EXPANDABLE_NODES_MIME_TYPES = [
+  MIME_TYPES.SLACK.CHANNEL,
+  MIME_TYPES.GITHUB.DISCUSSIONS,
+  MIME_TYPES.GITHUB.ISSUES,
+] as readonly string[];
+
 export function getContentNodeInternalIdFromTableId(
   dataSourceView: DataSourceViewResource | DataSourceViewType,
   tableId: string
