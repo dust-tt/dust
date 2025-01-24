@@ -85,6 +85,11 @@ export function computeNodesDiff({
               return false;
             }
             const coreValue = coreNode[key as keyof DataSourceViewContentNode];
+            // Special case for folder parents, the ones retrieved using getContentNodesForStaticDataSourceView do not
+            // contain any parentInternalIds.
+            if (provider === null && key === "parentInternalIds" && !value) {
+              return false;
+            }
             // Special case for expandable: if the core node is not expandable and the connectors one is, it means
             // that the difference comes from the fact that the node has no children: we omit from the log.
             if (key === "expandable" && value === true && coreValue === false) {
