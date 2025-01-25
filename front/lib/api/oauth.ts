@@ -144,6 +144,7 @@ const PROVIDER_STRATEGIES: Record<
         "users:read",
         "users:read.email",
         "mpim:history",
+        "files:read",
       ];
       return (
         `https://slack.com/oauth/v2/authorize?` +
