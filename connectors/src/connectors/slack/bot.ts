@@ -804,14 +804,17 @@ async function makeContentFragments(
         },
       });
 
-      // Ensure we got a successful response
-      if (!response.ok) {
-        logger.error(
+      // Ensure we got a successful response and that it's not an html file (redirection from slack)
+      if (
+        !response.ok ||
+        response.headers.get("content-type")?.includes("html")
+      ) {
+        logger.warn(
           {
             file: f,
             error: response,
           },
-          "Failed to download slack file"
+          "Failed to download slack file. Could be a scope issue as workspace need to re-authorize the app for files."
         );
         continue;
       }
