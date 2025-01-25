@@ -192,6 +192,11 @@ const ConnectMenuConfig: MenuConfig = {
       href: "mailto:support@dust.tt",
       isExternal: true,
     },
+    {
+      title: "Become a Partner",
+      href: "share-eu1.hsforms.com/2fctvfmfxrqqlldut_jmlta2dzwm3",
+      isExternal: true,
+    },
   ],
 };
 
@@ -238,6 +243,10 @@ const ResourcesMenuConfig: MenuConfig = {
     },
     ConnectMenuConfig.items[0],
     ConnectMenuConfig.items[1],
+    {
+      title: "",
+    },
+    ConnectMenuConfig.items[2],
   ],
 };
 
