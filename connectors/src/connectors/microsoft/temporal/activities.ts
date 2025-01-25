@@ -651,11 +651,17 @@ export async function syncDeltaForRootNodesInDrive({
           blob
         );
 
+        const parents = await getParents({
+          connectorId,
+          internalId: blob.internalId,
+          startSyncTs,
+        });
+
         await upsertDataSourceFolder({
           dataSourceConfig,
           folderId: blob.internalId,
-          parents: [blob.internalId],
-          parentId: null,
+          parents,
+          parentId: parents[1] || null,
           title: blob.name ?? "",
           mimeType: MIME_TYPES.MICROSOFT.FOLDER,
           sourceUrl: blob.webUrl ?? undefined,
