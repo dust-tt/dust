@@ -4,6 +4,7 @@ import {
   InformationCircleIcon,
   PlusIcon,
   Sheet,
+  SheetContainer,
   SheetContent,
   SheetFooter,
   SheetHeader,
@@ -35,10 +36,12 @@ export function InviteEmailModal({
   owner,
   prefillText,
   perSeatPricing,
+  onInviteClick,
 }: {
   owner: WorkspaceType;
   prefillText: string;
   perSeatPricing: SubscriptionPerSeatPricing | null;
+  onInviteClick: (event: MouseEvent) => void;
 }) {
   const [inviteEmails, setInviteEmails] = useState<string>("");
   const [emailError, setEmailError] = useState("");
@@ -183,50 +186,57 @@ export function InviteEmailModal({
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button icon={PlusIcon} label="Invite members" variant="primary" />
+        <Button
+          icon={PlusIcon}
+          label="Invite members"
+          variant="primary"
+          onClick={onInviteClick}
+        />
       </SheetTrigger>
-      <SheetContent size="md">
+      <SheetContent size="lg">
         <SheetHeader>
           <SheetTitle>Invite new users</SheetTitle>
         </SheetHeader>
-        <div className="mt-6 flex grow flex-col gap-6 px-2 text-sm">
-          <div className="flex flex-grow flex-col gap-5">
-            <div className="font-semibold">
-              Email addresses (comma or newline separated):
-            </div>
-            <div className="flex items-start gap-2">
-              <div className="flex-grow">
-                <TextArea
-                  placeholder="Email addresses, comma or newline separated"
-                  value={inviteEmails}
-                  onChange={(e) => {
-                    setInviteEmails(e.target.value);
-                    setEmailError("");
-                  }}
-                  error={emailError}
-                  showErrorLabel
-                />
+        <SheetContainer>
+          <div className="mt-6 flex grow flex-col gap-6 px-2 text-sm">
+            <div className="flex flex-grow flex-col gap-5">
+              <div className="font-semibold">
+                Email addresses (comma or newline separated):
+              </div>
+              <div className="flex items-start gap-2">
+                <div className="flex-grow">
+                  <TextArea
+                    placeholder="Email addresses, comma or newline separated"
+                    value={inviteEmails}
+                    onChange={(e) => {
+                      setInviteEmails(e.target.value);
+                      setEmailError("");
+                    }}
+                    error={emailError}
+                    showErrorLabel
+                  />
+                </div>
+              </div>
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="font-semibold text-foreground">Role:</div>
+                  <RoleDropDown
+                    selectedRole={invitationRole}
+                    onChange={setInvitationRole}
+                  />
+                </div>
+              </div>
+              <div className="text-element-700">
+                {ROLES_DATA[invitationRole]["description"]}
               </div>
             </div>
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-2">
-                <div className="font-semibold text-foreground">Role:</div>
-                <RoleDropDown
-                  selectedRole={invitationRole}
-                  onChange={setInvitationRole}
-                />
+            {perSeatPricing !== null && (
+              <div className="justify-self-end">
+                <ProPlanBillingNotice perSeatPricing={perSeatPricing} />
               </div>
-            </div>
-            <div className="text-element-700">
-              {ROLES_DATA[invitationRole]["description"]}
-            </div>
+            )}
           </div>
-          {perSeatPricing !== null && (
-            <div className="justify-self-end">
-              <ProPlanBillingNotice perSeatPricing={perSeatPricing} />
-            </div>
-          )}
-        </div>
+        </SheetContainer>
         <SheetFooter
           leftButtonProps={{
             label: "Cancel",

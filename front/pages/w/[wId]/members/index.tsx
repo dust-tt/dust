@@ -39,7 +39,10 @@ import {
   makeEnterpriseConnectionInitiateLoginUrl,
   makeSamlAcsUrl,
 } from "@app/lib/api/enterprise_connection";
-import { checkWorkspaceSeatAvailabilityUsingAuth, getWorkspaceVerifiedDomain } from "@app/lib/api/workspace";
+import {
+  checkWorkspaceSeatAvailabilityUsingAuth,
+  getWorkspaceVerifiedDomain,
+} from "@app/lib/api/workspace";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { getPerSeatSubscriptionPricing } from "@app/lib/plans/subscription";
@@ -109,22 +112,22 @@ export default function WorkspaceAdmin({
   const [showNoInviteLinkPopup, setShowNoInviteLinkPopup] = useState(false);
   const [isActivateAutoJoinOpened, setIsActivateAutoJoinOpened] =
     useState(false);
-  const [inviteEmailModalOpen, setInviteEmailModalOpen] = useState(false);
   const [inviteBlockedPopupReason, setInviteBlockedPopupReason] =
     useState<WorkspaceLimit | null>(null);
 
   const { domain = "", domainAutoJoinEnabled = false } =
     workspaceVerifiedDomain ?? {};
 
-  const onInviteClick = () => {
+  const onInviteClick = (event: MouseEvent) => {
     if (!isUpgraded(plan)) {
       setInviteBlockedPopupReason("cant_invite_free_plan");
+      event.preventDefault();
     } else if (subscription.paymentFailingSince) {
       setInviteBlockedPopupReason("cant_invite_payment_failure");
+      event.preventDefault();
     } else if (!workspaceHasAvailableSeats) {
       setInviteBlockedPopupReason("cant_invite_no_seats_available");
-    } else {
-      setInviteEmailModalOpen(true);
+      event.preventDefault();
     }
   };
 
@@ -236,6 +239,7 @@ export default function WorkspaceAdmin({
             owner={owner}
             prefillText=""
             perSeatPricing={perSeatPricing}
+            onInviteClick={onInviteClick}
           />
         </div>
         <InvitationsList owner={owner} searchText={searchTerm} />
