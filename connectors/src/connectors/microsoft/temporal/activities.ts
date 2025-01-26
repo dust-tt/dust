@@ -651,22 +651,6 @@ export async function syncDeltaForRootNodesInDrive({
           blob
         );
 
-        const parents = await getParents({
-          connectorId,
-          internalId: blob.internalId,
-          startSyncTs,
-        });
-
-        await upsertDataSourceFolder({
-          dataSourceConfig,
-          folderId: blob.internalId,
-          parents,
-          parentId: parents[1] || null,
-          title: blob.name ?? "",
-          mimeType: MIME_TYPES.MICROSOFT.FOLDER,
-          sourceUrl: blob.webUrl ?? undefined,
-        });
-
         // add parent information to new node resource. for the toplevel folder,
         // parent is null
         // todo check filter
@@ -679,6 +663,27 @@ export async function syncDeltaForRootNodesInDrive({
         await resource.update({
           parentInternalId,
           lastSeenTs: new Date(),
+        });
+
+        const parents = await getParents({
+          connectorId,
+          internalId: blob.internalId,
+          startSyncTs,
+        });
+
+        logger.info(
+          { parents, title: blob.name, internalId: blob.internalId },
+          "Upserting folder"
+        );
+
+        await upsertDataSourceFolder({
+          dataSourceConfig,
+          folderId: blob.internalId,
+          parents,
+          parentId: parents[1] || null,
+          title: blob.name ?? "",
+          mimeType: MIME_TYPES.MICROSOFT.FOLDER,
+          sourceUrl: blob.webUrl ?? undefined,
         });
 
         if (isMoved) {
