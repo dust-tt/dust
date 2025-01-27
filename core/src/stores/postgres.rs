@@ -1336,7 +1336,7 @@ impl Store for PostgresStore {
             None => {
                 c.query(
                     "SELECT dsd.id, dsd.created, dsd.timestamp, dsd.tags_array, dsn.parents, \
-                       dsd.source_url, dsd.hash, dsd.text_size, dsd.chunk_count, dsn.title, \
+                       dsn.source_url, dsd.hash, dsd.text_size, dsd.chunk_count, dsn.title, \
                        dsn.mime_type, dsn.provider_visibility \
                        FROM data_sources_documents dsd \
                        INNER JOIN data_sources_nodes dsn ON dsn.document=dsd.id \
@@ -1349,7 +1349,7 @@ impl Store for PostgresStore {
             Some(version_hash) => {
                 c.query(
                     "SELECT dsd.id, dsd.created, dsd.timestamp, dsd.tags_array, dsn.parents, \
-                       dsd.source_url, dsd.hash, dsd.text_size, dsd.chunk_count, dsn.title, \
+                       dsn.source_url, dsd.hash, dsd.text_size, dsd.chunk_count, dsn.title, \
                        dsn.mime_type, dsn.provider_visibility \
                        FROM data_sources_documents dsd \
                        INNER JOIN data_sources_nodes dsn ON dsn.document=dsd.id \
@@ -1867,7 +1867,7 @@ impl Store for PostgresStore {
             .prepare(
                 "INSERT INTO data_sources_documents \
                    (id, data_source, created, document_id, timestamp, tags_array, \
-                    source_url, hash, text_size, chunk_count, status) \
+                    hash, text_size, chunk_count, status) \
                    VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10) \
                    RETURNING id, created",
             )
@@ -1882,7 +1882,6 @@ impl Store for PostgresStore {
                     &create_params.document_id,
                     &(create_params.timestamp as i64),
                     &create_params.tags,
-                    &create_params.source_url,
                     &create_params.hash,
                     &(create_params.text_size as i64),
                     &(create_params.chunk_count as i64),
@@ -2009,7 +2008,7 @@ impl Store for PostgresStore {
 
         let sql = format!(
             "SELECT dsd.id, dsd.created, dsd.document_id, dsd.timestamp, dsd.tags_array, \
-               dsn.parents, dsd.source_url, dsd.hash, dsd.text_size, dsd.chunk_count, \
+               dsn.parents, dsn.source_url, dsd.hash, dsd.text_size, dsd.chunk_count, \
                dsn.title, dsn.mime_type, dsn.provider_visibility \
                FROM data_sources_documents dsd \
                INNER JOIN data_sources_nodes dsn ON dsn.document=dsd.id \

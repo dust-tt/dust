@@ -547,7 +547,6 @@ pub const POSTGRES_TABLES: [&'static str; 16] = [
        document_id              TEXT NOT NULL,
        timestamp                BIGINT NOT NULL,
        tags_array               TEXT[] NOT NULL,
-       source_url               TEXT,
        hash                     TEXT NOT NULL,
        text_size                BIGINT NOT NULL,
        chunk_count              BIGINT NOT NULL,
