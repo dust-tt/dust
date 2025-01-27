@@ -478,7 +478,7 @@ export async function getContentNodesForDataSourceView(
       const workspace = renderLightWorkspaceType({ workspace: workspaceModel });
       if (
         (isDevelopment() || isDustWorkspace(workspace)) &&
-        !showConnectorsNodes
+        showConnectorsNodes
       ) {
         const contentNodesInView = filterAndCropContentNodesByView(
           dataSourceView,
