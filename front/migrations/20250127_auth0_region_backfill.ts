@@ -1,6 +1,7 @@
 import type { ApiResponse } from "auth0";
 
 import { getAuth0ManagemementClient } from "@app/lib/api/auth0";
+import { SUPPORTED_REGIONS } from "@app/lib/api/regions/config";
 import { makeScript } from "@app/scripts/helpers";
 
 const USERS_PER_PAGE = 100;
@@ -8,7 +9,11 @@ const THRESHOLD = 3;
 
 makeScript(
   {
-    defaultRegion: { type: "string", required: true },
+    defaultRegion: {
+      type: "string",
+      required: true,
+      choices: SUPPORTED_REGIONS,
+    },
   },
   async ({ defaultRegion, execute }, logger) => {
     const managementClient = getAuth0ManagemementClient();
