@@ -93,7 +93,7 @@ export function computeNodesDiff({
             const coreValue = coreNode[key as keyof DataSourceViewContentNode];
             // Special case for folder parents, the ones retrieved using getContentNodesForStaticDataSourceView do not
             // contain any parentInternalIds.
-            if (provider === null && key === "parentInternalIds" && !value) {
+            if (provider === null && key === "parentInternalIds") {
               return false;
             }
             // Ignore sourceUrls returned by core but left empty by connectors.
