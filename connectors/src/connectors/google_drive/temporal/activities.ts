@@ -75,7 +75,7 @@ export async function upsertSharedWithMeFolder(connectorId: ModelId) {
     parents: [folderId],
     parentId: null,
     title: "Shared with me",
-    mimeType: MIME_TYPES.GOOGLE_DRIVE.FOLDER,
+    mimeType: MIME_TYPES.GOOGLE_DRIVE.SHARED_WITH_ME,
   });
 }
 
