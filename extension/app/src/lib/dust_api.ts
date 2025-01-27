@@ -5,6 +5,8 @@ import { getAccessToken } from "@extension/lib/auth";
 export const useDustAPI = () => {
   const { token, isAuthenticated, isUserSetup, user, workspace } = useAuth();
 
+  const commitHash = process.env.COMMIT_HASH;
+  const extensionVersion = process.env.VERSION;
   if (!isAuthenticated || !isUserSetup || !user || !workspace || !token) {
     throw new Error("Not authenticated");
   }
@@ -20,6 +22,10 @@ export const useDustAPI = () => {
     {
       apiKey: () => getAccessToken(),
       workspaceId: workspace.sId,
+      extraHeaders: {
+        "X-Dust-Extension-Version": extensionVersion || "development",
+        "X-Commit-Hash": commitHash || "development",
+      },
     },
     console
   );
