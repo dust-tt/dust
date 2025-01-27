@@ -20,8 +20,8 @@ import assert from "assert";
 
 import config from "@app/lib/api/config";
 import {
-  CATCH_ALL_FOLDERS_MIME_TYPES,
   computeNodesDiff,
+  FOLDERS_TO_HIDE_IF_EMPTY_MIME_TYPES,
   getContentNodeInternalIdFromTableId,
   getContentNodeMetadata,
   NON_EXPANDABLE_NODES_MIME_TYPES,
@@ -187,7 +187,7 @@ function removeCatchAllFoldersIfEmpty(
 ): CoreAPIContentNode[] {
   return nodes.filter(
     (node) =>
-      !CATCH_ALL_FOLDERS_MIME_TYPES.includes(node.mime_type) ||
+      !FOLDERS_TO_HIDE_IF_EMPTY_MIME_TYPES.includes(node.mime_type) ||
       node.has_children
   );
 }
