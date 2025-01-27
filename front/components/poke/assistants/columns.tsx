@@ -1,8 +1,8 @@
 import {
+  ArrowDownOnSquareIcon,
   EmotionLaughIcon,
   IconButton,
   LinkWrapper,
-  PlanetIcon,
   TrashIcon,
 } from "@dust-tt/sparkle";
 import type { LightWorkspaceType } from "@dust-tt/types";
@@ -116,7 +116,7 @@ export function makeColumnsForAssistants(
               target="_blank"
             >
               <IconButton
-                icon={PlanetIcon}
+                icon={ArrowDownOnSquareIcon}
                 size="xs"
                 variant="outline"
                 onClick={() => {}}
