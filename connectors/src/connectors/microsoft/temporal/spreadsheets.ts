@@ -1,5 +1,5 @@
 import type { Result } from "@dust-tt/types";
-import { Err, Ok, slugify } from "@dust-tt/types";
+import { Err, MIME_TYPES, Ok, slugify } from "@dust-tt/types";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import { stringify } from "csv-stringify/sync";
 
@@ -17,6 +17,7 @@ import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_c
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
   deleteDataSourceTable,
+  upsertDataSourceFolder,
   upsertDataSourceTableFromCsv,
 } from "@connectors/lib/data_sources";
 import { ProviderWorkflowError, TablesError } from "@connectors/lib/error";
@@ -301,6 +302,22 @@ export async function handleSpreadSheet({
     file,
     parentInternalId
   );
+
+  const parents = await getParents({
+    connectorId,
+    internalId: documentId,
+    startSyncTs,
+  });
+
+  await upsertDataSourceFolder({
+    dataSourceConfig: dataSourceConfigFromConnector(connector),
+    folderId: documentId,
+    title: file.name ?? "Untitled spreadsheet",
+    parents,
+    parentId: parentInternalId,
+    mimeType: MIME_TYPES.MICROSOFT.SPREADSHEET,
+    sourceUrl: file.webUrl ?? undefined,
+  });
 
   // List synced sheets.
   const syncedWorksheets = await spreadsheet.fetchChildren();

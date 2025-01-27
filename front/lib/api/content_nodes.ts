@@ -10,6 +10,12 @@ import { assertNever, MIME_TYPES } from "@dust-tt/types";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type logger from "@app/logger/logger";
 
+export const NON_EXPANDABLE_NODES_MIME_TYPES = [
+  MIME_TYPES.SLACK.CHANNEL,
+  MIME_TYPES.GITHUB.DISCUSSIONS,
+  MIME_TYPES.GITHUB.ISSUES,
+] as readonly string[];
+
 export function getContentNodeInternalIdFromTableId(
   dataSourceView: DataSourceViewResource | DataSourceViewType,
   tableId: string
@@ -85,6 +91,23 @@ export function computeNodesDiff({
               return false;
             }
             const coreValue = coreNode[key as keyof DataSourceViewContentNode];
+            // Special case for folder parents, the ones retrieved using getContentNodesForStaticDataSourceView do not
+            // contain any parentInternalIds.
+            if (provider === null && key === "parentInternalIds" && !value) {
+              return false;
+            }
+            // Ignore sourceUrls returned by core but left empty by connectors.
+            if (key === "sourceUrl" && value === null && coreValue !== null) {
+              return false;
+            }
+            // Special case for the titles of Webcrawler folders: we add a trailing slash in core but not in connectors.
+            if (
+              key === "title" &&
+              provider === "webcrawler" &&
+              coreValue === `${value}/`
+            ) {
+              return false;
+            }
             // Special case for expandable: if the core node is not expandable and the connectors one is, it means
             // that the difference comes from the fact that the node has no children: we omit from the log.
             if (key === "expandable" && value === true && coreValue === false) {

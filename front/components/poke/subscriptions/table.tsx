@@ -1,12 +1,18 @@
 import {
+  Button,
   ConfluenceLogo,
   GithubLogo,
   GlobeAltIcon,
   GoogleLogo,
   IntercomLogo,
-  Modal,
   NotionLogo,
   Page,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
   SlackLogo,
 } from "@dust-tt/sparkle";
 import type { PlanType, SubscriptionType, WorkspaceType } from "@dust-tt/types";
@@ -15,7 +21,6 @@ import { Separator } from "@radix-ui/react-select";
 import { format } from "date-fns/format";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { useState } from "react";
 
 import { PokeButton } from "@app/components/poke/shadcn/ui/button";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
@@ -91,24 +96,8 @@ export function ActiveSubscriptionTable({
 }) {
   const activePlan = subscription.plan;
 
-  const [showUpgradeDowngradeModal, setShowUpgradeDowngradeModal] =
-    useState(false);
-  const [showHistoryModal, setShowHistoryModal] = useState(false);
-
   return (
     <>
-      <UpgradeDowngradeModal
-        show={showUpgradeDowngradeModal}
-        onClose={() => setShowUpgradeDowngradeModal(false)}
-        owner={owner}
-        subscription={subscription}
-      />
-      <SubscriptionsHistoryModal
-        owner={owner}
-        subscriptions={subscriptions}
-        show={showHistoryModal}
-        onClose={() => setShowHistoryModal(false)}
-      />
       <div className="flex flex-col">
         <div className="flex justify-between gap-3">
           <div className="border-material-200 flex flex-grow flex-col rounded-lg border p-4">
@@ -116,22 +105,14 @@ export function ActiveSubscriptionTable({
               <h2 className="text-md flex-grow pb-4 font-bold">
                 Active Subscription:
               </h2>
-              <PokeButton
-                aria-label="History"
-                variant="outline"
-                size="sm"
-                onClick={() => setShowHistoryModal(true)}
-              >
-                🕰️ History
-              </PokeButton>
-              <PokeButton
-                aria-label="Upgrade / Downgrade"
-                variant="outline"
-                size="sm"
-                onClick={() => setShowUpgradeDowngradeModal(true)}
-              >
-                🔥 Upgrade / Downgrade
-              </PokeButton>
+              <SubscriptionsHistoryModal
+                owner={owner}
+                subscriptions={subscriptions}
+              />
+              <UpgradeDowngradeModal
+                owner={owner}
+                subscription={subscription}
+              />
             </div>
             <PokeTable>
               <PokeTableBody>
@@ -294,13 +275,9 @@ export function ActiveSubscriptionTable({
 }
 
 function UpgradeDowngradeModal({
-  show,
-  onClose,
   owner,
   subscription,
 }: {
-  show: boolean;
-  onClose: () => void;
   owner: WorkspaceType;
   subscription: SubscriptionType;
 }) {
@@ -365,67 +342,38 @@ function UpgradeDowngradeModal({
   );
 
   return (
-    <Modal
-      isOpen={show}
-      onClose={onClose}
-      hasChanged={false}
-      title="Upgrade / Downgrade Workspace"
-      variant="full-screen"
-    >
-      <Page>
-        <Page.SectionHeader
-          title="Downgrade Workspace"
-          description="This action will downgrade the workspace to having no plan. This means that all the features will be disabled and members of
-          the workspaces will be redirected to the paywall page. After 15 days, the workspace data will be deleted."
-        />
-        <div>
-          <PokeButton
-            variant="destructive"
-            onClick={onDowngrade}
-            disabled={subscription.plan.code === FREE_NO_PLAN_CODE}
-          >
-            Downgrade to NO PLAN
-          </PokeButton>
-        </div>
-        <Separator />
-        <Page.SectionHeader
-          title="Upgrade Workspace to a Free Plan"
-          description="This action will upgrade the workspace to a free plan. This means that all the features will be enabled and members of the workspace will be able to use the workspace according to the selected plan product limitations."
-        />
-        <div>
-          {plans
-            .filter((p) => isFreePlan(p.code)) // Hack to exclude The Pro and Enteprise plans
-            .map((p) => {
-              return (
-                <div key={p.code} className="pt-2">
-                  <PokeButton
-                    variant="outline"
-                    disabled={subscription.plan.code === p.code}
-                    onClick={() => onUpgradeToPlan(p)}
-                  >
-                    Upgrade to {p.code}
-                  </PokeButton>
-                </div>
-              );
-            })}
-        </div>
-        <Separator />
-        <Page.SectionHeader
-          title="Upgrade Workspace to a new Enterprise Plan"
-          description="Go to the Enterprise billing form page to upgrade this workspace to a new Enterprise plan ."
-        />
-        <div>
-          <EnterpriseUpgradeDialog owner={owner} />
-        </div>
-        {isProPlan(subscription.plan.code) && (
-          <>
+    <Sheet>
+      <SheetTrigger asChild>
+        <Button label="🔥 Upgrade / Downgrade" variant="outline" />
+      </SheetTrigger>
+      <SheetContent size="xl">
+        <SheetHeader>
+          <SheetTitle>Upgrade / Downgrade Workspace</SheetTitle>
+        </SheetHeader>
+        <SheetContainer>
+          <div className="flex flex-col gap-4">
             <Page.SectionHeader
-              title="Change the Pro Plan of this workspace"
-              description="This action changes the Plan limitations for an active Pro subscription. Subscription on Stripe stays the same, we just change the plan in our database."
+              title="Downgrade Workspace"
+              description="This action will downgrade the workspace to having no plan. This means that all the features will be disabled and members of
+          the workspaces will be redirected to the paywall page. After 15 days, the workspace data will be deleted."
+            />
+            <div>
+              <PokeButton
+                variant="destructive"
+                onClick={onDowngrade}
+                disabled={subscription.plan.code === FREE_NO_PLAN_CODE}
+              >
+                Downgrade to NO PLAN
+              </PokeButton>
+            </div>
+            <Separator />
+            <Page.SectionHeader
+              title="Upgrade Workspace to a Free Plan"
+              description="This action will upgrade the workspace to a free plan. This means that all the features will be enabled and members of the workspace will be able to use the workspace according to the selected plan product limitations."
             />
             <div>
               {plans
-                .filter((p) => isProPlan(p.code))
+                .filter((p) => isFreePlan(p.code)) // Hack to exclude The Pro and Enteprise plans
                 .map((p) => {
                   return (
                     <div key={p.code} className="pt-2">
@@ -440,33 +388,66 @@ function UpgradeDowngradeModal({
                   );
                 })}
             </div>
-          </>
-        )}
-      </Page>
-    </Modal>
+            <Separator />
+            <Page.SectionHeader
+              title="Upgrade Workspace to a new Enterprise Plan"
+              description="Go to the Enterprise billing form page to upgrade this workspace to a new Enterprise plan ."
+            />
+            <div>
+              <EnterpriseUpgradeDialog owner={owner} />
+            </div>
+            {isProPlan(subscription.plan.code) && (
+              <>
+                <Page.SectionHeader
+                  title="Change the Pro Plan of this workspace"
+                  description="This action changes the Plan limitations for an active Pro subscription. Subscription on Stripe stays the same, we just change the plan in our database."
+                />
+                <div>
+                  {plans
+                    .filter((p) => isProPlan(p.code))
+                    .map((p) => {
+                      return (
+                        <div key={p.code} className="pt-2">
+                          <PokeButton
+                            variant="outline"
+                            disabled={subscription.plan.code === p.code}
+                            onClick={() => onUpgradeToPlan(p)}
+                          >
+                            Upgrade to {p.code}
+                          </PokeButton>
+                        </div>
+                      );
+                    })}
+                </div>
+              </>
+            )}
+          </div>
+        </SheetContainer>
+      </SheetContent>
+    </Sheet>
   );
 }
 
 function SubscriptionsHistoryModal({
-  show,
-  onClose,
   owner,
   subscriptions,
 }: {
-  show: boolean;
-  onClose: () => void;
   owner: WorkspaceType;
   subscriptions: SubscriptionType[];
 }) {
   return (
-    <Modal
-      isOpen={show}
-      onClose={onClose}
-      hasChanged={false}
-      title="Workspace subscriptions history"
-      variant="full-screen"
-    >
-      <SubscriptionsDataTable owner={owner} subscriptions={subscriptions} />
-    </Modal>
+    <Sheet>
+      <SheetTrigger asChild>
+        <Button label="🕰️ History" variant="outline" />
+      </SheetTrigger>
+      <SheetContent size="xl">
+        <SheetHeader>
+          <SheetTitle>Workspace subscriptions history</SheetTitle>
+        </SheetHeader>
+        <SheetContainer>
+          <SubscriptionsDataTable owner={owner} subscriptions={subscriptions} />
+        </SheetContainer>
+      </SheetContent>
+    </Sheet>
   );
 }
