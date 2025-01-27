@@ -481,7 +481,7 @@ export async function syncFiles({
         folderId: createdOrUpdatedResource.internalId,
         parents: [createdOrUpdatedResource.internalId, ...parentsOfParent],
         parentId: parentsOfParent[0],
-        title: createdOrUpdatedResource.name ?? "",
+        title: createdOrUpdatedResource.name ?? "Untitled Folder",
         mimeType: MIME_TYPES.MICROSOFT.FOLDER,
         sourceUrl: createdOrUpdatedResource.webUrl ?? undefined,
       }),
@@ -681,7 +681,7 @@ export async function syncDeltaForRootNodesInDrive({
           folderId: blob.internalId,
           parents,
           parentId: parents[1] || null,
-          title: blob.name ?? "",
+          title: blob.name ?? "Untitled Folder",
           mimeType: MIME_TYPES.MICROSOFT.FOLDER,
           sourceUrl: blob.webUrl ?? undefined,
         });
@@ -884,7 +884,7 @@ async function updateDescendantsParentsInCore({
     folderId: folder.internalId,
     parents,
     parentId: parents[1] || null,
-    title: folder.name ?? "",
+    title: folder.name ?? "Untitled Folder",
     mimeType: MIME_TYPES.MICROSOFT.FOLDER,
     sourceUrl: folder.webUrl ?? undefined,
   });
