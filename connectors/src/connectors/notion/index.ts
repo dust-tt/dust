@@ -625,6 +625,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
         this.connectorId,
         notionId,
         [],
+        false,
         memo,
         undefined
       );

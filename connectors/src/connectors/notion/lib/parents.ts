@@ -28,6 +28,7 @@ async function _getParents(
   connectorId: ModelId,
   pageOrDbId: string,
   seen: string[],
+  syncing: boolean = false,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for memoization
   memoizationKey?: string,
   onProgress?: () => Promise<void>
@@ -38,10 +39,15 @@ async function _getParents(
     (await getNotionDatabaseFromConnectorsDb(connectorId, pageOrDbId));
 
   if (!pageOrDb) {
-    // pageOrDb is either not synced yet (not an issue, see design doc) or
-    // is not in Dust's scope, in both cases we return the page ID and a special parent "syncing".
+    // pageOrDb is either 1. not synced yet (not an issue, see design doc) or 2. is not in Dust's scope.
+    // If called during the sync (with syncing: true) we assume 1 and add a special parent "syncing".
+    // Otherwise, we assume 2. and return the page in the Orphaned Resources.
     // This indicates that the page's parents are not yet known.
-    return [pageOrDbId, "syncing"];
+    if (syncing) {
+      return [pageOrDbId, "syncing"];
+    } else {
+      return [pageOrDbId, "unknown"];
+    }
   }
   switch (pageOrDb.parentType) {
     // First 3 cases are exceptions that we ignore, and just return the page id
@@ -101,6 +107,7 @@ async function _getParents(
           connectorId,
           pageOrDb.parentId,
           seen,
+          syncing,
           memoizationKey,
           onProgress
         )
@@ -114,7 +121,7 @@ async function _getParents(
 export const getParents = cacheWithRedis(
   _getParents,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for memoization
-  (connectorId, pageOrDbId, seen, memoizationKey, onProgress) => {
+  (connectorId, pageOrDbId, seen, syncing, memoizationKey, onProgress) => {
     return `${connectorId}:${pageOrDbId}:${memoizationKey}`;
   },
   60 * 10 * 1000
@@ -160,6 +167,7 @@ export async function updateAllParentsFields(
           connectorId,
           pageId,
           [],
+          false,
           memoizationKey,
           onProgress
         );
