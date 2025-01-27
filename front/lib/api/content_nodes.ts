@@ -96,6 +96,15 @@ export function computeNodesDiff({
             if (provider === null && key === "parentInternalIds") {
               return false;
             }
+            // For Google Drive, connectors does not fill the parentInternalId at google_drive/index.ts#L324.
+            if (
+              ["parentInternalId"].includes(key) &&
+              provider === "google_drive" &&
+              coreValue !== null &&
+              value === null
+            ) {
+              return false;
+            }
             // Ignore sourceUrls returned by core but left empty by connectors.
             if (key === "sourceUrl" && value === null && coreValue !== null) {
               return false;
