@@ -39,8 +39,9 @@ async function _getParents(
 
   if (!pageOrDb) {
     // pageOrDb is either not synced yet (not an issue, see design doc) or
-    // is not in Dust's scope, in both cases we can just return the page id
-    return parents;
+    // is not in Dust's scope, in both cases we return the page ID and a special parent "syncing".
+    // This indicates that the page's parents are not yet known.
+    return [pageOrDbId, "syncing"];
   }
   switch (pageOrDb.parentType) {
     // First 3 cases are exceptions that we ignore, and just return the page id
