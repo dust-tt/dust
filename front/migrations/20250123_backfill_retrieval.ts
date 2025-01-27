@@ -1,10 +1,7 @@
 import type { LightWorkspaceType } from "@dust-tt/types";
 import { Op, Sequelize } from "sequelize";
 
-import {
-  RetrievalDocument,
-  RetrievalDocumentChunk,
-} from "@app/lib/models/assistant/actions/retrieval";
+import { RetrievalDocument, RetrievalDocumentChunk } from "@app/lib/models/assistant/actions/retrieval";
 import type { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
@@ -13,7 +10,7 @@ import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 interface TableConfig {
   model: typeof WorkspaceAwareModel<any>;
   attributes?: string[];
-  where: (workspaceId: number) => any;
+  where: (workspaceId: number, lastSeenId: number) => any;
 }
 
 const TABLES: TableConfig[] = [
@@ -31,10 +28,10 @@ const TABLES: TableConfig[] = [
   {
     model: RetrievalDocumentChunk,
     attributes: ["id", "retrievalDocumentId"],
-    where: (workspaceId: number) => ({
+    where: (workspaceId: number, lastSeenId: number) => ({
       retrievalDocumentId: {
         [Op.in]: Sequelize.literal(
-          `(SELECT id FROM retrieval_documents WHERE "workspaceId" = ${workspaceId})`
+          `(SELECT id FROM retrieval_documents WHERE "workspaceId" = ${workspaceId} AND id > ${lastSeenId})`
         ),
       },
     }),
@@ -60,7 +57,7 @@ async function backfillTable(
       where: {
         id: { [Op.gt]: lastSeenId },
         workspaceId: { [Op.is]: null },
-        ...(table.where(workspace.id) || {}),
+        ...(table.where(workspace.id, lastSeenId) || {}),
       },
       order: [["id", "ASC"]],
       limit: batchSize,
