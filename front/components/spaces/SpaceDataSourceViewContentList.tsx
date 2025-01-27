@@ -190,6 +190,8 @@ type SpaceDataSourceViewContentListProps = {
   plan: PlanType;
   space: SpaceType;
   systemSpace: SpaceType;
+  // TODO(20250126, nodes-core): Remove this after project end
+  showConnectorsNodes?: boolean;
 };
 
 export const SpaceDataSourceViewContentList = ({
@@ -204,6 +206,7 @@ export const SpaceDataSourceViewContentList = ({
   plan,
   space,
   systemSpace,
+  showConnectorsNodes,
 }: SpaceDataSourceViewContentListProps) => {
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
   const [showConnectorPermissionsModal, setShowConnectorPermissionsModal] =
@@ -258,6 +261,8 @@ export const SpaceDataSourceViewContentList = ({
     parentId,
     pagination: isServerPagination ? pagination : undefined,
     viewType: isValidContentNodesViewType(viewType) ? viewType : "documents",
+    // TODO(20250126, nodes-core): Remove this after project end
+    showConnectorsNodes,
   });
 
   const { hasContent: hasDocuments, isNodesValidating: isDocumentsValidating } =

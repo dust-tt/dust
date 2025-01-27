@@ -391,7 +391,8 @@ async function getContentNodesForStaticDataSourceView(
 
 export async function getContentNodesForDataSourceView(
   dataSourceView: DataSourceViewResource,
-  params: GetContentNodesForDataSourceViewParams
+  params: GetContentNodesForDataSourceViewParams,
+  showConnectorsNodes?: boolean
 ): Promise<
   Result<GetContentNodesForDataSourceViewResult, Error | CoreAPIError>
 > {
@@ -399,6 +400,7 @@ export async function getContentNodesForDataSourceView(
 
   let contentNodesResult: GetContentNodesForDataSourceViewResult;
 
+  const connectorsStart = new Date();
   if (dataSourceView.dataSource.connectorId && !onlyCoreAPI) {
     const contentNodesRes = await getContentNodesForManagedDataSourceView(
       dataSourceView,
@@ -423,6 +425,8 @@ export async function getContentNodesForDataSourceView(
     contentNodesResult = contentNodesRes.value;
   }
 
+  const connectorsLatency = new Date().getTime() - connectorsStart.getTime();
+
   const localLogger = logger.child({
     dataSourceId: dataSourceView.dataSource.sId,
     dataSourceViewId: dataSourceView.sId,
@@ -430,10 +434,22 @@ export async function getContentNodesForDataSourceView(
     viewType: params.viewType,
   });
 
+  const coreStart = new Date();
   // shadow read from core
   const coreContentNodesRes = await getContentNodesForDataSourceViewFromCore(
     dataSourceView,
     params
+  );
+  const coreLatency = new Date().getTime() - coreStart.getTime();
+
+  // TODO(20250126, nodes-core): Remove this after project end
+  localLogger.info(
+    {
+      connectorsLatency,
+      coreLatency,
+      diff: coreLatency - connectorsLatency,
+    },
+    "[CoreNodes] Latency between connectors and core"
   );
 
   if (coreContentNodesRes.isErr()) {
@@ -460,7 +476,10 @@ export async function getContentNodesForDataSourceView(
       );
     } else {
       const workspace = renderLightWorkspaceType({ workspace: workspaceModel });
-      if (isDevelopment() || isDustWorkspace(workspace)) {
+      if (
+        (isDevelopment() || isDustWorkspace(workspace)) &&
+        !showConnectorsNodes
+      ) {
         const contentNodesInView = filterAndCropContentNodesByView(
           dataSourceView,
           coreContentNodesRes.value.nodes

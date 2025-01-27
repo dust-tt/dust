@@ -108,6 +108,7 @@ export function useDataSourceViewContentNodes({
   viewType,
   disabled = false,
   swrOptions,
+  showConnectorsNodes,
 }: {
   owner: LightWorkspaceType;
   dataSourceView?: DataSourceViewType;
@@ -117,6 +118,8 @@ export function useDataSourceViewContentNodes({
   viewType?: ContentNodesViewType;
   disabled?: boolean;
   swrOptions?: SWRConfiguration;
+  // TODO(20250126, nodes-core): Remove this after project end
+  showConnectorsNodes?: boolean;
 }): {
   isNodesError: boolean;
   isNodesLoading: boolean;
@@ -128,6 +131,10 @@ export function useDataSourceViewContentNodes({
 } {
   const params = new URLSearchParams();
   appendPaginationParams(params, pagination);
+
+  if (showConnectorsNodes) {
+    params.set("connNodes", "true");
+  }
 
   const url = dataSourceView
     ? `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/content-nodes?${params}`
