@@ -90,9 +90,26 @@ export class GithubGetPullRequestAction extends BaseAction {
   }
 
   async renderForMultiActionsModel(): Promise<FunctionMessageTypeModel> {
-    const content = `${this.pullBody}\n\n${(this.pullCommits || [])
-      .map((c) => `${c.sha} ${c.author}: ${c.message}`)
-      .join("\n")}\n\n${this.pullDiff}`;
+    // TODO(spolu): add PR author and date
+    const content =
+      `${this.pullBody}\n\n` +
+      `COMMITS:\n` +
+      `${(this.pullCommits || [])
+        .map((c) => `${c.sha} ${c.author}: ${c.message}`)
+        .join("\n")}\n\n` +
+      `DIFF:\n` +
+      `${this.pullDiff}\n\n` +
+      `COMMENTS:\n` +
+      `${(this.pullComments || []).map((c) => `${c.author}: ${c.body}`).join("\n")}\n\n` +
+      `REVIEWS:\n` +
+      `${(this.pullReviews || [])
+        .map(
+          (r) =>
+            `${r.author}:\n(${r.state}) ${r.body}\n${(r.comments || [])
+              .map((c) => ` - ${c.path}:${c.line}:\n${c.body}`)
+              .join("\n")}`
+        )
+        .join("\n")}`;
 
     return {
       role: "function" as const,
@@ -362,9 +379,6 @@ export class GithubGetPullRequestConfigurationServerRunner extends BaseActionCon
           };
         };
       };
-
-      console.log(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> PR:");
-      console.log(JSON.stringify(pr, null, 2));
 
       const prBody = pr.repository.pullRequest.body;
       const prCommits = pr.repository.pullRequest.commits.nodes.map((n) => {
