@@ -106,6 +106,13 @@ async function getAuthenticator(
   }
 }
 
+async function getWorkspace(
+  context: GetServerSidePropsContext<ParsedUrlQuery, PreviewData>
+) {
+  const { wId } = context.params ?? {};
+  return isString(wId) ? getWorkspaceInfos(wId) : null;
+}
+
 export function makeGetServerSidePropsRequirementsWrapper<
   RequireUserPrivilege extends UserPrivilege = "user",
 >({
@@ -135,8 +142,7 @@ export function makeGetServerSidePropsRequirementsWrapper<
         requireUserPrivilege
       );
 
-      const { wId } = context.params ?? {};
-      const workspace = isString(wId) ? await getWorkspaceInfos(wId) : null;
+      const workspace = auth ? auth.workspace() : await getWorkspace(context);
       const maintenance = workspace?.metadata?.maintenance;
 
       if (maintenance) {
