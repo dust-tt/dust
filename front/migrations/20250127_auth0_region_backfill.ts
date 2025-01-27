@@ -3,7 +3,7 @@ import type { ApiResponse } from "auth0";
 import { getAuth0ManagemementClient } from "@app/lib/api/auth0";
 import { makeScript } from "@app/scripts/helpers";
 
-const USERS_PER_PAGE = 10;
+const USERS_PER_PAGE = 100;
 const THRESHOLD = 3;
 
 makeScript(
@@ -37,7 +37,6 @@ makeScript(
 
     let hasMore = true;
     while (hasMore) {
-      //   await waitForRateLimit();
       logger.info(`Getting the next ${USERS_PER_PAGE} users`);
 
       const users = await throttleAuth0(() =>
