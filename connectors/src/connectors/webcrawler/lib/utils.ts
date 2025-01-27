@@ -29,7 +29,7 @@ export function getParentsForPage(url: string, pageInItsOwnFolder: boolean) {
   }
   parents.push(
     ...getAllFoldersForUrl(url).map((f) =>
-      stableIdForUrl({ url: f, ressourceType: "folder" })
+      stableIdForUrl({ url: f, ressourceType: "file" })
     )
   );
 
