@@ -6,7 +6,7 @@ export const useDustAPI = () => {
   const { token, isAuthenticated, isUserSetup, user, workspace } = useAuth();
 
   const commitHash = process.env.COMMIT_HASH;
-  const extensionVersion = process.env.EXTENSION_VERSION;
+  const extensionVersion = process.env.VERSION;
   if (!isAuthenticated || !isUserSetup || !user || !workspace || !token) {
     throw new Error("Not authenticated");
   }

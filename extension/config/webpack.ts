@@ -143,7 +143,6 @@ export const getConfig = async ({
       new webpack.EnvironmentPlugin({
         VERSION: version,
         COMMIT_HASH: getCommitHash(),
-        EXTENSION_VERSION: version,
       }),
       new webpack.ProvidePlugin({
         Buffer: ["buffer", "Buffer"],
