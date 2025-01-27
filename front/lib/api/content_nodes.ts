@@ -190,6 +190,7 @@ export function computeNodesDiff({
 export function getContentNodeType(node: CoreAPIContentNode): ContentNodeType {
   // this is approximate and will be cleaned up when we turn ContentNodeType into the same nodeType as in core
   // the main point is that it correctly identifies documents as files as this is used in ContentNodeTree
+  // TODO(2025-01-27 aubin): clean this up
   switch (node.node_type) {
     case "Table":
       return "database";
