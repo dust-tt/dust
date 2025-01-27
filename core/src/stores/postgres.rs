@@ -1868,7 +1868,7 @@ impl Store for PostgresStore {
                 "INSERT INTO data_sources_documents \
                    (id, data_source, created, document_id, timestamp, tags_array, \
                     hash, text_size, chunk_count, status) \
-                   VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10) \
+                   VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9) \
                    RETURNING id, created",
             )
             .await?;
