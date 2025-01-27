@@ -65,21 +65,22 @@ function getVisualForContentNodeBasedOnType(node: ContentNode) {
 }
 
 function getVisualForContentNodeBasedOnMimeType(node: ContentNode) {
-  if (node.mimeType) {
-    if (CHANNEL_MIME_TYPES.includes(node.mimeType)) {
-      if (node.providerVisibility === "private") {
-        return LockIcon;
-      }
-      return ChatBubbleLeftRightIcon;
+  if (!node.mimeType) {
+    throw new Error(
+      "Unreachable: getVisualForContentNodeBasedOnMimeType called on a node that does not have a mime type"
+    );
+  }
+  if (CHANNEL_MIME_TYPES.includes(node.mimeType)) {
+    if (node.providerVisibility === "private") {
+      return LockIcon;
     }
-    if (DATABASE_MIME_TYPES.includes(node.mimeType)) {
-      return Square3Stack3DIcon;
-    }
-    if (FILE_MIME_TYPES.includes(node.mimeType)) {
-      return getVisualForFileContentNode(
-        node as ContentNode & { type: "file" }
-      );
-    }
+    return ChatBubbleLeftRightIcon;
+  }
+  if (DATABASE_MIME_TYPES.includes(node.mimeType)) {
+    return Square3Stack3DIcon;
+  }
+  if (FILE_MIME_TYPES.includes(node.mimeType)) {
+    return getVisualForFileContentNode(node as ContentNode & { type: "file" });
   }
   switch (node.type) {
     case "database":
