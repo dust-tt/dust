@@ -5,7 +5,7 @@ import type {
   DataSourceViewContentNode,
   DataSourceViewType,
 } from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
+import { assertNever, MIME_TYPES } from "@dust-tt/types";
 
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type logger from "@app/logger/logger";
