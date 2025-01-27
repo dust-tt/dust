@@ -4,6 +4,7 @@ export { default as AnthropicWhiteLogo } from "./AnthropicWhite";
 export { default as ClaudeLogo } from "./Claude";
 export { default as CohereLogo } from "./Cohere";
 export { default as ConfluenceLogo } from "./Confluence";
+export { default as DeepseekLogo } from "./Deepseek";
 export { default as DriveLogo } from "./Drive";
 export { default as GeminiLogo } from "./Gemini";
 export { default as GithubLogo } from "./Github";
