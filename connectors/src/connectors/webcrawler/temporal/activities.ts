@@ -1,6 +1,5 @@
 import type { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
 import {
-  MIME_TYPES,
   stripNullBytes,
   WEBCRAWLER_MAX_DEPTH,
   WEBCRAWLER_MAX_PAGES,
@@ -14,7 +13,6 @@ import turndown from "turndown";
 
 import {
   getAllFoldersForUrl,
-  getDisplayNameForFolder,
   getFolderForUrl,
   getIpAddressForUrl,
   getParentsForPage,
@@ -32,10 +30,8 @@ import {
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
   deleteDataSourceDocument,
-  deleteDataSourceFolder,
   MAX_SMALL_DOCUMENT_TXT_LEN,
   upsertDataSourceDocument,
-  upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
 import {
   WebCrawlerFolder,
@@ -262,7 +258,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
         const parentFolderUrls = getAllFoldersForUrl(request.url);
         const parentFolderIds = getParentsForPage(request.url, false);
 
-        for (const [index, folder] of parentFolderUrls.entries()) {
+        for (const folder of parentFolderUrls.values()) {
           if (createdFolders.has(folder)) {
             continue;
           }
@@ -270,7 +266,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
           const logicalParent = isTopFolder(request.url)
             ? null
             : getFolderForUrl(folder);
-          const [webCrawlerFolder] = await WebCrawlerFolder.upsert({
+          await WebCrawlerFolder.upsert({
             url: folder,
             parentUrl: logicalParent,
             connectorId: connector.id,
@@ -280,21 +276,6 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
               ressourceType: "folder",
             }),
             lastSeenAt: new Date(),
-          });
-
-          // parent folder ids of the page are in hierarchy order from the
-          // page to the root so for the current folder, its parents start at
-          // index+1 (including itself as first parent) and end at the root
-          const parents = parentFolderIds.slice(index + 1);
-          await upsertDataSourceFolder({
-            dataSourceConfig,
-            folderId: webCrawlerFolder.internalId,
-            timestampMs: webCrawlerFolder.updatedAt.getTime(),
-            parents,
-            parentId: parents[1] || null,
-            title: getDisplayNameForFolder(webCrawlerFolder),
-            mimeType: MIME_TYPES.WEBCRAWLER.FOLDER,
-            sourceUrl: webCrawlerFolder.url,
           });
 
           createdFolders.add(folder);
@@ -580,10 +561,6 @@ export async function webCrawlerGarbageCollector(
       type: "delete_folder",
     });
     for (const folder of foldersToDelete) {
-      await deleteDataSourceFolder({
-        dataSourceConfig,
-        folderId: folder.internalId,
-      });
       await folder.destroy();
     }
   } while (foldersToDelete.length > 0);
