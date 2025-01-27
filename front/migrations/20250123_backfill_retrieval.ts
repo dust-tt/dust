@@ -1,7 +1,10 @@
 import type { LightWorkspaceType } from "@dust-tt/types";
 import { Op, Sequelize } from "sequelize";
 
-import { RetrievalDocument, RetrievalDocumentChunk } from "@app/lib/models/assistant/actions/retrieval";
+import {
+  RetrievalDocument,
+  RetrievalDocumentChunk,
+} from "@app/lib/models/assistant/actions/retrieval";
 import type { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
