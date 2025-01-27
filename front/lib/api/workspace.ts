@@ -363,6 +363,26 @@ export async function changeWorkspaceName(
   return new Ok(undefined);
 }
 
+export async function updateWorkspaceConversationsRetention(
+  owner: LightWorkspaceType,
+  nbDays: number
+): Promise<Result<void, Error>> {
+  const [affectedCount] = await Workspace.update(
+    { conversationsRetentionDays: nbDays === -1 ? null : nbDays },
+    {
+      where: {
+        id: owner.id,
+      },
+    }
+  );
+
+  if (affectedCount === 0) {
+    return new Err(new Error("Workspace not found."));
+  }
+
+  return new Ok(undefined);
+}
+
 export async function disableSSOEnforcement(
   owner: LightWorkspaceType
 ): Promise<Result<void, Error>> {
