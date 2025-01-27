@@ -1,4 +1,5 @@
 import { Button, Icon, LogoSquareColorLogo, Page } from "@dust-tt/sparkle";
+import { isString } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 
@@ -11,7 +12,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
 }>(async (context) => {
   return {
     props: {
-      code: (context.query.code as string) ?? null,
+      code: isString(context.query.code) ? context.query.code : "",
     },
   };
 });
@@ -24,11 +25,22 @@ function getErrorMessage(code: string) {
       return (
         <>
           <Page.Header
-            title={<span className="text-white">Under Maintenance</span>}
+            title={
+              <span className="text-white">Service Relocation in Progress</span>
+            }
           />
           <p className={defaultErrorMessageClassName}>
-            We're currently performing a relocation of this workspace into
-            another region.
+            Your account is currently being relocated to a new region. During
+            this planned migration, you won't be able to access our application.
+            This temporary interruption ensures a smooth transition of your
+            organization's data.
+          </p>
+          <h4 className="text-xl font-bold text-white">What's happening?</h4>
+          <p className={defaultErrorMessageClassName}>
+            As discussed with your team, we're moving your account to a
+            different regional infrastructure. All your data, settings, and
+            configurations will remain exactly as they were. We'll notify your
+            team once the relocation is complete and your access is restored.
           </p>
         </>
       );
@@ -53,7 +65,7 @@ function getErrorMessage(code: string) {
   }
 }
 
-export default function LoginError({
+export default function MaintenancePage({
   code,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const errorMessage = getErrorMessage(code);
@@ -65,7 +77,7 @@ export default function LoginError({
         <div className="flex h-full flex-col items-center justify-center">
           <div className="flex flex-col items-center gap-6 text-center">
             <Icon visual={LogoSquareColorLogo} size="lg" />
-            <div className="flex flex-col items-center gap-6">
+            <div className="mx-20 flex flex-col items-center gap-6">
               {errorMessage}
             </div>
             <Link href="/">
