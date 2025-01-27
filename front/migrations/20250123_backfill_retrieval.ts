@@ -20,10 +20,10 @@ const TABLES: TableConfig[] = [
   {
     model: RetrievalDocument,
     attributes: ["id", "workspaceId", "dataSourceViewId"],
-    where: (workspaceId: number) => ({
+    where: (workspaceId: number, lastSeenId: number) => ({
       retrievalActionId: {
         [Op.in]: Sequelize.literal(
-          `(SELECT id FROM agent_retrieval_actions WHERE "workspaceId" = ${workspaceId})`
+          `(SELECT id FROM agent_retrieval_actions WHERE "workspaceId" = ${workspaceId}) AND id > ${lastSeenId}`
         ),
       },
     }),
