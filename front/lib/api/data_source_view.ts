@@ -13,6 +13,8 @@ import {
   ConnectorsAPI,
   CoreAPI,
   Err,
+  isDevelopment,
+  isDustWorkspace,
   Ok,
   removeNulls,
 } from "@dust-tt/types";
@@ -30,6 +32,10 @@ import type { OffsetPaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import {
+  getWorkspaceByModelId,
+  renderLightWorkspaceType,
+} from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 
 const DEFAULT_STATIC_DATA_SOURCE_PAGINATION_LIMIT = 10_000;
@@ -430,8 +436,8 @@ export async function getContentNodesForDataSourceView(
   );
 
   if (coreContentNodesRes.isErr()) {
-    localLogger.info(
-      { error: coreContentNodesRes.error },
+    localLogger.error(
+      { error: coreContentNodesRes.error, panic: true },
       "[CoreNodes] Could not fetch content nodes from core"
     );
   } else if (coreContentNodesRes.isOk()) {
@@ -441,6 +447,29 @@ export async function getContentNodesForDataSourceView(
       provider: dataSourceView.dataSource.connectorProvider,
       localLogger,
     });
+
+    // if development or dust workspace
+    const workspaceModel = await getWorkspaceByModelId(
+      dataSourceView.space.workspaceId
+    );
+    if (!workspaceModel) {
+      logger.error(
+        { dataSourceView, panic: true },
+        "No workspace for data source view"
+      );
+    } else {
+      const workspace = renderLightWorkspaceType({ workspace: workspaceModel });
+      if (isDevelopment() || isDustWorkspace(workspace)) {
+        const contentNodesInView = filterAndCropContentNodesByView(
+          dataSourceView,
+          coreContentNodesRes.value.nodes
+        );
+        return new Ok({
+          nodes: contentNodesInView,
+          total: coreContentNodesRes.value.nodes.length,
+        });
+      }
+    }
   }
 
   const contentNodesInView = filterAndCropContentNodesByView(
