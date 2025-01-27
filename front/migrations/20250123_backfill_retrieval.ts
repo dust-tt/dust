@@ -13,7 +13,7 @@ import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 interface TableConfig {
   model: typeof WorkspaceAwareModel<any>;
   attributes?: string[];
-  where?: (workspaceId: number) => any;
+  where: (workspaceId: number) => any;
 }
 
 const TABLES: TableConfig[] = [
@@ -60,7 +60,7 @@ async function backfillTable(
       where: {
         id: { [Op.gt]: lastSeenId },
         workspaceId: { [Op.is]: null },
-        ...(table.where?.(workspace.id) || {}),
+        ...(table.where(workspace.id) || {}),
       },
       order: [["id", "ASC"]],
       limit: batchSize,
