@@ -5,7 +5,6 @@ import type {
 import {
   getGroupIdsFromHeaders,
   getUserEmailFromHeaders,
-  isString,
 } from "@dust-tt/types";
 import type { TokenExpiredError } from "jsonwebtoken";
 import type { NextApiRequest, NextApiResponse } from "next";
