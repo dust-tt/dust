@@ -20,6 +20,7 @@ import assert from "assert";
 
 import config from "@app/lib/api/config";
 import {
+  CATCH_ALL_FOLDERS_MIME_TYPES,
   computeNodesDiff,
   getContentNodeInternalIdFromTableId,
   getContentNodeMetadata,
@@ -181,6 +182,16 @@ function filterNodesByViewType(
   }
 }
 
+function removeCatchAllFoldersIfEmpty(
+  nodes: CoreAPIContentNode[]
+): CoreAPIContentNode[] {
+  return nodes.filter(
+    (node) =>
+      !CATCH_ALL_FOLDERS_MIME_TYPES.includes(node.mime_type) ||
+      node.has_children
+  );
+}
+
 function makeCoreDataSourceViewFilter(
   dataSourceView: DataSourceViewResource | DataSourceViewType
 ): CoreAPIDatasourceViewFilter {
@@ -237,7 +248,9 @@ async function getContentNodesForDataSourceViewFromCore(
     return new Err(new Error(coreRes.error.message));
   }
 
-  const filteredNodes = filterNodesByViewType(coreRes.value.nodes, viewType);
+  const filteredNodes = removeCatchAllFoldersIfEmpty(
+    filterNodesByViewType(coreRes.value.nodes, viewType)
+  );
 
   return new Ok({
     nodes: filteredNodes.map((node) => {
