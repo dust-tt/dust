@@ -1,4 +1,5 @@
 import type { LightWorkspaceType } from "@dust-tt/types";
+import _ from "lodash";
 import { Op, Sequelize } from "sequelize";
 
 import {
@@ -16,32 +17,31 @@ interface TableConfig {
   where: (workspaceId: number, lastSeenId: number) => any;
 }
 
-const TABLES: TableConfig[] = [
-  {
-    model: RetrievalDocument,
-    attributes: ["id", "workspaceId", "dataSourceViewId"],
-    where: (workspaceId: number, lastSeenId: number) => ({
-      retrievalActionId: {
-        [Op.in]: Sequelize.literal(
-          `(SELECT id FROM agent_retrieval_actions WHERE "workspaceId" = ${workspaceId}) AND id > ${lastSeenId}`
-        ),
-      },
-    }),
-  },
-  {
-    model: RetrievalDocumentChunk,
-    attributes: ["id", "retrievalDocumentId"],
-    where: (workspaceId: number, lastSeenId: number) => ({
-      retrievalDocumentId: {
-        [Op.in]: Sequelize.literal(
-          `(SELECT id FROM retrieval_documents WHERE "workspaceId" = ${workspaceId} AND id > ${lastSeenId})`
-        ),
-      },
-    }),
-  },
-];
+const TABLE_RETRIEVAL_DOCUMENT: TableConfig = {
+  model: RetrievalDocument,
+  attributes: ["id", "workspaceId", "dataSourceViewId"],
+  where: (workspaceId: number, lastSeenId: number) => ({
+    retrievalActionId: {
+      [Op.in]: Sequelize.literal(
+        `(SELECT id FROM agent_retrieval_actions WHERE "workspaceId" = ${workspaceId}) AND id > ${lastSeenId}`
+      ),
+    },
+  }),
+};
 
-async function backfillTable(
+const TABLE_RETRIEVAL_DOCUMENT_CHUNK: TableConfig = {
+  model: RetrievalDocumentChunk,
+  attributes: ["id", "retrievalDocumentId"],
+  where: (workspaceId: number, lastSeenId: number) => ({
+    retrievalDocumentId: {
+      [Op.in]: Sequelize.literal(
+        `(SELECT id FROM retrieval_documents WHERE "workspaceId" = ${workspaceId} AND id > ${lastSeenId})`
+      ),
+    },
+  }),
+};
+
+async function backfillTableRetrievalDocumentChunk(
   workspace: LightWorkspaceType,
   table: TableConfig,
   { execute, logger }: { execute: boolean; logger: Logger }
@@ -104,34 +104,126 @@ async function backfillTable(
   return totalProcessed;
 }
 
-async function backfillTablesForWorkspace(
+async function backfillTableRetrievalDocument(
   workspace: LightWorkspaceType,
+  table: TableConfig,
   { execute, logger }: { execute: boolean; logger: Logger }
 ) {
+  let lastSeenId = 0;
+  const batchSize = 100;
+  let totalProcessed = 0;
+
   logger.info(
-    { workspaceId: workspace.sId, execute },
-    "Starting workspace backfill"
+    { workspaceId: workspace.sId, table: table.model.tableName },
+    "Starting table backfill"
   );
 
-  const stats: any = {};
-  for (const table of TABLES) {
-    stats[table.model.tableName] = await backfillTable(workspace, table, {
-      execute,
-      logger,
+  for (;;) {
+    const ids = await table.model.findAll({
+      where: {
+        id: { [Op.gt]: lastSeenId },
+        workspaceId: { [Op.is]: null },
+        retrievalActionId: {
+          [Op.in]: Sequelize.literal(
+            `(SELECT id FROM agent_retrieval_actions WHERE "workspaceId" = ${workspace.id})`
+          ),
+        },
+      },
+      attributes: ["id"],
+      order: [["id", "ASC"]],
+      limit: batchSize,
+      raw: true,
     });
+
+    if (ids.length === 0) {
+      break;
+    }
+
+    if (execute) {
+      const chunks = _.chunk(
+        ids.map((r) => r.id),
+        100
+      );
+      for (const chunk of chunks) {
+        await table.model.update(
+          { workspaceId: workspace.id },
+          {
+            where: {
+              id: { [Op.in]: chunk },
+            },
+            hooks: false,
+            fields: ["workspaceId"],
+            silent: true,
+          }
+        );
+      }
+    }
+
+    totalProcessed += ids.length;
+    lastSeenId = ids[ids.length - 1].id;
+
+    logger.info(
+      {
+        workspaceId: workspace.sId,
+        table: table.model.tableName,
+        batchSize: ids.length,
+        totalProcessed,
+        lastId: lastSeenId,
+      },
+      "Processing batch"
+    );
+  }
+
+  return totalProcessed;
+}
+
+async function backfillTablesForWorkspace(
+  workspace: LightWorkspaceType,
+  table: string,
+  { execute, logger }: { execute: boolean; logger: Logger }
+) {
+  const stats: any = {};
+
+  if (table === "retrieval_documents") {
+    stats[TABLE_RETRIEVAL_DOCUMENT.model.tableName] =
+      await backfillTableRetrievalDocument(
+        workspace,
+        TABLE_RETRIEVAL_DOCUMENT,
+        {
+          execute,
+          logger,
+        }
+      );
+  } else if (table === "retrieval_document_chunks") {
+    stats[TABLE_RETRIEVAL_DOCUMENT_CHUNK.model.tableName] =
+      await backfillTableRetrievalDocumentChunk(
+        workspace,
+        TABLE_RETRIEVAL_DOCUMENT_CHUNK,
+        {
+          execute,
+          logger,
+        }
+      );
+  } else {
+    return;
   }
 
   logger.info(
     { workspaceId: workspace.sId, stats },
-    "Completed workspace backfill"
+    `Completed workspace backfill for table ${table}`
   );
 }
 
-makeScript({}, async ({ execute }, logger) => {
-  return runOnAllWorkspaces(
-    async (workspace) => {
-      await backfillTablesForWorkspace(workspace, { execute, logger });
-    },
-    { concurrency: 5 }
-  );
-});
+makeScript(
+  {
+    table: { type: "string", required: true },
+  },
+  async ({ execute, table }, logger) => {
+    return runOnAllWorkspaces(
+      async (workspace: LightWorkspaceType) => {
+        await backfillTablesForWorkspace(workspace, table, { execute, logger });
+      },
+      { concurrency: 5 }
+    );
+  }
+);
