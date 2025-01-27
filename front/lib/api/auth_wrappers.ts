@@ -16,7 +16,6 @@ import {
   verifyAuth0Token,
 } from "@app/lib/api/auth0";
 import { getUserWithWorkspaces } from "@app/lib/api/user";
-import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import {
   Authenticator,
   getAPIKey,
