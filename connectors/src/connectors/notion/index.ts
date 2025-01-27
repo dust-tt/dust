@@ -96,7 +96,9 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       {}
     );
 
-    // Upsert to data_sources_folders (core) a top-level folder for the orphaned resources.
+    // For each connector, there are 2 special folders (root folders):
+    // - Syncing: contains all the pages visited during the sync process whose ancestry could not be resolved (one of the ancestors not synced yet).
+    // - Orphaned Resources: contains all the pages whose ancestors are not all synced/given access to.
     await upsertDataSourceFolder({
       dataSourceConfig: dataSourceConfigFromConnector(connector),
       folderId: nodeIdFromNotionId("unknown"),
