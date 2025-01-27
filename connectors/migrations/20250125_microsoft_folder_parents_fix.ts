@@ -1,5 +1,4 @@
 import { concurrentExecutor, MIME_TYPES } from "@dust-tt/types";
-import _ from "lodash";
 import type { LoggerOptions } from "pino";
 import type pino from "pino";
 import { makeScript } from "scripts/helpers";
