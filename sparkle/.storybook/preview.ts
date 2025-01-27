@@ -1,15 +1,9 @@
 import { withThemeByClassName } from "@storybook/addon-themes";
 import type { Preview } from "@storybook/react";
-import { INITIAL_VIEWPORTS } from "@storybook/addon-viewport";
 
 const preview: Preview = {
   parameters: {
     actions: { argTypesRegex: "^on[A-Z].*" },
-    viewport: {
-      viewports: INITIAL_VIEWPORTS,
-      defaultViewport: "iphone12",
-      disable: true,
-    },
     controls: {
       matchers: {
         color: /(background|color)$/i,
