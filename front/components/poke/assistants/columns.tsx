@@ -119,7 +119,6 @@ export function makeColumnsForAssistants(
                 icon={ArrowDownOnSquareIcon}
                 size="xs"
                 variant="outline"
-                onClick={() => {}}
               />
             </Link>
           </>
