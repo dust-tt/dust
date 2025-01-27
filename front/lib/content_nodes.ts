@@ -40,7 +40,7 @@ export function getVisualForContentNode(
   }
 }
 
-function getVisualForContentNodeBaseOnType(node: ContentNode) {
+function getVisualForContentNodeBasedOnType(node: ContentNode) {
   switch (node.type) {
     case "channel":
       if (node.providerVisibility === "private") {
