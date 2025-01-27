@@ -3,7 +3,7 @@ import React from "react";
 
 import { CHIP_COLORS, CHIP_SIZES } from "@sparkle/components/Chip";
 
-import { Chip, cn, Spinner, UserGroupIcon } from "../index_with_tw_base";
+import { Chip, UserGroupIcon } from "../index_with_tw_base";
 
 const ICONS = {
   none: null,
