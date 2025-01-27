@@ -194,19 +194,6 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
         });
       }
 
-      const workspace = await getWorkspaceInfos(wId);
-      const maintenance = workspace?.metadata?.maintenance;
-
-      if (maintenance) {
-        return apiError(req, res, {
-          status_code: 503,
-          api_error: {
-            type: "not_authenticated", // TODO Change this to "service_unavailable" - not_authenticated better for now as itis correctly handled by the extension
-            message: `Service is currently unavailable. [${maintenance}]`,
-          },
-        });
-      }
-
       const bearerTokenRes = await getBearerToken(req);
       if (bearerTokenRes.isErr()) {
         return apiError(req, res, {
@@ -286,6 +273,18 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
             },
           });
         }
+
+        const maintenance = auth.workspace()?.metadata?.maintenance;
+        if (maintenance) {
+          return apiError(req, res, {
+            status_code: 503,
+            api_error: {
+              type: "not_authenticated", // TODO Change this to "service_unavailable" - not_authenticated better for now as itis correctly handled by the extension
+              message: `Service is currently unavailable. [${maintenance}]`,
+            },
+          });
+        }
+
         return handler(
           req,
           res,
@@ -316,6 +315,17 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
           api_error: {
             type: "workspace_not_found",
             message: "The workspace was not found.",
+          },
+        });
+      }
+
+      const maintenance = owner.metadata?.maintenance;
+      if (maintenance) {
+        return apiError(req, res, {
+          status_code: 503,
+          api_error: {
+            type: "service_unavailable",
+            message: `Service is currently unavailable. [${maintenance}]`,
           },
         });
       }
