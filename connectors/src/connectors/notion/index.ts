@@ -96,15 +96,23 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       {}
     );
 
-    // Upserts to data_sources_folders (core) a top-level folder for the orphaned resources.
-    const folderId = nodeIdFromNotionId("unknown");
+    // Upsert to data_sources_folders (core) a top-level folder for the orphaned resources.
     await upsertDataSourceFolder({
       dataSourceConfig: dataSourceConfigFromConnector(connector),
-      folderId,
-      parents: [folderId],
+      folderId: nodeIdFromNotionId("unknown"),
+      parents: [nodeIdFromNotionId("unknown")],
       parentId: null,
       title: "Orphaned Resources",
       mimeType: MIME_TYPES.NOTION.UNKNOWN_FOLDER,
+    });
+    // Upsert to data_sources_folders (core) a top-level folder for the syncing resources.
+    await upsertDataSourceFolder({
+      dataSourceConfig: dataSourceConfigFromConnector(connector),
+      folderId: nodeIdFromNotionId("syncing"),
+      parents: [nodeIdFromNotionId("syncing")],
+      parentId: null,
+      title: "Syncing",
+      mimeType: MIME_TYPES.NOTION.SYNCING_FOLDER,
     });
 
     try {
