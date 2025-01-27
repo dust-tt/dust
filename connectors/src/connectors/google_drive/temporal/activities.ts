@@ -11,6 +11,7 @@ import { Op } from "sequelize";
 import { getSourceUrlForGoogleDriveFiles } from "@connectors/connectors/google_drive";
 import {
   GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID,
+  GOOGLE_DRIVE_SHARED_WITH_ME_WEB_URL,
   GOOGLE_DRIVE_USER_SPACE_VIRTUAL_DRIVE_ID,
 } from "@connectors/connectors/google_drive/lib/consts";
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
@@ -76,6 +77,7 @@ export async function upsertSharedWithMeFolder(connectorId: ModelId) {
     parentId: null,
     title: "Shared with me",
     mimeType: MIME_TYPES.GOOGLE_DRIVE.SHARED_WITH_ME,
+    sourceUrl: GOOGLE_DRIVE_SHARED_WITH_ME_WEB_URL,
   });
 }
 

@@ -1,7 +1,10 @@
 import { MIME_TYPES } from "@dust-tt/types";
 import { makeScript } from "scripts/helpers";
 
-import { GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID } from "@connectors/connectors/google_drive/lib/consts";
+import {
+  GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID,
+  GOOGLE_DRIVE_SHARED_WITH_ME_WEB_URL,
+} from "@connectors/connectors/google_drive/lib/consts";
 import { getInternalId } from "@connectors/connectors/google_drive/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
@@ -23,6 +26,7 @@ makeScript({}, async ({ execute }, logger) => {
           parentId: null,
           title: "Shared with me",
           mimeType: MIME_TYPES.GOOGLE_DRIVE.SHARED_WITH_ME,
+          sourceUrl: GOOGLE_DRIVE_SHARED_WITH_ME_WEB_URL,
         });
         logger.info(
           `Upserted folder ${folderId} for connector ${connector.id}`
