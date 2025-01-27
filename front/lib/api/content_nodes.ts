@@ -24,6 +24,10 @@ export const FOLDERS_TO_HIDE_IF_EMPTY_MIME_TYPES = [
   MIME_TYPES.GOOGLE_DRIVE.SHARED_WITH_ME,
 ] as readonly string[];
 
+export const FOLDERS_SELECTION_PREVENTED_MIME_TYPES = [
+  MIME_TYPES.NOTION.SYNCING_FOLDER,
+] as readonly string[];
+
 export function getContentNodeInternalIdFromTableId(
   dataSourceView: DataSourceViewResource | DataSourceViewType,
   tableId: string
