@@ -16,6 +16,11 @@ export const NON_EXPANDABLE_NODES_MIME_TYPES = [
   MIME_TYPES.GITHUB.ISSUES,
 ] as readonly string[];
 
+export const FOLDERS_TO_HIDE_IF_EMPTY_MIME_TYPES = [
+  MIME_TYPES.NOTION.UNKNOWN_FOLDER,
+  MIME_TYPES.GOOGLE_DRIVE.SHARED_WITH_ME,
+] as readonly string[];
+
 export function getContentNodeInternalIdFromTableId(
   dataSourceView: DataSourceViewResource | DataSourceViewType,
   tableId: string

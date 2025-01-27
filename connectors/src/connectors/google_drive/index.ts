@@ -22,7 +22,10 @@ import {
   getLocalParents,
   isDriveObjectExpandable,
 } from "@connectors/connectors/google_drive/lib";
-import { GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID } from "@connectors/connectors/google_drive/lib/consts";
+import {
+  GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID,
+  GOOGLE_DRIVE_SHARED_WITH_ME_WEB_URL,
+} from "@connectors/connectors/google_drive/lib/consts";
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
 import { getPermissionViewType } from "@connectors/connectors/google_drive/lib/permissions";
 import {
@@ -416,7 +419,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
             type: "folder" as const,
             preventSelection: true,
             title: "Shared with me",
-            sourceUrl: null,
+            sourceUrl: GOOGLE_DRIVE_SHARED_WITH_ME_WEB_URL,
             lastUpdatedAt: null,
             expandable: true,
             permission: "none",

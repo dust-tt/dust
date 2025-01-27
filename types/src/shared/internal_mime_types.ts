@@ -74,7 +74,7 @@ export const MIME_TYPES = {
     provider: "google_drive",
     // Spreadsheets are handled as data_source_folders for sheets
     // For other files and sheets, we keep Google's mime types
-    resourceTypes: ["FOLDER", "SPREADSHEET"],
+    resourceTypes: ["SHARED_WITH_ME", "FOLDER", "SPREADSHEET"],
   }),
   INTERCOM: getMimeTypes({
     provider: "intercom",

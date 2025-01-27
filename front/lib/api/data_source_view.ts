@@ -21,6 +21,7 @@ import assert from "assert";
 import config from "@app/lib/api/config";
 import {
   computeNodesDiff,
+  FOLDERS_TO_HIDE_IF_EMPTY_MIME_TYPES,
   getContentNodeInternalIdFromTableId,
   getContentNodeMetadata,
   NON_EXPANDABLE_NODES_MIME_TYPES,
@@ -181,6 +182,16 @@ function filterNodesByViewType(
   }
 }
 
+function removeCatchAllFoldersIfEmpty(
+  nodes: CoreAPIContentNode[]
+): CoreAPIContentNode[] {
+  return nodes.filter(
+    (node) =>
+      !FOLDERS_TO_HIDE_IF_EMPTY_MIME_TYPES.includes(node.mime_type) ||
+      node.has_children
+  );
+}
+
 function makeCoreDataSourceViewFilter(
   dataSourceView: DataSourceViewResource | DataSourceViewType
 ): CoreAPIDatasourceViewFilter {
@@ -237,7 +248,9 @@ async function getContentNodesForDataSourceViewFromCore(
     return new Err(new Error(coreRes.error.message));
   }
 
-  const filteredNodes = filterNodesByViewType(coreRes.value.nodes, viewType);
+  const filteredNodes = removeCatchAllFoldersIfEmpty(
+    filterNodesByViewType(coreRes.value.nodes, viewType)
+  );
 
   return new Ok({
     nodes: filteredNodes.map((node) => {

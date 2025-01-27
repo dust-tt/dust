@@ -10,3 +10,7 @@ export const GOOGLE_DRIVE_USER_SPACE_VIRTUAL_DRIVE_ID = "userspace";
 // and a "sharedWithMe=true" property.
 // On our side, we want to group them into one virtual folder in our UI. This is the ID of that virtual folder.
 export const GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID = "sharedWithMe";
+
+// URL to the "Shared with me" section of Google Drive.
+export const GOOGLE_DRIVE_SHARED_WITH_ME_WEB_URL =
+  "https://drive.google.com/drive/shared-with-me";
