@@ -23,7 +23,7 @@ import {
   computeNodesDiff,
   FOLDERS_TO_HIDE_IF_EMPTY_MIME_TYPES,
   getContentNodeInternalIdFromTableId,
-  getContentNodeMetadata,
+  getContentNodeType,
   NON_EXPANDABLE_NODES_MIME_TYPES,
 } from "@app/lib/api/content_nodes";
 import type { OffsetPaginationParams } from "@app/lib/api/pagination";
@@ -254,7 +254,6 @@ async function getContentNodesForDataSourceViewFromCore(
 
   return new Ok({
     nodes: filteredNodes.map((node) => {
-      const { type } = getContentNodeMetadata(node, viewType);
       return {
         internalId: node.node_id,
         parentInternalId: node.parent_id ?? null,
@@ -264,10 +263,11 @@ async function getContentNodesForDataSourceViewFromCore(
         lastUpdatedAt: node.timestamp,
         providerVisibility: node.provider_visibility,
         parentInternalIds: node.parents,
-        type,
+        type: getContentNodeType(node),
         expandable:
           !NON_EXPANDABLE_NODES_MIME_TYPES.includes(node.mime_type) &&
           node.has_children,
+        mimeType: node.mime_type,
       };
     }),
     total: coreRes.value.nodes.length,
