@@ -148,6 +148,8 @@ const ConfluenceReadOperationRestrictionsCodec = t.type({
 const NO_RETRY_AFTER_DELAY = -1;
 // Number of times we retry when rate limited and Confluence does provide a retry-after header.
 const MAX_RATE_LIMIT_RETRY_COUNT = 5;
+// If Confluence returns a retry-after header with a delay greater than this value, we cap it.
+const MAX_RETRY_AFTER_DELAY = 300_000; // 5 minutes
 
 // Space types that we support indexing in Dust.
 export const CONFLUENCE_SUPPORTED_SPACE_TYPES = [
@@ -278,7 +280,10 @@ export class ConfluenceClient {
           );
 
           // Only retry rate-limited requests when the server provides a Retry-After delay.
-          if (delayMs !== NO_RETRY_AFTER_DELAY) {
+          if (
+            delayMs !== NO_RETRY_AFTER_DELAY &&
+            delayMs < MAX_RETRY_AFTER_DELAY
+          ) {
             await setTimeoutAsync(delayMs);
             return this.request(endpoint, codec, retryCount + 1);
           }
