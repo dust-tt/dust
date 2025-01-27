@@ -31,11 +31,11 @@ import type { OffsetPaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import logger from "@app/logger/logger";
 import {
   getWorkspaceByModelId,
   renderLightWorkspaceType,
 } from "@app/lib/workspace";
+import logger from "@app/logger/logger";
 
 const DEFAULT_STATIC_DATA_SOURCE_PAGINATION_LIMIT = 10_000;
 
