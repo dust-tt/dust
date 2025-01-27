@@ -194,7 +194,7 @@ const ConnectMenuConfig: MenuConfig = {
     },
     {
       title: "Become a Partner",
-      href: "https://share-eu1.hsforms.com/2fctvfmfxrqqlldut_jmlta2dzwm3",
+      href: "share-eu1.hsforms.com/2fctvfmfxrqqlldut_jmlta2dzwm3",
       isExternal: true,
     },
   ],
