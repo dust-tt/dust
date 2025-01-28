@@ -179,7 +179,9 @@ function filterNodesByViewType(
 ) {
   switch (viewType) {
     case "documents":
-      return nodes;
+      return nodes.filter(
+        (node) => node.has_children || node.node_type !== "Table"
+      );
     case "tables":
       return nodes.filter(
         (node) => node.has_children || node.node_type === "Table"
