@@ -53,15 +53,15 @@ const contentMessageVariants = cva(
 const iconVariants = cva("s-shrink-0", {
   variants: {
     variant: {
-      emerald: "s-text-emerald-800",
-      amber: "s-text-amber-800",
-      slate: "s-text-slate-800",
-      purple: "s-text-purple-800",
-      warning: "s-text-warning-800",
-      sky: "s-text-sky-800",
-      pink: "s-text-pink-800",
-      action: "s-text-action-800",
-      red: "s-text-red-800",
+      emerald: "s-text-emerald-800 dark:s-text-emerald-800-dark",
+      amber: "s-text-amber-800 dark:s-text-amber-800-dark",
+      slate: "s-text-slate-800 dark:s-text-slate-800-dark",
+      purple: "s-text-purple-800 dark:s-text-purple-800-dark",
+      warning: "s-text-warning-800 dark:s-text-warning-800-dark",
+      sky: "s-text-sky-800 dark:s-text-sky-800-dark",
+      pink: "s-text-pink-800 dark:s-text-pink-800-dark",
+      action: "s-text-action-800 dark:s-text-action-800-dark",
+      red: "s-text-red-800 dark:s-text-red-800-dark",
     },
   },
 });
@@ -69,15 +69,15 @@ const iconVariants = cva("s-shrink-0", {
 const titleVariants = cva("s-text-sm s-font-semibold", {
   variants: {
     variant: {
-      emerald: "s-text-emerald-800",
-      amber: "s-text-amber-800",
-      slate: "s-text-foreground",
-      purple: "s-text-purple-800",
-      warning: "s-text-warning-800",
-      sky: "s-text-sky-800",
-      pink: "s-text-pink-800",
-      action: "s-text-action-800",
-      red: "s-text-red-800",
+      emerald: "s-text-emerald-800 dark:s-text-emerald-800-dark",
+      amber: "s-text-amber-800 dark:s-text-amber-800-dark",
+      slate: "s-text-foreground dark:s-text-foreground-dark",
+      purple: "s-text-purple-800 dark:s-text-purple-800-dark",
+      warning: "s-text-warning-800 dark:s-text-warning-800-dark",
+      sky: "s-text-sky-800 dark:s-text-sky-800-dark",
+      pink: "s-text-pink-800 dark:s-text-pink-800-dark",
+      action: "s-text-action-800 dark:s-text-action-800-dark",
+      red: "s-text-red-800 dark:s-text-red-800-dark",
     },
   },
 });
@@ -85,15 +85,15 @@ const titleVariants = cva("s-text-sm s-font-semibold", {
 const textVariants = cva("s-text-sm", {
   variants: {
     variant: {
-      emerald: "s-text-emerald-950",
-      amber: "s-text-amber-950",
-      slate: "s-text-muted-foreground",
-      purple: "s-text-purple-950",
-      warning: "s-text-warning-950",
-      sky: "s-text-sky-950",
-      pink: "s-text-pink-950",
-      action: "s-text-action-950",
-      red: "s-text-red-950",
+      emerald: "s-text-emerald-950 dark:s-text-emerald-950-dark",
+      amber: "s-text-amber-950 dark:s-text-amber-950-dark",
+      slate: "s-text-muted-foreground dark:s-text-muted-foreground-dark",
+      purple: "s-text-purple-950 dark:s-text-purple-950-dark",
+      warning: "s-text-warning-950 dark:s-text-warning-950-dark",
+      sky: "s-text-sky-950 dark:s-text-sky-950-dark",
+      pink: "s-text-pink-950 dark:s-text-pink-950-dark",
+      action: "s-text-action-950 dark:s-text-action-950-dark",
+      red: "s-text-red-950 dark:s-text-red-950-dark",
     },
   },
 });

@@ -163,7 +163,7 @@ export function Modal({
           >
             <Dialog.Panel
               className={classNames(
-                "s-absolute s-transform s-bg-structure-0 dark:s-bg-structure-0-dark s-px-3 s-transition-all sm:s-px-4",
+                "s-absolute s-transform s-bg-structure-0 dark:s-bg-structure-0-dark s-px-3 s-transition-all sm:s-px-4 s-text-foreground dark:s-text-foreground-dark",
                 panelClasses,
                 variantSize[variant]
               )}

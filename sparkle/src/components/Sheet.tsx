@@ -118,7 +118,7 @@ SheetHeader.displayName = "SheetHeader";
 
 const SheetContainer = ({ children }: React.HTMLAttributes<HTMLDivElement>) => (
   <ScrollArea className="s-w-full s-flex-grow">
-    <div className="s-relative s-flex s-flex-col s-gap-2 s-p-5 s-text-left s-text-sm s-text-foreground">
+    <div className="s-relative s-flex s-flex-col s-gap-2 s-p-5 s-text-left s-text-sm s-text-foreground dark:s-text-foreground-dark">
       {children}
     </div>
   </ScrollArea>
@@ -173,7 +173,7 @@ const SheetTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SheetPrimitive.Title
     ref={ref}
-    className={cn("s-text-lg s-font-semibold s-text-foreground", className)}
+    className={cn("s-text-lg s-font-semibold s-text-foreground dark:s-text-foreground-dark", className)}
     {...props}
   />
 ));
@@ -185,7 +185,7 @@ const SheetDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SheetPrimitive.Description
     ref={ref}
-    className={cn("s-text-sm s-text-muted-foreground", className)}
+    className={cn("s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-dark", className)}
     {...props}
   />
 ));

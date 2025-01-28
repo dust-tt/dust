@@ -37,7 +37,7 @@ export function ContextItem({
         className={classNames(
           "s-flex s-w-full s-flex-row s-items-start s-gap-3 s-px-4 s-py-3",
           onClick
-            ? "s-cursor-pointer s-transition s-duration-200 hover:s-bg-structure-50 active:s-bg-structure-100"
+            ? "s-cursor-pointer s-transition s-duration-200 hover:s-bg-structure-50 dark:hover:s-bg-structure-50-dark active:s-bg-structure-100 dark:active:s-bg-structure-100-dark"
             : ""
         )}
         onClick={onClick}

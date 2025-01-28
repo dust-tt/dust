@@ -535,7 +535,7 @@ DataTable.BasicCellContent = function BasicCellContent({
             <div
               className={cn(
                 cellHeight,
-                "s-group s-flex s-items-center s-gap-2 s-text-sm s-text-muted-foreground",
+                "s-group s-flex s-items-center s-gap-2 s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-dark",
                 className
               )}
               {...props}
@@ -561,7 +561,7 @@ DataTable.BasicCellContent = function BasicCellContent({
         <div
           className={cn(
             cellHeight,
-            "s-group s-flex s-items-center s-gap-2 s-text-sm s-text-muted-foreground",
+            "s-group s-flex s-items-center s-gap-2 s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-dark",
             className
           )}
           {...props}

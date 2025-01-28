@@ -21,7 +21,7 @@ export function Page({ children, variant = "normal" }: PageProps) {
     <main className={mainVariantClasses}>
       <div
         className={classNames(
-          "s-mx-auto s-flex s-h-full s-max-w-4xl s-flex-col s-text-sm s-font-normal s-text-foreground",
+          "s-mx-auto s-flex s-h-full s-max-w-4xl s-flex-col s-text-sm s-font-normal s-text-foreground dark:s-text-foreground-dark",
           divVariantClassNames
         )}
       >
