@@ -1182,14 +1182,6 @@ const ReasoningThinkingEventSchema = z.object({
   action: ReasoningActionTypeSchema,
 });
 
-const ReasoningSuccessEventSchema = z.object({
-  type: z.literal("reasoning_success"),
-  created: z.number(),
-  configurationId: z.string(),
-  messageId: z.string(),
-  action: ReasoningActionTypeSchema,
-});
-
 const ReasoningTokensEventSchema = z.object({
   type: z.literal("reasoning_tokens"),
   created: z.number(),
@@ -1226,7 +1218,6 @@ const AgentActionSpecificEventSchema = z.union([
   GithubGetPullRequestParamsEventSchema,
   ReasoningStartedEventSchema,
   ReasoningThinkingEventSchema,
-  ReasoningSuccessEventSchema,
   ReasoningTokensEventSchema,
 ]);
 export type AgentActionSpecificEvent = z.infer<
