@@ -79,9 +79,8 @@ function getVisualForContentNodeBasedOnType(node: ContentNode) {
 
 function getVisualForContentNodeBasedOnMimeType(node: ContentNode) {
   if (!node.mimeType) {
-    throw new Error(
-      "Unreachable: getVisualForContentNodeBasedOnMimeType called on a node that does not have a mime type"
-    );
+    // Hotfix to allow using the connNodes param.
+    return getVisualForContentNodeBasedOnType(node);
   }
   if (CHANNEL_MIME_TYPES.includes(node.mimeType)) {
     if (node.providerVisibility === "private") {
