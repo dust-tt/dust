@@ -5,6 +5,30 @@ import { ModelId } from "../../../shared/model_id";
  * GithubGetPullRequestActionType
  */
 
+export type GithubGetPullRequestCommitType = {
+  sha: string;
+  author: string;
+  message: string;
+};
+
+export type GithubGetPullRequestCommentType = {
+  createdAt: number;
+  author: string;
+  body: string;
+};
+
+export type GithubGetPullRequestReviewType = {
+  createdAt: number;
+  author: string;
+  body: string;
+  state: string;
+  comments: {
+    body: string;
+    path: string;
+    line: number;
+  }[];
+};
+
 export type GithubGetPullRequestConfigurationType = {
   id: ModelId;
   sId: string;
@@ -23,14 +47,10 @@ export interface GithubGetPullRequestActionType extends BaseAction {
     pullNumber: number;
   };
   pullBody: string | null;
-  pullCommits:
-    | {
-        sha: string;
-        message: string;
-        author: string;
-      }[]
-    | null;
+  pullCommits: GithubGetPullRequestCommitType[] | null;
   pullDiff: string | null;
+  pullComments: GithubGetPullRequestCommentType[] | null;
+  pullReviews: GithubGetPullRequestReviewType[] | null;
   functionCallId: string | null;
   functionCallName: string | null;
   step: number;
@@ -88,17 +108,10 @@ export interface GithubCreateIssueActionType extends BaseAction {
   params: {
     owner: string;
     repo: string;
-    pullNumber: number;
+    title: string;
+    body: string;
   };
-  pullBody: string | null;
-  pullCommits:
-    | {
-        sha: string;
-        message: string;
-        author: string;
-      }[]
-    | null;
-  pullDiff: string | null;
+  issueNumber: number | null;
   functionCallId: string | null;
   functionCallName: string | null;
   step: number;

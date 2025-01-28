@@ -12,7 +12,7 @@ import {
   DustAppRunParamsEvent,
 } from "../../front/assistant/actions/dust_app_run";
 import {
-  GithubCreateIssueActionType,
+  GithubCreateIssueConfigurationType,
   GithubCreateIssueParamsEvent,
   GithubGetPullRequestConfigurationType,
   GithubGetPullRequestParamsEvent,
@@ -54,7 +54,7 @@ import {
 
 type GithubAgentActionConfigurationType =
   | GithubGetPullRequestConfigurationType
-  | GithubCreateIssueActionType;
+  | GithubCreateIssueConfigurationType;
 
 export type AgentActionConfigurationType =
   | TablesQueryConfigurationType
