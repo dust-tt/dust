@@ -7,6 +7,11 @@ import type {
 } from "@dust-tt/types";
 import { assertNever, MIME_TYPES } from "@dust-tt/types";
 
+import {
+  CHANNEL_MIME_TYPES,
+  DATABASE_MIME_TYPES,
+  FILE_MIME_TYPES,
+} from "@app/lib/content_nodes";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type logger from "@app/logger/logger";
 
@@ -106,6 +111,19 @@ export function computeNodesDiff({
             // Special case for folder parents, the ones retrieved using getContentNodesForStaticDataSourceView do not
             // contain any parentInternalIds.
             if (provider === null && key === "parentInternalIds") {
+              return false;
+            }
+            // Ignore the type mismatch between core and connectors for mime types that were already identified.
+            if (
+              key === "type" &&
+              coreNode.mimeType &&
+              ((value === "channel" &&
+                CHANNEL_MIME_TYPES.includes(coreNode.mimeType)) ||
+                (value === "database" &&
+                  DATABASE_MIME_TYPES.includes(coreNode.mimeType)) ||
+                (value === "file" &&
+                  FILE_MIME_TYPES.includes(coreNode.mimeType)))
+            ) {
               return false;
             }
             // For Google Drive, connectors does not fill the parentInternalId at google_drive/index.ts#L324.

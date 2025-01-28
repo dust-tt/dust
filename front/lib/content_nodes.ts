@@ -10,16 +10,20 @@ import type { ContentNode } from "@dust-tt/types";
 import { assertNever, MIME_TYPES } from "@dust-tt/types";
 
 // Mime types that should be represented with a Channel icon.
-const CHANNEL_MIME_TYPES = [
+export const CHANNEL_MIME_TYPES = [
   MIME_TYPES.GITHUB.DISCUSSIONS,
   MIME_TYPES.SLACK.CHANNEL,
 ] as readonly string[];
 
 // Mime types that should be represented with a Database icon but are not of type "table".
-const DATABASE_MIME_TYPES = [MIME_TYPES.GITHUB.ISSUES] as readonly string[];
+export const DATABASE_MIME_TYPES = [
+  MIME_TYPES.GITHUB.ISSUES,
+] as readonly string[];
 
 // Mime types that should be represented with a File icon but are not of type "document".
-const FILE_MIME_TYPES = [MIME_TYPES.WEBCRAWLER.FOLDER] as readonly string[];
+export const FILE_MIME_TYPES = [
+  MIME_TYPES.WEBCRAWLER.FOLDER,
+] as readonly string[];
 
 function getVisualForFileContentNode(node: ContentNode & { type: "file" }) {
   if (node.expandable) {
