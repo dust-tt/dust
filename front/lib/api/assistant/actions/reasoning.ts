@@ -2,6 +2,7 @@ import type {
   AgentActionSpecification,
   FunctionCallType,
   FunctionMessageTypeModel,
+  GenerationTokensEvent,
   ModelId,
   ReasoningActionType,
   ReasoningConfigurationType,
@@ -12,13 +13,25 @@ import type {
   ReasoningTokensEvent,
   Result,
 } from "@dust-tt/types";
-import { BaseAction, Ok } from "@dust-tt/types";
+import {
+  BaseAction,
+  isReasoningConfiguration,
+  Ok,
+  SUPPORTED_MODEL_CONFIGS,
+} from "@dust-tt/types";
 
+import { runActionStreamed } from "@app/lib/actions/server";
 import { DEFAULT_REASONING_ACTION_NAME } from "@app/lib/api/assistant/actions/constants";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
+import { AgentMessageContentParser } from "@app/lib/api/assistant/agent_message_content_parser";
+import { renderConversationForModel } from "@app/lib/api/assistant/generation";
+import { getRedisClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentReasoningAction } from "@app/lib/models/assistant/actions/reasoning";
+import { getDustProdAction } from "@app/lib/registry";
+import { cloneBaseConfig } from "@app/lib/registry";
+import logger from "@app/logger/logger";
 
 interface ReasoningActionBlob {
   id: ModelId;
@@ -29,6 +42,10 @@ interface ReasoningActionBlob {
   functionCallName: string | null;
   step: number;
 }
+
+const CANCELLATION_CHECK_INTERVAL = 500;
+
+const REASONING_GENERATION_TOKENS = 20480;
 
 export class ReasoningAction extends BaseAction {
   readonly agentMessageId: ModelId;
@@ -136,36 +153,219 @@ export class ReasoningConfigurationServerRunner extends BaseActionConfigurationS
       }),
     };
 
-    // TODO(REASONING TOOL):
-    // render conversation for reasoning
-    void agentConfiguration, conversation;
+    const actionConfig = agentConfiguration.actions.find(
+      (action) =>
+        action.type === "reasoning_configuration" &&
+        action.sId === actionConfiguration.sId
+    );
 
-    // TODO(REASONING TOOL):
-    // Call the dust app, stream the tokens (thinking / output)
+    if (!actionConfig || !isReasoningConfiguration(actionConfig)) {
+      throw new Error("Unreachable: Reasoning configuration not found");
+    }
+    const supportedModel = SUPPORTED_MODEL_CONFIGS.find(
+      (m) =>
+        m.modelId === actionConfig.modelId &&
+        m.providerId === actionConfig.providerId
+    );
 
-    // Here would go the actual reasoning logic
-    const { output, thinking } = {
-      output: "Reasoning output would go here",
-      thinking: "Reasoning thinking would go here",
-    };
+    if (!supportedModel) {
+      yield {
+        type: "reasoning_error",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "reasoning_error",
+          message: "Reasoning configuration not found",
+        },
+      };
+      return;
+    }
 
-    // if (someError) {
-    //   yield {
-    //     type: "reasoning_error",
-    //     created: Date.now(),
-    //     configurationId: agentConfiguration.sId,
-    //     messageId: agentMessage.sId,
-    //     error: {
-    //       code: "reasoning_error",
-    //       message: `Error running reasoning action: ${error}`,
-    //     },
-    //   };
-    // }
-
-    await action.update({
-      output,
-      thinking,
+    const renderedConversationRes = await renderConversationForModel(auth, {
+      conversation,
+      model: supportedModel,
+      prompt: agentConfiguration.instructions ?? "",
+      allowedTokenCount:
+        supportedModel.contextSize - REASONING_GENERATION_TOKENS,
+      excludeImages: true,
     });
+    if (renderedConversationRes.isErr()) {
+      yield {
+        type: "reasoning_error",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "reasoning_error",
+          message: `Error running reasoning action: ${renderedConversationRes.error.message}`,
+        },
+      };
+      return;
+    }
+    const renderedConversation = renderedConversationRes.value;
+
+    const config = cloneBaseConfig(
+      getDustProdAction("assistant-v2-reason").config
+    );
+
+    config.MODEL.provider_id = supportedModel.providerId;
+    config.MODEL.model_id = supportedModel.modelId;
+    if (actionConfig.temperature) {
+      config.MODEL.temperature = actionConfig.temperature;
+    }
+    if (actionConfig.reasoningEffort) {
+      config.MODEL.reasoning_effort = actionConfig.reasoningEffort;
+    }
+
+    const inputs = [
+      {
+        conversation: renderedConversation.modelConversation.messages,
+        instructions: agentConfiguration.instructions,
+      },
+    ];
+
+    const res = await runActionStreamed(
+      auth,
+      "assistant-v2-reason",
+      config,
+      inputs,
+      {
+        conversationId: conversation.sId,
+        workspaceId: conversation.owner.sId,
+        agentMessageId: agentMessage.sId,
+      }
+    );
+
+    if (res.isErr()) {
+      yield {
+        type: "reasoning_error",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "reasoning_error",
+          message: `Error running reasoning action: ${res.error.message}`,
+        },
+      };
+      return;
+    }
+
+    const { eventStream, dustRunId } = res.value;
+
+    const actionOutput = {
+      content: "",
+      thinking: "",
+    };
+    const contentParser = new AgentMessageContentParser(
+      agentConfiguration,
+      agentMessage.sId,
+      supportedModel.delimitersConfiguration
+    );
+
+    const redis = await getRedisClient({ origin: "reasoning_generation" });
+    let lastCheckCancellation = Date.now();
+
+    async function* reasoningTokens(
+      stream: AsyncGenerator<GenerationTokensEvent>
+    ): AsyncGenerator<ReasoningTokensEvent> {
+      for await (const token of stream) {
+        if (
+          token.classification === "opening_delimiter" ||
+          token.classification === "closing_delimiter"
+        ) {
+          continue;
+        }
+
+        if (token.classification === "chain_of_thought") {
+          actionOutput.thinking += token.text;
+        } else {
+          actionOutput.content += token.text;
+        }
+
+        yield {
+          type: "reasoning_tokens",
+          created: Date.now(),
+          configurationId: agentConfiguration.sId,
+          messageId: agentMessage.sId,
+          action: new ReasoningAction({
+            id: action.id,
+            agentMessageId: action.agentMessageId,
+            output: actionOutput.content,
+            thinking: actionOutput.thinking,
+            functionCallId: action.functionCallId,
+            functionCallName: action.functionCallName,
+            step: action.step,
+          }),
+          content: token.text,
+          classification: token.classification,
+        } satisfies ReasoningTokensEvent;
+      }
+    }
+
+    for await (const event of eventStream) {
+      if (event.type === "function_call") {
+        continue;
+      }
+      if (event.type === "error") {
+        yield* reasoningTokens(contentParser.flushTokens());
+        yield {
+          type: "reasoning_error",
+          created: Date.now(),
+          configurationId: agentConfiguration.sId,
+          messageId: agentMessage.sId,
+          error: {
+            code: "reasoning_error",
+            message: `Error running reasoning action: ${event.content.message}`,
+          },
+        };
+        return;
+      }
+
+      const currentTimestamp = Date.now();
+      if (
+        currentTimestamp - lastCheckCancellation >=
+        CANCELLATION_CHECK_INTERVAL
+      ) {
+        try {
+          const cancelled = await redis.get(
+            `assistant:generation:cancelled:${agentMessage.sId}`
+          );
+          if (cancelled === "1") {
+            return;
+          }
+          lastCheckCancellation = currentTimestamp;
+        } catch (error) {
+          logger.error({ error }, "Error checking cancellation");
+        }
+      }
+
+      if (event.type === "tokens") {
+        yield* reasoningTokens(
+          contentParser.emitTokens(event.content.tokens.text)
+        );
+      }
+
+      if (event.type === "block_execution") {
+        const e = event.content.execution[0][0];
+        if (e.error) {
+          yield* reasoningTokens(contentParser.flushTokens());
+          yield {
+            type: "reasoning_error",
+            created: Date.now(),
+            configurationId: agentConfiguration.sId,
+            messageId: agentMessage.sId,
+            error: {
+              code: "reasoning_error",
+              message: `Error running reasoning action: ${e.error}`,
+            },
+          } satisfies ReasoningErrorEvent;
+          return;
+        }
+      }
+    }
+
+    yield* reasoningTokens(contentParser.flushTokens());
 
     yield {
       type: "reasoning_thinking",
@@ -175,8 +375,8 @@ export class ReasoningConfigurationServerRunner extends BaseActionConfigurationS
       action: new ReasoningAction({
         id: action.id,
         agentMessageId: action.agentMessageId,
-        output: action.output,
-        thinking,
+        output: actionOutput.content,
+        thinking: actionOutput.thinking,
         functionCallId: action.functionCallId,
         functionCallName: action.functionCallName,
         step: action.step,
@@ -191,13 +391,19 @@ export class ReasoningConfigurationServerRunner extends BaseActionConfigurationS
       action: new ReasoningAction({
         id: action.id,
         agentMessageId: action.agentMessageId,
-        output,
-        thinking: action.thinking,
+        output: actionOutput.content,
+        thinking: actionOutput.thinking,
         functionCallId: action.functionCallId,
         functionCallName: action.functionCallName,
         step: action.step,
       }),
     };
+
+    await action.update({
+      output: actionOutput.content,
+      thinking: actionOutput.thinking,
+      runId: await dustRunId,
+    });
   }
 }
 

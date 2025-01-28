@@ -248,6 +248,9 @@ export function AgentMessage({
       case "browse_params":
       case "conversation_include_file_params":
       case "github_get_pull_request_params":
+      case "reasoning_started":
+      case "reasoning_thinking":
+      case "reasoning_tokens":
         setStreamedAgentMessage((m) => {
           return updateMessageWithAction(m, event.action);
         });
@@ -306,12 +309,6 @@ export function AgentMessage({
         setLastAgentStateClassification("thinking");
         break;
       }
-
-      case "reasoning_started":
-      case "reasoning_thinking":
-      case "reasoning_tokens":
-        // TODO(REASONING TOOL): handle the events
-        break;
 
       default:
         assertNever(event);
@@ -598,7 +595,13 @@ export function AgentMessage({
 
           {agentMessage.chainOfThought?.length ? (
             <ContentMessage title="Assistant thoughts" variant="slate">
-              {agentMessage.chainOfThought}
+              <Markdown
+                content={agentMessage.chainOfThought}
+                isStreaming={false}
+                forcedTextSize="text-sm"
+                textColor="text-muted-foreground"
+                isLastMessage={false}
+              />
             </ContentMessage>
           ) : null}
         </div>

@@ -761,10 +761,21 @@ export const FIREWORKS_DEEPSEEK_R1_MODEL_CONFIG: ModelConfigurationType = {
   recommendedExhaustiveTopK: 128,
   largeModel: true,
   description:
-    "DeepSeek's reasoning model (reasoning, 164k context, served via Fireworks).",
+    "DeepSeek's reasoning model (164k context, served via Fireworks).",
   shortDescription: "DeepSeek R1 (reasoning model).",
   isLegacy: false,
   supportsVision: false,
+  delimitersConfiguration: {
+    incompleteDelimiterPatterns: [/<\/?[a-zA-Z_]*$/],
+    delimiters: [
+      {
+        openingPattern: "<think>",
+        closingPattern: "</think>",
+        classification: "chain_of_thought" as const,
+        swallow: false,
+      },
+    ],
+  },
 };
 
 export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
