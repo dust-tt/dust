@@ -160,7 +160,7 @@ async function migrateDataSource({
         `SELECT node_id, parents
          FROM data_sources_nodes
          WHERE data_source = :coreDataSourceId
-           AND node_id >= :nextId
+           AND node_id > :nextId
            AND EXISTS
          (
              SELECT 1
