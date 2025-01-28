@@ -35,17 +35,14 @@ export function ValuePropSection() {
             perspective={1000}
             className={classNames("relative")}
           >
-            <Div3D depth={-20}>
-              <img src="/static/landing/templates/template1.png" />
+            <Div3D depth={-40}>
+              <img src="/static/landing/analysis/analysis1.png" />
             </Div3D>
             <Div3D depth={0} className="absolute top-0">
-              <img src="/static/landing/templates/template2.png" />
+              <img src="/static/landing/analysis/analysis2.png" />
             </Div3D>
             <Div3D depth={15} className="absolute top-0">
-              <img src="/static/landing/templates/template3.png" />
-            </Div3D>
-            <Div3D depth={40} className="absolute top-0">
-              <img src="/static/landing/templates/template4.png" />
+              <img src="/static/landing/analysis/analysis3.png" />
             </Div3D>
           </Hover3D>
         </ImgBlock>
@@ -65,16 +62,10 @@ export function ValuePropSection() {
             className={classNames("relative")}
           >
             <Div3D depth={-40}>
-              <img src="/static/landing/model/model1.png" />
+              <img src="/static/landing/crm/crm1.png" />
             </Div3D>
             <Div3D depth={0} className="absolute top-0">
-              <img src="/static/landing/model/model2.png" />
-            </Div3D>
-            <Div3D depth={50} className="absolute top-0 drop-shadow-lg">
-              <img src="/static/landing/model/model3.png" />
-            </Div3D>
-            <Div3D depth={120} className="absolute top-0 drop-shadow-lg">
-              <img src="/static/landing/model/model4.png" />
+              <img src="/static/landing/crm/crm2.png" />
             </Div3D>
           </Hover3D>
         </ImgBlock>
@@ -96,17 +87,11 @@ export function ValuePropSection() {
             perspective={1000}
             className={classNames("relative")}
           >
-            <Div3D depth={-20}>
-              <img src="/static/landing/connect/connect1.png" />
+            <Div3D depth={-40}>
+              <img src="/static/landing/docexpert/docexpert1.png" />
             </Div3D>
             <Div3D depth={0} className="absolute top-0">
-              <img src="/static/landing/connect/connect2.png" />
-            </Div3D>
-            <Div3D depth={15} className="absolute top-0">
-              <img src="/static/landing/connect/connect3.png" />
-            </Div3D>
-            <Div3D depth={60} className="absolute top-0">
-              <img src="/static/landing/connect/connect4.png" />
+              <img src="/static/landing/docexpert/docexpert2.png" />
             </Div3D>
           </Hover3D>
         </ImgBlock>
@@ -126,20 +111,11 @@ export function ValuePropSection() {
             perspective={1000}
             className={classNames("relative")}
           >
-            <Div3D depth={-20}>
-              <img src="/static/landing/people/people1.png" />
+            <Div3D depth={-40}>
+              <img src="/static/landing/code/code1.png" />
             </Div3D>
             <Div3D depth={0} className="absolute top-0">
-              <img src="/static/landing/people/people2.png" />
-            </Div3D>
-            <Div3D depth={15} className="absolute top-0">
-              <img src="/static/landing/people/people3.png" />
-            </Div3D>
-            <Div3D depth={60} className="absolute top-0">
-              <img src="/static/landing/people/people4.png" />
-            </Div3D>
-            <Div3D depth={90} className="absolute top-0">
-              <img src="/static/landing/people/people5.png" />
+              <img src="/static/landing/code/code2.png" />
             </Div3D>
           </Hover3D>
         </ImgBlock>

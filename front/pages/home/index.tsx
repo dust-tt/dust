@@ -18,6 +18,7 @@ import { P } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { classNames } from "@app/lib/utils";
+import { FutureSection } from "@app/components/home/content/Product/FutureSection";
 
 export async function getServerSideProps() {
   return {
@@ -45,7 +46,8 @@ export function Landing() {
         title="Head of GTM Engineering at Clay"
         logo="/static/landing/logos/clay.png"
       />
-      <DifferentiationSection />
+      <FutureSection />
+      {/* <DifferentiationSection /> */}
       <CapabilitySection />
       {/* <DemoVideoSection
         demoVideo={DemoVideo}
