@@ -5,7 +5,6 @@ import { SUPPORTED_REGIONS } from "@app/lib/api/regions/config";
 import { makeScript } from "@app/scripts/helpers";
 
 const USERS_PER_PAGE = 100;
-const THRESHOLD = 3;
 
 makeScript(
   {
@@ -14,15 +13,20 @@ makeScript(
       required: true,
       choices: SUPPORTED_REGIONS,
     },
+    threshold: {
+      type: "number",
+      required: false,
+      default: 3,
+    },
   },
-  async ({ defaultRegion, execute }, logger) => {
+  async ({ defaultRegion, threshold, execute }, logger) => {
     const managementClient = getAuth0ManagemementClient();
     let count = 0;
     let remaining = 10;
     let resetTime = Date.now();
 
     const throttleAuth0 = async <T>(fn: () => Promise<ApiResponse<T>>) => {
-      if (remaining < THRESHOLD) {
+      if (remaining < threshold) {
         const now = Date.now();
         const waitTime = resetTime * 1000 - now;
         logger.info({ waitTime }, "Waiting");
@@ -37,6 +41,10 @@ makeScript(
 
       remaining = Number(res.headers.get("x-ratelimit-remaining"));
       resetTime = Number(res.headers.get("x-ratelimit-reset"));
+
+      const limit = Number(res.headers.get("x-ratelimit-limit"));
+      logger.info({ limit, remaining, resetTime }, "Rate limit");
+
       return res.data;
     };
 
