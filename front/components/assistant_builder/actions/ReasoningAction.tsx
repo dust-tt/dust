@@ -4,9 +4,9 @@ export function hasErrorActionReasoning(
   action: AssistantBuilderActionConfiguration
 ): string | null {
   return action.type === "REASONING" &&
-    Object.keys(action.configuration).length === 0
-    ? null
-    : "Invalid configuration.";
+    (!action.configuration.providerId || !action.configuration.modelId)
+    ? "Please select a model provider and model."
+    : null;
 }
 
 export function ActionReasoning() {

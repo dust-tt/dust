@@ -1,8 +1,4 @@
-import {
-  ChatBubbleThoughtIcon,
-  ContentMessage,
-  InformationCircleIcon,
-} from "@dust-tt/sparkle";
+import { ChatBubbleThoughtIcon, ContentMessage } from "@dust-tt/sparkle";
 import { Markdown } from "@dust-tt/sparkle";
 import type { ReasoningActionType } from "@dust-tt/types";
 
@@ -35,14 +31,8 @@ function ReasoningThinking({ action }: { action: ReasoningActionType }) {
 
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-sm font-semibold text-foreground">Reasoning</span>
       <div className="text-sm font-normal text-muted-foreground">
-        <ContentMessage
-          title="Thoughts"
-          variant="slate"
-          icon={InformationCircleIcon}
-          size="lg"
-        >
+        <ContentMessage variant="slate" size="lg">
           <Markdown
             content={thinking}
             isStreaming={false}

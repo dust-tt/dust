@@ -45,6 +45,7 @@ import {
 import { fetchBrowseActionConfigurations } from "@app/lib/api/assistant/configuration/browse";
 import { fetchDustAppRunActionConfigurations } from "@app/lib/api/assistant/configuration/dust_app_run";
 import { fetchAgentProcessActionConfigurations } from "@app/lib/api/assistant/configuration/process";
+import { fetchReasoningActionConfigurations } from "@app/lib/api/assistant/configuration/reasoning";
 import { fetchAgentRetrievalActionConfigurations } from "@app/lib/api/assistant/configuration/retrieval";
 import {
   createTableDataSourceConfiguration,
@@ -471,6 +472,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
     websearchActionsConfigurationsPerAgent,
     browseActionsConfigurationsPerAgent,
     githubActionsConfigurationsPerAgent,
+    reasoningActionsConfigurationsPerAgent,
     favoriteStatePerAgent,
   ] = await Promise.all([
     fetchAgentRetrievalActionConfigurations({ configurationIds, variant }),
@@ -480,6 +482,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
     fetchWebsearchActionConfigurations({ configurationIds, variant }),
     fetchBrowseActionConfigurations({ configurationIds, variant }),
     fetchGithubActionConfigurations({ configurationIds, variant }),
+    fetchReasoningActionConfigurations({ configurationIds, variant }),
     user
       ? getFavoriteStates(auth, { configurationIds: configurationSIds })
       : Promise.resolve(new Map<string, boolean>()),
@@ -524,6 +527,11 @@ async function fetchWorkspaceAgentConfigurationsForView(
       const githubActionsConfigurations =
         githubActionsConfigurationsPerAgent.get(agent.id) ?? [];
       actions.push(...githubActionsConfigurations);
+
+      // Reasoning configurations
+      const reasoningActionsConfigurations =
+        reasoningActionsConfigurationsPerAgent.get(agent.id) ?? [];
+      actions.push(...reasoningActionsConfigurations);
     }
 
     const agentConfigurationType: AgentConfigurationType = {

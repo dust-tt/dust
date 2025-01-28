@@ -103,6 +103,7 @@ const ADVANCED_ACTION_CATEGORIES = ["DUST_APP_RUN"] as const satisfies Array<
 const CAPABILITIES_ACTION_CATEGORIES = [
   "WEB_NAVIGATION",
   "GITHUB_GET_PULL_REQUEST",
+  "REASONING",
 ] as const satisfies Array<AssistantBuilderActionConfiguration["type"]>;
 
 function ActionModeSection({
@@ -1171,7 +1172,7 @@ function Capabilities({
 
   return (
     <>
-      <div className="mx-auto grid w-full grid-cols-1 md:grid-cols-2">
+      <div className="mx-auto grid w-full grid-cols-1 gap-y-4 md:grid-cols-2">
         <Capability
           name="Web search & browse"
           description="Assistant can search (Google) and retrieve information from specific websites."
@@ -1213,6 +1214,28 @@ function Capabilities({
               ...state,
               visualizationEnabled: false,
             }));
+          }}
+        />
+
+        <Capability
+          name="Reasoning"
+          description="Assistant can offload reasoning-heavy tasks to a reasoning model."
+          enabled={!!builderState.actions.find((a) => a.type === "REASONING")}
+          onEnable={() => {
+            setEdited(true);
+            const defaultReasoningAction =
+              getDefaultActionConfiguration("REASONING");
+            assert(defaultReasoningAction);
+            setAction({
+              type: "insert",
+              action: defaultReasoningAction,
+            });
+          }}
+          onDisable={() => {
+            const defaultReasoningAction =
+              getDefaultActionConfiguration("REASONING");
+            assert(defaultReasoningAction);
+            deleteAction(defaultReasoningAction.name);
           }}
         />
       </div>
