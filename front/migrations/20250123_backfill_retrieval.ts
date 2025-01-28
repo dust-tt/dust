@@ -62,6 +62,7 @@ async function backfillTableRetrievalDocumentChunk(
       },
       attributes: ["id", "workspaceId"],
       limit: batchSize,
+      order: [["id", "ASC"]],
     });
 
     if (documents.length === 0) {
