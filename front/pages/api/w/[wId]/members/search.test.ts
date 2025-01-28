@@ -1,5 +1,6 @@
 import { describe, expect } from "vitest";
 
+import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { membershipFactory } from "@app/tests/utils/MembershipFactory";
 import { userFactory } from "@app/tests/utils/UserFactory";
@@ -112,7 +113,7 @@ describe("GET /api/w/[wId]/members/search", () => {
     });
 
     // Create a string with more than MAX_SEARCH_EMAILS emails
-    const tooManyEmails = Array(51)
+    const tooManyEmails = Array(MAX_SEARCH_EMAILS + 1)
       .fill(null)
       .map((_, i) => `user${i}@example.com`)
       .join(",");
@@ -125,7 +126,7 @@ describe("GET /api/w/[wId]/members/search", () => {
     expect(res._getJSONData()).toEqual({
       error: {
         type: "invalid_request_error",
-        message: "Too many emails provided. Maximum is 100.",
+        message: `Too many emails provided. Maximum is ${MAX_SEARCH_EMAILS}.`,
       },
     });
   });

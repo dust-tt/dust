@@ -73,11 +73,8 @@ async function handler(
       }
 
       const query = queryRes.right;
-
-      if (
-        query.searchEmails?.length &&
-        query.searchEmails.length > MAX_SEARCH_EMAILS
-      ) {
+      const emails = query.searchEmails?.split(",");
+      if (emails?.length && emails.length > MAX_SEARCH_EMAILS) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -91,7 +88,7 @@ async function handler(
         auth,
         {
           searchTerm: query.searchTerm,
-          searchEmails: query.searchEmails?.split(","),
+          searchEmails: emails,
         },
         query
       );

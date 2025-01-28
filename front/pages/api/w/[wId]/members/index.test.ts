@@ -8,7 +8,7 @@ import { membershipFactory } from "@app/tests/utils/MembershipFactory";
 import { userFactory } from "@app/tests/utils/UserFactory";
 import { itInTransaction } from "@app/tests/utils/utils";
 
-import handler from "./index";
+import handler, { DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT } from "./index";
 
 describe("GET /api/w/[wId]/members", () => {
   itInTransaction("returns all members for admin", async () => {
@@ -123,7 +123,7 @@ describe("GET /api/w/[wId]/members", () => {
 
     // Create 55 members (more than default limit of 50)
     const users = await Promise.all(
-      Array(54) // +1 from createPrivateApiMockRequest
+      Array(DEFAULT_PAGE_LIMIT + 4) // +1 from createPrivateApiMockRequest
         .fill(null)
         .map(() => userFactory().basic().create())
     );
@@ -138,8 +138,8 @@ describe("GET /api/w/[wId]/members", () => {
 
     expect(res._getStatusCode()).toBe(200);
     const data = res._getJSONData();
-    expect(data.total).toBe(55);
-    expect(data.members).toHaveLength(50); // Default limit
+    expect(data.total).toBe(DEFAULT_PAGE_LIMIT + 5);
+    expect(data.members).toHaveLength(DEFAULT_PAGE_LIMIT); // Default limit
     expect(data.nextPageUrl).toBeDefined();
   });
 
@@ -153,7 +153,7 @@ describe("GET /api/w/[wId]/members", () => {
 
       // Create 200 members (more than max limit of 150)
       const users = await Promise.all(
-        Array(199) // +1 from createPrivateApiMockRequest
+        Array(MAX_PAGE_LIMIT + 49) // +1 from createPrivateApiMockRequest
           .fill(null)
           .map(() => userFactory().basic().create())
       );
@@ -171,8 +171,8 @@ describe("GET /api/w/[wId]/members", () => {
 
       expect(res._getStatusCode()).toBe(200);
       const data = res._getJSONData();
-      expect(data.total).toBe(200);
-      expect(data.members).toHaveLength(50); // Should fall back to default limit
+      expect(data.total).toBe(MAX_PAGE_LIMIT + 50);
+      expect(data.members).toHaveLength(DEFAULT_PAGE_LIMIT); // Should fall back to default limit
       expect(data.nextPageUrl).toBeDefined();
     }
   );

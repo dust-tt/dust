@@ -14,6 +14,7 @@ import type { MembershipsPaginationParams } from "@app/lib/resources/membership_
 import { apiError } from "@app/logger/withlogging";
 
 export const DEFAULT_PAGE_LIMIT = 50;
+export const MAX_PAGE_LIMIT = 150;
 
 export type GetMembersResponseBody = {
   members: UserTypeWithWorkspaces[];
@@ -25,7 +26,7 @@ const MembersPaginationCodec = t.type({
   limit: withFallback(
     t.refinement(
       NumberFromString,
-      (n): n is number => n >= 0 && n <= 150,
+      (n): n is number => n >= 0 && n <= MAX_PAGE_LIMIT,
       `LimitWithRange`
     ),
     DEFAULT_PAGE_LIMIT
