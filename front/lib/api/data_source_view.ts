@@ -1,8 +1,10 @@
 import type {
   ContentNodesViewType,
   CoreAPIContentNode,
+  CoreAPIContentNodeType,
   CoreAPIDatasourceViewFilter,
   CoreAPIError,
+  CoreAPISortSpec,
   DataSourceViewContentNode,
   DataSourceViewType,
   PatchDataSourceViewType,
@@ -244,13 +246,29 @@ async function getContentNodesForDataSourceViewFromCore(
         ? undefined
         : ROOT_PARENT_ID);
 
+  const nodeTypesForViewType: CoreAPIContentNodeType[] =
+    viewType === "documents" ? ["Document", "Folder"] : ["Table", "Folder"];
+
+  // Always sort folders first, then sort by title.
+  const sortForViewType: CoreAPISortSpec[] =
+    viewType === "documents"
+      ? [
+          { field: "node_type", direction: "desc" },
+          { field: "title.keyword", direction: "asc" },
+        ]
+      : [
+          { field: "node_type", direction: "asc" },
+          { field: "title.keyword", direction: "asc" },
+        ];
+
   const coreRes = await coreAPI.searchNodes({
     filter: {
       data_source_views: [makeCoreDataSourceViewFilter(dataSourceView)],
       node_ids,
       parent_id,
+      node_types: nodeTypesForViewType,
     },
-    options: { limit: 250 },
+    options: { limit: 250, sort: sortForViewType },
   });
 
   if (coreRes.isErr()) {
@@ -485,7 +503,7 @@ export async function getContentNodesForDataSourceView(
       const workspace = renderLightWorkspaceType({ workspace: workspaceModel });
       if (
         (isDevelopment() || isDustWorkspace(workspace)) &&
-        showConnectorsNodes
+        !showConnectorsNodes
       ) {
         const contentNodesInView = filterAndCropContentNodesByView(
           dataSourceView,
