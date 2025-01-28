@@ -1,8 +1,11 @@
 import { CircleIcon, SquareIcon, TriangleIcon } from "@dust-tt/sparkle";
 import type {
   AgentConfigurationScope,
+  AgentReasoningEffort,
   AppType,
   DataSourceViewSelectionConfigurations,
+  ModelIdType,
+  ModelProviderIdType,
   PlanType,
   ProcessSchemaPropertyType,
   SubscriptionType,
@@ -23,6 +26,8 @@ import {
   DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_DESCRIPTION,
   DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME,
   DEFAULT_PROCESS_ACTION_NAME,
+  DEFAULT_REASONING_ACTION_DESCRIPTION,
+  DEFAULT_REASONING_ACTION_NAME,
   DEFAULT_RETRIEVAL_ACTION_NAME,
   DEFAULT_RETRIEVAL_NO_QUERY_ACTION_NAME,
   DEFAULT_TABLES_QUERY_ACTION_NAME,
@@ -57,6 +62,8 @@ export function isDefaultActionName(
       return action.name.includes(DEFAULT_PROCESS_ACTION_NAME);
     case "WEB_NAVIGATION":
       return action.name.includes(DEFAULT_WEBSEARCH_ACTION_NAME);
+    case "REASONING":
+      return action.name.includes(DEFAULT_REASONING_ACTION_NAME);
     default:
       return false;
   }
@@ -108,6 +115,14 @@ export type AssistantBuilderWebNavigationConfiguration = Record<string, never>;
 // Github configuraiton (no configuraiton)
 export type AssistantBuilderGithubConfiguration = Record<string, never>;
 
+// Reasoning configuration
+export type AssistantBuilderReasoningConfiguration = {
+  modelId: ModelIdType;
+  providerId: ModelProviderIdType;
+  temperature: number | null;
+  reasoningEffort: AgentReasoningEffort | null;
+};
+
 // Builder State
 
 export type AssistantBuilderActionConfiguration = (
@@ -138,6 +153,10 @@ export type AssistantBuilderActionConfiguration = (
   | {
       type: "GITHUB_GET_PULL_REQUEST";
       configuration: AssistantBuilderGithubConfiguration;
+    }
+  | {
+      type: "REASONING";
+      configuration: AssistantBuilderReasoningConfiguration;
     }
 ) & {
   name: string;
@@ -326,6 +345,23 @@ export function getDefaultGithubhGetPullRequestActionConfiguration(): AssistantB
   };
 }
 
+export function getDefaultReasoningActionConfiguration(): AssistantBuilderActionConfiguration {
+  return {
+    type: "REASONING",
+    configuration: {
+      // TODO(REASONING TOOL):
+      // Cleanup
+      providerId: "togetherai",
+      modelId: "deepseek-ai/DeepSeek-R1",
+      temperature: null,
+      reasoningEffort: null,
+    },
+    name: DEFAULT_REASONING_ACTION_NAME,
+    description: DEFAULT_REASONING_ACTION_DESCRIPTION,
+    noConfigurationRequired: false,
+  } satisfies AssistantBuilderActionConfiguration;
+}
+
 export function getDefaultActionConfiguration(
   actionType: AssistantBuilderActionType | null
 ): AssistantBuilderActionConfigurationWithId | null {
@@ -347,6 +383,8 @@ export function getDefaultActionConfiguration(
         return getDefaultWebsearchActionConfiguration();
       case "GITHUB_GET_PULL_REQUEST":
         return getDefaultGithubhGetPullRequestActionConfiguration();
+      case "REASONING":
+        return getDefaultReasoningActionConfiguration();
       default:
         assertNever(actionType);
     }

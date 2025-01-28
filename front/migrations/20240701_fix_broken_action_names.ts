@@ -203,6 +203,8 @@ makeScript({}, async ({ execute }) => {
             throw new Error("Unreachable");
           case "github_get_pull_request_configuration":
             throw new Error("Unreachable");
+          case "reasoning_configuration":
+            throw new Error("Unreachable");
           default:
             assertNever(a.action);
         }

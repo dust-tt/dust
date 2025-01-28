@@ -21,6 +21,8 @@ import {
   DEFAULT_BROWSE_ACTION_NAME,
   DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_DESCRIPTION,
   DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME,
+  DEFAULT_REASONING_ACTION_DESCRIPTION,
+  DEFAULT_REASONING_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/api/assistant/actions/constants";
@@ -201,6 +203,19 @@ export async function submitAssistantBuilderForm({
             type: "github_get_pull_request_configuration",
             name: DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME,
             description: DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_DESCRIPTION,
+          },
+        ];
+
+      case "REASONING":
+        return [
+          {
+            type: "reasoning_configuration",
+            name: DEFAULT_REASONING_ACTION_NAME,
+            description: DEFAULT_REASONING_ACTION_DESCRIPTION,
+            modelId: a.configuration.modelId,
+            providerId: a.configuration.providerId,
+            temperature: a.configuration.temperature,
+            reasoningEffort: a.configuration.reasoningEffort,
           },
         ];
 
