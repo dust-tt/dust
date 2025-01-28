@@ -2,16 +2,62 @@ import type {
   UserTypeWithWorkspaces,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import { NumberFromString, withFallback } from "io-ts-types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
+import type { MembershipsPaginationParams } from "@app/lib/resources/membership_resource";
 import { apiError } from "@app/logger/withlogging";
+
+export const DEFAULT_PAGE_LIMIT = 50;
 
 export type GetMembersResponseBody = {
   members: UserTypeWithWorkspaces[];
   total: number;
+  nextPageUrl?: string;
+};
+
+const MembersPaginationCodec = t.type({
+  limit: withFallback(
+    t.refinement(
+      NumberFromString,
+      (n): n is number => n >= 0 && n <= 150,
+      `LimitWithRange`
+    ),
+    DEFAULT_PAGE_LIMIT
+  ),
+  orderColumn: withFallback(t.literal("createdAt"), "createdAt"),
+  orderDirection: withFallback(
+    t.union([t.literal("asc"), t.literal("desc")]),
+    "desc"
+  ),
+  lastValue: withFallback(
+    t.union([NumberFromString, t.null, t.undefined]),
+    undefined
+  ),
+});
+
+const buildUrlWithParams = (
+  req: NextApiRequest,
+  newParams: MembershipsPaginationParams | undefined
+) => {
+  if (!newParams) {
+    return undefined;
+  }
+
+  const url = new URL(req.url!, `http://${req.headers.host}`);
+  Object.entries(newParams).forEach(([key, value]) => {
+    if (value === null || value === undefined) {
+      url.searchParams.delete(key);
+    } else {
+      url.searchParams.set(key, value.toString());
+    }
+  });
+  return url.pathname + url.search;
 };
 
 async function handler(
@@ -21,15 +67,34 @@ async function handler(
 ): Promise<void> {
   switch (req.method) {
     case "GET":
-      if (auth.isBuilder() && req.query.role && req.query.role === "admin") {
-        const { members, total } = await getMembers(auth, {
-          roles: ["admin"],
+      const paginationRes = MembersPaginationCodec.decode(req.query);
+      if (isLeft(paginationRes)) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Invalid pagination parameters",
+          },
         });
-        res.status(200).json({
+      }
+
+      const paginationParams = paginationRes.right;
+
+      if (auth.isBuilder() && req.query.role && req.query.role === "admin") {
+        const { members, total, nextPageParams } = await getMembers(
+          auth,
+          {
+            roles: ["admin"],
+            activeOnly: true,
+          },
+          paginationParams
+        );
+
+        return res.status(200).json({
           members,
           total,
+          nextPageUrl: buildUrlWithParams(req, nextPageParams),
         });
-        return;
       }
 
       if (!auth.isAdmin()) {
@@ -43,13 +108,16 @@ async function handler(
         });
       }
 
-      const { members, total } = await getMembers(auth, {});
-
-      res.status(200).json({
+      const { members, total, nextPageParams } = await getMembers(
+        auth,
+        { activeOnly: true },
+        paginationParams
+      );
+      return res.status(200).json({
         members,
         total,
+        nextPageUrl: buildUrlWithParams(req, nextPageParams),
       });
-      return;
 
     default:
       return apiError(req, res, {

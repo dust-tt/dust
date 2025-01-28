@@ -6,9 +6,7 @@ import type {
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
-import { Op } from "sequelize";
 
-import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
@@ -103,13 +101,8 @@ export class UserResource extends BaseResource<UserModel> {
   }
 
   static async fetchByEmail(email: string): Promise<UserResource | null> {
-    const user = await UserModel.findOne({
-      where: {
-        email: email.toLowerCase(),
-      },
-    });
-
-    return user ? new UserResource(UserModel, user.get()) : null;
+    const users = await this.listByEmail(email.toLowerCase());
+    return users.length > 0 ? users[0] : null;
   }
 
   static async fetchByProvider(
@@ -144,45 +137,6 @@ export class UserResource extends BaseResource<UserModel> {
     });
 
     return user ? new UserResource(UserModel, user.get()) : null;
-  }
-
-  static async listUsersWithEmailPredicat(
-    workspaceId: number,
-    options: {
-      email?: string;
-    },
-    paginationParams: PaginationParams
-  ): Promise<{ users: UserResource[]; total: number }> {
-    const userWhereClause: any = {};
-    if (options.email) {
-      userWhereClause.email = {
-        [Op.iLike]: `%${options.email}%`,
-      };
-    }
-
-    const { count, rows: users } = await UserModel.findAndCountAll({
-      where: userWhereClause,
-      include: [
-        {
-          model: MembershipModel,
-          as: "memberships",
-          where: {
-            workspaceId,
-            startAt: { [Op.lte]: new Date() },
-            endAt: { [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: new Date() }] },
-          },
-          required: true,
-        },
-      ],
-      order: [[paginationParams.orderColumn, paginationParams.orderDirection]],
-      limit: paginationParams.limit,
-      offset: paginationParams.lastValue,
-    });
-
-    return {
-      users: users.map((u) => new UserResource(UserModel, u.get())),
-      total: count,
-    };
   }
 
   async updateAuth0Sub(sub: string) {

@@ -1,17 +1,33 @@
 import type { LightWorkspaceType } from "@dust-tt/types";
-import type { PaginationState } from "@tanstack/react-table";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Fetcher } from "swr";
 
-import {
-  appendPaginationParams,
-  fetcher,
-  useSWRWithDefaults,
-} from "@app/lib/swr/swr";
+import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
+import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { debounce } from "@app/lib/utils/debounce";
 import type { GetWorkspaceInvitationsResponseBody } from "@app/pages/api/w/[wId]/invitations";
 import type { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
 import type { SearchMembersResponseBody } from "@app/pages/api/w/[wId]/members/search";
+
+type PaginationParams = {
+  orderColumn: "createdAt";
+  orderDirection: "asc" | "desc";
+  limit: number;
+  // lastValue is directly set when using the nextPageUrl
+};
+
+const appendPaginationParams = (
+  params: URLSearchParams,
+  pagination?: PaginationParams
+) => {
+  if (!pagination) {
+    return;
+  }
+
+  params.set("orderColumn", pagination.orderColumn);
+  params.set("orderDirection", pagination.orderDirection);
+  params.set("limit", pagination.limit.toString());
+};
 
 export function useMembers({
   workspaceId,
@@ -19,15 +35,20 @@ export function useMembers({
   disabled,
 }: {
   workspaceId: string;
-  pagination?: PaginationState;
+  pagination?: PaginationParams;
   disabled?: boolean;
 }) {
-  const params = new URLSearchParams();
-  appendPaginationParams(params, pagination);
+  const defaultUrl = useMemo(() => {
+    const params = new URLSearchParams();
+    appendPaginationParams(params, pagination);
+    return `/api/w/${workspaceId}/members?${params.toString()}`;
+  }, [workspaceId, pagination]);
+
+  const [url, setUrl] = useState(defaultUrl);
 
   const membersFetcher: Fetcher<GetMembersResponseBody> = fetcher;
   const { data, error, mutate, mutateRegardlessOfQueryParams } =
-    useSWRWithDefaults(`/api/w/${workspaceId}/members`, membersFetcher, {
+    useSWRWithDefaults(url, membersFetcher, {
       disabled,
     });
 
@@ -35,16 +56,36 @@ export function useMembers({
     members: useMemo(() => (data ? data.members : []), [data]),
     isMembersLoading: !error && !data,
     isMembersError: error,
+    hasNextPage: !!data?.nextPageUrl,
+    loadNextPage: useCallback(
+      () => data?.nextPageUrl && setUrl(data.nextPageUrl),
+      [data?.nextPageUrl]
+    ),
     mutate,
     mutateRegardlessOfQueryParams,
     total: data ? data.total : 0,
   };
 }
 
-export function useAdmins(owner: LightWorkspaceType) {
+export function useMembersCount(owner: LightWorkspaceType) {
+  const { total } = useMembers({
+    workspaceId: owner.sId,
+    pagination: { limit: 0, orderColumn: "createdAt", orderDirection: "asc" },
+  });
+
+  return total;
+}
+
+export function useAdmins(
+  owner: LightWorkspaceType,
+  pagination?: PaginationParams
+) {
+  const params = new URLSearchParams();
+  appendPaginationParams(params, pagination);
+
   const membersFetcher: Fetcher<GetMembersResponseBody> = fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/members?role=admin`,
+    `/api/w/${owner.sId}/members?role=admin&${params.toString()}`,
     membersFetcher
   );
 
@@ -69,6 +110,43 @@ export function useWorkspaceInvitations(owner: LightWorkspaceType) {
     isInvitationsLoading: !error && !data,
     isInvitationsError: error,
     mutateInvitations: mutate,
+  };
+}
+
+export function useMembersByEmails({
+  workspaceId,
+  emails,
+  disabled,
+}: {
+  workspaceId: string;
+  emails: string[];
+  disabled?: boolean;
+}) {
+  const membersFetcher: Fetcher<GetMembersResponseBody> = fetcher;
+
+  if (emails.length === 0) {
+    disabled = true;
+  }
+
+  if (emails.length > MAX_SEARCH_EMAILS && !disabled) {
+    throw new Error("Too many emails provided.");
+  }
+
+  const { data, error, mutate, mutateRegardlessOfQueryParams } =
+    useSWRWithDefaults(
+      `/api/w/${workspaceId}/members/search?searchEmails=${emails.join(",")}`,
+      membersFetcher,
+      {
+        disabled,
+      }
+    );
+
+  return {
+    members: useMemo(() => (data ? data.members : []), [data]),
+    isMembersLoading: !error && !data && !disabled,
+    isMembersError: error,
+    mutate,
+    mutateRegardlessOfQueryParams,
   };
 }
 
@@ -99,8 +177,10 @@ export function useSearchMembers({
 
   const searchParams = new URLSearchParams({
     searchTerm: debouncedSearchTerm,
-    orderBy: "name",
-    lastValue: (pageIndex * pageSize).toString(),
+    orderColumn: "name",
+    orderDirection: "asc",
+    offset: (pageIndex * pageSize).toString(),
+    limit: pageSize.toString(),
   });
 
   const { data, error, mutate, mutateRegardlessOfQueryParams } =

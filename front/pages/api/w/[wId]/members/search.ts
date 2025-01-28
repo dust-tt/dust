@@ -2,15 +2,38 @@ import type {
   UserTypeWithWorkspaces,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import { formatValidationErrors } from "io-ts-reporters";
+import { NumberFromString, withFallback } from "io-ts-types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { getPaginationParams } from "@app/lib/api/pagination";
 import { searchMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
+import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
 import { apiError } from "@app/logger/withlogging";
 
 const DEFAULT_PAGE_LIMIT = 25;
+
+const SearchMembersQueryCodec = t.type({
+  orderColumn: withFallback(t.literal("name"), "name"),
+  orderDirection: withFallback(
+    t.union([t.literal("asc"), t.literal("desc")]),
+    "desc"
+  ),
+  offset: withFallback(NumberFromString, 0),
+  limit: withFallback(
+    t.refinement(
+      NumberFromString,
+      (n): n is number => n >= 0 && n <= 150,
+      `LimitWithRange`
+    ),
+    DEFAULT_PAGE_LIMIT
+  ),
+  searchTerm: t.union([t.string, t.undefined]),
+  searchEmails: t.union([t.string, t.undefined]),
+});
 
 export type SearchMembersResponseBody = {
   members: UserTypeWithWorkspaces[];
@@ -35,51 +58,48 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const { searchTerm, orderBy } = req.query;
+      const queryRes = SearchMembersQueryCodec.decode(req.query);
 
-      if (typeof searchTerm !== "string" || typeof orderBy !== "string") {
+      if (isLeft(queryRes)) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
             message:
-              "Invalid query parameters. Both 'searchTerm' and 'orderBy' must be strings.",
+              "Invalid query parameters: " +
+              formatValidationErrors(queryRes.left).join(", "),
           },
         });
       }
 
-      const paginationRes = getPaginationParams(req, {
-        defaultLimit: DEFAULT_PAGE_LIMIT,
-        defaultOrderColumn: orderBy || "name",
-        defaultOrderDirection: "asc",
-        supportedOrderColumn: ["name"],
-      });
+      const query = queryRes.right;
 
-      if (paginationRes.isErr()) {
+      if (
+        query.searchEmails?.length &&
+        query.searchEmails.length > MAX_SEARCH_EMAILS
+      ) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: paginationRes.error.message,
+            message: `Too many emails provided. Maximum is ${MAX_SEARCH_EMAILS}.`,
           },
         });
       }
 
-      const paginationParams = paginationRes.value;
-
       const { members, total } = await searchMembers(
         auth,
         {
-          email: searchTerm,
+          searchTerm: query.searchTerm,
+          searchEmails: query.searchEmails?.split(","),
         },
-        paginationParams
+        query
       );
 
-      res.status(200).json({
+      return res.status(200).json({
         members,
         total,
       });
-      return;
 
     default:
       return apiError(req, res, {

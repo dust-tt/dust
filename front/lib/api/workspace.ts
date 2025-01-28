@@ -12,14 +12,17 @@ import type {
 import { ACTIVE_ROLES, Err, Ok } from "@dust-tt/types";
 import { Op } from "sequelize";
 
-import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
+import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
 import { Subscription } from "@app/lib/models/plan";
 import { Workspace } from "@app/lib/models/workspace";
 import { WorkspaceHasDomain } from "@app/lib/models/workspace_has_domain";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
+import type { MembershipsPaginationParams } from "@app/lib/resources/membership_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { MembershipModel } from "@app/lib/resources/storage/models/membership";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { launchDeleteWorkspaceWorkflow } from "@app/poke/temporal/client";
@@ -138,14 +141,18 @@ export async function getMembers(
     roles?: MembershipRoleType[];
     activeOnly?: boolean;
   } = {},
-  paginationParams?: PaginationParams
-): Promise<{ members: UserTypeWithWorkspaces[]; total: number }> {
+  paginationParams?: MembershipsPaginationParams
+): Promise<{
+  members: UserTypeWithWorkspaces[];
+  total: number;
+  nextPageParams?: MembershipsPaginationParams;
+}> {
   const owner = auth.workspace();
   if (!owner) {
     return { members: [], total: 0 };
   }
 
-  const { memberships, total } = activeOnly
+  const { memberships, total, nextPageParams } = activeOnly
     ? await MembershipResource.getActiveMemberships({
         workspace: owner,
         roles,
@@ -157,12 +164,7 @@ export async function getMembers(
         paginationParams,
       });
 
-  const users = await UserResource.fetchByModelIds(
-    memberships.map((m) => m.userId)
-  );
-
-  const usersWithWorkspaces = users.map((u) => {
-    const m = memberships.find((m) => m.userId === u.id);
+  const usersWithWorkspaces = memberships.map((m) => {
     let role = "none" as RoleType;
     if (m && !m.isRevoked()) {
       switch (m.role) {
@@ -176,34 +178,58 @@ export async function getMembers(
       }
     }
 
+    const user = new UserResource(UserModel, m.user!);
+
     return {
-      ...u.toJSON(),
+      ...user.toJSON(),
       workspaces: [{ ...owner, role, flags: null }],
     };
   });
 
-  return { members: usersWithWorkspaces, total };
+  return { members: usersWithWorkspaces, total, nextPageParams };
+}
+
+interface SearchMembersPaginationParams {
+  orderColumn: "name";
+  orderDirection: "asc" | "desc";
+  offset: number;
+  limit: number;
 }
 
 export async function searchMembers(
   auth: Authenticator,
   options: {
-    email?: string;
+    searchTerm?: string;
+    searchEmails?: string[];
   },
-  paginationParams: PaginationParams
+  paginationParams: SearchMembersPaginationParams
 ): Promise<{ members: UserTypeWithWorkspaces[]; total: number }> {
   const owner = auth.workspace();
   if (!owner) {
     return { members: [], total: 0 };
   }
 
-  const { users, total } = await UserResource.listUsersWithEmailPredicat(
-    owner.id,
-    {
-      email: options.email,
-    },
-    paginationParams
-  );
+  let users: UserResource[];
+  let total: number;
+
+  if (options.searchEmails) {
+    if (options.searchEmails.length > MAX_SEARCH_EMAILS) {
+      throw new Error("Too many emails provided.");
+    }
+
+    users = await listUserWithExactEmails(owner.id, options.searchEmails);
+    total = users.length;
+  } else {
+    const results = await listUsersWithEmailPredicat(
+      owner.id,
+      {
+        email: options.searchTerm,
+      },
+      paginationParams
+    );
+    users = results.users;
+    total = results.total;
+  }
 
   const { memberships } = await MembershipResource.getActiveMemberships({
     users,
@@ -228,6 +254,70 @@ export async function searchMembers(
   });
 
   return { members: usersWithWorkspaces, total };
+}
+
+async function listUserWithExactEmails(
+  workspaceId: number,
+  emails: string[]
+): Promise<UserResource[]> {
+  const users = await UserModel.findAll({
+    include: [
+      {
+        model: MembershipModel,
+        as: "memberships",
+        where: {
+          workspaceId,
+          startAt: { [Op.lte]: new Date() },
+          endAt: { [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: new Date() }] },
+        },
+        required: true,
+      },
+    ],
+    where: {
+      email: emails,
+    },
+  });
+
+  return users.map((user) => new UserResource(UserModel, user.get()));
+}
+
+async function listUsersWithEmailPredicat(
+  workspaceId: number,
+  options: {
+    email?: string;
+  },
+  paginationParams: SearchMembersPaginationParams
+): Promise<{ users: UserResource[]; total: number }> {
+  const userWhereClause: any = {};
+  if (options.email) {
+    userWhereClause.email = {
+      [Op.iLike]: `%${options.email}%`,
+    };
+  }
+
+  const { count, rows: users } = await UserModel.findAndCountAll({
+    where: userWhereClause,
+    include: [
+      {
+        model: MembershipModel,
+        as: "memberships",
+        where: {
+          workspaceId,
+          startAt: { [Op.lte]: new Date() },
+          endAt: { [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: new Date() }] },
+        },
+        required: true,
+      },
+    ],
+    order: [[paginationParams.orderColumn, paginationParams.orderDirection]],
+    limit: paginationParams.limit,
+    offset: paginationParams.offset,
+  });
+
+  return {
+    users: users.map((u) => new UserResource(UserModel, u.get())),
+    total: count,
+  };
 }
 
 export async function getMembersCount(

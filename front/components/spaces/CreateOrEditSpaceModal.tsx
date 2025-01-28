@@ -13,6 +13,7 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import type { LightWorkspaceType, SpaceType, UserType } from "@dust-tt/types";
+import { isDevelopment } from "@dust-tt/types";
 import type {
   CellContext,
   PaginationState,
@@ -22,14 +23,18 @@ import { useRouter } from "next/router";
 import * as React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { BatchAddMembersPopover } from "@app/components/spaces/BatchAddMembersPopover";
 import { ConfirmDeleteSpaceDialog } from "@app/components/spaces/ConfirmDeleteSpaceDialog";
 import { SearchMembersPopover } from "@app/components/spaces/SearchMembersPopover";
+import { useMembersCount } from "@app/lib/swr/memberships";
 import {
   useCreateSpace,
   useDeleteSpace,
   useSpaceInfo,
   useUpdateSpace,
 } from "@app/lib/swr/spaces";
+
+const MIN_MEMBERS_FOR_BATCH_OPTION = isDevelopment() ? 2 : 50;
 
 type RowData = {
   icon: string;
@@ -69,6 +74,7 @@ export function CreateOrEditSpaceModal({
   owner,
   space,
 }: CreateOrEditSpaceModalProps) {
+  const membersCount = useMembersCount(owner);
   const [spaceName, setSpaceName] = useState<string | null>(
     space?.name ?? null
   );
@@ -79,6 +85,13 @@ export function CreateOrEditSpaceModal({
   const [isRestricted, setIsRestricted] = useState(false);
   const [searchSelectedMembers, setSearchSelectedMembers] =
     useState<string>("");
+
+  const deduplicatedMembers = useMemo(() => {
+    return selectedMembers.filter(
+      (member, index, self) =>
+        index === self.findIndex((t) => t.sId === member.sId)
+    );
+  }, [selectedMembers]);
 
   const doCreate = useCreateSpace({ owner });
   const doUpdate = useUpdateSpace({ owner });
@@ -129,7 +142,7 @@ export function CreateOrEditSpaceModal({
       if (isRestricted) {
         await doUpdate(space, {
           isRestricted: true,
-          memberIds: selectedMembers.map((vm) => vm.sId),
+          memberIds: deduplicatedMembers.map((vm) => vm.sId),
           name: spaceName,
         });
       } else {
@@ -149,7 +162,7 @@ export function CreateOrEditSpaceModal({
         createdSpace = await doCreate({
           name: spaceName,
           isRestricted: true,
-          memberIds: selectedMembers.map((vm) => vm.sId),
+          memberIds: deduplicatedMembers.map((vm) => vm.sId),
         });
       } else {
         createdSpace = await doCreate({
@@ -173,7 +186,7 @@ export function CreateOrEditSpaceModal({
     isRestricted,
     mutateSpaceInfo,
     onCreated,
-    selectedMembers,
+    deduplicatedMembers,
     space,
     spaceName,
   ]);
@@ -205,7 +218,7 @@ export function CreateOrEditSpaceModal({
       variant="side-md"
       hasChanged={
         !!spaceName &&
-        (!isRestricted || (isRestricted && selectedMembers.length > 0))
+        (!isRestricted || (isRestricted && deduplicatedMembers.length > 0))
       }
       isSaving={isSaving}
       className="flex overflow-visible" // overflow-visible is needed to avoid clipping the delete button
@@ -249,11 +262,20 @@ export function CreateOrEditSpaceModal({
           </div>
           {isRestricted && (
             <>
-              <SearchMembersPopover
-                owner={owner}
-                selectedMembers={selectedMembers}
-                onMembersUpdated={setSelectedMembers}
-              />
+              <div className="flex flex-row justify-end gap-2">
+                <SearchMembersPopover
+                  owner={owner}
+                  selectedMembers={deduplicatedMembers}
+                  onMembersUpdated={setSelectedMembers}
+                />
+                {membersCount >= MIN_MEMBERS_FOR_BATCH_OPTION && (
+                  <BatchAddMembersPopover
+                    owner={owner}
+                    selectedMembers={deduplicatedMembers}
+                    onMembersUpdated={setSelectedMembers}
+                  />
+                )}
+              </div>
               <SearchInput
                 name="search"
                 placeholder="Search (email)"
@@ -265,7 +287,7 @@ export function CreateOrEditSpaceModal({
               <ScrollArea className="h-full">
                 <MembersTable
                   onMembersUpdated={setSelectedMembers}
-                  selectedMembers={selectedMembers}
+                  selectedMembers={deduplicatedMembers}
                   searchSelectedMembers={searchSelectedMembers}
                 />
               </ScrollArea>
