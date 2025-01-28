@@ -32,7 +32,13 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
     };
 
     return (
-      <div className={cn("s-relative s-flex-grow", className)}>
+      <div className={cn([
+        [
+          "s-relative",
+          "s-flex-grow"
+        ].join(" "),
+        className
+      ])}>
         <Input
           type="text"
           name={name}
@@ -45,7 +51,14 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
           disabled={disabled}
           ref={ref}
         />
-        <div className="s-absolute s-inset-y-0 s-right-0 s-flex s-items-center s-pr-1">
+        <div className={[
+          "s-absolute",
+          "s-inset-y-0",
+          "s-right-0",
+          "s-flex",
+          "s-items-center",
+          "s-pr-1"
+        ].join(" ")}>
           {value ? (
             <Button
               icon={XMarkIcon}
@@ -55,15 +68,18 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
             />
           ) : (
             <div
-              className={cn(
+              className={cn([
                 "s-px-2",
-                disabled ? "s-text-element-600 dark:s-text-element-600-dark" : "s-text-foreground dark:s-text-foreground-dark"
-              )}
+                disabled ? "s-text-element-600 dark:s-text-element-600-darkMode" : "s-text-foreground dark:s-text-foreground-darkMode"
+              ])}
             >
               <Icon
                 visual={MagnifyingGlassIcon}
                 size="xs"
-                className="s-text-muted-foreground dark:s-text-muted-foreground-dark"
+                className={cn([
+                  "s-text-muted-foreground",
+                  "dark:s-text-muted-foreground-darkMode"
+                ].join(" "))}
               />
             </div>
           )}

@@ -20,12 +20,32 @@ const TooltipContent = React.forwardRef<
   <TooltipPrimitive.Content
     ref={ref}
     sideOffset={sideOffset}
-    className={classNames(
-      "s-z-50 s-max-w-sm s-overflow-hidden s-whitespace-pre-wrap s-break-words s-rounded-md s-border s-bg-white dark:s-bg-structure-50-dark s-px-3 s-py-1.5 s-text-sm s-text-foreground dark:s-text-foreground-dark s-shadow-md",
-      "s-animate-in s-fade-in-0 s-zoom-in-95",
-      "data-[state=closed]:s-animate-out data-[state=closed]:s-fade-out-0 data-[state=closed]:s-zoom-out-95 data-[side=bottom]:s-slide-in-from-top-2 data-[side=left]:s-slide-in-from-right-2 data-[side=right]:s-slide-in-from-left-2 data-[side=top]:s-slide-in-from-bottom-2",
+    className={classNames([
+      [
+        "s-z-50",
+        "s-max-w-sm",
+        "s-overflow-hidden s-whitespace-pre-wrap s-break-words",
+        "s-rounded-md s-border",
+        "s-bg-white dark:s-bg-structure-50-darkMode",
+        "s-px-3 s-py-1.5",
+        "s-text-sm",
+        "s-text-foreground dark:s-text-foreground-darkMode",
+        "s-shadow-md"
+      ].join(" "),
+      [
+        "s-animate-in s-fade-in-0 s-zoom-in-95"
+      ].join(" "),
+      [
+        "data-[state=closed]:s-animate-out",
+        "data-[state=closed]:s-fade-out-0",
+        "data-[state=closed]:s-zoom-out-95",
+        "data-[side=bottom]:s-slide-in-from-top-2",
+        "data-[side=left]:s-slide-in-from-right-2",
+        "data-[side=right]:s-slide-in-from-left-2",
+        "data-[side=top]:s-slide-in-from-bottom-2"
+      ].join(" "),
       className || ""
-    )}
+    ])}
     {...props}
   />
 ));

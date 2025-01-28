@@ -2,7 +2,7 @@ import { PaginationState } from "@tanstack/react-table";
 import React, { useCallback } from "react";
 
 import { ChevronLeftIcon, ChevronRightIcon } from "@sparkle/icons/solid";
-import { classNames } from "@sparkle/lib/utils";
+import { cn } from "@sparkle/lib/utils";
 
 import { Button } from "./Button";
 
@@ -62,16 +62,20 @@ export function Pagination({
 
   return (
     <div
-      className={classNames(
-        "s-flex s-w-full s-items-center",
-        controlsAreHidden ? "s-justify-end" : "s-justify-between"
+      className={cn(
+        [
+          "s-flex s-w-full s-items-center",
+          controlsAreHidden ? "s-justify-end" : "s-justify-between"
+        ].filter(Boolean).join(" ")
       )}
     >
       <div
-        className={classNames(
-          "s-flex",
-          controlsAreHidden ? "s-invisible" : "s-visible",
-          showPageButtons ? "s-gap-0" : "s-gap-2"
+        className={cn(
+          [
+            "s-flex",
+            controlsAreHidden ? "s-invisible" : "s-visible",
+            showPageButtons ? "s-gap-0" : "s-gap-2"
+          ].filter(Boolean).join(" ")
         )}
       >
         <Button
@@ -83,10 +87,12 @@ export function Pagination({
         />
 
         <div
-          className={classNames(
-            "s-items-center",
-            size === "xs" ? "s-gap-3 s-px-3" : "s-gap-4 s-px-4",
-            showPageButtons ? "s-flex" : "s-hidden"
+          className={cn(
+            [
+              "s-items-center",
+              size === "xs" ? "s-gap-3 s-px-3" : "s-gap-4 s-px-4",
+              showPageButtons ? "s-flex" : "s-hidden"
+            ].filter(Boolean).join(" ")
           )}
         >
           {pageButtons}
@@ -102,9 +108,12 @@ export function Pagination({
       </div>
 
       <span
-        className={classNames(
-          "s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-dark",
-          showDetails ? "s-visible" : "s-collapse"
+        className={cn(
+          [
+            "s-text-xs",
+            "s-text-muted-foreground dark:s-text-muted-foreground-darkMode",
+            showDetails ? "s-visible" : "s-collapse"
+          ].filter(Boolean).join(" ")
         )}
       >
         {controlsAreHidden
@@ -124,10 +133,13 @@ function renderPageNumber(
   return (
     <button
       key={pageNumber}
-      className={classNames(
-        "s-font-medium s-transition-colors s-duration-200",
-        currentPage === pageNumber ? "s-text-foreground dark:s-text-foreground-dark" : "s-text-primary-400 dark:s-text-primary-400-dark",
-        size === "xs" ? "s-text-xs" : "s-text-sm"
+      className={cn(
+        [
+          "s-font-medium",
+          "s-transition-colors s-duration-200",
+          currentPage === pageNumber ? "s-text-foreground dark:s-text-foreground-darkMode" : "s-text-primary-400 dark:s-text-primary-400-darkMode",
+          size === "xs" ? "s-text-xs" : "s-text-sm"
+        ].filter(Boolean).join(" ")
       )}
       onClick={() => onPageClick(pageNumber)}
     >
@@ -139,9 +151,12 @@ function renderPageNumber(
 function renderEllipses(size: "sm" | "xs") {
   return (
     <span
-      className={classNames(
-        "s-text-sm s-font-medium s-text-muted-foreground dark:s-text-muted-foreground-dark",
-        size === "xs" ? "s-text-xs" : "s-text-sm"
+      className={cn(
+        [
+          "s-font-medium",
+          "s-text-muted-foreground dark:s-text-muted-foreground-darkMode",
+          size === "xs" ? "s-text-xs" : "s-text-sm"
+        ].filter(Boolean).join(" ")
       )}
     >
       ...

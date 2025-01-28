@@ -1,7 +1,7 @@
 import React, { ComponentType } from "react";
 
 import { Separator } from "@sparkle/components/Separator";
-import { classNames } from "@sparkle/lib/utils";
+import { cn } from "@sparkle/lib/utils";
 
 import { Button, ButtonProps } from "./Button";
 import { Icon } from "./Icon";
@@ -20,8 +20,12 @@ export function Page({ children, variant = "normal" }: PageProps) {
   return (
     <main className={mainVariantClasses}>
       <div
-        className={classNames(
-          "s-mx-auto s-flex s-h-full s-max-w-4xl s-flex-col s-text-sm s-font-normal s-text-foreground dark:s-text-foreground-dark",
+        className={cn(
+          [
+            "s-mx-auto s-flex s-h-full s-max-w-4xl s-flex-col",
+            "s-text-sm s-font-normal",
+            "s-text-foreground dark:s-text-foreground-darkMode"
+          ].join(" "),
           divVariantClassNames
         )}
       >
@@ -40,7 +44,7 @@ interface PageHeaderProps {
 Page.Header = function ({ title, description, icon }: PageHeaderProps) {
   return (
     <Page.Vertical gap="xs">
-      <Icon visual={icon} className="s-text-primary-400 dark:s-text-primary-400-dark" size="lg" />
+      <Icon visual={icon} className="s-text-primary-400 dark:s-text-primary-400-darkMode" size="lg" />
       <Page.H variant="h3">{title}</Page.H>
       {description && <Page.P variant="secondary">{description}</Page.P>}
     </Page.Vertical>
@@ -93,11 +97,11 @@ const PsizeClasses = {
 Page.P = function ({ children, variant, size = "sm" }: PagePProps) {
   return (
     <p
-      className={classNames(
+      className={cn(
         PsizeClasses[size],
         variant === "secondary"
-          ? "s-text-element-700 dark:s-text-element-600-dark"
-          : "s-text-foreground dark:s-text-foreground-dark"
+          ? "s-text-element-700 dark:s-text-element-700-darkMode"
+          : "s-text-foreground dark:s-text-foreground-darkMode"
       )}
     >
       {children}
@@ -124,8 +128,8 @@ Page.H = function ({ children, variant = "h3" }: PageHProps) {
 
   return (
     <Component
-      className={classNames(
-        "s-text-foreground dark:s-text-foreground-dark",
+      className={cn(
+        "s-text-foreground dark:s-text-foreground-darkMode",
         hSizes[variant]
       )}
     >
@@ -205,15 +209,17 @@ Page.Horizontal = function ({
 }: PageDivProps) {
   return (
     <div
-      className={classNames(
-        "s-flex s-flex-col sm:s-flex-row",
-        sizing === "grow" ? "s-grow s-basis-0" : "",
-        sizing === "shrink" ? "s-shrink" : "",
-        gapSizes[gap],
-        align === "left" ? "s-justify-start" : "",
-        align === "center" ? "s-justify-center" : "",
-        align === "right" ? "s-justify-end" : "",
-        align === "stretch" ? "s-justify-stretch" : ""
+      className={cn(
+        [
+          "s-flex s-flex-col sm:s-flex-row",
+          sizing === "grow" ? "s-grow s-basis-0" : "",
+          sizing === "shrink" ? "s-shrink" : "",
+          gapSizes[gap],
+          align === "left" ? "s-justify-start" : "",
+          align === "center" ? "s-justify-center" : "",
+          align === "right" ? "s-justify-end" : "",
+          align === "stretch" ? "s-justify-stretch" : ""
+        ].filter(Boolean).join(" ")
       )}
     >
       {children}
@@ -229,14 +235,16 @@ Page.Vertical = function ({
 }: PageDivProps) {
   return (
     <div
-      className={classNames(
-        "s-flex s-flex-col",
-        sizing === "grow" ? "s-grow s-basis-0" : "",
-        sizing === "shrink" ? "s-shrink" : "",
-        gapSizes[gap],
-        align === "left" ? "s-items-start" : "",
-        align === "center" ? "s-items-center" : "",
-        align === "right" ? "s-items-end" : ""
+      className={cn(
+        [
+          "s-flex s-flex-col",
+          sizing === "grow" ? "s-grow s-basis-0" : "",
+          sizing === "shrink" ? "s-shrink" : "",
+          gapSizes[gap],
+          align === "left" ? "s-items-start" : "",
+          align === "center" ? "s-items-center" : "",
+          align === "right" ? "s-items-end" : ""
+        ].filter(Boolean).join(" ")
       )}
     >
       {children}
@@ -252,14 +260,16 @@ Page.Fluid = function ({
 }: PageDivProps) {
   return (
     <div
-      className={classNames(
-        "s-flex s-flex-wrap",
-        sizing === "grow" ? "s-grow" : "",
-        sizing === "shrink" ? "s-shrink" : "",
-        gapSizes[gap],
-        align === "left" ? "s-items-start" : "",
-        align === "center" ? "s-items-center" : "",
-        align === "right" ? "s-items-end" : ""
+      className={cn(
+        [
+          "s-flex s-flex-wrap",
+          sizing === "grow" ? "s-grow" : "",
+          sizing === "shrink" ? "s-shrink" : "",
+          gapSizes[gap],
+          align === "left" ? "s-items-start" : "",
+          align === "center" ? "s-items-center" : "",
+          align === "right" ? "s-items-end" : ""
+        ].filter(Boolean).join(" ")
       )}
     >
       {children}

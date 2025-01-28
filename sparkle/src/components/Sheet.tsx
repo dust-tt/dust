@@ -20,10 +20,15 @@ const SheetOverlay = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof SheetPrimitive.Overlay>
 >(({ className, ...props }, ref) => (
   <SheetPrimitive.Overlay
-    className={cn(
-      "s-fixed s-inset-0 s-z-50 s-bg-muted-foreground/75 data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-fade-out-0 data-[state=open]:s-fade-in-0",
+    className={cn([
+      [
+        "s-fixed s-inset-0 s-z-50",
+        "s-bg-muted-foreground/75",
+        "data-[state=open]:s-animate-in data-[state=closed]:s-animate-out",
+        "data-[state=closed]:s-fade-out-0 data-[state=open]:s-fade-in-0"
+      ].join(" "),
       className
-    )}
+    ])}
     {...props}
     ref={ref}
   />
@@ -45,7 +50,15 @@ const sizeClasses: Record<SheetSizeType, string> = {
 };
 
 const sheetVariants = cva(
-  "s-fixed s-z-50 s-overflow-hidden s-bg-background dark:s-bg-background-dark s-transition s-ease-in-out data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-duration-300 data-[state=open]:s-duration-500 s-flex s-flex-col s-h-full s-w-full",
+  [
+    "s-fixed s-z-50",
+    "s-overflow-hidden",
+    "s-bg-background dark:s-bg-background-darkMode",
+    "s-transition s-ease-in-out",
+    "data-[state=open]:s-animate-in data-[state=closed]:s-animate-out",
+    "data-[state=closed]:s-duration-300 data-[state=open]:s-duration-500",
+    "s-flex s-flex-col s-h-full s-w-full"
+  ].join(" "),
   {
     variants: {
       side: {
@@ -102,10 +115,17 @@ const SheetHeader = ({
   ...props
 }: SheetHeaderProps) => (
   <div
-    className={cn(
-      "s-z-50 s-flex s-flex-none s-flex-col s-gap-2 s-bg-background dark:s-bg-background-dark s-p-5 s-text-left s-shadow-tale-white",
+    className={cn([
+      [
+        "s-z-50",
+        "s-flex s-flex-none s-flex-col",
+        "s-gap-2",
+        "s-bg-background dark:s-bg-background-darkMode",
+        "s-p-5 s-text-left",
+        "s-shadow-tale-white"
+      ].join(" "),
       className
-    )}
+    ])}
     {...props}
   >
     {children}
@@ -117,8 +137,18 @@ const SheetHeader = ({
 SheetHeader.displayName = "SheetHeader";
 
 const SheetContainer = ({ children }: React.HTMLAttributes<HTMLDivElement>) => (
-  <ScrollArea className="s-w-full s-flex-grow">
-    <div className="s-relative s-flex s-flex-col s-gap-2 s-p-5 s-text-left s-text-sm s-text-foreground dark:s-text-foreground-dark">
+  <ScrollArea className={[
+    "s-w-full",
+    "s-flex-grow"
+  ].join(" ")}>
+    <div className={[
+      "s-relative",
+      "s-flex s-flex-col",
+      "s-gap-2",
+      "s-p-5",
+      "s-text-left s-text-sm",
+      "s-text-foreground dark:s-text-foreground-darkMode"
+    ].join(" ")}>
       {children}
     </div>
   </ScrollArea>
@@ -140,10 +170,15 @@ const SheetFooter = ({
   ...props
 }: SheetFooterProps) => (
   <div
-    className={cn(
-      "s-flex s-flex-none s-flex-row s-gap-2 s-border-t s-border-border s-px-3 s-py-3",
+    className={cn([
+      [
+        "s-flex s-flex-none s-flex-row",
+        "s-gap-2",
+        "s-border-t s-border-border",
+        "s-px-3 s-py-3"
+      ].join(" "),
       className
-    )}
+    ])}
     {...props}
   >
     {leftButtonProps &&
@@ -173,7 +208,13 @@ const SheetTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SheetPrimitive.Title
     ref={ref}
-    className={cn("s-text-lg s-font-semibold s-text-foreground dark:s-text-foreground-dark", className)}
+    className={cn([
+      [
+        "s-text-lg s-font-semibold",
+        "s-text-foreground dark:s-text-foreground-darkMode"
+      ].join(" "),
+      className
+    ])}
     {...props}
   />
 ));
@@ -185,7 +226,13 @@ const SheetDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SheetPrimitive.Description
     ref={ref}
-    className={cn("s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-dark", className)}
+    className={cn([
+      [
+        "s-text-sm",
+        "s-text-muted-foreground dark:s-text-muted-foreground-darkMode"
+      ].join(" "),
+      className
+    ])}
     {...props}
   />
 ));
