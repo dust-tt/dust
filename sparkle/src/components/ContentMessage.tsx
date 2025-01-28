@@ -14,6 +14,7 @@ const CONTENT_MESSAGE_VARIANTS = [
   "pink",
   "action",
   "red",
+  "default",
 ] as const;
 
 type ContentMessageVariantType = (typeof CONTENT_MESSAGE_VARIANTS)[number];
@@ -27,15 +28,19 @@ const contentMessageVariants = cva(
   {
     variants: {
       variant: {
-        emerald: "s-bg-emerald-100",
-        amber: "s-bg-amber-100",
-        slate: "s-bg-muted-background s-border s-border-border",
-        purple: "s-bg-purple-100",
-        warning: "s-bg-warning-100 dark:s-bg-warning-100-dark",
-        sky: "s-bg-sky-100 dark:s-bg-sky-100-dark",
-        pink: "s-bg-pink-100 dark:s-bg-pink-100-dark",
-        action: "s-bg-action-100 dark:s-bg-action-100-dark",
-        red: "s-bg-red-100 dark:s-bg-red-100-dark",
+        emerald: "s-bg-emerald-100 dark:s-bg-emerald-100-darkMode",
+        amber: "s-bg-amber-100 dark:s-bg-amber-100-darkMode",
+        slate: [
+          "s-bg-muted-background dark:s-bg-muted-background-darkMode",
+          "s-border s-border-border dark:s-border-border-darkMode",
+        ].join(" "),
+        purple: "s-bg-purple-100 dark:s-bg-purple-100-darkMode",
+        warning: "s-bg-warning-100 dark:s-bg-warning-100-darkMode",
+        sky: "s-bg-sky-100 dark:s-bg-sky-100-darkMode",
+        pink: "s-bg-pink-100 dark:s-bg-pink-100-darkMode",
+        action: "s-bg-action-100 dark:s-bg-action-100-darkMode",
+        red: "s-bg-red-100 dark:s-bg-red-100-darkMode",
+        default: "",
       },
       size: {
         lg: "",
@@ -44,7 +49,7 @@ const contentMessageVariants = cva(
       },
     },
     defaultVariants: {
-      variant: "amber",
+      variant: "default",
       size: "md",
     },
   }
@@ -53,15 +58,16 @@ const contentMessageVariants = cva(
 const iconVariants = cva("s-shrink-0", {
   variants: {
     variant: {
-      emerald: "s-text-emerald-800 dark:s-text-emerald-800-dark",
-      amber: "s-text-amber-800 dark:s-text-amber-800-dark",
-      slate: "s-text-slate-800 dark:s-text-slate-800-dark",
-      purple: "s-text-purple-800 dark:s-text-purple-800-dark",
-      warning: "s-text-warning-800 dark:s-text-warning-800-dark",
-      sky: "s-text-sky-800 dark:s-text-sky-800-dark",
-      pink: "s-text-pink-800 dark:s-text-pink-800-dark",
-      action: "s-text-action-800 dark:s-text-action-800-dark",
-      red: "s-text-red-800 dark:s-text-red-800-dark",
+      emerald: "s-text-emerald-800 dark:s-text-emerald-800-darkMode",
+      amber: "s-text-amber-800 dark:s-text-amber-800-darkMode",
+      slate: "s-text-slate-800 dark:s-text-slate-800-darkMode",
+      purple: "s-text-purple-800 dark:s-text-purple-800-darkMode",
+      warning: "s-text-warning-800 dark:s-text-warning-800-darkMode",
+      sky: "s-text-sky-800 dark:s-text-sky-800-darkMode",
+      pink: "s-text-pink-800 dark:s-text-pink-800-darkMode",
+      action: "s-text-action-800 dark:s-text-action-800-darkMode",
+      red: "s-text-red-800 dark:s-text-red-800-darkMode",
+      default: "s-text-primary-800 dark:s-text-primary-800-darkMode",
     },
   },
 });
@@ -69,15 +75,16 @@ const iconVariants = cva("s-shrink-0", {
 const titleVariants = cva("s-text-sm s-font-semibold", {
   variants: {
     variant: {
-      emerald: "s-text-emerald-800 dark:s-text-emerald-800-dark",
-      amber: "s-text-amber-800 dark:s-text-amber-800-dark",
-      slate: "s-text-foreground dark:s-text-foreground-dark",
-      purple: "s-text-purple-800 dark:s-text-purple-800-dark",
-      warning: "s-text-warning-800 dark:s-text-warning-800-dark",
-      sky: "s-text-sky-800 dark:s-text-sky-800-dark",
-      pink: "s-text-pink-800 dark:s-text-pink-800-dark",
-      action: "s-text-action-800 dark:s-text-action-800-dark",
-      red: "s-text-red-800 dark:s-text-red-800-dark",
+      emerald: "s-text-emerald-800 dark:s-text-emerald-800-darkMode",
+      amber: "s-text-amber-800 dark:s-text-amber-800-darkMode",
+      slate: "s-text-foreground dark:s-text-foreground-darkMode",
+      purple: "s-text-purple-800 dark:s-text-purple-800-darkMode",
+      warning: "s-text-warning-800 dark:s-text-warning-800-darkMode",
+      sky: "s-text-sky-800 dark:s-text-sky-800-darkMode",
+      pink: "s-text-pink-800 dark:s-text-pink-800-darkMode",
+      action: "s-text-action-800 dark:s-text-action-800-darkMode",
+      red: "s-text-red-800 dark:s-text-red-800-darkMode",
+      default: "s-text-primary-800 dark:s-text-primary-800-darkMode",
     },
   },
 });
@@ -85,15 +92,16 @@ const titleVariants = cva("s-text-sm s-font-semibold", {
 const textVariants = cva("s-text-sm", {
   variants: {
     variant: {
-      emerald: "s-text-emerald-950 dark:s-text-emerald-950-dark",
-      amber: "s-text-amber-950 dark:s-text-amber-950-dark",
-      slate: "s-text-muted-foreground dark:s-text-muted-foreground-dark",
-      purple: "s-text-purple-950 dark:s-text-purple-950-dark",
-      warning: "s-text-warning-950 dark:s-text-warning-950-dark",
-      sky: "s-text-sky-950 dark:s-text-sky-950-dark",
-      pink: "s-text-pink-950 dark:s-text-pink-950-dark",
-      action: "s-text-action-950 dark:s-text-action-950-dark",
-      red: "s-text-red-950 dark:s-text-red-950-dark",
+      emerald: "s-text-emerald-950 dark:s-text-emerald-950-darkMode",
+      amber: "s-text-amber-950 dark:s-text-amber-950-darkMode",
+      slate: "s-text-muted-foreground dark:s-text-muted-foreground-darkMode",
+      purple: "s-text-purple-950 dark:s-text-purple-950-darkMode",
+      warning: "s-text-warning-950 dark:s-text-warning-950-darkMode",
+      sky: "s-text-sky-950 dark:s-text-sky-950-darkMode",
+      pink: "s-text-pink-950 dark:s-text-pink-950-darkMode",
+      action: "s-text-action-950 dark:s-text-action-950-darkMode",
+      red: "s-text-red-950 dark:s-text-red-950-darkMode",
+      default: "s-text-primary-950 dark:s-text-primary-950-darkMode",
     },
   },
 });
