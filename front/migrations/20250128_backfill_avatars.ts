@@ -94,7 +94,7 @@ async function backfillAvatars(
         await file.markAsReady();
       }
 
-      const newPictureUrl = `${baseUrl}${newPath}`;
+      const newPictureUrl = file.getPublicUrlForDownload(auth);
 
       logger.info({ pictureUrl, newPictureUrl }, "updating agent");
 
