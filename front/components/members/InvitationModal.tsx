@@ -85,7 +85,7 @@ export function InviteEmailModal({
     const existingMembersResponses = await Promise.all(
       inviteEmailsList.map(async (email) => {
         const response = await fetch(
-          `/api/w/${owner.sId}/members/search?searchTerm=${encodeURIComponent(email)}&orderBy=name`
+          `/api/w/${owner.sId}/members/search?searchTerm=${encodeURIComponent(email)}`
         );
         if (!response.ok) {
           throw new Error("Failed to fetch member information");

@@ -21,6 +21,22 @@ class MembershipFactory extends Factory<MembershipModel> {
       workspaceId: workspace.id,
     });
   }
+
+  associateWithCreatedAt(
+    workspace: Workspace,
+    user: UserModel,
+    role: MembershipRoleType,
+    createdAt: Date
+  ) {
+    return this.params({
+      role,
+      startAt: createdAt,
+      createdAt: createdAt,
+      endAt: null,
+      userId: user.id,
+      workspaceId: workspace.id,
+    });
+  }
 }
 
 export const membershipFactory = () => {

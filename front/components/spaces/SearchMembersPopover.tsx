@@ -83,56 +83,54 @@ export function SearchMembersPopover({
   const hasMore = totalMembersCount > allMembers.length;
 
   return (
-    <div className="flex flex-col items-end gap-2">
-      <PopoverRoot>
-        <PopoverTrigger asChild>
-          <Button label="Add members" icon={UserIcon} size="sm" />
-        </PopoverTrigger>
-        <PopoverContent className="mr-2 p-4">
-          <SearchInput
-            name="search"
-            placeholder="Search members (email)"
-            value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e);
-            }}
-          />
-          <ScrollArea className="mt-2 flex max-h-[300px] flex-col">
-            <div className="space-y-1">
-              {filteredMembers.map((member) => (
-                <div
-                  key={member.sId}
-                  className="flex cursor-pointer flex-col items-start hover:opacity-80"
-                  onClick={addMember(member)}
-                >
-                  <div className="my-1 flex items-center gap-2">
-                    <Avatar size="sm" visual={member.image || ""} />
-                    <div>
-                      <div className="text-sm">{member.fullName}</div>
-                      <div className="text-xs text-element-700">
-                        {member.email}
-                      </div>
+    <PopoverRoot>
+      <PopoverTrigger asChild>
+        <Button label="Add members" icon={UserIcon} size="sm" />
+      </PopoverTrigger>
+      <PopoverContent className="mr-2 p-4">
+        <SearchInput
+          name="search"
+          placeholder="Search members (email)"
+          value={searchTerm}
+          onChange={(e) => {
+            setSearchTerm(e);
+          }}
+        />
+        <ScrollArea className="mt-2 flex max-h-[300px] flex-col">
+          <div className="space-y-1">
+            {filteredMembers.map((member) => (
+              <div
+                key={member.sId}
+                className="flex cursor-pointer flex-col items-start hover:opacity-80"
+                onClick={addMember(member)}
+              >
+                <div className="my-1 flex items-center gap-2">
+                  <Avatar size="sm" visual={member.image || ""} />
+                  <div>
+                    <div className="text-sm">{member.fullName}</div>
+                    <div className="text-xs text-element-700">
+                      {member.email}
                     </div>
                   </div>
-                  <Separator />
                 </div>
-              ))}
-            </div>
-            <InfiniteScroll
-              nextPage={loadNextPage}
-              hasMore={hasMore}
-              isValidating={isLoading}
-              isLoading={isLoading}
-            >
-              {isLoading && (
-                <div className="py-2 text-center text-sm text-element-700">
-                  Loading more members...
-                </div>
-              )}
-            </InfiniteScroll>
-          </ScrollArea>
-        </PopoverContent>
-      </PopoverRoot>
-    </div>
+                <Separator />
+              </div>
+            ))}
+          </div>
+          <InfiniteScroll
+            nextPage={loadNextPage}
+            hasMore={hasMore}
+            isValidating={isLoading}
+            isLoading={isLoading}
+          >
+            {isLoading && (
+              <div className="py-2 text-center text-sm text-element-700">
+                Loading more members...
+              </div>
+            )}
+          </InfiniteScroll>
+        </ScrollArea>
+      </PopoverContent>
+    </PopoverRoot>
   );
 }

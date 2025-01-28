@@ -382,7 +382,10 @@ async function handler(
               "Couldn't get owner or subscription from `auth`."
             );
           }
-          const { members } = await getMembers(auth, { roles: ["admin"] });
+          const { members } = await getMembers(auth, {
+            roles: ["admin"],
+            activeOnly: true,
+          });
           const adminEmails = members.map((u) => u.email);
           const customerEmail = invoice.customer_email;
           if (customerEmail && !adminEmails.includes(customerEmail)) {
@@ -515,7 +518,10 @@ async function handler(
             }
 
             // then email admins
-            const { members } = await getMembers(auth, { roles: ["admin"] });
+            const { members } = await getMembers(auth, {
+              roles: ["admin"],
+              activeOnly: true,
+            });
             const adminEmails = members.map((u) => u.email);
             if (adminEmails.length === 0) {
               return apiError(req, res, {

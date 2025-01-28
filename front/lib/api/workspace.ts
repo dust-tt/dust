@@ -12,16 +12,20 @@ import type {
 import { ACTIVE_ROLES, Err, Ok } from "@dust-tt/types";
 import { Op } from "sequelize";
 
-import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
+import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
 import { Subscription } from "@app/lib/models/plan";
 import { Workspace } from "@app/lib/models/workspace";
 import { WorkspaceHasDomain } from "@app/lib/models/workspace_has_domain";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
+import type { MembershipsPaginationParams } from "@app/lib/resources/membership_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { UserModel } from "@app/lib/resources/storage/models/user";
+import type { SearchMembersPaginationParams } from "@app/lib/resources/user_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
+import logger from "@app/logger/logger";
 import { launchDeleteWorkspaceWorkflow } from "@app/poke/temporal/client";
 
 export async function getWorkspaceInfos(
@@ -138,14 +142,18 @@ export async function getMembers(
     roles?: MembershipRoleType[];
     activeOnly?: boolean;
   } = {},
-  paginationParams?: PaginationParams
-): Promise<{ members: UserTypeWithWorkspaces[]; total: number }> {
+  paginationParams?: MembershipsPaginationParams
+): Promise<{
+  members: UserTypeWithWorkspaces[];
+  total: number;
+  nextPageParams?: MembershipsPaginationParams;
+}> {
   const owner = auth.workspace();
   if (!owner) {
     return { members: [], total: 0 };
   }
 
-  const { memberships, total } = activeOnly
+  const { memberships, total, nextPageParams } = activeOnly
     ? await MembershipResource.getActiveMemberships({
         workspace: owner,
         roles,
@@ -157,12 +165,7 @@ export async function getMembers(
         paginationParams,
       });
 
-  const users = await UserResource.fetchByModelIds(
-    memberships.map((m) => m.userId)
-  );
-
-  const usersWithWorkspaces = users.map((u) => {
-    const m = memberships.find((m) => m.userId === u.id);
+  const usersWithWorkspaces = memberships.map((m) => {
     let role = "none" as RoleType;
     if (m && !m.isRevoked()) {
       switch (m.role) {
@@ -176,34 +179,56 @@ export async function getMembers(
       }
     }
 
+    // @ts-expect-error We know that the user is not null here.
+    const user = new UserResource(UserModel, m.user);
+
     return {
-      ...u.toJSON(),
+      ...user.toJSON(),
       workspaces: [{ ...owner, role, flags: null }],
     };
   });
 
-  return { members: usersWithWorkspaces, total };
+  return { members: usersWithWorkspaces, total, nextPageParams };
 }
 
 export async function searchMembers(
   auth: Authenticator,
   options: {
-    email?: string;
+    searchTerm?: string;
+    searchEmails?: string[];
   },
-  paginationParams: PaginationParams
+  paginationParams: SearchMembersPaginationParams
 ): Promise<{ members: UserTypeWithWorkspaces[]; total: number }> {
   const owner = auth.workspace();
   if (!owner) {
     return { members: [], total: 0 };
   }
 
-  const { users, total } = await UserResource.listUsersWithEmailPredicat(
-    owner.id,
-    {
-      email: options.email,
-    },
-    paginationParams
-  );
+  let users: UserResource[];
+  let total: number;
+
+  if (options.searchEmails) {
+    if (options.searchEmails.length > MAX_SEARCH_EMAILS) {
+      logger.error("Too many emails provided.");
+      return { members: [], total: 0 };
+    }
+
+    users = await UserResource.listUserWithExactEmails(
+      owner,
+      options.searchEmails
+    );
+    total = users.length;
+  } else {
+    const results = await UserResource.listUsersWithEmailPredicat(
+      owner,
+      {
+        email: options.searchTerm,
+      },
+      paginationParams
+    );
+    users = results.users;
+    total = results.total;
+  }
 
   const { memberships } = await MembershipResource.getActiveMemberships({
     users,
