@@ -2,7 +2,6 @@ import type { LightWorkspaceType } from "@dust-tt/types";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Fetcher } from "swr";
 
-import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { debounce } from "@app/lib/utils/debounce";
 import type { GetWorkspaceInvitationsResponseBody } from "@app/pages/api/w/[wId]/invitations";
@@ -126,10 +125,6 @@ export function useMembersByEmails({
 
   if (emails.length === 0) {
     disabled = true;
-  }
-
-  if (emails.length > MAX_SEARCH_EMAILS && !disabled) {
-    throw new Error("Too many emails provided.");
   }
 
   const { data, error, mutate, mutateRegardlessOfQueryParams } =

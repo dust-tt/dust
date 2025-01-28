@@ -21,10 +21,11 @@ import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
 import type { MembershipsPaginationParams } from "@app/lib/resources/membership_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { UserModel } from "@app/lib/resources/storage/models/user";
+import type { SearchMembersPaginationParams } from "@app/lib/resources/user_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
+import logger from "@app/logger/logger";
 import { launchDeleteWorkspaceWorkflow } from "@app/poke/temporal/client";
 
 export async function getWorkspaceInfos(
@@ -178,7 +179,8 @@ export async function getMembers(
       }
     }
 
-    const user = new UserResource(UserModel, m.user!);
+    // @ts-expect-error We know that the user is not null here.
+    const user = new UserResource(UserModel, m.user);
 
     return {
       ...user.toJSON(),
@@ -187,13 +189,6 @@ export async function getMembers(
   });
 
   return { members: usersWithWorkspaces, total, nextPageParams };
-}
-
-interface SearchMembersPaginationParams {
-  orderColumn: "name";
-  orderDirection: "asc" | "desc";
-  offset: number;
-  limit: number;
 }
 
 export async function searchMembers(
@@ -214,14 +209,18 @@ export async function searchMembers(
 
   if (options.searchEmails) {
     if (options.searchEmails.length > MAX_SEARCH_EMAILS) {
-      throw new Error("Too many emails provided.");
+      logger.error("Too many emails provided.");
+      return { members: [], total: 0 };
     }
 
-    users = await listUserWithExactEmails(owner.id, options.searchEmails);
+    users = await UserResource.listUserWithExactEmails(
+      owner,
+      options.searchEmails
+    );
     total = users.length;
   } else {
-    const results = await listUsersWithEmailPredicat(
-      owner.id,
+    const results = await UserResource.listUsersWithEmailPredicat(
+      owner,
       {
         email: options.searchTerm,
       },
@@ -254,70 +253,6 @@ export async function searchMembers(
   });
 
   return { members: usersWithWorkspaces, total };
-}
-
-async function listUserWithExactEmails(
-  workspaceId: number,
-  emails: string[]
-): Promise<UserResource[]> {
-  const users = await UserModel.findAll({
-    include: [
-      {
-        model: MembershipModel,
-        as: "memberships",
-        where: {
-          workspaceId,
-          startAt: { [Op.lte]: new Date() },
-          endAt: { [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: new Date() }] },
-        },
-        required: true,
-      },
-    ],
-    where: {
-      email: emails,
-    },
-  });
-
-  return users.map((user) => new UserResource(UserModel, user.get()));
-}
-
-async function listUsersWithEmailPredicat(
-  workspaceId: number,
-  options: {
-    email?: string;
-  },
-  paginationParams: SearchMembersPaginationParams
-): Promise<{ users: UserResource[]; total: number }> {
-  const userWhereClause: any = {};
-  if (options.email) {
-    userWhereClause.email = {
-      [Op.iLike]: `%${options.email}%`,
-    };
-  }
-
-  const { count, rows: users } = await UserModel.findAndCountAll({
-    where: userWhereClause,
-    include: [
-      {
-        model: MembershipModel,
-        as: "memberships",
-        where: {
-          workspaceId,
-          startAt: { [Op.lte]: new Date() },
-          endAt: { [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: new Date() }] },
-        },
-        required: true,
-      },
-    ],
-    order: [[paginationParams.orderColumn, paginationParams.orderDirection]],
-    limit: paginationParams.limit,
-    offset: paginationParams.offset,
-  });
-
-  return {
-    users: users.map((u) => new UserResource(UserModel, u.get())),
-    total: count,
-  };
 }
 
 export async function getMembersCount(

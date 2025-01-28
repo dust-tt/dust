@@ -35,7 +35,7 @@ export function BatchAddMembersPopover({
   const { members, isMembersLoading } = useMembersByEmails({
     workspaceId: owner.sId,
     emails,
-    disabled: !doSave,
+    disabled: !isOpen || !doSave,
   });
 
   const isListValid = emails?.length && !error;

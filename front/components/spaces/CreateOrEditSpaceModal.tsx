@@ -13,12 +13,12 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import type { LightWorkspaceType, SpaceType, UserType } from "@dust-tt/types";
-import { isDevelopment } from "@dust-tt/types";
 import type {
   CellContext,
   PaginationState,
   SortingState,
 } from "@tanstack/react-table";
+import _ from "lodash";
 import { useRouter } from "next/router";
 import * as React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -34,7 +34,7 @@ import {
   useUpdateSpace,
 } from "@app/lib/swr/spaces";
 
-const MIN_MEMBERS_FOR_BATCH_OPTION = isDevelopment() ? 2 : 50;
+const MIN_MEMBERS_FOR_BATCH_OPTION = 50;
 
 type RowData = {
   icon: string;
@@ -86,12 +86,10 @@ export function CreateOrEditSpaceModal({
   const [searchSelectedMembers, setSearchSelectedMembers] =
     useState<string>("");
 
-  const deduplicatedMembers = useMemo(() => {
-    return selectedMembers.filter(
-      (member, index, self) =>
-        index === self.findIndex((t) => t.sId === member.sId)
-    );
-  }, [selectedMembers]);
+  const deduplicatedMembers = useMemo(
+    () => _.uniqBy(selectedMembers, "sId"),
+    [selectedMembers]
+  );
 
   const doCreate = useCreateSpace({ owner });
   const doUpdate = useUpdateSpace({ owner });
