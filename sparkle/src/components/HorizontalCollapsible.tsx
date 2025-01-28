@@ -26,6 +26,39 @@ export interface HorizontalCollapsibleProps {
   defaultValue?: string;
 }
 
+export interface HorizontalCollapsibleContentProps {
+  children: React.ReactNode;
+}
+
+export interface HorizontalCollapsibleImageContainerProps {
+  children: React.ReactNode;
+}
+
+export interface HorizontalCollapsibleItemProps {
+  children: React.ReactNode;
+  value: string;
+}
+
+export interface HorizontalCollapsibleImageProps {
+  src: string;
+  alt: string;
+  className?: string;
+  value: string;
+}
+
+export interface HorizontalCollapsibleButtonProps {
+  label?: string;
+  className?: string;
+  disabled?: boolean;
+  children?: React.ReactNode;
+  variant?: "primary" | "secondary";
+}
+
+export interface HorizontalCollapsiblePanelProps {
+  children: React.ReactNode;
+  className?: string;
+}
+
 export const HorizontalCollapsible: React.FC<HorizontalCollapsibleProps> & {
   Item: React.FC<HorizontalCollapsibleItemProps>;
   Button: React.FC<HorizontalCollapsibleButtonProps>;
@@ -43,21 +76,15 @@ export const HorizontalCollapsible: React.FC<HorizontalCollapsibleProps> & {
   </RadioGroup>
 );
 
-interface HorizontalCollapsibleImageContainerProps {
-  children: React.ReactNode;
-}
-
 HorizontalCollapsible.ImageContainer = function ({
   children,
 }: HorizontalCollapsibleImageContainerProps) {
   return (
-    <div className="s-relative s-h-48 s-w-48 s-flex-shrink-0">{children}</div>
+    <div className="s-relative s-h-48 s-w-48 s-flex-shrink-0 s-overflow-hidden s-rounded-lg">
+      {children}
+    </div>
   );
 };
-
-interface HorizontalCollapsibleContentProps {
-  children: React.ReactNode;
-}
 
 HorizontalCollapsible.Content = function ({
   children,
@@ -66,11 +93,6 @@ HorizontalCollapsible.Content = function ({
     <div className="s-flex s-flex-grow s-flex-col s-gap-2">{children}</div>
   );
 };
-
-interface HorizontalCollapsibleItemProps {
-  children: React.ReactNode;
-  value: string;
-}
 
 HorizontalCollapsible.Item = function ({
   children,
@@ -93,13 +115,6 @@ HorizontalCollapsible.Item = function ({
     </RadioGroup.Option>
   );
 };
-
-interface HorizontalCollapsibleImageProps {
-  src: string;
-  alt: string;
-  className?: string;
-  value: string;
-}
 
 HorizontalCollapsible.Image = function ({
   src,
@@ -124,22 +139,11 @@ HorizontalCollapsible.Image = function ({
       <img
         src={src}
         alt={alt}
-        className={classNames(
-          "s-h-full s-w-full s-rounded-lg s-object-cover s-shadow-sm",
-          className
-        )}
+        className={classNames("s-h-full s-w-full s-object-cover", className)}
       />
     </Transition>
   );
 };
-
-export interface HorizontalCollapsibleButtonProps {
-  label?: string;
-  className?: string;
-  disabled?: boolean;
-  children?: React.ReactNode;
-  variant?: "primary" | "secondary";
-}
 
 HorizontalCollapsible.Button = function ({
   label,
@@ -241,11 +245,6 @@ HorizontalCollapsible.Button = function ({
     </div>
   );
 };
-
-export interface HorizontalCollapsiblePanelProps {
-  children: React.ReactNode;
-  className?: string;
-}
 
 HorizontalCollapsible.Panel = function ({
   children,
