@@ -10,10 +10,10 @@ import { botAnswerMessage } from "@connectors/connectors/slack/bot";
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 import { getBotUserIdMemoized } from "@connectors/connectors/slack/temporal/activities";
 import {
+  launchSlackGarbageCollectWorkflow,
   launchSlackSyncOneMessageWorkflow,
   launchSlackSyncOneThreadWorkflow,
 } from "@connectors/connectors/slack/temporal/client";
-import { launchSlackGarbageCollectWorkflow } from "@connectors/connectors/slack/temporal/client";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import { SlackChannel } from "@connectors/lib/models/slack";
 import type { Logger } from "@connectors/logger/logger";
@@ -21,11 +21,14 @@ import mainLogger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
+import { getWeekStart } from "@connectors/connectors/slack/lib/utils";
 
 export interface SlackWebhookEvent<T = string> {
   bot_id?: string;
   channel?: T;
-  subtype?: "message_changed";
+  subtype?: "message_changed" | "message_deleted";
+  hidden?: boolean; // added for message_deleted
+  deleted_ts?: string; // added for message_deleted - timestamp of deleted message
   user?: string;
   ts?: string; // slack message id
   thread_ts?: string; // slack thread id
@@ -219,9 +222,12 @@ const _webhookSlackAPIHandler = async (
             });
           }
           if (event.channel_type === "im") {
-            //Got a private message
-            if (event.subtype === "message_changed") {
-              // Ignore message_changed events in private messages
+            // Got a private message
+            if (
+              event.subtype === "message_changed" ||
+              event.subtype === "message_deleted"
+            ) {
+              // Ignore message_changed and message_deleted events in private messages
               return res.status(200).send();
             }
             const slackConfig =
@@ -272,6 +278,93 @@ const _webhookSlackAPIHandler = async (
             const channel = event.channel;
             let err: Error | null = null;
 
+            // Handle message deletion
+            if (event.subtype === "message_deleted") {
+              if (!event.deleted_ts) {
+                logger.info(
+                  {
+                    event,
+                  },
+                  "Ignoring message_deleted event without deleted_ts"
+                );
+                return res.status(200).send();
+              }
+
+              const eventThreadTimestamp = event.thread_ts;
+              if (eventThreadTimestamp) {
+                // If message was in a thread, re-sync the whole thread
+                const results = await Promise.all(
+                  slackConfigurations.map(async (c) => {
+                    const slackChannel = await SlackChannel.findOne({
+                      where: {
+                        connectorId: c.connectorId,
+                        slackChannelId: channel,
+                      },
+                    });
+                    if (
+                      !slackChannel ||
+                      !["read", "read_write"].includes(slackChannel.permission)
+                    ) {
+                      return new Ok(undefined);
+                    }
+                    return launchSlackSyncOneThreadWorkflow(
+                      c.connectorId,
+                      channel,
+                      eventThreadTimestamp
+                    );
+                  })
+                );
+                for (const r of results) {
+                  if (r.isErr()) {
+                    err = r.error;
+                  }
+                }
+              } else {
+                // If it was a non-threaded message, re-sync the week's messages
+                const messageTs = parseInt(event.deleted_ts) * 1000;
+                const weekStartTsMs = getWeekStart(
+                  new Date(messageTs)
+                ).getTime();
+                const results = await Promise.all(
+                  slackConfigurations.map(async (c) => {
+                    const slackChannel = await SlackChannel.findOne({
+                      where: {
+                        connectorId: c.connectorId,
+                        slackChannelId: channel,
+                      },
+                    });
+                    if (
+                      !slackChannel ||
+                      !["read", "read_write"].includes(slackChannel.permission)
+                    ) {
+                      return new Ok(undefined);
+                    }
+                    return launchSlackSyncOneMessageWorkflow(
+                      c.connectorId,
+                      channel,
+                      weekStartTsMs.toString()
+                    );
+                  })
+                );
+                for (const r of results) {
+                  if (r.isErr()) {
+                    err = r.error;
+                  }
+                }
+              }
+              if (err) {
+                return apiError(req, res, {
+                  status_code: 500,
+                  api_error: {
+                    type: "internal_server_error",
+                    message: err.message,
+                  },
+                });
+              }
+              return res.status(200).send();
+            }
+
+            // Handle normal message
             if (event.thread_ts) {
               const thread_ts = event.thread_ts;
               const results = await Promise.all(
@@ -288,7 +381,7 @@ const _webhookSlackAPIHandler = async (
                         connectorId: c.connectorId,
                         slackChannelId: channel,
                       },
-                      "Skipping wehbook: Slack channel not yet in DB"
+                      "Skipping webhook: Slack channel not yet in DB"
                     );
                     return new Ok(undefined);
                   }
@@ -333,7 +426,7 @@ const _webhookSlackAPIHandler = async (
                         connectorId: c.connectorId,
                         slackChannelId: channel,
                       },
-                      "Skipping wehbook: Slack channel not yet in DB"
+                      "Skipping webhook: Slack channel not yet in DB"
                     );
                     return new Ok(undefined);
                   }
