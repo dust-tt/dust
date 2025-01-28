@@ -214,12 +214,21 @@ impl SearchStore for ElasticsearchSearchStore {
                 Some(_) => vec![],
             });
 
+        let search_start = utils::now();
         let response = self
             .client
             .search(SearchParts::Index(&[NODES_INDEX_NAME]))
             .body(search)
             .send()
             .await?;
+
+        let data_source_id = filter.data_source_views[0].data_source_id.clone();
+        let search_duration = utils::now() - search_start;
+        info!(
+            duration = search_duration,
+            data_source_id = data_source_id,
+            "[ElasticsearchSearchStore] Search nodes duration"
+        );
 
         // Parse response and return enriched nodes
         let nodes: Vec<Node> = match response.status_code().is_success() {
@@ -238,7 +247,14 @@ impl SearchStore for ElasticsearchSearchStore {
             }
         };
 
-        self.compute_core_content_nodes(nodes).await
+        let compute_node_start = utils::now();
+        let result = self.compute_core_content_nodes(nodes).await;
+        info!(
+            duration = utils::now() - compute_node_start,
+            data_source_id = data_source_id,
+            "[ElasticsearchSearchStore] Compute core content nodes duration"
+        );
+        result
     }
 
     async fn index_node(&self, node: Node) -> Result<()> {
@@ -346,8 +362,6 @@ impl ElasticsearchSearchStore {
             ));
         }
 
-        // time the function call
-        let start = utils::now();
         // Build has_children query
         let has_children_search = Search::new()
             .size(0)
@@ -446,10 +460,6 @@ impl ElasticsearchSearchStore {
             })
             .collect();
 
-        info!(
-            duration = utils::now() - start,
-            "[ElasticsearchSearchStore] Computed core content nodes"
-        );
         Ok(core_content_nodes)
     }
 }
