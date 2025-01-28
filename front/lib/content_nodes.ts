@@ -12,6 +12,7 @@ import { assertNever, MIME_TYPES } from "@dust-tt/types";
 // Mime types that should be represented with a Channel icon.
 export const CHANNEL_MIME_TYPES = [
   MIME_TYPES.GITHUB.DISCUSSIONS,
+  MIME_TYPES.INTERCOM.TEAM,
   MIME_TYPES.SLACK.CHANNEL,
 ] as readonly string[];
 
