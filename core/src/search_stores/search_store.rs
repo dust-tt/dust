@@ -17,7 +17,7 @@ use crate::{
     utils,
 };
 
-const MAX_PAGE_SIZE: u64 = 250;
+const MAX_PAGE_SIZE: u64 = 1000;
 
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "lowercase")]
