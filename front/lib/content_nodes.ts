@@ -29,7 +29,7 @@ export const FILE_MIME_TYPES = [
 ] as readonly string[];
 
 // Mime types that should be represented with a Spreadsheet icon, despite being of type "folder".
-const SPREADSHEET_MIME_TYPES = [
+export const SPREADSHEET_MIME_TYPES = [
   MIME_TYPES.GOOGLE_DRIVE.SPREADSHEET,
   MIME_TYPES.MICROSOFT.SPREADSHEET,
 ] as readonly string[];

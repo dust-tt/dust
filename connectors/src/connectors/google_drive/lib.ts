@@ -43,15 +43,6 @@ export async function isDriveObjectExpandable({
     parentId: objectId,
   };
 
-  if (viewType === "tables") {
-    // In tables view, we only show folders and spreadhsheets.
-    // A folder that only contains Documents is not expandable.
-    where.mimeType = [
-      "application/vnd.google-apps.folder",
-      "application/vnd.google-apps.spreadsheet",
-    ];
-  }
-
   return !!(await GoogleDriveFiles.findOne({
     attributes: ["id"],
     where,
