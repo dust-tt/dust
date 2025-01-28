@@ -10,11 +10,16 @@ import {
   DustAppRunActionType,
   DustAppRunConfigurationType,
 } from "../../../front/assistant/actions/dust_app_run";
+import {
+  GithubCreateIssueConfigurationType,
+  GithubGetPullRequestConfigurationType,
+} from "../../../front/assistant/actions/github";
 import { BaseAction } from "../../../front/assistant/actions/index";
 import {
   ProcessActionType,
   ProcessConfigurationType,
 } from "../../../front/assistant/actions/process";
+import { ReasoningConfigurationType } from "../../../front/assistant/actions/reasoning";
 import {
   RetrievalActionType,
   RetrievalConfigurationType,
@@ -32,8 +37,6 @@ import {
   TemplateAgentConfigurationType,
 } from "../../../front/assistant/agent";
 import { AgentActionType } from "../../../front/assistant/conversation";
-import { GithubGetPullRequestConfigurationType } from "./github";
-import { ReasoningConfigurationType } from "./reasoning";
 
 export function isTablesQueryConfiguration(
   arg: unknown
@@ -169,6 +172,23 @@ export function isGithubGetPullRequestActionType(
   arg: AgentActionType
 ): arg is BrowseActionType {
   return arg.type === "github_get_pull_request_action";
+}
+
+export function isGithubCreateIssueConfiguration(
+  arg: unknown
+): arg is GithubCreateIssueConfigurationType {
+  return (
+    !!arg &&
+    typeof arg === "object" &&
+    "type" in arg &&
+    arg.type === "github_create_issue_configuration"
+  );
+}
+
+export function isGithubCreateIssueActionType(
+  arg: AgentActionType
+): arg is BrowseActionType {
+  return arg.type === "github_create_issue_action";
 }
 
 export function isConversationIncludeFileConfiguration(
