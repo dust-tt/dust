@@ -127,10 +127,10 @@ impl SearchStore for ElasticsearchSearchStore {
         let options = options.unwrap_or_default();
 
         // check that options.limit is not greater than MAX_PAGE_SIZE
-        if options.limit.unwrap_or(100) > MAX_PAGE_SIZE {
+        if options.limit.unwrap_or(MAX_PAGE_SIZE) > MAX_PAGE_SIZE {
             return Err(anyhow::anyhow!(
                 "Limit is greater than MAX_PAGE_SIZE: {} (limit is {})",
-                options.limit.unwrap_or(100),
+                options.limit.unwrap_or(MAX_PAGE_SIZE),
                 MAX_PAGE_SIZE
             ));
         }
@@ -195,7 +195,7 @@ impl SearchStore for ElasticsearchSearchStore {
         // Build and run search (sort by title if no query)
         let search = Search::new()
             .from(options.offset.unwrap_or(0))
-            .size(options.limit.unwrap_or(100))
+            .size(options.limit.unwrap_or(MAX_PAGE_SIZE))
             .query(bool_query)
             .sort(match query {
                 None => options
