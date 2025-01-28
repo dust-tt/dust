@@ -13,6 +13,7 @@ import { assertNever, MIME_TYPES } from "@dust-tt/types";
 export const CHANNEL_MIME_TYPES = [
   MIME_TYPES.GITHUB.DISCUSSIONS,
   MIME_TYPES.INTERCOM.TEAM,
+  MIME_TYPES.INTERCOM.TEAMS_FOLDER,
   MIME_TYPES.SLACK.CHANNEL,
 ] as readonly string[];
 
