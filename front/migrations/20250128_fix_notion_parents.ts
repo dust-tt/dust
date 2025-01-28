@@ -206,7 +206,7 @@ async function migrateDataSource({
   let nextId = null;
 
   for (;;) {
-    const [coreDocumentRows] = (await (async () => {
+    const [rows] = (await (async () => {
       // If nextId is null, we only filter by timestamp
       if (nextId === null) {
         return corePrimary.query(
@@ -257,23 +257,35 @@ async function migrateDataSource({
       timestamp: number;
     }[][];
 
-    if (coreDocumentRows.length === 0) {
+    if (rows.length === 0) {
       break;
     }
 
-    // If all documents have the same timestamp, we set nextId to the last id
+    // If we are just getting out of a pagination on ids,
+    // we have to set a conservative value for the timestamp
+    // as we may have reached a timestamp too high due to having filtered on the ids.
+    if (
+      nextId !== null &&
+      rows[0].timestamp !== rows[rows.length - 1].timestamp
+    ) {
+      // There is no way to set the timestamp based on updatedRows, setting the most conservative value possible here to make sure we don't miss any row.
+      // Note: here it would be incorrect to use rows[rows.length - 1].timestamp as it would be the highest timestamp of a batch where id > nextId,
+      // which makes rows[rows.length - 1].timestamp too high.
+      nextTimestamp += 1;
+    } else {
+      // If we are scrolling through the timestamps, we can set the nextTimestamp to the last timestamp (same if all documents have the same timestamp, which is a no-op).
+      nextTimestamp = rows[rows.length - 1].timestamp;
+    }
+    // If all documents have the same timestamp, we set nextId to the last id.
     nextId =
-      coreDocumentRows[0].timestamp ===
-      coreDocumentRows[coreDocumentRows.length - 1].timestamp
-        ? coreDocumentRows[coreDocumentRows.length - 1].id
+      rows[0].timestamp === rows[rows.length - 1].timestamp
+        ? rows[rows.length - 1].id
         : null;
-
-    nextTimestamp = coreDocumentRows[coreDocumentRows.length - 1].timestamp;
 
     // concurrentExecutor on documents
     try {
       await concurrentExecutor(
-        coreDocumentRows,
+        rows,
         (coreDocument) =>
           migrateDocument({
             coreAPI,
