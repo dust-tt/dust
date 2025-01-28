@@ -16,7 +16,7 @@ export const menuStyleClasses = {
   inset: "s-pl-8",
   container: cn(
     "s-rounded-xl s-border s-border-hovering",
-    "s-bg-white dark:s-bg-structure-50-darkMode",
+    "s-bg-white dark:s-bg-black",
     "s-p-1",
     "s-text-primary-950 dark:s-text-primary-950-darkMode",
     "s-z-50 s-min-w-[8rem] s-overflow-hidden",
@@ -27,10 +27,17 @@ export const menuStyleClasses = {
     {
       variants: {
         variant: {
-          default:
-            "focus:s-text-primary-950 hover:s-bg-primary-150 dark:hover:s-bg-primary-150-dark focus:s-bg-primary-150 dark:focus:s-bg-primary-150-dark",
-          warning:
-            "s-text-warning-500 hover:s-bg-warning-50 dark:hover:s-bg-warning-50-dark focus:s-bg-warning-50 dark:focus:s-bg-warning-50-dark active:s-bg-warning-100 dark:active:s-bg-warning-100-dark",
+          default: cn([
+            "focus:s-text-primary-950 dark:focus:s-text-primary-950-darkMode",
+            "hover:s-bg-primary-150 dark:hover:s-bg-primary-150-darkMode",
+            "focus:s-bg-primary-150 dark:focus:s-bg-primary-150-darkMode",
+          ]),
+          warning: cn([
+            "s-text-warning-500 dark:s-text-warning-500-darkMode",
+            "hover:s-bg-warning-50 dark:hover:s-bg-warning-50-darkMode",
+            "focus:s-bg-warning-50 dark:focus:s-bg-warning-50-darkMode",
+            "active:s-bg-warning-100 dark:active:s-bg-warning-100-darkMode",
+          ]),
         },
       },
       defaultVariants: {
@@ -39,14 +46,25 @@ export const menuStyleClasses = {
     }
   ),
   subTrigger: {
-    default: "s-mr-1 s-ml-auto s-tracking-widest s-text-primary-400",
+    default: cn(
+      "s-mr-1 s-ml-auto s-tracking-widest",
+      "s-text-primary-400 dark:s-text-primary-400-darkMode"
+    ),
     span: "s-absolute s-left-2 s-flex s-h-3.5 s-w-3.5 s-items-center s-justify-center",
   },
-  label: "s-font-semibold s-px-2 s-py-2 s-text-xs s-text-muted-foreground",
-  description:
-    "s-grow s-truncate s-text-xs s-text-muted-foreground s-font-normal",
+  label: cn(
+    "s-font-semibold s-px-2 s-py-2 s-text-xs",
+    "s-text-muted-foreground dark:s-text-muted-foreground-darkMode"
+  ),
+  description: cn(
+    "s-grow s-truncate s-text-xs s-font-normal",
+    "s-text-muted-foreground dark:s-text-muted-foreground-darkMode"
+  ),
   separator: "-s-mx-1 s-my-1 s-h-px s-bg-separator",
-  shortcut: "s-ml-auto s-text-xs s-tracking-widest s-text-primary-400",
+  shortcut: cn(
+    "s-ml-auto s-text-xs s-tracking-widest",
+    "s-text-primary-400 dark:s-text-primary-400-darkMode"
+  ),
 };
 
 const DropdownMenu = DropdownMenuPrimitive.Root;
