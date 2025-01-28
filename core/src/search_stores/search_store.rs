@@ -126,6 +126,19 @@ impl SearchStore for ElasticsearchSearchStore {
     ) -> Result<Vec<CoreContentNode>> {
         let options = options.unwrap_or_default();
 
+        // TODO(20250128, nodes-core): remove this & corresponding timing logs
+        let data_source_id = filter
+            .data_source_views
+            .first()
+            .map(|v| v.data_source_id.clone());
+        let data_source_filter = filter
+            .data_source_views
+            .first()
+            .map(|v| v.view_filter.clone());
+
+        let parent_id_log = filter.parent_id.clone();
+        let node_ids_log = filter.node_ids.as_ref().map(|ids| ids.join(", "));
+
         // check that options.limit is not greater than MAX_PAGE_SIZE
         if options.limit.unwrap_or(MAX_PAGE_SIZE) > MAX_PAGE_SIZE {
             return Err(anyhow::anyhow!(
@@ -214,12 +227,23 @@ impl SearchStore for ElasticsearchSearchStore {
                 Some(_) => vec![],
             });
 
+        let search_start = utils::now();
         let response = self
             .client
             .search(SearchParts::Index(&[NODES_INDEX_NAME]))
             .body(search)
             .send()
             .await?;
+
+        let search_duration = utils::now() - search_start;
+        info!(
+            duration = search_duration,
+            data_source_id = data_source_id,
+            data_source_filter = data_source_filter.as_ref().map(|v| v.join(", ")),
+            parent_id = parent_id_log,
+            node_ids = node_ids_log,
+            "[ElasticsearchSearchStore] Search nodes duration"
+        );
 
         // Parse response and return enriched nodes
         let nodes: Vec<Node> = match response.status_code().is_success() {
@@ -238,7 +262,17 @@ impl SearchStore for ElasticsearchSearchStore {
             }
         };
 
-        self.compute_core_content_nodes(nodes).await
+        let compute_node_start = utils::now();
+        let result = self.compute_core_content_nodes(nodes).await;
+        info!(
+            duration = utils::now() - compute_node_start,
+            data_source_id = data_source_id,
+            data_source_filter = data_source_filter.as_ref().map(|v| v.join(", ")),
+            parent_id = parent_id_log,
+            node_ids = node_ids_log,
+            "[ElasticsearchSearchStore] Compute core content nodes duration"
+        );
+        result
     }
 
     async fn index_node(&self, node: Node) -> Result<()> {
@@ -346,8 +380,6 @@ impl ElasticsearchSearchStore {
             ));
         }
 
-        // time the function call
-        let start = utils::now();
         // Build has_children query
         let has_children_search = Search::new()
             .size(0)
@@ -446,10 +478,6 @@ impl ElasticsearchSearchStore {
             })
             .collect();
 
-        info!(
-            duration = utils::now() - start,
-            "[ElasticsearchSearchStore] Computed core content nodes"
-        );
         Ok(core_content_nodes)
     }
 }
