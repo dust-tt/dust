@@ -9,90 +9,42 @@ import { withRetries } from "@app/lib/utils/retries";
 import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 
-type MigratorAction = "transform" | "clean";
-
-const isMigratorAction = (action: string): action is MigratorAction => {
-  return ["transform", "clean"].includes(action);
-};
-
-type ProviderMigrator = {
-  /// returns [nodeId, ...oldParents, ...newParents] idempotently
-  transformer: (
-    nodeId: string,
-    parents: string[]
-  ) => { parents: string[]; parentId: string | null };
-  /// returns [nodeId, ...newParents] idempotently
-  cleaner: (
-    nodeId: string,
-    parents: string[]
-  ) => { parents: string[]; parentId: string | null };
-};
-
 const QUERY_BATCH_SIZE = 256;
 const NODE_CONCURRENCY = 16;
 
-const migrators: ProviderMigrator = {
-  transformer: (nodeId, parents) => {
-    const uniqueIds = _.uniq(
-      [nodeId, ...parents].map((x) => _.last(x.split("notion-"))!)
-    );
-    return {
-      parents: [
-        // new parents
-        ...uniqueIds.map((id) => `notion-${id}`),
-        // legacy parents
-        ...uniqueIds,
-      ],
-      parentId: uniqueIds.length > 1 ? `notion-${uniqueIds[1]}` : null,
-    };
-  },
-  cleaner: (nodeId, parents) => {
-    // Only keep the new parents
-    const uniqueIds = _.uniq(
-      [nodeId, ...parents].map((x) => _.last(x.split("notion-"))!)
-    );
-    return {
-      parents: uniqueIds.map((id) => `notion-${id}`),
-      parentId: uniqueIds.length > 1 ? `notion-${uniqueIds[1]}` : null,
-    };
-  },
-};
-
 async function migrateDocument({
   coreAPI,
-  action,
   dataSource,
-  coreDocument,
+  coreNode,
   execute,
   skipIfParentsAreAlreadyCorrect,
   logger,
 }: {
   coreAPI: CoreAPI;
-  action: MigratorAction;
   dataSource: DataSourceModel;
-  coreDocument: {
-    id: number;
+  coreNode: {
     parents: string[];
-    document_id: string;
+    node_id: string;
   };
   execute: boolean;
   skipIfParentsAreAlreadyCorrect: boolean;
   logger: typeof Logger;
 }) {
-  let newParents = coreDocument.parents;
+  let newParents = coreNode.parents;
   let newParentId: string | null = null;
   try {
-    const { parents, parentId } =
-      action === "transform"
-        ? migrators.transformer(coreDocument.document_id, coreDocument.parents)
-        : migrators.cleaner(coreDocument.document_id, coreDocument.parents);
-    newParents = parents;
-    newParentId = parentId;
+    const uniqueIds = _.uniq(
+      [coreNode.node_id, ...coreNode.parents].map(
+        (x) => _.last(x.split("notion-"))!
+      )
+    );
+    newParents = [...uniqueIds.map((id) => `notion-${id}`)];
+    newParentId = uniqueIds.length > 1 ? `notion-${uniqueIds[1]}` : null;
   } catch (e) {
     logger.error(
       {
-        documentId: coreDocument.document_id,
-        parents: coreDocument.parents,
+        nodeId: coreNode.node_id,
+        parents: coreNode.parents,
       },
       `TRANSFORM_ERROR`
     );
@@ -101,12 +53,12 @@ async function migrateDocument({
 
   if (
     skipIfParentsAreAlreadyCorrect &&
-    newParents.every((x, i) => x === coreDocument.parents[i])
+    newParents.every((x, i) => x === coreNode.parents[i])
   ) {
     logger.info(
       {
-        documentId: coreDocument.document_id,
-        fromParents: coreDocument.parents,
+        documentId: coreNode.node_id,
+        fromParents: coreNode.parents,
         toParents: newParents,
       },
       `SKIP document (parents are already correct)`
@@ -120,15 +72,15 @@ async function migrateDocument({
         const updateRes = await coreAPI.updateDataSourceDocumentParents({
           projectId: dataSource.dustAPIProjectId,
           dataSourceId: dataSource.dustAPIDataSourceId,
-          documentId: coreDocument.document_id,
+          documentId: coreNode.node_id,
           parents: newParents,
           parentId: newParentId,
         });
         if (updateRes.isErr()) {
           logger.error(
             {
-              tableId: coreDocument.document_id,
-              fromParents: coreDocument.parents,
+              nodeId: coreNode.node_id,
+              fromParents: coreNode.parents,
               toParents: newParents,
               toParentId: newParentId,
             },
@@ -142,8 +94,8 @@ async function migrateDocument({
 
     logger.info(
       {
-        documentId: coreDocument.document_id,
-        fromParents: coreDocument.parents,
+        nodeId: coreNode.node_id,
+        fromParents: coreNode.parents,
         toParents: newParents,
       },
       `LIVE`
@@ -151,8 +103,8 @@ async function migrateDocument({
   } else {
     logger.info(
       {
-        documentId: coreDocument.document_id,
-        fromParents: coreDocument.parents,
+        nodeId: coreNode.node_id,
+        fromParents: coreNode.parents,
         toParents: newParents,
       },
       `DRY`
@@ -164,14 +116,12 @@ async function migrateDocument({
 
 async function migrateDataSource({
   coreAPI,
-  action,
   dataSource,
   execute,
   skipIfParentsAreAlreadyCorrect,
   parentLogger,
 }: {
   coreAPI: CoreAPI;
-  action: MigratorAction;
   dataSource: DataSourceModel;
   execute: boolean;
   skipIfParentsAreAlreadyCorrect: boolean;
@@ -201,97 +151,52 @@ async function migrateDataSource({
   );
   const coreDataSourceId = coreDataSourceRows[0].id;
 
-  // For all documents in the data source (can be big).
-  let nextTimestamp = 0;
-  let nextId = null;
+  // For all nodes in the data source (can be big).
+  let nextId = "";
 
   for (;;) {
     const [rows] = (await (async () => {
-      // If nextId is null, we only filter by timestamp
-      if (nextId === null) {
-        return corePrimary.query(
-          `SELECT dsd.id, dsd.document_id, dsd.timestamp, dsn.parents
-           FROM data_sources_documents dsd
-                LEFT JOIN data_sources_nodes dsn ON dsd.id = dsn.document
-           WHERE dsd.data_source = :coreDataSourceId
-             AND dsd.status = :status
-             AND dsd.timestamp >= :nextTimestamp
-           ORDER BY dsd.timestamp, dsd.id
-           LIMIT :batchSize`,
-          {
-            replacements: {
-              coreDataSourceId,
-              status: "latest",
-              nextTimestamp,
-              batchSize: QUERY_BATCH_SIZE,
-            },
-          }
-        );
-      } else {
-        // If nextId is not null, we filter by timestamp and id
-        return corePrimary.query(
-          `SELECT dsd.id, dsd.document_id, dsd.timestamp, dsn.parents
-           FROM data_sources_documents dsd
-                LEFT JOIN data_sources_nodes dsn ON dsd.id = dsn.document
-           WHERE dsd.data_source = :coreDataSourceId
-             AND dsd.status = :status
-             AND dsd.timestamp >= :nextTimestamp
-             AND dsd.id > :nextId
-           ORDER BY dsd.timestamp, dsd.id
-           LIMIT :batchSize`,
-          {
-            replacements: {
-              coreDataSourceId,
-              status: "latest",
-              nextTimestamp,
-              nextId,
-              batchSize: QUERY_BATCH_SIZE,
-            },
-          }
-        );
-      }
+      return corePrimary.query(
+        `SELECT node_id, parents
+         FROM data_sources_nodes
+         WHERE data_source = :coreDataSourceId
+           AND node_id >= :nextId
+           AND NOT EXISTS
+         (
+             SELECT 1
+             FROM UNNEST(parents) p
+             WHERE p LIKE 'notion-%'
+         )
+         ORDER BY node_id
+         LIMIT :batchSize`,
+        {
+          replacements: {
+            coreDataSourceId,
+            nextId,
+            batchSize: QUERY_BATCH_SIZE,
+          },
+        }
+      );
     })()) as {
-      id: number;
       parents: string[];
-      document_id: string;
-      timestamp: number;
+      node_id: string;
     }[][];
 
     if (rows.length === 0) {
       break;
     }
 
-    // If we are just getting out of a pagination on ids,
-    // we have to set a conservative value for the timestamp
-    // as we may have reached a timestamp too high due to having filtered on the ids.
-    if (
-      nextId !== null &&
-      rows[0].timestamp !== rows[rows.length - 1].timestamp
-    ) {
-      // There is no way to set the timestamp based on updatedRows, setting the most conservative value possible here to make sure we don't miss any row.
-      // Note: here it would be incorrect to use rows[rows.length - 1].timestamp as it would be the highest timestamp of a batch where id > nextId,
-      // which makes rows[rows.length - 1].timestamp too high.
-      nextTimestamp += 1;
-    } else {
-      // If we are scrolling through the timestamps, we can set the nextTimestamp to the last timestamp (same if all documents have the same timestamp, which is a no-op).
-      nextTimestamp = rows[rows.length - 1].timestamp;
-    }
-    // If all documents have the same timestamp, we set nextId to the last id.
-    nextId =
-      rows[0].timestamp === rows[rows.length - 1].timestamp
-        ? rows[rows.length - 1].id
-        : null;
+    nextId = rows[rows.length - 1].node_id;
 
     // concurrentExecutor on documents
     try {
       await concurrentExecutor(
         rows,
-        (coreDocument) =>
+        (coreNode) =>
           migrateDocument({
             coreAPI,
-            action,
             dataSource,
-            coreDocument,
+            coreNode,
             skipIfParentsAreAlreadyCorrect,
             execute,
             logger,
@@ -303,7 +208,7 @@ async function migrateDataSource({
         {
           error: e,
           nextDataSourceId: dataSource.id,
-          nextTimestamp,
+          nextId,
         },
         `ERROR`
       );
@@ -314,14 +219,12 @@ async function migrateDataSource({
 
 async function migrateAll({
   coreAPI,
-  action,
   nextDataSourceId,
   execute,
   skipIfParentsAreAlreadyCorrect,
   logger,
 }: {
   coreAPI: CoreAPI;
-  action: MigratorAction;
   nextDataSourceId: number;
   execute: boolean;
   skipIfParentsAreAlreadyCorrect: boolean;
@@ -338,7 +241,6 @@ async function migrateAll({
       logger.info({ dataSourceId: dataSource.id }, "MIGRATING");
       await migrateDataSource({
         coreAPI,
-        action,
         dataSource,
         execute,
         skipIfParentsAreAlreadyCorrect,
@@ -352,25 +254,17 @@ async function migrateAll({
 
 makeScript(
   {
-    action: { type: "string", choices: ["transform", "clean"] },
     skipIfParentsAreAlreadyCorrect: { type: "boolean", default: false },
     nextDataSourceId: { type: "number", default: 0 },
   },
   async (
-    { action, nextDataSourceId, execute, skipIfParentsAreAlreadyCorrect },
+    { nextDataSourceId, execute, skipIfParentsAreAlreadyCorrect },
     logger
   ) => {
-    if (!isMigratorAction(action)) {
-      logger.error(
-        `Invalid action ${action}, supported actions are "transform" and "clean"`
-      );
-      return;
-    }
     const coreAPI = new CoreAPI(apiConfig.getCoreAPIConfig(), logger);
 
     await migrateAll({
       coreAPI,
-      action,
       nextDataSourceId,
       execute,
       skipIfParentsAreAlreadyCorrect,
