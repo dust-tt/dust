@@ -1,5 +1,6 @@
-import React from "react";
 import { Button } from "@dust-tt/sparkle";
+import React from "react";
+
 import {
   Carousel,
   CarouselContent,

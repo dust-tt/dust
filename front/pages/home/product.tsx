@@ -1,16 +1,16 @@
-import type { ReactElement } from "react";
-import React from "react";
 import { Button, RocketIcon } from "@dust-tt/sparkle";
 import Link from "next/link";
+import type { ReactElement } from "react";
+import React from "react";
 
 import { CapabilitySection } from "@app/components/home/content/Product/CapabilitySection";
-import { QuoteSection } from "@app/components/home/ContentBlocks";
 import { ExtensibilitySection } from "@app/components/home/content/Product/ExtensibilitySection";
 import { ProductIntroSection } from "@app/components/home/content/Product/ProductIntroSection";
 import { SecuritySection } from "@app/components/home/content/Product/SecuritySection";
 import { UbiquitySection } from "@app/components/home/content/Product/UbiquitySection";
 import type { DemoVideoProps } from "@app/components/home/content/Solutions/DemoVideoSection";
 import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
+import { QuoteSection } from "@app/components/home/ContentBlocks";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { classNames } from "@app/lib/utils";

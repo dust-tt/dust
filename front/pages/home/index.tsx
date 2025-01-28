@@ -4,8 +4,9 @@ import type { ReactElement } from "react";
 import React from "react";
 
 import { BlogSection } from "@app/components/home/content/Product/BlogSection";
-import { CapabilitySection } from "@app/components/home/content/Product/CapabilitySection";
-import { DifferentiationSection } from "@app/components/home/content/Product/DifferentiationSection";
+// import { CapabilitySection } from "@app/components/home/content/Product/CapabilitySection";
+// import { DifferentiationSection } from "@app/components/home/content/Product/DifferentiationSection";
+import { FutureSection } from "@app/components/home/content/Product/FutureSection";
 // import { SecuritySection } from "@app/components/home/content/Product/SecuritySection";
 // import { UbiquitySection } from "@app/components/home/content/Product/UbiquitySection";
 // import type { DemoVideoProps } from "@app/components/home/content/Solutions/DemoVideoSection";
@@ -18,7 +19,6 @@ import { P } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { classNames } from "@app/lib/utils";
-import { FutureSection } from "@app/components/home/content/Product/FutureSection";
 
 export async function getServerSideProps() {
   return {
