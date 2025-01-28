@@ -48,7 +48,7 @@ export function Landing() {
       />
       <FutureSection />
       {/* <DifferentiationSection /> */}
-      <CapabilitySection />
+      {/* <CapabilitySection /> */}
       {/* <DemoVideoSection
         demoVideo={DemoVideo}
         fromColor="from-sky-200"

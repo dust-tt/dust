@@ -29,8 +29,8 @@ export function BlogSection({
                 Customer Stories
               </H2>
               <P size="lg">
-                Discover how our customers augment their&nbsp;workflows
-                with&nbsp;Dust.
+                Leading enterprises are already transforming their operations
+                with Dust.
               </P>
             </div>
             <div className="flex gap-4">
