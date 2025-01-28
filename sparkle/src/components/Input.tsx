@@ -26,17 +26,27 @@ const INPUT_STATES = ["error", "disabled", "default"];
 type InputStateType = (typeof INPUT_STATES)[number];
 
 const messageVariantStyles: Record<MessageStatus, string> = {
-  info: "s-text-muted-foreground",
-  default: "s-text-muted-foreground",
-  error: "s-text-foreground-warning",
+  info: "s-text-muted-foreground dark:s-text-muted-foreground-darkMode",
+  default: "s-text-muted-foreground dark:s-text-muted-foreground-darkMode",
+  error: "s-text-foreground-warning dark:s-text-foreground-warning-darkMode",
 };
 
 const stateVariantStyles: Record<InputStateType, string> = {
-  default:
-    "s-border-border-dark s-ring-highlight/0 focus-visible:s-border-border-focus focus-visible:s-outline-none focus-visible:s-ring-highlight/10",
-  disabled: "disabled:s-cursor-not-allowed disabled:s-text-muted-foreground",
-  error:
-    "s-border-border-warning/30 s-ring-warning/0 focus-visible:s-border-border-warning focus-visible:s-outline-none focus-visible:s-ring-warning/10",
+  default: cn(
+    "s-border-border-dark dark:s-border-border-darkMode",
+    "s-ring-highlight/0 focus-visible:s-border-border-focus focus-visible:s-outline-none",
+    "focus-visible:s-ring-highlight/10 dark:focus-visible:s-ring-highlight/10"
+  ),
+  disabled: cn(
+    "disabled:s-cursor-not-allowed disabled:s-text-muted-foreground"
+  ),
+  error: cn(
+    "s-border-border-warning/30 dark:s-border-border-warning/30-darkMode",
+    "s-ring-warning/0 dark:s-ring-warning/0-darkMode",
+    "focus-visible:s-border-border-warning dark:focus-visible:s-border-border-warning-darkMode",
+    "focus-visible:s-outline-none",
+    "focus-visible:s-ring-warning/10 dark:focus-visible:s-ring-warning/10"
+  ),
 };
 
 const messageVariant = cva("", {
@@ -50,10 +60,13 @@ const messageVariant = cva("", {
 
 const inputStyleClasses = cva(
   cn(
-    "s-text-sm s-rounded-xl s-bg-muted-background s-flex s-h-9 s-w-full s-px-3 s-py-1.5 ",
+    "s-text-sm s-rounded-xl  s-flex s-h-9 s-w-full s-px-3 s-py-1.5 ",
+    "s-bg-muted-background dark:s-bg-muted-background-darkMode",
     "s-border focus-visible:s-ring",
-    "file:s-border-0 file:s-bg-transparent file:s-text-sm file:s-font-medium file:s-text-foreground",
-    "placeholder:s-text-muted-foreground"
+    "file:s-border-0 file:s-text-sm file:s-font-medium",
+    "file:s-bg-transparent dark:file:s-bg-transparent",
+    "file:s-text-foreground dark:file:s-text-foreground-darkMode",
+    "placeholder:s-text-muted-foreground dark:placeholder:s-text-muted-foreground-darkMode"
   ),
   {
     variants: {

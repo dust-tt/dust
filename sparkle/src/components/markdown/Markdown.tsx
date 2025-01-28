@@ -49,7 +49,7 @@ function showUnsupportedDirective() {
 export function Markdown({
   content,
   isStreaming = false,
-  textColor = "s-text-foreground",
+  textColor = "s-text-foreground dark:s-text-foreground-darkMode",
   forcedTextSize,
   isLastMessage = false,
   additionalMarkdownComponents,
@@ -189,13 +189,15 @@ export function Markdown({
         </h6>
       ),
       strong: ({ children }) => (
-        <strong className="s-font-semibold s-text-foreground">
+        <strong className="dark:s-text-foreground-darkMode s-font-semibold s-text-foreground">
           {children}
         </strong>
       ),
       input: Input,
       blockquote: BlockquoteBlock,
-      hr: () => <div className="s-my-6 s-border-b s-border-structure-200" />,
+      hr: () => (
+        <div className="dark:s-border-structure-200-darkMode s-my-6 s-border-b s-border-structure-200" />
+      ),
       code: CodeBlockWithExtendedSupport,
       ...additionalMarkdownComponents,
     };
@@ -272,7 +274,9 @@ function PreBlock({ children }: { children: React.ReactNode }) {
   return (
     <pre
       className={cn(
-        "s-my-2 s-w-full s-break-all s-rounded-2xl s-border s-border-border-dark s-bg-muted-background"
+        "s-my-2 s-w-full s-break-all s-rounded-2xl s-border",
+        "dark:s-border-border-darkMode s-border-border-dark",
+        "dark:s-bg-muted-background-darkMode s-bg-muted-background"
       )}
     >
       {validChildrenContent ? children : fallbackData || children}

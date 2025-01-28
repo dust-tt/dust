@@ -18,12 +18,14 @@ export const ConversationContainer = React.forwardRef<
       )}
       {...props}
     >
-      <div className={cn(
-        "s-flex s-w-full s-max-w-4xl s-flex-col",
-        "s-gap-6 s-p-2",
-        "@sm/conversation:s-gap-8",
-        "@md/conversation:s-gap-10"
-      )}>
+      <div
+        className={cn(
+          "s-flex s-w-full s-max-w-4xl s-flex-col",
+          "s-gap-6 s-p-2",
+          "@sm/conversation:s-gap-8",
+          "@md/conversation:s-gap-10"
+        )}
+      >
         {children}
       </div>
     </div>
@@ -104,10 +106,7 @@ export const ConversationMessage = React.forwardRef<
           {children}
         </ConversationMessageContent>
         {buttons && (
-          <div className={cn(
-            "s-flex s-justify-end",
-            "s-gap-2"
-          )}>{buttons}</div>
+          <div className={cn("s-flex s-justify-end", "s-gap-2")}>{buttons}</div>
         )}
       </div>
     );
@@ -141,7 +140,7 @@ export const ConversationMessageContent = React.forwardRef<
         className={cn(
           "s-px-2",
           "s-text-sm",
-          "s-text-foreground dark:s-text-foreground-darkMode",
+          "dark:s-text-foreground-darkMode s-text-foreground",
           "@sm:s-text-base",
           "@md:s-px-4"
         )}
@@ -194,15 +193,11 @@ export const ConversationMessageHeader = React.forwardRef<
         busy={isBusy}
         size="sm"
       />
-      <div className={cn(
-        "flex",
-        "items-center",
-        "gap-2"
-      )}>
+      <div className={cn("s-flex", "s-items-center", "s-gap-2")}>
         <div
           className={cn(
             "s-text-sm s-font-medium",
-            "s-text-foreground dark:s-text-foreground-darkMode",
+            "dark:s-text-foreground-darkMode s-text-foreground",
             "@sm:s-pb-1",
             "@sm:s-text-base"
           )}
