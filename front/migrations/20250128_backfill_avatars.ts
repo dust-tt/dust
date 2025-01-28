@@ -111,7 +111,7 @@ async function backfillAvatars(
       }
 
       if (deleteOldFile) {
-        await getPublicUploadBucket().file(oldPath).delete();
+        await bucket.file(oldPath).delete();
       }
     }
   }
