@@ -17,7 +17,7 @@ export const Container = React.forwardRef<HTMLDivElement, ContainerProps>(
     return (
       <div
         ref={ref}
-        className={cn("s-mx-auto s-w-full s-bg-white s-@container", className)}
+        className={cn("s-mx-auto s-w-full s-bg-white dark:s-bg-structure-50-dark s-@container", className)}
         {...props}
       >
         <ScrollArea className="s-h-full" hideScrollBar>

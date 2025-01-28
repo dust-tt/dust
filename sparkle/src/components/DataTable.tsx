@@ -300,7 +300,7 @@ DataTable.Head = function Head({
   return (
     <th
       className={cn(
-        "s-py-2 s-pl-2 s-pr-3 s-text-left s-text-xs s-font-medium s-capitalize s-text-foreground",
+        "s-py-2 s-pl-2 s-pr-3 s-text-left s-text-xs s-font-medium s-capitalize s-text-foreground dark:s-text-foreground-dark",
         column.columnDef.meta?.className,
         className
       )}
@@ -344,7 +344,7 @@ DataTable.Row = function Row({
     <tr
       className={cn(
         "s-group/dt s-border-b s-border-separator s-transition-colors s-duration-300 s-ease-out",
-        onClick ? "s-cursor-pointer hover:s-bg-muted" : "",
+        onClick ? "s-cursor-pointer hover:s-bg-muted dark:hover:s-bg-muted-dark" : "",
         widthClassName,
         className
       )}
@@ -483,15 +483,15 @@ DataTable.CellContent = function CellContent({
         <Icon
           visual={icon}
           size="sm"
-          className={cn("s-mr-2 s-text-foreground", iconClassName)}
+          className={cn("s-mr-2 s-text-foreground dark:s-text-foreground-dark", iconClassName)}
         />
       )}
       <div className="s-flex s-shrink s-truncate">
-        <span className="s-truncate s-text-sm s-text-foreground">
+        <span className="s-truncate s-text-sm s-text-foreground dark:s-text-foreground-dark">
           {children}
         </span>
         {description && (
-          <span className="s-pl-2 s-text-sm s-text-muted-foreground">
+          <span className="s-pl-2 s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-dark">
             {description}
           </span>
         )}

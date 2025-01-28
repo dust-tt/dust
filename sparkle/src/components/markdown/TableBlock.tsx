@@ -84,7 +84,7 @@ export function TableHeadBlock({ children }: { children: React.ReactNode }) {
 }
 
 export function TableBodyBlock({ children }: { children: React.ReactNode }) {
-  return <tbody className="s-bg-white">{children}</tbody>;
+  return <tbody className="s-bg-white dark:s-bg-structure-50-dark">{children}</tbody>;
 }
 
 export function TableHeaderBlock({ children }: { children: React.ReactNode }) {

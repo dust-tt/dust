@@ -17,8 +17,8 @@ export type CardVariantType = (typeof CARD_VARIANTS)[number];
 
 const variantClasses: Record<CardVariantType, string> = {
   primary: "s-bg-primary-50 s-border-border-dark/0",
-  secondary: "s-bg-background s-border-border-dark",
-  tertiary: "s-bg-background s-border-border-dark/0",
+  secondary: "s-bg-background dark:s-bg-background-dark s-border-border-dark",
+  tertiary: "s-bg-background dark:s-bg-background-dark s-border-border-dark/0",
 };
 
 export const CARD_VARIANTS_SIZES = ["sm", "md", "lg"] as const;

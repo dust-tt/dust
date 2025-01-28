@@ -15,7 +15,7 @@ type ItemVariantType = (typeof ITEM_VARIANTS)[number];
 export const menuStyleClasses = {
   inset: "s-pl-8",
   container: cn(
-    "s-rounded-xl s-border s-border-hovering s-bg-white s-p-1 s-text-primary-950",
+    "s-rounded-xl s-border s-border-hovering s-bg-white dark:s-bg-structure-50-dark s-p-1 s-text-primary-950",
     "s-z-50 s-min-w-[8rem] s-overflow-hidden",
     "data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-fade-out-0 data-[state=open]:s-fade-in-0 data-[state=closed]:s-zoom-out-95 data-[state=open]:s-zoom-in-95 data-[side=bottom]:s-slide-in-from-top-2 data-[side=left]:s-slide-in-from-right-2 data-[side=right]:s-slide-in-from-left-2 data-[side=top]:s-slide-in-from-bottom-2"
   ),
@@ -25,9 +25,9 @@ export const menuStyleClasses = {
       variants: {
         variant: {
           default:
-            "focus:s-text-primary-950 hover:s-bg-primary-150 focus:s-bg-primary-150",
+            "focus:s-text-primary-950 hover:s-bg-primary-150 dark:hover:s-bg-primary-150-dark focus:s-bg-primary-150 dark:focus:s-bg-primary-150-dark",
           warning:
-            "s-text-warning-500 hover:s-bg-warning-50 focus:s-bg-warning-50 active:s-bg-warning-100",
+            "s-text-warning-500 hover:s-bg-warning-50 dark:hover:s-bg-warning-50-dark focus:s-bg-warning-50 dark:focus:s-bg-warning-50-dark active:s-bg-warning-100 dark:active:s-bg-warning-100-dark",
         },
       },
       defaultVariants: {

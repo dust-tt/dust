@@ -45,10 +45,10 @@ export function ContextItem({
         {visual}
         <div className="s-mb-0.5 s-flex s-min-w-0 s-grow s-flex-col s-gap-0">
           <div className="s-flex s-min-w-0 s-grow s-flex-col sm:s-flex-row sm:s-gap-3">
-            <div className="s-min-w-0 s-overflow-hidden s-text-ellipsis s-whitespace-nowrap s-text-base s-font-semibold">
+            <div className="s-min-w-0 s-overflow-hidden s-text-ellipsis s-whitespace-nowrap s-text-base s-font-semibold dark:s-text-foreground-dark">
               {title}
             </div>
-            <div className="s-flex s-flex-shrink-0 s-items-center s-gap-3 s-overflow-hidden s-pt-0.5 s-text-sm s-text-element-600">
+            <div className="s-flex s-flex-shrink-0 s-items-center s-gap-3 s-overflow-hidden s-pt-0.5 s-text-sm s-text-element-600 dark:s-text-element-600-dark">
               {subElement}
             </div>
           </div>
@@ -118,7 +118,7 @@ ContextItem.Description = function ({
   return (
     <>
       {description && (
-        <div className="s-text-sm s-font-normal s-text-element-700">
+        <div className="s-text-sm s-font-normal s-text-element-700 dark:s-text-element-700-dark">
           {description}
         </div>
       )}

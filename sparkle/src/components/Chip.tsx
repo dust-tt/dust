@@ -43,7 +43,7 @@ const backgroundVariants: Record<ChipColorType, string> = {
   amber: "s-bg-amber-100 s-border-amber-200",
   slate: "s-bg-slate-100 s-border-slate-200",
   purple: "s-bg-purple-100 s-border-purple-200",
-  warning: "s-bg-warning-100 s-border-warning-200",
+  warning: "s-bg-warning-100 dark:s-bg-warning-100-dark s-border-warning-200 dark:s-border-warning-200-dark",
   sky: "s-bg-sky-100 s-border-sky-200",
   pink: "s-bg-pink-100 s-border-pink-200",
   red: "s-bg-red-100 s-border-red-200",

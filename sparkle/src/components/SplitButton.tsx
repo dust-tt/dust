@@ -139,9 +139,9 @@ const SplitButton = React.forwardRef<HTMLButtonElement, SplitButtonProps>(
 );
 
 const flexSeparatorVariants: Record<ButtonVariantType, string> = {
-  primary: "s-bg-white/50",
-  highlight: "s-bg-white/50",
-  warning: "s-bg-white/50",
+  primary: "s-bg-white/50 dark:s-bg-structure-50-dark/50",
+  highlight: "s-bg-white/50 dark:s-bg-structure-50-dark/50",
+  warning: "s-bg-white/50 dark:s-bg-structure-50-dark/50",
   outline: "s-bg-separator",
   ghost: "s-bg-separator",
   "ghost-secondary": "s-bg-separator",

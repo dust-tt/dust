@@ -14,13 +14,13 @@ import { MoreIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 
 const NavigationListItemStyles = cva(
-  "s-box-border s-flex s-items-center s-w-full s-gap-1.5 s-cursor-pointer s-select-none s-items-center s-outline-none s-rounded-xl s-text-sm s-px-3 s-py-2 s-transition-colors s-duration-300 data-[disabled]:s-pointer-events-none data-[disabled]:s-text-muted-foreground hover:s-text-foreground hover:s-bg-structure-150",
+  "s-box-border s-flex s-items-center s-w-full s-gap-1.5 s-cursor-pointer s-select-none s-items-center s-outline-none s-rounded-xl s-text-sm s-px-3 s-py-2 s-transition-colors s-duration-300 data-[disabled]:s-pointer-events-none data-[disabled]:s-text-muted-foreground hover:s-text-foreground dark:hover:s-text-foreground-dark hover:s-bg-structure-150 dark:hover:s-bg-structure-150-dark",
   {
     variants: {
       state: {
-        active: "active:s-bg-structure-200",
-        selected: "s-text-foreground s-font-medium s-bg-structure-150",
-        unselected: "s-text-muted-foreground",
+        active: "active:s-bg-structure-200 dark:active:s-bg-structure-200-dark",
+        selected: "s-text-foreground dark:s-text-foreground-dark s-font-medium s-bg-structure-150 dark:s-bg-structure-150-dark",
+        unselected: "s-text-muted-foreground dark:s-text-muted-foreground-dark",
       },
     },
     defaultVariants: {

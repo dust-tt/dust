@@ -61,7 +61,7 @@ export function Breadcrumbs({ items }: BreadcrumbProps) {
             key={`breadcrumbs-${index}`}
             className="s-flex s-flex-row s-items-center s-gap-1"
           >
-            <Icon visual={item.icon} className="s-text-brand" />
+            <Icon visual={item.icon} className="s-text-brand dark:s-text-brand-dark" />
             {item.label === ELLIPSIS_STRING ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -87,8 +87,8 @@ export function Breadcrumbs({ items }: BreadcrumbProps) {
                   href={item.href || "#"}
                   className={
                     index === items.length - 1
-                      ? "s-text-foreground"
-                      : "s-text-element-700"
+                      ? "s-text-foreground dark:s-text-foreground-dark"
+                      : "s-text-element-700 dark:s-text-element-700-dark"
                   }
                 >
                   {index === items.length - 1
@@ -101,7 +101,7 @@ export function Breadcrumbs({ items }: BreadcrumbProps) {
               </div>
             )}
             {index === itemsShown.length - 1 ? null : (
-              <ChevronRightIcon className="s-text-element-500" />
+              <ChevronRightIcon className="s-text-element-500 dark:s-text-element-500-dark" />
             )}
           </div>
         );

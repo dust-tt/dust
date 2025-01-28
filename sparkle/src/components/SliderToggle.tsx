@@ -67,7 +67,7 @@ export function SliderToggle({
         id="cursor"
         className={classNames(
           "s-transform s-rounded-full s-drop-shadow s-transition-transform s-duration-300 s-ease-out",
-          disabled ? "s-bg-structure-100" : "s-bg-white",
+          disabled ? "s-bg-structure-100 dark:s-bg-structure-100-dark" : "s-bg-white dark:s-bg-structure-50-dark",
           size ? cusrsorSizeClasses[size] : "",
           selected ? cusrsorTranslateSizeClasses[size] : "s-translate-x-[2px]"
         )}

@@ -147,7 +147,7 @@ export function Modal({
           leaveFrom="s-opacity-100"
           leaveTo="s-opacity-0"
         >
-          <div className="s-fixed s-inset-0 s-bg-structure-50/80 s-backdrop-blur-sm s-transition-opacity" />
+          <div className="s-fixed s-inset-0 s-bg-structure-50/80 dark:s-bg-structure-50-dark/80 s-backdrop-blur-sm s-transition-opacity" />
         </Transition.Child>
 
         {/* Panel and transition */}
@@ -163,7 +163,7 @@ export function Modal({
           >
             <Dialog.Panel
               className={classNames(
-                "s-absolute s-transform s-bg-structure-0 s-px-3 s-transition-all sm:s-px-4",
+                "s-absolute s-transform s-bg-structure-0 dark:s-bg-structure-0-dark s-px-3 s-transition-all sm:s-px-4",
                 panelClasses,
                 variantSize[variant]
               )}

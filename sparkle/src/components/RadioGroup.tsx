@@ -11,7 +11,7 @@ const radioStyles = cva(
     "s-flex s-items-center s-justify-center",
     "focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-offset-2 focus-visible:s-ring-ring",
     "disabled:s-cursor-not-allowed disabled:s-opacity-50",
-    "checked:s-ring-0 checked:s-bg-action-500"
+    "checked:s-ring-0 checked:s-bg-action-500 dark:checked:s-bg-action-500-dark"
   ),
   {
     variants: {

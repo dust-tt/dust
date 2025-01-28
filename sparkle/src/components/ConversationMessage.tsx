@@ -122,7 +122,7 @@ export const ConversationMessageContent = React.forwardRef<
     >
       <div
         className={cn(
-          "s-px-2 s-text-sm s-text-foreground @sm:s-text-base @md:s-px-4"
+          "s-px-2 s-text-sm s-text-foreground dark:s-text-foreground-dark @sm:s-text-base @md:s-px-4"
         )}
       >
         {children}
@@ -174,7 +174,7 @@ export const ConversationMessageHeader = React.forwardRef<
       <div className="flex items-center gap-2">
         <div
           className={cn(
-            "s-text-sm s-font-medium s-text-foreground @sm:s-pb-1 @sm:s-text-base"
+            "s-text-sm s-font-medium s-text-foreground dark:s-text-foreground-dark @sm:s-pb-1 @sm:s-text-base"
           )}
         >
           {renderName(name)}

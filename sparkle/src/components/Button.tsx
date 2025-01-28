@@ -39,11 +39,11 @@ const styleVariants: Record<ButtonVariantType, string> = {
   warning:
     "s-bg-warning s-text-white hover:s-bg-warning-light active:s-bg-warning-dark disabled:s-bg-warning-muted",
   outline:
-    "s-border s-text-primary-dark s-bg-background s-border-border-dark hover:s-text-primary hover:s-bg-primary-150 hover:s-border-primary-150 active:s-bg-primary-300 disabled:s-text-primary-muted disabled:s-border-structure-100",
+    "s-border s-text-primary-dark s-bg-background dark:s-bg-background-dark s-border-border-dark hover:s-text-primary hover:s-bg-primary-150 dark:hover:s-bg-primary-150-dark hover:s-border-primary-150 dark:hover:s-border-primary-150-dark active:s-bg-primary-300 dark:active:s-bg-primary-300-dark disabled:s-text-primary-muted disabled:s-border-structure-100 dark:disabled:s-border-structure-100-dark",
   ghost:
-    "s-border s-border-primary-200/0 s-text-primary-950 hover:s-bg-primary-150 hover:s-text-primary-900 hover:s-border-primary-150 active:s-bg-primary-300 disabled:s-text-primary-400",
+    "s-border s-border-primary-200/0 s-text-primary-950 hover:s-bg-primary-150 dark:hover:s-bg-primary-150-dark hover:s-text-primary-900 hover:s-border-primary-150 dark:hover:s-border-primary-150-dark active:s-bg-primary-300 dark:active:s-bg-primary-300-dark disabled:s-text-primary-400 dark:disabled:s-text-primary-400-dark",
   "ghost-secondary":
-    "s-border s-border-primary-200/0 s-text-muted-foreground hover:s-bg-primary-150 hover:s-text-primary-900 hover:s-border-primary-150 active:s-bg-primary-300 disabled:s-text-primary-400",
+    "s-border s-border-primary-200/0 s-text-muted-foreground hover:s-bg-primary-150 dark:hover:s-bg-primary-150-dark hover:s-text-primary-900 hover:s-border-primary-150 dark:hover:s-border-primary-150-dark active:s-bg-primary-300 dark:active:s-bg-primary-300-dark disabled:s-text-primary-400 dark:disabled:s-text-primary-400-dark",
 };
 
 const sizeVariants: Record<ButtonSizeType, string> = {

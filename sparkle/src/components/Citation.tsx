@@ -81,7 +81,7 @@ const CitationIndex = React.forwardRef<
       ref={ref}
       className={cn(
         "s-z-10",
-        "s-flex s-h-4 s-w-4 s-items-center s-justify-center s-rounded-full s-bg-primary-600 s-text-xs s-font-medium s-text-primary-200",
+        "s-flex s-h-4 s-w-4 s-items-center s-justify-center s-rounded-full s-bg-primary-600 dark:s-bg-primary-600-dark s-text-xs s-font-medium s-text-primary-200 dark:s-text-primary-200-dark",
         className
       )}
       {...props}
@@ -159,11 +159,11 @@ const CitationImage = React.forwardRef<HTMLDivElement, CitationImageProps>(
           className={cn(
             "s-absolute s-inset-0",
             "s-z-0 s-h-full s-w-full",
-            "s-bg-primary-100/80",
+            "s-bg-primary-100/80 dark:s-bg-primary-100-dark/80",
             "s-backdrop-blur-sm",
             "s-transition s-duration-200",
-            "group-hover:s-bg-primary-200/70 group-hover:s-backdrop-blur-none",
-            "group-active:s-bg-primary-100/60"
+            "group-hover:s-bg-primary-200/70 dark:group-hover:s-bg-primary-200-dark/70 group-hover:s-backdrop-blur-none",
+            "group-active:s-bg-primary-100/60 dark:group-active:s-bg-primary-100-dark/60"
           )}
         />
       </div>
@@ -197,7 +197,7 @@ const CitationLoading = React.forwardRef<
     <div
       ref={ref}
       className={cn(
-        "s-absolute s-inset-0 s-z-20 s-flex s-h-full s-w-full s-items-center s-justify-center s-rounded-xl s-bg-primary-100/80 s-backdrop-blur-sm",
+        "s-absolute s-inset-0 s-z-20 s-flex s-h-full s-w-full s-items-center s-justify-center s-rounded-xl s-bg-primary-100/80 dark:s-bg-primary-100-dark/80 s-backdrop-blur-sm",
         className
       )}
       {...props}

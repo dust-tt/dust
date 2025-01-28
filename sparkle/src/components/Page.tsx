@@ -40,7 +40,7 @@ interface PageHeaderProps {
 Page.Header = function ({ title, description, icon }: PageHeaderProps) {
   return (
     <Page.Vertical gap="xs">
-      <Icon visual={icon} className="s-text-primary-400" size="lg" />
+      <Icon visual={icon} className="s-text-primary-400 dark:s-text-primary-400-dark" size="lg" />
       <Page.H variant="h3">{title}</Page.H>
       {description && <Page.P variant="secondary">{description}</Page.P>}
     </Page.Vertical>

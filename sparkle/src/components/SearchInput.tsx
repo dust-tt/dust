@@ -57,13 +57,13 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
             <div
               className={cn(
                 "s-px-2",
-                disabled ? "s-text-element-600" : "s-text-foreground"
+                disabled ? "s-text-element-600 dark:s-text-element-600-dark" : "s-text-foreground dark:s-text-foreground-dark"
               )}
             >
               <Icon
                 visual={MagnifyingGlassIcon}
                 size="xs"
-                className="s-text-muted-foreground"
+                className="s-text-muted-foreground dark:s-text-muted-foreground-dark"
               />
             </div>
           )}

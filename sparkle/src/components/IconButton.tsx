@@ -55,7 +55,7 @@ const iconButtonVariants = cva(
     variants: {
       variant: styleVariants,
       disabled: {
-        true: "s-text-element-500 s-cursor-default hover:s-scale-100",
+        true: "s-text-element-500 dark:s-text-element-500-dark s-cursor-default hover:s-scale-100",
       },
     },
     defaultVariants: {
