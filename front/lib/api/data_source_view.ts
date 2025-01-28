@@ -457,6 +457,9 @@ export async function getContentNodesForDataSourceView(
     dataSourceViewId: dataSourceView.sId,
     provider: dataSourceView.dataSource.connectorProvider,
     viewType: params.viewType,
+    isRootCall: !params.parentId && !params.internalIds,
+    parentId: params.parentId,
+    internalIds: params.internalIds,
   });
 
   const coreStart = new Date();
