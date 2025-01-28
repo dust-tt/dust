@@ -3,10 +3,11 @@ import { Client, Connection } from "@temporalio/client";
 import { NativeConnection } from "@temporalio/worker";
 import fs from "fs-extra";
 
-type TemporalNamespaces = "connectors" | "front";
+type TemporalNamespaces = "connectors" | "front" | "relocation";
 const temporalWorkspaceToEnvVar: Record<TemporalNamespaces, string> = {
   connectors: "TEMPORAL_CONNECTORS_NAMESPACE",
   front: "TEMPORAL_NAMESPACE",
+  relocation: "TEMPORAL_RELOCATION_NAMESPACE",
 };
 
 // This is a singleton connection to the Temporal server.
@@ -33,7 +34,7 @@ export async function getTemporalClientForNamespace(
   return client;
 }
 
-async function getConnectionOptions(
+export async function getConnectionOptions(
   envVarForTemporalNamespace: string = temporalWorkspaceToEnvVar["front"]
 ): Promise<
   | {

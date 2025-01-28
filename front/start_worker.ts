@@ -17,38 +17,45 @@ import {
 import { runUpsertQueueWorker } from "@app/temporal/upsert_queue/worker";
 import { runUpsertTableQueueWorker } from "@app/temporal/upsert_tables/worker";
 import { runUpdateWorkspaceUsageWorker } from "@app/temporal/usage_queue/worker";
+import { runRelocationWorker } from "@app/temporal/relocation/worker";
 
 setupGlobalErrorHandler(logger);
 
 type WorkerName =
+  | "document_tracker"
   | "hard_delete"
   | "labs"
   | "mentions_count"
   | "permissions_queue"
   | "poke"
-  | "document_tracker"
-  | "tracker_notification"
   | "production_checks"
+  | "relocation"
   | "scrub_workspace_queue"
+  | "tracker_notification"
   | "update_workspace_usage"
   | "upsert_queue"
   | "upsert_table_queue";
 
 const workerFunctions: Record<WorkerName, () => Promise<void>> = {
+  document_tracker: runTrackerWorker,
   hard_delete: runHardDeleteWorker,
   labs: runLabsWorker,
   mentions_count: runMentionsCountWorker,
   permissions_queue: runPermissionsWorker,
   poke: runPokeWorker,
-  document_tracker: runTrackerWorker,
-  tracker_notification: runTrackerNotificationWorker,
   production_checks: runProductionChecksWorker,
+  relocation: runRelocationWorker,
   scrub_workspace_queue: runScrubWorkspaceQueueWorker,
+  tracker_notification: runTrackerNotificationWorker,
   update_workspace_usage: runUpdateWorkspaceUsageWorker,
   upsert_queue: runUpsertQueueWorker,
   upsert_table_queue: runUpsertTableQueueWorker,
 };
+
 const ALL_WORKERS = Object.keys(workerFunctions);
+const ALL_WORKERS_BUT_RELOCATION = Object.keys(workerFunctions).filter(
+  (k) => k !== "relocation"
+);
 
 async function runWorkers(workers: WorkerName[]) {
   for (const worker of workers) {
@@ -63,7 +70,7 @@ yargs(hideBin(process.argv))
     alias: "w",
     type: "array",
     choices: ALL_WORKERS,
-    default: ALL_WORKERS,
+    default: ALL_WORKERS_BUT_RELOCATION,
     demandOption: true,
     description: "Choose one or multiple workers to run.",
   })
