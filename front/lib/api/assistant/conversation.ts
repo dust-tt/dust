@@ -1919,7 +1919,6 @@ async function* streamRunAgentEvents(
       case "generation_tokens":
       case "reasoning_started":
       case "reasoning_thinking":
-      case "reasoning_output":
       case "reasoning_tokens":
         yield event;
         break;

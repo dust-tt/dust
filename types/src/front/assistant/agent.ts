@@ -41,7 +41,6 @@ import { ModelIdType, ModelProviderIdType } from "../../front/lib/assistant";
 import { ModelId } from "../../shared/model_id";
 import {
   ReasoningConfigurationType,
-  ReasoningOutputEvent,
   ReasoningStartedEvent,
   ReasoningThinkingEvent,
   ReasoningTokensEvent,
@@ -330,7 +329,6 @@ export type AgentActionSpecificEvent =
   | GithubGetPullRequestParamsEvent
   | ReasoningStartedEvent
   | ReasoningThinkingEvent
-  | ReasoningOutputEvent
   | ReasoningTokensEvent;
 
 // Event sent once the action is completed, we're moving to generating a message if applicable.

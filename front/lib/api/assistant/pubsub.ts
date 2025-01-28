@@ -194,7 +194,6 @@ async function handleUserMessageEvents(
             case "github_get_pull_request_params":
             case "reasoning_started":
             case "reasoning_thinking":
-            case "reasoning_output":
             case "reasoning_tokens":
             case "agent_error":
             case "agent_action_success":
@@ -353,7 +352,6 @@ export async function retryAgentMessageWithPubSub(
               case "github_get_pull_request_params":
               case "reasoning_started":
               case "reasoning_thinking":
-              case "reasoning_output":
               case "reasoning_tokens":
               case "agent_error":
               case "agent_action_success":

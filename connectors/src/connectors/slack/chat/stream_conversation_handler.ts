@@ -147,7 +147,6 @@ export async function streamConversationToSlack(
       case "reasoning_started":
       case "reasoning_thinking":
       case "reasoning_tokens":
-      case "reasoning_output":
         await postSlackMessageUpdate(
           {
             isComplete: false,
