@@ -429,6 +429,7 @@ export async function getContentNodesForDataSourceView(
 
   const localLogger = logger.child({
     dataSourceId: dataSourceView.dataSource.sId,
+    connectorId: dataSourceView.dataSource.connectorId,
     dataSourceViewId: dataSourceView.sId,
     provider: dataSourceView.dataSource.connectorProvider,
     viewType: params.viewType,
