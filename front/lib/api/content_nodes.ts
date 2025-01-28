@@ -96,7 +96,9 @@ export function computeNodesDiff({
       const diff = Object.fromEntries(
         Object.entries(connectorsNode)
           .filter(([key, value]) => {
-            if (["preventSelection", "lastUpdatedAt"].includes(key)) {
+            if (
+              ["preventSelection", "lastUpdatedAt", "permission"].includes(key)
+            ) {
               return false;
             }
             // Custom exclusion rules. The goal here is to avoid logging irrelevant differences, scoping by connector.
