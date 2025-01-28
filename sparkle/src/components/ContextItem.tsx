@@ -27,28 +27,31 @@ export function ContextItem({
 }: ContextItemProps) {
   return (
     <div
-      className={classNames(
+      className={classNames([
         hasSeparator ? "s-border-b s-border-structure-200" : "",
         "s-flex s-w-full s-flex-col",
         hasSeparatorIfLast ? "" : "last:s-border-none"
-      )}
+      ].join(" "))}
     >
       <div
-        className={classNames(
+        className={classNames([
           "s-flex s-w-full s-flex-row s-items-start s-gap-3 s-px-4 s-py-3",
-          onClick
-            ? "s-cursor-pointer s-transition s-duration-200 hover:s-bg-structure-50 dark:hover:s-bg-structure-50-dark active:s-bg-structure-100 dark:active:s-bg-structure-100-dark"
-            : ""
-        )}
+          onClick ? [
+            "s-cursor-pointer",
+            "s-transition s-duration-200",
+            "hover:s-bg-structure-50 dark:hover:s-bg-structure-50-darkMode",
+            "active:s-bg-structure-100 dark:active:s-bg-structure-100-darkMode"
+          ].join(" ") : ""
+        ].join(" "))}
         onClick={onClick}
       >
         {visual}
         <div className="s-mb-0.5 s-flex s-min-w-0 s-grow s-flex-col s-gap-0">
           <div className="s-flex s-min-w-0 s-grow s-flex-col sm:s-flex-row sm:s-gap-3">
-            <div className="s-min-w-0 s-overflow-hidden s-text-ellipsis s-whitespace-nowrap s-text-base s-font-semibold dark:s-text-foreground-dark">
+            <div className="s-min-w-0 s-overflow-hidden s-text-ellipsis s-whitespace-nowrap s-text-base s-font-semibold dark:s-text-foreground-darkMode">
               {title}
             </div>
-            <div className="s-flex s-flex-shrink-0 s-items-center s-gap-3 s-overflow-hidden s-pt-0.5 s-text-sm s-text-element-600 dark:s-text-element-600-dark">
+            <div className="s-flex s-flex-shrink-0 s-items-center s-gap-3 s-overflow-hidden s-pt-0.5 s-text-sm s-text-element-600 dark:s-text-element-600-darkMode">
               {subElement}
             </div>
           </div>
@@ -95,11 +98,11 @@ ContextItem.List = function ({
 
   return (
     <div
-      className={classNames(
+      className={classNames([
         className ? className : "",
         hasBorder ? "s-border-b s-border-t s-border-structure-200" : "",
         "s-flex s-flex-col"
-      )}
+      ].join(" "))}
     >
       {children}
     </div>
@@ -118,7 +121,7 @@ ContextItem.Description = function ({
   return (
     <>
       {description && (
-        <div className="s-text-sm s-font-normal s-text-element-700 dark:s-text-element-700-dark">
+        <div className="s-text-sm s-font-normal s-text-element-700 dark:s-text-element-700-darkMode">
           {description}
         </div>
       )}
@@ -148,16 +151,16 @@ ContextItem.SectionHeader = function ({
 }: ItemSectionHeaderProps) {
   return (
     <div
-      className={classNames(
+      className={classNames([
         "s-flex s-flex-col s-gap-0 s-pb-3 s-pt-7",
         hasBorder ? "s-border-b s-border-structure-200" : ""
-      )}
+      ].join(" "))}
     >
-      <div className="s-text-xl s-font-medium s-text-foreground dark:s-text-foreground-dark">
+      <div className="s-text-xl s-font-medium s-text-foreground dark:s-text-foreground-darkMode">
         {title}
       </div>
       {description && (
-        <div className="s-text-sm s-font-normal s-text-element-700 dark:s-text-element-700-dark">
+        <div className="s-text-sm s-font-normal s-text-element-700 dark:s-text-element-700-darkMode">
           {description}
         </div>
       )}

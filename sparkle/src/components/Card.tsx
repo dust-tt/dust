@@ -17,8 +17,8 @@ export type CardVariantType = (typeof CARD_VARIANTS)[number];
 
 const variantClasses: Record<CardVariantType, string> = {
   primary: "s-bg-primary-50 s-border-border-dark/0",
-  secondary: "s-bg-background dark:s-bg-background-dark s-border-border-dark",
-  tertiary: "s-bg-background dark:s-bg-background-dark s-border-border-dark/0",
+  secondary: "s-bg-background dark:s-bg-background-darkMode s-border-border-darkMode",
+  tertiary: "s-bg-background dark:s-bg-background-darkMode s-border-border-darkMode/0",
 };
 
 export const CARD_VARIANTS_SIZES = ["sm", "md", "lg"] as const;
@@ -90,11 +90,19 @@ const InnerCard = React.forwardRef<HTMLDivElement, InnerCardProps>(
     // Determine if the card is interactive based on href or onClick
     const isInteractive = Boolean(href || onClick);
 
+    const interactiveClasses = [
+      "s-cursor-pointer",
+      "s-transition s-duration-200",
+      "hover:s-bg-primary-100 dark:hover:s-bg-primary-100-darkMode",
+      "active:s-bg-primary-200 dark:active:s-bg-primary-200-darkMode",
+      "disabled:s-text-primary-muted dark:disabled:s-text-primary-muted-darkMode",
+      "disabled:s-border-structure-100 dark:disabled:s-border-structure-100-darkMode",
+      "disabled:s-pointer-events-none"
+    ].join(" ");
+
     const cardButtonClassNames = cn(
       cardVariants({ variant, size }),
-      // Apply interactive styles when either href or onClick is present
-      isInteractive &&
-        "s-cursor-pointer disabled:s-text-primary-muted disabled:s-border-structure-100 disabled:s-pointer-events-none s-transition s-duration-200 hover:s-bg-primary-100 active:s-bg-primary-200",
+      isInteractive && interactiveClasses,
       className
     );
 

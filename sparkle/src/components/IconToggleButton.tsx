@@ -23,32 +23,48 @@ const baseClasses =
 
 const iconClasses = {
   secondary: {
-    idle: "s-text-foreground",
-    selected: "s-text-action-500",
-    hover: "hover:s-text-action-400",
-    active: "active:s-text-action-600",
-    disabled: "s-text-element-500",
-    dark: {
-      idle: "dark:s-text-foreground-dark",
-      selected: "dark:s-text-action-500-dark",
-      hover: "dark:hover:s-text-action-500-dark",
-      active: "dark:active:s-text-action-600-dark",
-      disabled: "dark:s-text-element-500-dark",
-    },
+    idle: [
+      "s-text-foreground",
+      "dark:s-text-foreground-darkMode"
+    ].join(" "),
+    selected: [
+      "s-text-action-500",
+      "dark:s-text-action-500-darkMode"
+    ].join(" "),
+    hover: [
+      "hover:s-text-action-400",
+      "dark:hover:s-text-action-500-darkMode"
+    ].join(" "),
+    active: [
+      "active:s-text-action-600",
+      "dark:active:s-text-action-600-darkMode"
+    ].join(" "),
+    disabled: [
+      "s-text-element-500",
+      "dark:s-text-element-500-darkMode"
+    ].join(" ")
   },
   tertiary: {
-    idle: "s-text-element-600",
-    selected: "s-text-action-500",
-    hover: "hover:s-text-action-400",
-    active: "active:s-text-action-600",
-    disabled: "s-text-element-500",
-    dark: {
-      idle: "dark:s-text-element-600-dark",
-      selected: "dark:s-text-action-500-dark",
-      hover: "dark:hover:s-text-action-500-dark",
-      active: "dark:active:s-text-action-600-dark",
-      disabled: "dark:s-text-element-500-dark",
-    },
+    idle: [
+      "s-text-element-600",
+      "dark:s-text-element-600-darkMode"
+    ].join(" "),
+    selected: [
+      "s-text-action-500",
+      "dark:s-text-action-500-darkMode"
+    ].join(" "),
+    hover: [
+      "hover:s-text-action-400",
+      "dark:hover:s-text-action-500-darkMode"
+    ].join(" "),
+    active: [
+      "active:s-text-action-600",
+      "dark:active:s-text-action-600-darkMode"
+    ].join(" "),
+    disabled: [
+      "s-text-element-500",
+      "dark:s-text-element-500-darkMode"
+    ].join(" ")
   },
 };
 
@@ -74,15 +90,7 @@ export function IconToggleButton({
         ? iconGroup.selected
         : iconGroup.idle,
     disabled ? "" : selected ? "" : iconGroup.hover,
-    disabled ? "" : iconGroup.active,
-    iconGroup.dark.idle,
-    disabled
-      ? iconGroup.dark.disabled
-      : selected
-        ? iconGroup.dark.selected
-        : "",
-    disabled ? "" : selected ? "" : iconGroup.dark.hover,
-    disabled ? "" : iconGroup.dark.active
+    disabled ? "" : iconGroup.active
   );
 
   const IconButtonToggleContent = (

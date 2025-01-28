@@ -17,36 +17,42 @@ type IconButtonProps = {
 };
 
 const styleVariants: Record<ButtonVariantType, string> = {
-  primary:
-    "s-text-action-500 dark:s-text-action-500-dark" +
-    "hover:s-text-action-400 dark:hover:s-text-action-500-dark" +
-    "active:s-text-action-600 dark:active:s-text-action-600-dark" +
-    "s-text-element-500 dark:s-text-element-500-dark",
-  warning:
-    "s-text-warning-500 dark:s-text-warning-500-dark" +
-    "hover:s-text-warning-400 dark:hover:s-text-warning-500-dark" +
-    "active:s-text-warning-600 dark:active:s-text-warning-600-dark" +
-    "s-text-element-500 dark:s-text-element-500-dark",
-  highlight:
-    "s-text-foreground dark:s-text-foreground-dark" +
-    "hover:s-text-action-400 dark:hover:s-text-action-500-dark" +
-    "active:s-text-action-600 dark:active:s-text-action-600-dark" +
-    "s-text-element-500 dark:s-text-element-500-dark",
-  outline:
-    "s-text-element-700 dark:s-text-element-700-dark" +
-    "hover:s-text-action-400 dark:hover:s-text-action-500-dark" +
-    "active:s-text-action-600 dark:active:s-text-action-600-dark" +
-    "s-text-element-500 dark:s-text-element-500-dark",
-  ghost:
-    "s-text-foreground dark:s-text-foreground-dark" +
-    "hover:s-text-primary-200 dark:hover:s-text-primary-200-dark" +
-    "active:s-text-primary-300 dark:active:s-text-primary-300-dark" +
-    "s-text-muted-foreground dark:s-text-muted-foreground-dark",
-  "ghost-secondary":
-    "s-text-muted-foreground dark:s-text-muted-foreground-dark" +
-    "hover:s-text-primary-200 dark:hover:s-text-primary-200-dark" +
-    "active:s-text-primary-300 dark:active:s-text-primary-300-dark" +
-    "s-text-muted-foreground/50 dark:s-text-muted-foreground-dark/50",
+  primary: [
+    "s-text-action-500 dark:s-text-action-500-darkMode",
+    "hover:s-text-action-400 dark:hover:s-text-action-500-darkMode",
+    "active:s-text-action-600 dark:active:s-text-action-600-darkMode",
+    "s-text-element-500 dark:s-text-element-500-darkMode"
+  ].join(" "),
+  warning: [
+    "s-text-warning-500 dark:s-text-warning-500-darkMode",
+    "hover:s-text-warning-400 dark:hover:s-text-warning-500-darkMode",
+    "active:s-text-warning-600 dark:active:s-text-warning-600-darkMode",
+    "s-text-element-500 dark:s-text-element-500-darkMode"
+  ].join(" "),
+  highlight: [
+    "s-text-foreground dark:s-text-foreground-darkMode",
+    "hover:s-text-action-400 dark:hover:s-text-action-500-darkMode",
+    "active:s-text-action-600 dark:active:s-text-action-600-darkMode",
+    "s-text-element-500 dark:s-text-element-500-darkMode"
+  ].join(" "),
+  outline: [
+    "s-text-element-700 dark:s-text-element-700-darkMode",
+    "hover:s-text-action-400 dark:hover:s-text-action-500-darkMode",
+    "active:s-text-action-600 dark:active:s-text-action-600-darkMode",
+    "s-text-element-500 dark:s-text-element-500-darkMode"
+  ].join(" "),
+  ghost: [
+    "s-text-foreground dark:s-text-foreground-darkMode",
+    "hover:s-text-primary-200 dark:hover:s-text-primary-200-darkMode",
+    "active:s-text-primary-300 dark:active:s-text-primary-300-darkMode",
+    "s-text-muted-foreground dark:s-text-muted-foreground-darkMode"
+  ].join(" "),
+  "ghost-secondary": [
+    "s-text-muted-foreground dark:s-text-muted-foreground-darkMode",
+    "hover:s-text-primary-200 dark:hover:s-text-primary-200-darkMode",
+    "active:s-text-primary-300 dark:active:s-text-primary-300-darkMode",
+    "s-text-muted-foreground/50 dark:s-text-muted-foreground-darkMode/50"
+  ].join(" ")
 };
 
 const iconButtonVariants = cva(
@@ -55,7 +61,7 @@ const iconButtonVariants = cva(
     variants: {
       variant: styleVariants,
       disabled: {
-        true: "s-text-element-500 dark:s-text-element-500-dark s-cursor-default hover:s-scale-100",
+        true: "s-text-element-500 dark:s-text-element-500-darkMode s-cursor-default hover:s-scale-100",
       },
     },
     defaultVariants: {

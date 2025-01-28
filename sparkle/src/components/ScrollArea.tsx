@@ -28,7 +28,14 @@ const ScrollArea = React.forwardRef<
   return (
     <ScrollAreaPrimitive.Root
       ref={ref}
-      className={cn("s-relative s-z-20 s-overflow-hidden", className)}
+      className={cn([
+        [
+          "s-relative",
+          "s-z-20",
+          "s-overflow-hidden"
+        ].join(" "),
+        className
+      ])}
       {...props}
     >
       <ScrollAreaPrimitive.Viewport className="s-h-full s-w-full s-rounded-[inherit]">
@@ -49,10 +56,22 @@ const scrollBarSizes = {
       horizontal: "s-h-5",
     },
     padding: {
-      vertical: "s-pr-1 s-pl-2.5 s-py-2 hover:s-pl-2",
-      horizontal: "s-pb-1 s-pt-2.5 s-px-2",
+      vertical: [
+        "s-pr-1",
+        "s-pl-2.5",
+        "s-py-2",
+        "hover:s-pl-2"
+      ].join(" "),
+      horizontal: [
+        "s-pb-1",
+        "s-pt-2.5",
+        "s-px-2"
+      ].join(" "),
     },
-    thumb: "s-bg-muted-foreground/40 dark:s-bg-muted-foreground-dark/40 hover:s-bg-muted-foreground/70 dark:hover:s-bg-muted-foreground-dark/70",
+    thumb: [
+      "s-bg-muted-foreground/40 dark:s-bg-muted-foreground-darkMode/40",
+      "hover:s-bg-muted-foreground/70 dark:hover:s-bg-muted-foreground-darkMode/70"
+    ].join(" "),
   },
   classic: {
     bar: {
@@ -60,10 +79,20 @@ const scrollBarSizes = {
       horizontal: "s-h-5",
     },
     padding: {
-      vertical: "s-pl-2 s-pr-1 s-py-1",
-      horizontal: "s-py-0.5 s-px-1",
+      vertical: [
+        "s-pl-2",
+        "s-pr-1",
+        "s-py-1"
+      ].join(" "),
+      horizontal: [
+        "s-py-0.5",
+        "s-px-1"
+      ].join(" "),
     },
-    thumb: "s-bg-muted-foreground/70 dark:s-bg-muted-foreground-dark/70 hover:s-bg-muted-foreground/80 dark:hover:s-bg-muted-foreground-dark/80",
+    thumb: [
+      "s-bg-muted-foreground/70 dark:s-bg-muted-foreground-darkMode/70",
+      "hover:s-bg-muted-foreground/80 dark:hover:s-bg-muted-foreground-darkMode/80"
+    ].join(" "),
   },
 } as const;
 
@@ -90,27 +119,37 @@ const ScrollBar = React.forwardRef<
       <ScrollAreaPrimitive.ScrollAreaScrollbar
         ref={ref}
         orientation={orientation}
-        className={cn(
-          "s-flex s-touch-none s-select-none hover:s-cursor-pointer",
+        className={cn([
+          [
+            "s-flex",
+            "s-touch-none",
+            "s-select-none",
+            "hover:s-cursor-pointer"
+          ].join(" "),
           orientation === "vertical" && [
             "s-h-full s-border-l s-border-l-transparent",
             sizeConfig.bar.vertical,
             sizeConfig.padding.vertical,
-          ],
+          ].filter(Boolean).join(" "),
           orientation === "horizontal" && [
             "s-flex-col s-border-t s-border-t-transparent",
             sizeConfig.bar.horizontal,
             sizeConfig.padding.horizontal,
-          ],
+          ].filter(Boolean).join(" "),
           className
-        )}
+        ])}
         {...props}
       >
         <ScrollAreaPrimitive.ScrollAreaThumb
-          className={cn(
-            "s-relative s-flex-1 s-rounded-full s-transition-colors s-duration-200",
-            sizeConfig.thumb
-          )}
+          className={cn([
+            [
+              "s-relative",
+              "s-flex-1",
+              "s-rounded-full",
+              "s-transition-colors s-duration-200",
+              sizeConfig.thumb
+            ].join(" ")
+          ])}
         />
       </ScrollAreaPrimitive.ScrollAreaScrollbar>
     );

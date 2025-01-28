@@ -79,11 +79,14 @@ const CitationIndex = React.forwardRef<
   return (
     <div
       ref={ref}
-      className={cn(
+      className={cn([
         "s-z-10",
-        "s-flex s-h-4 s-w-4 s-items-center s-justify-center s-rounded-full s-bg-primary-600 dark:s-bg-primary-600-dark s-text-xs s-font-medium s-text-primary-200 dark:s-text-primary-200-dark",
-        className
-      )}
+        "s-flex s-h-4 s-w-4 s-items-center s-justify-center",
+        "s-rounded-full",
+        "s-bg-primary-600 dark:s-bg-primary-600-darkMode",
+        "s-text-xs s-font-medium",
+        "s-text-primary-200 dark:s-text-primary-200-darkMode"
+      ].join(" "), className)}
       {...props}
     >
       {children}
@@ -142,29 +145,29 @@ const CitationImage = React.forwardRef<HTMLDivElement, CitationImageProps>(
     return (
       <div
         ref={ref}
-        className={cn(
+        className={cn([
           "s-absolute s-inset-0",
           "s-bg-cover s-bg-center",
           "s-rounded-xl",
           "s-overflow-hidden",
-          "[mask-image:radial-gradient(white,black)]",
-          className
-        )}
+          "[mask-image:radial-gradient(white,black)]"
+        ].join(" "), className)}
         style={{
           backgroundImage: `url(${imgSrc})`,
         }}
         {...props}
       >
         <div
-          className={cn(
+          className={cn([
             "s-absolute s-inset-0",
             "s-z-0 s-h-full s-w-full",
-            "s-bg-primary-100/80 dark:s-bg-primary-100-dark/80",
+            "s-bg-primary-100/80 dark:s-bg-primary-100-darkMode/80",
             "s-backdrop-blur-sm",
             "s-transition s-duration-200",
-            "group-hover:s-bg-primary-200/70 dark:group-hover:s-bg-primary-200-dark/70 group-hover:s-backdrop-blur-none",
-            "group-active:s-bg-primary-100/60 dark:group-active:s-bg-primary-100-dark/60"
-          )}
+            "group-hover:s-bg-primary-200/70 dark:group-hover:s-bg-primary-200-darkMode/70",
+            "group-hover:s-backdrop-blur-none",
+            "group-active:s-bg-primary-100/60 dark:group-active:s-bg-primary-100-darkMode/60"
+          ].join(" "))}
         />
       </div>
     );
@@ -196,10 +199,14 @@ const CitationLoading = React.forwardRef<
   return (
     <div
       ref={ref}
-      className={cn(
-        "s-absolute s-inset-0 s-z-20 s-flex s-h-full s-w-full s-items-center s-justify-center s-rounded-xl s-bg-primary-100/80 dark:s-bg-primary-100-dark/80 s-backdrop-blur-sm",
-        className
-      )}
+      className={cn([
+        "s-absolute s-inset-0",
+        "s-z-20",
+        "s-flex s-h-full s-w-full s-items-center s-justify-center",
+        "s-rounded-xl",
+        "s-bg-primary-100/80 dark:s-bg-primary-100-darkMode/80",
+        "s-backdrop-blur-sm"
+      ].join(" "), className)}
       {...props}
     >
       <Spinner variant="dark" size="md" />
@@ -220,7 +227,7 @@ const CitationTitle = React.forwardRef<HTMLDivElement, CitationTitleProps>(
         className={cn(
           "s-z-10",
           "s-line-clamp-1 s-overflow-hidden s-text-ellipsis s-break-all",
-          "s-text-sm s-font-medium s-text-foreground dark:s-text-foreground-dark",
+          "s-text-sm s-font-medium s-text-foreground dark:s-text-foreground-darkMode",
           className
         )}
         {...props}
@@ -247,7 +254,7 @@ const CitationDescription = React.forwardRef<
       className={cn(
         "s-z-10",
         "s-line-clamp-1 s-overflow-hidden s-text-ellipsis",
-        "s-text-xs s-font-normal s-text-muted-foreground dark:s-text-muted-foreground-dark",
+        "s-text-xs s-font-normal s-text-muted-foreground dark:s-text-muted-foreground-darkMode",
         className
       )}
       {...props}

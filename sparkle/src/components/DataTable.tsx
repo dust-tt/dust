@@ -164,7 +164,16 @@ export function DataTable<TData extends TBaseData>({
   }, [filter, filterColumn]);
 
   return (
-    <div className={cn("s-flex s-flex-col s-gap-2", className, widthClassName)}>
+    <div
+      className={cn(
+        [
+          "s-flex s-flex-col",
+          "s-gap-2"
+        ].join(" "),
+        className,
+        widthClassName
+      )}
+    >
       <DataTable.Root>
         <DataTable.Header>
           {table.getHeaderGroups().map((headerGroup) => (
@@ -263,8 +272,14 @@ DataTable.Root = function DataTableRoot({
   children,
   ...props
 }: DataTableRootProps) {
+  const rootClasses = [
+    "s-w-full",
+    "s-table-fixed",
+    "s-border-collapse"
+  ];
+
   return (
-    <table className="s-w-full s-table-fixed s-border-collapse" {...props}>
+    <table className={cn(rootClasses.join(" "))} {...props}>
       {children}
     </table>
   );
@@ -280,7 +295,16 @@ DataTable.Header = function Header({
   ...props
 }: HeaderProps) {
   return (
-    <thead className={cn(className)} {...props}>
+    <thead
+      className={cn(
+        [
+          "s-border-b",
+          "s-border-separator dark:s-border-separator-darkMode"
+        ].join(" "),
+        className
+      )}
+      {...props}
+    >
       {children}
     </thead>
   );
@@ -297,10 +321,16 @@ DataTable.Head = function Head({
   column,
   ...props
 }: HeadProps) {
+  const headClasses = [
+    "s-py-2 s-pl-2 s-pr-3",
+    "s-text-left s-text-xs s-font-medium s-capitalize",
+    "s-text-foreground dark:s-text-foreground-darkMode"
+  ];
+
   return (
     <th
       className={cn(
-        "s-py-2 s-pl-2 s-pr-3 s-text-left s-text-xs s-font-medium s-capitalize s-text-foreground dark:s-text-foreground-dark",
+        headClasses.join(" "),
         column.columnDef.meta?.className,
         className
       )}
@@ -321,7 +351,16 @@ DataTable.Body = function Body({
   ...props
 }: React.HTMLAttributes<HTMLTableSectionElement>) {
   return (
-    <tbody className={className} {...props}>
+    <tbody
+      className={cn(
+        [
+          "s-bg-white dark:s-bg-structure-50-darkMode",
+          "s-border-b s-border-separator dark:s-border-separator-darkMode"
+        ].join(" "),
+        className
+      )}
+      {...props}
+    >
       {children}
     </tbody>
   );
@@ -340,11 +379,18 @@ DataTable.Row = function Row({
   widthClassName,
   ...props
 }: RowProps) {
+  const rowClasses = [
+    "s-group/dt s-border-b s-border-separator s-transition-colors s-duration-300 s-ease-out",
+    onClick ? [
+      "s-cursor-pointer",
+      "hover:s-bg-muted dark:hover:s-bg-muted-darkMode"
+    ].join(" ") : ""
+  ];
+
   return (
     <tr
       className={cn(
-        "s-group/dt s-border-b s-border-separator s-transition-colors s-duration-300 s-ease-out",
-        onClick ? "s-cursor-pointer hover:s-bg-muted dark:hover:s-bg-muted-dark" : "",
+        rowClasses,
         widthClassName,
         className
       )}
@@ -424,7 +470,10 @@ DataTable.Cell = function Cell({
     <td
       className={cn(
         cellHeight,
-        "s-truncate s-pl-2",
+        [
+          "s-truncate",
+          "s-pl-2"
+        ].join(" "),
         column.columnDef.meta?.className,
         className
       )}
@@ -445,6 +494,24 @@ interface CellContentProps extends React.TdHTMLAttributes<HTMLDivElement> {
   description?: string;
 }
 
+const cellContentClasses = {
+  content: ["s-flex s-items-center"],
+  icon: [
+    "s-mr-2",
+    "s-text-foreground dark:s-text-foreground-darkMode"
+  ],
+  text: [
+    "s-truncate",
+    "s-text-sm",
+    "s-text-foreground dark:s-text-foreground-darkMode"
+  ],
+  description: [
+    "s-pl-2",
+    "s-text-sm",
+    "s-text-muted-foreground dark:s-text-muted-foreground-darkMode"
+  ]
+};
+
 DataTable.CellContent = function CellContent({
   children,
   className,
@@ -457,47 +524,47 @@ DataTable.CellContent = function CellContent({
   ...props
 }: CellContentProps) {
   return (
-    <div className={cn("s-flex s-items-center", className)} {...props}>
-      {avatarUrl && avatarTooltipLabel && (
-        <Tooltip
-          trigger={
-            <Avatar
-              visual={avatarUrl}
-              size="xs"
-              className="s-mr-2"
-              isRounded={roundedAvatar ?? false}
-            />
-          }
-          label={avatarTooltipLabel}
-        />
-      )}
-      {avatarUrl && !avatarTooltipLabel && (
-        <Avatar
-          visual={avatarUrl}
-          size="xs"
-          className="s-mr-2"
-          isRounded={roundedAvatar ?? false}
-        />
-      )}
-      {icon && (
-        <Icon
-          visual={icon}
-          size="sm"
-          className={cn("s-mr-2 s-text-foreground dark:s-text-foreground-dark", iconClassName)}
-        />
-      )}
-      <div className="s-flex s-shrink s-truncate">
-        <span className="s-truncate s-text-sm s-text-foreground dark:s-text-foreground-dark">
-          {children}
-        </span>
-        {description && (
-          <span className="s-pl-2 s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-dark">
-            {description}
-          </span>
+      <div className={cn(cellContentClasses.content.join(" "), className)} {...props}>
+        {avatarUrl && avatarTooltipLabel && (
+          <Tooltip
+            trigger={
+              <Avatar
+                visual={avatarUrl}
+                size="xs"
+                className="s-mr-2"
+                isRounded={roundedAvatar ?? false}
+              />
+            }
+            label={avatarTooltipLabel}
+          />
         )}
+        {avatarUrl && !avatarTooltipLabel && (
+          <Avatar
+            visual={avatarUrl}
+            size="xs"
+            className="s-mr-2"
+            isRounded={roundedAvatar ?? false}
+          />
+        )}
+        {icon && (
+          <Icon
+            visual={icon}
+            size="sm"
+            className={cn(cellContentClasses.icon.join(" "), iconClassName)}
+          />
+        )}
+        <div className="s-flex s-shrink s-truncate">
+          <span className={cellContentClasses.text.join(" ")}>
+            {children}
+          </span>
+          {description && (
+            <span className={cellContentClasses.description.join(" ")}>
+              {description}
+            </span>
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
 };
 
 interface BasicCellContentProps extends React.TdHTMLAttributes<HTMLDivElement> {
@@ -535,7 +602,11 @@ DataTable.BasicCellContent = function BasicCellContent({
             <div
               className={cn(
                 cellHeight,
-                "s-group s-flex s-items-center s-gap-2 s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-dark",
+                [
+                  "s-group s-flex s-items-center s-gap-2",
+                  "s-text-sm",
+                  "s-text-muted-foreground dark:s-text-muted-foreground-darkMode"
+                ].join(" "),
                 className
               )}
               {...props}
@@ -561,7 +632,11 @@ DataTable.BasicCellContent = function BasicCellContent({
         <div
           className={cn(
             cellHeight,
-            "s-group s-flex s-items-center s-gap-2 s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-dark",
+            [
+              "s-group s-flex s-items-center s-gap-2",
+              "s-text-sm",
+              "s-text-muted-foreground dark:s-text-muted-foreground-darkMode"
+            ].join(" "),
             className
           )}
           {...props}
@@ -609,7 +684,10 @@ DataTable.CellContentWithCopy = function CellContentWithCopy({
   };
 
   return (
-    <div className={cn("s-flex s-items-center s-space-x-2", className)}>
+    <div className={cn([
+        "s-flex s-items-center",
+        "s-space-x-2"
+      ].join(" "), className)}>
       <span className="s-truncate">{children}</span>
       <IconButton
         icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
@@ -630,7 +708,17 @@ DataTable.Caption = function Caption({
   ...props
 }: React.HTMLAttributes<HTMLTableCaptionElement>) {
   return (
-    <caption className={className} {...props}>
+    <caption
+      className={cn(
+        [
+          "s-mt-4",
+          "s-text-sm",
+          "s-text-muted-foreground dark:s-text-muted-foreground-darkMode"
+        ].join(" "),
+        className
+      )}
+      {...props}
+    >
       {children}
     </caption>
   );

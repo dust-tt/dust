@@ -129,7 +129,12 @@ export function Modal({
     <Transition show={isOpen} as={Fragment} appear={true}>
       <Dialog
         as="div"
-        className="s-fixed s-absolute s-inset-0 s-z-50 s-overflow-hidden"
+        className={[
+          "s-fixed s-absolute",
+          "s-inset-0",
+          "s-z-50",
+          "s-overflow-hidden"
+        ].join(" ")}
         onClose={() => {
           // Close modal on outside click if no changes or not an alert.
           if (!hasChanged && !alertModal) {
@@ -147,11 +152,19 @@ export function Modal({
           leaveFrom="s-opacity-100"
           leaveTo="s-opacity-0"
         >
-          <div className="s-fixed s-inset-0 s-bg-structure-50/80 dark:s-bg-structure-50-dark/80 s-backdrop-blur-sm s-transition-opacity" />
+          <div className={[
+            "s-fixed s-inset-0",
+            "s-bg-structure-50/80 dark:s-bg-structure-50-darkMode/80",
+            "s-backdrop-blur-sm",
+            "s-transition-opacity"
+          ].join(" ")} />
         </Transition.Child>
 
         {/* Panel and transition */}
-        <div className={classNames(containerClasses, variantSize[variant])}>
+        <div className={classNames(
+          containerClasses,
+          variantSize[variant]
+        )}>
           <Transition.Child
             as={Fragment}
             enter="s-ease-out s-duration-300"
@@ -163,7 +176,13 @@ export function Modal({
           >
             <Dialog.Panel
               className={classNames(
-                "s-absolute s-transform s-bg-structure-0 dark:s-bg-structure-0-dark s-px-3 s-transition-all sm:s-px-4 s-text-foreground dark:s-text-foreground-dark",
+                [
+                  "s-absolute s-transform",
+                  "s-bg-structure-0 dark:s-bg-structure-0-darkMode",
+                  "s-px-3 sm:s-px-4",
+                  "s-transition-all",
+                  "s-text-foreground dark:s-text-foreground-darkMode"
+                ].join(" "),
                 panelClasses,
                 variantSize[variant]
               )}
@@ -181,7 +200,10 @@ export function Modal({
                 tabIndex={1}
                 autoFocus
                 className={classNames(
-                  "s-pb-6 s-pt-16 focus-visible:s-outline-none",
+                  [
+                    "s-pb-6 s-pt-16",
+                    "focus-visible:s-outline-none"
+                  ].join(" "),
                   innerContainerClasses,
                   className ?? ""
                 )}
