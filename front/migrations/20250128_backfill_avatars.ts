@@ -2,6 +2,7 @@ import type { LightWorkspaceType } from "@dust-tt/types";
 import { isSupportedFileContentType } from "@dust-tt/types";
 import { Op } from "sequelize";
 
+import { Authenticator } from "@app/lib/auth";
 import { getPublicUploadBucket } from "@app/lib/file_storage";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -15,18 +16,18 @@ async function backfillAvatars(
     execute,
     deleteOldFile,
     logger,
-    bucket,
   }: {
     execute: boolean;
     deleteOldFile: boolean;
     logger: Logger;
-    bucket: string;
   }
 ) {
   logger.info(
     { workspaceId: workspace.sId, execute },
     "Starting avatar backfill"
   );
+  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+  const baseUrl = `https://storage.googleapis.com/${getPublicUploadBucket().name}/`;
 
   // Get all agent with legacy avatars
   const agentConfigurations = await AgentConfiguration.findAll({
@@ -35,10 +36,10 @@ async function backfillAvatars(
       pictureUrl: {
         [Op.and]: [
           {
-            [Op.like]: `https://storage.googleapis.com/${bucket}/%`,
+            [Op.like]: `${baseUrl}%`,
           },
           {
-            [Op.notLike]: `https://storage.googleapis.com/${bucket}/files/%`,
+            [Op.notLike]: `${baseUrl}files/%`,
           },
         ],
       },
@@ -47,10 +48,8 @@ async function backfillAvatars(
 
   for (const agentConfiguration of agentConfigurations) {
     const { pictureUrl } = agentConfiguration;
-    const oldPath = pictureUrl.replace(
-      `https://storage.googleapis.com/${bucket}/`,
-      ""
-    );
+
+    const oldPath = pictureUrl.replace(baseUrl, "");
 
     const [metadata] = await getPublicUploadBucket()
       .file(oldPath)
@@ -73,69 +72,66 @@ async function backfillAvatars(
       useCaseMetadata: null,
     };
 
-    const file = execute ? await FileResource.makeNew(fileBlob) : null;
-    const fileId = file?.sId ?? "fil_xxxxxxxxxx";
-    const newPath = `files/w/${workspace.sId}/${fileId}/public`;
-
-    logger.info(
-      {
-        workspaceId: workspace.sId,
-        agentId: agentConfiguration.sId,
-        oldPath,
-        newPath,
-      },
-      "Processing agent avatar"
-    );
-
-    logger.info({ oldPath, newPath }, "moving gcs resource");
     if (execute) {
-      await getPublicUploadBucket()
-        .file(oldPath)
-        .copy(getPublicUploadBucket().file(newPath));
-    }
+      const file = await FileResource.makeNew(fileBlob);
+      const newPath = file.getCloudStoragePath(auth, "public");
 
-    if (file) {
-      await file.markAsReady();
-    }
-
-    const newPictureUrl = `https://storage.googleapis.com/${bucket}/${newPath}`;
-    logger.info({ newPictureUrl }, "updating agent");
-
-    if (execute) {
-      await agentConfiguration.update(
+      logger.info(
         {
-          pictureUrl: newPictureUrl,
+          workspaceId: workspace.sId,
+          agentId: agentConfiguration.sId,
+          oldPath,
+          newPath,
         },
-        {
-          hooks: false,
-          silent: true,
-        }
+        "Processing agent avatar"
       );
-    }
 
-    if (deleteOldFile && execute) {
-      await getPublicUploadBucket().file(oldPath).delete();
+      logger.info({ oldPath, newPath }, "moving gcs resource");
+      if (execute) {
+        await getPublicUploadBucket()
+          .file(oldPath)
+          .copy(getPublicUploadBucket().file(newPath));
+      }
+
+      if (file) {
+        await file.markAsReady();
+      }
+
+      const newPictureUrl = `${baseUrl}${newPath}`;
+
+      logger.info({ pictureUrl, newPictureUrl }, "updating agent");
+
+      if (execute) {
+        await agentConfiguration.update(
+          {
+            pictureUrl: newPictureUrl,
+          },
+          {
+            hooks: false,
+            silent: true,
+          }
+        );
+      }
+
+      if (deleteOldFile) {
+        await getPublicUploadBucket().file(oldPath).delete();
+      }
     }
   }
 }
 
 makeScript(
   {
-    bucket: {
-      type: "string",
-      describe: "The bucket to use for the avatar backfill",
-      default: "dust-public-uploads",
-    },
     deleteOldFile: {
       type: "boolean",
       describe: "Whether to delete the old file",
       default: false,
     },
   },
-  async ({ execute, bucket, deleteOldFile }, logger) => {
+  async ({ execute, deleteOldFile }, logger) => {
     return runOnAllWorkspaces(
       async (workspace) =>
-        backfillAvatars(workspace, { execute, logger, bucket, deleteOldFile }),
+        backfillAvatars(workspace, { execute, logger, deleteOldFile }),
       { concurrency: 10 }
     );
   }
