@@ -48,7 +48,6 @@ async function backfillTableRetrievalDocumentChunk(
 ) {
   let lastSeenId = 0;
   const batchSize = 1000;
-  let totalProcessed = 0;
 
   logger.info(
     { workspaceId: workspace.sId, table: table.model.tableName },
@@ -56,52 +55,38 @@ async function backfillTableRetrievalDocumentChunk(
   );
 
   for (;;) {
-    const records = await table.model.findAll({
+    const documents: RetrievalDocument[] = await RetrievalDocument.findAll({
       where: {
         id: { [Op.gt]: lastSeenId },
-        workspaceId: { [Op.is]: null },
-        ...(table.where(workspace.id, lastSeenId) || {}),
+        workspaceId: workspace.id,
       },
-      order: [["id", "ASC"]],
+      attributes: ["id", "workspaceId"],
       limit: batchSize,
-      attributes: table.attributes,
     });
 
-    if (records.length === 0) {
+    if (documents.length > 0) {
       break;
     }
 
-    totalProcessed += records.length;
-    logger.info(
-      {
-        workspaceId: workspace.sId,
-        table: table.model.tableName,
-        batchSize: records.length,
-        totalProcessed,
-        lastId: lastSeenId,
-      },
-      "Processing batch"
-    );
-
     if (execute) {
-      const recordIds = records.map((r) => r.id);
-      await table.model.update(
-        { workspaceId: workspace.id },
+      await RetrievalDocumentChunk.update(
+        {
+          workspaceId: workspace.id,
+        },
         {
           where: {
-            id: { [Op.in]: recordIds },
+            retrievalDocumentId: { [Op.in]: documents.map((d) => d.id) },
           },
           hooks: false,
-          fields: ["workspaceId"],
           silent: true,
         }
       );
     }
-
-    lastSeenId = records[records.length - 1].id;
+    lastSeenId = documents[documents.length - 1].id;
+    logger.info({}, `Processed batch up to id ${lastSeenId}`);
   }
 
-  return totalProcessed;
+  return;
 }
 
 async function backfillTableRetrievalDocument(
