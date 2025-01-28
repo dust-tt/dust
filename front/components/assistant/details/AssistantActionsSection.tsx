@@ -279,8 +279,8 @@ function renderOtherAction(
       <ActionSection title="Reasoning" key={`other-${index}`}>
         <Icon visual={ChatBubbleThoughtIcon} size="sm" />
         <div>
-          Assistant can perform complex step by step reasoning to solve problems
-          that require deep analysis (slow but powerful).
+          Assistant can perform step by step reasoning to solve complex
+          problems. Slow but powerful.
         </div>
       </ActionSection>
     );
