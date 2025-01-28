@@ -242,8 +242,9 @@ export const SpaceDataSourceViewContentList = ({
     [setPagination, setViewType, viewType, pagination.pageSize]
   );
 
-  const isServerPagination =
-    isFolder(dataSourceView.dataSource) && !dataSourceSearch;
+  // TODO(20250127, nodes-core): turn to true and remove when implementing pagination
+  const isServerPagination = false;
+  // isFolder(dataSourceView.dataSource) && !dataSourceSearch;
 
   const columns = useMemo(
     () => getTableColumns(showSpaceUsage),
