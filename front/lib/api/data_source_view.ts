@@ -33,6 +33,7 @@ import {
 } from "@app/lib/api/content_nodes";
 import type { OffsetPaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
+import { SPREADSHEET_MIME_TYPES } from "@app/lib/content_nodes";
 import type { DustError } from "@app/lib/error";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import {
@@ -279,6 +280,12 @@ async function getContentNodesForDataSourceViewFromCore(
     filterNodesByViewType(coreRes.value.nodes, viewType)
   );
 
+  const expandable = (node: CoreAPIContentNode) =>
+    !NON_EXPANDABLE_NODES_MIME_TYPES.includes(node.mime_type) &&
+    node.has_children &&
+    // if we aren't in tables view, spreadsheets are not expandable
+    !(viewType !== "tables" && SPREADSHEET_MIME_TYPES.includes(node.mime_type));
+
   return new Ok({
     nodes: filteredNodes.map((node) => {
       return {
@@ -292,9 +299,7 @@ async function getContentNodesForDataSourceViewFromCore(
         providerVisibility: node.provider_visibility,
         parentInternalIds: node.parents,
         type: getContentNodeType(node),
-        expandable:
-          !NON_EXPANDABLE_NODES_MIME_TYPES.includes(node.mime_type) &&
-          node.has_children,
+        expandable: expandable(node),
         mimeType: node.mime_type,
         preventSelection: FOLDERS_SELECTION_PREVENTED_MIME_TYPES.includes(
           node.mime_type
