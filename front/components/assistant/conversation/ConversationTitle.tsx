@@ -237,7 +237,7 @@ export function ConversationTitle({
               }
               content={
                 <div className="flex flex-col gap-y-4 py-4">
-                  <div className="text-sm font-normal text-element-700">
+                  <div className="dark:text-element-700-darkMode text-sm font-normal text-element-700">
                     Share the conversation link with other members of your
                     workspace to invite them to contribute.
                   </div>
