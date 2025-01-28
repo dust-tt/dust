@@ -96,7 +96,7 @@ export function formatValue(val: any): string {
   return `'${strVal}'`;
 }
 
-export function generateTableSQL(
+export function generateInsertStatements(
   tableName: string,
   rows: Record<string, any>[],
   options?: {

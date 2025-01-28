@@ -2,8 +2,11 @@ import assert from "assert";
 
 import { frontSequelize } from "@app/lib/resources/storage";
 import logger from "@app/logger/logger";
-import { readFromRelocationStorage } from "@app/temporal/relocation/storage";
-import type { RelocationBlob } from "@app/temporal/relocation/types";
+import type {
+  CoreEntitiesRelocationBlob,
+  RelocationBlob,
+} from "@app/temporal/relocation/activities/types";
+import { readFromRelocationStorage } from "@app/temporal/relocation/lib/file_storage/relocation";
 
 export async function writeWorkspaceAndUsersToDestinationRegion({
   dataPath,
@@ -12,9 +15,7 @@ export async function writeWorkspaceAndUsersToDestinationRegion({
 }) {
   // Get SQL from storage.
   const blob =
-    await readFromRelocationStorage<
-      RelocationBlob<"plans" | "users" | "workspace">
-    >(dataPath);
+    await readFromRelocationStorage<CoreEntitiesRelocationBlob>(dataPath);
 
   assert(blob.statements.workspace.length === 1, "Expected one workspace SQL");
   const [workspaceSQL] = blob.statements.workspace;
@@ -39,7 +40,6 @@ export async function writeWorkspaceAndUsersToDestinationRegion({
   // TODO: Ensure all data is created.
 }
 
-// Generic SQL executor for everything else
 export async function processFrontTableChunk({
   dataPath,
 }: {

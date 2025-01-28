@@ -55,6 +55,10 @@ export async function workspaceRelocationWorkflow({
   });
 }
 
+/**
+ * Front relocation workflows.
+ */
+
 export async function workspaceRelocateFrontWorkflow({
   sourceRegion,
   targetRegion,
@@ -80,6 +84,8 @@ export async function workspaceRelocateFrontWorkflow({
     await sourceRegionActivities.getTablesWithWorkspaceIdOrder();
 
   // TODO: Also move other tables that don't have `workspaceId` but are related to the workspace.
+
+  // 1) Relocate front tables to the destination region.
   for (const tableName of tablesOrder) {
     await executeChild(workspaceRelocateFrontTableWorkflow, {
       workflowId: `workspaceRelocateFrontTableWorkflow-${workspaceId}-${tableName}`,
@@ -95,6 +101,8 @@ export async function workspaceRelocateFrontWorkflow({
       memo,
     });
   }
+
+  // 2) Relocate the associated files from the file storage to the destination region.
 }
 
 export async function workspaceRelocateFrontTableWorkflow({
@@ -147,3 +155,9 @@ export async function workspaceRelocateFrontTableWorkflow({
     });
   } while (hasMoreRows);
 }
+
+export async function workspaceRelocateFrontFileStorageWorkflow({
+  sourceRegion,
+  targetRegion,
+  workspaceId,
+}: RelocationWorkflowBase) {}

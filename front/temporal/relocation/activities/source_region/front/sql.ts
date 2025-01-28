@@ -6,10 +6,13 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
-import { generateTableSQL } from "@app/temporal/relocation/sql_generator";
-import { getTopologicallySortedTables } from "@app/temporal/relocation/sql_tables";
-import { writeToRelocationStorage } from "@app/temporal/relocation/storage";
-import type { RelocationBlob } from "@app/temporal/relocation/types";
+import type {
+  CoreEntitiesRelocationBlob,
+  RelocationBlob,
+} from "@app/temporal/relocation/activities/types";
+import { writeToRelocationStorage } from "@app/temporal/relocation/lib/file_storage/relocation";
+import { generateInsertStatements } from "@app/temporal/relocation/lib/sql/insert";
+import { getTopologicalOrder } from "@app/temporal/relocation/lib/sql/schema/dependencies";
 
 export async function readWorkspaceAndUsersFromSourceRegion({
   workspaceId,
@@ -61,11 +64,11 @@ export async function readWorkspaceAndUsersFromSourceRegion({
     }
   );
 
-  const blob: RelocationBlob<"plans" | "users" | "workspace"> = {
+  const blob: CoreEntitiesRelocationBlob = {
     statements: {
-      plans: generateTableSQL("plans", plans, { onConflict: "ignore" }),
-      users: generateTableSQL("users", users, { onConflict: "ignore" }),
-      workspace: generateTableSQL("workspaces", [workspace], {
+      plans: generateInsertStatements("plans", plans, { onConflict: "ignore" }),
+      users: generateInsertStatements("users", users, { onConflict: "ignore" }),
+      workspace: generateInsertStatements("workspaces", [workspace], {
         onConflict: "ignore",
       }),
     },
@@ -83,7 +86,9 @@ export async function readWorkspaceAndUsersFromSourceRegion({
 }
 
 export async function getTablesWithWorkspaceIdOrder() {
-  return getTopologicallySortedTables(frontSequelize);
+  return getTopologicalOrder(frontSequelize, {
+    columnName: "workspaceId",
+  });
 }
 
 interface ReadTableChunkParams {
@@ -115,7 +120,9 @@ export async function readFrontTableChunk({
 
   const blob: RelocationBlob = {
     statements: {
-      [tableName]: generateTableSQL(tableName, rows, { onConflict: "ignore" }),
+      [tableName]: generateInsertStatements(tableName, rows, {
+        onConflict: "ignore",
+      }),
     },
   };
 

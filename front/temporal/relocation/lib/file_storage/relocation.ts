@@ -1,21 +1,15 @@
 import type { ModelId } from "@dust-tt/types";
-import { EnvironmentConfig } from "@dust-tt/types";
 
 import { getBucketInstance } from "@app/lib/file_storage";
+import config from "@app/temporal/relocation/activities/config";
 
-const RELOCATION_PATH_PREFIX = "relocation";
+const RELOCATION_PATH_PREFIX = "relocations";
 
 interface RelocationStorageOptions {
   workspaceId: ModelId;
   type: "front" | "connectors" | "core";
   operation: string;
 }
-
-const config = {
-  getGcsRelocationBucket: (): string => {
-    return EnvironmentConfig.getEnvVariable("DUST_RELOCATION_BUCKET");
-  },
-};
 
 export async function writeToRelocationStorage(
   data: unknown,
@@ -31,8 +25,6 @@ export async function writeToRelocationStorage(
     contentType: "application/json",
     filePath: path,
   });
-
-  console.log("Writing data to path:", path);
 
   return path;
 }
