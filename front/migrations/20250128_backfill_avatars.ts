@@ -13,9 +13,15 @@ async function backfillAvatars(
   workspace: LightWorkspaceType,
   {
     execute,
+    deleteOldFile,
     logger,
     bucket,
-  }: { execute: boolean; logger: Logger; bucket: string }
+  }: {
+    execute: boolean;
+    deleteOldFile: boolean;
+    logger: Logger;
+    bucket: string;
+  }
 ) {
   logger.info(
     { workspaceId: workspace.sId, execute },
@@ -67,10 +73,9 @@ async function backfillAvatars(
       useCaseMetadata: null,
     };
 
-    const file = execute
-      ? await FileResource.makeNew(fileBlob)
-      : { ...fileBlob, sId: "fil_xxxxxxxxx" };
-    const newPath = `files/w/${workspace.sId}/${file.sId}/public`;
+    const file = execute ? await FileResource.makeNew(fileBlob) : null;
+    const fileId = file?.sId ?? "fil_xxxxxxxxxx";
+    const newPath = `files/w/${workspace.sId}/${fileId}/public`;
 
     logger.info(
       {
@@ -89,13 +94,27 @@ async function backfillAvatars(
         .copy(getPublicUploadBucket().file(newPath));
     }
 
+    if (file) {
+      await file.markAsReady();
+    }
+
     const newPictureUrl = `https://storage.googleapis.com/${bucket}/${newPath}`;
     logger.info({ newPictureUrl }, "updating agent");
 
     if (execute) {
-      await agentConfiguration.update({
-        pictureUrl: newPictureUrl,
-      });
+      await agentConfiguration.update(
+        {
+          pictureUrl: newPictureUrl,
+        },
+        {
+          hooks: false,
+          silent: true,
+        }
+      );
+    }
+
+    if (deleteOldFile && execute) {
+      await getPublicUploadBucket().file(oldPath).delete();
     }
   }
 }
@@ -107,11 +126,16 @@ makeScript(
       describe: "The bucket to use for the avatar backfill",
       default: "dust-public-uploads",
     },
+    deleteOldFile: {
+      type: "boolean",
+      describe: "Whether to delete the old file",
+      default: false,
+    },
   },
-  async ({ execute, bucket }, logger) => {
+  async ({ execute, bucket, deleteOldFile }, logger) => {
     return runOnAllWorkspaces(
       async (workspace) =>
-        backfillAvatars(workspace, { execute, logger, bucket }),
+        backfillAvatars(workspace, { execute, logger, bucket, deleteOldFile }),
       { concurrency: 10 }
     );
   }
