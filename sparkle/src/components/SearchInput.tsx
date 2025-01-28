@@ -32,13 +32,11 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
     };
 
     return (
-      <div className={cn([
-        [
-          "s-relative",
-          "s-flex-grow"
-        ].join(" "),
+      <div className={cn(
+        "s-relative",
+        "s-flex-grow",
         className
-      ])}>
+      )}>
         <Input
           type="text"
           name={name}
@@ -51,14 +49,14 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
           disabled={disabled}
           ref={ref}
         />
-        <div className={[
+        <div className={cn(
           "s-absolute",
           "s-inset-y-0",
           "s-right-0",
           "s-flex",
           "s-items-center",
           "s-pr-1"
-        ].join(" ")}>
+        )}>
           {value ? (
             <Button
               icon={XMarkIcon}
@@ -68,18 +66,21 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
             />
           ) : (
             <div
-              className={cn([
+              className={cn(
                 "s-px-2",
-                disabled ? "s-text-element-600 dark:s-text-element-600-darkMode" : "s-text-foreground dark:s-text-foreground-darkMode"
-              ])}
+                {
+                  "s-text-element-600 dark:s-text-element-600-darkMode": disabled,
+                  "s-text-foreground dark:s-text-foreground-darkMode": !disabled
+                }
+              )}
             >
               <Icon
                 visual={MagnifyingGlassIcon}
                 size="xs"
-                className={cn([
+                className={cn(
                   "s-text-muted-foreground",
                   "dark:s-text-muted-foreground-darkMode"
-                ].join(" "))}
+                )}
               />
             </div>
           )}

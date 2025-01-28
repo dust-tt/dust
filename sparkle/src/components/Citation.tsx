@@ -79,14 +79,15 @@ const CitationIndex = React.forwardRef<
   return (
     <div
       ref={ref}
-      className={cn([
+      className={cn(
         "s-z-10",
         "s-flex s-h-4 s-w-4 s-items-center s-justify-center",
         "s-rounded-full",
         "s-bg-primary-600 dark:s-bg-primary-600-darkMode",
         "s-text-xs s-font-medium",
-        "s-text-primary-200 dark:s-text-primary-200-darkMode"
-      ].join(" "), className)}
+        "s-text-primary-200 dark:s-text-primary-200-darkMode",
+        className
+      )}
       {...props}
     >
       {children}
@@ -145,20 +146,21 @@ const CitationImage = React.forwardRef<HTMLDivElement, CitationImageProps>(
     return (
       <div
         ref={ref}
-        className={cn([
+        className={cn(
           "s-absolute s-inset-0",
           "s-bg-cover s-bg-center",
           "s-rounded-xl",
           "s-overflow-hidden",
-          "[mask-image:radial-gradient(white,black)]"
-        ].join(" "), className)}
+          "[mask-image:radial-gradient(white,black)]",
+          className
+        )}
         style={{
           backgroundImage: `url(${imgSrc})`,
         }}
         {...props}
       >
         <div
-          className={cn([
+          className={cn(
             "s-absolute s-inset-0",
             "s-z-0 s-h-full s-w-full",
             "s-bg-primary-100/80 dark:s-bg-primary-100-darkMode/80",
@@ -167,7 +169,7 @@ const CitationImage = React.forwardRef<HTMLDivElement, CitationImageProps>(
             "group-hover:s-bg-primary-200/70 dark:group-hover:s-bg-primary-200-darkMode/70",
             "group-hover:s-backdrop-blur-none",
             "group-active:s-bg-primary-100/60 dark:group-active:s-bg-primary-100-darkMode/60"
-          ].join(" "))}
+          )}
         />
       </div>
     );
@@ -199,14 +201,15 @@ const CitationLoading = React.forwardRef<
   return (
     <div
       ref={ref}
-      className={cn([
+      className={cn(
         "s-absolute s-inset-0",
         "s-z-20",
         "s-flex s-h-full s-w-full s-items-center s-justify-center",
         "s-rounded-xl",
         "s-bg-primary-100/80 dark:s-bg-primary-100-darkMode/80",
-        "s-backdrop-blur-sm"
-      ].join(" "), className)}
+        "s-backdrop-blur-sm",
+        className
+      )}
       {...props}
     >
       <Spinner variant="dark" size="md" />

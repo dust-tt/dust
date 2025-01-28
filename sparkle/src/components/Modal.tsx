@@ -129,12 +129,12 @@ export function Modal({
     <Transition show={isOpen} as={Fragment} appear={true}>
       <Dialog
         as="div"
-        className={[
+        className={cn(
           "s-fixed s-absolute",
           "s-inset-0",
           "s-z-50",
           "s-overflow-hidden"
-        ].join(" ")}
+        )}
         onClose={() => {
           // Close modal on outside click if no changes or not an alert.
           if (!hasChanged && !alertModal) {
@@ -152,12 +152,12 @@ export function Modal({
           leaveFrom="s-opacity-100"
           leaveTo="s-opacity-0"
         >
-          <div className={[
+          <div className={cn(
             "s-fixed s-inset-0",
             "s-bg-structure-50/80 dark:s-bg-structure-50-darkMode/80",
             "s-backdrop-blur-sm",
             "s-transition-opacity"
-          ].join(" ")} />
+          )} />
         </Transition.Child>
 
         {/* Panel and transition */}
@@ -176,13 +176,11 @@ export function Modal({
           >
             <Dialog.Panel
               className={classNames(
-                [
-                  "s-absolute s-transform",
-                  "s-bg-structure-0 dark:s-bg-structure-0-darkMode",
-                  "s-px-3 sm:s-px-4",
-                  "s-transition-all",
-                  "s-text-foreground dark:s-text-foreground-darkMode"
-                ].join(" "),
+                "s-absolute s-transform",
+                "s-bg-structure-0 dark:s-bg-structure-0-darkMode",
+                "s-px-3 sm:s-px-4",
+                "s-transition-all",
+                "s-text-foreground dark:s-text-foreground-darkMode",
                 panelClasses,
                 variantSize[variant]
               )}
@@ -200,10 +198,8 @@ export function Modal({
                 tabIndex={1}
                 autoFocus
                 className={classNames(
-                  [
-                    "s-pb-6 s-pt-16",
-                    "focus-visible:s-outline-none"
-                  ].join(" "),
+                  "s-pb-6 s-pt-16",
+                  "focus-visible:s-outline-none",
                   innerContainerClasses,
                   className ?? ""
                 )}

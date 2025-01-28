@@ -32,28 +32,28 @@ export const BUTTON_SIZES = ["mini", "xs", "sm", "md"] as const;
 export type ButtonSizeType = (typeof BUTTON_SIZES)[number];
 
 const styleVariants: Record<ButtonVariantType, string> = {
-  primary: [
+  primary: cn(
     "s-bg-primary-800 dark:s-bg-primary-800-darkMode",
     "s-text-primary-50 dark:s-text-primary-50-darkMode",
     "hover:s-bg-primary-light dark:hover:s-bg-primary-light-darkMode",
     "active:s-bg-primary-dark dark:active:s-bg-primary-dark-darkMode",
-    "disabled:s-bg-primary-muted dark:disabled:s-bg-primary-muted-darkMode",
-  ].join(" "),
-  highlight: [
+    "disabled:s-bg-primary-muted dark:disabled:s-bg-primary-muted-darkMode"
+  ),
+  highlight: cn(
     "s-bg-highlight dark:s-bg-highlight-darkMode",
     "s-text-highlight-50 dark:s-text-highlight-50-darkMode",
     "hover:s-bg-highlight-light dark:hover:s-bg-highlight-light-dark",
     "active:s-bg-highlight-dark dark:active:s-bg-highlight-dark-darkMode",
-    "disabled:s-bg-highlight-muted dark:disabled:s-bg-highlight-muted-darkMode",
-  ].join(" "),
-  warning: [
+    "disabled:s-bg-highlight-muted dark:disabled:s-bg-highlight-muted-darkMode"
+  ),
+  warning: cn(
     "s-bg-warning dark:s-bg-warning-darkMode",
     "s-text-warning-50 dark:s-text-warning-50-darkMode",
     "hover:s-bg-warning-light dark:hover:s-bg-warning-light-darkMode",
     "active:s-bg-warning-dark dark:active:s-bg-warning-dark-darkMode",
-    "disabled:s-bg-warning-muted dark:disabled:s-bg-warning-muted-darkMode",
-  ].join(" "),
-  outline: [
+    "disabled:s-bg-warning-muted dark:disabled:s-bg-warning-muted-darkMode"
+  ),
+  outline: cn(
     "s-border",
     "s-text-primary-800 dark:s-text-primary-800-darkMode",
     "s-bg-background dark:s-bg-background-darkMode",
@@ -63,9 +63,9 @@ const styleVariants: Record<ButtonVariantType, string> = {
     "hover:s-border-primary-150 dark:hover:s-border-primary-150-darkMode",
     "active:s-bg-primary-300 dark:active:s-bg-primary-300-darkMode",
     "disabled:s-text-primary-muted",
-    "disabled:s-border-structure-100 dark:disabled:s-border-structure-100-darkMode",
-  ].join(" "),
-  ghost: [
+    "disabled:s-border-structure-100 dark:disabled:s-border-structure-100-darkMode"
+  ),
+  ghost: cn(
     "s-border",
     "s-border-primary-200/0",
     "s-text-primary-950 dark:s-text-primary-950-darkMode",
@@ -73,9 +73,9 @@ const styleVariants: Record<ButtonVariantType, string> = {
     "hover:s-text-primary-900 dark:hover:s-text-primary-900-darkMode",
     "hover:s-border-primary-150 dark:hover:s-border-primary-150-darkMode",
     "active:s-bg-primary-300 dark:active:s-bg-primary-300-darkMode",
-    "disabled:s-text-primary-400 dark:disabled:s-text-primary-400-darkMode",
-  ].join(" "),
-  "ghost-secondary": [
+    "disabled:s-text-primary-400 dark:disabled:s-text-primary-400-darkMode"
+  ),
+  "ghost-secondary": cn(
     "s-border",
     "s-border-primary-200/0 dark:s-border-primary-200/0-darkMode",
     "s-text-muted-foreground",
@@ -83,8 +83,8 @@ const styleVariants: Record<ButtonVariantType, string> = {
     "hover:s-text-primary-900 dark:hover:s-text-primary-900-darkMode",
     "hover:s-border-primary-150 dark:hover:s-border-primary-150-darkMode",
     "active:s-bg-primary-300 dark:active:s-bg-primary-300-darkMode",
-    "disabled:s-text-primary-400 dark:disabled:s-text-primary-400-darkMode",
-  ].join(" "),
+    "disabled:s-text-primary-400 dark:disabled:s-text-primary-400-darkMode"
+  ),
 };
 
 const sizeVariants: Record<ButtonSizeType, string> = {

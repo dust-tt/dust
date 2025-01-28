@@ -21,11 +21,9 @@ export function Page({ children, variant = "normal" }: PageProps) {
     <main className={mainVariantClasses}>
       <div
         className={cn(
-          [
-            "s-mx-auto s-flex s-h-full s-max-w-4xl s-flex-col",
-            "s-text-sm s-font-normal",
-            "s-text-foreground dark:s-text-foreground-darkMode"
-          ].join(" "),
+          "s-mx-auto s-flex s-h-full s-max-w-4xl s-flex-col",
+          "s-text-sm s-font-normal",
+          "s-text-foreground dark:s-text-foreground-darkMode",
           divVariantClassNames
         )}
       >
@@ -210,16 +208,16 @@ Page.Horizontal = function ({
   return (
     <div
       className={cn(
-        [
-          "s-flex s-flex-col sm:s-flex-row",
-          sizing === "grow" ? "s-grow s-basis-0" : "",
-          sizing === "shrink" ? "s-shrink" : "",
-          gapSizes[gap],
-          align === "left" ? "s-justify-start" : "",
-          align === "center" ? "s-justify-center" : "",
-          align === "right" ? "s-justify-end" : "",
-          align === "stretch" ? "s-justify-stretch" : ""
-        ].filter(Boolean).join(" ")
+        "s-flex s-flex-col sm:s-flex-row",
+        {
+          "s-grow s-basis-0": sizing === "grow",
+          "s-shrink": sizing === "shrink",
+          "s-justify-start": align === "left",
+          "s-justify-center": align === "center",
+          "s-justify-end": align === "right",
+          "s-justify-stretch": align === "stretch"
+        },
+        gapSizes[gap]
       )}
     >
       {children}
@@ -236,15 +234,15 @@ Page.Vertical = function ({
   return (
     <div
       className={cn(
-        [
-          "s-flex s-flex-col",
-          sizing === "grow" ? "s-grow s-basis-0" : "",
-          sizing === "shrink" ? "s-shrink" : "",
-          gapSizes[gap],
-          align === "left" ? "s-items-start" : "",
-          align === "center" ? "s-items-center" : "",
-          align === "right" ? "s-items-end" : ""
-        ].filter(Boolean).join(" ")
+        "s-flex s-flex-col",
+        {
+          "s-grow s-basis-0": sizing === "grow",
+          "s-shrink": sizing === "shrink",
+          "s-items-start": align === "left",
+          "s-items-center": align === "center",
+          "s-items-end": align === "right"
+        },
+        gapSizes[gap]
       )}
     >
       {children}
@@ -261,15 +259,15 @@ Page.Fluid = function ({
   return (
     <div
       className={cn(
-        [
-          "s-flex s-flex-wrap",
-          sizing === "grow" ? "s-grow" : "",
-          sizing === "shrink" ? "s-shrink" : "",
-          gapSizes[gap],
-          align === "left" ? "s-items-start" : "",
-          align === "center" ? "s-items-center" : "",
-          align === "right" ? "s-items-end" : ""
-        ].filter(Boolean).join(" ")
+        "s-flex s-flex-wrap",
+        {
+          "s-grow": sizing === "grow",
+          "s-shrink": sizing === "shrink",
+          "s-items-start": align === "left",
+          "s-items-center": align === "center",
+          "s-items-end": align === "right"
+        },
+        gapSizes[gap]
       )}
     >
       {children}

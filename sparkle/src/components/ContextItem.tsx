@@ -1,6 +1,6 @@
 import React, { ComponentType, ReactNode } from "react";
 
-import { classNames } from "@sparkle/lib/utils";
+import { cn } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
 
@@ -27,22 +27,22 @@ export function ContextItem({
 }: ContextItemProps) {
   return (
     <div
-      className={classNames([
-        hasSeparator ? "s-border-b s-border-structure-200" : "",
+      className={cn(
         "s-flex s-w-full s-flex-col",
-        hasSeparatorIfLast ? "" : "last:s-border-none"
-      ].join(" "))}
+        hasSeparator && "s-border-b s-border-structure-200",
+        !hasSeparatorIfLast && "last:s-border-none"
+      )}
     >
       <div
-        className={classNames([
+        className={cn(
           "s-flex s-w-full s-flex-row s-items-start s-gap-3 s-px-4 s-py-3",
-          onClick ? [
+          onClick && [
             "s-cursor-pointer",
             "s-transition s-duration-200",
             "hover:s-bg-structure-50 dark:hover:s-bg-structure-50-darkMode",
             "active:s-bg-structure-100 dark:active:s-bg-structure-100-darkMode"
-          ].join(" ") : ""
-        ].join(" "))}
+          ]
+        )}
         onClick={onClick}
       >
         {visual}
@@ -98,11 +98,11 @@ ContextItem.List = function ({
 
   return (
     <div
-      className={classNames([
-        className ? className : "",
-        hasBorder ? "s-border-b s-border-t s-border-structure-200" : "",
-        "s-flex s-flex-col"
-      ].join(" "))}
+      className={cn(
+        "s-flex s-flex-col",
+        hasBorder && "s-border-b s-border-t s-border-structure-200",
+        className
+      )}
     >
       {children}
     </div>
@@ -151,10 +151,10 @@ ContextItem.SectionHeader = function ({
 }: ItemSectionHeaderProps) {
   return (
     <div
-      className={classNames([
+      className={cn(
         "s-flex s-flex-col s-gap-0 s-pb-3 s-pt-7",
-        hasBorder ? "s-border-b s-border-structure-200" : ""
-      ].join(" "))}
+        hasBorder && "s-border-b s-border-structure-200"
+      )}
     >
       <div className="s-text-xl s-font-medium s-text-foreground dark:s-text-foreground-darkMode">
         {title}

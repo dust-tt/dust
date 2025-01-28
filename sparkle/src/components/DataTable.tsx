@@ -166,10 +166,8 @@ export function DataTable<TData extends TBaseData>({
   return (
     <div
       className={cn(
-        [
-          "s-flex s-flex-col",
-          "s-gap-2"
-        ].join(" "),
+        "s-flex s-flex-col",
+        "s-gap-2",
         className,
         widthClassName
       )}
@@ -279,7 +277,7 @@ DataTable.Root = function DataTableRoot({
   ];
 
   return (
-    <table className={cn(rootClasses.join(" "))} {...props}>
+    <table className={cn(...rootClasses)} {...props}>
       {children}
     </table>
   );
@@ -297,10 +295,8 @@ DataTable.Header = function Header({
   return (
     <thead
       className={cn(
-        [
-          "s-border-b",
-          "s-border-separator dark:s-border-separator-darkMode"
-        ].join(" "),
+        "s-border-b",
+        "s-border-separator dark:s-border-separator-darkMode",
         className
       )}
       {...props}
@@ -330,7 +326,7 @@ DataTable.Head = function Head({
   return (
     <th
       className={cn(
-        headClasses.join(" "),
+        ...headClasses,
         column.columnDef.meta?.className,
         className
       )}
@@ -353,10 +349,8 @@ DataTable.Body = function Body({
   return (
     <tbody
       className={cn(
-        [
-          "s-bg-white dark:s-bg-structure-50-darkMode",
-          "s-border-b s-border-separator dark:s-border-separator-darkMode"
-        ].join(" "),
+        "s-bg-white dark:s-bg-structure-50-darkMode",
+        "s-border-b s-border-separator dark:s-border-separator-darkMode",
         className
       )}
       {...props}
@@ -381,10 +375,8 @@ DataTable.Row = function Row({
 }: RowProps) {
   const rowClasses = [
     "s-group/dt s-border-b s-border-separator s-transition-colors s-duration-300 s-ease-out",
-    onClick ? [
-      "s-cursor-pointer",
-      "hover:s-bg-muted dark:hover:s-bg-muted-darkMode"
-    ].join(" ") : ""
+    onClick && "s-cursor-pointer",
+    onClick && "hover:s-bg-muted dark:hover:s-bg-muted-darkMode"
   ];
 
   return (
@@ -470,10 +462,8 @@ DataTable.Cell = function Cell({
     <td
       className={cn(
         cellHeight,
-        [
-          "s-truncate",
-          "s-pl-2"
-        ].join(" "),
+        "s-truncate",
+        "s-pl-2",
         column.columnDef.meta?.className,
         className
       )}
@@ -524,7 +514,7 @@ DataTable.CellContent = function CellContent({
   ...props
 }: CellContentProps) {
   return (
-      <div className={cn(cellContentClasses.content.join(" "), className)} {...props}>
+      <div className={cn(...cellContentClasses.content, className)} {...props}>
         {avatarUrl && avatarTooltipLabel && (
           <Tooltip
             trigger={
@@ -550,15 +540,15 @@ DataTable.CellContent = function CellContent({
           <Icon
             visual={icon}
             size="sm"
-            className={cn(cellContentClasses.icon.join(" "), iconClassName)}
+            className={cn(...cellContentClasses.icon, iconClassName)}
           />
         )}
         <div className="s-flex s-shrink s-truncate">
-          <span className={cellContentClasses.text.join(" ")}>
+          <span className={cn(...cellContentClasses.text)}>
             {children}
           </span>
           {description && (
-            <span className={cellContentClasses.description.join(" ")}>
+            <span className={cn(...cellContentClasses.description)}>
               {description}
             </span>
           )}
@@ -602,11 +592,9 @@ DataTable.BasicCellContent = function BasicCellContent({
             <div
               className={cn(
                 cellHeight,
-                [
-                  "s-group s-flex s-items-center s-gap-2",
-                  "s-text-sm",
-                  "s-text-muted-foreground dark:s-text-muted-foreground-darkMode"
-                ].join(" "),
+                "s-group s-flex s-items-center s-gap-2",
+                "s-text-sm",
+                "s-text-muted-foreground dark:s-text-muted-foreground-darkMode",
                 className
               )}
               {...props}
@@ -635,10 +623,9 @@ DataTable.BasicCellContent = function BasicCellContent({
             [
               "s-group s-flex s-items-center s-gap-2",
               "s-text-sm",
-              "s-text-muted-foreground dark:s-text-muted-foreground-darkMode"
-            ].join(" "),
-            className
-          )}
+              "s-text-muted-foreground dark:s-text-muted-foreground-darkMode",
+              className
+            )}
           {...props}
         >
           <span className="s-truncate">{label}</span>
@@ -684,10 +671,11 @@ DataTable.CellContentWithCopy = function CellContentWithCopy({
   };
 
   return (
-    <div className={cn([
+    <div className={cn(
         "s-flex s-items-center",
-        "s-space-x-2"
-      ].join(" "), className)}>
+        "s-space-x-2",
+        className
+      )}>
       <span className="s-truncate">{children}</span>
       <IconButton
         icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
@@ -710,11 +698,9 @@ DataTable.Caption = function Caption({
   return (
     <caption
       className={cn(
-        [
-          "s-mt-4",
-          "s-text-sm",
-          "s-text-muted-foreground dark:s-text-muted-foreground-darkMode"
-        ].join(" "),
+        "s-mt-4",
+        "s-text-sm",
+        "s-text-muted-foreground dark:s-text-muted-foreground-darkMode",
         className
       )}
       {...props}

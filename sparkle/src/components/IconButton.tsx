@@ -17,42 +17,42 @@ type IconButtonProps = {
 };
 
 const styleVariants: Record<ButtonVariantType, string> = {
-  primary: [
+  primary: cn(
     "s-text-action-500 dark:s-text-action-500-darkMode",
     "hover:s-text-action-400 dark:hover:s-text-action-500-darkMode",
     "active:s-text-action-600 dark:active:s-text-action-600-darkMode",
     "s-text-element-500 dark:s-text-element-500-darkMode"
-  ].join(" "),
-  warning: [
+  ),
+  warning: cn(
     "s-text-warning-500 dark:s-text-warning-500-darkMode",
     "hover:s-text-warning-400 dark:hover:s-text-warning-500-darkMode",
     "active:s-text-warning-600 dark:active:s-text-warning-600-darkMode",
     "s-text-element-500 dark:s-text-element-500-darkMode"
-  ].join(" "),
-  highlight: [
+  ),
+  highlight: cn(
     "s-text-foreground dark:s-text-foreground-darkMode",
     "hover:s-text-action-400 dark:hover:s-text-action-500-darkMode",
     "active:s-text-action-600 dark:active:s-text-action-600-darkMode",
     "s-text-element-500 dark:s-text-element-500-darkMode"
-  ].join(" "),
-  outline: [
+  ),
+  outline: cn(
     "s-text-element-700 dark:s-text-element-700-darkMode",
     "hover:s-text-action-400 dark:hover:s-text-action-500-darkMode",
     "active:s-text-action-600 dark:active:s-text-action-600-darkMode",
     "s-text-element-500 dark:s-text-element-500-darkMode"
-  ].join(" "),
-  ghost: [
+  ),
+  ghost: cn(
     "s-text-foreground dark:s-text-foreground-darkMode",
     "hover:s-text-primary-200 dark:hover:s-text-primary-200-darkMode",
     "active:s-text-primary-300 dark:active:s-text-primary-300-darkMode",
     "s-text-muted-foreground dark:s-text-muted-foreground-darkMode"
-  ].join(" "),
-  "ghost-secondary": [
+  ),
+  "ghost-secondary": cn(
     "s-text-muted-foreground dark:s-text-muted-foreground-darkMode",
     "hover:s-text-primary-200 dark:hover:s-text-primary-200-darkMode",
     "active:s-text-primary-300 dark:active:s-text-primary-300-darkMode",
     "s-text-muted-foreground/50 dark:s-text-muted-foreground-darkMode/50"
-  ].join(" ")
+  )
 };
 
 const iconButtonVariants = cva(

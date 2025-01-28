@@ -3,6 +3,7 @@ import React, { ReactNode, useMemo } from "react";
 
 import { ScrollArea, ScrollBar } from "@sparkle/components";
 import { ContentBlockWrapper } from "@sparkle/components/markdown/ContentBlockWrapper";
+import { cn } from "@sparkle/lib/utils";
 
 const getNodeText = (node: ReactNode): string => {
   if (["string", "number"].includes(typeof node)) {
@@ -66,19 +67,19 @@ export function TableBlock({ children }: { children: React.ReactNode }) {
 
   return (
     <ContentBlockWrapper
-      innerClassName={[
+      innerClassName={cn(
         "s-relative",
         "s-my-2",
         "s-w-full",
         "s-border s-border-border-darkMode",
         "s-rounded-2xl"
-      ].join(" ")}
+      )}
       content={tableData}
     >
-      <ScrollArea className={[
+      <ScrollArea className={cn(
         "s-w-full",
         "s-rounded-2xl"
-      ].join(" ")}>
+      )}>
         <table className="s-w-full">{children}</table>
         <ScrollBar orientation="horizontal" />
       </ScrollArea>
@@ -88,27 +89,27 @@ export function TableBlock({ children }: { children: React.ReactNode }) {
 
 export function TableHeadBlock({ children }: { children: React.ReactNode }) {
   return (
-    <thead className={[
+    <thead className={cn(
       "s-bg-muted-background dark:s-bg-muted-background-darkMode",
       "s-px-2 s-py-2"
-    ].join(" ")}>{children}</thead>
+    )}>{children}</thead>
   );
 }
 
 export function TableBodyBlock({ children }: { children: React.ReactNode }) {
-  return <tbody className={[
+  return <tbody className={cn(
     "s-bg-white dark:s-bg-structure-50-darkMode"
-  ].join(" ")}>{children}</tbody>;
+  )}>{children}</tbody>;
 }
 
 export function TableHeaderBlock({ children }: { children: React.ReactNode }) {
   return (
-    <th className={[
+    <th className={cn(
       "s-truncate s-whitespace-nowrap s-break-words",
       "s-py-3.5 s-pl-4",
       "s-text-left s-text-xs s-font-medium s-uppercase s-tracking-wider",
       "s-text-muted-foreground dark:s-text-muted-foreground-darkMode"
-    ].join(" ")}>
+    )}>
       {children}
     </th>
   );
@@ -116,11 +117,11 @@ export function TableHeaderBlock({ children }: { children: React.ReactNode }) {
 
 export function TableDataBlock({ children }: { children: React.ReactNode }) {
   return (
-    <td className={[
+    <td className={cn(
       "s-px-4 s-py-3",
       "s-text-sm",
       "s-text-foreground dark:s-text-foreground-darkMode"
-    ].join(" ")}>
+    )}>
       {Array.isArray(children) ? (
         children.map((child: any, i) => {
           if (child === "<br>") {

@@ -63,19 +63,22 @@ export function Pagination({
   return (
     <div
       className={cn(
-        [
-          "s-flex s-w-full s-items-center",
-          controlsAreHidden ? "s-justify-end" : "s-justify-between"
-        ].filter(Boolean).join(" ")
+        "s-flex s-w-full s-items-center",
+        {
+          "s-justify-end": controlsAreHidden,
+          "s-justify-between": !controlsAreHidden
+        }
       )}
     >
       <div
         className={cn(
-          [
-            "s-flex",
-            controlsAreHidden ? "s-invisible" : "s-visible",
-            showPageButtons ? "s-gap-0" : "s-gap-2"
-          ].filter(Boolean).join(" ")
+          "s-flex",
+          {
+            "s-invisible": controlsAreHidden,
+            "s-visible": !controlsAreHidden,
+            "s-gap-0": showPageButtons,
+            "s-gap-2": !showPageButtons
+          }
         )}
       >
         <Button
@@ -88,11 +91,13 @@ export function Pagination({
 
         <div
           className={cn(
-            [
-              "s-items-center",
-              size === "xs" ? "s-gap-3 s-px-3" : "s-gap-4 s-px-4",
-              showPageButtons ? "s-flex" : "s-hidden"
-            ].filter(Boolean).join(" ")
+            "s-items-center",
+            {
+              "s-gap-3 s-px-3": size === "xs",
+              "s-gap-4 s-px-4": size !== "xs",
+              "s-flex": showPageButtons,
+              "s-hidden": !showPageButtons
+            }
           )}
         >
           {pageButtons}
@@ -109,11 +114,12 @@ export function Pagination({
 
       <span
         className={cn(
-          [
-            "s-text-xs",
-            "s-text-muted-foreground dark:s-text-muted-foreground-darkMode",
-            showDetails ? "s-visible" : "s-collapse"
-          ].filter(Boolean).join(" ")
+          "s-text-xs",
+          "s-text-muted-foreground dark:s-text-muted-foreground-darkMode",
+          {
+            "s-visible": showDetails,
+            "s-collapse": !showDetails
+          }
         )}
       >
         {controlsAreHidden
@@ -134,12 +140,14 @@ function renderPageNumber(
     <button
       key={pageNumber}
       className={cn(
-        [
-          "s-font-medium",
-          "s-transition-colors s-duration-200",
-          currentPage === pageNumber ? "s-text-foreground dark:s-text-foreground-darkMode" : "s-text-primary-400 dark:s-text-primary-400-darkMode",
-          size === "xs" ? "s-text-xs" : "s-text-sm"
-        ].filter(Boolean).join(" ")
+        "s-font-medium",
+        "s-transition-colors s-duration-200",
+        {
+          "s-text-foreground dark:s-text-foreground-darkMode": currentPage === pageNumber,
+          "s-text-primary-400 dark:s-text-primary-400-darkMode": currentPage !== pageNumber,
+          "s-text-xs": size === "xs",
+          "s-text-sm": size !== "xs"
+        }
       )}
       onClick={() => onPageClick(pageNumber)}
     >
@@ -152,11 +160,12 @@ function renderEllipses(size: "sm" | "xs") {
   return (
     <span
       className={cn(
-        [
-          "s-font-medium",
-          "s-text-muted-foreground dark:s-text-muted-foreground-darkMode",
-          size === "xs" ? "s-text-xs" : "s-text-sm"
-        ].filter(Boolean).join(" ")
+        "s-font-medium",
+        "s-text-muted-foreground dark:s-text-muted-foreground-darkMode",
+        {
+          "s-text-xs": size === "xs",
+          "s-text-sm": size !== "xs"
+        }
       )}
     >
       ...

@@ -22,21 +22,21 @@ const NavigationListItemStyles = cva(
     "data-[disabled]:s-pointer-events-none data-[disabled]:s-text-muted-foreground",
     "hover:s-text-foreground dark:hover:s-text-foreground-darkMode",
     "hover:s-bg-structure-150 dark:hover:s-bg-structure-150-darkMode"
-  ].join(" "),
+  ],
   {
     variants: {
       state: {
         active: [
           "active:s-bg-structure-200 dark:active:s-bg-structure-200-darkMode"
-        ].join(" "),
+        ],
         selected: [
           "s-text-foreground dark:s-text-foreground-darkMode",
           "s-font-medium",
           "s-bg-structure-150 dark:s-bg-structure-150-darkMode"
-        ].join(" "),
+        ],
         unselected: [
           "s-text-muted-foreground dark:s-text-muted-foreground-darkMode"
-        ].join(" "),
+        ],
       },
     },
     defaultVariants: {

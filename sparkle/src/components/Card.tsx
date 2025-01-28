@@ -90,7 +90,7 @@ const InnerCard = React.forwardRef<HTMLDivElement, InnerCardProps>(
     // Determine if the card is interactive based on href or onClick
     const isInteractive = Boolean(href || onClick);
 
-    const interactiveClasses = [
+    const interactiveClasses = cn(
       "s-cursor-pointer",
       "s-transition s-duration-200",
       "hover:s-bg-primary-100 dark:hover:s-bg-primary-100-darkMode",
@@ -98,7 +98,7 @@ const InnerCard = React.forwardRef<HTMLDivElement, InnerCardProps>(
       "disabled:s-text-primary-muted dark:disabled:s-text-primary-muted-darkMode",
       "disabled:s-border-structure-100 dark:disabled:s-border-structure-100-darkMode",
       "disabled:s-pointer-events-none"
-    ].join(" ");
+    );
 
     const cardButtonClassNames = cn(
       cardVariants({ variant, size }),

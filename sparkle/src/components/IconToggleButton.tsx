@@ -1,6 +1,6 @@
 import React, { ComponentType, MouseEventHandler } from "react";
 
-import { classNames } from "@sparkle/lib/utils";
+import { cn } from "@sparkle/lib/utils";
 
 import { Icon, IconProps } from "./Icon";
 import { Tooltip } from "./Tooltip";
@@ -23,48 +23,48 @@ const baseClasses =
 
 const iconClasses = {
   secondary: {
-    idle: [
+    idle: cn(
       "s-text-foreground",
       "dark:s-text-foreground-darkMode"
-    ].join(" "),
-    selected: [
+    ),
+    selected: cn(
       "s-text-action-500",
       "dark:s-text-action-500-darkMode"
-    ].join(" "),
-    hover: [
+    ),
+    hover: cn(
       "hover:s-text-action-400",
       "dark:hover:s-text-action-500-darkMode"
-    ].join(" "),
-    active: [
+    ),
+    active: cn(
       "active:s-text-action-600",
       "dark:active:s-text-action-600-darkMode"
-    ].join(" "),
-    disabled: [
+    ),
+    disabled: cn(
       "s-text-element-500",
       "dark:s-text-element-500-darkMode"
-    ].join(" ")
+    )
   },
   tertiary: {
-    idle: [
+    idle: cn(
       "s-text-element-600",
       "dark:s-text-element-600-darkMode"
-    ].join(" "),
-    selected: [
+    ),
+    selected: cn(
       "s-text-action-500",
       "dark:s-text-action-500-darkMode"
-    ].join(" "),
-    hover: [
+    ),
+    hover: cn(
       "hover:s-text-action-400",
       "dark:hover:s-text-action-500-darkMode"
-    ].join(" "),
-    active: [
+    ),
+    active: cn(
       "active:s-text-action-600",
       "dark:active:s-text-action-600-darkMode"
-    ].join(" "),
-    disabled: [
+    ),
+    disabled: cn(
       "s-text-element-500",
       "dark:s-text-element-500-darkMode"
-    ].join(" ")
+    )
   },
 };
 
@@ -81,7 +81,7 @@ export function IconToggleButton({
   size = "sm",
 }: IconToggleButtonProps) {
   const iconGroup = iconClasses[variant];
-  const finalIconClasses = classNames(
+  const finalIconClasses = cn(
     className,
     baseClasses,
     disabled

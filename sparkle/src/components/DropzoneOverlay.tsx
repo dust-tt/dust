@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from "react";
 
 import { Icon } from "@sparkle/components/Icon";
 import { ArrowUpOnSquareIcon } from "@sparkle/icons";
+import { cn } from "@sparkle/lib/utils";
 import anim from "@sparkle/lottie/dragArea";
 
 export interface DropzoneOverlayProps {
@@ -42,14 +43,14 @@ export default function DropzoneOverlay({
 
   return (
     <div
-      className={[
+      className={cn(
         "s-absolute s-inset-0 s-z-50",
         "s-flex s-h-full s-w-full s-flex-col",
         "s-items-center s-justify-center",
         "s-gap-0",
         "s-bg-white/80 dark:s-bg-structure-50-darkMode/80",
         "s-text-element-800 dark:s-text-element-800-darkMode"
-      ].join(" ")}
+      )}
       onMouseLeave={() => {
         lottieRef.current?.setDirection(-1);
         lottieRef.current?.setSpeed(2);
