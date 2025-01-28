@@ -27,7 +27,8 @@ async function backfillAvatars(
     "Starting avatar backfill"
   );
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-  const baseUrl = `https://storage.googleapis.com/${getPublicUploadBucket().name}/`;
+  const bucket = getPublicUploadBucket();
+  const baseUrl = `https://storage.googleapis.com/${bucket.name}/`;
 
   // Get all agent with legacy avatars
   const agentConfigurations = await AgentConfiguration.findAll({
@@ -51,9 +52,7 @@ async function backfillAvatars(
 
     const oldPath = pictureUrl.replace(baseUrl, "");
 
-    const [metadata] = await getPublicUploadBucket()
-      .file(oldPath)
-      .getMetadata();
+    const [metadata] = await bucket.file(oldPath).getMetadata();
 
     const contentType = metadata.contentType;
 
@@ -88,9 +87,7 @@ async function backfillAvatars(
 
       logger.info({ oldPath, newPath }, "moving gcs resource");
       if (execute) {
-        await getPublicUploadBucket()
-          .file(oldPath)
-          .copy(getPublicUploadBucket().file(newPath));
+        await bucket.file(oldPath).copy(bucket.file(newPath));
       }
 
       if (file) {
