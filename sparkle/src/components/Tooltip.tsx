@@ -20,7 +20,7 @@ const TooltipContent = React.forwardRef<
   <TooltipPrimitive.Content
     ref={ref}
     sideOffset={sideOffset}
-    className={classNames([
+    className={cn(
       [
         "s-z-50",
         "s-max-w-sm",
@@ -44,8 +44,8 @@ const TooltipContent = React.forwardRef<
         "data-[side=right]:s-slide-in-from-left-2",
         "data-[side=top]:s-slide-in-from-bottom-2"
       ].join(" "),
-      className || ""
-    ])}
+      className
+    )}
     {...props}
   />
 ));
