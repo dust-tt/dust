@@ -165,12 +165,7 @@ export function DataTable<TData extends TBaseData>({
 
   return (
     <div
-      className={cn(
-        "s-flex s-flex-col",
-        "s-gap-2",
-        className,
-        widthClassName
-      )}
+      className={cn("s-flex s-flex-col", "s-gap-2", className, widthClassName)}
     >
       <DataTable.Root>
         <DataTable.Header>
@@ -270,11 +265,7 @@ DataTable.Root = function DataTableRoot({
   children,
   ...props
 }: DataTableRootProps) {
-  const rootClasses = [
-    "s-w-full",
-    "s-table-fixed",
-    "s-border-collapse"
-  ];
+  const rootClasses = ["s-w-full", "s-table-fixed", "s-border-collapse"];
 
   return (
     <table className={cn(...rootClasses)} {...props}>
@@ -296,7 +287,7 @@ DataTable.Header = function Header({
     <thead
       className={cn(
         "s-border-b",
-        "s-border-separator dark:s-border-separator-darkMode",
+        "dark:s-border-separator-darkMode s-border-separator",
         className
       )}
       {...props}
@@ -320,7 +311,7 @@ DataTable.Head = function Head({
   const headClasses = [
     "s-py-2 s-pl-2 s-pr-3",
     "s-text-left s-text-xs s-font-medium s-capitalize",
-    "s-text-foreground dark:s-text-foreground-darkMode"
+    "s-text-foreground dark:s-text-foreground-darkMode",
   ];
 
   return (
@@ -349,8 +340,8 @@ DataTable.Body = function Body({
   return (
     <tbody
       className={cn(
-        "s-bg-white dark:s-bg-structure-50-darkMode",
-        "s-border-b s-border-separator dark:s-border-separator-darkMode",
+        "dark:s-bg-structure-50-darkMode s-bg-white",
+        "dark:s-border-separator-darkMode s-border-b s-border-separator",
         className
       )}
       {...props}
@@ -376,16 +367,12 @@ DataTable.Row = function Row({
   const rowClasses = [
     "s-group/dt s-border-b s-border-separator s-transition-colors s-duration-300 s-ease-out",
     onClick && "s-cursor-pointer",
-    onClick && "hover:s-bg-muted dark:hover:s-bg-muted-darkMode"
+    onClick && "hover:s-bg-muted dark:hover:s-bg-muted-darkMode",
   ];
 
   return (
     <tr
-      className={cn(
-        rowClasses,
-        widthClassName,
-        className
-      )}
+      className={cn(rowClasses, widthClassName, className)}
       onClick={onClick ? onClick : undefined}
       {...props}
     >
@@ -486,20 +473,17 @@ interface CellContentProps extends React.TdHTMLAttributes<HTMLDivElement> {
 
 const cellContentClasses = {
   content: ["s-flex s-items-center"],
-  icon: [
-    "s-mr-2",
-    "s-text-foreground dark:s-text-foreground-darkMode"
-  ],
+  icon: ["s-mr-2", "s-text-foreground dark:s-text-foreground-darkMode"],
   text: [
     "s-truncate",
     "s-text-sm",
-    "s-text-foreground dark:s-text-foreground-darkMode"
+    "s-text-foreground dark:s-text-foreground-darkMode",
   ],
   description: [
     "s-pl-2",
     "s-text-sm",
-    "s-text-muted-foreground dark:s-text-muted-foreground-darkMode"
-  ]
+    "s-text-muted-foreground dark:s-text-muted-foreground-darkMode",
+  ],
 };
 
 DataTable.CellContent = function CellContent({
@@ -514,47 +498,45 @@ DataTable.CellContent = function CellContent({
   ...props
 }: CellContentProps) {
   return (
-      <div className={cn(...cellContentClasses.content, className)} {...props}>
-        {avatarUrl && avatarTooltipLabel && (
-          <Tooltip
-            trigger={
-              <Avatar
-                visual={avatarUrl}
-                size="xs"
-                className="s-mr-2"
-                isRounded={roundedAvatar ?? false}
-              />
-            }
-            label={avatarTooltipLabel}
-          />
-        )}
-        {avatarUrl && !avatarTooltipLabel && (
-          <Avatar
-            visual={avatarUrl}
-            size="xs"
-            className="s-mr-2"
-            isRounded={roundedAvatar ?? false}
-          />
-        )}
-        {icon && (
-          <Icon
-            visual={icon}
-            size="sm"
-            className={cn(...cellContentClasses.icon, iconClassName)}
-          />
-        )}
-        <div className="s-flex s-shrink s-truncate">
-          <span className={cn(...cellContentClasses.text)}>
-            {children}
+    <div className={cn(...cellContentClasses.content, className)} {...props}>
+      {avatarUrl && avatarTooltipLabel && (
+        <Tooltip
+          trigger={
+            <Avatar
+              visual={avatarUrl}
+              size="xs"
+              className="s-mr-2"
+              isRounded={roundedAvatar ?? false}
+            />
+          }
+          label={avatarTooltipLabel}
+        />
+      )}
+      {avatarUrl && !avatarTooltipLabel && (
+        <Avatar
+          visual={avatarUrl}
+          size="xs"
+          className="s-mr-2"
+          isRounded={roundedAvatar ?? false}
+        />
+      )}
+      {icon && (
+        <Icon
+          visual={icon}
+          size="sm"
+          className={cn(...cellContentClasses.icon, iconClassName)}
+        />
+      )}
+      <div className="s-flex s-shrink s-truncate">
+        <span className={cn(...cellContentClasses.text)}>{children}</span>
+        {description && (
+          <span className={cn(...cellContentClasses.description)}>
+            {description}
           </span>
-          {description && (
-            <span className={cn(...cellContentClasses.description)}>
-              {description}
-            </span>
-          )}
-        </div>
+        )}
       </div>
-    );
+    </div>
+  );
 };
 
 interface BasicCellContentProps extends React.TdHTMLAttributes<HTMLDivElement> {
@@ -594,7 +576,7 @@ DataTable.BasicCellContent = function BasicCellContent({
                 cellHeight,
                 "s-group s-flex s-items-center s-gap-2",
                 "s-text-sm",
-                "s-text-muted-foreground dark:s-text-muted-foreground-darkMode",
+                "dark:s-text-muted-foreground-darkMode s-text-muted-foreground",
                 className
               )}
               {...props}
@@ -620,12 +602,11 @@ DataTable.BasicCellContent = function BasicCellContent({
         <div
           className={cn(
             cellHeight,
-            [
-              "s-group s-flex s-items-center s-gap-2",
-              "s-text-sm",
-              "s-text-muted-foreground dark:s-text-muted-foreground-darkMode",
-              className
-            )}
+            "s-group s-flex s-items-center s-gap-2",
+            "s-text-sm",
+            "dark:s-text-muted-foreground-darkMode s-text-muted-foreground",
+            className
+          )}
           {...props}
         >
           <span className="s-truncate">{label}</span>
@@ -671,11 +652,7 @@ DataTable.CellContentWithCopy = function CellContentWithCopy({
   };
 
   return (
-    <div className={cn(
-        "s-flex s-items-center",
-        "s-space-x-2",
-        className
-      )}>
+    <div className={cn("s-flex s-items-center", "s-space-x-2", className)}>
       <span className="s-truncate">{children}</span>
       <IconButton
         icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
@@ -700,7 +677,7 @@ DataTable.Caption = function Caption({
       className={cn(
         "s-mt-4",
         "s-text-sm",
-        "s-text-muted-foreground dark:s-text-muted-foreground-darkMode",
+        "dark:s-text-muted-foreground-darkMode s-text-muted-foreground",
         className
       )}
       {...props}
