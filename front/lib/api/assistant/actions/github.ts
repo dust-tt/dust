@@ -100,12 +100,16 @@ export class GithubGetPullRequestAction extends BaseAction {
       `DIFF:\n` +
       `${this.pullDiff}\n\n` +
       `COMMENTS:\n` +
-      `${(this.pullComments || []).map((c) => `${c.author} [${new Date(c.createdAt)}]: ${c.body}`).join("\n")}\n\n` +
+      `${(this.pullComments || [])
+        .map((c) => {
+          return `${c.author} [${new Date(c.createdAt).toISOString()}]:\n${c.body}`;
+        })
+        .join("\n")}\n\n` +
       `REVIEWS:\n` +
       `${(this.pullReviews || [])
         .map(
           (r) =>
-            `${r.author} [${new Date(r.createdAt)}]:\n(${r.state}) ${r.body}\n${(
+            `${r.author} [${new Date(r.createdAt).toISOString()}]:\n(${r.state})\n${r.body}\n${(
               r.comments || []
             )
               .map((c) => ` - ${c.path}:${c.line}:\n${c.body}`)
