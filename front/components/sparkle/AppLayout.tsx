@@ -140,56 +140,48 @@ export default function AppLayout({
         />
       </Head>
 
-      <div className={`h-full w-full ${isDarkMode ? "dark" : ""}`}>
-        <div className="flex h-full flex-row dark:bg-gray-900">
-          <Navigation
-            hideSidebar={hideSidebar}
-            isNavigationBarOpen={isNavigationBarOpen}
-            setNavigationBarOpen={setIsNavigationBarOpen}
-            owner={owner}
-            subscription={subscription}
-            navChildren={navChildren}
-            subNavigation={subNavigation}
-          />
-          <div
+      <div className={`flex h-full flex-row ${isDarkMode ? "dark" : "light"}`}>
+        <Navigation
+          hideSidebar={hideSidebar}
+          isNavigationBarOpen={isNavigationBarOpen}
+          setNavigationBarOpen={setIsNavigationBarOpen}
+          owner={owner}
+          subscription={subscription}
+          navChildren={navChildren}
+          subNavigation={subNavigation}
+        />
+        <div className="relative h-full w-full flex-1 flex-col overflow-x-hidden overflow-y-hidden dark:bg-black">
+          <main
+            id={CONVERSATION_PARENT_SCROLL_DIV_ID.page}
             className={classNames(
-              "relative h-full w-full flex-1 flex-col overflow-x-hidden overflow-y-hidden",
-              "dark:bg-gray-900 dark:text-white"
+              "flex h-full w-full flex-col items-center overflow-y-auto",
+              hasTopPadding ?? !titleChildren ? "lg:pt-8" : ""
             )}
           >
-            <main
-              id={CONVERSATION_PARENT_SCROLL_DIV_ID.page}
+            <div
               className={classNames(
-                "flex h-full w-full flex-col items-center overflow-y-auto dark:bg-gray-900",
-                hasTopPadding ?? !titleChildren ? "lg:pt-8" : ""
+                "flex w-full flex-col border-b border-primary-50 pl-12 lg:pl-0",
+                !hideSidebar
+                  ? "dark:border-structure-700/30 border-b border-structure-300/30 bg-white/80 backdrop-blur dark:bg-black/80"
+                  : "",
+                titleChildren ? "" : "lg:hidden"
               )}
             >
-              <div
-                className={classNames(
-                  "flex w-full flex-col border-b pl-12 lg:pl-0",
-                  "dark:border-gray-800",
-                  !hideSidebar
-                    ? "border-structure-300/30 bg-white/80 backdrop-blur dark:bg-gray-800/80"
-                    : "",
-                  titleChildren ? "" : "lg:hidden"
-                )}
-              >
-                <div className="h-16 grow px-6 dark:text-white">
-                  {loaded && titleChildren && titleChildren}
-                </div>
+              <div className="h-16 grow px-6">
+                {loaded && titleChildren && titleChildren}
               </div>
+            </div>
 
-              <div className="flex h-full w-full flex-col items-center overflow-y-auto px-4 dark:bg-gray-900 sm:px-8">
-                {isWideMode ? (
-                  loaded && children
-                ) : (
-                  <div className="flex w-full max-w-4xl grow flex-col dark:text-white">
-                    {loaded && children}
-                  </div>
-                )}
-              </div>
-            </main>
-          </div>
+            <div className="flex h-full w-full flex-col items-center overflow-y-auto px-4 sm:px-8">
+              {isWideMode ? (
+                loaded && children
+              ) : (
+                <div className="flex w-full max-w-4xl grow flex-col">
+                  {loaded && children}
+                </div>
+              )}
+            </div>
+          </main>
         </div>
       </div>
       <QuickStartGuide />
