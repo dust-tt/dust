@@ -57,8 +57,8 @@ export type ReasoningThinkingEvent = {
   action: ReasoningActionType;
 };
 
-export type ReasoningOutputEvent = {
-  type: "reasoning_output";
+export type ReasoningSuccessEvent = {
+  type: "reasoning_success";
   created: number;
   configurationId: string;
   messageId: string;

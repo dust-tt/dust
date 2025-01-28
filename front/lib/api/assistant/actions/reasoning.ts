@@ -6,8 +6,8 @@ import type {
   ReasoningActionType,
   ReasoningConfigurationType,
   ReasoningErrorEvent,
-  ReasoningOutputEvent,
   ReasoningStartedEvent,
+  ReasoningSuccessEvent,
   ReasoningThinkingEvent,
   ReasoningTokensEvent,
   Result,
@@ -99,7 +99,7 @@ export class ReasoningConfigurationServerRunner extends BaseActionConfigurationS
     | ReasoningErrorEvent
     | ReasoningStartedEvent
     | ReasoningThinkingEvent
-    | ReasoningOutputEvent
+    | ReasoningSuccessEvent
     | ReasoningTokensEvent
   > {
     const owner = auth.workspace();
@@ -184,7 +184,7 @@ export class ReasoningConfigurationServerRunner extends BaseActionConfigurationS
     };
 
     yield {
-      type: "reasoning_output",
+      type: "reasoning_success",
       created: Date.now(),
       configurationId: actionConfiguration.sId,
       messageId: agentMessage.sId,

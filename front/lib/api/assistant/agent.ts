@@ -1283,7 +1283,7 @@ async function* runAction(
         case "reasoning_tokens":
           yield event;
           break;
-        case "reasoning_output":
+        case "reasoning_success":
           yield {
             type: "agent_action_success",
             created: event.created,
