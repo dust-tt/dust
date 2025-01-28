@@ -346,6 +346,8 @@ impl ElasticsearchSearchStore {
             ));
         }
 
+        // time the function call
+        let start = utils::now();
         // Build has_children query
         let has_children_search = Search::new()
             .size(0)
@@ -444,6 +446,10 @@ impl ElasticsearchSearchStore {
             })
             .collect();
 
+        info!(
+            duration = utils::now() - start,
+            "[ElasticsearchSearchStore] Computed core content nodes"
+        );
         Ok(core_content_nodes)
     }
 }
