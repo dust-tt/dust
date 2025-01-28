@@ -2,12 +2,16 @@ import { MIME_TYPES } from "@dust-tt/types";
 import { makeScript } from "scripts/helpers";
 import { Op } from "sequelize";
 
-import { slackChannelInternalIdFromSlackChannelId } from "@connectors/connectors/slack/lib/utils";
+import {
+  getSlackChannelSourceUrl,
+  slackChannelInternalIdFromSlackChannelId,
+} from "@connectors/connectors/slack/lib/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import { SlackChannel } from "@connectors/lib/models/slack";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 
 const FOLDER_CONCURRENCY = 16;
 
@@ -25,6 +29,15 @@ makeScript({}, async ({ execute }, logger) => {
       },
     });
 
+    const slackConfiguration =
+      await SlackConfigurationResource.fetchByConnectorId(connectorId);
+
+    if (!slackConfiguration) {
+      throw new Error(
+        `Could not find slack configuration for connector ${connectorId}`
+      );
+    }
+
     if (execute) {
       await concurrentExecutor(
         channels,
@@ -40,6 +53,10 @@ makeScript({}, async ({ execute }, logger) => {
             parents: [internalId],
             mimeType: MIME_TYPES.SLACK.CHANNEL,
             providerVisibility: channel.private ? "private" : "public",
+            sourceUrl: getSlackChannelSourceUrl(
+              channel.slackChannelId,
+              slackConfiguration
+            ),
           });
         },
         { concurrency: FOLDER_CONCURRENCY }
