@@ -64,7 +64,7 @@ async function backfillTableRetrievalDocumentChunk(
       limit: batchSize,
     });
 
-    if (documents.length > 0) {
+    if (documents.length === 0) {
       break;
     }
 
@@ -82,6 +82,7 @@ async function backfillTableRetrievalDocumentChunk(
         }
       );
     }
+
     lastSeenId = documents[documents.length - 1].id;
     logger.info({}, `Processed batch up to id ${lastSeenId}`);
   }
