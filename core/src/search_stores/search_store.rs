@@ -13,15 +13,34 @@ use tracing::{error, info};
 use url::Url;
 
 use crate::{
-    data_sources::node::{CoreContentNode, Node},
+    data_sources::node::{CoreContentNode, Node, NodeType},
     utils,
 };
 
 const MAX_PAGE_SIZE: u64 = 250;
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum SortDirection {
+    Asc,
+    Desc,
+}
+
+#[derive(serde::Deserialize)]
+pub struct SortSpec {
+    pub field: String,
+    pub direction: SortDirection,
+}
+
 #[derive(serde::Deserialize)]
 pub struct NodesSearchOptions {
     limit: Option<u64>,
     offset: Option<u64>,
+    // sort example:
+    // [{"field": "title.keyword", "direction": "desc"}, {"field": "updated_at", "direction": "asc"}]
+    // It will sort by title desc, then by updated_at asc, as per
+    // elasticsearch's sort syntax (although it's a small subset of it)
+    sort: Option<Vec<SortSpec>>,
 }
 
 #[derive(serde::Deserialize)]
@@ -35,6 +54,7 @@ pub struct NodesSearchFilter {
     data_source_views: Vec<DatasourceViewFilter>,
     node_ids: Option<Vec<String>>,
     parent_id: Option<String>,
+    node_types: Option<Vec<NodeType>>,
 }
 
 #[async_trait]
@@ -56,8 +76,12 @@ pub trait SearchStore {
 impl Default for NodesSearchOptions {
     fn default() -> Self {
         NodesSearchOptions {
-            limit: Some(10),
+            limit: Some(MAX_PAGE_SIZE),
             offset: Some(0),
+            sort: Some(vec![SortSpec {
+                field: "title.keyword".to_string(),
+                direction: SortDirection::Asc,
+            }]),
         }
     }
 }
@@ -111,6 +135,13 @@ impl SearchStore for ElasticsearchSearchStore {
             ));
         }
 
+        // sort and query are mutually exclusive
+        if options.sort.is_some() && query.is_some() {
+            return Err(anyhow::anyhow!(
+                "Sort option and query string are mutually exclusive"
+            ));
+        }
+
         // check there is at least one data source view filter
         // !! do not remove; without data source view filter this endpoint is
         // dangerous as any data from any workspace can be retrieved
@@ -143,6 +174,10 @@ impl SearchStore for ElasticsearchSearchStore {
             bool_query = bool_query.filter(Query::terms("node_id", node_ids));
         }
 
+        if let Some(node_types) = filter.node_types {
+            bool_query = bool_query.filter(Query::terms("node_type", node_types));
+        }
+
         if let Some(parent_id) = filter.parent_id {
             // if parent_id is root, we filter on all nodes whose parent_id is null
             // otherwise, we filter on all nodes whose parent_id is the given parent_id
@@ -163,7 +198,19 @@ impl SearchStore for ElasticsearchSearchStore {
             .size(options.limit.unwrap_or(100))
             .query(bool_query)
             .sort(match query {
-                None => vec!["title.keyword"],
+                None => options
+                    .sort
+                    .unwrap_or_default()
+                    .into_iter()
+                    .map(|s| {
+                        elasticsearch_dsl::Sort::FieldSort(
+                            elasticsearch_dsl::FieldSort::new(s.field).order(match s.direction {
+                                SortDirection::Asc => elasticsearch_dsl::SortOrder::Asc,
+                                SortDirection::Desc => elasticsearch_dsl::SortOrder::Desc,
+                            }),
+                        )
+                    })
+                    .collect(),
                 Some(_) => vec![],
             });
 
