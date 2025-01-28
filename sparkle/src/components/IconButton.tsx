@@ -38,15 +38,15 @@ const styleVariants: Record<ButtonVariantType, string> = {
     "active:s-text-action-600 dark:active:s-text-action-600-dark" +
     "s-text-element-500 dark:s-text-element-500-dark",
   ghost:
-    "s-text-white s-text-white" +
-    "hover:s-text-slate-100 hover:s-text-slate-100" +
-    "active:s-text-slate-200 active:s-text-slate-200" +
-    "s-text-white/50 s-text-white/50",
+    "s-text-foreground dark:s-text-foreground-dark" +
+    "hover:s-text-primary-200 dark:hover:s-text-primary-200-dark" +
+    "active:s-text-primary-300 dark:active:s-text-primary-300-dark" +
+    "s-text-muted-foreground dark:s-text-muted-foreground-dark",
   "ghost-secondary":
-    "s-text-white" +
-    "hover:s-text-slate-100 hover:s-text-slate-100" +
-    "active:s-text-slate-200 active:s-text-slate-200" +
-    "s-text-white/50 s-text-white/50",
+    "s-text-muted-foreground dark:s-text-muted-foreground-dark" +
+    "hover:s-text-primary-200 dark:hover:s-text-primary-200-dark" +
+    "active:s-text-primary-300 dark:active:s-text-primary-300-dark" +
+    "s-text-muted-foreground/50 dark:s-text-muted-foreground-dark/50",
 };
 
 const iconButtonVariants = cva(

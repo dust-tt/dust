@@ -33,11 +33,11 @@ export type ButtonSizeType = (typeof BUTTON_SIZES)[number];
 
 const styleVariants: Record<ButtonVariantType, string> = {
   primary:
-    "s-bg-primary s-text-white hover:s-bg-primary-light active:s-bg-primary-dark disabled:s-bg-primary-muted",
+    "s-bg-primary dark:s-bg-primary-dark s-text-primary-50 dark:s-text-primary-50-dark hover:s-bg-primary-light dark:hover:s-bg-primary-light-dark active:s-bg-primary-dark dark:active:s-bg-primary-dark-dark disabled:s-bg-primary-muted dark:disabled:s-bg-primary-muted-dark",
   highlight:
-    "s-bg-highlight s-text-white hover:s-bg-highlight-light active:s-bg-highlight-dark disabled:s-bg-highlight-muted",
+    "s-bg-highlight dark:s-bg-highlight-dark s-text-highlight-50 dark:s-text-highlight-50-dark hover:s-bg-highlight-light dark:hover:s-bg-highlight-light-dark active:s-bg-highlight-dark dark:active:s-bg-highlight-dark-dark disabled:s-bg-highlight-muted dark:disabled:s-bg-highlight-muted-dark",
   warning:
-    "s-bg-warning s-text-white hover:s-bg-warning-light active:s-bg-warning-dark disabled:s-bg-warning-muted",
+    "s-bg-warning dark:s-bg-warning-dark s-text-warning-50 dark:s-text-warning-50-dark hover:s-bg-warning-light dark:hover:s-bg-warning-light-dark active:s-bg-warning-dark dark:active:s-bg-warning-dark-dark disabled:s-bg-warning-muted dark:disabled:s-bg-warning-muted-dark",
   outline:
     "s-border s-text-primary-dark s-bg-background dark:s-bg-background-dark s-border-border-dark hover:s-text-primary hover:s-bg-primary-150 dark:hover:s-bg-primary-150-dark hover:s-border-primary-150 dark:hover:s-border-primary-150-dark active:s-bg-primary-300 dark:active:s-bg-primary-300-dark disabled:s-text-primary-muted disabled:s-border-structure-100 dark:disabled:s-border-structure-100-dark",
   ghost:
