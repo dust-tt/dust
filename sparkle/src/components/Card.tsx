@@ -16,9 +16,18 @@ export const CARD_VARIANTS = ["primary", "secondary", "tertiary"] as const;
 export type CardVariantType = (typeof CARD_VARIANTS)[number];
 
 const variantClasses: Record<CardVariantType, string> = {
-  primary: "s-bg-primary-50 s-border-border-dark/0",
-  secondary: "s-bg-background dark:s-bg-background-darkMode s-border-border-darkMode",
-  tertiary: "s-bg-background dark:s-bg-background-darkMode s-border-border-darkMode/0",
+  primary: [
+    "s-bg-primary-50 dark:s-bg-primary-50-darkMode",
+    "s-border-border-dark/0 dark:s-border-border-darkMode/0",
+  ].join(" "),
+  secondary: [
+    "s-bg-background dark:s-bg-background-darkMode",
+    "s-border-border-dark dark:s-border-border-darkMode",
+  ].join(" "),
+  tertiary: [
+    "s-bg-background dark:s-bg-background-darkMode",
+    "s-border-border-dark/0 dark:s-border-border-darkMode/0",
+  ].join(" "),
 };
 
 export const CARD_VARIANTS_SIZES = ["sm", "md", "lg"] as const;
