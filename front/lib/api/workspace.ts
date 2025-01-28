@@ -9,7 +9,7 @@ import type {
   WorkspaceSegmentationType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { ACTIVE_ROLES, Err, Ok } from "@dust-tt/types";
+import { ACTIVE_ROLES, Err, Ok, removeNulls } from "@dust-tt/types";
 import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
@@ -165,30 +165,44 @@ export async function getMembers(
         paginationParams,
       });
 
-  const usersWithWorkspaces = memberships.map((m) => {
-    let role = "none" as RoleType;
-    if (m && !m.isRevoked()) {
-      switch (m.role) {
-        case "admin":
-        case "builder":
-        case "user":
-          role = m.role;
-          break;
-        default:
-          role = "none";
+  const usersWithWorkspaces = await Promise.all(
+    memberships.map(async (m) => {
+      let role = "none" as RoleType;
+      if (m && !m.isRevoked()) {
+        switch (m.role) {
+          case "admin":
+          case "builder":
+          case "user":
+            role = m.role;
+            break;
+          default:
+            role = "none";
+        }
       }
-    }
 
-    // @ts-expect-error We know that the user is not null here.
-    const user = new UserResource(UserModel, m.user);
+      let user: UserResource | null;
+      if (!m.user) {
+        user = await UserResource.fetchByModelId(m.userId);
+      } else {
+        user = new UserResource(UserModel, m.user);
+      }
 
-    return {
-      ...user.toJSON(),
-      workspaces: [{ ...owner, role, flags: null }],
-    };
-  });
+      if (!user) {
+        return null;
+      }
 
-  return { members: usersWithWorkspaces, total, nextPageParams };
+      return {
+        ...user.toJSON(),
+        workspaces: [{ ...owner, role, flags: null }],
+      };
+    })
+  );
+
+  return {
+    members: removeNulls(usersWithWorkspaces),
+    total,
+    nextPageParams,
+  };
 }
 
 export async function searchMembers(
