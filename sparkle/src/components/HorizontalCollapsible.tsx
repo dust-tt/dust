@@ -31,15 +31,41 @@ export const HorizontalCollapsible: React.FC<HorizontalCollapsibleProps> & {
   Button: React.FC<HorizontalCollapsibleButtonProps>;
   Panel: React.FC<HorizontalCollapsiblePanelProps>;
   Image: React.FC<HorizontalCollapsibleImageProps>;
+  ImageContainer: React.FC<HorizontalCollapsibleImageContainerProps>;
+  Content: React.FC<HorizontalCollapsibleContentProps>;
 } = ({ children, defaultValue = "1" }) => (
   <RadioGroup defaultValue={defaultValue}>
     {({ value }) => (
       <OpenStateContext.Provider value={{ value, isSelected: false }}>
-        <div className="s-flex s-flex-col s-gap-4">{children}</div>
+        <div className="s-flex s-flex-row s-gap-6">{children}</div>
       </OpenStateContext.Provider>
     )}
   </RadioGroup>
 );
+
+interface HorizontalCollapsibleImageContainerProps {
+  children: React.ReactNode;
+}
+
+HorizontalCollapsible.ImageContainer = function ({
+  children,
+}: HorizontalCollapsibleImageContainerProps) {
+  return (
+    <div className="s-relative s-h-48 s-w-48 s-flex-shrink-0">{children}</div>
+  );
+};
+
+interface HorizontalCollapsibleContentProps {
+  children: React.ReactNode;
+}
+
+HorizontalCollapsible.Content = function ({
+  children,
+}: HorizontalCollapsibleContentProps) {
+  return (
+    <div className="s-flex s-flex-grow s-flex-col s-gap-2">{children}</div>
+  );
+};
 
 interface HorizontalCollapsibleItemProps {
   children: React.ReactNode;
@@ -56,7 +82,7 @@ HorizontalCollapsible.Item = function ({
         <OpenStateContext.Provider value={{ value, isSelected: checked }}>
           <div
             className={classNames(
-              "s-flex s-cursor-pointer s-flex-row s-items-start s-gap-6 s-rounded-lg s-p-2",
+              "s-flex s-cursor-pointer s-flex-col s-gap-2 s-rounded-lg s-p-2",
               checked ? "s-bg-gray-50 dark:s-bg-gray-800" : ""
             )}
           >
@@ -72,37 +98,38 @@ interface HorizontalCollapsibleImageProps {
   src: string;
   alt: string;
   className?: string;
+  value: string;
 }
 
 HorizontalCollapsible.Image = function ({
   src,
   alt,
   className = "",
+  value,
 }: HorizontalCollapsibleImageProps) {
-  const { isSelected } = useOpenState();
+  const { value: selectedValue } = useOpenState();
+  const isSelected = value === selectedValue;
 
   return (
-    <div className="s-relative s-h-48 s-w-48 s-flex-shrink-0">
-      <Transition
-        show={isSelected}
-        enter="s-transition s-duration-300 s-ease-out"
-        enterFrom="s-opacity-0"
-        enterTo="s-opacity-100"
-        leave="s-transition s-duration-300 s-ease-out"
-        leaveFrom="s-opacity-100"
-        leaveTo="s-opacity-0"
-        className="s-absolute s-inset-0"
-      >
-        <img
-          src={src}
-          alt={alt}
-          className={classNames(
-            "s-h-full s-w-full s-rounded-lg s-object-cover s-shadow-sm",
-            className
-          )}
-        />
-      </Transition>
-    </div>
+    <Transition
+      show={isSelected}
+      enter="s-transition s-duration-300 s-ease-out"
+      enterFrom="s-opacity-0"
+      enterTo="s-opacity-100"
+      leave="s-transition s-duration-300 s-ease-out"
+      leaveFrom="s-opacity-100"
+      leaveTo="s-opacity-0"
+      className="s-absolute s-inset-0"
+    >
+      <img
+        src={src}
+        alt={alt}
+        className={classNames(
+          "s-h-full s-w-full s-rounded-lg s-object-cover s-shadow-sm",
+          className
+        )}
+      />
+    </Transition>
   );
 };
 
@@ -232,10 +259,6 @@ HorizontalCollapsible.Panel = function ({
         show={isSelected}
         enter="s-transition s-duration-300 s-ease-out"
         enterFrom="s-transform s-scale-95 s-opacity-0"
-        enterTo="s-transform s-scale-100 s-opacity-100"
-        leave="s-transition s-duration-300 s-ease-out"
-        leaveFrom="s-transform s-scale-100 s-opacity-100"
-        leaveTo="s-transform s-scale-95 s-opacity-0"
       >
         <div className={className}>
           <div className="s-text-gray-500">{children}</div>

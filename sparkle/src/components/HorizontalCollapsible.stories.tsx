@@ -27,6 +27,7 @@ export const Default: Story = {
         <HorizontalCollapsible.Image
           src={SAMPLE_IMAGE}
           alt="Colorful gradient"
+          value="1"
         />
         <div>
           <HorizontalCollapsible.Button>
@@ -59,6 +60,7 @@ export const DefaultOpen: Story = {
         <HorizontalCollapsible.Image
           src={SAMPLE_IMAGE}
           alt="Colorful gradient"
+          value="1"
         />
         <div>
           <HorizontalCollapsible.Button>
@@ -90,6 +92,7 @@ export const SecondaryVariant: Story = {
         <HorizontalCollapsible.Image
           src={SAMPLE_IMAGE}
           alt="Colorful gradient"
+          value="1"
         />
         <div>
           <HorizontalCollapsible.Button variant="secondary">
@@ -121,6 +124,7 @@ export const Disabled: Story = {
         <HorizontalCollapsible.Image
           src={SAMPLE_IMAGE}
           alt="Colorful gradient"
+          value="1"
         />
         <div>
           <HorizontalCollapsible.Button disabled>
@@ -152,6 +156,7 @@ export const WithCustomImage: Story = {
           src={SAMPLE_IMAGE}
           alt="Colorful gradient"
           className="s-border-2 s-border-action-500"
+          value="1"
         />
         <div>
           <HorizontalCollapsible.Button>
@@ -181,35 +186,38 @@ export const MultipleItems: Story = {
     return (
       <div className="s-w-[600px]">
         <HorizontalCollapsible defaultValue="1">
-          <HorizontalCollapsible.Item value="1">
+          <HorizontalCollapsible.ImageContainer>
             <HorizontalCollapsible.Image
               src={SAMPLE_IMAGE}
-              alt="Colorful gradient"
+              alt="First gradient"
+              value="1"
             />
-            <div>
+            <HorizontalCollapsible.Image
+              src="https://images.unsplash.com/photo-1557682250-33bd709cbe85?w=400&h=300&fit=crop"
+              alt="Second gradient"
+              value="2"
+            />
+          </HorizontalCollapsible.ImageContainer>
+
+          <HorizontalCollapsible.Content>
+            <HorizontalCollapsible.Item value="1">
               <HorizontalCollapsible.Button>
                 First Item
               </HorizontalCollapsible.Button>
               <HorizontalCollapsible.Panel>
                 <p className="s-mt-2">Content for the first item.</p>
               </HorizontalCollapsible.Panel>
-            </div>
-          </HorizontalCollapsible.Item>
+            </HorizontalCollapsible.Item>
 
-          <HorizontalCollapsible.Item value="2">
-            <HorizontalCollapsible.Image
-              src={SAMPLE_IMAGE}
-              alt="Colorful gradient"
-            />
-            <div>
+            <HorizontalCollapsible.Item value="2">
               <HorizontalCollapsible.Button>
                 Second Item
               </HorizontalCollapsible.Button>
               <HorizontalCollapsible.Panel>
                 <p className="s-mt-2">Content for the second item.</p>
               </HorizontalCollapsible.Panel>
-            </div>
-          </HorizontalCollapsible.Item>
+            </HorizontalCollapsible.Item>
+          </HorizontalCollapsible.Content>
         </HorizontalCollapsible>
       </div>
     );
