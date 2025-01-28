@@ -87,13 +87,13 @@ export type GithubGetPullRequestCommitType = {
 };
 
 export type GithubGetPullRequestCommentType = {
-  createdAt: Date;
+  createdAt: number;
   author: string;
   body: string;
 };
 
 export type GithubGetPullRequestReviewType = {
-  createdAt: Date;
+  createdAt: number;
   author: string;
   body: string;
   state: string;

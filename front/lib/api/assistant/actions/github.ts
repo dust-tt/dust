@@ -100,12 +100,14 @@ export class GithubGetPullRequestAction extends BaseAction {
       `DIFF:\n` +
       `${this.pullDiff}\n\n` +
       `COMMENTS:\n` +
-      `${(this.pullComments || []).map((c) => `${c.author}: ${c.body}`).join("\n")}\n\n` +
+      `${(this.pullComments || []).map((c) => `${c.author} [${new Date(c.createdAt)}]: ${c.body}`).join("\n")}\n\n` +
       `REVIEWS:\n` +
       `${(this.pullReviews || [])
         .map(
           (r) =>
-            `${r.author}:\n(${r.state}) ${r.body}\n${(r.comments || [])
+            `${r.author} [${new Date(r.createdAt)}]:\n(${r.state}) ${r.body}\n${(
+              r.comments || []
+            )
               .map((c) => ` - ${c.path}:${c.line}:\n${c.body}`)
               .join("\n")}`
         )
@@ -390,14 +392,14 @@ export class GithubGetPullRequestConfigurationServerRunner extends BaseActionCon
       });
       const prComments = pr.repository.pullRequest.comments.nodes.map((n) => {
         return {
-          createdAt: new Date(n.createdAt),
+          createdAt: new Date(n.createdAt).getTime(),
           author: n.author.login,
           body: n.body,
         };
       });
       const prReviews = pr.repository.pullRequest.reviews.nodes.map((n) => {
         return {
-          createdAt: new Date(n.createdAt),
+          createdAt: new Date(n.createdAt).getTime(),
           author: n.author.login,
           body: n.body,
           state: n.state,
