@@ -126,6 +126,19 @@ impl SearchStore for ElasticsearchSearchStore {
     ) -> Result<Vec<CoreContentNode>> {
         let options = options.unwrap_or_default();
 
+        // TODO(20250128, nodes-core): remove this & corresponding timing logs
+        let data_source_id = filter
+            .data_source_views
+            .first()
+            .map(|v| v.data_source_id.clone());
+        let data_source_filter = filter
+            .data_source_views
+            .first()
+            .map(|v| v.view_filter.clone());
+
+        let parent_id_log = filter.parent_id.clone();
+        let node_ids_log = filter.node_ids.as_ref().map(|ids| ids.join(", "));
+
         // check that options.limit is not greater than MAX_PAGE_SIZE
         if options.limit.unwrap_or(MAX_PAGE_SIZE) > MAX_PAGE_SIZE {
             return Err(anyhow::anyhow!(
@@ -222,11 +235,13 @@ impl SearchStore for ElasticsearchSearchStore {
             .send()
             .await?;
 
-        let data_source_id = filter.data_source_views[0].data_source_id.clone();
         let search_duration = utils::now() - search_start;
         info!(
             duration = search_duration,
             data_source_id = data_source_id,
+            data_source_filter = data_source_filter.as_ref().map(|v| v.join(", ")),
+            parent_id = parent_id_log,
+            node_ids = node_ids_log,
             "[ElasticsearchSearchStore] Search nodes duration"
         );
 
@@ -252,6 +267,9 @@ impl SearchStore for ElasticsearchSearchStore {
         info!(
             duration = utils::now() - compute_node_start,
             data_source_id = data_source_id,
+            data_source_filter = data_source_filter.as_ref().map(|v| v.join(", ")),
+            parent_id = parent_id_log,
+            node_ids = node_ids_log,
             "[ElasticsearchSearchStore] Compute core content nodes duration"
         );
         result
