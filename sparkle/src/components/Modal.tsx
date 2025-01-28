@@ -1,7 +1,7 @@
 import { Dialog, Transition } from "@headlessui/react";
 import React, { Fragment } from "react";
 
-import { classNames } from "@sparkle/lib/utils";
+import { cn } from "@sparkle/lib/utils";
 
 import { BarHeader, BarHeaderButtonBarProps } from "./BarHeader";
 import { Button, ButtonProps } from "./Button";
@@ -161,7 +161,7 @@ export function Modal({
         </Transition.Child>
 
         {/* Panel and transition */}
-        <div className={classNames(
+        <div className={cn(
           containerClasses,
           variantSize[variant]
         )}>
@@ -175,7 +175,7 @@ export function Modal({
             leaveTo={transitionLeaveTo}
           >
             <Dialog.Panel
-              className={classNames(
+              className={cn(
                 "s-absolute s-transform",
                 "s-bg-structure-0 dark:s-bg-structure-0-darkMode",
                 "s-px-3 sm:s-px-4",
@@ -197,7 +197,7 @@ export function Modal({
               <div
                 tabIndex={1}
                 autoFocus
-                className={classNames(
+                className={cn(
                   "s-pb-6 s-pt-16",
                   "focus-visible:s-outline-none",
                   innerContainerClasses,
