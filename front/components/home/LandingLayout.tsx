@@ -245,9 +245,7 @@ const CookieBanner = ({
 const Header = () => {
   return (
     <Head>
-      <title>
-        Dust - Be Superhuman at Work with Context-Aware AI Assistants
-      </title>
+      <title>Accelerate your entire organization with custom AI agents</title>
       <link rel="shortcut icon" href="/static/favicon.png" />
 
       <meta name="apple-mobile-web-app-title" content="Dust" />

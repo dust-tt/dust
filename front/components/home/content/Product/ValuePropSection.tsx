@@ -4,26 +4,29 @@ import React from "react";
 import { ImgBlock } from "@app/components/home/ContentBlocks";
 import { classNames } from "@app/lib/utils";
 
+import { H2 } from "../../ContentComponents";
+
 export function ValuePropSection() {
   return (
     <div className="w-full">
-      {/* <div className="mb-6">
+      <div className="mb-6">
         <H2 from="from-amber-200" to="to-amber-400">
-          Tailor AI assistants to your team needs
+          Unlock your team’s performance with new capabilities
         </H2>
-        <P size="lg">
+        {/* <P size="lg">
           Anyone on your&nbsp;team can create personalized&nbsp;assistants.
-        </P>
-      </div> */}
+        </P> */}
+      </div>
 
       <div className="grid grid-cols-1 gap-12 sm:grid-cols-2 md:gap-24">
         <ImgBlock
-          title={<>Automate knowledge work</>}
+          title={<>Analyse anything</>}
           content={
             <>
-              Stop wasting time on data entry, CRM updates, or filling out
-              questionnaires. Teach Dust your workflow—and watch it handle
-              repetitive tasks for you.
+              From spreadsheets to enterprise warehouses, Dust analyzes any
+              dataset to reveal patterns and make faster decisions. Choose your
+              perfect visualization charts, graphs, or pivots to spot patterns
+              instantly.
             </>
           }
         >
@@ -47,12 +50,12 @@ export function ValuePropSection() {
           </Hover3D>
         </ImgBlock>
         <ImgBlock
-          title={<>Surface critical information</>}
+          title={<>Automate work beyond limits</>}
           content={
             <>
-              Dust reads faster than you. Enjoy effortless summarization,
-              targeted extractions, and crisp insights from docs, tickets, chat
-              logs—whatever is relevant.
+              Breeze through your day and save time by automating repetitive
+              tasks. From data entry to CRM updates, AI assistants handle the
+              tedious work while you focus on driving impact.
             </>
           }
         >
@@ -77,11 +80,14 @@ export function ValuePropSection() {
         </ImgBlock>
 
         <ImgBlock
-          title={<>Analyze & visualize anything</>}
+          title={<>Answer any question, instantly</>}
           content={
             <>
-              From spreadsheets to data warehouses. Your questions are turned
-              into SQL queries, charts, pivots, or deep dives, in seconds.
+              Get the right information at the right moment. Dust instantly
+              searches and synthesizes information from Slack, Notion, Google
+              Drive, and all your favourite tools. Enjoy effortless
+              summarization, targeted extractions, and crisp insights from docs,
+              tickets, chat logs, whatever is relevant.
             </>
           }
         >
@@ -105,12 +111,13 @@ export function ValuePropSection() {
           </Hover3D>
         </ImgBlock>
         <ImgBlock
-          title={<>Create with confidence</>}
+          title={<>Unlock any skills</>}
           content={
             <>
-              Co-edit with AI that has full context of your internal knowledge
-              base, so you never waste time hunting for data or rewriting
-              outdated content.
+              Go from marketer to coder in a single step, Dust AI agents cover
+              the skills you don’t have so you can focus on the vision.
+              Transform your ideas into reality, build anything, your
+              imagination is the only limit.
             </>
           }
         >

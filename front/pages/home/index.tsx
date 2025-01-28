@@ -1,9 +1,8 @@
-import type { ReactElement } from "react";
-import React from "react";
 import { Button, RocketIcon } from "@dust-tt/sparkle";
 import Link from "next/link";
+import type { ReactElement } from "react";
+import React from "react";
 
-import { QuoteSection } from "@app/components/home/ContentBlocks";
 import { BlogSection } from "@app/components/home/content/Product/BlogSection";
 import { CapabilitySection } from "@app/components/home/content/Product/CapabilitySection";
 import { DifferentiationSection } from "@app/components/home/content/Product/DifferentiationSection";
@@ -12,7 +11,10 @@ import { DifferentiationSection } from "@app/components/home/content/Product/Dif
 // import type { DemoVideoProps } from "@app/components/home/content/Solutions/DemoVideoSection";
 // import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
 import { IntroSection } from "@app/components/home/content/Product/IntroSection";
+import { MetricsSection } from "@app/components/home/content/Product/MetricsSection";
 import { VerticalSection } from "@app/components/home/content/Product/VerticalSection";
+import { QuoteSection } from "@app/components/home/ContentBlocks";
+import { P } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { classNames } from "@app/lib/utils";
@@ -35,20 +37,22 @@ export function Landing() {
   return (
     <>
       <IntroSection />
-      <CapabilitySection />
       <VerticalSection />
+      <MetricsSection />
+      <QuoteSection
+        quote="Dust is the most impactful software we've adopted since building Clay. It delivers immediate value while continuously getting smarter and more valuable over time"
+        name="Everett Berry"
+        title="Head of GTM Engineering at Clay"
+        logo="/static/landing/logos/clay.png"
+      />
       <DifferentiationSection />
+      <CapabilitySection />
       {/* <DemoVideoSection
         demoVideo={DemoVideo}
         fromColor="from-sky-200"
         toColor="to-sky-500"
       /> */}
-      <QuoteSection
-        quote="We estimate that Dust AI assistants removes at least 50,000 hours of work per year, and perhaps a lot more. Some use cases pay off in a matter of hours!"
-        name="Aymeric Augustin"
-        title="CTO at Qonto"
-        logo="/static/landing/logos/qonto.png"
-      />
+
       <BlogSection />
       <div
         className={classNames(

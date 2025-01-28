@@ -188,24 +188,28 @@ interface MetricComponentProps {
   metrics: {
     value: string;
     description: ReactNode;
+    logo?: string;
   }[];
   from: string;
   to: string;
 }
 
 export const MetricSection = ({ metrics, from, to }: MetricComponentProps) => (
-  <div className="grid w-full grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-2">
+  <div className="grid w-full grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
     {metrics.map((metric, index) => (
-      <div
-        key={index}
-        className="flex flex-col items-center gap-4 py-4 text-center"
-      >
-        <H1 from={from} to={to}>
+      <div key={index} className="flex flex-col items-center text-center">
+        {metric.logo && (
+          <Image alt="alan" src={metric.logo} width={100} height={50} />
+        )}
+        <H1 from={from} to={to} className="mt-0">
           {metric.value}
         </H1>
-        <P size="lg" className="max-w-[400px] text-white">
-          {metric.description}
-        </P>
+
+        <div className="flex flex-col items-center">
+          <P size="lg" className="max-w-[400px] text-white">
+            {metric.description}
+          </P>
+        </div>
       </div>
     ))}
   </div>

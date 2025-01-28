@@ -5,7 +5,7 @@ import {
   CarouselContent,
   CarouselItem,
 } from "@app/components/home/Carousel";
-import { H2 } from "@app/components/home/ContentComponents";
+import { H2, P } from "@app/components/home/ContentComponents";
 import { CustomerCaroussel } from "@app/pages/home/solutions/customer-support";
 import { DataCaroussel } from "@app/pages/home/solutions/data-analytics";
 import { EngineeringCaroussel } from "@app/pages/home/solutions/engineering";
@@ -57,8 +57,15 @@ export function VerticalSection() {
     <div className="w-full">
       <Carousel className="w-full" isLooping={true} setApi={setApi}>
         <div>
-          <H2 className="mb-4 text-white">Accelerate every team</H2>
-          <div className="flex flex-wrap gap-2">
+          <H2 className="mb-4" from="from-amber-200" to="to-amber-400">
+            Custom AI agents to enhance every function
+          </H2>
+          <P>
+            Whether you’re a developer, marketer, or data scientist, Dust helps
+            you perform sophisticated tasks, automate processes and extract
+            powerful insights faster than ever before.
+          </P>
+          <div className="mt-6 flex flex-wrap gap-2">
             {carouselSections.map((section, index) => (
               <Button
                 key={index}
