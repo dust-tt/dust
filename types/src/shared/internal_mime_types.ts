@@ -95,7 +95,7 @@ export const MIME_TYPES = {
   }),
   NOTION: getMimeTypes({
     provider: "notion",
-    resourceTypes: ["UNKNOWN_FOLDER", "DATABASE", "PAGE"],
+    resourceTypes: ["UNKNOWN_FOLDER", "SYNCING_FOLDER", "DATABASE", "PAGE"],
   }),
   SLACK: getMimeTypes({
     provider: "slack",

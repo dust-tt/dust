@@ -23,6 +23,7 @@ import assert from "assert";
 import config from "@app/lib/api/config";
 import {
   computeNodesDiff,
+  FOLDERS_SELECTION_PREVENTED_MIME_TYPES,
   FOLDERS_TO_HIDE_IF_EMPTY_MIME_TYPES,
   getContentNodeInternalIdFromTableId,
   getContentNodeType,
@@ -275,6 +276,9 @@ async function getContentNodesForDataSourceViewFromCore(
           !NON_EXPANDABLE_NODES_MIME_TYPES.includes(node.mime_type) &&
           node.has_children,
         mimeType: node.mime_type,
+        preventSelection: FOLDERS_SELECTION_PREVENTED_MIME_TYPES.includes(
+          node.mime_type
+        ),
       };
     }),
     total: coreRes.value.nodes.length,
