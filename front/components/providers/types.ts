@@ -42,6 +42,7 @@ export const MODEL_PROVIDER_LOGOS: Record<ModelProvider, ComponentType> = {
   google_ai_studio: GoogleLogo,
   togetherai: PlanetIcon,
   deepseek: PlanetIcon,
+  fireworks: PlanetIcon,
 };
 
 export const USED_MODEL_CONFIGS: readonly ModelConfig[] = [
