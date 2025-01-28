@@ -161,11 +161,11 @@ async function migrateDataSource({
          FROM data_sources_nodes
          WHERE data_source = :coreDataSourceId
            AND node_id >= :nextId
-           AND NOT EXISTS
+           AND EXISTS
          (
              SELECT 1
              FROM UNNEST(parents) p
-             WHERE p LIKE 'notion-%'
+             WHERE p NOT LIKE 'notion-%'
          )
          ORDER BY node_id
          LIMIT :batchSize`,
