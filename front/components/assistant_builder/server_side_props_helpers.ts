@@ -15,6 +15,7 @@ import {
   isDustAppRunConfiguration,
   isGithubGetPullRequestConfiguration,
   isProcessConfiguration,
+  isReasoningConfiguration,
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
   isWebsearchConfiguration,
@@ -26,6 +27,7 @@ import {
   getDefaultDustAppRunActionConfiguration,
   getDefaultGithubhGetPullRequestActionConfiguration,
   getDefaultProcessActionConfiguration,
+  getDefaultReasoningActionConfiguration,
   getDefaultRetrievalExhaustiveActionConfiguration,
   getDefaultRetrievalSearchActionConfiguration,
   getDefaultTablesQueryActionConfiguration,
@@ -109,6 +111,8 @@ async function initializeBuilderAction(
     return null; // Ignore browse actions
   } else if (isGithubGetPullRequestConfiguration(action)) {
     return getDefaultGithubhGetPullRequestActionConfiguration();
+  } else if (isReasoningConfiguration(action)) {
+    return getDefaultReasoningActionConfiguration();
   } else {
     assertNever(action);
   }

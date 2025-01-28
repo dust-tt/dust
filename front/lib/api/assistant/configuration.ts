@@ -3,12 +3,15 @@ import type {
   AgentConfigurationScope,
   AgentConfigurationType,
   AgentModelConfigurationType,
+  AgentReasoningEffort,
   AgentsGetViewType,
   AgentStatus,
   AppType,
   DataSourceConfiguration,
   LightAgentConfigurationType,
   ModelId,
+  ModelIdType,
+  ModelProviderIdType,
   ProcessSchemaPropertyType,
   ProcessTagsFilter,
   Result,
@@ -34,6 +37,7 @@ import {
   DEFAULT_BROWSE_ACTION_NAME,
   DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME,
   DEFAULT_PROCESS_ACTION_NAME,
+  DEFAULT_REASONING_ACTION_NAME,
   DEFAULT_RETRIEVAL_ACTION_NAME,
   DEFAULT_TABLES_QUERY_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_NAME,
@@ -60,6 +64,7 @@ import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/
 import { AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
 import { AgentGithubConfiguration } from "@app/lib/models/assistant/actions/github";
 import { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/process";
+import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import { AgentTablesQueryConfiguration } from "@app/lib/models/assistant/actions/tables_query";
 import { AgentWebsearchConfiguration } from "@app/lib/models/assistant/actions/websearch";
@@ -978,6 +983,13 @@ export async function createAgentActionConfiguration(
     | {
         type: "github_get_pull_request_configuration";
       }
+    | {
+        type: "reasoning_configuration";
+        providerId: ModelProviderIdType;
+        modelId: ModelIdType;
+        temperature: number | null;
+        reasoningEffort: AgentReasoningEffort | null;
+      }
   ) & {
     name: string | null;
     description: string | null;
@@ -1172,6 +1184,29 @@ export async function createAgentActionConfiguration(
         sId: githubConfig.sId,
         type: "github_get_pull_request_configuration",
         name: action.name || DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME,
+        description: action.description,
+      });
+    }
+    case "reasoning_configuration": {
+      const reasoningConfig = await AgentReasoningConfiguration.create({
+        sId: generateRandomModelSId(),
+        agentConfigurationId: agentConfiguration.id,
+        name: action.name,
+        description: action.description,
+        providerId: action.providerId,
+        modelId: action.modelId,
+        workspaceId: owner.id,
+      });
+
+      return new Ok({
+        id: reasoningConfig.id,
+        sId: reasoningConfig.sId,
+        type: "reasoning_configuration",
+        providerId: action.providerId,
+        modelId: action.modelId,
+        temperature: action.temperature,
+        reasoningEffort: action.reasoningEffort,
+        name: action.name || DEFAULT_REASONING_ACTION_NAME,
         description: action.description,
       });
     }

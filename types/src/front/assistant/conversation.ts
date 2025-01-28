@@ -10,6 +10,7 @@ import { BrowseActionType } from "./actions/browse";
 import { ConversationIncludeFileActionType } from "./actions/conversation/include_file";
 import { ConversationListFilesActionType } from "./actions/conversation/list_files";
 import { GithubGetPullRequestActionType } from "./actions/github";
+import { ReasoningActionType } from "./actions/reasoning";
 import { WebsearchActionType } from "./actions/websearch";
 
 /**
@@ -112,7 +113,8 @@ export type ConfigurableAgentActionType =
   | TablesQueryActionType
   | ProcessActionType
   | WebsearchActionType
-  | BrowseActionType;
+  | BrowseActionType
+  | ReasoningActionType;
 
 export type ConversationAgentActionType =
   | ConversationListFilesActionType
@@ -141,6 +143,7 @@ export const ACTION_RUNNING_LABELS: Record<AgentActionType["type"], string> = {
   conversation_list_files_action: "Listing files",
   conversation_include_file_action: "Reading file",
   github_get_pull_request_action: "Retrieving pull request",
+  reasoning_action: "Reasoning",
 };
 
 /**

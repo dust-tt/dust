@@ -22,6 +22,9 @@ export const MODEL_PROVIDER_IDS = [
 ] as const;
 export type ModelProviderIdType = (typeof MODEL_PROVIDER_IDS)[number];
 
+export const REASONING_EFFORT_IDS = ["low", "medium", "high"] as const;
+export type ReasoningEffortIdType = (typeof REASONING_EFFORT_IDS)[number];
+
 export const DEFAULT_EMBEDDING_PROVIDER_ID = "openai";
 export const EMBEDDING_PROVIDER_IDS = [
   DEFAULT_EMBEDDING_PROVIDER_ID,
@@ -36,6 +39,9 @@ export const isModelProviderId = (
 
 export const ModelProviderIdCodec =
   ioTsEnum<(typeof MODEL_PROVIDER_IDS)[number]>(MODEL_PROVIDER_IDS);
+
+export const ReasoningEffortCodec =
+  ioTsEnum<(typeof REASONING_EFFORT_IDS)[number]>(REASONING_EFFORT_IDS);
 
 export const EmbeddingProviderCodec = ioTsEnum<
   (typeof EMBEDDING_PROVIDER_IDS)[number]

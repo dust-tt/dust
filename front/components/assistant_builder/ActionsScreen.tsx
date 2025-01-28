@@ -46,6 +46,10 @@ import {
   hasErrorActionProcess,
 } from "@app/components/assistant_builder/actions/ProcessAction";
 import {
+  ActionReasoning,
+  hasErrorActionReasoning,
+} from "@app/components/assistant_builder/actions/ReasoningAction";
+import {
   ActionRetrievalExhaustive,
   ActionRetrievalSearch,
   hasErrorActionRetrievalExhaustive,
@@ -129,6 +133,8 @@ export function hasActionError(
       return hasErrorActionWebNavigation(action);
     case "GITHUB_GET_PULL_REQUEST":
       return hasErrorActionGithub(action);
+    case "REASONING":
+      return hasErrorActionReasoning(action);
     default:
       assertNever(action);
   }
@@ -207,6 +213,7 @@ export default function ActionsScreen({
 
         case "WEB_NAVIGATION":
         case "GITHUB_GET_PULL_REQUEST":
+        case "REASONING":
           break;
 
         default:
@@ -823,6 +830,9 @@ function ActionConfigEditor({
 
     case "GITHUB_GET_PULL_REQUEST":
       return <ActionGithubGetPullRequest />;
+
+    case "REASONING":
+      return <ActionReasoning />;
 
     default:
       assertNever(action);

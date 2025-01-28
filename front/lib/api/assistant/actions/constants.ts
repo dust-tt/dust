@@ -33,6 +33,10 @@ export const DEFAULT_CONVERSATION_SEARCH_ACTION_DATA_DESCRIPTION = `Search withi
 export const DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY =
   "__dust_conversation_history";
 
+export const DEFAULT_REASONING_ACTION_NAME = "advanced_reasoning";
+export const DEFAULT_REASONING_ACTION_DESCRIPTION =
+  "Offload a reasoning-heavy task to to a powerful reasoning model.";
+
 // Github
 export const DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME =
   "github_get_pull_request";

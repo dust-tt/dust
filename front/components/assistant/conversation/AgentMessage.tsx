@@ -307,6 +307,13 @@ export function AgentMessage({
         break;
       }
 
+      case "reasoning_started":
+      case "reasoning_thinking":
+      case "reasoning_output":
+      case "reasoning_tokens":
+        // TODO(REASONING TOOL): handle the events
+        break;
+
       default:
         assertNever(event);
     }
