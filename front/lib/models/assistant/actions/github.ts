@@ -80,6 +80,30 @@ AgentGithubConfiguration.belongsTo(AgentConfiguration, {
  * GithubGetPullRequest Action
  */
 
+export type GithubGetPullRequestCommitType = {
+  sha: string;
+  author: string;
+  message: string;
+};
+
+export type GithubGetPullRequestCommentType = {
+  createdAt: number;
+  author: string;
+  body: string;
+};
+
+export type GithubGetPullRequestReviewType = {
+  createdAt: number;
+  author: string;
+  body: string;
+  state: string;
+  comments: {
+    body: string;
+    path: string;
+    line: number;
+  }[];
+};
+
 export class AgentGithubGetPullRequestAction extends WorkspaceAwareModel<AgentGithubGetPullRequestAction> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -89,11 +113,9 @@ export class AgentGithubGetPullRequestAction extends WorkspaceAwareModel<AgentGi
   declare pullNumber: number;
 
   declare pullBody: string | null;
-  declare pullCommits: Array<{
-    sha: string;
-    message: string;
-    author: string;
-  }> | null;
+  declare pullCommits: Array<GithubGetPullRequestCommitType> | null;
+  declare pullComments: Array<GithubGetPullRequestCommentType> | null;
+  declare pullReviews: Array<GithubGetPullRequestReviewType> | null;
   declare pullDiff: string | null;
 
   declare functionCallId: string | null;
@@ -131,6 +153,14 @@ AgentGithubGetPullRequestAction.init(
       allowNull: true,
     },
     pullCommits: {
+      type: DataTypes.ARRAY(DataTypes.JSONB),
+      allowNull: true,
+    },
+    pullComments: {
+      type: DataTypes.ARRAY(DataTypes.JSONB),
+      allowNull: true,
+    },
+    pullReviews: {
       type: DataTypes.ARRAY(DataTypes.JSONB),
       allowNull: true,
     },
