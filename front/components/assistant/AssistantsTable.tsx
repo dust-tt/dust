@@ -93,8 +93,7 @@ type RowData = {
 
 const calculateFeedback = (row: Row<RowData>) => {
   const feedbacks = row.original.feedbacks;
-  const totalFeedbacks = feedbacks ? feedbacks.up + feedbacks.down : 0;
-  return feedbacks && totalFeedbacks > 0 ? totalFeedbacks : 0;
+  return feedbacks ? feedbacks.up + feedbacks.down : 0;
 };
 
 const getTableColumns = () => {
