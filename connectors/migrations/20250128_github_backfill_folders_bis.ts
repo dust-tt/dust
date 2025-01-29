@@ -1,5 +1,4 @@
 import type { ModelId } from "@dust-tt/types";
-import { concurrentExecutor } from "@dust-tt/types";
 import type { Logger } from "pino";
 import { makeScript } from "scripts/helpers";
 
@@ -11,14 +10,28 @@ import {
 } from "@connectors/connectors/github/temporal/activities";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-makeScript({}, async ({ execute }, logger) => {
-  const connectors = await ConnectorResource.listByType("github", {});
-
-  for (const connector of connectors) {
-    await backfillMissingFolders(connector, logger, execute);
+makeScript(
+  {
+    startId: { type: "number", demandOption: false },
+  },
+  async ({ execute, startId }, logger) => {
+    logger.info("Starting backfill");
+    const connectors = await ConnectorResource.listByType("github", {});
+    // sort connectors by id
+    connectors.sort((a, b) => a.id - b.id);
+    // start from startId if provided
+    const startIndex = startId
+      ? connectors.findIndex((c) => c.id === startId)
+      : 0;
+    if (startIndex === -1) {
+      throw new Error(`Connector with id ${startId} not found`);
+    }
+    const slicedConnectors = connectors.slice(startIndex);
+    for (const connector of slicedConnectors) {
+      await backfillMissingFolders(connector, logger, execute);
+    }
   }
-});
+);
 
 async function backfillMissingFolders(
   connector: ConnectorResource,
@@ -42,39 +55,35 @@ async function backfillMissingFolders(
     );
     return;
   }
-  await concurrentExecutor(
-    repos,
-    async (repo) => {
-      const repoId = repo.id;
-      const repoName = repo.name;
-      const repoLogin = repo.login;
-      logger.info(
-        { repoId, repoName, repoLogin },
-        "Upserting repository folders"
-      );
-      if (execute) {
-        await githubUpsertRepositoryFolderActivity({
-          connectorId,
-          repoId,
-          repoName,
-          repoLogin,
-        });
-        await githubUpsertIssuesFolderActivity({
-          connectorId,
-          repoId,
-          repoLogin,
-          repoName,
-        });
-        await githubUpsertDiscussionsFolderActivity({
-          connectorId,
-          repoId,
-          repoLogin,
-          repoName,
-        });
-      }
-    },
-    { concurrency: 4 }
-  );
+  for (const repo of repos) {
+    const repoId = repo.id;
+    const repoName = repo.name;
+    const repoLogin = repo.login;
+    logger.info(
+      { repoId, repoName, repoLogin },
+      "Upserting repository folders"
+    );
+    if (execute) {
+      await githubUpsertRepositoryFolderActivity({
+        connectorId,
+        repoId,
+        repoName,
+        repoLogin,
+      });
+      await githubUpsertIssuesFolderActivity({
+        connectorId,
+        repoId,
+        repoLogin,
+        repoName,
+      });
+      await githubUpsertDiscussionsFolderActivity({
+        connectorId,
+        repoId,
+        repoLogin,
+        repoName,
+      });
+    }
+  }
   logger.info("Finished backfilling folders");
 }
 
