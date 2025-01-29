@@ -21,6 +21,8 @@ pub struct TagsFilter {
     pub is_in_map: Option<HashMap<String, Vec<String>>>,
     #[serde(rename = "not")]
     pub is_not: Option<Vec<String>>,
+    #[serde(rename = "not_map")]
+    pub is_not_map: Option<HashMap<String, Vec<String>>>,
 }
 
 /// A filter to apply to the search query based on document parents. All documents returned must have at least
@@ -130,6 +132,24 @@ impl SearchFilter {
                             None => self_tags.is_not = Some(is_not.clone()),
                             Some(ref mut self_is_not) => {
                                 self_is_not.extend(is_not.clone());
+                            }
+                        },
+                    }
+                    match &tags.is_not_map {
+                        None => (),
+                        Some(ref is_not_map) => match &mut self_tags.is_not_map {
+                            None => self_tags.is_not_map = Some(is_not_map.clone()),
+                            Some(ref mut self_is_not_map) => {
+                                for (k, v) in is_not_map.iter() {
+                                    match self_is_not_map.get_mut(k) {
+                                        None => {
+                                            self_is_not_map.insert(k.clone(), v.clone());
+                                        }
+                                        Some(ref mut self_v) => {
+                                            self_v.extend(v.clone());
+                                        }
+                                    }
+                                }
                             }
                         },
                     }
@@ -257,12 +277,13 @@ impl SearchFilter {
     // We postprocess `parents.is_in_map` if it is set to augment or set `parents.is_in` based on
     // the current `data_source_id`` and set `parents.is_in_map` to `None` since this is a virtual
     // filter that we never want to send to qdrant.
-    // We do the same for `tags.is_in_map`.
+    // We do the same for `tags.is_in_map` and `tags.is_not_map`.
     pub fn postprocess_for_data_source(&self, data_source_id: &str) -> SearchFilter {
         let filter = SearchFilter {
             tags: match &self.tags {
                 Some(tags) => {
                     let mut is_in: Option<Vec<String>> = None;
+                    let mut is_not: Option<Vec<String>> = None;
 
                     match &tags.is_in {
                         Some(v) => {
@@ -286,10 +307,33 @@ impl SearchFilter {
                         None => (),
                     }
 
+                    match &tags.is_not {
+                        Some(v) => {
+                            is_not = Some(v.clone());
+                        }
+                        None => (),
+                    }
+
+                    match &tags.is_not_map {
+                        Some(h) => match h.get(data_source_id) {
+                            Some(v) => match &mut is_not {
+                                Some(is_not) => {
+                                    is_not.extend(v.clone());
+                                }
+                                None => {
+                                    is_not = Some(v.clone());
+                                }
+                            },
+                            None => (),
+                        },
+                        None => (),
+                    }
+
                     Some(TagsFilter {
                         is_in,
                         is_in_map: None,
-                        is_not: tags.is_not.clone(),
+                        is_not,
+                        is_not_map: None,
                     })
                 }
                 None => None,
@@ -346,13 +390,13 @@ impl SearchFilter {
             None => (),
         }
         match &self.tags {
-            Some(tags) => match &tags.is_in_map {
-                Some(_) => {
+            Some(tags) => match (&tags.is_in_map, &tags.is_not_map) {
+                (Some(_), _) | (_, Some(_)) => {
                     return Err(anyhow!(
-                        "SearchFilter must be postprocessed before being used (tags.is_in_map)"
-                    ))
+                        "SearchFilter must be postprocessed before being used (tags.is_in_map or tags.is_not_map)"
+                    ));
                 }
-                None => (),
+                (None, None) => (),
             },
             None => (),
         }
