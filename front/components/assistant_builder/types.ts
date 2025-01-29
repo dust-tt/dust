@@ -403,7 +403,7 @@ export function getDefaultActionConfiguration(
       case "GITHUB_GET_PULL_REQUEST":
         return getDefaultGithubGetPullRequestActionConfiguration();
       case "GITHUB_CREATE_ISSUE":
-        return getDefaultGithubhCreateIssueActionConfiguration();
+        return getDefaultGithubCreateIssueActionConfiguration();
       case "REASONING":
         return getDefaultReasoningActionConfiguration();
       default:
