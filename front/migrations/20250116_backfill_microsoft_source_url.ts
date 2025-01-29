@@ -68,6 +68,7 @@ async function backfillNodes(
        FROM microsoft_nodes
        WHERE id > :lastId
          AND "connectorId" = :connectorId
+         AND "mimeType" = in ('application/vnd.dust.microsoft.folder')
        ORDER BY id
        LIMIT :batchSize;`,
       {
@@ -94,7 +95,7 @@ async function backfillNodes(
          SET source_url = urls.url
          FROM (SELECT unnest(ARRAY [:nodeIds]::text[]) as node_id,
                       unnest(ARRAY [:urls]::text[])    as url) urls
-         WHERE data_sources_nodes.data_source = :dataSourceId AND data_sources_nodes.node_id = urls.node_id;`,
+         WHERE data_sources_nodes.data_source = :dataSourceId AND data_sources_nodes.node_id = urls.node_id and source_url is null;`,
         { replacements: { urls, nodeIds, dataSourceId } }
       );
       logger.info(
