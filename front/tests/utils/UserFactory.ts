@@ -7,12 +7,8 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { Factory } from "./factories";
 
 class UserFactory extends Factory<UserModel> {
-  async make(params: InferCreationAttributes<UserModel>) {
-    return UserModel.create(params);
-  }
-
-  basic() {
-    return this.params({
+  constructor() {
+    super({
       sId: generateRandomModelSId(),
       auth0Sub: faker.string.uuid(),
       provider: "google",
@@ -23,6 +19,22 @@ class UserFactory extends Factory<UserModel> {
       name: faker.person.fullName(),
       firstName: faker.person.firstName(),
       lastName: faker.person.lastName(),
+
+      isDustSuperUser: false,
+    });
+  }
+
+  async make(params: InferCreationAttributes<UserModel>) {
+    return UserModel.create(params);
+  }
+
+  basic() {
+    return this.params({});
+  }
+
+  superUser() {
+    return this.params({
+      isDustSuperUser: true,
     });
   }
 

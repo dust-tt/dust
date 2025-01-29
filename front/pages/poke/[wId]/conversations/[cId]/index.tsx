@@ -13,7 +13,7 @@ import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import type { Action } from "@app/lib/registry";
 import { getDustProdAction } from "@app/lib/registry";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { useConversation } from "@app/poke/swr";
+import { usePokeConversation } from "@app/poke/swr";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   workspaceId: string;
@@ -174,7 +174,7 @@ const ConversationPage = ({
   conversationDataSourceId,
   multiActionsApp,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
-  const { conversation } = useConversation({ workspaceId, conversationId });
+  const { conversation } = usePokeConversation({ workspaceId, conversationId });
   return (
     <div className="min-h-screen bg-structure-50">
       <PokeNavbar />

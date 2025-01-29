@@ -122,6 +122,21 @@ export class TemplateResource extends BaseResource<TemplateModel> {
     });
   }
 
+  static async upsertByHandle(
+    blob: CreationAttributes<TemplateModel>
+  ): Promise<Result<TemplateResource, Error>> {
+    const existing = await TemplateModel.findOne({
+      where: { handle: blob.handle },
+    });
+
+    if (existing) {
+      await existing.update(blob);
+      return new Ok(new TemplateResource(TemplateModel, existing.get()));
+    }
+    const template = await TemplateResource.makeNew(blob);
+    return new Ok(template);
+  }
+
   static modelIdToSId({ id }: { id: ModelId }): string {
     return makeSId("template", {
       id,

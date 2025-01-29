@@ -11,8 +11,9 @@ import {
 import { createParser } from "eventsource-parser";
 import _ from "lodash";
 
-import { default as apiConfig, default as config } from "@app/lib/api/config";
+import { default as config } from "@app/lib/api/config";
 import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
+import { config as regionConfig } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
@@ -387,22 +388,22 @@ export async function synchronizeDustApps(
   auth: Authenticator,
   space: SpaceResource
 ): Promise<Result<ImportRes[], Error | CoreAPIError>> {
-  if (!apiConfig.getDustAppsSyncEnabled()) {
+  if (!regionConfig.getDustRegionSyncEnabled()) {
     return new Ok([]);
   }
 
   const syncMasterApi = new DustAPI(
-    apiConfig.getDustAPIConfig(),
+    config.getDustAPIConfig(),
     {
-      apiKey: apiConfig.getDustAppsSyncMasterApiKey(),
-      workspaceId: apiConfig.getDustAppsSyncMasterWorkspaceId(),
+      apiKey: regionConfig.getDustAppsSyncMasterApiKey(),
+      workspaceId: regionConfig.getDustAppsSyncMasterWorkspaceId(),
     },
     logger,
-    apiConfig.getDustAppsSyncMasterApiUrl()
+    regionConfig.getDustRegionSyncMasterUrl()
   );
 
   const exportRes = await syncMasterApi.exportApps({
-    appSpaceId: apiConfig.getDustAppsSyncMasterSpaceId(),
+    appSpaceId: regionConfig.getDustAppsSyncMasterSpaceId(),
   });
 
   if (exportRes.isErr()) {

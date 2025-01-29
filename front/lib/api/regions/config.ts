@@ -34,4 +34,21 @@ export const config = {
       url: this.getRegionUrl(otherRegion),
     };
   },
+  getDustRegionSyncEnabled: (): boolean => {
+    return EnvironmentConfig.getEnvVariable("DUST_REGION") === "us-central1";
+  },
+  getDustRegionSyncMasterUrl: (): string => {
+    return EnvironmentConfig.getEnvVariable("DUST_US_URL");
+  },
+  getDustAppsSyncMasterWorkspaceId: (): string => {
+    return EnvironmentConfig.getEnvVariable(
+      "DUST_APPS_SYNC_MASTER_WORKSPACE_ID"
+    );
+  },
+  getDustAppsSyncMasterSpaceId: (): string => {
+    return EnvironmentConfig.getEnvVariable("DUST_APPS_SYNC_MASTER_SPACE_ID");
+  },
+  getDustAppsSyncMasterApiKey: (): string => {
+    return EnvironmentConfig.getEnvVariable("DUST_APPS_SYNC_MASTER_API_KEY");
+  },
 };
