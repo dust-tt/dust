@@ -183,6 +183,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         //
         let nodes_body: Vec<JsonBody<_>> = nodes
             .into_iter()
+            .filter(|node| node.source_url.is_some())
             .flat_map(|node| {
                 [
                     json!({"index": {"_id": node.unique_id()}}).into(),
