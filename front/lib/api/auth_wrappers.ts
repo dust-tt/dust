@@ -121,6 +121,17 @@ export function withSessionAuthenticationForWorkspace<T>(
         });
       }
 
+      const maintenance = owner.metadata?.maintenance;
+      if (maintenance) {
+        return apiError(req, res, {
+          status_code: 503,
+          api_error: {
+            type: "service_unavailable",
+            message: `Service is currently unavailable. [${maintenance}]`,
+          },
+        });
+      }
+
       const user = auth.user();
       if (!user) {
         return apiError(req, res, {
