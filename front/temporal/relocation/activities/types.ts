@@ -3,5 +3,5 @@ export interface RelocationBlob<T extends string = string> {
 }
 
 export type CoreEntitiesRelocationBlob = RelocationBlob<
-  "plans" | "users" | "workspace"
+  "plans" | "users_metadata" | "users" | "workspace"
 >;

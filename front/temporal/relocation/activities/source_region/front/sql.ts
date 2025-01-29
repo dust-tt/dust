@@ -6,7 +6,10 @@ import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import { Workspace } from "@app/lib/models/workspace";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { UserModel } from "@app/lib/resources/storage/models/user";
+import {
+  UserMetadataModel,
+  UserModel,
+} from "@app/lib/resources/storage/models/user";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type {
   CoreEntitiesRelocationBlob,
@@ -48,6 +51,16 @@ export async function readCoreEntitiesFromSourceRegion({
     raw: true,
   });
 
+  // Fetch all associated users metadata of the workspace.
+  const usersMetadata = await UserMetadataModel.findAll({
+    where: {
+      userId: {
+        [Op.in]: memberships.map((m) => m.userId),
+      },
+    },
+    raw: true,
+  });
+
   const subscriptions = await frontSequelize.query<{ planId: ModelId }>(
     'SELECT * FROM subscriptions WHERE "workspaceId" = :workspaceId',
     {
@@ -70,6 +83,13 @@ export async function readCoreEntitiesFromSourceRegion({
     statements: {
       plans: generateInsertStatements("plans", plans, { onConflict: "ignore" }),
       users: generateInsertStatements("users", users, { onConflict: "ignore" }),
+      users_metadata: generateInsertStatements(
+        "users_metadata",
+        usersMetadata,
+        {
+          onConflict: "ignore",
+        }
+      ),
       workspace: generateInsertStatements("workspaces", [workspace], {
         onConflict: "ignore",
       }),

@@ -33,7 +33,14 @@ export async function writeCoreEntitiesToDestinationRegion({
     });
   }
 
-  // 3) Create plans that the workspace uses if not already existing.
+  // 3) Create users metadata in transaction.
+  for (const userMetadataChunk of blob.statements.users_metadata) {
+    await frontSequelize.transaction(async (transaction) => {
+      await frontSequelize.query(userMetadataChunk, { transaction });
+    });
+  }
+
+  // 4) Create plans that the workspace uses if not already existing.
   for (const planChunk of blob.statements.plans) {
     await frontSequelize.transaction(async (transaction) => {
       await frontSequelize.query(planChunk, { transaction });
