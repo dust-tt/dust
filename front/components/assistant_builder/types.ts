@@ -344,7 +344,7 @@ export function getDefaultWebsearchActionConfiguration(): AssistantBuilderAction
   };
 }
 
-export function getDefaultGithubhGetPullRequestActionConfiguration(): AssistantBuilderActionConfiguration {
+export function getDefaultGithubGetPullRequestActionConfiguration(): AssistantBuilderActionConfiguration {
   return {
     type: "GITHUB_GET_PULL_REQUEST",
     configuration: {},
@@ -354,7 +354,7 @@ export function getDefaultGithubhGetPullRequestActionConfiguration(): AssistantB
   };
 }
 
-export function getDefaultGithubhCreateIssueActionConfiguration(): AssistantBuilderActionConfiguration {
+export function getDefaultGithubCreateIssueActionConfiguration(): AssistantBuilderActionConfiguration {
   return {
     type: "GITHUB_CREATE_ISSUE",
     configuration: {},
@@ -401,7 +401,7 @@ export function getDefaultActionConfiguration(
       case "WEB_NAVIGATION":
         return getDefaultWebsearchActionConfiguration();
       case "GITHUB_GET_PULL_REQUEST":
-        return getDefaultGithubhGetPullRequestActionConfiguration();
+        return getDefaultGithubGetPullRequestActionConfiguration();
       case "GITHUB_CREATE_ISSUE":
         return getDefaultGithubhCreateIssueActionConfiguration();
       case "REASONING":

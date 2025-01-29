@@ -26,7 +26,8 @@ import {
 import type { AssistantBuilderActionConfiguration } from "@app/components/assistant_builder/types";
 import {
   getDefaultDustAppRunActionConfiguration,
-  getDefaultGithubhGetPullRequestActionConfiguration,
+  getDefaultGithubCreateIssueActionConfiguration,
+  getDefaultGithubGetPullRequestActionConfiguration,
   getDefaultProcessActionConfiguration,
   getDefaultReasoningActionConfiguration,
   getDefaultRetrievalExhaustiveActionConfiguration,
@@ -111,9 +112,9 @@ async function initializeBuilderAction(
   } else if (isBrowseConfiguration(action)) {
     return null; // Ignore browse actions
   } else if (isGithubGetPullRequestConfiguration(action)) {
-    return getDefaultGithubhGetPullRequestActionConfiguration();
+    return getDefaultGithubGetPullRequestActionConfiguration();
   } else if (isGithubCreateIssueConfiguration(action)) {
-
+    return getDefaultGithubCreateIssueActionConfiguration();
   } else if (isReasoningConfiguration(action)) {
     return getDefaultReasoningActionConfiguration();
   } else {
