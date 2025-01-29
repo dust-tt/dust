@@ -245,7 +245,7 @@ export function computeNodesDiff({
       (coreNode) =>
         !connectorsContentNodes.some(
           (n) => n.internalId === coreNode.internalId
-        )
+        ) && coreNode.internalId !== "notion-syncing"
     )
     .map((coreNode) => coreNode.internalId);
   if (extraCoreInternalIds.length > 0) {
