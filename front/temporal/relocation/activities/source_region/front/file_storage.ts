@@ -1,5 +1,3 @@
-import type { Result } from "@dust-tt/types";
-
 import type { RegionType } from "@app/lib/api/regions/config";
 import fileStorageConfig from "@app/lib/file_storage/config";
 import { getContentFragmentBaseCloudStorageForWorkspace } from "@app/lib/resources/content_fragment_resource";
