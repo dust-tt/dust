@@ -23,11 +23,9 @@ export function ValuePropSection() {
           title={<>Answer any question, instantly</>}
           content={
             <>
-              Get the right information at the right moment. Dust instantly
-              searches and synthesizes information from Slack, Notion, Google
-              Drive, and all your favourite tools. Enjoy effortless
-              summarization, targeted extractions, and crisp insights from docs,
-              tickets, chat logs, whatever is relevant.
+              Dust searches and synthesizes info from all your tools. Enjoy
+              summarization, targeted extractions, and crisp insights from
+              relevant docs.
             </>
           }
         >
@@ -48,10 +46,9 @@ export function ValuePropSection() {
           title={<>Unlock any skills</>}
           content={
             <>
-              Go from marketer to coder in a single step, Dust AI agents cover
-              the skills you don’t have so you can focus on the vision.
-              Transform your ideas into reality, build anything, your
-              imagination is the only limit.
+              Go from marketer to coder in one step, Dust AI agents cover skill
+              gaps so you can focus on vision. Your imagination is the only
+              limit.
             </>
           }
         >
@@ -72,10 +69,8 @@ export function ValuePropSection() {
           title={<>Analyse anything</>}
           content={
             <>
-              From spreadsheets to enterprise warehouses, Dust analyzes any
-              dataset to reveal patterns and make faster decisions. Choose your
-              perfect visualization charts, graphs, or pivots to spot patterns
-              instantly.
+              From spreadsheets to data warehouses, Dust analyzes and visualize
+              any datasets to reveal patterns and speed up decisions.
             </>
           }
         >
@@ -99,9 +94,8 @@ export function ValuePropSection() {
           title={<>Automate work beyond limits</>}
           content={
             <>
-              Breeze through your day and save time by automating repetitive
-              tasks. From data entry to CRM updates, AI assistants handle the
-              tedious work while you focus on driving impact.
+              From data entry to CRM updates, let AI agents handle repetitive
+              tasks so you can focus on driving impact.
             </>
           }
         >
