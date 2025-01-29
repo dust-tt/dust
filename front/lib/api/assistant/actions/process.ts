@@ -14,12 +14,7 @@ import type {
   TimeFrame,
   UserMessageType,
 } from "@dust-tt/types";
-import {
-  BaseAction,
-  Ok,
-  PROCESS_ACTION_TOP_K,
-  renderSchemaPropertiesAsJSONSchema,
-} from "@dust-tt/types";
+import { BaseAction, Ok, PROCESS_ACTION_TOP_K, renderSchemaPropertiesAsJSONSchema } from "@dust-tt/types";
 import assert from "assert";
 import _ from "lodash";
 
@@ -207,6 +202,7 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
       functionCallName: actionConfiguration.name,
       agentMessageId: agentMessage.agentMessageId,
       step,
+      workspaceId: owner.id
     });
 
     const now = Date.now();

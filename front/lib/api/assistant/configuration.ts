@@ -55,10 +55,7 @@ import {
 } from "@app/lib/api/assistant/configuration/table_query";
 import { fetchWebsearchActionConfigurations } from "@app/lib/api/assistant/configuration/websearch";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
-import {
-  getGlobalAgents,
-  isGlobalAgentId,
-} from "@app/lib/api/assistant/global_agents";
+import { getGlobalAgents, isGlobalAgentId } from "@app/lib/api/assistant/global_agents";
 import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_authors";
 import { Authenticator } from "@app/lib/auth";
 import { getPublicUploadBucket } from "@app/lib/file_storage";
@@ -71,10 +68,7 @@ import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/r
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import { AgentTablesQueryConfiguration } from "@app/lib/models/assistant/actions/tables_query";
 import { AgentWebsearchConfiguration } from "@app/lib/models/assistant/actions/websearch";
-import {
-  AgentConfiguration,
-  AgentUserRelation,
-} from "@app/lib/models/assistant/agent";
+import { AgentConfiguration, AgentUserRelation } from "@app/lib/models/assistant/agent";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -1124,6 +1118,7 @@ export async function createAgentActionConfiguration(
             schema: action.schema,
             name: action.name,
             description: action.description,
+            workspaceId: owner.id
           },
           { transaction: t }
         );
