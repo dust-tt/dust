@@ -28,7 +28,7 @@ async function backfillMissingFolders(
   const connectorId = connector.id;
   const logger = parentLogger.child({ connectorId, execute });
   logger.info("Backfilling folders");
-  const repos = await getRepositories(connectorId, logger);
+  const repos = await getRepositories(connectorId);
   await concurrentExecutor(
     repos,
     async (repo) => {
