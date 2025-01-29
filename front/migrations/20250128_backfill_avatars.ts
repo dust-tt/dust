@@ -40,7 +40,7 @@ async function backfillAvatars(
             [Op.like]: `${baseUrl}%`,
           },
           {
-            [Op.notLike]: `${baseUrl}files/%`,
+            [Op.notLike]: `${baseUrl}files%`,
           },
         ],
       },
@@ -50,7 +50,21 @@ async function backfillAvatars(
   for (const agentConfiguration of agentConfigurations) {
     const { pictureUrl } = agentConfiguration;
 
+    logger.info(
+      {
+        workspaceId: workspace.sId,
+        agentId: agentConfiguration.sId,
+        pictureUrl,
+      },
+      "Processing agent avatar"
+    );
+
     const oldPath = pictureUrl.replace(baseUrl, "");
+
+    if (!(await bucket.file(oldPath).exists())) {
+      logger.error({ pictureUrl }, "File not found");
+      continue;
+    }
 
     const [metadata] = await bucket.file(oldPath).getMetadata();
 
@@ -74,16 +88,6 @@ async function backfillAvatars(
     if (execute) {
       const file = await FileResource.makeNew(fileBlob);
       const newPath = file.getCloudStoragePath(auth, "public");
-
-      logger.info(
-        {
-          workspaceId: workspace.sId,
-          agentId: agentConfiguration.sId,
-          oldPath,
-          newPath,
-        },
-        "Processing agent avatar"
-      );
 
       logger.info({ oldPath, newPath }, "moving gcs resource");
       if (execute) {
