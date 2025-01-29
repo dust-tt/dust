@@ -8,7 +8,6 @@ import {
 } from "@connectors/api/webhooks/slack/created_channel";
 import { botAnswerMessage } from "@connectors/connectors/slack/bot";
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
-import { getWeekStart } from "@connectors/connectors/slack/lib/utils";
 import { getBotUserIdMemoized } from "@connectors/connectors/slack/temporal/activities";
 import {
   launchSlackGarbageCollectWorkflow,
@@ -322,10 +321,7 @@ const _webhookSlackAPIHandler = async (
               } else {
                 // If it was a non-threaded message, re-sync the week's messages
                 // here event.deleted_ts corresponds to the message timestamp
-                const messageTs = parseInt(event.deleted_ts) * 1000;
-                const weekStartTsMs = getWeekStart(
-                  new Date(messageTs)
-                ).getTime();
+                const messageTs = event.deleted_ts;
                 const results = await Promise.all(
                   slackConfigurations.map(async (c) => {
                     const slackChannel = await SlackChannel.findOne({
@@ -343,7 +339,7 @@ const _webhookSlackAPIHandler = async (
                     return launchSlackSyncOneMessageWorkflow(
                       c.connectorId,
                       channel,
-                      weekStartTsMs.toString()
+                      messageTs
                     );
                   })
                 );
