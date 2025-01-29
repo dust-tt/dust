@@ -1159,6 +1159,14 @@ const GithubGetPullRequestParamsEventSchema = z.object({
   action: GithubGetPullRequestActionSchema,
 });
 
+const GithubCreateIssueParamsEventSchema = z.object({
+  type: z.literal("github_create_issue_params"),
+  created: z.number(),
+  configurationId: z.string(),
+  messageId: z.string(),
+  action: GithubCreateIssueActionSchema,
+});
+
 const ProcessParamsEventSchema = z.object({
   type: z.literal("process_params"),
   created: z.number(),
@@ -1259,6 +1267,7 @@ const AgentActionSpecificEventSchema = z.union([
   BrowseParamsEventSchema,
   ConversationIncludeFileParamsEventSchema,
   GithubGetPullRequestParamsEventSchema,
+  GithubCreateIssueParamsEventSchema,
   ReasoningStartedEventSchema,
   ReasoningThinkingEventSchema,
   ReasoningTokensEventSchema,
