@@ -145,7 +145,7 @@ export function computeNodesDiff({
             // The value in core is an improvement over the value in connectors, so we omit the difference.
             if (
               key === "title" &&
-              coreNode.mimeType === MIME_TYPES.GOOGLE_DRIVE.SPREADSHEET
+              coreNode.mimeType === "application/vnd.google-apps.spreadsheet"
             ) {
               return false;
             }
