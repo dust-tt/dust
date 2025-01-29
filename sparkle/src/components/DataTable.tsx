@@ -257,16 +257,29 @@ export function DataTable<TData extends TBaseData>({
 
 interface DataTableRootProps extends React.HTMLAttributes<HTMLTableElement> {
   children: ReactNode;
+  containerClassName?: string;
+  containerProps?: React.HTMLAttributes<HTMLDivElement>;
 }
 
 DataTable.Root = function DataTableRoot({
   children,
+  className,
+  containerClassName,
+  containerProps,
   ...props
 }: DataTableRootProps) {
   return (
-    <table className="s-w-full s-table-fixed s-border-collapse" {...props}>
-      {children}
-    </table>
+    <div
+      className={cn("s-@container/table", containerClassName)}
+      {...containerProps}
+    >
+      <table
+        className={cn("s-w-full s-table-fixed s-border-collapse", className)}
+        {...props}
+      >
+        {children}
+      </table>
+    </div>
   );
 };
 
