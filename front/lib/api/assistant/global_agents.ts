@@ -19,8 +19,8 @@ import {
   CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
-  DEEPSEEK_CHAT_MODEL_CONFIG,
   DEFAULT_MAX_STEPS_USE_PER_RUN,
+  FIREWORKS_DEEPSEEK_R1_MODEL_CONFIG,
   GEMINI_PRO_DEFAULT_MODEL_CONFIG,
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
@@ -786,7 +786,7 @@ function _getGeminiProGlobalAgent({
   };
 }
 
-function _getDeepSeekGlobalAgent({
+function _getDeepSeekR1GlobalAgent({
   auth,
   settings,
 }: {
@@ -800,29 +800,25 @@ function _getDeepSeekGlobalAgent({
 
   return {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.DEEPSEEK,
+    sId: GLOBAL_AGENTS_SID.DEEPSEEK_R1,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: "deepseek",
-    description: DEEPSEEK_CHAT_MODEL_CONFIG.description,
-    instructions:
-      "Only use web search if the user's question require recent or up to date information. Browse a maximum of 8 web pages.",
+    name: "DeepSeek R1",
+    description:
+      "DeepSeek's reasoning model. Served from a US inference provider. Cannot use any tools",
+    instructions: null,
     pictureUrl: "https://dust.tt/static/systemavatar/deepseek_avatar_full.png",
     status,
     scope: "global",
     userFavorite: false,
     model: {
-      providerId: DEEPSEEK_CHAT_MODEL_CONFIG.providerId,
-      modelId: DEEPSEEK_CHAT_MODEL_CONFIG.modelId,
+      providerId: FIREWORKS_DEEPSEEK_R1_MODEL_CONFIG.providerId,
+      modelId: FIREWORKS_DEEPSEEK_R1_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
-    actions: [
-      ..._getDefaultWebActionsForGlobalAgent({
-        agentSid: GLOBAL_AGENTS_SID.DEEPSEEK,
-      }),
-    ],
-    maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
+    actions: [],
+    maxStepsPerRun: 1,
     visualizationEnabled: false,
     templateId: null,
     // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
@@ -1358,8 +1354,8 @@ function getGlobalAgent(
     case GLOBAL_AGENTS_SID.GEMINI_PRO:
       agentConfiguration = _getGeminiProGlobalAgent({ auth, settings });
       break;
-    case GLOBAL_AGENTS_SID.DEEPSEEK:
-      agentConfiguration = _getDeepSeekGlobalAgent({ auth, settings });
+    case GLOBAL_AGENTS_SID.DEEPSEEK_R1:
+      agentConfiguration = _getDeepSeekR1GlobalAgent({ auth, settings });
       break;
     case GLOBAL_AGENTS_SID.SLACK:
       agentConfiguration = _getSlackGlobalAgent(auth, {
@@ -1483,9 +1479,9 @@ export async function getGlobalAgents(
       (sId) => sId !== GLOBAL_AGENTS_SID.O1_HIGH_REASONING
     );
   }
-  if (!flags.includes("deepseek_feature")) {
+  if (!flags.includes("reasoning_tool_feature")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) => sId !== GLOBAL_AGENTS_SID.DEEPSEEK
+      (sId) => sId !== GLOBAL_AGENTS_SID.DEEPSEEK_R1
     );
   }
 
