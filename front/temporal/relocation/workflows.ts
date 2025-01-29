@@ -169,10 +169,16 @@ export async function workspaceRelocateFrontFileStorageWorkflow({
   workspaceId,
 }: RelocationWorkflowBase) {
   const sourceRegionActivities = getFrontSourceRegionActivities(sourceRegion);
+  const destinationRegionActivities =
+    getFrontDestinationRegionActivities(targetRegion);
 
   // 1) Relocate public files.
+  const destPublicBucket =
+    await destinationRegionActivities.getDestinationPublicBucket();
+
   const publicFilesJobName =
     await sourceRegionActivities.startTransferFrontPublicFiles({
+      destBucket: destPublicBucket,
       destRegion: targetRegion,
       sourceRegion,
       workspaceId,
@@ -193,8 +199,12 @@ export async function workspaceRelocateFrontFileStorageWorkflow({
   }
 
   // 2) Relocate private files.
+  const destPrivateBucket =
+    await destinationRegionActivities.getDestinationPrivateBucket();
+
   const privateFilesJobName =
     await sourceRegionActivities.startTransferFrontPrivateFiles({
+      destBucket: destPrivateBucket,
       destRegion: targetRegion,
       sourceRegion,
       workspaceId,

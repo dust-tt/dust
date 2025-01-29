@@ -7,10 +7,12 @@ import config from "@app/temporal/relocation/activities/config";
 import { StorageTransferService } from "@app/temporal/relocation/lib/file_storage/transfer";
 
 export async function startTransferFrontPublicFiles({
+  destBucket,
   destRegion,
   sourceRegion,
   workspaceId,
 }: {
+  destBucket: string;
   destRegion: RegionType;
   sourceRegion: RegionType;
   workspaceId: string;
@@ -30,8 +32,7 @@ export async function startTransferFrontPublicFiles({
   );
 
   const transferResult = await storageTransferService.createTransferJob({
-    // TODO: Remove the `-europe` suffix after test.
-    destBucket: `${fileStorageConfig.getGcsPublicUploadBucket()}-europe`,
+    destBucket,
     destPath: FileResource.getBaseCloudStorageForWorkspace({
       workspaceId,
     }),
@@ -67,10 +68,12 @@ export async function startTransferFrontPublicFiles({
 }
 
 export async function startTransferFrontPrivateFiles({
+  destBucket,
   destRegion,
   sourceRegion,
   workspaceId,
 }: {
+  destBucket: string;
   destRegion: RegionType;
   sourceRegion: RegionType;
   workspaceId: string;
@@ -91,8 +94,7 @@ export async function startTransferFrontPrivateFiles({
 
   // Tranfer both private files and content fragments in the same job.
   const transferResult = await storageTransferService.createTransferJob({
-    // TODO: Remove the `-europe` suffix after test.
-    destBucket: `${fileStorageConfig.getGcsPrivateUploadsBucket()}-europe`,
+    destBucket,
     destRegion,
     includePrefixes: [
       FileResource.getBaseCloudStorageForWorkspace({ workspaceId }),
