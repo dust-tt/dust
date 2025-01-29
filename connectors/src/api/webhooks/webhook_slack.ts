@@ -20,6 +20,7 @@ import mainLogger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
+import { removeNulls } from "../../../../sdks/js";
 
 export interface SlackWebhookEvent<T = string> {
   bot_id?: string;
@@ -313,9 +314,7 @@ const _webhookSlackAPIHandler = async (
               })
             );
 
-            const activeConfigurations = validConfigurations.filter(
-              (c): c is NonNullable<typeof c> => c !== null
-            );
+            const activeConfigurations = removeNulls(validConfigurations);
 
             if (activeConfigurations.length === 0) {
               logger.info(
