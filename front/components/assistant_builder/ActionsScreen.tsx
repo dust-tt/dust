@@ -1301,7 +1301,7 @@ function Capabilities({
         {enableReasoningTool && (
           <Capability
             name="Reasoning"
-            description="Assistant can offload reasoning-heavy tasks to a reasoning model."
+            description="Assistant can decide to trigger a reasoning model for complex tasks"
             enabled={!!builderState.actions.find((a) => a.type === "REASONING")}
             onEnable={() => {
               setEdited(true);
