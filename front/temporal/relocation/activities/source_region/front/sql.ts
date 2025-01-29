@@ -13,6 +13,7 @@ import {
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type {
   CoreEntitiesRelocationBlob,
+  ReadTableChunkParams,
   RelocationBlob,
 } from "@app/temporal/relocation/activities/types";
 import { writeToRelocationStorage } from "@app/temporal/relocation/lib/file_storage/relocation";
@@ -132,15 +133,6 @@ export async function getTablesWithWorkspaceIdOrder() {
   return getTopologicalOrder(frontSequelize, {
     columnName: "workspaceId",
   });
-}
-
-interface ReadTableChunkParams {
-  destRegion: RegionType;
-  lastId?: ModelId;
-  limit: number;
-  sourceRegion: RegionType;
-  tableName: string;
-  workspaceId: string;
 }
 
 export async function readFrontTableChunk({
