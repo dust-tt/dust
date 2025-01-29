@@ -1,4 +1,11 @@
-import { Button, Chip, cn, Container, Page, ShapesIcon } from "@dust-tt/sparkle";
+import {
+  Button,
+  Chip,
+  cn,
+  Container,
+  Page,
+  ShapesIcon,
+} from "@dust-tt/sparkle";
 import type { SubscriptionType, UserType, WorkspaceType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import React, { useState } from "react";
@@ -11,7 +18,11 @@ import {
 } from "@app/components/providers/ProviderSetup";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { APP_MODEL_PROVIDER_IDS, modelProviders, serviceProviders } from "@app/lib/providers";
+import {
+  APP_MODEL_PROVIDER_IDS,
+  modelProviders,
+  serviceProviders,
+} from "@app/lib/providers";
 import { useProviders } from "@app/lib/swr/apps";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
@@ -104,102 +115,98 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
         />
       )}
 
-      <Container className="w-full h-full bg-background" noPadding>
+      <Container className="h-full w-full bg-background" noPadding>
         <div className="space-y-8">
-          <Page.SectionHeader
-            title="Model Providers"
-            description="Model providers available to your Dust apps."
-          />
-          <ul role="list">
-            {filteredProviders.map((provider) => (
-              <li key={provider.providerId} className="py-4">
-                <div className="items-center flex justify-between">
-                  <div className="flex flex-col gap-1.5">
-                    <div className="items-center flex">
-                      <p
-                        className={cn(
-                          "truncate text-base font-bold",
-                          configs[provider.providerId]
-                            ? "text-slate-700"
-                            : "text-slate-400"
-                        )}
-                      >
-                        {provider.name}
-                      </p>
-                      <div className="ml-2 mt-0.5 flex flex-shrink-0">
-                        <Chip
-                          size="xs"
-                          label={configs[provider.providerId] ? "enabled" : "disabled"}
-                          color={configs[provider.providerId] ?"emerald": "slate"}
-                        />
-                      </div>
-                    </div>
-                    {configs[provider.providerId] && (
-                      <p className="font-mono text-xs text-element-700">
-                        API Key:{" "}
-                        <pre>{configs[provider.providerId].redactedApiKey}</pre>
-                      </p>
-                    )}
-                  </div>
-                  <Button
-                    variant={
-                      configs[provider.providerId] ? "primary" : "outline"
-                    }
-                    label={configs[provider.providerId] ? "Edit" : "Set up"}
-                    onClick={() => {
-                      setIsModelProvider(true);
-                      setSelectedProviderId(provider.providerId);
-                    }}
-                  />
-                </div>
-              </li>
-            ))}
-          </ul>
+          <div>
+            <Page.SectionHeader
+              title="Model Providers"
+              description="Model providers available to your Dust apps."
+            />
+            <ul role="list" className="divide-y divide-structure-200 pt-4">
+              {filteredProviders.map((provider) => (
+                <ProviderListItem
+                  key={provider.providerId}
+                  name={provider.name}
+                  isEnabled={!!configs[provider.providerId]}
+                  apiKey={configs[provider.providerId]?.redactedApiKey}
+                  onAction={() => {
+                    setIsModelProvider(true);
+                    setSelectedProviderId(provider.providerId);
+                  }}
+                />
+              ))}
+            </ul>
+          </div>
 
-          <Page.SectionHeader
-            title="Service Providers"
-            description="Service providers enable your Dust Apps to query external data or write to external services."
-          />
-          <ul role="list">
-            {serviceProviders.map((provider) => (
-              <li key={provider.providerId} className="py-4">
-                <div className="items-center flex justify-between">
-                  <div className="items-center flex">
-                    <p
-                      className={cn(
-                        "truncate text-base font-bold",
-                        configs[provider.providerId]
-                          ? "text-slate-700"
-                          : "text-slate-400"
-                      )}
-                    >
-                      {provider.name}
-                    </p>
-                    <div className="ml-2 mt-0.5 flex flex-shrink-0">
-                      <Chip
-                        size="xs"
-                        label={configs[provider.providerId] ? "enabled" : "disabled"}
-                        color={configs[provider.providerId] ?"emerald": "slate"}
-                      />
-                    </div>
-                  </div>
-                  <Button
-                    variant={
-                      configs[provider.providerId] ? "primary" : "outline"
-                    }
-                    label={configs[provider.providerId] ? "Edit" : "Set up"}
-                    onClick={() => {
-                      setIsModelProvider(false);
-                      setSelectedProviderId(provider.providerId);
-                    }}
-                  />
-                </div>
-              </li>
-            ))}
-          </ul>
+          <div>
+            <Page.SectionHeader
+              title="Service Providers"
+              description="Service providers enable your Dust Apps to query external data or write to external services."
+            />
+            <ul role="list" className="divide-y divide-structure-200 pt-4">
+              {serviceProviders.map((provider) => (
+                <ProviderListItem
+                  key={provider.providerId}
+                  name={provider.name}
+                  isEnabled={!!configs[provider.providerId]}
+                  apiKey={configs[provider.providerId]?.redactedApiKey}
+                  onAction={() => {
+                    setIsModelProvider(false);
+                    setSelectedProviderId(provider.providerId);
+                  }}
+                />
+              ))}
+            </ul>
+          </div>
         </div>
       </Container>
     </>
+  );
+}
+
+function ProviderListItem({
+  name,
+  isEnabled,
+  apiKey,
+  onAction,
+}: {
+  name: string;
+  isEnabled: boolean;
+  apiKey?: string;
+  onAction: () => void;
+}) {
+  return (
+    <li className="py-4">
+      <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center gap-2">
+            <p
+              className={cn(
+                "text-sm font-bold",
+                isEnabled ? "text-slate-700" : "text-slate-400"
+              )}
+            >
+              {name}
+            </p>
+            <Chip
+              size="xs"
+              label={isEnabled ? "enabled" : "disabled"}
+              color={isEnabled ? "emerald" : "slate"}
+            />
+          </div>
+          {apiKey && (
+            <p className="font-mono text-xs text-element-700">
+              API Key: <pre>{apiKey}</pre>
+            </p>
+          )}
+        </div>
+        <Button
+          variant={isEnabled ? "primary" : "outline"}
+          label={isEnabled ? "Edit" : "Set up"}
+          onClick={onAction}
+        />
+      </div>
+    </li>
   );
 }
 
