@@ -28,6 +28,7 @@ const setHashParam = (
   shouldReplaceState: boolean
 ) => {
   if (typeof window !== "undefined") {
+    const { pathname, search } = window.location;
     const [prefix, searchParams] = getHashSearchParams(window.location);
 
     if (typeof value === "undefined" || value === "") {
@@ -36,10 +37,12 @@ const setHashParam = (
       searchParams.set(key, value);
     }
 
-    const search = searchParams.toString();
-    const hash = search ? `${prefix}?${search}` : prefix;
+    const hashSearch = searchParams.toString();
+    const hash = hashSearch ? `${prefix}?${hashSearch}` : prefix;
+    const newUrl = `${pathname}${search}#${hash}`;
+
     if (shouldReplaceState && "replaceState" in history) {
-      history.replaceState(null, "", `#${hash}`);
+      history.replaceState(null, "", newUrl);
     } else {
       window.location.hash = hash;
     }
