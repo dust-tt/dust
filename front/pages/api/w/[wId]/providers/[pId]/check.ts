@@ -277,6 +277,30 @@ async function handler(
           }
           return;
 
+        case "fireworks":
+          const testFireworks = await fetch(
+            `https://api.fireworks.ai/inference/v1/chat/completions`,
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${config.api_key}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                model: "accounts/fireworks/models/llama-v3p1-8b-instruct",
+                messages: [{ role: "user", content: "Hello, Fireworks" }],
+              }),
+            }
+          );
+          if (!testFireworks.ok) {
+            const err = await testFireworks.json();
+            res.status(400).json({ ok: false, error: err.error });
+          } else {
+            await testFireworks.json();
+            res.status(200).json({ ok: true });
+          }
+          return;
+
         default:
           return apiError(req, res, {
             status_code: 404,

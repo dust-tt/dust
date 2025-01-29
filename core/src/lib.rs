@@ -55,7 +55,9 @@ pub mod providers {
     }
     pub mod anthropic;
     pub mod deepseek;
+    pub mod fireworks;
     pub mod google_ai_studio;
+    pub mod helpers;
     pub mod openai_compatible_helpers;
     pub mod togetherai;
 }

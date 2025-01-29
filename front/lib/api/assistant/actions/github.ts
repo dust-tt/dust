@@ -20,6 +20,11 @@ import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
 import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
+import type {
+  GithubGetPullRequestCommentType,
+  GithubGetPullRequestCommitType,
+  GithubGetPullRequestReviewType,
+} from "@app/lib/models/assistant/actions/github";
 import { AgentGithubGetPullRequestAction } from "@app/lib/models/assistant/actions/github";
 import { PlatformActionsConfigurationResource } from "@app/lib/resources/platform_actions_configuration_resource";
 import logger from "@app/logger/logger";
@@ -35,13 +40,9 @@ interface GithubGetPullRequestActionBlob {
     pullNumber: number;
   };
   pullBody: string | null;
-  pullCommits:
-    | {
-        sha: string;
-        author: string;
-        message: string;
-      }[]
-    | null;
+  pullCommits: GithubGetPullRequestCommitType[] | null;
+  pullComments: GithubGetPullRequestCommentType[] | null;
+  pullReviews: GithubGetPullRequestReviewType[] | null;
   pullDiff: string | null;
   functionCallId: string | null;
   functionCallName: string | null;
@@ -56,13 +57,9 @@ export class GithubGetPullRequestAction extends BaseAction {
     pullNumber: number;
   };
   readonly pullBody: string | null;
-  readonly pullCommits:
-    | {
-        sha: string;
-        author: string;
-        message: string;
-      }[]
-    | null;
+  readonly pullCommits: GithubGetPullRequestCommitType[] | null;
+  readonly pullComments: GithubGetPullRequestCommentType[] | null;
+  readonly pullReviews: GithubGetPullRequestReviewType[] | null;
   readonly pullDiff: string | null;
   readonly functionCallId: string | null;
   readonly functionCallName: string | null;
@@ -75,6 +72,8 @@ export class GithubGetPullRequestAction extends BaseAction {
     this.params = blob.params;
     this.pullBody = blob.pullBody;
     this.pullCommits = blob.pullCommits;
+    this.pullComments = blob.pullComments;
+    this.pullReviews = blob.pullReviews;
     this.pullDiff = blob.pullDiff;
     this.functionCallId = blob.functionCallId;
     this.functionCallName = blob.functionCallName;
@@ -91,9 +90,32 @@ export class GithubGetPullRequestAction extends BaseAction {
   }
 
   async renderForMultiActionsModel(): Promise<FunctionMessageTypeModel> {
-    const content = `${this.pullBody}\n\n${(this.pullCommits || [])
-      .map((c) => `${c.sha} ${c.author}: ${c.message}`)
-      .join("\n")}\n\n${this.pullDiff}`;
+    // TODO(spolu): add PR author and date
+    const content =
+      `${this.pullBody}\n\n` +
+      `COMMITS:\n` +
+      `${(this.pullCommits || [])
+        .map((c) => `${c.sha} ${c.author}: ${c.message}`)
+        .join("\n")}\n\n` +
+      `DIFF:\n` +
+      `${this.pullDiff}\n\n` +
+      `COMMENTS:\n` +
+      `${(this.pullComments || [])
+        .map((c) => {
+          return `${c.author} [${new Date(c.createdAt).toISOString()}]:\n${c.body}`;
+        })
+        .join("\n")}\n\n` +
+      `REVIEWS:\n` +
+      `${(this.pullReviews || [])
+        .map(
+          (r) =>
+            `${r.author} [${new Date(r.createdAt).toISOString()}]:\n(${r.state})\n${r.body}\n${(
+              r.comments || []
+            )
+              .map((c) => ` - ${c.path}:${c.line}:\n${c.body}`)
+              .join("\n")}`
+        )
+        .join("\n")}`;
 
     return {
       role: "function" as const,
@@ -231,6 +253,8 @@ export class GithubGetPullRequestConfigurationServerRunner extends BaseActionCon
         pullBody: null,
         pullCommits: null,
         pullDiff: null,
+        pullComments: null,
+        pullReviews: null,
         functionCallId,
         functionCallName: actionConfiguration.name,
         agentMessageId: agentMessage.agentMessageId,
@@ -280,6 +304,32 @@ export class GithubGetPullRequestConfigurationServerRunner extends BaseActionCon
                 }
               }
             }
+            comments(first: 100) {
+              nodes {
+                author {
+                  login
+                }
+                body
+                createdAt
+              }
+            }
+            reviews(first: 100) {
+              nodes {
+                author {
+                  login
+                }
+                body
+                state
+                createdAt
+                comments(first: 100) {
+                  nodes {
+                    body
+                    path
+                    line
+                  }
+                }
+              }
+            }
           }
         }
       }`;
@@ -306,6 +356,32 @@ export class GithubGetPullRequestConfigurationServerRunner extends BaseActionCon
                 };
               }[];
             };
+            comments: {
+              nodes: {
+                author: {
+                  login: string;
+                };
+                body: string;
+                createdAt: string;
+              }[];
+            };
+            reviews: {
+              nodes: {
+                author: {
+                  login: string;
+                };
+                body: string;
+                state: string;
+                createdAt: string;
+                comments: {
+                  nodes: {
+                    body: string;
+                    path: string;
+                    line: number;
+                  }[];
+                };
+              }[];
+            };
           };
         };
       };
@@ -316,6 +392,28 @@ export class GithubGetPullRequestConfigurationServerRunner extends BaseActionCon
           sha: n.commit.oid,
           message: n.commit.message,
           author: n.commit.author.user.login,
+        };
+      });
+      const prComments = pr.repository.pullRequest.comments.nodes.map((n) => {
+        return {
+          createdAt: new Date(n.createdAt).getTime(),
+          author: n.author.login,
+          body: n.body,
+        };
+      });
+      const prReviews = pr.repository.pullRequest.reviews.nodes.map((n) => {
+        return {
+          createdAt: new Date(n.createdAt).getTime(),
+          author: n.author.login,
+          body: n.body,
+          state: n.state,
+          comments: n.comments.nodes.map((c) => {
+            return {
+              body: c.body,
+              path: c.path,
+              line: c.line,
+            };
+          }),
         };
       });
 
@@ -378,6 +476,8 @@ export class GithubGetPullRequestConfigurationServerRunner extends BaseActionCon
         pullBody: prBody,
         pullCommits: prCommits,
         pullDiff: prDiff,
+        pullComments: prComments,
+        pullReviews: prReviews,
       });
     } catch (e) {
       yield {
@@ -408,6 +508,8 @@ export class GithubGetPullRequestConfigurationServerRunner extends BaseActionCon
         pullBody: action.pullBody,
         pullCommits: action.pullCommits,
         pullDiff: action.pullDiff,
+        pullComments: action.pullComments,
+        pullReviews: action.pullReviews,
         functionCallId,
         functionCallName: actionConfiguration.name,
         agentMessageId: agentMessage.agentMessageId,

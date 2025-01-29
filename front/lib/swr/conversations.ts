@@ -1,7 +1,6 @@
 import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   ConversationError,
-  ConversationMessageReactions,
   ConversationType,
   ConversationWithoutContentType,
   LightWorkspaceType,
@@ -74,30 +73,6 @@ export function useConversations({
     isConversationsLoading: !error && !data,
     isConversationsError: error,
     mutateConversations: mutate,
-  };
-}
-
-export function useConversationReactions({
-  conversationId,
-  workspaceId,
-}: {
-  conversationId: string;
-  workspaceId: string;
-}) {
-  const conversationReactionsFetcher: Fetcher<{
-    reactions: ConversationMessageReactions;
-  }> = fetcher;
-
-  const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/assistant/conversations/${conversationId}/reactions`,
-    conversationReactionsFetcher
-  );
-
-  return {
-    reactions: useMemo(() => (data ? data.reactions : []), [data]),
-    isReactionsLoading: !error && !data,
-    isReactionsError: error,
-    mutateReactions: mutate,
   };
 }
 

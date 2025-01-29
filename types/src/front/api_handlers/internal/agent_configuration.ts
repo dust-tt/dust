@@ -6,6 +6,7 @@ import {
   isSupportedModel,
   ModelIdCodec,
   ModelProviderIdCodec,
+  ReasoningEffortCodec,
   SupportedModel,
 } from "../../lib/assistant";
 
@@ -109,6 +110,14 @@ const GithubGetPullRequestActionConfigurationSchema = t.type({
   type: t.literal("github_get_pull_request_configuration"),
 });
 
+const ReasoningActionConfigurationSchema = t.type({
+  type: t.literal("reasoning_configuration"),
+  modelId: ModelIdCodec,
+  providerId: ModelProviderIdCodec,
+  temperature: t.union([t.number, t.null]),
+  reasoningEffort: t.union([ReasoningEffortCodec, t.null]),
+});
+
 const ProcessActionConfigurationSchema = t.type({
   type: t.literal("process_configuration"),
   dataSources: t.array(
@@ -172,6 +181,7 @@ const ActionConfigurationSchema = t.intersection([
     WebsearchActionConfigurationSchema,
     BrowseActionConfigurationSchema,
     GithubGetPullRequestActionConfigurationSchema,
+    ReasoningActionConfigurationSchema,
   ]),
   requiredMultiActionsCommonFields,
 ]);
@@ -185,11 +195,7 @@ const ModelConfigurationSchema = t.intersection([
   // TODO(2024-11-04 flav) Clean up this legacy type.
   t.partial(multiActionsCommonFields),
   t.partial({
-    reasoningEffort: t.union([
-      t.literal("low"),
-      t.literal("medium"),
-      t.literal("high"),
-    ]),
+    reasoningEffort: ReasoningEffortCodec,
   }),
 ]);
 const IsSupportedModelSchema = new t.Type<SupportedModel>(

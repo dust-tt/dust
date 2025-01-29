@@ -177,20 +177,12 @@ export const UseCases: UseCaseProps = {
   ],
 };
 
-// export const Quote: QuoteProps = {
-//   quote:
-//     "It's pretty miraculous. The assistant answers (correctly!) tons of questions that I used to deal with. It gets the nuance right and cites its sources.",
-//   name: "Everett Berry ",
-//   title: "Head of GTM Engineering at Clay",
-//   logo: "/static/landing/logos/clay.png",
-// };
-
 export const Quote: QuoteProps = {
   quote:
-    "We built Dust assistants that do account summaries, meeting transcripts, CRM updates, follow-up email generation... This allowed Alan to reach 20%+ productivity gains in Sales productivity gains.",
-  name: "Charles Gorintin ",
-  title: "Co-founder at Alan",
-  logo: "/static/landing/logos/alan.png",
+    "Dust is the most impactful software we've adopted since building Clay. It continuously gets smarter, turning hours of documentation search into instant, cited answers—letting our team spend less time searching and more time closing deals.",
+  name: "Everett Berry ",
+  title: "Head of GTM Engineering at Clay",
+  logo: "/static/landing/logos/clay.png",
 };
 
 export const DemoVideo: DemoVideoProps = {

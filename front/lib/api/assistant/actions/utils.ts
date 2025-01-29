@@ -1,5 +1,6 @@
 import type { Icon } from "@dust-tt/sparkle";
 import {
+  ChatBubbleThoughtIcon,
   CommandLineIcon,
   GithubIcon,
   MagnifyingGlassIcon,
@@ -82,6 +83,13 @@ export const ACTION_SPECIFICATIONS: Record<
     cardIcon: GithubIcon,
     dropDownIcon: GithubIcon,
     flag: null,
+  },
+  REASONING: {
+    label: "Reasoning",
+    description: "Complex step by step reasoning",
+    cardIcon: ChatBubbleThoughtIcon,
+    dropDownIcon: ChatBubbleThoughtIcon,
+    flag: "reasoning_tool_feature",
   },
 };
 
@@ -192,6 +200,7 @@ export function getCitationsCount({
     case "browse_configuration":
     case "conversation_include_file_configuration":
     case "github_get_pull_request_configuration":
+    case "reasoning_configuration":
       return 0;
     default:
       assertNever(action);

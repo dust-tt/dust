@@ -33,6 +33,7 @@ import {
 } from "../../../front/assistant/agent";
 import { AgentActionType } from "../../../front/assistant/conversation";
 import { GithubGetPullRequestConfigurationType } from "./github";
+import { ReasoningConfigurationType } from "./reasoning";
 
 export function isTablesQueryConfiguration(
   arg: unknown
@@ -116,6 +117,17 @@ export function isWebsearchConfiguration(
     typeof arg === "object" &&
     "type" in arg &&
     arg.type === "websearch_configuration"
+  );
+}
+
+export function isReasoningConfiguration(
+  arg: unknown
+): arg is ReasoningConfigurationType {
+  return (
+    !!arg &&
+    typeof arg === "object" &&
+    "type" in arg &&
+    arg.type === "reasoning_configuration"
   );
 }
 

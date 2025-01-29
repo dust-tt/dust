@@ -96,15 +96,25 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       {}
     );
 
-    // Upserts to data_sources_folders (core) a top-level folder for the orphaned resources.
-    const folderId = nodeIdFromNotionId("unknown");
+    // For each connector, there are 2 special folders (root folders):
+    // - Syncing: contains all the pages visited during the sync process whose ancestry could not be resolved (one of the ancestors not synced yet).
+    // - Orphaned Resources: contains all the pages whose ancestors are not all synced/given access to.
     await upsertDataSourceFolder({
       dataSourceConfig: dataSourceConfigFromConnector(connector),
-      folderId,
-      parents: [folderId],
+      folderId: nodeIdFromNotionId("unknown"),
+      parents: [nodeIdFromNotionId("unknown")],
       parentId: null,
       title: "Orphaned Resources",
       mimeType: MIME_TYPES.NOTION.UNKNOWN_FOLDER,
+    });
+    // Upsert to data_sources_folders (core) a top-level folder for the syncing resources.
+    await upsertDataSourceFolder({
+      dataSourceConfig: dataSourceConfigFromConnector(connector),
+      folderId: nodeIdFromNotionId("syncing"),
+      parents: [nodeIdFromNotionId("syncing")],
+      parentId: null,
+      title: "Syncing",
+      mimeType: MIME_TYPES.NOTION.SYNCING_FOLDER,
     });
 
     try {
@@ -617,6 +627,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
         this.connectorId,
         notionId,
         [],
+        false,
         memo,
         undefined
       );

@@ -3,6 +3,7 @@ name: Lint & Build (extension)
 on:
   push:
     paths:
+      - sdks/js/**
       - extension/**
       - .github/workflows/build-and-lint-extension.yml
 

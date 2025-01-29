@@ -252,6 +252,10 @@ export function AgentMessage({
       case "process_params":
       case "websearch_params":
       case "browse_params":
+      case "github_get_pull_request_params":
+      case "reasoning_started":
+      case "reasoning_thinking":
+      case "reasoning_tokens":
       case "conversation_include_file_params":
         setStreamedAgentMessage((m) => {
           return updateMessageWithAction(m, event.action);
@@ -303,7 +307,7 @@ export function AgentMessage({
             break;
           default:
             // Log message and do nothing. Don't crash if a new token classification is not handled here.
-            assertNeverAndIgnore(event.classification);
+            assertNeverAndIgnore(event);
             break;
         }
         break;

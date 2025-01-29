@@ -22,7 +22,11 @@ import type {
   SpaceType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { isValidContentNodesViewType } from "@dust-tt/types";
+import {
+  isDevelopment,
+  isDustWorkspace,
+  isValidContentNodesViewType,
+} from "@dust-tt/types";
 import type {
   CellContext,
   ColumnDef,
@@ -190,6 +194,8 @@ type SpaceDataSourceViewContentListProps = {
   plan: PlanType;
   space: SpaceType;
   systemSpace: SpaceType;
+  // TODO(20250126, nodes-core): Remove this after project end
+  showConnectorsNodes?: boolean;
 };
 
 export const SpaceDataSourceViewContentList = ({
@@ -204,6 +210,7 @@ export const SpaceDataSourceViewContentList = ({
   plan,
   space,
   systemSpace,
+  showConnectorsNodes,
 }: SpaceDataSourceViewContentListProps) => {
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
   const [showConnectorPermissionsModal, setShowConnectorPermissionsModal] =
@@ -239,8 +246,9 @@ export const SpaceDataSourceViewContentList = ({
     [setPagination, setViewType, viewType, pagination.pageSize]
   );
 
-  const isServerPagination =
-    isFolder(dataSourceView.dataSource) && !dataSourceSearch;
+  // TODO(20250127, nodes-core): turn to true and remove when implementing pagination
+  const isServerPagination = false;
+  // isFolder(dataSourceView.dataSource) && !dataSourceSearch;
 
   const columns = useMemo(
     () => getTableColumns(showSpaceUsage),
@@ -258,6 +266,8 @@ export const SpaceDataSourceViewContentList = ({
     parentId,
     pagination: isServerPagination ? pagination : undefined,
     viewType: isValidContentNodesViewType(viewType) ? viewType : "documents",
+    // TODO(20250126, nodes-core): Remove this after project end
+    showConnectorsNodes,
   });
 
   const { hasContent: hasDocuments, isNodesValidating: isDocumentsValidating } =
@@ -307,7 +317,10 @@ export const SpaceDataSourceViewContentList = ({
     () =>
       nodes?.map((contentNode) => ({
         ...contentNode,
-        icon: getVisualForContentNode(contentNode),
+        icon: getVisualForContentNode(
+          contentNode,
+          isDevelopment() || isDustWorkspace(owner)
+        ),
         spaces: spaces.filter((space) =>
           dataSourceViews
             .filter(
@@ -349,6 +362,7 @@ export const SpaceDataSourceViewContentList = ({
       onSelect,
       spaces,
       dataSourceViews,
+      owner,
     ]
   );
 

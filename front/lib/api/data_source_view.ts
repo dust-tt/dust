@@ -1,8 +1,10 @@
 import type {
   ContentNodesViewType,
   CoreAPIContentNode,
+  CoreAPIContentNodeType,
   CoreAPIDatasourceViewFilter,
   CoreAPIError,
+  CoreAPISortSpec,
   DataSourceViewContentNode,
   DataSourceViewType,
   PatchDataSourceViewType,
@@ -13,6 +15,8 @@ import {
   ConnectorsAPI,
   CoreAPI,
   Err,
+  isDevelopment,
+  isDustWorkspace,
   Ok,
   removeNulls,
 } from "@dust-tt/types";
@@ -21,14 +25,21 @@ import assert from "assert";
 import config from "@app/lib/api/config";
 import {
   computeNodesDiff,
+  FOLDERS_SELECTION_PREVENTED_MIME_TYPES,
+  FOLDERS_TO_HIDE_IF_EMPTY_MIME_TYPES,
   getContentNodeInternalIdFromTableId,
-  getContentNodeMetadata,
+  getContentNodeType,
   NON_EXPANDABLE_NODES_MIME_TYPES,
 } from "@app/lib/api/content_nodes";
 import type { OffsetPaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
+import { SPREADSHEET_MIME_TYPES } from "@app/lib/content_nodes";
 import type { DustError } from "@app/lib/error";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import {
+  getWorkspaceByModelId,
+  renderLightWorkspaceType,
+} from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 
 const DEFAULT_STATIC_DATA_SOURCE_PAGINATION_LIMIT = 10_000;
@@ -171,7 +182,9 @@ function filterNodesByViewType(
 ) {
   switch (viewType) {
     case "documents":
-      return nodes;
+      return nodes.filter(
+        (node) => node.has_children || node.node_type !== "Table"
+      );
     case "tables":
       return nodes.filter(
         (node) => node.has_children || node.node_type === "Table"
@@ -179,6 +192,16 @@ function filterNodesByViewType(
     default:
       assertNever(viewType);
   }
+}
+
+function removeCatchAllFoldersIfEmpty(
+  nodes: CoreAPIContentNode[]
+): CoreAPIContentNode[] {
+  return nodes.filter(
+    (node) =>
+      !FOLDERS_TO_HIDE_IF_EMPTY_MIME_TYPES.includes(node.mime_type) ||
+      node.has_children
+  );
 }
 
 function makeCoreDataSourceViewFilter(
@@ -224,37 +247,63 @@ async function getContentNodesForDataSourceViewFromCore(
         ? undefined
         : ROOT_PARENT_ID);
 
+  const nodeTypesForViewType: CoreAPIContentNodeType[] =
+    viewType === "documents" ? ["Document", "Folder"] : ["Table", "Folder"];
+
+  // Always sort folders first, then sort by title.
+  const sortForViewType: CoreAPISortSpec[] =
+    viewType === "documents"
+      ? [
+          { field: "node_type", direction: "desc" },
+          { field: "title.keyword", direction: "asc" },
+        ]
+      : [
+          { field: "node_type", direction: "asc" },
+          { field: "title.keyword", direction: "asc" },
+        ];
+
   const coreRes = await coreAPI.searchNodes({
     filter: {
       data_source_views: [makeCoreDataSourceViewFilter(dataSourceView)],
       node_ids,
       parent_id,
+      node_types: nodeTypesForViewType,
     },
-    options: { limit: 250 },
+    options: { limit: 250, sort: sortForViewType },
   });
 
   if (coreRes.isErr()) {
     return new Err(new Error(coreRes.error.message));
   }
 
-  const filteredNodes = filterNodesByViewType(coreRes.value.nodes, viewType);
+  const filteredNodes = removeCatchAllFoldersIfEmpty(
+    filterNodesByViewType(coreRes.value.nodes, viewType)
+  );
+
+  const expandable = (node: CoreAPIContentNode) =>
+    !NON_EXPANDABLE_NODES_MIME_TYPES.includes(node.mime_type) &&
+    node.has_children &&
+    // if we aren't in tables view, spreadsheets are not expandable
+    !(viewType !== "tables" && SPREADSHEET_MIME_TYPES.includes(node.mime_type));
 
   return new Ok({
     nodes: filteredNodes.map((node) => {
-      const { type } = getContentNodeMetadata(node, viewType);
       return {
         internalId: node.node_id,
         parentInternalId: node.parent_id ?? null,
-        title: node.title,
+        // TODO(2025-01-27 aubin): remove this once the handling of nodes without a title has been improved in the api/v1
+        title: node.title === "Untitled document" ? node.node_id : node.title,
         sourceUrl: node.source_url ?? null,
         permission: "read",
         lastUpdatedAt: node.timestamp,
         providerVisibility: node.provider_visibility,
         parentInternalIds: node.parents,
-        type,
-        expandable:
-          !NON_EXPANDABLE_NODES_MIME_TYPES.includes(node.mime_type) &&
-          node.has_children,
+        type: getContentNodeType(node),
+        expandable: expandable(node),
+        mimeType: node.mime_type,
+        preventSelection: FOLDERS_SELECTION_PREVENTED_MIME_TYPES.includes(
+          node.mime_type
+        ),
       };
     }),
     total: coreRes.value.nodes.length,
@@ -371,7 +420,8 @@ async function getContentNodesForStaticDataSourceView(
 
 export async function getContentNodesForDataSourceView(
   dataSourceView: DataSourceViewResource,
-  params: GetContentNodesForDataSourceViewParams
+  params: GetContentNodesForDataSourceViewParams,
+  showConnectorsNodes?: boolean
 ): Promise<
   Result<GetContentNodesForDataSourceViewResult, Error | CoreAPIError>
 > {
@@ -379,6 +429,7 @@ export async function getContentNodesForDataSourceView(
 
   let contentNodesResult: GetContentNodesForDataSourceViewResult;
 
+  const connectorsStart = new Date();
   if (dataSourceView.dataSource.connectorId && !onlyCoreAPI) {
     const contentNodesRes = await getContentNodesForManagedDataSourceView(
       dataSourceView,
@@ -403,22 +454,40 @@ export async function getContentNodesForDataSourceView(
     contentNodesResult = contentNodesRes.value;
   }
 
+  const connectorsLatency = new Date().getTime() - connectorsStart.getTime();
+
   const localLogger = logger.child({
     dataSourceId: dataSourceView.dataSource.sId,
+    connectorId: dataSourceView.dataSource.connectorId,
     dataSourceViewId: dataSourceView.sId,
     provider: dataSourceView.dataSource.connectorProvider,
     viewType: params.viewType,
+    isRootCall: !params.parentId && !params.internalIds,
+    parentId: params.parentId,
+    internalIds: params.internalIds,
   });
 
+  const coreStart = new Date();
   // shadow read from core
   const coreContentNodesRes = await getContentNodesForDataSourceViewFromCore(
     dataSourceView,
     params
   );
+  const coreLatency = new Date().getTime() - coreStart.getTime();
+
+  // TODO(20250126, nodes-core): Remove this after project end
+  localLogger.info(
+    {
+      connectorsLatency,
+      coreLatency,
+      diff: coreLatency - connectorsLatency,
+    },
+    "[CoreNodes] Latency between connectors and core"
+  );
 
   if (coreContentNodesRes.isErr()) {
-    localLogger.info(
-      { error: coreContentNodesRes.error },
+    localLogger.error(
+      { error: coreContentNodesRes.error, panic: true },
       "[CoreNodes] Could not fetch content nodes from core"
     );
   } else if (coreContentNodesRes.isOk()) {
@@ -428,6 +497,32 @@ export async function getContentNodesForDataSourceView(
       provider: dataSourceView.dataSource.connectorProvider,
       localLogger,
     });
+
+    // if development or dust workspace
+    const workspaceModel = await getWorkspaceByModelId(
+      dataSourceView.space.workspaceId
+    );
+    if (!workspaceModel) {
+      logger.error(
+        { dataSourceView, panic: true },
+        "No workspace for data source view"
+      );
+    } else {
+      const workspace = renderLightWorkspaceType({ workspace: workspaceModel });
+      if (
+        (isDevelopment() || isDustWorkspace(workspace)) &&
+        !showConnectorsNodes
+      ) {
+        const contentNodesInView = filterAndCropContentNodesByView(
+          dataSourceView,
+          coreContentNodesRes.value.nodes
+        );
+        return new Ok({
+          nodes: contentNodesInView,
+          total: coreContentNodesRes.value.nodes.length,
+        });
+      }
+    }
   }
 
   const contentNodesInView = filterAndCropContentNodesByView(

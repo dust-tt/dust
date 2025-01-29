@@ -165,6 +165,18 @@ export const MODEL_PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
       </>
     ),
   },
+  fireworks: {
+    title: "Fireworks",
+    fields: [{ name: "api_key", placeholder: "Fireworks API Key" }],
+    instructions: (
+      <>
+        <p>To use Fireworks models you must provide your API key.</p>
+        <p className="mt-2">
+          We'll never use your API key for anything other than to run your apps.
+        </p>
+      </>
+    ),
+  },
 };
 
 export const SERVICE_PROVIDER_CONFIGS: Record<string, ProviderConfig> = {

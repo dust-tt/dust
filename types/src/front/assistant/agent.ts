@@ -39,6 +39,12 @@ import {
 } from "../../front/assistant/conversation";
 import { ModelIdType, ModelProviderIdType } from "../../front/lib/assistant";
 import { ModelId } from "../../shared/model_id";
+import {
+  ReasoningConfigurationType,
+  ReasoningStartedEvent,
+  ReasoningThinkingEvent,
+  ReasoningTokensEvent,
+} from "./actions/reasoning";
 
 /**
  * Agent Action configuration
@@ -53,7 +59,8 @@ export type AgentActionConfigurationType =
   | ProcessConfigurationType
   | WebsearchConfigurationType
   | BrowseConfigurationType
-  | GithubAgentActionConfigurationType;
+  | GithubAgentActionConfigurationType
+  | ReasoningConfigurationType;
 
 type ConversationAgentActionConfigurationType =
   ConversationIncludeFileConfigurationType;
@@ -74,7 +81,8 @@ export type UnsavedAgentActionConfigurationType =
   | UnsavedConfiguration<ProcessConfigurationType>
   | UnsavedConfiguration<WebsearchConfigurationType>
   | UnsavedConfiguration<BrowseConfigurationType>
-  | UnsavedConfiguration<GithubAgentActionConfigurationType>;
+  | UnsavedConfiguration<GithubAgentActionConfigurationType>
+  | UnsavedConfiguration<ReasoningConfigurationType>;
 
 export type AgentAction =
   | AgentActionConfigurationType["type"]
@@ -318,7 +326,10 @@ export type AgentActionSpecificEvent =
   | WebsearchParamsEvent
   | BrowseParamsEvent
   | ConversationIncludeFileParamsEvent
-  | GithubGetPullRequestParamsEvent;
+  | GithubGetPullRequestParamsEvent
+  | ReasoningStartedEvent
+  | ReasoningThinkingEvent
+  | ReasoningTokensEvent;
 
 // Event sent once the action is completed, we're moving to generating a message if applicable.
 export type AgentActionSuccessEvent = {

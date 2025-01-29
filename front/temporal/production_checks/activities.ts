@@ -2,6 +2,7 @@ import { Context } from "@temporalio/activity";
 import { v4 as uuidv4 } from "uuid";
 
 import { checkActiveWorkflows } from "@app/lib/production_checks/checks/check_active_workflows_for_connectors";
+import { checkActiveWorkflowsForFront } from "@app/lib/production_checks/checks/check_active_workflows_for_front";
 import { checkConnectorsLastSyncSuccess } from "@app/lib/production_checks/checks/check_connectors_last_sync_success";
 import { checkDataSourcesConsistency } from "@app/lib/production_checks/checks/check_data_sources_consistency";
 import { checkExtraneousWorkflows } from "@app/lib/production_checks/checks/check_extraneous_workflows_for_paused_connectors";
@@ -25,6 +26,11 @@ export const REGISTERED_CHECKS: Check[] = [
     name: "check_active_workflows_for_connector",
     check: checkActiveWorkflows,
     everyHour: 1,
+  },
+  {
+    name: "check_active_workflows_for_front",
+    check: checkActiveWorkflowsForFront,
+    everyHour: 8,
   },
   {
     name: "check_extraneous_workflows_for_paused_connectors",

@@ -6,6 +6,7 @@ import { ConversationIncludeFileActionDetails } from "@app/components/actions/co
 import { DustAppRunActionDetails } from "@app/components/actions/dust_app_run/DustAppRunActionDetails";
 import { GithubGetPullRequestActionDetails } from "@app/components/actions/github/GithubGetPullRequestActionDetails";
 import { ProcessActionDetails } from "@app/components/actions/process/ProcessActionDetails";
+import { ReasoningActionDetails } from "@app/components/actions/reasoning/ReasoningActionDetails";
 import { RetrievalActionDetails } from "@app/components/actions/retrieval/RetrievalActionDetails";
 import { TablesQueryActionDetails } from "@app/components/actions/tables_query/TablesQueryActionDetails";
 import { WebsearchActionDetails } from "@app/components/actions/websearch/WebsearchActionDetails";
@@ -65,6 +66,10 @@ const actionsSpecification: ActionSpecifications = {
   github_get_pull_request_action: {
     detailsComponent: GithubGetPullRequestActionDetails,
     runningLabel: ACTION_RUNNING_LABELS.github_get_pull_request_action,
+  },
+  reasoning_action: {
+    detailsComponent: ReasoningActionDetails,
+    runningLabel: ACTION_RUNNING_LABELS.reasoning_action,
   },
 };
 

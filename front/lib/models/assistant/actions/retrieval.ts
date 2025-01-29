@@ -6,7 +6,6 @@ import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
-import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
 export class AgentRetrievalConfiguration extends WorkspaceAwareModel<AgentRetrievalConfiguration> {
@@ -131,7 +130,7 @@ AgentRetrievalConfiguration.belongsTo(AgentConfiguration, {
 /**
  * Retrieval Action
  */
-export class AgentRetrievalAction extends BaseModel<AgentRetrievalAction> {
+export class AgentRetrievalAction extends WorkspaceAwareModel<AgentRetrievalAction> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare runId: string | null;

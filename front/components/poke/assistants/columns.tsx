@@ -1,4 +1,5 @@
 import {
+  ArrowDownOnSquareIcon,
   EmotionLaughIcon,
   IconButton,
   LinkWrapper,
@@ -7,6 +8,7 @@ import {
 import type { LightWorkspaceType } from "@dust-tt/types";
 import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
+import Link from "next/link";
 
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 
@@ -95,18 +97,31 @@ export function makeColumnsForAssistants(
         const assistant = row.original;
 
         return (
-          <IconButton
-            icon={
-              assistant.status !== "archived" ? TrashIcon : EmotionLaughIcon
-            }
-            size="xs"
-            variant="outline"
-            onClick={async () => {
-              await (assistant.status !== "archived"
-                ? archiveAssistant(owner, reload, assistant)
-                : restoreAssistant(owner, reload, assistant));
-            }}
-          />
+          <>
+            <IconButton
+              icon={
+                assistant.status !== "archived" ? TrashIcon : EmotionLaughIcon
+              }
+              size="xs"
+              variant="outline"
+              onClick={async () => {
+                await (assistant.status !== "archived"
+                  ? archiveAssistant(owner, reload, assistant)
+                  : restoreAssistant(owner, reload, assistant));
+              }}
+            />
+            <Link
+              href={`/api/poke/workspaces/${owner.sId}/agent_configurations/${assistant.sId}/export`}
+              download={`${assistant.name}.json`}
+              target="_blank"
+            >
+              <IconButton
+                icon={ArrowDownOnSquareIcon}
+                size="xs"
+                variant="outline"
+              />
+            </Link>
+          </>
         );
       },
     },

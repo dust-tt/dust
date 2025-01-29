@@ -472,6 +472,7 @@ const BaseActionTypeSchema = FlexibleEnumSchema<
   | "process_action"
   | "websearch_action"
   | "browse_action"
+  | "reasoning_action"
   | "visualization_action"
 >();
 
@@ -502,6 +503,17 @@ const BrowseActionTypeSchema = BaseActionSchema.extend({
   type: z.literal("browse_action"),
 });
 type BrowseActionPublicType = z.infer<typeof BrowseActionTypeSchema>;
+
+const ReasoningActionTypeSchema = BaseActionSchema.extend({
+  agentMessageId: ModelIdSchema,
+  output: z.string().nullable(),
+  thinking: z.string().nullable(),
+  functionCallId: z.string().nullable(),
+  functionCallName: z.string().nullable(),
+  step: z.number(),
+  type: z.literal("reasoning_action"),
+});
+type ReasoningActionPublicType = z.infer<typeof ReasoningActionTypeSchema>;
 
 const ConversationIncludeFileActionTypeSchema = BaseActionSchema.extend({
   agentMessageId: ModelIdSchema,
@@ -726,6 +738,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "disable_run_logs"
   | "show_debug_tools"
   | "labs_github_actions"
+  | "reasoning_tool_feature"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -957,6 +970,7 @@ const AgentActionTypeSchema = z.union([
   ConversationListFilesActionTypeSchema,
   ConversationIncludeFileActionTypeSchema,
   GithubGetPullRequestActionSchema,
+  ReasoningActionTypeSchema,
 ]);
 export type AgentActionPublicType = z.infer<typeof AgentActionTypeSchema>;
 
@@ -1152,6 +1166,32 @@ const WebsearchParamsEventSchema = z.object({
   action: WebsearchActionTypeSchema,
 });
 
+const ReasoningStartedEventSchema = z.object({
+  type: z.literal("reasoning_started"),
+  created: z.number(),
+  configurationId: z.string(),
+  messageId: z.string(),
+  action: ReasoningActionTypeSchema,
+});
+
+const ReasoningThinkingEventSchema = z.object({
+  type: z.literal("reasoning_thinking"),
+  created: z.number(),
+  configurationId: z.string(),
+  messageId: z.string(),
+  action: ReasoningActionTypeSchema,
+});
+
+const ReasoningTokensEventSchema = z.object({
+  type: z.literal("reasoning_tokens"),
+  created: z.number(),
+  configurationId: z.string(),
+  messageId: z.string(),
+  action: ReasoningActionTypeSchema,
+  content: z.string(),
+  classification: TokensClassificationSchema,
+});
+
 const AgentErrorEventSchema = z.object({
   type: z.literal("agent_error"),
   created: z.number(),
@@ -1176,6 +1216,9 @@ const AgentActionSpecificEventSchema = z.union([
   BrowseParamsEventSchema,
   ConversationIncludeFileParamsEventSchema,
   GithubGetPullRequestParamsEventSchema,
+  ReasoningStartedEventSchema,
+  ReasoningThinkingEventSchema,
+  ReasoningTokensEventSchema,
 ]);
 export type AgentActionSpecificEvent = z.infer<
   typeof AgentActionSpecificEventSchema
@@ -2397,6 +2440,12 @@ export function BrowseActionPublicType(
   action: AgentActionPublicType
 ): action is BrowseActionPublicType {
   return action.type === "browse_action";
+}
+
+export function isReasoningActionType(
+  action: AgentActionPublicType
+): action is ReasoningActionPublicType {
+  return action.type === "reasoning_action";
 }
 
 export function isAgentMention(arg: AgentMentionType): arg is AgentMentionType {
