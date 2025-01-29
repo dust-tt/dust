@@ -15,9 +15,19 @@ export function ReasoningActionDetails({
       defaultOpen={defaultOpen}
       visual={ChatBubbleThoughtIcon}
     >
-      <div className="flex flex-col gap-1 gap-4 pl-6 pt-4">
-        {/* TODO(REASONING TOOL): Add reasoning output, ensure streaming */}
-        <ReasoningThinking action={action} />
+      <div className="flex flex-col gap-1 gap-4 py-4 pl-6">
+        {action.thinking && <ReasoningThinking action={action} />}
+        {action.output && (
+          <div className="text-sm font-normal text-muted-foreground">
+            <Markdown
+              content={action.output}
+              textColor="text-muted-foreground"
+              isStreaming={false}
+              forcedTextSize="md"
+              isLastMessage={false}
+            />
+          </div>
+        )}
       </div>
     </ActionDetailsWrapper>
   );
