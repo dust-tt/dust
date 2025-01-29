@@ -46,6 +46,11 @@ import {
   isActionDustAppRunValid as hasErrorActionDustAppRun,
 } from "@app/components/assistant_builder/actions/DustAppRunAction";
 import {
+  ActionGithubCreateIssue,
+  ActionGithubGetPullRequest,
+  hasErrorActionGithub,
+} from "@app/components/assistant_builder/actions/GithubAction";
+import {
   ActionProcess,
   hasErrorActionProcess,
 } from "@app/components/assistant_builder/actions/ProcessAction";
@@ -85,11 +90,6 @@ import {
 } from "@app/components/assistant_builder/types";
 import { ACTION_SPECIFICATIONS } from "@app/lib/api/assistant/actions/utils";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-
-import {
-  ActionGithubGetPullRequest,
-  hasErrorActionGithub,
-} from "./actions/GithubAction";
 
 const DATA_SOURCES_ACTION_CATEGORIES = [
   "RETRIEVAL_SEARCH",
@@ -138,6 +138,8 @@ export function hasActionError(
     case "WEB_NAVIGATION":
       return hasErrorActionWebNavigation(action);
     case "GITHUB_GET_PULL_REQUEST":
+      return hasErrorActionGithub(action);
+    case "GITHUB_CREATE_ISSUE":
       return hasErrorActionGithub(action);
     case "REASONING":
       return hasErrorActionReasoning(action);
@@ -220,6 +222,7 @@ export default function ActionsScreen({
 
         case "WEB_NAVIGATION":
         case "GITHUB_GET_PULL_REQUEST":
+        case "GITHUB_CREATE_ISSUE":
         case "REASONING":
           break;
 
@@ -838,6 +841,8 @@ function ActionConfigEditor({
 
     case "GITHUB_GET_PULL_REQUEST":
       return <ActionGithubGetPullRequest />;
+    case "GITHUB_CREATE_ISSUE":
+      return <ActionGithubCreateIssue />;
 
     case "REASONING":
       return <ActionReasoning />;
