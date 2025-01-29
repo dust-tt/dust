@@ -15,11 +15,15 @@ import {
   fetchZendeskTicketCount,
   getZendeskBrandSubdomain,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
-import { launchZendeskTicketReSyncWorkflow } from "@connectors/connectors/zendesk/temporal/client";
+import {
+  launchZendeskSyncWorkflow,
+  launchZendeskTicketReSyncWorkflow,
+} from "@connectors/connectors/zendesk/temporal/client";
 import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
   ZendeskBrandResource,
+  ZendeskCategoryResource,
   ZendeskConfigurationResource,
   ZendeskTicketResource,
 } from "@connectors/resources/zendesk_resources";
@@ -168,6 +172,40 @@ export const zendesk = async ({
         brand: brand as { [key: string]: unknown } | null,
         brandOnDb: brandOnDb as { [key: string]: unknown } | null,
       };
+    }
+    case "resync-help-centers": {
+      if (!connector) {
+        throw new Error(`Connector ${connectorId} not found`);
+      }
+      const helpCenterBrandIds =
+        await ZendeskBrandResource.fetchHelpCenterReadAllowedBrandIds(
+          connector.id
+        );
+
+      const allCategoryIds =
+        await ZendeskCategoryResource.fetchByConnector(connector);
+      const categoryIds = allCategoryIds
+        .filter(
+          (c) =>
+            c.permission === "read" && !helpCenterBrandIds.includes(c.brandId) // skipping categories that will be synced through the Help Center
+        )
+        .map((c) => {
+          const { categoryId, brandId } = c;
+          return { brandId, categoryId };
+        });
+
+      const result = await launchZendeskSyncWorkflow(connector, {
+        helpCenterBrandIds,
+        categoryIds,
+      });
+      if (result.isErr()) {
+        logger.error(
+          { error: result.error },
+          "Error launching the sync workflow."
+        );
+        throw result.error;
+      }
+      return { success: true };
     }
   }
 };
