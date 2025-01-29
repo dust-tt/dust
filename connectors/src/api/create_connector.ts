@@ -131,6 +131,7 @@ const _createConnectorAPIHandler = async (
       case "google_drive":
       case "intercom":
       case "snowflake":
+      case "bigquery":
       case "zendesk":
       case "microsoft": {
         connectorRes = await createConnector({

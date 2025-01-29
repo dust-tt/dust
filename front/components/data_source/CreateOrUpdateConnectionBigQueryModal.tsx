@@ -2,7 +2,6 @@ import {
   BookOpenIcon,
   Button,
   CloudArrowLeftRightIcon,
-  Label,
   Modal,
   Page,
   TextArea,
@@ -55,6 +54,14 @@ export function CreateOrUpdateConnectionBigQueryModal({
   const [credentials, setCredentials] = useState<string>("");
 
   const credentialsState = useMemo(() => {
+    if (!credentials) {
+      return {
+        credentials: null,
+        valid: false,
+        errorMessage: null,
+      };
+    }
+
     try {
       const credentialsObject: BigQueryCredentials = JSON.parse(credentials);
       const r = BigQueryCredentialsSchema.decode(credentialsObject);
@@ -108,25 +115,28 @@ export function CreateOrUpdateConnectionBigQueryModal({
     setIsLoading(true);
 
     // First we post the credentials to OAuth service.
-    const getCredentialsRes = await fetch(`/api/w/${owner.sId}/credentials`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        provider: "bigquery" as const,
-        credentials: JSON.parse(credentials) as BigQueryCredentials,
-      } as PostCredentialsBody),
-    });
+    const createCredentialsRes = await fetch(
+      `/api/w/${owner.sId}/credentials`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          provider: "bigquery" as const,
+          credentials: JSON.parse(credentials) as BigQueryCredentials,
+        } as PostCredentialsBody),
+      }
+    );
 
-    if (!getCredentialsRes.ok) {
+    if (!createCredentialsRes.ok) {
       setError("Failed to create connection: cannot verify those credentials.");
       setIsLoading(false);
       return;
     }
 
     // Then we can try to create the connector.
-    const data = await getCredentialsRes.json();
+    const data = await createCredentialsRes.json();
 
     const createDataSourceRes = await createDatasource({
       provider: "bigquery",
@@ -165,6 +175,11 @@ export function CreateOrUpdateConnectionBigQueryModal({
     if (!dataSourceToUpdate) {
       // Should never happen.
       throw new Error("dataSourceToUpdate is required");
+    }
+
+    if (!credentialsState.valid) {
+      // Should never happen.
+      throw new Error("credentialsState.valid is required");
     }
 
     setIsLoading(true);
@@ -271,7 +286,6 @@ export function CreateOrUpdateConnectionBigQueryModal({
             )}
 
             <div className="w-full space-y-4">
-              <Label>BigQuery Service Account JSON</Label>
               <TextArea
                 className="min-h-[325px]"
                 name="service_account_json"

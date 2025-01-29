@@ -62,6 +62,9 @@ export function getConnectorManager({
       return new SnowflakeConnectorManager(connectorId);
     case "zendesk":
       return new ZendeskConnectorManager(connectorId);
+    case "bigquery":
+      //TODO(BigQuery): Implement this
+      throw new Error("BigQuery connector is not supported yet");
     default:
       assertNever(connectorProvider);
   }
@@ -118,6 +121,9 @@ export function createConnector({
       return SnowflakeConnectorManager.create(params);
     case "zendesk":
       return ZendeskConnectorManager.create(params);
+    case "bigquery":
+      //TODO(BigQuery): Implement this
+      throw new Error("BigQuery connector is not supported yet");
     default:
       assertNever(connectorProvider);
   }

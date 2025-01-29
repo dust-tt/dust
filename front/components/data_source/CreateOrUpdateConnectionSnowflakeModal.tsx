@@ -82,25 +82,28 @@ export function CreateOrUpdateConnectionSnowflakeModal({
     setIsLoading(true);
 
     // First we post the credentials to OAuth service.
-    const getCredentialsRes = await fetch(`/api/w/${owner.sId}/credentials`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        provider: "snowflake",
-        credentials,
-      }),
-    });
+    const createCredentialsRes = await fetch(
+      `/api/w/${owner.sId}/credentials`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          provider: "snowflake",
+          credentials,
+        }),
+      }
+    );
 
-    if (!getCredentialsRes.ok) {
+    if (!createCredentialsRes.ok) {
       setError("Failed to create connection: cannot verify those credentials.");
       setIsLoading(false);
       return;
     }
 
     // Then we can try to create the connector.
-    const data = await getCredentialsRes.json();
+    const data = await createCredentialsRes.json();
 
     const createDataSourceRes = await createDatasource({
       provider: "snowflake",
