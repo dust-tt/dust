@@ -40,7 +40,7 @@ async function backfillAvatars(
             [Op.like]: `${baseUrl}%`,
           },
           {
-            [Op.notLike]: `${baseUrl}files/%`,
+            [Op.notLike]: `${baseUrl}files%`,
           },
         ],
       },
