@@ -1,5 +1,4 @@
 import type { WithAPIErrorResponse } from "@dust-tt/types";
-import { EnvironmentConfig } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
@@ -34,8 +33,7 @@ async function handler(
     });
   }
 
-  const currentRegion = config.getCurrentRegion();
-  if (currentRegion === "us-central1") {
+  if (!config.getDustRegionSyncEnabled()) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -47,7 +45,7 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      const mainRegionUrl = EnvironmentConfig.getEnvVariable("DUST_US_URL");
+      const mainRegionUrl = config.getDustRegionSyncMasterUrl();
       const response = await fetch(`${mainRegionUrl}/api/templates`, {
         method: "GET",
       });
