@@ -50,8 +50,7 @@ function pgArrayLiteral(arrayValue: any[]): string {
  * Escapes a single value (number, string, boolean, date, array, etc.)
  * to be safely inserted into a Postgres SQL statement.
  */
-// TODO: Remove export.
-export function formatValue(val: any): string {
+function formatValue(val: any): string {
   // 1) Handle null / undefined.
   if (val === null || val === undefined) {
     return "NULL";

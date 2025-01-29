@@ -36,8 +36,6 @@ export async function writeCoreEntitiesToDestinationRegion({
       await frontSequelize.query(planChunk, { transaction });
     });
   }
-
-  // TODO: Ensure all data is created.
 }
 
 export async function processFrontTableChunk({
