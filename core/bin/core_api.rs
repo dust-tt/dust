@@ -2229,11 +2229,7 @@ async fn tables_upsert(
         )
         .await
     {
-        Ok(table) => match state
-            .search_store
-            .index_node(Node::from(table.clone()))
-            .await
-        {
+        Ok((table, node)) => match state.search_store.index_node(node).await {
             Ok(_) => (
                 StatusCode::OK,
                 Json(APIResponse {
@@ -2943,11 +2939,7 @@ async fn folders_upsert(
             "Failed to upsert folder",
             Some(e),
         ),
-        Ok(folder) => match state
-            .search_store
-            .index_node(Node::from(folder.clone()))
-            .await
-        {
+        Ok((folder, node)) => match state.search_store.index_node(node).await {
             Ok(_) => (
                 StatusCode::OK,
                 Json(APIResponse {
@@ -3098,7 +3090,13 @@ async fn folders_delete(
             .store
             .delete_data_source_folder(&project, &data_source_id, &folder_id)
             .await?;
-        state.search_store.delete_node(Node::from(folder)).await?;
+        state
+            .search_store
+            .delete_node(&Node::compute_unique_id(
+                &folder.data_source_internal_id(),
+                &folder_id,
+            ))
+            .await?;
         Ok(())
     }
     .await;

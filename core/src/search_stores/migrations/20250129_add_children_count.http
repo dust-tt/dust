@@ -1,0 +1,9 @@
+PUT core.data_sources_nodes/_mapping
+{
+  "properties": {
+    "children_count": {
+      "type": "integer",
+      "required": true
+    }
+  }
+}

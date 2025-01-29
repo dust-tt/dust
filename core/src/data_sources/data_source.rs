@@ -1,5 +1,5 @@
 use super::file_storage_document::FileStorageDocument;
-use super::node::{Node, NodeType, ProviderVisibility};
+use super::node::{Node, ProviderVisibility};
 use super::qdrant::{DustQdrantClient, QdrantCluster};
 use crate::consts::DATA_SOURCE_DOCUMENT_SYSTEM_TAG_PREFIX;
 use crate::data_sources::qdrant::{QdrantClients, QdrantDataSourceConfig};
@@ -219,24 +219,6 @@ impl Filterable for Document {
 
     fn get_parents(&self) -> Vec<String> {
         self.parents.clone()
-    }
-}
-
-impl From<Document> for Node {
-    fn from(document: Document) -> Node {
-        Node::new(
-            &document.data_source_id,
-            &document.data_source_internal_id,
-            &document.document_id,
-            NodeType::Document,
-            document.timestamp,
-            &document.title,
-            &document.mime_type,
-            document.provider_visibility,
-            document.parent_id,
-            document.parents.clone(),
-            document.source_url,
-        )
     }
 }
 
@@ -492,7 +474,7 @@ impl DataSource {
         self.update_document_payload(qdrant_clients, document_id_hash, "parents", parents)
             .await?;
 
-        let document = store
+        let load_result = store
             .load_data_source_document(
                 &self.project,
                 &self.data_source_id(),
@@ -501,9 +483,9 @@ impl DataSource {
             )
             .await?;
 
-        match document {
-            Some(document) => {
-                search_store.index_node(Node::from(document)).await?;
+        match load_result {
+            Some((_, node)) => {
+                search_store.index_node(node).await?;
             }
             None => (),
         }
@@ -668,7 +650,7 @@ impl DataSource {
         let store = store.clone();
 
         let current_system_tags = if preserve_system_tags {
-            let current_doc = store
+            let doc_result = store
                 .load_data_source_document(
                     &self.project,
                     &self.data_source_id(),
@@ -677,8 +659,8 @@ impl DataSource {
                 )
                 .await?;
 
-            let current_tags = match current_doc {
-                Some(current_doc) => current_doc.tags,
+            let current_tags = match doc_result {
+                Some((current_doc, _)) => current_doc.tags,
                 None => vec![],
             };
 
@@ -791,12 +773,12 @@ impl DataSource {
             created: main_collection_document.created,
         };
 
-        store
+        let (_, node) = store
             .create_data_source_document(&self.project, self.data_source_id.clone(), create_params)
             .await?;
 
         // Upsert document in search index.
-        search_store.index_node(Node::from(document)).await?;
+        search_store.index_node(node).await?;
 
         // Clean-up old superseded versions.
         self.scrub_document_superseded_versions(store, &document_id)
@@ -1289,7 +1271,7 @@ impl DataSource {
                         .load_data_source_document(&project, &data_source_id, &document_id, &None)
                         .await?
                     {
-                        Some(mut d) => {
+                        Some((mut d, _)) => {
                             if full_text {
                                 let stored_doc = FileStorageDocument::get_stored_document(
                                     &data_source,
@@ -1716,7 +1698,7 @@ impl DataSource {
             )
             .await?
         {
-            Some(d) => d,
+            Some((d, _)) => d,
             None => {
                 return Ok(None);
             }
@@ -1755,14 +1737,6 @@ impl DataSource {
         search_store: Box<dyn SearchStore + Sync + Send>,
         document_id: &str,
     ) -> Result<()> {
-        let document = match store
-            .load_data_source_document(&self.project, &self.data_source_id, document_id, &None)
-            .await?
-        {
-            Some(document) => document,
-            None => return Ok(()),
-        };
-
         // Delete the document in the main embedder collection.
         self.delete_document_for_embedder(self.embedder_config(), &qdrant_clients, document_id)
             .await?;
@@ -1786,7 +1760,9 @@ impl DataSource {
             .await?;
 
         // Delete document from search index.
-        search_store.delete_node(Node::from(document)).await?;
+        search_store
+            .delete_node(&Node::compute_unique_id(&self.internal_id, document_id))
+            .await?;
 
         // We also scrub it directly. We used to scrub async but now that we store a GCS version
         // for each data_source_documents entry we can scrub directly at the time of delete.

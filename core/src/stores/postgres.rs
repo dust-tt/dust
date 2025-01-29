@@ -153,9 +153,11 @@ impl PostgresStore {
         &self,
         upsert_params: UpsertNode<'_>,
         data_source_row_id: i64,
+        data_source_internal_id: &str,
+        data_source_id: &str,
         row_id: i64,
         tx: &Transaction<'_>,
-    ) -> Result<()> {
+    ) -> Result<Node> {
         let created = utils::now();
 
         let (document_row_id, table_row_id, folder_row_id) = match upsert_params.node_type {
@@ -176,11 +178,11 @@ impl PostgresStore {
                     document = EXCLUDED.document, \"table\" = EXCLUDED.\"table\", \
                     folder = EXCLUDED.folder, source_url = EXCLUDED.source_url, \
                     provider_visibility = EXCLUDED.provider_visibility \
-                  RETURNING id",
+                  RETURNING id, xmax",
             )
             .await?;
 
-        let _ = tx
+        let row = tx
             .query_one(
                 &stmt,
                 &[
@@ -199,7 +201,115 @@ impl PostgresStore {
                 ],
             )
             .await?;
+
+        match row.get::<_, i64>(1) {
+            1 => {
+                // At row creation, we need to compute the children count.
+                // for upserts, this is not needed; the children count is computed incrementally when children are added / removed
+                let children_count = self
+                    .compute_children_count(tx, data_source_row_id, upsert_params.node_id)
+                    .await?;
+                tx.execute(
+                    "UPDATE data_sources_nodes SET children_count = $1 WHERE id = $2",
+                    &[&children_count, &row_id],
+                )
+                .await?;
+                Ok(Node::new(
+                    data_source_id,
+                    data_source_internal_id,
+                    upsert_params.node_id,
+                    upsert_params.node_type.clone(),
+                    upsert_params.timestamp,
+                    upsert_params.title,
+                    upsert_params.mime_type,
+                    upsert_params.provider_visibility.clone(),
+                    upsert_params.parents.get(1).cloned(),
+                    upsert_params.parents.clone(),
+                    upsert_params.source_url.clone(),
+                    children_count as u64,
+                ))
+            }
+            _ => Err(anyhow!(
+                "Error updating children count when upserting data source node"
+            )),
+        }
+    }
+
+    async fn compute_children_count(
+        &self,
+        tx: &Transaction<'_>,
+        data_source_row_id: i64,
+        node_id: &str,
+    ) -> Result<i64> {
+        let stmt = tx
+            .prepare("SELECT count(*) FROM data_sources_nodes WHERE data_source = $1 AND parents[2] = $2")
+            .await?;
+        let row = tx
+            .query_one(&stmt, &[&data_source_row_id, &node_id])
+            .await?;
+        Ok(row.get::<_, i64>(0))
+    }
+
+    async fn decrease_children_count(
+        &self,
+        tx: &Transaction<'_>,
+        data_source_row_id: i64,
+        parent_id: &str,
+    ) -> Result<()> {
+        let stmt = tx
+            .prepare("UPDATE data_sources_nodes SET children_count = children_count - 1 WHERE data_source = $1 AND node_id = $2")
+            .await?;
+        tx.execute(&stmt, &[&data_source_row_id, &parent_id])
+            .await?;
         Ok(())
+    }
+
+    async fn increase_children_count(
+        &self,
+        tx: &Transaction<'_>,
+        data_source_row_id: i64,
+        parent_id: &str,
+    ) -> Result<()> {
+        let stmt = tx
+            .prepare("UPDATE data_sources_nodes SET children_count = children_count + 1 WHERE data_source = $1 AND node_id = $2")
+            .await?;
+        tx.execute(&stmt, &[&data_source_row_id, &parent_id])
+            .await?;
+        Ok(())
+    }
+
+    async fn update_children_count_on_parents_change(
+        &self,
+        tx: &Transaction<'_>,
+        data_source_row_id: i64,
+        old_parents: &Vec<String>,
+        new_parents: &Vec<String>,
+    ) -> Result<()> {
+        let old_parent_id = old_parents.get(1).cloned();
+        let new_parent_id = new_parents.get(1).cloned();
+
+        match (old_parent_id, new_parent_id) {
+            (Some(old_parent_id), Some(new_parent_id)) => {
+                if old_parent_id != new_parent_id {
+                    self.decrease_children_count(&tx, data_source_row_id, &old_parent_id)
+                        .await?;
+                    self.increase_children_count(&tx, data_source_row_id, &new_parent_id)
+                        .await?;
+                }
+                Ok(())
+            }
+            (Some(old_parent_id), None) => {
+                self.decrease_children_count(&tx, data_source_row_id, &old_parent_id)
+                    .await?;
+                Ok(())
+            }
+            (None, Some(new_parent_id)) => {
+                self.increase_children_count(&tx, data_source_row_id, &new_parent_id)
+                    .await?;
+                Ok(())
+            }
+            _ => Ok(()),
+        }
     }
 }
 
@@ -1311,7 +1421,7 @@ impl Store for PostgresStore {
         data_source_id: &str,
         document_id: &str,
         version_hash: &Option<String>,
-    ) -> Result<Option<Document>> {
+    ) -> Result<Option<(Document, Node)>> {
         let project_id = project.project_id();
         let data_source_id = data_source_id.to_string();
         let document_id = document_id.to_string();
@@ -1350,7 +1460,7 @@ impl Store for PostgresStore {
                 c.query(
                     "SELECT dsd.id, dsd.created, dsd.timestamp, dsd.tags_array, dsn.parents, \
                        dsn.source_url, dsd.hash, dsd.text_size, dsd.chunk_count, dsn.title, \
-                       dsn.mime_type, dsn.provider_visibility \
+                       dsn.mime_type, dsn.provider_visibility, dsn.children_count \
                        FROM data_sources_documents dsd \
                        INNER JOIN data_sources_nodes dsn ON dsn.document=dsd.id \
                        WHERE dsd.data_source = $1 AND dsd.document_id = $2 \
@@ -1374,6 +1484,7 @@ impl Store for PostgresStore {
             Option<String>,
             Option<String>,
             Option<ProviderVisibility>,
+            i64,
         )> = match r.len() {
             0 => None,
             1 => Some((
@@ -1389,6 +1500,7 @@ impl Store for PostgresStore {
                 r[0].get(9),
                 r[0].get(10),
                 r[0].get(11),
+                r[0].get(12),
             )),
             _ => unreachable!(),
         };
@@ -1408,26 +1520,45 @@ impl Store for PostgresStore {
                 node_title,
                 node_mime_type,
                 node_provider_visibility,
-            )) => Ok(Some(Document {
-                data_source_id: data_source_id.clone(),
-                data_source_internal_id: data_source_internal_id.clone(),
-                created: created as u64,
-                timestamp: timestamp as u64,
-                title: node_title.unwrap_or(document_id.clone()),
-                document_id,
-                tags,
-                mime_type: node_mime_type.unwrap_or("application/octet-stream".to_string()),
-                provider_visibility: node_provider_visibility,
-                parent_id: parents.get(1).cloned(),
-                parents,
-                source_url,
-                hash,
-                text_size: text_size as u64,
-                chunk_count: chunk_count as usize,
-                chunks: vec![],
-                text: None,
-                token_count: None,
-            })),
+                children_count,
+            )) => Ok(Some((
+                Document {
+                    data_source_id: data_source_id.clone(),
+                    data_source_internal_id: data_source_internal_id.clone(),
+                    created: created as u64,
+                    timestamp: timestamp as u64,
+                    title: node_title.clone().unwrap_or(document_id.clone()),
+                    document_id: document_id.clone(),
+                    tags,
+                    mime_type: node_mime_type
+                        .clone()
+                        .unwrap_or("application/octet-stream".to_string()),
+                    provider_visibility: node_provider_visibility.clone(),
+                    parent_id: parents.get(1).cloned(),
+                    parents: parents.clone(),
+                    source_url: source_url.clone(),
+                    hash,
+                    text_size: text_size as u64,
+                    chunk_count: chunk_count as usize,
+                    chunks: vec![],
+                    text: None,
+                    token_count: None,
+                },
+                Node {
+                    data_source_id: data_source_id.clone(),
+                    data_source_internal_id: data_source_internal_id.clone(),
+                    node_id: document_id.clone(),
+                    node_type: NodeType::Document,
+                    timestamp: timestamp as u64,
+                    title: node_title.unwrap_or(document_id.clone()),
+                    mime_type: node_mime_type.unwrap_or("application/octet-stream".to_string()),
+                    provider_visibility: node_provider_visibility,
+                    parent_id: parents.get(1).cloned(),
+                    parents,
+                    source_url,
+                    children_count: children_count as u64,
+                },
+            ))),
         }
     }
 
@@ -1461,10 +1592,22 @@ impl Store for PostgresStore {
         let tx = c.transaction().await?;
 
         // Update parents on nodes table.
-        tx.execute(
-            "UPDATE data_sources_nodes SET parents = $1 \
-            WHERE data_source = $2 AND node_id = $3",
-            &[&parents, &data_source_row_id, &document_id],
+        let row = tx
+            .query_one(
+                "UPDATE data_sources_nodes SET parents = $1 \
+                WHERE data_source = $2 AND node_id = $3 \
+                RETURNING OLD.parents as old_parents",
+                &[&parents, &data_source_row_id, &document_id],
+            )
+            .await?;
+
+        // Update children count on parent nodes.
+        let old_parents: Vec<String> = row.get(0);
+        self.update_children_count_on_parents_change(
+            &tx,
+            data_source_row_id,
+            &old_parents,
+            &parents,
         )
         .await?;
 
@@ -1832,7 +1975,7 @@ impl Store for PostgresStore {
         project: &Project,
         data_source_id: String,
         create_params: DocumentCreateParams,
-    ) -> Result<Document> {
+    ) -> Result<(Document, Node)> {
         let project_id = project.project_id();
 
         let pool = self.pool.clone();
@@ -1899,7 +2042,7 @@ impl Store for PostgresStore {
         let provider_visibility = create_params.provider_visibility;
 
         let document = Document {
-            data_source_id,
+            data_source_id: data_source_id.clone(),
             data_source_internal_id: data_source_internal_id.to_string(),
             title,
             mime_type,
@@ -1919,26 +2062,29 @@ impl Store for PostgresStore {
             token_count: None,
         };
 
-        self.upsert_data_source_node(
-            UpsertNode {
-                node_id: &document.document_id,
-                node_type: &NodeType::Document,
-                timestamp: document.timestamp,
-                title: &document.title,
-                mime_type: &document.mime_type,
-                provider_visibility: &document.provider_visibility,
-                parents: &document.parents,
-                source_url: &document.source_url,
-            },
-            data_source_row_id,
-            document_row_id,
-            &tx,
-        )
-        .await?;
+        let node = self
+            .upsert_data_source_node(
+                UpsertNode {
+                    node_id: &document.document_id,
+                    node_type: &NodeType::Document,
+                    timestamp: document.timestamp,
+                    title: &document.title,
+                    mime_type: &document.mime_type,
+                    provider_visibility: &document.provider_visibility,
+                    parents: &document.parents,
+                    source_url: &document.source_url,
+                },
+                data_source_row_id,
+                &data_source_internal_id,
+                &data_source_id,
+                document_row_id,
+                &tx,
+            )
+            .await?;
 
         tx.commit().await?;
 
-        Ok(document)
+        Ok((document, node))
     }
 
     async fn list_data_source_documents(
@@ -2141,12 +2287,22 @@ impl Store for PostgresStore {
         let stmt = tx
             .prepare(
                 "DELETE FROM data_sources_nodes \
-                   WHERE data_source = $1 AND node_id = $2 AND document IS NOT NULL",
+                   WHERE data_source = $1 AND node_id = $2 AND document IS NOT NULL \
+                   RETURNING parents",
             )
             .await?;
-        let _ = tx
-            .query(&stmt, &[&data_source_row_id, &document_id])
+        let row = tx
+            .query_one(&stmt, &[&data_source_row_id, &document_id])
             .await?;
+
+        // decrease the children count of the parent
+        let parents: Vec<String> = row.get(0);
+        let parent_id = parents.get(1).cloned();
+        if let Some(parent_id) = parent_id {
+            self.decrease_children_count(&tx, data_source_row_id, &parent_id)
+                .await?;
+        }
+
         let stmt = tx
             .prepare(
                 "UPDATE data_sources_documents SET status = 'deleted' \
@@ -2177,7 +2333,7 @@ impl Store for PostgresStore {
         let status = version.status.to_string();
 
         let pool = self.pool.clone();
-        let c = pool.get().await?;
+        let mut c = pool.get().await?;
 
         let r = c
             .query(
@@ -2192,30 +2348,48 @@ impl Store for PostgresStore {
             _ => unreachable!(),
         };
 
+        let tx = c.transaction().await?;
+
         if status == "active" {
-            let stmt = c
+            let stmt = tx
                 .prepare(
                     "DELETE FROM data_sources_nodes \
-                            WHERE data_source = $1 AND node_id = $2 AND document IS NOT NULL",
+                        WHERE data_source = $1 AND node_id = $2 AND document IS NOT NULL \
+                        RETURNING parents",
                 )
                 .await?;
+            let row = tx
+                .query_one(&stmt, &[&data_source_row_id, &document_id])
+                .await?;
 
-            let _ = c.query(&stmt, &[&data_source_row_id, &document_id]).await?;
+            // decrease the children count of the parent
+            let parents: Vec<String> = row.get(0);
+            let parent_id = parents.get(1).cloned();
+            if let Some(parent_id) = parent_id {
+                self.decrease_children_count(&tx, data_source_row_id, &parent_id)
+                    .await?;
+            }
+
+            let _ = tx
+                .query(&stmt, &[&data_source_row_id, &document_id])
+                .await?;
         }
 
-        let stmt = c
+        let stmt = tx
             .prepare(
                 "DELETE FROM data_sources_documents \
                    WHERE data_source = $1 AND document_id = $2 \
                    AND created = $3 AND hash = $4 AND status=$5",
             )
             .await?;
-        let _ = c
+        let _ = tx
             .query(
                 &stmt,
                 &[&data_source_row_id, &document_id, &created, &hash, &status],
             )
             .await?;
+
+        tx.commit().await?;
 
         Ok(())
     }
@@ -2605,7 +2779,7 @@ impl Store for PostgresStore {
         project: Project,
         data_source_id: String,
         upsert_params: TableUpsertParams,
-    ) -> Result<Table> {
+    ) -> Result<(Table, Node)> {
         let project_id = project.project_id();
 
         let table_created = utils::now();
@@ -2678,8 +2852,8 @@ impl Store for PostgresStore {
 
         let table = Table::new(
             project,
-            data_source_id,
-            data_source_internal_id,
+            data_source_id.clone(),
+            data_source_internal_id.clone(),
             table_created,
             upsert_params.table_id,
             upsert_params.name,
@@ -2698,25 +2872,28 @@ impl Store for PostgresStore {
             upsert_params.remote_database_secret_id,
         );
 
-        self.upsert_data_source_node(
-            UpsertNode {
-                node_id: table.table_id(),
-                node_type: &NodeType::Table,
-                timestamp: table.timestamp(),
-                title: table.title(),
-                mime_type: table.mime_type(),
-                provider_visibility: table.provider_visibility(),
-                parents: table.parents(),
-                source_url: table.source_url(),
-            },
-            data_source_row_id,
-            table_row_id,
-            &tx,
-        )
-        .await?;
+        let node = self
+            .upsert_data_source_node(
+                UpsertNode {
+                    node_id: table.table_id(),
+                    node_type: &NodeType::Table,
+                    timestamp: table.timestamp(),
+                    title: table.title(),
+                    mime_type: table.mime_type(),
+                    provider_visibility: table.provider_visibility(),
+                    parents: table.parents(),
+                    source_url: table.source_url(),
+                },
+                data_source_row_id,
+                &data_source_internal_id,
+                &data_source_id,
+                table_row_id,
+                &tx,
+            )
+            .await?;
         tx.commit().await?;
 
-        Ok(table)
+        Ok((table, node))
     }
 
     async fn update_data_source_table_schema(
@@ -2799,11 +2976,22 @@ impl Store for PostgresStore {
         let stmt = tx
             .prepare(
                 "UPDATE data_sources_nodes SET parents = $1 \
-                   WHERE data_source = $2 AND node_id = $3",
+                   WHERE data_source = $2 AND node_id = $3 \
+                   RETURNING OLD.parents as old_parents",
             )
             .await?;
-        tx.query(&stmt, &[&parents, &data_source_row_id, &table_id])
+        let r = tx
+            .query_one(&stmt, &[&parents, &data_source_row_id, &table_id])
             .await?;
+
+        let old_parents: Vec<String> = r.get(0);
+        self.update_children_count_on_parents_change(
+            &tx,
+            data_source_row_id,
+            &old_parents,
+            &parents,
+        )
+        .await?;
 
         tx.commit().await?;
 
@@ -3198,7 +3386,7 @@ impl Store for PostgresStore {
         project: Project,
         data_source_id: String,
         upsert_params: FolderUpsertParams,
-    ) -> Result<Folder> {
+    ) -> Result<(Folder, Node)> {
         let project_id = project.project_id();
 
         let pool = self.pool.clone();
@@ -3247,8 +3435,8 @@ impl Store for PostgresStore {
         let created: i64 = r.get(1);
 
         let folder = Folder::new(
-            data_source_id,
-            data_source_internal_id,
+            data_source_id.clone(),
+            data_source_internal_id.clone(),
             upsert_params.folder_id,
             created as u64,
             upsert_params.title,
@@ -3259,26 +3447,29 @@ impl Store for PostgresStore {
             upsert_params.provider_visibility,
         );
 
-        self.upsert_data_source_node(
-            UpsertNode {
-                node_id: folder.folder_id(),
-                node_type: &NodeType::Folder,
-                timestamp: folder.timestamp(),
-                provider_visibility: folder.provider_visibility(),
-                title: folder.title(),
-                mime_type: folder.mime_type(),
-                parents: folder.parents(),
-                source_url: folder.source_url(),
-            },
-            data_source_row_id,
-            folder_row_id,
-            &tx,
-        )
-        .await?;
+        let node = self
+            .upsert_data_source_node(
+                UpsertNode {
+                    node_id: folder.folder_id(),
+                    node_type: &NodeType::Folder,
+                    timestamp: folder.timestamp(),
+                    provider_visibility: folder.provider_visibility(),
+                    title: folder.title(),
+                    mime_type: folder.mime_type(),
+                    parents: folder.parents(),
+                    source_url: folder.source_url(),
+                },
+                data_source_row_id,
+                &data_source_internal_id,
+                &data_source_id,
+                folder_row_id,
+                &tx,
+            )
+            .await?;
 
         tx.commit().await?;
 
-        Ok(folder)
+        Ok((folder, node))
     }
 
     async fn load_data_source_folder(
@@ -3513,7 +3704,7 @@ impl Store for PostgresStore {
 
         let stmt = c
             .prepare(
-                "SELECT timestamp, title, mime_type, provider_visibility, parents, node_id, document, \"table\", folder, source_url \
+                "SELECT timestamp, title, mime_type, provider_visibility, parents, node_id, document, \"table\", folder, source_url, children_count \
                    FROM data_sources_nodes \
                    WHERE data_source = $1 AND node_id = $2 LIMIT 1",
             )
@@ -3540,6 +3731,7 @@ impl Store for PostgresStore {
                     _ => unreachable!(),
                 };
                 let source_url: Option<String> = row[0].get::<_, Option<String>>(9);
+                let children_count: i64 = row[0].get::<_, i64>(10);
                 Ok(Some((
                     Node::new(
                         &data_source_id,
@@ -3553,6 +3745,7 @@ impl Store for PostgresStore {
                         parents.get(1).cloned(),
                         parents,
                         source_url,
+                        children_count as u64,
                     ),
                     row_id,
                 )))
@@ -3571,7 +3764,7 @@ impl Store for PostgresStore {
 
         let stmt = c
             .prepare(
-                "SELECT dsn.timestamp, dsn.title, dsn.mime_type, dsn.provider_visibility, dsn.parents, dsn.node_id, dsn.document, dsn.\"table\", dsn.folder, ds.data_source_id, ds.internal_id, dsn.source_url, dsn.id \
+                "SELECT dsn.timestamp, dsn.title, dsn.mime_type, dsn.provider_visibility, dsn.parents, dsn.node_id, dsn.document, dsn.\"table\", dsn.folder, ds.data_source_id, ds.internal_id, dsn.source_url, dsn.children_count, dsn.id \
                    FROM data_sources_nodes dsn JOIN data_sources ds ON dsn.data_source = ds.id \
                    WHERE dsn.id > $1 ORDER BY dsn.id ASC LIMIT $2",
             )
@@ -3601,7 +3794,8 @@ impl Store for PostgresStore {
                         _ => unreachable!(),
                     };
                 let source_url: Option<String> = row.get::<_, Option<String>>(11);
-                let row_id = row.get::<_, i64>(12);
+                let children_count: i64 = row.get::<_, i64>(12);
+                let row_id = row.get::<_, i64>(13);
                 (
                     Node::new(
                         &data_source_id,
@@ -3615,6 +3809,7 @@ impl Store for PostgresStore {
                         parents.get(1).cloned(),
                         parents,
                         source_url,
+                        children_count as u64,
                     ),
                     row_id,
                     element_row_id,

@@ -89,6 +89,7 @@ pub struct Node {
     pub parent_id: Option<String>,
     pub parents: Vec<String>,
     pub source_url: Option<String>,
+    pub children_count: u64,
 }
 
 impl Node {
@@ -104,6 +105,7 @@ impl Node {
         parent_id: Option<String>,
         parents: Vec<String>,
         source_url: Option<String>,
+        children_count: u64,
     ) -> Self {
         Node {
             data_source_id: data_source_id.to_string(),
@@ -117,6 +119,7 @@ impl Node {
             parent_id: parent_id.clone(),
             parents,
             source_url,
+            children_count,
         }
     }
 
@@ -145,6 +148,10 @@ impl Node {
         &self.parents
     }
 
+    pub fn children_count(&self) -> u64 {
+        self.children_count
+    }
+
     // Consumes self into a Folder.
     pub fn into_folder(self) -> Folder {
         Folder::new(
@@ -161,9 +168,12 @@ impl Node {
         )
     }
 
-    // Computes a globally unique id for the node.
+    pub fn compute_unique_id(data_source_internal_id: &str, node_id: &str) -> String {
+        format!("{}__{}", data_source_internal_id, node_id)
+    }
+
     pub fn unique_id(&self) -> String {
-        format!("{}__{}", self.data_source_internal_id, self.node_id)
+        Self::compute_unique_id(&self.data_source_internal_id, &self.node_id)
     }
 }
 
@@ -177,16 +187,11 @@ impl From<serde_json::Value> for Node {
 pub struct CoreContentNode {
     #[serde(flatten)]
     pub base: Node,
-    pub has_children: bool,
     pub parent_title: Option<String>,
 }
 
 impl CoreContentNode {
-    pub fn new(base: Node, has_children: bool, parent_title: Option<String>) -> Self {
-        CoreContentNode {
-            base,
-            has_children,
-            parent_title,
-        }
+    pub fn new(base: Node, parent_title: Option<String>) -> Self {
+        CoreContentNode { base, parent_title }
     }
 }

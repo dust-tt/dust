@@ -7,7 +7,7 @@ use serde_json::Value;
 use tracing::info;
 
 use crate::{
-    data_sources::node::{Node, NodeType, ProviderVisibility},
+    data_sources::node::{Node, ProviderVisibility},
     databases::{database::HasValue, table_schema::TableSchema},
     databases_store::store::DatabasesStore,
     project::Project,
@@ -225,7 +225,12 @@ impl Table {
 
         // Delete the table node from the search index.
         if let Some(search_store) = search_store {
-            search_store.delete_node(Node::from(self.clone())).await?;
+            search_store
+                .delete_node(&Node::compute_unique_id(
+                    &self.data_source_internal_id,
+                    &self.table_id,
+                ))
+                .await?;
         }
 
         Ok(())
@@ -246,26 +251,13 @@ impl Table {
             )
             .await?;
 
-        search_store.index_node(Node::from(self.clone())).await?;
-        Ok(())
-    }
-}
-
-impl From<Table> for Node {
-    fn from(table: Table) -> Node {
-        Node::new(
-            &table.data_source_id,
-            &table.data_source_internal_id,
-            &table.table_id,
-            NodeType::Table,
-            table.timestamp,
-            &table.title,
-            &table.mime_type,
-            table.provider_visibility,
-            table.parents.get(1).cloned(),
-            table.parents,
-            table.source_url,
-        )
+        let node_result = store
+            .get_data_source_node(&self.project, &self.data_source_id, &self.table_id)
+            .await?;
+        match node_result {
+            Some((node, _)) => search_store.index_node(node).await,
+            None => Err(anyhow!("Table node not found")),
+        }
     }
 }
 

@@ -182,7 +182,7 @@ pub trait Store {
         data_source_id: &str,
         document_id: &str,
         version_hash: &Option<String>,
-    ) -> Result<Option<Document>>;
+    ) -> Result<Option<(Document, Node)>>;
     async fn find_data_source_document_ids(
         &self,
         project: &Project,
@@ -197,7 +197,7 @@ pub trait Store {
         project: &Project,
         data_source_id: String,
         create_params: DocumentCreateParams,
-    ) -> Result<Document>;
+    ) -> Result<(Document, Node)>;
     async fn update_data_source_document_tags(
         &self,
         project: &Project,
@@ -279,7 +279,7 @@ pub trait Store {
         project: Project,
         data_source_id: String,
         upsert_params: TableUpsertParams,
-    ) -> Result<Table>;
+    ) -> Result<(Table, Node)>;
     async fn update_data_source_table_schema(
         &self,
         project: &Project,
@@ -326,7 +326,7 @@ pub trait Store {
         project: Project,
         data_source_id: String,
         upsert_params: FolderUpsertParams,
-    ) -> Result<Folder>;
+    ) -> Result<(Folder, Node)>;
     async fn load_data_source_folder(
         &self,
         project: &Project,
@@ -604,6 +604,7 @@ pub const POSTGRES_TABLES: [&'static str; 16] = [
        provider_visibility          TEXT,
        parents                      TEXT[] NOT NULL,
        source_url                   TEXT,
+       children_count               INTEGER,
        document                     BIGINT,
        \"table\"                    BIGINT,
        folder                       BIGINT,
