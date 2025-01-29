@@ -450,7 +450,7 @@ export async function syncZendeskCategoryActivity({
     folderId,
     parents,
     parentId,
-    title: categoryInDb.name,
+    title: fetchedCategory.name,
     mimeType: MIME_TYPES.ZENDESK.CATEGORY,
     sourceUrl: fetchedCategory.html_url,
     timestampMs: currentSyncDateMs,
