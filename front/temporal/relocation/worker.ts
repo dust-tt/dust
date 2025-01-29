@@ -6,9 +6,9 @@ import { config } from "@app/lib/api/regions/config";
 import { getTemporalWorkerConnection } from "@app/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
+import * as frontDestinationActivities from "@app/temporal/relocation/activities/destination_region/front";
+import * as frontSourceActivities from "@app/temporal/relocation/activities/source_region/front";
 import { RELOCATION_QUEUES_PER_REGION } from "@app/temporal/relocation/config";
-import * as destinationRegionActivities from "@app/temporal/relocation/destination_region_activities";
-import * as sourceRegionActivities from "@app/temporal/relocation/source_region_activities";
 
 export async function runRelocationWorker() {
   const currentRegion = config.getCurrentRegion();
@@ -17,7 +17,10 @@ export async function runRelocationWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();
   const worker = await Worker.create({
     workflowsPath: require.resolve("./workflows"),
-    activities: { ...sourceRegionActivities, ...destinationRegionActivities },
+    activities: {
+      ...frontDestinationActivities,
+      ...frontSourceActivities,
+    },
     taskQueue: RELOCATION_QUEUES_PER_REGION[currentRegion],
     maxConcurrentActivityTaskExecutions: 8,
     connection,

@@ -1,11 +1,7 @@
-import { QueryTypes } from "sequelize";
-
-import { frontSequelize } from "@app/lib/resources/storage";
 import {
   isFileStorageTransferComplete,
-  startTransferFrontFilesToDestinationRegion,
-} from "@app/temporal/relocation/activities/source_region/front/file_storage";
-import { formatValue } from "@app/temporal/relocation/sql_generator";
+  startTransferFrontPublicFiles,
+} from "@app/temporal/relocation/activities/source_region/front";
 
 async function main() {
   // return getTablesWithWorkspaceIdOrder();
@@ -19,7 +15,7 @@ async function main() {
 
   // console.log(">> formatValue:", JSON.stringify(formatValue(a), null, 2));
 
-  const transferResult = await startTransferFrontFilesToDestinationRegion({
+  const transferResult = await startTransferFrontPublicFiles({
     sourceRegion: "us-central1",
     destRegion: "europe-west1",
     workspaceId: "AgtPVuhCPc",

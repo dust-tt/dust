@@ -1,5 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
-
 import type { RegionType } from "@app/lib/api/regions/config";
 import { RELOCATION_QUEUES_PER_REGION } from "@app/temporal/relocation/config";
 import { getTemporalRelocationClient } from "@app/temporal/relocation/temporal";
@@ -10,7 +8,7 @@ export async function launchWorkspaceRelocationWorkflow({
   sourceRegion,
   targetRegion,
 }: {
-  workspaceId: ModelId;
+  workspaceId: string;
   sourceRegion: RegionType;
   targetRegion: RegionType;
 }) {

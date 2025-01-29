@@ -8,7 +8,7 @@ import type {
 } from "@app/temporal/relocation/activities/types";
 import { readFromRelocationStorage } from "@app/temporal/relocation/lib/file_storage/relocation";
 
-export async function writeWorkspaceAndUsersToDestinationRegion({
+export async function writeCoreEntitiesToDestinationRegion({
   dataPath,
 }: {
   dataPath: string;

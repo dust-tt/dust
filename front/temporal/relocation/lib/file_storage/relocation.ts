@@ -1,12 +1,10 @@
-import type { ModelId } from "@dust-tt/types";
-
 import { getBucketInstance } from "@app/lib/file_storage";
 import config from "@app/temporal/relocation/activities/config";
 
 const RELOCATION_PATH_PREFIX = "relocations";
 
 interface RelocationStorageOptions {
-  workspaceId: ModelId;
+  workspaceId: string;
   type: "front" | "connectors" | "core";
   operation: string;
 }

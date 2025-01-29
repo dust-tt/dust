@@ -9,10 +9,11 @@ import type { RegionType } from "@app/lib/api/regions/config";
 
 interface TransferConfig {
   destBucket: string;
-  destPath: string;
+  destPath?: string;
   destRegion: RegionType;
+  includePrefixes?: string[];
   sourceBucket: string;
-  sourcePath: string;
+  sourcePath?: string;
   sourceProjectId: string;
   sourceRegion: RegionType;
   workspaceId: string;
@@ -33,29 +34,38 @@ export class StorageTransferService {
     destBucket,
     destPath,
     destRegion,
+    includePrefixes,
     sourceBucket,
     sourcePath,
     sourceProjectId,
     sourceRegion,
     workspaceId,
   }: TransferConfig): Promise<Result<string, Error>> {
+    const spec: google.storagetransfer.v1.ITransferSpec = {
+      gcsDataSource: {
+        bucketName: sourceBucket,
+        path: sourcePath,
+      },
+      gcsDataSink: {
+        bucketName: destBucket,
+        path: destPath,
+      },
+      transferOptions: {
+        overwriteObjectsAlreadyExistingInSink: false,
+        overwriteWhen: "DIFFERENT",
+      },
+    };
+
+    if (includePrefixes) {
+      spec.objectConditions = {
+        includePrefixes,
+      };
+    }
+
     const transferJob: google.storagetransfer.v1.ITransferJob = {
       description: `Migrate workspace ${workspaceId} from region ${sourceRegion} to ${destRegion}`,
       projectId: sourceProjectId,
-      transferSpec: {
-        gcsDataSource: {
-          bucketName: sourceBucket,
-          path: sourcePath,
-        },
-        gcsDataSink: {
-          bucketName: destBucket,
-          path: destPath,
-        },
-        transferOptions: {
-          overwriteObjectsAlreadyExistingInSink: false,
-          overwriteWhen: "DIFFERENT",
-        },
-      },
+      transferSpec: spec,
       // Schedule the transfer to start immediately.
       schedule: {
         scheduleStartDate: {

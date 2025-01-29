@@ -1,6 +1,8 @@
 import type { ModelId } from "@dust-tt/types";
+import assert from "assert";
 import { Op, QueryTypes } from "sequelize";
 
+import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import { Workspace } from "@app/lib/models/workspace";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -14,15 +16,15 @@ import { writeToRelocationStorage } from "@app/temporal/relocation/lib/file_stor
 import { generateInsertStatements } from "@app/temporal/relocation/lib/sql/insert";
 import { getTopologicalOrder } from "@app/temporal/relocation/lib/sql/schema/dependencies";
 
-export async function readWorkspaceAndUsersFromSourceRegion({
+export async function readCoreEntitiesFromSourceRegion({
   workspaceId,
 }: {
-  workspaceId: ModelId;
+  workspaceId: string;
 }) {
   // Find the raw workspace.
   const workspace = await Workspace.findOne({
     where: {
-      id: workspaceId,
+      sId: workspaceId,
     },
     raw: true,
   });
@@ -49,7 +51,7 @@ export async function readWorkspaceAndUsersFromSourceRegion({
   const subscriptions = await frontSequelize.query<{ planId: ModelId }>(
     'SELECT * FROM subscriptions WHERE "workspaceId" = :workspaceId',
     {
-      replacements: { workspaceId },
+      replacements: { workspaceId: workspace.id },
       type: QueryTypes.SELECT,
       raw: true,
     }
@@ -75,14 +77,14 @@ export async function readWorkspaceAndUsersFromSourceRegion({
   };
 
   // We store the data in a storage.
-  const storagePath = await writeToRelocationStorage(blob, {
+  const dataPath = await writeToRelocationStorage(blob, {
     workspaceId,
     type: "front",
     operation: "read_workspace_and_users",
   });
 
   // Return the path (not the data) to preserve activity return size.
-  return storagePath;
+  return dataPath;
 }
 
 export async function getTablesWithWorkspaceIdOrder() {
@@ -95,7 +97,7 @@ interface ReadTableChunkParams {
   lastId?: ModelId;
   limit: number;
   tableName: string;
-  workspaceId: ModelId;
+  workspaceId: string;
 }
 
 export async function readFrontTableChunk({
@@ -104,6 +106,9 @@ export async function readFrontTableChunk({
   tableName,
   workspaceId,
 }: ReadTableChunkParams) {
+  const workspace = await getWorkspaceInfos(workspaceId);
+  assert(workspace, "Workspace not found");
+
   const idClause = lastId ? `AND id > ${lastId}` : "";
 
   const rows = await frontSequelize.query<{ id: ModelId }>(
@@ -112,7 +117,7 @@ export async function readFrontTableChunk({
      ORDER BY id
      LIMIT :limit`,
     {
-      replacements: { workspaceId, limit },
+      replacements: { workspaceId: workspace.id, limit },
       type: QueryTypes.SELECT,
       raw: true,
     }
