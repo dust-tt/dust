@@ -12,6 +12,7 @@ import { Workspace } from "@app/lib/models/workspace";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
 import { UserMetadataModel } from "@app/lib/resources/storage/models/user";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 
 import { MembershipResource } from "../resources/membership_resource";
@@ -166,13 +167,10 @@ export async function getUserWithWorkspaces<T extends boolean>(
     ...user.toJSON(),
     workspaces: workspaces.map((w) => {
       return {
-        id: w.id,
-        sId: w.sId,
-        name: w.name,
-        role: memberships.find((m) => m.workspaceId === w.id)?.role ?? "none",
-        segmentation: w.segmentation || null,
-        whiteListedProviders: w.whiteListedProviders,
-        defaultEmbeddingProvider: w.defaultEmbeddingProvider,
+        ...renderLightWorkspaceType({
+          workspace: w,
+          role: memberships.find((m) => m.workspaceId === w.id)?.role ?? "none",
+        }),
         ssoEnforced: w.ssoEnforced,
         ...(populateExtensionConfig && {
           blacklistedDomains:

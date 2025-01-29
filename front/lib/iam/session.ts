@@ -1,4 +1,5 @@
 import type { UserTypeWithWorkspaces } from "@dust-tt/types";
+import { isString } from "@dust-tt/types";
 import type {
   GetServerSidePropsContext,
   GetServerSidePropsResult,
@@ -7,6 +8,7 @@ import type {
 import type { ParsedUrlQuery } from "querystring";
 
 import { getUserWithWorkspaces } from "@app/lib/api/user";
+import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { isEnterpriseConnection } from "@app/lib/iam/enterprise";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -104,6 +106,13 @@ async function getAuthenticator(
   }
 }
 
+async function getWorkspace(
+  context: GetServerSidePropsContext<ParsedUrlQuery, PreviewData>
+) {
+  const { wId } = context.params ?? {};
+  return isString(wId) ? getWorkspaceInfos(wId) : null;
+}
+
 export function makeGetServerSidePropsRequirementsWrapper<
   RequireUserPrivilege extends UserPrivilege = "user",
 >({
@@ -132,6 +141,18 @@ export function makeGetServerSidePropsRequirementsWrapper<
         session,
         requireUserPrivilege
       );
+
+      const workspace = auth ? auth.workspace() : await getWorkspace(context);
+      const maintenance = workspace?.metadata?.maintenance;
+
+      if (maintenance) {
+        return {
+          redirect: {
+            permanent: false,
+            destination: `/maintenance?workspace=${workspace.sId}&code=${maintenance}`,
+          },
+        };
+      }
 
       if (
         requireCanUseProduct &&
@@ -174,11 +195,7 @@ export function makeGetServerSidePropsRequirementsWrapper<
         }
 
         // If we target a workspace and the user is not in the workspace, return not found.
-        if (
-          !allowUserOutsideCurrentWorkspace &&
-          auth?.workspace() &&
-          !auth?.isUser()
-        ) {
+        if (!allowUserOutsideCurrentWorkspace && workspace && !auth?.isUser()) {
           return {
             notFound: true,
           };
