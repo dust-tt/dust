@@ -1,11 +1,15 @@
 import type {
+  GithubCreateIssueConfigurationType,
   GithubGetPullRequestConfigurationType,
   ModelId,
 } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import { Op } from "sequelize";
 
-import { DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME } from "@app/lib/api/assistant/actions/constants";
+import {
+  DEFAULT_GITHUB_CREATE_ISSUE_ACTION_NAME,
+  DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME,
+} from "@app/lib/api/assistant/actions/constants";
 import { AgentGithubConfiguration } from "@app/lib/models/assistant/actions/github";
 
 export async function fetchGithubActionConfigurations({
@@ -14,7 +18,15 @@ export async function fetchGithubActionConfigurations({
 }: {
   configurationIds: ModelId[];
   variant: "light" | "full";
-}): Promise<Map<ModelId, GithubGetPullRequestConfigurationType[]>> {
+}): Promise<
+  Map<
+    ModelId,
+    (
+      | GithubGetPullRequestConfigurationType
+      | GithubCreateIssueConfigurationType
+    )[]
+  >
+> {
   if (variant !== "full") {
     return new Map();
   }
@@ -47,13 +59,28 @@ export async function fetchGithubActionConfigurations({
               description,
             });
             break;
+          case "github_create_issue_action":
+            actions.push({
+              id,
+              sId,
+              type: "github_create_issue_configuration",
+              name: name || DEFAULT_GITHUB_CREATE_ISSUE_ACTION_NAME,
+              description,
+            });
+            break;
           default:
             assertNever(actionType);
         }
       }
       return acc;
     },
-    new Map<ModelId, GithubGetPullRequestConfigurationType[]>()
+    new Map<
+      ModelId,
+      (
+        | GithubGetPullRequestConfigurationType
+        | GithubCreateIssueConfigurationType
+      )[]
+    >()
   );
 
   return actionsByConfigurationId;

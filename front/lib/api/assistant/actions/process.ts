@@ -207,6 +207,7 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
       functionCallName: actionConfiguration.name,
       agentMessageId: agentMessage.agentMessageId,
       step,
+      workspaceId: owner.id,
     });
 
     const now = Date.now();

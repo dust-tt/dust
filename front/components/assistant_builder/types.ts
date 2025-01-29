@@ -13,10 +13,7 @@ import type {
   TimeframeUnit,
   WorkspaceType,
 } from "@dust-tt/types";
-import {
-  DEFAULT_MAX_STEPS_USE_PER_RUN,
-  FIREWORKS_DEEPSEEK_R1_MODEL_CONFIG,
-} from "@dust-tt/types";
+import { DEFAULT_MAX_STEPS_USE_PER_RUN } from "@dust-tt/types";
 import {
   assertNever,
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
@@ -26,6 +23,8 @@ import type { SVGProps } from "react";
 import type React from "react";
 
 import {
+  DEFAULT_GITHUB_CREATE_ISSUE_ACTION_DESCRIPTION,
+  DEFAULT_GITHUB_CREATE_ISSUE_ACTION_NAME,
   DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_DESCRIPTION,
   DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME,
   DEFAULT_PROCESS_ACTION_NAME,
@@ -115,13 +114,13 @@ export type AssistantBuilderProcessConfiguration = {
 // Websearch configuration (no configuraiton)
 export type AssistantBuilderWebNavigationConfiguration = Record<string, never>;
 
-// Github configuraiton (no configuraiton)
+// Github configuration (no configuraiton)
 export type AssistantBuilderGithubConfiguration = Record<string, never>;
 
 // Reasoning configuration
 export type AssistantBuilderReasoningConfiguration = {
-  modelId: ModelIdType;
-  providerId: ModelProviderIdType;
+  modelId: ModelIdType | null;
+  providerId: ModelProviderIdType | null;
   temperature: number | null;
   reasoningEffort: AgentReasoningEffort | null;
 };
@@ -155,6 +154,10 @@ export type AssistantBuilderActionConfiguration = (
     }
   | {
       type: "GITHUB_GET_PULL_REQUEST";
+      configuration: AssistantBuilderGithubConfiguration;
+    }
+  | {
+      type: "GITHUB_CREATE_ISSUE";
       configuration: AssistantBuilderGithubConfiguration;
     }
   | {
@@ -338,7 +341,7 @@ export function getDefaultWebsearchActionConfiguration(): AssistantBuilderAction
   };
 }
 
-export function getDefaultGithubhGetPullRequestActionConfiguration(): AssistantBuilderActionConfiguration {
+export function getDefaultGithubGetPullRequestActionConfiguration(): AssistantBuilderActionConfiguration {
   return {
     type: "GITHUB_GET_PULL_REQUEST",
     configuration: {},
@@ -348,14 +351,22 @@ export function getDefaultGithubhGetPullRequestActionConfiguration(): AssistantB
   };
 }
 
+export function getDefaultGithubCreateIssueActionConfiguration(): AssistantBuilderActionConfiguration {
+  return {
+    type: "GITHUB_CREATE_ISSUE",
+    configuration: {},
+    name: DEFAULT_GITHUB_CREATE_ISSUE_ACTION_NAME,
+    description: DEFAULT_GITHUB_CREATE_ISSUE_ACTION_DESCRIPTION,
+    noConfigurationRequired: true,
+  };
+}
+
 export function getDefaultReasoningActionConfiguration(): AssistantBuilderActionConfiguration {
   return {
     type: "REASONING",
     configuration: {
-      // TODO(REASONING TOOL):
-      // Cleanup
-      providerId: FIREWORKS_DEEPSEEK_R1_MODEL_CONFIG.providerId,
-      modelId: FIREWORKS_DEEPSEEK_R1_MODEL_CONFIG.modelId,
+      providerId: null,
+      modelId: null,
       temperature: null,
       reasoningEffort: null,
     },
@@ -385,7 +396,9 @@ export function getDefaultActionConfiguration(
       case "WEB_NAVIGATION":
         return getDefaultWebsearchActionConfiguration();
       case "GITHUB_GET_PULL_REQUEST":
-        return getDefaultGithubhGetPullRequestActionConfiguration();
+        return getDefaultGithubGetPullRequestActionConfiguration();
+      case "GITHUB_CREATE_ISSUE":
+        return getDefaultGithubCreateIssueActionConfiguration();
       case "REASONING":
         return getDefaultReasoningActionConfiguration();
       default:
