@@ -32,6 +32,7 @@ export async function startTransferFrontPublicFiles({
   );
 
   const transferResult = await storageTransferService.createTransferJob({
+    // TODO: Remove the `-europe` suffix after test.
     destBucket: `${fileStorageConfig.getGcsPublicUploadBucket()}-europe`,
     destPath: FileResource.getBaseCloudStorageForWorkspace({
       workspaceId,
@@ -92,6 +93,7 @@ export async function startTransferFrontPrivateFiles({
 
   // Tranfer both private files and content fragments in the same job.
   const transferResult = await storageTransferService.createTransferJob({
+    // TODO: Remove the `-europe` suffix after test.
     destBucket: `${fileStorageConfig.getGcsPrivateUploadsBucket()}-europe`,
     destRegion,
     includePrefixes: [
