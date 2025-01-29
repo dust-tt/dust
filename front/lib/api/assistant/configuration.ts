@@ -1124,6 +1124,7 @@ export async function createAgentActionConfiguration(
             schema: action.schema,
             name: action.name,
             description: action.description,
+            workspaceId: owner.id,
           },
           { transaction: t }
         );
