@@ -24,8 +24,7 @@ makeScript({}, async ({ execute }, logger) => {
           parents: [folderId],
           parentId: null,
           title: "Shared with me",
-          mimeType:
-            "application/application/vnd.dust.googledrive.shared-with_me",
+          mimeType: "application/vnd.dust.googledrive.shared-with_me",
           sourceUrl: GOOGLE_DRIVE_SHARED_WITH_ME_WEB_URL,
         });
         logger.info(

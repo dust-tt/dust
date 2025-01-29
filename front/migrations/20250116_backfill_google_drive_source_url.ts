@@ -150,7 +150,7 @@ async function backfillFolders(
        FROM google_drive_files
        WHERE id > :lastId
          AND "connectorId" = :connectorId
-         AND "mimeType" = 'application/vnd.google-apps.folder'
+         AND "mimeType" = in ('application/vnd.google-apps.folder', 'application/vnd.dust.googledrive.spreadsheet')
        ORDER BY id
        LIMIT :batchSize;`,
       {
