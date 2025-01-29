@@ -45,7 +45,7 @@ async function upsertSpreadsheetInDb(
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     lastUpsertedTs: new Date(),
     parentInternalId,
-    webUrl: file.webUrl ?? null,
+    webUrl: file.webUrl ?? "",
   });
 }
 
@@ -316,7 +316,7 @@ export async function handleSpreadSheet({
     parents,
     parentId: parentInternalId,
     mimeType: MIME_TYPES.MICROSOFT.SPREADSHEET,
-    sourceUrl: file.webUrl ?? undefined,
+    sourceUrl: file.webUrl ?? "",
   });
 
   // List synced sheets.

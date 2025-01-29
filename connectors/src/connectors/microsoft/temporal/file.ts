@@ -301,7 +301,7 @@ export async function syncOneFile({
           dataSourceConfig,
           documentId,
           documentContent: content,
-          documentUrl: file.webUrl ?? undefined,
+          documentUrl: file.webUrl ?? "",
           timestampMs: upsertTimestampMs,
           tags,
           parents,
