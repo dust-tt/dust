@@ -68,7 +68,7 @@ async function backfillNodes(
        FROM microsoft_nodes
        WHERE id > :lastId
          AND "connectorId" = :connectorId
-         AND "mimeType" in ('application/vnd.dust.microsoft.folder', 'application/vnd.dust.microsoft.spreadsheet')
+         AND "nodeType" = 'folder'
        ORDER BY id
        LIMIT :batchSize;`,
       {
