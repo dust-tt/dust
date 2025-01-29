@@ -230,7 +230,16 @@ export function computeNodesDiff({
       }
     }
   });
-  if (missingInternalIds.length > 0) {
+  if (
+    missingInternalIds.length > 0 &&
+    // Snowflake's root call returns all the selected databases, schemas and tables even if non-root.
+    !(
+      provider === "snowflake" &&
+      missingInternalIds.every((id) =>
+        coreContentNodes.some((n) => n.parentInternalIds?.includes(id))
+      )
+    )
+  ) {
     localLogger.info(
       {
         missingInternalIds,
