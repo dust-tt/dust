@@ -19,6 +19,8 @@ import type {
 import {
   DEFAULT_BROWSE_ACTION_DESCRIPTION,
   DEFAULT_BROWSE_ACTION_NAME,
+  DEFAULT_GITHUB_CREATE_ISSUE_ACTION_DESCRIPTION,
+  DEFAULT_GITHUB_CREATE_ISSUE_ACTION_NAME,
   DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_DESCRIPTION,
   DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME,
   DEFAULT_REASONING_ACTION_DESCRIPTION,
@@ -203,6 +205,15 @@ export async function submitAssistantBuilderForm({
             type: "github_get_pull_request_configuration",
             name: DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME,
             description: DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_DESCRIPTION,
+          },
+        ];
+
+      case "GITHUB_CREATE_ISSUE":
+        return [
+          {
+            type: "github_create_issue_configuration",
+            name: DEFAULT_GITHUB_CREATE_ISSUE_ACTION_NAME,
+            description: DEFAULT_GITHUB_CREATE_ISSUE_ACTION_DESCRIPTION,
           },
         ];
 

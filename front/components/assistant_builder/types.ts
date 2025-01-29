@@ -26,6 +26,8 @@ import type { SVGProps } from "react";
 import type React from "react";
 
 import {
+  DEFAULT_GITHUB_CREATE_ISSUE_ACTION_DESCRIPTION,
+  DEFAULT_GITHUB_CREATE_ISSUE_ACTION_NAME,
   DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_DESCRIPTION,
   DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME,
   DEFAULT_PROCESS_ACTION_NAME,
@@ -115,7 +117,7 @@ export type AssistantBuilderProcessConfiguration = {
 // Websearch configuration (no configuraiton)
 export type AssistantBuilderWebNavigationConfiguration = Record<string, never>;
 
-// Github configuraiton (no configuraiton)
+// Github configuration (no configuraiton)
 export type AssistantBuilderGithubConfiguration = Record<string, never>;
 
 // Reasoning configuration
@@ -155,6 +157,10 @@ export type AssistantBuilderActionConfiguration = (
     }
   | {
       type: "GITHUB_GET_PULL_REQUEST";
+      configuration: AssistantBuilderGithubConfiguration;
+    }
+  | {
+      type: "GITHUB_CREATE_ISSUE";
       configuration: AssistantBuilderGithubConfiguration;
     }
   | {
@@ -338,12 +344,22 @@ export function getDefaultWebsearchActionConfiguration(): AssistantBuilderAction
   };
 }
 
-export function getDefaultGithubhGetPullRequestActionConfiguration(): AssistantBuilderActionConfiguration {
+export function getDefaultGithubGetPullRequestActionConfiguration(): AssistantBuilderActionConfiguration {
   return {
     type: "GITHUB_GET_PULL_REQUEST",
     configuration: {},
     name: DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME,
     description: DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_DESCRIPTION,
+    noConfigurationRequired: true,
+  };
+}
+
+export function getDefaultGithubCreateIssueActionConfiguration(): AssistantBuilderActionConfiguration {
+  return {
+    type: "GITHUB_CREATE_ISSUE",
+    configuration: {},
+    name: DEFAULT_GITHUB_CREATE_ISSUE_ACTION_NAME,
+    description: DEFAULT_GITHUB_CREATE_ISSUE_ACTION_DESCRIPTION,
     noConfigurationRequired: true,
   };
 }
@@ -385,7 +401,9 @@ export function getDefaultActionConfiguration(
       case "WEB_NAVIGATION":
         return getDefaultWebsearchActionConfiguration();
       case "GITHUB_GET_PULL_REQUEST":
-        return getDefaultGithubhGetPullRequestActionConfiguration();
+        return getDefaultGithubGetPullRequestActionConfiguration();
+      case "GITHUB_CREATE_ISSUE":
+        return getDefaultGithubCreateIssueActionConfiguration();
       case "REASONING":
         return getDefaultReasoningActionConfiguration();
       default:

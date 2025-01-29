@@ -46,6 +46,11 @@ import {
   isActionDustAppRunValid as hasErrorActionDustAppRun,
 } from "@app/components/assistant_builder/actions/DustAppRunAction";
 import {
+  ActionGithubCreateIssue,
+  ActionGithubGetPullRequest,
+  hasErrorActionGithub,
+} from "@app/components/assistant_builder/actions/GithubAction";
+import {
   ActionProcess,
   hasErrorActionProcess,
 } from "@app/components/assistant_builder/actions/ProcessAction";
@@ -86,11 +91,6 @@ import {
 import { ACTION_SPECIFICATIONS } from "@app/lib/api/assistant/actions/utils";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
-import {
-  ActionGithubGetPullRequest,
-  hasErrorActionGithub,
-} from "./actions/GithubAction";
-
 const DATA_SOURCES_ACTION_CATEGORIES = [
   "RETRIEVAL_SEARCH",
   "RETRIEVAL_EXHAUSTIVE",
@@ -108,6 +108,7 @@ const ADVANCED_ACTION_CATEGORIES = ["DUST_APP_RUN"] as const satisfies Array<
 const CAPABILITIES_ACTION_CATEGORIES = [
   "WEB_NAVIGATION",
   "GITHUB_GET_PULL_REQUEST",
+  "GITHUB_CREATE_ISSUE",
   "REASONING",
 ] as const satisfies Array<AssistantBuilderActionConfiguration["type"]>;
 
@@ -138,6 +139,8 @@ export function hasActionError(
     case "WEB_NAVIGATION":
       return hasErrorActionWebNavigation(action);
     case "GITHUB_GET_PULL_REQUEST":
+      return hasErrorActionGithub(action);
+    case "GITHUB_CREATE_ISSUE":
       return hasErrorActionGithub(action);
     case "REASONING":
       return hasErrorActionReasoning(action);
@@ -220,6 +223,7 @@ export default function ActionsScreen({
 
         case "WEB_NAVIGATION":
         case "GITHUB_GET_PULL_REQUEST":
+        case "GITHUB_CREATE_ISSUE":
         case "REASONING":
           break;
 
@@ -838,6 +842,8 @@ function ActionConfigEditor({
 
     case "GITHUB_GET_PULL_REQUEST":
       return <ActionGithubGetPullRequest />;
+    case "GITHUB_CREATE_ISSUE":
+      return <ActionGithubCreateIssue />;
 
     case "REASONING":
       return <ActionReasoning />;
@@ -1279,6 +1285,32 @@ function Capabilities({
                   getDefaultActionConfiguration("GITHUB_GET_PULL_REQUEST");
                 assert(defaulGithubGetPullRequestAction);
                 deleteAction(defaulGithubGetPullRequestAction.name);
+              }}
+            />
+
+            <Capability
+              name="Issue creation"
+              description="Assistant can create issues"
+              enabled={
+                !!builderState.actions.find(
+                  (a) => a.type === "GITHUB_CREATE_ISSUE"
+                )
+              }
+              onEnable={() => {
+                setEdited(true);
+                const defaultGithubCreateIssueAction =
+                  getDefaultActionConfiguration("GITHUB_CREATE_ISSUE");
+                assert(defaultGithubCreateIssueAction);
+                setAction({
+                  type: "insert",
+                  action: defaultGithubCreateIssueAction,
+                });
+              }}
+              onDisable={() => {
+                const defaulGithubCreateIssueAction =
+                  getDefaultActionConfiguration("GITHUB_CREATE_ISSUE");
+                assert(defaulGithubCreateIssueAction);
+                deleteAction(defaulGithubCreateIssueAction.name);
               }}
             />
           </div>

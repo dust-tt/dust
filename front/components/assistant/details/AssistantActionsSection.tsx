@@ -26,6 +26,7 @@ import {
   GLOBAL_AGENTS_SID,
   isBrowseConfiguration,
   isDustAppRunConfiguration,
+  isGithubCreateIssueConfiguration,
   isGithubGetPullRequestConfiguration,
   isProcessConfiguration,
   isReasoningConfiguration,
@@ -292,6 +293,15 @@ function renderOtherAction(
         <div className="flex gap-2 text-muted-foreground">
           <Icon visual={GithubIcon} size="sm" />
           <div>Assistant can retrieve pull requests from Github.</div>
+        </div>
+      </ActionSection>
+    );
+  } else if (isGithubCreateIssueConfiguration(action)) {
+    return (
+      <ActionSection title="Github" key={`other-${index}`}>
+        <div className="flex gap-2 text-muted-foreground">
+          <Icon visual={GithubIcon} size="sm" />
+          <div>Assistant can create issues on Github.</div>
         </div>
       </ActionSection>
     );

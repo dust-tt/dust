@@ -2,9 +2,16 @@ import type {
   AgentActionSpecification,
   FunctionCallType,
   FunctionMessageTypeModel,
+  GithubCreateIssueConfigurationType,
+  GithubCreateIssueErrorEvent,
+  GithubCreateIssueParamsEvent,
+  GithubCreateIssueSuccessEvent,
+  GithubGetPullRequestCommentType,
+  GithubGetPullRequestCommitType,
   GithubGetPullRequestConfigurationType,
   GithubGetPullRequestErrorEvent,
   GithubGetPullRequestParamsEvent,
+  GithubGetPullRequestReviewType,
   GithubGetPullRequestSuccessEvent,
   ModelId,
   Result,
@@ -13,6 +20,8 @@ import { BaseAction, getOAuthConnectionAccessToken, Ok } from "@dust-tt/types";
 import { Octokit } from "octokit";
 
 import {
+  DEFAULT_GITHUB_CREATE_ISSUE_ACTION_DESCRIPTION,
+  DEFAULT_GITHUB_CREATE_ISSUE_ACTION_NAME,
   DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_DESCRIPTION,
   DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME,
 } from "@app/lib/api/assistant/actions/constants";
@@ -20,14 +29,16 @@ import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
 import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import type {
-  GithubGetPullRequestCommentType,
-  GithubGetPullRequestCommitType,
-  GithubGetPullRequestReviewType,
+import {
+  AgentGithubCreateIssueAction,
+  AgentGithubGetPullRequestAction,
 } from "@app/lib/models/assistant/actions/github";
-import { AgentGithubGetPullRequestAction } from "@app/lib/models/assistant/actions/github";
 import { PlatformActionsConfigurationResource } from "@app/lib/resources/platform_actions_configuration_resource";
 import logger from "@app/logger/logger";
+
+/**
+ * GtihubGetPullRequestAction.
+ */
 
 export const GITHUB_GET_PULL_REQUEST_ACTION_MAX_COMMITS = 32;
 
@@ -517,4 +528,337 @@ export class GithubGetPullRequestConfigurationServerRunner extends BaseActionCon
       }),
     };
   }
+}
+
+export async function githubGetPullRequestActionTypesFromAgentMessageIds(
+  agentMessageIds: ModelId[]
+): Promise<GithubGetPullRequestAction[]> {
+  const models = await AgentGithubGetPullRequestAction.findAll({
+    where: {
+      agentMessageId: agentMessageIds,
+    },
+  });
+
+  return models.map((action) => {
+    return new GithubGetPullRequestAction({
+      id: action.id,
+      agentMessageId: action.agentMessageId,
+      params: {
+        owner: action.owner,
+        repo: action.repo,
+        pullNumber: action.pullNumber,
+      },
+      pullBody: action.pullBody,
+      pullCommits: action.pullCommits,
+      pullDiff: action.pullDiff,
+      pullComments: action.pullComments,
+      pullReviews: action.pullReviews,
+      functionCallId: action.functionCallId,
+      functionCallName: action.functionCallName,
+      step: action.step,
+    });
+  });
+}
+
+/**
+ * GtihubCreateIssueAction
+ */
+
+interface GithubCreateIssueActionBlob {
+  id: ModelId;
+  agentMessageId: ModelId;
+  params: {
+    owner: string;
+    repo: string;
+    title: string;
+    body: string;
+  };
+  issueNumber: number | null;
+  functionCallId: string | null;
+  functionCallName: string | null;
+  step: number;
+}
+
+export class GithubCreateIssueAction extends BaseAction {
+  readonly agentMessageId: ModelId;
+  readonly params: {
+    owner: string;
+    repo: string;
+    title: string;
+    body: string;
+  };
+  readonly issueNumber: number | null;
+  readonly functionCallId: string | null;
+  readonly functionCallName: string | null;
+  readonly step: number = -1;
+  readonly type = "github_create_issue_action";
+
+  constructor(blob: GithubCreateIssueActionBlob) {
+    super(blob.id, "github_create_issue_action");
+    this.agentMessageId = blob.agentMessageId;
+    this.params = blob.params;
+    this.issueNumber = blob.issueNumber;
+    this.functionCallId = blob.functionCallId;
+    this.functionCallName = blob.functionCallName;
+    this.step = blob.step;
+  }
+
+  renderForFunctionCall(): FunctionCallType {
+    return {
+      id: this.functionCallId ?? `call_${this.id.toString()}`,
+      name: this.functionCallName ?? DEFAULT_GITHUB_CREATE_ISSUE_ACTION_NAME,
+      arguments: JSON.stringify(this.params),
+    };
+  }
+
+  async renderForMultiActionsModel(): Promise<FunctionMessageTypeModel> {
+    const content = `Issue created: { number: ${this.issueNumber}}`;
+
+    return {
+      role: "function" as const,
+      name: this.functionCallName ?? DEFAULT_GITHUB_CREATE_ISSUE_ACTION_NAME,
+      function_call_id: this.functionCallId ?? `call_${this.id.toString()}`,
+      content,
+    };
+  }
+}
+
+/**
+ * Params generation.
+ */
+
+export class GithubCreateIssueConfigurationServerRunner extends BaseActionConfigurationServerRunner<GithubCreateIssueConfigurationType> {
+  async buildSpecification(
+    _auth: Authenticator,
+    { name, description }: { name: string; description: string | null }
+  ): Promise<Result<AgentActionSpecification, Error>> {
+    return new Ok({
+      name,
+      description:
+        description ?? DEFAULT_GITHUB_CREATE_ISSUE_ACTION_DESCRIPTION,
+      inputs: [
+        {
+          name: "owner",
+          description:
+            "The owner of the repository (account or organization name)",
+          type: "string",
+        },
+        {
+          name: "repo",
+          description: "The name of the repository",
+          type: "string",
+        },
+        {
+          name: "title",
+          description: "The title of the issue",
+          type: "string",
+        },
+        {
+          name: "body",
+          description: "The contents of the issue",
+          type: "string",
+        },
+      ],
+    });
+  }
+
+  async *run(
+    auth: Authenticator,
+    {
+      agentConfiguration,
+      agentMessage,
+      rawInputs,
+      functionCallId,
+      step,
+    }: BaseActionRunParams
+  ): AsyncGenerator<
+    | GithubCreateIssueParamsEvent
+    | GithubCreateIssueSuccessEvent
+    | GithubCreateIssueErrorEvent,
+    void
+  > {
+    const { actionConfiguration } = this;
+
+    const platformActionsConfiguration =
+      await PlatformActionsConfigurationResource.findByWorkspaceAndProvider(
+        auth,
+        {
+          provider: "github",
+        }
+      );
+
+    if (!platformActionsConfiguration) {
+      yield {
+        type: "github_create_issue_error",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "github_configuration_error",
+          message: `Github actions have not been configured for this workspace.`,
+        },
+      };
+      return;
+    }
+
+    if (
+      !rawInputs.owner ||
+      !rawInputs.repo ||
+      !rawInputs.title ||
+      !rawInputs.body ||
+      typeof rawInputs.owner !== "string" ||
+      typeof rawInputs.repo !== "string" ||
+      typeof rawInputs.title !== "string" ||
+      typeof rawInputs.body !== "string"
+    ) {
+      yield {
+        type: "github_create_issue_error",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "github_create_issue_parameters_generation_error",
+          message: `Error generating parameters for github create issue action.`,
+        },
+      };
+      return;
+    }
+
+    const owner = rawInputs.owner as string;
+    const repo = rawInputs.repo as string;
+    const title = rawInputs.title as string;
+    const body = rawInputs.body as string;
+
+    // Create the action in database and yield an event
+    const action = await AgentGithubCreateIssueAction.create({
+      owner,
+      repo,
+      title,
+      body,
+      functionCallId,
+      functionCallName: actionConfiguration.name,
+      agentMessageId: agentMessage.agentMessageId,
+      step,
+      workspaceId: auth.getNonNullableWorkspace().id,
+    });
+
+    yield {
+      type: "github_create_issue_params",
+      created: Date.now(),
+      configurationId: agentConfiguration.sId,
+      messageId: agentMessage.sId,
+      action: new GithubCreateIssueAction({
+        id: action.id,
+        params: {
+          owner,
+          repo,
+          title,
+          body,
+        },
+        issueNumber: null,
+        functionCallId,
+        functionCallName: actionConfiguration.name,
+        agentMessageId: agentMessage.agentMessageId,
+        step,
+      }),
+    };
+
+    const tokRes = await getOAuthConnectionAccessToken({
+      config: apiConfig.getOAuthAPIConfig(),
+      logger,
+      provider: "github",
+      connectionId: platformActionsConfiguration.connectionId,
+    });
+
+    if (tokRes.isErr()) {
+      yield {
+        type: "github_create_issue_error",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "github_connection_error",
+          message: `Error getting connection token for github: ${tokRes.error.message}`,
+        },
+      };
+      return;
+    }
+
+    const octokit = new Octokit({ auth: tokRes.value.access_token });
+
+    try {
+      const { data: issue } = await octokit.rest.issues.create({
+        owner,
+        repo,
+        title,
+        body,
+        // labels: [], // optional
+        // assignees: [], // optional
+      });
+
+      await action.update({
+        issueNumber: issue.number,
+      });
+    } catch (e) {
+      yield {
+        type: "github_create_issue_error",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "github_create_issue_error",
+          message: `Error creating Github issue`,
+        },
+      };
+      return;
+    }
+
+    yield {
+      type: "github_create_issue_success",
+      created: Date.now(),
+      configurationId: agentConfiguration.sId,
+      messageId: agentMessage.sId,
+      action: new GithubCreateIssueAction({
+        id: action.id,
+        params: {
+          owner,
+          repo,
+          title,
+          body,
+        },
+        issueNumber: action.issueNumber,
+        functionCallId,
+        functionCallName: actionConfiguration.name,
+        agentMessageId: agentMessage.agentMessageId,
+        step,
+      }),
+    };
+  }
+}
+
+export async function githubCreateIssueActionTypesFromAgentMessageIds(
+  agentMessageIds: ModelId[]
+): Promise<GithubCreateIssueAction[]> {
+  const models = await AgentGithubCreateIssueAction.findAll({
+    where: {
+      agentMessageId: agentMessageIds,
+    },
+  });
+
+  return models.map((action) => {
+    return new GithubCreateIssueAction({
+      id: action.id,
+      agentMessageId: action.agentMessageId,
+      params: {
+        owner: action.owner,
+        repo: action.repo,
+        title: action.title,
+        body: action.body,
+      },
+      issueNumber: action.issueNumber,
+      functionCallId: action.functionCallId,
+      functionCallName: action.functionCallName,
+      step: action.step,
+    });
+  });
 }
