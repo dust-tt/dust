@@ -1,6 +1,7 @@
 import type {
   AgentConfigurationType,
   LightAgentConfigurationType,
+  ModelConfigurationType,
   PostOrPatchAgentConfigurationRequestBody,
   Result,
   RetrievalTimeframe,
@@ -39,6 +40,7 @@ export async function submitAssistantBuilderForm({
   agentConfigurationId,
   slackData,
   isDraft,
+  reasoningModels,
 }: {
   owner: WorkspaceType;
   builderState: AssistantBuilderState;
@@ -48,6 +50,7 @@ export async function submitAssistantBuilderForm({
     slackChannelsLinkedWithAgent: SlackChannelLinkedWithAgent[];
   };
   isDraft?: boolean;
+  reasoningModels: ModelConfigurationType[];
 }): Promise<
   Result<LightAgentConfigurationType | AgentConfigurationType, Error>
 > {
@@ -218,13 +221,47 @@ export async function submitAssistantBuilderForm({
         ];
 
       case "REASONING":
+        let { modelId, providerId } = (() => {
+          if (a.configuration.modelId && a.configuration.providerId) {
+            return {
+              modelId: a.configuration.modelId,
+              providerId: a.configuration.providerId,
+            };
+          }
+
+          if (!reasoningModels.length) {
+            throw new Error("No reasoning models found");
+          }
+
+          return {
+            modelId: reasoningModels[0].modelId,
+            providerId: reasoningModels[0].providerId,
+          };
+        })();
+
+        if (
+          reasoningModels.find(
+            (m) => m.modelId === modelId && m.providerId === providerId
+          )
+        ) {
+          // reasoning model is no longer available.
+          if (reasoningModels.length > 0) {
+            // In this case we switch to the first reasoning model available.
+            modelId = reasoningModels[0].modelId;
+            providerId = reasoningModels[0].providerId;
+          } else {
+            // In this case we remove the action from the configuration.
+            return [];
+          }
+        }
+
         return [
           {
             type: "reasoning_configuration",
             name: DEFAULT_REASONING_ACTION_NAME,
             description: DEFAULT_REASONING_ACTION_DESCRIPTION,
-            modelId: a.configuration.modelId,
-            providerId: a.configuration.providerId,
+            modelId,
+            providerId,
             temperature: a.configuration.temperature,
             reasoningEffort: a.configuration.reasoningEffort,
           },

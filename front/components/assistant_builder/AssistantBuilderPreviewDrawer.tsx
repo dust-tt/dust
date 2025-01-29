@@ -20,6 +20,7 @@ import {
 import type {
   AssistantBuilderRightPanelStatus,
   AssistantBuilderRightPanelTab,
+  ModelConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { Separator } from "@radix-ui/react-select";
@@ -57,6 +58,7 @@ interface AssistantBuilderRightPanelProps {
   builderState: AssistantBuilderState;
   agentConfigurationId: string | null;
   setAction: (action: AssistantBuilderSetActionType) => void;
+  reasoningModels: ModelConfigurationType[];
 }
 
 export default function AssistantBuilderRightPanel({
@@ -71,6 +73,7 @@ export default function AssistantBuilderRightPanel({
   builderState,
   agentConfigurationId,
   setAction,
+  reasoningModels,
 }: AssistantBuilderRightPanelProps) {
   const {
     shouldAnimate: shouldAnimatePreviewDrawer,
@@ -80,6 +83,7 @@ export default function AssistantBuilderRightPanel({
     owner,
     builderState,
     isPreviewOpened: rightPanelStatus.tab === "Preview",
+    reasoningModels,
   });
 
   const { user } = useUser();

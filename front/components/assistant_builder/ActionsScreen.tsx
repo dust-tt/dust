@@ -26,8 +26,8 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import type {
+  ModelConfigurationType,
   SpaceType,
-  WhitelistableFeature,
   WorkspaceType,
 } from "@dust-tt/types";
 import { assertNever, MAX_STEPS_USE_PER_RUN_LIMIT } from "@dust-tt/types";
@@ -54,10 +54,7 @@ import {
   ActionProcess,
   hasErrorActionProcess,
 } from "@app/components/assistant_builder/actions/ProcessAction";
-import {
-  ActionReasoning,
-  hasErrorActionReasoning,
-} from "@app/components/assistant_builder/actions/ReasoningAction";
+import { ActionReasoning } from "@app/components/assistant_builder/actions/ReasoningAction";
 import {
   ActionRetrievalExhaustive,
   ActionRetrievalSearch,
@@ -79,6 +76,7 @@ import type {
   AssistantBuilderActionConfigurationWithId,
   AssistantBuilderPendingAction,
   AssistantBuilderProcessConfiguration,
+  AssistantBuilderReasoningConfiguration,
   AssistantBuilderRetrievalConfiguration,
   AssistantBuilderSetActionType,
   AssistantBuilderState,
@@ -89,7 +87,6 @@ import {
   isDefaultActionName,
 } from "@app/components/assistant_builder/types";
 import { ACTION_SPECIFICATIONS } from "@app/lib/api/assistant/actions/utils";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 const DATA_SOURCES_ACTION_CATEGORIES = [
   "RETRIEVAL_SEARCH",
@@ -143,7 +140,7 @@ export function hasActionError(
     case "GITHUB_CREATE_ISSUE":
       return hasErrorActionGithub(action);
     case "REASONING":
-      return hasErrorActionReasoning(action);
+      return null;
     default:
       assertNever(action);
   }
@@ -169,6 +166,8 @@ interface ActionScreenProps {
   setEdited: (edited: boolean) => void;
   setAction: (action: AssistantBuilderSetActionType) => void;
   pendingAction: AssistantBuilderPendingAction;
+  enableReasoningTool: boolean;
+  reasoningModels: ModelConfigurationType[];
 }
 
 export default function ActionsScreen({
@@ -178,6 +177,8 @@ export default function ActionsScreen({
   setEdited,
   setAction,
   pendingAction,
+  enableReasoningTool,
+  reasoningModels,
 }: ActionScreenProps) {
   const { spaces } = useContext(AssistantBuilderContext);
 
@@ -186,7 +187,6 @@ export default function ActionsScreen({
   );
 
   const isLegacyConfig = isLegacyAssistantBuilderConfiguration(builderState);
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
 
   const spaceIdToActions = useMemo(() => {
     return configurableActions.reduce<
@@ -419,6 +419,31 @@ export default function ActionsScreen({
                       maxStepsPerRun,
                     }));
                   }}
+                  setReasoningModel={
+                    enableReasoningTool &&
+                    builderState.actions.find((a) => a.type === "REASONING")
+                      ? (model) => {
+                          setEdited(true);
+                          setBuilderState((state) => ({
+                            ...state,
+                            actions: state.actions.map((a) =>
+                              a.type === "REASONING"
+                                ? {
+                                    ...a,
+                                    configuration: {
+                                      ...a.configuration,
+                                      modelId: model.modelId,
+                                      providerId: model.providerId,
+                                    },
+                                  }
+                                : a
+                            ),
+                          }));
+                        }
+                      : undefined
+                  }
+                  reasoningModels={reasoningModels}
+                  builderState={builderState}
                 />
               </>
             )}
@@ -476,7 +501,7 @@ export default function ActionsScreen({
           setEdited={setEdited}
           setAction={setAction}
           deleteAction={deleteAction}
-          featureFlags={featureFlags}
+          enableReasoningTool={enableReasoningTool}
         />
       </div>
     </>
@@ -1012,10 +1037,27 @@ function ActionEditor({
 function AdvancedSettings({
   maxStepsPerRun,
   setMaxStepsPerRun,
+  reasoningModels,
+  setReasoningModel,
+  builderState,
 }: {
   maxStepsPerRun: number | null;
   setMaxStepsPerRun: (maxStepsPerRun: number | null) => void;
+  reasoningModels?: ModelConfigurationType[];
+  setReasoningModel: ((model: ModelConfigurationType) => void) | undefined;
+  builderState: AssistantBuilderState;
 }) {
+  const reasoningConfig = builderState.actions.find(
+    (a) => a.type === "REASONING"
+  )?.configuration as AssistantBuilderReasoningConfiguration | undefined;
+
+  const reasoningModel =
+    reasoningModels?.find(
+      (m) =>
+        m.modelId === reasoningConfig?.modelId &&
+        m.providerId === reasoningConfig?.providerId
+    ) ?? reasoningModels?.[0];
+
   return (
     <Popover
       popoverTriggerAsChild
@@ -1057,6 +1099,30 @@ function AdvancedSettings({
                 }
               }}
             />
+            {(reasoningModels?.length ?? 0) > 1 && setReasoningModel && (
+              <div className="flex flex-col gap-2">
+                <div className="font-semibold text-element-800">
+                  Reasoning model
+                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="primary"
+                      label={reasoningModel?.displayName}
+                    />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    {(reasoningModels ?? []).map((model) => (
+                      <DropdownMenuItem
+                        key={model.modelId}
+                        label={model.displayName}
+                        onClick={() => setReasoningModel(model)}
+                      />
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            )}
           </div>
         </div>
       }
@@ -1134,7 +1200,7 @@ function Capabilities({
   setEdited,
   setAction,
   deleteAction,
-  featureFlags,
+  enableReasoningTool,
 }: {
   builderState: AssistantBuilderState;
   setBuilderState: (
@@ -1143,7 +1209,7 @@ function Capabilities({
   setEdited: (edited: boolean) => void;
   setAction: (action: AssistantBuilderSetActionType) => void;
   deleteAction: (name: string) => void;
-  featureFlags: WhitelistableFeature[];
+  enableReasoningTool: boolean;
 }) {
   const Capability = ({
     name,
@@ -1232,7 +1298,7 @@ function Capabilities({
           }}
         />
 
-        {(featureFlags ?? []).includes("reasoning_tool_feature") && (
+        {enableReasoningTool && (
           <Capability
             name="Reasoning"
             description="Assistant can offload reasoning-heavy tasks to a reasoning model."

@@ -695,7 +695,7 @@ export const TOGETHERAI_QWEN_72B_INSTRUCT_MODEL_CONFIG: ModelConfigurationType =
   };
 
 export const TOGETHERAI_DEEPSEEK_V3_MODEL_CONFIG: ModelConfigurationType = {
-  providerId: "deepseek",
+  providerId: "togetherai",
   modelId: TOGETHERAI_DEEPSEEK_V3_MODEL_ID,
   displayName: "DeepSeek V3 (TogetherAI)",
   contextSize: 131_072,
@@ -709,7 +709,7 @@ export const TOGETHERAI_DEEPSEEK_V3_MODEL_CONFIG: ModelConfigurationType = {
 };
 
 export const TOGETHERAI_DEEPSEEK_R1_MODEL_CONFIG: ModelConfigurationType = {
-  providerId: "deepseek",
+  providerId: "togetherai",
   modelId: TOGETHERAI_DEEPSEEK_R1_MODEL_ID,
   displayName: "DeepSeek R1 (TogetherAI)",
   contextSize: 163_840,
