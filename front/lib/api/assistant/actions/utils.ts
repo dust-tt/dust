@@ -84,6 +84,13 @@ export const ACTION_SPECIFICATIONS: Record<
     dropDownIcon: GithubIcon,
     flag: null,
   },
+  GITHUB_CREATE_ISSUE: {
+    label: "Create issue",
+    description: "Create an issue on Github",
+    cardIcon: GithubIcon,
+    dropDownIcon: GithubIcon,
+    flag: null,
+  },
   REASONING: {
     label: "Reasoning",
     description: "Complex step by step reasoning",

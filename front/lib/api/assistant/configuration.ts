@@ -44,6 +44,7 @@ import {
 } from "@app/lib/api/assistant/actions/constants";
 import { fetchBrowseActionConfigurations } from "@app/lib/api/assistant/configuration/browse";
 import { fetchDustAppRunActionConfigurations } from "@app/lib/api/assistant/configuration/dust_app_run";
+import { fetchGithubActionConfigurations } from "@app/lib/api/assistant/configuration/github";
 import { fetchAgentProcessActionConfigurations } from "@app/lib/api/assistant/configuration/process";
 import { fetchReasoningActionConfigurations } from "@app/lib/api/assistant/configuration/reasoning";
 import { fetchAgentRetrievalActionConfigurations } from "@app/lib/api/assistant/configuration/retrieval";
@@ -78,8 +79,6 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { TemplateResource } from "@app/lib/resources/template_resource";
-
-import { fetchGithubActionConfigurations } from "./configuration/github";
 
 type SortStrategyType = "alphabetical" | "priority" | "updatedAt";
 

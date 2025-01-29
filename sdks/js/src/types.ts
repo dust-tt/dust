@@ -695,28 +695,67 @@ const TablesQueryActionTypeSchema = BaseActionSchema.extend({
 });
 type TablesQueryActionPublicType = z.infer<typeof TablesQueryActionTypeSchema>;
 
-const GithubPullRequestParamsSchema = z.object({
+const GithubGetPullRequestParamsSchema = z.object({
   owner: z.string(),
   repo: z.string(),
   pullNumber: z.number(),
 });
 
-const GithubPullCommitsSchema = z.object({
+const GithubPullCommitSchema = z.object({
   sha: z.string(),
   message: z.string(),
   author: z.string(),
 });
 
+const GithubPullCommentSchema = z.object({
+  createdAt: z.number(),
+  author: z.string(),
+  body: z.string(),
+});
+
+const GithubPullReviewCommentSchema = z.object({
+  body: z.string(),
+  path: z.string(),
+  line: z.number(),
+});
+
+const GithubPullReviewSchema = z.object({
+  createdAt: z.number(),
+  author: z.string(),
+  body: z.string(),
+  state: z.string(),
+  comments: GithubPullReviewCommentSchema.array(),
+});
+
 const GithubGetPullRequestActionSchema = BaseActionSchema.extend({
-  params: GithubPullRequestParamsSchema,
+  params: GithubGetPullRequestParamsSchema,
   pullBody: z.string().nullable(),
-  pullCommits: GithubPullCommitsSchema.array().nullable(),
   pullDiff: z.string().nullable(),
+  pullCommits: GithubPullCommitSchema.array().nullable(),
+  pullComments: GithubPullCommentSchema.array().nullable(),
+  pullReviews: GithubPullReviewSchema.array().nullable(),
   functionCallId: z.string().nullable(),
   functionCallName: z.string().nullable(),
   agentMessageId: ModelIdSchema,
   step: z.number(),
   type: z.literal("github_get_pull_request_action"),
+});
+
+const GithubCreateIssueParamsSchema = z.object({
+  owner: z.string(),
+  repo: z.string(),
+  title: z.string(),
+  body: z.string(),
+});
+
+const GithubCreateIssueActionSchema = BaseActionSchema.extend({
+  params: GithubCreateIssueParamsSchema,
+  issueNumber: z.number().nullable(),
+  functionCallId: z.string().nullable(),
+  functionCallName: z.string().nullable(),
+  agentMessageId: ModelIdSchema,
+  step: z.number(),
+  type: z.literal("github_create_issue_action"),
 });
 
 const WhitelistableFeaturesSchema = FlexibleEnumSchema<
@@ -973,6 +1012,7 @@ const AgentActionTypeSchema = z.union([
   ConversationListFilesActionTypeSchema,
   ConversationIncludeFileActionTypeSchema,
   GithubGetPullRequestActionSchema,
+  GithubCreateIssueActionSchema,
   ReasoningActionTypeSchema,
 ]);
 export type AgentActionPublicType = z.infer<typeof AgentActionTypeSchema>;

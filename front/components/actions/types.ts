@@ -67,6 +67,10 @@ const actionsSpecification: ActionSpecifications = {
     detailsComponent: GithubGetPullRequestActionDetails,
     runningLabel: ACTION_RUNNING_LABELS.github_get_pull_request_action,
   },
+  github_create_issue_action: {
+    detailsComponent: () => null,
+    runningLabel: ACTION_RUNNING_LABELS.github_create_issue_action,
+  },
   reasoning_action: {
     detailsComponent: ReasoningActionDetails,
     runningLabel: ACTION_RUNNING_LABELS.reasoning_action,

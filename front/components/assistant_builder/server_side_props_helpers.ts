@@ -13,6 +13,7 @@ import {
   assertNever,
   isBrowseConfiguration,
   isDustAppRunConfiguration,
+  isGithubCreateIssueConfiguration,
   isGithubGetPullRequestConfiguration,
   isProcessConfiguration,
   isReasoningConfiguration,
@@ -111,6 +112,8 @@ async function initializeBuilderAction(
     return null; // Ignore browse actions
   } else if (isGithubGetPullRequestConfiguration(action)) {
     return getDefaultGithubhGetPullRequestActionConfiguration();
+  } else if (isGithubCreateIssueConfiguration(action)) {
+
   } else if (isReasoningConfiguration(action)) {
     return getDefaultReasoningActionConfiguration();
   } else {
