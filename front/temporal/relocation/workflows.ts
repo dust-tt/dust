@@ -81,6 +81,9 @@ export async function workspaceRelocateFrontWorkflow({
 
   await destinationRegionActivities.writeCoreEntitiesToDestinationRegion({
     dataPath: coreEntitiesDataPath,
+    destRegion,
+    sourceRegion,
+    workspaceId,
   });
 
   const tablesOrder =
@@ -163,6 +166,10 @@ export async function workspaceRelocateFrontTableWorkflow({
 
     await destinationRegionActivities.processFrontTableChunk({
       dataPath,
+      destRegion,
+      sourceRegion,
+      tableName,
+      workspaceId,
     });
   } while (hasMoreRows);
 }
