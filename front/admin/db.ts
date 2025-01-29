@@ -17,6 +17,10 @@ import {
   AgentProcessConfiguration,
 } from "@app/lib/models/assistant/actions/process";
 import {
+  AgentReasoningAction,
+  AgentReasoningConfiguration,
+} from "@app/lib/models/assistant/actions/reasoning";
+import {
   AgentRetrievalAction,
   AgentRetrievalConfiguration,
   RetrievalDocument,
@@ -148,6 +152,7 @@ async function main() {
   await AgentWebsearchConfiguration.sync({ alter: true });
   await AgentBrowseConfiguration.sync({ alter: true });
   await AgentGithubConfiguration.sync({ alter: true });
+  await AgentReasoningConfiguration.sync({ alter: true });
 
   await AgentDataSourceConfiguration.sync({ alter: true });
 
@@ -168,6 +173,7 @@ async function main() {
   await AgentConversationIncludeFileAction.sync({ alter: true });
   await AgentMessageContent.sync({ alter: true });
   await AgentGithubGetPullRequestAction.sync({ alter: true });
+  await AgentReasoningAction.sync({ alter: true });
 
   await RetrievalDocument.sync({ alter: true });
   await RetrievalDocumentChunk.sync({ alter: true });

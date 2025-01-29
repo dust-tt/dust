@@ -16,18 +16,6 @@ export abstract class Factory<M extends Model> {
     return this;
   }
 
-  async createList(
-    count: number,
-    params: Partial<InferCreationAttributes<M>>
-  ): Promise<M[]> {
-    const models: M[] = [];
-    for (let i = 0; i < count; i++) {
-      const model = await this.create(params);
-      models.push(model);
-    }
-    return models;
-  }
-
   async create(params?: Partial<InferCreationAttributes<M>>): Promise<M> {
     return this.make({ ...this.attrs, ...params });
   }

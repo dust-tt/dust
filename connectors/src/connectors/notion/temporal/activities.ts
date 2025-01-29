@@ -1807,6 +1807,7 @@ export async function renderAndUpsertPageFromCache({
           connector.id,
           parentDb.notionDatabaseId,
           [],
+          true,
           runTimestamp.toString(),
           async () => {
             await heartbeat();
@@ -2014,6 +2015,7 @@ export async function renderAndUpsertPageFromCache({
       connectorId,
       pageId,
       [],
+      true,
       runTimestamp.toString(),
       async () => {
         await heartbeat();
@@ -2532,6 +2534,7 @@ export async function upsertDatabaseStructuredDataFromCache({
     connector.id,
     databaseId,
     [],
+    true,
     runTimestamp.toString(),
     async () => heartbeat()
   );

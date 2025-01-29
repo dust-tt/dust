@@ -157,12 +157,14 @@ export default function SpaceWebsiteModal({
     }
   }, [isOpen, dataSourceView, webCrawlerConfiguration]);
 
-  const { mutateRegardlessOfQueryParams: mutateSpaceDataSourceViews } =
-    useSpaceDataSourceViews({
-      workspaceId: owner.sId,
-      spaceId: space.sId,
-      category: WEBSITE_CAT,
-    });
+  const {
+    spaceDataSourceViews,
+    mutateRegardlessOfQueryParams: mutateSpaceDataSourceViews,
+  } = useSpaceDataSourceViews({
+    workspaceId: owner.sId,
+    spaceId: space.sId,
+    category: WEBSITE_CAT,
+  });
 
   const frequencyDisplayText: Record<CrawlingFrequency, string> = {
     never: "Never",
@@ -206,6 +208,15 @@ export default function SpaceWebsiteModal({
         nameError = "Please provide a name.";
       } else if (dataSourceNameRes.isErr()) {
         nameError = dataSourceNameRes.error;
+      } else {
+        const nameExists = spaceDataSourceViews.some(
+          (view) =>
+            view.dataSource.name.toLowerCase() ===
+              dataSourceName.toLowerCase() && view.sId !== dataSourceView?.sId
+        );
+        if (nameExists) {
+          nameError = "A website with this name already exists";
+        }
       }
     }
 

@@ -1,5 +1,6 @@
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import {
+  FIREWORKS_DEEPSEEK_R1_MODEL_ID,
   GEMINI_1_5_FLASH_LATEST_MODEL_ID,
   GEMINI_1_5_PRO_LATEST_MODEL_ID,
   GEMINI_2_FLASH_PREVIEW_MODEL_ID,
@@ -274,7 +275,13 @@ async function handler(
               { id: TOGETHERAI_DEEPSEEK_R1_MODEL_ID },
             ],
           });
-
+        case "fireworks":
+          return res.status(200).json({
+            models: [
+              { id: "llama-v3p1-8b-instruct" },
+              { id: FIREWORKS_DEEPSEEK_R1_MODEL_ID },
+            ],
+          });
         case "deepseek":
           if (embed) {
             res.status(200).json({ models: [] });

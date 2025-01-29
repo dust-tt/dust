@@ -19,8 +19,12 @@ export const MODEL_PROVIDER_IDS = [
   "google_ai_studio",
   "togetherai",
   "deepseek",
+  "fireworks",
 ] as const;
 export type ModelProviderIdType = (typeof MODEL_PROVIDER_IDS)[number];
+
+export const REASONING_EFFORT_IDS = ["low", "medium", "high"] as const;
+export type ReasoningEffortIdType = (typeof REASONING_EFFORT_IDS)[number];
 
 export const DEFAULT_EMBEDDING_PROVIDER_ID = "openai";
 export const EMBEDDING_PROVIDER_IDS = [
@@ -36,6 +40,9 @@ export const isModelProviderId = (
 
 export const ModelProviderIdCodec =
   ioTsEnum<(typeof MODEL_PROVIDER_IDS)[number]>(MODEL_PROVIDER_IDS);
+
+export const ReasoningEffortCodec =
+  ioTsEnum<(typeof REASONING_EFFORT_IDS)[number]>(REASONING_EFFORT_IDS);
 
 export const EmbeddingProviderCodec = ioTsEnum<
   (typeof EMBEDDING_PROVIDER_IDS)[number]
@@ -131,6 +138,8 @@ export const TOGETHERAI_DEEPSEEK_R1_MODEL_ID =
   "deepseek-ai/DeepSeek-R1" as const;
 export const DEEPSEEK_CHAT_MODEL_ID = "deepseek-chat" as const;
 export const DEEPSEEK_REASONER_MODEL_ID = "deepseek-reasoner" as const;
+export const FIREWORKS_DEEPSEEK_R1_MODEL_ID =
+  "accounts/fireworks/models/deepseek-r1" as const;
 
 export const MODEL_IDS = [
   GPT_3_5_TURBO_MODEL_ID,
@@ -163,6 +172,7 @@ export const MODEL_IDS = [
   TOGETHERAI_DEEPSEEK_R1_MODEL_ID,
   DEEPSEEK_CHAT_MODEL_ID,
   DEEPSEEK_REASONER_MODEL_ID,
+  FIREWORKS_DEEPSEEK_R1_MODEL_ID,
 ] as const;
 export type ModelIdType = (typeof MODEL_IDS)[number];
 
@@ -742,6 +752,32 @@ export const DEEPSEEK_REASONER_MODEL_CONFIG: ModelConfigurationType = {
   featureFlag: "deepseek_feature",
 };
 
+export const FIREWORKS_DEEPSEEK_R1_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "fireworks",
+  modelId: FIREWORKS_DEEPSEEK_R1_MODEL_ID,
+  displayName: "DeepSeek R1 (Fireworks)",
+  contextSize: 164_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 128,
+  largeModel: true,
+  description:
+    "DeepSeek's reasoning model (164k context, served via Fireworks).",
+  shortDescription: "DeepSeek R1 (reasoning model).",
+  isLegacy: false,
+  supportsVision: false,
+  delimitersConfiguration: {
+    incompleteDelimiterPatterns: [/<\/?[a-zA-Z_]*$/],
+    delimiters: [
+      {
+        openingPattern: "<think>",
+        closingPattern: "</think>",
+        classification: "chain_of_thought" as const,
+        swallow: false,
+      },
+    ],
+  },
+};
+
 export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_TURBO_MODEL_CONFIG,
@@ -774,6 +810,7 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   TOGETHERAI_DEEPSEEK_R1_MODEL_CONFIG,
   DEEPSEEK_CHAT_MODEL_CONFIG,
   DEEPSEEK_REASONER_MODEL_CONFIG,
+  FIREWORKS_DEEPSEEK_R1_MODEL_CONFIG,
 ];
 
 export type ModelConfig = (typeof SUPPORTED_MODEL_CONFIGS)[number];

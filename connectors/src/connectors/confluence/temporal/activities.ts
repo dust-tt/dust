@@ -761,9 +761,6 @@ export async function confluenceUpdatePagesParentIdsActivity(
       connectorId,
       spaceId,
       lastVisitedAt: visitedAtMs,
-      parentId: {
-        [Op.not]: null,
-      },
     },
   });
 

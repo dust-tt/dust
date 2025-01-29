@@ -15,6 +15,7 @@ import { Op, Sequelize } from "sequelize";
 
 import { browseActionTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/browse";
 import { dustAppRunTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/dust_app_run";
+import { reasoningActionTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/reasoning";
 import { tableQueryTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/tables_query";
 import { websearchActionTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/websearch";
 import {
@@ -121,6 +122,7 @@ async function batchRenderAgentMessages(
     agentWebsearchActions,
     agentBrowseActions,
     agentConversationIncludeFileActions,
+    agentReasoningActions,
   ] = await Promise.all([
     (async () => {
       const agentConfigurationIds: string[] = agentMessages.reduce(
@@ -151,6 +153,7 @@ async function batchRenderAgentMessages(
     (async () => browseActionTypesFromAgentMessageIds(agentMessageIds))(),
     (async () =>
       conversationIncludeFileTypesFromAgentMessageIds(agentMessageIds))(),
+    (async () => reasoningActionTypesFromAgentMessageIds(agentMessageIds))(),
   ]);
 
   // The only async part here is the content parsing, but it's "fake async" as the content parsing is not doing
@@ -172,6 +175,7 @@ async function batchRenderAgentMessages(
         agentWebsearchActions,
         agentBrowseActions,
         agentConversationIncludeFileActions,
+        agentReasoningActions,
       ]
         .flat()
         .filter((a) => a.agentMessageId === agentMessage.id)

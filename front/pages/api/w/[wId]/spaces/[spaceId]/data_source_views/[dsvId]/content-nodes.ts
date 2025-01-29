@@ -57,6 +57,9 @@ async function handler(
     });
   }
 
+  // TODO(20250126, nodes-core): Remove this after project end
+  const showConnectorsNodes = req.query.connNodes === "true";
+
   const bodyValidation = GetContentNodesOrChildrenRequestBody.decode(req.body);
   if (isLeft(bodyValidation)) {
     const pathError = reporter.formatValidationErrors(bodyValidation.left);
@@ -100,7 +103,8 @@ async function handler(
       parentId,
       pagination: paginationRes.value,
       viewType,
-    }
+    },
+    showConnectorsNodes
   );
 
   if (contentNodesRes.isErr()) {

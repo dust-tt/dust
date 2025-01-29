@@ -16,9 +16,20 @@ use serde_json::Value;
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
 
+use super::helpers::strip_tools_fromn_chat_history;
 use super::openai_compatible_helpers::{
     openai_compatible_chat_completion, TransformSystemMessages,
 };
+
+// ModelIds that support tools
+const MODEL_IDS_WITH_TOOLS_SUPPORT: &[&str] = &[
+    "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
+    "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo",
+    "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo",
+    "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+    "mistralai/Mixtral-8x7B-Instruct-v0.1",
+    "mistralai/Mistral-7B-Instruct-v0.1",
+];
 
 pub struct TogetherAILLM {
     id: String,
@@ -125,9 +136,27 @@ impl LLM for TogetherAILLM {
             self.chat_uri()?,
             self.id.clone(),
             self.api_key.clone().unwrap(),
-            messages,
-            functions,
-            function_call,
+            // Pre-process messages if model is one of the supported models.
+            match MODEL_IDS_WITH_TOOLS_SUPPORT.contains(&self.id.as_str()) {
+                false => Some(strip_tools_fromn_chat_history(messages)),
+                true => None,
+            }
+            .as_ref()
+            .map(|m| m.as_ref())
+            .unwrap_or(messages),
+            // Remove functions if model is one of the supported models.
+            match MODEL_IDS_WITH_TOOLS_SUPPORT.contains(&self.id.as_str()) {
+                false => None,
+                true => Some(functions),
+            }
+            .as_ref()
+            .map(|m| m.as_ref())
+            .unwrap_or(functions),
+            // Remove function call if model is one of the supported models.
+            match MODEL_IDS_WITH_TOOLS_SUPPORT.contains(&self.id.as_str()) {
+                false => None,
+                true => function_call,
+            },
             temperature,
             top_p,
             n,

@@ -7,6 +7,11 @@ import type {
 } from "@dust-tt/types";
 import { assertNever, MIME_TYPES } from "@dust-tt/types";
 
+import {
+  CHANNEL_MIME_TYPES,
+  DATABASE_MIME_TYPES,
+  FILE_MIME_TYPES,
+} from "@app/lib/content_nodes";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type logger from "@app/logger/logger";
 
@@ -14,6 +19,20 @@ export const NON_EXPANDABLE_NODES_MIME_TYPES = [
   MIME_TYPES.SLACK.CHANNEL,
   MIME_TYPES.GITHUB.DISCUSSIONS,
   MIME_TYPES.GITHUB.ISSUES,
+  MIME_TYPES.INTERCOM.TEAM,
+  MIME_TYPES.ZENDESK.TICKETS,
+] as readonly string[];
+
+export const FOLDERS_TO_HIDE_IF_EMPTY_MIME_TYPES = [
+  MIME_TYPES.NOTION.UNKNOWN_FOLDER,
+  MIME_TYPES.NOTION.SYNCING_FOLDER,
+  MIME_TYPES.GOOGLE_DRIVE.SHARED_WITH_ME,
+  MIME_TYPES.GITHUB.DISCUSSIONS,
+  MIME_TYPES.GITHUB.ISSUES,
+] as readonly string[];
+
+export const FOLDERS_SELECTION_PREVENTED_MIME_TYPES = [
+  MIME_TYPES.NOTION.SYNCING_FOLDER,
 ] as readonly string[];
 
 export function getContentNodeInternalIdFromTableId(
@@ -77,7 +96,9 @@ export function computeNodesDiff({
       const diff = Object.fromEntries(
         Object.entries(connectorsNode)
           .filter(([key, value]) => {
-            if (["preventSelection", "lastUpdatedAt"].includes(key)) {
+            if (
+              ["preventSelection", "lastUpdatedAt", "permission"].includes(key)
+            ) {
               return false;
             }
             // Custom exclusion rules. The goal here is to avoid logging irrelevant differences, scoping by connector.
@@ -93,7 +114,29 @@ export function computeNodesDiff({
             const coreValue = coreNode[key as keyof DataSourceViewContentNode];
             // Special case for folder parents, the ones retrieved using getContentNodesForStaticDataSourceView do not
             // contain any parentInternalIds.
-            if (provider === null && key === "parentInternalIds" && !value) {
+            if (provider === null && key === "parentInternalIds") {
+              return false;
+            }
+            // Ignore the type mismatch between core and connectors for mime types that were already identified.
+            if (
+              key === "type" &&
+              coreNode.mimeType &&
+              ((value === "channel" &&
+                CHANNEL_MIME_TYPES.includes(coreNode.mimeType)) ||
+                (value === "database" &&
+                  DATABASE_MIME_TYPES.includes(coreNode.mimeType)) ||
+                (value === "file" &&
+                  FILE_MIME_TYPES.includes(coreNode.mimeType)))
+            ) {
+              return false;
+            }
+            // For Google Drive, connectors does not fill the parentInternalId at google_drive/index.ts#L324.
+            if (
+              ["parentInternalId"].includes(key) &&
+              provider === "google_drive" &&
+              coreValue !== null &&
+              value === null
+            ) {
               return false;
             }
             // Ignore sourceUrls returned by core but left empty by connectors.
@@ -187,82 +230,18 @@ export function computeNodesDiff({
   }
 }
 
-export function getContentNodeMetadata(
-  node: CoreAPIContentNode,
-  viewType: "tables" | "documents"
-): {
-  type: ContentNodeType;
-} {
-  switch (node.mime_type) {
-    case MIME_TYPES.CONFLUENCE.PAGE:
-      return { type: "file" };
-    case MIME_TYPES.CONFLUENCE.SPACE:
-      return { type: "folder" };
-    case MIME_TYPES.GITHUB.REPOSITORY:
-      return { type: "folder" };
-    case MIME_TYPES.GITHUB.CODE_ROOT:
-      return { type: "folder" };
-    case MIME_TYPES.GITHUB.CODE_DIRECTORY:
-      return { type: "folder" };
-    case MIME_TYPES.GITHUB.CODE_FILE:
-      return { type: "file" };
-    case MIME_TYPES.GITHUB.ISSUES:
-      return { type: "database" };
-    case MIME_TYPES.GITHUB.ISSUE:
-      return { type: "file" };
-    case MIME_TYPES.GITHUB.DISCUSSIONS:
-      return { type: "channel" };
-    case MIME_TYPES.GITHUB.DISCUSSION:
-      return { type: "file" };
-    case MIME_TYPES.GOOGLE_DRIVE.FOLDER:
-      return { type: "folder" };
-    case MIME_TYPES.INTERCOM.COLLECTION:
-      return { type: "folder" };
-    case MIME_TYPES.INTERCOM.TEAMS_FOLDER:
-      return { type: "channel" };
-    case MIME_TYPES.INTERCOM.CONVERSATION:
-      return { type: "file" };
-    case MIME_TYPES.INTERCOM.TEAM:
-      return { type: "folder" };
-    case MIME_TYPES.INTERCOM.ARTICLE:
-      return { type: "file" };
-    case MIME_TYPES.MICROSOFT.FOLDER:
-      return { type: "folder" };
-    case MIME_TYPES.NOTION.UNKNOWN_FOLDER:
-      return { type: "folder" };
-    case MIME_TYPES.NOTION.DATABASE:
-      return { type: "database" };
-    case MIME_TYPES.NOTION.PAGE:
-      return { type: "file" };
-    case MIME_TYPES.SLACK.CHANNEL:
-      return { type: "channel" };
-    case MIME_TYPES.SLACK.THREAD:
-      return { type: "file" };
-    case MIME_TYPES.SLACK.MESSAGES:
-      return { type: "file" };
-    case MIME_TYPES.SNOWFLAKE.DATABASE:
-      return { type: "folder" };
-    case MIME_TYPES.SNOWFLAKE.SCHEMA:
-      return { type: "folder" };
-    case MIME_TYPES.SNOWFLAKE.TABLE:
-      return { type: "database" };
-    case MIME_TYPES.WEBCRAWLER.FOLDER:
-      return { type: "folder" };
-    case MIME_TYPES.ZENDESK.HELP_CENTER:
-      return { type: "folder" };
-    case MIME_TYPES.ZENDESK.CATEGORY:
-      return { type: "folder" };
-    case MIME_TYPES.ZENDESK.ARTICLE:
-      return { type: "file" };
-    case MIME_TYPES.ZENDESK.TICKETS:
-      return { type: "folder" };
-    case MIME_TYPES.ZENDESK.TICKET:
-      return { type: "file" };
+export function getContentNodeType(node: CoreAPIContentNode): ContentNodeType {
+  // this is approximate and will be cleaned up when we turn ContentNodeType into the same nodeType as in core
+  // the main point is that it correctly identifies documents as files as this is used in ContentNodeTree
+  // TODO(2025-01-27 aubin): clean this up
+  switch (node.node_type) {
+    case "Table":
+      return "database";
+    case "Folder":
+      return "folder";
+    case "Document":
+      return "file";
     default:
-      let type: ContentNodeType = "file";
-      if (node.mime_type === "text/csv") {
-        type = viewType === "tables" ? "database" : "file";
-      }
-      return { type };
+      assertNever(node.node_type);
   }
 }

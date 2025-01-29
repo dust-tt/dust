@@ -11,6 +11,7 @@ import TerserPlugin from "terser-webpack-plugin";
 import { BundleAnalyzerPlugin } from "webpack-bundle-analyzer";
 
 import { Environment } from "./env";
+import { execSync } from "child_process";
 
 const rootDir = path.resolve(__dirname, "../");
 
@@ -20,6 +21,15 @@ const resolvePath = (...segments: string[]) =>
 const readFileAsync = promisify(fs.readFile).bind(fs) as (
   path: string
 ) => Promise<string>;
+
+// Get git commit hash
+const getCommitHash = () => {
+  try {
+    return execSync("git rev-parse --short HEAD").toString().trim();
+  } catch (e) {
+    return "development";
+  }
+};
 
 export const getConfig = async ({
   env,
@@ -132,6 +142,7 @@ export const getConfig = async ({
       }),
       new webpack.EnvironmentPlugin({
         VERSION: version,
+        COMMIT_HASH: getCommitHash(),
       }),
       new webpack.ProvidePlugin({
         Buffer: ["buffer", "Buffer"],

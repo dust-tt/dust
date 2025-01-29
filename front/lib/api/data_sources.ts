@@ -179,7 +179,10 @@ async function warnPostDeletion(
   switch (dataSourceProvider) {
     case "github":
       // get admin emails
-      const { members } = await getMembers(auth, { roles: ["admin"] });
+      const { members } = await getMembers(auth, {
+        roles: ["admin"],
+        activeOnly: true,
+      });
       const adminEmails = members.map((u) => u.email);
       // send email to admins
       for (const email of adminEmails) {

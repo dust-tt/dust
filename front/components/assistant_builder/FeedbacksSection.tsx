@@ -1,10 +1,11 @@
 import {
   Avatar,
   Button,
+  Card,
+  classNames,
   ExternalLinkIcon,
   HandThumbDownIcon,
   HandThumbUpIcon,
-  Page,
   Spinner,
 } from "@dust-tt/sparkle";
 import type {
@@ -120,12 +121,15 @@ export const FeedbacksSection = ({
                   isLatestVersion={false}
                 />
               )}
-              {!previousFeedbackHasDifferentVersion && !isFirstFeedback && (
-                <div className="mx-4 my-1">
-                  <Page.Separator />
-                </div>
-              )}
-              <div className="mr-2">
+
+              <div
+                className={classNames(
+                  "mr-2",
+                  !previousFeedbackHasDifferentVersion && !isFirstFeedback
+                    ? "mt-3"
+                    : ""
+                )}
+              >
                 <MemoizedFeedbackCard
                   owner={owner}
                   feedback={feedback as AgentMessageFeedbackWithMetadataType}
@@ -160,7 +164,10 @@ function AgentConfigurationVersionHeader({
         return `v${config.version}`;
       }
       const versionDate = new Date(config.versionCreatedAt);
-      return formatTimestampToFriendlyDate(versionDate.getTime(), "long");
+      return (
+        "Version: " +
+        formatTimestampToFriendlyDate(versionDate.getTime(), "long")
+      );
     },
     [isLatestVersion]
   );
@@ -197,51 +204,60 @@ function FeedbackCard({ owner, feedback }: FeedbackCardProps) {
   );
 
   return (
-    <div className="rounded-lg p-2">
-      <div className="justify-content-around flex items-center">
-        <div className="flex w-full items-center gap-2">
-          {feedback.userImageUrl ? (
-            <Avatar
-              size="xs"
-              visual={feedback.userImageUrl}
-              name={feedback.userName}
-            />
-          ) : (
-            <Spinner size="xs" />
-          )}
-          <div className="flex-grow text-sm font-medium text-element-900">
-            {feedback.userName}
+    <Card>
+      <div className="flex w-full flex-col">
+        <div className="flex flex-row">
+          <div className="flex flex-grow items-center justify-between">
+            <div className="flex items-center gap-2">
+              {feedback.userImageUrl ? (
+                <Avatar
+                  size="xs"
+                  visual={feedback.userImageUrl}
+                  name={feedback.userName}
+                />
+              ) : (
+                <Spinner size="xs" />
+              )}
+              <div className="flex flex-col">
+                <div className="flex-grow text-sm font-semibold text-element-900">
+                  {feedback.userName}
+                </div>
+                <div className="text-xs text-element-700">
+                  {timeSinceFeedback} ago
+                </div>
+              </div>
+            </div>
+
+            {conversationUrl && (
+              <div className="flex flex-shrink-0 flex-row">
+                <Button
+                  variant="ghost-secondary"
+                  size="xs"
+                  href={conversationUrl ?? ""}
+                  icon={ExternalLinkIcon}
+                  disabled={!conversationUrl}
+                  tooltip="View conversation"
+                  target="_blank"
+                />
+              </div>
+            )}
           </div>
         </div>
-
-        <div className="flex flex-shrink-0 flex-row items-center text-xs text-muted-foreground">
-          {timeSinceFeedback} ago
-          <div className="flex h-8 w-8 items-center justify-center rounded">
+        <div className="mt-2 flex flex-row">
+          <div className="my-1 mr-2 text-element-700">
             {feedback.thumbDirection === "up" ? (
               <HandThumbUpIcon className="h-4 w-4" />
             ) : (
               <HandThumbDownIcon className="h-4 w-4" />
             )}
           </div>
+          {feedback.content && (
+            <div className="flex-grow text-sm font-normal text-primary">
+              {feedback.content}
+            </div>
+          )}
         </div>
-
-        <Button
-          variant="ghost"
-          size="xs"
-          href={conversationUrl ?? ""}
-          icon={ExternalLinkIcon}
-          disabled={!conversationUrl}
-          tooltip="View conversation"
-          target="_blank"
-        />
       </div>
-      {feedback.content && (
-        <div className="my-2 flex items-center">
-          <div className="flex-grow text-sm leading-relaxed text-element-800">
-            {feedback.content}
-          </div>
-        </div>
-      )}
-    </div>
+    </Card>
   );
 }

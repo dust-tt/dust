@@ -70,6 +70,14 @@ export const modelProviders: ModelProvider[] = [
     chat: true,
     embed: false,
   },
+  {
+    providerId: "fireworks",
+    name: "Fireworks",
+    built: true,
+    enabled: false,
+    chat: true,
+    embed: false,
+  },
 ];
 
 export const APP_MODEL_PROVIDER_IDS: string[] = [
@@ -80,6 +88,7 @@ export const APP_MODEL_PROVIDER_IDS: string[] = [
   "togetherai",
   "azure_openai",
   "deepseek",
+  "fireworks",
 ] as const;
 
 type ServiceProvider = {

@@ -1,6 +1,9 @@
 import { createParser } from "eventsource-parser";
 
-import { CoreAPIContentNode } from "../../core/content_node";
+import {
+  CoreAPIContentNode,
+  CoreAPIContentNodeType,
+} from "../../core/content_node";
 import {
   CoreAPIDataSource,
   CoreAPIDataSourceConfig,
@@ -170,9 +173,15 @@ export type CoreAPISearchFilter = {
   } | null;
 };
 
+export type CoreAPISortSpec = {
+  field: string;
+  direction: "asc" | "desc";
+};
+
 export type CoreAPISearchOptions = {
   limit?: number;
   offset?: number;
+  sort?: CoreAPISortSpec[];
 };
 
 export type CoreAPIDatasourceViewFilter = {
@@ -184,6 +193,7 @@ export type CoreAPINodesSearchFilter = {
   data_source_views: CoreAPIDatasourceViewFilter[];
   node_ids?: string[];
   parent_id?: string;
+  node_types?: CoreAPIContentNodeType[];
 };
 
 export class CoreAPI {

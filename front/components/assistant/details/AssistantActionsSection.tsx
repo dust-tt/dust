@@ -1,5 +1,6 @@
 import {
   BracesIcon,
+  ChatBubbleThoughtIcon,
   CommandLineIcon,
   ExternalLinkIcon,
   FolderIcon,
@@ -27,6 +28,7 @@ import {
   isDustAppRunConfiguration,
   isGithubGetPullRequestConfiguration,
   isProcessConfiguration,
+  isReasoningConfiguration,
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
   isWebsearchConfiguration,
@@ -269,6 +271,16 @@ function renderOtherAction(
             Assistant can navigate the web (browse any provided links, make a
             google search, etc.) to answer.
           </div>
+        </div>
+      </ActionSection>
+    );
+  } else if (isReasoningConfiguration(action)) {
+    return (
+      <ActionSection title="Reasoning" key={`other-${index}`}>
+        <Icon visual={ChatBubbleThoughtIcon} size="sm" />
+        <div>
+          Assistant can perform step by step reasoning to solve complex
+          problems. Slow but powerful.
         </div>
       </ActionSection>
     );

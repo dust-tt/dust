@@ -732,10 +732,10 @@ function CreateEnterpriseConnectionModal({
         }
       }}
     >
-      <SheetHeader>
-        <SheetTitle>Create Single Sign On configuration</SheetTitle>
-      </SheetHeader>
       <SheetContent>
+        <SheetHeader>
+          <SheetTitle>Create Single Sign On configuration</SheetTitle>
+        </SheetHeader>
         <SheetContainer>
           <Page variant="modal">
             {selectedStrategy === null && (

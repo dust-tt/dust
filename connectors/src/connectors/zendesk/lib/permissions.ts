@@ -76,7 +76,16 @@ async function getRootLevelContentNodes(
   const brandsInDatabase =
     await ZendeskBrandResource.fetchAllReadOnly(connectorId);
   if (isReadPermissionsOnly) {
-    return brandsInDatabase.map((brand) => brand.toContentNode(connectorId));
+    return [
+      ...brandsInDatabase
+        .filter((b) => b.ticketsPermission === "read")
+        .map((b) => b.getTicketsContentNode(connectorId, { richTitle: true })),
+      ...brandsInDatabase
+        .filter((b) => b.helpCenterPermission === "read")
+        .map((b) =>
+          b.getHelpCenterContentNode(connectorId, { richTitle: true })
+        ),
+    ];
   } else {
     const { result: brands } = await zendeskApiClient.brand.list();
     return brands.map(

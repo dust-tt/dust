@@ -25,6 +25,22 @@ class UserFactory extends Factory<UserModel> {
       lastName: faker.person.lastName(),
     });
   }
+
+  withCreatedAt(createdAt: Date) {
+    return this.params({
+      sId: generateRandomModelSId(),
+      auth0Sub: faker.string.uuid(),
+      provider: "google",
+      providerId: faker.string.uuid(),
+
+      username: faker.internet.displayName(),
+      email: faker.internet.email(),
+      name: faker.person.fullName(),
+      firstName: faker.person.firstName(),
+      lastName: faker.person.lastName(),
+      createdAt,
+    });
+  }
 }
 
 export const userFactory = () => {

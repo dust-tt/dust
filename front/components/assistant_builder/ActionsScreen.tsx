@@ -25,7 +25,11 @@ import {
   TextArea,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type { SpaceType, WorkspaceType } from "@dust-tt/types";
+import type {
+  SpaceType,
+  WhitelistableFeature,
+  WorkspaceType,
+} from "@dust-tt/types";
 import { assertNever, MAX_STEPS_USE_PER_RUN_LIMIT } from "@dust-tt/types";
 import assert from "assert";
 import type { ReactNode } from "react";
@@ -45,6 +49,10 @@ import {
   ActionProcess,
   hasErrorActionProcess,
 } from "@app/components/assistant_builder/actions/ProcessAction";
+import {
+  ActionReasoning,
+  hasErrorActionReasoning,
+} from "@app/components/assistant_builder/actions/ReasoningAction";
 import {
   ActionRetrievalExhaustive,
   ActionRetrievalSearch,
@@ -76,6 +84,7 @@ import {
   isDefaultActionName,
 } from "@app/components/assistant_builder/types";
 import { ACTION_SPECIFICATIONS } from "@app/lib/api/assistant/actions/utils";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 import {
   ActionGithubGetPullRequest,
@@ -99,6 +108,7 @@ const ADVANCED_ACTION_CATEGORIES = ["DUST_APP_RUN"] as const satisfies Array<
 const CAPABILITIES_ACTION_CATEGORIES = [
   "WEB_NAVIGATION",
   "GITHUB_GET_PULL_REQUEST",
+  "REASONING",
 ] as const satisfies Array<AssistantBuilderActionConfiguration["type"]>;
 
 function ActionModeSection({
@@ -129,6 +139,8 @@ export function hasActionError(
       return hasErrorActionWebNavigation(action);
     case "GITHUB_GET_PULL_REQUEST":
       return hasErrorActionGithub(action);
+    case "REASONING":
+      return hasErrorActionReasoning(action);
     default:
       assertNever(action);
   }
@@ -171,6 +183,7 @@ export default function ActionsScreen({
   );
 
   const isLegacyConfig = isLegacyAssistantBuilderConfiguration(builderState);
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
 
   const spaceIdToActions = useMemo(() => {
     return configurableActions.reduce<
@@ -207,6 +220,7 @@ export default function ActionsScreen({
 
         case "WEB_NAVIGATION":
         case "GITHUB_GET_PULL_REQUEST":
+        case "REASONING":
           break;
 
         default:
@@ -458,6 +472,7 @@ export default function ActionsScreen({
           setEdited={setEdited}
           setAction={setAction}
           deleteAction={deleteAction}
+          featureFlags={featureFlags}
         />
       </div>
     </>
@@ -824,6 +839,9 @@ function ActionConfigEditor({
     case "GITHUB_GET_PULL_REQUEST":
       return <ActionGithubGetPullRequest />;
 
+    case "REASONING":
+      return <ActionReasoning />;
+
     default:
       assertNever(action);
   }
@@ -1110,6 +1128,7 @@ function Capabilities({
   setEdited,
   setAction,
   deleteAction,
+  featureFlags,
 }: {
   builderState: AssistantBuilderState;
   setBuilderState: (
@@ -1118,6 +1137,7 @@ function Capabilities({
   setEdited: (edited: boolean) => void;
   setAction: (action: AssistantBuilderSetActionType) => void;
   deleteAction: (name: string) => void;
+  featureFlags: WhitelistableFeature[];
 }) {
   const Capability = ({
     name,
@@ -1161,7 +1181,7 @@ function Capabilities({
 
   return (
     <>
-      <div className="mx-auto grid w-full grid-cols-1 md:grid-cols-2">
+      <div className="mx-auto grid w-full grid-cols-1 gap-y-4 md:grid-cols-2">
         <Capability
           name="Web search & browse"
           description="Assistant can search (Google) and retrieve information from specific websites."
@@ -1205,6 +1225,30 @@ function Capabilities({
             }));
           }}
         />
+
+        {(featureFlags ?? []).includes("reasoning_tool_feature") && (
+          <Capability
+            name="Reasoning"
+            description="Assistant can offload reasoning-heavy tasks to a reasoning model."
+            enabled={!!builderState.actions.find((a) => a.type === "REASONING")}
+            onEnable={() => {
+              setEdited(true);
+              const defaultReasoningAction =
+                getDefaultActionConfiguration("REASONING");
+              assert(defaultReasoningAction);
+              setAction({
+                type: "insert",
+                action: defaultReasoningAction,
+              });
+            }}
+            onDisable={() => {
+              const defaultReasoningAction =
+                getDefaultActionConfiguration("REASONING");
+              assert(defaultReasoningAction);
+              deleteAction(defaultReasoningAction.name);
+            }}
+          />
+        )}
       </div>
 
       {showGithubActions && (

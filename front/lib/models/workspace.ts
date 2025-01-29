@@ -25,6 +25,7 @@ export class Workspace extends BaseModel<Workspace> {
   declare subscriptions: NonAttribute<Subscription[]>;
   declare whiteListedProviders: ModelProviderIdType[] | null;
   declare defaultEmbeddingProvider: EmbeddingProviderIdType | null;
+  declare metadata: Record<string, string | number | boolean | object> | null;
   declare conversationsRetentionDays: number | null;
 }
 Workspace.init(
@@ -81,6 +82,11 @@ Workspace.init(
       validate: {
         isIn: [modelProviders],
       },
+    },
+    metadata: {
+      type: DataTypes.JSONB,
+      defaultValue: null,
+      allowNull: true,
     },
   },
   {

@@ -30,6 +30,7 @@ export type BaseActionType =
   | "websearch_action"
   | "browse_action"
   | "visualization_action"
+  | "reasoning_action"
   | ConversationBaseActionType
   | GithubBaseActionType;
 

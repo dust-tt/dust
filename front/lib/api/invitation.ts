@@ -386,7 +386,11 @@ export async function handleMembershipInvitations(
 
   const otherRegionUsers = auth0Users
     .filter(
-      (user) => user.app_metadata?.region !== regionConfig.getCurrentRegion()
+      (user) =>
+        // Type isn't accurate, user.app_metadata can be undefined.
+        typeof user.app_metadata === "object" &&
+        "region" in user.app_metadata &&
+        user.app_metadata.region !== regionConfig.getCurrentRegion()
     )
     .map((user) => user.email);
 

@@ -1,5 +1,5 @@
 import type { MembershipRoleType } from "@dust-tt/types";
-import type { CreationOptional, ForeignKey } from "sequelize";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -15,6 +15,7 @@ export class MembershipModel extends WorkspaceAwareModel<MembershipModel> {
   declare endAt: Date | null;
 
   declare userId: ForeignKey<UserModel["id"]>;
+  declare user: NonAttribute<UserModel>;
 }
 MembershipModel.init(
   {
@@ -55,4 +56,5 @@ UserModel.hasMany(MembershipModel, {
   foreignKey: { allowNull: false },
   onDelete: "RESTRICT",
 });
+
 MembershipModel.belongsTo(UserModel);

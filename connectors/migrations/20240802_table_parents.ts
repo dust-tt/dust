@@ -176,6 +176,7 @@ export async function notionTables(
       connectorId as number,
       notionDatabaseId as string,
       [],
+      false,
       memo,
       undefined
     );

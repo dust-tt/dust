@@ -31,6 +31,7 @@ describe("GET /api/user", () => {
             id: workspace.id,
             sId: workspace.sId,
             name: workspace.name,
+            metadata: null,
             role: membership.role,
             segmentation: workspace.segmentation,
             whiteListedProviders: workspace.whiteListedProviders,

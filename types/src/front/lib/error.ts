@@ -38,7 +38,6 @@ export type APIErrorType =
   | "workspace_user_not_found"
   | "method_not_supported_error"
   | "personal_workspace_not_found"
-  | "workspace_not_found"
   | "action_unknown_error"
   | "action_api_error"
   | "membership_not_found"
@@ -62,6 +61,7 @@ export type APIErrorType =
   | "subscription_payment_failed"
   | "subscription_not_found"
   | "subscription_state_invalid"
+  | "service_unavailable"
   // Use by assistant creation / update
   | "assistant_saving_error"
   // Used in the DustAPI client:

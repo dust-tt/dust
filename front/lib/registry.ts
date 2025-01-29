@@ -105,7 +105,7 @@ export const BaseDustProdActionRegistry = {
     app: {
       appId: "N0RrhyTXfq",
       appHash:
-        "ba5637f356c55676c7e175719bbd4fa5059c5a99a519ec75aea78b452e2168dc",
+        "a5a24fb80df72394a41387a92ccf681d5ee35a90f00941d93200154e30d73b0a",
     },
     config: {
       MODEL: {
@@ -272,6 +272,20 @@ export const BaseDustProdActionRegistry = {
         // `provider_id` and `model_id` must be set by caller.
         use_cache: false,
         use_stream: false,
+      },
+    },
+  },
+  "assistant-v2-reason": {
+    app: {
+      appId: "hUJvIB2KDb",
+      appHash:
+        "7ba05a9b123dbf65751c73f86e1a477a77d77f0b4984f208d9f98c84713afb4b",
+    },
+    config: {
+      MODEL: {
+        // `provider_id` and `model_id` must be set by caller.
+        use_cache: false,
+        use_stream: true,
       },
     },
   },

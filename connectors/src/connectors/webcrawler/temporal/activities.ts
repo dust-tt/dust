@@ -14,6 +14,7 @@ import turndown from "turndown";
 
 import {
   getAllFoldersForUrl,
+  getDisplayNameForFolder,
   getFolderForUrl,
   getIpAddressForUrl,
   getParentsForPage,
@@ -291,7 +292,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
             timestampMs: webCrawlerFolder.updatedAt.getTime(),
             parents,
             parentId: parents[1] || null,
-            title: folder,
+            title: getDisplayNameForFolder(webCrawlerFolder),
             mimeType: MIME_TYPES.WEBCRAWLER.FOLDER,
             sourceUrl: webCrawlerFolder.url,
           });

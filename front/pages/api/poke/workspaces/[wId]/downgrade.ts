@@ -5,6 +5,7 @@ import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { internalSubscribeWorkspaceToFreeNoPlan } from "@app/lib/plans/subscription";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { apiError } from "@app/logger/withlogging";
 import { launchScheduleWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
 
@@ -44,15 +45,10 @@ async function handler(
       await launchScheduleWorkspaceScrubWorkflow({ workspaceId: owner.sId });
 
       return res.status(200).json({
-        workspace: {
-          id: owner.id,
-          sId: owner.sId,
-          name: owner.name,
+        workspace: renderLightWorkspaceType({
+          workspace: owner,
           role: "admin",
-          segmentation: owner.segmentation || null,
-          whiteListedProviders: owner.whiteListedProviders,
-          defaultEmbeddingProvider: owner.defaultEmbeddingProvider,
-        },
+        }),
       });
 
     default:

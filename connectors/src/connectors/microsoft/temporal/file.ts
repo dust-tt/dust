@@ -275,7 +275,6 @@ export async function syncOneFile({
         documentLength > 0 && documentLength < maxDocumentLen;
 
       if (isInSizeRange) {
-        localLogger.info({ documentSection }, "Document section");
         const content = await renderDocumentTitleAndContent({
           dataSourceConfig,
           title: file.name ?? null,

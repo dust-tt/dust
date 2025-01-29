@@ -5,6 +5,7 @@ import type {
   DustAppRunConfigurationType,
   GithubGetPullRequestConfigurationType,
   ProcessConfigurationType,
+  ReasoningConfigurationType,
   RetrievalConfigurationType,
   TablesQueryConfigurationType,
   WebsearchConfigurationType,
@@ -14,6 +15,7 @@ import { BrowseConfigurationServerRunner } from "@app/lib/api/assistant/actions/
 import { ConversationIncludeFileConfigurationServerRunner } from "@app/lib/api/assistant/actions/conversation/include_file";
 import { DustAppRunConfigurationServerRunner } from "@app/lib/api/assistant/actions/dust_app_run";
 import { ProcessConfigurationServerRunner } from "@app/lib/api/assistant/actions/process";
+import { ReasoningConfigurationServerRunner } from "@app/lib/api/assistant/actions/reasoning";
 import { RetrievalConfigurationServerRunner } from "@app/lib/api/assistant/actions/retrieval";
 import { TablesQueryConfigurationServerRunner } from "@app/lib/api/assistant/actions/tables_query";
 import type {
@@ -34,6 +36,7 @@ interface ActionToConfigTypeMap {
   browse_configuration: BrowseConfigurationType;
   conversation_include_file_configuration: ConversationIncludeFileConfigurationType;
   github_get_pull_request_configuration: GithubGetPullRequestConfigurationType;
+  reasoning_configuration: ReasoningConfigurationType;
 }
 
 interface ActionTypeToClassMap {
@@ -45,6 +48,7 @@ interface ActionTypeToClassMap {
   browse_configuration: BrowseConfigurationServerRunner;
   conversation_include_file_configuration: ConversationIncludeFileConfigurationServerRunner;
   github_get_pull_request_configuration: GithubGetPullRequestConfigurationServerRunner;
+  reasoning_configuration: ReasoningConfigurationServerRunner;
 }
 
 // Ensure all AgentAction keys are present in ActionToConfigTypeMap.
@@ -91,6 +95,7 @@ export const ACTION_TYPE_TO_CONFIGURATION_SERVER_RUNNER: {
     ConversationIncludeFileConfigurationServerRunner,
   github_get_pull_request_configuration:
     GithubGetPullRequestConfigurationServerRunner,
+  reasoning_configuration: ReasoningConfigurationServerRunner,
 } as const;
 
 export function getRunnerForActionConfiguration<K extends keyof CombinedMap>(
