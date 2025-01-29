@@ -139,7 +139,7 @@ export async function retrieveIntercomConversationsPermissions({
         type: "channel",
         title: `All closed conversations from the past ${conversationsSlidingWindow} days`,
         sourceUrl: null,
-        expandable: false,
+        expandable: true,
         preventSelection: false,
         permission: isAllConversationsSynced ? "read" : "none",
         lastUpdatedAt: null,
