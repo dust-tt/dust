@@ -1479,7 +1479,7 @@ export async function getGlobalAgents(
       (sId) => sId !== GLOBAL_AGENTS_SID.O1_HIGH_REASONING
     );
   }
-  if (!flags.includes("reasoning_tool_feature")) {
+  if (!flags.includes("deepseek_r1_global_agent_feature")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
       (sId) => sId !== GLOBAL_AGENTS_SID.DEEPSEEK_R1
     );

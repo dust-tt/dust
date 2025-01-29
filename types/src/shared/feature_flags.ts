@@ -19,6 +19,7 @@ export const WHITELISTABLE_FEATURES = [
   "show_debug_tools",
   "labs_github_actions",
   "reasoning_tool_feature",
+  "deepseek_r1_global_agent_feature",
 ] as const;
 export type WhitelistableFeature = (typeof WHITELISTABLE_FEATURES)[number];
 export function isWhitelistableFeature(
