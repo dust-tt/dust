@@ -717,9 +717,10 @@ async function deleteIssue(
     },
   });
   if (!issueInDb) {
-    throw new Error(
-      `Issue not found in DB (issueNumber: ${issueNumber}, repoId: ${repoId}, connectorId: ${connector.id})`
+    logger.info(
+      `Issue not found in DB (issueNumber: ${issueNumber}, repoId: ${repoId}, connectorId: ${connector.id}), skipping deletion`
     );
+    return;
   }
 
   const documentId = getIssueInternalId(repoId.toString(), issueNumber);
