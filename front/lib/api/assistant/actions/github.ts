@@ -530,6 +530,36 @@ export class GithubGetPullRequestConfigurationServerRunner extends BaseActionCon
   }
 }
 
+export async function githubGetPullRequestActionTypesFromAgentMessageIds(
+  agentMessageIds: ModelId[]
+): Promise<GithubGetPullRequestAction[]> {
+  const models = await AgentGithubGetPullRequestAction.findAll({
+    where: {
+      agentMessageId: agentMessageIds,
+    },
+  });
+
+  return models.map((action) => {
+    return new GithubGetPullRequestAction({
+      id: action.id,
+      agentMessageId: action.agentMessageId,
+      params: {
+        owner: action.owner,
+        repo: action.repo,
+        pullNumber: action.pullNumber,
+      },
+      pullBody: action.pullBody,
+      pullCommits: action.pullCommits,
+      pullDiff: action.pullDiff,
+      pullComments: action.pullComments,
+      pullReviews: action.pullReviews,
+      functionCallId: action.functionCallId,
+      functionCallName: action.functionCallName,
+      step: action.step,
+    });
+  });
+}
+
 /**
  * GtihubCreateIssueAction
  */
@@ -804,4 +834,31 @@ export class GithubCreateIssueConfigurationServerRunner extends BaseActionConfig
       }),
     };
   }
+}
+
+export async function githubCreateIssueActionTypesFromAgentMessageIds(
+  agentMessageIds: ModelId[]
+): Promise<GithubCreateIssueAction[]> {
+  const models = await AgentGithubCreateIssueAction.findAll({
+    where: {
+      agentMessageId: agentMessageIds,
+    },
+  });
+
+  return models.map((action) => {
+    return new GithubCreateIssueAction({
+      id: action.id,
+      agentMessageId: action.agentMessageId,
+      params: {
+        owner: action.owner,
+        repo: action.repo,
+        title: action.title,
+        body: action.body,
+      },
+      issueNumber: action.issueNumber,
+      functionCallId: action.functionCallId,
+      functionCallName: action.functionCallName,
+      step: action.step,
+    });
+  });
 }
