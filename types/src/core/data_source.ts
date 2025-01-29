@@ -1,4 +1,4 @@
-import { ProviderVisibility } from "..";
+import { ProviderVisibility } from "../front/lib/connectors_api";
 
 export type QdrantCluster = "cluster-0";
 export const DEFAULT_QDRANT_CLUSTER: QdrantCluster = "cluster-0";
