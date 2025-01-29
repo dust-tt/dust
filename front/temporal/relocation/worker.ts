@@ -7,6 +7,8 @@ import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
 import * as frontDestinationActivities from "@app/temporal/relocation/activities/destination_region/front";
 import * as frontSourceActivities from "@app/temporal/relocation/activities/source_region/front";
+import * as connectorsDestinationActivities from "@app/temporal/relocation/activities/destination_region/connectors/sql";
+import * as connectorsSourceActivities from "@app/temporal/relocation/activities/source_region/connectors/sql";
 import { RELOCATION_QUEUES_PER_REGION } from "@app/temporal/relocation/config";
 import { getTemporalWorkerConnection } from "@app/temporal/relocation/temporal";
 
@@ -19,6 +21,8 @@ export async function runRelocationWorker() {
     activities: {
       ...frontDestinationActivities,
       ...frontSourceActivities,
+      ...connectorsDestinationActivities,
+      ...connectorsSourceActivities,
     },
     taskQueue: RELOCATION_QUEUES_PER_REGION[currentRegion],
     maxConcurrentActivityTaskExecutions: 8,

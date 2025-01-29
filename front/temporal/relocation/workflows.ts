@@ -8,7 +8,9 @@ import {
 } from "@temporalio/workflow";
 
 import type { RegionType } from "@app/lib/api/regions/config";
+import type * as connectorsDestinationActivities from "@app/temporal/relocation/activities/destination_region/connectors/sql";
 import type * as frontDestinationActivities from "@app/temporal/relocation/activities/destination_region/front";
+import type * as connectorsSourceActivities from "@app/temporal/relocation/activities/source_region/connectors/sql";
 import type * as frontSourceActivities from "@app/temporal/relocation/activities/source_region/front";
 import { RELOCATION_QUEUES_PER_REGION } from "@app/temporal/relocation/config";
 
@@ -20,6 +22,34 @@ interface RelocationWorkflowBase {
   destRegion: RegionType;
   workspaceId: string;
 }
+
+export async function workspaceRelocationWorkflow({
+  sourceRegion,
+  destRegion,
+  workspaceId,
+}: RelocationWorkflowBase) {
+  const { searchAttributes: parentSearchAttributes, memo } = workflowInfo();
+
+  // 1) Relocate front data to the destination region.
+  await executeChild(workspaceRelocateFrontWorkflow, {
+    workflowId: `workspaceRelocateFrontWorkflow-${workspaceId}`,
+    searchAttributes: parentSearchAttributes,
+    args: [{ sourceRegion, destRegion, workspaceId }],
+    memo,
+  });
+
+  // 2) Relocate connectors data to the destination region.
+  await executeChild(workspaceRelocateConnectorsWorkflow, {
+    workflowId: `workspaceRelocateConnectorsWorkflow-${workspaceId}`,
+    searchAttributes: parentSearchAttributes,
+    args: [{ sourceRegion, destRegion, workspaceId }],
+    memo,
+  });
+}
+
+/**
+ * Front relocation workflows.
+ */
 
 const getFrontSourceRegionActivities = (region: RegionType) => {
   return proxyActivities<typeof frontSourceActivities>({
@@ -35,31 +65,6 @@ const getFrontDestinationRegionActivities = (region: RegionType) => {
   });
 };
 
-export async function workspaceRelocationWorkflow({
-  sourceRegion,
-  destRegion,
-  workspaceId,
-}: RelocationWorkflowBase) {
-  const { searchAttributes: parentSearchAttributes, memo } = workflowInfo();
-
-  await executeChild(workspaceRelocateFrontWorkflow, {
-    workflowId: `workspaceRelocateFrontWorkflow-${workspaceId}`,
-    searchAttributes: parentSearchAttributes,
-    args: [
-      {
-        sourceRegion,
-        destRegion,
-        workspaceId,
-      },
-    ],
-    memo,
-  });
-}
-
-/**
- * Front relocation workflows.
- */
-
 export async function workspaceRelocateFrontWorkflow({
   sourceRegion,
   destRegion,
@@ -71,7 +76,7 @@ export async function workspaceRelocateFrontWorkflow({
 
   const { searchAttributes: parentSearchAttributes, memo } = workflowInfo();
 
-  // First, we move the workspace, users and plan in the destination region.
+  // 1) Relocate the workspace, users and plan in the destination region.
   const coreEntitiesDataPath =
     await sourceRegionActivities.readCoreEntitiesFromSourceRegion({
       destRegion,
@@ -89,9 +94,7 @@ export async function workspaceRelocateFrontWorkflow({
   const tablesOrder =
     await sourceRegionActivities.getTablesWithWorkspaceIdOrder();
 
-  // TODO: Also move other tables that don't have `workspaceId` but are related to the workspace.
-
-  // 1) Relocate front tables to the destination region.
+  // 2) Relocate front tables to the destination region.
   for (const tableName of tablesOrder) {
     await executeChild(workspaceRelocateFrontTableWorkflow, {
       workflowId: `workspaceRelocateFrontTableWorkflow-${workspaceId}-${tableName}`,
@@ -108,7 +111,7 @@ export async function workspaceRelocateFrontWorkflow({
     });
   }
 
-  // 2) Relocate the associated files from the file storage to the destination region.
+  // 3) Relocate the associated files from the file storage to the destination region.
   await executeChild(workspaceRelocateFrontFileStorageWorkflow, {
     workflowId: `workspaceRelocateFrontFileStorageWorkflow-${workspaceId}`,
     searchAttributes: parentSearchAttributes,
@@ -234,4 +237,161 @@ export async function workspaceRelocateFrontFileStorageWorkflow({
       await sleep("1m");
     }
   }
+}
+
+/**
+ * Connectors relocation workflows.
+ */
+
+const getConnectorsSourceRegionActivities = (region: RegionType) => {
+  return proxyActivities<typeof connectorsSourceActivities>({
+    startToCloseTimeout: "10 minutes",
+    taskQueue: RELOCATION_QUEUES_PER_REGION[region],
+  });
+};
+
+const getConnectorsDestinationRegionActivities = (region: RegionType) => {
+  return proxyActivities<typeof connectorsDestinationActivities>({
+    startToCloseTimeout: "10 minutes",
+    taskQueue: RELOCATION_QUEUES_PER_REGION[region],
+  });
+};
+
+export async function workspaceRelocateConnectorsWorkflow({
+  sourceRegion,
+  destRegion,
+  workspaceId,
+}: RelocationWorkflowBase) {
+  const { searchAttributes: parentSearchAttributes, memo } = workflowInfo();
+
+  const sourceRegionActivities =
+    getConnectorsSourceRegionActivities(sourceRegion);
+  const destinationRegionActivities =
+    getConnectorsDestinationRegionActivities(destRegion);
+
+  // 1) List all connectors in the workspace.
+  const { connectors, dataPath } =
+    await sourceRegionActivities.getAllConnectorsForWorkspace({
+      workspaceId,
+    });
+
+  // 2) Relocate connectors entries to the destination region.
+  await destinationRegionActivities.processConnectorsTableChunk({
+    dataPath,
+    destRegion,
+    sourceRegion,
+    tableName: "connectors",
+    workspaceId,
+  });
+
+  // 3) Relocate connectors tables to the destination region for each connector.
+  for (const c of connectors) {
+    await executeChild(workspaceRelocateConnectorWorkflow, {
+      workflowId: `workspaceRelocateConnectorWorkflow-${workspaceId}-${c.id}`,
+      searchAttributes: parentSearchAttributes,
+      args: [
+        {
+          connectorId: c.id,
+          destRegion,
+          sourceRegion,
+          workspaceId,
+        },
+      ],
+      memo,
+    });
+  }
+}
+
+export async function workspaceRelocateConnectorWorkflow({
+  connectorId,
+  sourceRegion,
+  destRegion,
+  workspaceId,
+}: RelocationWorkflowBase & { connectorId: ModelId }) {
+  const { searchAttributes: parentSearchAttributes, memo } = workflowInfo();
+
+  const sourceRegionActivities =
+    getConnectorsSourceRegionActivities(sourceRegion);
+
+  const tablesOrder =
+    await sourceRegionActivities.getTablesWithConnectorIdOrder();
+
+  for (const tableName of tablesOrder) {
+    await executeChild(workspaceRelocateConnectorsTableWorkflow, {
+      workflowId: `workspaceRelocateConnectorsTableWorkflow-${workspaceId}-${tableName}`,
+      searchAttributes: parentSearchAttributes,
+      args: [
+        {
+          connectorId,
+          destRegion,
+          sourceRegion,
+          tableName,
+          workspaceId,
+        },
+      ],
+      memo,
+    });
+  }
+}
+
+export async function workspaceRelocateConnectorsTableWorkflow({
+  connectorId,
+  lastProcessedId,
+  sourceRegion,
+  tableName,
+  destRegion,
+  workspaceId,
+}: RelocationWorkflowBase & {
+  connectorId: ModelId;
+  tableName: string;
+  lastProcessedId?: ModelId;
+}) {
+  const sourceRegionActivities =
+    getConnectorsSourceRegionActivities(sourceRegion);
+  const destinationRegionActivities =
+    getConnectorsDestinationRegionActivities(destRegion);
+
+  let hasMoreRows = true;
+  let currentId: ModelId | undefined = lastProcessedId;
+
+  do {
+    if (workflowInfo().historyLength > TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH) {
+      await continueAsNew<typeof workspaceRelocateConnectorsTableWorkflow>({
+        connectorId,
+        sourceRegion,
+        destRegion,
+        workspaceId,
+        tableName,
+        lastProcessedId: currentId,
+      });
+    }
+
+    const { dataPath, hasMore, lastId } =
+      await sourceRegionActivities.readConnectorsTableChunk({
+        connectorId,
+        lastId: currentId,
+        limit: CHUNK_SIZE,
+        workspaceId,
+        tableName,
+        sourceRegion,
+        destRegion,
+      });
+
+    hasMoreRows = hasMore;
+    currentId = lastId;
+
+    // If there are no more rows, we can skip the rest of the table.
+    if (!dataPath) {
+      continue;
+    }
+
+    await destinationRegionActivities.processConnectorsTableChunk({
+      connectorId,
+      dataPath,
+      destRegion,
+      sourceRegion,
+      tableName,
+      workspaceId,
+    });
+  } while (hasMoreRows);
 }
