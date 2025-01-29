@@ -299,7 +299,7 @@ const Header = () => {
       <meta
         id="og-title"
         property="og:title"
-        content="Dust - Be Superhuman at Work with Context-Aware AI Assistants"
+        content="Dust - Accelerate your entire organization with custom AI agents"
       />
       <meta id="og-image" property="og:image" content="/static/og_image.png" />
 
