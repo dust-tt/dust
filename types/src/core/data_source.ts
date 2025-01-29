@@ -1,3 +1,5 @@
+import { ProviderVisibility } from "../front/lib/connectors_api";
+
 export type QdrantCluster = "cluster-0";
 export const DEFAULT_QDRANT_CLUSTER: QdrantCluster = "cluster-0";
 
@@ -66,6 +68,19 @@ export type CoreAPIDocument = {
   title: string | null;
   mime_type: string | null;
   text?: string | null;
+};
+
+export type CoreAPIDocumentBlob = {
+  document_id: string;
+  timestamp: number;
+  tags: string[];
+  parent_id: string | null;
+  parents: string[];
+  source_url: string | null;
+  section: CoreAPIDataSourceDocumentSection;
+  title: string;
+  mime_type: string;
+  provider_visibility: ProviderVisibility | null;
 };
 
 export type CoreAPILightDocument = {

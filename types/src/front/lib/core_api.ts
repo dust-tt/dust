@@ -9,6 +9,7 @@ import {
   CoreAPIDataSourceConfig,
   CoreAPIDataSourceDocumentSection,
   CoreAPIDocument,
+  CoreAPIDocumentBlob,
   CoreAPIDocumentVersion,
   CoreAPIFolder,
   CoreAPILightDocument,
@@ -917,6 +918,30 @@ export class CoreAPI {
           title: title,
           mime_type: mimeType,
         }),
+      }
+    );
+
+    return this._resultFromResponse(response);
+  }
+
+  async getDataSourceDocumentBlob({
+    projectId,
+    dataSourceId,
+    documentId,
+  }: {
+    projectId: string;
+    dataSourceId: string;
+    documentId: string;
+  }): Promise<CoreAPIResponse<{ blob: CoreAPIDocumentBlob }>> {
+    const response = await this._fetchWithError(
+      `${this._url}/projects/${projectId}/data_sources/${encodeURIComponent(
+        dataSourceId
+      )}/documents/${encodeURIComponent(documentId)}/blob`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
       }
     );
 

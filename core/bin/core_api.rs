@@ -1801,6 +1801,63 @@ async fn data_sources_documents_upsert(
     }
 }
 
+// Get a document blob from a data source.
+
+async fn data_sources_documents_retrieve_blob(
+    Path((project_id, data_source_id, document_id)): Path<(i64, String, String)>,
+    State(state): State<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+
+    match state
+        .store
+        .load_data_source(&project, &data_source_id)
+        .await
+    {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to retrieve data source",
+            Some(e),
+        ),
+        Ok(ds) => match ds {
+            None => error_response(
+                StatusCode::NOT_FOUND,
+                "data_source_not_found",
+                &format!("No data source found for id `{}`", data_source_id),
+                None,
+            ),
+            Some(ds) => match ds
+                .retrieve_api_blob(state.store.clone(), &document_id)
+                .await
+            {
+                Err(e) => error_response(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "internal_server_error",
+                    "Failed to retrieve document blob",
+                    Some(e),
+                ),
+                Ok(None) => error_response(
+                    StatusCode::NOT_FOUND,
+                    "data_source_document_not_found",
+                    &format!("No document found for id `{}`", document_id),
+                    None,
+                ),
+                Ok(Some(blob)) => {
+                    let blob_value = serde_json::to_value(blob).unwrap();
+                    (
+                        StatusCode::OK,
+                        Json(APIResponse {
+                            error: None,
+                            response: Some(blob_value),
+                        }),
+                    )
+                }
+            },
+        },
+    }
+}
+
 /// List documents from a data source.
 
 #[derive(serde::Deserialize)]
@@ -3542,6 +3599,10 @@ fn main() {
         .route(
             "/projects/:project_id/data_sources/:data_source_id/documents",
             post(data_sources_documents_upsert),
+        )
+        .route(
+            "/projects/:project_id/data_sources/:data_source_id/documents/:document_id/blob",
+            get(data_sources_documents_retrieve_blob),
         )
         .route(
             "/projects/:project_id/data_sources/:data_source_id/documents/:document_id/tags",
