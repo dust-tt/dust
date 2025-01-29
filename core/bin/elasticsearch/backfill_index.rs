@@ -168,8 +168,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
             "Processing {} nodes, starting at id {}. ",
             batch_size, next_cursor
         );
-        let (nodes, next_id_cursor) =
-            get_node_batch(pool, next_cursor, batch_size, Box::new(store.clone())).await?;
+        let (nodes, next_id_cursor) = get_node_batch(pool, next_cursor, batch_size).await?;
 
         next_cursor = match next_id_cursor {
             Some(cursor) => cursor,
@@ -214,7 +213,6 @@ async fn get_node_batch(
     pool: &Pool<PostgresConnectionManager<NoTls>>,
     next_cursor: i64,
     batch_size: usize,
-    store: Box<dyn Store + Sync + Send>,
 ) -> Result<(Vec<Node>, Option<i64>), Box<dyn std::error::Error>> {
     let nodes = list_data_source_nodes(&pool, next_cursor, batch_size.try_into().unwrap()).await?;
     let last_node = nodes.last().cloned();
