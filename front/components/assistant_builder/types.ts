@@ -13,10 +13,7 @@ import type {
   TimeframeUnit,
   WorkspaceType,
 } from "@dust-tt/types";
-import {
-  DEFAULT_MAX_STEPS_USE_PER_RUN,
-  FIREWORKS_DEEPSEEK_R1_MODEL_CONFIG,
-} from "@dust-tt/types";
+import { DEFAULT_MAX_STEPS_USE_PER_RUN } from "@dust-tt/types";
 import {
   assertNever,
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
@@ -122,8 +119,8 @@ export type AssistantBuilderGithubConfiguration = Record<string, never>;
 
 // Reasoning configuration
 export type AssistantBuilderReasoningConfiguration = {
-  modelId: ModelIdType;
-  providerId: ModelProviderIdType;
+  modelId: ModelIdType | null;
+  providerId: ModelProviderIdType | null;
   temperature: number | null;
   reasoningEffort: AgentReasoningEffort | null;
 };
@@ -368,10 +365,8 @@ export function getDefaultReasoningActionConfiguration(): AssistantBuilderAction
   return {
     type: "REASONING",
     configuration: {
-      // TODO(REASONING TOOL):
-      // Cleanup
-      providerId: FIREWORKS_DEEPSEEK_R1_MODEL_CONFIG.providerId,
-      modelId: FIREWORKS_DEEPSEEK_R1_MODEL_CONFIG.modelId,
+      providerId: null,
+      modelId: null,
       temperature: null,
       reasoningEffort: null,
     },

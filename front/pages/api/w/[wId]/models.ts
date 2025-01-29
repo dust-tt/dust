@@ -1,11 +1,17 @@
 import type {
   ModelConfigurationType,
+  PlanType,
+  WhitelistableFeature,
   WithAPIErrorResponse,
+  WorkspaceType,
 } from "@dust-tt/types";
 import { isProviderWhitelisted } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
+import {
+  REASONING_MODEL_CONFIGS,
+  USED_MODEL_CONFIGS,
+} from "@app/components/providers/types";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -14,6 +20,7 @@ import { apiError } from "@app/logger/withlogging";
 
 export type GetAvailableModelsResponseType = {
   models: ModelConfigurationType[];
+  reasoningModels: ModelConfigurationType[];
 };
 
 async function handler(
@@ -27,31 +34,15 @@ async function handler(
   switch (req.method) {
     case "GET":
       const featureFlags = await getFeatureFlags(owner);
+      const models: ModelConfigurationType[] = USED_MODEL_CONFIGS.filter((m) =>
+        canUseModel(m, featureFlags, plan, owner)
+      );
+      const reasoningModels: ModelConfigurationType[] =
+        REASONING_MODEL_CONFIGS.filter((m) =>
+          canUseModel(m, featureFlags, plan, owner)
+        );
 
-      const models: ModelConfigurationType[] = [];
-      for (const m of USED_MODEL_CONFIGS) {
-        if (
-          !isProviderWhitelisted(owner, m.providerId) ||
-          (m.largeModel && !isUpgraded(plan))
-        ) {
-          continue;
-        }
-
-        if (m.featureFlag && !featureFlags.includes(m.featureFlag)) {
-          continue;
-        }
-
-        if (
-          m.customAssistantFeatureFlag &&
-          !featureFlags.includes(m.customAssistantFeatureFlag)
-        ) {
-          continue;
-        }
-
-        models.push(m);
-      }
-
-      return res.status(200).json({ models });
+      return res.status(200).json({ models, reasoningModels });
 
     default:
       return apiError(req, res, {
@@ -62,6 +53,30 @@ async function handler(
         },
       });
   }
+}
+
+function canUseModel(
+  m: ModelConfigurationType,
+  featureFlags: WhitelistableFeature[],
+  plan: PlanType | null,
+  owner: WorkspaceType
+) {
+  if (m.featureFlag && !featureFlags.includes(m.featureFlag)) {
+    return false;
+  }
+
+  if (
+    m.customAssistantFeatureFlag &&
+    !featureFlags.includes(m.customAssistantFeatureFlag)
+  ) {
+    return false;
+  }
+
+  if (m.largeModel && !isUpgraded(plan)) {
+    return false;
+  }
+
+  return isProviderWhitelisted(owner, m.providerId);
 }
 
 export default withSessionAuthenticationForWorkspace(handler);

@@ -25,11 +25,7 @@ import {
   TextArea,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type {
-  SpaceType,
-  WhitelistableFeature,
-  WorkspaceType,
-} from "@dust-tt/types";
+import type { SpaceType, WorkspaceType } from "@dust-tt/types";
 import { assertNever, MAX_STEPS_USE_PER_RUN_LIMIT } from "@dust-tt/types";
 import assert from "assert";
 import type { ReactNode } from "react";
@@ -54,10 +50,7 @@ import {
   ActionProcess,
   hasErrorActionProcess,
 } from "@app/components/assistant_builder/actions/ProcessAction";
-import {
-  ActionReasoning,
-  hasErrorActionReasoning,
-} from "@app/components/assistant_builder/actions/ReasoningAction";
+import { ActionReasoning } from "@app/components/assistant_builder/actions/ReasoningAction";
 import {
   ActionRetrievalExhaustive,
   ActionRetrievalSearch,
@@ -89,7 +82,6 @@ import {
   isDefaultActionName,
 } from "@app/components/assistant_builder/types";
 import { ACTION_SPECIFICATIONS } from "@app/lib/api/assistant/actions/utils";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 const DATA_SOURCES_ACTION_CATEGORIES = [
   "RETRIEVAL_SEARCH",
@@ -143,7 +135,7 @@ export function hasActionError(
     case "GITHUB_CREATE_ISSUE":
       return hasErrorActionGithub(action);
     case "REASONING":
-      return hasErrorActionReasoning(action);
+      return null;
     default:
       assertNever(action);
   }
@@ -169,6 +161,7 @@ interface ActionScreenProps {
   setEdited: (edited: boolean) => void;
   setAction: (action: AssistantBuilderSetActionType) => void;
   pendingAction: AssistantBuilderPendingAction;
+  enableReasoningTool: boolean;
 }
 
 export default function ActionsScreen({
@@ -178,6 +171,7 @@ export default function ActionsScreen({
   setEdited,
   setAction,
   pendingAction,
+  enableReasoningTool,
 }: ActionScreenProps) {
   const { spaces } = useContext(AssistantBuilderContext);
 
@@ -186,7 +180,6 @@ export default function ActionsScreen({
   );
 
   const isLegacyConfig = isLegacyAssistantBuilderConfiguration(builderState);
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
 
   const spaceIdToActions = useMemo(() => {
     return configurableActions.reduce<
@@ -476,7 +469,7 @@ export default function ActionsScreen({
           setEdited={setEdited}
           setAction={setAction}
           deleteAction={deleteAction}
-          featureFlags={featureFlags}
+          enableReasoningTool={enableReasoningTool}
         />
       </div>
     </>
@@ -1134,7 +1127,7 @@ function Capabilities({
   setEdited,
   setAction,
   deleteAction,
-  featureFlags,
+  enableReasoningTool,
 }: {
   builderState: AssistantBuilderState;
   setBuilderState: (
@@ -1143,7 +1136,7 @@ function Capabilities({
   setEdited: (edited: boolean) => void;
   setAction: (action: AssistantBuilderSetActionType) => void;
   deleteAction: (name: string) => void;
-  featureFlags: WhitelistableFeature[];
+  enableReasoningTool: boolean;
 }) {
   const Capability = ({
     name,
@@ -1232,7 +1225,7 @@ function Capabilities({
           }}
         />
 
-        {(featureFlags ?? []).includes("reasoning_tool_feature") && (
+        {enableReasoningTool && (
           <Capability
             name="Reasoning"
             description="Assistant can offload reasoning-heavy tasks to a reasoning model."
