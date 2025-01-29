@@ -221,7 +221,10 @@ export async function getRepoIssuesPage(
         "transient_upstream_activity_error"
       );
     }
-
+    // Handle disabled issues case - GitHub returns 410 Gone when issues are disabled
+    if (err instanceof Error && "status" in err && err.status === 410) {
+      return [];
+    }
     throw err;
   }
 }
