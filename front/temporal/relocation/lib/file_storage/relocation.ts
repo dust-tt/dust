@@ -36,3 +36,9 @@ export async function readFromRelocationStorage<T = unknown>(
 
   return JSON.parse(content) as T;
 }
+
+export async function deleteFromRelocationStorage(dataPath: string) {
+  const relocationBucket = getBucketInstance(config.getGcsRelocationBucket());
+
+  await relocationBucket.delete(dataPath, { ignoreNotFound: true });
+}

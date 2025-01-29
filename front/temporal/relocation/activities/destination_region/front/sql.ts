@@ -6,7 +6,10 @@ import type {
   CoreEntitiesRelocationBlob,
   RelocationBlob,
 } from "@app/temporal/relocation/activities/types";
-import { readFromRelocationStorage } from "@app/temporal/relocation/lib/file_storage/relocation";
+import {
+  deleteFromRelocationStorage,
+  readFromRelocationStorage,
+} from "@app/temporal/relocation/lib/file_storage/relocation";
 
 export async function writeCoreEntitiesToDestinationRegion({
   dataPath,
@@ -36,6 +39,8 @@ export async function writeCoreEntitiesToDestinationRegion({
       await frontSequelize.query(planChunk, { transaction });
     });
   }
+
+  await deleteFromRelocationStorage(dataPath);
 }
 
 export async function processFrontTableChunk({
@@ -57,4 +62,6 @@ export async function processFrontTableChunk({
       );
     }
   }
+
+  await deleteFromRelocationStorage(dataPath);
 }
