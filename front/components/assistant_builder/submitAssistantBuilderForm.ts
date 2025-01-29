@@ -221,7 +221,7 @@ export async function submitAssistantBuilderForm({
         ];
 
       case "REASONING":
-        const { modelId, providerId } = (() => {
+        let { modelId, providerId } = (() => {
           if (a.configuration.modelId && a.configuration.providerId) {
             return {
               modelId: a.configuration.modelId,
@@ -238,6 +238,22 @@ export async function submitAssistantBuilderForm({
             providerId: reasoningModels[0].providerId,
           };
         })();
+
+        if (
+          reasoningModels.find(
+            (m) => m.modelId === modelId && m.providerId === providerId
+          )
+        ) {
+          // reasoning model is no longer available.
+          if (reasoningModels.length > 0) {
+            // In this case we switch to the first reasoning model available.
+            modelId = reasoningModels[0].modelId;
+            providerId = reasoningModels[0].providerId;
+          } else {
+            // In this case we remove the action from the configuration.
+            return [];
+          }
+        }
 
         return [
           {
