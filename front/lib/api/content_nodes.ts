@@ -139,6 +139,21 @@ export function computeNodesDiff({
             ) {
               return false;
             }
+
+            // Special case for Google drive spreadsheets:
+            // title is '{spreadsheetName} - {sheetName}' for core, but only '{sheetName}' for connectors.
+            // The value in core is an improvement over the value in connectors, so we omit the difference.
+            if (
+              key === "title" &&
+              coreNode.mimeType === MIME_TYPES.GOOGLE_DRIVE.SPREADSHEET &&
+              typeof coreValue === "string" &&
+              typeof value === "string" &&
+              coreValue.split(" - ").length > 1 &&
+              coreValue.split(" - ")[1].trim() === value
+            ) {
+              return false;
+            }
+
             // Ignore sourceUrls returned by core but left empty by connectors.
             if (key === "sourceUrl" && value === null && coreValue !== null) {
               return false;
