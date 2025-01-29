@@ -1,6 +1,4 @@
 import { deleteFromRelocationStorage } from "@app/temporal/relocation/lib/file_storage/relocation";
-
-// TODO: Move to @app/lib/production_checks/utils
 import { getConnectorsPrimaryDbConnection } from "@app/lib/production_checks/utils";
 import logger from "@app/logger/logger";
 import { RelocationBlob } from "@app/temporal/relocation/activities/types";
