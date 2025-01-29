@@ -20,7 +20,7 @@ export async function startTransferFrontPublicFiles({
   const storageTransferService = new StorageTransferService();
 
   const localLogger = logger.child({
-    bucket: fileStorageConfig.getGcsPublicUploadBucket(),
+    destBucket,
     destRegion,
     path: FileResource.getBaseCloudStorageForWorkspace({ workspaceId }),
     sourceRegion,
@@ -81,7 +81,7 @@ export async function startTransferFrontPrivateFiles({
   const storageTransferService = new StorageTransferService();
 
   const localLogger = logger.child({
-    bucket: fileStorageConfig.getGcsPublicUploadBucket(),
+    destBucket,
     destRegion,
     path: FileResource.getBaseCloudStorageForWorkspace({ workspaceId }),
     sourceRegion,

@@ -18,12 +18,26 @@ import type {
 import { writeToRelocationStorage } from "@app/temporal/relocation/lib/file_storage/relocation";
 import { generateInsertStatements } from "@app/temporal/relocation/lib/sql/insert";
 import { getTopologicalOrder } from "@app/temporal/relocation/lib/sql/schema/dependencies";
+import logger from "@app/logger/logger";
+import { RegionType } from "@app/lib/api/regions/config";
 
 export async function readCoreEntitiesFromSourceRegion({
+  destRegion,
+  sourceRegion,
   workspaceId,
 }: {
+  destRegion: RegionType;
+  sourceRegion: RegionType;
   workspaceId: string;
 }) {
+  const localLogger = logger.child({
+    destRegion,
+    sourceRegion,
+    workspaceId,
+  });
+
+  localLogger.info("[SQL Core Entities] Reading core entities.");
+
   // Find the raw workspace.
   const workspace = await Workspace.findOne({
     where: {
@@ -103,6 +117,13 @@ export async function readCoreEntitiesFromSourceRegion({
     operation: "read_workspace_and_users",
   });
 
+  localLogger.info(
+    {
+      dataPath,
+    },
+    "[SQL Core Entities] Core entities read successfully."
+  );
+
   // Return the path (not the data) to preserve activity return size.
   return dataPath;
 }
@@ -114,18 +135,32 @@ export async function getTablesWithWorkspaceIdOrder() {
 }
 
 interface ReadTableChunkParams {
+  destRegion: RegionType;
   lastId?: ModelId;
   limit: number;
+  sourceRegion: RegionType;
   tableName: string;
   workspaceId: string;
 }
 
 export async function readFrontTableChunk({
+  destRegion,
   lastId,
   limit,
+  sourceRegion,
   tableName,
   workspaceId,
 }: ReadTableChunkParams) {
+  const localLogger = logger.child({
+    destRegion,
+    lastId,
+    sourceRegion,
+    tableName,
+    workspaceId,
+  });
+
+  localLogger.info("[SQL Table] Reading table chunk");
+
   const workspace = await getWorkspaceInfos(workspaceId);
   assert(workspace, "Workspace not found");
 
@@ -151,14 +186,21 @@ export async function readFrontTableChunk({
     },
   };
 
-  const storagePath = await writeToRelocationStorage(blob, {
+  const dataPath = await writeToRelocationStorage(blob, {
     workspaceId,
     type: "front",
     operation: `read_table_chunk_${tableName}`,
   });
 
+  localLogger.info(
+    {
+      dataPath,
+    },
+    "[SQL Table] Table chunk read successfully"
+  );
+
   return {
-    dataPath: storagePath,
+    dataPath,
     hasMore: rows.length === limit,
     lastId: rows[rows.length - 1]?.id ?? lastId,
   };

@@ -17,7 +17,7 @@ const TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH = 10_000;
 
 interface RelocationWorkflowBase {
   sourceRegion: RegionType;
-  targetRegion: RegionType;
+  destRegion: RegionType;
   workspaceId: string;
 }
 
@@ -37,7 +37,7 @@ const getFrontDestinationRegionActivities = (region: RegionType) => {
 
 export async function workspaceRelocationWorkflow({
   sourceRegion,
-  targetRegion,
+  destRegion,
   workspaceId,
 }: RelocationWorkflowBase) {
   const { searchAttributes: parentSearchAttributes, memo } = workflowInfo();
@@ -48,7 +48,7 @@ export async function workspaceRelocationWorkflow({
     args: [
       {
         sourceRegion,
-        targetRegion,
+        destRegion,
         workspaceId,
       },
     ],
@@ -62,18 +62,20 @@ export async function workspaceRelocationWorkflow({
 
 export async function workspaceRelocateFrontWorkflow({
   sourceRegion,
-  targetRegion,
+  destRegion,
   workspaceId,
 }: RelocationWorkflowBase) {
   const sourceRegionActivities = getFrontSourceRegionActivities(sourceRegion);
   const destinationRegionActivities =
-    getFrontDestinationRegionActivities(targetRegion);
+    getFrontDestinationRegionActivities(destRegion);
 
   const { searchAttributes: parentSearchAttributes, memo } = workflowInfo();
 
   // First, we move the workspace, users and plan in the destination region.
   const coreEntitiesDataPath =
     await sourceRegionActivities.readCoreEntitiesFromSourceRegion({
+      destRegion,
+      sourceRegion,
       workspaceId,
     });
 
@@ -95,7 +97,7 @@ export async function workspaceRelocateFrontWorkflow({
         {
           sourceRegion,
           tableName,
-          targetRegion,
+          destRegion,
           workspaceId,
         },
       ],
@@ -110,7 +112,7 @@ export async function workspaceRelocateFrontWorkflow({
     args: [
       {
         sourceRegion,
-        targetRegion,
+        destRegion,
         workspaceId,
       },
     ],
@@ -121,7 +123,7 @@ export async function workspaceRelocateFrontTableWorkflow({
   lastProcessedId,
   sourceRegion,
   tableName,
-  targetRegion,
+  destRegion,
   workspaceId,
 }: RelocationWorkflowBase & {
   tableName: string;
@@ -130,7 +132,7 @@ export async function workspaceRelocateFrontTableWorkflow({
   // Create activity proxies with dynamic task queues.
   const sourceRegionActivities = getFrontSourceRegionActivities(sourceRegion);
   const destinationRegionActivities =
-    getFrontDestinationRegionActivities(targetRegion);
+    getFrontDestinationRegionActivities(destRegion);
 
   let hasMoreRows = true;
   let currentId: ModelId | undefined = lastProcessedId;
@@ -139,7 +141,7 @@ export async function workspaceRelocateFrontTableWorkflow({
     if (workflowInfo().historyLength > TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH) {
       await continueAsNew<typeof workspaceRelocateFrontTableWorkflow>({
         sourceRegion,
-        targetRegion,
+        destRegion,
         workspaceId,
         tableName,
         lastProcessedId: currentId,
@@ -152,6 +154,8 @@ export async function workspaceRelocateFrontTableWorkflow({
         limit: CHUNK_SIZE,
         workspaceId,
         tableName,
+        sourceRegion,
+        destRegion,
       });
 
     hasMoreRows = hasMore;
@@ -165,12 +169,12 @@ export async function workspaceRelocateFrontTableWorkflow({
 
 export async function workspaceRelocateFrontFileStorageWorkflow({
   sourceRegion,
-  targetRegion,
+  destRegion,
   workspaceId,
 }: RelocationWorkflowBase) {
   const sourceRegionActivities = getFrontSourceRegionActivities(sourceRegion);
   const destinationRegionActivities =
-    getFrontDestinationRegionActivities(targetRegion);
+    getFrontDestinationRegionActivities(destRegion);
 
   // 1) Relocate public files.
   const destPublicBucket =
@@ -179,7 +183,7 @@ export async function workspaceRelocateFrontFileStorageWorkflow({
   const publicFilesJobName =
     await sourceRegionActivities.startTransferFrontPublicFiles({
       destBucket: destPublicBucket,
-      destRegion: targetRegion,
+      destRegion,
       sourceRegion,
       workspaceId,
     });
@@ -205,7 +209,7 @@ export async function workspaceRelocateFrontFileStorageWorkflow({
   const privateFilesJobName =
     await sourceRegionActivities.startTransferFrontPrivateFiles({
       destBucket: destPrivateBucket,
-      destRegion: targetRegion,
+      destRegion,
       sourceRegion,
       workspaceId,
     });
