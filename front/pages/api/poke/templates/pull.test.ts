@@ -34,7 +34,7 @@ vi.mock(import("../../../../lib/api/regions/config"), async (importActual) => {
     ...actualConfig,
     config: {
       ...actualConfig.config,
-      getCurrentRegion: vi.fn(),
+      getDustRegionSyncEnabled: vi.fn(),
     },
   };
 });
@@ -73,26 +73,29 @@ describe(
       }
     );
 
-    itInTransaction("returns 400 when called from main region", async () => {
-      vi.mocked(config.getCurrentRegion).mockReturnValue("us-central1");
-      const { req, res } = await createPrivateApiMockRequest({
-        method: "POST",
-        isSuperUser: true,
-      });
+    itInTransaction(
+      "returns 400 when called from with the sync disabled",
+      async () => {
+        vi.mocked(config.getDustRegionSyncEnabled).mockReturnValue(false);
+        const { req, res } = await createPrivateApiMockRequest({
+          method: "POST",
+          isSuperUser: true,
+        });
 
-      await handler(req, res);
+        await handler(req, res);
 
-      expect(res._getStatusCode()).toBe(400);
-      expect(res._getJSONData()).toEqual({
-        error: {
-          type: "invalid_request_error",
-          message: "This endpoint can only be called from non-main regions.",
-        },
-      });
-    });
+        expect(res._getStatusCode()).toBe(400);
+        expect(res._getJSONData()).toEqual({
+          error: {
+            type: "invalid_request_error",
+            message: "This endpoint can only be called from non-main regions.",
+          },
+        });
+      }
+    );
 
     itInTransaction("only supports POST method", async () => {
-      vi.mocked(config.getCurrentRegion).mockReturnValue("europe-west1");
+      vi.mocked(config.getDustRegionSyncEnabled).mockReturnValue(true);
       for (const method of ["DELETE", "GET", "PUT", "PATCH"] as const) {
         const { req, res } = await createPrivateApiMockRequest({
           method,
@@ -112,7 +115,7 @@ describe(
     });
 
     itInTransaction("handles failed templates list fetch", async () => {
-      vi.mocked(config.getCurrentRegion).mockReturnValue("europe-west1");
+      vi.mocked(config.getDustRegionSyncEnabled).mockReturnValue(true);
 
       mockFetch.mockImplementationOnce(() =>
         Promise.resolve({
@@ -141,7 +144,7 @@ describe(
     itInTransaction(
       "successfully pulls templates from main region",
       async () => {
-        vi.mocked(config.getCurrentRegion).mockReturnValue("europe-west1");
+        vi.mocked(config.getDustRegionSyncEnabled).mockReturnValue(true);
 
         // Mock the templates list response
         mockFetch
@@ -204,7 +207,7 @@ describe(
     );
 
     itInTransaction("handles failed template fetches gracefully", async () => {
-      vi.mocked(config.getCurrentRegion).mockReturnValue("europe-west1");
+      vi.mocked(config.getDustRegionSyncEnabled).mockReturnValue(true);
 
       // Mock the templates list response
       mockFetch
