@@ -5,6 +5,7 @@ import type { OAuth2Client } from "googleapis-common";
 import { GaxiosError } from "googleapis-common";
 import type { CreationAttributes } from "sequelize";
 
+import { getSourceUrlForGoogleDriveFiles } from "@connectors/connectors/google_drive";
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import {
   getMimeTypesToDownload,
@@ -510,7 +511,7 @@ async function upsertGdriveDocument(
       dataSourceConfig,
       documentId,
       documentContent: content,
-      documentUrl: file.webViewLink,
+      documentUrl: getSourceUrlForGoogleDriveFiles(file),
       timestampMs: file.updatedAtMs,
       tags,
       parents,

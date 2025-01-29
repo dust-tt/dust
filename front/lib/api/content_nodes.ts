@@ -143,6 +143,15 @@ export function computeNodesDiff({
             if (key === "sourceUrl" && value === null && coreValue !== null) {
               return false;
             }
+            // Special case for the google drive sourceUrl: both are valid.
+            if (key === "sourceUrl" && value && coreValue) {
+              if (
+                value.startsWith("https://drive.google.com/file") &&
+                coreValue.toString().startsWith("https://docs.google.com/")
+              ) {
+                return false;
+              }
+            }
             // Special case for the titles of Webcrawler folders: we add a trailing slash in core but not in connectors.
             if (
               key === "title" &&

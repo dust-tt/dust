@@ -107,7 +107,7 @@ async function backfillSpreadsheets(
          SET source_url = urls.url
          FROM (SELECT unnest(ARRAY [:nodeIds]::text[]) as node_id,
                       unnest(ARRAY [:urls]::text[])    as url) urls
-         WHERE data_sources_nodes.data_source = :dataSourceId AND data_sources_nodes.node_id = urls.node_id;`,
+         WHERE data_sources_nodes.data_source = :dataSourceId AND data_sources_nodes.node_id = urls.node_id AND source_url IS NULL;`,
         { replacements: { urls, nodeIds, dataSourceId } }
       );
       logger.info(
@@ -150,7 +150,7 @@ async function backfillFolders(
        FROM google_drive_files
        WHERE id > :lastId
          AND "connectorId" = :connectorId
-         AND "mimeType" = 'application/vnd.google-apps.folder'
+         AND "mimeType" = in ('application/vnd.google-apps.folder', 'application/vnd.dust.googledrive.spreadsheet')
        ORDER BY id
        LIMIT :batchSize;`,
       {
@@ -179,7 +179,7 @@ async function backfillFolders(
          SET source_url = urls.url
          FROM (SELECT unnest(ARRAY [:nodeIds]::text[]) as node_id,
                       unnest(ARRAY [:urls]::text[])    as url) urls
-         WHERE data_sources_nodes.data_source = :dataSourceId AND data_sources_nodes.node_id = urls.node_id;`,
+         WHERE data_sources_nodes.data_source = :dataSourceId AND data_sources_nodes.node_id = urls.node_id AND source_url IS NULL;`,
         { replacements: { urls, nodeIds, dataSourceId } }
       );
       logger.info(
