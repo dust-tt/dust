@@ -14,6 +14,7 @@ export function isConnectorTypeTrackable(
     case "webcrawler":
     case "snowflake":
     case "zendesk":
+    case "bigquery":
       return true;
     case "slack":
       return false;

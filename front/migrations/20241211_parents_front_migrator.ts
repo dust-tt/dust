@@ -100,6 +100,7 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
     );
   },
   snowflake: null,
+  bigquery: null,
   webcrawler: null,
   zendesk: null, // no migration needed!
   confluence: (parents) => parents.map(getUpdatedConfluenceId),

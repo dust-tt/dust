@@ -60,7 +60,11 @@ export function isValidZendeskSubdomain(s: unknown): s is string {
 
 // Credentials Providers
 
-export const CREDENTIALS_PROVIDERS = ["snowflake", "modjo"] as const;
+export const CREDENTIALS_PROVIDERS = [
+  "snowflake",
+  "modjo",
+  "bigquery",
+] as const;
 export type CredentialsProvider = (typeof CREDENTIALS_PROVIDERS)[number];
 
 export function isCredentialProvider(obj: unknown): obj is CredentialsProvider {
@@ -78,12 +82,31 @@ export const SnowflakeCredentialsSchema = t.type({
 });
 export type SnowflakeCredentials = t.TypeOf<typeof SnowflakeCredentialsSchema>;
 
+export const BigQueryCredentialsSchema = t.type({
+  type: t.string,
+  project_id: t.string,
+  private_key_id: t.string,
+  private_key: t.string,
+  client_email: t.string,
+  client_id: t.string,
+  auth_uri: t.string,
+  token_uri: t.string,
+  auth_provider_x509_cert_url: t.string,
+  client_x509_cert_url: t.string,
+  universe_domain: t.string,
+});
+
+export type BigQueryCredentials = t.TypeOf<typeof BigQueryCredentialsSchema>;
+
 export const ApiKeyCredentialsSchema = t.type({
   api_key: t.string,
 });
 export type ModjoCredentials = t.TypeOf<typeof ApiKeyCredentialsSchema>;
 
-export type ConnectionCredentials = SnowflakeCredentials | ModjoCredentials;
+export type ConnectionCredentials =
+  | SnowflakeCredentials
+  | ModjoCredentials
+  | BigQueryCredentials;
 
 export function isSnowflakeCredentials(
   credentials: ConnectionCredentials
@@ -97,14 +120,11 @@ export function isModjoCredentials(
   return "api_key" in credentials;
 }
 
-// POST Credentials
-
-export const PostSnowflakeCredentialsBodySchema = t.type({
-  provider: t.literal("snowflake"),
-  credentials: SnowflakeCredentialsSchema,
-});
-
-export const PostCredentialsBodySchema = PostSnowflakeCredentialsBodySchema;
+export function isBigQueryCredentials(
+  credentials: ConnectionCredentials
+): credentials is BigQueryCredentials {
+  return "type" in credentials && "project_id" in credentials;
+}
 
 export type OauthAPIPostCredentialsResponse = {
   credential: {

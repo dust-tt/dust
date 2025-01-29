@@ -14,7 +14,7 @@ use super::encryption::{seal_str, unseal_str};
 pub enum CredentialProvider {
     Snowflake,
     Modjo,
-    GoogleServiceAccount,
+    Bigquery,
 }
 
 impl fmt::Display for CredentialProvider {
@@ -112,7 +112,7 @@ impl Credential {
             CredentialProvider::Modjo => {
                 vec!["api_key"]
             }
-            CredentialProvider::GoogleServiceAccount => {
+            CredentialProvider::Bigquery => {
                 vec![
                     "type",
                     "project_id",

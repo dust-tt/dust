@@ -270,6 +270,7 @@ const ConnectorProvidersSchema = FlexibleEnumSchema<
   | "webcrawler"
   | "snowflake"
   | "zendesk"
+  | "bigquery"
 >();
 export type ConnectorProvider = z.infer<typeof ConnectorProvidersSchema>;
 
@@ -742,6 +743,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "labs_github_actions"
   | "reasoning_tool_feature"
   | "deepseek_r1_global_agent_feature"
+  | "bigquery_feature"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;

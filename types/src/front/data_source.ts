@@ -13,6 +13,7 @@ export const CONNECTOR_PROVIDERS = [
   "webcrawler",
   "snowflake",
   "zendesk",
+  "bigquery",
 ] as const;
 
 export const MANAGED_DS_DELETABLE: ConnectorProvider[] = [
@@ -31,6 +32,7 @@ export const CONNECTOR_TYPE_TO_NAME: Record<ConnectorProvider, string> = {
   webcrawler: "Website",
   snowflake: "Snowflake",
   zendesk: "Zendesk",
+  bigquery: "BigQuery",
 };
 
 export const CONNECTOR_TYPE_TO_MISMATCH_ERROR: Record<
@@ -53,6 +55,8 @@ export const CONNECTOR_TYPE_TO_MISMATCH_ERROR: Record<
     "You cannot change the Snowflake account. Please add a new Snowflake connection instead.",
   zendesk:
     "You cannot select another Zendesk Workspace.\nPlease contact us at support@dust.tt if you initially selected a wrong Workspace.",
+  bigquery:
+    "You cannot change the BigQuery project. Please add a new BigQuery connection instead.",
 };
 
 export type ConnectorProvider = (typeof CONNECTOR_PROVIDERS)[number];

@@ -1,10 +1,14 @@
 import type {
+  ConnectionCredentials,
+  CredentialsProvider,
   OAuthAPIError,
+  OauthAPIPostCredentialsResponse,
   OAuthConnectionType,
   Result,
 } from "@dust-tt/types";
 import type { OAuthProvider, OAuthUseCase } from "@dust-tt/types";
 import { Err, isValidZendeskSubdomain, OAuthAPI, Ok } from "@dust-tt/types";
+import type { LoggerInterface } from "@dust-tt/types/dist/shared/logger";
 import type { ParsedUrlQuery } from "querystring";
 import querystring from "querystring";
 
@@ -413,4 +417,33 @@ export async function finalizeConnection(
   }
 
   return new Ok(cRes.value.connection);
+}
+
+export async function postConnectionCredentials({
+  config,
+  logger,
+  provider,
+  workspaceId,
+  userId,
+  credentials,
+}: {
+  config: { url: string; apiKey: string | null };
+  logger: LoggerInterface;
+  provider: CredentialsProvider;
+  workspaceId: string;
+  userId: string;
+  credentials: ConnectionCredentials;
+}): Promise<Result<OauthAPIPostCredentialsResponse, OAuthAPIError>> {
+  const res = await new OAuthAPI(config, logger).postCredentials({
+    provider,
+    workspaceId,
+    userId,
+    credentials,
+  });
+
+  if (res.isErr()) {
+    return res;
+  }
+
+  return res;
 }

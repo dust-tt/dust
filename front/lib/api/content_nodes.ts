@@ -47,6 +47,7 @@ export function getContentNodeInternalIdFromTableId(
     case "snowflake":
     case "google_drive":
     case "notion":
+    case "bigquery":
       return tableId;
 
     case "intercom":
