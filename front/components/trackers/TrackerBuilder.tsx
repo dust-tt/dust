@@ -340,7 +340,6 @@ export const TrackerBuilder = ({
               </DropdownMenu>
             )}
             <AdvancedSettings
-              owner={owner}
               generationSettings={{
                 modelSettings: {
                   modelId: tracker.modelId,
@@ -362,6 +361,7 @@ export const TrackerBuilder = ({
                   setEdited(true);
                 }
               }}
+              models={[]}
             />
             {initialTrackerId && (
               <Button
@@ -373,6 +373,7 @@ export const TrackerBuilder = ({
                 disabled={isSubmitting || isDeleting}
               />
             )}
+            r
           </div>
         </div>
 

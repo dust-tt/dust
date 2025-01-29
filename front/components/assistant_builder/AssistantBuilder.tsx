@@ -486,6 +486,7 @@ export default function AssistantBuilder({
                           reasoningModels.length > 0 &&
                           featureFlags.includes("reasoning_tool_feature")
                         }
+                        reasoningModels={reasoningModels}
                       />
                     );
 
@@ -583,6 +584,7 @@ export default function AssistantBuilder({
               builderState={builderState}
               agentConfigurationId={agentConfigurationId}
               setAction={setAction}
+              reasoningModels={reasoningModels}
             />
           }
           isRightPanelOpen={rightPanelStatus.tab !== null}

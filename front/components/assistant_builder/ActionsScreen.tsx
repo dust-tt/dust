@@ -25,7 +25,11 @@ import {
   TextArea,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type { SpaceType, WorkspaceType } from "@dust-tt/types";
+import type {
+  ModelConfigurationType,
+  SpaceType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import { assertNever, MAX_STEPS_USE_PER_RUN_LIMIT } from "@dust-tt/types";
 import assert from "assert";
 import type { ReactNode } from "react";
@@ -72,6 +76,7 @@ import type {
   AssistantBuilderActionConfigurationWithId,
   AssistantBuilderPendingAction,
   AssistantBuilderProcessConfiguration,
+  AssistantBuilderReasoningConfiguration,
   AssistantBuilderRetrievalConfiguration,
   AssistantBuilderSetActionType,
   AssistantBuilderState,
@@ -162,6 +167,7 @@ interface ActionScreenProps {
   setAction: (action: AssistantBuilderSetActionType) => void;
   pendingAction: AssistantBuilderPendingAction;
   enableReasoningTool: boolean;
+  reasoningModels: ModelConfigurationType[];
 }
 
 export default function ActionsScreen({
@@ -172,6 +178,7 @@ export default function ActionsScreen({
   setAction,
   pendingAction,
   enableReasoningTool,
+  reasoningModels,
 }: ActionScreenProps) {
   const { spaces } = useContext(AssistantBuilderContext);
 
@@ -412,6 +419,31 @@ export default function ActionsScreen({
                       maxStepsPerRun,
                     }));
                   }}
+                  setReasoningModel={
+                    enableReasoningTool &&
+                    builderState.actions.find((a) => a.type === "REASONING")
+                      ? (model) => {
+                          setEdited(true);
+                          setBuilderState((state) => ({
+                            ...state,
+                            actions: state.actions.map((a) =>
+                              a.type === "REASONING"
+                                ? {
+                                    ...a,
+                                    configuration: {
+                                      ...a.configuration,
+                                      modelId: model.modelId,
+                                      providerId: model.providerId,
+                                    },
+                                  }
+                                : a
+                            ),
+                          }));
+                        }
+                      : undefined
+                  }
+                  reasoningModels={reasoningModels}
+                  builderState={builderState}
                 />
               </>
             )}
@@ -1005,10 +1037,27 @@ function ActionEditor({
 function AdvancedSettings({
   maxStepsPerRun,
   setMaxStepsPerRun,
+  reasoningModels,
+  setReasoningModel,
+  builderState,
 }: {
   maxStepsPerRun: number | null;
   setMaxStepsPerRun: (maxStepsPerRun: number | null) => void;
+  reasoningModels?: ModelConfigurationType[];
+  setReasoningModel: ((model: ModelConfigurationType) => void) | undefined;
+  builderState: AssistantBuilderState;
 }) {
+  const reasoningConfig = builderState.actions.find(
+    (a) => a.type === "REASONING"
+  )?.configuration as AssistantBuilderReasoningConfiguration | undefined;
+
+  const reasoningModel =
+    reasoningModels?.find(
+      (m) =>
+        m.modelId === reasoningConfig?.modelId &&
+        m.providerId === reasoningConfig?.providerId
+    ) ?? reasoningModels?.[0];
+
   return (
     <Popover
       popoverTriggerAsChild
@@ -1050,6 +1099,30 @@ function AdvancedSettings({
                 }
               }}
             />
+            {(reasoningModels?.length ?? 0) > 1 && setReasoningModel && (
+              <div className="flex flex-col gap-2">
+                <div className="font-semibold text-element-800">
+                  Reasoning model
+                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="primary"
+                      label={reasoningModel?.displayName}
+                    />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    {(reasoningModels ?? []).map((model) => (
+                      <DropdownMenuItem
+                        key={model.modelId}
+                        label={model.displayName}
+                        onClick={() => setReasoningModel(model)}
+                      />
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            )}
           </div>
         </div>
       }
