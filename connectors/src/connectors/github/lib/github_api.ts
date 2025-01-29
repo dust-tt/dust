@@ -5,7 +5,7 @@ import { createWriteStream } from "fs";
 import { mkdtemp, readdir, rm } from "fs/promises";
 import fs from "fs-extra";
 import * as reporter from "io-ts-reporters";
-import { Octokit } from "octokit";
+import { Octokit, RequestError } from "octokit";
 import { tmpdir } from "os";
 import { basename, extname, join, resolve } from "path";
 import type { Readable } from "stream";
@@ -221,7 +221,14 @@ export async function getRepoIssuesPage(
         "transient_upstream_activity_error"
       );
     }
-
+    // Handle disabled issues case - GitHub returns 410 Gone when issues are disabled
+    if (
+      err instanceof RequestError &&
+      err.status === 410 &&
+      err.message === "Issues are disabled for this repo"
+    ) {
+      return [];
+    }
     throw err;
   }
 }
