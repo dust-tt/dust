@@ -25,7 +25,11 @@ import {
   TextArea,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type { SpaceType, WorkspaceType } from "@dust-tt/types";
+import type {
+  SpaceType,
+  WhitelistableFeature,
+  WorkspaceType,
+} from "@dust-tt/types";
 import { assertNever, MAX_STEPS_USE_PER_RUN_LIMIT } from "@dust-tt/types";
 import assert from "assert";
 import type { ReactNode } from "react";
@@ -80,6 +84,7 @@ import {
   isDefaultActionName,
 } from "@app/components/assistant_builder/types";
 import { ACTION_SPECIFICATIONS } from "@app/lib/api/assistant/actions/utils";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 import {
   ActionGithubGetPullRequest,
@@ -178,6 +183,7 @@ export default function ActionsScreen({
   );
 
   const isLegacyConfig = isLegacyAssistantBuilderConfiguration(builderState);
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
 
   const spaceIdToActions = useMemo(() => {
     return configurableActions.reduce<
@@ -466,6 +472,7 @@ export default function ActionsScreen({
           setEdited={setEdited}
           setAction={setAction}
           deleteAction={deleteAction}
+          featureFlags={featureFlags}
         />
       </div>
     </>
@@ -1121,6 +1128,7 @@ function Capabilities({
   setEdited,
   setAction,
   deleteAction,
+  featureFlags,
 }: {
   builderState: AssistantBuilderState;
   setBuilderState: (
@@ -1129,6 +1137,7 @@ function Capabilities({
   setEdited: (edited: boolean) => void;
   setAction: (action: AssistantBuilderSetActionType) => void;
   deleteAction: (name: string) => void;
+  featureFlags: WhitelistableFeature[];
 }) {
   const Capability = ({
     name,
@@ -1217,27 +1226,29 @@ function Capabilities({
           }}
         />
 
-        <Capability
-          name="Reasoning"
-          description="Assistant can offload reasoning-heavy tasks to a reasoning model."
-          enabled={!!builderState.actions.find((a) => a.type === "REASONING")}
-          onEnable={() => {
-            setEdited(true);
-            const defaultReasoningAction =
-              getDefaultActionConfiguration("REASONING");
-            assert(defaultReasoningAction);
-            setAction({
-              type: "insert",
-              action: defaultReasoningAction,
-            });
-          }}
-          onDisable={() => {
-            const defaultReasoningAction =
-              getDefaultActionConfiguration("REASONING");
-            assert(defaultReasoningAction);
-            deleteAction(defaultReasoningAction.name);
-          }}
-        />
+        {(featureFlags ?? []).includes("reasoning_tool_feature") && (
+          <Capability
+            name="Reasoning"
+            description="Assistant can offload reasoning-heavy tasks to a reasoning model."
+            enabled={!!builderState.actions.find((a) => a.type === "REASONING")}
+            onEnable={() => {
+              setEdited(true);
+              const defaultReasoningAction =
+                getDefaultActionConfiguration("REASONING");
+              assert(defaultReasoningAction);
+              setAction({
+                type: "insert",
+                action: defaultReasoningAction,
+              });
+            }}
+            onDisable={() => {
+              const defaultReasoningAction =
+                getDefaultActionConfiguration("REASONING");
+              assert(defaultReasoningAction);
+              deleteAction(defaultReasoningAction.name);
+            }}
+          />
+        )}
       </div>
 
       {showGithubActions && (
