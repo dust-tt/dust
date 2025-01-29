@@ -741,6 +741,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "show_debug_tools"
   | "labs_github_actions"
   | "reasoning_tool_feature"
+  | "deepseek_r1_global_agent_feature"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
