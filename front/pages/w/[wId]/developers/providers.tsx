@@ -164,6 +164,15 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
   );
 }
 
+function formatApiKey(key?: string, visibleChars = 4, dotCount = 30) {
+  if (!key) {
+    return "";
+  }
+  const dots = "•".repeat(dotCount);
+  const end = key.slice(-visibleChars);
+  return `${dots}${end}`;
+}
+
 function ProviderListItem({
   name,
   isEnabled,
@@ -177,12 +186,12 @@ function ProviderListItem({
 }) {
   return (
     <li className="py-4">
-      <div className="flex items-center justify-between">
-        <div className="flex flex-col gap-1.5">
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex min-w-0 flex-col gap-1.5">
           <div className="flex items-center gap-2">
             <p
               className={cn(
-                "text-sm font-bold",
+                "truncate text-base font-bold",
                 isEnabled ? "text-slate-700" : "text-slate-400"
               )}
             >
@@ -195,9 +204,10 @@ function ProviderListItem({
             />
           </div>
           {apiKey && (
-            <p className="font-mono text-xs text-element-700">
-              API Key: <pre>{apiKey}</pre>
-            </p>
+            <div className="font-mono flex items-center gap-1 text-xs text-element-700">
+              <span className="shrink-0">API Key:</span>
+              <div className="max-w-72 truncate">{formatApiKey(apiKey)}</div>
+            </div>
           )}
         </div>
         <Button
