@@ -20,6 +20,55 @@ export function ValuePropSection() {
 
       <div className="grid grid-cols-1 gap-12 sm:grid-cols-2 md:gap-24">
         <ImgBlock
+          title={<>Answer any question, instantly</>}
+          content={
+            <>
+              Get the right information at the right moment. Dust instantly
+              searches and synthesizes information from Slack, Notion, Google
+              Drive, and all your favourite tools. Enjoy effortless
+              summarization, targeted extractions, and crisp insights from docs,
+              tickets, chat logs, whatever is relevant.
+            </>
+          }
+        >
+          <Hover3D
+            depth={-20}
+            perspective={1000}
+            className={classNames("relative")}
+          >
+            <Div3D depth={-40}>
+              <img src="/static/landing/docexpert/docexpert1.png" />
+            </Div3D>
+            <Div3D depth={0} className="absolute top-0">
+              <img src="/static/landing/docexpert/docexpert2.png" />
+            </Div3D>
+          </Hover3D>
+        </ImgBlock>
+        <ImgBlock
+          title={<>Unlock any skills</>}
+          content={
+            <>
+              Go from marketer to coder in a single step, Dust AI agents cover
+              the skills you don’t have so you can focus on the vision.
+              Transform your ideas into reality, build anything, your
+              imagination is the only limit.
+            </>
+          }
+        >
+          <Hover3D
+            depth={-20}
+            perspective={1000}
+            className={classNames("relative")}
+          >
+            <Div3D depth={-40}>
+              <img src="/static/landing/code/code1.png" />
+            </Div3D>
+            <Div3D depth={0} className="absolute top-0">
+              <img src="/static/landing/code/code2.png" />
+            </Div3D>
+          </Hover3D>
+        </ImgBlock>
+        <ImgBlock
           title={<>Analyse anything</>}
           content={
             <>
@@ -66,56 +115,6 @@ export function ValuePropSection() {
             </Div3D>
             <Div3D depth={0} className="absolute top-0">
               <img src="/static/landing/crm/crm2.png" />
-            </Div3D>
-          </Hover3D>
-        </ImgBlock>
-
-        <ImgBlock
-          title={<>Answer any question, instantly</>}
-          content={
-            <>
-              Get the right information at the right moment. Dust instantly
-              searches and synthesizes information from Slack, Notion, Google
-              Drive, and all your favourite tools. Enjoy effortless
-              summarization, targeted extractions, and crisp insights from docs,
-              tickets, chat logs, whatever is relevant.
-            </>
-          }
-        >
-          <Hover3D
-            depth={-20}
-            perspective={1000}
-            className={classNames("relative")}
-          >
-            <Div3D depth={-40}>
-              <img src="/static/landing/docexpert/docexpert1.png" />
-            </Div3D>
-            <Div3D depth={0} className="absolute top-0">
-              <img src="/static/landing/docexpert/docexpert2.png" />
-            </Div3D>
-          </Hover3D>
-        </ImgBlock>
-        <ImgBlock
-          title={<>Unlock any skills</>}
-          content={
-            <>
-              Go from marketer to coder in a single step, Dust AI agents cover
-              the skills you don’t have so you can focus on the vision.
-              Transform your ideas into reality, build anything, your
-              imagination is the only limit.
-            </>
-          }
-        >
-          <Hover3D
-            depth={-20}
-            perspective={1000}
-            className={classNames("relative")}
-          >
-            <Div3D depth={-40}>
-              <img src="/static/landing/code/code1.png" />
-            </Div3D>
-            <Div3D depth={0} className="absolute top-0">
-              <img src="/static/landing/code/code2.png" />
             </Div3D>
           </Hover3D>
         </ImgBlock>

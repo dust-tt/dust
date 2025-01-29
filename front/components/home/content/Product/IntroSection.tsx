@@ -57,9 +57,8 @@ export function IntroSection() {
               <MainVisual />
             </div>
             <P size="lg" className="text-slate-50">
-              Amplify your team with AI powered by your company’s unique
-              knowledge. Accessible anywhere, customizable to your needs, with
-              complete control over your data.
+              Secure, connected to your data, accessible anywhere &amp;
+              customizable to your needs.
             </P>
             <div className="flex justify-center gap-4 sm:justify-start">
               <Link href="/home/pricing" shallow={true}>
