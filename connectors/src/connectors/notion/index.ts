@@ -614,6 +614,11 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
   }): Promise<Result<string[], Error>> {
     const notionId = notionIdFromNodeId(internalId);
 
+    // The two nodes unknonwn and syncing are special folders always found at the root (no parent).
+    if (notionId === "unknown" || notionId === "syncing") {
+      return new Ok([internalId]);
+    }
+
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
       logger.error({ connectorId: this.connectorId }, "Connector not found");
