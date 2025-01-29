@@ -108,6 +108,7 @@ const ADVANCED_ACTION_CATEGORIES = ["DUST_APP_RUN"] as const satisfies Array<
 const CAPABILITIES_ACTION_CATEGORIES = [
   "WEB_NAVIGATION",
   "GITHUB_GET_PULL_REQUEST",
+  "GITHUB_CREATE_ISSUE",
   "REASONING",
 ] as const satisfies Array<AssistantBuilderActionConfiguration["type"]>;
 
@@ -1284,6 +1285,32 @@ function Capabilities({
                   getDefaultActionConfiguration("GITHUB_GET_PULL_REQUEST");
                 assert(defaulGithubGetPullRequestAction);
                 deleteAction(defaulGithubGetPullRequestAction.name);
+              }}
+            />
+
+            <Capability
+              name="Issue creation"
+              description="Assistant can create issues"
+              enabled={
+                !!builderState.actions.find(
+                  (a) => a.type === "GITHUB_CREATE_ISSUE"
+                )
+              }
+              onEnable={() => {
+                setEdited(true);
+                const defaultGithubCreateIssueAction =
+                  getDefaultActionConfiguration("GITHUB_CREATE_ISSUE");
+                assert(defaultGithubCreateIssueAction);
+                setAction({
+                  type: "insert",
+                  action: defaultGithubCreateIssueAction,
+                });
+              }}
+              onDisable={() => {
+                const defaulGithubCreateIssueAction =
+                  getDefaultActionConfiguration("GITHUB_CREATE_ISSUE");
+                assert(defaulGithubCreateIssueAction);
+                deleteAction(defaulGithubCreateIssueAction.name);
               }}
             />
           </div>
