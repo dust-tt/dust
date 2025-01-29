@@ -269,7 +269,7 @@ async function getContentNodesForDataSourceViewFromCore(
       parent_id,
       node_types: nodeTypesForViewType,
     },
-    options: { limit: 250, sort: sortForViewType },
+    options: { limit: 1000, sort: sortForViewType },
   });
 
   if (coreRes.isErr()) {

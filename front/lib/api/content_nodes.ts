@@ -206,7 +206,7 @@ export function computeNodesDiff({
       {
         missingInternalIds,
         coreNodesCount: coreContentNodes.length,
-        maxPageSizeReached: coreContentNodes.length === 250, // max value determined by the limit set in getContentNodesForDataSourceViewFromCore
+        maxPageSizeReached: coreContentNodes.length === 1000, // max value determined by the limit set in getContentNodesForDataSourceViewFromCore
       },
       "[CoreNodes] Missing nodes from core"
     );
