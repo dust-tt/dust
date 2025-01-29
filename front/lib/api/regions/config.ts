@@ -35,7 +35,7 @@ export const config = {
     };
   },
   getDustRegionSyncEnabled: (): boolean => {
-    return EnvironmentConfig.getEnvVariable("DUST_REGION") === "us-central1";
+    return EnvironmentConfig.getEnvVariable("DUST_REGION") !== "us-central1";
   },
   getDustRegionSyncMasterUrl: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_US_URL");
