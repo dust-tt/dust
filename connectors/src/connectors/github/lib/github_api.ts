@@ -222,7 +222,11 @@ export async function getRepoIssuesPage(
       );
     }
     // Handle disabled issues case - GitHub returns 410 Gone when issues are disabled
-    if (err instanceof RequestError && err.status === 410) {
+    if (
+      err instanceof RequestError &&
+      err.status === 410 &&
+      err.message === "Issues are disabled for this repo"
+    ) {
       return [];
     }
     throw err;
