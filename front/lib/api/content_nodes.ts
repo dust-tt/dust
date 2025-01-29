@@ -203,7 +203,11 @@ export function computeNodesDiff({
   });
   if (missingInternalIds.length > 0) {
     localLogger.info(
-      { missingInternalIds },
+      {
+        missingInternalIds,
+        coreNodesCount: coreContentNodes.length,
+        maxPageSizeReached: coreContentNodes.length === 1000, // max value determined by MAX_PAGE_SIZE in search_store.rs
+      },
       "[CoreNodes] Missing nodes from core"
     );
   }
