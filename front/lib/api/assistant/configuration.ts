@@ -991,6 +991,9 @@ export async function createAgentActionConfiguration(
         type: "github_get_pull_request_configuration";
       }
     | {
+        type: "github_create_issue_configuration";
+      }
+    | {
         type: "reasoning_configuration";
         providerId: ModelProviderIdType;
         modelId: ModelIdType;
