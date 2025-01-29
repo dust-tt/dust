@@ -41,4 +41,7 @@ export const DEFAULT_REASONING_ACTION_DESCRIPTION =
 export const DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME =
   "github_get_pull_request";
 export const DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_DESCRIPTION =
-  "Retrieve a pull request from a GitHub repository including its description, comments and diff";
+  "Retrieve a pull request from a GitHub repository including its description, diff, comments and reviews";
+export const DEFAULT_GITHUB_CREATE_ISSUE_ACTION_NAME = "github_create_issue";
+export const DEFAULT_GITHUB_CREATE_ISSUE_ACTION_DESCRIPTION =
+  "Create a new issue in a GitHub repository";

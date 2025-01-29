@@ -1,4 +1,9 @@
-import type { GithubBaseActionType } from "@dust-tt/types";
+import type {
+  GithubBaseActionType,
+  GithubGetPullRequestCommentType,
+  GithubGetPullRequestCommitType,
+  GithubGetPullRequestReviewType,
+} from "@dust-tt/types";
 import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
@@ -79,30 +84,6 @@ AgentGithubConfiguration.belongsTo(AgentConfiguration, {
 /**
  * GithubGetPullRequest Action
  */
-
-export type GithubGetPullRequestCommitType = {
-  sha: string;
-  author: string;
-  message: string;
-};
-
-export type GithubGetPullRequestCommentType = {
-  createdAt: number;
-  author: string;
-  body: string;
-};
-
-export type GithubGetPullRequestReviewType = {
-  createdAt: number;
-  author: string;
-  body: string;
-  state: string;
-  comments: {
-    body: string;
-    path: string;
-    line: number;
-  }[];
-};
 
 export class AgentGithubGetPullRequestAction extends WorkspaceAwareModel<AgentGithubGetPullRequestAction> {
   declare createdAt: CreationOptional<Date>;
@@ -198,5 +179,91 @@ AgentGithubGetPullRequestAction.belongsTo(AgentMessage, {
 });
 
 AgentMessage.hasMany(AgentGithubGetPullRequestAction, {
+  foreignKey: { name: "agentMessageId", allowNull: false },
+});
+
+/**
+ * GithubCreateIssue Action
+ */
+
+export class AgentGithubCreateIssueAction extends WorkspaceAwareModel<AgentGithubCreateIssueAction> {
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare owner: string;
+  declare repo: string;
+  declare title: string;
+  declare body: string;
+
+  declare issueNumber: number | null;
+
+  declare functionCallId: string | null;
+  declare functionCallName: string | null;
+
+  declare step: number;
+  declare agentMessageId: ForeignKey<AgentMessage["id"]>;
+}
+AgentGithubCreateIssueAction.init(
+  {
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    owner: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    repo: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    title: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+    },
+    body: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+    },
+    issueNumber: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    functionCallId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    functionCallName: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    step: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+  },
+  {
+    modelName: "agent_github_create_issue_action",
+    sequelize: frontSequelize,
+    indexes: [
+      {
+        fields: ["agentMessageId"],
+        concurrently: true,
+      },
+    ],
+  }
+);
+
+AgentGithubCreateIssueAction.belongsTo(AgentMessage, {
+  foreignKey: { name: "agentMessageId", allowNull: false },
+});
+
+AgentMessage.hasMany(AgentGithubCreateIssueAction, {
   foreignKey: { name: "agentMessageId", allowNull: false },
 });

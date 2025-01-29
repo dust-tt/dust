@@ -56,7 +56,6 @@ import {
   tipTapContentFromPlainText,
 } from "@app/lib/client/assistant_builder/instructions";
 import { useAgentConfigurationHistory } from "@app/lib/swr/assistants";
-import { useModels } from "@app/lib/swr/models";
 import { classNames } from "@app/lib/utils";
 import { debounce } from "@app/lib/utils/debounce";
 
@@ -112,6 +111,7 @@ export function InstructionScreen({
   doTypewriterEffect,
   setDoTypewriterEffect,
   agentConfigurationId,
+  models,
 }: {
   owner: WorkspaceType;
   builderState: AssistantBuilderState;
@@ -125,6 +125,7 @@ export function InstructionScreen({
   doTypewriterEffect: boolean;
   setDoTypewriterEffect: (doTypewriterEffect: boolean) => void;
   agentConfigurationId: string | null;
+  models: ModelConfigurationType[];
 }) {
   const editor = useEditor({
     extensions: [
@@ -314,7 +315,6 @@ export function InstructionScreen({
           )}
         <div className="mt-2 self-end">
           <AdvancedSettings
-            owner={owner}
             generationSettings={builderState.generationSettings}
             setGenerationSettings={(generationSettings) => {
               setEdited(true);
@@ -323,6 +323,7 @@ export function InstructionScreen({
                 generationSettings,
               }));
             }}
+            models={models}
           />
         </div>
       </div>
@@ -409,19 +410,17 @@ function ModelList({ modelConfigs, onClick }: ModelListProps) {
 }
 
 export function AdvancedSettings({
-  owner,
   generationSettings,
   setGenerationSettings,
+  models,
 }: {
-  owner: WorkspaceType;
   generationSettings: AssistantBuilderState["generationSettings"];
   setGenerationSettings: (
     generationSettingsSettings: AssistantBuilderState["generationSettings"]
   ) => void;
+  models: ModelConfigurationType[];
 }) {
-  const { models, isModelsLoading } = useModels({ owner });
-
-  if (isModelsLoading) {
+  if (!models) {
     return null;
   }
 

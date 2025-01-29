@@ -14,6 +14,7 @@ export function useModels({ owner }: { owner: LightWorkspaceType }) {
 
   return {
     models: data ? data.models : [],
+    reasoningModels: data ? data.reasoningModels : [],
     isModelsLoading: !error && !data,
     isModelsError: !!error,
   };

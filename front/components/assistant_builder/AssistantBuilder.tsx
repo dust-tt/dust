@@ -67,6 +67,8 @@ import {
 } from "@app/components/sparkle/AppLayoutTitle";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useKillSwitches } from "@app/lib/swr/kill";
+import { useModels } from "@app/lib/swr/models";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 function isValidTab(tab: string): tab is BuilderScreen {
   return BUILDER_SCREENS.includes(tab as BuilderScreen);
@@ -87,6 +89,9 @@ export default function AssistantBuilder({
   const sendNotification = useSendNotification();
 
   const { killSwitches } = useKillSwitches();
+  const { models, reasoningModels } = useModels({ owner });
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+
   const isSavingDisabled = killSwitches?.includes("save_agent_configurations");
 
   const defaultScope =
@@ -330,6 +335,7 @@ export default function AssistantBuilder({
           selectedSlackChannels: selectedSlackChannels || [],
           slackChannelsLinkedWithAgent,
         },
+        reasoningModels,
       });
 
       if (res.isErr()) {
@@ -464,6 +470,7 @@ export default function AssistantBuilder({
                         doTypewriterEffect={doTypewriterEffect}
                         setDoTypewriterEffect={setDoTypewriterEffect}
                         agentConfigurationId={agentConfigurationId}
+                        models={models}
                       />
                     );
                   case "actions":
@@ -475,6 +482,11 @@ export default function AssistantBuilder({
                         setEdited={setEdited}
                         setAction={setAction}
                         pendingAction={pendingAction}
+                        enableReasoningTool={
+                          reasoningModels.length > 0 &&
+                          featureFlags.includes("reasoning_tool_feature")
+                        }
+                        reasoningModels={reasoningModels}
                       />
                     );
 
@@ -572,6 +584,7 @@ export default function AssistantBuilder({
               builderState={builderState}
               agentConfigurationId={agentConfigurationId}
               setAction={setAction}
+              reasoningModels={reasoningModels}
             />
           }
           isRightPanelOpen={rightPanelStatus.tab !== null}

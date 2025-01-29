@@ -17,11 +17,12 @@ import {
 } from "@dust-tt/sparkle";
 import type { ModelProviderIdType, WorkspaceType } from "@dust-tt/types";
 import { EMBEDDING_PROVIDER_IDS, MODEL_PROVIDER_IDS } from "@dust-tt/types";
-import { isEqual } from "lodash";
+import { isEqual, uniqBy } from "lodash";
 import { useCallback, useMemo, useState } from "react";
 
 import {
   MODEL_PROVIDER_LOGOS,
+  REASONING_MODEL_CONFIGS,
   USED_MODEL_CONFIGS,
 } from "@app/components/providers/types";
 
@@ -37,17 +38,19 @@ const prettyfiedProviderNames: { [key in ModelProviderIdType]: string } = {
   fireworks: "Fireworks",
 };
 
-const modelProviders: Record<ModelProviderIdType, string[]> =
-  USED_MODEL_CONFIGS.reduce(
-    (acc, model) => {
-      if (!model.isLegacy) {
-        acc[model.providerId] = acc[model.providerId] || [];
-        acc[model.providerId].push(model.displayName);
-      }
-      return acc;
-    },
-    {} as Record<ModelProviderIdType, string[]>
-  );
+const modelProviders: Record<ModelProviderIdType, string[]> = uniqBy(
+  [...USED_MODEL_CONFIGS, ...REASONING_MODEL_CONFIGS],
+  (m) => `${m.providerId}__${m.modelId}`
+).reduce(
+  (acc, model) => {
+    if (!model.isLegacy) {
+      acc[model.providerId] = acc[model.providerId] || [];
+      acc[model.providerId].push(model.displayName);
+    }
+    return acc;
+  },
+  {} as Record<ModelProviderIdType, string[]>
+);
 
 interface ProviderManagementModalProps {
   owner: WorkspaceType;

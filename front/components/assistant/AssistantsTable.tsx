@@ -93,8 +93,7 @@ type RowData = {
 
 const calculateFeedback = (row: Row<RowData>) => {
   const feedbacks = row.original.feedbacks;
-  const totalFeedbacks = feedbacks ? feedbacks.up + feedbacks.down : 0;
-  return feedbacks && totalFeedbacks > 0 ? feedbacks.up / totalFeedbacks : 0;
+  return feedbacks ? feedbacks.up + feedbacks.down : 0;
 };
 
 const getTableColumns = () => {
@@ -136,7 +135,7 @@ const getTableColumns = () => {
           label={info.row.original.usage?.messageCount ?? 0}
         />
       ),
-      meta: { className: "w-16", tooltip: "Messages on the last 30 days" },
+      meta: { className: "w-16", tooltip: "Messages in the last 30 days" },
     },
     {
       header: "Users",
@@ -152,7 +151,7 @@ const getTableColumns = () => {
           })}
         />
       ),
-      meta: { className: "w-16", tooltip: "Active users on the last 30 days" },
+      meta: { className: "w-16", tooltip: "Active users in the last 30 days" },
     },
     {
       header: "Feedback",
@@ -197,7 +196,7 @@ const getTableColumns = () => {
         calculateFeedback(rowA) - calculateFeedback(rowB),
       meta: {
         className: "w-24",
-        tooltip: "Feedbacks users on the last 30 days",
+        tooltip: "Feedbacks in the last 30 days",
       },
     },
     {

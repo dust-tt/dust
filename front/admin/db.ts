@@ -10,7 +10,10 @@ import {
   AgentDustAppRunAction,
   AgentDustAppRunConfiguration,
 } from "@app/lib/models/assistant/actions/dust_app_run";
-import { AgentGithubGetPullRequestAction } from "@app/lib/models/assistant/actions/github";
+import {
+  AgentGithubCreateIssueAction,
+  AgentGithubGetPullRequestAction,
+} from "@app/lib/models/assistant/actions/github";
 import { AgentGithubConfiguration } from "@app/lib/models/assistant/actions/github";
 import {
   AgentProcessAction,
@@ -173,6 +176,7 @@ async function main() {
   await AgentConversationIncludeFileAction.sync({ alter: true });
   await AgentMessageContent.sync({ alter: true });
   await AgentGithubGetPullRequestAction.sync({ alter: true });
+  await AgentGithubCreateIssueAction.sync({ alter: true });
   await AgentReasoningAction.sync({ alter: true });
 
   await RetrievalDocument.sync({ alter: true });

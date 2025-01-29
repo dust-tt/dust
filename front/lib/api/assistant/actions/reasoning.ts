@@ -15,6 +15,7 @@ import type {
 } from "@dust-tt/types";
 import {
   BaseAction,
+  isProviderWhitelisted,
   isReasoningConfiguration,
   Ok,
   SUPPORTED_MODEL_CONFIGS,
@@ -28,6 +29,7 @@ import { AgentMessageContentParser } from "@app/lib/api/assistant/agent_message_
 import { renderConversationForModel } from "@app/lib/api/assistant/generation";
 import { getRedisClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { AgentReasoningAction } from "@app/lib/models/assistant/actions/reasoning";
 import { getDustProdAction } from "@app/lib/registry";
 import { cloneBaseConfig } from "@app/lib/registry";
@@ -182,6 +184,37 @@ export class ReasoningConfigurationServerRunner extends BaseActionConfigurationS
       return;
     }
 
+    if (!isProviderWhitelisted(owner, supportedModel.providerId)) {
+      yield {
+        type: "reasoning_error",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "reasoning_error",
+          message: "Provider not supported",
+        },
+      };
+      return;
+    }
+
+    if (supportedModel.featureFlag) {
+      const featureFlags = await getFeatureFlags(owner);
+      if (!featureFlags.includes(supportedModel.featureFlag)) {
+        yield {
+          type: "reasoning_error",
+          created: Date.now(),
+          configurationId: agentConfiguration.sId,
+          messageId: agentMessage.sId,
+          error: {
+            code: "reasoning_error",
+            message: "Model not allowed.",
+          },
+        };
+        return;
+      }
+    }
+
     const renderedConversationRes = await renderConversationForModel(auth, {
       conversation,
       model: supportedModel,
@@ -253,10 +286,6 @@ export class ReasoningConfigurationServerRunner extends BaseActionConfigurationS
 
     const { eventStream, dustRunId } = res.value;
 
-    const actionOutput = {
-      content: "",
-      thinking: "",
-    };
     const contentParser = new AgentMessageContentParser(
       agentConfiguration,
       agentMessage.sId,
@@ -266,7 +295,11 @@ export class ReasoningConfigurationServerRunner extends BaseActionConfigurationS
     const redis = await getRedisClient({ origin: "reasoning_generation" });
     let lastCheckCancellation = Date.now();
 
-    async function* reasoningTokens(
+    const actionOutput = {
+      content: "",
+      thinking: "",
+    };
+    async function* processTokensEvents(
       stream: AsyncGenerator<GenerationTokensEvent>
     ): AsyncGenerator<ReasoningTokensEvent> {
       for await (const token of stream) {
@@ -308,7 +341,7 @@ export class ReasoningConfigurationServerRunner extends BaseActionConfigurationS
         continue;
       }
       if (event.type === "error") {
-        yield* reasoningTokens(contentParser.flushTokens());
+        yield* processTokensEvents(contentParser.flushTokens());
         yield {
           type: "reasoning_error",
           created: Date.now(),
@@ -341,7 +374,7 @@ export class ReasoningConfigurationServerRunner extends BaseActionConfigurationS
       }
 
       if (event.type === "tokens") {
-        yield* reasoningTokens(
+        yield* processTokensEvents(
           contentParser.emitTokens(event.content.tokens.text)
         );
       }
@@ -349,7 +382,7 @@ export class ReasoningConfigurationServerRunner extends BaseActionConfigurationS
       if (event.type === "block_execution") {
         const e = event.content.execution[0][0];
         if (e.error) {
-          yield* reasoningTokens(contentParser.flushTokens());
+          yield* processTokensEvents(contentParser.flushTokens());
           yield {
             type: "reasoning_error",
             created: Date.now(),
@@ -365,7 +398,7 @@ export class ReasoningConfigurationServerRunner extends BaseActionConfigurationS
       }
     }
 
-    yield* reasoningTokens(contentParser.flushTokens());
+    yield* processTokensEvents(contentParser.flushTokens());
 
     yield {
       type: "reasoning_thinking",

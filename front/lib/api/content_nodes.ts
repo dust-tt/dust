@@ -139,9 +139,29 @@ export function computeNodesDiff({
             ) {
               return false;
             }
+
+            // Special case for Google drive spreadsheets:
+            // title is '{spreadsheetName} - {sheetName}' for core, but only '{sheetName}' for connectors (not always).
+            // The value in core is an improvement over the value in connectors, so we omit the difference.
+            if (
+              key === "title" &&
+              coreNode.mimeType === "application/vnd.google-apps.spreadsheet"
+            ) {
+              return false;
+            }
+
             // Ignore sourceUrls returned by core but left empty by connectors.
             if (key === "sourceUrl" && value === null && coreValue !== null) {
               return false;
+            }
+            // Special case for the google drive sourceUrl: both are valid.
+            if (key === "sourceUrl" && value && coreValue) {
+              if (
+                value.startsWith("https://drive.google.com/file") &&
+                coreValue.toString().startsWith("https://docs.google.com/")
+              ) {
+                return false;
+              }
             }
             // Special case for the titles of Webcrawler folders: we add a trailing slash in core but not in connectors.
             if (
@@ -173,6 +193,15 @@ export function computeNodesDiff({
               provider === "slack" &&
               value === "read_write" &&
               coreValue === "read"
+            ) {
+              return false;
+            }
+            // Special case for Snowflake's title: we sometimes observe the internal ID database.schema.table used as
+            // the title in connectors, ignoring these occurrences.
+            if (
+              key === "title" &&
+              provider === "snowflake" &&
+              value.endsWith(coreValue) // value = database.schema.table, coreValue = table
             ) {
               return false;
             }
