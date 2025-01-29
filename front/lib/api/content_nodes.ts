@@ -185,6 +185,15 @@ export function computeNodesDiff({
             ) {
               return false;
             }
+            // Special case for Snowflake's title: we sometimes observe the internal ID database.schema.table used as
+            // the title in connectors, ignoring these occurrences.
+            if (
+              key === "title" &&
+              provider === "snowflake" &&
+              value.endsWith(coreValue) // value = database.schema.table, coreValue = table
+            ) {
+              return false;
+            }
             if (Array.isArray(value) && Array.isArray(coreValue)) {
               return JSON.stringify(value) !== JSON.stringify(coreValue);
             }
