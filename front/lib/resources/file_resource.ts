@@ -213,7 +213,15 @@ export class FileResource extends BaseResource<FileModel> {
     workspaceId: string;
     version: FileVersion;
   }) {
-    return `files/w/${workspaceId}/${fileId}/${version}`;
+    return `${this.getBaseCloudStorageForWorkspace({ workspaceId })}${fileId}/${version}`;
+  }
+
+  static getBaseCloudStorageForWorkspace({
+    workspaceId,
+  }: {
+    workspaceId: string;
+  }) {
+    return `files/w/${workspaceId}/`;
   }
 
   // Available when the file has been pre-processed with uploadToPublicBucket.

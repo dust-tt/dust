@@ -271,6 +271,12 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
   }
 }
 
+export function getContentFragmentBaseCloudStorageForWorkspace(
+  workspaceId: string
+) {
+  return `content_fragments/w/${workspaceId}/assistant/conversations/`;
+}
+
 // TODO(2024-03-22 pr): Move as method of message resource after migration of
 // message to resource pattern
 export function fileAttachmentLocation({
@@ -284,7 +290,8 @@ export function fileAttachmentLocation({
   messageId: string;
   contentFormat: "raw" | "text";
 }) {
-  const filePath = `content_fragments/w/${workspaceId}/assistant/conversations/${conversationId}/content_fragment/${messageId}/${contentFormat}`;
+  const filePath = `${getContentFragmentBaseCloudStorageForWorkspace(workspaceId)}${conversationId}/content_fragment/${messageId}/${contentFormat}`;
+
   return {
     filePath,
     internalUrl: `https://storage.googleapis.com/${getPrivateUploadBucket().name}/${filePath}`,

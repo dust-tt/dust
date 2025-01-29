@@ -9,7 +9,7 @@ import { isGCSNotFoundError } from "@app/lib/file_storage/types";
 
 const DEFAULT_SIGNED_URL_EXPIRATION_DELAY_MS = 5 * 60 * 1000; // 5 minutes.
 
-class FileStorage {
+export class FileStorage {
   private readonly bucket: Bucket;
   private readonly storage: Storage;
 
@@ -126,7 +126,7 @@ class FileStorage {
 
 const bucketInstances = new Map();
 
-const getBucketInstance: (bucketConfig: string) => FileStorage = (
+export const getBucketInstance: (bucketConfig: string) => FileStorage = (
   bucketConfig: string
 ) => {
   if (!bucketInstances.has(bucketConfig)) {
