@@ -207,6 +207,7 @@ export function getCitationsCount({
     case "browse_configuration":
     case "conversation_include_file_configuration":
     case "github_get_pull_request_configuration":
+    case "github_create_issue_configuration":
     case "reasoning_configuration":
       return 0;
     default:
