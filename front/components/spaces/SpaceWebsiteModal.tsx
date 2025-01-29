@@ -223,7 +223,13 @@ export default function SpaceWebsiteModal({
     setDataSourceUrlError(urlError);
     setDataSourceNameError(nameError);
     return !urlError && !nameError;
-  }, [dataSourceUrl, dataSourceName, webCrawlerConfiguration]);
+  }, [
+    dataSourceUrl,
+    webCrawlerConfiguration,
+    dataSourceName,
+    spaceDataSourceViews,
+    dataSourceView?.sId,
+  ]);
 
   useEffect(() => {
     if (isSubmitted) {
