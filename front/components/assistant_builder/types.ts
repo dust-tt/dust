@@ -13,7 +13,10 @@ import type {
   TimeframeUnit,
   WorkspaceType,
 } from "@dust-tt/types";
-import { DEFAULT_MAX_STEPS_USE_PER_RUN } from "@dust-tt/types";
+import {
+  DEFAULT_MAX_STEPS_USE_PER_RUN,
+  FIREWORKS_DEEPSEEK_R1_MODEL_CONFIG,
+} from "@dust-tt/types";
 import {
   assertNever,
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
@@ -351,8 +354,8 @@ export function getDefaultReasoningActionConfiguration(): AssistantBuilderAction
     configuration: {
       // TODO(REASONING TOOL):
       // Cleanup
-      providerId: "togetherai",
-      modelId: "deepseek-ai/DeepSeek-R1",
+      providerId: FIREWORKS_DEEPSEEK_R1_MODEL_CONFIG.providerId,
+      modelId: FIREWORKS_DEEPSEEK_R1_MODEL_CONFIG.modelId,
       temperature: null,
       reasoningEffort: null,
     },

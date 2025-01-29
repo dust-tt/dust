@@ -35,8 +35,7 @@ function ReasoningThinking({ action }: { action: ReasoningActionType }) {
         <ContentMessage variant="slate" size="lg">
           <Markdown
             content={thinking}
-            isStreaming={false}
-            forcedTextSize="text-sm"
+            forcedTextSize="md"
             textColor="text-muted-foreground"
             isLastMessage={false}
           />

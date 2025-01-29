@@ -34,6 +34,7 @@ const prettyfiedProviderNames: { [key in ModelProviderIdType]: string } = {
   google_ai_studio: "Google",
   togetherai: "TogetherAI",
   deepseek: "Deepseek",
+  fireworks: "Fireworks",
 };
 
 const modelProviders: Record<ModelProviderIdType, string[]> =

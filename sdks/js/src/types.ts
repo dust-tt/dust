@@ -20,6 +20,7 @@ const ModelProviderIdSchema = FlexibleEnumSchema<
   | "google_ai_studio"
   | "togetherai"
   | "deepseek"
+  | "fireworks"
 >();
 
 const ModelLLMIdSchema = FlexibleEnumSchema<
@@ -53,6 +54,7 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "deepseek-ai/DeepSeek-R1" // togetherai
   | "deepseek-chat" // deepseek api
   | "deepseek-reasoner" // deepseek api
+  | "accounts/fireworks/models/deepseek-r1" // fireworks
 >();
 
 const EmbeddingProviderIdSchema = FlexibleEnumSchema<"openai" | "mistral">();

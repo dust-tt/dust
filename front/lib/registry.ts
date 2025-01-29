@@ -275,6 +275,20 @@ export const BaseDustProdActionRegistry = {
       },
     },
   },
+  "assistant-v2-reason": {
+    app: {
+      appId: "hUJvIB2KDb",
+      appHash:
+        "7ba05a9b123dbf65751c73f86e1a477a77d77f0b4984f208d9f98c84713afb4b",
+    },
+    config: {
+      MODEL: {
+        // `provider_id` and `model_id` must be set by caller.
+        use_cache: false,
+        use_stream: true,
+      },
+    },
+  },
 };
 
 export type DustRegistryActionName = keyof typeof BaseDustProdActionRegistry;
