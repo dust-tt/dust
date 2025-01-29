@@ -20,6 +20,7 @@ import mainLogger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
+
 import { removeNulls } from "../../../../sdks/js";
 
 export interface SlackWebhookEvent<T = string> {
