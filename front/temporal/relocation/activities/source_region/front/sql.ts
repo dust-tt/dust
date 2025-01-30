@@ -2,6 +2,7 @@ import type { ModelId } from "@dust-tt/types";
 import assert from "assert";
 import { Op, QueryTypes, WhereOptions } from "sequelize";
 
+import type { RegionType } from "@app/lib/api/regions/config";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import { Workspace } from "@app/lib/models/workspace";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -11,6 +12,7 @@ import {
   UserModel,
 } from "@app/lib/resources/storage/models/user";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
+import logger from "@app/logger/logger";
 import type {
   CoreEntitiesRelocationBlob,
   ReadTableChunkParams,
@@ -19,8 +21,6 @@ import type {
 import { writeToRelocationStorage } from "@app/temporal/relocation/lib/file_storage/relocation";
 import { generateInsertStatements } from "@app/temporal/relocation/lib/sql/insert";
 import { getTopologicalOrder } from "@app/temporal/relocation/lib/sql/schema/dependencies";
-import logger from "@app/logger/logger";
-import { RegionType } from "@app/lib/api/regions/config";
 
 export async function readCoreEntitiesFromSourceRegion({
   destRegion,

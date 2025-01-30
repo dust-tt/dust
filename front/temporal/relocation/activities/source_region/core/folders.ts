@@ -1,21 +1,16 @@
-import { writeToRelocationStorage } from "@app/temporal/relocation/lib/file_storage/relocation";
-
-import {
-  CORE_API_LIST_NODES_BATCH_SIZE,
-  CoreFolderAPIRelocationBlob,
-} from "@app/temporal/relocation/activities/types";
-
-import {
-  CoreAPI,
+import type {
   CoreAPINodesSearchFilter,
   CoreAPISearchCursorRequest,
 } from "@dust-tt/types";
+import { CoreAPI } from "@dust-tt/types";
 
-import { RegionType } from "@app/lib/api/regions/config";
-import logger from "@app/logger/logger";
-
-import { DataSourceCoreIds } from "@app/temporal/relocation/activities/types";
 import config from "@app/lib/api/config";
+import type { RegionType } from "@app/lib/api/regions/config";
+import logger from "@app/logger/logger";
+import type { CoreFolderAPIRelocationBlob } from "@app/temporal/relocation/activities/types";
+import type { DataSourceCoreIds } from "@app/temporal/relocation/activities/types";
+import { CORE_API_LIST_NODES_BATCH_SIZE } from "@app/temporal/relocation/activities/types";
+import { writeToRelocationStorage } from "@app/temporal/relocation/lib/file_storage/relocation";
 
 export async function getDataSourceFolders({
   dataSourceCoreIds,

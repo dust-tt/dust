@@ -1,17 +1,14 @@
-import logger from "@app/logger/logger";
+import type { CoreAPIDataSource } from "@dust-tt/types";
+import { CoreAPI, dustManagedCredentials } from "@dust-tt/types";
 
 import config from "@app/lib/api/config";
-import {
-  CoreAPI,
-  CoreAPIDataSource,
-  dustManagedCredentials,
-} from "@dust-tt/types";
-import { RegionType } from "@app/lib/api/regions/config";
-import {
+import type { RegionType } from "@app/lib/api/regions/config";
+import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
+import logger from "@app/logger/logger";
+import type {
   CreateDataSourceProjectResult,
   DataSourceCoreIds,
 } from "@app/temporal/relocation/activities/types";
-import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 
 export async function createDataSourceProject({
   destRegion,

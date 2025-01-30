@@ -1,10 +1,11 @@
-import { RegionType } from "@app/lib/api/regions/config";
-
-import {
+import type {
   CoreAPIContentNode,
   CoreAPIDocumentBlob,
+  CoreAPITableBlob,
   ModelId,
 } from "@dust-tt/types";
+
+import type { RegionType } from "@app/lib/api/regions/config";
 
 export interface RelocationBlob<T extends string = string> {
   statements: Record<T, string[]>;
@@ -54,4 +55,9 @@ export type CoreDocumentAPIRelocationBlob = APIRelocationBlob<
 export type CoreFolderAPIRelocationBlob = APIRelocationBlob<
   "folders",
   CoreAPIContentNode
+>;
+
+export type CoreTableAPIRelocationBlob = APIRelocationBlob<
+  "tables",
+  CoreAPITableBlob
 >;

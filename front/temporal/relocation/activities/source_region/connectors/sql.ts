@@ -1,14 +1,15 @@
+import type { ModelId } from "@dust-tt/types";
+import { QueryTypes } from "sequelize";
+
 import { getConnectorsReplicaDbConnection } from "@app/lib/production_checks/utils";
 import logger from "@app/logger/logger";
-import {
+import type {
   ReadTableChunkParams,
   RelocationBlob,
 } from "@app/temporal/relocation/activities/types";
-import { getTopologicalOrder } from "@app/temporal/relocation/lib/sql/schema/dependencies";
-import { ModelId } from "@dust-tt/types";
-import { QueryTypes } from "sequelize";
 import { writeToRelocationStorage } from "@app/temporal/relocation/lib/file_storage/relocation";
 import { generateInsertStatements } from "@app/temporal/relocation/lib/sql/insert";
+import { getTopologicalOrder } from "@app/temporal/relocation/lib/sql/schema/dependencies";
 
 export async function getAllConnectorsForWorkspace({
   workspaceId,
