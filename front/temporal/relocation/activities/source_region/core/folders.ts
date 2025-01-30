@@ -33,6 +33,8 @@ export async function getDataSourceFolders({
     sourceRegion,
   });
 
+  localLogger.info("[Core] Retrieving data source folders");
+
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), localLogger);
 
   const filter: CoreAPINodesSearchFilter = {
