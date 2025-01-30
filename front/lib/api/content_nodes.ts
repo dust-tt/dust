@@ -84,7 +84,11 @@ export function computeNodesDiff({
     if (coreNodes.length === 0) {
       // Connector's notion unknown folder can map to core's syncing OR unknown folder.
       // See https://github.com/dust-tt/dust/issues/10340
-      if (connectorsNode.internalId !== "notion-unknown") {
+      // Ignore slack channels missing in core - see https://github.com/dust-tt/dust/issues/10338
+      if (
+        connectorsNode.internalId !== "notion-unknown" ||
+        connectorsNode.internalId.startsWith("slack-channel-")
+      ) {
         missingInternalIds.push(connectorsNode.internalId);
       }
     } else if (coreNodes.length > 1) {
@@ -284,6 +288,13 @@ export function computeNodesDiff({
       (coreNode) =>
         provider !== "zendesk" ||
         !coreNode.internalId.startsWith("zendesk-article")
+    )
+    // Slack channels can be removed from the connector's database while not being deleted from core.
+    // https://github.com/dust-tt/dust/issues/10374
+    .filter(
+      (coreNode) =>
+        provider !== "slack" ||
+        !coreNode.internalId.startsWith("slack-channel-")
     )
     .map((coreNode) => coreNode.internalId);
   if (extraCoreInternalIds.length > 0) {
