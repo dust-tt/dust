@@ -1,13 +1,12 @@
 import { cva } from "class-variance-authority";
 import React, { ComponentType, ReactNode } from "react";
 
-import { AnimatedText } from "@sparkle/components/";
+import { XMarkIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 
 import { Icon, IconProps } from "./Icon";
 
 export const CHIP_SIZES = ["xs", "sm"] as const;
-
 type ChipSizeType = (typeof CHIP_SIZES)[number];
 
 export const CHIP_COLORS = [
@@ -20,22 +19,11 @@ export const CHIP_COLORS = [
   "pink",
   "red",
 ] as const;
-
 type ChipColorType = (typeof CHIP_COLORS)[number];
 
-type ChipProps = {
-  size?: ChipSizeType;
-  color?: ChipColorType;
-  label?: string;
-  children?: ReactNode;
-  className?: string;
-  isBusy?: boolean;
-  icon?: ComponentType;
-};
-
 const sizeVariants: Record<ChipSizeType, string> = {
-  xs: "s-rounded-lg s-min-h-7 s-text-xs s-font-medium s-px-3 s-gap-2",
-  sm: "s-rounded-xl s-min-h-9 s-text-sm s-font-medium s-px-3 s-gap-2.5",
+  xs: "s-rounded-lg s-min-h-7 s-text-xs s-font-medium s-px-2 [&>:not(:first-child)]:s-ml-1",
+  sm: "s-rounded-xl s-min-h-9 s-text-sm s-font-medium s-px-3 [&>:not(:first-child)]:s-ml-2.5",
 };
 
 const backgroundVariants: Record<ChipColorType, string> = {
@@ -65,22 +53,35 @@ const chipVariants = cva("s-inline-flex s-box-border s-items-center", {
     size: sizeVariants,
     text: textVariants,
     background: backgroundVariants,
-    isBusy: {
-      true: "s-animate-breathing-scale s-cursor-default",
-      false: "",
-    },
   },
   defaultVariants: {
     size: "xs",
     text: "slate",
     background: "slate",
-    isBusy: false,
   },
 });
 
+interface ChipProps {
+  size?: ChipSizeType;
+  color?: ChipColorType;
+  label?: string;
+  children?: ReactNode;
+  className?: string;
+  icon?: ComponentType;
+  endIcon?: boolean | ComponentType;
+}
+
 const Chip = React.forwardRef<HTMLDivElement, ChipProps>(
   (
-    { size, color, label, children, className, isBusy, icon }: ChipProps,
+    {
+      size = "xs",
+      color = "slate",
+      label,
+      children,
+      className,
+      icon,
+      endIcon,
+    }: ChipProps,
     ref
   ) => (
     <div
@@ -94,13 +95,15 @@ const Chip = React.forwardRef<HTMLDivElement, ChipProps>(
       {children}
       {icon && <Icon visual={icon} size={size as IconProps["size"]} />}
       {label && (
-        <span className={cn("s-pointer s-grow s-cursor-default s-truncate")}>
-          {isBusy ? (
-            <AnimatedText variant={color}>{label}</AnimatedText>
-          ) : (
-            label
-          )}
+        <span className="s-pointer s-grow s-cursor-default s-truncate">
+          {label}
         </span>
+      )}
+      {endIcon && (
+        <Icon
+          visual={typeof endIcon === "boolean" ? XMarkIcon : endIcon}
+          size={size as IconProps["size"]}
+        />
       )}
     </div>
   )
