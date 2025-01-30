@@ -250,6 +250,7 @@ export class ReasoningConfigurationServerRunner extends BaseActionConfigurationS
     if (actionConfig.reasoningEffort) {
       config.MODEL.reasoning_effort = actionConfig.reasoningEffort;
     }
+    config.MODEL.max_tokens = REASONING_GENERATION_TOKENS;
 
     const inputs = [
       {
