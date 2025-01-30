@@ -1,5 +1,5 @@
 import type { WithConnectorsAPIErrorReponse } from "@dust-tt/types";
-import { MIME_TYPES } from "@dust-tt/types/src";
+import { MIME_TYPES } from "@dust-tt/types";
 import { JSON } from "@jsonjoy.com/util/lib/json-brand";
 import type { Request, Response } from "express";
 
@@ -368,13 +368,13 @@ const _webhookSlackAPIHandler = async (
                       c.connectorId
                     );
                     if (!connector) {
-                      return apiError(req, res, {
-                        api_error: {
-                          type: "connector_not_found",
-                          message: `Connector ${c.connectorId} not found`,
-                        },
-                        status_code: 404,
+                      logger.error({
+                        connector,
+                        slackChannelId: channel,
+                        slackTeamId: c.slackTeamId,
+                        message: `Connector ${c.connectorId} not found`,
                       });
+                      return;
                     }
 
                     await upsertDataSourceFolder({
