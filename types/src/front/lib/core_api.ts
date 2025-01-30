@@ -1470,6 +1470,30 @@ export class CoreAPI {
     return this._resultFromResponse(response);
   }
 
+  async getDataSourceTableBlob({
+    projectId,
+    dataSourceId,
+    tableId,
+  }: {
+    projectId: string;
+    dataSourceId: string;
+    tableId: string;
+  }): Promise<CoreAPIResponse<CoreAPIDocumentBlob>> {
+    const response = await this._fetchWithError(
+      `${this._url}/projects/${projectId}/data_sources/${encodeURIComponent(
+        dataSourceId
+      )}/tables/${encodeURIComponent(tableId)}/blob`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    return this._resultFromResponse(response);
+  }
+
   async deleteTableRow({
     projectId,
     dataSourceId,

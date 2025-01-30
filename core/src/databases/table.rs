@@ -48,6 +48,30 @@ pub fn get_table_type_for_tables(tables: Vec<&Table>) -> Result<TableType> {
     }
 }
 
+#[derive(serde::Serialize)]
+pub struct TableBlobPayload {
+    pub table_id: String,
+    pub name: String,
+    pub description: String,
+    pub timestamp: Option<u64>,
+    pub tags: Vec<String>,
+    pub parent_id: Option<String>,
+    pub parents: Vec<String>,
+    pub source_url: Option<String>,
+
+    // Remote DB specifics
+    pub remote_database_table_id: Option<String>,
+    pub remote_database_secret_id: Option<String>,
+
+    // Node meta:
+    pub title: String,
+    pub mime_type: String,
+    pub provider_visibility: Option<ProviderVisibility>,
+
+    // Rows
+    pub rows: Vec<Row>,
+}
+
 #[derive(Debug, Serialize, Clone, Deserialize)]
 pub struct Table {
     project: Project,
@@ -248,6 +272,41 @@ impl Table {
 
         search_store.index_node(Node::from(self.clone())).await?;
         Ok(())
+    }
+
+    pub async fn retrieve_api_blob(
+        &self,
+        databases_store: Box<dyn DatabasesStore + Sync + Send>,
+    ) -> Result<TableBlobPayload> {
+        let rows = match self.table_type()? {
+            TableType::Local => {
+                let local_table = LocalTable::from_table(self.clone())?;
+                let (rows, _) = local_table.list_rows(databases_store, None).await?;
+                rows
+            }
+            TableType::Remote(_) => {
+                // For remote tables, we don't have direct access to rows
+                // Return empty vec since rows will be fetched through DB connection
+                vec![]
+            }
+        };
+
+        Ok(TableBlobPayload {
+            table_id: self.table_id().to_string(),
+            name: self.name().to_string(),
+            description: self.description().to_string(),
+            timestamp: Some(self.timestamp()),
+            tags: self.get_tags().clone(),
+            parent_id: self.parent_id().clone(),
+            parents: self.parents().clone(),
+            source_url: self.source_url().clone(),
+            remote_database_table_id: self.remote_database_table_id().map(|s| s.to_string()),
+            remote_database_secret_id: self.remote_database_secret_id().map(|s| s.to_string()),
+            title: self.title().to_string(),
+            mime_type: self.mime_type().to_string(),
+            provider_visibility: self.provider_visibility().clone(),
+            rows,
+        })
     }
 }
 
