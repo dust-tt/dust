@@ -3,6 +3,7 @@ import type {
   DataSourceSearchResponseType,
 } from "@dust-tt/client";
 import type {
+  AdminCommandType,
   ConnectorProvider,
   ConnectorType,
   ConversationWithoutContentType,
@@ -22,6 +23,7 @@ import type {
 } from "@dust-tt/types";
 import {
   assertNever,
+  concurrentExecutor,
   ConnectorsAPI,
   CoreAPI,
   DEFAULT_EMBEDDING_PROVIDER_ID,
@@ -1071,4 +1073,74 @@ export async function getOrCreateConversationDataSourceFromFile(
   }
 
   return getOrCreateConversationDataSource(auth, cRes.value);
+}
+
+async function getAllManagedDataSources(auth: Authenticator) {
+  const dataSources = await DataSourceResource.listByWorkspace(auth);
+
+  return dataSources.filter((ds) => ds.connectorId !== null);
+}
+
+export async function pauseAllManagedDataSources(
+  auth: Authenticator,
+  { markAsError }: { markAsError: boolean }
+) {
+  const dataSources = await getAllManagedDataSources(auth);
+
+  const connectorsAPI = new ConnectorsAPI(
+    config.getConnectorsAPIConfig(),
+    logger
+  );
+
+  const res = await concurrentExecutor(
+    dataSources,
+    async (ds) => {
+      assert(ds.connectorId, "Connector ID is required");
+
+      const { connectorId } = ds;
+
+      if (markAsError) {
+        const setErrorCommand: AdminCommandType = {
+          majorCommand: "connectors",
+          command: "set-error",
+          args: {
+            connectorId,
+            error: "oauth_token_revoked",
+            wId: auth.getNonNullableWorkspace().sId,
+            dsId: ds.sId,
+          },
+        };
+
+        const setErrorRes = await connectorsAPI.admin(setErrorCommand);
+        if (setErrorRes.isErr()) {
+          return new Err(new Error(setErrorRes.error.message));
+        }
+      }
+
+      const pauseRes = await connectorsAPI.pauseConnector(ds.connectorId);
+      if (pauseRes.isErr()) {
+        return new Err(new Error(pauseRes.error.message));
+      }
+
+      logger.info(
+        {
+          connectorId: ds.connectorId,
+          connectorProvider: ds.connectorProvider,
+          dataSourceName: ds.name,
+          workspaceId: auth.getNonNullableWorkspace().sId,
+        },
+        "Paused connector"
+      );
+
+      return new Ok(pauseRes.value);
+    },
+    { concurrency: 5 }
+  );
+
+  const failed = res.filter((r) => r.isErr());
+  if (failed.length > 0) {
+    return new Err(new Error(`Failed to pause ${failed.length} connectors.`));
+  }
+
+  return new Ok(res);
 }

@@ -427,7 +427,7 @@ export async function disableSSOEnforcement(
   return new Ok(undefined);
 }
 
-export async function updateMetadata(
+export async function updateWorkspaceMetadata(
   owner: LightWorkspaceType,
   metadata: Record<string, boolean | string | number | object>
 ): Promise<Result<void, Error>> {
@@ -447,6 +447,12 @@ export async function updateMetadata(
   }
 
   return new Ok(undefined);
+}
+
+export async function setWorkspaceRelocating(
+  owner: LightWorkspaceType
+): Promise<Result<void, Error>> {
+  return updateWorkspaceMetadata(owner, { maintenance: "relocation" });
 }
 
 export async function updateExtensionConfiguration(
