@@ -121,3 +121,7 @@ export async function getDataSourceDocuments({
     nextPageCursor,
   };
 }
+
+export async function getRegionDustFacingUrl() {
+  return config.getClientFacingUrl();
+}

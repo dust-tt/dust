@@ -562,11 +562,15 @@ export async function workspaceRelocateDataSourceDocumentsWorkflow({
         workspaceId,
       });
 
+    const sourceRegionDustFacingUrl =
+      await sourceRegionActivities.getRegionDustFacingUrl();
+
     await destinationRegionActivities.processDataSourceDocuments({
       destIds,
       dataPath,
       destRegion,
       sourceRegion,
+      sourceRegionDustFacingUrl,
       workspaceId,
     });
 
