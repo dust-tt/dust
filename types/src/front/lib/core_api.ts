@@ -945,7 +945,7 @@ export class CoreAPI {
     projectId: string;
     dataSourceId: string;
     documentId: string;
-  }): Promise<CoreAPIResponse<{ blob: CoreAPIDocumentBlob }>> {
+  }): Promise<CoreAPIResponse<CoreAPIDocumentBlob>> {
     const response = await this._fetchWithError(
       `${this._url}/projects/${projectId}/data_sources/${encodeURIComponent(
         dataSourceId
