@@ -1,4 +1,5 @@
 // Copied from migrations/20241218_backfill_notion_unkown.ts with != mimetype
+import { MIME_TYPES } from "@dust-tt/types";
 import { makeScript } from "scripts/helpers";
 
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
@@ -20,7 +21,7 @@ makeScript({}, async ({ execute }, logger) => {
           parents: [folderId],
           parentId: null,
           title: "Orphaned Resources",
-          mimeType: "application/vnd.dust.notion.unknown-folder",
+          mimeType: MIME_TYPES.NOTION.UNKNOWN_FOLDER,
         });
         logger.info(
           `Upserted folder ${folderId} for connector ${connector.id}`
