@@ -375,20 +375,11 @@ const _webhookSlackAPIHandler = async (
                 );
                 return res.status(200).send();
               } catch (e) {
-                if (e instanceof Error) {
-                  return apiError(req, res, {
-                    status_code: 500,
-                    api_error: {
-                      type: "internal_server_error",
-                      message: e.message,
-                    },
-                  });
-                }
                 return apiError(req, res, {
                   status_code: 500,
                   api_error: {
                     type: "internal_server_error",
-                    message: JSON.stringify(e),
+                    message: e instanceof Error ? e.message : JSON.stringify(e),
                   },
                 });
               }
