@@ -2,25 +2,8 @@ import { Button, Hover3D, RocketIcon } from "@dust-tt/sparkle";
 import Link from "next/link";
 import React from "react";
 
-import { ValuePropSection } from "@app/components/home/content/Product/ValuePropSection";
-// import { MetricSection } from "@app/components/home/ContentBlocks";
 import { H1, P } from "@app/components/home/ContentComponents";
 import TrustedBy from "@app/components/home/TrustedBy";
-
-// const METRICS = {
-//   metrics: [
-//     {
-//       value: "90%",
-//       description: <>Weekly active users at Alan</>,
-//     },
-//     {
-//       value: "50,000",
-//       description: <>Annual hours saved at Qonto</>,
-//     },
-//   ],
-//   from: "from-amber-200",
-//   to: "to-amber-500",
-// };
 
 const VideoPlayer = () => {
   return (
@@ -38,7 +21,7 @@ const VideoPlayer = () => {
   );
 };
 
-export function IntroSection() {
+export function ProductIntroSection() {
   const MainVisual = () => (
     <Hover3D depth={-40} perspective={1000} className="relative w-full">
       <VideoPlayer />
@@ -50,15 +33,12 @@ export function IntroSection() {
       <div className="flex flex-col gap-16">
         <div className="flex flex-col items-center gap-16 md:flex-row">
           <div className="flex flex-col gap-8">
-            <H1 className="text-red-400">
-              Accelerate your entire organization with custom AI agents
-            </H1>
+            <H1 className="text-red-400">The OS of your AI Enterprise</H1>
             <div className="w-full md:hidden">
               <MainVisual />
             </div>
             <P size="lg" className="text-slate-50">
-              Secure, connected to your data, accessible anywhere &amp;
-              customizable to your needs.
+              Craft AI assistants that are super great.
             </P>
             <div className="flex justify-center gap-4 sm:justify-start">
               <Link href="/home/pricing" shallow={true}>
@@ -79,8 +59,6 @@ export function IntroSection() {
           </div>
         </div>
         <TrustedBy />
-        <ValuePropSection />
-        {/* <MetricSection {...METRICS}></MetricSection> */}
       </div>
     </div>
   );

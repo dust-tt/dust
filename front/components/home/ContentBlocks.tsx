@@ -188,24 +188,28 @@ interface MetricComponentProps {
   metrics: {
     value: string;
     description: ReactNode;
+    logo?: string;
   }[];
   from: string;
   to: string;
 }
 
 export const MetricSection = ({ metrics, from, to }: MetricComponentProps) => (
-  <div className="grid w-full grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-2">
+  <div className="grid w-full grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
     {metrics.map((metric, index) => (
-      <div
-        key={index}
-        className="flex flex-col items-center gap-4 py-4 text-center"
-      >
-        <H1 from={from} to={to}>
+      <div key={index} className="flex flex-col items-center text-center">
+        {metric.logo && (
+          <Image alt="alan" src={metric.logo} width={200} height={100} />
+        )}
+        <H1 from={from} to={to} className="mt-0">
           {metric.value}
         </H1>
-        <P size="lg" className="max-w-[400px] text-white">
-          {metric.description}
-        </P>
+
+        <div className="flex flex-col items-center">
+          <P size="lg" className="max-w-[400px] text-white">
+            {metric.description}
+          </P>
+        </div>
       </div>
     ))}
   </div>
@@ -269,17 +273,17 @@ export const CarousselContentBlock = ({
 }: CarousselContentBlockProps) => (
   <div
     className={classNames(
-      "flex h-full flex-col gap-6 rounded-3xl border bg-gradient-to-br py-8",
+      "flex flex-col gap-6 rounded-3xl border bg-gradient-to-br py-8 md:h-full",
       from,
       to,
       border
     )}
   >
-    <div className="flex flex-1 flex-col gap-6 px-8">
+    <div className="flex flex-col gap-4 px-8 md:flex-1">
       <H3 className="text-slate-800">{"Dust for " + title}</H3>
       <div className="flex flex-col gap-2">
-        <H2 className="max-w-[600px] text-white">{subtitle}</H2>
-        <P size="md" className="max-w-[720px] text-slate-700">
+        <H2 className="w-full text-white">{subtitle}</H2>
+        <P size="md" className="w-full text-slate-700">
           {description}
         </P>
       </div>
@@ -305,12 +309,12 @@ export const CarousselContentBlock = ({
     <Carousel className="w-full" isLooping={true}>
       <CarouselContent>
         {assistants.map((block, index) => (
-          <CarouselItem key={index} className="basis-1/2 px-8 md:basis-1/3">
+          <CarouselItem key={index} className="basis-1/2 px-6 md:basis-1/4">
             <SolutionSectionAssistantBlock {...block} />
           </CarouselItem>
         ))}
       </CarouselContent>
-      <div className="flex w-full flex-row items-center justify-end gap-3 px-8">
+      <div className="flex w-full flex-row items-center justify-end gap-3 px-8 md:hidden">
         <CarouselPrevious />
         <CarouselNext />
       </div>

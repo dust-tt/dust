@@ -3,15 +3,11 @@ import Link from "next/link";
 import type { ReactElement } from "react";
 import React from "react";
 
-import { BlogSection } from "@app/components/home/content/Product/BlogSection";
-// import { CapabilitySection } from "@app/components/home/content/Product/CapabilitySection";
-// import { DifferentiationSection } from "@app/components/home/content/Product/DifferentiationSection";
-import { FutureSection } from "@app/components/home/content/Product/FutureSection";
-import { IntroSection } from "@app/components/home/content/Product/IntroSection";
-import { MetricsSection } from "@app/components/home/content/Product/MetricsSection";
-import { VerticalSection } from "@app/components/home/content/Product/VerticalSection";
-// import { SecuritySection } from "@app/components/home/content/Product/SecuritySection";
-// import { UbiquitySection } from "@app/components/home/content/Product/UbiquitySection";
+import { CapabilitySection } from "@app/components/home/content/Product/CapabilitySection";
+import { ExtensibilitySection } from "@app/components/home/content/Product/ExtensibilitySection";
+import { ProductIntroSection } from "@app/components/home/content/Product/ProductIntroSection";
+import { SecuritySection } from "@app/components/home/content/Product/SecuritySection";
+import { UbiquitySection } from "@app/components/home/content/Product/UbiquitySection";
 import type { DemoVideoProps } from "@app/components/home/content/Solutions/DemoVideoSection";
 import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
 import { QuoteSection } from "@app/components/home/ContentBlocks";
@@ -23,7 +19,6 @@ export async function getServerSideProps() {
   return {
     props: {
       shape: 0,
-      gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
     },
   };
 }
@@ -31,32 +26,28 @@ export async function getServerSideProps() {
 export const DemoVideo: DemoVideoProps = {
   sectionTitle: "Dust in motion",
   videoUrl:
-    "https://fast.wistia.net/embed/iframe/v90n8beuh9?seo=true&videoFoam=true",
+    "https://fast.wistia.net/embed/iframe/r0dwaexoez?seo=true&videoFoam=true",
 };
 
 export function Landing() {
   return (
     <>
-      <IntroSection />
-      <VerticalSection />
-      <MetricsSection />
-      <QuoteSection
-        quote="Dust is the most impactful software we've adopted since building Clay. It delivers immediate value while continuously getting smarter and more valuable over time"
-        name="Everett Berry"
-        title="Head of GTM Engineering at Clay"
-        logo="/static/landing/logos/clay.png"
-      />
-      <FutureSection />
-      {/* <DifferentiationSection /> */}
-      {/* <CapabilitySection /> */}
+      <ProductIntroSection />
+      <CapabilitySection />
       <DemoVideoSection
         demoVideo={DemoVideo}
         fromColor="from-sky-200"
         toColor="to-sky-500"
-        fullWidth={true}
       />
-
-      <BlogSection />
+      <UbiquitySection />
+      <ExtensibilitySection />
+      <SecuritySection />
+      <QuoteSection
+        quote="Dust is so easy to use!"
+        name="Aymeric Augustin"
+        title="CTO at Qonto"
+        logo="/static/landing/logos/qonto.png"
+      />
       <div
         className={classNames(
           "col-span-12 flex flex-col items-center",
@@ -79,6 +70,7 @@ export function Landing() {
           </Link>
         </div>
       </div>
+      {/* <VerticalSection /> */}
     </>
   );
 }

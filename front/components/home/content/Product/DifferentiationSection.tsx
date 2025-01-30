@@ -2,10 +2,10 @@ import { Div3D, Hover3D } from "@dust-tt/sparkle";
 import React from "react";
 
 import { ImgBlock } from "@app/components/home/ContentBlocks";
-import { Grid, H2, P, Strong } from "@app/components/home/ContentComponents";
+import { Grid, H2, P } from "@app/components/home/ContentComponents";
 import { classNames } from "@app/lib/utils";
 
-export function FutureSection() {
+export function DifferentiationSection() {
   return (
     <>
       <Grid>
@@ -15,9 +15,8 @@ export function FutureSection() {
               Your own AI assistants, powered by the best models
             </H2>
             <P size="lg">
-              Integrates with your internal&nbsp;data.
-              <br />
-              Uses the latest models across all major AI providers.
+              Dust connects your entire enterprise knowledge in one secure,
+              SOC2-certified platform.
             </P>
           </div>
         </div>
@@ -25,15 +24,15 @@ export function FutureSection() {
           className={classNames(
             "col-span-12 pt-8",
             "grid grid-cols-1 gap-x-8 gap-y-20",
-            "md:grid-cols-3 md:gap-y-16"
+            "sm:grid-cols-3 md:gap-y-16"
           )}
         >
           <ImgBlock
-            title={<>Your company data continuously in&nbsp;sync</>}
+            title={<>Access Dust where you need it</>}
             content={
               <>
-                Notion, Slack, GitHub (…) and your&nbsp;own custom integrations
-                with the&nbsp;Dust&nbsp;API.
+                “Access Dust wherever you work in your key tools (Slack,
+                Zendesk) our directly in Chrome with your page context.”
               </>
             }
           >
@@ -43,26 +42,25 @@ export function FutureSection() {
               className={classNames("relative")}
             >
               <Div3D depth={-20}>
-                <img src="/static/landing/connect/connect1.png" />
+                <img src="/static/landing/solutions/support1.png" />
               </Div3D>
-              <Div3D depth={0} className="absolute top-0">
-                <img src="/static/landing/connect/connect2.png" />
+              <Div3D depth={20} className="absolute top-0">
+                <img src="/static/landing/solutions/support1.png" />
               </Div3D>
-              <Div3D depth={15} className="absolute top-0">
-                <img src="/static/landing/connect/connect3.png" />
+              <Div3D depth={40} className="absolute top-0">
+                <img src="/static/landing/solutions/support1.png" />
               </Div3D>
-              <Div3D depth={60} className="absolute top-0">
-                <img src="/static/landing/connect/connect4.png" />
+              <Div3D depth={70} className="absolute top-0">
+                <img src="/static/landing/solutions/support1.png" />
               </Div3D>
             </Hover3D>
           </ImgBlock>
           <ImgBlock
-            title={<>Switch to the&nbsp;new best model in&nbsp;seconds</>}
+            title={<>Add to existing workflows</>}
             content={
               <>
-                Proprietary and&nbsp;open-source models suited
-                to&nbsp;your&nbsp;needs:{" "}
-                <Strong>OpenAI,&nbsp;Anthropic, Mistral,&nbsp;Llama…</Strong>
+                Trigger AI actions via Zapier, Make or Slack workflows to
+                automate tasks end-to-end.
               </>
             }
           >
@@ -86,11 +84,11 @@ export function FutureSection() {
             </Hover3D>
           </ImgBlock>
           <ImgBlock
-            title={<>Access your AI agents wherever you work</>}
+            title={<>Code to boost capabilities</>}
             content={
               <>
-                Through our Chrome extension, native integrations, or custom
-                workflow automations.
+                Leverage our developer platform to build agentic
+                functionalities, custom data ingestions and deeper integrations.
               </>
             }
           >
@@ -100,13 +98,16 @@ export function FutureSection() {
               className={classNames("relative")}
             >
               <Div3D depth={-20}>
-                <img src="/static/landing/extension/extension1.png" />
+                <img src="/static/landing/apps/apps1.png" />
               </Div3D>
               <Div3D depth={0} className="absolute top-0">
-                <img src="/static/landing/extension/extension2.png" />
+                <img src="/static/landing/apps/apps2.png" />
               </Div3D>
-              <Div3D depth={40} className="absolute top-0">
-                <img src="/static/landing/extension/extension3.png" />
+              <Div3D depth={15} className="absolute top-0">
+                <img src="/static/landing/apps/apps3.png" />
+              </Div3D>
+              <Div3D depth={60} className="absolute top-0">
+                <img src="/static/landing/apps/apps4.png" />
               </Div3D>
             </Hover3D>
           </ImgBlock>

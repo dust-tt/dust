@@ -2,22 +2,21 @@ import { Div3D, Hover3D } from "@dust-tt/sparkle";
 import React from "react";
 
 import { ImgBlock } from "@app/components/home/ContentBlocks";
-import { Grid, H2, P, Strong } from "@app/components/home/ContentComponents";
+import { Grid, H2, P } from "@app/components/home/ContentComponents";
 import { classNames } from "@app/lib/utils";
 
-export function FutureSection() {
+export function UbiquitySection() {
   return (
     <>
       <Grid>
         <div className="col-span-12 mb-6">
           <div>
             <H2 from="from-sky-200" to="to-blue-400">
-              Your own AI assistants, powered by the best models
+              Have AI wherever you work
             </H2>
             <P size="lg">
-              Integrates with your internal&nbsp;data.
-              <br />
-              Uses the latest models across all major AI providers.
+              Leverage the power of AI and your knoweldge right where you need
+              it. No back and forth across tools.
             </P>
           </div>
         </div>
@@ -25,15 +24,15 @@ export function FutureSection() {
           className={classNames(
             "col-span-12 pt-8",
             "grid grid-cols-1 gap-x-8 gap-y-20",
-            "md:grid-cols-3 md:gap-y-16"
+            "sm:grid-cols-3 md:gap-y-16"
           )}
         >
           <ImgBlock
-            title={<>Your company data continuously in&nbsp;sync</>}
+            title={<>Use in your browser</>}
             content={
               <>
-                Notion, Slack, GitHub (…) and your&nbsp;own custom integrations
-                with the&nbsp;Dust&nbsp;API.
+                “Access Dust wherever you work via our Chrome extension—no
+                app-switching required.”.
               </>
             }
           >
@@ -57,12 +56,39 @@ export function FutureSection() {
             </Hover3D>
           </ImgBlock>
           <ImgBlock
-            title={<>Switch to the&nbsp;new best model in&nbsp;seconds</>}
+            title={<>Access from your tools</>}
             content={
               <>
-                Proprietary and&nbsp;open-source models suited
-                to&nbsp;your&nbsp;needs:{" "}
-                <Strong>OpenAI,&nbsp;Anthropic, Mistral,&nbsp;Llama…</Strong>
+                Bring Dust’s to Slack&nbsp;, Zendesk and others to&nbsp;bring
+                Dust where you&nbsp;need&nbsp;it.
+              </>
+            }
+          >
+            <Hover3D
+              depth={-20}
+              perspective={1000}
+              className={classNames("relative")}
+            >
+              <Div3D depth={-20}>
+                <img src="/static/landing/slack/slack1.png" />
+              </Div3D>
+              <Div3D depth={20} className="absolute top-0">
+                <img src="/static/landing/slack/slack2.png" />
+              </Div3D>
+              <Div3D depth={40} className="absolute top-0">
+                <img src="/static/landing/slack/slack3.png" />
+              </Div3D>
+              <Div3D depth={70} className="absolute top-0">
+                <img src="/static/landing/slack/slack4.png" />
+              </Div3D>
+            </Hover3D>
+          </ImgBlock>
+          <ImgBlock
+            title={<>Add to workflows</>}
+            content={
+              <>
+                Trigger AI actions via Zapier, Make or Slack workflows to
+                automate tasks end-to-end.
               </>
             }
           >
@@ -85,12 +111,17 @@ export function FutureSection() {
               </Div3D>
             </Hover3D>
           </ImgBlock>
-          <ImgBlock
-            title={<>Access your AI agents wherever you work</>}
+          {/* <ImgBlock
+            title={<>A modular, extensible&nbsp;platform.</>}
             content={
               <>
-                Through our Chrome extension, native integrations, or custom
-                workflow automations.
+                Developer friendly&nbsp;platform designed to&nbsp;build custom
+                actions and&nbsp;application orchestration to&nbsp;fit your
+                team’s&nbsp;exact&nbsp;needs.{" "}
+                <Link href="/home/solutions/dust-platform" shallow={true}>
+                  <A variant="primary">More about Dust's&nbsp;Developer Platform</A>
+                </Link>
+                .
               </>
             }
           >
@@ -100,16 +131,19 @@ export function FutureSection() {
               className={classNames("relative")}
             >
               <Div3D depth={-20}>
-                <img src="/static/landing/extension/extension1.png" />
+                <img src="/static/landing/apps/apps1.png" />
               </Div3D>
               <Div3D depth={0} className="absolute top-0">
-                <img src="/static/landing/extension/extension2.png" />
+                <img src="/static/landing/apps/apps2.png" />
               </Div3D>
-              <Div3D depth={40} className="absolute top-0">
-                <img src="/static/landing/extension/extension3.png" />
+              <Div3D depth={15} className="absolute top-0">
+                <img src="/static/landing/apps/apps3.png" />
+              </Div3D>
+              <Div3D depth={60} className="absolute top-0">
+                <img src="/static/landing/apps/apps4.png" />
               </Div3D>
             </Hover3D>
-          </ImgBlock>
+          </ImgBlock> */}
         </div>
       </Grid>
     </>
