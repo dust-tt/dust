@@ -56,8 +56,8 @@ export default function TrustedBy() {
             height={80}
           />
           <Image
-            alt="hivebrite"
-            src="/static/landing/logos/hivebrite.png"
+            alt="doctolib"
+            src="/static/landing/logos/doctolib.png"
             width={200}
             height={80}
           />
