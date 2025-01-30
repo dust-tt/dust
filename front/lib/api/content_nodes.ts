@@ -82,7 +82,11 @@ export function computeNodesDiff({
       (coreNode) => coreNode.internalId === connectorsNode.internalId
     );
     if (coreNodes.length === 0) {
-      missingInternalIds.push(connectorsNode.internalId);
+      // Connector's notion unknown folder can map to core's syncing OR unknown folder.
+      // See https://github.com/dust-tt/dust/issues/10340
+      if (connectorsNode.internalId !== "notion-unknown") {
+        missingInternalIds.push(connectorsNode.internalId);
+      }
     } else if (coreNodes.length > 1) {
       // this one should never ever happen, it's a real red flag
       localLogger.info(
@@ -255,7 +259,11 @@ export function computeNodesDiff({
       (coreNode) =>
         !connectorsContentNodes.some(
           (n) => n.internalId === coreNode.internalId
-        )
+          // Special case
+          // Notion syncing folder is not in connectors but it's in core.
+          // Connector's notion unknown folder can map to core's syncing OR unknown folder.
+          // See https://github.com/dust-tt/dust/issues/10340
+        ) && coreNode.internalId !== "notion-syncing"
     )
     .map((coreNode) => coreNode.internalId);
   if (extraCoreInternalIds.length > 0) {
