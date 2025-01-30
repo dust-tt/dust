@@ -10,8 +10,8 @@ import {
   updateDataSourceTableParents,
 } from "@connectors/lib/data_sources";
 import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
+import type Logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import Logger from "@connectors/logger/logger";
 
 async function findAllDescendants(
   nodes: (NotionPage | NotionDatabase)[],
