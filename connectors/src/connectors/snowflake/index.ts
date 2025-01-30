@@ -427,11 +427,41 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
   }
 
   async pause(): Promise<Result<undefined, Error>> {
-    throw new Error("Method pause not implemented.");
+    const connector = await ConnectorResource.fetchById(this.connectorId);
+    if (!connector) {
+      logger.error(
+        { connectorId: this.connectorId },
+        "Snowflake connector not found."
+      );
+      return new Err(new Error("Connector not found"));
+    }
+
+    await connector.markAsPaused();
+    const stopRes = await this.stop();
+    if (stopRes.isErr()) {
+      return stopRes;
+    }
+
+    return new Ok(undefined);
   }
 
   async unpause(): Promise<Result<undefined, Error>> {
-    throw new Error("Method unpause not implemented.");
+    const connector = await ConnectorResource.fetchById(this.connectorId);
+    if (!connector) {
+      logger.error(
+        { connectorId: this.connectorId },
+        "Snowflake connector not found."
+      );
+      return new Err(new Error("Connector not found"));
+    }
+
+    await connector.markAsUnpaused();
+    const r = await launchSnowflakeSyncWorkflow(this.connectorId);
+    if (r.isErr()) {
+      return r;
+    }
+
+    return new Ok(undefined);
   }
 
   async setConfigurationKey(): Promise<Result<void, Error>> {
