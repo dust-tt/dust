@@ -2,12 +2,13 @@ use std::collections::HashMap;
 
 use anyhow::Result;
 use async_trait::async_trait;
+use base64::{engine::general_purpose::URL_SAFE, Engine};
 use elasticsearch::{
     auth::Credentials,
     http::transport::{SingleNodeConnectionPool, TransportBuilder},
     DeleteByQueryParts, DeleteParts, Elasticsearch, IndexParts, SearchParts,
 };
-use elasticsearch_dsl::{Aggregation, Query, Search};
+use elasticsearch_dsl::{Aggregation, BoolQuery, Query, Search};
 use serde_json::json;
 use tracing::{error, info};
 use url::Url;
@@ -19,14 +20,14 @@ use crate::{
 
 const MAX_PAGE_SIZE: u64 = 1000;
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, Debug)]
 #[serde(rename_all = "lowercase")]
 pub enum SortDirection {
     Asc,
     Desc,
 }
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, Debug)]
 pub struct SortSpec {
     pub field: String,
     pub direction: SortDirection,
@@ -57,6 +58,36 @@ pub struct NodesSearchFilter {
     node_types: Option<Vec<NodeType>>,
 }
 
+#[derive(serde::Deserialize)]
+pub struct NodesSearchCursorRequest {
+    cursor: Option<String>,
+    limit: Option<u64>,
+    // sort example:
+    // [{"field": "title.keyword", "direction": "desc"}, {"field": "updated_at", "direction": "asc"}]
+    // It will sort by title desc, then by updated_at asc, as per
+    // elasticsearch's sort syntax (although it's a small subset of it)
+    sort: Option<Vec<SortSpec>>,
+}
+
+impl Default for NodesSearchCursorRequest {
+    fn default() -> Self {
+        NodesSearchCursorRequest {
+            cursor: None,
+            limit: Some(MAX_PAGE_SIZE),
+            sort: Some(vec![SortSpec {
+                field: "title.keyword".to_string(),
+                direction: SortDirection::Asc,
+            }]),
+        }
+    }
+}
+
+#[derive(serde::Serialize)]
+pub struct NodesSearchCursorResponse {
+    nodes: Vec<CoreContentNode>,
+    next_page_cursor: Option<String>,
+}
+
 #[async_trait]
 pub trait SearchStore {
     async fn search_nodes(
@@ -65,6 +96,13 @@ pub trait SearchStore {
         filter: NodesSearchFilter,
         options: Option<NodesSearchOptions>,
     ) -> Result<Vec<CoreContentNode>>;
+
+    async fn search_nodes_with_cursor(
+        &self,
+        query: Option<String>,
+        filter: NodesSearchFilter,
+        cursor: Option<NodesSearchCursorRequest>,
+    ) -> Result<(Vec<CoreContentNode>, Option<String>)>;
 
     async fn index_node(&self, node: Node) -> Result<()>;
     async fn delete_node(&self, node: Node) -> Result<()>;
@@ -118,6 +156,7 @@ const ROOT_PARENT_ID: &str = "root";
 
 #[async_trait]
 impl SearchStore for ElasticsearchSearchStore {
+    // TODO(2025-01-30 nodes-core) Use the search_nodes_with_cursor method.
     async fn search_nodes(
         &self,
         query: Option<String>,
@@ -155,55 +194,7 @@ impl SearchStore for ElasticsearchSearchStore {
             ));
         }
 
-        // check there is at least one data source view filter
-        // !! do not remove; without data source view filter this endpoint is
-        // dangerous as any data from any workspace can be retrieved
-        if filter.data_source_views.is_empty() {
-            return Err(anyhow::anyhow!("No data source views provided"));
-        }
-
-        // Build filter conditions using elasticsearch-dsl
-        let filter_conditions: Vec<Query> = filter
-            .data_source_views
-            .into_iter()
-            .map(|f| {
-                let mut bool_query = Query::bool();
-
-                bool_query = bool_query.filter(Query::term("data_source_id", f.data_source_id));
-
-                if !f.view_filter.is_empty() {
-                    bool_query = bool_query.filter(Query::terms("parents", f.view_filter));
-                }
-
-                Query::Bool(bool_query)
-            })
-            .collect();
-
-        let mut bool_query = Query::bool()
-            .should(filter_conditions)
-            .minimum_should_match(1);
-
-        if let Some(node_ids) = filter.node_ids {
-            bool_query = bool_query.filter(Query::terms("node_id", node_ids));
-        }
-
-        if let Some(node_types) = filter.node_types {
-            bool_query = bool_query.filter(Query::terms("node_type", node_types));
-        }
-
-        if let Some(parent_id) = filter.parent_id {
-            // if parent_id is root, we filter on all nodes whose parent_id is null
-            // otherwise, we filter on all nodes whose parent_id is the given parent_id
-            if parent_id == ROOT_PARENT_ID {
-                bool_query = bool_query.filter(Query::bool().must_not(Query::exists("parent_id")));
-            } else {
-                bool_query = bool_query.filter(Query::term("parent_id", parent_id));
-            }
-        }
-
-        if let Some(query_string) = query.clone() {
-            bool_query = bool_query.must(Query::r#match("title.edge", query_string));
-        }
+        let bool_query = self.build_search_query(query.clone(), filter)?;
 
         // Build and run search (sort by title if no query)
         let search = Search::new()
@@ -273,6 +264,140 @@ impl SearchStore for ElasticsearchSearchStore {
             "[ElasticsearchSearchStore] Compute core content nodes duration"
         );
         result
+    }
+
+    async fn search_nodes_with_cursor(
+        &self,
+        query: Option<String>,
+        filter: NodesSearchFilter,
+        request: Option<NodesSearchCursorRequest>,
+    ) -> Result<(Vec<CoreContentNode>, Option<String>)> {
+        let params = request.unwrap_or_default();
+        let limit = params.limit.unwrap_or(MAX_PAGE_SIZE);
+
+        // TODO(20250128, nodes-core): remove this & corresponding timing logs
+        let data_source_id = filter
+            .data_source_views
+            .first()
+            .map(|v| v.data_source_id.clone());
+        let data_source_filter = filter
+            .data_source_views
+            .first()
+            .map(|v| v.view_filter.clone());
+
+        let parent_id_log = filter.parent_id.clone();
+        let node_ids_log = filter.node_ids.as_ref().map(|ids| ids.join(", "));
+
+        // Validate limit.
+        if limit == 0 {
+            return Err(anyhow::anyhow!("Limit cannot be zero"));
+        }
+        if limit > MAX_PAGE_SIZE {
+            return Err(anyhow::anyhow!(
+                "Limit is greater than MAX_PAGE_SIZE: {} (limit is {})",
+                limit,
+                MAX_PAGE_SIZE
+            ));
+        }
+
+        // Build the base query.
+        let bool_query = self.build_search_query(query, filter)?;
+
+        // Get user-specified sort or default.
+        let mut sort_spec = params.sort.unwrap_or_default();
+
+        // Always append id as tie-breaker.
+        sort_spec.push(SortSpec {
+            field: "node_id".to_string(),
+            direction: SortDirection::Asc,
+        });
+
+        // Build the search.
+        let mut search = Search::new().size(limit).query(bool_query).sort(
+            sort_spec
+                .into_iter()
+                .map(|s| {
+                    elasticsearch_dsl::Sort::FieldSort(
+                        elasticsearch_dsl::FieldSort::new(s.field).order(match s.direction {
+                            SortDirection::Asc => elasticsearch_dsl::SortOrder::Asc,
+                            SortDirection::Desc => elasticsearch_dsl::SortOrder::Desc,
+                        }),
+                    )
+                })
+                .collect::<Vec<elasticsearch_dsl::Sort>>(),
+        );
+
+        // Add search_after if cursor is provided.
+        if let Some(cursor) = params.cursor {
+            let decoded = URL_SAFE.decode(cursor)?;
+            let json_str = String::from_utf8(decoded)?;
+            let search_after: Vec<serde_json::Value> = serde_json::from_str(&json_str)?;
+            search = search.search_after(search_after);
+        }
+
+        let search_start = utils::now();
+
+        // Execute search.
+        let response = self
+            .client
+            .search(SearchParts::Index(&[NODES_INDEX_NAME]))
+            .body(search)
+            .send()
+            .await?;
+
+        let search_duration = utils::now() - search_start;
+        info!(
+            duration = search_duration,
+            data_source_id = data_source_id,
+            data_source_filter = data_source_filter.as_ref().map(|v| v.join(", ")),
+            parent_id = parent_id_log,
+            node_ids = node_ids_log,
+            "[ElasticsearchSearchStore] Search nodes with cursor duration"
+        );
+
+        // Parse response and handle errors.
+        let (nodes, next_page_cursor) = match response.status_code().is_success() {
+            true => {
+                let response_body = response.json::<serde_json::Value>().await?;
+                let hits = response_body["hits"]["hits"].as_array().unwrap();
+
+                let next_cursor = if hits.len() == limit as usize {
+                    hits.last()
+                        .and_then(|hit| hit.get("sort"))
+                        .map(|sort_values| {
+                            // Encode the raw JSON sort values.
+                            URL_SAFE.encode(serde_json::to_string(sort_values).unwrap().as_bytes())
+                        })
+                } else {
+                    None
+                };
+
+                let nodes = hits
+                    .iter()
+                    .map(|h| Node::from(h.get("_source").unwrap().clone()))
+                    .collect();
+
+                (nodes, next_cursor)
+            }
+            false => {
+                let error = response.json::<serde_json::Value>().await?;
+                return Err(anyhow::anyhow!("Failed to search nodes: {}", error));
+            }
+        };
+
+        let compute_node_start = utils::now();
+        // Compute core content nodes with additional metadata.
+        let result = self.compute_core_content_nodes(nodes).await?;
+        info!(
+            duration = utils::now() - compute_node_start,
+            data_source_id = data_source_id,
+            data_source_filter = data_source_filter.as_ref().map(|v| v.join(", ")),
+            parent_id = parent_id_log,
+            node_ids = node_ids_log,
+            "[ElasticsearchSearchStore] Compute core content nodes duration"
+        );
+
+        Ok((result, next_page_cursor))
     }
 
     async fn index_node(&self, node: Node) -> Result<()> {
@@ -363,6 +488,64 @@ impl SearchStore for ElasticsearchSearchStore {
 }
 
 impl ElasticsearchSearchStore {
+    fn build_search_query(
+        &self,
+        query: Option<String>,
+        filter: NodesSearchFilter,
+    ) -> Result<BoolQuery> {
+        // check there is at least one data source view filter
+        // !! do not remove; without data source view filter this endpoint is
+        // dangerous as any data from any workspace can be retrieved
+        if filter.data_source_views.is_empty() {
+            return Err(anyhow::anyhow!("No data source views provided"));
+        }
+
+        // Build filter conditions using elasticsearch-dsl
+        let filter_conditions: Vec<Query> = filter
+            .data_source_views
+            .into_iter()
+            .map(|f| {
+                let mut bool_query = Query::bool();
+
+                bool_query = bool_query.filter(Query::term("data_source_id", f.data_source_id));
+
+                if !f.view_filter.is_empty() {
+                    bool_query = bool_query.filter(Query::terms("parents", f.view_filter));
+                }
+
+                Query::Bool(bool_query)
+            })
+            .collect();
+
+        let mut bool_query = Query::bool()
+            .should(filter_conditions)
+            .minimum_should_match(1);
+
+        if let Some(node_ids) = filter.node_ids {
+            bool_query = bool_query.filter(Query::terms("node_id", node_ids));
+        }
+
+        if let Some(node_types) = filter.node_types {
+            bool_query = bool_query.filter(Query::terms("node_type", node_types));
+        }
+
+        if let Some(parent_id) = filter.parent_id {
+            // if parent_id is root, we filter on all nodes whose parent_id is null
+            // otherwise, we filter on all nodes whose parent_id is the given parent_id
+            if parent_id == ROOT_PARENT_ID {
+                bool_query = bool_query.filter(Query::bool().must_not(Query::exists("parent_id")));
+            } else {
+                bool_query = bool_query.filter(Query::term("parent_id", parent_id));
+            }
+        }
+
+        if let Some(query_string) = query.clone() {
+            bool_query = bool_query.must(Query::r#match("title.edge", query_string));
+        }
+
+        Ok(bool_query)
+    }
+
     /// Compute core content nodes from a list of nodes.
     ///
     /// This function performs two queries to Elasticsearch:
