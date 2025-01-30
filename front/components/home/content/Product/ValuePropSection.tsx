@@ -11,7 +11,7 @@ export function ValuePropSection() {
     <div className="w-full">
       <div className="mb-6">
         <H2 from="from-amber-200" to="to-amber-400">
-          Unlock your team’s performance with new capabilities
+          Amplify your team's performance with new capabilities
         </H2>
         {/* <P size="lg">
           Anyone on your&nbsp;team can create personalized&nbsp;assistants.

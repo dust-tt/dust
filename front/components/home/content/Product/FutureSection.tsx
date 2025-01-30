@@ -17,8 +17,7 @@ export function FutureSection() {
             <P size="lg">
               Integrates with your internal&nbsp;data.
               <br />
-              Automatically updated with the&nbsp;latest&nbsp;models
-              across&nbsp;all&nbsp;major&nbsp;AI&nbsp;providers.
+              Uses the latest models across all major AI providers.
             </P>
           </div>
         </div>
