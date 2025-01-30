@@ -264,6 +264,7 @@ export const ZendeskCommandSchema = t.type({
     t.literal("fetch-ticket"),
     t.literal("fetch-brand"),
     t.literal("resync-help-centers"),
+    t.literal("resync-brand-metadata"),
   ]),
   args: t.type({
     connectorId: t.union([t.number, t.undefined]),
@@ -289,13 +290,6 @@ export const ZendeskCountTicketsResponseSchema = t.type({
 });
 export type ZendeskCountTicketsResponseType = t.TypeOf<
   typeof ZendeskCountTicketsResponseSchema
->;
-
-export const ZendeskResyncTicketsResponseSchema = t.type({
-  success: t.literal(true),
-});
-export type ZendeskResyncTicketsResponseType = t.TypeOf<
-  typeof ZendeskResyncTicketsResponseSchema
 >;
 
 export const ZendeskFetchTicketResponseSchema = t.type({
@@ -473,7 +467,6 @@ export const AdminResponseSchema = t.union([
   IntercomForceResyncArticlesResponseSchema,
   ZendeskCheckIsAdminResponseSchema,
   ZendeskCountTicketsResponseSchema,
-  ZendeskResyncTicketsResponseSchema,
   ZendeskFetchTicketResponseSchema,
   ZendeskFetchBrandResponseSchema,
 ]);

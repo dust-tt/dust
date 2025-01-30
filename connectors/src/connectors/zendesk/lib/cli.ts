@@ -1,10 +1,10 @@
 import type {
+  AdminResponseType,
   ZendeskCheckIsAdminResponseType,
   ZendeskCommandType,
   ZendeskCountTicketsResponseType,
   ZendeskFetchBrandResponseType,
   ZendeskFetchTicketResponseType,
-  ZendeskResyncTicketsResponseType,
 } from "@dust-tt/types";
 
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
@@ -15,6 +15,7 @@ import {
   fetchZendeskTicketCount,
   getZendeskBrandSubdomain,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
+import { syncZendeskBrandActivity } from "@connectors/connectors/zendesk/temporal/activities";
 import {
   launchZendeskSyncWorkflow,
   launchZendeskTicketReSyncWorkflow,
@@ -34,9 +35,9 @@ export const zendesk = async ({
 }: ZendeskCommandType): Promise<
   | ZendeskCheckIsAdminResponseType
   | ZendeskCountTicketsResponseType
-  | ZendeskResyncTicketsResponseType
   | ZendeskFetchTicketResponseType
   | ZendeskFetchBrandResponseType
+  | AdminResponseType
 > => {
   const logger = topLogger.child({ majorCommand: "zendesk", command, args });
 
@@ -205,6 +206,23 @@ export const zendesk = async ({
         );
         throw result.error;
       }
+      return { success: true };
+    }
+    // Resyncs the metadata of a brand already in DB.
+    // Can be used to sync the data_sources_folders relative to the brand.
+    case "resync-brand-metadata": {
+      if (!connectorId) {
+        throw new Error(`Missing --connectorId argument`);
+      }
+      const brandId = args.brandId ? args.brandId : null;
+      if (!brandId) {
+        throw new Error(`Missing --brandId argument`);
+      }
+      await syncZendeskBrandActivity({
+        connectorId: parseInt(connectorId, 10),
+        brandId,
+        currentSyncDateMs: Date.now(),
+      });
       return { success: true };
     }
   }
