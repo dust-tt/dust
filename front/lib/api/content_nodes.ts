@@ -270,19 +270,26 @@ export function computeNodesDiff({
           // See https://github.com/dust-tt/dust/issues/10340
         ) && coreNode.internalId !== "notion-syncing"
     )
+    // There is some specific code to Intercom in retrieveIntercomConversationsPermissions that hides the empty team folders + the teams folder if !hasTeamsWithReadPermission
+    // TBD whether this logic will be reproduced for core, ignoring for now.
+    .filter(
+      (coreNode) =>
+        provider !== "intercom" ||
+        !coreNode.internalId.startsWith("intercom-team")
+    )
+    // The endpoints in the Zendesk connector do not return anything as children of a category, core does.
+    // This will be considered as an improvement, if it turns out to be a bad user experience this will be removed, ignoring for now.
+    .filter(
+      (coreNode) =>
+        provider !== "zendesk" ||
+        !coreNode.internalId.startsWith("zendesk-article")
+    )
     .map((coreNode) => coreNode.internalId);
   if (extraCoreInternalIds.length > 0) {
-    // There is some specific code to Intercom in retrieveIntercomConversationsPermissions that hides the empty team folders + the teams folder if !hasTeamsWithReadPermission
-    // Reproducing this logic in core is complicated and seems over-engineered.
-    if (
-      provider !== "intercom" ||
-      extraCoreInternalIds.some((id) => !id.startsWith("intercom-team"))
-    ) {
-      localLogger.info(
-        { extraCoreInternalIds },
-        "[CoreNodes] Received extraneous core nodes"
-      );
-    }
+    localLogger.info(
+      { extraCoreInternalIds },
+      "[CoreNodes] Received extraneous core nodes"
+    );
   }
 }
 
