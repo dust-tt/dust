@@ -278,7 +278,7 @@ export const throttleAuth0 = async <T>(
   { rateLimitThreshold }: { rateLimitThreshold: number }
 ) => {
   const { remaining, resetTime } = throttleAuth0State;
-  if (remaining === -1 || remaining < rateLimitThreshold) {
+  if (remaining !== -1 && remaining < rateLimitThreshold) {
     const now = Date.now();
     const waitTime = resetTime * 1000 - now;
     await new Promise((resolve) => setTimeout(resolve, waitTime));
