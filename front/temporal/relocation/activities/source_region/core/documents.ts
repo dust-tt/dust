@@ -6,8 +6,10 @@ import { RegionType } from "@app/lib/api/regions/config";
 import {
   concurrentExecutor,
   CoreAPI,
+  CoreAPIDocumentBlob,
   CoreAPINodesSearchFilter,
   CoreAPISearchCursorRequest,
+  Ok,
 } from "@dust-tt/types";
 import { writeToRelocationStorage } from "@app/temporal/relocation/lib/file_storage/relocation";
 import config from "@app/lib/api/config";
@@ -84,7 +86,9 @@ export async function getDataSourceDocuments({
     { concurrency: CORE_API_CONCURRENCY_LIMIT }
   );
 
-  const documentBlobs = res.filter((r) => r.isOk()).map((r) => r.value);
+  const documentBlobs = res
+    .filter((r): r is Ok<CoreAPIDocumentBlob> => r.isOk())
+    .map((r) => r.value);
   const failed = res.filter((r) => r.isErr());
   if (failed.length > 0) {
     localLogger.error(
