@@ -47,7 +47,7 @@ export type ConnectorProviderConfiguration = {
   mismatchError: string;
   limitations: string | null;
   guideLink: string | null;
-  selectLabel?: string; // Show in the permissions modal, above the content node tree, might not allow to select anything (if permissions are false below)
+  selectLabel?: string; // Show in the permissions modal, above the content node tree, note that a connector might not allow to select anything
   isNested: boolean;
   isSearchEnabled: boolean;
   permissions: {

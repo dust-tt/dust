@@ -130,7 +130,6 @@ export const fetchTables = async ({
       );
     }
 
-    // Get the dataset specified by the fromSchema
     const schema = internalSchemaId
       ? parseSchemaInternalId(internalSchemaId).name
       : schemaName;
@@ -140,6 +139,7 @@ export const fetchTables = async ({
       throw new Error("Schema name is required");
     }
 
+    // Get the dataset specified by the schema
     const dataset = await conn.dataset(schema);
     const r = await dataset.getTables();
     const tables = r[0];
