@@ -1,12 +1,15 @@
+use bb8::Pool;
+use bb8_postgres::PostgresConnectionManager;
 use clap::Parser;
 use dust::{
-    data_sources::node::Node,
+    data_sources::node::{Node, NodeType, ProviderVisibility},
     search_stores::search_store::ElasticsearchSearchStore,
     stores::{postgres::PostgresStore, store::Store},
 };
 use elasticsearch::{http::request::JsonBody, indices::IndicesExistsParts, BulkParts};
 use http::StatusCode;
 use serde_json::json;
+use tokio_postgres::NoTls;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -28,7 +31,7 @@ struct Args {
  * Backfills nodes index in Elasticsearch for core using the postgres table `data_sources_nodes`
  *
  * Usage:
- * cargo run --bin elasticsearch_backfill_nodes_index -- --index-version <version> [--skip-confirmation] [--start-cursor <cursor>] [--batch-size <batch_size>]
+ * cargo run --bin elasticsearch_backfill_index -- --index-version <version> [--skip-confirmation] [--start-cursor <cursor>] [--batch-size <batch_size>]
  *
  */
 #[tokio::main]
@@ -37,6 +40,67 @@ async fn main() {
         eprintln!("Error: {}", e);
         std::process::exit(1);
     }
+}
+
+async fn list_data_source_nodes(
+    pool: &Pool<PostgresConnectionManager<NoTls>>,
+    id_cursor: i64,
+    batch_size: i64,
+) -> Result<Vec<(Node, i64, i64)>, Box<dyn std::error::Error>> {
+    let c = pool.get().await?;
+
+    let stmt = c
+        .prepare(
+            "SELECT dsn.timestamp, dsn.title, dsn.mime_type, dsn.provider_visibility, dsn.parents, dsn.node_id, dsn.document, dsn.\"table\", dsn.folder, ds.data_source_id, ds.internal_id, dsn.source_url, dsn.id \
+               FROM data_sources_nodes dsn JOIN data_sources ds ON dsn.data_source = ds.id \
+               WHERE dsn.id > $1 AND folder IS NOT NULL ORDER BY dsn.id ASC LIMIT $2",
+        )
+        .await?;
+    let rows = c.query(&stmt, &[&id_cursor, &batch_size]).await?;
+
+    let nodes: Vec<(Node, i64, i64)> = rows
+        .iter()
+        .map(|row| {
+            let timestamp: i64 = row.get::<_, i64>(0);
+            let title: String = row.get::<_, String>(1);
+            let mime_type: String = row.get::<_, String>(2);
+            let provider_visibility: Option<ProviderVisibility> =
+                row.get::<_, Option<ProviderVisibility>>(3);
+            let parents: Vec<String> = row.get::<_, Vec<String>>(4);
+            let node_id: String = row.get::<_, String>(5);
+            let document_row_id = row.get::<_, Option<i64>>(6);
+            let table_row_id = row.get::<_, Option<i64>>(7);
+            let folder_row_id = row.get::<_, Option<i64>>(8);
+            let data_source_id: String = row.get::<_, String>(9);
+            let data_source_internal_id: String = row.get::<_, String>(10);
+            let (node_type, element_row_id) = match (document_row_id, table_row_id, folder_row_id) {
+                (Some(id), None, None) => (NodeType::Document, id),
+                (None, Some(id), None) => (NodeType::Table, id),
+                (None, None, Some(id)) => (NodeType::Folder, id),
+                _ => unreachable!(),
+            };
+            let source_url: Option<String> = row.get::<_, Option<String>>(11);
+            let row_id = row.get::<_, i64>(12);
+            (
+                Node::new(
+                    &data_source_id,
+                    &data_source_internal_id,
+                    &node_id,
+                    node_type,
+                    timestamp as u64,
+                    &title,
+                    &mime_type,
+                    provider_visibility,
+                    parents.get(1).cloned(),
+                    parents,
+                    source_url,
+                ),
+                row_id,
+                element_row_id,
+            )
+        })
+        .collect::<Vec<_>>();
+    Ok(nodes)
 }
 
 async fn run() -> Result<(), Box<dyn std::error::Error>> {
@@ -104,8 +168,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
             "Processing {} nodes, starting at id {}. ",
             batch_size, next_cursor
         );
-        let (nodes, next_id_cursor) =
-            get_node_batch(next_cursor, batch_size, Box::new(store.clone())).await?;
+        let (nodes, next_id_cursor) = get_node_batch(pool, next_cursor, batch_size).await?;
 
         next_cursor = match next_id_cursor {
             Some(cursor) => cursor,
@@ -120,6 +183,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         //
         let nodes_body: Vec<JsonBody<_>> = nodes
             .into_iter()
+            .filter(|node| node.source_url.is_some())
             .flat_map(|node| {
                 [
                     json!({"index": {"_id": node.unique_id()}}).into(),
@@ -147,13 +211,11 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 async fn get_node_batch(
+    pool: &Pool<PostgresConnectionManager<NoTls>>,
     next_cursor: i64,
     batch_size: usize,
-    store: Box<dyn Store + Sync + Send>,
 ) -> Result<(Vec<Node>, Option<i64>), Box<dyn std::error::Error>> {
-    let nodes = store
-        .list_data_source_nodes(next_cursor, batch_size.try_into().unwrap())
-        .await?;
+    let nodes = list_data_source_nodes(&pool, next_cursor, batch_size.try_into().unwrap()).await?;
     let last_node = nodes.last().cloned();
     let nodes_length = nodes.len();
     match last_node {
