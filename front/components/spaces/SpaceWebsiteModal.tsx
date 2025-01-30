@@ -200,7 +200,6 @@ export default function SpaceWebsiteModal({
       urlError =
         "Please provide a valid URL (e.g. https://example.com or https://example.com/a/b/c)).";
     }
-
     // Validate Name (if it's not edition)
     if (!webCrawlerConfiguration) {
       const dataSourceNameRes = isDataSourceNameValid(dataSourceName);
@@ -239,13 +238,13 @@ export default function SpaceWebsiteModal({
 
   const handleCreate = async () => {
     setIsSubmitted(true);
-
-    if (!validateForm()) {
+    const validatedUrl = validateUrl(dataSourceUrl.trim());
+    if (!validateForm() || !validatedUrl.valid) {
       return;
     }
 
     setIsSaving(true);
-    const sanitizedDataSourceUrl = dataSourceUrl.trim();
+    const sanitizedDataSourceUrl = validatedUrl.standardized;
     const res = await fetch(
       `/api/w/${owner.sId}/spaces/${space.sId}/data_sources`,
       {
@@ -284,7 +283,8 @@ export default function SpaceWebsiteModal({
   const handleUpdate = async () => {
     setIsSubmitted(true);
 
-    if (!validateForm || !dataSourceView) {
+    const validatedUrl = validateUrl(dataSourceUrl.trim());
+    if (!validateForm || !dataSourceView || !validatedUrl.valid) {
       return;
     }
 
@@ -298,7 +298,7 @@ export default function SpaceWebsiteModal({
         },
         body: JSON.stringify({
           configuration: {
-            url: dataSourceUrl,
+            url: validatedUrl.standardized,
             maxPageToCrawl: maxPages || WEBCRAWLER_MAX_PAGES,
             depth: maxDepth,
             crawlMode: crawlMode,
