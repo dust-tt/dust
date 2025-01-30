@@ -136,11 +136,12 @@ async function updateParentsFieldForConnector(
           return;
         }
 
+        parents = parents.map((id) => `notion-${id}`);
+
         let documentId: string | null = null;
         let tableId: string | null = null;
 
         if ("notionPageId" in node) {
-          // its a page
           if (node.lastUpsertedTs) {
             documentId = `notion-${node.notionPageId}`;
           }
@@ -160,7 +161,6 @@ async function updateParentsFieldForConnector(
                 documentId,
                 parents,
                 parentId: parents[1] || null,
-                retries: 3,
               });
             }
             if (tableId) {
@@ -169,7 +169,6 @@ async function updateParentsFieldForConnector(
                 tableId,
                 parents,
                 parentId: parents[1] || null,
-                retries: 3,
               });
             }
           } catch (e) {
