@@ -361,6 +361,8 @@ pub trait Store {
         batch_size: i64,
     ) -> Result<Vec<(Node, i64, i64)>>;
 
+    async fn count_nodes_children(&self, nodes: &Vec<Node>) -> Result<HashMap<String, u64>>;
+
     // LLM Cache
     async fn llm_cache_get(
         &self,

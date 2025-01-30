@@ -14,6 +14,6 @@ export type CoreAPIContentNode = {
   parent_id?: string;
   parents: string[];
   source_url?: string;
-  has_children: boolean;
+  children_count: number;
   parent_title?: string;
 };

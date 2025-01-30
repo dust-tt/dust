@@ -3191,7 +3191,12 @@ async fn nodes_search(
 ) -> (StatusCode, Json<APIResponse>) {
     let nodes = match state
         .search_store
-        .search_nodes(payload.query, payload.filter, payload.options)
+        .search_nodes(
+            payload.query,
+            payload.filter,
+            payload.options,
+            state.store.clone(),
+        )
         .await
     {
         Ok(nodes) => nodes,
