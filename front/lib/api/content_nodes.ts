@@ -87,7 +87,7 @@ export function computeNodesDiff({
       // Ignore slack channels missing in core - see https://github.com/dust-tt/dust/issues/10338
       if (
         connectorsNode.internalId !== "notion-unknown" ||
-        connectorsNode.internalId.startsWith("slack-channel-")
+        !connectorsNode.internalId.startsWith("slack-channel-")
       ) {
         missingInternalIds.push(connectorsNode.internalId);
       }
