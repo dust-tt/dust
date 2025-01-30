@@ -13,12 +13,10 @@ import { writeToRelocationStorage } from "@app/temporal/relocation/lib/file_stor
 import config from "@app/lib/api/config";
 import {
   CORE_API_CONCURRENCY_LIMIT,
+  CORE_API_LIST_NODES_BATCH_SIZE,
   CoreDocumentAPIRelocationBlob,
   DataSourceCoreIds,
 } from "@app/temporal/relocation/activities/types";
-
-// TODO: Make this configurable.
-const BATCH_SIZE = 10;
 
 export async function getDataSourceDocuments({
   dataSourceCoreIds,
@@ -49,7 +47,7 @@ export async function getDataSourceDocuments({
   };
 
   const cursorRequest: CoreAPISearchCursorRequest = {
-    limit: BATCH_SIZE,
+    limit: CORE_API_LIST_NODES_BATCH_SIZE,
   };
 
   if (pageCursor) {

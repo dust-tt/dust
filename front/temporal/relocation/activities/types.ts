@@ -19,6 +19,9 @@ export interface ReadTableChunkParams {
   workspaceId: string;
 }
 
+export const CORE_API_CONCURRENCY_LIMIT = 10;
+export const CORE_API_LIST_NODES_BATCH_SIZE = 100;
+
 // Core.
 
 export interface DataSourceCoreIds {
@@ -43,5 +46,3 @@ export type CoreDocumentAPIRelocationBlob = APIRelocationBlob<
   "documents",
   CoreAPIDocumentBlob
 >;
-
-export const CORE_API_CONCURRENCY_LIMIT = 10;

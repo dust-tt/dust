@@ -504,7 +504,6 @@ export async function workspaceRelocateDataSourceCoreWorkflow({
     workspaceId,
   });
 
-  // TODO: We need to update the data source in the destination region with the new core ids.
   // 3) Update the data source in the destination region with the new core ids.
   await destinationRegionActivities.updateDataSourceCoreIds({
     dataSourceCoreIds,
