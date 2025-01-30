@@ -49,7 +49,7 @@ export async function writeCoreEntitiesToDestinationRegion({
   }
 
   // 3) Create users metadata in transaction.
-  for (const userMetadataChunk of blob.statements.users_metadata) {
+  for (const userMetadataChunk of blob.statements.user_metadata) {
     await frontSequelize.transaction(async (transaction) => {
       await frontSequelize.query(userMetadataChunk, { transaction });
     });

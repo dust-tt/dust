@@ -15,6 +15,8 @@ export async function getAllConnectorsForWorkspace({
 }: {
   workspaceId: string;
 }) {
+  // TODO: Use the front databases to get the connectorIds.
+
   // We can use the replica db because we don't need to write to it.
   const connectorReplicaDb = getConnectorsReplicaDbConnection();
 

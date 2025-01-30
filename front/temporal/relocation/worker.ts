@@ -9,6 +9,8 @@ import * as frontDestinationActivities from "@app/temporal/relocation/activities
 import * as frontSourceActivities from "@app/temporal/relocation/activities/source_region/front";
 import * as connectorsDestinationActivities from "@app/temporal/relocation/activities/destination_region/connectors/sql";
 import * as connectorsSourceActivities from "@app/temporal/relocation/activities/source_region/connectors/sql";
+import * as coreSourceActivities from "@app/temporal/relocation/activities/source_region/core";
+import * as coreDestinationActivities from "@app/temporal/relocation/activities/destination_region/core";
 import { RELOCATION_QUEUES_PER_REGION } from "@app/temporal/relocation/config";
 import { getTemporalWorkerConnection } from "@app/temporal/relocation/temporal";
 
@@ -19,10 +21,12 @@ export async function runRelocationWorker() {
   const worker = await Worker.create({
     workflowsPath: require.resolve("./workflows"),
     activities: {
-      ...frontDestinationActivities,
-      ...frontSourceActivities,
       ...connectorsDestinationActivities,
       ...connectorsSourceActivities,
+      ...coreDestinationActivities,
+      ...coreSourceActivities,
+      ...frontDestinationActivities,
+      ...frontSourceActivities,
     },
     taskQueue: RELOCATION_QUEUES_PER_REGION[currentRegion],
     maxConcurrentActivityTaskExecutions: 8,

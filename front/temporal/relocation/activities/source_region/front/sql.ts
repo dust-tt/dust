@@ -1,6 +1,6 @@
 import type { ModelId } from "@dust-tt/types";
 import assert from "assert";
-import { Op, QueryTypes } from "sequelize";
+import { Op, QueryTypes, WhereOptions } from "sequelize";
 
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import { Workspace } from "@app/lib/models/workspace";
@@ -67,7 +67,7 @@ export async function readCoreEntitiesFromSourceRegion({
   });
 
   // Fetch all associated users metadata of the workspace.
-  const usersMetadata = await UserMetadataModel.findAll({
+  const userMetadata = await UserMetadataModel.findAll({
     where: {
       userId: {
         [Op.in]: memberships.map((m) => m.userId),
@@ -98,13 +98,9 @@ export async function readCoreEntitiesFromSourceRegion({
     statements: {
       plans: generateInsertStatements("plans", plans, { onConflict: "ignore" }),
       users: generateInsertStatements("users", users, { onConflict: "ignore" }),
-      users_metadata: generateInsertStatements(
-        "users_metadata",
-        usersMetadata,
-        {
-          onConflict: "ignore",
-        }
-      ),
+      user_metadata: generateInsertStatements("user_metadata", userMetadata, {
+        onConflict: "ignore",
+      }),
       workspace: generateInsertStatements("workspaces", [workspace], {
         onConflict: "ignore",
       }),

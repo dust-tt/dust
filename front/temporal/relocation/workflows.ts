@@ -12,7 +12,13 @@ import type * as connectorsDestinationActivities from "@app/temporal/relocation/
 import type * as frontDestinationActivities from "@app/temporal/relocation/activities/destination_region/front";
 import type * as connectorsSourceActivities from "@app/temporal/relocation/activities/source_region/connectors/sql";
 import type * as frontSourceActivities from "@app/temporal/relocation/activities/source_region/front";
+import type * as coreSourceActivities from "@app/temporal/relocation/activities/source_region/core";
+import type * as coreDestinationActivities from "@app/temporal/relocation/activities/destination_region/core";
 import { RELOCATION_QUEUES_PER_REGION } from "@app/temporal/relocation/config";
+import {
+  CreateDataSourceProjectResult,
+  DataSourceCoreIds,
+} from "@app/temporal/relocation/activities/types";
 
 const CHUNK_SIZE = 5000;
 const TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH = 10_000;
@@ -44,6 +50,13 @@ export async function workspaceRelocationWorkflow({
     searchAttributes: parentSearchAttributes,
     args: [{ sourceRegion, destRegion, workspaceId }],
     memo,
+  });
+
+  // 3) Relocate the core data source documents to the destination region.
+  await executeChild(workspaceRelocateCoreWorkflow, {
+    workflowId: `workspaceRelocateCoreWorkflow-${workspaceId}`,
+    searchAttributes: parentSearchAttributes,
+    args: [{ sourceRegion, destRegion, workspaceId }],
   });
 }
 
@@ -394,4 +407,173 @@ export async function workspaceRelocateConnectorsTableWorkflow({
       workspaceId,
     });
   } while (hasMoreRows);
+}
+
+/**
+ * Core relocation workflows.
+ */
+
+const getCoreSourceRegionActivities = (region: RegionType) => {
+  return proxyActivities<typeof coreSourceActivities>({
+    startToCloseTimeout: "10 minutes",
+    taskQueue: RELOCATION_QUEUES_PER_REGION[region],
+  });
+};
+
+const getCoreDestinationRegionActivities = (region: RegionType) => {
+  return proxyActivities<typeof coreDestinationActivities>({
+    startToCloseTimeout: "10 minutes",
+    taskQueue: RELOCATION_QUEUES_PER_REGION[region],
+  });
+};
+
+export async function workspaceRelocateCoreWorkflow({
+  destRegion,
+  lastProcessedId,
+  sourceRegion,
+  workspaceId,
+}: RelocationWorkflowBase & { lastProcessedId?: ModelId }) {
+  const { searchAttributes: parentSearchAttributes, memo } = workflowInfo();
+
+  const sourceRegionActivities = getCoreSourceRegionActivities(sourceRegion);
+
+  let hasMoreRows = true;
+  let currentId: ModelId | undefined = lastProcessedId;
+
+  do {
+    if (workflowInfo().historyLength > TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH) {
+      await continueAsNew<typeof workspaceRelocateCoreWorkflow>({
+        destRegion,
+        lastProcessedId: currentId,
+        sourceRegion,
+        workspaceId,
+      });
+    }
+
+    const { dataSourceCoreIds, hasMore, lastId } =
+      await sourceRegionActivities.retrieveDataSourceCoreIdsBatch({
+        lastId: currentId,
+        workspaceId,
+      });
+
+    hasMoreRows = hasMore;
+    currentId = lastId;
+
+    for (const dsc of dataSourceCoreIds) {
+      await executeChild(workspaceRelocateDataSourceCoreWorkflow, {
+        workflowId: `workspaceRelocateDataSourceCoreWorkflow-${workspaceId}-${dsc.id}`,
+        searchAttributes: parentSearchAttributes,
+        args: [
+          {
+            dataSourceCoreIds: dsc,
+            destRegion,
+            sourceRegion,
+            workspaceId,
+          },
+        ],
+        memo,
+      });
+    }
+  } while (hasMoreRows);
+}
+
+// TODO: Below is not idempotent, we need to handle the case where the data source is already created in the destination region.
+export async function workspaceRelocateDataSourceCoreWorkflow({
+  dataSourceCoreIds,
+  destRegion,
+  sourceRegion,
+  workspaceId,
+}: RelocationWorkflowBase & { dataSourceCoreIds: DataSourceCoreIds }) {
+  const { searchAttributes: parentSearchAttributes, memo } = workflowInfo();
+
+  const sourceRegionActivities = getCoreSourceRegionActivities(sourceRegion);
+  const destinationRegionActivities =
+    getCoreDestinationRegionActivities(destRegion);
+
+  // 1) Get the data source from the source region.
+  const sourceRegionCoreDataSource =
+    await sourceRegionActivities.getCoreDataSource({
+      dataSourceCoreIds,
+      workspaceId,
+    });
+
+  // 2) Create the project and data source in the destination region.
+  const destIds = await destinationRegionActivities.createDataSourceProject({
+    destRegion,
+    sourceRegionCoreDataSource,
+    workspaceId,
+  });
+
+  // 3) Update the data source in the destination region with the new core ids.
+  await destinationRegionActivities.updateDataSourceCoreIds({
+    dataSourceCoreIds,
+    destIds,
+    workspaceId,
+  });
+
+  // 3) Relocate the data source documents to the destination region.
+  await executeChild(workspaceRelocateDataSourceDocumentsWorkflow, {
+    workflowId: `workspaceRelocateDataSourceDocumentsWorkflow-${workspaceId}-${dataSourceCoreIds.dustAPIDataSourceId}`,
+    searchAttributes: parentSearchAttributes,
+    args: [
+      {
+        dataSourceCoreIds,
+        destIds,
+        destRegion,
+        sourceRegion,
+        workspaceId,
+      },
+    ],
+  });
+}
+
+export async function workspaceRelocateDataSourceDocumentsWorkflow({
+  dataSourceCoreIds,
+  destIds,
+  destRegion,
+  sourceRegion,
+  workspaceId,
+}: RelocationWorkflowBase & {
+  destIds: CreateDataSourceProjectResult;
+  dataSourceCoreIds: DataSourceCoreIds;
+}) {
+  const sourceRegionActivities = getCoreSourceRegionActivities(sourceRegion);
+  const destinationRegionActivities =
+    getCoreDestinationRegionActivities(destRegion);
+
+  let pageCursor: string | null = null;
+
+  do {
+    if (workflowInfo().historyLength > TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH) {
+      await continueAsNew<typeof workspaceRelocateDataSourceDocumentsWorkflow>({
+        dataSourceCoreIds,
+        destIds,
+        destRegion,
+        sourceRegion,
+        workspaceId,
+      });
+    }
+
+    const { dataPath, nextPageCursor } =
+      await sourceRegionActivities.getDataSourceDocuments({
+        pageCursor,
+        dataSourceCoreIds,
+        sourceRegion,
+        workspaceId,
+      });
+
+    const sourceRegionDustFacingUrl =
+      await sourceRegionActivities.getRegionDustFacingUrl();
+
+    await destinationRegionActivities.processDataSourceDocuments({
+      destIds,
+      dataPath,
+      destRegion,
+      sourceRegion,
+      sourceRegionDustFacingUrl,
+      workspaceId,
+    });
+
+    pageCursor = nextPageCursor;
+  } while (pageCursor);
 }
