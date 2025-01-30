@@ -105,7 +105,7 @@ export async function getDataSourceDocuments({
   const dataPath = await writeToRelocationStorage(blobs, {
     workspaceId,
     type: "core",
-    operation: "data_source_document_blobs",
+    operation: "data_source_documents_blobs",
   });
 
   localLogger.info(
