@@ -500,18 +500,19 @@ export async function syncTeamOnlyActivity({
       lastUpsertedTs: new Date(currentSyncMs),
     });
   } catch (error) {
-    const e = error as Error;
     logger.error(
       {
-        error: e,
-        errorMessage: e.message || "Unknown error",
-        errorStack: e.stack,
+        error: error instanceof Error ? error : JSON.stringify(error),
+        ...(error instanceof Error && {
+          errorMessage: error.message || "Unknown error",
+          errorStack: error.stack,
+        }),
         teamId,
         ...loggerArgs,
       },
       "[Intercom] Failed to fetch team"
     );
-    throw e;
+    throw error;
   }
 
   // Also make sure a datasource folder node is created for the team
