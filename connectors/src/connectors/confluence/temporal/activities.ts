@@ -461,7 +461,7 @@ export async function confluenceCheckAndUpsertPageActivity({
     return false;
   }
 
-  let parents: [string, ...string[], string];
+  let parents: [string, string, ...string[]];
   if (page.parentId) {
     // Exact parent Ids will be computed after all page imports within the space have been completed.
     parents = [
