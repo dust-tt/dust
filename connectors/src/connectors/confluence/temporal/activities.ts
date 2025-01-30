@@ -262,7 +262,7 @@ export async function markPageHasVisited({
 interface ConfluenceUpsertPageInput {
   page: NonNullable<Awaited<ReturnType<ConfluenceClient["getPageById"]>>>;
   spaceName: string;
-  parents: [string, ...string[], string];
+  parents: [string, string, ...string[]];
   confluenceConfig: ConfluenceConfiguration;
   syncType?: UpsertDataSourceDocumentParams["upsertContext"]["sync_type"];
   dataSourceConfig: DataSourceConfig;

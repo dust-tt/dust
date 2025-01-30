@@ -41,7 +41,7 @@ export async function getConfluencePageParentIds(
   connectorId: ModelId,
   page: RawConfluencePage,
   cachedHierarchy?: Record<string, string | null>
-): Promise<[string, ...string[], string]> {
+): Promise<[string, string, ...string[]]> {
   const pageIdToParentIdMap =
     cachedHierarchy ?? (await getSpaceHierarchy(connectorId, page.spaceId));
 
@@ -72,5 +72,5 @@ export async function getConfluencePageParentIds(
     ...parentIds.map((p) => makePageInternalId(p)),
     // Add the space id at the end.
     makeSpaceInternalId(page.spaceId),
-  ];
+  ] as unknown as [string, string, ...string[]]; // casting here since what we are interested in in knowing that parents[1] will be a string, no matter if it is the last element or one from the middle
 }
