@@ -27,6 +27,7 @@ import {
   ZendeskConfigurationResource,
   ZendeskTicketResource,
 } from "@connectors/resources/zendesk_resources";
+import { syncZendeskBrandActivity } from "@connectors/connectors/zendesk/temporal/activities";
 
 export const zendesk = async ({
   command,
@@ -206,6 +207,22 @@ export const zendesk = async ({
         throw result.error;
       }
       return { success: true };
+    }
+    // Resyncs the metadata of a brand already in DB.
+    // Can be used to sync the data_sources_folders relative to the brand.
+    case "resync-brand-metadata": {
+      if (!connectorId) {
+        throw new Error(`Missing --connectorId argument`);
+      }
+      const brandId = args.brandId ? args.brandId : null;
+      if (!brandId) {
+        throw new Error(`Missing --brandId argument`);
+      }
+      await syncZendeskBrandActivity({
+        connectorId: parseInt(connectorId, 10),
+        brandId,
+        currentSyncDateMs: Date.now(),
+      });
     }
   }
 };

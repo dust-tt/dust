@@ -264,6 +264,7 @@ export const ZendeskCommandSchema = t.type({
     t.literal("fetch-ticket"),
     t.literal("fetch-brand"),
     t.literal("resync-help-centers"),
+    t.literal("resync-brand-metadata"),
   ]),
   args: t.type({
     connectorId: t.union([t.number, t.undefined]),
