@@ -258,7 +258,7 @@ export function computeNodesDiff({
         )
     )
     // There is some specific code to Intercom in retrieveIntercomConversationsPermissions that hides the empty team folders + the teams folder if !hasTeamsWithReadPermission
-    // Reproducing this logic in core is complicated and seems over-engineered.
+    // TBD whether this logic will be reproduced for core, ignoring for now.
     .filter(
       (coreNode) =>
         provider !== "intercom" ||
