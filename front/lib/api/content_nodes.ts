@@ -293,6 +293,13 @@ export function computeNodesDiff({
         provider !== "zendesk" ||
         !coreNode.internalId.startsWith("zendesk-article")
     )
+    // Slack channels can be removed from the connector's database while not being deleted from core.
+    // https://github.com/dust-tt/dust/issues/10374
+    .filter(
+      (coreNode) =>
+        provider !== "slack" ||
+        !coreNode.internalId.startsWith("slack-channel-")
+    )
     .map((coreNode) => coreNode.internalId);
   if (extraCoreInternalIds.length > 0) {
     localLogger.info(
