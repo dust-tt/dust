@@ -185,6 +185,17 @@ export type CoreAPISearchOptions = {
   sort?: CoreAPISortSpec[];
 };
 
+export interface CoreAPISearchCursorRequest {
+  sort?: CoreAPISortSpec[];
+  limit?: number;
+  cursor?: string;
+}
+
+export interface CoreAPISearchCursorResponse {
+  nodes: CoreAPIContentNode[];
+  next_page_cursor: string | null;
+}
+
 export type CoreAPIDatasourceViewFilter = {
   data_source_id: string;
   view_filter: string[];
@@ -196,6 +207,22 @@ export type CoreAPINodesSearchFilter = {
   parent_id?: string;
   node_types?: CoreAPIContentNodeType[];
 };
+
+export interface CoreAPIUpsertDataSourceDocumentPayload {
+  projectId: string;
+  dataSourceId: string;
+  documentId: string;
+  timestamp?: number | null;
+  tags: string[];
+  parentId: string | null;
+  parents: string[];
+  sourceUrl?: string | null;
+  section: CoreAPIDataSourceDocumentSection;
+  credentials: CredentialsType;
+  lightDocumentOutput?: boolean;
+  title: string;
+  mimeType: string;
+}
 
 export class CoreAPI {
   _url: string;
@@ -872,21 +899,7 @@ export class CoreAPI {
     lightDocumentOutput = false,
     title,
     mimeType,
-  }: {
-    projectId: string;
-    dataSourceId: string;
-    documentId: string;
-    timestamp?: number | null;
-    tags: string[];
-    parentId: string | null;
-    parents: string[];
-    sourceUrl?: string | null;
-    section: CoreAPIDataSourceDocumentSection;
-    credentials: CredentialsType;
-    lightDocumentOutput?: boolean;
-    title: string;
-    mimeType: string;
-  }): Promise<
+  }: CoreAPIUpsertDataSourceDocumentPayload): Promise<
     CoreAPIResponse<{
       document:
         | CoreAPIDocument
@@ -1590,6 +1603,33 @@ export class CoreAPI {
         options,
       }),
     });
+    return this._resultFromResponse(response);
+  }
+
+  async searchNodesWithCursor({
+    query,
+    filter,
+    cursor,
+  }: {
+    query?: string;
+    filter: CoreAPINodesSearchFilter;
+    cursor?: CoreAPISearchCursorRequest;
+  }): Promise<CoreAPIResponse<CoreAPISearchCursorResponse>> {
+    const response = await this._fetchWithError(
+      `${this._url}/nodes/search/cursor`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          query,
+          filter,
+          cursor,
+        }),
+      }
+    );
+
     return this._resultFromResponse(response);
   }
 

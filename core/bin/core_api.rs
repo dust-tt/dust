@@ -35,8 +35,7 @@ use dust::{
     blocks::block::BlockType,
     data_sources::{
         data_source::{self, Section},
-        node::Node,
-        node::ProviderVisibility,
+        node::{Node, ProviderVisibility},
         qdrant::QdrantClients,
     },
     databases::{
@@ -51,7 +50,8 @@ use dust::{
     run,
     search_filter::{Filterable, SearchFilter},
     search_stores::search_store::{
-        ElasticsearchSearchStore, NodesSearchFilter, NodesSearchOptions, SearchStore,
+        ElasticsearchSearchStore, NodesSearchCursorRequest, NodesSearchFilter, NodesSearchOptions,
+        SearchStore,
     },
     sqlite_workers::client::{self, HEARTBEAT_INTERVAL_MS},
     stores::{
@@ -3217,6 +3217,46 @@ async fn nodes_search(
 }
 
 #[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct NodesSearchWithCursorPayload {
+    query: Option<String>,
+    filter: NodesSearchFilter,
+    cursor: Option<NodesSearchCursorRequest>,
+}
+
+async fn nodes_search_with_cursor(
+    State(state): State<Arc<APIState>>,
+    Json(payload): Json<NodesSearchWithCursorPayload>,
+) -> (StatusCode, Json<APIResponse>) {
+    let (nodes, next_cursor) = match state
+        .search_store
+        .search_nodes_with_cursor(payload.query, payload.filter, payload.cursor)
+        .await
+    {
+        Ok((nodes, next_cursor)) => (nodes, next_cursor),
+        Err(e) => {
+            return error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "internal_server_error",
+                "Failed to search nodes",
+                Some(e),
+            )
+        }
+    };
+
+    (
+        StatusCode::OK,
+        Json(APIResponse {
+            error: None,
+            response: Some(json!({
+                "nodes": nodes,
+                "next_page_cursor": next_cursor,
+            })),
+        }),
+    )
+}
+
+#[derive(serde::Deserialize)]
 struct DatabaseQueryRunPayload {
     query: String,
     tables: Vec<(i64, String, String)>,
@@ -3700,6 +3740,7 @@ fn main() {
 
         //Search
         .route("/nodes/search", post(nodes_search))
+        .route("/nodes/search/cursor", post(nodes_search_with_cursor))
 
         // Misc
         .route("/tokenize", post(tokenize))
