@@ -173,10 +173,6 @@ export function computeNodesDiff({
                 return false;
               }
             }
-            // Ignore the sourceUrl mismatch when it's empty string in connectors and undefined in core.
-            if (key === "sourceUrl" && value === "" && !coreValue) {
-              return false;
-            }
 
             // Special case for the titles of Webcrawler folders: we add a trailing slash in core but not in connectors.
             if (
