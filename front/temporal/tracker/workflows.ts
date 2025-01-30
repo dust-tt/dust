@@ -12,6 +12,9 @@ import { newUpsertSignal, notifySignal } from "./signals";
 
 const { trackersGenerationActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "60 minutes",
+  retry: {
+    maximumAttempts: 3,
+  },
 });
 
 const {
