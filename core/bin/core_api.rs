@@ -3235,7 +3235,12 @@ async fn nodes_search_with_cursor(
 ) -> (StatusCode, Json<APIResponse>) {
     let (nodes, next_cursor) = match state
         .search_store
-        .search_nodes_with_cursor(payload.query, payload.filter, payload.cursor)
+        .search_nodes_with_cursor(
+            payload.query,
+            payload.filter,
+            payload.cursor,
+            state.store.clone(),
+        )
         .await
     {
         Ok((nodes, next_cursor)) => (nodes, next_cursor),

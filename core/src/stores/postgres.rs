@@ -3638,8 +3638,8 @@ impl Store for PostgresStore {
             .query(
                 "select ds.id, p.node_id FROM data_sources ds
                 JOIN UNNEST(
-                    ARRAY[$1],
-                    ARRAY[$2]
+                    $1::text[],
+                    $2::text[]
                 ) AS p(node_id, internal_id)
                 ON ds.internal_id = p.internal_id",
                 &[&node_ids, &data_source_internal_ids],
@@ -3655,10 +3655,10 @@ impl Store for PostgresStore {
                 "SELECT p.node_id, COUNT(*) as child_count
                     FROM data_sources_nodes dsn
                     JOIN UNNEST(
-                        ARRAY[$1],
-                        ARRAY[$2]
+                        $1::bigint[],
+                        $2::text[]
                     ) AS p(data_source, node_id)
-                    ON dsn.data_source = p.data_source AND dsn.parent[2] = p.node_id
+                    ON dsn.data_source = p.data_source AND dsn.parents[2] = p.node_id
                     GROUP BY p.node_id",
             )
             .await?;

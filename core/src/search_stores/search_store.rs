@@ -8,7 +8,7 @@ use elasticsearch::{
     http::transport::{SingleNodeConnectionPool, TransportBuilder},
     DeleteByQueryParts, DeleteParts, Elasticsearch, IndexParts, SearchParts,
 };
-use elasticsearch_dsl::{Query, Search};
+use elasticsearch_dsl::{BoolQuery, Query, Search};
 use serde_json::json;
 use tracing::{error, info};
 use url::Url;
@@ -104,6 +104,7 @@ pub trait SearchStore {
         query: Option<String>,
         filter: NodesSearchFilter,
         cursor: Option<NodesSearchCursorRequest>,
+        store: Box<dyn Store + Sync + Send>,
     ) -> Result<(Vec<CoreContentNode>, Option<String>)>;
 
     async fn index_node(&self, node: Node) -> Result<()>;
@@ -274,6 +275,7 @@ impl SearchStore for ElasticsearchSearchStore {
         query: Option<String>,
         filter: NodesSearchFilter,
         request: Option<NodesSearchCursorRequest>,
+        store: Box<dyn Store + Sync + Send>,
     ) -> Result<(Vec<CoreContentNode>, Option<String>)> {
         let params = request.unwrap_or_default();
         let limit = params.limit.unwrap_or(MAX_PAGE_SIZE);
@@ -390,7 +392,7 @@ impl SearchStore for ElasticsearchSearchStore {
 
         let compute_node_start = utils::now();
         // Compute core content nodes with additional metadata.
-        let result = self.compute_core_content_nodes(nodes).await?;
+        let result = self.compute_core_content_nodes(nodes, store).await?;
         info!(
             duration = utils::now() - compute_node_start,
             data_source_id = data_source_id,
