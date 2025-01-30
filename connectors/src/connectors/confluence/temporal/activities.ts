@@ -461,12 +461,24 @@ export async function confluenceCheckAndUpsertPageActivity({
     return false;
   }
 
+  let parents: [string, ...string[], string];
+  if (page.parentId) {
+    // Exact parent Ids will be computed after all page imports within the space have been completed.
+    parents = [
+      makePageInternalId(page.id),
+      makePageInternalId(page.parentId),
+      HiddenContentNodeParentId,
+    ];
+  } else {
+    // In this case we already have the exact parents: the page itself and the space.
+    parents = [makePageInternalId(page.id), makeSpaceInternalId(spaceId)];
+  }
+
   localLogger.info("Upserting Confluence page.");
   await upsertConfluencePageToDataSource({
     page,
     spaceName,
-    // Parent Ids will be computed after all page imports within the space have been completed.
-    parents: [makePageInternalId(page.id), HiddenContentNodeParentId],
+    parents,
     confluenceConfig,
     syncType: isBatchSync ? "batch" : "incremental",
     dataSourceConfig,
