@@ -1,4 +1,4 @@
-import { removeNulls } from "@dust-tt/types";
+import { concurrentExecutor, removeNulls } from "@dust-tt/types";
 import type { ApiResponse } from "auth0";
 
 import { getAuth0ManagemementClient } from "@app/lib/api/auth0";
@@ -70,8 +70,13 @@ makeScript(
       (m) => m.workspaceId !== workspace.id
     );
     if (externalMemberships.length > 0) {
+      const userIds = externalMemberships.map((m) => m.userId);
+      const users = await UserResource.fetchByModelIds(userIds);
       logger.error(
-        { users: externalMemberships.map((m) => m.user) },
+        {
+          externalMemberships,
+          users: users.map((u) => ({ sId: u.sId, email: u.email })),
+        },
         "Some users have mutiple memberships"
       );
       process.exit(1);
@@ -84,23 +89,29 @@ makeScript(
 
     let count = 0;
 
-    for (const auth0Id of auth0Ids) {
-      count++;
-      logger.info({ user: auth0Id, count }, "Setting region");
-      if (execute) {
-        await throttleAuth0(() =>
-          managementClient.users.update(
-            {
-              id: auth0Id,
-            },
-            {
-              app_metadata: {
-                region: destinationRegion,
+    await concurrentExecutor(
+      auth0Ids,
+      async (auth0Id) => {
+        count++;
+        logger.info({ user: auth0Id, count }, "Setting region");
+        if (execute) {
+          await throttleAuth0(() =>
+            managementClient.users.update(
+              {
+                id: auth0Id,
               },
-            }
-          )
-        );
+              {
+                app_metadata: {
+                  region: destinationRegion,
+                },
+              }
+            )
+          );
+        }
+      },
+      {
+        concurrency: 10,
       }
-    }
+    );
   }
 );
