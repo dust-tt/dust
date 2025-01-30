@@ -3624,6 +3624,59 @@ impl Store for PostgresStore {
         Ok(nodes)
     }
 
+    async fn count_nodes_children(&self, nodes: &Vec<Node>) -> Result<HashMap<String, u64>> {
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        // Extract all node IDs we want to count children for and get corresponding data_source_row_ids
+        let node_ids: Vec<String> = nodes.iter().map(|n| n.node_id.clone()).collect();
+        let data_source_internal_ids: Vec<String> = nodes
+            .iter()
+            .map(|n| n.data_source_internal_id.clone())
+            .collect();
+        let r = c
+            .query(
+                "SELECT ds.id, p.node_id FROM data_sources ds
+                    JOIN UNNEST(
+                        $1::text[],
+                        $2::text[]
+                    ) AS p(node_id, internal_id)
+                ON ds.internal_id = p.internal_id",
+                &[&node_ids, &data_source_internal_ids],
+            )
+            .await?;
+
+        let data_source_row_ids: Vec<i64> = r.iter().map(|row| row.get(0)).collect();
+        let node_ids: Vec<String> = r.iter().map(|row| row.get(1)).collect();
+
+        // using index (data_source, parents[2]), grab children count
+        let stmt = c
+            .prepare(
+                "SELECT p.node_id, COUNT(*) as child_count
+                    FROM data_sources_nodes dsn
+                    JOIN UNNEST(
+                        $1::bigint[],
+                        $2::text[]
+                    ) AS p(data_source, node_id)
+                    ON dsn.data_source = p.data_source AND dsn.parents[2] = p.node_id
+                    GROUP BY p.node_id",
+            )
+            .await?;
+        let rows = c.query(&stmt, &[&data_source_row_ids, &node_ids]).await?;
+
+        // Convert the results into a HashMap
+        let counts = rows
+            .iter()
+            .map(|row| {
+                let parent_id: String = row.get(0);
+                let count: i64 = row.get(1);
+                (parent_id, count as u64)
+            })
+            .collect::<HashMap<String, u64>>();
+
+        Ok(counts)
+    }
+
     async fn llm_cache_get(
         &self,
         project: &Project,

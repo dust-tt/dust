@@ -8,13 +8,14 @@ use elasticsearch::{
     http::transport::{SingleNodeConnectionPool, TransportBuilder},
     DeleteByQueryParts, DeleteParts, Elasticsearch, IndexParts, SearchParts,
 };
-use elasticsearch_dsl::{Aggregation, BoolQuery, Query, Search};
+use elasticsearch_dsl::{BoolQuery, Query, Search};
 use serde_json::json;
 use tracing::{error, info};
 use url::Url;
 
 use crate::{
     data_sources::node::{CoreContentNode, Node, NodeType},
+    stores::store::Store,
     utils,
 };
 
@@ -95,6 +96,7 @@ pub trait SearchStore {
         query: Option<String>,
         filter: NodesSearchFilter,
         options: Option<NodesSearchOptions>,
+        store: Box<dyn Store + Sync + Send>,
     ) -> Result<Vec<CoreContentNode>>;
 
     async fn search_nodes_with_cursor(
@@ -102,6 +104,7 @@ pub trait SearchStore {
         query: Option<String>,
         filter: NodesSearchFilter,
         cursor: Option<NodesSearchCursorRequest>,
+        store: Box<dyn Store + Sync + Send>,
     ) -> Result<(Vec<CoreContentNode>, Option<String>)>;
 
     async fn index_node(&self, node: Node) -> Result<()>;
@@ -162,6 +165,7 @@ impl SearchStore for ElasticsearchSearchStore {
         query: Option<String>,
         filter: NodesSearchFilter,
         options: Option<NodesSearchOptions>,
+        store: Box<dyn Store + Sync + Send>,
     ) -> Result<Vec<CoreContentNode>> {
         let options = options.unwrap_or_default();
 
@@ -254,7 +258,7 @@ impl SearchStore for ElasticsearchSearchStore {
         };
 
         let compute_node_start = utils::now();
-        let result = self.compute_core_content_nodes(nodes).await;
+        let result = self.compute_core_content_nodes(nodes, store).await;
         info!(
             duration = utils::now() - compute_node_start,
             data_source_id = data_source_id,
@@ -271,6 +275,7 @@ impl SearchStore for ElasticsearchSearchStore {
         query: Option<String>,
         filter: NodesSearchFilter,
         request: Option<NodesSearchCursorRequest>,
+        store: Box<dyn Store + Sync + Send>,
     ) -> Result<(Vec<CoreContentNode>, Option<String>)> {
         let params = request.unwrap_or_default();
         let limit = params.limit.unwrap_or(MAX_PAGE_SIZE);
@@ -387,7 +392,7 @@ impl SearchStore for ElasticsearchSearchStore {
 
         let compute_node_start = utils::now();
         // Compute core content nodes with additional metadata.
-        let result = self.compute_core_content_nodes(nodes).await?;
+        let result = self.compute_core_content_nodes(nodes, store).await?;
         info!(
             duration = utils::now() - compute_node_start,
             data_source_id = data_source_id,
@@ -554,7 +559,11 @@ impl ElasticsearchSearchStore {
     ///
     /// It then creates CoreContentNodes from the nodes, using the results of these queries
     /// to populate the `has_children` and `parent_title` fields
-    async fn compute_core_content_nodes(&self, nodes: Vec<Node>) -> Result<Vec<CoreContentNode>> {
+    async fn compute_core_content_nodes(
+        &self,
+        nodes: Vec<Node>,
+        store: Box<dyn Store + Sync + Send>,
+    ) -> Result<Vec<CoreContentNode>> {
         if nodes.len() as u64 > MAX_PAGE_SIZE {
             return Err(anyhow::anyhow!(
                 "Too many nodes to compute core content nodes: {} (limit is {})",
@@ -563,17 +572,14 @@ impl ElasticsearchSearchStore {
             ));
         }
 
-        // Build has_children query
-        let has_children_search = Search::new()
-            .size(0)
-            .query(Query::bool().filter(Query::terms(
-                "parent_id",
-                nodes.iter().map(|n| &n.node_id).collect::<Vec<_>>(),
-            )))
-            .aggregate(
-                "parent_nodes",
-                Aggregation::terms("parent_id").size(MAX_PAGE_SIZE),
-            );
+        // count children using store
+        let count_start = utils::now();
+        let children_count_map = store.count_nodes_children(&nodes).await?;
+        let count_duration = utils::now() - count_start;
+        info!(
+            duration = count_duration,
+            "[ElasticsearchSearchStore] Count children duration"
+        );
 
         // Build parent titles query
         let parent_ids: Vec<_> = nodes.iter().filter_map(|n| n.parent_id.as_ref()).collect();
@@ -582,45 +588,12 @@ impl ElasticsearchSearchStore {
             .query(Query::bool().filter(Query::terms("node_id", parent_ids)))
             .source(vec!["node_id", "title"]);
 
-        // Execute both futures concurrently
-        let (has_children_response, parent_titles_response) = tokio::join!(
-            self.client
-                .search(SearchParts::Index(&[NODES_INDEX_NAME]))
-                .body(has_children_search)
-                .send(),
-            self.client
-                .search(SearchParts::Index(&[NODES_INDEX_NAME]))
-                .body(parent_titles_search)
-                .send()
-        );
-
-        let has_children_response = has_children_response?;
-        let parent_titles_response = parent_titles_response?;
-
-        // Process has_children results
-        let has_children_map = if has_children_response.status_code().is_success() {
-            let response_body = has_children_response.json::<serde_json::Value>().await?;
-            response_body["aggregations"]["parent_nodes"]["buckets"]
-                .as_array()
-                .map(|buckets| {
-                    buckets
-                        .iter()
-                        .filter_map(|bucket| {
-                            Some((
-                                bucket["key"].as_str()?.to_string(),
-                                bucket["doc_count"].as_u64()? > 0,
-                            ))
-                        })
-                        .collect::<HashMap<_, _>>()
-                })
-                .unwrap_or_default()
-        } else {
-            let error = has_children_response.json::<serde_json::Value>().await?;
-            return Err(anyhow::anyhow!(
-                "Failed to fetch has_children data: {}",
-                error
-            ));
-        };
+        let parent_titles_response = self
+            .client
+            .search(SearchParts::Index(&[NODES_INDEX_NAME]))
+            .body(parent_titles_search)
+            .send()
+            .await?;
 
         // Process parent titles results
         let parent_titles_map = if parent_titles_response.status_code().is_success() {
@@ -647,17 +620,14 @@ impl ElasticsearchSearchStore {
         let core_content_nodes = nodes
             .into_iter()
             .map(|node| {
-                let has_children = has_children_map
-                    .get(&node.node_id)
-                    .copied()
-                    .unwrap_or(false);
+                let children_count = children_count_map.get(&node.node_id).copied().unwrap_or(0);
                 let parent_title = node
                     .parent_id
                     .as_ref()
                     .and_then(|pid| parent_titles_map.get(pid))
                     .cloned();
 
-                CoreContentNode::new(node, has_children, parent_title)
+                CoreContentNode::new(node, children_count, parent_title)
             })
             .collect();
 

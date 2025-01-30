@@ -177,15 +177,15 @@ impl From<serde_json::Value> for Node {
 pub struct CoreContentNode {
     #[serde(flatten)]
     pub base: Node,
-    pub has_children: bool,
+    pub children_count: u64,
     pub parent_title: Option<String>,
 }
 
 impl CoreContentNode {
-    pub fn new(base: Node, has_children: bool, parent_title: Option<String>) -> Self {
+    pub fn new(base: Node, children_count: u64, parent_title: Option<String>) -> Self {
         CoreContentNode {
             base,
-            has_children,
+            children_count,
             parent_title,
         }
     }

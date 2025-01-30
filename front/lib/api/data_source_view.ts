@@ -183,11 +183,11 @@ function filterNodesByViewType(
   switch (viewType) {
     case "documents":
       return nodes.filter(
-        (node) => node.has_children || node.node_type !== "Table"
+        (node) => node.children_count > 0 || node.node_type !== "Table"
       );
     case "tables":
       return nodes.filter(
-        (node) => node.has_children || node.node_type === "Table"
+        (node) => node.children_count > 0 || node.node_type === "Table"
       );
     default:
       assertNever(viewType);
@@ -200,7 +200,7 @@ function removeCatchAllFoldersIfEmpty(
   return nodes.filter(
     (node) =>
       !FOLDERS_TO_HIDE_IF_EMPTY_MIME_TYPES.includes(node.mime_type) ||
-      node.has_children
+      node.children_count > 0
   );
 }
 
@@ -282,7 +282,7 @@ async function getContentNodesForDataSourceViewFromCore(
 
   const expandable = (node: CoreAPIContentNode) =>
     !NON_EXPANDABLE_NODES_MIME_TYPES.includes(node.mime_type) &&
-    node.has_children &&
+    node.children_count > 0 &&
     // if we aren't in tables view, spreadsheets are not expandable
     !(viewType !== "tables" && SPREADSHEET_MIME_TYPES.includes(node.mime_type));
 
