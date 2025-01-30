@@ -525,6 +525,21 @@ export async function workspaceRelocateDataSourceCoreWorkflow({
       },
     ],
   });
+
+  // 4) Relocate the data source folders to the destination region.
+  await executeChild(workspaceRelocateDataSourceFoldersWorkflow, {
+    workflowId: `workspaceRelocateDataSourceFoldersWorkflow-${workspaceId}-${dataSourceCoreIds.dustAPIDataSourceId}`,
+    searchAttributes: parentSearchAttributes,
+    args: [
+      {
+        dataSourceCoreIds,
+        destIds,
+        destRegion,
+        sourceRegion,
+        workspaceId,
+      },
+    ],
+  });
 }
 
 export async function workspaceRelocateDataSourceDocumentsWorkflow({
@@ -566,6 +581,57 @@ export async function workspaceRelocateDataSourceDocumentsWorkflow({
       await sourceRegionActivities.getRegionDustFacingUrl();
 
     await destinationRegionActivities.processDataSourceDocuments({
+      destIds,
+      dataPath,
+      destRegion,
+      sourceRegion,
+      sourceRegionDustFacingUrl,
+      workspaceId,
+    });
+
+    pageCursor = nextPageCursor;
+  } while (pageCursor);
+}
+
+export async function workspaceRelocateDataSourceFoldersWorkflow({
+  dataSourceCoreIds,
+  destIds,
+  destRegion,
+  sourceRegion,
+  workspaceId,
+}: RelocationWorkflowBase & {
+  destIds: CreateDataSourceProjectResult;
+  dataSourceCoreIds: DataSourceCoreIds;
+}) {
+  const sourceRegionActivities = getCoreSourceRegionActivities(sourceRegion);
+  const destinationRegionActivities =
+    getCoreDestinationRegionActivities(destRegion);
+
+  let pageCursor: string | null = null;
+
+  do {
+    if (workflowInfo().historyLength > TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH) {
+      await continueAsNew<typeof workspaceRelocateDataSourceFoldersWorkflow>({
+        dataSourceCoreIds,
+        destIds,
+        destRegion,
+        sourceRegion,
+        workspaceId,
+      });
+    }
+
+    const { dataPath, nextPageCursor } =
+      await sourceRegionActivities.getDataSourceFolders({
+        pageCursor,
+        dataSourceCoreIds,
+        sourceRegion,
+        workspaceId,
+      });
+
+    const sourceRegionDustFacingUrl =
+      await sourceRegionActivities.getRegionDustFacingUrl();
+
+    await destinationRegionActivities.processDataSourceFolders({
       destIds,
       dataPath,
       destRegion,
