@@ -379,6 +379,7 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
     },
   },
   snowflake: null,
+  bigquery: null,
   webcrawler: null,
   zendesk: null,
   confluence: {

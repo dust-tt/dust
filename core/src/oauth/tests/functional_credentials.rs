@@ -132,10 +132,10 @@ async fn test_oauth_credentials_snowflake_delete_ok() {
 }
 
 #[tokio::test]
-async fn test_oauth_credentials_google_service_account_flow_ok() {
+async fn test_oauth_credentials_bigquery_flow_ok() {
     let create_url = "/credentials".to_string();
     let create_body = json!({
-        "provider": "google_service_account",
+        "provider": "bigquery",
         "metadata": {
             "workspace_id": "PjlCyKnRu2",
             "user_id": "5dz5IMaoLW"
@@ -194,10 +194,7 @@ async fn test_oauth_credentials_google_service_account_flow_ok() {
 
     assert_eq!(retrieved_credential.credential_id, credential.credential_id);
     assert_eq!(retrieved_credential.created, credential.created);
-    assert_eq!(
-        retrieved_credential.provider.unwrap(),
-        "google_service_account"
-    );
+    assert_eq!(retrieved_credential.provider.unwrap(), "bigquery");
 
     let metadata = retrieved_credential.metadata.unwrap();
     assert_eq!(metadata.get("user_id").unwrap(), "5dz5IMaoLW");
@@ -215,10 +212,10 @@ async fn test_oauth_credentials_google_service_account_flow_ok() {
 }
 
 #[tokio::test]
-async fn test_oauth_credentials_google_service_account_delete_ok() {
+async fn test_oauth_credentials_bigquery_delete_ok() {
     let create_url = "/credentials".to_string();
     let create_body = json!({
-        "provider": "google_service_account",
+        "provider": "bigquery",
         "metadata": {
             "workspace_id": "PjlCyKnRu2",
             "user_id": "5dz5IMaoLW"
@@ -284,10 +281,10 @@ async fn test_oauth_credentials_snowflake_invalid_content() {
 }
 
 #[tokio::test]
-async fn test_oauth_credentials_google_service_account_invalid_content() {
+async fn test_oauth_credentials_bigquery_invalid_content() {
     let create_url = "/credentials".to_string();
     let create_body = json!({
-        "provider": "google_service_account",
+        "provider": "bigquery",
         "metadata": {
             "workspace_id": "PjlCyKnRu2",
             "user_id": "5dz5IMaoLW"

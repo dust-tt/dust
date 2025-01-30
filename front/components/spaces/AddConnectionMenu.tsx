@@ -25,11 +25,18 @@ import type {
   SpaceType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { Err, isOAuthProvider, Ok, setupOAuthConnection } from "@dust-tt/types";
+import {
+  assertNever,
+  Err,
+  isOAuthProvider,
+  Ok,
+  setupOAuthConnection,
+} from "@dust-tt/types";
 import { useRouter } from "next/router";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 import { CreateConnectionConfirmationModal } from "@app/components/data_source/CreateConnectionConfirmationModal";
+import { CreateOrUpdateConnectionBigQueryModal } from "@app/components/data_source/CreateOrUpdateConnectionBigQueryModal";
 import { CreateOrUpdateConnectionSnowflakeModal } from "@app/components/data_source/CreateOrUpdateConnectionSnowflakeModal";
 import {
   CONNECTOR_CONFIGURATIONS,
@@ -111,20 +118,47 @@ export const AddConnectionMenu = ({
 
   const router = useRouter();
   const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+  const { systemSpace } = useSystemSpace({ workspaceId: owner.sId });
+
+  const handleOnClose = useCallback(
+    () =>
+      setShowConfirmConnection((prev) => ({
+        isOpen: false,
+        integration: prev.integration,
+      })),
+    []
+  );
+
+  const handleCredentialProviderManagedDataSource = useCallback(
+    async ({
+      connectionId,
+      provider,
+      suffix,
+    }: {
+      connectionId: string;
+      provider: ConnectorProvider;
+      suffix: string | null;
+    }) => {
+      if (!systemSpace) {
+        throw new Error("System space is required");
+      }
+
+      return postDataSource({
+        owner,
+        systemSpace,
+        provider,
+        connectionId,
+        suffix,
+      });
+    },
+    [owner, systemSpace]
+  );
 
   const availableIntegrations = integrations.filter(
     (i) =>
       isConnectorProviderAllowedForPlan(plan, i.connectorProvider) &&
       isConnectionIdRequiredForProvider(i.connectorProvider)
   );
-
-  const { systemSpace } = useSystemSpace({
-    workspaceId: owner.sId,
-  });
-
-  if (!systemSpace) {
-    return null;
-  }
 
   const postDataSource = async ({
     owner,
@@ -176,6 +210,10 @@ export const AddConnectionMenu = ({
         throw connectionIdRes.error;
       }
 
+      if (!systemSpace) {
+        throw new Error("System space is required");
+      }
+
       setShowConfirmConnection((prev) => ({
         isOpen: false,
         integration: prev.integration,
@@ -218,24 +256,6 @@ export const AddConnectionMenu = ({
     }
   };
 
-  const handleCredentialProviderManagedDataSource = async ({
-    connectionId,
-    provider,
-    suffix,
-  }: {
-    connectionId: string;
-    provider: ConnectorProvider;
-    suffix: string | null;
-  }) => {
-    return postDataSource({
-      owner,
-      systemSpace,
-      provider,
-      connectionId,
-      suffix,
-    });
-  };
-
   const handleConnectionClick = (integration: DataSourceIntegration) => {
     const configuration =
       CONNECTOR_CONFIGURATIONS[integration.connectorProvider];
@@ -276,6 +296,10 @@ export const AddConnectionMenu = ({
     }
   };
 
+  if (!systemSpace) {
+    return null;
+  }
+
   const { integration, isOpen } = showConfirmConnection || {};
   const connectorProvider = integration?.connectorProvider;
 
@@ -313,57 +337,86 @@ export const AddConnectionMenu = ({
           </DialogContent>
         </Dialog>
 
-        {connectorProvider === "snowflake" ? (
-          <CreateOrUpdateConnectionSnowflakeModal
-            owner={owner}
-            connectorProviderConfiguration={
-              CONNECTOR_CONFIGURATIONS[connectorProvider]
-            }
-            isOpen={isOpen}
-            onClose={() =>
-              setShowConfirmConnection((prev) => ({
-                isOpen: false,
-                integration: prev.integration,
-              }))
-            }
-            createDatasource={(
-              args: Omit<
-                Parameters<typeof handleCredentialProviderManagedDataSource>[0],
-                "suffix"
-              >
-            ) =>
-              handleCredentialProviderManagedDataSource({
-                ...args,
-                suffix: integration?.setupWithSuffix ?? null,
-              })
-            }
-            onSuccess={onCreated}
-          />
-        ) : (
-          connectorProvider && (
-            <CreateConnectionConfirmationModal
-              connectorProviderConfiguration={
-                CONNECTOR_CONFIGURATIONS[connectorProvider]
-              }
-              isOpen={isOpen}
-              onClose={() =>
-                setShowConfirmConnection((prev) => ({
-                  isOpen: false,
-                  integration: prev.integration,
-                }))
-              }
-              onConfirm={(extraConfig: Record<string, string>) => {
-                if (showConfirmConnection.integration) {
-                  void handleOauthProviderManagedDataSource(
-                    connectorProvider,
-                    integration.setupWithSuffix,
-                    extraConfig
-                  );
-                }
-              }}
-            />
-          )
-        )}
+        {[connectorProvider].map((c) => {
+          switch (c) {
+            case "bigquery":
+              return (
+                <CreateOrUpdateConnectionBigQueryModal
+                  owner={owner}
+                  connectorProviderConfiguration={CONNECTOR_CONFIGURATIONS[c]}
+                  isOpen={isOpen}
+                  onClose={handleOnClose}
+                  createDatasource={(
+                    args: Omit<
+                      Parameters<
+                        typeof handleCredentialProviderManagedDataSource
+                      >[0],
+                      "suffix"
+                    >
+                  ) =>
+                    handleCredentialProviderManagedDataSource({
+                      ...args,
+                      suffix: integration?.setupWithSuffix ?? null,
+                    })
+                  }
+                  onSuccess={onCreated}
+                />
+              );
+            case "snowflake":
+              return (
+                <CreateOrUpdateConnectionSnowflakeModal
+                  owner={owner}
+                  connectorProviderConfiguration={CONNECTOR_CONFIGURATIONS[c]}
+                  isOpen={isOpen}
+                  onClose={handleOnClose}
+                  createDatasource={(
+                    args: Omit<
+                      Parameters<
+                        typeof handleCredentialProviderManagedDataSource
+                      >[0],
+                      "suffix"
+                    >
+                  ) =>
+                    handleCredentialProviderManagedDataSource({
+                      ...args,
+                      suffix: integration?.setupWithSuffix ?? null,
+                    })
+                  }
+                  onSuccess={onCreated}
+                />
+              );
+            case "github":
+            case "confluence":
+            case "google_drive":
+            case "intercom":
+            case "notion":
+            case "slack":
+            case "microsoft":
+            case "zendesk":
+            case "webcrawler":
+              return (
+                <CreateConnectionConfirmationModal
+                  connectorProviderConfiguration={CONNECTOR_CONFIGURATIONS[c]}
+                  isOpen={isOpen}
+                  onClose={handleOnClose}
+                  onConfirm={(extraConfig: Record<string, string>) => {
+                    if (showConfirmConnection.integration) {
+                      void handleOauthProviderManagedDataSource(
+                        c,
+                        integration?.setupWithSuffix ?? null,
+                        extraConfig
+                      );
+                    }
+                  }}
+                />
+              );
+            case undefined:
+              return null;
+            default:
+              assertNever(c);
+          }
+        })}
+
         <Dialog
           open={showPreviewPopupForProvider.isOpen}
           onOpenChange={(open) => {

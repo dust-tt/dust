@@ -38,6 +38,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import {
+  assertNever,
   CONNECTOR_TYPE_TO_MISMATCH_ERROR,
   isOAuthProvider,
   isValidZendeskSubdomain,
@@ -55,6 +56,7 @@ import { useSWRConfig } from "swr";
 
 import type { ConfirmDataType } from "@app/components/Confirm";
 import { ConfirmContext } from "@app/components/Confirm";
+import { CreateOrUpdateConnectionBigQueryModal } from "@app/components/data_source/CreateOrUpdateConnectionBigQueryModal";
 import { CreateOrUpdateConnectionSnowflakeModal } from "@app/components/data_source/CreateOrUpdateConnectionSnowflakeModal";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import { setupConnection } from "@app/components/spaces/AddConnectionMenu";
@@ -112,6 +114,10 @@ const CONNECTOR_TYPE_TO_PERMISSIONS: Record<
   },
   webcrawler: undefined,
   snowflake: {
+    selected: "read",
+    unselected: "none",
+  },
+  bigquery: {
     selected: "read",
     unselected: "none",
   },
@@ -891,39 +897,71 @@ export function ConnectorPermissionsModal({
       </Sheet>
 
       {/* Keep existing modals for edition/deletion/data update states */}
-      {connector.type === "snowflake" ? (
-        <CreateOrUpdateConnectionSnowflakeModal
-          owner={owner}
-          connectorProviderConfiguration={
-            CONNECTOR_CONFIGURATIONS[connector.type]
-          }
-          isOpen={modalToShow === "edition"}
-          onClose={() => closeModal(false)}
-          dataSourceToUpdate={dataSource}
-          onSuccess={() => {
-            setModalToShow("selection");
-          }}
-        />
-      ) : (
-        <DataSourceEditionModal
-          isOpen={modalToShow === "edition"}
-          onClose={() => closeModal(false)}
-          dataSource={dataSource}
-          owner={owner}
-          onEditPermissionsClick={async (
-            extraConfig: Record<string, string>
-          ) => {
-            await handleUpdatePermissions(
-              connector,
-              dataSource,
-              owner,
-              extraConfig,
-              sendNotification
+      {[connector].map((c) => {
+        switch (c.type) {
+          case "snowflake":
+            return (
+              <CreateOrUpdateConnectionSnowflakeModal
+                owner={owner}
+                connectorProviderConfiguration={
+                  CONNECTOR_CONFIGURATIONS[c.type]
+                }
+                isOpen={modalToShow === "edition"}
+                onClose={() => closeModal(false)}
+                dataSourceToUpdate={dataSource}
+                onSuccess={() => {
+                  setModalToShow("selection");
+                }}
+              />
             );
-            closeModal(false);
-          }}
-        />
-      )}
+          case "bigquery":
+            return (
+              <CreateOrUpdateConnectionBigQueryModal
+                owner={owner}
+                connectorProviderConfiguration={
+                  CONNECTOR_CONFIGURATIONS[c.type]
+                }
+                isOpen={modalToShow === "edition"}
+                onClose={() => closeModal(false)}
+                dataSourceToUpdate={dataSource}
+                onSuccess={() => {
+                  setModalToShow("selection");
+                }}
+              />
+            );
+          case "github":
+          case "confluence":
+          case "google_drive":
+          case "intercom":
+          case "notion":
+          case "slack":
+          case "microsoft":
+          case "zendesk":
+          case "webcrawler":
+            return (
+              <DataSourceEditionModal
+                isOpen={modalToShow === "edition"}
+                onClose={() => closeModal(false)}
+                dataSource={dataSource}
+                owner={owner}
+                onEditPermissionsClick={async (
+                  extraConfig: Record<string, string>
+                ) => {
+                  await handleUpdatePermissions(
+                    connector,
+                    dataSource,
+                    owner,
+                    extraConfig,
+                    sendNotification
+                  );
+                  closeModal(false);
+                }}
+              />
+            );
+          default:
+            assertNever(c.type);
+        }
+      })}
 
       <DataSourceDeletionModal
         isOpen={modalToShow === "deletion"}

@@ -9,6 +9,7 @@ import {
   NotionLogo,
   SlackLogo,
   SnowflakeLogo,
+  TableIcon,
   ZendeskLogo,
 } from "@dust-tt/sparkle";
 import type {
@@ -198,6 +199,20 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     isNested: true,
     isSearchEnabled: false,
   },
+  bigquery: {
+    name: "BigQuery",
+    connectorProvider: "bigquery",
+    status: "rolling_out",
+    rollingOutFlag: "bigquery_feature",
+    hide: true,
+    description: "Query a BigQuery database.",
+    limitations: null,
+    logoComponent: TableIcon,
+    isNested: true,
+    isSearchEnabled: false,
+    guideLink: "https://docs.dust.tt/docs/bigquery-connection",
+    selectLabel: "Select tables",
+  },
 };
 
 export function getConnectorProviderLogoWithFallback(
@@ -240,6 +255,8 @@ export const isConnectorProviderAllowedForPlan = (
       return true;
     case "zendesk":
       return true;
+    case "bigquery":
+      return true;
     default:
       assertNever(provider);
   }
@@ -258,6 +275,7 @@ export const isConnectorProviderAssistantDefaultSelected = (
     case "microsoft":
     case "zendesk":
     case "snowflake":
+    case "bigquery":
       return true;
     case "webcrawler":
       return false;
@@ -279,6 +297,7 @@ export const isConnectionIdRequiredForProvider = (
     case "microsoft":
     case "zendesk":
     case "snowflake":
+    case "bigquery":
       return true;
     case "webcrawler":
       return false;

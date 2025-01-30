@@ -40,6 +40,7 @@ const CONNECTOR_PROVIDER_TO_RESOURCE_NAME: Record<
   webcrawler: { singular: "page", plural: "pages" },
   snowflake: { singular: "table", plural: "tables" },
   zendesk: { singular: "element", plural: "elements" },
+  bigquery: { singular: "table", plural: "tables" },
 };
 
 export const getConnectorProviderResourceName = (
@@ -296,6 +297,7 @@ export function getTableIdForContentNode(
     case "snowflake":
     case "microsoft":
     case "notion":
+    case "bigquery":
       return contentNode.internalId;
 
     case "confluence":

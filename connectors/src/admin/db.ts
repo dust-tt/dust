@@ -1,6 +1,7 @@
 import { sendInitDbMessage } from "@dust-tt/types";
 import type { Sequelize } from "sequelize";
 
+import { BigQueryConfigurationModel } from "@connectors/lib/models/bigquery";
 import {
   ConfluenceConfiguration,
   ConfluencePage,
@@ -118,6 +119,7 @@ async function main(): Promise<void> {
   await WebCrawlerPage.sync({ alter: true });
   await WebCrawlerConfigurationHeader.sync({ alter: true });
   await SnowflakeConfigurationModel.sync({ alter: true });
+  await BigQueryConfigurationModel.sync({ alter: true });
   await RemoteDatabaseModel.sync({ alter: true });
   await RemoteSchemaModel.sync({ alter: true });
   await RemoteTableModel.sync({ alter: true });

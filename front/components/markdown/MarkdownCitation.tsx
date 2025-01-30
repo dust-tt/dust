@@ -9,6 +9,7 @@ import {
   NotionLogo,
   SlackLogo,
   SnowflakeLogo,
+  TableIcon,
   ZendeskLogo,
 } from "@dust-tt/sparkle";
 import type { SVGProps } from "react";
@@ -25,6 +26,7 @@ const CITATION_ICONS = [
   "slack",
   "image",
   "snowflake",
+  "bigquery",
 ] as const;
 
 export type CitationIconType = (typeof CITATION_ICONS)[number];
@@ -44,6 +46,7 @@ export const citationIconMap: Record<
   slack: SlackLogo,
   image: ImageIcon,
   snowflake: SnowflakeLogo,
+  bigquery: TableIcon, // TODO(bigquery) replace with correct icon.
 };
 
 export interface MarkdownCitation {

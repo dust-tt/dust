@@ -2,23 +2,29 @@ import {
   BookOpenIcon,
   Button,
   CloudArrowLeftRightIcon,
-  Input,
   Modal,
   Page,
+  TextArea,
 } from "@dust-tt/sparkle";
 import type {
+  BigQueryCredentials,
   ConnectorProvider,
   ConnectorType,
   DataSourceType,
-  SnowflakeCredentials,
   WorkspaceType,
 } from "@dust-tt/types";
-import { isConnectorsAPIError } from "@dust-tt/types";
-import { useState } from "react";
+import {
+  BigQueryCredentialsSchema,
+  isConnectorsAPIError,
+} from "@dust-tt/types";
+import { isRight } from "fp-ts/lib/Either";
+import { formatValidationErrors } from "io-ts-reporters";
+import { useEffect, useMemo, useState } from "react";
 
 import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
+import type { PostCredentialsBody } from "@app/pages/api/w/[wId]/credentials";
 
-type CreateOrUpdateConnectionSnowflakeModalProps = {
+type CreateOrUpdateConnectionBigQueryModalProps = {
   owner: WorkspaceType;
   connectorProviderConfiguration: ConnectorProviderConfiguration;
   isOpen: boolean;
@@ -34,7 +40,7 @@ type CreateOrUpdateConnectionSnowflakeModalProps = {
   dataSourceToUpdate?: DataSourceType;
 };
 
-export function CreateOrUpdateConnectionSnowflakeModal({
+export function CreateOrUpdateConnectionBigQueryModal({
   owner,
   connectorProviderConfiguration,
   isOpen,
@@ -42,38 +48,65 @@ export function CreateOrUpdateConnectionSnowflakeModal({
   createDatasource,
   onSuccess: _onSuccess,
   dataSourceToUpdate,
-}: CreateOrUpdateConnectionSnowflakeModalProps) {
+}: CreateOrUpdateConnectionBigQueryModalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [credentials, setCredentials] = useState<SnowflakeCredentials>({
-    username: "",
-    password: "",
-    account: "",
-    role: "",
-    warehouse: "",
-  });
+  const [credentials, setCredentials] = useState<string>("");
 
-  if (connectorProviderConfiguration.connectorProvider !== "snowflake") {
+  const credentialsState = useMemo(() => {
+    if (!credentials) {
+      return {
+        credentials: null,
+        valid: false,
+        errorMessage: null,
+      };
+    }
+
+    try {
+      const credentialsObject: BigQueryCredentials = JSON.parse(credentials);
+      const r = BigQueryCredentialsSchema.decode(credentialsObject);
+      if (isRight(r)) {
+        const allFieldsHaveValue = Object.values(credentialsObject).every(
+          (v) => v.length > 0
+        );
+        return {
+          credentials: credentialsObject,
+          valid: allFieldsHaveValue,
+          errorMessage: !allFieldsHaveValue
+            ? "All fields must have a value"
+            : null,
+        };
+      } else {
+        return {
+          credentials: credentialsObject,
+          valid: false,
+          errorMessage: formatValidationErrors(r.left).join(" "),
+        };
+      }
+    } catch (error) {
+      return {
+        credentials: null,
+        valid: false,
+        errorMessage: "Invalid JSON",
+      };
+    }
+  }, [credentials]);
+
+  useEffect(() => {
+    setError(credentialsState.errorMessage);
+  }, [credentialsState.errorMessage]);
+
+  if (connectorProviderConfiguration.connectorProvider !== "bigquery") {
     // Should never happen.
     return null;
   }
 
-  const areCredentialsValid = () => {
-    return Object.values(credentials).every((value) => value.length > 0);
-  };
-
   function onSuccess(ds: DataSourceType) {
-    setCredentials({
-      username: "",
-      password: "",
-      account: "",
-      role: "",
-      warehouse: "",
-    });
+    setCredentials("");
     _onSuccess(ds);
   }
 
-  const createSnowflakeConnection = async () => {
+  const createBigQueryConnection = async () => {
     if (!onSuccess || !createDatasource) {
       // Should never happen.
       throw new Error("onCreated and createDatasource are required");
@@ -90,9 +123,9 @@ export function CreateOrUpdateConnectionSnowflakeModal({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          provider: "snowflake",
-          credentials,
-        }),
+          provider: "bigquery" as const,
+          credentials: JSON.parse(credentials) as BigQueryCredentials,
+        } as PostCredentialsBody),
       }
     );
 
@@ -106,7 +139,7 @@ export function CreateOrUpdateConnectionSnowflakeModal({
     const data = await createCredentialsRes.json();
 
     const createDataSourceRes = await createDatasource({
-      provider: "snowflake",
+      provider: "bigquery",
       connectionId: data.credentials.id,
     });
 
@@ -119,10 +152,10 @@ export function CreateOrUpdateConnectionSnowflakeModal({
         maybeConnectorsError.type === "invalid_request_error"
       ) {
         setError(
-          `Failed to create Snowflake connection: ${maybeConnectorsError.message}`
+          `Failed to create BigQuery connection: ${maybeConnectorsError.message}`
         );
       } else {
-        setError(`Failed to create Snowflake connection: ${err.error.message}`);
+        setError(`Failed to create BigQuery connection: ${err.error.message}`);
       }
 
       setIsLoading(false);
@@ -138,10 +171,15 @@ export function CreateOrUpdateConnectionSnowflakeModal({
     setIsLoading(false);
   };
 
-  const updateSnowflakeConnection = async () => {
+  const updateBigQueryConnection = async () => {
     if (!dataSourceToUpdate) {
       // Should never happen.
       throw new Error("dataSourceToUpdate is required");
+    }
+
+    if (!credentialsState.valid) {
+      // Should never happen.
+      throw new Error("credentialsState.valid is required");
     }
 
     setIsLoading(true);
@@ -153,8 +191,8 @@ export function CreateOrUpdateConnectionSnowflakeModal({
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        provider: "snowflake",
-        credentials,
+        provider: "bigquery",
+        credentials: credentialsState.credentials,
       }),
     });
 
@@ -190,10 +228,10 @@ export function CreateOrUpdateConnectionSnowflakeModal({
         maybeConnectorsError.type === "invalid_request_error"
       ) {
         setError(
-          `Failed to update Snowflake connection: ${maybeConnectorsError.message}`
+          `Failed to update BigQuery connection: ${maybeConnectorsError.message}`
         );
       } else {
-        setError(`Failed to update Snowflake connection: ${err.error.message}`);
+        setError(`Failed to update BigQuery connection: ${err.error.message}`);
       }
 
       return;
@@ -239,7 +277,7 @@ export function CreateOrUpdateConnectionSnowflakeModal({
               </div>
             )}
 
-            <Page.SectionHeader title="Snowflake Credentials" />
+            <Page.SectionHeader title="BigQuery Credentials" />
 
             {error && (
               <div className="w-full rounded-md bg-red-100 p-4 text-red-800">
@@ -248,55 +286,13 @@ export function CreateOrUpdateConnectionSnowflakeModal({
             )}
 
             <div className="w-full space-y-4">
-              <Input
-                label="Snowflake Account identifier"
-                name="account_identifier"
-                value={credentials.account}
-                placeholder="au12345.us-east-1"
+              <TextArea
+                className="min-h-[325px]"
+                name="service_account_json"
+                value={credentials}
+                placeholder="paste the content of your service account JSON here"
                 onChange={(e) => {
-                  setCredentials({ ...credentials, account: e.target.value });
-                  setError(null);
-                }}
-              />
-              <Input
-                label="Role"
-                name="role"
-                value={credentials.role}
-                placeholder="dev_role"
-                onChange={(e) => {
-                  setCredentials({ ...credentials, role: e.target.value });
-                  setError(null);
-                }}
-              />
-              <Input
-                label="Warehouse"
-                name="warehouse"
-                value={credentials.warehouse}
-                placeholder="dev_warehouse"
-                onChange={(e) => {
-                  setCredentials({ ...credentials, warehouse: e.target.value });
-                  setError(null);
-                }}
-              />
-              <Input
-                label="Username"
-                name="username"
-                value={credentials.username}
-                placeholder="dev_user"
-                onChange={(e) => {
-                  setCredentials({ ...credentials, username: e.target.value });
-                  setError(null);
-                }}
-              />
-              <Input
-                label="Password"
-                name="password"
-                type="password"
-                value={credentials.password}
-                placeholder=""
-                onChange={(e) => {
-                  setCredentials({ ...credentials, password: e.target.value });
-                  setError(null);
+                  setCredentials(e.target.value);
                 }}
               />
             </div>
@@ -310,12 +306,12 @@ export function CreateOrUpdateConnectionSnowflakeModal({
                   onClick={() => {
                     setIsLoading(true);
                     if (dataSourceToUpdate) {
-                      void updateSnowflakeConnection();
+                      void updateBigQueryConnection();
                     } else {
-                      void createSnowflakeConnection();
+                      void createBigQueryConnection();
                     }
                   }}
-                  disabled={isLoading || !areCredentialsValid()}
+                  disabled={isLoading || !credentialsState.valid}
                   label={
                     isLoading
                       ? "Connecting..."

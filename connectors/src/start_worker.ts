@@ -36,6 +36,8 @@ const workerFunctions: Record<WorkerType, () => Promise<void>> = {
   webcrawler: runWebCrawlerWorker,
   snowflake: runSnowflakeWorker,
   zendesk: runZendeskWorkers,
+  //TODO(BigQuery): Implement this
+  bigquery: () => Promise.resolve(),
 };
 
 const ALL_WORKERS = Object.keys(workerFunctions) as WorkerType[];
