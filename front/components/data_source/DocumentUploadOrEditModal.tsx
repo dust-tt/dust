@@ -90,6 +90,7 @@ export const DocumentUploadOrEditModal = ({
     content: false,
   });
 
+  const [hasChanged, setHasChanged] = useState(false);
   const [isValidDocument, setIsValidDocument] = useState(false);
   const [developerOptionsVisible, setDeveloperOptionsVisible] = useState(false);
 
@@ -182,6 +183,7 @@ export const DocumentUploadOrEditModal = ({
           content: false,
           name: false,
         });
+        setHasChanged(false);
       }
 
       // No matter the result, reset the file uploader
@@ -279,6 +281,7 @@ export const DocumentUploadOrEditModal = ({
               ? prev.sourceUrl
               : fileBlobs[0].publicUrl ?? "",
         }));
+        setHasChanged(true);
       } catch (error) {
         sendNotification({
           type: "error",
@@ -325,14 +328,9 @@ export const DocumentUploadOrEditModal = ({
       onClose={() => {
         fileUploaderService.resetUpload();
         onClose(false);
+        setHasChanged(false);
       }}
-      hasChanged={
-        document
-          ? document.text !== documentState.text ||
-            documentState.name !== initialId
-          : documentState.name.trim().length > 0 ||
-            documentState.text.trim().length > 0
-      }
+      hasChanged={hasChanged}
       variant="side-md"
       title={`${initialId ? "Edit" : "Add"} document`}
       onSave={onSave}
@@ -362,6 +360,7 @@ export const DocumentUploadOrEditModal = ({
                       ...prev,
                       name: e.target.value,
                     }));
+                    setHasChanged(true);
                   }}
                   message={
                     !documentState.name && editionStatus.name
@@ -381,12 +380,13 @@ export const DocumentUploadOrEditModal = ({
                   placeholder="https://..."
                   name="sourceUrl"
                   value={documentState.sourceUrl}
-                  onChange={(e) =>
+                  onChange={(e) => {
                     setDocumentState((prev) => ({
                       ...prev,
                       sourceUrl: e.target.value,
-                    }))
-                  }
+                    }));
+                    setHasChanged(true);
+                  }}
                 />
               </div>
 
@@ -430,6 +430,7 @@ export const DocumentUploadOrEditModal = ({
                       ...prev,
                       text: e.target.value,
                     }));
+                    setHasChanged(true);
                   }}
                   error={
                     editionStatus.content && !documentState.text
@@ -483,6 +484,7 @@ export const DocumentUploadOrEditModal = ({
                                   ...prev,
                                   tags: newTags,
                                 }));
+                                setHasChanged(true);
                               }}
                             />
                           </div>
@@ -498,6 +500,7 @@ export const DocumentUploadOrEditModal = ({
                                   ...prev,
                                   tags: newTags,
                                 }));
+                                setHasChanged(true);
                               }}
                             />
                           </div>
