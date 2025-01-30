@@ -163,7 +163,7 @@ export async function syncOneFile({
     name: file.name ?? "",
     parentInternalId,
     mimeType: file.file.mimeType ?? "",
-    webUrl: file.webUrl ?? "",
+    webUrl: file.webUrl ?? null,
   };
 
   if (mimeType === "application/vnd.ms-excel" || mimeType === "text/csv") {
@@ -301,7 +301,7 @@ export async function syncOneFile({
           dataSourceConfig,
           documentId,
           documentContent: content,
-          documentUrl: file.webUrl ?? "",
+          documentUrl: file.webUrl ?? undefined,
           timestampMs: upsertTimestampMs,
           tags,
           parents,

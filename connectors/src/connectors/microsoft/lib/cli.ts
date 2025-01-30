@@ -172,7 +172,7 @@ export const microsoft = async ({
           mimeType: file.file?.mimeType ?? "unknown",
           parentInternalId,
           skipReason: args.reason || "blacklisted",
-          webUrl: file.webUrl ?? "",
+          webUrl: file.webUrl ?? null,
         });
       }
 
