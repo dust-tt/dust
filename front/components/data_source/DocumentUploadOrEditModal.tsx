@@ -378,26 +378,30 @@ export const DocumentUploadOrEditModal = ({
                     />
                   </div>
 
-                  <div>
-                    <Page.SectionHeader
-                      title="Associated URL"
-                      description="The URL of the associated document (if any). Will be used to link users to the original document in assistants citations."
-                    />
-                    <Input
-                      placeholder="https://..."
-                      name="sourceUrl"
-                      value={documentState.sourceUrl}
-                      onChange={(e) => {
-                        setDocumentState((prev) => ({
-                          ...prev,
-                          sourceUrl: e.target.value,
-                        }));
-                        setHasChanged(true);
-                      }}
-                    />
+                  <div className="flex flex-col gap-2">
+                    <div>
+                      <Page.SectionHeader
+                        title="Associated URL"
+                        description="The URL of the associated document (if any). Will be used to link users to the original document in assistants citations."
+                      />
+                    </div>
+                    <div>
+                      <Input
+                        placeholder="https://..."
+                        name="sourceUrl"
+                        value={documentState.sourceUrl}
+                        onChange={(e) => {
+                          setDocumentState((prev) => ({
+                            ...prev,
+                            sourceUrl: e.target.value,
+                          }));
+                          setHasChanged(true);
+                        }}
+                      />
+                    </div>
                   </div>
 
-                  <div>
+                  <div className="flex flex-col gap-4">
                     <Page.SectionHeader
                       title="Text content"
                       description={`Copy paste content or upload a file (${getSupportedNonImageFileExtensions().join(", ")}). \n Up to ${
