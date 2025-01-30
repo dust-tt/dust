@@ -50,8 +50,8 @@ export default function TrustedBy() {
             height={80}
           />
           <Image
-            alt="malt"
-            src="/static/landing/logos/malt.png"
+            alt="doctolib"
+            src="/static/landing/logos/doctolib.png"
             width={200}
             height={80}
           />
