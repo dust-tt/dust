@@ -1,9 +1,14 @@
 export const validateUrl = (
   urlString: string
-): {
-  valid: boolean;
-  standardized: string | null;
-} => {
+):
+  | {
+      valid: false;
+      standardized: null;
+    }
+  | {
+      valid: true;
+      standardized: string;
+    } => {
   let url: URL;
   try {
     url = new URL(urlString);
