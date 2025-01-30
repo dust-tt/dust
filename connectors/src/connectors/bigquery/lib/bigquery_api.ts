@@ -110,17 +110,36 @@ export const fetchSchemas = async ({
  */
 export const fetchTables = async ({
   credentials,
-  fromSchema,
+  schemaName,
+  internalSchemaId,
   connection,
 }: {
   credentials: BigQueryCredentials;
-  fromSchema: string;
+  schemaName?: string;
+  internalSchemaId?: string;
   connection?: BigQuery;
 }): Promise<Result<Array<RemoteDBTable>, Error>> => {
   const conn = connection ?? connectToBigQuery(credentials);
   try {
+    if (!schemaName && !internalSchemaId) {
+      throw new Error("Either schemaName or internalSchemaId must be provided");
+    }
+    if (schemaName && internalSchemaId) {
+      throw new Error(
+        "Both schemaName and internalSchemaId cannot be provided"
+      );
+    }
+
     // Get the dataset specified by the fromSchema
-    const { name: schemaName } = parseSchemaInternalId(fromSchema);
+    schemaName = internalSchemaId
+      ? parseSchemaInternalId(internalSchemaId).name
+      : schemaName;
+
+    // Can't happen, to please TS.
+    if (!schemaName) {
+      throw new Error("Schema name is required");
+    }
+
     const dataset = await conn.dataset(schemaName);
     const r = await dataset.getTables();
     const tables = r[0];

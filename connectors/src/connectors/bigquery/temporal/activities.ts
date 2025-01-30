@@ -107,7 +107,7 @@ export async function syncBigQueryConnection(connectorId: ModelId) {
   for (const schema of schemas) {
     const tablesOnBigQueryRes = await fetchTables({
       credentials,
-      fromSchema: schema.name,
+      schemaName: schema.name,
       connection,
     });
     if (tablesOnBigQueryRes.isErr()) {

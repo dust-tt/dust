@@ -97,7 +97,7 @@ export const fetchAvailableChildrenInBigQuery = async ({
 
     const allTablesRes = await fetchTables({
       credentials,
-      fromSchema: parentInternalId,
+      internalSchemaId: parentInternalId,
     });
     if (allTablesRes.isErr()) {
       return new Err(allTablesRes.error);
