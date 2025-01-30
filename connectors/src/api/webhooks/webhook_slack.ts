@@ -1,4 +1,5 @@
 import type { WithConnectorsAPIErrorReponse } from "@dust-tt/types";
+import { MIME_TYPES } from "@dust-tt/types";
 import { JSON } from "@jsonjoy.com/util/lib/json-brand";
 import type { Request, Response } from "express";
 
@@ -9,12 +10,19 @@ import {
 import { botAnswerMessage } from "@connectors/connectors/slack/bot";
 import { updateSlackChannelInConnectorsDb } from "@connectors/connectors/slack/lib/channels";
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
+import {
+  getSlackChannelSourceUrl,
+  slackChannelInternalIdFromSlackChannelId,
+} from "@connectors/connectors/slack/lib/utils";
 import { getBotUserIdMemoized } from "@connectors/connectors/slack/temporal/activities";
 import {
   launchSlackGarbageCollectWorkflow,
   launchSlackSyncOneMessageWorkflow,
   launchSlackSyncOneThreadWorkflow,
 } from "@connectors/connectors/slack/temporal/client";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { concurrentExecutor } from "@connectors/lib/async_utils";
+import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import { SlackChannel } from "@connectors/lib/models/slack";
 import type { Logger } from "@connectors/logger/logger";
@@ -353,14 +361,47 @@ const _webhookSlackAPIHandler = async (
                 });
               }
               try {
-                await Promise.all(
-                  activeConfigurations.map((c) =>
-                    updateSlackChannelInConnectorsDb({
+                await concurrentExecutor(
+                  activeConfigurations,
+                  async (c) => {
+                    const connector = await ConnectorResource.fetchById(
+                      c.connectorId
+                    );
+                    if (!connector) {
+                      logger.error({
+                        connector,
+                        slackChannelId: channel,
+                        slackTeamId: c.slackTeamId,
+                        message: `Connector ${c.connectorId} not found`,
+                      });
+                      return;
+                    }
+
+                    await upsertDataSourceFolder({
+                      dataSourceConfig:
+                        dataSourceConfigFromConnector(connector),
+                      folderId:
+                        slackChannelInternalIdFromSlackChannelId(
+                          slackChannelId
+                        ),
+                      parents: [
+                        slackChannelInternalIdFromSlackChannelId(
+                          slackChannelId
+                        ),
+                      ],
+                      parentId: null,
+                      title: `#${slackChannelName}`,
+                      mimeType: MIME_TYPES.SLACK.CHANNEL,
+                      sourceUrl: getSlackChannelSourceUrl(slackChannelId, c),
+                      providerVisibility: "public",
+                    });
+                    return updateSlackChannelInConnectorsDb({
                       slackChannelId,
                       slackChannelName,
                       connectorId: c.connectorId,
-                    })
-                  )
+                    });
+                  },
+                  { concurrency: 2 }
                 );
 
                 logger.info(
@@ -371,7 +412,7 @@ const _webhookSlackAPIHandler = async (
                     newName: event.name,
                     slackTeamId: teamId,
                   },
-                  `Successfully processed Slack channel rename`
+                  "Successfully processed Slack channel rename"
                 );
                 return res.status(200).send();
               } catch (e) {
