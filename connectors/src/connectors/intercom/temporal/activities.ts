@@ -482,21 +482,38 @@ export async function syncTeamOnlyActivity({
 
   // If the team does not exists on Intercom we delete the team and its conversations
   const accessToken = await getIntercomAccessToken(connector.connectionId);
-  const teamOnIntercom = await fetchIntercomTeam({ accessToken, teamId });
-  if (!teamOnIntercom) {
-    await deleteTeamAndConversations({
-      connectorId,
-      dataSourceConfig,
-      team: teamOnDB,
-    });
-    return false;
-  }
+  let teamOnIntercom;
+  try {
+    teamOnIntercom = await fetchIntercomTeam({ accessToken, teamId });
+    if (!teamOnIntercom || teamOnIntercom.type !== "team") {
+      await deleteTeamAndConversations({
+        connectorId,
+        dataSourceConfig,
+        team: teamOnDB,
+      });
+      return false;
+    }
 
-  // Otherwise we update the team name and lastUpsertedTs
-  await teamOnDB.update({
-    name: teamOnIntercom.name,
-    lastUpsertedTs: new Date(currentSyncMs),
-  });
+    // Otherwise we update the team name and lastUpsertedTs
+    await teamOnDB.update({
+      name: teamOnIntercom.name,
+      lastUpsertedTs: new Date(currentSyncMs),
+    });
+  } catch (error) {
+    logger.error(
+      {
+        error: error instanceof Error ? error : JSON.stringify(error),
+        ...(error instanceof Error && {
+          errorMessage: error.message || "Unknown error",
+          errorStack: error.stack,
+        }),
+        teamId,
+        ...loggerArgs,
+      },
+      "[Intercom] Failed to fetch team"
+    );
+    throw error;
+  }
 
   // Also make sure a datasource folder node is created for the team
   const teamInternalId = getTeamInternalId(connectorId, teamOnDB.teamId);
