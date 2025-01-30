@@ -1,6 +1,6 @@
 -- Migration created on Jan 29, 2025
 CREATE TABLE IF NOT EXISTS "bigquery_configurations" (
-    "id"  SERIAL,
+    "id"  BIGSERIAL,
     "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL,
     "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL,
     "connectorId" INTEGER NOT NULL REFERENCES "connectors" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
