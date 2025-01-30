@@ -1,6 +1,7 @@
 export { default as Ai21Logo } from "./Ai21";
 export { default as AnthropicLogo } from "./Anthropic";
 export { default as AnthropicWhiteLogo } from "./AnthropicWhite";
+export { default as BigQueryLogo } from "./BigQuery";
 export { default as ClaudeLogo } from "./Claude";
 export { default as CohereLogo } from "./Cohere";
 export { default as ConfluenceLogo } from "./Confluence";
