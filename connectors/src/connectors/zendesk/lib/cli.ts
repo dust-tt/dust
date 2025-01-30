@@ -15,6 +15,7 @@ import {
   fetchZendeskTicketCount,
   getZendeskBrandSubdomain,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
+import { syncZendeskBrandActivity } from "@connectors/connectors/zendesk/temporal/activities";
 import {
   launchZendeskSyncWorkflow,
   launchZendeskTicketReSyncWorkflow,
@@ -27,7 +28,6 @@ import {
   ZendeskConfigurationResource,
   ZendeskTicketResource,
 } from "@connectors/resources/zendesk_resources";
-import { syncZendeskBrandActivity } from "@connectors/connectors/zendesk/temporal/activities";
 
 export const zendesk = async ({
   command,
