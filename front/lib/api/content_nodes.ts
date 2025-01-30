@@ -257,19 +257,19 @@ export function computeNodesDiff({
           (n) => n.internalId === coreNode.internalId
         )
     )
-    .map((coreNode) => coreNode.internalId);
-  if (extraCoreInternalIds.length > 0) {
     // There is some specific code to Intercom in retrieveIntercomConversationsPermissions that hides the empty team folders + the teams folder if !hasTeamsWithReadPermission
     // Reproducing this logic in core is complicated and seems over-engineered.
-    if (
-      provider !== "intercom" ||
-      extraCoreInternalIds.some((id) => !id.startsWith("intercom-team"))
-    ) {
-      localLogger.info(
-        { extraCoreInternalIds },
-        "[CoreNodes] Received extraneous core nodes"
-      );
-    }
+    .filter(
+      (coreNode) =>
+        provider !== "intercom" ||
+        !coreNode.internalId.startsWith("intercom-team")
+    )
+    .map((coreNode) => coreNode.internalId);
+  if (extraCoreInternalIds.length > 0) {
+    localLogger.info(
+      { extraCoreInternalIds },
+      "[CoreNodes] Received extraneous core nodes"
+    );
   }
 }
 
