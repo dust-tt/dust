@@ -291,13 +291,6 @@ export type ZendeskCountTicketsResponseType = t.TypeOf<
   typeof ZendeskCountTicketsResponseSchema
 >;
 
-export const ZendeskResyncTicketsResponseSchema = t.type({
-  success: t.literal(true),
-});
-export type ZendeskResyncTicketsResponseType = t.TypeOf<
-  typeof ZendeskResyncTicketsResponseSchema
->;
-
 export const ZendeskFetchTicketResponseSchema = t.type({
   ticket: t.union([t.UnknownRecord, t.null]), // Zendesk type, can't be iots'd,
   isTicketOnDb: t.boolean,
@@ -473,7 +466,6 @@ export const AdminResponseSchema = t.union([
   IntercomForceResyncArticlesResponseSchema,
   ZendeskCheckIsAdminResponseSchema,
   ZendeskCountTicketsResponseSchema,
-  ZendeskResyncTicketsResponseSchema,
   ZendeskFetchTicketResponseSchema,
   ZendeskFetchBrandResponseSchema,
 ]);

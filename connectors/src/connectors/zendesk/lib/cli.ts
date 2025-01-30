@@ -1,10 +1,10 @@
 import type {
+  AdminResponseType,
   ZendeskCheckIsAdminResponseType,
   ZendeskCommandType,
   ZendeskCountTicketsResponseType,
   ZendeskFetchBrandResponseType,
   ZendeskFetchTicketResponseType,
-  ZendeskResyncTicketsResponseType,
 } from "@dust-tt/types";
 
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
@@ -34,9 +34,9 @@ export const zendesk = async ({
 }: ZendeskCommandType): Promise<
   | ZendeskCheckIsAdminResponseType
   | ZendeskCountTicketsResponseType
-  | ZendeskResyncTicketsResponseType
   | ZendeskFetchTicketResponseType
   | ZendeskFetchBrandResponseType
+  | AdminResponseType
 > => {
   const logger = topLogger.child({ majorCommand: "zendesk", command, args });
 
