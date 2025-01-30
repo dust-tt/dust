@@ -582,7 +582,6 @@ impl ElasticsearchSearchStore {
         );
 
         // Build parent titles query
-        // Build parent titles query
         let parent_ids: Vec<_> = nodes.iter().filter_map(|n| n.parent_id.as_ref()).collect();
         let parent_titles_search = Search::new()
             .size(parent_ids.len() as u64)

@@ -3636,11 +3636,11 @@ impl Store for PostgresStore {
             .collect();
         let r = c
             .query(
-                "select ds.id, p.node_id FROM data_sources ds
-                JOIN UNNEST(
-                    $1::text[],
-                    $2::text[]
-                ) AS p(node_id, internal_id)
+                "SELECT ds.id, p.node_id FROM data_sources ds
+                    JOIN UNNEST(
+                        $1::text[],
+                        $2::text[]
+                    ) AS p(node_id, internal_id)
                 ON ds.internal_id = p.internal_id",
                 &[&node_ids, &data_source_internal_ids],
             )
