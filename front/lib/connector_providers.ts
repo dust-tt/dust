@@ -13,6 +13,7 @@ import {
   ZendeskLogo,
 } from "@dust-tt/sparkle";
 import type {
+  ConnectorPermission,
   ConnectorProvider,
   DataSourceType,
   PlanType,
@@ -43,11 +44,29 @@ export type ConnectorProviderConfiguration = {
   logoComponent: (props: React.SVGProps<SVGSVGElement>) => React.JSX.Element;
   optionsComponent?: (props: ConnectorOptionsProps) => React.JSX.Element;
   description: string;
+  mismatchError: string;
   limitations: string | null;
   guideLink: string | null;
-  selectLabel?: string;
+  selectLabel?: string; // Show in the permissions modal, above the content node tree, might not allow to select anything (if permissions are false below)
   isNested: boolean;
   isSearchEnabled: boolean;
+  permissions: {
+    selected: ConnectorPermission;
+    unselected: ConnectorPermission;
+  };
+  isDeletable: boolean;
+};
+
+export const isConnectorPermissionsEditable = (
+  provider?: ConnectorProvider | null
+): boolean => {
+  if (!provider) {
+    return false;
+  }
+  return (
+    CONNECTOR_CONFIGURATIONS[provider].permissions.selected !== "none" ||
+    CONNECTOR_CONFIGURATIONS[provider].permissions.unselected !== "none"
+  );
 };
 
 export const CONNECTOR_CONFIGURATIONS: Record<
@@ -63,11 +82,17 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       "Grant tailored access to your organization's Confluence shared spaces.",
     limitations:
       "Dust indexes pages in selected global spaces without any view restrictions. If a page, or its parent pages, have view restrictions, it won't be indexed.",
+    mismatchError: `You cannot select another Confluence Domain.\nPlease contact us at support@dust.tt if you initially selected the wrong Domain.`,
     guideLink: "https://docs.dust.tt/docs/confluence-connection",
     selectLabel: "Select pages",
     logoComponent: ConfluenceLogo,
     isNested: true,
     isSearchEnabled: false,
+    permissions: {
+      selected: "read",
+      unselected: "none",
+    },
+    isDeletable: false,
   },
   notion: {
     name: "Notion",
@@ -77,11 +102,17 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     description:
       "Authorize granular access to your company's Notion workspace, by top-level pages.",
     limitations: "External files and content behind links are not indexed.",
+    mismatchError: `You cannot select another Notion Workspace.\nPlease contact us at support@dust.tt if you initially selected a wrong Workspace.`,
     guideLink: "https://docs.dust.tt/docs/notion-connection",
-    selectLabel: "Select pages",
+    selectLabel: "Synchronized content",
     logoComponent: NotionLogo,
     isNested: true,
     isSearchEnabled: false,
+    permissions: {
+      selected: "none",
+      unselected: "none",
+    },
+    isDeletable: false,
   },
   google_drive: {
     name: "Google Drive™",
@@ -92,11 +123,17 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       "Authorize granular access to your company's Google Drive, by drives and folders. Supported files include GDocs, GSlides, and .txt files. Email us for .pdf indexing.",
     limitations:
       "Files with empty text content or with more than 750KB of extracted text are ignored. By default, PDF files are not indexed. Email us at support@dust.tt to enable PDF indexing.",
+    mismatchError: `You cannot select another Google Drive Domain.\nPlease contact us at support@dust.tt if you initially selected a wrong shared Drive.`,
     guideLink: "https://docs.dust.tt/docs/google-drive-connection",
     selectLabel: "Select folders and files",
     logoComponent: DriveLogo,
     isNested: true,
     isSearchEnabled: false,
+    permissions: {
+      selected: "read",
+      unselected: "none",
+    },
+    isDeletable: false,
   },
   slack: {
     name: "Slack",
@@ -106,12 +143,18 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     description:
       "Authorize granular access to your Slack workspace on a channel-by-channel basis.",
     limitations: "External files and content behind links are not indexed.",
+    mismatchError: `You cannot select another Slack Team.\nPlease contact us at support@dust.tt if you initially selected the wrong Team.`,
     guideLink: "https://docs.dust.tt/docs/slack-connection",
     selectLabel: "Select channels",
     logoComponent: SlackLogo,
     optionsComponent: SlackBotEnableView,
     isNested: false,
     isSearchEnabled: true,
+    permissions: {
+      selected: "read_write",
+      unselected: "write",
+    },
+    isDeletable: false,
   },
   github: {
     name: "GitHub",
@@ -122,12 +165,18 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       "Authorize access to your company's GitHub on a repository-by-repository basis. Dust can access Issues, Discussions, and Pull Request threads. Code indexing can be controlled on-demand.",
     limitations:
       "Dust gathers data from issues, discussions, and pull-requests (top-level discussion, but not in-code comments). It synchronizes your code only if enabled.",
+    mismatchError: `You cannot select another Github Organization.\nPlease contact us at support@dust.tt if you initially selected a wrong Organization or if you completely uninstalled the Github app.`,
     guideLink: "https://docs.dust.tt/docs/github-connection",
-    selectLabel: "Select pages",
+    selectLabel: "Synchronized content",
     logoComponent: GithubLogo,
     optionsComponent: GithubCodeEnableView,
     isNested: true,
     isSearchEnabled: false,
+    permissions: {
+      selected: "none",
+      unselected: "none",
+    },
+    isDeletable: false,
   },
   intercom: {
     name: "Intercom",
@@ -138,12 +187,18 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       "Authorize granular access to your Intercom workspace. Access your Conversations at the Team level and Help Center Articles at the main Collection level.",
     limitations:
       "Dust will index only the conversations from the selected Teams that were initiated within the past 90 days and concluded (marked as closed). For the Help Center data, Dust will index every Article published within a selected Collection.",
+    mismatchError: `You cannot select another Intercom Workspace.\nPlease contact us at support@dust.tt if you initially selected a wrong Workspace.`,
     guideLink: "https://docs.dust.tt/docs/intercom-connection",
     selectLabel: "Select pages",
     logoComponent: IntercomLogo,
     optionsComponent: IntercomConfigView,
     isNested: true,
     isSearchEnabled: false,
+    permissions: {
+      selected: "read",
+      unselected: "none",
+    },
+    isDeletable: false,
   },
   microsoft: {
     name: "Microsoft",
@@ -154,11 +209,17 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       "Authorize Dust to access a Microsoft account and index shared documents stored in SharePoint, OneDrive, and Office365.",
     limitations:
       "Dust will only index documents accessible to the account used when making the connection. Only organizational accounts are supported (Sharepoint). At the time, OneDrive cannot be synced.",
+    mismatchError: `You cannot select another Microsoft account.\nPlease contact us at support@dust.tt if you initially selected a wrong account.`,
     guideLink: "https://docs.dust.tt/docs/microsoft-connection",
     selectLabel: "Select folders and files",
     logoComponent: MicrosoftLogo,
     isNested: true,
     isSearchEnabled: false,
+    permissions: {
+      selected: "read",
+      unselected: "none",
+    },
+    isDeletable: false,
   },
   webcrawler: {
     name: "Web Crawler",
@@ -167,10 +228,16 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     hide: true,
     description: "Crawl a website.",
     limitations: null,
+    mismatchError: `You cannot change the URL. Please add a new Public URL instead.`,
     guideLink: "https://docs.dust.tt/docs/website-connection",
     logoComponent: GlobeAltIcon,
     isNested: true,
     isSearchEnabled: false,
+    permissions: {
+      selected: "none",
+      unselected: "none",
+    },
+    isDeletable: true,
   },
   snowflake: {
     name: "Snowflake",
@@ -179,11 +246,17 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     hide: true,
     description: "Query a Snowflake database.",
     limitations: null,
+    mismatchError: `You cannot change the Snowflake account. Please add a new Snowflake connection instead.`,
     logoComponent: SnowflakeLogo,
     isNested: true,
     isSearchEnabled: false,
     guideLink: "https://docs.dust.tt/docs/snowflake-connection",
     selectLabel: "Select tables",
+    permissions: {
+      selected: "read",
+      unselected: "none",
+    },
+    isDeletable: true,
   },
   zendesk: {
     name: "Zendesk",
@@ -194,10 +267,16 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       "Authorize access to Zendesk for indexing tickets from your support center and articles from your help center.",
     limitations:
       "Dust will index the content accessible to the authorized account only. Attachments are not indexed.",
+    mismatchError: `You cannot select another Zendesk Workspace.\nPlease contact us at support@dust.tt if you initially selected a wrong Workspace.`,
     guideLink: "https://docs.dust.tt/docs/zendesk-connection",
     logoComponent: ZendeskLogo,
     isNested: true,
     isSearchEnabled: false,
+    permissions: {
+      selected: "read",
+      unselected: "none",
+    },
+    isDeletable: false,
   },
   bigquery: {
     name: "BigQuery",
@@ -207,13 +286,30 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     hide: true,
     description: "Query a BigQuery database.",
     limitations: null,
+    mismatchError: `You cannot change the BigQuery project. Please add a new BigQuery connection instead.`,
     logoComponent: TableIcon,
     isNested: true,
     isSearchEnabled: false,
     guideLink: "https://docs.dust.tt/docs/bigquery-connection",
     selectLabel: "Select tables",
+    permissions: {
+      selected: "read",
+      unselected: "none",
+    },
+    isDeletable: true,
   },
 };
+
+const WEBHOOK_BASED_CONNECTORS: ConnectorProvider[] = ["slack", "github"];
+
+export function isWebhookBasedProvider(provider: ConnectorProvider): boolean {
+  return WEBHOOK_BASED_CONNECTORS.includes(provider);
+}
+
+export const REMOTE_DATABASE_CONNECTOR_PROVIDERS: ConnectorProvider[] = [
+  "snowflake",
+  "bigquery",
+];
 
 export function getConnectorProviderLogoWithFallback(
   provider: ConnectorProvider | null,

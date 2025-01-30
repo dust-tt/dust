@@ -1,0 +1,147 @@
+import type { BigQueryCredentials, Result } from "@dust-tt/types";
+import { Err, Ok, removeNulls } from "@dust-tt/types";
+import { BigQuery } from "@google-cloud/bigquery";
+
+import type {
+  RemoteDBDatabase,
+  RemoteDBSchema,
+  RemoteDBTable,
+} from "@connectors/lib/remote_databases/utils";
+import { parseSchemaInternalId } from "@connectors/lib/remote_databases/utils";
+
+type TestConnectionErrorCode = "INVALID_CREDENTIALS" | "UNKNOWN";
+
+export class TestConnectionError extends Error {
+  code: TestConnectionErrorCode;
+
+  constructor(code: TestConnectionErrorCode, message: string) {
+    super(message);
+    this.name = "TestBigQueryConnectionError";
+    this.code = code;
+  }
+}
+
+export function isTestConnectionError(
+  error: Error
+): error is TestConnectionError {
+  return error.name === "TestBigQueryConnectionError";
+}
+
+/**
+ * Test the connection to BigQuery with the provided credentials.
+ * Used to check if the credentials are valid and the connection is successful.
+ */
+export const testConnection = async ({
+  credentials,
+}: {
+  credentials: BigQueryCredentials;
+}): Promise<Result<string, TestConnectionError>> => {
+  // Connect to bigquery, do a simple query.
+  const bigQuery = connectToBigQuery(credentials);
+  try {
+    await bigQuery.query("SELECT 1");
+    return new Ok("Connection successful");
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      return new Err(
+        new TestConnectionError("INVALID_CREDENTIALS", error.message)
+      );
+    }
+    return new Err(
+      new TestConnectionError("INVALID_CREDENTIALS", "Unknown error occurred")
+    );
+  }
+};
+
+export function connectToBigQuery(credentials: BigQueryCredentials): BigQuery {
+  return new BigQuery({
+    credentials,
+    scopes: ["https://www.googleapis.com/auth/bigquery.readonly"],
+  });
+}
+
+export const fetchDatabases = ({
+  credentials,
+}: {
+  credentials: BigQueryCredentials;
+}): RemoteDBDatabase[] => {
+  // BigQuery do not have a concept of databases per say, the most similar concept is a project.
+  // Since credentials are always scoped to a project, we directly return a single database with the project name.
+  return [{ name: credentials.project_id }];
+};
+
+/**
+ * Fetch the schemas available in the BigQuery account.
+ * In BigQuery, schemas/datasets are the equivalent of databases, there is no concept of databases like in Snowflake for example.
+ * Credentials are scoped to a project, so we can't fetch the schemas of another project.
+ */
+export const fetchSchemas = async ({
+  credentials,
+  connection,
+}: {
+  credentials: BigQueryCredentials;
+  fromDatabase?: string;
+  connection?: BigQuery;
+}): Promise<Result<Array<RemoteDBSchema>, Error>> => {
+  const conn = connection ?? connectToBigQuery(credentials);
+  try {
+    const r = await conn.getDatasets();
+    const datasets = r[0];
+    return new Ok(
+      removeNulls(
+        datasets.map((dataset) => {
+          if (!dataset.id) {
+            return null;
+          }
+          return {
+            name: dataset.id,
+            database_name: credentials.project_id,
+          };
+        })
+      )
+    );
+  } catch (error) {
+    return new Err(error instanceof Error ? error : new Error(String(error)));
+  }
+};
+
+/**
+ * Fetch the tables available in the BigQuery account.
+ */
+export const fetchTables = async ({
+  credentials,
+  fromSchema,
+  connection,
+}: {
+  credentials: BigQueryCredentials;
+  fromSchema: string;
+  connection?: BigQuery;
+}): Promise<Result<Array<RemoteDBTable>, Error>> => {
+  const conn = connection ?? connectToBigQuery(credentials);
+  try {
+    // Get the dataset specified by the fromSchema
+    const { name: schemaName } = parseSchemaInternalId(fromSchema);
+    const dataset = await conn.dataset(schemaName);
+    const r = await dataset.getTables();
+    const tables = r[0];
+    return new Ok(
+      removeNulls(
+        tables.map((table) => {
+          if (!table.id) {
+            return null;
+          }
+          return {
+            name: table.id,
+            database_name: credentials.project_id,
+            schema_name: fromSchema,
+          };
+        })
+      )
+    );
+  } catch (error) {
+    return new Err(error instanceof Error ? error : new Error(String(error)));
+  }
+};
+
+// BigQuery is read-only as we force the readonly scope when creating the client.
+export const isConnectionReadonly = () => new Ok(undefined);

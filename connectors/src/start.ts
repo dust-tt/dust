@@ -1,6 +1,7 @@
 import minimist from "minimist";
 
 import { startServer } from "@connectors/api_server";
+import { runBigQueryWorker } from "@connectors/connectors/bigquery/temporal/worker";
 import { runConfluenceWorker } from "@connectors/connectors/confluence/temporal/worker";
 import { runMicrosoftWorker } from "@connectors/connectors/microsoft/temporal/worker";
 import { runSnowflakeWorker } from "@connectors/connectors/snowflake/temporal/worker";
@@ -56,4 +57,7 @@ runMicrosoftWorker().catch((err) =>
 );
 runSnowflakeWorker().catch((err) =>
   logger.error(errorFromAny(err), "Error running snowflake worker")
+);
+runBigQueryWorker().catch((err) =>
+  logger.error(errorFromAny(err), "Error running bigquery worker")
 );

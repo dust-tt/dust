@@ -28,7 +28,7 @@ import type { Logger } from "@connectors/logger/logger";
  * If parentInternalId is a database, we fetch schemas.
  * If parentInternalId is a schema, we fetch tables.
  */
-export const fetchAvailableChildrenInSnowflake = async ({
+export const fetchAvailableChildrenInRemoteDatabase = async ({
   connectorId,
   credentials,
   parentInternalId,

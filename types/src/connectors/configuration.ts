@@ -1,4 +1,4 @@
-import { SlackConfigurationType } from "../connectors//slack";
+import { SlackConfigurationType } from "../connectors/slack";
 import { WebCrawlerConfigurationType } from "../connectors/webcrawler";
 
 export type ConnectorConfiguration =

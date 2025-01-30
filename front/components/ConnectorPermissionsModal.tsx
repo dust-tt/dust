@@ -39,10 +39,8 @@ import type {
 } from "@dust-tt/types";
 import {
   assertNever,
-  CONNECTOR_TYPE_TO_MISMATCH_ERROR,
   isOAuthProvider,
   isValidZendeskSubdomain,
-  MANAGED_DS_DELETABLE,
 } from "@dust-tt/types";
 import { InformationCircleIcon } from "@heroicons/react/20/solid";
 import React, {
@@ -61,7 +59,10 @@ import { CreateOrUpdateConnectionSnowflakeModal } from "@app/components/data_sou
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import { setupConnection } from "@app/components/spaces/AddConnectionMenu";
 import { ConnectorDataUpdatedModal } from "@app/components/spaces/ConnectorDataUpdatedModal";
-import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import {
+  CONNECTOR_CONFIGURATIONS,
+  isConnectorPermissionsEditable,
+} from "@app/lib/connector_providers";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { useConnectorPermissions } from "@app/lib/swr/connectors";
 import { useSpaceDataSourceViews, useSystemSpace } from "@app/lib/swr/spaces";
@@ -71,57 +72,6 @@ import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 
 import type { ContentNodeTreeItemStatus } from "./ContentNodeTree";
 import { ContentNodeTree } from "./ContentNodeTree";
-
-const PERMISSIONS_EDITABLE_CONNECTOR_TYPES: Set<ConnectorProvider> = new Set([
-  "confluence",
-  "slack",
-  "google_drive",
-  "microsoft",
-  "intercom",
-  "snowflake",
-  "zendesk",
-]);
-
-const CONNECTOR_TYPE_TO_PERMISSIONS: Record<
-  ConnectorProvider,
-  { selected: ConnectorPermission; unselected: ConnectorPermission } | undefined
-> = {
-  confluence: {
-    selected: "read",
-    unselected: "none",
-  },
-  slack: {
-    selected: "read_write",
-    unselected: "write",
-  },
-  google_drive: {
-    selected: "read",
-    unselected: "none",
-  },
-  microsoft: {
-    selected: "read",
-    unselected: "none",
-  },
-  notion: undefined,
-  github: undefined,
-  zendesk: {
-    selected: "read",
-    unselected: "none",
-  },
-  intercom: {
-    selected: "read",
-    unselected: "none",
-  },
-  webcrawler: undefined,
-  snowflake: {
-    selected: "read",
-    unselected: "none",
-  },
-  bigquery: {
-    selected: "read",
-    unselected: "none",
-  },
-};
 
 const getUseResourceHook =
   (owner: LightWorkspaceType, dataSource: DataSourceType) =>
@@ -207,7 +157,8 @@ async function updateConnectorConnectionId(
   if (error.type === "connector_oauth_target_mismatch") {
     return {
       success: false,
-      error: CONNECTOR_TYPE_TO_MISMATCH_ERROR[provider as ConnectorProvider],
+      error:
+        CONNECTOR_CONFIGURATIONS[provider as ConnectorProvider].mismatchError,
     };
   }
   if (error.type === "connector_oauth_user_missing_rights") {
@@ -617,18 +568,23 @@ export function ConnectorPermissionsModal({
     Record<string, ContentNodeTreeItemStatus>
   >({});
 
-  const canUpdatePermissions = PERMISSIONS_EDITABLE_CONNECTOR_TYPES.has(
-    connector.type
+  const isDeletable =
+    dataSource.connectorProvider &&
+    CONNECTOR_CONFIGURATIONS[dataSource.connectorProvider].isDeletable;
+
+  const selectedPermission: ConnectorPermission = dataSource.connectorProvider
+    ? CONNECTOR_CONFIGURATIONS[dataSource.connectorProvider].permissions
+        .selected
+    : "none";
+
+  const unselectedPermission: ConnectorPermission = dataSource.connectorProvider
+    ? CONNECTOR_CONFIGURATIONS[dataSource.connectorProvider].permissions
+        .unselected
+    : "none";
+
+  const canUpdatePermissions = isConnectorPermissionsEditable(
+    dataSource.connectorProvider
   );
-  const selectedPermission: ConnectorPermission =
-    (dataSource.connectorProvider &&
-      CONNECTOR_TYPE_TO_PERMISSIONS[dataSource.connectorProvider]?.selected) ||
-    "none";
-  const unselectedPermission: ConnectorPermission =
-    (dataSource.connectorProvider &&
-      CONNECTOR_TYPE_TO_PERMISSIONS[dataSource.connectorProvider]
-        ?.unselected) ||
-    "none";
 
   const useResourcesHook = useCallback(
     (parentId: string | null) =>
@@ -823,7 +779,7 @@ export function ConnectorPermissionsModal({
                       }}
                     />
                   )}
-                  {MANAGED_DS_DELETABLE.includes(connector.type) && (
+                  {isDeletable && (
                     <Button
                       label="Delete connection"
                       variant="warning"

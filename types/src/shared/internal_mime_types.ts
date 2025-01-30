@@ -113,6 +113,10 @@ export const MIME_TYPES = {
     provider: "zendesk",
     resourceTypes: ["HELP_CENTER", "CATEGORY", "ARTICLE", "TICKETS", "TICKET"],
   }),
+  BIGQUERY: getMimeTypes({
+    provider: "bigquery",
+    resourceTypes: ["DATABASE", "SCHEMA", "TABLE"],
+  }),
 };
 
 export type ConfluenceMimeType =
