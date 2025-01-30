@@ -11,6 +11,7 @@ import {
 } from "@connectors/lib/data_sources";
 import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import Logger from "@connectors/logger/logger";
 
 async function findAllDescendants(
   nodes: (NotionPage | NotionDatabase)[],
@@ -56,8 +57,14 @@ async function findAllDescendants(
 async function updateParentsFieldForConnector(
   connector: ConnectorResource,
   execute = false,
-  nodeConcurrency: number
+  nodeConcurrency: number,
+  parentLogger: typeof Logger
 ) {
+  const logger = parentLogger.child({
+    connectorId: connector.id,
+    workspaceId: connector.workspaceId,
+  });
+
   let pagesIdCursor = 0;
   let databasesIdCursor = 0;
 
@@ -67,9 +74,7 @@ async function updateParentsFieldForConnector(
     const pages = await NotionPage.findAll({
       where: {
         connectorId: connector.id,
-        id: {
-          [Op.gt]: pagesIdCursor,
-        },
+        id: { [Op.gt]: pagesIdCursor },
         parentId: "unknown",
       },
       limit: pageSize,
@@ -78,9 +83,7 @@ async function updateParentsFieldForConnector(
     const databases = await NotionDatabase.findAll({
       where: {
         connectorId: connector.id,
-        id: {
-          [Op.gt]: databasesIdCursor,
-        },
+        id: { [Op.gt]: databasesIdCursor },
         parentId: "unknown",
       },
       limit: pageSize,
@@ -129,7 +132,7 @@ async function updateParentsFieldForConnector(
             undefined
           );
         } catch (e) {
-          console.error(`Error getting parents for node ${node.id}: ${e}`);
+          logger.error(`Error getting parents for node ${node.id}: ${e}`);
           return;
         }
 
@@ -170,21 +173,20 @@ async function updateParentsFieldForConnector(
               });
             }
           } catch (e) {
-            console.error(`Error updating parents for node ${node.id}: ${e}`);
+            logger.error(`Error updating parents for node ${node.id}: ${e}`);
           }
         }
       },
       { concurrency: nodeConcurrency }
     );
 
-    console.log(
-      `Processed ${res.length} nodes, (pages cursor: ${pagesIdCursor}, databases cursor: ${databasesIdCursor})`
+    logger.info(
+      { pagesIdCursor, databasesIdCursor },
+      `Processed ${res.length} nodes.`
     );
   }
 
-  console.log(
-    `Finished processing connector ${connector.id} (workspace ${connector.workspaceId})`
-  );
+  logger.info("DONE");
 }
 
 makeScript(
@@ -202,33 +204,33 @@ makeScript(
       description: "Number of nodes to process concurrently per connector",
     },
   },
-  async ({ execute, connectorConcurrency, nodeConcurrency }) => {
+  async ({ execute, connectorConcurrency, nodeConcurrency }, logger) => {
     const connectors = await ConnectorResource.listByType("notion", {});
 
-    console.log(`Found ${connectors.length} Notion connectors`);
+    logger.info(`Found ${connectors.length} Notion connectors`);
 
     const validConnectors = connectors.filter(
       (connector) => !connector.errorType
     );
-    console.log(
-      `Processing ${validConnectors.length} valid connectors with connector concurrency ${connectorConcurrency} and node concurrency ${nodeConcurrency}`
+    logger.info(
+      { connectorConcurrency, nodeConcurrency },
+      `Processing ${validConnectors.length} valid connectors.`
     );
 
     await concurrentExecutor(
       validConnectors,
       async (connector) => {
-        console.log(
-          `Processing connector ${connector.id} (workspace ${connector.workspaceId})`
-        );
+        logger.info({ connector }, "MIGRATE");
         await updateParentsFieldForConnector(
           connector,
           execute,
-          nodeConcurrency
+          nodeConcurrency,
+          logger
         );
       },
       { concurrency: connectorConcurrency }
     );
 
-    console.log("Finished processing all connectors");
+    logger.info("Finished processing all connectors");
   }
 );
