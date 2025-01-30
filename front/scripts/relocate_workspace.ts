@@ -39,10 +39,7 @@ makeScript(
     }
 
     const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-    const owner = auth.workspace();
-    if (!owner) {
-      throw new Error(`Workspace with id ${workspaceId} not found.`);
-    }
+    const owner = auth.getNonNullableWorkspace();
 
     logger.info("Start relocating workspace");
 
