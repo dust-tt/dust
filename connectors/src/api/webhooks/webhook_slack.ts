@@ -1,11 +1,10 @@
 import type { WithConnectorsAPIErrorReponse } from "@dust-tt/types";
+import { JSON } from "@jsonjoy.com/util/lib/json-brand";
 import type { Request, Response } from "express";
 
-import {
-  isChannelCreatedEvent,
-  onChannelCreation,
-} from "@connectors/api/webhooks/slack/created_channel";
+import { isChannelCreatedEvent, onChannelCreation } from "@connectors/api/webhooks/slack/created_channel";
 import { botAnswerMessage } from "@connectors/connectors/slack/bot";
+import { updateSlackChannelInConnectorsDb } from "@connectors/connectors/slack/lib/channels";
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 import { getBotUserIdMemoized } from "@connectors/connectors/slack/temporal/activities";
 import {
@@ -22,8 +21,6 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 
 import { removeNulls } from "../../../../sdks/js";
-import { updateSlackChannelInConnectorsDb } from "@connectors/connectors/slack/lib/channels";
-import { JSON } from "@jsonjoy.com/util/lib/json-brand";
 
 type SlackWebhookEventSubtype =
   | "message_changed"
