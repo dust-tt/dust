@@ -223,6 +223,7 @@ export const zendesk = async ({
         brandId,
         currentSyncDateMs: Date.now(),
       });
+      return { success: true };
     }
   }
 };
