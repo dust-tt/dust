@@ -40,6 +40,7 @@ export async function getDataSourceDocuments({
     data_source_views: [
       {
         data_source_id: dataSourceCoreIds.dustAPIDataSourceId,
+        // Leaving empty to get all documents.
         view_filter: [],
       },
     ],
