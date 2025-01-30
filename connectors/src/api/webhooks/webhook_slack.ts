@@ -1,4 +1,5 @@
 import type { WithConnectorsAPIErrorReponse } from "@dust-tt/types";
+import { JSON } from "@jsonjoy.com/util/lib/json-brand";
 import type { Request, Response } from "express";
 
 import {
@@ -6,6 +7,7 @@ import {
   onChannelCreation,
 } from "@connectors/api/webhooks/slack/created_channel";
 import { botAnswerMessage } from "@connectors/connectors/slack/bot";
+import { updateSlackChannelInConnectorsDb } from "@connectors/connectors/slack/lib/channels";
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 import { getBotUserIdMemoized } from "@connectors/connectors/slack/temporal/activities";
 import {
@@ -23,10 +25,15 @@ import { SlackConfigurationResource } from "@connectors/resources/slack_configur
 
 import { removeNulls } from "../../../../sdks/js";
 
+type SlackWebhookEventSubtype =
+  | "message_changed"
+  | "message_deleted"
+  | "channel_name";
+
 export interface SlackWebhookEvent<T = string> {
   bot_id?: string;
   channel?: T;
-  subtype?: "message_changed" | "message_deleted";
+  subtype?: SlackWebhookEventSubtype;
   hidden?: boolean; // added for message_deleted
   deleted_ts?: string; // added for message_deleted - timestamp of deleted message
   user?: string;
@@ -35,6 +42,8 @@ export interface SlackWebhookEvent<T = string> {
   type?: string; // event type (eg: message)
   channel_type?: "channel" | "im" | "mpim";
   text: string; // content of the message
+  old_name?: string; // when renaming channel: old channel name
+  name?: string; // when renaming channel: new channel name
   message?: {
     bot_id?: string;
   };
@@ -328,8 +337,54 @@ const _webhookSlackAPIHandler = async (
               return res.status(200).send();
             }
 
-            // Handle message deletion
-            if (event.subtype === "message_deleted") {
+            // Handle channel rename
+            if (event.subtype === "channel_name") {
+              const slackChannelId = event.channel;
+              const slackChannelName = event.name;
+
+              if (!slackChannelName) {
+                return apiError(req, res, {
+                  status_code: 500,
+                  api_error: {
+                    type: "invalid_request_error",
+                    message:
+                      "Missing new channel name in request body for channel rename",
+                  },
+                });
+              }
+              try {
+                await Promise.all(
+                  activeConfigurations.map((c) =>
+                    updateSlackChannelInConnectorsDb({
+                      slackChannelId,
+                      slackChannelName,
+                      connectorId: c.connectorId,
+                    })
+                  )
+                );
+
+                logger.info(
+                  {
+                    type: event.type,
+                    channel: event.channel,
+                    oldName: event.old_name,
+                    newName: event.name,
+                    slackTeamId: teamId,
+                  },
+                  `Successfully processed Slack channel rename`
+                );
+                return res.status(200).send();
+              } catch (e) {
+                return apiError(req, res, {
+                  status_code: 500,
+                  api_error: {
+                    type: "internal_server_error",
+                    message: e instanceof Error ? e.message : JSON.stringify(e),
+                  },
+                });
+              }
+            } else if (event.subtype === "message_deleted") {
+              // Handle message deletion
               if (!event.deleted_ts) {
                 logger.info(
                   {
@@ -568,6 +623,8 @@ const _webhookSlackAPIHandler = async (
             return res.status(200).send();
           }
         }
+        case "channel_rename":
+          break;
       }
     } catch (e) {
       if (e instanceof ExternalOAuthTokenError) {
