@@ -46,29 +46,31 @@ makeScript(
 
     logger.info("Start relocating workspace");
 
-    // 1) Set the workspace as relocating.
-    const updateRes = await setWorkspaceRelocating(owner);
-    if (updateRes.isErr()) {
-      logger.error(
-        `Failed to set workspace as relocating: ${updateRes.error.message}`
-      );
-      return;
-    }
+    if (execute) {
+      // 1) Set the workspace as relocating.
+      const updateRes = await setWorkspaceRelocating(owner);
+      if (updateRes.isErr()) {
+        logger.error(
+          `Failed to set workspace as relocating: ${updateRes.error.message}`
+        );
+        return;
+      }
 
-    // 2) Pause all connectors using the connectors API.
-    const pauseRes = await pauseAllManagedDataSources(auth, {
-      markAsError: true,
-    });
-    if (pauseRes.isErr()) {
-      logger.error(`Failed to pause connectors: ${pauseRes.error.message}`);
-      return;
-    }
+      // 2) Pause all connectors using the connectors API.
+      const pauseRes = await pauseAllManagedDataSources(auth, {
+        markAsError: true,
+      });
+      if (pauseRes.isErr()) {
+        logger.error(`Failed to pause connectors: ${pauseRes.error.message}`);
+        return;
+      }
 
-    // 3) Launch the relocation workflow.
-    await launchWorkspaceRelocationWorkflow({
-      workspaceId: owner.sId,
-      sourceRegion,
-      destRegion: destinationRegion as RegionType,
-    });
+      // 3) Launch the relocation workflow.
+      await launchWorkspaceRelocationWorkflow({
+        workspaceId: owner.sId,
+        sourceRegion,
+        destRegion: destinationRegion as RegionType,
+      });
+    }
   }
 );
