@@ -253,9 +253,7 @@ export function computeNodesDiff({
           // Notion syncing folder is not in connectors but it's in core.
           // Connector's notion unknown folder can map to core's syncing OR unknown folder.
           // See https://github.com/dust-tt/dust/issues/10340
-        ) &&
-        coreNode.internalId !== "notion-syncing" &&
-        coreNode.internalId !== "notion-unknown"
+        ) && coreNode.internalId !== "notion-syncing"
     )
     .map((coreNode) => coreNode.internalId);
   if (extraCoreInternalIds.length > 0) {
