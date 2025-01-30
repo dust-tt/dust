@@ -111,7 +111,6 @@ export default function SpaceWebsiteModal({
     useState<CrawlingFrequency>(
       WEBCRAWLER_DEFAULT_CONFIGURATION.crawlFrequency
     );
-  const [advancedSettingsOpened, setAdvancedSettingsOpened] = useState(false);
   const [headers, setHeaders] = useState<{ key: string; value: string }[]>([]);
 
   const { configuration, mutateConfiguration, isConfigurationLoading } =
