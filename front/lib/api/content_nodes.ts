@@ -159,12 +159,17 @@ export function computeNodesDiff({
             if (key === "sourceUrl" && value === null && coreValue !== null) {
               return false;
             }
-            // Special case for the google drive sourceUrl: both are valid.
+            // Special case for the google drive sourceUrl: convert docs.google.com to drive.google.com/file for comparison.
             if (key === "sourceUrl" && value && coreValue) {
-              if (
-                value.startsWith("https://drive.google.com/file") &&
-                coreValue.toString().startsWith("https://docs.google.com/")
-              ) {
+              // Remove usp=drivesdk suffix from core value for comparison
+              let cleanedCoreValue = coreValue.toString().replace(/\?.*$/, "");
+              // Convert docs.google.com to drive.google.com/file for comparison
+              if (cleanedCoreValue.startsWith("https://docs.google.com/")) {
+                const fileId = cleanedCoreValue.split("/")[5]; // Get file ID from URL
+                cleanedCoreValue = `https://drive.google.com/file/d/${fileId}/view`;
+              }
+
+              if (cleanedCoreValue === value) {
                 return false;
               }
             }
