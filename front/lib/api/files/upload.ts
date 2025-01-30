@@ -1,8 +1,4 @@
-import type {
-  FileUseCase,
-  Result,
-  SupportedFileContentType,
-} from "@dust-tt/types";
+import type { FileUseCase, Result, SupportedFileContentType } from "@dust-tt/types";
 import {
   assertNever,
   Err,
@@ -22,9 +18,10 @@ import { pipeline } from "stream/promises";
 import config from "@app/lib/api/config";
 import type { CSVRow } from "@app/lib/api/csv";
 import { analyzeCSVColumns } from "@app/lib/api/csv";
+import { CsvError, getCsvErrorMessage, isCsvError } from "@app/lib/api/files/csv_errors";
 import { parseUploadRequest } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
-import type { DustError } from "@app/lib/error";
+import { DustError, isDustError } from "@app/lib/error";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 
@@ -228,13 +225,19 @@ const extractContentAndSchemaFromDelimitedTextFiles = async (
       },
       `Failed to extract text or snippet from ${format.toUpperCase()}.`
     );
-    const errorMessage =
-      err instanceof Error ? err.message : "Unexpected error";
-    return new Err(
-      new Error(
-        `Failed extracting from ${format.toUpperCase()}. ${errorMessage}`
-      )
-    );
+    if (isCsvError(err)) {
+      return new Err({
+        name: "dust_error",
+        code: "malformed_csv",
+        message: `Invalid ${format.toUpperCase()} format: ${err.message || getCsvErrorMessage(err)}`
+      });
+    }
+
+    return new Err({
+      name: "dust_error",
+      code: "internal_server_error",
+      message: `Failed extracting from ${format.toUpperCase()}.${err instanceof Error ? ` ${err.message}` : ''}`
+    });
   }
 };
 
@@ -414,7 +417,7 @@ export async function processAndStoreFile(
         | "file_too_large"
         | "file_type_not_supported"
         | "file_is_empty";
-    }
+    } | CsvError
   >
 > {
   if (file.isReady || file.isFailed) {
@@ -454,10 +457,13 @@ export async function processAndStoreFile(
   const processingRes = await maybeApplyProcessing(auth, file);
   if (processingRes.isErr()) {
     await file.markAsFailed();
+    if (isDustError(processingRes.error)) {
+      return new Err(processingRes.error);
+    }
     return new Err({
       name: "dust_error",
       code: "internal_server_error",
-      message: `Failed to process the file : ${processingRes.error}`,
+      message: `Failed to process the file : ${processingRes.error instanceof Error ? processingRes.error.message : String(processingRes.error)}`,
     });
   }
 
