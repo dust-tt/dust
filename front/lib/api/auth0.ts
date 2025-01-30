@@ -1,6 +1,7 @@
 import type { Session } from "@auth0/nextjs-auth0";
 import type { Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
+import type { ApiResponse } from "auth0";
 import { ManagementClient } from "auth0";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -266,3 +267,33 @@ export async function getAuth0UsersFromEmail(emails: string[]) {
 
   return auth0Users;
 }
+
+const throttleAuth0State = {
+  remaining: -1,
+  resetTime: 0,
+};
+
+export const throttleAuth0 = async <T>(
+  fn: () => Promise<ApiResponse<T>>,
+  { rateLimitThreshold }: { rateLimitThreshold: number }
+) => {
+  const { remaining, resetTime } = throttleAuth0State;
+  if (remaining === -1 || remaining < rateLimitThreshold) {
+    const now = Date.now();
+    const waitTime = resetTime * 1000 - now;
+    await new Promise((resolve) => setTimeout(resolve, waitTime));
+  }
+
+  const res = await fn();
+  if (res.status !== 200) {
+    logger.error({ res }, "When calling Auth0");
+    process.exit(1);
+  }
+
+  throttleAuth0State.remaining = Number(
+    res.headers.get("x-ratelimit-remaining")
+  );
+  throttleAuth0State.resetTime = Number(res.headers.get("x-ratelimit-reset"));
+
+  return res.data;
+};
