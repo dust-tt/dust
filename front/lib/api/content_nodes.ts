@@ -264,6 +264,13 @@ export function computeNodesDiff({
         provider !== "intercom" ||
         !coreNode.internalId.startsWith("intercom-team")
     )
+    // The endpoints in the Zendesk connector do not return anything as children of a category, core does.
+    // This will be considered as an improvement, if it turns out to be a bad user experience this will be removed, ignoring for now.
+    .filter(
+      (coreNode) =>
+        provider !== "zendesk" ||
+        !coreNode.internalId.startsWith("zendesk-article")
+    )
     .map((coreNode) => coreNode.internalId);
   if (extraCoreInternalIds.length > 0) {
     localLogger.info(
