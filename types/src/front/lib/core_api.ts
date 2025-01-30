@@ -13,6 +13,7 @@ import {
   CoreAPIDocumentVersion,
   CoreAPIFolder,
   CoreAPILightDocument,
+  CoreAPITableBlob,
   EmbedderType,
 } from "../../core/data_source";
 import { DustAppSecretType } from "../../front/dust_app_secret";
@@ -1478,7 +1479,7 @@ export class CoreAPI {
     projectId: string;
     dataSourceId: string;
     tableId: string;
-  }): Promise<CoreAPIResponse<CoreAPIDocumentBlob>> {
+  }): Promise<CoreAPIResponse<CoreAPITableBlob>> {
     const response = await this._fetchWithError(
       `${this._url}/projects/${projectId}/data_sources/${encodeURIComponent(
         dataSourceId

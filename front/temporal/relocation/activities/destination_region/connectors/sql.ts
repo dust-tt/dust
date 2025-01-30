@@ -1,9 +1,10 @@
-import { deleteFromRelocationStorage } from "@app/temporal/relocation/lib/file_storage/relocation";
+import type { ModelId } from "@dust-tt/types";
+
 import { getConnectorsPrimaryDbConnection } from "@app/lib/production_checks/utils";
 import logger from "@app/logger/logger";
-import { RelocationBlob } from "@app/temporal/relocation/activities/types";
+import type { RelocationBlob } from "@app/temporal/relocation/activities/types";
+import { deleteFromRelocationStorage } from "@app/temporal/relocation/lib/file_storage/relocation";
 import { readFromRelocationStorage } from "@app/temporal/relocation/lib/file_storage/relocation";
-import { ModelId } from "@dust-tt/types";
 
 export async function processConnectorsTableChunk({
   connectorId,

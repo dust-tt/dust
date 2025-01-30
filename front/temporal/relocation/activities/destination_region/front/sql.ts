@@ -1,5 +1,6 @@
 import assert from "assert";
 
+import type { RegionType } from "@app/lib/api/regions/config";
 import { frontSequelize } from "@app/lib/resources/storage";
 import logger from "@app/logger/logger";
 import type {
@@ -10,7 +11,6 @@ import {
   deleteFromRelocationStorage,
   readFromRelocationStorage,
 } from "@app/temporal/relocation/lib/file_storage/relocation";
-import { RegionType } from "@app/lib/api/regions/config";
 
 export async function writeCoreEntitiesToDestinationRegion({
   dataPath,
