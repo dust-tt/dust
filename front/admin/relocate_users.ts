@@ -10,7 +10,7 @@ import { makeScript } from "@app/scripts/helpers";
 
 makeScript(
   {
-    region: {
+    destinationRegion: {
       type: "string",
       required: true,
       choices: SUPPORTED_REGIONS,
@@ -25,15 +25,14 @@ makeScript(
       default: 3,
     },
   },
-  async ({ region, workspaceId, rateLimitThreshold, execute }, logger) => {
+  async (
+    { destinationRegion, workspaceId, rateLimitThreshold, execute },
+    logger
+  ) => {
     const managementClient = getAuth0ManagemementClient();
 
     const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-    const workspace = auth.workspace();
-    if (!workspace) {
-      logger.error("Workspace not found");
-      process.exit(1);
-    }
+    const workspace = auth.getNonNullableWorkspace();
 
     let remaining = 10;
     let resetTime = Date.now();
@@ -96,7 +95,7 @@ makeScript(
             },
             {
               app_metadata: {
-                region: region,
+                region: destinationRegion,
               },
             }
           )
