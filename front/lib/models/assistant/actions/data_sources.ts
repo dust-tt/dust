@@ -18,6 +18,10 @@ export class AgentDataSourceConfiguration extends WorkspaceAwareModel<AgentDataS
   declare parentsIn: string[] | null;
   declare parentsNotIn: string[] | null;
 
+  declare tagsQuery: "fixed" | "auto" | null;
+  declare tagsIn: string[] | null;
+  declare tagsNotIn: string[] | null;
+
   declare dataSourceId: ForeignKey<DataSourceModel["id"]>;
   declare dataSourceViewId: ForeignKey<DataSourceViewModel["id"]>;
 
@@ -53,6 +57,18 @@ AgentDataSourceConfiguration.init(
       type: DataTypes.ARRAY(DataTypes.STRING),
       allowNull: true,
     },
+    tagsQuery: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    tagsIn: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: true,
+    },
+    tagsNotIn: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: true,
+    },
   },
   {
     modelName: "agent_data_source_configuration",
@@ -65,11 +81,32 @@ AgentDataSourceConfiguration.init(
     sequelize: frontSequelize,
     hooks: {
       beforeValidate: (dataSourceConfig: AgentDataSourceConfiguration) => {
+        // Checking parents.
         if (
           (dataSourceConfig.parentsIn === null) !==
           (dataSourceConfig.parentsNotIn === null)
         ) {
           throw new Error("Parents must be both set or both null");
+        }
+        // Checking tags.
+        if (dataSourceConfig.tagsQuery === "fixed") {
+          if (
+            !dataSourceConfig.tagsIn?.length &&
+            !dataSourceConfig.tagsNotIn?.length
+          ) {
+            throw new Error(
+              "TagsIn/notIn can't be both empty if tagsQuery is fixed"
+            );
+          }
+        } else {
+          if (
+            dataSourceConfig.tagsIn !== null ||
+            dataSourceConfig.tagsNotIn !== null
+          ) {
+            throw new Error(
+              "TagsIn/notIn must be null if tagsQuery is auto or null"
+            );
+          }
         }
       },
     },
