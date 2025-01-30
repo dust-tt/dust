@@ -3648,18 +3648,21 @@ impl Store for PostgresStore {
 
         let data_source_row_ids: Vec<i64> = r.iter().map(|row| row.get(0)).collect();
         let node_ids: Vec<String> = r.iter().map(|row| row.get(1)).collect();
-
-        // using index (data_source, parents[2]), grab children count
+        // using index (data_source, parents[2]), check for existence of children
         let stmt = c
             .prepare(
-                "SELECT p.node_id, COUNT(*) as child_count
-                    FROM data_sources_nodes dsn
-                    JOIN UNNEST(
+                "SELECT p.node_id,
+                    EXISTS (
+                        SELECT 1
+                        FROM data_sources_nodes dsn
+                        WHERE dsn.data_source = p.data_source
+                        AND dsn.parents[2] = p.node_id
+                        LIMIT 1
+                    ) as has_children
+                    FROM UNNEST(
                         $1::bigint[],
                         $2::text[]
-                    ) AS p(data_source, node_id)
-                    ON dsn.data_source = p.data_source AND dsn.parents[2] = p.node_id
-                    GROUP BY p.node_id",
+                    ) AS p(data_source, node_id)",
             )
             .await?;
         let rows = c.query(&stmt, &[&data_source_row_ids, &node_ids]).await?;
@@ -3669,8 +3672,14 @@ impl Store for PostgresStore {
             .iter()
             .map(|row| {
                 let parent_id: String = row.get(0);
-                let count: i64 = row.get(1);
-                (parent_id, count as u64)
+                let has_children: bool = row.get(1);
+                (
+                    parent_id,
+                    match has_children {
+                        true => 1,
+                        false => 0,
+                    },
+                )
             })
             .collect::<HashMap<String, u64>>();
 
