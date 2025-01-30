@@ -1,4 +1,8 @@
-import type { FileUseCase, Result, SupportedFileContentType } from "@dust-tt/types";
+import type {
+  FileUseCase,
+  Result,
+  SupportedFileContentType,
+} from "@dust-tt/types";
 import {
   assertNever,
   Err,
@@ -18,10 +22,12 @@ import { pipeline } from "stream/promises";
 import config from "@app/lib/api/config";
 import type { CSVRow } from "@app/lib/api/csv";
 import { analyzeCSVColumns } from "@app/lib/api/csv";
-import { CsvError, getCsvErrorMessage, isCsvError } from "@app/lib/api/files/csv_errors";
+import type { CsvError } from "@app/lib/api/files/csv_errors";
+import { getCsvErrorMessage, isCsvError } from "@app/lib/api/files/csv_errors";
 import { parseUploadRequest } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
-import { DustError, isDustError } from "@app/lib/error";
+import type { DustError } from "@app/lib/error";
+import { isDustError } from "@app/lib/error";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 
@@ -229,14 +235,14 @@ const extractContentAndSchemaFromDelimitedTextFiles = async (
       return new Err({
         name: "dust_error",
         code: "malformed_csv",
-        message: `Invalid ${format.toUpperCase()} format: ${err.message || getCsvErrorMessage(err)}`
+        message: `Invalid ${format.toUpperCase()} format: ${err.message || getCsvErrorMessage(err)}`,
       });
     }
 
     return new Err({
       name: "dust_error",
       code: "internal_server_error",
-      message: `Failed extracting from ${format.toUpperCase()}.${err instanceof Error ? ` ${err.message}` : ''}`
+      message: `Failed extracting from ${format.toUpperCase()}.${err instanceof Error ? ` ${err.message}` : ""}`,
     });
   }
 };
@@ -410,14 +416,15 @@ export async function processAndStoreFile(
 ): Promise<
   Result<
     FileResource,
-    Omit<DustError, "code"> & {
-      code:
-        | "internal_server_error"
-        | "invalid_request_error"
-        | "file_too_large"
-        | "file_type_not_supported"
-        | "file_is_empty";
-    } | CsvError
+    | (Omit<DustError, "code"> & {
+        code:
+          | "internal_server_error"
+          | "invalid_request_error"
+          | "file_too_large"
+          | "file_type_not_supported"
+          | "file_is_empty";
+      })
+    | CsvError
   >
 > {
   if (file.isReady || file.isFailed) {

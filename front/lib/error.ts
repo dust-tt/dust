@@ -31,14 +31,18 @@ export type DustError = {
   name: "dust_error";
   code: DustErrorCode;
   message: string;
-}
+};
 
 export function isDustError(err: unknown): err is DustError {
   return (
-    !!err && typeof err === 'object' &&
-    'name' in err && err.name === 'dust_error' &&
-    'code' in err && typeof err.code === 'string' &&
+    !!err &&
+    typeof err === "object" &&
+    "name" in err &&
+    err.name === "dust_error" &&
+    "code" in err &&
+    typeof err.code === "string" &&
     (DUST_ERROR_CODES as readonly string[]).includes(err.code) &&
-    'message' in err && typeof err.message === 'string'
+    "message" in err &&
+    typeof err.message === "string"
   );
 }
