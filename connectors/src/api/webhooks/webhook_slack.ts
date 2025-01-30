@@ -2,7 +2,10 @@ import type { WithConnectorsAPIErrorReponse } from "@dust-tt/types";
 import { JSON } from "@jsonjoy.com/util/lib/json-brand";
 import type { Request, Response } from "express";
 
-import { isChannelCreatedEvent, onChannelCreation } from "@connectors/api/webhooks/slack/created_channel";
+import {
+  isChannelCreatedEvent,
+  onChannelCreation,
+} from "@connectors/api/webhooks/slack/created_channel";
 import { botAnswerMessage } from "@connectors/connectors/slack/bot";
 import { updateSlackChannelInConnectorsDb } from "@connectors/connectors/slack/lib/channels";
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
