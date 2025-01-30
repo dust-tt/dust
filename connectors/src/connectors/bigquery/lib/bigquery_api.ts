@@ -131,16 +131,16 @@ export const fetchTables = async ({
     }
 
     // Get the dataset specified by the fromSchema
-    schemaName = internalSchemaId
+    const schema = internalSchemaId
       ? parseSchemaInternalId(internalSchemaId).name
       : schemaName;
 
     // Can't happen, to please TS.
-    if (!schemaName) {
+    if (!schema) {
       throw new Error("Schema name is required");
     }
 
-    const dataset = await conn.dataset(schemaName);
+    const dataset = await conn.dataset(schema);
     const r = await dataset.getTables();
     const tables = r[0];
     return new Ok(
@@ -152,7 +152,7 @@ export const fetchTables = async ({
           return {
             name: table.id,
             database_name: credentials.project_id,
-            schema_name: fromSchema,
+            schema_name: schema,
           };
         })
       )
