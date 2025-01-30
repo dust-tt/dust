@@ -52,6 +52,7 @@ export function Landing() {
         demoVideo={DemoVideo}
         fromColor="from-sky-200"
         toColor="to-sky-500"
+        fullWidth={true}
       />
 
       <BlogSection />

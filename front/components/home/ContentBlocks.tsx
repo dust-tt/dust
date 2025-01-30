@@ -199,7 +199,7 @@ export const MetricSection = ({ metrics, from, to }: MetricComponentProps) => (
     {metrics.map((metric, index) => (
       <div key={index} className="flex flex-col items-center text-center">
         {metric.logo && (
-          <Image alt="alan" src={metric.logo} width={100} height={50} />
+          <Image alt="alan" src={metric.logo} width={200} height={100} />
         )}
         <H1 from={from} to={to} className="mt-0">
           {metric.value}
