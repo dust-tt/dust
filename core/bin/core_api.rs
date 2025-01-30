@@ -2513,6 +2513,50 @@ async fn tables_delete(
     }
 }
 
+async fn tables_retrieve_blob(
+    Path((project_id, data_source_id, table_id)): Path<(i64, String, String)>,
+    State(state): State<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+
+    match state
+        .store
+        .load_data_source_table(&project, &data_source_id, &table_id)
+        .await
+    {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to load table",
+            Some(e),
+        ),
+        Ok(None) => error_response(
+            StatusCode::NOT_FOUND,
+            "table_not_found",
+            &format!("No table found for id `{}`", table_id),
+            None,
+        ),
+        Ok(Some(table)) => match table.retrieve_api_blob(state.databases_store.clone()).await {
+            Err(e) => error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "internal_server_error",
+                "Failed to retrieve document blob",
+                Some(e),
+            ),
+            Ok(blob) => {
+                let blob_value = serde_json::to_value(blob).unwrap();
+                (
+                    StatusCode::OK,
+                    Json(APIResponse {
+                        error: None,
+                        response: Some(blob_value),
+                    }),
+                )
+            }
+        },
+    }
+}
+
 async fn tables_update_parents(
     Path((project_id, data_source_id, table_id)): Path<(i64, String, String)>,
     State(state): State<Arc<APIState>>,
@@ -3707,6 +3751,10 @@ fn main() {
         .route(
             "/projects/:project_id/data_sources/:data_source_id/tables/:table_id",
             delete(tables_delete),
+        )
+        .route(
+            "/projects/:project_id/data_sources/:data_source_id/tables/:table_id/blob",
+            get(tables_retrieve_blob),
         )
         .route(
             "/projects/:project_id/data_sources/:data_source_id/tables/:table_id/rows",
