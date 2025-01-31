@@ -46,14 +46,14 @@ guaranteed to trigger a internal error (and return a 500).
 
 ## BACKEND
 
-### [BACK1] No models in API routes
+### [BACK1] No sequelize models in API routes
 
-API routes should not interact with models directly. Use `lib/api/*` interfaces (creating them if
-missing). Direct Resource interaction are acceptable.
+API routes should not interact with sequelize models directly. Use `lib/api/*` interfaces (creating
+them if missing). Direct Resource interaction are acceptable.
 
-### [BACK2] No models or ModelId in `lib/api/*` interfaces
+### [BACK2] No sequelize models or ModelId in `lib/api/*` interfaces
 
-Interfaces in `lib/api/*` should not expose ModelId or Sequelize Model objects.
+Interfaces in `lib/api/*` should not expose ModelId or sequelize model objects.
 
 Example:
 
@@ -67,7 +67,7 @@ function doWorkspace({ id }: { id: ModelId }) { }
 function doWorkspace({ workspace }: { workspace: WorkspaceType }) { }
 ```
 
-### [BACK3] Resource invariant: no models outside of resources
+### [BACK3] Resource invariant: no sequelize models outside of resources
 
 Any new model should be abstracted to the rest of the codebase through a pre-existing or new
 `Resource`.
@@ -80,28 +80,22 @@ Resources interface should take Resource or Types but not model objects.
 
 Any newly introduced function in `lib/api/*` should rely on Resources and not models directly.
 
-### [BACK6] Functionally test endpoints
-
-When introducing new endpoints or modifying existing endpoints, introduce functional tests. Our
-tests are functional and focus at the endpoint level for now. Unit tests are not required nor
-desired.
-
-### [BACK7] Use ConcurrentExecutor vs PQueue
+### [BACK6] Use ConcurrentExecutor vs PQueue
 
 We are deprecating our use of `PQueue` in favor of `ConcurrentExecutor`. Use `ConcurrentExecutor`
 for all new code and migrate to it from `PQueue` when modifying existing code that involves
 `PQueue`.
 
-### [BACK8] Avoid `Promise.all` on dynamic arrays
+### [BACK7] Avoid `Promise.all` on dynamic arrays
 
 Never use `Promise.all` on anything else than static arrays of promises with a known length (8 max).
 To parallelize asyncrhonous handling of dynamic arrays, use `ConcurrentExecutor`.
 
-### [BACK9] Favor typeguards over other methods
+### [BACK8] Favor typeguards over other methods
 
 When checking types, use explicit typeguards over `typeof`, `instanceof`, etc.
 
-### [BACK10] Standardized query parameters extraction
+### [BACK9] Standardized query parameters extraction
 
 Use `{ foo } = req.query` and then test with `isString` to extract query parameters in endpoints.
 
@@ -127,6 +121,24 @@ if (isString(aId)) {
 
 const r = someFunction(aId);
 ```
+
+## TESTING
+
+### [TEST1] Functionally test endpoints
+
+When introducing new endpoints or modifying existing endpoints, introduce functional tests. Our
+tests are functional and focus at the endpoint level for now. Unit tests are not required nor
+desired.
+
+### [TEST2] Test setup through factories
+
+Test state setup should be done through factories. Factories should return Resources whenever
+possible.
+
+### [TEST5] Avoid sequelize models in tests
+
+Direct use of sequelize models in tests should be avoided in favor of Resources. This includes test
+setup and assertions.
 
 ## REACT
 
