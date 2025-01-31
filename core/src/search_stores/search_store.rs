@@ -8,7 +8,7 @@ use elasticsearch::{
     http::transport::{SingleNodeConnectionPool, TransportBuilder},
     DeleteByQueryParts, DeleteParts, Elasticsearch, IndexParts, SearchParts,
 };
-use elasticsearch_dsl::{BoolQuery, Query, Search};
+use elasticsearch_dsl::{Aggregation, BoolQuery, Query, Search};
 use serde_json::json;
 use tracing::{error, info};
 use url::Url;
@@ -26,6 +26,13 @@ const MAX_PAGE_SIZE: u64 = 1000;
 pub enum SortDirection {
     Asc,
     Desc,
+}
+
+#[derive(serde::Deserialize, Clone, Copy, Debug)]
+#[serde(rename_all = "lowercase")]
+pub enum TagsQueryType {
+    Exact,
+    Prefix,
 }
 
 #[derive(serde::Deserialize, Debug)]
@@ -110,6 +117,15 @@ pub trait SearchStore {
     async fn index_node(&self, node: Node, tags: Option<Vec<String>>) -> Result<()>;
     async fn delete_node(&self, node: Node) -> Result<()>;
     async fn delete_data_source_nodes(&self, data_source_id: &str) -> Result<()>;
+
+    async fn search_tags(
+        &self,
+        query: Option<String>,
+        query_type: Option<TagsQueryType>,
+        data_sources: Option<Vec<String>>,
+        node_ids: Option<Vec<String>>,
+        limit: Option<u64>,
+    ) -> Result<(Vec<(String, u64)>, u64)>;
 
     fn clone_box(&self) -> Box<dyn SearchStore + Sync + Send>;
 }
@@ -500,6 +516,78 @@ impl SearchStore for ElasticsearchSearchStore {
                     "Failed to delete data source nodes {}",
                     error
                 ))
+            }
+        }
+    }
+
+    async fn search_tags(
+        &self,
+        query: Option<String>,
+        query_type: Option<TagsQueryType>,
+        data_sources: Option<Vec<String>>,
+        node_ids: Option<Vec<String>>,
+        limit: Option<u64>,
+    ) -> Result<(Vec<(String, u64)>, u64)> {
+        let query_type = query_type.unwrap_or(TagsQueryType::Exact);
+        let bool_query = Query::bool();
+        let bool_query = match data_sources {
+            None => bool_query,
+            Some(data_sources) => bool_query.must(Query::terms("data_source_id", data_sources)),
+        };
+        let bool_query = match node_ids {
+            None => bool_query,
+            Some(node_ids) => bool_query.must(Query::terms("node_id", node_ids)),
+        };
+        let bool_query = match query.clone() {
+            None => bool_query,
+            Some(p) => match query_type {
+                TagsQueryType::Exact => bool_query.must(Query::term("tags.keyword", p)),
+                TagsQueryType::Prefix => bool_query.must(Query::prefix("tags.edge", p)),
+            },
+        };
+        let aggregate = Aggregation::terms("tags.keyword");
+        let aggregate = match query.clone() {
+            None => aggregate,
+            Some(p) => match query_type {
+                TagsQueryType::Exact => aggregate.include(p),
+                TagsQueryType::Prefix => aggregate.include(format!("{}.*", p).as_str()),
+            },
+        };
+        let search = Search::new()
+            .size(0)
+            .query(bool_query)
+            .aggregate("unique_tags", aggregate.size(limit.unwrap_or(100)));
+
+        let response = self
+            .client
+            .search(SearchParts::Index(&[NODES_INDEX_NAME]))
+            .body(search)
+            .send()
+            .await?;
+
+        // Parse response and return tags
+        match response.status_code().is_success() {
+            true => {
+                let response_body = response.json::<serde_json::Value>().await?;
+                Ok((
+                    response_body["aggregations"]["unique_tags"]["buckets"]
+                        .as_array()
+                        .unwrap_or(&vec![])
+                        .iter()
+                        .filter_map(|bucket| {
+                            bucket["key"].as_str().map(|key| {
+                                (key.to_string(), bucket["doc_count"].as_u64().unwrap_or(0))
+                            })
+                        })
+                        .collect(),
+                    response_body["hits"]["total"]["value"]
+                        .as_u64()
+                        .unwrap_or(0),
+                ))
+            }
+            false => {
+                let error = response.json::<serde_json::Value>().await?;
+                Err(anyhow::anyhow!("Failed to list tags: {}", error))
             }
         }
     }

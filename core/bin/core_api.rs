@@ -51,7 +51,7 @@ use dust::{
     search_filter::{Filterable, SearchFilter},
     search_stores::search_store::{
         ElasticsearchSearchStore, NodesSearchCursorRequest, NodesSearchFilter, NodesSearchOptions,
-        SearchStore,
+        SearchStore, TagsQueryType,
     },
     sqlite_workers::client::{self, HEARTBEAT_INTERVAL_MS},
     stores::{
@@ -3267,6 +3267,56 @@ async fn nodes_search_with_cursor(
 }
 
 #[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct TagsSearchPayload {
+    query: Option<String>,
+    query_type: Option<TagsQueryType>,
+    data_sources: Option<Vec<String>>,
+    node_ids: Option<Vec<String>>,
+    limit: Option<u64>,
+}
+
+async fn tags_search(
+    State(state): State<Arc<APIState>>,
+    Json(payload): Json<TagsSearchPayload>,
+) -> (StatusCode, Json<APIResponse>) {
+    match state
+        .search_store
+        .search_tags(
+            payload.query,
+            payload.query_type,
+            payload.data_sources,
+            payload.node_ids,
+            payload.limit,
+        )
+        .await
+    {
+        Ok((tags, total)) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!({
+                    "tags": tags
+                        .into_iter()
+                        .map(|(k, v)| json!({
+                            "tag": k,
+                            "match_count": v,
+                        }))
+                        .collect::<Vec<serde_json::Value>>(),
+                    "total_nodes": total,
+                })),
+            }),
+        ),
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to list tags",
+            Some(e),
+        ),
+    }
+}
+
+#[derive(serde::Deserialize)]
 struct DatabaseQueryRunPayload {
     query: String,
     tables: Vec<(i64, String, String)>,
@@ -3751,6 +3801,7 @@ fn main() {
         //Search
         .route("/nodes/search", post(nodes_search))
         .route("/nodes/search/cursor", post(nodes_search_with_cursor))
+        .route("/tags/search", post(tags_search))
 
         // Misc
         .route("/tokenize", post(tokenize))
