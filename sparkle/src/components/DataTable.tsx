@@ -22,6 +22,10 @@ import {
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuItemProps,
+  DropdownMenuPortal,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   IconButton,
   Pagination,
@@ -369,6 +373,17 @@ DataTable.Row = function Row({
   );
 };
 
+type SubMenuItem = {
+  id: string;
+  name: string;
+};
+
+interface SubmenuConfig {
+  label: string;
+  items: SubMenuItem[];
+  onSelect: (itemId: string) => void;
+}
+
 interface MoreButtonProps {
   className?: string;
   moreMenuItems?: DropdownMenuItemProps[];
@@ -376,21 +391,22 @@ interface MoreButtonProps {
     React.ComponentPropsWithoutRef<typeof DropdownMenu>,
     "modal"
   >;
+  submenus?: SubmenuConfig[];
 }
 
 DataTable.MoreButton = function MoreButton({
   className,
   moreMenuItems,
   dropdownMenuProps,
+  submenus,
 }: MoreButtonProps) {
-  if (!moreMenuItems || moreMenuItems.length === 0) {
+  if (!moreMenuItems?.length && !submenus?.length) {
     return null;
   }
 
   return (
     <DropdownMenu modal={false} {...dropdownMenuProps}>
-      <DropdownMenuTrigger // Necessary to allow clicking the dropdown in a table cell without clicking on the cell
-        // See https://github.com/radix-ui/primitives/issues/1242
+      <DropdownMenuTrigger
         onClick={(event) => {
           event.stopPropagation();
         }}
@@ -406,7 +422,7 @@ DataTable.MoreButton = function MoreButton({
 
       <DropdownMenuContent align="end">
         <DropdownMenuGroup>
-          {moreMenuItems.map((item, index) => (
+          {moreMenuItems?.map((item, index) => (
             <DropdownMenuItem
               key={index}
               {...item}
@@ -415,6 +431,25 @@ DataTable.MoreButton = function MoreButton({
                 item.onClick?.(event);
               }}
             />
+          ))}
+          {submenus?.map((submenu) => (
+            <DropdownMenuSub key={submenu.label}>
+              <DropdownMenuSubTrigger label={submenu.label} />
+              <DropdownMenuPortal>
+                <DropdownMenuSubContent>
+                  {submenu.items.map((item) => (
+                    <DropdownMenuItem
+                      key={item.id}
+                      label={item.name}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        submenu.onSelect(item.id);
+                      }}
+                    />
+                  ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuPortal>
+            </DropdownMenuSub>
           ))}
         </DropdownMenuGroup>
       </DropdownMenuContent>

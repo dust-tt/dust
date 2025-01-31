@@ -40,6 +40,11 @@ type Data = {
   icon?: React.ComponentType<{ className?: string }>;
   onClick?: () => void;
   moreMenuItems?: DropdownMenuItemProps[];
+  submenus?: Array<{
+    label: string;
+    items: Array<{ id: string; name: string }>;
+    onSelect: (itemId: string) => void;
+  }>;
   dropdownMenuProps?: React.ComponentPropsWithoutRef<typeof DropdownMenu>;
   roundedAvatar?: boolean;
 };
@@ -90,17 +95,22 @@ const data: Data[] = [
     ],
   },
   {
-    name: "Very long name that should be truncated at some point to avoid overflow and make the table more readable",
+    name: "Submenu",
     usedBy: 2,
     addedBy: "Another very long user name that should be truncated",
     lastUpdated: "2023-07-09",
     size: "64kb",
     icon: FolderIcon,
-    moreMenuItems: [
+    submenus: [
       {
-        label: "Edit (disabled)",
-        onClick: () => alert("Design menu clicked"),
-        disabled: true,
+        label: "Add to Space",
+        items: [
+          { id: "space1", name: "Space 1" },
+          { id: "space2", name: "Space 2" },
+          { id: "space3", name: "Space 3" },
+          { id: "space4", name: "Space 4" },
+        ],
+        onSelect: (itemId) => console.log("Add to Space", itemId),
       },
     ],
   },
@@ -211,7 +221,10 @@ const columns: ColumnDef<Data>[] = [
     id: "actions",
     header: "",
     cell: (info) => (
-      <DataTable.MoreButton moreMenuItems={info.row.original.moreMenuItems} />
+      <DataTable.MoreButton
+        moreMenuItems={info.row.original.moreMenuItems}
+        submenus={info.row.original.submenus}
+      />
     ),
     meta: {
       className: "s-w-12 s-cursor-pointer s-text-foreground",
