@@ -513,20 +513,20 @@ impl SearchStore for ElasticsearchSearchStore {
 
     async fn list_tags(
         &self,
-        project_id: &i64,
+        _project_id: &i64,
         data_source_id: &str,
         prefix: Option<&str>,
     ) -> Result<Vec<String>> {
         let bool_query = match prefix {
             None => Query::bool().must(Query::term("data_source_id", data_source_id)),
             Some(p) => Query::bool()
-                .must(Query::prefix("tags", p))
+                .must(Query::prefix("tags.keyword", p))
                 .must(Query::term("data_source_id", data_source_id)),
         };
 
         let aggregate = match prefix {
-            None => Aggregation::terms("tags"),
-            Some(p) => Aggregation::terms("tags").include(format!("{}.*", p).as_str()),
+            None => Aggregation::terms("tags.keyword"),
+            Some(p) => Aggregation::terms("tags.keyword").include(format!("{}.*", p).as_str()),
         };
         let search = Search::new()
             .size(0)

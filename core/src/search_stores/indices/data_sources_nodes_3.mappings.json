@@ -45,6 +45,19 @@
     "provider_visibility": {
       "type": "keyword",
       "index": false
+    },
+    "tags": {
+      "type": "text",
+      "analyzer": "standard",
+      "fields": {
+        "edge": {
+          "type": "text",
+          "analyzer": "edge_analyzer"
+        },
+        "keyword": {
+          "type": "keyword"
+        }
+      }
     }
   }
 }
