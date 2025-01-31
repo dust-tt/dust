@@ -1,4 +1,5 @@
 import {
+  BigQueryLogo,
   ConfluenceLogo,
   DriveLogo,
   FolderIcon,
@@ -9,7 +10,6 @@ import {
   NotionLogo,
   SlackLogo,
   SnowflakeLogo,
-  TableIcon,
   ZendeskLogo,
 } from "@dust-tt/sparkle";
 import type {
@@ -287,7 +287,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     description: "Query a BigQuery database.",
     limitations: null,
     mismatchError: `You cannot change the BigQuery project. Please add a new BigQuery connection instead.`,
-    logoComponent: TableIcon,
+    logoComponent: BigQueryLogo,
     isNested: true,
     isSearchEnabled: false,
     guideLink: "https://docs.dust.tt/docs/bigquery-connection",
