@@ -1,6 +1,6 @@
 import type { ModelId } from "@dust-tt/types";
 import assert from "assert";
-import { Op, QueryTypes, WhereOptions } from "sequelize";
+import { Op, QueryTypes } from "sequelize";
 
 import type { RegionType } from "@app/lib/api/regions/config";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
@@ -19,10 +19,7 @@ import type {
   RelocationBlob,
 } from "@app/temporal/relocation/activities/types";
 import { writeToRelocationStorage } from "@app/temporal/relocation/lib/file_storage/relocation";
-import {
-  generateInsertStatements,
-  generateParameterizedInsertStatements,
-} from "@app/temporal/relocation/lib/sql/insert";
+import { generateParameterizedInsertStatements } from "@app/temporal/relocation/lib/sql/insert";
 import { getTopologicalOrder } from "@app/temporal/relocation/lib/sql/schema/dependencies";
 
 export async function readCoreEntitiesFromSourceRegion({
