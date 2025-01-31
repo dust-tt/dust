@@ -79,6 +79,7 @@ async function updateOrCreateApp(
     const owner = auth.getNonNullableWorkspace();
     const newApp = await AppResource.makeNew(
       {
+        id: appToImport.id,
         sId: appToImport.sId,
         name: appToImport.name,
         description: appToImport.description,
