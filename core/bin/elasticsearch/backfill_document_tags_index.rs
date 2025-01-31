@@ -2,7 +2,6 @@ use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
 use clap::Parser;
 use dust::{
-    data_sources::node::{Node, NodeType, ProviderVisibility},
     search_stores::search_store::ElasticsearchSearchStore,
     stores::{postgres::PostgresStore, store::Store},
 };
@@ -28,10 +27,10 @@ struct Args {
 }
 
 /*
- * Backfills nodes index in Elasticsearch for core using the postgres table `data_sources_nodes`
+ * Backfills tags for documents in Elasticsearch using the postgres table `data_sources_documents` and `tables`
  *
  * Usage:
- * cargo run --bin elasticsearch_backfill_index -- --index-version <version> [--skip-confirmation] [--start-cursor <cursor>] [--batch-size <batch_size>]
+ * cargo run --bin elasticsearch_backfill_document_tags_index -- --index-version <version> [--skip-confirmation] [--start-cursor <cursor>] [--batch-size <batch_size>]
  *
  */
 #[tokio::main]
