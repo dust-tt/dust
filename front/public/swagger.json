@@ -524,7 +524,7 @@
         "summary": "Get feedbacks for a conversation",
         "description": "Retrieves all feedback entries for a specific conversation.\nRequires authentication and read:conversation scope.\n",
         "tags": [
-          "assistant"
+          "Feedbacks"
         ],
         "parameters": [
           {
