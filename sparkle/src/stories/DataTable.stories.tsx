@@ -1,9 +1,5 @@
 import type { Meta } from "@storybook/react";
-import {
-  ColumnDef,
-  PaginationState,
-  SortingState,
-} from "@tanstack/react-table";
+import { ColumnDef, PaginationState, SortingState } from "@tanstack/react-table";
 import React, { useMemo } from "react";
 
 import {
@@ -39,12 +35,21 @@ type Data = {
   avatarTooltipLabel?: string;
   icon?: React.ComponentType<{ className?: string }>;
   onClick?: () => void;
-  menuItems?: MenuItem[]; // Replace moreMenuItems and submenus with menuItems
-  dropdownMenuProps?: React.ComponentPropsWithoutRef<typeof DropdownMenu>;
+  menuItems?: MenuItem[];
+  dropdownMenuProps?: Omit<
+    React.ComponentPropsWithoutRef<typeof DropdownMenu>,
+    "modal"
+  >;
   roundedAvatar?: boolean;
 };
 
-const data: Data[] = [
+type TransformedData = {
+  dropdownMenuProps?: { modal: boolean };
+  menuItems?: MenuItem[];
+} & Data;
+
+
+const data: TransformedData[] = [
   {
     name: "Soupinou with tooltip on avatar",
     usedBy: 100,
@@ -154,7 +159,7 @@ const data: Data[] = [
   },
 ];
 
-const columns: ColumnDef<Data>[] = [
+const columns = useMemo<ColumnDef<TransformedData>[]>(() => [
   {
     accessorKey: "name",
     header: "Name",
@@ -233,7 +238,7 @@ const columns: ColumnDef<Data>[] = [
       className: "s-w-12 s-cursor-pointer s-text-foreground",
     },
   },
-];
+], []);
 
 // TODO: Fix 'Edit' changing the order of the rows
 export const DataTableExample = () => {
@@ -241,23 +246,20 @@ export const DataTableExample = () => {
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [selectedName, setSelectedName] = React.useState("");
 
-  const tableData = data.map((item) => ({
+  const tableData = data.map(({menuItems, ...item}) => ({
     ...item,
-    dropdownMenuProps: {
-      modal: false,
-    },
-    menuItems: item.menuItems?.length
+    menuItems: menuItems?.length
       ? [
-          {
-            kind: "item" as const,
-            label: "Edit",
-            onClick: () => {
-              setSelectedName(item.name);
-              setDialogOpen(true);
-            },
+        {
+          kind: "item" as const,
+          label: "Edit",
+          onClick: () => {
+            setSelectedName(item.name);
+            setDialogOpen(true);
           },
-          ...item.menuItems,
-        ]
+        },
+        ...menuItems,
+      ]
       : undefined,
   }));
 

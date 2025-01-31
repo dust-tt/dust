@@ -32,13 +32,7 @@ import {
   Tooltip,
 } from "@sparkle/components";
 import { useCopyToClipboard } from "@sparkle/hooks";
-import {
-  ArrowDownIcon,
-  ArrowUpIcon,
-  ClipboardCheckIcon,
-  ClipboardIcon,
-  MoreIcon,
-} from "@sparkle/icons";
+import { ArrowDownIcon, ArrowUpIcon, ClipboardCheckIcon, ClipboardIcon, MoreIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
@@ -380,7 +374,7 @@ interface BaseMenuItem {
 
 interface RegularMenuItem
   extends BaseMenuItem,
-    Omit<DropdownMenuItemProps, "children"> {
+    Omit<DropdownMenuItemProps, "children" | "label"> {
   kind: "item";
 }
 
