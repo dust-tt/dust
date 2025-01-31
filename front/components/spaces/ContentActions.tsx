@@ -1,16 +1,39 @@
 import type { DropdownMenuItemProps } from "@dust-tt/sparkle";
-import { ExternalLinkIcon, EyeIcon, PencilSquareIcon, PlusIcon, TrashIcon, useHashParam } from "@dust-tt/sparkle";
-import type { DataSourceViewContentNode, DataSourceViewType, PlanType, WorkspaceType } from "@dust-tt/types";
+import {
+  ExternalLinkIcon,
+  EyeIcon,
+  PencilSquareIcon,
+  PlusIcon,
+  TrashIcon,
+  useHashParam,
+} from "@dust-tt/sparkle";
+import type {
+  DataSourceViewContentNode,
+  DataSourceViewType,
+  PlanType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import { capitalize } from "lodash";
 import type { MouseEvent as ReactMouseEvent, RefObject } from "react";
-import React, { useCallback, useEffect, useImperativeHandle, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useState,
+} from "react";
 
 import { DocumentOrTableDeleteDialog } from "@app/components/data_source/DocumentOrTableDeleteDialog";
 import { DocumentUploadOrEditModal } from "@app/components/data_source/DocumentUploadOrEditModal";
 import { MultipleDocumentsUpload } from "@app/components/data_source/MultipleDocumentsUpload";
 import { TableUploadOrEditModal } from "@app/components/data_source/TableUploadOrEditModal";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
-import { getDisplayNameForDataSource, isFolder, isManaged, isWebsite } from "@app/lib/data_sources";
+import { AddToSpaceDialog } from "@app/components/spaces/AddToSpaceDialog";
+import {
+  getDisplayNameForDataSource,
+  isFolder,
+  isManaged,
+  isWebsite,
+} from "@app/lib/data_sources";
 
 export type UploadOrEditContentActionKey =
   | "DocumentUploadOrEdit"
@@ -146,15 +169,15 @@ export const ContentActions = React.forwardRef<
             onClose(false);
           }}
         />
-        {/*{currentAction.contentNode && (*/}
-        {/*  <AddToSpaceDialog*/}
-        {/*    contentNode={currentAction.contentNode}*/}
-        {/*    dataSourceView={dataSourceView}*/}
-        {/*    isOpen={currentAction.action === "AddToSpaceDialog"}*/}
-        {/*    onClose={onClose}*/}
-        {/*    owner={owner}*/}
-        {/*  />*/}
-        {/*)}*/}
+        {currentAction.contentNode && (
+          <AddToSpaceDialog
+            contentNode={currentAction.contentNode}
+            dataSourceView={dataSourceView}
+            isOpen={currentAction.action === "AddToSpaceDialog"}
+            onClose={onClose}
+            owner={owner}
+          />
+        )}
       </>
     );
   }
