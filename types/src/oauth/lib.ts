@@ -82,7 +82,7 @@ export const SnowflakeCredentialsSchema = t.type({
 });
 export type SnowflakeCredentials = t.TypeOf<typeof SnowflakeCredentialsSchema>;
 
-export const BigQueryCredentialsSchema = t.type({
+export const CheckBigQueryCredentialsSchema = t.type({
   type: t.string,
   project_id: t.string,
   private_key_id: t.string,
@@ -96,7 +96,28 @@ export const BigQueryCredentialsSchema = t.type({
   universe_domain: t.string,
 });
 
-export type BigQueryCredentials = t.TypeOf<typeof BigQueryCredentialsSchema>;
+export type CheckBigQueryCredentials = t.TypeOf<
+  typeof CheckBigQueryCredentialsSchema
+>;
+
+export const BigQueryCredentialsWithLocationSchema = t.type({
+  type: t.string,
+  project_id: t.string,
+  private_key_id: t.string,
+  private_key: t.string,
+  client_email: t.string,
+  client_id: t.string,
+  auth_uri: t.string,
+  token_uri: t.string,
+  auth_provider_x509_cert_url: t.string,
+  client_x509_cert_url: t.string,
+  universe_domain: t.string,
+  location: t.string,
+});
+
+export type BigQueryCredentialsWithLocation = t.TypeOf<
+  typeof BigQueryCredentialsWithLocationSchema
+>;
 
 export const ApiKeyCredentialsSchema = t.type({
   api_key: t.string,
@@ -106,7 +127,7 @@ export type ModjoCredentials = t.TypeOf<typeof ApiKeyCredentialsSchema>;
 export type ConnectionCredentials =
   | SnowflakeCredentials
   | ModjoCredentials
-  | BigQueryCredentials;
+  | BigQueryCredentialsWithLocation;
 
 export function isSnowflakeCredentials(
   credentials: ConnectionCredentials
@@ -120,10 +141,14 @@ export function isModjoCredentials(
   return "api_key" in credentials;
 }
 
-export function isBigQueryCredentials(
+export function isBigQueryWithLocationCredentials(
   credentials: ConnectionCredentials
-): credentials is BigQueryCredentials {
-  return "type" in credentials && "project_id" in credentials;
+): credentials is BigQueryCredentialsWithLocation {
+  return (
+    "type" in credentials &&
+    "project_id" in credentials &&
+    "location" in credentials
+  );
 }
 
 export type OauthAPIPostCredentialsResponse = {

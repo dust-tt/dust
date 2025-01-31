@@ -151,7 +151,8 @@ async fn test_oauth_credentials_bigquery_flow_ok() {
             "token_uri": "https://oauth2.googleapis.com/token",
             "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
             "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/test",
-            "universe_domain": "googleapis.com"
+            "universe_domain": "googleapis.com",
+            "location": "EU"
         }
     });
 
@@ -209,6 +210,7 @@ async fn test_oauth_credentials_bigquery_flow_ok() {
         content.get("client_email").unwrap(),
         "test@test-project.iam.gserviceaccount.com"
     );
+    assert_eq!(content.get("region").unwrap(), "EU");
 }
 
 #[tokio::test]
@@ -231,7 +233,8 @@ async fn test_oauth_credentials_bigquery_delete_ok() {
             "token_uri": "https://oauth2.googleapis.com/token",
             "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
             "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/test",
-            "universe_domain": "googleapis.com"
+            "universe_domain": "googleapis.com",
+            "location": "US"
         }
     });
 

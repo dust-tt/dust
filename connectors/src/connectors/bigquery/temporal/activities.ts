@@ -1,5 +1,5 @@
 import type { ModelId } from "@dust-tt/types";
-import { isBigQueryCredentials, MIME_TYPES } from "@dust-tt/types";
+import { isBigQueryWithLocationCredentials, MIME_TYPES } from "@dust-tt/types";
 
 import {
   connectToBigQuery,
@@ -30,7 +30,7 @@ import logger from "@connectors/logger/logger";
 export async function syncBigQueryConnection(connectorId: ModelId) {
   const getConnectorAndCredentialsRes = await getConnectorAndCredentials({
     connectorId,
-    isTypeGuard: isBigQueryCredentials,
+    isTypeGuard: isBigQueryWithLocationCredentials,
     logger,
   });
   if (getConnectorAndCredentialsRes.isErr()) {
