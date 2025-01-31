@@ -246,6 +246,20 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     return history.get();
   }
 
+  async setStorageStatusForFileId(fileId: string, stored: boolean) {
+    const history = await LabsTranscriptsHistoryModel.findOne({
+      where: {
+        configurationId: this.id,
+        fileId,
+      },
+    });
+
+    if (!history) {
+      return null;
+    }
+    await history.update({ stored });
+  }
+
   async fetchHistoryForFileId(
     fileId: LabsTranscriptsHistoryModel["fileId"]
   ): Promise<InferAttributes<LabsTranscriptsHistoryModel> | null> {
