@@ -1,4 +1,5 @@
 import type { ModelId } from "@dust-tt/types";
+import { QueryTypes } from "sequelize";
 
 import { getConnectorsPrimaryDbConnection } from "@app/lib/production_checks/utils";
 import logger from "@app/logger/logger";
@@ -40,9 +41,13 @@ export async function processConnectorsTableChunk({
     );
 
     const connectorsDb = getConnectorsPrimaryDbConnection();
-    for (const statement of statements) {
+    for (const { sql, params } of statements) {
       await connectorsDb.transaction(async (transaction) =>
-        connectorsDb.query(statement, { transaction })
+        connectorsDb.query(sql, {
+          bind: params,
+          type: QueryTypes.INSERT,
+          transaction,
+        })
       );
     }
   }
