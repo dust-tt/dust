@@ -384,7 +384,6 @@ const handleDataSourceWithProvider = async ({
 
   const dataSourceView =
     await DataSourceViewResource.createDataSourceAndDefaultView(
-      auth,
       {
         assistantDefaultSelected:
           isConnectorProviderAssistantDefaultSelected(provider),
@@ -395,7 +394,8 @@ const handleDataSourceWithProvider = async ({
         name: dataSourceName,
         workspaceId: owner.id,
       },
-      space
+      space,
+      auth.user()
     );
 
   const { dataSource } = dataSourceView;

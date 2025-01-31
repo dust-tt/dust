@@ -165,10 +165,10 @@ async function handler(
             );
             if (dataSource) {
               await DataSourceViewResource.createViewInSpaceFromDataSource(
-                auth,
                 space,
                 dataSource,
-                dataSourceConfig.parentsIn
+                dataSourceConfig.parentsIn,
+                auth.user()
               );
             }
           }

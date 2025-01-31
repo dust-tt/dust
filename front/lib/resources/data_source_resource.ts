@@ -4,6 +4,7 @@ import type {
   DataSourceType,
   ModelId,
   Result,
+  UserType,
 } from "@dust-tt/types";
 import { formatUserFullName, Ok, removeNulls } from "@dust-tt/types";
 import type {
@@ -79,18 +80,18 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
   }
 
   static async makeNew(
-    auth: Authenticator,
     blob: Omit<
       CreationAttributes<DataSourceModel>,
       "editedAt" | "editedByUserId" | "vaultId"
     >,
     space: SpaceResource,
+    editedByUser?: UserType | null,
     transaction?: Transaction
   ) {
     const dataSource = await DataSourceModel.create(
       {
         ...blob,
-        editedByUserId: auth.user()?.id ?? null,
+        editedByUserId: editedByUser?.id ?? null,
         editedAt: new Date(),
         vaultId: space.id,
       },

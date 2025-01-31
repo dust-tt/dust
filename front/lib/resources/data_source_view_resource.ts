@@ -7,6 +7,7 @@ import type {
   DataSourceViewType,
   ModelId,
   Result,
+  UserType,
 } from "@dust-tt/types";
 import { formatUserFullName, Ok, removeNulls } from "@dust-tt/types";
 import assert from "assert";
@@ -88,19 +89,19 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
   // Creation.
 
   private static async makeNew(
-    auth: Authenticator,
     blob: Omit<
       CreationAttributes<DataSourceViewModel>,
       "editedAt" | "editedByUserId" | "vaultId"
     >,
     space: SpaceResource,
     dataSource: DataSourceResource,
+    editedByUser?: UserType | null,
     transaction?: Transaction
   ) {
     const dataSourceView = await DataSourceViewResource.model.create(
       {
         ...blob,
-        editedByUserId: auth.user()?.id ?? null,
+        editedByUserId: editedByUser?.id ?? null,
         editedAt: new Date(),
         vaultId: space.id,
       },
@@ -117,34 +118,40 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
   }
 
   static async createDataSourceAndDefaultView(
-    auth: Authenticator,
     blob: Omit<CreationAttributes<DataSourceModel>, "editedAt" | "vaultId">,
-    space: SpaceResource
+    space: SpaceResource,
+    editedByUser?: UserType | null,
+    transaction?: Transaction
   ) {
-    return frontSequelize.transaction(async (transaction) => {
+    const createDataSourceAndView = async (t: Transaction) => {
       const dataSource = await DataSourceResource.makeNew(
-        auth,
         blob,
         space,
-        transaction
+        editedByUser,
+        t
       );
       return this.createDefaultViewInSpaceFromDataSourceIncludingAllDocuments(
-        auth,
-        dataSource.space,
+        space,
         dataSource,
-        transaction
+        editedByUser,
+        t
       );
-    });
+    };
+
+    if (transaction) {
+      return createDataSourceAndView(transaction);
+    }
+
+    return frontSequelize.transaction(createDataSourceAndView);
   }
 
   static async createViewInSpaceFromDataSource(
-    auth: Authenticator,
     space: SpaceResource,
     dataSource: DataSourceResource,
-    parentsIn: string[]
+    parentsIn: string[],
+    editedByUser?: UserType | null
   ) {
     return this.makeNew(
-      auth,
       {
         dataSourceId: dataSource.id,
         parentsIn,
@@ -152,19 +159,19 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
         kind: "custom",
       },
       space,
-      dataSource
+      dataSource,
+      editedByUser
     );
   }
 
   // This view has access to all documents, which is represented by null.
   private static async createDefaultViewInSpaceFromDataSourceIncludingAllDocuments(
-    auth: Authenticator,
     space: SpaceResource,
     dataSource: DataSourceResource,
+    editedByUser?: UserType | null,
     transaction?: Transaction
   ) {
     return this.makeNew(
-      auth,
       {
         dataSourceId: dataSource.id,
         parentsIn: null,
@@ -173,6 +180,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       },
       space,
       dataSource,
+      editedByUser,
       transaction
     );
   }
