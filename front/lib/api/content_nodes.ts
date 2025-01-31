@@ -91,7 +91,19 @@ export function computeNodesDiff({
         connectorsNode.internalId !== "notion-unknown" &&
         !connectorsNode.internalId.startsWith("slack-channel-")
       ) {
-        missingNodes.push(connectorsNode);
+        if (
+          // For snowflake we ignore the missing nodes if we returned a node that is a parent.
+          // This is because connectors returns all children tables when fed with internalIds while core returns only these ids
+          // See https://github.com/orgs/dust-tt/projects/3/views/1?pane=issue&itemId=95859834&issue=dust-tt%7Cdust%7C10400
+          !(
+            provider === "snowflake" &&
+            coreNodes.some((n) =>
+              connectorsNode.internalId.startsWith(n.internalId)
+            )
+          )
+        ) {
+          missingNodes.push(connectorsNode);
+        }
       }
     } else if (coreNodes.length > 1) {
       // this one should never ever happen, it's a real red flag
@@ -350,6 +362,19 @@ export function computeNodesDiff({
       (coreNode) =>
         provider !== "slack" ||
         !coreNode.internalId.startsWith("slack-channel-")
+    )
+    // Snowflake schemas are returned from core, while connector only return tables
+    // Detect schema for which we have a table in connectors and ignore them.
+    // See https://github.com/orgs/dust-tt/projects/3/views/1?pane=issue&itemId=95859834&issue=dust-tt%7Cdust%7C10400
+    .filter(
+      (coreNode) =>
+        !(
+          provider === "snowflake" &&
+          coreNode.internalId.split(".").length === 2 &&
+          connectorsContentNodes.some((n) =>
+            n.internalId.startsWith(coreNode.internalId)
+          )
+        )
     );
   if (extraCoreNodes.length > 0) {
     localLogger.info(
