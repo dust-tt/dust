@@ -173,6 +173,18 @@ export function computeNodesDiff({
               return false;
             }
 
+            // Special case for Google Drive drives: not stored in connnectors,
+            // so parentInternalIds are empty VS [driveId]
+            if (
+              key === "parentInternalIds" &&
+              provider === "google_drive" &&
+              !value &&
+              coreNode.parentInternalIds?.length === 1 &&
+              coreNode.parentInternalIds[0] === coreNode.internalId
+            ) {
+              return false;
+            }
+
             // Ignore sourceUrls returned by core but left empty by connectors.
             if (key === "sourceUrl" && value === null && coreValue !== null) {
               return false;
