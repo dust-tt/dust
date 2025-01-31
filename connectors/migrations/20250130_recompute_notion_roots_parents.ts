@@ -131,7 +131,16 @@ async function updateParentsFieldForConnector(
   );
 
   // Find all descendants of nodes with "unknown" parentId and update them
-  nodes = [...nodes, ...descendants];
+  // nodes = [...nodes, ...descendants];
+  logger.info(
+    {
+      count: descendants.length,
+      descendants: descendants.map((d) =>
+        "notionPageId" in d ? d.notionPageId : d.notionDatabaseId
+      ),
+    },
+    "Descendants."
+  );
 
   const res = await concurrentExecutor(
     nodes,
