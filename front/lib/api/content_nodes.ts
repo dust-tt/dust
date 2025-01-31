@@ -227,6 +227,19 @@ export function computeNodesDiff({
             if (key === "expandable" && value === true && coreValue === false) {
               return false;
             }
+            // Special case for expandable on Intercom collections: connectors does not allow expanding collections below the first level (there can be up to 3 levels of nesting in collections).
+            // This behavior has to be kept for /permissions, and is implemented in generic functions so cannot be changed for /content-nodes only and not /permissions.
+            // core will make them expandable if not empty no matter what.
+            // If we agree that this is the desired experience, we can ignore in the log.
+            if (
+              key === "expandable" &&
+              provider === "intercom" &&
+              coreNode.internalId.startsWith("intercom-collection") &&
+              value === false &&
+              coreValue === true
+            ) {
+              return false;
+            }
             // Special case for Slack's providerVisibility: we only check if providerVisibility === "private" so
             // having a falsy value in core and "public" in connectors is the same.
             if (
