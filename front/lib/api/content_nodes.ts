@@ -150,6 +150,14 @@ export function computeNodesDiff({
             ) {
               return false;
             }
+            // The notion-syncing is a concept only added to core and not to the parents in content nodes from connectors.
+            if (
+              ["parentInternalId", "parentInternalIds"].includes(key) &&
+              provider === "notion" &&
+              coreNode?.parentInternalIds?.includes("notion-syncing")
+            ) {
+              return false;
+            }
 
             // Special case for Google drive spreadsheets:
             // title is '{spreadsheetName} - {sheetName}' for core, but only '{sheetName}' for connectors (not always).
