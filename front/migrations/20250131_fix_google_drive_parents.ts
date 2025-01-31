@@ -11,7 +11,7 @@ import { makeScript } from "@app/scripts/helpers";
 const QUERY_BATCH_SIZE = 256;
 const NODE_CONCURRENCY = 16;
 
-async function migrateDocument({
+async function migrateNode({
   coreAPI,
   dataSource,
   coreNode,
@@ -24,6 +24,8 @@ async function migrateDocument({
   coreNode: {
     parents: string[];
     node_id: string;
+    document: number | null;
+    table: number | null;
   };
   execute: boolean;
   skipIfParentsAreAlreadyCorrect: boolean;
@@ -70,13 +72,26 @@ async function migrateDocument({
   if (execute) {
     await withRetries(
       async () => {
-        const updateRes = await coreAPI.updateDataSourceDocumentParents({
-          projectId: dataSource.dustAPIProjectId,
-          dataSourceId: dataSource.dustAPIDataSourceId,
-          documentId: coreNode.node_id,
-          parents: newParents,
-          parentId: newParentId,
-        });
+        let updateRes;
+        if (coreNode.document) {
+          updateRes = await coreAPI.updateDataSourceDocumentParents({
+            projectId: dataSource.dustAPIProjectId,
+            dataSourceId: dataSource.dustAPIDataSourceId,
+            documentId: coreNode.node_id,
+            parents: newParents,
+            parentId: newParentId,
+          });
+        } else if (coreNode.table) {
+          updateRes = await coreAPI.updateTableParents({
+            projectId: dataSource.dustAPIProjectId,
+            dataSourceId: dataSource.dustAPIDataSourceId,
+            tableId: coreNode.node_id,
+            parents: newParents,
+            parentId: newParentId,
+          });
+        } else {
+          throw new Error("Unreachable: folder with incorrect parents.");
+        }
         if (updateRes.isErr()) {
           logger.error(
             {
@@ -158,7 +173,7 @@ async function migrateDataSource({
   for (;;) {
     const [rows] = (await (async () => {
       return corePrimary.query(
-        `SELECT node_id, parents
+        `SELECT "node_id", "parents", "document", "table"
          FROM data_sources_nodes
          WHERE data_source = :coreDataSourceId
            AND node_id > :nextId
@@ -181,6 +196,8 @@ async function migrateDataSource({
     })()) as {
       parents: string[];
       node_id: string;
+      document: number | null;
+      table: number | null;
     }[][];
 
     logger.info({ nextId, rowCount: rows.length }, "BATCH");
@@ -196,7 +213,7 @@ async function migrateDataSource({
       await concurrentExecutor(
         rows,
         (coreNode) =>
-          migrateDocument({
+          migrateNode({
             coreAPI,
             dataSource,
             coreNode,
