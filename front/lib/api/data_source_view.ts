@@ -1,7 +1,6 @@
 import type {
   ContentNodesViewType,
   CoreAPIContentNode,
-  CoreAPIContentNodeType,
   CoreAPIDatasourceViewFilter,
   CoreAPIError,
   CoreAPISortSpec,
@@ -247,9 +246,6 @@ async function getContentNodesForDataSourceViewFromCore(
         ? undefined
         : ROOT_PARENT_ID);
 
-  const nodeTypesForViewType: CoreAPIContentNodeType[] =
-    viewType === "documents" ? ["Document", "Folder"] : ["Table", "Folder"];
-
   // Always sort folders first, then sort by title.
   const sortForViewType: CoreAPISortSpec[] =
     viewType === "documents"
@@ -267,7 +263,6 @@ async function getContentNodesForDataSourceViewFromCore(
       data_source_views: [makeCoreDataSourceViewFilter(dataSourceView)],
       node_ids,
       parent_id,
-      node_types: nodeTypesForViewType,
     },
     options: { limit: 1000, sort: sortForViewType },
   });
