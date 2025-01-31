@@ -111,6 +111,7 @@ export function computeNodesDiff({
               return false;
             }
             // Custom exclusion rules. The goal here is to avoid logging irrelevant differences, scoping by connector.
+
             // For Snowflake and Zendesk we fixed how parents were computed in the core folders but not in connectors.
             // For Intercom we keep the virtual node Help Center in connectors but not in core.
             if (
@@ -121,6 +122,7 @@ export function computeNodesDiff({
               return false;
             }
             const coreValue = coreNode[key as keyof DataSourceViewContentNode];
+
             // Special case for folder parents, the ones retrieved using getContentNodesForStaticDataSourceView do not
             // contain any parentInternalIds.
             if (provider === null && key === "parentInternalIds") {
@@ -155,6 +157,18 @@ export function computeNodesDiff({
             if (
               key === "title" &&
               coreNode.mimeType === "application/vnd.google-apps.spreadsheet"
+            ) {
+              return false;
+            }
+
+            // Special case for Google Drive spreadsheet folders: connectors
+            // return a type "file" while core returns a type "folder".
+            if (
+              key === "type" &&
+              provider === "google_drive" &&
+              value === "file" &&
+              coreNode.type === "folder" &&
+              coreNode.mimeType === MIME_TYPES.GOOGLE_DRIVE.SPREADSHEET
             ) {
               return false;
             }
