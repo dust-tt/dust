@@ -1,6 +1,7 @@
 import type { ModelId } from "@dust-tt/types";
 import { CoreAPI, EnvironmentConfig } from "@dust-tt/types";
 import { makeScript } from "scripts/helpers";
+import Sqids from "sqids";
 
 import { getParents } from "@connectors/connectors/notion/lib/parents";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
@@ -12,6 +13,12 @@ import {
 import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
 import type Logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+
+const RESOURCE_S_ID_MIN_LENGTH = 10;
+
+const sqids = new Sqids({
+  minLength: RESOURCE_S_ID_MIN_LENGTH,
+});
 
 async function findAllDescendants(
   nodes: (NotionPage | NotionDatabase)[],
@@ -47,6 +54,25 @@ async function findAllDescendants(
   return descendants;
 }
 
+function getIdsFromSId(sId: string): {
+  region: number;
+  shardKey: number;
+  workspaceId: ModelId;
+  resourceId: ModelId;
+} {
+  const sIdWithoutPrefix = sId.split("_")[1];
+
+  const ids = sqids.decode(sIdWithoutPrefix);
+
+  if (ids.length !== 4) {
+    throw new Error("Invalid decoded string Id length");
+  }
+
+  const [region, shardKey, workspaceId, resourceId] = ids;
+
+  return { region, shardKey, workspaceId, resourceId };
+}
+
 async function updateParentsFieldForConnector(
   coreAPI: CoreAPI,
   connector: ConnectorResource,
@@ -60,6 +86,8 @@ async function updateParentsFieldForConnector(
     workspaceId: dataSourceConfig.workspaceId,
     dataSourceId: dataSourceConfig.dataSourceId,
   });
+
+  const { resourceId } = getIdsFromSId(dataSourceConfig.dataSourceId);
 
   const coreRes = await coreAPI.searchNodes({
     filter: {
