@@ -33,6 +33,7 @@ export const WebsitesHeaderMenu = ({
         owner={owner}
         space={space}
         dataSourceView={dataSourceView}
+        canWriteInSpace={canWriteInSpace}
       />
       <Button
         size="sm"
