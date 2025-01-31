@@ -152,7 +152,7 @@ export const NavigationSidebar = React.forwardRef<
       </div>
       <div className="flex grow flex-col">{children}</div>
       {user && (
-        <div className="flex items-center gap-2 border-t border-border-dark p-2">
+        <div className="flex items-center gap-2 border-t border-border-dark/60 p-2">
           <UserMenu user={user} owner={owner} />
           <div className="flex-grow" />
           <HelpDropdown owner={owner} user={user} />
