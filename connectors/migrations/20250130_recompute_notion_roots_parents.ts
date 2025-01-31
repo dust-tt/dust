@@ -66,7 +66,7 @@ async function updateParentsFieldForConnector(
   });
 
   const [dataSourceRows] = await frontSequelize.query(
-    `SELECT * FROM data_sources WHERE "connectorId" = :connectorId`,
+    `SELECT "dustAPIDataSourceId" FROM data_sources WHERE "connectorId" = :connectorId`,
     {
       replacements: { connectorId: connector.id.toString() },
     }
@@ -75,16 +75,16 @@ async function updateParentsFieldForConnector(
   if (dataSourceRows.length === 0) {
     throw new Error(`No data source found for connector ${connector.id}`);
   }
-  const dataSource = dataSourceRows[0] as { dustAPIProjectId: string };
-  const dustAPIProjectId = dataSource.dustAPIProjectId;
+  const dataSource = dataSourceRows[0] as { dustAPIDataSourceId: string };
+  const dustAPIDataSourceId = dataSource.dustAPIDataSourceId;
 
-  logger.info({ dustAPIProjectId }, "DataSourceId retrieved.");
+  logger.info({ dustAPIDataSourceId }, "DataSourceId retrieved.");
 
   const coreRes = await coreAPI.searchNodes({
     filter: {
       data_source_views: [
         {
-          data_source_id: dustAPIProjectId,
+          data_source_id: dustAPIDataSourceId,
           view_filter: [],
         },
       ],
