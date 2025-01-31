@@ -19,7 +19,6 @@ import {
   SheetContainer,
   SheetContent,
   SheetHeader,
-  SheetTitle,
   Spinner,
   Tabs,
   TabsList,
@@ -345,31 +344,30 @@ export function AssistantDetails({
   return (
     <Sheet open={!!assistantId} onOpenChange={onClose}>
       <SheetContent size="lg">
-        <SheetHeader>
-          <SheetTitle />
+        <SheetHeader className="flex flex-col gap-5 pt-6 text-sm text-foreground">
+          <DescriptionSection />
+          {isBuilder(owner) && (
+            <Tabs value={selectedTab}>
+              <TabsList border={false}>
+                <TabsTrigger
+                  value="info"
+                  label="Info"
+                  icon={InformationCircleIcon}
+                  onClick={() => setSelectedTab("info")}
+                />
+                <TabsTrigger
+                  value="performance"
+                  label="Performance"
+                  icon={BarChartIcon}
+                  onClick={() => setSelectedTab("performance")}
+                />
+              </TabsList>
+            </Tabs>
+          )}
         </SheetHeader>
-        <SheetContainer>
+        <SheetContainer className="flex flex-col gap-5 pt-6 text-sm text-foreground">
           {agentConfiguration && (
-            <div className="flex flex-col gap-5 pt-6 text-sm text-foreground">
-              <DescriptionSection />
-              {isBuilder(owner) && (
-                <Tabs value={selectedTab}>
-                  <TabsList>
-                    <TabsTrigger
-                      value="info"
-                      label="Info"
-                      icon={InformationCircleIcon}
-                      onClick={() => setSelectedTab("info")}
-                    />
-                    <TabsTrigger
-                      value="performance"
-                      label="Performance"
-                      icon={BarChartIcon}
-                      onClick={() => setSelectedTab("performance")}
-                    />
-                  </TabsList>
-                </Tabs>
-              )}
+            <>
               {selectedTab === "info" && (
                 <AssistantDetailsInfo
                   agentConfiguration={agentConfiguration}
@@ -382,7 +380,7 @@ export function AssistantDetails({
                   owner={owner}
                 />
               )}
-            </div>
+            </>
           )}
           {isAgentConfigurationError?.error.type ===
             "agent_configuration_not_found" && (
