@@ -18,8 +18,8 @@ import {
   DropdownMenu,
   Input,
 } from "@sparkle/components/";
-import { FolderIcon } from "@sparkle/icons";
 import { MenuItem } from "@sparkle/components/DataTable";
+import { FolderIcon } from "@sparkle/icons";
 
 const meta = {
   title: "Components/DataTable",
