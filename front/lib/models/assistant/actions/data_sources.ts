@@ -18,7 +18,7 @@ export class AgentDataSourceConfiguration extends WorkspaceAwareModel<AgentDataS
   declare parentsIn: string[] | null;
   declare parentsNotIn: string[] | null;
 
-  declare tagsQuery: "fixed" | "auto" | null;
+  declare tagsMode: "custom" | "auto" | null;
   declare tagsIn: string[] | null;
   declare tagsNotIn: string[] | null;
 
@@ -57,7 +57,7 @@ AgentDataSourceConfiguration.init(
       type: DataTypes.ARRAY(DataTypes.STRING),
       allowNull: true,
     },
-    tagsQuery: {
+    tagsMode: {
       type: DataTypes.STRING,
       allowNull: true,
     },
@@ -80,31 +80,28 @@ AgentDataSourceConfiguration.init(
     ],
     sequelize: frontSequelize,
     hooks: {
-      beforeValidate: (dataSourceConfig: AgentDataSourceConfiguration) => {
+      beforeValidate: (dsConfig: AgentDataSourceConfiguration) => {
         // Checking parents.
         if (
-          (dataSourceConfig.parentsIn === null) !==
-          (dataSourceConfig.parentsNotIn === null)
+          (dsConfig.parentsIn === null) !==
+          (dsConfig.parentsNotIn === null)
         ) {
           throw new Error("Parents must be both set or both null");
         }
         // Checking tags.
-        if (dataSourceConfig.tagsQuery === "fixed") {
-          if (
-            !dataSourceConfig.tagsIn?.length &&
-            !dataSourceConfig.tagsNotIn?.length
-          ) {
+        if ((dsConfig.tagsIn === null) !== (dsConfig.tagsNotIn === null)) {
+          throw new Error("Tags must be both set or both null");
+        }
+        if (dsConfig.tagsMode === "custom") {
+          if (!dsConfig.tagsIn?.length && !dsConfig.tagsNotIn?.length) {
             throw new Error(
-              "TagsIn/notIn can't be both empty if tagsQuery is fixed"
+              "TagsIn/notIn can't be both empty if tagsMode is custom"
             );
           }
         } else {
-          if (
-            dataSourceConfig.tagsIn !== null ||
-            dataSourceConfig.tagsNotIn !== null
-          ) {
+          if (dsConfig.tagsIn !== null || dsConfig.tagsNotIn !== null) {
             throw new Error(
-              "TagsIn/notIn must be null if tagsQuery is auto or null"
+              "TagsIn/notIn must be null if tagsMode is auto or null"
             );
           }
         }
