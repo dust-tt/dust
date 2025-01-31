@@ -333,7 +333,7 @@ export default function SpaceWebsiteModal({
     action: "created" | "updated"
   ) => {
     if (res.ok) {
-      onClose?.();
+      onClose();
       sendNotification({
         title: `Website ${action}`,
         type: "success",
@@ -369,7 +369,7 @@ export default function SpaceWebsiteModal({
       await router.push(
         `/w/${owner.sId}/spaces/${space.sId}/categories/${WEBSITE_CAT}`
       );
-      onClose?.();
+      onClose();
     } else {
       const err = (await res.json()) as { error: APIError };
       sendNotification({
