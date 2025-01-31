@@ -8,7 +8,7 @@ import type {
 import type { RegionType } from "@app/lib/api/regions/config";
 
 export interface RelocationBlob<T extends string = string> {
-  statements: Record<T, string[]>;
+  statements: Record<T, { sql: string; params: any[] }[]>;
 }
 
 export type CoreEntitiesRelocationBlob = RelocationBlob<

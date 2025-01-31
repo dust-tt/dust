@@ -8,7 +8,7 @@ import type {
   RelocationBlob,
 } from "@app/temporal/relocation/activities/types";
 import { writeToRelocationStorage } from "@app/temporal/relocation/lib/file_storage/relocation";
-import { generateInsertStatements } from "@app/temporal/relocation/lib/sql/insert";
+import { generateParameterizedInsertStatements } from "@app/temporal/relocation/lib/sql/insert";
 import { getTopologicalOrder } from "@app/temporal/relocation/lib/sql/schema/dependencies";
 
 export async function getAllConnectorsForWorkspace({
@@ -38,7 +38,7 @@ export async function getAllConnectorsForWorkspace({
 
   const blob: RelocationBlob = {
     statements: {
-      connectors: generateInsertStatements("connectors", rows, {
+      connectors: generateParameterizedInsertStatements("connectors", rows, {
         onConflict: "ignore",
       }),
     },
@@ -119,7 +119,7 @@ export async function readConnectorsTableChunk({
 
   const blob: RelocationBlob = {
     statements: {
-      [tableName]: generateInsertStatements(tableName, rows, {
+      [tableName]: generateParameterizedInsertStatements(tableName, rows, {
         onConflict: "ignore",
       }),
     },
