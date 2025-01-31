@@ -2,8 +2,13 @@ import {
   DocumentPlusIcon,
   ExclamationCircleIcon,
   Input,
-  Modal,
   Page,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
   SparklesIcon,
   Spinner,
   TextArea,
@@ -324,145 +329,169 @@ export const TableUploadOrEditModal = ({
   }, [initialId, table]);
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={() => {
-        onClose(false);
+    <Sheet
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose(false);
+        }
       }}
-      hasChanged={
-        tableState.file !== null ||
-        (table
-          ? table.description !== tableState.description ||
-            table.name !== tableState.name
-          : tableState.description.trim() !== "" ||
-            tableState.name.trim() !== "")
-      }
-      variant="side-md"
-      title={`${initialId ? "Edit" : "Add"} table`}
-      onSave={onSave}
-      isSaving={isUpserting}
     >
-      {isTableLoading ? (
-        <div className="flex justify-center py-4">
-          <Spinner variant="color" size="xs" />
-        </div>
-      ) : (
-        <Page.Vertical align="stretch">
-          {isTableError ? (
-            <div className="space-y-4 p-4">Content cannot be loaded.</div>
+      <SheetContent size="xl">
+        <SheetHeader>
+          <SheetTitle>{`${initialId ? "Edit" : "Add"} table`}</SheetTitle>
+        </SheetHeader>
+        <SheetContainer>
+          {isTableLoading ? (
+            <div className="flex justify-center py-4">
+              <Spinner variant="color" size="xs" />
+            </div>
           ) : (
-            <div className="space-y-4 p-4">
-              <div>
-                <Page.SectionHeader title="Table name" />
-                <Input
-                  placeholder="table_name"
-                  name="name"
-                  maxLength={MAX_NAME_CHARS}
-                  disabled={!!initialId}
-                  value={tableState.name}
-                  onChange={(e) => {
-                    setEditionStatus((prev) => ({ ...prev, name: true }));
-                    setTableState((prev) => ({
-                      ...prev,
-                      name: e.target.value,
-                    }));
-                  }}
-                  message={
-                    editionStatus.name &&
-                    (!tableState.name || !isSlugified(tableState.name))
-                      ? "Invalid name: Must be lowercase alphanumeric, max 32 characters and no space."
-                      : null
-                  }
-                  messageStatus="error"
-                />
-              </div>
-
-              <div>
-                <Page.SectionHeader
-                  title="Description"
-                  description="Describe the content of your CSV file. It will be used by the LLM model to generate relevant queries."
-                />
-                <TextArea
-                  placeholder="This table contains..."
-                  value={tableState.description}
-                  onChange={(e) => {
-                    setEditionStatus((prev) => ({
-                      ...prev,
-                      description: true,
-                    }));
-                    setTableState((prev) => ({
-                      ...prev,
-                      description: e.target.value,
-                    }));
-                  }}
-                  error={
-                    !tableState.description && editionStatus.description
-                      ? "You need to provide a description to your CSV file."
-                      : null
-                  }
-                  showErrorLabel
-                  minRows={10}
-                />
-              </div>
-
-              <div>
-                <Page.SectionHeader
-                  title="CSV File"
-                  description={`Select the CSV file for data extraction. The maximum file size allowed is ${maxFileSizeToHumanReadable(MAX_FILE_SIZES.delimited)}.`}
-                  action={{
-                    label: fileUploaderService.isProcessingFiles
-                      ? "Uploading..."
-                      : tableState.file
-                        ? tableState.file.name
-                        : initialId
-                          ? "Replace file"
-                          : "Upload file",
-                    variant: "primary",
-                    icon: DocumentPlusIcon,
-                    onClick: () => fileInputRef.current?.click(),
-                  }}
-                />
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  style={{ display: "none" }}
-                  accept={getSupportedFileExtensions("delimited").join(",")}
-                  onChange={handleFileChange}
-                />
-                {isBigFile && (
-                  <div className="flex flex-col gap-y-2 pt-4">
-                    <div className="flex grow flex-row items-center gap-1 text-sm font-medium text-warning-500">
-                      <ExclamationCircleIcon />
-                      Warning: Large file (5MB+)
-                    </div>
-                    <div className="text-sm font-normal text-element-700">
-                      This file is large and may take a while to upload.
-                    </div>
+            <Page.Vertical align="stretch">
+              {isTableError ? (
+                <div className="space-y-4 p-4">Content cannot be loaded.</div>
+              ) : (
+                <div className="space-y-4 p-4">
+                  <div>
+                    <Page.SectionHeader title="Table name" />
+                    <Input
+                      placeholder="table_name"
+                      name="name"
+                      maxLength={MAX_NAME_CHARS}
+                      disabled={!!initialId}
+                      value={tableState.name}
+                      onChange={(e) => {
+                        setEditionStatus((prev) => ({ ...prev, name: true }));
+                        setTableState((prev) => ({
+                          ...prev,
+                          name: e.target.value,
+                        }));
+                      }}
+                      message={
+                        editionStatus.name &&
+                        (!tableState.name || !isSlugified(tableState.name))
+                          ? "Invalid name: Must be lowercase alphanumeric, max 32 characters and no space."
+                          : null
+                      }
+                      messageStatus="error"
+                    />
                   </div>
-                )}
-              </div>
-              {featureFlags.includes("use_app_for_header_detection") && (
-                <div>
-                  <Page.SectionHeader
-                    title="Enable header detection"
-                    description={
-                      "Use the LLM model to detect headers in the CSV file."
-                    }
-                    action={{
-                      label: useAppForHeaderDetection ? "Disable" : "Enable",
-                      variant: useAppForHeaderDetection ? "primary" : "ghost",
-                      icon: SparklesIcon,
-                      onClick: () =>
-                        setUseAppForHeaderDetection(!useAppForHeaderDetection),
-                    }}
-                  />
+
+                  <div>
+                    <Page.SectionHeader
+                      title="Description"
+                      description="Describe the content of your CSV file. It will be used by the LLM model to generate relevant queries."
+                    />
+                    <TextArea
+                      placeholder="This table contains..."
+                      value={tableState.description}
+                      onChange={(e) => {
+                        setEditionStatus((prev) => ({
+                          ...prev,
+                          description: true,
+                        }));
+                        setTableState((prev) => ({
+                          ...prev,
+                          description: e.target.value,
+                        }));
+                      }}
+                      error={
+                        !tableState.description && editionStatus.description
+                          ? "You need to provide a description to your CSV file."
+                          : null
+                      }
+                      showErrorLabel
+                      minRows={10}
+                    />
+                  </div>
+
+                  <div>
+                    <Page.SectionHeader
+                      title="CSV File"
+                      description={`Select the CSV file for data extraction. The maximum file size allowed is ${maxFileSizeToHumanReadable(MAX_FILE_SIZES.delimited)}.`}
+                      action={{
+                        label: fileUploaderService.isProcessingFiles
+                          ? "Uploading..."
+                          : tableState.file
+                            ? tableState.file.name
+                            : initialId
+                              ? "Replace file"
+                              : "Upload file",
+                        variant: "primary",
+                        icon: DocumentPlusIcon,
+                        onClick: () => fileInputRef.current?.click(),
+                      }}
+                    />
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      style={{ display: "none" }}
+                      accept={getSupportedFileExtensions("delimited").join(",")}
+                      onChange={handleFileChange}
+                    />
+                    {isBigFile && (
+                      <div className="flex flex-col gap-y-2 pt-4">
+                        <div className="flex grow flex-row items-center gap-1 text-sm font-medium text-warning-500">
+                          <ExclamationCircleIcon />
+                          Warning: Large file (5MB+)
+                        </div>
+                        <div className="text-sm font-normal text-element-700">
+                          This file is large and may take a while to upload.
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  {featureFlags.includes("use_app_for_header_detection") && (
+                    <div>
+                      <Page.SectionHeader
+                        title="Enable header detection"
+                        description={
+                          "Use the LLM model to detect headers in the CSV file."
+                        }
+                        action={{
+                          label: useAppForHeaderDetection
+                            ? "Disable"
+                            : "Enable",
+                          variant: useAppForHeaderDetection
+                            ? "primary"
+                            : "ghost",
+                          icon: SparklesIcon,
+                          onClick: () =>
+                            setUseAppForHeaderDetection(
+                              !useAppForHeaderDetection
+                            ),
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
               )}
-            </div>
+            </Page.Vertical>
           )}
-        </Page.Vertical>
-      )}
-    </Modal>
+        </SheetContainer>
+        <SheetFooter
+          leftButtonProps={{
+            label: "Cancel",
+            variant: "outline",
+          }}
+          rightButtonProps={{
+            label: isUpserting ? "Saving..." : "Save",
+            onClick: async () => {
+              await onSave();
+            },
+            disabled:
+              !(
+                tableState.file !== null ||
+                (table
+                  ? table.description !== tableState.description ||
+                    table.name !== tableState.name
+                  : tableState.description.trim() !== "" ||
+                    tableState.name.trim() !== "")
+              ) || isUpserting,
+          }}
+        />
+      </SheetContent>
+    </Sheet>
   );
 };
 
