@@ -3,7 +3,7 @@ import { isBigQueryCredentials, MIME_TYPES } from "@dust-tt/types";
 
 import {
   connectToBigQuery,
-  fetchSchemas,
+  fetchDatasets,
   fetchTables,
   isConnectionReadonly,
 } from "@connectors/connectors/bigquery/lib/bigquery_api";
@@ -97,17 +97,17 @@ export async function syncBigQueryConnection(connectorId: ModelId) {
   // BigQuery is read-only as we force the readonly scope when creating the client.
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- BigQuery is read-only but leaving the call in case of copy-pasting later.
   const readonlyConnectionCheck = isConnectionReadonly();
-  const schemasRes = await fetchSchemas({ credentials, connection });
-  if (schemasRes.isErr()) {
-    throw schemasRes.error;
+  const datasetRes = await fetchDatasets({ credentials, connection });
+  if (datasetRes.isErr()) {
+    throw datasetRes.error;
   }
-  const schemas = schemasRes.value;
+  const datasets = datasetRes.value;
 
   const tables: RemoteDBTable[] = [];
-  for (const schema of schemas) {
+  for (const dataset of datasets) {
     const tablesOnBigQueryRes = await fetchTables({
       credentials,
-      schemaName: schema.name,
+      datasetName: dataset.name,
       connection,
     });
     if (tablesOnBigQueryRes.isErr()) {

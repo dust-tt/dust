@@ -71,16 +71,15 @@ export const fetchDatabases = ({
 };
 
 /**
- * Fetch the schemas available in the BigQuery account.
- * In BigQuery, schemas/datasets are the equivalent of databases, there is no concept of databases like in Snowflake for example.
- * Credentials are scoped to a project, so we can't fetch the schemas of another project.
+ * Fetch the datasets available in the BigQuery account.
+ * In BigQuery, datasets are the equivalent of schemas.
+ * Credentials are scoped to a project, so we can't fetch the datasets of another project.
  */
-export const fetchSchemas = async ({
+export const fetchDatasets = async ({
   credentials,
   connection,
 }: {
   credentials: BigQueryCredentials;
-  fromDatabase?: string;
   connection?: BigQuery;
 }): Promise<Result<Array<RemoteDBSchema>, Error>> => {
   const conn = connection ?? connectToBigQuery(credentials);
@@ -106,42 +105,44 @@ export const fetchSchemas = async ({
 };
 
 /**
- * Fetch the tables available in the BigQuery account.
+ * Fetch the tables available in the BigQuery dataset.
  */
 export const fetchTables = async ({
   credentials,
-  schemaName,
-  internalSchemaId,
+  datasetName,
+  internalDatasetId,
   connection,
 }: {
   credentials: BigQueryCredentials;
-  schemaName?: string;
-  internalSchemaId?: string;
+  datasetName?: string;
+  internalDatasetId?: string;
   connection?: BigQuery;
 }): Promise<Result<Array<RemoteDBTable>, Error>> => {
   const conn = connection ?? connectToBigQuery(credentials);
   try {
-    if (!schemaName && !internalSchemaId) {
-      throw new Error("Either schemaName or internalSchemaId must be provided");
-    }
-    if (schemaName && internalSchemaId) {
+    if (!datasetName && !internalDatasetId) {
       throw new Error(
-        "Both schemaName and internalSchemaId cannot be provided"
+        "Either datasetName or internalDatasetId must be provided"
+      );
+    }
+    if (datasetName && internalDatasetId) {
+      throw new Error(
+        "Both datasetName and internalDatasetId cannot be provided"
       );
     }
 
-    const schema = internalSchemaId
-      ? parseSchemaInternalId(internalSchemaId).name
-      : schemaName;
+    const dataset = internalDatasetId
+      ? parseSchemaInternalId(internalDatasetId).name
+      : datasetName;
 
     // Can't happen, to please TS.
-    if (!schema) {
-      throw new Error("Schema name is required");
+    if (!dataset) {
+      throw new Error("Dataset name is required");
     }
 
     // Get the dataset specified by the schema
-    const dataset = await conn.dataset(schema);
-    const r = await dataset.getTables();
+    const d = await conn.dataset(dataset);
+    const r = await d.getTables();
     const tables = r[0];
     return new Ok(
       removeNulls(
@@ -152,7 +153,7 @@ export const fetchTables = async ({
           return {
             name: table.id,
             database_name: credentials.project_id,
-            schema_name: schema,
+            schema_name: dataset,
           };
         })
       )

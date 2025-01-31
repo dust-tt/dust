@@ -237,7 +237,7 @@ export class BigQueryConnectorManager extends BaseConnectorManager<null> {
   }
 
   /**
-   * For BigQuery the tree is: databases > schemas > tables
+   * For BigQuery the tree is: projects > datasets > tables
    */
   async retrievePermissions({
     parentInternalId,
@@ -288,7 +288,7 @@ export class BigQueryConnectorManager extends BaseConnectorManager<null> {
     }
 
     // We display the nodes that we were given access to by the admin.
-    // We display the db/schemas if we have access to at least one table within those.
+    // We display the db/datasets if we have access to at least one table within those.
     if (filterPermission === "read") {
       const fetchRes = await fetchSyncedChildren({
         connectorId: connector.id,

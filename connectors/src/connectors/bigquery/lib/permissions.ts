@@ -8,7 +8,7 @@ import { Err, EXCLUDE_SCHEMAS, Ok } from "@dust-tt/types";
 
 import {
   fetchDatabases,
-  fetchSchemas,
+  fetchDatasets,
   fetchTables,
 } from "@connectors/connectors/bigquery/lib/bigquery_api";
 import {
@@ -66,20 +66,19 @@ export const fetchAvailableChildrenInBigQuery = async ({
     });
     const syncedSchemasInternalIds = syncedSchemas.map((db) => db.internalId);
 
-    const allSchemasRes = await fetchSchemas({
+    const allDatasetsRes = await fetchDatasets({
       credentials,
-      fromDatabase: parentInternalId,
     });
-    if (allSchemasRes.isErr()) {
-      return new Err(allSchemasRes.error);
+    if (allDatasetsRes.isErr()) {
+      return new Err(allDatasetsRes.error);
     }
 
-    const allSchemas = allSchemasRes.value.filter(
+    const allDatasets = allDatasetsRes.value.filter(
       (row) => !EXCLUDE_SCHEMAS.includes(row.name)
     );
 
     return new Ok(
-      allSchemas.map((row) => {
+      allDatasets.map((row) => {
         const internalId = `${parentInternalId}.${row.name}`;
         const permission = syncedSchemasInternalIds.includes(internalId)
           ? "read"
@@ -97,7 +96,7 @@ export const fetchAvailableChildrenInBigQuery = async ({
 
     const allTablesRes = await fetchTables({
       credentials,
-      internalSchemaId: parentInternalId,
+      internalDatasetId: parentInternalId,
     });
     if (allTablesRes.isErr()) {
       return new Err(allTablesRes.error);
@@ -305,14 +304,13 @@ export const saveNodesFromPermissions = async ({
           });
         }
         // pushing the schemas in db with permission: "inherited" if they don't already exist
-        const fetchedSchemasRes = await fetchSchemas({
+        const fetchedDatasetsRes = await fetchDatasets({
           credentials,
-          fromDatabase: database,
         });
-        if (fetchedSchemasRes.isErr()) {
-          return new Err(new Error(fetchedSchemasRes.error.message));
+        if (fetchedDatasetsRes.isErr()) {
+          return new Err(new Error(fetchedDatasetsRes.error.message));
         }
-        for (const schema of fetchedSchemasRes.value) {
+        for (const dataset of fetchedDatasetsRes.value) {
           const existingSchema = await RemoteSchemaModel.findOne({
             where: {
               connectorId,
@@ -322,8 +320,8 @@ export const saveNodesFromPermissions = async ({
           if (!existingSchema) {
             await RemoteSchemaModel.create({
               connectorId,
-              internalId: [database, schema.name].join("."),
-              name: schema.name,
+              internalId: [database, dataset.name].join("."),
+              name: dataset.name,
               databaseName: database as string,
               permission: "inherited",
             });
