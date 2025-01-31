@@ -32,12 +32,25 @@ const NavigationListItemStyles = cva(
 const NavigationList = React.forwardRef<
   React.ElementRef<typeof ScrollAreaPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root>
->(({ className, children, ...props }, ref) => (
-  <ScrollArea ref={ref} className={className} {...props}>
-    <div className="s-flex s-flex-col s-gap-0.5">{children}</div>
-    <ScrollBar />
-  </ScrollArea>
-));
+>(({ className, children, ...props }, ref) => {
+  const [isScrolled, setIsScrolled] = React.useState(false);
+
+  return (
+    <ScrollArea
+      ref={ref}
+      className={cn(
+        className,
+        "s-transition-all s-duration-300",
+        isScrolled && "s-border-t s-border-border-dark/60"
+      )}
+      onScrollStateChange={setIsScrolled}
+      {...props}
+    >
+      <div className="s-flex s-flex-col s-gap-0.5">{children}</div>
+      <ScrollBar />
+    </ScrollArea>
+  );
+});
 NavigationList.displayName = "NavigationList";
 
 interface NavigationListItemProps
@@ -157,7 +170,7 @@ const variantStyles = cva("", {
       secondary: "s-text-muted-foreground",
     },
     isSticky: {
-      true: "s-sticky s-top-0 s-z-10 s-border-b s-border-border-dark/80 s-bg-structure-100/90 s-backdrop-blur-sm",
+      true: "s-sticky s-top-0 s-z-10 s-border-b s-border-border-dark/60 s-bg-muted/90 s-backdrop-blur-sm",
     },
   },
   defaultVariants: {
