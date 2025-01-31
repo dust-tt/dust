@@ -520,7 +520,7 @@ impl SearchStore for ElasticsearchSearchStore {
         let bool_query = match prefix {
             None => Query::bool().must(Query::term("data_source_id", data_source_id)),
             Some(p) => Query::bool()
-                .must(Query::prefix("tags.keyword", p))
+                .must(Query::prefix("tags.edge", p))
                 .must(Query::term("data_source_id", data_source_id)),
         };
 
