@@ -1295,6 +1295,19 @@ async function _createAgentDataSourcesConfigData(
           "Can't create AgentDataSourceConfiguration for retrieval: DataSourceView not found."
         );
 
+        const tagsFilter = dsConfig.filter.tags;
+        let tagsQuery: "auto" | "fixed" | null = null;
+        let tagsIn: string[] | null = null;
+        let tagsNotIn: string[] | null = null;
+
+        if (tagsFilter === "auto") {
+          tagsQuery = "auto";
+        } else if (tagsFilter?.in && tagsFilter?.not) {
+          tagsQuery = "fixed";
+          tagsIn = tagsFilter.in;
+          tagsNotIn = tagsFilter.not;
+        }
+
         return AgentDataSourceConfiguration.create(
           {
             dataSourceId: dataSourceView.dataSource.id,
@@ -1303,6 +1316,9 @@ async function _createAgentDataSourcesConfigData(
             retrievalConfigurationId: retrievalConfigurationId,
             processConfigurationId: processConfigurationId,
             dataSourceViewId: dataSourceView.id,
+            tagsQuery,
+            tagsIn,
+            tagsNotIn,
             workspaceId: owner.id,
             tagsMode: null,
             tagsIn: null,

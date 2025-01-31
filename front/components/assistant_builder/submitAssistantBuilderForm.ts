@@ -104,21 +104,28 @@ export async function submitAssistantBuilderForm({
             topK: "auto",
             dataSources: Object.values(
               a.configuration.dataSourceConfigurations
-            ).map(({ dataSourceView, selectedResources, isSelectAll }) => ({
-              dataSourceViewId: dataSourceView.sId,
-              workspaceId: owner.sId,
-              filter: {
-                parents: !isSelectAll
-                  ? {
-                      in: selectedResources.map(
-                        (resource) => resource.internalId
-                      ),
-                      not: [],
-                    }
-                  : null,
-                tags: null,
-              },
-            })),
+            ).map(
+              ({
+                dataSourceView,
+                selectedResources,
+                isSelectAll,
+                tagsFilter,
+              }) => ({
+                dataSourceViewId: dataSourceView.sId,
+                workspaceId: owner.sId,
+                filter: {
+                  parents: !isSelectAll
+                    ? {
+                        in: selectedResources.map(
+                          (resource) => resource.internalId
+                        ),
+                        not: [],
+                      }
+                    : null,
+                  tags: tagsFilter,
+                },
+              })
+            ),
           },
         ];
 
@@ -193,7 +200,7 @@ export async function submitAssistantBuilderForm({
                       not: [],
                     }
                   : null,
-                tags: null,
+                tags: null, // TODO(TAF) Add tags filter (if we refactor https://github.com/dust-tt/dust/pull/4994).
               },
             })),
             tagsFilter: a.configuration.tagsFilter,
