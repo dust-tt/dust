@@ -1,7 +1,7 @@
 import type { ModelId } from "@dust-tt/types";
 import { QueryTypes } from "sequelize";
 
-import { getConnectorsReplicaDbConnection } from "@app/lib/production_checks/utils";
+import { getConnectorsPrimaryDbConnection } from "@app/lib/production_checks/utils";
 import logger from "@app/logger/logger";
 import type {
   ReadTableChunkParams,
@@ -17,9 +17,7 @@ export async function getAllConnectorsForWorkspace({
   workspaceId: string;
 }) {
   // TODO: Use the front databases to get the connectorIds.
-
-  // We can use the replica db because we don't need to write to it.
-  const connectorReplicaDb = getConnectorsReplicaDbConnection();
+  const connectorsDb = getConnectorsPrimaryDbConnection();
 
   const localLogger = logger.child({
     workspaceId,
@@ -27,7 +25,7 @@ export async function getAllConnectorsForWorkspace({
 
   localLogger.info("[SQL] Getting all connectors for workspace");
 
-  const rows = await connectorReplicaDb.query<{ id: ModelId }>(
+  const rows = await connectorsDb.query<{ id: ModelId }>(
     `SELECT * FROM "connectors" WHERE "workspaceId" = :workspaceId`,
     {
       replacements: { workspaceId },
@@ -64,10 +62,9 @@ export async function getAllConnectorsForWorkspace({
 }
 
 export async function getTablesWithConnectorIdOrder() {
-  // We can use the replica db because we don't need to write to it.
-  const connectorReplicaDb = getConnectorsReplicaDbConnection();
+  const connectorsDb = getConnectorsPrimaryDbConnection();
 
-  return getTopologicalOrder(connectorReplicaDb, {
+  return getTopologicalOrder(connectorsDb, {
     columnName: "connectorId",
   });
 }
@@ -93,11 +90,11 @@ export async function readConnectorsTableChunk({
   localLogger.info("[SQL Table] Reading table chunk");
 
   // We can use the replica db because we don't need to write to it.
-  const connectorReplicaDb = getConnectorsReplicaDbConnection();
+  const connectorsDb = getConnectorsPrimaryDbConnection();
 
   const idClause = lastId ? `AND id > ${lastId}` : "";
 
-  const rows = await connectorReplicaDb.query<{ id: ModelId }>(
+  const rows = await connectorsDb.query<{ id: ModelId }>(
     `SELECT * FROM "${tableName}"
        WHERE "connectorId" = :connectorId ${idClause}
        ORDER BY id
