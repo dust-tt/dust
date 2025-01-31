@@ -195,7 +195,16 @@ interface MetricComponentProps {
 }
 
 export const MetricSection = ({ metrics, from, to }: MetricComponentProps) => (
-  <div className="grid w-full grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
+  <div
+    className={classNames(
+      "grid w-full grid-cols-2 gap-8 sm:grid-cols-2",
+      metrics.length === 2
+        ? "lg:grid-cols-2"
+        : metrics.length === 3
+          ? "lg:grid-cols-3"
+          : "lg:grid-cols-4"
+    )}
+  >
     {metrics.map((metric, index) => (
       <div key={index} className="flex flex-col items-center text-center">
         {metric.logo && (
