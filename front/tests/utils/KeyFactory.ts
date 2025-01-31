@@ -1,51 +1,48 @@
 import { faker } from "@faker-js/faker";
 import type { InferCreationAttributes } from "sequelize";
 
-import { SECRET_KEY_PREFIX } from "@app/lib/resources/key_resource";
-import type { GroupModel } from "@app/lib/resources/storage/models/groups";
+import type { GroupResource } from "@app/lib/resources/group_resource";
+import { KeyResource } from "@app/lib/resources/key_resource";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
 
-import { Factory } from "./factories";
-
-class KeyFactory extends Factory<KeyModel> {
+export class KeyFactory {
   async make(params: InferCreationAttributes<KeyModel>) {
     return KeyModel.create(params);
   }
 
-  regular(group: GroupModel) {
-    return this.params({
-      name: "key-" + faker.string.alphanumeric(8),
-      secret: SECRET_KEY_PREFIX + faker.string.alphanumeric(32),
-      groupId: group.id,
-      workspaceId: group.workspaceId,
-      isSystem: false,
-      status: "active",
-    });
+  static async regular(group: GroupResource) {
+    return KeyResource.makeNew(
+      {
+        name: "key-" + faker.string.alphanumeric(8),
+        workspaceId: group.workspaceId,
+        isSystem: false,
+        status: "active",
+      },
+      group
+    );
   }
 
-  disabled(group: GroupModel) {
-    return this.params({
-      name: "key-" + faker.string.alphanumeric(8),
-      secret: SECRET_KEY_PREFIX + faker.string.alphanumeric(32),
-      groupId: group.id,
-      workspaceId: group.workspaceId,
-      isSystem: false,
-      status: "disabled",
-    });
+  static async disabled(group: GroupResource) {
+    return KeyResource.makeNew(
+      {
+        name: "key-" + faker.string.alphanumeric(8),
+        workspaceId: group.workspaceId,
+        isSystem: false,
+        status: "disabled",
+      },
+      group
+    );
   }
 
-  system(group: GroupModel) {
-    return this.params({
-      name: "key-" + faker.string.alphanumeric(8),
-      secret: SECRET_KEY_PREFIX + faker.string.alphanumeric(32),
-      groupId: group.id,
-      workspaceId: group.workspaceId,
-      isSystem: true,
-      status: "active",
-    });
+  static async system(group: GroupResource) {
+    return KeyResource.makeNew(
+      {
+        name: "key-" + faker.string.alphanumeric(8),
+        workspaceId: group.workspaceId,
+        isSystem: true,
+        status: "active",
+      },
+      group
+    );
   }
 }
-
-export const keyFactory = () => {
-  return new KeyFactory();
-};

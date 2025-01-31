@@ -1,41 +1,43 @@
 import { faker } from "@faker-js/faker";
-import type { InferCreationAttributes } from "sequelize";
+import type { Transaction } from "sequelize";
 
 import type { Workspace } from "@app/lib/models/workspace";
-import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 
-import { Factory } from "./factories";
-
-class SpaceFactory extends Factory<SpaceModel> {
-  async make(params: InferCreationAttributes<SpaceModel>) {
-    return SpaceModel.create(params);
+export class SpaceFactory {
+  static async global(workspace: Workspace, t: Transaction) {
+    return SpaceResource.makeNew(
+      {
+        name: "space " + faker.string.alphanumeric(8),
+        kind: "global",
+        workspaceId: workspace.id,
+      },
+      [], // TODO: Add groups
+      t
+    );
   }
 
-  global(workspace: Workspace) {
-    return this.params({
-      name: "space " + faker.string.alphanumeric(8),
-      kind: "global",
-      workspaceId: workspace.id,
-    });
+  static async system(workspace: Workspace, t: Transaction) {
+    return SpaceResource.makeNew(
+      {
+        name: "space " + faker.string.alphanumeric(8),
+        kind: "system",
+        workspaceId: workspace.id,
+      },
+      [], // TODO: Add groups
+      t
+    );
   }
 
-  system(workspace: Workspace) {
-    return this.params({
-      name: "space " + faker.string.alphanumeric(8),
-      kind: "system",
-      workspaceId: workspace.id,
-    });
-  }
-
-  regular(workspace: Workspace) {
-    return this.params({
-      name: "space " + faker.string.alphanumeric(8),
-      kind: "regular",
-      workspaceId: workspace.id,
-    });
+  static async regular(workspace: Workspace, t: Transaction) {
+    return SpaceResource.makeNew(
+      {
+        name: "space " + faker.string.alphanumeric(8),
+        kind: "regular",
+        workspaceId: workspace.id,
+      },
+      [], // TODO: Add groups
+      t
+    );
   }
 }
-
-export const spaceFactory = () => {
-  return new SpaceFactory();
-};

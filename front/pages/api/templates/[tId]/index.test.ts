@@ -2,8 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { createMocks } from "node-mocks-http";
 import { describe, expect, vi } from "vitest";
 
-import { TemplateResource } from "@app/lib/resources/template_resource";
-import { templateFactory } from "@app/tests/utils/TemplateFactory";
+import { TemplateFactory } from "@app/tests/utils/TemplateFactory";
 import { itInTransaction } from "@app/tests/utils/utils";
 
 import handler from "./index";
@@ -55,11 +54,11 @@ describe("GET /api/templates/[tId]", () => {
   });
 
   itInTransaction("returns 404 when template is not published", async () => {
-    const template = await templateFactory().draft().create();
+    const template = await TemplateFactory.draft();
 
     const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
       method: "GET",
-      query: { tId: TemplateResource.modelIdToSId(template) },
+      query: { tId: template.sId },
       headers: {},
     });
 
@@ -77,11 +76,11 @@ describe("GET /api/templates/[tId]", () => {
   itInTransaction(
     "returns template when it exists and is published",
     async () => {
-      const template = await templateFactory().published().create();
+      const template = await TemplateFactory.published();
 
       const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
         method: "GET",
-        query: { tId: TemplateResource.modelIdToSId(template) },
+        query: { tId: template.sId },
         headers: {},
       });
 

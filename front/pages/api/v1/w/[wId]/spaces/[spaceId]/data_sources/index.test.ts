@@ -1,13 +1,12 @@
 import { describe, expect } from "vitest";
 
-import { SpaceResource } from "@app/lib/resources/space_resource";
-import { dataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
+import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import {
   createPublicApiAuthenticationTests,
   createPublicApiMockRequest,
 } from "@app/tests/utils/generic_public_api_tests";
-import { groupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
-import { spaceFactory } from "@app/tests/utils/SpaceFactory";
+import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import {
   expectArrayOfObjectsWithSpecificLength,
   itInTransaction,
@@ -23,17 +22,14 @@ describe(
 describe("GET /api/v1/w/[wId]/spaces/[spaceId]/data_sources", () => {
   itInTransaction(
     "returns an empty list when no data sources exist",
-    async () => {
+    async (t) => {
       const { req, res, workspace, globalGroup } =
         await createPublicApiMockRequest();
 
-      const space = await spaceFactory().global(workspace).create();
-      await groupSpaceFactory().associate(space, globalGroup);
+      const space = await SpaceFactory.global(workspace, t);
+      await GroupSpaceFactory.associate(space, globalGroup);
 
-      req.query.spaceId = SpaceResource.modelIdToSId({
-        id: space.id,
-        workspaceId: workspace.id,
-      });
+      req.query.spaceId = space.sId;
 
       await handler(req, res);
 
@@ -42,35 +38,35 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/data_sources", () => {
     }
   );
 
-  itInTransaction("returns accessible data sources for the space", async () => {
-    const { req, res, workspace, globalGroup } =
-      await createPublicApiMockRequest();
+  itInTransaction(
+    "returns accessible data sources for the space",
+    async (t) => {
+      const { req, res, workspace, globalGroup } =
+        await createPublicApiMockRequest();
 
-    const space = await spaceFactory().global(workspace).create();
-    await groupSpaceFactory().associate(space, globalGroup);
+      const space = await SpaceFactory.global(workspace, t);
+      await GroupSpaceFactory.associate(space, globalGroup);
 
-    req.query.spaceId = SpaceResource.modelIdToSId({
-      id: space.id,
-      workspaceId: workspace.id,
-    });
+      req.query.spaceId = space.sId;
 
-    // Create test data source views to the space
-    await dataSourceViewFactory().folder(workspace, space).create();
-    await dataSourceViewFactory().folder(workspace, space).create();
+      // Create test data source views to the space
+      await DataSourceViewFactory.folder(workspace, space, t);
+      await DataSourceViewFactory.folder(workspace, space, t);
 
-    // Create another space
-    const space2 = await spaceFactory().regular(workspace).create();
+      // Create another space
+      const space2 = await SpaceFactory.regular(workspace, t);
 
-    // Create test data source views to the space (they should not be returned)
-    await dataSourceViewFactory().folder(workspace, space2).create();
+      // Create test data source views to the space (they should not be returned)
+      await DataSourceViewFactory.folder(workspace, space2, t);
 
-    // Execute request
-    await handler(req, res);
+      // Execute request
+      await handler(req, res);
 
-    // Verify response
-    expect(res._getStatusCode()).toBe(200);
+      // Verify response
+      expect(res._getStatusCode()).toBe(200);
 
-    const { data_sources } = res._getJSONData();
-    expectArrayOfObjectsWithSpecificLength(data_sources, 2);
-  });
+      const { data_sources } = res._getJSONData();
+      expectArrayOfObjectsWithSpecificLength(data_sources, 2);
+    }
+  );
 });

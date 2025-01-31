@@ -47,10 +47,10 @@ async function backfillDataSourceViewsForWorkspace(
 
     // Create a view for this data source in the global vault.
     await DataSourceViewResource.createViewInSpaceFromDataSource(
-      auth,
       globalVault,
       dataSource,
-      []
+      [],
+      auth.user()
     );
 
     updated++;

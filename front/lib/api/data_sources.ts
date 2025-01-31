@@ -932,7 +932,6 @@ export async function createDataSourceWithoutProvider(
 
   const dataSourceView =
     await DataSourceViewResource.createDataSourceAndDefaultView(
-      auth,
       {
         name,
         description,
@@ -942,7 +941,8 @@ export async function createDataSourceWithoutProvider(
         assistantDefaultSelected: false,
         conversationId: conversation?.id,
       },
-      space
+      space,
+      auth.user()
     );
 
   try {

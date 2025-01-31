@@ -4,10 +4,10 @@ import { createMocks } from "node-mocks-http";
 import { expect, vi } from "vitest";
 
 import { SECRET_KEY_PREFIX } from "@app/lib/resources/key_resource";
-import { groupFactory } from "@app/tests/utils/GroupFactory";
-import { keyFactory } from "@app/tests/utils/KeyFactory";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
+import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { itInTransaction } from "@app/tests/utils/utils";
-import { workspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 
 // Mock the getSession function to return the user without going through the auth0 session
 vi.mock(import("../../lib/auth"), async (importOriginal) => {
@@ -44,11 +44,11 @@ export const createPublicApiMockRequest = async ({
   systemKey = false,
   method = "GET",
 }: { systemKey?: boolean; method?: RequestMethod } = {}) => {
-  const workspace = await workspaceFactory().basic().create();
-  const globalGroup = await groupFactory().global(workspace).create();
+  const workspace = await WorkspaceFactory.basic();
+  const { globalGroup, systemGroup } = await GroupFactory.defaults(workspace);
   const key = systemKey
-    ? await keyFactory().system(globalGroup).create()
-    : await keyFactory().regular(globalGroup).create();
+    ? await KeyFactory.system(globalGroup)
+    : await KeyFactory.regular(globalGroup);
 
   const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
     method: method,
@@ -58,7 +58,7 @@ export const createPublicApiMockRequest = async ({
     },
   });
 
-  return { req, res, workspace, globalGroup, key };
+  return { req, res, workspace, globalGroup, systemGroup, key };
 };
 
 export function createPublicApiSystemOnlyAuthenticationTests(
@@ -84,7 +84,7 @@ export function createPublicApiSystemOnlyAuthenticationTests(
 export function createPublicApiAuthenticationTests(handler: NextHandler) {
   return () => {
     itInTransaction("GET returns 401 if no key", async () => {
-      const workspace = await workspaceFactory().basic().create();
+      const workspace = await WorkspaceFactory.basic();
 
       const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
         method: "GET",
@@ -104,9 +104,9 @@ export function createPublicApiAuthenticationTests(handler: NextHandler) {
     });
 
     itInTransaction("returns 401 if disabled key", async () => {
-      const workspace = await workspaceFactory().basic().create();
-      const globalGroup = await groupFactory().global(workspace).create();
-      const key = await keyFactory().disabled(globalGroup).create();
+      const workspace = await WorkspaceFactory.basic();
+      const { globalGroup } = await GroupFactory.defaults(workspace);
+      const key = await KeyFactory.disabled(globalGroup);
 
       const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
         method: "GET",
@@ -128,7 +128,7 @@ export function createPublicApiAuthenticationTests(handler: NextHandler) {
     });
 
     itInTransaction("returns 401 if invalid key", async () => {
-      const workspace = await workspaceFactory().basic().create();
+      const workspace = await WorkspaceFactory.basic();
 
       const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
         method: "GET",
@@ -194,11 +194,11 @@ export function createPublicApiAuthenticationTests(handler: NextHandler) {
     itInTransaction(
       "returns 401 when workspace does not match the key",
       async () => {
-        const workspace = await workspaceFactory().basic().create();
-        const globalGroup = await groupFactory().global(workspace).create();
-        const key = await keyFactory().regular(globalGroup).create();
+        const workspace = await WorkspaceFactory.basic();
+        const { globalGroup } = await GroupFactory.defaults(workspace);
+        const key = await KeyFactory.regular(globalGroup);
 
-        const workspace2 = await workspaceFactory().basic().create();
+        const workspace2 = await WorkspaceFactory.basic();
 
         const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
           method: "GET",

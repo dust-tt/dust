@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { createMocks } from "node-mocks-http";
 import { describe, expect, vi } from "vitest";
 
-import { templateFactory } from "@app/tests/utils/TemplateFactory";
+import { TemplateFactory } from "@app/tests/utils/TemplateFactory";
 import { itInTransaction } from "@app/tests/utils/utils";
 
 import handler from "./index";
@@ -40,9 +40,9 @@ describe("GET /api/templates", () => {
     });
 
     // Create test templates
-    const publishedTemplate1 = await templateFactory().published().create();
-    const publishedTemplate2 = await templateFactory().published().create();
-    await templateFactory().draft().create(); // Draft template should not be returned
+    const publishedTemplate1 = await TemplateFactory.published();
+    const publishedTemplate2 = await TemplateFactory.published();
+    await TemplateFactory.draft(); // Draft template should not be returned
 
     await handler(req, res);
 
