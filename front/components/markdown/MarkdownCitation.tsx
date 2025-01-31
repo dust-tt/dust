@@ -1,4 +1,5 @@
 import {
+  BigQueryLogo,
   ConfluenceLogo,
   DocumentTextIcon,
   DriveLogo,
@@ -9,7 +10,6 @@ import {
   NotionLogo,
   SlackLogo,
   SnowflakeLogo,
-  TableIcon,
   ZendeskLogo,
 } from "@dust-tt/sparkle";
 import type { SVGProps } from "react";
@@ -46,7 +46,7 @@ export const citationIconMap: Record<
   slack: SlackLogo,
   image: ImageIcon,
   snowflake: SnowflakeLogo,
-  bigquery: TableIcon, // TODO(bigquery) replace with correct icon.
+  bigquery: BigQueryLogo,
 };
 
 export interface MarkdownCitation {

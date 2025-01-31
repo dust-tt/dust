@@ -1,16 +1,16 @@
 import type {
+  BigQueryCredentials,
   ContentNode,
   ModelId,
   Result,
-  SnowflakeCredentials,
 } from "@dust-tt/types";
-import { Err, EXCLUDE_DATABASES, EXCLUDE_SCHEMAS, Ok } from "@dust-tt/types";
+import { Err, EXCLUDE_SCHEMAS, Ok } from "@dust-tt/types";
 
 import {
   fetchDatabases,
-  fetchSchemas,
+  fetchDatasets,
   fetchTables,
-} from "@connectors/connectors/snowflake/lib/snowflake_api";
+} from "@connectors/connectors/bigquery/lib/bigquery_api";
 import {
   RemoteDatabaseModel,
   RemoteSchemaModel,
@@ -23,18 +23,18 @@ import {
 import type { Logger } from "@connectors/logger/logger";
 
 /**
- * Retrieves the existing content nodes for a parent in the Snowflake account.
+ * Retrieves the existing content nodes for a parent in the BigQuery account.
  * If parentInternalId is null, we are at the root level and we fetch databases.
  * If parentInternalId is a database, we fetch schemas.
  * If parentInternalId is a schema, we fetch tables.
  */
-export const fetchAvailableChildrenInSnowflake = async ({
+export const fetchAvailableChildrenInBigQuery = async ({
   connectorId,
   credentials,
   parentInternalId,
 }: {
   connectorId: ModelId;
-  credentials: SnowflakeCredentials;
+  credentials: BigQueryCredentials;
   parentInternalId: string | null;
 }): Promise<Result<ContentNode[], Error>> => {
   if (parentInternalId === null) {
@@ -45,13 +45,7 @@ export const fetchAvailableChildrenInSnowflake = async ({
       (db) => db.internalId
     );
 
-    const allDatabasesRes = await fetchDatabases({ credentials });
-    if (allDatabasesRes.isErr()) {
-      return new Err(allDatabasesRes.error);
-    }
-    const allDatabases = allDatabasesRes.value.filter(
-      (row) => !EXCLUDE_DATABASES.includes(row.name)
-    );
+    const allDatabases = fetchDatabases({ credentials });
 
     return new Ok(
       allDatabases.map((row) => {
@@ -72,20 +66,19 @@ export const fetchAvailableChildrenInSnowflake = async ({
     });
     const syncedSchemasInternalIds = syncedSchemas.map((db) => db.internalId);
 
-    const allSchemasRes = await fetchSchemas({
+    const allDatasetsRes = await fetchDatasets({
       credentials,
-      fromDatabase: parentInternalId,
     });
-    if (allSchemasRes.isErr()) {
-      return new Err(allSchemasRes.error);
+    if (allDatasetsRes.isErr()) {
+      return new Err(allDatasetsRes.error);
     }
 
-    const allSchemas = allSchemasRes.value.filter(
+    const allDatasets = allDatasetsRes.value.filter(
       (row) => !EXCLUDE_SCHEMAS.includes(row.name)
     );
 
     return new Ok(
-      allSchemas.map((row) => {
+      allDatasets.map((row) => {
         const internalId = `${parentInternalId}.${row.name}`;
         const permission = syncedSchemasInternalIds.includes(internalId)
           ? "read"
@@ -103,7 +96,7 @@ export const fetchAvailableChildrenInSnowflake = async ({
 
     const allTablesRes = await fetchTables({
       credentials,
-      fromSchema: parentInternalId,
+      internalDatasetId: parentInternalId,
     });
     if (allTablesRes.isErr()) {
       return new Err(allTablesRes.error);
@@ -272,16 +265,16 @@ export const getBatchContentNodes = async ({
 };
 
 /**
- * Saves the nodes that the user has access to in the database.
- * We save only the nodes that the admin has given us access to.
- * 
- * Example of permissions: {
-      "MY_DB.PUBLIC": "read",
-      "MY_DB.SAMPLE_DATA.CATS": "read",
-      "MY_DB.SAMPLE_DATA.DOGS": "none",
-      "MY_OTHER_DB": "node",
-    }
- */
+   * Saves the nodes that the user has access to in the database.
+   * We save only the nodes that the admin has given us access to.
+   * 
+   * Example of permissions: {
+        "MY_DB.PUBLIC": "read",
+        "MY_DB.SAMPLE_DATA.CATS": "read",
+        "MY_DB.SAMPLE_DATA.DOGS": "none",
+        "MY_OTHER_DB": "node",
+      }
+   */
 export const saveNodesFromPermissions = async ({
   connectorId,
   credentials,
@@ -290,7 +283,7 @@ export const saveNodesFromPermissions = async ({
 }: {
   permissions: Record<string, string>;
   connectorId: ModelId;
-  credentials: SnowflakeCredentials;
+  credentials: BigQueryCredentials;
   logger: Logger;
 }): Promise<Result<void, Error>> => {
   for (const [internalId, permission] of Object.entries(permissions)) {
@@ -311,14 +304,13 @@ export const saveNodesFromPermissions = async ({
           });
         }
         // pushing the schemas in db with permission: "inherited" if they don't already exist
-        const fetchedSchemasRes = await fetchSchemas({
+        const fetchedDatasetsRes = await fetchDatasets({
           credentials,
-          fromDatabase: database,
         });
-        if (fetchedSchemasRes.isErr()) {
-          return new Err(new Error(fetchedSchemasRes.error.message));
+        if (fetchedDatasetsRes.isErr()) {
+          return new Err(new Error(fetchedDatasetsRes.error.message));
         }
-        for (const schema of fetchedSchemasRes.value) {
+        for (const dataset of fetchedDatasetsRes.value) {
           const existingSchema = await RemoteSchemaModel.findOne({
             where: {
               connectorId,
@@ -328,8 +320,8 @@ export const saveNodesFromPermissions = async ({
           if (!existingSchema) {
             await RemoteSchemaModel.create({
               connectorId,
-              internalId: [database, schema.name].join("."),
-              name: schema.name,
+              internalId: [database, dataset.name].join("."),
+              name: dataset.name,
               databaseName: database as string,
               permission: "inherited",
             });
@@ -418,7 +410,7 @@ export const saveNodesFromPermissions = async ({
 /**
  * Retrieves the parent IDs of a content node in hierarchical order.
  * The first ID is the internal ID of the content node itself.
- * Quite straightforward for Snowflake as we can extract the parent IDs from the internalId.
+ * Quite straightforward for BigQuery as we can extract the parent IDs from the internalId.
  *
  * Note that this part may cause discrepancies between the response of core and the response of the connector since
  * core will consider parents starting from the root (what was selected by the user).

@@ -18,7 +18,7 @@ import { apiError } from "@app/logger/withlogging";
  *       Retrieves all feedback entries for a specific conversation.
  *       Requires authentication and read:conversation scope.
  *     tags:
- *       - assistant
+ *       - Feedbacks
  *     parameters:
  *       - name: wId
  *         in: path

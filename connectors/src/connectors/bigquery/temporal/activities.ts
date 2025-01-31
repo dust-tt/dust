@@ -1,11 +1,12 @@
 import type { ModelId } from "@dust-tt/types";
-import { isSnowflakeCredentials, MIME_TYPES } from "@dust-tt/types";
+import { isBigQueryCredentials, MIME_TYPES } from "@dust-tt/types";
 
 import {
-  connectToSnowflake,
+  connectToBigQuery,
+  fetchDatasets,
   fetchTables,
   isConnectionReadonly,
-} from "@connectors/connectors/snowflake/lib/snowflake_api";
+} from "@connectors/connectors/bigquery/lib/bigquery_api";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
   deleteDataSourceFolder,
@@ -18,21 +19,18 @@ import {
   RemoteSchemaModel,
   RemoteTableModel,
 } from "@connectors/lib/models/remote_databases";
+import type { RemoteDBTable } from "@connectors/lib/remote_databases/utils";
 import {
   getConnectorAndCredentials,
   parseSchemaInternalId,
 } from "@connectors/lib/remote_databases/utils";
-import {
-  syncFailed,
-  syncStarted,
-  syncSucceeded,
-} from "@connectors/lib/sync_status";
+import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
 
-export async function syncSnowflakeConnection(connectorId: ModelId) {
+export async function syncBigQueryConnection(connectorId: ModelId) {
   const getConnectorAndCredentialsRes = await getConnectorAndCredentials({
     connectorId,
-    isTypeGuard: isSnowflakeCredentials,
+    isTypeGuard: isBigQueryCredentials,
     logger,
   });
   if (getConnectorAndCredentialsRes.isErr()) {
@@ -45,11 +43,7 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
-  const connectionRes = await connectToSnowflake(credentials);
-  if (connectionRes.isErr()) {
-    throw connectionRes.error;
-  }
-  const connection = connectionRes.value;
+  const connection = connectToBigQuery(credentials);
 
   const [allDatabases, allSchemas, allTables] = await Promise.all([
     RemoteDatabaseModel.findAll({
@@ -100,44 +94,31 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
     await schema.destroy();
   }
 
-  const readonlyConnectionCheck = await isConnectionReadonly({
-    credentials,
-    connection,
-  });
-  if (readonlyConnectionCheck.isErr()) {
-    if (readonlyConnectionCheck.error.code !== "NOT_READONLY") {
-      // Any other error here is "unexpected".
-      throw readonlyConnectionCheck.error;
-    }
-    // The connection is not read-only.
-    // We mark the connector as errored, and garbage collect all the tables that were synced.
-    await syncFailed(connectorId, "remote_database_connection_not_readonly");
+  // BigQuery is read-only as we force the readonly scope when creating the client.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- BigQuery is read-only but leaving the call in case of copy-pasting later.
+  const readonlyConnectionCheck = isConnectionReadonly();
+  const datasetRes = await fetchDatasets({ credentials, connection });
+  if (datasetRes.isErr()) {
+    throw datasetRes.error;
+  }
+  const datasets = datasetRes.value;
 
-    for (const t of allTables) {
-      await deleteDataSourceTable({
-        dataSourceConfig: dataSourceConfigFromConnector(connector),
-        tableId: t.internalId,
-      });
-      if (t.permission === "inherited") {
-        await t.destroy();
-      } else {
-        await t.update({
-          lastUpsertedAt: null,
-        });
-      }
+  const tables: RemoteDBTable[] = [];
+  for (const dataset of datasets) {
+    const tablesOnBigQueryRes = await fetchTables({
+      credentials,
+      datasetName: dataset.name,
+      connection,
+    });
+    if (tablesOnBigQueryRes.isErr()) {
+      throw tablesOnBigQueryRes.error;
     }
-    return;
+
+    tables.push(...tablesOnBigQueryRes.value);
   }
 
-  const tablesOnSnowflakeRes = await fetchTables({ credentials, connection });
-  if (tablesOnSnowflakeRes.isErr()) {
-    throw tablesOnSnowflakeRes.error;
-  }
-  const tablesOnSnowflake = tablesOnSnowflakeRes.value;
-  const internalIdsOnSnowflake = new Set(
-    tablesOnSnowflake.map(
-      (t) => `${t.database_name}.${t.schema_name}.${t.name}`
-    )
+  const internalTableIds = new Set(
+    tables.map((t) => `${t.database_name}.${t.schema_name}.${t.name}`)
   );
 
   const readGrantedInternalIds = new Set([
@@ -164,7 +145,7 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
         title: db.name,
         parents: [db.internalId],
         parentId: null,
-        mimeType: MIME_TYPES.SNOWFLAKE.DATABASE,
+        mimeType: MIME_TYPES.BIGQUERY.DATABASE,
       });
     }
   }
@@ -194,7 +175,7 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
         title: schemaName,
         parents: parents,
         parentId: parents[1] || null,
-        mimeType: MIME_TYPES.SNOWFLAKE.SCHEMA,
+        mimeType: MIME_TYPES.BIGQUERY.SCHEMA,
       });
     }
   }
@@ -222,7 +203,7 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
     );
   };
 
-  for (const internalId of internalIdsOnSnowflake) {
+  for (const internalId of internalTableIds) {
     const [dbName, schemaName, tableName] = parseTableInternalId(internalId);
     const schemaInternalId = [dbName, schemaName].join(".");
 
@@ -264,7 +245,7 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
           parents,
           parentId: parents[1] || null,
           title: table.name,
-          mimeType: MIME_TYPES.SNOWFLAKE.TABLE,
+          mimeType: MIME_TYPES.BIGQUERY.TABLE,
         });
         await table.update({
           lastUpsertedAt: new Date(),
@@ -276,7 +257,7 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
   for (const t of Object.values(tableByInternalId)) {
     if (
       !isTableReadGranted(t.internalId) ||
-      !internalIdsOnSnowflake.has(t.internalId)
+      !internalTableIds.has(t.internalId)
     ) {
       if (t.lastUpsertedAt) {
         await deleteDataSourceTable({

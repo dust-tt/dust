@@ -64,7 +64,7 @@ interface SpaceWebsiteModalProps {
   onClose: () => void;
   owner: WorkspaceType;
   space: SpaceType;
-  canWriteInSpace?: boolean;
+  canWriteInSpace: boolean;
 }
 
 // todo(GROUPS_INFRA): current component has been mostly copy pasted from the WebsiteConfiguration existing component

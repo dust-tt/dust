@@ -100,6 +100,8 @@ export class LabsTranscriptsHistoryModel extends WorkspaceAwareModel<LabsTranscr
   declare configurationId: ForeignKey<LabsTranscriptsConfigurationModel["id"]>;
 
   declare configuration: NonAttribute<LabsTranscriptsConfigurationModel>;
+
+  declare stored?: boolean;
 }
 
 LabsTranscriptsHistoryModel.init(
@@ -125,6 +127,11 @@ LabsTranscriptsHistoryModel.init(
     conversationId: {
       type: DataTypes.STRING,
       allowNull: true,
+    },
+    stored: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
   },
   {

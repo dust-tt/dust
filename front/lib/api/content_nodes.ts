@@ -76,7 +76,9 @@ export function computeNodesDiff({
   provider: ConnectorProvider | null;
   localLogger: typeof logger;
 }) {
-  const missingInternalIds: string[] = [];
+  const missingNodes: DataSourceViewContentNode[] = [];
+  const mismatchNodes: DataSourceViewContentNode[] = [];
+
   connectorsContentNodes.forEach((connectorsNode) => {
     const coreNodes = coreContentNodes.filter(
       (coreNode) => coreNode.internalId === connectorsNode.internalId
@@ -89,7 +91,7 @@ export function computeNodesDiff({
         connectorsNode.internalId !== "notion-unknown" &&
         !connectorsNode.internalId.startsWith("slack-channel-")
       ) {
-        missingInternalIds.push(connectorsNode.internalId);
+        missingNodes.push(connectorsNode);
       }
     } else if (coreNodes.length > 1) {
       // this one should never ever happen, it's a real red flag
@@ -111,6 +113,7 @@ export function computeNodesDiff({
               return false;
             }
             // Custom exclusion rules. The goal here is to avoid logging irrelevant differences, scoping by connector.
+
             // For Snowflake and Zendesk we fixed how parents were computed in the core folders but not in connectors.
             // For Intercom we keep the virtual node Help Center in connectors but not in core.
             if (
@@ -121,6 +124,7 @@ export function computeNodesDiff({
               return false;
             }
             const coreValue = coreNode[key as keyof DataSourceViewContentNode];
+
             // Special case for folder parents, the ones retrieved using getContentNodesForStaticDataSourceView do not
             // contain any parentInternalIds.
             if (provider === null && key === "parentInternalIds") {
@@ -148,6 +152,14 @@ export function computeNodesDiff({
             ) {
               return false;
             }
+            // The notion-syncing is a concept only added to core and not to the parents in content nodes from connectors.
+            if (
+              ["parentInternalId", "parentInternalIds"].includes(key) &&
+              provider === "notion" &&
+              coreNode?.parentInternalIds?.includes("notion-syncing")
+            ) {
+              return false;
+            }
 
             // Special case for Google drive spreadsheets:
             // title is '{spreadsheetName} - {sheetName}' for core, but only '{sheetName}' for connectors (not always).
@@ -155,6 +167,30 @@ export function computeNodesDiff({
             if (
               key === "title" &&
               coreNode.mimeType === "application/vnd.google-apps.spreadsheet"
+            ) {
+              return false;
+            }
+
+            // Special case for Google Drive spreadsheet folders: connectors
+            // return a type "file" while core returns a type "folder".
+            if (
+              key === "type" &&
+              provider === "google_drive" &&
+              value === "file" &&
+              coreNode.type === "folder" &&
+              coreNode.mimeType === MIME_TYPES.GOOGLE_DRIVE.SPREADSHEET
+            ) {
+              return false;
+            }
+
+            // Special case for Google Drive drives: not stored in connnectors,
+            // so parentInternalIds are empty VS [driveId]
+            if (
+              key === "parentInternalIds" &&
+              provider === "google_drive" &&
+              !value &&
+              coreNode.parentInternalIds?.length === 1 &&
+              coreNode.parentInternalIds[0] === coreNode.internalId
             ) {
               return false;
             }
@@ -242,29 +278,35 @@ export function computeNodesDiff({
           },
           "[CoreNodes] Node mismatch"
         );
+        connectorsNode.title = `[MISMATCH - CONNECTOR] ${connectorsNode.title}`;
+        coreNode.title = `[MISMATCH - CORE] ${coreNode.title}`;
+        mismatchNodes.push(connectorsNode);
+        mismatchNodes.push(coreNode);
       }
     }
   });
   if (
-    missingInternalIds.length > 0 &&
+    missingNodes.length > 0 &&
     // Snowflake's root call returns all the selected databases, schemas and tables even if non-root.
     !(
       provider === "snowflake" &&
-      missingInternalIds.every((id) =>
-        coreContentNodes.some((n) => n.parentInternalIds?.includes(id))
+      missingNodes.every((node) =>
+        coreContentNodes.some((n) =>
+          n.parentInternalIds?.includes(node.internalId)
+        )
       )
     )
   ) {
     localLogger.info(
       {
-        missingInternalIds,
+        missingInternalIds: missingNodes.map((n) => n.internalId),
         coreNodesCount: coreContentNodes.length,
         maxPageSizeReached: coreContentNodes.length === 1000, // max value determined by the limit set in getContentNodesForDataSourceViewFromCore
       },
       "[CoreNodes] Missing nodes from core"
     );
   }
-  const extraCoreInternalIds = coreContentNodes
+  const extraCoreNodes = coreContentNodes
     .filter(
       (coreNode) =>
         !connectorsContentNodes.some(
@@ -295,14 +337,24 @@ export function computeNodesDiff({
       (coreNode) =>
         provider !== "slack" ||
         !coreNode.internalId.startsWith("slack-channel-")
-    )
-    .map((coreNode) => coreNode.internalId);
-  if (extraCoreInternalIds.length > 0) {
+    );
+  if (extraCoreNodes.length > 0) {
     localLogger.info(
-      { extraCoreInternalIds },
+      {
+        extraCoreInternalIds: extraCoreNodes.map(
+          (coreNode) => coreNode.internalId
+        ),
+      },
       "[CoreNodes] Received extraneous core nodes"
     );
   }
+  missingNodes.forEach((node) => {
+    node.title = `[MISSING] ${node.title}`;
+  });
+  extraCoreNodes.forEach((coreNode) => {
+    coreNode.title = `[EXTRA] ${coreNode.title}`;
+  });
+  return [...mismatchNodes, ...extraCoreNodes, ...missingNodes];
 }
 
 export function getContentNodeType(node: CoreAPIContentNode): ContentNodeType {

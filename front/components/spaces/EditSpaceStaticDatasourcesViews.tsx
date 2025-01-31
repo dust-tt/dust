@@ -60,6 +60,7 @@ export function EditSpaceStaticDatasourcesViews({
           owner={owner}
           space={space}
           dataSourceView={dataSourceView}
+          canWriteInSpace={canWriteInSpace}
         />
       ) : null}
       {canWriteInSpace ? (

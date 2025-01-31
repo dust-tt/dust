@@ -32,7 +32,6 @@ import {
   EMBEDDING_CONFIGS,
   Err,
   isDataSourceNameValid,
-  MANAGED_DS_DELETABLE,
   Ok,
   sectionFullText,
 } from "@dust-tt/types";
@@ -46,6 +45,7 @@ import { rowsFromCsv, upsertTableFromCsv } from "@app/lib/api/tables";
 import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
+import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { DustError } from "@app/lib/error";
 import { Lock } from "@app/lib/lock";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -121,7 +121,7 @@ export async function hardDeleteDataSource(
   const { dustAPIProjectId } = dataSource;
   if (dataSource.connectorId && dataSource.connectorProvider) {
     if (
-      !MANAGED_DS_DELETABLE.includes(dataSource.connectorProvider) &&
+      !CONNECTOR_CONFIGURATIONS[dataSource.connectorProvider].isDeletable &&
       !auth.isAdmin()
     ) {
       return new Err({

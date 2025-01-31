@@ -11,7 +11,8 @@ import {
   SparklesIcon,
 } from "@dust-tt/sparkle";
 import type { ConnectorProvider } from "@dust-tt/types";
-import { REMOTE_DATABASE_CONNECTOR_PROVIDERS } from "@dust-tt/types";
+
+import { REMOTE_DATABASE_CONNECTOR_PROVIDERS } from "@app/lib/connector_providers";
 
 type DataSourceViewSelectionModalProps = {
   isOpen: boolean;

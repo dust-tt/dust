@@ -6,7 +6,7 @@ import type { ConnectorPermission, ContentNode } from "@dust-tt/types";
  * - schema: internalId = "database_name.schema_name"
  * - table: internalId = "database_name.schema_name.table_name"
  */
-export type REMOTE_DB_CONTENT_NODE_TYPES = "database" | "schema" | "table";
+type REMOTE_DB_CONTENT_NODE_TYPES = "database" | "schema" | "table";
 
 export const getContentNodeTypeFromInternalId = (
   internalId: string

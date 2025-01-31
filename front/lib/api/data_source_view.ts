@@ -491,12 +491,33 @@ export async function getContentNodesForDataSourceView(
       "[CoreNodes] Could not fetch content nodes from core"
     );
   } else if (coreContentNodesRes.isOk()) {
-    computeNodesDiff({
+    const diff = computeNodesDiff({
       connectorsContentNodes: contentNodesResult.nodes,
       coreContentNodes: coreContentNodesRes.value.nodes,
       provider: dataSourceView.dataSource.connectorProvider,
       localLogger,
     });
+
+    if (showConnectorsNodes) {
+      if (diff.length == 0) {
+        diff.push({
+          internalId: "missing-connectors-nodes",
+          parentInternalId: null,
+          title: "ALL IS FINE",
+          type: "folder",
+          permission: "read",
+          lastUpdatedAt: new Date().getTime(),
+          parentInternalIds: [],
+          sourceUrl: null,
+          expandable: false,
+          preventSelection: false,
+        });
+      }
+      return new Ok({
+        nodes: filterAndCropContentNodesByView(dataSourceView, diff),
+        total: diff.length,
+      });
+    }
 
     // if development or dust workspace
     const workspaceModel = await getWorkspaceByModelId(
@@ -509,10 +530,7 @@ export async function getContentNodesForDataSourceView(
       );
     } else {
       const workspace = renderLightWorkspaceType({ workspace: workspaceModel });
-      if (
-        (isDevelopment() || isDustWorkspace(workspace)) &&
-        !showConnectorsNodes
-      ) {
+      if (isDevelopment() || isDustWorkspace(workspace)) {
         const contentNodesInView = filterAndCropContentNodesByView(
           dataSourceView,
           coreContentNodesRes.value.nodes
