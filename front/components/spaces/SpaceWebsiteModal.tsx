@@ -587,7 +587,6 @@ export default function SpaceWebsiteModal({
                     <div className="flex flex-col gap-6">
                       {webCrawlerConfiguration && dataSourceView && (
                         <div className="flex justify-end">
-                          {/*<Separator/>*/}
                           <Button
                             variant="warning"
                             icon={TrashIcon}
