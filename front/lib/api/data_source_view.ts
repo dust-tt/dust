@@ -462,9 +462,11 @@ export async function getContentNodesForDataSourceView(
     dataSourceViewId: dataSourceView.sId,
     provider: dataSourceView.dataSource.connectorProvider,
     viewType: params.viewType,
-    isRootCall: !params.parentId && !params.internalIds,
+    isRootCall:
+      !params.parentId && !params.internalIds && !dataSourceView.parentsIn,
     parentId: params.parentId,
     internalIds: params.internalIds,
+    parentsIn: dataSourceView.parentsIn || undefined,
   });
 
   const coreStart = new Date();
@@ -495,6 +497,7 @@ export async function getContentNodesForDataSourceView(
       connectorsContentNodes: contentNodesResult.nodes,
       coreContentNodes: coreContentNodesRes.value.nodes,
       provider: dataSourceView.dataSource.connectorProvider,
+      viewType: params.viewType,
       localLogger,
     });
 
