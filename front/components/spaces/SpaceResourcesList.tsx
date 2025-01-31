@@ -38,7 +38,10 @@ import { AddConnectionMenu } from "@app/components/spaces/AddConnectionMenu";
 import { EditSpaceManagedDataSourcesViews } from "@app/components/spaces/EditSpaceManagedDatasourcesViews";
 import { EditSpaceStaticDatasourcesViews } from "@app/components/spaces/EditSpaceStaticDatasourcesViews";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
-import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
+import {
+  getConnectorProviderLogoWithFallback,
+  isConnectorPermissionsEditable,
+} from "@app/lib/connector_providers";
 import { getDataSourceNameFromView, isManaged } from "@app/lib/data_sources";
 import { useAgentConfigurationSIdLookup } from "@app/lib/swr/assistants";
 import {
@@ -67,16 +70,6 @@ export interface RowData {
   onClick?: () => void;
   moreMenuItems?: MoreMenuItem[];
 }
-
-const REDIRECT_TO_EDIT_PERMISSIONS = [
-  "confluence",
-  "google_drive",
-  "microsoft",
-  "slack",
-  "intercom",
-  "snowflake",
-  "zendesk",
-];
 
 type StringColumnDef = ColumnDef<RowData, string>;
 type NumberColumnDef = ColumnDef<RowData, number>;
@@ -457,8 +450,7 @@ export const SpaceResourcesList = ({
                   if (view) {
                     setSelectedDataSourceView(view);
                     if (
-                      dataSource.connectorProvider &&
-                      REDIRECT_TO_EDIT_PERMISSIONS.includes(
+                      isConnectorPermissionsEditable(
                         dataSource.connectorProvider
                       )
                     ) {

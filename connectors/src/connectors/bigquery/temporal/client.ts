@@ -3,32 +3,32 @@ import { Err, Ok } from "@dust-tt/types";
 import type { WorkflowHandle } from "@temporalio/client";
 import { WorkflowNotFoundError } from "@temporalio/client";
 
-import { QUEUE_NAME } from "@connectors/connectors/snowflake/temporal/config";
-import { resyncSignal } from "@connectors/connectors/snowflake/temporal/signals";
-import { snowflakeSyncWorkflow } from "@connectors/connectors/snowflake/temporal/workflows";
+import { QUEUE_NAME } from "@connectors/connectors/bigquery/temporal/config";
+import { resyncSignal } from "@connectors/connectors/bigquery/temporal/signals";
+import { bigquerySyncWorkflow } from "@connectors/connectors/bigquery/temporal/workflows";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
-function makeSnowflakeSyncWorkflowId(connectorId: ModelId): string {
-  return `snowflake-sync-${connectorId}`;
+function makeBigQuerySyncWorkflowId(connectorId: ModelId): string {
+  return `bigquery-sync-${connectorId}`;
 }
 
-export async function launchSnowflakeSyncWorkflow(
+export async function launchBigQuerySyncWorkflow(
   connectorId: ModelId
 ): Promise<Result<string, Error>> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(
-      `[Snowflake] Connector not found. ConnectorId: ${connectorId}`
+      `[BigQuery] Connector not found. ConnectorId: ${connectorId}`
     );
   }
 
   const client = await getTemporalClient();
-  const workflowId = makeSnowflakeSyncWorkflowId(connectorId);
+  const workflowId = makeBigQuerySyncWorkflowId(connectorId);
 
   try {
-    await client.workflow.signalWithStart(snowflakeSyncWorkflow, {
+    await client.workflow.signalWithStart(bigquerySyncWorkflow, {
       args: [
         {
           connectorId: connector.id,
@@ -55,21 +55,21 @@ export async function launchSnowflakeSyncWorkflow(
   return new Ok(workflowId);
 }
 
-export async function stopSnowflakeSyncWorkflow(
+export async function stopBigQuerySyncWorkflow(
   connectorId: ModelId
 ): Promise<Result<void, Error>> {
   const client = await getTemporalClient();
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(
-      `[Snowflake] Connector not found. ConnectorId: ${connectorId}`
+      `[BigQuery] Connector not found. ConnectorId: ${connectorId}`
     );
   }
 
-  const workflowId = makeSnowflakeSyncWorkflowId(connectorId);
+  const workflowId = makeBigQuerySyncWorkflowId(connectorId);
 
   try {
-    const handle: WorkflowHandle<typeof snowflakeSyncWorkflow> =
+    const handle: WorkflowHandle<typeof bigquerySyncWorkflow> =
       client.workflow.getHandle(workflowId);
     try {
       await handle.terminate();
@@ -85,7 +85,7 @@ export async function stopSnowflakeSyncWorkflow(
         workflowId,
         error: e,
       },
-      "Failed to stop Snowflake workflow."
+      "Failed to stop BigQuery workflow."
     );
     return new Err(e as Error);
   }

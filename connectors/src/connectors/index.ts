@@ -7,6 +7,7 @@ import type {
 } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 
+import { BigQueryConnectorManager } from "@connectors/connectors/bigquery";
 import { ConfluenceConnectorManager } from "@connectors/connectors/confluence";
 import { GithubConnectorManager } from "@connectors/connectors/github";
 import { GoogleDriveConnectorManager } from "@connectors/connectors/google_drive";
@@ -63,8 +64,7 @@ export function getConnectorManager({
     case "zendesk":
       return new ZendeskConnectorManager(connectorId);
     case "bigquery":
-      //TODO(BigQuery): Implement this
-      throw new Error("BigQuery connector is not supported yet");
+      return new BigQueryConnectorManager(connectorId);
     default:
       assertNever(connectorProvider);
   }
@@ -122,8 +122,7 @@ export function createConnector({
     case "zendesk":
       return ZendeskConnectorManager.create(params);
     case "bigquery":
-      //TODO(BigQuery): Implement this
-      throw new Error("BigQuery connector is not supported yet");
+      return BigQueryConnectorManager.create(params);
     default:
       assertNever(connectorProvider);
   }

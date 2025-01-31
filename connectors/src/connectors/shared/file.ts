@@ -5,7 +5,6 @@ import type {
   Result,
 } from "@dust-tt/types";
 import {
-  CONNECTOR_TYPE_TO_NAME,
   Err,
   isTextExtractionSupportedContentType,
   Ok,
@@ -62,7 +61,7 @@ export async function handleCsvFile({
 
   const tableCsv = Buffer.from(data).toString("utf-8").trim();
   const tableName = slugify(fileName.substring(0, 32));
-  const tableDescription = `Structured data from ${CONNECTOR_TYPE_TO_NAME[provider]} (${fileName})`;
+  const tableDescription = `Structured data from ${provider} (${fileName})`;
 
   try {
     const stringifiedContent = await parseAndStringifyCsv(tableCsv);
