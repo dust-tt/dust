@@ -1,7 +1,7 @@
 import type { ModelId } from "@dust-tt/types";
 import { CoreAPI, EnvironmentConfig } from "@dust-tt/types";
 import { makeScript } from "scripts/helpers";
-import Sqids from "sqids";
+import { Sequelize } from "sequelize";
 
 import { getParents } from "@connectors/connectors/notion/lib/parents";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
@@ -14,11 +14,7 @@ import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
 import type Logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
-const RESOURCE_S_ID_MIN_LENGTH = 10;
-
-const sqids = new Sqids({
-  minLength: RESOURCE_S_ID_MIN_LENGTH,
-});
+const { FRONT_DATABASE_URI } = process.env;
 
 async function findAllDescendants(
   nodes: (NotionPage | NotionDatabase)[],
@@ -54,27 +50,9 @@ async function findAllDescendants(
   return descendants;
 }
 
-function getIdsFromSId(sId: string): {
-  region: number;
-  shardKey: number;
-  workspaceId: ModelId;
-  resourceId: ModelId;
-} {
-  const sIdWithoutPrefix = sId.split("_")[1];
-
-  const ids = sqids.decode(sIdWithoutPrefix);
-
-  if (ids.length !== 4) {
-    throw new Error("Invalid decoded string Id length");
-  }
-
-  const [region, shardKey, workspaceId, resourceId] = ids;
-
-  return { region, shardKey, workspaceId, resourceId };
-}
-
 async function updateParentsFieldForConnector(
   coreAPI: CoreAPI,
+  frontSequelize: Sequelize,
   connector: ConnectorResource,
   execute = false,
   nodeConcurrency: number,
@@ -87,13 +65,26 @@ async function updateParentsFieldForConnector(
     dataSourceId: dataSourceConfig.dataSourceId,
   });
 
-  const { resourceId } = getIdsFromSId(dataSourceConfig.dataSourceId);
+  const [dataSourceRows] = await frontSequelize.query(
+    `SELECT * FROM data_sources WHERE "connectorId" = :connectorId`,
+    {
+      replacements: { connectorId: connector.id.toString() },
+    }
+  );
+
+  if (dataSourceRows.length === 0) {
+    throw new Error(`No data source found for connector ${connector.id}`);
+  }
+  const dataSource = dataSourceRows[0] as { dustAPIProjectId: string };
+  const dustAPIProjectId = dataSource.dustAPIProjectId;
+
+  logger.info({ dustAPIProjectId }, "DataSourceId retrieved.");
 
   const coreRes = await coreAPI.searchNodes({
     filter: {
       data_source_views: [
         {
-          data_source_id: dataSourceConfig.dataSourceId,
+          data_source_id: dustAPIProjectId,
           view_filter: [],
         },
       ],
@@ -227,6 +218,10 @@ makeScript(
       },
       logger
     );
+    const frontSequelize = new Sequelize(FRONT_DATABASE_URI as string, {
+      logging: false,
+    });
+
     const connectors = await ConnectorResource.listByType("notion", {});
 
     logger.info(`Found ${connectors.length} Notion connectors`);
@@ -245,6 +240,7 @@ makeScript(
         logger.info({ connector }, "MIGRATE");
         await updateParentsFieldForConnector(
           coreAPI,
+          frontSequelize,
           connector,
           execute,
           nodeConcurrency,
