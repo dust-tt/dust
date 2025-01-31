@@ -4,7 +4,7 @@ import { NativeConnection } from "@temporalio/worker";
 import fs from "fs-extra";
 
 type TemporalNamespaces = "connectors" | "front" | "relocation";
-const temporalWorkspaceToEnvVar: Record<TemporalNamespaces, string> = {
+export const temporalWorkspaceToEnvVar: Record<TemporalNamespaces, string> = {
   connectors: "TEMPORAL_CONNECTORS_NAMESPACE",
   front: "TEMPORAL_NAMESPACE",
   relocation: "TEMPORAL_RELOCATION_NAMESPACE",

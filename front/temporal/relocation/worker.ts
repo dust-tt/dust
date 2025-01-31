@@ -12,12 +12,13 @@ import * as connectorsSourceActivities from "@app/temporal/relocation/activities
 import * as coreSourceActivities from "@app/temporal/relocation/activities/source_region/core";
 import * as frontSourceActivities from "@app/temporal/relocation/activities/source_region/front";
 import { RELOCATION_QUEUES_PER_REGION } from "@app/temporal/relocation/config";
-import { getTemporalWorkerConnection } from "@app/temporal/relocation/temporal";
+import { getTemporalRelocationWorkerConnection } from "@app/temporal/relocation/temporal";
 
 export async function runRelocationWorker() {
   const currentRegion = config.getCurrentRegion();
 
-  const { connection, namespace } = await getTemporalWorkerConnection();
+  const { connection, namespace } =
+    await getTemporalRelocationWorkerConnection();
   const worker = await Worker.create({
     workflowsPath: require.resolve("./workflows"),
     activities: {
