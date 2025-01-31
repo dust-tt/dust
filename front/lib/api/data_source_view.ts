@@ -17,6 +17,7 @@ import {
   Err,
   isDevelopment,
   isDustWorkspace,
+  MIME_TYPES,
   Ok,
   removeNulls,
 } from "@dust-tt/types";
@@ -183,7 +184,11 @@ function filterNodesByViewType(
   switch (viewType) {
     case "documents":
       return nodes.filter(
-        (node) => node.children_count > 0 || node.node_type !== "Table"
+        (node) =>
+          node.children_count > 0 ||
+          node.node_type !== "Table" ||
+          // TODO: replace this with either an "all" viewType or a DEFAULT_VIEWTYPE_BY_CONNECTOR_PROVIDER
+          node.mime_type === MIME_TYPES.SNOWFLAKE.TABLE
       );
     case "tables":
       return nodes.filter(
