@@ -246,7 +246,7 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     return history.get();
   }
 
-  async setStorageStatus(
+  async setStorageStatusForFileId(
     fileId: string,
     stored: boolean
   ): Promise<InferAttributes<LabsTranscriptsHistoryModel> | null> {

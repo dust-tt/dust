@@ -418,7 +418,7 @@ export async function processTranscriptActivity(
       );
     }
 
-    await transcriptsConfiguration.setStorageStatus(
+    await transcriptsConfiguration.setStorageStatusForFileId(
       fileId,
       shouldStoreTranscript
     );
