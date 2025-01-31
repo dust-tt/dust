@@ -1,7 +1,7 @@
 import type { ModelId } from "@dust-tt/types";
 import { CoreAPI, EnvironmentConfig } from "@dust-tt/types";
 import { makeScript } from "scripts/helpers";
-import { Sequelize } from "sequelize";
+import { Op, Sequelize } from "sequelize";
 
 import { getParents } from "@connectors/connectors/notion/lib/parents";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
@@ -112,12 +112,14 @@ async function updateParentsFieldForConnector(
     where: {
       connectorId: connector.id,
       notionPageId: notionIds,
+      parentType: { [Op.ne]: "workspace" },
     },
   });
   const databases = await NotionDatabase.findAll({
     where: {
       connectorId: connector.id,
       notionDatabaseId: notionIds,
+      parentType: { [Op.ne]: "workspace" },
     },
   });
 
