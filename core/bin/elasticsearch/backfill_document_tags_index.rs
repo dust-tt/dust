@@ -10,6 +10,12 @@ use http::StatusCode;
 use serde_json::json;
 use tokio_postgres::NoTls;
 
+#[derive(Clone, Copy, Debug, clap::ValueEnum)]
+enum NodeType {
+    Document,
+    Table,
+}
+
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
@@ -24,6 +30,9 @@ struct Args {
 
     #[arg(long, help = "The batch size", default_value = "100")]
     batch_size: usize,
+
+    #[arg(long, help = "The type of query to run", default_value = "document")]
+    query_type: NodeType,
 }
 
 /*
@@ -45,16 +54,24 @@ async fn list_data_source_documents(
     pool: &Pool<PostgresConnectionManager<NoTls>>,
     id_cursor: i64,
     batch_size: i64,
+    query_type: NodeType,
 ) -> Result<Vec<(i64, String, Vec<String>, String, String)>, Box<dyn std::error::Error>> {
     let c = pool.get().await?;
 
-    let stmt = c
-        .prepare(
+    let q = match query_type {
+        NodeType::Document => {
             "SELECT dsd.id,dsd.document_id, dsd.tags_array, ds.data_source_id, ds.internal_id \
             FROM data_sources_documents dsd JOIN data_sources ds ON dsd.data_source = ds.id \
-            WHERE dsd.id > $1 ORDER BY dsd.id ASC LIMIT $2",
-        )
-        .await?;
+            WHERE dsd.id > $1 ORDER BY dsd.id ASC LIMIT $2"
+        }
+        NodeType::Table => {
+            "SELECT t.id,t.table_id, t.tags_array, ds.data_source_id, ds.internal_id \
+            FROM tables t JOIN data_sources ds ON t.data_source = ds.id \
+            WHERE t.id > $1 ORDER BY t.id ASC LIMIT $2"
+        }
+    };
+
+    let stmt = c.prepare(q).await?;
     let rows = c.query(&stmt, &[&id_cursor, &batch_size]).await?;
 
     let nodes: Vec<(i64, String, Vec<String>, String, String)> = rows
@@ -78,6 +95,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let index_version = args.index_version;
     let batch_size = args.batch_size;
     let start_cursor = args.start_cursor;
+    let query_type = args.query_type;
 
     let url = std::env::var("ELASTICSEARCH_URL").expect("ELASTICSEARCH_URL must be set");
     let username =
@@ -136,7 +154,8 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
             "Processing {} nodes, starting at id {}. ",
             batch_size, next_cursor
         );
-        let (nodes, next_id_cursor) = get_node_batch(pool, next_cursor, batch_size).await?;
+        let (nodes, next_id_cursor) =
+            get_node_batch(pool, next_cursor, batch_size, query_type).await?;
 
         next_cursor = match next_id_cursor {
             Some(cursor) => cursor,
@@ -151,6 +170,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
 
         let nodes_values: Vec<_> = nodes
             .into_iter()
+            .filter(|node| node.2.len() > 0)
             .flat_map(|node| {
                 [
                     json!({"update": {"_id": format!("{}__{}", node.4, node.1) }}),
@@ -158,15 +178,6 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
                 ]
             })
             .collect();
-
-        println!(
-            "{}",
-            nodes_values
-                .iter()
-                .map(|v| v.to_string())
-                .collect::<Vec<_>>()
-                .join("\n")
-        );
 
         let nodes_body: Vec<JsonBody<_>> = nodes_values.into_iter().map(|v| v.into()).collect();
 
@@ -193,12 +204,18 @@ async fn get_node_batch(
     pool: &Pool<PostgresConnectionManager<NoTls>>,
     next_cursor: i64,
     batch_size: usize,
+    query_type: NodeType,
 ) -> Result<
     (Vec<(i64, String, Vec<String>, String, String)>, Option<i64>),
     Box<dyn std::error::Error>,
 > {
-    let nodes =
-        list_data_source_documents(&pool, next_cursor, batch_size.try_into().unwrap()).await?;
+    let nodes = list_data_source_documents(
+        &pool,
+        next_cursor,
+        batch_size.try_into().unwrap(),
+        query_type,
+    )
+    .await?;
     let last_node = nodes.last().cloned();
     let nodes_length = nodes.len();
     match last_node {
