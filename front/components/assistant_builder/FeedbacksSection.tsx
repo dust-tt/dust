@@ -6,6 +6,7 @@ import {
   ExternalLinkIcon,
   HandThumbDownIcon,
   HandThumbUpIcon,
+  Icon,
   Spinner,
 } from "@dust-tt/sparkle";
 import type {
@@ -205,10 +206,10 @@ function FeedbackCard({ owner, feedback }: FeedbackCardProps) {
 
   return (
     <Card>
-      <div className="flex w-full flex-col">
+      <div className="flex w-full flex-col gap-3">
         <div className="flex flex-row">
           <div className="flex flex-grow items-center justify-between">
-            <div className="flex items-center gap-2">
+            <div className="flex gap-2">
               {feedback.userImageUrl ? (
                 <Avatar
                   size="xs"
@@ -232,7 +233,7 @@ function FeedbackCard({ owner, feedback }: FeedbackCardProps) {
               <div className="flex flex-shrink-0 flex-row">
                 <Button
                   variant="ghost-secondary"
-                  size="xs"
+                  size="mini"
                   href={conversationUrl ?? ""}
                   icon={ExternalLinkIcon}
                   disabled={!conversationUrl}
@@ -243,14 +244,16 @@ function FeedbackCard({ owner, feedback }: FeedbackCardProps) {
             )}
           </div>
         </div>
-        <div className="mt-2 flex flex-row">
-          <div className="my-1 mr-2 text-element-700">
-            {feedback.thumbDirection === "up" ? (
-              <HandThumbUpIcon className="h-4 w-4" />
-            ) : (
-              <HandThumbDownIcon className="h-4 w-4" />
-            )}
-          </div>
+        <div className="flex flex-row gap-3 pl-1">
+          <Icon
+            size="xs"
+            className="text-primary"
+            visual={
+              feedback.thumbDirection === "up"
+                ? HandThumbUpIcon
+                : HandThumbDownIcon
+            }
+          />
           {feedback.content && (
             <div className="flex-grow text-sm font-normal text-primary">
               {feedback.content}
