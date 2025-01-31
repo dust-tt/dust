@@ -8,7 +8,7 @@ use elasticsearch::{
     http::transport::{SingleNodeConnectionPool, TransportBuilder},
     DeleteByQueryParts, DeleteParts, Elasticsearch, IndexParts, SearchParts,
 };
-use elasticsearch_dsl::{Aggregation, BoolQuery, Query, Search};
+use elasticsearch_dsl::{BoolQuery, Query, Search};
 use serde_json::json;
 use tracing::{error, info};
 use url::Url;
@@ -110,13 +110,6 @@ pub trait SearchStore {
     async fn index_node(&self, node: Node, tags: Option<Vec<String>>) -> Result<()>;
     async fn delete_node(&self, node: Node) -> Result<()>;
     async fn delete_data_source_nodes(&self, data_source_id: &str) -> Result<()>;
-
-    async fn list_tags(
-        &self,
-        project_id: &i64,
-        data_source_id: &str,
-        prefix: Option<&str>,
-    ) -> Result<Vec<String>>;
 
     fn clone_box(&self) -> Box<dyn SearchStore + Sync + Send>;
 }
@@ -507,54 +500,6 @@ impl SearchStore for ElasticsearchSearchStore {
                     "Failed to delete data source nodes {}",
                     error
                 ))
-            }
-        }
-    }
-
-    async fn list_tags(
-        &self,
-        _project_id: &i64,
-        data_source_id: &str,
-        prefix: Option<&str>,
-    ) -> Result<Vec<String>> {
-        let bool_query = match prefix {
-            None => Query::bool().must(Query::term("data_source_id", data_source_id)),
-            Some(p) => Query::bool()
-                .must(Query::prefix("tags.edge", p))
-                .must(Query::term("data_source_id", data_source_id)),
-        };
-
-        let aggregate = match prefix {
-            None => Aggregation::terms("tags.keyword"),
-            Some(p) => Aggregation::terms("tags.keyword").include(format!("{}.*", p).as_str()),
-        };
-        let search = Search::new()
-            .size(0)
-            .query(bool_query)
-            .aggregate("unique_tags", aggregate.size(100));
-        println!("search {:?}", search);
-
-        let response = self
-            .client
-            .search(SearchParts::Index(&[NODES_INDEX_NAME]))
-            .body(search)
-            .send()
-            .await?;
-
-        // Parse response and return tags
-        match response.status_code().is_success() {
-            true => {
-                let response_body = response.json::<serde_json::Value>().await?;
-                Ok(response_body["aggregations"]["unique_tags"]["buckets"]
-                    .as_array()
-                    .unwrap_or(&vec![])
-                    .iter()
-                    .filter_map(|bucket| bucket["key"].as_str().map(String::from))
-                    .collect())
-            }
-            false => {
-                let error = response.json::<serde_json::Value>().await?;
-                Err(anyhow::anyhow!("Failed to list tags: {}", error))
             }
         }
     }
