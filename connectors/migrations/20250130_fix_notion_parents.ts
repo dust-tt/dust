@@ -121,22 +121,15 @@ async function updateParentsFieldForConnector(
     const res = await concurrentExecutor(
       nodes,
       async (node) => {
-        let parents: string[] | null = null;
-        try {
-          parents = await getParents(
-            connector.id,
-            "notionPageId" in node ? node.notionPageId : node.notionDatabaseId,
-            [],
-            false,
-            undefined,
-            undefined
-          );
-        } catch (e) {
-          logger.error(`Error getting parents for node ${node.id}: ${e}`);
-          return;
-        }
-
-        parents = parents.map((id) => `notion-${id}`);
+        const parentNotionIds = await getParents(
+          connector.id,
+          "notionPageId" in node ? node.notionPageId : node.notionDatabaseId,
+          [],
+          false,
+          undefined,
+          undefined
+        );
+        const parents = parentNotionIds.map((id) => `notion-${id}`);
 
         let documentId: string | null = null;
         let tableId: string | null = null;
@@ -154,25 +147,21 @@ async function updateParentsFieldForConnector(
         }
 
         if (execute) {
-          try {
-            if (documentId) {
-              await updateDataSourceDocumentParents({
-                dataSourceConfig: dataSourceConfigFromConnector(connector),
-                documentId,
-                parents,
-                parentId: parents[1] || null,
-              });
-            }
-            if (tableId) {
-              await updateDataSourceTableParents({
-                dataSourceConfig: dataSourceConfigFromConnector(connector),
-                tableId,
-                parents,
-                parentId: parents[1] || null,
-              });
-            }
-          } catch (e) {
-            logger.error(`Error updating parents for node ${node.id}: ${e}`);
+          if (documentId) {
+            await updateDataSourceDocumentParents({
+              dataSourceConfig: dataSourceConfigFromConnector(connector),
+              documentId,
+              parents,
+              parentId: parents[1] || null,
+            });
+          }
+          if (tableId) {
+            await updateDataSourceTableParents({
+              dataSourceConfig: dataSourceConfigFromConnector(connector),
+              tableId,
+              parents,
+              parentId: parents[1] || null,
+            });
           }
         }
       },
