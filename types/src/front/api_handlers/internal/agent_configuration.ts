@@ -145,8 +145,15 @@ const ProcessActionConfigurationSchema = t.type({
           }),
           t.null,
         ]),
-        // TODO(TAF) Put optional first to not break the builder?
-        tags: t.null,
+        // TODO(TAF) Put optional first to not break the builder? Then refactor to use the same type as the retrieval action, se below.
+        tags: t.union([
+          t.type({
+            in: t.array(t.string),
+            not: t.array(t.string),
+          }),
+          t.literal("auto"),
+          t.null,
+        ]),
       }),
     })
   ),

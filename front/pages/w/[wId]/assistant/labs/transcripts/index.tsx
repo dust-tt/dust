@@ -232,6 +232,7 @@ export default function LabsTranscriptsIndex({
               dataSourceView,
               selectedResources: [],
               isSelectAll: true,
+              tagsFilter: null, // No tags filters for transcripts.
             },
           });
         }
