@@ -103,7 +103,7 @@ async function updateParentsFieldForConnector(
     throw new Error(coreRes.error.message);
   }
 
-  const nodeIds = coreRes.value.nodes.map((node) =>
+  const notionIds = coreRes.value.nodes.map((node) =>
     node.node_id.replace("notion-", "")
   );
 
@@ -111,13 +111,13 @@ async function updateParentsFieldForConnector(
   const pages = await NotionPage.findAll({
     where: {
       connectorId: connector.id,
-      notionPageId: nodeIds,
+      notionPageId: notionIds,
     },
   });
   const databases = await NotionDatabase.findAll({
     where: {
       connectorId: connector.id,
-      notionDatabaseId: nodeIds,
+      notionDatabaseId: notionIds,
     },
   });
 
