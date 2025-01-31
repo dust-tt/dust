@@ -1,5 +1,6 @@
 import type {
   ConnectorProvider,
+  ContentNodesViewType,
   ContentNodeType,
   CoreAPIContentNode,
   DataSourceViewContentNode,
@@ -69,11 +70,13 @@ export function computeNodesDiff({
   connectorsContentNodes,
   coreContentNodes,
   provider,
+  viewType,
   localLogger,
 }: {
   connectorsContentNodes: DataSourceViewContentNode[];
   coreContentNodes: DataSourceViewContentNode[];
   provider: ConnectorProvider | null;
+  viewType: ContentNodesViewType;
   localLogger: typeof logger;
 }) {
   const missingNodes: DataSourceViewContentNode[] = [];
@@ -102,7 +105,10 @@ export function computeNodesDiff({
             )
           )
         ) {
-          missingNodes.push(connectorsNode);
+          // Connectors return tables even when viewType is documents, core doesn't
+          if (!(provider === "snowflake" && viewType === "documents")) {
+            missingNodes.push(connectorsNode);
+          }
         }
       }
     } else if (coreNodes.length > 1) {
