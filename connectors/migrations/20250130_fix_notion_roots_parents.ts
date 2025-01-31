@@ -131,37 +131,47 @@ async function updateParentsFieldForConnector(
         );
         const parents = parentNotionIds.map((id) => `notion-${id}`);
 
-        let documentId: string | null = null;
-        let tableId: string | null = null;
-
         if ("notionPageId" in node) {
           if (node.lastUpsertedTs) {
-            documentId = `notion-${node.notionPageId}`;
+            const documentId = `notion-${node.notionPageId}`;
+            if (execute) {
+              await updateDataSourceDocumentParents({
+                dataSourceConfig: dataSourceConfigFromConnector(connector),
+                documentId,
+                parents,
+                parentId: parents[1] || null,
+              });
+            } else {
+              logger.info({ parents, nodeId: documentId }, "DRY");
+            }
           }
         } else {
           if (node.structuredDataUpsertedTs) {
-            tableId = `notion-${node.notionDatabaseId}`;
+            const tableId = `notion-${node.notionDatabaseId}`;
+            if (execute) {
+              await updateDataSourceTableParents({
+                dataSourceConfig: dataSourceConfigFromConnector(connector),
+                tableId,
+                parents,
+                parentId: parents[1] || null,
+              });
+            } else {
+              logger.info({ parents, nodeId: tableId }, "DRY");
+            }
           }
-
-          documentId = `notion-database-${node.notionDatabaseId}`;
-        }
-
-        if (execute) {
-          if (documentId) {
+          const documentId = `notion-database-${node.notionDatabaseId}`;
+          if (execute) {
             await updateDataSourceDocumentParents({
               dataSourceConfig: dataSourceConfigFromConnector(connector),
               documentId,
-              parents,
+              parents: [documentId, ...parents],
               parentId: parents[1] || null,
             });
-          }
-          if (tableId) {
-            await updateDataSourceTableParents({
-              dataSourceConfig: dataSourceConfigFromConnector(connector),
-              tableId,
-              parents,
-              parentId: parents[1] || null,
-            });
+          } else {
+            logger.info(
+              { parents: [documentId, ...documentId], nodeId: documentId },
+              "DRY"
+            );
           }
         }
       },
