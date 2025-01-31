@@ -240,7 +240,7 @@ makeScript(
     await concurrentExecutor(
       validConnectors,
       async (connector) => {
-        logger.info({ connector }, "MIGRATE");
+        logger.info({ connectorId: connector.id }, "MIGRATE");
         await updateParentsFieldForConnector(
           coreAPI,
           frontSequelize,
