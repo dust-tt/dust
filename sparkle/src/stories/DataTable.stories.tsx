@@ -16,10 +16,10 @@ import {
   DialogHeader,
   DialogTitle,
   DropdownMenu,
-  DropdownMenuItemProps,
   Input,
 } from "@sparkle/components/";
 import { FolderIcon } from "@sparkle/icons";
+import { MenuItem } from "@sparkle/components/DataTable";
 
 const meta = {
   title: "Components/DataTable",
@@ -39,12 +39,7 @@ type Data = {
   avatarTooltipLabel?: string;
   icon?: React.ComponentType<{ className?: string }>;
   onClick?: () => void;
-  moreMenuItems?: DropdownMenuItemProps[];
-  submenus?: Array<{
-    label: string;
-    items: Array<{ id: string; name: string }>;
-    onSelect: (itemId: string) => void;
-  }>;
+  menuItems?: MenuItem[]; // Replace moreMenuItems and submenus with menuItems
   dropdownMenuProps?: React.ComponentPropsWithoutRef<typeof DropdownMenu>;
   roundedAvatar?: boolean;
 };
@@ -60,8 +55,9 @@ const data: Data[] = [
     avatarTooltipLabel: "Meow",
     roundedAvatar: true,
     onClick: () => alert("Soupinou clicked"),
-    moreMenuItems: [
+    menuItems: [
       {
+        kind: "item",
         label: "Edit (disabled)",
         onClick: () => alert("Soupinou clicked"),
         disabled: true,
@@ -86,8 +82,9 @@ const data: Data[] = [
     lastUpdated: "2023-07-09",
     size: "64kb",
     icon: FolderIcon,
-    moreMenuItems: [
+    menuItems: [
       {
+        kind: "item",
         label: "Edit (disabled)",
         onClick: () => alert("Design menu clicked"),
         disabled: true,
@@ -101,8 +98,9 @@ const data: Data[] = [
     lastUpdated: "2023-07-09",
     size: "64kb",
     icon: FolderIcon,
-    submenus: [
+    menuItems: [
       {
+        kind: "submenu",
         label: "Add to Space",
         items: [
           { id: "space1", name: "Space 1" },
@@ -111,6 +109,10 @@ const data: Data[] = [
           { id: "space4", name: "Space 4" },
         ],
         onSelect: (itemId) => console.log("Add to Space", itemId),
+      },
+      {
+        kind: "item",
+        label: "Test",
       },
     ],
   },
@@ -121,8 +123,9 @@ const data: Data[] = [
     lastUpdated: "2023-07-09",
     size: "64kb",
     icon: FolderIcon,
-    moreMenuItems: [
+    menuItems: [
       {
+        kind: "item",
         label: "Edit",
         onClick: () => alert("Design menu clicked"),
       },
@@ -222,8 +225,8 @@ const columns: ColumnDef<Data>[] = [
     header: "",
     cell: (info) => (
       <DataTable.MoreButton
-        moreMenuItems={info.row.original.moreMenuItems}
-        submenus={info.row.original.submenus}
+        menuItems={info.row.original.menuItems}
+        dropdownMenuProps={info.row.original.dropdownMenuProps}
       />
     ),
     meta: {
@@ -238,25 +241,25 @@ export const DataTableExample = () => {
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [selectedName, setSelectedName] = React.useState("");
 
-  const tableData = data.map((item) =>
-    item.moreMenuItems
-      ? {
-          ...item,
-          dropdownMenuProps: {
-            modal: false,
-          },
-          moreMenuItems: [
-            {
-              label: "Edit",
-              onClick: () => {
-                setSelectedName(item.name);
-                setDialogOpen(true);
-              },
+  const tableData = data.map((item) => ({
+    ...item,
+    dropdownMenuProps: {
+      modal: false,
+    },
+    menuItems: item.menuItems?.length
+      ? [
+          {
+            kind: "item" as const,
+            label: "Edit",
+            onClick: () => {
+              setSelectedName(item.name);
+              setDialogOpen(true);
             },
-          ],
-        }
-      : item
-  );
+          },
+          ...item.menuItems,
+        ]
+      : undefined,
+  }));
 
   return (
     <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6">

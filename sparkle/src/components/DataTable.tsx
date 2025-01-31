@@ -373,36 +373,91 @@ DataTable.Row = function Row({
   );
 };
 
-type SubMenuItem = {
+interface BaseMenuItem {
+  kind: "item" | "submenu";
+  label: string;
+}
+
+interface RegularMenuItem
+  extends BaseMenuItem,
+    Omit<DropdownMenuItemProps, "children"> {
+  kind: "item";
+}
+
+type SubmenuEntry = {
   id: string;
   name: string;
 };
 
-interface SubmenuConfig {
-  label: string;
-  items: SubMenuItem[];
+interface SubmenuMenuItem extends BaseMenuItem {
+  kind: "submenu";
+  items: SubmenuEntry[];
   onSelect: (itemId: string) => void;
 }
 
+export type MenuItem = RegularMenuItem | SubmenuMenuItem;
+
 interface MoreButtonProps {
   className?: string;
-  moreMenuItems?: DropdownMenuItemProps[];
+  menuItems?: MenuItem[];
   dropdownMenuProps?: Omit<
     React.ComponentPropsWithoutRef<typeof DropdownMenu>,
     "modal"
   >;
-  submenus?: SubmenuConfig[];
 }
 
 DataTable.MoreButton = function MoreButton({
   className,
-  moreMenuItems,
+  menuItems,
   dropdownMenuProps,
-  submenus,
 }: MoreButtonProps) {
-  if (!moreMenuItems?.length && !submenus?.length) {
+  if (!menuItems?.length) {
     return null;
   }
+
+  const renderSubmenuItem = (item: SubmenuMenuItem, index: number) => (
+    <DropdownMenuSub key={`${item.label}-${index}`}>
+      <DropdownMenuSubTrigger label={item.label} />
+      <DropdownMenuPortal>
+        <DropdownMenuSubContent>
+          {item.items.map((subItem) => (
+            <DropdownMenuItem
+              key={subItem.id}
+              label={subItem.name}
+              onClick={(event) => {
+                event.stopPropagation();
+                item.onSelect(subItem.id);
+              }}
+            />
+          ))}
+        </DropdownMenuSubContent>
+      </DropdownMenuPortal>
+    </DropdownMenuSub>
+  );
+
+  const renderRegularItem = (item: RegularMenuItem, index: number) => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { kind, ...itemProps } = item;
+    return (
+      <DropdownMenuItem
+        key={`item-${index}`}
+        {...itemProps}
+        onClick={(event) => {
+          event.stopPropagation();
+          itemProps.onClick?.(event);
+        }}
+      />
+    );
+  };
+
+  const renderMenuItem = (item: MenuItem, index: number) => {
+    switch (item.kind) {
+      case "submenu":
+        return renderSubmenuItem(item, index);
+      case "item":
+        return renderRegularItem(item, index);
+    }
+  };
 
   return (
     <DropdownMenu modal={false} {...dropdownMenuProps}>
@@ -421,37 +476,7 @@ DataTable.MoreButton = function MoreButton({
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="end">
-        <DropdownMenuGroup>
-          {moreMenuItems?.map((item, index) => (
-            <DropdownMenuItem
-              key={index}
-              {...item}
-              onClick={(event) => {
-                event.stopPropagation();
-                item.onClick?.(event);
-              }}
-            />
-          ))}
-          {submenus?.map((submenu) => (
-            <DropdownMenuSub key={submenu.label}>
-              <DropdownMenuSubTrigger label={submenu.label} />
-              <DropdownMenuPortal>
-                <DropdownMenuSubContent>
-                  {submenu.items.map((item) => (
-                    <DropdownMenuItem
-                      key={item.id}
-                      label={item.name}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        submenu.onSelect(item.id);
-                      }}
-                    />
-                  ))}
-                </DropdownMenuSubContent>
-              </DropdownMenuPortal>
-            </DropdownMenuSub>
-          ))}
-        </DropdownMenuGroup>
+        <DropdownMenuGroup>{menuItems.map(renderMenuItem)}</DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   );
