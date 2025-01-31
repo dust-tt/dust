@@ -309,10 +309,13 @@ export function computeNodesDiff({
           },
           "[CoreNodes] Node mismatch"
         );
-        connectorsNode.title = `[MISMATCH - CONNECTOR] ${connectorsNode.title}`;
-        coreNode.title = `[MISMATCH - CORE] ${coreNode.title}`;
-        mismatchNodes.push(connectorsNode);
-        mismatchNodes.push(coreNode);
+        // copy connectorsNode into a new object to avoid mutating the original
+        const mismatchNode = { ...connectorsNode };
+        mismatchNode.title = `[MISMATCH - CONNECTOR] ${mismatchNode.title}`;
+        mismatchNodes.push(mismatchNode);
+        const mismatchCoreNode = { ...coreNode };
+        mismatchCoreNode.title = `[MISMATCH - CORE] ${mismatchCoreNode.title}`;
+        mismatchNodes.push(mismatchCoreNode);
       }
     }
   });
@@ -392,13 +395,17 @@ export function computeNodesDiff({
       "[CoreNodes] Received extraneous core nodes"
     );
   }
-  missingNodes.forEach((node) => {
-    node.title = `[MISSING] ${node.title}`;
+  const missingTitleNodes = missingNodes.map((node) => {
+    const missingNode = { ...node };
+    missingNode.title = `[MISSING] ${missingNode.title}`;
+    return missingNode;
   });
-  extraCoreNodes.forEach((coreNode) => {
-    coreNode.title = `[EXTRA] ${coreNode.title}`;
+  const extraTitleNodes = extraCoreNodes.map((coreNode) => {
+    const extraNode = { ...coreNode };
+    extraNode.title = `[EXTRA] ${extraNode.title}`;
+    return extraNode;
   });
-  return [...mismatchNodes, ...extraCoreNodes, ...missingNodes];
+  return [...mismatchNodes, ...extraTitleNodes, ...missingTitleNodes];
 }
 
 export function getContentNodeType(node: CoreAPIContentNode): ContentNodeType {
