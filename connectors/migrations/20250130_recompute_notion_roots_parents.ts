@@ -145,18 +145,19 @@ async function updateParentsFieldForConnector(
       const parents = parentNotionIds.map((id) => `notion-${id}`);
 
       if ("notionPageId" in node) {
-        if (node.lastUpsertedTs) {
-          const documentId = `notion-${node.notionPageId}`;
-          if (execute) {
-            await updateDataSourceDocumentParents({
-              dataSourceConfig: dataSourceConfigFromConnector(connector),
-              documentId,
-              parents,
-              parentId: parents[1] || null,
-            });
-          } else {
-            logger.info({ parents, nodeId: documentId }, "DRY");
-          }
+        if (!node.lastUpsertedTs) {
+          logger.info({ node }, "No lastUpsertedTs");
+        }
+        const documentId = `notion-${node.notionPageId}`;
+        if (execute) {
+          await updateDataSourceDocumentParents({
+            dataSourceConfig: dataSourceConfigFromConnector(connector),
+            documentId,
+            parents,
+            parentId: parents[1] || null,
+          });
+        } else {
+          logger.info({ parents, nodeId: documentId }, "DRY");
         }
       } else {
         if (node.structuredDataUpsertedTs) {
