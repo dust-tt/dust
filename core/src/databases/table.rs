@@ -246,7 +246,9 @@ impl Table {
             )
             .await?;
 
-        search_store.index_node(Node::from(self.clone())).await?;
+        search_store
+            .index_node(Node::from(self.clone()), Some(self.get_tags()))
+            .await?;
         Ok(())
     }
 }

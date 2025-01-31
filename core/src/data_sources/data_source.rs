@@ -515,10 +515,12 @@ impl DataSource {
                 &None,
             )
             .await?;
-
         match document {
             Some(document) => {
-                search_store.index_node(Node::from(document)).await?;
+                let tags = document.get_tags();
+                search_store
+                    .index_node(Node::from(document.clone()), Some(tags))
+                    .await?;
             }
             None => (),
         }
@@ -811,7 +813,9 @@ impl DataSource {
             .await?;
 
         // Upsert document in search index.
-        search_store.index_node(Node::from(document)).await?;
+        search_store
+            .index_node(Node::from(document), Some(tags))
+            .await?;
 
         // Clean-up old superseded versions.
         self.scrub_document_superseded_versions(store, &document_id)

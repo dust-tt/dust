@@ -2097,6 +2097,39 @@ async fn data_sources_documents_delete(
     }
 }
 
+/// Retrieve document from a data source.
+#[derive(serde::Deserialize)]
+struct DataSourcesTagsQuery {
+    prefix: Option<String>,
+}
+
+async fn data_sources_tags_list(
+    Path((project_id, data_source_id)): Path<(i64, String)>,
+    Query(query): Query<DataSourcesTagsQuery>,
+    State(state): State<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let t = state
+        .search_store
+        .list_tags(&project_id, &data_source_id, query.prefix.as_deref())
+        .await;
+    println!("t {:?}", t);
+    match t {
+        Ok(tags) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!({ "tags": tags })),
+            }),
+        ),
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to list tags",
+            Some(e),
+        ),
+    }
+}
+
 /// Scrub document deleted versions
 
 async fn data_sources_documents_scrub_deleted_versions(
@@ -2288,7 +2321,7 @@ async fn tables_upsert(
     {
         Ok(table) => match state
             .search_store
-            .index_node(Node::from(table.clone()))
+            .index_node(Node::from(table.clone()), Some(table.get_tags()))
             .await
         {
             Ok(_) => (
@@ -3002,7 +3035,7 @@ async fn folders_upsert(
         ),
         Ok(folder) => match state
             .search_store
-            .index_node(Node::from(folder.clone()))
+            .index_node(Node::from(folder.clone()), None)
             .await
         {
             Ok(_) => (
@@ -3678,6 +3711,10 @@ fn main() {
         .route(
             "/projects/:project_id/data_sources/:data_source_id/documents/:document_id",
             delete(data_sources_documents_delete),
+        )
+        .route(
+            "/projects/:project_id/data_sources/:data_source_id/tags",
+            get(data_sources_tags_list),
         )
         .route(
             "/projects/:project_id/data_sources/:data_source_id/documents/:document_id/scrub_deleted_versions",

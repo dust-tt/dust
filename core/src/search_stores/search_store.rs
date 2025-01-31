@@ -8,7 +8,7 @@ use elasticsearch::{
     http::transport::{SingleNodeConnectionPool, TransportBuilder},
     DeleteByQueryParts, DeleteParts, Elasticsearch, IndexParts, SearchParts,
 };
-use elasticsearch_dsl::{BoolQuery, Query, Search};
+use elasticsearch_dsl::{Aggregation, BoolQuery, Query, Search};
 use serde_json::json;
 use tracing::{error, info};
 use url::Url;
@@ -107,9 +107,16 @@ pub trait SearchStore {
         store: Box<dyn Store + Sync + Send>,
     ) -> Result<(Vec<CoreContentNode>, Option<String>)>;
 
-    async fn index_node(&self, node: Node) -> Result<()>;
+    async fn index_node(&self, node: Node, tags: Option<Vec<String>>) -> Result<()>;
     async fn delete_node(&self, node: Node) -> Result<()>;
     async fn delete_data_source_nodes(&self, data_source_id: &str) -> Result<()>;
+
+    async fn list_tags(
+        &self,
+        project_id: &i64,
+        data_source_id: &str,
+        prefix: Option<&str>,
+    ) -> Result<Vec<String>>;
 
     fn clone_box(&self) -> Box<dyn SearchStore + Sync + Send>;
 }
@@ -405,15 +412,32 @@ impl SearchStore for ElasticsearchSearchStore {
         Ok((result, next_page_cursor))
     }
 
-    async fn index_node(&self, node: Node) -> Result<()> {
+    async fn index_node(&self, node: Node, tags: Option<Vec<String>>) -> Result<()> {
+        println!("index_node {:?}", tags);
         let now = utils::now();
+
+        let doc = json!({
+            "data_source_id": node.data_source_id,
+            "data_source_internal_id": node.data_source_internal_id,
+            "node_id": node.node_id,
+            "node_type": node.node_type,
+            "timestamp": node.timestamp,
+            "title": node.title,
+            "mime_type": node.mime_type,
+            "provider_visibility": node.provider_visibility,
+            "parent_id": node.parent_id,
+            "parents": node.parents,
+            "source_url": node.source_url,
+            "tags": tags
+        });
+
         // Note: in elasticsearch, the index API updates the document if it
         // already exists.
         let response = self
             .client
             .index(IndexParts::IndexId(NODES_INDEX_NAME, &node.unique_id()))
             .timeout("200ms")
-            .body(node.clone())
+            .body(doc)
             .send()
             .await?;
 
@@ -483,6 +507,54 @@ impl SearchStore for ElasticsearchSearchStore {
                     "Failed to delete data source nodes {}",
                     error
                 ))
+            }
+        }
+    }
+
+    async fn list_tags(
+        &self,
+        project_id: &i64,
+        data_source_id: &str,
+        prefix: Option<&str>,
+    ) -> Result<Vec<String>> {
+        let bool_query = match prefix {
+            None => Query::bool().must(Query::term("data_source_id", data_source_id)),
+            Some(p) => Query::bool()
+                .must(Query::prefix("tags", p))
+                .must(Query::term("data_source_id", data_source_id)),
+        };
+
+        let aggregate = match prefix {
+            None => Aggregation::terms("tags"),
+            Some(p) => Aggregation::terms("tags").include(format!("{}.*", p).as_str()),
+        };
+        let search = Search::new()
+            .size(0)
+            .query(bool_query)
+            .aggregate("unique_tags", aggregate.size(100));
+        println!("search {:?}", search);
+
+        let response = self
+            .client
+            .search(SearchParts::Index(&[NODES_INDEX_NAME]))
+            .body(search)
+            .send()
+            .await?;
+
+        // Parse response and return tags
+        match response.status_code().is_success() {
+            true => {
+                let response_body = response.json::<serde_json::Value>().await?;
+                Ok(response_body["aggregations"]["unique_tags"]["buckets"]
+                    .as_array()
+                    .unwrap_or(&vec![])
+                    .iter()
+                    .filter_map(|bucket| bucket["key"].as_str().map(String::from))
+                    .collect())
+            }
+            false => {
+                let error = response.json::<serde_json::Value>().await?;
+                Err(anyhow::anyhow!("Failed to list tags: {}", error))
             }
         }
     }
