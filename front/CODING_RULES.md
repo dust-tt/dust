@@ -48,12 +48,12 @@ guaranteed to trigger a internal error (and return a 500).
 
 ### [BACK1] No sequelize models in API routes
 
-API routes should not interact with Sequelize models directly. Use `lib/api/*` interfaces (creating
+API routes should not interact with sequelize models directly. Use `lib/api/*` interfaces (creating
 them if missing). Direct Resource interaction are acceptable.
 
-### [BACK2] No Sequelize models or ModelId in `lib/api/*` interfaces
+### [BACK2] No sequelize models or ModelId in `lib/api/*` interfaces
 
-Interfaces in `lib/api/*` should not expose ModelId or Sequelize model objects.
+Interfaces in `lib/api/*` should not expose ModelId or sequelize model objects.
 
 Example:
 
@@ -67,7 +67,7 @@ function doWorkspace({ id }: { id: ModelId }) { }
 function doWorkspace({ workspace }: { workspace: WorkspaceType }) { }
 ```
 
-### [BACK3] Resource invariant: no Sequelize models outside of resources
+### [BACK3] Resource invariant: no sequelize models outside of resources
 
 Any new model should be abstracted to the rest of the codebase through a pre-existing or new
 `Resource`.
@@ -135,9 +135,9 @@ desired.
 Test state setup should be done through factories. Factories should return Resources whenever
 possible.
 
-### [TEST5] Avoid Sequelize models in tests
+### [TEST5] Avoid sequelize models in tests
 
-Direct use of Sequelize models in tests should be avoided in favor of Resources. This includes test
+Direct use of sequelize models in tests should be avoided in favor of Resources. This includes test
 setup and assertions.
 
 ## REACT
