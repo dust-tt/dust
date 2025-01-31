@@ -225,6 +225,16 @@ export function computeNodesDiff({
             if (key === "expandable" && value === true && coreValue === false) {
               return false;
             }
+            // Special case for expandable in Intercom: connectors set it depending on the context whereas core sets it to true if it has at least 1 child.
+            // We opt for using core's logic as the new ground truth.
+            if (
+              key === "expandable" &&
+              provider === "intercom" &&
+              value === false &&
+              coreValue === true
+            ) {
+              return false;
+            }
             // Special case for Slack's providerVisibility: we only check if providerVisibility === "private" so
             // having a falsy value in core and "public" in connectors is the same.
             if (
