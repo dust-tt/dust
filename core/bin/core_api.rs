@@ -2097,12 +2097,6 @@ async fn data_sources_documents_delete(
     }
 }
 
-/// Retrieve document from a data source.
-#[derive(serde::Deserialize)]
-struct DataSourcesTagsQuery {
-    prefix: Option<String>,
-}
-
 /// Scrub document deleted versions
 
 async fn data_sources_documents_scrub_deleted_versions(
