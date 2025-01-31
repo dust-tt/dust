@@ -4,6 +4,7 @@ import type {
   CoreAPITableBlob,
   ModelId,
 } from "@dust-tt/types";
+import { isPlainObject } from "lodash";
 
 import type { RegionType } from "@app/lib/api/regions/config";
 
@@ -61,3 +62,9 @@ export type CoreTableAPIRelocationBlob = APIRelocationBlob<
   "tables",
   CoreAPITableBlob
 >;
+
+export function isArrayOfPlainObjects(value: unknown) {
+  return (
+    Array.isArray(value) && value.every((element) => isPlainObject(element))
+  );
+}

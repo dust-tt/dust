@@ -1,3 +1,5 @@
+import { isArrayOfPlainObjects } from "@app/temporal/relocation/activities/types";
+
 const DEFAULT_CHUNK_SIZE = 250;
 
 export function generateParameterizedInsertStatements(
@@ -29,7 +31,13 @@ export function generateParameterizedInsertStatements(
       const rowPlaceholders: string[] = [];
       for (const col of columns) {
         rowPlaceholders.push(`$${paramIndex++}`);
-        params.push(row[col]);
+
+        // Array of plain objects are serialized to JSON strings.
+        const serialized = isArrayOfPlainObjects(row[col])
+          ? JSON.stringify(row[col])
+          : row[col];
+
+        params.push(serialized);
       }
       placeholders.push(`(${rowPlaceholders.join(",")})`);
     }

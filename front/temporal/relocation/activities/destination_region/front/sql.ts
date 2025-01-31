@@ -8,6 +8,7 @@ import type {
   CoreEntitiesRelocationBlob,
   RelocationBlob,
 } from "@app/temporal/relocation/activities/types";
+import { isArrayOfPlainObjects } from "@app/temporal/relocation/activities/types";
 import {
   deleteFromRelocationStorage,
   readFromRelocationStorage,
@@ -116,7 +117,10 @@ export async function processFrontTableChunk({
     for (const { sql, params } of statements) {
       await frontSequelize.transaction(async (transaction) =>
         frontSequelize.query(sql, {
-          bind: params,
+          // TODO(2025-01-31): Remove this once current batch of data is processed.
+          bind: params.map((p) =>
+            isArrayOfPlainObjects(p) ? JSON.stringify(p) : p
+          ),
           type: QueryTypes.INSERT,
           transaction,
         })
