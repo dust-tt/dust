@@ -1,6 +1,6 @@
 -- Migration created on Jan 27, 2025
 CREATE TABLE IF NOT EXISTS "agent_reasoning_configurations" (
-    "id" SERIAL,
+    "id" BIGSERIAL,
     "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL,
     "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL,
     "sId" VARCHAR(255) NOT NULL,
@@ -20,7 +20,7 @@ CREATE INDEX CONCURRENTLY "agent_reasoning_configurations_agent_configuration_id
 CREATE INDEX CONCURRENTLY "agent_reasoning_configurations_workspace_id" ON "agent_reasoning_configurations" ("workspaceId");
 
 CREATE TABLE IF NOT EXISTS "agent_reasoning_actions" (
-    "id" SERIAL,
+    "id" BIGSERIAL,
     "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL,
     "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL,
     "runId" VARCHAR(255),
