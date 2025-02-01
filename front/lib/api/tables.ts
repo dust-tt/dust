@@ -35,6 +35,7 @@ type CsvParsingError = {
     | "invalid_header"
     | "duplicate_header"
     | "invalid_record_length"
+    | "invalid_closing_quote"
     | "empty_csv"
     | "too_many_columns"
     | "invalid_row_id";
@@ -388,22 +389,33 @@ export async function rowsFromCsv({
   const parser = parse(csv, { delimiter });
   // this differs with = {} in that it prevent errors when header values clash with object properties such as toString, constructor, ..
   const valuesByCol: Record<string, string[]> = Object.create(null);
-  for await (const anyRecord of parser) {
-    if (i++ >= rowIndex) {
-      for (const [i, h] of header.entries()) {
-        try {
-          valuesByCol[h] ??= [];
-          valuesByCol[h].push((anyRecord[i] ?? "").toString());
-        } catch (e) {
-          logger.error(
-            // temporary log to fix the valuesByCol[h].push is not a function error
-            { typeOf: typeof valuesByCol[h], columnName: h },
-            "Error parsing record"
-          );
-          throw e;
+  try {
+    for await (const anyRecord of parser) {
+      if (i++ >= rowIndex) {
+        for (const [i, h] of header.entries()) {
+          try {
+            valuesByCol[h] ??= [];
+            valuesByCol[h].push((anyRecord[i] ?? "").toString());
+          } catch (e) {
+            logger.error(
+              // temporary log to fix the valuesByCol[h].push is not a function error
+              { typeOf: typeof valuesByCol[h], columnName: h },
+              "Error pushing value to column array"
+            );
+            throw e;
+          }
         }
       }
     }
+  } catch (e) {
+    if (e instanceof Error && e.message.includes("Invalid Closing Quote")) {
+      logger.error({ error: e }, "Invalid CSV format: invalid closing quote");
+      return new Err({
+        type: "invalid_closing_quote",
+        message: `Invalid CSV format: Please check for properly matched quotes in your data. ${e.message}`,
+      });
+    }
+    throw e;
   }
 
   if (!Object.values(valuesByCol).some((vs) => vs.length > 0)) {
