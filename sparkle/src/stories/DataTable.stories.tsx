@@ -1,5 +1,9 @@
 import type { Meta } from "@storybook/react";
-import { ColumnDef, PaginationState, SortingState } from "@tanstack/react-table";
+import {
+  ColumnDef,
+  PaginationState,
+  SortingState,
+} from "@tanstack/react-table";
 import React, { useMemo } from "react";
 
 import {
@@ -47,7 +51,6 @@ type TransformedData = {
   dropdownMenuProps?: { modal: boolean };
   menuItems?: MenuItem[];
 } & Data;
-
 
 const data: TransformedData[] = [
   {
@@ -159,7 +162,7 @@ const data: TransformedData[] = [
   },
 ];
 
-const columns = useMemo<ColumnDef<TransformedData>[]>(() => [
+const columns: ColumnDef<Data>[] = [
   {
     accessorKey: "name",
     header: "Name",
@@ -238,7 +241,7 @@ const columns = useMemo<ColumnDef<TransformedData>[]>(() => [
       className: "s-w-12 s-cursor-pointer s-text-foreground",
     },
   },
-], []);
+];
 
 // TODO: Fix 'Edit' changing the order of the rows
 export const DataTableExample = () => {
@@ -246,20 +249,20 @@ export const DataTableExample = () => {
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [selectedName, setSelectedName] = React.useState("");
 
-  const tableData = data.map(({menuItems, ...item}) => ({
+  const tableData = data.map(({ menuItems, ...item }) => ({
     ...item,
     menuItems: menuItems?.length
       ? [
-        {
-          kind: "item" as const,
-          label: "Edit",
-          onClick: () => {
-            setSelectedName(item.name);
-            setDialogOpen(true);
+          {
+            kind: "item" as const,
+            label: "Edit",
+            onClick: () => {
+              setSelectedName(item.name);
+              setDialogOpen(true);
+            },
           },
-        },
-        ...menuItems,
-      ]
+          ...menuItems,
+        ]
       : undefined,
   }));
 

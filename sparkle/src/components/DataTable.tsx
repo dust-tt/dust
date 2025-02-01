@@ -29,10 +29,18 @@ import {
   DropdownMenuTrigger,
   IconButton,
   Pagination,
+  ScrollArea,
+  ScrollBar,
   Tooltip,
 } from "@sparkle/components";
 import { useCopyToClipboard } from "@sparkle/hooks";
-import { ArrowDownIcon, ArrowUpIcon, ClipboardCheckIcon, ClipboardIcon, MoreIcon } from "@sparkle/icons";
+import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  ClipboardCheckIcon,
+  ClipboardIcon,
+  MoreIcon,
+} from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
@@ -414,16 +422,22 @@ DataTable.MoreButton = function MoreButton({
       <DropdownMenuSubTrigger label={item.label} />
       <DropdownMenuPortal>
         <DropdownMenuSubContent>
-          {item.items.map((subItem) => (
-            <DropdownMenuItem
-              key={subItem.id}
-              label={subItem.name}
-              onClick={(event) => {
-                event.stopPropagation();
-                item.onSelect(subItem.id);
-              }}
-            />
-          ))}
+          <ScrollArea
+            className="s-min-w-24 s-flex s-max-h-72 s-flex-col"
+            hideScrollBar
+          >
+            {item.items.map((subItem) => (
+              <DropdownMenuItem
+                key={subItem.id}
+                label={subItem.name}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  item.onSelect(subItem.id);
+                }}
+              />
+            ))}
+            <ScrollBar className="s-py-0" />
+          </ScrollArea>
         </DropdownMenuSubContent>
       </DropdownMenuPortal>
     </DropdownMenuSub>
