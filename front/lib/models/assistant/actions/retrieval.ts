@@ -352,7 +352,10 @@ RetrievalDocumentChunk.init(
   {
     modelName: "retrieval_document_chunk",
     sequelize: frontSequelize,
-    indexes: [{ fields: ["retrievalDocumentId"] }],
+    indexes: [
+      { fields: ["retrievalDocumentId"] },
+      { fields: ["workspaceId", "id"] },
+    ],
   }
 );
 
