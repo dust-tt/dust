@@ -65,6 +65,8 @@ export type CoreTableAPIRelocationBlob = APIRelocationBlob<
 
 export function isArrayOfPlainObjects(value: unknown) {
   return (
-    Array.isArray(value) && value.every((element) => isPlainObject(element))
+    Array.isArray(value) &&
+    value.length > 0 &&
+    value.every((element) => isPlainObject(element))
   );
 }
