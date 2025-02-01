@@ -210,7 +210,7 @@ async fn test_oauth_credentials_bigquery_flow_ok() {
         content.get("client_email").unwrap(),
         "test@test-project.iam.gserviceaccount.com"
     );
-    assert_eq!(content.get("region").unwrap(), "EU");
+    assert_eq!(content.get("location").unwrap(), "EU");
 }
 
 #[tokio::test]
