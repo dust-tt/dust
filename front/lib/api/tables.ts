@@ -35,7 +35,7 @@ type CsvParsingError = {
     | "invalid_header"
     | "duplicate_header"
     | "invalid_record_length"
-    | "invalid_closing_quote"
+    | "invalid_quotes"
     | "empty_csv"
     | "too_many_columns"
     | "invalid_row_id";
@@ -393,28 +393,20 @@ export async function rowsFromCsv({
     for await (const anyRecord of parser) {
       if (i++ >= rowIndex) {
         for (const [i, h] of header.entries()) {
-          try {
-            valuesByCol[h] ??= [];
-            valuesByCol[h].push((anyRecord[i] ?? "").toString());
-          } catch (e) {
-            logger.error(
-              // temporary log to fix the valuesByCol[h].push is not a function error
-              { typeOf: typeof valuesByCol[h], columnName: h },
-              "Error pushing value to column array"
-            );
-            throw e;
-          }
+          valuesByCol[h] ??= [];
+          valuesByCol[h].push((anyRecord[i] ?? "").toString());
         }
       }
     }
   } catch (e) {
     if (e instanceof Error && e.message.includes("Invalid Closing Quote")) {
-      logger.error({ error: e }, "Invalid CSV format: invalid closing quote");
+      logger.error({ error: e }, "Invalid CSV format invalid quotes in data.");
       return new Err({
-        type: "invalid_closing_quote",
+        type: "invalid_quotes",
         message: `Invalid CSV format: Please check for properly matched quotes in your data. ${e.message}`,
       });
     }
+    logger.error({ error: e }, "Error parsing CSV");
     throw e;
   }
 
