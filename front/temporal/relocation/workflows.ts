@@ -520,6 +520,7 @@ export async function workspaceRelocateDataSourceCoreWorkflow({
         dataSourceCoreIds,
         destIds,
         destRegion,
+        pageCursor: null,
         sourceRegion,
         workspaceId,
       },
@@ -536,6 +537,7 @@ export async function workspaceRelocateDataSourceCoreWorkflow({
         dataSourceCoreIds,
         destIds,
         destRegion,
+        pageCursor: null,
         sourceRegion,
         workspaceId,
       },
@@ -552,6 +554,7 @@ export async function workspaceRelocateDataSourceCoreWorkflow({
         dataSourceCoreIds,
         destIds,
         destRegion,
+        pageCursor: null,
         sourceRegion,
         workspaceId,
       },
@@ -564,17 +567,19 @@ export async function workspaceRelocateDataSourceDocumentsWorkflow({
   dataSourceCoreIds,
   destIds,
   destRegion,
+  pageCursor: initialPageCursor,
   sourceRegion,
   workspaceId,
 }: RelocationWorkflowBase & {
   destIds: CreateDataSourceProjectResult;
   dataSourceCoreIds: DataSourceCoreIds;
+  pageCursor: string | null;
 }) {
   const sourceRegionActivities = getCoreSourceRegionActivities(sourceRegion);
   const destinationRegionActivities =
     getCoreDestinationRegionActivities(destRegion);
 
-  let pageCursor: string | null = null;
+  let pageCursor: string | null = initialPageCursor;
 
   do {
     if (workflowInfo().historyLength > TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH) {
@@ -582,6 +587,7 @@ export async function workspaceRelocateDataSourceDocumentsWorkflow({
         dataSourceCoreIds,
         destIds,
         destRegion,
+        pageCursor,
         sourceRegion,
         workspaceId,
       });
@@ -615,17 +621,19 @@ export async function workspaceRelocateDataSourceFoldersWorkflow({
   dataSourceCoreIds,
   destIds,
   destRegion,
+  pageCursor: initialPageCursor,
   sourceRegion,
   workspaceId,
 }: RelocationWorkflowBase & {
   destIds: CreateDataSourceProjectResult;
   dataSourceCoreIds: DataSourceCoreIds;
+  pageCursor: string | null;
 }) {
   const sourceRegionActivities = getCoreSourceRegionActivities(sourceRegion);
   const destinationRegionActivities =
     getCoreDestinationRegionActivities(destRegion);
 
-  let pageCursor: string | null = null;
+  let pageCursor: string | null = initialPageCursor;
 
   do {
     if (workflowInfo().historyLength > TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH) {
@@ -633,6 +641,7 @@ export async function workspaceRelocateDataSourceFoldersWorkflow({
         dataSourceCoreIds,
         destIds,
         destRegion,
+        pageCursor,
         sourceRegion,
         workspaceId,
       });
@@ -666,17 +675,19 @@ export async function workspaceRelocateDataSourceTablesWorkflow({
   dataSourceCoreIds,
   destIds,
   destRegion,
+  pageCursor: initialPageCursor,
   sourceRegion,
   workspaceId,
 }: RelocationWorkflowBase & {
   destIds: CreateDataSourceProjectResult;
   dataSourceCoreIds: DataSourceCoreIds;
+  pageCursor: string | null;
 }) {
   const sourceRegionActivities = getCoreSourceRegionActivities(sourceRegion);
   const destinationRegionActivities =
     getCoreDestinationRegionActivities(destRegion);
 
-  let pageCursor: string | null = null;
+  let pageCursor: string | null = initialPageCursor;
 
   do {
     if (workflowInfo().historyLength > TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH) {
@@ -684,6 +695,7 @@ export async function workspaceRelocateDataSourceTablesWorkflow({
         dataSourceCoreIds,
         destIds,
         destRegion,
+        pageCursor,
         sourceRegion,
         workspaceId,
       });
