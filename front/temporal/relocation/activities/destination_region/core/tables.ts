@@ -57,10 +57,14 @@ export async function processDataSourceTables({
 
       // There are some issues with the parents field.
       // parents[0] should be the table_id, but it's not always the case.
+      // parents[1] should be the parent_id, but it's not always the case.
+
       let parents: string[] = [];
+      let parentId: string | null = d.parent_id ?? null;
       if (d.parents.length > 0) {
         if (d.parents[0] !== d.table_id) {
           parents = [d.table_id, ...d.parents];
+          parentId = parents[1];
         } else {
           parents = d.parents;
         }
@@ -77,7 +81,7 @@ export async function processDataSourceTables({
         description: d.description,
         timestamp: d.timestamp,
         tags: d.tags,
-        parentId: d.parent_id ?? null,
+        parentId,
         parents,
         remoteDatabaseTableId: d.remote_database_table_id,
         remoteDatabaseSecretId: d.remote_database_secret_id,
