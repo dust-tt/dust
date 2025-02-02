@@ -290,66 +290,75 @@ export const SpaceDataSourceViewContentList = ({
 
   const isDataSourceManaged = isManaged(dataSourceView.dataSource);
 
-  const addToSpace = async (contentNode: DataSourceViewContentNode) => {
-    const existingViewForSpace = dataSourceViews.find(
-      (d) =>
-        d.spaceId === space.sId &&
-        d.dataSource.sId === dataSourceView.dataSource.sId
-    );
+  const addToSpace = useCallback(
+    async (contentNode: DataSourceViewContentNode, spaceSId: string) => {
+      const existingViewForSpace = dataSourceViews.find(
+        (d) =>
+          d.spaceId === spaceSId &&
+          d.dataSource.sId === dataSourceView.dataSource.sId
+      );
 
-    try {
-      let res;
-      if (existingViewForSpace) {
-        res = await fetch(
-          `/api/w/${owner.sId}/spaces/${space.sId}/data_source_views/${existingViewForSpace.sId}`,
-          {
-            method: "PATCH",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              parentsToAdd: [contentNode.internalId],
-            }),
-          }
-        );
-      } else {
-        res = await fetch(
-          `/api/w/${owner.sId}/spaces/${space.sId}/data_source_views`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              dataSourceId: dataSourceView.dataSource.sId,
-              parentsIn: [contentNode.internalId],
-            }),
-          }
-        );
-      }
+      try {
+        let res;
+        if (existingViewForSpace) {
+          res = await fetch(
+            `/api/w/${owner.sId}/spaces/${spaceSId}/data_source_views/${existingViewForSpace.sId}`,
+            {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                parentsToAdd: [contentNode.internalId],
+              }),
+            }
+          );
+        } else {
+          res = await fetch(
+            `/api/w/${owner.sId}/spaces/${spaceSId}/data_source_views`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                dataSourceId: dataSourceView.dataSource.sId,
+                parentsIn: [contentNode.internalId],
+              }),
+            }
+          );
+        }
 
-      if (!res.ok) {
-        const rawError: { error: APIError } = await res.json();
+        if (!res.ok) {
+          const rawError: { error: APIError } = await res.json();
+          sendNotification({
+            title: "Error while adding data to space",
+            description: rawError.error.message,
+            type: "error",
+          });
+        } else {
+          sendNotification({
+            title: "Data added to space",
+            type: "success",
+          });
+          await mutateDataSourceViews();
+        }
+      } catch (e) {
         sendNotification({
           title: "Error while adding data to space",
-          description: rawError.error.message,
+          description: `An Unknown error ${e} occurred while adding data to space.`,
           type: "error",
         });
-      } else {
-        sendNotification({
-          title: "Data added to space",
-          type: "success",
-        });
-        await mutateDataSourceViews();
       }
-    } catch (e) {
-      sendNotification({
-        title: "Error while adding data to space",
-        description: `An Unknown error ${e} occurred while adding data to space.`,
-        type: "error",
-      });
-    }
-  };
+    },
+    [
+      dataSourceView.dataSource.sId,
+      dataSourceViews,
+      mutateDataSourceViews,
+      owner.sId,
+      sendNotification,
+    ]
+  );
 
   useEffect(() => {
     if (!isTablesValidating && !isDocumentsValidating) {
@@ -422,14 +431,15 @@ export const SpaceDataSourceViewContentList = ({
         ),
       })) || [],
     [
-      canWriteInSpace,
-      canReadInSpace,
-      dataSourceView,
       nodes,
-      onSelect,
-      spaces,
-      dataSourceViews,
       owner,
+      spaces,
+      canReadInSpace,
+      canWriteInSpace,
+      dataSourceView,
+      dataSourceViews,
+      addToSpace,
+      onSelect,
     ]
   );
 

@@ -183,16 +183,23 @@ export const getMenuItems = (
   contentActionsRef: RefObject<ContentActionsRef>,
   spaces: SpaceType[],
   dataSourceViews: DataSourceViewType[],
-  addDataToSpace: (contentNode: DataSourceViewContentNode) => void
+  addDataToSpace: (
+    contentNode: DataSourceViewContentNode,
+    spaceSId: string
+  ) => void
 ): MenuItem[] => {
   const actions: MenuItem[] = [];
 
   if (contentNode.sourceUrl) {
-    actions.push(makeViewSourceUrlContentAction(contentNode, dataSourceView));
+    actions.push({
+      ...makeViewSourceUrlContentAction(contentNode, dataSourceView),
+    });
   }
 
   if (canReadInSpace && contentNode.type === "file") {
-    actions.push(makeViewRawContentAction(contentNode, contentActionsRef));
+    actions.push({
+      ...makeViewRawContentAction(contentNode, contentActionsRef),
+    });
   }
 
   if (canWriteInSpace && isFolder(dataSourceView.dataSource)) {
@@ -249,16 +256,18 @@ export const getMenuItems = (
     const availableSpaces = spaces.filter(
       (s) => !alreadyInSpace.includes(s.sId)
     );
-    const items = availableSpaces.map((s) => {
-      return { id: s.sId, name: s.name };
-    });
 
-    actions.push({
-      kind: "submenu",
-      items,
-      label: "Add to space",
-      onSelect: () => addDataToSpace(contentNode),
-    });
+    if (availableSpaces.length > 0) {
+      actions.push({
+        kind: "submenu",
+        label: "Add to space",
+        items: availableSpaces.map((s) => ({
+          id: s.sId,
+          name: s.name,
+        })),
+        onSelect: (spaceId) => addDataToSpace(contentNode, spaceId),
+      });
+    }
   }
 
   return actions;
