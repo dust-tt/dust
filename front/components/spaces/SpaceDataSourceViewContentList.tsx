@@ -11,8 +11,10 @@ import {
   Spinner,
   useHashParam,
   usePaginationFromUrl,
+  useSendNotification,
 } from "@dust-tt/sparkle";
 import type {
+  APIError,
   ConnectorType,
   ContentNodesViewType,
   DataSourceViewContentNode,
@@ -22,8 +24,16 @@ import type {
   SpaceType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { isDevelopment, isDustWorkspace, isValidContentNodesViewType } from "@dust-tt/types";
-import type { CellContext, ColumnDef, SortingState } from "@tanstack/react-table";
+import {
+  isDevelopment,
+  isDustWorkspace,
+  isValidContentNodesViewType,
+} from "@dust-tt/types";
+import type {
+  CellContext,
+  ColumnDef,
+  SortingState,
+} from "@tanstack/react-table";
 import { useRouter } from "next/router";
 import * as React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -32,14 +42,23 @@ import { FileDropProvider } from "@app/components/assistant/conversation/FileUpl
 import { ConnectorPermissionsModal } from "@app/components/ConnectorPermissionsModal";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
-import type { ContentActionKey, ContentActionsRef } from "@app/components/spaces/ContentActions";
-import { ContentActions, getMenuItems } from "@app/components/spaces/ContentActions";
+import type {
+  ContentActionKey,
+  ContentActionsRef,
+} from "@app/components/spaces/ContentActions";
+import {
+  ContentActions,
+  getMenuItems,
+} from "@app/components/spaces/ContentActions";
 import { EditSpaceManagedDataSourcesViews } from "@app/components/spaces/EditSpaceManagedDatasourcesViews";
 import { FoldersHeaderMenu } from "@app/components/spaces/FoldersHeaderMenu";
 import { WebsitesHeaderMenu } from "@app/components/spaces/WebsitesHeaderMenu";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { isFolder, isManaged, isWebsite } from "@app/lib/data_sources";
-import { useDataSourceViewContentNodes, useDataSourceViews } from "@app/lib/swr/data_source_views";
+import {
+  useDataSourceViewContentNodes,
+  useDataSourceViews,
+} from "@app/lib/swr/data_source_views";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
 
@@ -198,6 +217,7 @@ export const SpaceDataSourceViewContentList = ({
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
   const [showConnectorPermissionsModal, setShowConnectorPermissionsModal] =
     useState(false);
+  const sendNotification = useSendNotification();
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const contentActionsRef = useRef<ContentActionsRef>(null);
 
@@ -213,7 +233,7 @@ export const SpaceDataSourceViewContentList = ({
     workspaceId: owner.sId,
     disabled: !showSpaceUsage,
   });
-  const { dataSourceViews } = useDataSourceViews(owner, {
+  const { dataSourceViews, mutateDataSourceViews } = useDataSourceViews(owner, {
     disabled: !showSpaceUsage,
   });
   const handleViewTypeChange = useCallback(
@@ -269,6 +289,67 @@ export const SpaceDataSourceViewContentList = ({
     });
 
   const isDataSourceManaged = isManaged(dataSourceView.dataSource);
+
+  const addToSpace = async (contentNode: DataSourceViewContentNode) => {
+    const existingViewForSpace = dataSourceViews.find(
+      (d) =>
+        d.spaceId === space.sId &&
+        d.dataSource.sId === dataSourceView.dataSource.sId
+    );
+
+    try {
+      let res;
+      if (existingViewForSpace) {
+        res = await fetch(
+          `/api/w/${owner.sId}/spaces/${space.sId}/data_source_views/${existingViewForSpace.sId}`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              parentsToAdd: [contentNode.internalId],
+            }),
+          }
+        );
+      } else {
+        res = await fetch(
+          `/api/w/${owner.sId}/spaces/${space.sId}/data_source_views`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              dataSourceId: dataSourceView.dataSource.sId,
+              parentsIn: [contentNode.internalId],
+            }),
+          }
+        );
+      }
+
+      if (!res.ok) {
+        const rawError: { error: APIError } = await res.json();
+        sendNotification({
+          title: "Error while adding data to space",
+          description: rawError.error.message,
+          type: "error",
+        });
+      } else {
+        sendNotification({
+          title: "Data added to space",
+          type: "success",
+        });
+        await mutateDataSourceViews();
+      }
+    } catch (e) {
+      sendNotification({
+        title: "Error while adding data to space",
+        description: `An Unknown error ${e} occurred while adding data to space.`,
+        type: "error",
+      });
+    }
+  };
 
   useEffect(() => {
     if (!isTablesValidating && !isDocumentsValidating) {
@@ -334,7 +415,10 @@ export const SpaceDataSourceViewContentList = ({
           canWriteInSpace,
           dataSourceView,
           contentNode,
-          contentActionsRef
+          contentActionsRef,
+          spaces,
+          dataSourceViews,
+          addToSpace
         ),
       })) || [],
     [

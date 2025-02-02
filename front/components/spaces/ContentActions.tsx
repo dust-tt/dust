@@ -1,17 +1,38 @@
 import type { MenuItem } from "@dust-tt/sparkle";
-import { ExternalLinkIcon, EyeIcon, PencilSquareIcon, PlusIcon, TrashIcon, useHashParam } from "@dust-tt/sparkle";
-import type { DataSourceViewContentNode, DataSourceViewType, PlanType, WorkspaceType } from "@dust-tt/types";
+import {
+  ExternalLinkIcon,
+  EyeIcon,
+  PencilSquareIcon,
+  TrashIcon,
+  useHashParam,
+} from "@dust-tt/sparkle";
+import type {
+  DataSourceViewContentNode,
+  DataSourceViewType,
+  PlanType,
+  SpaceType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import { capitalize } from "lodash";
 import type { MouseEvent as ReactMouseEvent, RefObject } from "react";
-import React, { useCallback, useEffect, useImperativeHandle, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useState,
+} from "react";
 
 import { DocumentOrTableDeleteDialog } from "@app/components/data_source/DocumentOrTableDeleteDialog";
 import { DocumentUploadOrEditModal } from "@app/components/data_source/DocumentUploadOrEditModal";
 import { MultipleDocumentsUpload } from "@app/components/data_source/MultipleDocumentsUpload";
 import { TableUploadOrEditModal } from "@app/components/data_source/TableUploadOrEditModal";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
-import { AddToSpaceDialog } from "@app/components/spaces/AddToSpaceDialog";
-import { getDisplayNameForDataSource, isFolder, isManaged, isWebsite } from "@app/lib/data_sources";
+import {
+  getDisplayNameForDataSource,
+  isFolder,
+  isManaged,
+  isWebsite,
+} from "@app/lib/data_sources";
 
 export type UploadOrEditContentActionKey =
   | "DocumentUploadOrEdit"
@@ -21,8 +42,7 @@ export type ContentActionKey =
   | UploadOrEditContentActionKey
   | "MultipleDocumentsUpload"
   | "DocumentOrTableDeleteDialog"
-  | "DocumentViewRawContent"
-  | "AddToSpaceDialog";
+  | "DocumentViewRawContent";
 
 export type ContentAction = {
   action?: ContentActionKey;
@@ -147,15 +167,6 @@ export const ContentActions = React.forwardRef<
             onClose(false);
           }}
         />
-        {currentAction.contentNode && (
-          <AddToSpaceDialog
-            contentNode={currentAction.contentNode}
-            dataSourceView={dataSourceView}
-            isOpen={currentAction.action === "AddToSpaceDialog"}
-            onClose={onClose}
-            owner={owner}
-          />
-        )}
       </>
     );
   }
@@ -169,7 +180,10 @@ export const getMenuItems = (
   canWriteInSpace: boolean,
   dataSourceView: DataSourceViewType,
   contentNode: DataSourceViewContentNode,
-  contentActionsRef: RefObject<ContentActionsRef>
+  contentActionsRef: RefObject<ContentActionsRef>,
+  spaces: SpaceType[],
+  dataSourceViews: DataSourceViewType[],
+  addDataToSpace: (contentNode: DataSourceViewContentNode) => void
 ): MenuItem[] => {
   const actions: MenuItem[] = [];
 
@@ -189,7 +203,9 @@ export const getMenuItems = (
       onClick: (e: ReactMouseEvent) => {
         e.stopPropagation();
         contentActionsRef.current?.callAction(
-          contentNode.type === "database" ? "TableUploadOrEdit" : "DocumentUploadOrEdit",
+          contentNode.type === "database"
+            ? "TableUploadOrEdit"
+            : "DocumentUploadOrEdit",
           contentNode
         );
       },
@@ -200,21 +216,48 @@ export const getMenuItems = (
       icon: TrashIcon,
       onClick: (e: ReactMouseEvent) => {
         e.stopPropagation();
-        contentActionsRef.current?.callAction("DocumentOrTableDeleteDialog", contentNode);
+        contentActionsRef.current?.callAction(
+          "DocumentOrTableDeleteDialog",
+          contentNode
+        );
       },
       variant: "warning",
     });
   }
 
-  if (dataSourceView.kind === "default" && isManaged(dataSourceView.dataSource) && contentNode.type === "folder") {
+  if (
+    dataSourceView.kind === "default" &&
+    isManaged(dataSourceView.dataSource) &&
+    contentNode.type === "folder"
+  ) {
+    const allViews = dataSourceViews.filter(
+      (dsv) =>
+        dsv.dataSource.sId === dataSourceView.dataSource.sId &&
+        dsv.kind !== "default"
+    );
+
+    const alreadyInSpace = allViews
+      .filter(
+        (dsv) =>
+          !contentNode.parentInternalIds ||
+          contentNode.parentInternalIds.some(
+            (parentId) => !dsv.parentsIn || dsv.parentsIn.includes(parentId)
+          )
+      )
+      .map((dsv) => dsv.spaceId);
+
+    const availableSpaces = spaces.filter(
+      (s) => !alreadyInSpace.includes(s.sId)
+    );
+    const items = availableSpaces.map((s) => {
+      return { id: s.sId, name: s.name };
+    });
+
     actions.push({
-      kind: "item",
+      kind: "submenu",
+      items,
       label: "Add to space",
-      icon: PlusIcon,
-      onClick: (e: ReactMouseEvent) => {
-        e.stopPropagation();
-        contentActionsRef.current?.callAction("AddToSpaceDialog", contentNode);
-      },
+      onSelect: () => addDataToSpace(contentNode),
     });
   }
 
@@ -226,9 +269,10 @@ const makeViewSourceUrlContentAction = (
   dataSourceView: DataSourceViewType
 ): MenuItem => {
   const dataSource = dataSourceView.dataSource;
-  const label = isFolder(dataSource) || isWebsite(dataSource)
-    ? "View associated URL"
-    : `View in ${capitalize(getDisplayNameForDataSource(dataSource))}`;
+  const label =
+    isFolder(dataSource) || isWebsite(dataSource)
+      ? "View associated URL"
+      : `View in ${capitalize(getDisplayNameForDataSource(dataSource))}`;
 
   return {
     kind: "item",
@@ -254,7 +298,10 @@ const makeViewRawContentAction = (
     icon: EyeIcon,
     onClick: (e: ReactMouseEvent) => {
       e.stopPropagation();
-      contentActionsRef.current?.callAction("DocumentViewRawContent", contentNode);
+      contentActionsRef.current?.callAction(
+        "DocumentViewRawContent",
+        contentNode
+      );
     },
   };
 };

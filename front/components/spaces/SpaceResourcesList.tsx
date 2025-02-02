@@ -38,10 +38,16 @@ import { AddConnectionMenu } from "@app/components/spaces/AddConnectionMenu";
 import { EditSpaceManagedDataSourcesViews } from "@app/components/spaces/EditSpaceManagedDatasourcesViews";
 import { EditSpaceStaticDatasourcesViews } from "@app/components/spaces/EditSpaceStaticDatasourcesViews";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
-import { getConnectorProviderLogoWithFallback, isConnectorPermissionsEditable } from "@app/lib/connector_providers";
+import {
+  getConnectorProviderLogoWithFallback,
+  isConnectorPermissionsEditable,
+} from "@app/lib/connector_providers";
 import { getDataSourceNameFromView, isManaged } from "@app/lib/data_sources";
 import { useAgentConfigurationSIdLookup } from "@app/lib/swr/assistants";
-import { useDeleteFolderOrWebsite, useSpaceDataSourceViewsWithDetails } from "@app/lib/swr/spaces";
+import {
+  useDeleteFolderOrWebsite,
+  useSpaceDataSourceViewsWithDetails,
+} from "@app/lib/swr/spaces";
 import { classNames } from "@app/lib/utils";
 
 import { ViewFolderAPIModal } from "../ViewFolderAPIModal";
