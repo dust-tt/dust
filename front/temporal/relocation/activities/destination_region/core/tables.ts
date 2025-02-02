@@ -57,8 +57,7 @@ export async function processDataSourceTables({
 
       // There are some issues with the parents field.
       // parents[0] should be the table_id, but it's not always the case.
-      // parents[1] should be the parent_id, but it's not always the case.
-
+      // If we change the parents[0] to the table_id, then parents[1] should be the parent_id.
       let parents: string[] = [];
       let parentId: string | null = d.parent_id ?? null;
       if (d.parents.length > 0) {
