@@ -1,26 +1,9 @@
-import type { DropdownMenuItemProps } from "@dust-tt/sparkle";
-import {
-  ExternalLinkIcon,
-  EyeIcon,
-  PencilSquareIcon,
-  PlusIcon,
-  TrashIcon,
-  useHashParam,
-} from "@dust-tt/sparkle";
-import type {
-  DataSourceViewContentNode,
-  DataSourceViewType,
-  PlanType,
-  WorkspaceType,
-} from "@dust-tt/types";
+import type { MenuItem } from "@dust-tt/sparkle";
+import { ExternalLinkIcon, EyeIcon, PencilSquareIcon, PlusIcon, TrashIcon, useHashParam } from "@dust-tt/sparkle";
+import type { DataSourceViewContentNode, DataSourceViewType, PlanType, WorkspaceType } from "@dust-tt/types";
 import { capitalize } from "lodash";
 import type { MouseEvent as ReactMouseEvent, RefObject } from "react";
-import React, {
-  useCallback,
-  useEffect,
-  useImperativeHandle,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useImperativeHandle, useState } from "react";
 
 import { DocumentOrTableDeleteDialog } from "@app/components/data_source/DocumentOrTableDeleteDialog";
 import { DocumentUploadOrEditModal } from "@app/components/data_source/DocumentUploadOrEditModal";
@@ -28,12 +11,7 @@ import { MultipleDocumentsUpload } from "@app/components/data_source/MultipleDoc
 import { TableUploadOrEditModal } from "@app/components/data_source/TableUploadOrEditModal";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { AddToSpaceDialog } from "@app/components/spaces/AddToSpaceDialog";
-import {
-  getDisplayNameForDataSource,
-  isFolder,
-  isManaged,
-  isWebsite,
-} from "@app/lib/data_sources";
+import { getDisplayNameForDataSource, isFolder, isManaged, isWebsite } from "@app/lib/data_sources";
 
 export type UploadOrEditContentActionKey =
   | "DocumentUploadOrEdit"
@@ -185,72 +163,57 @@ export const ContentActions = React.forwardRef<
 
 ContentActions.displayName = "ContentActions";
 
-type ContentActionsMenu = DropdownMenuItemProps[];
-
+// replace the existing getMenuItems function with:
 export const getMenuItems = (
   canReadInSpace: boolean,
   canWriteInSpace: boolean,
   dataSourceView: DataSourceViewType,
   contentNode: DataSourceViewContentNode,
   contentActionsRef: RefObject<ContentActionsRef>
-): ContentActionsMenu => {
-  const actions: ContentActionsMenu = [];
+): MenuItem[] => {
+  const actions: MenuItem[] = [];
 
-  // View in source:
-  // We only push the view in if the content has a source URL.
   if (contentNode.sourceUrl) {
     actions.push(makeViewSourceUrlContentAction(contentNode, dataSourceView));
   }
 
-  // View raw content in modal.
   if (canReadInSpace && contentNode.type === "file") {
     actions.push(makeViewRawContentAction(contentNode, contentActionsRef));
   }
 
-  // Edit & Delete:
-  // We can edit/delete the documents in a Folder only.
   if (canWriteInSpace && isFolder(dataSourceView.dataSource)) {
     actions.push({
+      kind: "item",
       label: "Edit",
       icon: PencilSquareIcon,
       onClick: (e: ReactMouseEvent) => {
         e.stopPropagation();
-        contentActionsRef.current &&
-          contentActionsRef.current.callAction(
-            contentNode.type === "database"
-              ? "TableUploadOrEdit"
-              : "DocumentUploadOrEdit",
-            contentNode
-          );
+        contentActionsRef.current?.callAction(
+          contentNode.type === "database" ? "TableUploadOrEdit" : "DocumentUploadOrEdit",
+          contentNode
+        );
       },
     });
     actions.push({
+      kind: "item",
       label: "Delete",
       icon: TrashIcon,
       onClick: (e: ReactMouseEvent) => {
         e.stopPropagation();
-        contentActionsRef.current &&
-          contentActionsRef.current.callAction(
-            "DocumentOrTableDeleteDialog",
-            contentNode
-          );
+        contentActionsRef.current?.callAction("DocumentOrTableDeleteDialog", contentNode);
       },
       variant: "warning",
     });
   }
 
-  if (
-    dataSourceView.kind === "default" &&
-    isManaged(dataSourceView.dataSource) &&
-    contentNode.type === "folder"
-  ) {
+  if (dataSourceView.kind === "default" && isManaged(dataSourceView.dataSource) && contentNode.type === "folder") {
     actions.push({
+      kind: "item",
       label: "Add to space",
       icon: PlusIcon,
       onClick: (e: ReactMouseEvent) => {
         e.stopPropagation();
-        contentActionsRef.current &&
-          contentActionsRef.current.callAction("AddToSpaceDialog", contentNode);
+        contentActionsRef.current?.callAction("AddToSpaceDialog", contentNode);
       },
     });
   }
@@ -261,14 +224,14 @@ export const getMenuItems = (
 const makeViewSourceUrlContentAction = (
   contentNode: DataSourceViewContentNode,
   dataSourceView: DataSourceViewType
-) => {
+): MenuItem => {
   const dataSource = dataSourceView.dataSource;
-  const label =
-    isFolder(dataSource) || isWebsite(dataSource)
-      ? "View associated URL"
-      : `View in ${capitalize(getDisplayNameForDataSource(dataSource))}`;
+  const label = isFolder(dataSource) || isWebsite(dataSource)
+    ? "View associated URL"
+    : `View in ${capitalize(getDisplayNameForDataSource(dataSource))}`;
 
   return {
+    kind: "item",
     label,
     icon: ExternalLinkIcon,
     disabled: contentNode.sourceUrl === null,
@@ -284,17 +247,14 @@ const makeViewSourceUrlContentAction = (
 const makeViewRawContentAction = (
   contentNode: DataSourceViewContentNode,
   contentActionsRef: RefObject<ContentActionsRef>
-) => {
+): MenuItem => {
   return {
+    kind: "item",
     label: "View raw content",
     icon: EyeIcon,
     onClick: (e: ReactMouseEvent) => {
       e.stopPropagation();
-      contentActionsRef.current &&
-        contentActionsRef.current.callAction(
-          "DocumentViewRawContent",
-          contentNode
-        );
+      contentActionsRef.current?.callAction("DocumentViewRawContent", contentNode);
     },
   };
 };
