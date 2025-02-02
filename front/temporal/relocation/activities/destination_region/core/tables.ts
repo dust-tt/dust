@@ -55,6 +55,19 @@ export async function processDataSourceTables({
             )
           : d.source_url;
 
+      // There are some issues with the parents field.
+      // parents[0] should be the table_id, but it's not always the case.
+      let parents: string[] = [];
+      if (d.parents.length > 0) {
+        if (d.parents[0] !== d.table_id) {
+          parents = [d.table_id, ...d.parents];
+        } else {
+          parents = d.parents;
+        }
+      } else {
+        parents = [d.table_id];
+      }
+
       // 1) Upsert the table.
       const upsertRes = await coreAPI.upsertTable({
         projectId: destIds.dustAPIProjectId,
@@ -65,7 +78,7 @@ export async function processDataSourceTables({
         timestamp: d.timestamp,
         tags: d.tags,
         parentId: d.parent_id ?? null,
-        parents: d.parents,
+        parents,
         remoteDatabaseTableId: d.remote_database_table_id,
         remoteDatabaseSecretId: d.remote_database_secret_id,
         title: d.title,
