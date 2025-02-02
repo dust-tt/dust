@@ -61,8 +61,8 @@ export async function processDataSourceDocuments({
           : d.source_url;
 
       // There are some issues with the parents field.
-      // parents[0] should be the table_id, but it's not always the case.
-      // If we change the parents[0] to the table_id, then parents[1] should be the parent_id.
+      // parents[0] should be the document_id, but it's not always the case.
+      // If we change the parents[0] to the document_id, then parents[1] should be the parent_id.
       let parents: string[] = [];
       let parentId: string | null = d.parent_id ?? null;
       if (d.parents.length > 0) {
@@ -84,7 +84,7 @@ export async function processDataSourceDocuments({
         timestamp: d.timestamp,
         tags: d.tags,
         parentId,
-        parents: d.parents,
+        parents,
         sourceUrl,
         section: d.section,
         credentials,
