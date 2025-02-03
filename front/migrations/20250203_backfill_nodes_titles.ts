@@ -60,14 +60,17 @@ async function processNodes({
   allNodes,
   coreDataSourceId,
   coreSequelize,
+  logger,
 }: {
   allNodes: Node[];
   coreDataSourceId: number;
   coreSequelize: Sequelize;
+  logger: typeof Logger;
 }) {
   const nodes = allNodes.filter(
     (n) => n.tags_array.title && n.title === n.tags_array.title.split(":")[0]
   );
+  logger.info(`Found ${nodes.length} nodes to process.`);
   if (nodes.length === 0) {
     return;
   }
@@ -125,7 +128,6 @@ async function migrateDocuments({
       }
     )) as Node[];
 
-    logger.info(`Found ${nodes.length} documents to process.`);
     logInconsistencies(nodes, logger);
 
     if (execute) {
@@ -133,6 +135,7 @@ async function migrateDocuments({
         allNodes: nodes,
         coreSequelize,
         coreDataSourceId,
+        logger,
       });
     }
     nextId = nodes[nodes.length - 1]?.node_id;
@@ -171,7 +174,6 @@ async function migrateTables({
       }
     )) as Node[];
 
-    logger.info(`Found ${nodes.length} tables to process.`);
     logInconsistencies(nodes, logger);
 
     if (execute) {
@@ -179,6 +181,7 @@ async function migrateTables({
         allNodes: nodes,
         coreSequelize,
         coreDataSourceId,
+        logger,
       });
     }
     nextId = nodes[nodes.length - 1]?.node_id;
