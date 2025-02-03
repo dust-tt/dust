@@ -50,6 +50,7 @@ function logInconsistencies(nodes: Node[], logger: typeof Logger) {
     nodes
       .filter((n) => {
         const titleFromTag = getTitleFromTags(n);
+        /// Log only the diff that is not what was identified where the title in data_sources_nodes is the cropped version of titleFromTag.
         return titleFromTag && n.title !== titleFromTag.split(":")[0];
       })
       .map((n) => [
@@ -79,6 +80,7 @@ async function processNodes({
 }) {
   const nodes = allNodes.filter((n) => {
     const titleFromTag = getTitleFromTags(n);
+    /// Keep only the diff that was identified where the title in data_sources_nodes is the cropped version of titleFromTag.
     return titleFromTag && n.title === titleFromTag.split(":")[0];
   });
   if (nodes.length === 0) {
