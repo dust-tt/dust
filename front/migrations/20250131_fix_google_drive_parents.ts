@@ -35,7 +35,7 @@ async function migrateNode({
   let newParentId: string | null = null;
   try {
     const uniqueIds = [
-      new Set(
+      ...new Set(
         [coreNode.node_id, ...coreNode.parents].map((x) =>
           x.replace("gdrive-", "")
         )
