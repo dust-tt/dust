@@ -1145,7 +1145,7 @@ export async function pauseAllManagedDataSources(
   return new Ok(res);
 }
 
-export async function resumeAllManagedDataSources(auth: Authenticator) {
+export async function unpauseAllManagedDataSources(auth: Authenticator) {
   const dataSources = await getAllManagedDataSources(auth);
 
   const connectorsAPI = new ConnectorsAPI(
@@ -1175,7 +1175,7 @@ export async function resumeAllManagedDataSources(auth: Authenticator) {
         return new Err(new Error(setErrorRes.error.message));
       }
 
-      const resumeRes = await connectorsAPI.resumeConnector(ds.connectorId);
+      const resumeRes = await connectorsAPI.unpauseConnector(ds.connectorId);
       if (resumeRes.isErr()) {
         return new Err(new Error(resumeRes.error.message));
       }

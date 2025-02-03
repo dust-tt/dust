@@ -2,7 +2,7 @@ import { assertNever } from "@dust-tt/types";
 
 import {
   pauseAllManagedDataSources,
-  resumeAllManagedDataSources,
+  unpauseAllManagedDataSources,
 } from "@app/lib/api/data_sources";
 import type { RegionType } from "@app/lib/api/regions/config";
 import { config, SUPPORTED_REGIONS } from "@app/lib/api/regions/config";
@@ -21,6 +21,20 @@ const RELOCATION_STEPS = [
   "resume-in-destination",
 ] as const;
 type RelocationStep = (typeof RELOCATION_STEPS)[number];
+
+function assertIsSourceRegion(region: string): asserts region is RegionType {
+  if (region !== config.getCurrentRegion()) {
+    throw new Error("Operation must be run from the source region.");
+  }
+}
+
+function assertIsDestinationRegion(
+  region: string
+): asserts region is RegionType {
+  if (region !== config.getCurrentRegion()) {
+    throw new Error("Operation must be run from the destination region.");
+  }
+}
 
 makeScript(
   {
@@ -49,14 +63,6 @@ makeScript(
     { destinationRegion, sourceRegion, step, workspaceId, execute },
     logger
   ) => {
-    const currentRegion = config.getCurrentRegion();
-    if (sourceRegion !== currentRegion) {
-      logger.error(
-        `Relocation must be run from the source region. Current region is ${currentRegion}.`
-      );
-      return;
-    }
-
     if (sourceRegion === destinationRegion) {
       logger.error("Source and destination regions must be different.");
       return;
@@ -72,6 +78,8 @@ makeScript(
 
       switch (s) {
         case "relocate":
+          assertIsSourceRegion(sourceRegion);
+
           // 1) Set the workspace as relocating.
           const workspaceRelocatingRes = await setWorkspaceRelocating(owner);
           if (workspaceRelocatingRes.isErr()) {
@@ -101,6 +109,8 @@ makeScript(
           break;
 
         case "cutover":
+          assertIsSourceRegion(sourceRegion);
+
           // 1) Set the workspace as relocated.
           const workspaceRelocatedRes = await setWorkspaceRelocated(owner);
           if (workspaceRelocatedRes.isErr()) {
@@ -112,6 +122,8 @@ makeScript(
           break;
 
         case "resume-in-destination":
+          assertIsDestinationRegion(destinationRegion);
+
           if (config.getCurrentRegion() !== destinationRegion) {
             logger.error(
               `Resume-in-destination must be run from the destination region. Current region is ${config.getCurrentRegion()}.`
@@ -119,11 +131,11 @@ makeScript(
             return;
           }
 
-          // 1) Resume all connectors in the destination region.
-          const resumeRes = await resumeAllManagedDataSources(auth);
-          if (resumeRes.isErr()) {
+          // 1) Unpause all connectors in the destination region.
+          const unpauseRes = await unpauseAllManagedDataSources(auth);
+          if (unpauseRes.isErr()) {
             logger.error(
-              `Failed to resume connectors: ${resumeRes.error.message}`
+              `Failed to unpause connectors: ${unpauseRes.error.message}`
             );
             return;
           }
