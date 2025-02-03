@@ -461,6 +461,7 @@ export async function synchronizeDustApps(
   }
 
   const importRes = await importApps(auth, space, exportRes.value);
+  logger.info({ importedApp: importRes }, "Apps imported");
 
   const selfCheckRes = await selfCheck(auth);
   return new Ok({
