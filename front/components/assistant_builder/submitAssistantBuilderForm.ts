@@ -246,7 +246,7 @@ export async function submitAssistantBuilderForm({
             modelId: reasoningModel.modelId,
             providerId: reasoningModel.providerId,
             temperature: a.configuration.temperature,
-            reasoningEffort: reasoningModel.reasoningEffort,
+            reasoningEffort: reasoningModel.reasoningEffort ?? null,
           },
         ];
 
