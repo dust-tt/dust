@@ -25,7 +25,6 @@ import {
   O1_MODEL_CONFIG,
   O3_MINI_HIGH_REASONING_MODEL_CONFIG,
   O3_MINI_MODEL_CONFIG,
-  TOGETHERAI_QWEN_QWQ_32B_PREVIEW_MODEL_CONFIG,
 } from "@dust-tt/types";
 import type { ComponentType } from "react";
 
