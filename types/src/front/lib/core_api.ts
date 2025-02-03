@@ -182,7 +182,7 @@ export type CoreAPISortSpec = {
 
 export type CoreAPISearchOptions = {
   limit?: number;
-  offset?: number;
+  cursor?: string;
   sort?: CoreAPISortSpec[];
 };
 
@@ -192,7 +192,7 @@ export interface CoreAPISearchCursorRequest {
   cursor?: string;
 }
 
-export interface CoreAPISearchCursorResponse {
+export interface CoreAPISearchResponse {
   nodes: CoreAPIContentNode[];
   next_page_cursor: string | null;
 }
@@ -1612,11 +1612,7 @@ export class CoreAPI {
     query?: string;
     filter: CoreAPINodesSearchFilter;
     options?: CoreAPISearchOptions;
-  }): Promise<
-    CoreAPIResponse<{
-      nodes: CoreAPIContentNode[];
-    }>
-  > {
+  }): Promise<CoreAPIResponse<CoreAPISearchResponse>> {
     const response = await this._fetchWithError(`${this._url}/nodes/search`, {
       method: "POST",
       headers: {
@@ -1628,33 +1624,6 @@ export class CoreAPI {
         options,
       }),
     });
-    return this._resultFromResponse(response);
-  }
-
-  async searchNodesWithCursor({
-    query,
-    filter,
-    cursor,
-  }: {
-    query?: string;
-    filter: CoreAPINodesSearchFilter;
-    cursor?: CoreAPISearchCursorRequest;
-  }): Promise<CoreAPIResponse<CoreAPISearchCursorResponse>> {
-    const response = await this._fetchWithError(
-      `${this._url}/nodes/search/cursor`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          query,
-          filter,
-          cursor,
-        }),
-      }
-    );
-
     return this._resultFromResponse(response);
   }
 
