@@ -456,7 +456,7 @@ export async function updateWorkspaceMetadata(
 export async function setWorkspaceRelocating(
   owner: LightWorkspaceType
 ): Promise<Result<void, Error>> {
-  return updateWorkspaceMetadata(owner, { maintenance: "relocation-done" });
+  return updateWorkspaceMetadata(owner, { maintenance: "relocation" });
 }
 
 export async function setWorkspaceRelocated(
