@@ -1304,6 +1304,9 @@ async function _createAgentDataSourcesConfigData(
             processConfigurationId: processConfigurationId,
             dataSourceViewId: dataSourceView.id,
             workspaceId: owner.id,
+            tagsMode: null,
+            tagsIn: null,
+            tagsNotIn: null,
           },
           { transaction: t }
         );
