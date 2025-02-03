@@ -44,7 +44,6 @@ import { sendGithubDeletionEmail } from "@app/lib/api/email";
 import { rowsFromCsv, upsertTableFromCsv } from "@app/lib/api/tables";
 import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { DustError } from "@app/lib/error";
 import { Lock } from "@app/lib/lock";
