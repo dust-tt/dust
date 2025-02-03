@@ -198,7 +198,6 @@ describe("POST /api/w/[wId]/data_sources/[dsId]/files", () => {
       await handler(req, res);
 
       expect(res._getStatusCode()).toBe(200);
-      console.log(res._getJSONData());
       expect(res._getJSONData()).toEqual({
         file: file.toPublicJSON(auth),
       });
