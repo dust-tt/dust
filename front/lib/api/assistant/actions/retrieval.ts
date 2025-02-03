@@ -434,8 +434,27 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
         }
         config.DATASOURCE.filter.parents.not.push(...ds.filter.parents.not);
       }
-      if (ds.filter.tags) {
-        config.DATASOURCE.filter.tags = ds.filter.tags;
+
+      // Handle tags filtering.
+      if (
+        typeof ds.filter.tags === "object" &&
+        Array.isArray(ds.filter.tags?.in) &&
+        Array.isArray(ds.filter.tags?.not)
+      ) {
+        config.DATASOURCE.filter.tags = {
+          in_map: {},
+          not_map: {},
+        };
+
+        const dsView = dataSourceViewsMap[ds.dataSourceViewId];
+        assert(dsView, `Data source view ${ds.dataSourceViewId} not found`);
+
+        config.DATASOURCE.filter.tags.in_map[
+          dsView.dataSource.dustAPIDataSourceId
+        ] = ds.filter.tags.in;
+        config.DATASOURCE.filter.tags.not_map[
+          dsView.dataSource.dustAPIDataSourceId
+        ] = ds.filter.tags.not;
       }
     }
 

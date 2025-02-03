@@ -1320,9 +1320,6 @@ async function _createAgentDataSourcesConfigData(
             tagsIn,
             tagsNotIn,
             workspaceId: owner.id,
-            tagsMode: null,
-            tagsIn: null,
-            tagsNotIn: null,
           },
           { transaction: t }
         );
