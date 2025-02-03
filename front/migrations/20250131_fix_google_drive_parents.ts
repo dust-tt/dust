@@ -99,7 +99,15 @@ async function migrateNode({
             parentId: newParentId,
           });
         } else {
-          throw new Error("Unreachable: folder with incorrect parents.");
+          logger.error(
+            {
+              nodeId: coreNode.node_id,
+              fromParents: coreNode.parents,
+              toParents: newParents,
+            },
+            "Folder with incorrect parents."
+          );
+          return;
         }
         if (updateRes.isErr()) {
           logger.error(
