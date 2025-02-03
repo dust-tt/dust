@@ -134,3 +134,14 @@ export function getOffsetPaginationParams(
 
   return new Ok(queryValidation.right);
 }
+
+export interface CursorPaginationParams {
+  limit: number;
+  cursor: string;
+}
+
+export function isCursorPaginationParams(
+  pagination: CursorPaginationParams | OffsetPaginationParams
+): pagination is CursorPaginationParams {
+  return "cursor" in pagination;
+}
