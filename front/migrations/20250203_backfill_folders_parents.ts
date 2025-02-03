@@ -124,7 +124,7 @@ async function migrateFolderDataSourceParents(
         { concurrency: NODE_CONCURRENCY }
       );
     } else {
-      logger.info(`Found ${nodes.length} to process.`);
+      logger.info(`Found ${nodes.length} nodes to process.`);
     }
     if (nodes.length > 0) {
       nextId = nodes[nodes.length - 1].id;
