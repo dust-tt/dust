@@ -36,7 +36,6 @@ import { getSession } from "../../lib/auth";
  *   - user: Created test user
  *   - membership: Created workspace membership
  *   - globalGroup: Created global group for the workspace
- *   - auth: an admin Authenticator for the test user
  */
 export const createPrivateApiMockRequest = async ({
   method = "GET",
