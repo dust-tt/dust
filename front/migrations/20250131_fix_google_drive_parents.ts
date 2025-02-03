@@ -36,12 +36,14 @@ async function migrateNode({
   try {
     const uniqueIds = [
       ...new Set(
-        [coreNode.node_id, ...coreNode.parents].map((x) =>
-          x.replace("gdrive-", "")
+        [coreNode.node_id, ...coreNode.parents].map((id) =>
+          id.startsWith("google-spreadsheet") ? id : id.replace("gdrive-", "")
         )
       ),
     ];
-    newParents = uniqueIds.map((id) => `gdrive-${id}`);
+    newParents = uniqueIds.map((id) =>
+      id.startsWith("google-spreadsheet") ? id : `gdrive-${id}`
+    );
     newParentId = newParents[1] || null;
   } catch (e) {
     logger.error(
