@@ -103,15 +103,10 @@ const InputBarContainer = ({
     "pb-6 pt-4 sm:py-3.5" // Increased padding on mobile
   );
 
-  const handleContainerClick = () => {
-    editorService.focusEnd();
-  };
-
   return (
     <div
       id="InputBarContainer"
       className="relative flex flex-1 cursor-text flex-col sm:flex-row sm:pt-0"
-      onClick={handleContainerClick}
     >
       <EditorContent
         editor={editor}
