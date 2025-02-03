@@ -32,18 +32,18 @@ async fn print_specification_hashes(project_id: i64, hash: &str) -> Result<()> {
     let app = App::new(&specification).await?;
 
     println!("\nBlock hashes:");
-    let mut prev_hash = "".to_string();
-    for (block_type, name, chain_hash, inner_hash) in &app.blocks_with_hashes() {
-        let block_hash = block.inner_hash();
-        println!("\nBlock {} ({})", name, block.block_type());
-        println!("Inner hash: {}", block_hash);
-
+    let mut hashes: Vec<String> = Vec::new();
+    let mut prev_hash: String = "".to_string();
+    for (hash, name, block) in &app.blocks {
         let mut hasher = blake3::Hasher::new();
         hasher.update(prev_hash.as_bytes());
         hasher.update(name.as_bytes());
-        hasher.update(block_hash.as_bytes());
+        hasher.update(hash.as_bytes());
+
+        print!("BLOCK HASH FOR BLOCK {} / HASH {}", name, hash);
+
         prev_hash = format!("{}", hasher.finalize().to_hex());
-        println!("Chain hash: {}", prev_hash);
+        hashes.push(prev_hash.clone());
     }
 
     println!("\nFinal app hash: {}", app.hash());

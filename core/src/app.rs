@@ -29,7 +29,7 @@ use tracing::{error, info};
 pub struct App {
     // Specification state.
     hash: String,
-    blocks: Vec<(String, String, Box<dyn Block + Send + Sync>)>, // (hash, name, Block)
+    pub blocks: Vec<(String, String, Box<dyn Block + Send + Sync>)>, // (hash, name, Block)
     // Run state.
     run: Option<Run>,
     project: Option<Project>,
@@ -54,20 +54,6 @@ impl App {
         self.blocks
             .iter()
             .map(|(_, name, block)| (block.block_type(), name.clone()))
-            .collect()
-    }
-
-    pub fn blocks_with_hashes(&self) -> Vec<(BlockType, String, String, String)> {
-        self.blocks
-            .iter()
-            .map(|(chain_hash, name, block)| {
-                (
-                    block.block_type(),
-                    name.clone(),
-                    chain_hash.clone(),
-                    block.inner_hash(),
-                )
-            })
             .collect()
     }
 
