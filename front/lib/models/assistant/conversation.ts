@@ -6,7 +6,7 @@ import type {
   UserMessageOrigin,
 } from "@dust-tt/types";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes } from "sequelize";
+import { DataTypes, Sequelize } from "sequelize";
 
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
@@ -22,6 +22,7 @@ export class Conversation extends WorkspaceAwareModel<Conversation> {
   declare sId: string;
   declare title: string | null;
   declare visibility: CreationOptional<ConversationVisibility>;
+  declare currentThreadVersion: number;
 
   declare requestedGroupIds: number[][];
 
@@ -53,6 +54,11 @@ Conversation.init(
       type: DataTypes.STRING,
       allowNull: false,
       defaultValue: "unlisted",
+    },
+    currentThreadVersion: {
+      type: DataTypes.BIGINT,
+      allowNull: false,
+      defaultValue: 0,
     },
     requestedGroupIds: {
       type: DataTypes.ARRAY(DataTypes.ARRAY(DataTypes.BIGINT)),
@@ -378,6 +384,7 @@ export class Message extends WorkspaceAwareModel<Message> {
 
   declare version: CreationOptional<number>;
   declare rank: number;
+  declare threadVersions: CreationOptional<number[]>;
   declare visibility: CreationOptional<MessageVisibility>;
 
   declare conversationId: ForeignKey<Conversation["id"]>;
@@ -425,6 +432,11 @@ Message.init(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
+    threadVersions: {
+      type: DataTypes.ARRAY(DataTypes.BIGINT),
+      allowNull: true,
+      defaultValue: [0],
+    },
   },
   {
     modelName: "message",
@@ -436,7 +448,7 @@ Message.init(
       },
       {
         unique: true,
-        fields: ["conversationId", "rank", "version"],
+        fields: ["conversationId", "rank", "version", "threadVersions[1]"],
       },
       {
         fields: ["agentMessageId"],

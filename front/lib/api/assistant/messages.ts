@@ -305,6 +305,7 @@ async function getMaxRankMessages(
 
   const where: WhereOptions<Message> = {
     conversationId: conversation.id,
+    threadVersions: { [Op.contains]: [conversation.currentThreadVersion] },
   };
 
   if (lastValue) {
@@ -346,6 +347,7 @@ async function fetchMessagesForPage(
   const messages = await Message.findAll({
     where: {
       conversationId: conversation.id,
+      threadVersions: { [Op.contains]: [conversation.currentThreadVersion] },
       id: {
         [Op.in]: relevantMessageIds,
       },

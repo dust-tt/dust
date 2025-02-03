@@ -1,4 +1,10 @@
-import { Button, cn, RainbowEffect, StopIcon } from "@dust-tt/sparkle";
+import {
+  Button,
+  cn,
+  RainbowEffect,
+  StopIcon,
+  useSendNotification,
+} from "@dust-tt/sparkle";
 import type { AgentMention, MentionType, Result } from "@dust-tt/types";
 import type { UploadedContentFragment } from "@dust-tt/types";
 import type {
@@ -11,10 +17,11 @@ import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useFileDrop } from "@app/components/assistant/conversation/FileUploaderContext";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBarCitations } from "@app/components/assistant/conversation/input_bar/InputBarCitations";
-import type { InputBarContainerProps } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
-import InputBarContainer, {
-  INPUT_BAR_ACTIONS,
+import type {
+  InputBarAction,
+  InputBarContainerProps,
 } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
+import InputBarContainer from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import type { DustError } from "@app/lib/error";
@@ -22,8 +29,19 @@ import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { useConversation } from "@app/lib/swr/conversations";
 import { classNames } from "@app/lib/utils";
 
-const DEFAULT_INPUT_BAR_ACTIONS = [...INPUT_BAR_ACTIONS];
+const DEFAULT_INPUT_BAR_ACTIONS: InputBarAction[] = [
+  "attachment",
+  "assistants-list",
+  "assistants-list-with-actions",
+  "fullscreen",
+];
 
+const DEFAULT_EDIT_MESSAGE_INPUT_BAR_ACTIONS: InputBarAction[] = [
+  "assistants-list",
+  "assistants-list-with-actions",
+  "fullscreen",
+  "cancel-edit-message",
+] as const;
 /**
  *
  * @param additionalAgentConfiguration when trying an assistant in a modal or drawer we
@@ -121,9 +139,10 @@ export function AssistantInputBar({
   }, [baseAgentConfigurations, additionalAgentConfiguration]);
 
   const [isAnimating, setIsAnimating] = useState<boolean>(false);
-  const { animate, selectedAssistant } = useContext(InputBarContext);
+  const { animate, selectedAssistant, editMessage, setEditMessage } =
+    useContext(InputBarContext);
   const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
+  const sendNotification = useSendNotification();
   useEffect(() => {
     if (animate && !isAnimating) {
       setIsAnimating(true);
@@ -192,6 +211,35 @@ export function AssistantInputBar({
         resetEditorText();
         fileUploaderService.resetUpload();
       }
+    } else if (editMessage) {
+      const body = {
+        content: text,
+        mentions,
+      };
+
+      const mRes = await fetch(
+        `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${editMessage.sId}/edit`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(body),
+        }
+      );
+
+      if (!mRes.ok) {
+        const data = await mRes.json();
+        sendNotification({
+          type: "error",
+          title: "Edit message",
+          description: `Error editing message: ${data.error.message}`,
+        });
+      }
+
+      resetEditorText();
+      fileUploaderService.resetUpload();
+      setEditMessage(null);
     } else {
       void onSubmit(
         text,
@@ -291,7 +339,9 @@ export function AssistantInputBar({
             <div className="relative flex w-full flex-1 flex-col">
               <InputBarCitations fileUploaderService={fileUploaderService} />
               <InputBarContainer
-                actions={actions}
+                actions={
+                  editMessage ? DEFAULT_EDIT_MESSAGE_INPUT_BAR_ACTIONS : actions
+                }
                 disableAutoFocus={disableAutoFocus}
                 allAssistants={activeAgents}
                 agentConfigurations={agentConfigurations}

@@ -18,6 +18,7 @@ import {
 } from "@dust-tt/types";
 import React, {
   useCallback,
+  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -26,6 +27,7 @@ import React, {
 import { useInView } from "react-intersection-observer";
 
 import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
+import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
 import MessageGroup from "@app/components/assistant/conversation/MessageGroup";
 import { useEventSource } from "@app/hooks/useEventSource";
@@ -324,7 +326,26 @@ const ConversationViewer = React.forwardRef<
     [messages]
   );
 
-  useLastMessageGroupObserver(typedGroupedMessages);
+  // Filter messages up to the edited message if there is one
+  const { editMessage } = useContext(InputBarContext);
+  const filteredTypedGroupedMessages = useMemo(() => {
+    if (!editMessage) {
+      return typedGroupedMessages;
+    }
+
+    const editIndex = typedGroupedMessages.findIndex((group) =>
+      group.some(
+        (message) =>
+          isUserMessageType(message) && message.sId === editMessage.sId
+      )
+    );
+
+    return editIndex >= 0
+      ? typedGroupedMessages.slice(0, editIndex)
+      : typedGroupedMessages;
+  }, [typedGroupedMessages, editMessage]);
+
+  useLastMessageGroupObserver(filteredTypedGroupedMessages);
 
   return (
     <div
@@ -349,8 +370,8 @@ const ConversationViewer = React.forwardRef<
         </div>
       )}
       {conversation &&
-        typedGroupedMessages.map((typedGroup, index) => {
-          const isLastGroup = index === typedGroupedMessages.length - 1;
+        filteredTypedGroupedMessages.map((typedGroup, index) => {
+          const isLastGroup = index === filteredTypedGroupedMessages.length - 1;
           return (
             <MessageGroup
               key={`typed-group-${index}`}

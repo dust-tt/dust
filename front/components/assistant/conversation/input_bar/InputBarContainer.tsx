@@ -4,6 +4,7 @@ import {
   Button,
   FullscreenExitIcon,
   FullscreenIcon,
+  XMarkIcon,
 } from "@dust-tt/sparkle";
 import type {
   AgentMention,
@@ -17,7 +18,9 @@ import React, { useContext, useEffect, useRef, useState } from "react";
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
 import useAssistantSuggestions from "@app/components/assistant/conversation/input_bar/editor/useAssistantSuggestions";
 import type { CustomEditorProps } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
-import useCustomEditor from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
+import useCustomEditor, {
+  getJSONFromText,
+} from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import useHandleMentions from "@app/components/assistant/conversation/input_bar/editor/useHandleMentions";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
@@ -28,6 +31,7 @@ export const INPUT_BAR_ACTIONS = [
   "assistants-list",
   "assistants-list-with-actions",
   "fullscreen",
+  "cancel-edit-message",
 ] as const;
 
 export type InputBarAction = (typeof INPUT_BAR_ACTIONS)[number];
@@ -80,7 +84,7 @@ const InputBarContainer = ({
 
   // When input bar animation is requested it means the new button was clicked (removing focus from
   // the input bar), we grab it back.
-  const { animate } = useContext(InputBarContext);
+  const { animate, editMessage, setEditMessage } = useContext(InputBarContext);
   useEffect(() => {
     if (animate) {
       editorService.focusEnd();
@@ -94,6 +98,17 @@ const InputBarContainer = ({
     selectedAssistant,
     disableAutoFocus
   );
+
+  useEffect(() => {
+    if (editMessage) {
+      const jsonContent = getJSONFromText(
+        editMessage.content,
+        agentConfigurations
+      );
+      editorService.setJSONContent(jsonContent);
+      fileUploaderService.resetUpload();
+    }
+  }, [editMessage, agentConfigurations, editorService]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -170,6 +185,16 @@ const InputBarContainer = ({
                 icon={isExpanded ? FullscreenExitIcon : FullscreenIcon}
                 size="xs"
                 onClick={handleExpansionToggle}
+              />
+            </div>
+          )}
+          {actions.includes("cancel-edit-message") && (
+            <div className="hidden sm:flex">
+              <Button
+                variant="ghost-secondary"
+                icon={XMarkIcon}
+                size="xs"
+                onClick={() => setEditMessage(null)}
               />
             </div>
           )}
