@@ -10,18 +10,14 @@ import {
   CoreAPI,
   Err,
   getSanitizedHeaders,
-  getSmallWhitelistedModel,
   guessDelimiter,
   Ok,
 } from "@dust-tt/types";
 import { CsvError, parse } from "csv-parse";
-import * as t from "io-ts";
 import { DateTime } from "luxon";
 
-import { callAction } from "@app/lib/actions/helpers";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import logger from "@app/logger/logger";
 
 import type { DataSourceResource } from "../resources/data_source_resource";
