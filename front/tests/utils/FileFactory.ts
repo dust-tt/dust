@@ -31,7 +31,6 @@ export class FileFactory {
       useCase: FileUseCase;
       useCaseMetadata?: FileUseCaseMetadata | null;
       snippet?: string | null;
-      content?: string | null; // Content to store in GCS
     }
   ) {
     const file = await FileResource.makeNew({
@@ -52,5 +51,32 @@ export class FileFactory {
     }
 
     return file;
+  }
+
+  static csv(
+    workspace: WorkspaceType,
+    user: UserResource,
+    {
+      useCase,
+      useCaseMetadata,
+      fileName,
+      status,
+      fileSize,
+    }: {
+      useCase: FileUseCase;
+      useCaseMetadata?: FileUseCaseMetadata;
+      fileName?: string;
+      fileSize?: number;
+      status?: FileStatus;
+    }
+  ) {
+    return this.create(workspace, user, {
+      contentType: "text/csv",
+      fileName: fileName ?? "file.csv",
+      fileSize: fileSize ?? 100,
+      status: status ?? "ready",
+      useCase,
+      useCaseMetadata,
+    });
   }
 }

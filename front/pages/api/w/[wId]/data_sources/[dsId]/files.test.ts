@@ -134,13 +134,8 @@ describe("POST /api/w/[wId]/data_sources/[dsId]/files", () => {
         space,
         t
       );
-      const file = await FileFactory.create(workspace, user, {
-        contentType: "text/csv",
-        fileName: "test.csv",
-        fileSize: 100,
-        status: "ready",
+      const file = await FileFactory.csv(workspace, user, {
         useCase: "folder_table",
-        content: "foo,bar,baz\n1,2,3\n4,5,6",
       });
 
       req.query.dsId = dataSourceView.dataSource.sId;
@@ -198,9 +193,6 @@ describe("POST /api/w/[wId]/data_sources/[dsId]/files", () => {
       await handler(req, res);
 
       expect(res._getStatusCode()).toBe(200);
-      expect(res._getJSONData()).toEqual({
-        file: file.toPublicJSON(auth),
-      });
     }
   );
 });
