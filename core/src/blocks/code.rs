@@ -9,7 +9,7 @@ use tokio::sync::mpsc::UnboundedSender;
 
 #[derive(Clone)]
 pub struct Code {
-    code: String,
+    pub code: String,
 }
 
 impl Code {

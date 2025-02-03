@@ -1,7 +1,10 @@
+use std::any::Any;
+
 use anyhow::{anyhow, Result};
 
 use dust::{
     app::App,
+    blocks::{block::BlockType, code::Code},
     project::Project,
     stores::{postgres, store},
 };
@@ -39,6 +42,13 @@ async fn print_specification_hashes(project_id: i64, hash: &str) -> Result<()> {
         hasher.update(prev_hash.as_bytes());
         hasher.update(name.as_bytes());
         hasher.update(hash.as_bytes());
+
+        if block.block_type() == BlockType::Code {
+            if let Some(code_block) = block.as_any().downcast_ref::<Code>() {
+                println!("Code bytes: {:x?}", code_block.code.as_bytes());
+                println!("Code length: {}", code_block.code.len());
+            }
+        }
 
         println!("BLOCK HASH FOR BLOCK {} / HASH {}", name, hash);
 
