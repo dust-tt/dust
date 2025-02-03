@@ -2,6 +2,7 @@ use std::collections::HashSet;
 
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
+use futures::future::try_join_all;
 use gcp_bigquery_client::{
     model::{
         field_type::FieldType, get_query_results_parameters::GetQueryResultsParameters, job::Job,
@@ -31,6 +32,46 @@ pub struct BigQueryRemoteDatabase {
     project_id: String,
     region: String,
     client: Client,
+}
+
+impl TryFrom<&gcp_bigquery_client::model::table_schema::TableSchema> for TableSchema {
+    type Error = anyhow::Error;
+
+    fn try_from(
+        schema: &gcp_bigquery_client::model::table_schema::TableSchema,
+    ) -> Result<Self, Self::Error> {
+        match &schema.fields {
+            Some(fields) => Ok(TableSchema::from_columns(
+                fields
+                    .iter()
+                    .map(|f| TableSchemaColumn {
+                        name: f.name.clone(),
+                        value_type: match f.r#type {
+                            FieldType::String => TableSchemaFieldType::Text,
+                            FieldType::Integer | FieldType::Int64 => TableSchemaFieldType::Int,
+                            FieldType::Float
+                            | FieldType::Float64
+                            | FieldType::Numeric
+                            | FieldType::Bignumeric => TableSchemaFieldType::Float,
+                            FieldType::Boolean | FieldType::Bool => TableSchemaFieldType::Bool,
+                            FieldType::Timestamp
+                            | FieldType::Datetime
+                            | FieldType::Date
+                            | FieldType::Time => TableSchemaFieldType::DateTime,
+                            FieldType::Bytes
+                            | FieldType::Geography
+                            | FieldType::Json
+                            | FieldType::Record
+                            | FieldType::Struct
+                            | FieldType::Interval => TableSchemaFieldType::Text,
+                        },
+                        possible_values: None,
+                    })
+                    .collect(),
+            )),
+            None => Err(anyhow!("No fields found in schema"))?,
+        }
+    }
 }
 
 pub const MAX_QUERY_RESULT_SIZE_BYTES: usize = 8 * 1024 * 1024; // 8MB
@@ -140,8 +181,8 @@ impl BigQueryRemoteDatabase {
             }
         }
 
-        let fields = match schema {
-            Some(s) => match s.fields {
+        let fields = match &schema {
+            Some(s) => match &s.fields {
                 Some(f) => f,
                 None => Err(QueryDatabaseError::GenericError(anyhow!(
                     "Schema not found"
@@ -152,41 +193,19 @@ impl BigQueryRemoteDatabase {
             )))?,
         };
 
-        let schema = TableSchema::from_columns(
-            fields
-                .iter()
-                .map(|f| TableSchemaColumn {
-                    name: f.name.clone(),
-                    value_type: match f.r#type {
-                        FieldType::String => TableSchemaFieldType::Text,
-                        FieldType::Integer | FieldType::Int64 => TableSchemaFieldType::Int,
-                        FieldType::Float
-                        | FieldType::Float64
-                        | FieldType::Numeric
-                        | FieldType::Bignumeric => TableSchemaFieldType::Float,
-                        FieldType::Boolean | FieldType::Bool => TableSchemaFieldType::Bool,
-                        FieldType::Timestamp
-                        | FieldType::Datetime
-                        | FieldType::Date
-                        | FieldType::Time => TableSchemaFieldType::DateTime,
-                        FieldType::Bytes
-                        | FieldType::Geography
-                        | FieldType::Json
-                        | FieldType::Record
-                        | FieldType::Struct
-                        | FieldType::Interval => TableSchemaFieldType::Text,
-                    },
-                    possible_values: None,
-                })
-                .collect(),
-        );
+        let schema = match &schema {
+            Some(s) => TableSchema::try_from(s)?,
+            None => Err(QueryDatabaseError::GenericError(anyhow!(
+                "Schema not found"
+            )))?,
+        };
 
         let parsed_rows = all_rows
             .into_iter()
             .map(|row| {
                 let cols = row.columns.unwrap_or_default();
                 let mut map = serde_json::Map::new();
-                for (c, f) in cols.into_iter().zip(&fields) {
+                for (c, f) in cols.into_iter().zip(fields) {
                     map.insert(
                         f.name.clone(),
                         match c.value {
@@ -317,9 +336,29 @@ impl RemoteDatabase for BigQueryRemoteDatabase {
         self.execute_query(query).await
     }
 
-    async fn get_tables_schema(&self, _opaque_ids: &Vec<&str>) -> Result<Vec<TableSchema>> {
-        // TODO(BIGQUERY): Implement this
-        Ok(vec![])
+    async fn get_tables_schema(&self, opaque_ids: &Vec<&str>) -> Result<Vec<TableSchema>> {
+        let bq_tables: Vec<gcp_bigquery_client::model::table::Table> =
+            try_join_all(opaque_ids.iter().map(|opaque_id| async move {
+                let parts: Vec<&str> = opaque_id.split('.').collect();
+                if parts.len() != 2 {
+                    Err(anyhow!("Invalid opaque ID: {}", opaque_id))?
+                }
+                let (dataset_id, table_id) = (parts[0], parts[1]);
+
+                self.client
+                    .table()
+                    .get(&self.project_id, dataset_id, table_id, None)
+                    .await
+                    .map_err(|e| anyhow!("Error getting table metadata: {}", e))
+            }))
+            .await?;
+
+        let schemas: Vec<TableSchema> = bq_tables
+            .into_iter()
+            .map(|table| TableSchema::try_from(&table.schema))
+            .collect::<Result<Vec<TableSchema>>>()?;
+
+        Ok(schemas)
     }
 }
 
