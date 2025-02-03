@@ -98,7 +98,7 @@ async function migrateFolderDataSourceParents(
       `SELECT "id", "node_id", "parents", "timestamp", "document", "table"
        FROM data_sources_nodes
        WHERE data_source = :c
-         AND parents[2] IS NOT NULL
+         AND parents[2] IS NOT NULL -- leverages the index on (data_source, (parents[2]))
          AND id > :nextId
        LIMIT :batchSize`,
       {
