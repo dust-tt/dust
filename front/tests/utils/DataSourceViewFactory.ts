@@ -1,13 +1,13 @@
+import type { WorkspaceType } from "@dust-tt/types";
 import { faker } from "@faker-js/faker";
 import type { Transaction } from "sequelize";
 
-import type { Workspace } from "@app/lib/models/workspace";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 
 export class DataSourceViewFactory {
   static async folder(
-    workspace: Workspace,
+    workspace: WorkspaceType,
     space: SpaceResource,
     t: Transaction
   ) {

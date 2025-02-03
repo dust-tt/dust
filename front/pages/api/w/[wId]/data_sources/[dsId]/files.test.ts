@@ -122,7 +122,7 @@ describe("POST /api/w/[wId]/data_sources/[dsId]/files", () => {
   itInTransaction(
     "successfully upserts file to data source with the right arguments",
     async (t) => {
-      const { req, res, workspace, globalGroup, auth } =
+      const { req, res, workspace, globalGroup, user } =
         await createPrivateApiMockRequest({
           method: "POST",
         });
@@ -134,7 +134,7 @@ describe("POST /api/w/[wId]/data_sources/[dsId]/files", () => {
         space,
         t
       );
-      const file = await FileFactory.create(auth, {
+      const file = await FileFactory.create(workspace, user, {
         contentType: "text/csv",
         fileName: "test.csv",
         fileSize: 100,
