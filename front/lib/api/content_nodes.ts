@@ -97,10 +97,10 @@ export function computeNodesDiff({
         if (
           // For snowflake we ignore the missing nodes if we returned a node that is a parent.
           // This is because connectors returns all children tables when fed with internalIds while core returns only these ids
-          // See https://github.com/orgs/dust-tt/projects/3/views/1?pane=issue&itemId=95859834&issue=dust-tt%7Cdust%7C10400
+          // See https://github.com/dust-tt/dust/issues/10400
           !(
             provider === "snowflake" &&
-            coreNodes.some((n) =>
+            coreContentNodes.some((n) =>
               connectorsNode.internalId.startsWith(n.internalId)
             )
           )
@@ -372,14 +372,14 @@ export function computeNodesDiff({
         provider !== "slack" ||
         !coreNode.internalId.startsWith("slack-channel-")
     )
-    // Snowflake schemas are returned from core, while connector only return tables
-    // Detect schema for which we have a table in connectors and ignore them.
+    // Snowflake schemas and dbs are returned from core, while connector only return tables
+    // Detect schemas/dbs for which we have a table in connectors and ignore them.
     // See https://github.com/orgs/dust-tt/projects/3/views/1?pane=issue&itemId=95859834&issue=dust-tt%7Cdust%7C10400
     .filter(
       (coreNode) =>
         !(
           provider === "snowflake" &&
-          coreNode.internalId.split(".").length === 2 &&
+          coreNode.internalId.split(".").length <= 2 &&
           connectorsContentNodes.some((n) =>
             n.internalId.startsWith(coreNode.internalId)
           )
