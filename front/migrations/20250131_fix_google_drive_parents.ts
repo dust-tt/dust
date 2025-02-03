@@ -36,6 +36,7 @@ async function migrateNode({
   try {
     const uniqueIds = [
       ...new Set(
+        // Google Drive node IDs can start either with gdrive- (files and folders) or with google-spreadsheet (sheets).
         [coreNode.node_id, ...coreNode.parents].map((id) =>
           id.startsWith("google-spreadsheet") ? id : id.replace("gdrive-", "")
         )
