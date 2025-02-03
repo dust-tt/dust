@@ -10,6 +10,7 @@ use crate::stores::store::Store;
 use crate::utils;
 use crate::{DustParser, Rule};
 use anyhow::{anyhow, Result};
+use base64::Engine;
 use futures::StreamExt;
 use futures::TryStreamExt;
 use parking_lot::Mutex;
@@ -250,10 +251,16 @@ impl App {
             let mut hasher = blake3::Hasher::new();
             hasher.update(prev_hash.as_bytes());
             hasher.update(name.as_bytes());
+            info!(
+                "Block hash {:?} {:?}",
+                name,
+                base64::engine::general_purpose::STANDARD.encode(block.inner_hash())
+            );
             hasher.update(block.inner_hash().as_bytes());
             prev_hash = format!("{}", hasher.finalize().to_hex());
             hashes.push(prev_hash.clone());
         }
+        info!("App hash {:?}", prev_hash);
 
         Ok(App {
             hash: prev_hash,
