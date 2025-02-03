@@ -9,6 +9,12 @@ export default async function setup() {
     );
   }
 
+  if (process.env.NODE_ENV !== "test") {
+    throw new Error(
+      `NODE_ENV must be set to "test" (value: ${process.env.NODE_ENV}). Action: make sure your have the correct environnement variable set.`
+    );
+  }
+
   process.env = {
     // Keep essential Node vars
     NODE_ENV: process.env.NODE_ENV,
