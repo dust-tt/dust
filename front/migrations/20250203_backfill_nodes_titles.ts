@@ -16,9 +16,9 @@ type Node = {
   title: string;
 };
 
-function getTitleFromTags(tags: string[]): string | null {
+function getTitleFromTags(node: Node): string | null {
   return (
-    tags
+    node.tags_array
       .filter((tag) => tag.startsWith("title:"))
       .map((n) => n.split("title:").slice(1).join(""))[0] || null
   );
@@ -49,12 +49,12 @@ function logInconsistencies(nodes: Node[], logger: typeof Logger) {
   const diff = Object.fromEntries(
     nodes
       .filter((n) => {
-        const titleFromTag = getTitleFromTags(n.tags_array);
+        const titleFromTag = getTitleFromTags(n);
         return titleFromTag && n.title === titleFromTag;
       })
       .map((n) => [
         n.node_id,
-        { tagTitle: getTitleFromTags(n.tags_array), nodeTitle: n.title },
+        { tagTitle: getTitleFromTags(n), nodeTitle: n.title },
       ])
   );
   if (Object.keys(diff).length > 0) {
@@ -76,7 +76,7 @@ async function processNodes({
   logger: typeof Logger;
 }) {
   const nodes = allNodes.filter((n) => {
-    const titleFromTag = getTitleFromTags(n.tags_array);
+    const titleFromTag = getTitleFromTags(n);
     return titleFromTag && titleFromTag !== n.title;
   });
   logger.info(`Found ${nodes.length} nodes to process.`);
@@ -84,7 +84,7 @@ async function processNodes({
     return;
   }
   // Replacing the titles with the ones in the tags.
-  const titles = nodes.map((n) => getTitleFromTags(n.tags_array));
+  const titles = nodes.map(getTitleFromTags);
 
   if (execute) {
     await coreSequelize.query(
