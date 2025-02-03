@@ -26,7 +26,7 @@ const preview: Preview = {
       default: "light",
       list: [
         { name: "light", class: "", color: "#ffffff" },
-        { name: "dark", class: "s-dark", color: "#0f172a" },
+        { name: "dark", class: "s-dark", color: "s-bg-slate-800" },
       ],
     },
   },

@@ -268,7 +268,7 @@ module.exports = {
           DEFAULT: colors.blue[500],
           light: { DEFAULT: colors.blue[400], night: colors.blue[600] },
           dark: { DEFAULT: colors.blue[600], night: colors.blue[400] },
-          muted: { DEFAULT: "#AFCDEF", dark: "#284896" },
+          muted: { DEFAULT: "#AFCDEF", night: "#284896" },
           950: { DEFAULT: colors.blue[950], night: colors.blue[50] },
           900: { DEFAULT: colors.blue[900], night: colors.blue[100] },
           800: { DEFAULT: colors.blue[800], night: colors.blue[200] },
