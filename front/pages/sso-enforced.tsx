@@ -1,6 +1,5 @@
 import { Button, Logo } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
-import Link from "next/link";
 
 import { makeEnterpriseConnectionInitiateLoginUrl } from "@app/lib/api/enterprise_connection";
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
