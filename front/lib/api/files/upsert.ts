@@ -257,11 +257,16 @@ const upsertTableToDatasource: ProcessingFunction = async ({
   if (upsertArgs && "tableId" in upsertArgs) {
     tableId = upsertArgs.tableId ?? tableId;
   }
+  let description = "Table uploaded from file";
+  if (upsertArgs && "description" in upsertArgs && !upsertArgs.description) {
+    description = upsertArgs.description;
+  }
   const { title: upsertTitle, ...restArgs } = upsertArgs ?? {};
+
   const upsertTableRes = await upsertTable({
     tableId,
     name: slugify(file.fileName),
-    description: "Table uploaded from file",
+    description,
     truncate: true,
     csv: content,
     tags: [`title:${file.fileName}`, `fileId:${file.sId}`],
