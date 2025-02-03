@@ -17,10 +17,10 @@ import {
   confluenceUpsertPagesWithFullParentsWorkflow,
   confluenceUpsertPageWithFullParentsWorkflow,
 } from "@connectors/connectors/confluence/temporal/workflows";
+import { ConfluenceSpace } from "@connectors/lib/models/confluence";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import { ConfluenceSpace } from "@connectors/lib/models/confluence";
 
 export const confluence = async ({
   command,
