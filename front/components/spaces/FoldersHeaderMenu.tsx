@@ -8,18 +8,26 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   PlusIcon,
+  Sheet,
+  SheetTrigger,
   TableIcon,
   Tooltip,
 } from "@dust-tt/sparkle";
 import type {
   DataSourceViewType,
   LightWorkspaceType,
+  PlanType,
   SpaceType,
 } from "@dust-tt/types";
 import type { RefObject } from "react";
 import { useState } from "react";
 
-import type { ContentActionsRef } from "@app/components/spaces/ContentActions";
+import { DocumentUploadOrEditModal } from "@app/components/data_source/DocumentUploadOrEditModal";
+import { TableUploadOrEditModal } from "@app/components/data_source/TableUploadOrEditModal";
+import type {
+  ContentActionKey,
+  ContentActionsRef,
+} from "@app/components/spaces/ContentActions";
 import SpaceFolderModal from "@app/components/spaces/SpaceFolderModal";
 
 interface FoldersHeaderMenuProps {
@@ -28,6 +36,9 @@ interface FoldersHeaderMenuProps {
   folder: DataSourceViewType;
   owner: LightWorkspaceType;
   space: SpaceType;
+  plan: PlanType;
+  totalNodesCount: number;
+  onSave: (action: ContentActionKey) => void;
 }
 
 export const FoldersHeaderMenu = ({
@@ -36,6 +47,9 @@ export const FoldersHeaderMenu = ({
   folder,
   owner,
   space,
+  plan,
+  totalNodesCount,
+  onSave,
 }: FoldersHeaderMenuProps) => {
   return (
     <>
@@ -43,6 +57,11 @@ export const FoldersHeaderMenu = ({
         <AddDataDropDownButton
           contentActionsRef={contentActionsRef}
           canWriteInSpace={canWriteInSpace}
+          owner={owner}
+          plan={plan}
+          dataSourceView={folder}
+          totalNodesCount={totalNodesCount}
+          onSave={onSave}
         />
       ) : (
         <Tooltip
@@ -56,6 +75,11 @@ export const FoldersHeaderMenu = ({
             <AddDataDropDownButton
               contentActionsRef={contentActionsRef}
               canWriteInSpace={canWriteInSpace}
+              owner={owner}
+              plan={plan}
+              dataSourceView={folder}
+              totalNodesCount={totalNodesCount}
+              onSave={onSave}
             />
           }
         />
@@ -92,12 +116,25 @@ export const FoldersHeaderMenu = ({
 type AddDataDropDrownButtonProps = {
   contentActionsRef: RefObject<ContentActionsRef>;
   canWriteInSpace: boolean;
+  owner: LightWorkspaceType;
+  plan: PlanType;
+  dataSourceView: DataSourceViewType;
+  totalNodesCount: number;
+  onSave: (action: ContentActionKey) => void;
 };
 
 const AddDataDropDownButton = ({
   contentActionsRef,
   canWriteInSpace,
+  owner,
+  plan,
+  dataSourceView,
+  totalNodesCount,
+  onSave,
 }: AddDataDropDrownButtonProps) => {
+  const [documentSheetOpen, setDocumentSheetOpen] = useState(false);
+  const [tableSheetOpen, setTableSheetOpen] = useState(false);
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -111,20 +148,54 @@ const AddDataDropDownButton = ({
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent>
-        <DropdownMenuItem
-          icon={DocumentTextIcon}
-          onClick={() => {
-            contentActionsRef.current?.callAction("DocumentUploadOrEdit");
-          }}
-          label="Create a document"
-        />
-        <DropdownMenuItem
-          icon={TableIcon}
-          onClick={() => {
-            contentActionsRef.current?.callAction("TableUploadOrEdit");
-          }}
-          label="Create a table"
-        />
+        <Sheet open={documentSheetOpen} onOpenChange={setDocumentSheetOpen}>
+          <SheetTrigger asChild>
+            <DropdownMenuItem
+              icon={DocumentTextIcon}
+              label="Create a document"
+              onSelect={(e) => {
+                e.preventDefault();
+              }}
+            />
+          </SheetTrigger>
+          <DocumentUploadOrEditModal
+            dataSourceView={dataSourceView}
+            owner={owner}
+            plan={plan}
+            totalNodesCount={totalNodesCount}
+            onClose={(save) => {
+              if (save) {
+                onSave("DocumentUploadOrEdit");
+                setDocumentSheetOpen(false);
+              }
+            }}
+          />
+        </Sheet>
+
+        <Sheet open={tableSheetOpen} onOpenChange={setTableSheetOpen}>
+          <SheetTrigger asChild>
+            <DropdownMenuItem
+              icon={TableIcon}
+              label="Create a table"
+              onSelect={(e) => {
+                e.preventDefault();
+              }}
+            />
+          </SheetTrigger>
+          <TableUploadOrEditModal
+            dataSourceView={dataSourceView}
+            owner={owner}
+            plan={plan}
+            totalNodesCount={totalNodesCount}
+            onClose={(save) => {
+              if (save) {
+                onSave("TableUploadOrEdit");
+                setTableSheetOpen(false);
+              }
+            }}
+          />
+        </Sheet>
+
         <DropdownMenuItem
           icon={CloudArrowUpIcon}
           onClick={() => {

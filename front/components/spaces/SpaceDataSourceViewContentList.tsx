@@ -475,7 +475,10 @@ export const SpaceDataSourceViewContentList = ({
                 space={space}
                 canWriteInSpace={canWriteInSpace}
                 folder={dataSourceView}
+                plan={plan}
                 contentActionsRef={contentActionsRef}
+                totalNodesCount={totalNodesCount}
+                onSave={onSaveAction}
               />
             </>
           )}

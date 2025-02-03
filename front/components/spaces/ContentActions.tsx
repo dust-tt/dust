@@ -23,9 +23,7 @@ import React, {
 } from "react";
 
 import { DocumentOrTableDeleteDialog } from "@app/components/data_source/DocumentOrTableDeleteDialog";
-import { DocumentUploadOrEditModal } from "@app/components/data_source/DocumentUploadOrEditModal";
 import { MultipleDocumentsUpload } from "@app/components/data_source/MultipleDocumentsUpload";
-import { TableUploadOrEditModal } from "@app/components/data_source/TableUploadOrEditModal";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { AddToSpaceDialog } from "@app/components/spaces/AddToSpaceDialog";
 import {
@@ -50,11 +48,6 @@ export type ContentAction = {
   action?: ContentActionKey;
   contentNode?: DataSourceViewContentNode;
 };
-
-const isUploadOrEditAction = (
-  action: ContentActionKey | undefined
-): action is UploadOrEditContentActionKey =>
-  ["DocumentUploadOrEdit", "TableUploadOrEdit"].includes(action || "");
 
 type ContentActionsProps = {
   dataSourceView: DataSourceViewType;
@@ -118,30 +111,8 @@ export const ContentActions = React.forwardRef<
       [currentAction, onSave]
     );
 
-    const contentNode = isUploadOrEditAction(currentAction.action)
-      ? currentAction.contentNode
-      : undefined;
-
-    // This is a union of the props for the two modals
-    // Makes sense because both expect the same schema
-    const modalProps = {
-      contentNode,
-      dataSourceView,
-      isOpen: isUploadOrEditAction(currentAction.action),
-      onClose,
-      owner,
-      plan,
-      totalNodesCount,
-      initialId: contentNode?.internalId,
-    };
-
     return (
       <>
-        {currentAction.action === "TableUploadOrEdit" ? (
-          <TableUploadOrEditModal {...modalProps} />
-        ) : (
-          <DocumentUploadOrEditModal {...modalProps} />
-        )}
         <MultipleDocumentsUpload
           dataSourceView={dataSourceView}
           isOpen={currentAction.action === "MultipleDocumentsUpload"}
