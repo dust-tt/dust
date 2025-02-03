@@ -57,6 +57,20 @@ impl App {
             .collect()
     }
 
+    pub fn blocks_with_hashes(&self) -> Vec<(BlockType, String, String, String)> {
+        self.blocks
+            .iter()
+            .map(|(chain_hash, name, block)| {
+                (
+                    block.block_type(),
+                    name.clone(),
+                    chain_hash.clone(),
+                    block.inner_hash(),
+                )
+            })
+            .collect()
+    }
+
     pub fn has_input(&self) -> bool {
         self.blocks
             .iter()
