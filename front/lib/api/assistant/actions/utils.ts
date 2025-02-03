@@ -96,7 +96,7 @@ export const ACTION_SPECIFICATIONS: Record<
     description: "Complex step by step reasoning",
     cardIcon: ChatBubbleThoughtIcon,
     dropDownIcon: ChatBubbleThoughtIcon,
-    flag: "reasoning_tool_feature",
+    flag: null,
   },
 };
 

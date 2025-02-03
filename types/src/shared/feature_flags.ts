@@ -18,7 +18,6 @@ export const WHITELISTABLE_FEATURES = [
   "labs_trackers",
   "show_debug_tools",
   "labs_github_actions",
-  "reasoning_tool_feature",
   "deepseek_r1_global_agent_feature",
   "bigquery_feature",
 ] as const;
