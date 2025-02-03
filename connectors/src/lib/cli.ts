@@ -160,6 +160,12 @@ export const connectors = async ({
       return { success: true };
     }
 
+    case "clear-error": {
+      connector.errorType = null;
+      await connector.save();
+      return { success: true };
+    }
+
     case "set-error": {
       if (!args.error) {
         throw new Error("Missing --error argument");

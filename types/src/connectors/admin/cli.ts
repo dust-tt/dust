@@ -12,6 +12,7 @@ export const ConnectorsCommandSchema = t.type({
     t.literal("resume"),
     t.literal("full-resync"),
     t.literal("set-error"),
+    t.literal("clear-error"),
     t.literal("restart"),
     t.literal("get-parents"),
     t.literal("set-permission"),

@@ -1144,3 +1144,51 @@ export async function pauseAllManagedDataSources(
 
   return new Ok(res);
 }
+
+export async function resumeAllManagedDataSources(auth: Authenticator) {
+  const dataSources = await getAllManagedDataSources(auth);
+
+  const connectorsAPI = new ConnectorsAPI(
+    config.getConnectorsAPIConfig(),
+    logger
+  );
+
+  const res = await concurrentExecutor(
+    dataSources,
+    async (ds) => {
+      assert(ds.connectorId, "Connector ID is required");
+
+      const { connectorId } = ds;
+
+      const setErrorCommand: AdminCommandType = {
+        majorCommand: "connectors",
+        command: "clear-error",
+        args: {
+          connectorId,
+          wId: auth.getNonNullableWorkspace().sId,
+          dsId: ds.sId,
+        },
+      };
+
+      const setErrorRes = await connectorsAPI.admin(setErrorCommand);
+      if (setErrorRes.isErr()) {
+        return new Err(new Error(setErrorRes.error.message));
+      }
+
+      const resumeRes = await connectorsAPI.resumeConnector(ds.connectorId);
+      if (resumeRes.isErr()) {
+        return new Err(new Error(resumeRes.error.message));
+      }
+
+      return new Ok(resumeRes.value);
+    },
+    { concurrency: 5 }
+  );
+
+  const failed = res.filter((r) => r.isErr());
+  if (failed.length > 0) {
+    return new Err(new Error(`Failed to pause ${failed.length} connectors.`));
+  }
+
+  return new Ok(res);
+}
