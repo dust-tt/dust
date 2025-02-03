@@ -25,7 +25,6 @@ import React, {
 import { DocumentOrTableDeleteDialog } from "@app/components/data_source/DocumentOrTableDeleteDialog";
 import { DocumentUploadOrEditModal } from "@app/components/data_source/DocumentUploadOrEditModal";
 import { MultipleDocumentsUpload } from "@app/components/data_source/MultipleDocumentsUpload";
-import { TableUploadOrEditModal } from "@app/components/data_source/TableUploadOrEditModal";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { AddToSpaceDialog } from "@app/components/spaces/AddToSpaceDialog";
 import {
@@ -34,6 +33,7 @@ import {
   isManaged,
   isWebsite,
 } from "@app/lib/data_sources";
+import { TableUploadOrEditModal } from "@app/components/data_source/TableUploadOrEditModal";
 
 export type UploadOrEditContentActionKey =
   | "DocumentUploadOrEdit"
@@ -137,11 +137,8 @@ export const ContentActions = React.forwardRef<
 
     return (
       <>
-        {currentAction.action === "TableUploadOrEdit" ? (
-          <TableUploadOrEditModal {...modalProps} />
-        ) : (
-          <DocumentUploadOrEditModal {...modalProps} />
-        )}
+        <TableUploadOrEditModal {...modalProps} />
+        <DocumentUploadOrEditModal {...modalProps} />
         <MultipleDocumentsUpload
           dataSourceView={dataSourceView}
           isOpen={currentAction.action === "MultipleDocumentsUpload"}
