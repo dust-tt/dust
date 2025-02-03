@@ -99,7 +99,7 @@ const AddDataDropDownButton = ({
   canWriteInSpace,
 }: AddDataDropDrownButtonProps) => {
   return (
-    <DropdownMenu modal={false}>
+    <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
           size="sm"
