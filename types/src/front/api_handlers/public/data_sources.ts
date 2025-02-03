@@ -90,7 +90,6 @@ export const UpsertTableFromCsvRequestSchema = t.intersection([
     parentId: t.union([t.string, t.undefined, t.null]),
     parents: t.union([t.array(t.string), t.undefined, t.null]),
     truncate: t.boolean,
-    useAppForHeaderDetection: t.union([t.boolean, t.undefined, t.null]),
     async: t.union([t.boolean, t.undefined]),
     title: t.string,
     mimeType: t.string,

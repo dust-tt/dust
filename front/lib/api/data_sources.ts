@@ -453,7 +453,6 @@ export interface UpsertTableArgs {
   async: boolean;
   dataSource: DataSourceResource;
   auth: Authenticator;
-  useAppForHeaderDetection?: boolean;
   title: string;
   mimeType: string;
   sourceUrl?: string | null;
@@ -472,7 +471,6 @@ export async function upsertTable({
   async,
   dataSource,
   auth,
-  useAppForHeaderDetection,
   title,
   mimeType,
   sourceUrl,
@@ -517,19 +515,9 @@ export async function upsertTable({
     standardizedSourceUrl = standardized;
   }
 
-  const flags = await getFeatureFlags(auth.getNonNullableWorkspace());
-
-  const useAppForHeaderDetectionFlag = flags.includes(
-    "use_app_for_header_detection"
-  );
-
-  const useApp = !!useAppForHeaderDetection && useAppForHeaderDetectionFlag;
-
   if (async) {
     // Ensure the CSV is valid before enqueuing the upsert.
-    const csvRowsRes = csv
-      ? await rowsFromCsv({ auth, csv, useAppForHeaderDetection: useApp })
-      : null;
+    const csvRowsRes = csv ? await rowsFromCsv({ auth, csv }) : null;
     if (csvRowsRes?.isErr()) {
       return csvRowsRes;
     }
@@ -551,7 +539,6 @@ export async function upsertTable({
         tableParents,
         csv: csv ?? null,
         truncate,
-        useAppForHeaderDetection: useApp,
         detectedHeaders,
         title,
         mimeType,
@@ -577,7 +564,6 @@ export async function upsertTable({
     tableParents,
     csv: csv ?? null,
     truncate,
-    useAppForHeaderDetection: useApp,
     title,
     mimeType,
     sourceUrl: standardizedSourceUrl,
@@ -696,17 +682,9 @@ export async function handleDataSourceTableCSVUpsert({
   const tableId = params.tableId ?? generateRandomModelSId();
   const tableParents: string[] = params.parents ?? [tableId];
 
-  const flags = await getFeatureFlags(owner);
-
-  const useAppForHeaderDetection =
-    !!params.useAppForHeaderDetection &&
-    flags.includes("use_app_for_header_detection");
-
   if (async) {
     // Ensure the CSV is valid before enqueuing the upsert.
-    const csvRowsRes = csv
-      ? await rowsFromCsv({ auth, csv, useAppForHeaderDetection })
-      : null;
+    const csvRowsRes = csv ? await rowsFromCsv({ auth, csv }) : null;
     if (csvRowsRes?.isErr()) {
       return new Err({
         name: "dust_error",
@@ -732,7 +710,6 @@ export async function handleDataSourceTableCSVUpsert({
         tableParents,
         csv: csv ?? null,
         truncate,
-        useAppForHeaderDetection,
         detectedHeaders,
         title: params.title,
         mimeType: params.mimeType,
@@ -766,7 +743,6 @@ export async function handleDataSourceTableCSVUpsert({
     tableParents,
     csv: csv ?? null,
     truncate,
-    useAppForHeaderDetection,
     title: params.title,
     mimeType: params.mimeType,
     sourceUrl: params.sourceUrl ?? null,

@@ -557,13 +557,11 @@ async function staticHeaderDetection(
 }
 
 async function detectHeaders(
-  auth: Authenticator,
   csv: string,
-  delimiter: string,
-  useAppForHeaderDetection: boolean
+  delimiter: string
 ): Promise<Result<DetectedHeadersType, CsvParsingError>> {
-  const headParser = parse(csv, { delimiter });
-  const records = [];
+  const headParser = parse(csv, { delimiter, skipEmptyLines: true, to: 8 });
+  let firstRecord: string[] | null = null;
   for await (const anyRecord of headParser) {
     // Assert that record is string[].
     if (!Array.isArray(anyRecord)) {
@@ -580,50 +578,11 @@ async function detectHeaders(
       return new Err({ type: "too_many_columns", message: "Too many columns" });
     }
 
-    if (!useAppForHeaderDetection) {
-      return staticHeaderDetection(record);
-    }
-
-    records.push(record);
-
-    if (records.length === 10) {
-      break;
-    }
+    headParser.destroy();
+    firstRecord = record;
   }
-  headParser.destroy();
-
-  const action = getDustProdAction("table-header-detection");
-
-  const model = getSmallWhitelistedModel(auth.getNonNullableWorkspace());
-  if (!model) {
-    throw new Error("Could not find a whitelisted model for the workspace.");
+  if (!firstRecord) {
+    return new Err({ type: "empty_csv", message: "Empty CSV" });
   }
-
-  const config = cloneBaseConfig(action.config);
-  config.MODEL.provider_id = model.providerId;
-  config.MODEL.model_id = model.modelId;
-
-  const res = await callAction(auth, {
-    action,
-    config,
-    input: { tableData: records },
-    responseValueSchema: t.type({
-      headers: t.array(t.string),
-      rowIndex: t.Integer,
-    }),
-  });
-
-  if (res.isErr()) {
-    logger.warn("Error when running app for detecting header", res.error);
-    // Fallback to statuc header detection.
-    return staticHeaderDetection(records[0]);
-  }
-  const rowIndex = res.value.result.rowIndex;
-  const header = getSanitizedHeaders(res.value.result.headers);
-
-  if (header.isErr()) {
-    return new Err({ type: "invalid_header", message: header.error.message });
-  }
-
-  return new Ok({ header: header.value, rowIndex });
+  return staticHeaderDetection(firstRecord);
 }
