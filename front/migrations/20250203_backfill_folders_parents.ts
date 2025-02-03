@@ -14,40 +14,48 @@ const SELECT_BATCH_SIZE = 256;
 const DATASOURCE_CONCURRENCY = 4;
 const NODE_CONCURRENCY = 8;
 
+type Node = {
+  id: number;
+  node_id: string;
+  parents: string[];
+  timestamp: number;
+  document: number | null;
+  table: number | null;
+};
+
 async function migrateNode(
-  node: any,
+  node: Node,
   coreAPI: CoreAPI,
   projectId: string,
   dataSourceId: string,
-  execute: boolean,
   parentLogger: typeof Logger
 ) {
   const logger = parentLogger.child({
+    rowId: node.id,
     nodeId: node.node_id,
     parents: node.parents,
-    created: new Date(node.created),
+    timestamp: new Date(node.timestamp),
   });
   logger.info("NODE");
-  if (execute) {
-    if (node.document !== null) {
-      await coreAPI.updateDataSourceDocumentParents({
-        projectId,
-        dataSourceId,
-        documentId: node.node_id,
-        parentId: null,
-        parents: [node.node_id],
-      });
-    } else if (node.table !== null) {
-      await coreAPI.updateTableParents({
-        projectId,
-        dataSourceId,
-        tableId: node.node_id,
-        parentId: null,
-        parents: [node.node_id],
-      });
-    } else {
-      logger.warn("Node is neither a document nor a table.");
-    }
+
+  if (node.document !== null) {
+    await coreAPI.updateDataSourceDocumentParents({
+      projectId,
+      dataSourceId,
+      documentId: node.node_id,
+      parentId: null,
+      parents: [node.node_id],
+    });
+  } else if (node.table !== null) {
+    await coreAPI.updateTableParents({
+      projectId,
+      dataSourceId,
+      tableId: node.node_id,
+      parentId: null,
+      parents: [node.node_id],
+    });
+  } else {
+    logger.warn("Node is neither a document nor a table.");
   }
 }
 
@@ -83,11 +91,11 @@ async function migrateFolderDataSourceParents(
   }
 
   let nextId = 0;
-  let nodes: any[];
+  let nodes: Node[];
 
   do {
-    nodes = await coreSequelize.query(
-      `SELECT id, node_id, parents, timestamp
+    nodes = (await coreSequelize.query(
+      `SELECT "id", "node_id", "parents", "timestamp", "document", "table"
        FROM data_sources_nodes
        WHERE data_source = :c
          AND parents[2] IS NOT NULL
@@ -101,20 +109,23 @@ async function migrateFolderDataSourceParents(
         },
         type: QueryTypes.SELECT,
       }
-    );
-    await concurrentExecutor(
-      nodes,
-      async (node) =>
-        migrateNode(
-          node,
-          coreAPI,
-          dustAPIProjectId,
-          dustAPIDataSourceId,
-          execute,
-          logger
-        ),
-      { concurrency: NODE_CONCURRENCY }
-    );
+    )) as Node[];
+    if (execute) {
+      await concurrentExecutor(
+        nodes,
+        async (node) =>
+          migrateNode(
+            node,
+            coreAPI,
+            dustAPIProjectId,
+            dustAPIDataSourceId,
+            logger
+          ),
+        { concurrency: NODE_CONCURRENCY }
+      );
+    } else {
+      logger.info(`Found ${nodes.length} to process.`);
+    }
     if (nodes.length > 0) {
       nextId = nodes[nodes.length - 1].id;
     }
@@ -151,7 +162,7 @@ async function migrateFolderDataSourcesParents(
     if (staticDataSources.length > 0) {
       startId = staticDataSources[staticDataSources.length - 1].id;
     }
-  } while (staticDataSources.length === DATASOURCE_BATCH_SIZE);
+  } while (staticDataSources.length === DATASOURCE_BATCH_SIZE); // early exit on the first incomplete batch
 }
 
 makeScript(
