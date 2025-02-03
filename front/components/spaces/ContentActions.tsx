@@ -137,11 +137,8 @@ export const ContentActions = React.forwardRef<
 
     return (
       <>
-        {currentAction.action === "TableUploadOrEdit" ? (
-          <TableUploadOrEditModal {...modalProps} />
-        ) : (
-          <DocumentUploadOrEditModal {...modalProps} />
-        )}
+        <TableUploadOrEditModal {...modalProps} />
+        <DocumentUploadOrEditModal {...modalProps} />
         <MultipleDocumentsUpload
           dataSourceView={dataSourceView}
           isOpen={currentAction.action === "MultipleDocumentsUpload"}
