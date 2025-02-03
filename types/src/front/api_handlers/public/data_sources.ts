@@ -72,7 +72,6 @@ export const PatchDataSourceTableRequestBodySchema = t.type({
   truncate: t.boolean,
   async: t.union([t.boolean, t.undefined]),
   csv: t.union([t.string, t.undefined]),
-  useAppForHeaderDetection: t.union([t.boolean, t.undefined]),
   title: t.string,
   mimeType: t.string,
   sourceUrl: t.union([t.string, t.undefined, t.null]),
