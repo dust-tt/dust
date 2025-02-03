@@ -7,7 +7,7 @@ import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 
-const SELECT_BATCH_SIZE = 256;
+const SELECT_BATCH_SIZE = 512;
 
 type Node = {
   node_id: string;
