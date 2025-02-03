@@ -1,11 +1,11 @@
+import type { WorkspaceType } from "@dust-tt/types";
 import { faker } from "@faker-js/faker";
 import type { Transaction } from "sequelize";
 
-import type { Workspace } from "@app/lib/models/workspace";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 
 export class SpaceFactory {
-  static async global(workspace: Workspace, t: Transaction) {
+  static async global(workspace: WorkspaceType, t: Transaction) {
     return SpaceResource.makeNew(
       {
         name: "space " + faker.string.alphanumeric(8),
@@ -17,7 +17,7 @@ export class SpaceFactory {
     );
   }
 
-  static async system(workspace: Workspace, t: Transaction) {
+  static async system(workspace: WorkspaceType, t: Transaction) {
     return SpaceResource.makeNew(
       {
         name: "space " + faker.string.alphanumeric(8),
@@ -29,7 +29,7 @@ export class SpaceFactory {
     );
   }
 
-  static async regular(workspace: Workspace, t: Transaction) {
+  static async regular(workspace: WorkspaceType, t: Transaction) {
     return SpaceResource.makeNew(
       {
         name: "space " + faker.string.alphanumeric(8),

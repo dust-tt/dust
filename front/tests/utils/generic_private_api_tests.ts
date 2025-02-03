@@ -73,5 +73,13 @@ export const createPrivateApiMockRequest = async ({
     headers: {},
   });
 
-  return { req, res, workspace, user, membership, globalGroup, systemGroup };
+  return {
+    req,
+    res,
+    workspace,
+    user,
+    membership,
+    globalGroup,
+    systemGroup,
+  };
 };
