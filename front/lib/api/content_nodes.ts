@@ -170,13 +170,23 @@ export function computeNodesDiff({
             }
             // For Google Drive, connectors does not fill the parentInternalId at google_drive/index.ts#L324.
             if (
-              ["parentInternalId"].includes(key) &&
+              ["parentInternalId", "parentInternalIds"].includes(key) &&
               provider === "google_drive" &&
               coreValue !== null &&
               value === null
             ) {
               return false;
             }
+
+            // gdrive_outside_sync is core only.
+            if (
+              "parentInternalIds" === key &&
+              provider === "google_drive" &&
+              coreNode?.parentInternalIds?.includes("gdrive_outside_sync")
+            ) {
+              return false;
+            }
+
             // The notion-syncing is a concept only added to core and not to the parents in content nodes from connectors.
             if (
               ["parentInternalId", "parentInternalIds"].includes(key) &&
