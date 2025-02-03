@@ -387,20 +387,21 @@ export async function importApps(
   return apps;
 }
 
-type CheckRes = {
+interface CheckRes {
   deployed: boolean;
   appId: string;
   appHash: string;
-};
+}
 
 async function selfCheck(auth: Authenticator): Promise<CheckRes[]> {
   const actions = Object.values(BaseDustProdActionRegistry);
+  const appRequest = actions.map((action) => ({
+    appId: action.app.appId,
+    appHash: action.app.appHash,
+  }));
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const apps = await concurrentExecutor(
-    actions.map((action) => ({
-      appId: action.app.appId,
-      appHash: action.app.appHash,
-    })),
+    appRequest,
     async (appRequest) => {
       const app = await AppResource.fetchById(auth, appRequest.appId);
       if (!app) {
