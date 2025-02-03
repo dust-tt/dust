@@ -12,7 +12,7 @@ import {
   Ok,
   TextExtraction,
 } from "@dust-tt/types";
-import { parse } from "csv-parse";
+import { CsvError, parse } from "csv-parse";
 import type { IncomingMessage } from "http";
 import sharp from "sharp";
 import type { TransformCallback } from "stream";
@@ -226,8 +226,13 @@ const extractContentAndSchemaFromDelimitedTextFiles = async (
         workspaceId: auth.workspace()?.sId,
         error: err,
       },
-      `Failed to extract text or snippet from ${format.toUpperCase()}.`
+      `Failed extracting from ${format.toUpperCase()}.`
     );
+    if (err instanceof CsvError) {
+      // In case of CSV, we want to original error to handle it as 400.
+      return new Err(err);
+    }
+
     const errorMessage =
       err instanceof Error ? err.message : "Unexpected error";
     return new Err(
@@ -454,11 +459,20 @@ export async function processAndStoreFile(
   const processingRes = await maybeApplyProcessing(auth, file);
   if (processingRes.isErr()) {
     await file.markAsFailed();
-    return new Err({
-      name: "dust_error",
-      code: "internal_server_error",
-      message: `Failed to process the file : ${processingRes.error}`,
-    });
+
+    if (processingRes.error instanceof CsvError) {
+      return new Err({
+        name: "dust_error",
+        code: "invalid_request_error",
+        message: `Failed to process the file : ${processingRes.error}`,
+      });
+    } else {
+      return new Err({
+        name: "dust_error",
+        code: "internal_server_error",
+        message: `Failed to process the file : ${processingRes.error}`,
+      });
+    }
   }
 
   await file.markAsReady();
