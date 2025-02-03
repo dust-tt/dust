@@ -150,9 +150,6 @@ export const confluence = async ({
         throw new Error("Missing --connectorId argument");
       }
       if (!args.spaceId) {
-        throw new Error("Missing --spaceId argument");
-      }
-      if (args.spaceId === "all") {
         const spaces = await ConfluenceSpace.findAll({
           attributes: ["spaceId"],
           where: { connectorId: args.connectorId },
