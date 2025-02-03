@@ -2,6 +2,7 @@ import type { ApiAppType } from "@dust-tt/client";
 import { DustAPI } from "@dust-tt/client";
 import type { CoreAPIError, Result, TraceType } from "@dust-tt/types";
 import {
+  concurrentExecutor,
   CoreAPI,
   credentialsFromProviders,
   Err,
@@ -15,6 +16,7 @@ import { default as config } from "@app/lib/api/config";
 import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
 import { config as regionConfig } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";
+import { BaseDustProdActionRegistry } from "@app/lib/registry";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
@@ -385,12 +387,59 @@ export async function importApps(
   return apps;
 }
 
+interface CheckRes {
+  deployed: boolean;
+  appId: string;
+  appHash: string;
+}
+
+async function selfCheck(auth: Authenticator): Promise<CheckRes[]> {
+  const actions = Object.values(BaseDustProdActionRegistry);
+  const appRequest = actions.map((action) => ({
+    appId: action.app.appId,
+    appHash: action.app.appHash,
+  }));
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+  const apps = await concurrentExecutor(
+    appRequest,
+    async (appRequest) => {
+      const app = await AppResource.fetchById(auth, appRequest.appId);
+      if (!app) {
+        return { ...appRequest, deployed: false };
+      }
+      const coreSpec = await coreAPI.getSpecification({
+        projectId: app.dustAPIProjectId,
+        specificationHash: appRequest.appHash,
+      });
+      if (coreSpec.isErr()) {
+        return { ...appRequest, deployed: false };
+      }
+
+      return { ...appRequest, deployed: true };
+    },
+    { concurrency: 5 }
+  );
+
+  return apps;
+}
+
 export async function synchronizeDustApps(
   auth: Authenticator,
   space: SpaceResource
-): Promise<Result<ImportRes[], Error | CoreAPIError>> {
+): Promise<
+  Result<
+    {
+      importedApp: ImportRes[];
+      check: CheckRes[];
+    },
+    Error | CoreAPIError
+  >
+> {
   if (!regionConfig.getDustRegionSyncEnabled()) {
-    return new Ok([]);
+    return new Ok({
+      importedApp: [],
+      check: [],
+    });
   }
 
   const syncMasterApi = new DustAPI(
@@ -414,5 +463,10 @@ export async function synchronizeDustApps(
 
   const importRes = await importApps(auth, space, exportRes.value);
   logger.info({ importedApp: importRes }, "Apps imported");
-  return new Ok(importRes);
+
+  const selfCheckRes = await selfCheck(auth);
+  return new Ok({
+    importedApp: importRes,
+    check: selfCheckRes.filter((a) => !a.deployed),
+  });
 }
