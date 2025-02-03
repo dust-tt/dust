@@ -10,6 +10,8 @@ import Link from "next/link";
 
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
 
+const SSO_REQUIRED_REASON_PREFIX = "sso_required_";
+
 export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   requireUserPrivilege: "none",
 })<{
@@ -19,8 +21,8 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   const reason =
     typeof context.query.reason === "string" ? context.query.reason : null;
 
-  if (reason?.startsWith("sso_required_")) {
-    const workspaceId = reason.split("sso_required_")[1];
+  if (reason?.startsWith(SSO_REQUIRED_REASON_PREFIX)) {
+    const workspaceId = reason.split(SSO_REQUIRED_REASON_PREFIX)[1];
 
     return {
       redirect: {
