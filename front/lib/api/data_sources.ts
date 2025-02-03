@@ -1187,7 +1187,7 @@ export async function resumeAllManagedDataSources(auth: Authenticator) {
 
   const failed = res.filter((r) => r.isErr());
   if (failed.length > 0) {
-    return new Err(new Error(`Failed to pause ${failed.length} connectors.`));
+    return new Err(new Error(`Failed to resume ${failed.length} connectors.`));
   }
 
   return new Ok(res);
