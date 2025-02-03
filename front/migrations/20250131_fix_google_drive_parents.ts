@@ -34,6 +34,12 @@ async function migrateNode({
   let newParents = coreNode.parents;
   let newParentId: string | null = null;
   try {
+    if (
+      coreNode.table !== null &&
+      !coreNode.node_id.startsWith("google-spreadsheet")
+    ) {
+      logger.warn("Sheet that does not start with google-spreadsheet.");
+    }
     const uniqueIds = [
       ...new Set(
         // Google Drive node IDs can start either with gdrive- (files and folders) or with google-spreadsheet (sheets).
