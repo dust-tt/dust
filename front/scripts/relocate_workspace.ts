@@ -1,17 +1,25 @@
 import { assertNever } from "@dust-tt/types";
 
-import { pauseAllManagedDataSources } from "@app/lib/api/data_sources";
+import {
+  pauseAllManagedDataSources,
+  resumeAllManagedDataSources,
+} from "@app/lib/api/data_sources";
 import type { RegionType } from "@app/lib/api/regions/config";
 import { config, SUPPORTED_REGIONS } from "@app/lib/api/regions/config";
 import {
   setWorkspaceRelocated,
   setWorkspaceRelocating,
+  updateWorkspaceMetadata,
 } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import { makeScript } from "@app/scripts/helpers";
 import { launchWorkspaceRelocationWorkflow } from "@app/temporal/relocation/client";
 
-const RELOCATION_STEPS = ["relocate", "cutover"] as const;
+const RELOCATION_STEPS = [
+  "relocate",
+  "cutover",
+  "resume-in-destination",
+] as const;
 type RelocationStep = (typeof RELOCATION_STEPS)[number];
 
 makeScript(
@@ -98,6 +106,38 @@ makeScript(
           if (workspaceRelocatedRes.isErr()) {
             logger.error(
               `Failed to set workspace as relocated: ${workspaceRelocatedRes.error.message}`
+            );
+            return;
+          }
+          break;
+
+        case "resume-in-destination":
+          if (config.getCurrentRegion() !== destinationRegion) {
+            logger.error(
+              `Resume-in-destination must be run from the destination region. Current region is ${config.getCurrentRegion()}.`
+            );
+            return;
+          }
+
+          // 1) Resume all connectors in the destination region.
+          const resumeRes = await resumeAllManagedDataSources(auth);
+          if (resumeRes.isErr()) {
+            logger.error(
+              `Failed to resume connectors: ${resumeRes.error.message}`
+            );
+            return;
+          }
+
+          // 2) Remove the maintenance metadata.
+          const clearWorkspaceMetadataRes = await updateWorkspaceMetadata(
+            owner,
+            {
+              maintenance: undefined,
+            }
+          );
+          if (clearWorkspaceMetadataRes.isErr()) {
+            logger.error(
+              `Failed to clear workspace metadata: ${clearWorkspaceMetadataRes.error.message}`
             );
             return;
           }
