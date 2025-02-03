@@ -1,4 +1,4 @@
-import { concurrentExecutor } from "@dust-tt/types";
+import { concurrentExecutor, isConnectorProvider } from "@dust-tt/types";
 import type { Sequelize } from "sequelize";
 import { Op, QueryTypes } from "sequelize";
 
@@ -210,38 +210,39 @@ async function migrateDataSource(
   await migrateTables({ coreDataSourceId, coreSequelize, execute, logger });
 }
 
-async function migrateDataSources(
-  nextDataSourceId: number,
-  coreSequelize: Sequelize,
-  execute: boolean,
-  logger: typeof Logger
-) {
-  let startId = nextDataSourceId;
-  let staticDataSources;
-  do {
-    staticDataSources = await DataSourceModel.findAll({
-      where: { connectorProvider: null, id: { [Op.gt]: startId } },
-      limit: DATASOURCE_BATCH_SIZE,
-      order: [["id", "ASC"]],
-    });
-
-    await concurrentExecutor(
-      staticDataSources,
-      async (dataSource) => {
-        await migrateDataSource(dataSource, coreSequelize, execute, logger);
-      },
-      { concurrency: DATASOURCE_CONCURRENCY }
-    );
-    if (staticDataSources.length > 0) {
-      startId = staticDataSources[staticDataSources.length - 1].id;
-    }
-  } while (staticDataSources.length === DATASOURCE_BATCH_SIZE); // early exit on the first incomplete batch
-}
-
 makeScript(
-  { nextDataSourceId: { type: "number", default: 0 } },
-  async ({ nextDataSourceId, execute }, logger) => {
+  {
+    nextDataSourceId: { type: "number", default: 0 },
+    provider: { type: "string" },
+  },
+  async ({ nextDataSourceId, provider, execute }, logger) => {
+    if (!isConnectorProvider(provider)) {
+      logger.error(`Invalid provider ${provider}`);
+      return;
+    }
     const coreSequelize = getCorePrimaryDbConnection();
-    await migrateDataSources(nextDataSourceId, coreSequelize, execute, logger);
+    let startId = nextDataSourceId;
+    let staticDataSources;
+    do {
+      staticDataSources = await DataSourceModel.findAll({
+        where: {
+          connectorProvider: provider,
+          id: { [Op.gt]: startId },
+        },
+        limit: DATASOURCE_BATCH_SIZE,
+        order: [["id", "ASC"]],
+      });
+
+      await concurrentExecutor(
+        staticDataSources,
+        async (dataSource) => {
+          await migrateDataSource(dataSource, coreSequelize, execute, logger);
+        },
+        { concurrency: DATASOURCE_CONCURRENCY }
+      );
+      if (staticDataSources.length > 0) {
+        startId = staticDataSources[staticDataSources.length - 1].id;
+      }
+    } while (staticDataSources.length === DATASOURCE_BATCH_SIZE); // early exit on the first incomplete batch
   }
 );
