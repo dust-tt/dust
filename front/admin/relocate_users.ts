@@ -6,7 +6,83 @@ import { SUPPORTED_REGIONS } from "@app/lib/api/regions/config";
 import { Authenticator } from "@app/lib/auth";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
+
+let remaining = 10;
+let resetTime = Date.now();
+
+function makeAuth0Throttler<T>(
+  { rateLimitThreshold }: { rateLimitThreshold: number },
+  logger: Logger
+) {
+  return async (fn: () => Promise<ApiResponse<T>>) => {
+    if (remaining < rateLimitThreshold) {
+      const now = Date.now();
+      const waitTime = resetTime * 1000 - now;
+      logger.info({ waitTime }, "Waiting");
+      await new Promise((resolve) => setTimeout(resolve, waitTime));
+    }
+
+    const res = await fn();
+    if (res.status !== 200) {
+      logger.error({ res }, "When calling Auth0");
+      process.exit(1);
+    }
+
+    remaining = Number(res.headers.get("x-ratelimit-remaining"));
+    resetTime = Number(res.headers.get("x-ratelimit-reset"));
+
+    const limit = Number(res.headers.get("x-ratelimit-limit"));
+    logger.info({ limit, remaining, resetTime }, "Rate limit");
+
+    return res.data;
+  };
+}
+
+async function changeUserRegion(
+  {
+    auth0Id,
+    region,
+    execute,
+  }: {
+    auth0Id: string;
+    region: string;
+    execute: boolean;
+  },
+  throttler: ReturnType<typeof makeAuth0Throttler>,
+  logger: Logger
+) {
+  const managementClient = getAuth0ManagemementClient();
+
+  logger.info({ user: auth0Id }, "Setting region for user");
+
+  if (execute) {
+    try {
+      await throttler(() => managementClient.users.get({ id: auth0Id }));
+    } catch (err) {
+      logger.error({ user: auth0Id, err }, "Error fetching user");
+      return false;
+    }
+
+    await throttler(() =>
+      managementClient.users.update(
+        {
+          id: auth0Id,
+        },
+        {
+          app_metadata: {
+            region,
+          },
+        }
+      )
+    );
+
+    logger.info({ user: auth0Id }, "Region set for user");
+  }
+
+  return true;
+}
 
 makeScript(
   {
@@ -29,36 +105,8 @@ makeScript(
     { destinationRegion, workspaceId, rateLimitThreshold, execute },
     logger
   ) => {
-    const managementClient = getAuth0ManagemementClient();
-
     const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
     const workspace = auth.getNonNullableWorkspace();
-
-    let remaining = 10;
-    let resetTime = Date.now();
-
-    const throttleAuth0 = async <T>(fn: () => Promise<ApiResponse<T>>) => {
-      if (remaining < rateLimitThreshold) {
-        const now = Date.now();
-        const waitTime = resetTime * 1000 - now;
-        logger.info({ waitTime }, "Waiting");
-        await new Promise((resolve) => setTimeout(resolve, waitTime));
-      }
-
-      const res = await fn();
-      if (res.status !== 200) {
-        logger.error({ res }, "When calling Auth0");
-        process.exit(1);
-      }
-
-      remaining = Number(res.headers.get("x-ratelimit-remaining"));
-      resetTime = Number(res.headers.get("x-ratelimit-reset"));
-
-      const limit = Number(res.headers.get("x-ratelimit-limit"));
-      logger.info({ limit, remaining, resetTime }, "Rate limit");
-
-      return res.data;
-    };
 
     const members = await MembershipResource.getMembershipsForWorkspace({
       workspace,
@@ -84,23 +132,20 @@ makeScript(
 
     let count = 0;
 
+    const throttler = makeAuth0Throttler({ rateLimitThreshold }, logger);
+
     for (const auth0Id of auth0Ids) {
-      count++;
-      logger.info({ user: auth0Id, count }, "Setting region");
-      if (execute) {
-        await throttleAuth0(() =>
-          managementClient.users.update(
-            {
-              id: auth0Id,
-            },
-            {
-              app_metadata: {
-                region: destinationRegion,
-              },
-            }
-          )
-        );
+      const hasChanged = await changeUserRegion(
+        { auth0Id, region: destinationRegion, execute },
+        throttler,
+        logger
+      );
+
+      if (hasChanged) {
+        count++;
       }
     }
+
+    logger.info({ count }, "Relocated users");
   }
 );
