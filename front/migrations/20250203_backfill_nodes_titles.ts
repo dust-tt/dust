@@ -11,10 +11,18 @@ const SELECT_BATCH_SIZE = 512;
 
 type Node = {
   node_id: string;
-  tags_array: Record<string, string>;
+  tags_array: string[];
   timestamp: number;
   title: string;
 };
+
+function getTitleFromTags(tags: string[]): string | null {
+  return (
+    tags
+      .filter((tag) => tag.startsWith("title:"))
+      .map((n) => n.split("title:").slice(1).join(""))[0] || null
+  );
+}
 
 async function getCoreDataSourceId(
   frontDataSource: DataSourceModel,
@@ -40,15 +48,13 @@ async function getCoreDataSourceId(
 function logInconsistencies(nodes: Node[], logger: typeof Logger) {
   const diff = Object.fromEntries(
     nodes
-      .filter(
-        (n) =>
-          n.tags_array.title &&
-          n.title !== n.tags_array.title.split(":")[0] &&
-          n.title !== n.tags_array.title
-      )
+      .filter((n) => {
+        const titleFromTag = getTitleFromTags(n.tags_array);
+        return titleFromTag && n.title === titleFromTag;
+      })
       .map((n) => [
         n.node_id,
-        { tagTitle: n.tags_array.title, nodeTitle: n.title },
+        { tagTitle: getTitleFromTags(n.tags_array), nodeTitle: n.title },
       ])
   );
   if (Object.keys(diff).length > 0) {
@@ -69,15 +75,16 @@ async function processNodes({
   execute: boolean;
   logger: typeof Logger;
 }) {
-  const nodes = allNodes.filter(
-    (n) => n.tags_array.title && n.title === n.tags_array.title.split(":")[0]
-  );
+  const nodes = allNodes.filter((n) => {
+    const titleFromTag = getTitleFromTags(n.tags_array);
+    return titleFromTag && titleFromTag !== n.title;
+  });
   logger.info(`Found ${nodes.length} nodes to process.`);
   if (nodes.length === 0) {
     return;
   }
   // Replacing the titles with the ones in the tags.
-  const titles = nodes.map((n) => n.tags_array.title);
+  const titles = nodes.map((n) => getTitleFromTags(n.tags_array));
 
   if (execute) {
     await coreSequelize.query(
