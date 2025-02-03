@@ -51,7 +51,9 @@ function logInconsistencies(nodes: Node[], logger: typeof Logger) {
         { tagTitle: n.tags_array.title, nodeTitle: n.title },
       ])
   );
-  logger.info({ diff }, "Title inconsistencies.");
+  if (Object.keys(diff).length > 0) {
+    logger.info({ diff }, "Title inconsistencies.");
+  }
 }
 
 async function processNodes({
