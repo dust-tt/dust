@@ -1,4 +1,4 @@
-use std::{collections::HashSet, env, mem};
+use std::{collections::HashSet, env};
 
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -44,7 +44,7 @@ struct SnowflakeQueryPlanEntry {
     operation: Option<String>,
 }
 
-pub const MAX_QUERY_RESULT_SIZE_BYTES: usize = 8 * 1024 * 1024; // 8MB
+pub const MAX_QUERY_RESULT_ROWS: usize = 25_000;
 
 pub const FORBIDDEN_OPERATIONS: [&str; 3] = ["UPDATE", "DELETE", "INSERT"];
 
@@ -235,7 +235,7 @@ impl SnowflakeRemoteDatabase {
             ))),
         }?;
 
-        let mut query_result_size: usize = 0;
+        let mut query_result_rows: usize = 0;
         let mut all_rows: Vec<QueryResult> = Vec::new();
 
         // Fetch results chunk by chunk.
@@ -253,11 +253,11 @@ impl SnowflakeRemoteDatabase {
                         .collect::<Result<Vec<QueryResult>>>()?;
 
                     // Check that total result size so far does not exceed the limit.
-                    query_result_size += rows.len() * mem::size_of::<QueryResult>();
-                    if query_result_size >= MAX_QUERY_RESULT_SIZE_BYTES {
+                    query_result_rows += rows.len();
+                    if query_result_rows >= MAX_QUERY_RESULT_ROWS {
                         return Err(QueryDatabaseError::ResultTooLarge(format!(
-                            "Query result size exceeds limit of {} bytes",
-                            MAX_QUERY_RESULT_SIZE_BYTES
+                            "Query result size exceeds limit of {} rows",
+                            MAX_QUERY_RESULT_ROWS
                         )));
                     }
 

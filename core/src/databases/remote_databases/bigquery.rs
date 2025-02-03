@@ -74,7 +74,7 @@ impl TryFrom<&gcp_bigquery_client::model::table_schema::TableSchema> for TableSc
     }
 }
 
-pub const MAX_QUERY_RESULT_SIZE_BYTES: usize = 8 * 1024 * 1024; // 8MB
+pub const MAX_QUERY_RESULT_ROWS: usize = 25_000;
 pub const PAGE_SIZE: i32 = 500;
 
 impl BigQueryRemoteDatabase {
@@ -125,7 +125,7 @@ impl BigQueryRemoteDatabase {
             )))?,
         };
 
-        let mut query_result_size: usize = 0;
+        let mut query_result_rows: usize = 0;
         let mut all_rows: Vec<TableRow> = Vec::new();
         let mut page_token: Option<String> = None;
         let mut schema: Option<gcp_bigquery_client::model::table_schema::TableSchema> = None;
@@ -155,22 +155,19 @@ impl BigQueryRemoteDatabase {
                 )))?
             }
 
-            query_result_size = query_result_size
-                + res
-                    .total_bytes_processed
-                    .clone()
-                    .map(|s| s.parse::<usize>().unwrap_or(0))
-                    .unwrap_or(0);
+            let rows = res.rows.unwrap_or_default();
 
-            if query_result_size >= MAX_QUERY_RESULT_SIZE_BYTES {
+            query_result_rows += rows.len();
+
+            if query_result_rows >= MAX_QUERY_RESULT_ROWS {
                 return Err(QueryDatabaseError::ResultTooLarge(format!(
-                    "Query result size exceeds limit of {} bytes",
-                    MAX_QUERY_RESULT_SIZE_BYTES
+                    "Query result size exceeds limit of {} rows",
+                    MAX_QUERY_RESULT_ROWS
                 )));
             }
 
             page_token = res.page_token;
-            all_rows.extend(res.rows.unwrap_or_default());
+            all_rows.extend(rows);
 
             if let (None, Some(s)) = (&mut schema, res.schema) {
                 schema = Some(s);
