@@ -634,7 +634,12 @@ export async function syncNonThreaded(
     upsertContext: {
       sync_type: isBatchSync ? "batch" : "incremental",
     },
-    title: tags.find((t) => t.startsWith("title:"))?.split(":")[1] ?? "",
+    title:
+      tags
+        .find((t) => t.startsWith("title:"))
+        ?.split(":")
+        .slice(1)
+        .join(":") ?? "",
     mimeType: MIME_TYPES.SLACK.MESSAGES,
     async: true,
   });
@@ -848,7 +853,12 @@ export async function syncThread(
     upsertContext: {
       sync_type: isBatchSync ? "batch" : "incremental",
     },
-    title: tags.find((t) => t.startsWith("title:"))?.split(":")[1] ?? "",
+    title:
+      tags
+        .find((t) => t.startsWith("title:"))
+        ?.split(":")
+        .slice(1)
+        .join(":") ?? "",
     mimeType: MIME_TYPES.SLACK.THREAD,
     async: true,
   });
