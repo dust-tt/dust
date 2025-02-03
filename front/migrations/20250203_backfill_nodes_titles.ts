@@ -50,7 +50,7 @@ function logInconsistencies(nodes: Node[], logger: typeof Logger) {
     nodes
       .filter((n) => {
         const titleFromTag = getTitleFromTags(n);
-        return titleFromTag && n.title === titleFromTag;
+        return titleFromTag && n.title !== titleFromTag;
       })
       .map((n) => [
         n.node_id,
