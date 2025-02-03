@@ -280,7 +280,7 @@ impl BigQueryRemoteDatabase {
             None => Vec::new(),
         }
         .iter()
-        .map(|t| format!("{}.{}", t.dataset_id, t.table_id))
+        .map(|t| format!("{}.{}.{}", self.project_id, t.dataset_id, t.table_id))
         .collect();
 
         Ok(BigQueryQueryPlan {
@@ -337,10 +337,10 @@ impl RemoteDatabase for BigQueryRemoteDatabase {
         let bq_tables: Vec<gcp_bigquery_client::model::table::Table> =
             try_join_all(opaque_ids.iter().map(|opaque_id| async move {
                 let parts: Vec<&str> = opaque_id.split('.').collect();
-                if parts.len() != 2 {
+                if parts.len() != 3 {
                     Err(anyhow!("Invalid opaque ID: {}", opaque_id))?
                 }
-                let (dataset_id, table_id) = (parts[0], parts[1]);
+                let (dataset_id, table_id) = (parts[1], parts[2]);
 
                 self.client
                     .table()
@@ -361,7 +361,7 @@ impl RemoteDatabase for BigQueryRemoteDatabase {
 
 pub async fn get_bigquery_remote_database(
     credentials: serde_json::Map<String, serde_json::Value>,
-) -> Result<Box<BigQueryRemoteDatabase>> {
+) -> Result<Box<dyn RemoteDatabase + Sync + Send>> {
     let location = match credentials.get("location") {
         Some(serde_json::Value::String(v)) => v.to_string(),
         _ => Err(anyhow!("Invalid credentials: location not found"))?,
