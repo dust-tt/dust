@@ -233,7 +233,7 @@ makeScript(
       return;
     }
     const coreSequelize = getCorePrimaryDbConnection();
-    const staticDataSources = await DataSourceModel.findAll({
+    const dataSources = await DataSourceModel.findAll({
       where: {
         connectorProvider: provider,
         id: { [Op.gt]: nextDataSourceId },
@@ -241,7 +241,7 @@ makeScript(
       order: [["id", "ASC"]],
     });
 
-    for (const dataSource of staticDataSources) {
+    for (const dataSource of dataSources) {
       await migrateDataSource(dataSource, coreSequelize, execute, logger);
     }
   }
