@@ -17,7 +17,7 @@ vi.mock(import("../../lib/auth"), async (importOriginal) => {
   };
 });
 
-import { getSession } from "../../lib/auth";
+import { Authenticator, getSession } from "../../lib/auth";
 
 /**
  * Creates a mock request with authentication for testing private API endpoints.
@@ -36,6 +36,7 @@ import { getSession } from "../../lib/auth";
  *   - user: Created test user
  *   - membership: Created workspace membership
  *   - globalGroup: Created global group for the workspace
+ *   - auth: an admin Authenticator for the test user
  */
 export const createPrivateApiMockRequest = async ({
   method = "GET",
@@ -53,6 +54,13 @@ export const createPrivateApiMockRequest = async ({
   const { globalGroup, systemGroup } = await GroupFactory.defaults(workspace);
 
   const membership = await MembershipFactory.associate(workspace, user, role);
+  const auth = new Authenticator({
+    workspace,
+    user,
+    role: "admin",
+    groups: [globalGroup],
+    subscription: null,
+  });
 
   // Mock the getSession function to return the user without going through the auth0 session
   vi.mocked(getSession).mockReturnValue(
@@ -73,5 +81,14 @@ export const createPrivateApiMockRequest = async ({
     headers: {},
   });
 
-  return { req, res, workspace, user, membership, globalGroup, systemGroup };
+  return {
+    req,
+    res,
+    workspace,
+    user,
+    membership,
+    globalGroup,
+    systemGroup,
+    auth,
+  };
 };

@@ -489,6 +489,7 @@ export async function upsertTable({
       )
     );
   }
+
   // parents and parentId must comply to the invariant parents[1] === parentId
   if (
     (tableParents.length >= 2 || tableParentId !== null) &&
@@ -501,7 +502,6 @@ export async function upsertTable({
       )
     );
   }
-
   let standardizedSourceUrl: string | null = null;
   if (sourceUrl) {
     const { valid: isSourceUrlValid, standardized } = validateUrl(sourceUrl);
