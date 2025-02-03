@@ -372,9 +372,9 @@ export function computeNodesDiff({
         provider !== "slack" ||
         !coreNode.internalId.startsWith("slack-channel-")
     )
-    // Snowflake schemas are returned from core, while connector only return tables
-    // Detect schema for which we have a table in connectors and ignore them.
-    // See https://github.com/dust-tt/dust/issues/10400
+    // Snowflake schemas and dbs are returned from core, while connector only return tables
+    // Detect schemas/dbs for which we have a table in connectors and ignore them.
+    // See https://github.com/orgs/dust-tt/projects/3/views/1?pane=issue&itemId=95859834&issue=dust-tt%7Cdust%7C10400
     .filter(
       (coreNode) =>
         !(
