@@ -1,3 +1,5 @@
+import { assertNever } from "@dust-tt/types";
+
 import { pauseAllManagedDataSources } from "@app/lib/api/data_sources";
 import type { RegionType } from "@app/lib/api/regions/config";
 import { config, SUPPORTED_REGIONS } from "@app/lib/api/regions/config";
@@ -9,10 +11,8 @@ import { Authenticator } from "@app/lib/auth";
 import { makeScript } from "@app/scripts/helpers";
 import { launchWorkspaceRelocationWorkflow } from "@app/temporal/relocation/client";
 
-const mode = {
-  relocation: "relocation",
-  relocationDone: "relocation-done",
-};
+const RELOCATION_STEPS = ["relocate", "cutover"] as const;
+type RelocationStep = (typeof RELOCATION_STEPS)[number];
 
 makeScript(
   {
@@ -31,14 +31,14 @@ makeScript(
       choices: SUPPORTED_REGIONS,
       demandOption: true,
     },
-    mode: {
+    step: {
       type: "string",
-      choices: Object.values(mode),
-      default: mode.relocation,
+      choices: RELOCATION_STEPS,
+      demandOption: true,
     },
   },
   async (
-    { destinationRegion, sourceRegion, workspaceId, mode, execute },
+    { destinationRegion, sourceRegion, step, workspaceId, execute },
     logger
   ) => {
     const currentRegion = config.getCurrentRegion();
@@ -60,8 +60,10 @@ makeScript(
     logger.info("Start relocating workspace");
 
     if (execute) {
-      switch (mode) {
-        case "relocation":
+      const s = step as RelocationStep;
+
+      switch (s) {
+        case "relocate":
           // 1) Set the workspace as relocating.
           const workspaceRelocatingRes = await setWorkspaceRelocating(owner);
           if (workspaceRelocatingRes.isErr()) {
@@ -90,7 +92,7 @@ makeScript(
           });
           break;
 
-        case "relocation-done":
+        case "cutover":
           // 1) Set the workspace as relocated.
           const workspaceRelocatedRes = await setWorkspaceRelocated(owner);
           if (workspaceRelocatedRes.isErr()) {
@@ -102,7 +104,7 @@ makeScript(
           break;
 
         default:
-          throw new Error(`Invalid mode: ${mode}`);
+          assertNever(s);
       }
     }
   }
