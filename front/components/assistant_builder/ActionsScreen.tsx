@@ -434,6 +434,8 @@ export default function ActionsScreen({
                                       ...a.configuration,
                                       modelId: model.modelId,
                                       providerId: model.providerId,
+                                      reasoningEffort:
+                                        model.reasoningEffort ?? null,
                                     },
                                   }
                                 : a
@@ -1055,7 +1057,9 @@ function AdvancedSettings({
     reasoningModels?.find(
       (m) =>
         m.modelId === reasoningConfig?.modelId &&
-        m.providerId === reasoningConfig?.providerId
+        m.providerId === reasoningConfig?.providerId &&
+        (m.reasoningEffort ?? null) ===
+          (reasoningConfig?.reasoningEffort ?? null)
     ) ?? reasoningModels?.[0];
 
   return (
@@ -1114,7 +1118,7 @@ function AdvancedSettings({
                   <DropdownMenuContent>
                     {(reasoningModels ?? []).map((model) => (
                       <DropdownMenuItem
-                        key={model.modelId}
+                        key={model.modelId + (model.reasoningEffort ?? "")}
                         label={model.displayName}
                         onClick={() => setReasoningModel(model)}
                       />
