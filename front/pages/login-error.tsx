@@ -35,7 +35,6 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
     props: {
       domain: (context.query.domain as string) ?? null,
       reason: reason ?? null,
-      workspaceId: (context.query.workspaceId as string) ?? null,
     },
   };
 });
