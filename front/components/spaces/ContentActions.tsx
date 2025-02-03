@@ -174,7 +174,6 @@ export const ContentActions = React.forwardRef<
 
 ContentActions.displayName = "ContentActions";
 
-// replace the existing getMenuItems function with:
 export const getMenuItems = (
   canReadInSpace: boolean,
   canWriteInSpace: boolean,
