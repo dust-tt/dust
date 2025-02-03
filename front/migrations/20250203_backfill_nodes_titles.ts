@@ -60,11 +60,13 @@ async function processNodes({
   allNodes,
   coreDataSourceId,
   coreSequelize,
+  execute,
   logger,
 }: {
   allNodes: Node[];
   coreDataSourceId: number;
   coreSequelize: Sequelize;
+  execute: boolean;
   logger: typeof Logger;
 }) {
   const nodes = allNodes.filter(
@@ -77,8 +79,9 @@ async function processNodes({
   // Replacing the titles with the ones in the tags.
   const titles = nodes.map((n) => n.tags_array.title);
 
-  await coreSequelize.query(
-    `UPDATE data_sources_nodes dsn
+  if (execute) {
+    await coreSequelize.query(
+      `UPDATE data_sources_nodes dsn
      SET title = unnested.title
      FROM (
               SELECT UNNEST(ARRAY [:nodeIds]::text[]) AS node_id,
@@ -86,14 +89,15 @@ async function processNodes({
           ) unnested
      WHERE dsn.data_source = :coreDataSourceId
        AND dsn.node_id = unnested.node_id;`,
-    {
-      replacements: {
-        nodeIds: nodes.map((n) => n.node_id),
-        titles,
-        coreDataSourceId,
-      },
-    }
-  );
+      {
+        replacements: {
+          nodeIds: nodes.map((n) => n.node_id),
+          titles,
+          coreDataSourceId,
+        },
+      }
+    );
+  }
 }
 
 async function migrateDocuments({
@@ -130,14 +134,13 @@ async function migrateDocuments({
 
     logInconsistencies(nodes, logger);
 
-    if (execute) {
-      await processNodes({
-        allNodes: nodes,
-        coreSequelize,
-        coreDataSourceId,
-        logger,
-      });
-    }
+    await processNodes({
+      allNodes: nodes,
+      coreSequelize,
+      coreDataSourceId,
+      execute,
+      logger,
+    });
     nextId = nodes[nodes.length - 1]?.node_id;
   } while (nodes.length === SELECT_BATCH_SIZE);
 }
@@ -176,14 +179,13 @@ async function migrateTables({
 
     logInconsistencies(nodes, logger);
 
-    if (execute) {
-      await processNodes({
-        allNodes: nodes,
-        coreSequelize,
-        coreDataSourceId,
-        logger,
-      });
-    }
+    await processNodes({
+      allNodes: nodes,
+      coreSequelize,
+      coreDataSourceId,
+      execute,
+      logger,
+    });
     nextId = nodes[nodes.length - 1]?.node_id;
   } while (nodes.length === SELECT_BATCH_SIZE);
 }
