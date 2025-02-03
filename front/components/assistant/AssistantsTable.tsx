@@ -76,6 +76,7 @@ type MoreMenuItem = {
   icon: React.ComponentType;
   onClick: (e: React.MouseEvent) => void;
   variant?: "warning" | "default";
+  kind: "item";
 };
 
 type RowData = {
@@ -225,9 +226,7 @@ const getTableColumns = () => {
           );
         }
         return (
-          <DataTable.MoreButton
-            moreMenuItems={info.row.original.moreMenuItems}
-          />
+          <DataTable.MoreButton menuItems={info.row.original.moreMenuItems} />
         );
       },
       meta: {
@@ -315,6 +314,7 @@ export function AssistantsTable({
                         }`
                       );
                     },
+                    kind: "item",
                   },
                   {
                     label: "Copy assistant ID",
@@ -327,6 +327,7 @@ export function AssistantsTable({
                         agentConfiguration.sId
                       );
                     },
+                    kind: "item",
                   },
                   {
                     label: "Duplicate (New)",
@@ -339,6 +340,7 @@ export function AssistantsTable({
                         `/w/${owner.sId}/builder/assistants/new?flow=personal_assistants&duplicate=${agentConfiguration.sId}`
                       );
                     },
+                    kind: "item",
                   },
                   {
                     label: "Delete",
@@ -350,6 +352,7 @@ export function AssistantsTable({
                       e.stopPropagation();
                       setShowDeleteDialog({ open: true, agentConfiguration });
                     },
+                    kind: "item",
                   },
                 ]
               : [],

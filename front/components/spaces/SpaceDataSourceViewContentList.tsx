@@ -1,4 +1,4 @@
-import type { DropdownMenuItemProps } from "@dust-tt/sparkle";
+import type { MenuItem } from "@dust-tt/sparkle";
 import {
   Button,
   Cog6ToothIcon,
@@ -11,8 +11,10 @@ import {
   Spinner,
   useHashParam,
   usePaginationFromUrl,
+  useSendNotification,
 } from "@dust-tt/sparkle";
 import type {
+  APIError,
   ConnectorType,
   ContentNodesViewType,
   DataSourceViewContentNode,
@@ -63,7 +65,7 @@ import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
 type RowData = DataSourceViewContentNode & {
   icon: React.ComponentType;
   onClick?: () => void;
-  moreMenuItems?: DropdownMenuItemProps[];
+  menuItems?: MenuItem[];
 };
 
 const columnsBreakpoints = {
@@ -141,8 +143,8 @@ const getTableColumns = (showSpaceUsage: boolean): ColumnDef<RowData>[] => {
       className: "flex justify-end items-center",
     },
     cell: (info) =>
-      info.row.original.moreMenuItems && (
-        <DataTable.MoreButton moreMenuItems={info.row.original.moreMenuItems} />
+      info.row.original.menuItems && (
+        <DataTable.MoreButton menuItems={info.row.original.menuItems} />
       ),
   });
 
@@ -215,6 +217,7 @@ export const SpaceDataSourceViewContentList = ({
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
   const [showConnectorPermissionsModal, setShowConnectorPermissionsModal] =
     useState(false);
+  const sendNotification = useSendNotification();
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const contentActionsRef = useRef<ContentActionsRef>(null);
 
@@ -230,7 +233,7 @@ export const SpaceDataSourceViewContentList = ({
     workspaceId: owner.sId,
     disabled: !showSpaceUsage,
   });
-  const { dataSourceViews } = useDataSourceViews(owner, {
+  const { dataSourceViews, mutateDataSourceViews } = useDataSourceViews(owner, {
     disabled: !showSpaceUsage,
   });
   const handleViewTypeChange = useCallback(
@@ -287,6 +290,76 @@ export const SpaceDataSourceViewContentList = ({
 
   const isDataSourceManaged = isManaged(dataSourceView.dataSource);
 
+  const addToSpace = useCallback(
+    async (contentNode: DataSourceViewContentNode, spaceSId: string) => {
+      const existingViewForSpace = dataSourceViews.find(
+        (d) =>
+          d.spaceId === spaceSId &&
+          d.dataSource.sId === dataSourceView.dataSource.sId
+      );
+
+      try {
+        let res;
+        if (existingViewForSpace) {
+          res = await fetch(
+            `/api/w/${owner.sId}/spaces/${spaceSId}/data_source_views/${existingViewForSpace.sId}`,
+            {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                parentsToAdd: [contentNode.internalId],
+              }),
+            }
+          );
+        } else {
+          res = await fetch(
+            `/api/w/${owner.sId}/spaces/${spaceSId}/data_source_views`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                dataSourceId: dataSourceView.dataSource.sId,
+                parentsIn: [contentNode.internalId],
+              }),
+            }
+          );
+        }
+
+        if (!res.ok) {
+          const rawError: { error: APIError } = await res.json();
+          sendNotification({
+            title: "Error while adding data to space",
+            description: rawError.error.message,
+            type: "error",
+          });
+        } else {
+          sendNotification({
+            title: "Data added to space",
+            type: "success",
+          });
+          await mutateDataSourceViews();
+        }
+      } catch (e) {
+        sendNotification({
+          title: "Error while adding data to space",
+          description: `An Unknown error ${e} occurred while adding data to space.`,
+          type: "error",
+        });
+      }
+    },
+    [
+      dataSourceView.dataSource.sId,
+      dataSourceViews,
+      mutateDataSourceViews,
+      owner.sId,
+      sendNotification,
+    ]
+  );
+
   useEffect(() => {
     if (!isTablesValidating && !isDocumentsValidating) {
       if (isDataSourceManaged) {
@@ -295,9 +368,9 @@ export const SpaceDataSourceViewContentList = ({
       }
       // If the view only has content in one of the two views, we switch to that view.
       // if both view have content, or neither views have content, we default to documents.
-      if (hasTables === true && hasDocuments === false) {
+      if (hasTables && !hasDocuments) {
         handleViewTypeChange("tables");
-      } else if (hasTables === false && hasDocuments === true) {
+      } else if (!hasTables && hasDocuments) {
         handleViewTypeChange("documents");
       } else if (!viewType) {
         handleViewTypeChange("documents");
@@ -346,23 +419,27 @@ export const SpaceDataSourceViewContentList = ({
         dropdownMenuProps: {
           modal: false,
         },
-        moreMenuItems: getMenuItems(
+        menuItems: getMenuItems(
           canReadInSpace,
           canWriteInSpace,
           dataSourceView,
           contentNode,
-          contentActionsRef
+          contentActionsRef,
+          spaces,
+          dataSourceViews,
+          addToSpace
         ),
       })) || [],
     [
-      canWriteInSpace,
-      canReadInSpace,
-      dataSourceView,
       nodes,
-      onSelect,
-      spaces,
-      dataSourceViews,
       owner,
+      spaces,
+      canReadInSpace,
+      canWriteInSpace,
+      dataSourceView,
+      dataSourceViews,
+      addToSpace,
+      onSelect,
     ]
   );
 
