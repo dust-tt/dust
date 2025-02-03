@@ -15,7 +15,6 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
 })<{
   domain: string | null;
   reason: string | null;
-  workspaceId: string | null;
 }>(async (context) => {
   const reason =
     typeof context.query.reason === "string" ? context.query.reason : null;
@@ -34,7 +33,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   return {
     props: {
       domain: (context.query.domain as string) ?? null,
-      reason: reason ?? null,
+      reason,
     },
   };
 });
