@@ -115,7 +115,7 @@ function getDataSource(
 
   let tags: DataSourceFilter["tags"] = null;
   if (
-    dataSourceConfig.tagsQuery === "fixed" &&
+    dataSourceConfig.tagsMode === "custom" &&
     dataSourceConfig.tagsIn &&
     dataSourceConfig.tagsNotIn
   ) {
@@ -123,7 +123,7 @@ function getDataSource(
       in: dataSourceConfig.tagsIn,
       not: dataSourceConfig.tagsNotIn,
     };
-  } else if (dataSourceConfig.tagsQuery === "auto") {
+  } else if (dataSourceConfig.tagsMode === "auto") {
     tags = "auto";
   }
 

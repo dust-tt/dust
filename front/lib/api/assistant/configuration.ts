@@ -1296,14 +1296,14 @@ async function _createAgentDataSourcesConfigData(
         );
 
         const tagsFilter = dsConfig.filter.tags;
-        let tagsQuery: "auto" | "fixed" | null = null;
+        let tagsMode: "auto" | "custom" | null = null;
         let tagsIn: string[] | null = null;
         let tagsNotIn: string[] | null = null;
 
         if (tagsFilter === "auto") {
-          tagsQuery = "auto";
+          tagsMode = "auto";
         } else if (tagsFilter?.in && tagsFilter?.not) {
-          tagsQuery = "fixed";
+          tagsMode = "custom";
           tagsIn = tagsFilter.in;
           tagsNotIn = tagsFilter.not;
         }
@@ -1316,7 +1316,7 @@ async function _createAgentDataSourcesConfigData(
             retrievalConfigurationId: retrievalConfigurationId,
             processConfigurationId: processConfigurationId,
             dataSourceViewId: dataSourceView.id,
-            tagsQuery,
+            tagsMode,
             tagsIn,
             tagsNotIn,
             workspaceId: owner.id,
