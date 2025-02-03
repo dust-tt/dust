@@ -68,7 +68,6 @@ import {
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useKillSwitches } from "@app/lib/swr/kill";
 import { useModels } from "@app/lib/swr/models";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 function isValidTab(tab: string): tab is BuilderScreen {
   return BUILDER_SCREENS.includes(tab as BuilderScreen);
@@ -90,7 +89,6 @@ export default function AssistantBuilder({
 
   const { killSwitches } = useKillSwitches();
   const { models, reasoningModels } = useModels({ owner });
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
 
   const isSavingDisabled = killSwitches?.includes("save_agent_configurations");
 
@@ -482,10 +480,7 @@ export default function AssistantBuilder({
                         setEdited={setEdited}
                         setAction={setAction}
                         pendingAction={pendingAction}
-                        enableReasoningTool={
-                          reasoningModels.length > 0 &&
-                          featureFlags.includes("reasoning_tool_feature")
-                        }
+                        enableReasoningTool={reasoningModels.length > 0}
                         reasoningModels={reasoningModels}
                       />
                     );
