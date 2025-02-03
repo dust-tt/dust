@@ -3298,9 +3298,12 @@ async fn tags_search(
                 response: Some(json!({
                     "tags": tags
                         .into_iter()
-                        .map(|(k, v)| json!({
+                        .map(|(k, v, ds)| json!({
                             "tag": k,
                             "match_count": v,
+                            "data_sources": ds.into_iter()
+                                .map(|(k, _v)| k)
+                                .collect::<Vec<_>>()
                         }))
                         .collect::<Vec<serde_json::Value>>(),
                     "total_nodes": total,

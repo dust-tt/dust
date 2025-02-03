@@ -125,7 +125,7 @@ pub trait SearchStore {
         data_sources: Option<Vec<String>>,
         node_ids: Option<Vec<String>>,
         limit: Option<u64>,
-    ) -> Result<(Vec<(String, u64)>, u64)>;
+    ) -> Result<(Vec<(String, u64, Vec<(String, u64)>)>, u64)>;
 
     fn clone_box(&self) -> Box<dyn SearchStore + Sync + Send>;
 }
@@ -527,7 +527,7 @@ impl SearchStore for ElasticsearchSearchStore {
         data_sources: Option<Vec<String>>,
         node_ids: Option<Vec<String>>,
         limit: Option<u64>,
-    ) -> Result<(Vec<(String, u64)>, u64)> {
+    ) -> Result<(Vec<(String, u64, Vec<(String, u64)>)>, u64)> {
         let query_type = query_type.unwrap_or(TagsQueryType::Exact);
         let bool_query = Query::bool();
         let bool_query = match data_sources {
@@ -553,6 +553,8 @@ impl SearchStore for ElasticsearchSearchStore {
                 TagsQueryType::Prefix => aggregate.include(format!("{}.*", p).as_str()),
             },
         };
+        let aggregate =
+            aggregate.aggregate("tags_in_datasource", Aggregation::terms("data_source_id"));
         let search = Search::new()
             .size(0)
             .query(bool_query)
@@ -576,7 +578,23 @@ impl SearchStore for ElasticsearchSearchStore {
                         .iter()
                         .filter_map(|bucket| {
                             bucket["key"].as_str().map(|key| {
-                                (key.to_string(), bucket["doc_count"].as_u64().unwrap_or(0))
+                                (
+                                    key.to_string(),
+                                    bucket["doc_count"].as_u64().unwrap_or(0),
+                                    bucket["tags_in_datasource"]["buckets"]
+                                        .as_array()
+                                        .unwrap_or(&vec![])
+                                        .iter()
+                                        .filter_map(|bucket| {
+                                            bucket["key"].as_str().map(|key| {
+                                                (
+                                                    key.to_string(),
+                                                    bucket["doc_count"].as_u64().unwrap_or(0),
+                                                )
+                                            })
+                                        })
+                                        .collect::<Vec<(String, u64)>>(),
+                                )
                             })
                         })
                         .collect(),
