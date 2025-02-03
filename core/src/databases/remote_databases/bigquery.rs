@@ -30,7 +30,7 @@ pub struct BigQueryQueryPlan {
 
 pub struct BigQueryRemoteDatabase {
     project_id: String,
-    region: String,
+    location: String,
     client: Client,
 }
 
@@ -80,12 +80,12 @@ pub const PAGE_SIZE: i32 = 500;
 impl BigQueryRemoteDatabase {
     pub fn new(
         project_id: String,
-        region: String,
+        location: String,
         client: Client,
     ) -> Result<Self, QueryDatabaseError> {
         Ok(Self {
             project_id,
-            region,
+            location,
             client,
         })
     }
@@ -138,7 +138,7 @@ impl BigQueryRemoteDatabase {
                     &self.project_id,
                     &job_id,
                     GetQueryResultsParameters {
-                        location: Some(self.region.clone()),
+                        location: Some(self.location.clone()),
                         page_token: page_token.clone(),
                         max_results: Some(PAGE_SIZE),
                         ..Default::default()
@@ -248,7 +248,7 @@ impl BigQueryRemoteDatabase {
                 ..Default::default()
             }),
             job_reference: Some(JobReference {
-                location: Some(self.region.clone()),
+                location: Some(self.location.clone()),
                 ..Default::default()
             }),
             ..Default::default()
@@ -365,9 +365,9 @@ impl RemoteDatabase for BigQueryRemoteDatabase {
 pub async fn get_bigquery_remote_database(
     credentials: serde_json::Map<String, serde_json::Value>,
 ) -> Result<Box<BigQueryRemoteDatabase>> {
-    let region = match credentials.get("region") {
+    let location = match credentials.get("location") {
         Some(serde_json::Value::String(v)) => v.to_string(),
-        _ => Err(anyhow!("Invalid credentials: region not found"))?,
+        _ => Err(anyhow!("Invalid credentials: location not found"))?,
     };
     let project_id = match credentials.get("project_id") {
         Some(serde_json::Value::String(v)) => v.to_string(),
@@ -387,7 +387,7 @@ pub async fn get_bigquery_remote_database(
 
     Ok(Box::new(BigQueryRemoteDatabase {
         project_id,
-        region,
+        location,
         client,
     }))
 }
