@@ -208,6 +208,18 @@ export function computeNodesDiff({
               return false;
             }
 
+            // Same for microsoft spreadsheet folders: connectors
+            // return a type "file" while core returns a type "folder".
+            if (
+              key === "type" &&
+              provider === "microsoft" &&
+              value === "file" &&
+              coreNode.type === "folder" &&
+              coreNode.mimeType === MIME_TYPES.MICROSOFT.SPREADSHEET
+            ) {
+              return false;
+            }
+
             // Special case for Google Drive drives: not stored in connnectors,
             // so parentInternalIds are empty VS [driveId]
             if (
