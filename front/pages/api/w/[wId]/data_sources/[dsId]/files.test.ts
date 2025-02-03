@@ -40,7 +40,7 @@ const CORE_FAKE_RESPONSE = {
 
 // Mock environment config
 vi.mock("@dust-tt/types", async (importOriginal) => {
-  const mod = await importOriginal();
+  const mod = (await importOriginal()) as Record<string, any>;
   return {
     ...mod,
     EnvironmentConfig: {
