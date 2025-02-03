@@ -983,7 +983,7 @@ export async function upsertDataSourceTableFromCsv({
       );
     } else {
       throw new Error(
-        `Error uploading to dust, got ${
+        `Error uploading table to dust, got ${
           dustRequestResult.status
         }: ${JSON.stringify(dustRequestResult.data, null, 2)}`
       );
