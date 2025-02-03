@@ -35,7 +35,7 @@ type CsvParsingError = {
     | "invalid_header"
     | "duplicate_header"
     | "invalid_record_length"
-    | "invalid_quotes"
+    | "invalid_csv"
     | "empty_csv"
     | "too_many_columns"
     | "invalid_row_id";
@@ -402,7 +402,7 @@ export async function rowsFromCsv({
     if (e instanceof CsvError) {
       logger.warn({ error: e });
       return new Err({
-        type: "invalid_quotes",
+        type: "invalid_csv",
         message: `Invalid CSV format: Please check for properly matched quotes in your data. ${e.message}`,
       });
     }
