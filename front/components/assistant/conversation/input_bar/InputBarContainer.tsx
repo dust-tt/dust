@@ -62,6 +62,7 @@ const InputBarContainer = ({
   const [isExpanded, setIsExpanded] = useState(false);
   function handleExpansionToggle() {
     setIsExpanded((currentExpanded) => !currentExpanded);
+    // Focus at the end of the document when toggling expansion.
     editorService.focusEnd();
   }
 
@@ -76,6 +77,8 @@ const InputBarContainer = ({
     disableAutoFocus,
   });
 
+  // When input bar animation is requested it means the new button was clicked (removing focus from
+  // the input bar), we grab it back.
   const { animate } = useContext(InputBarContext);
   useEffect(() => {
     if (animate) {
@@ -97,14 +100,11 @@ const InputBarContainer = ({
     "inline-block w-full",
     "border-0 px-2 outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0",
     "whitespace-pre-wrap font-normal",
-    "pb-6 pt-4 sm:py-3.5"
+    "pb-6 pt-4 sm:py-3.5" // Increased padding on mobile
   );
 
-  const handleContainerClick = (e: React.MouseEvent) => {
-    // Only focus if clicking directly on the container, not on buttons or other interactive elements
-    if ((e.target as HTMLElement).id === "InputBarContainer") {
-      editorService.focusEnd();
-    }
+  const handleContainerClick = () => {
+    editorService.focusEnd();
   };
 
   return (
