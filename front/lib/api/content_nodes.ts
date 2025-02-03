@@ -8,6 +8,7 @@ import type {
 } from "@dust-tt/types";
 import { assertNever, MIME_TYPES } from "@dust-tt/types";
 
+import type { OffsetPaginationParams } from "@app/lib/api/pagination";
 import {
   CHANNEL_MIME_TYPES,
   DATABASE_MIME_TYPES,
@@ -69,6 +70,7 @@ export function getContentNodeInternalIdFromTableId(
 export function computeNodesDiff({
   connectorsContentNodes,
   coreContentNodes,
+  pagination,
   provider,
   viewType,
   localLogger,
@@ -76,6 +78,7 @@ export function computeNodesDiff({
   connectorsContentNodes: DataSourceViewContentNode[];
   coreContentNodes: DataSourceViewContentNode[];
   provider: ConnectorProvider | null;
+  pagination: OffsetPaginationParams | undefined;
   viewType: ContentNodesViewType;
   localLogger: typeof logger;
 }) {
@@ -369,51 +372,56 @@ export function computeNodesDiff({
       "[CoreNodes] Missing nodes from core"
     );
   }
-  const extraCoreNodes = coreContentNodes
-    .filter(
-      (coreNode) =>
-        !connectorsContentNodes.some(
-          (n) => n.internalId === coreNode.internalId
-          // Special case
-          // Notion syncing folder is not in connectors but it's in core.
-          // Connector's notion unknown folder can map to core's syncing OR unknown folder.
-          // See https://github.com/dust-tt/dust/issues/10340
-        ) && coreNode.internalId !== "notion-syncing"
-    )
-    // There is some specific code to Intercom in retrieveIntercomConversationsPermissions that hides the empty team folders + the teams folder if !hasTeamsWithReadPermission
-    // TBD whether this logic will be reproduced for core, ignoring for now.
-    .filter(
-      (coreNode) =>
-        provider !== "intercom" ||
-        !coreNode.internalId.startsWith("intercom-team")
-    )
-    // The endpoints in the Zendesk connector do not return anything as children of a category, core does.
-    // This will be considered as an improvement, if it turns out to be a bad user experience this will be removed, ignoring for now.
-    .filter(
-      (coreNode) =>
-        provider !== "zendesk" ||
-        !coreNode.internalId.startsWith("zendesk-article")
-    )
-    // Slack channels can be removed from the connector's database while not being deleted from core.
-    // https://github.com/dust-tt/dust/issues/10374
-    .filter(
-      (coreNode) =>
-        provider !== "slack" ||
-        !coreNode.internalId.startsWith("slack-channel-")
-    )
-    // Snowflake schemas and dbs are returned from core, while connector only return tables
-    // Detect schemas/dbs for which we have a table in connectors and ignore them.
-    // See https://github.com/orgs/dust-tt/projects/3/views/1?pane=issue&itemId=95859834&issue=dust-tt%7Cdust%7C10400
-    .filter(
-      (coreNode) =>
-        !(
-          provider === "snowflake" &&
-          coreNode.internalId.split(".").length <= 2 &&
-          connectorsContentNodes.some((n) =>
-            n.internalId.startsWith(coreNode.internalId)
+  const extraCoreNodes =
+    // useStaticDataSourceViewHasContent sets a limit to 1 -> This limit is not applied to core nodes retrieval
+    // We skip the diff if the limit is 1
+    pagination?.limit === 1
+      ? []
+      : coreContentNodes
+          .filter(
+            (coreNode) =>
+              !connectorsContentNodes.some(
+                (n) => n.internalId === coreNode.internalId
+                // Special case
+                // Notion syncing folder is not in connectors but it's in core.
+                // Connector's notion unknown folder can map to core's syncing OR unknown folder.
+                // See https://github.com/dust-tt/dust/issues/10340
+              ) && coreNode.internalId !== "notion-syncing"
           )
-        )
-    );
+          // There is some specific code to Intercom in retrieveIntercomConversationsPermissions that hides the empty team folders + the teams folder if !hasTeamsWithReadPermission
+          // TBD whether this logic will be reproduced for core, ignoring for now.
+          .filter(
+            (coreNode) =>
+              provider !== "intercom" ||
+              !coreNode.internalId.startsWith("intercom-team")
+          )
+          // The endpoints in the Zendesk connector do not return anything as children of a category, core does.
+          // This will be considered as an improvement, if it turns out to be a bad user experience this will be removed, ignoring for now.
+          .filter(
+            (coreNode) =>
+              provider !== "zendesk" ||
+              !coreNode.internalId.startsWith("zendesk-article")
+          )
+          // Slack channels can be removed from the connector's database while not being deleted from core.
+          // https://github.com/dust-tt/dust/issues/10374
+          .filter(
+            (coreNode) =>
+              provider !== "slack" ||
+              !coreNode.internalId.startsWith("slack-channel-")
+          )
+          // Snowflake schemas and dbs are returned from core, while connector only return tables
+          // Detect schemas/dbs for which we have a table in connectors and ignore them.
+          // See https://github.com/orgs/dust-tt/projects/3/views/1?pane=issue&itemId=95859834&issue=dust-tt%7Cdust%7C10400
+          .filter(
+            (coreNode) =>
+              !(
+                provider === "snowflake" &&
+                coreNode.internalId.split(".").length <= 2 &&
+                connectorsContentNodes.some((n) =>
+                  n.internalId.startsWith(coreNode.internalId)
+                )
+              )
+          );
   if (extraCoreNodes.length > 0) {
     localLogger.info(
       {
