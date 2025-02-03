@@ -42,6 +42,7 @@ function logInconsistencies(nodes: Node[], logger: typeof Logger) {
     nodes
       .filter(
         (n) =>
+          n.tags_array.title &&
           n.title !== n.tags_array.title.split(":")[0] &&
           n.title !== n.tags_array.title
       )
@@ -63,7 +64,7 @@ async function processNodes({
   coreSequelize: Sequelize;
 }) {
   const nodes = allNodes.filter(
-    (n) => n.title === n.tags_array.title.split(":")[0]
+    (n) => n.tags_array.title && n.title === n.tags_array.title.split(":")[0]
   );
   if (nodes.length === 0) {
     return;
