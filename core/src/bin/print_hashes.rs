@@ -40,7 +40,7 @@ async fn print_specification_hashes(project_id: i64, hash: &str) -> Result<()> {
         hasher.update(name.as_bytes());
         hasher.update(hash.as_bytes());
 
-        print!("BLOCK HASH FOR BLOCK {} / HASH {}", name, hash);
+        println!("BLOCK HASH FOR BLOCK {} / HASH {}", name, hash);
 
         prev_hash = format!("{}", hasher.finalize().to_hex());
         hashes.push(prev_hash.clone());
