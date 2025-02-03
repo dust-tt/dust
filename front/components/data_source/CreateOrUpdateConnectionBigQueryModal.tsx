@@ -2,19 +2,24 @@ import {
   BookOpenIcon,
   Button,
   CloudArrowLeftRightIcon,
+  InformationCircleIcon,
   Modal,
   Page,
+  RadioGroup,
+  RadioGroupChoice,
   TextArea,
+  Tooltip,
 } from "@dust-tt/sparkle";
 import type {
-  BigQueryCredentials,
+  BigQueryCredentialsWithLocation,
+  CheckBigQueryCredentials,
   ConnectorProvider,
   ConnectorType,
   DataSourceType,
   WorkspaceType,
 } from "@dust-tt/types";
 import {
-  BigQueryCredentialsSchema,
+  CheckBigQueryCredentialsSchema,
   isConnectorsAPIError,
 } from "@dust-tt/types";
 import { isRight } from "fp-ts/lib/Either";
@@ -22,6 +27,7 @@ import { formatValidationErrors } from "io-ts-reporters";
 import { useEffect, useMemo, useState } from "react";
 
 import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
+import { useBigQueryLocations } from "@app/lib/swr/bigquery";
 import type { PostCredentialsBody } from "@app/pages/api/w/[wId]/credentials";
 
 type CreateOrUpdateConnectionBigQueryModalProps = {
@@ -63,8 +69,9 @@ export function CreateOrUpdateConnectionBigQueryModal({
     }
 
     try {
-      const credentialsObject: BigQueryCredentials = JSON.parse(credentials);
-      const r = BigQueryCredentialsSchema.decode(credentialsObject);
+      const credentialsObject: CheckBigQueryCredentials =
+        JSON.parse(credentials);
+      const r = CheckBigQueryCredentialsSchema.decode(credentialsObject);
       if (isRight(r)) {
         const allFieldsHaveValue = Object.values(credentialsObject).every(
           (v) => v.length > 0
@@ -91,6 +98,23 @@ export function CreateOrUpdateConnectionBigQueryModal({
       };
     }
   }, [credentials]);
+
+  // Region picking
+  const [selectedLocation, setSelectedLocation] = useState<string>();
+  const { locations, isLocationsLoading } = useBigQueryLocations({
+    owner,
+    credentials: credentialsState.credentials,
+  });
+
+  const needToSelectLocation = useMemo(() => {
+    return locations && Object.keys(locations).length > 1;
+  }, [locations]);
+
+  useEffect(() => {
+    if (locations && Object.keys(locations).length === 1) {
+      setSelectedLocation(Object.keys(locations)[0]);
+    }
+  }, [locations]);
 
   useEffect(() => {
     setError(credentialsState.errorMessage);
@@ -124,7 +148,10 @@ export function CreateOrUpdateConnectionBigQueryModal({
         },
         body: JSON.stringify({
           provider: "bigquery" as const,
-          credentials: JSON.parse(credentials) as BigQueryCredentials,
+          credentials: {
+            ...credentialsState.credentials,
+            location: selectedLocation,
+          } as BigQueryCredentialsWithLocation,
         } as PostCredentialsBody),
       }
     );
@@ -192,7 +219,10 @@ export function CreateOrUpdateConnectionBigQueryModal({
       },
       body: JSON.stringify({
         provider: "bigquery",
-        credentials: credentialsState.credentials,
+        credentials: {
+          ...credentialsState.credentials,
+          location: selectedLocation,
+        } as BigQueryCredentialsWithLocation,
       }),
     });
 
@@ -297,6 +327,48 @@ export function CreateOrUpdateConnectionBigQueryModal({
               />
             </div>
 
+            {needToSelectLocation && (
+              <div className="flex flex-col gap-y-4">
+                <div className="text-sm font-medium text-element-800">
+                  Select a location
+                </div>
+                <RadioGroup
+                  value={selectedLocation}
+                  onValueChange={setSelectedLocation}
+                >
+                  <div className="flex flex-col gap-y-2">
+                    {Object.entries(locations).map(([location, tables]) => (
+                      <RadioGroupChoice
+                        key={location}
+                        value={location}
+                        label={
+                          <>
+                            <Tooltip
+                              label={
+                                <span>
+                                  This location contains {tables.length} tables
+                                  that can be connected :{" "}
+                                  <span className="text-xs text-gray-500">
+                                    {tables.join(", ")}
+                                  </span>
+                                </span>
+                              }
+                              trigger={
+                                <div className="flex items-center gap-1">
+                                  <b>{location}</b> - {tables.length} tables{" "}
+                                  <InformationCircleIcon />
+                                </div>
+                              }
+                            />
+                          </>
+                        }
+                      />
+                    ))}
+                  </div>
+                </RadioGroup>
+              </div>
+            )}
+
             <div className="flex justify-center pt-2">
               <div className="flex gap-2">
                 <Button
@@ -311,7 +383,12 @@ export function CreateOrUpdateConnectionBigQueryModal({
                       void createBigQueryConnection();
                     }
                   }}
-                  disabled={isLoading || !credentialsState.valid}
+                  disabled={
+                    isLoading ||
+                    isLocationsLoading ||
+                    !credentialsState.valid ||
+                    !selectedLocation
+                  }
                   label={
                     isLoading
                       ? "Connecting..."

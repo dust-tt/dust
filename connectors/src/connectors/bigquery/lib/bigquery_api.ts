@@ -1,4 +1,4 @@
-import type { BigQueryCredentials, Result } from "@dust-tt/types";
+import type { BigQueryCredentialsWithLocation, Result } from "@dust-tt/types";
 import { Err, Ok, removeNulls } from "@dust-tt/types";
 import { BigQuery } from "@google-cloud/bigquery";
 
@@ -34,7 +34,7 @@ export function isTestConnectionError(
 export const testConnection = async ({
   credentials,
 }: {
-  credentials: BigQueryCredentials;
+  credentials: BigQueryCredentialsWithLocation;
 }): Promise<Result<string, TestConnectionError>> => {
   // Connect to bigquery, do a simple query.
   const bigQuery = connectToBigQuery(credentials);
@@ -53,17 +53,20 @@ export const testConnection = async ({
   }
 };
 
-export function connectToBigQuery(credentials: BigQueryCredentials): BigQuery {
+export function connectToBigQuery(
+  credentials: BigQueryCredentialsWithLocation
+): BigQuery {
   return new BigQuery({
     credentials,
     scopes: ["https://www.googleapis.com/auth/bigquery.readonly"],
+    location: credentials.location,
   });
 }
 
 export const fetchDatabases = ({
   credentials,
 }: {
-  credentials: BigQueryCredentials;
+  credentials: BigQueryCredentialsWithLocation;
 }): RemoteDBDatabase[] => {
   // BigQuery do not have a concept of databases per say, the most similar concept is a project.
   // Since credentials are always scoped to a project, we directly return a single database with the project name.
@@ -79,7 +82,7 @@ export const fetchDatasets = async ({
   credentials,
   connection,
 }: {
-  credentials: BigQueryCredentials;
+  credentials: BigQueryCredentialsWithLocation;
   connection?: BigQuery;
 }): Promise<Result<Array<RemoteDBSchema>, Error>> => {
   const conn = connection ?? connectToBigQuery(credentials);
@@ -89,6 +92,14 @@ export const fetchDatasets = async ({
     return new Ok(
       removeNulls(
         datasets.map((dataset) => {
+          // We want to filter out datasets that are not in the same location as the credentials.
+          // But, for example, we want to keep dataset in "us-central1" when selected location is "us"
+          if (
+            !dataset.location?.toLowerCase().startsWith(credentials.location)
+          ) {
+            return null;
+          }
+
           if (!dataset.id) {
             return null;
           }
@@ -113,7 +124,7 @@ export const fetchTables = async ({
   internalDatasetId,
   connection,
 }: {
-  credentials: BigQueryCredentials;
+  credentials: BigQueryCredentialsWithLocation;
   datasetName?: string;
   internalDatasetId?: string;
   connection?: BigQuery;
@@ -147,6 +158,12 @@ export const fetchTables = async ({
     return new Ok(
       removeNulls(
         tables.map((table) => {
+          // We want to filter out tables that are not in the same location as the credentials.
+          // But, for example, we want to keep tables in "us-central1" when selected location is "us"
+          if (!table.location?.toLowerCase().startsWith(credentials.location)) {
+            return null;
+          }
+
           if (!table.id) {
             return null;
           }

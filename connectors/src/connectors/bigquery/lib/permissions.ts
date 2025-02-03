@@ -1,5 +1,5 @@
 import type {
-  BigQueryCredentials,
+  BigQueryCredentialsWithLocation,
   ContentNode,
   ModelId,
   Result,
@@ -34,7 +34,7 @@ export const fetchAvailableChildrenInBigQuery = async ({
   parentInternalId,
 }: {
   connectorId: ModelId;
-  credentials: BigQueryCredentials;
+  credentials: BigQueryCredentialsWithLocation;
   parentInternalId: string | null;
 }): Promise<Result<ContentNode[], Error>> => {
   if (parentInternalId === null) {
@@ -283,7 +283,7 @@ export const saveNodesFromPermissions = async ({
 }: {
   permissions: Record<string, string>;
   connectorId: ModelId;
-  credentials: BigQueryCredentials;
+  credentials: BigQueryCredentialsWithLocation;
   logger: Logger;
 }): Promise<Result<void, Error>> => {
   for (const [internalId, permission] of Object.entries(permissions)) {
