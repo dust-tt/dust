@@ -14,7 +14,7 @@ import {
   guessDelimiter,
   Ok,
 } from "@dust-tt/types";
-import { parse } from "csv-parse";
+import { CsvError, parse } from "csv-parse";
 import * as t from "io-ts";
 import { DateTime } from "luxon";
 
@@ -161,15 +161,6 @@ export async function upsertTableFromCsv({
   mimeType: string;
   sourceUrl: string | null;
 }): Promise<Result<{ table: CoreAPITable }, TableOperationError>> {
-  const csvRowsRes = csv
-    ? await rowsFromCsv({
-        auth,
-        csv,
-        useAppForHeaderDetection,
-        detectedHeaders,
-      })
-    : null;
-
   const owner = auth.workspace();
 
   if (!owner) {
@@ -196,6 +187,15 @@ export async function upsertTableFromCsv({
       message: "Invalid request body, parents[1] and parent_id should be equal",
     });
   }
+
+  const csvRowsRes = csv
+    ? await rowsFromCsv({
+        auth,
+        csv,
+        useAppForHeaderDetection,
+        detectedHeaders,
+      })
+    : null;
 
   let csvRows: CoreAPIRow[] | undefined = undefined;
   if (csvRowsRes) {
@@ -385,11 +385,11 @@ export async function rowsFromCsv({
   }
   const { header, rowIndex } = headerRes.value;
 
-  let i = 0;
-  const parser = parse(csv, { delimiter });
   // this differs with = {} in that it prevent errors when header values clash with object properties such as toString, constructor, ..
   const valuesByCol: Record<string, string[]> = Object.create(null);
   try {
+    const parser = parse(csv, { delimiter });
+    let i = 0;
     for await (const anyRecord of parser) {
       if (i++ >= rowIndex) {
         for (const [i, h] of header.entries()) {
@@ -399,8 +399,8 @@ export async function rowsFromCsv({
       }
     }
   } catch (e) {
-    if (e instanceof Error && e.message.includes("Invalid Closing Quote")) {
-      logger.error({ error: e }, "Invalid CSV format invalid quotes in data.");
+    if (e instanceof CsvError) {
+      logger.warn({ error: e });
       return new Err({
         type: "invalid_quotes",
         message: `Invalid CSV format: Please check for properly matched quotes in your data. ${e.message}`,

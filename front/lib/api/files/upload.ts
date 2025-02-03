@@ -220,7 +220,7 @@ const extractContentAndSchemaFromDelimitedTextFiles = async (
 
     return new Ok(undefined);
   } catch (err) {
-    logger.error(
+    logger.warn(
       {
         fileModelId: file.id,
         workspaceId: auth.workspace()?.sId,

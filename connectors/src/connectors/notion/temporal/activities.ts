@@ -52,6 +52,7 @@ import {
   deleteDataSourceDocument,
   deleteDataSourceTable,
   deleteDataSourceTableRow,
+  ignoreTablesError,
   MAX_DOCUMENT_TXT_LEN,
   MAX_PREFIX_CHARS,
   MAX_PREFIX_TOKENS,
@@ -61,7 +62,6 @@ import {
   upsertDataSourceDocument,
   upsertDataSourceTableFromCsv,
 } from "@connectors/lib/data_sources";
-import { TablesError } from "@connectors/lib/error";
 import {
   NotionConnectorBlockCacheEntry,
   NotionConnectorPageCacheEntry,
@@ -79,22 +79,6 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const logger = mainLogger.child({ provider: "notion" });
-
-const ignoreTablesError = async (fn: () => Promise<void>, logger: Logger) => {
-  try {
-    return await fn();
-  } catch (err) {
-    if (err instanceof TablesError) {
-      logger.warn(
-        { error: err },
-        "[Notion table] Invalid rows detected - skipping (but not failing)."
-      );
-    } else {
-      logger.error({ error: err }, "[Notion table] Failed to upsert table.");
-      throw err;
-    }
-  }
-};
 
 export async function fetchDatabaseChildPages({
   connectorId,
@@ -1816,26 +1800,24 @@ export async function renderAndUpsertPageFromCache({
 
         const parents = parentPageOrDbIds.map((id) => `notion-${id}`);
 
-        await ignoreTablesError(
-          () =>
-            upsertDataSourceTableFromCsv({
-              dataSourceConfig: dataSourceConfigFromConnector(connector),
-              tableId,
-              tableName,
-              tableDescription,
-              tableCsv: csv,
-              loggerArgs,
-              // We only update the rowId of for the page without truncating the rest of the table (incremental sync).
-              truncate: false,
-              parents: parents,
-              parentId: parents[1] || null,
-              title: parentDb.title ?? "Untitled Notion Database",
-              mimeType: MIME_TYPES.NOTION.DATABASE,
-              sourceUrl:
-                parentDb.notionUrl ??
-                `https://www.notion.so/${parentDb.notionDatabaseId.replace(/-/g, "")}`,
-            }),
-          localLogger
+        await ignoreTablesError("Notion Database", () =>
+          upsertDataSourceTableFromCsv({
+            dataSourceConfig: dataSourceConfigFromConnector(connector),
+            tableId,
+            tableName,
+            tableDescription,
+            tableCsv: csv,
+            loggerArgs,
+            // We only update the rowId of for the page without truncating the rest of the table (incremental sync).
+            truncate: false,
+            parents: parents,
+            parentId: parents[1] || null,
+            title: parentDb.title ?? "Untitled Notion Database",
+            mimeType: MIME_TYPES.NOTION.DATABASE,
+            sourceUrl:
+              parentDb.notionUrl ??
+              `https://www.notion.so/${parentDb.notionDatabaseId.replace(/-/g, "")}`,
+          })
         );
       } else {
         localLogger.info(
@@ -2542,26 +2524,25 @@ export async function upsertDatabaseStructuredDataFromCache({
   const parentIds = parentPageOrDbIds.map((id) => `notion-${id}`);
 
   localLogger.info("Upserting Notion Database as Table.");
-  await ignoreTablesError(
-    () =>
-      upsertDataSourceTableFromCsv({
-        dataSourceConfig,
-        tableId,
-        tableName,
-        tableDescription,
-        tableCsv: csv,
-        loggerArgs,
-        // We overwrite the whole table since we just fetched all child pages.
-        truncate: true,
-        parents: parentIds,
-        parentId: parentIds[1] || null,
-        title: dbModel.title ?? "Untitled Notion Database",
-        mimeType: MIME_TYPES.NOTION.DATABASE,
-        sourceUrl:
-          dbModel.notionUrl ??
-          `https://www.notion.so/${dbModel.notionDatabaseId.replace(/-/g, "")}`,
-      }),
-    localLogger
+
+  await ignoreTablesError("Notion Database", () =>
+    upsertDataSourceTableFromCsv({
+      dataSourceConfig,
+      tableId,
+      tableName,
+      tableDescription,
+      tableCsv: csv,
+      loggerArgs,
+      // We overwrite the whole table since we just fetched all child pages.
+      truncate: true,
+      parents: parentIds,
+      parentId: parentIds[1] || null,
+      title: dbModel.title ?? "Untitled Notion Database",
+      mimeType: MIME_TYPES.NOTION.DATABASE,
+      sourceUrl:
+        dbModel.notionUrl ??
+        `https://www.notion.so/${dbModel.notionDatabaseId.replace(/-/g, "")}`,
+    })
   );
 
   // Same as above, but without the `dustId` column

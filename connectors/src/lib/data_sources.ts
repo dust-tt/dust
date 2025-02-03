@@ -772,6 +772,40 @@ export async function upsertDataSourceRemoteTable({
   }
 }
 
+/**
+ * Helper function to handle table errors gracefully.
+ * Executes the provided function and catches any TablesError, allowing the application to continue.
+ * Other errors are re-thrown.
+ *
+ * @param fn - Async function to execute that may throw a TablesError
+ * @returns A boolean indicating if a TablesError was caught (true) or not (false)
+ * @throws Any non-TablesError that occurs during execution
+ */
+
+export const ignoreTablesError = async (
+  connectorName: string,
+  fn: () => Promise<void>
+) => {
+  try {
+    await fn();
+    logger.info(`[${connectorName}] Table upserted successfully.`);
+  } catch (err) {
+    if (err instanceof TablesError) {
+      logger.warn(
+        { error: err },
+        "Invalid rows detected - skipping (but not failing)."
+      );
+      return true;
+    } else {
+      logger.error(
+        { error: err },
+        `[${connectorName}] Failed to upsert table.`
+      );
+      throw err;
+    }
+  }
+};
+
 export async function upsertDataSourceTableFromCsv({
   dataSourceConfig,
   tableId,
@@ -941,19 +975,19 @@ export async function upsertDataSourceTableFromCsv({
         "invalid_headers",
         dustRequestResult.data.error.message
       );
-    }
-    if (dustRequestResult.status === 413) {
+    } else if (dustRequestResult.status === 413) {
       throw new TablesError(
         "file_too_large",
         dustRequestResult.data.error?.message ||
           "File size exceeds the maximum limit"
       );
+    } else {
+      throw new Error(
+        `Error uploading to dust, got ${
+          dustRequestResult.status
+        }: ${JSON.stringify(dustRequestResult.data, null, 2)}`
+      );
     }
-    throw new Error(
-      `Error uploading to dust, got ${
-        dustRequestResult.status
-      }: ${JSON.stringify(dustRequestResult.data, null, 2)}`
-    );
   }
 }
 

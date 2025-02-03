@@ -17,6 +17,7 @@ import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_c
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
   deleteDataSourceTable,
+  ignoreTablesError,
   upsertDataSourceFolder,
   upsertDataSourceTableFromCsv,
 } from "@connectors/lib/data_sources";
@@ -76,8 +77,7 @@ async function upsertMSTable(
   spreadsheet: microsoftgraph.DriveItem,
   worksheet: microsoftgraph.WorkbookWorksheet,
   parents: [string, string, ...string[]],
-  rows: string[][],
-  loggerArgs: object
+  rows: string[][]
 ) {
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
@@ -91,30 +91,30 @@ async function upsertMSTable(
 
   // Upserting is safe: Core truncates any previous table with the same Id before
   // the operation. Note: Renaming a sheet in Google Drive retains its original Id.
-  await upsertDataSourceTableFromCsv({
-    dataSourceConfig,
-    tableId: internalId,
-    tableName,
-    tableDescription,
-    tableCsv: csv,
-    loggerArgs: {
-      connectorId: connector.id,
-      sheetId: internalId,
-      spreadsheetId: spreadsheet.id ?? "",
-    },
-    truncate: true,
-    parents,
-    parentId: parents[1],
-    useAppForHeaderDetection: true,
-    title: `${spreadsheet.name} - ${worksheet.name}`,
-    mimeType:
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    // At our current comprehension, there are no easily findable source url to
-    // directly access the worksheet, so we link to the parent spreadsheet
-    sourceUrl: spreadsheet.webUrl ?? undefined,
-  });
-
-  logger.info(loggerArgs, "[Spreadsheet] Table upserted.");
+  await ignoreTablesError("Microsoft Excel", () =>
+    upsertDataSourceTableFromCsv({
+      dataSourceConfig,
+      tableId: internalId,
+      tableName,
+      tableDescription,
+      tableCsv: csv,
+      loggerArgs: {
+        connectorId: connector.id,
+        sheetId: internalId,
+        spreadsheetId: spreadsheet.id ?? "",
+      },
+      truncate: true,
+      parents,
+      parentId: parents[1],
+      useAppForHeaderDetection: true,
+      title: `${spreadsheet.name} - ${worksheet.name}`,
+      mimeType:
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      // At our current comprehension, there are no easily findable source url to
+      // directly access the worksheet, so we link to the parent spreadsheet
+      sourceUrl: spreadsheet.webUrl ?? undefined,
+    })
+  );
 }
 
 async function processSheet({
@@ -208,8 +208,7 @@ async function processSheet({
         spreadsheet,
         worksheet,
         parents,
-        rows,
-        loggerArgs
+        rows
       );
     } catch (err) {
       logger.error(
