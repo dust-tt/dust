@@ -399,7 +399,7 @@ interface SubmenuMenuItem extends BaseMenuItem {
 
 export type MenuItem = RegularMenuItem | SubmenuMenuItem;
 
-export interface MoreButtonProps {
+export interface DataTableMoreButtonProps {
   className?: string;
   menuItems?: MenuItem[];
   dropdownMenuProps?: Omit<
@@ -412,7 +412,7 @@ DataTable.MoreButton = function MoreButton({
   className,
   menuItems,
   dropdownMenuProps,
-}: MoreButtonProps) {
+}: DataTableMoreButtonProps) {
   if (!menuItems?.length) {
     return null;
   }

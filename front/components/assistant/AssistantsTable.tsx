@@ -1,3 +1,4 @@
+import type { MenuItem } from "@dust-tt/sparkle";
 import {
   Avatar,
   Button,
@@ -71,14 +72,6 @@ export const ASSISTANT_MANAGER_TABS = [
 export type AssistantManagerTabsType =
   (typeof ASSISTANT_MANAGER_TABS)[number]["id"];
 
-type MoreMenuItem = {
-  label: string;
-  icon: React.ComponentType;
-  onClick: (e: React.MouseEvent) => void;
-  variant?: "warning" | "default";
-  kind: "item";
-};
-
 type RowData = {
   name: string;
   description: string;
@@ -88,7 +81,7 @@ type RowData = {
   lastUpdate: string | null;
   scope: AgentConfigurationScope;
   onClick?: () => void;
-  moreMenuItems?: MoreMenuItem[];
+  moreMenuItems?: MenuItem[];
   action?: React.ReactNode;
 };
 
