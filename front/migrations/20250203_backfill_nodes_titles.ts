@@ -59,6 +59,8 @@ function logInconsistencies(nodes: Node[], logger: typeof Logger) {
   );
   if (Object.keys(diff).length > 0) {
     logger.info({ diff }, "Title inconsistencies.");
+  } else {
+    logger.info("No title inconsistency.");
   }
 }
 
@@ -79,10 +81,10 @@ async function processNodes({
     const titleFromTag = getTitleFromTags(n);
     return titleFromTag && titleFromTag !== n.title;
   });
-  logger.info(`Found ${nodes.length} nodes to process.`);
   if (nodes.length === 0) {
     return;
   }
+  logger.info(`Found ${nodes.length} nodes to process.`);
   // Replacing the titles with the ones in the tags.
   const titles = nodes.map(getTitleFromTags);
 
