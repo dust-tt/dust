@@ -763,7 +763,7 @@ export async function confluenceGetTopLevelPageIdsActivity({
 export async function confluenceUpdatePagesParentIdsActivity(
   connectorId: ModelId,
   spaceId: string,
-  visitedAtMs: number
+  visitedAtMs: number | null
 ) {
   const connector = await fetchConfluenceConnector(connectorId);
 
@@ -772,7 +772,7 @@ export async function confluenceUpdatePagesParentIdsActivity(
     where: {
       connectorId,
       spaceId,
-      lastVisitedAt: visitedAtMs,
+      ...(visitedAtMs ? { lastVisitedAt: visitedAtMs } : {}),
     },
   });
 
