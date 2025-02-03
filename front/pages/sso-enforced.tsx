@@ -53,9 +53,12 @@ export default function SsoEnforced({
               Access requires Single Sign-On (SSO) authentication. Use your SSO
               provider to sign in.{" "}
             </p>
-            <Link href={initiatedLoginUrl}>
-              <Button variant="primary" label="Connect with SSO" size="md" />
-            </Link>
+            <Button
+              variant="highlight"
+              label="Connect with SSO"
+              size="md"
+              href={initiatedLoginUrl}
+            />
           </div>
         </div>
       </main>

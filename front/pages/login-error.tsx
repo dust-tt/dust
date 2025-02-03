@@ -15,11 +15,27 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
 })<{
   domain: string | null;
   reason: string | null;
+  workspaceId: string | null;
 }>(async (context) => {
+  const reason =
+    typeof context.query.reason === "string" ? context.query.reason : null;
+
+  if (reason?.startsWith("sso_required_")) {
+    const workspaceId = reason.split("sso_required_")[1];
+
+    return {
+      redirect: {
+        destination: `/sso-enforced?workspaceId=${workspaceId}`,
+        permanent: false,
+      },
+    };
+  }
+
   return {
     props: {
       domain: (context.query.domain as string) ?? null,
-      reason: (context.query.reason as string) ?? null,
+      reason: reason ?? null,
+      workspaceId: (context.query.workspaceId as string) ?? null,
     },
   };
 });
