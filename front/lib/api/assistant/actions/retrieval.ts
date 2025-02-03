@@ -435,7 +435,6 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
         config.DATASOURCE.filter.parents.not.push(...ds.filter.parents.not);
       }
       if (ds.filter.tags) {
-        // TODO(DAPH) Test will multiple tags and ds this before putting as review
         config.DATASOURCE.filter.tags = ds.filter.tags;
       }
     }

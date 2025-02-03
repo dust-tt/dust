@@ -52,6 +52,30 @@ export const GetAgentConfigurationsLeaderboardQuerySchema = t.type({
   ]),
 });
 
+const DataSourceFilterParentsCodec = t.union([
+  t.type({
+    in: t.array(t.string),
+    not: t.array(t.string),
+  }),
+  t.null,
+]);
+
+const OptionalDataSourceFilterTagsCodec = t.partial({
+  tags: t.union([
+    t.type({
+      in: t.array(t.string),
+      not: t.array(t.string),
+    }),
+    t.literal("auto"),
+    t.null,
+  ]),
+});
+
+const DataSourceFilterCodec = t.intersection([
+  t.type({ parents: DataSourceFilterParentsCodec }),
+  OptionalDataSourceFilterTagsCodec,
+]);
+
 const RetrievalActionConfigurationSchema = t.type({
   type: t.literal("retrieval_configuration"),
   query: t.union([t.literal("auto"), t.literal("none")]),
@@ -68,24 +92,7 @@ const RetrievalActionConfigurationSchema = t.type({
     t.type({
       dataSourceViewId: t.string,
       workspaceId: t.string,
-      filter: t.type({
-        parents: t.union([
-          t.type({
-            in: t.array(t.string),
-            not: t.array(t.string),
-          }),
-          t.null,
-        ]),
-        // TODO(TAF) Put optional first to not break the builder?
-        tags: t.union([
-          t.type({
-            in: t.array(t.string),
-            not: t.array(t.string),
-          }),
-          t.literal("auto"),
-          t.null,
-        ]),
-      }),
+      filter: DataSourceFilterCodec,
     })
   ),
 });
@@ -137,24 +144,7 @@ const ProcessActionConfigurationSchema = t.type({
     t.type({
       dataSourceViewId: t.string,
       workspaceId: t.string,
-      filter: t.type({
-        parents: t.union([
-          t.type({
-            in: t.array(t.string),
-            not: t.array(t.string),
-          }),
-          t.null,
-        ]),
-        // TODO(TAF) Put optional first to not break the builder? Then refactor to use the same type as the retrieval action, se below.
-        tags: t.union([
-          t.type({
-            in: t.array(t.string),
-            not: t.array(t.string),
-          }),
-          t.literal("auto"),
-          t.null,
-        ]),
-      }),
+      filter: DataSourceFilterCodec,
     })
   ),
   relativeTimeFrame: t.union([

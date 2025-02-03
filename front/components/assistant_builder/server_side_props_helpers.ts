@@ -233,7 +233,7 @@ async function renderDataSourcesConfigurations(
     dataSourceViewId: ds.dataSourceViewId,
     resources: ds.filter.parents?.in ?? null,
     isSelectAll: !ds.filter.parents,
-    tagsFilter: ds.filter.tags,
+    tagsFilter: ds.filter.tags || null, // todo(TAF) Remove this when we don't need to support optional tags from builder.
   }));
 
   const dataSourceConfigurationsArray = await Promise.all(
