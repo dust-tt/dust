@@ -5,6 +5,7 @@ import type {
   DataSourceViewSelectionConfigurations,
   DustAppRunConfigurationType,
   ProcessConfigurationType,
+  ReasoningConfigurationType,
   RetrievalConfigurationType,
   TablesQueryConfigurationType,
   TemplateAgentConfigurationType,
@@ -35,6 +36,7 @@ import {
   getDefaultTablesQueryActionConfiguration,
   getDefaultWebsearchActionConfiguration,
 } from "@app/components/assistant_builder/types";
+import { REASONING_MODEL_CONFIGS } from "@app/components/providers/types";
 import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
 import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
@@ -116,7 +118,7 @@ async function initializeBuilderAction(
   } else if (isGithubCreateIssueConfiguration(action)) {
     return getDefaultGithubCreateIssueActionConfiguration();
   } else if (isReasoningConfiguration(action)) {
-    return getDefaultReasoningActionConfiguration();
+    return getReasoningActionConfiguration(action);
   } else {
     assertNever(action);
   }
@@ -196,6 +198,31 @@ async function getProcessActionConfiguration(
   processConfiguration.configuration.schema = action.schema;
 
   return processConfiguration;
+}
+
+async function getReasoningActionConfiguration(
+  action: ReasoningConfigurationType
+): Promise<AssistantBuilderActionConfiguration> {
+  const builderAction = getDefaultReasoningActionConfiguration();
+  if (builderAction.type !== "REASONING") {
+    throw new Error("Reasoning action configuration is not valid");
+  }
+
+  const supportedReasoningModel = await REASONING_MODEL_CONFIGS.find(
+    (m) =>
+      m.modelId === action.modelId &&
+      m.providerId === action.providerId &&
+      (m.reasoningEffort ?? null) === (action.reasoningEffort ?? null)
+  );
+
+  if (supportedReasoningModel) {
+    builderAction.configuration.modelId = supportedReasoningModel.modelId;
+    builderAction.configuration.providerId = supportedReasoningModel.providerId;
+    builderAction.configuration.reasoningEffort =
+      supportedReasoningModel.reasoningEffort ?? null;
+  }
+
+  return builderAction;
 }
 
 async function renderDataSourcesConfigurations(

@@ -1225,6 +1225,8 @@ export async function createAgentActionConfiguration(
         description: action.description,
         providerId: action.providerId,
         modelId: action.modelId,
+        temperature: action.temperature,
+        reasoningEffort: action.reasoningEffort,
         workspaceId: owner.id,
       });
 

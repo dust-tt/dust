@@ -1,4 +1,4 @@
-import type { DropdownMenuItemProps } from "@dust-tt/sparkle";
+import type { DropdownMenuItemProps, MenuItem } from "@dust-tt/sparkle";
 import {
   Button,
   Chip,
@@ -68,7 +68,7 @@ export interface RowData {
   isLoading?: boolean;
   buttonOnClick?: (e: MouseEvent) => void;
   onClick?: () => void;
-  moreMenuItems?: MoreMenuItem[];
+  menuItems?: MenuItem[];
 }
 
 type StringColumnDef = ColumnDef<RowData, string>;
@@ -209,7 +209,7 @@ function getTableColumns(
       className: "flex justify-end items-center",
     },
     cell: (ctx) => (
-      <DataTable.MoreButton moreMenuItems={ctx.row.original.moreMenuItems} />
+      <DataTable.MoreButton menuItems={ctx.row.original.menuItems} />
     ),
   };
 

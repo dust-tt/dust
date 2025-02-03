@@ -8,7 +8,7 @@ use elasticsearch::{
     http::transport::{SingleNodeConnectionPool, TransportBuilder},
     DeleteByQueryParts, DeleteParts, Elasticsearch, IndexParts, SearchParts,
 };
-use elasticsearch_dsl::{BoolQuery, Query, Search};
+use elasticsearch_dsl::{BoolQuery, Query, Script, ScriptSortType, Search, Sort};
 use serde_json::json;
 use tracing::{error, info};
 use url::Url;
@@ -200,27 +200,17 @@ impl SearchStore for ElasticsearchSearchStore {
 
         let bool_query = self.build_search_query(query.clone(), filter)?;
 
+        let sort = match query {
+            None => self.build_sort(options.sort),
+            Some(_) => vec![],
+        };
+
         // Build and run search (sort by title if no query)
         let search = Search::new()
             .from(options.offset.unwrap_or(0))
             .size(options.limit.unwrap_or(MAX_PAGE_SIZE))
             .query(bool_query)
-            .sort(match query {
-                None => options
-                    .sort
-                    .unwrap_or_default()
-                    .into_iter()
-                    .map(|s| {
-                        elasticsearch_dsl::Sort::FieldSort(
-                            elasticsearch_dsl::FieldSort::new(s.field).order(match s.direction {
-                                SortDirection::Asc => elasticsearch_dsl::SortOrder::Asc,
-                                SortDirection::Desc => elasticsearch_dsl::SortOrder::Desc,
-                            }),
-                        )
-                    })
-                    .collect(),
-                Some(_) => vec![],
-            });
+            .sort(sort);
 
         let search_start = utils::now();
         let response = self
@@ -632,5 +622,35 @@ impl ElasticsearchSearchStore {
             .collect();
 
         Ok(core_content_nodes)
+    }
+
+    fn build_sort(&self, sort: Option<Vec<SortSpec>>) -> Vec<Sort> {
+        match sort {
+            Some(sort) => sort
+                .into_iter()
+                .map(|s| {
+                    elasticsearch_dsl::Sort::FieldSort(
+                        elasticsearch_dsl::FieldSort::new(s.field).order(match s.direction {
+                            SortDirection::Asc => elasticsearch_dsl::SortOrder::Asc,
+                            SortDirection::Desc => elasticsearch_dsl::SortOrder::Desc,
+                        }),
+                    )
+                })
+                .collect(),
+            // Default to sorting folders first, then both documents and tables
+            // and alphabetically by title
+            None => vec![
+                elasticsearch_dsl::Sort::ScriptSort(
+                    elasticsearch_dsl::ScriptSort::ascending(Script::source(
+                        "doc['node_type'].value == 'Folder' ? 0 : 1",
+                    ))
+                    .r#type(ScriptSortType::Number),
+                ),
+                elasticsearch_dsl::Sort::FieldSort(
+                    elasticsearch_dsl::FieldSort::new("title.keyword")
+                        .order(elasticsearch_dsl::SortOrder::Asc),
+                ),
+            ],
+        }
     }
 }
