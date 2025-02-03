@@ -16,9 +16,9 @@ import {
   DialogHeader,
   DialogTitle,
   DropdownMenu,
-  DropdownMenuItemProps,
   Input,
 } from "@sparkle/components/";
+import { MenuItem } from "@sparkle/components/DataTable";
 import { FolderIcon } from "@sparkle/icons";
 
 const meta = {
@@ -39,12 +39,20 @@ type Data = {
   avatarTooltipLabel?: string;
   icon?: React.ComponentType<{ className?: string }>;
   onClick?: () => void;
-  moreMenuItems?: DropdownMenuItemProps[];
-  dropdownMenuProps?: React.ComponentPropsWithoutRef<typeof DropdownMenu>;
+  menuItems?: MenuItem[];
+  dropdownMenuProps?: Omit<
+    React.ComponentPropsWithoutRef<typeof DropdownMenu>,
+    "modal"
+  >;
   roundedAvatar?: boolean;
 };
 
-const data: Data[] = [
+type TransformedData = {
+  dropdownMenuProps?: { modal: boolean };
+  menuItems?: MenuItem[];
+} & Data;
+
+const data: TransformedData[] = [
   {
     name: "Soupinou with tooltip on avatar",
     usedBy: 100,
@@ -55,8 +63,9 @@ const data: Data[] = [
     avatarTooltipLabel: "Meow",
     roundedAvatar: true,
     onClick: () => alert("Soupinou clicked"),
-    moreMenuItems: [
+    menuItems: [
       {
+        kind: "item",
         label: "Edit (disabled)",
         onClick: () => alert("Soupinou clicked"),
         disabled: true,
@@ -81,8 +90,9 @@ const data: Data[] = [
     lastUpdated: "2023-07-09",
     size: "64kb",
     icon: FolderIcon,
-    moreMenuItems: [
+    menuItems: [
       {
+        kind: "item",
         label: "Edit (disabled)",
         onClick: () => alert("Design menu clicked"),
         disabled: true,
@@ -90,17 +100,27 @@ const data: Data[] = [
     ],
   },
   {
-    name: "Very long name that should be truncated at some point to avoid overflow and make the table more readable",
+    name: "Submenu",
     usedBy: 2,
     addedBy: "Another very long user name that should be truncated",
     lastUpdated: "2023-07-09",
     size: "64kb",
     icon: FolderIcon,
-    moreMenuItems: [
+    menuItems: [
       {
-        label: "Edit (disabled)",
-        onClick: () => alert("Design menu clicked"),
-        disabled: true,
+        kind: "submenu",
+        label: "Add to Space",
+        items: [
+          { id: "space1", name: "Space 1" },
+          { id: "space2", name: "Space 2" },
+          { id: "space3", name: "Space 3" },
+          { id: "space4", name: "Space 4" },
+        ],
+        onSelect: (itemId) => console.log("Add to Space", itemId),
+      },
+      {
+        kind: "item",
+        label: "Test",
       },
     ],
   },
@@ -111,8 +131,9 @@ const data: Data[] = [
     lastUpdated: "2023-07-09",
     size: "64kb",
     icon: FolderIcon,
-    moreMenuItems: [
+    menuItems: [
       {
+        kind: "item",
         label: "Edit",
         onClick: () => alert("Design menu clicked"),
       },
@@ -211,7 +232,10 @@ const columns: ColumnDef<Data>[] = [
     id: "actions",
     header: "",
     cell: (info) => (
-      <DataTable.MoreButton moreMenuItems={info.row.original.moreMenuItems} />
+      <DataTable.MoreButton
+        menuItems={info.row.original.menuItems}
+        dropdownMenuProps={info.row.original.dropdownMenuProps}
+      />
     ),
     meta: {
       className: "s-w-12 s-cursor-pointer s-text-foreground",
@@ -225,25 +249,22 @@ export const DataTableExample = () => {
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [selectedName, setSelectedName] = React.useState("");
 
-  const tableData = data.map((item) =>
-    item.moreMenuItems
-      ? {
-          ...item,
-          dropdownMenuProps: {
-            modal: false,
-          },
-          moreMenuItems: [
-            {
-              label: "Edit",
-              onClick: () => {
-                setSelectedName(item.name);
-                setDialogOpen(true);
-              },
+  const tableData = data.map(({ menuItems, ...item }) => ({
+    ...item,
+    menuItems: menuItems?.length
+      ? [
+          {
+            kind: "item" as const,
+            label: "Edit",
+            onClick: () => {
+              setSelectedName(item.name);
+              setDialogOpen(true);
             },
-          ],
-        }
-      : item
-  );
+          },
+          ...menuItems,
+        ]
+      : undefined,
+  }));
 
   return (
     <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6">

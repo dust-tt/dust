@@ -37,6 +37,7 @@ export {
   ConversationMessageContent,
   ConversationMessageHeader,
 } from "./ConversationMessage";
+export type { DataTableMoreButtonProps, MenuItem } from "./DataTable";
 export { DataTable } from "./DataTable";
 export {
   Dialog,
