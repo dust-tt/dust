@@ -899,7 +899,7 @@
         "summary": "Submit feedback for a specific message in a conversation",
         "description": "Submit user feedback (thumbs up/down) for a specific message in a conversation.\nRequires authentication and update:conversation scope.\n",
         "tags": [
-          "assistant"
+          "Feedbacks"
         ],
         "parameters": [
           {
@@ -997,7 +997,7 @@
         "summary": "Delete feedback for a specific message",
         "description": "Delete user feedback for a specific message in a conversation.\nRequires authentication and update:conversation scope.\n",
         "tags": [
-          "assistant"
+          "Feedbacks"
         ],
         "parameters": [
           {

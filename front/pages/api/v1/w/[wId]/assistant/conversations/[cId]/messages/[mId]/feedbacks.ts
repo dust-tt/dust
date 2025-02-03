@@ -30,7 +30,7 @@ export const MessageFeedbackRequestBodySchema = t.type({
  *       Submit user feedback (thumbs up/down) for a specific message in a conversation.
  *       Requires authentication and update:conversation scope.
  *     tags:
- *       - assistant
+ *       - Feedbacks
  *     parameters:
  *       - name: wId
  *         in: path
@@ -93,7 +93,7 @@ export const MessageFeedbackRequestBodySchema = t.type({
  *       Delete user feedback for a specific message in a conversation.
  *       Requires authentication and update:conversation scope.
  *     tags:
- *       - assistant
+ *       - Feedbacks
  *     parameters:
  *       - name: wId
  *         in: path
