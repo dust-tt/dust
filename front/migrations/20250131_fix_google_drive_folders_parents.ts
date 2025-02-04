@@ -1,5 +1,5 @@
 import { concurrentExecutor, CoreAPI, Ok } from "@dust-tt/types";
-import assert from "assert";
+import { QueryTypes } from "sequelize";
 
 import apiConfig from "@app/lib/api/config";
 import { getCorePrimaryDbConnection } from "@app/lib/production_checks/utils";
@@ -11,6 +11,11 @@ import { makeScript } from "@app/scripts/helpers";
 const QUERY_BATCH_SIZE = 256;
 const NODE_CONCURRENCY = 16;
 
+interface Node {
+  parents: string[];
+  node_id: string;
+}
+
 async function migrateNode({
   coreAPI,
   dataSource,
@@ -21,47 +26,27 @@ async function migrateNode({
 }: {
   coreAPI: CoreAPI;
   dataSource: DataSourceModel;
-  coreNode: {
-    parents: string[];
-    node_id: string;
-    document: number | null;
-    table: number | null;
-  };
+  coreNode: Node;
   execute: boolean;
   skipIfParentsAreAlreadyCorrect: boolean;
   logger: typeof Logger;
 }) {
   let newParents = coreNode.parents;
   let newParentId: string | null = null;
-  try {
-    if (
-      coreNode.table !== null &&
-      !coreNode.node_id.startsWith("google-spreadsheet")
-    ) {
-      logger.warn("Sheet that does not start with google-spreadsheet.");
-    }
-    const uniqueIds = [
-      ...new Set(
-        // Google Drive node IDs can start either with gdrive- (files and folders) or with google-spreadsheet (sheets).
-        [coreNode.node_id, ...coreNode.parents].map((id) =>
-          id.startsWith("google-spreadsheet") ? id : id.replace("gdrive-", "")
-        )
-      ),
-    ];
-    newParents = uniqueIds.map((id) =>
-      id.startsWith("google-spreadsheet") ? id : `gdrive-${id}`
-    );
-    newParentId = newParents[1] || null;
-  } catch (e) {
-    logger.error(
-      {
-        nodeId: coreNode.node_id,
-        parents: coreNode.parents,
-      },
-      `TRANSFORM_ERROR`
-    );
-    throw e;
+  if (coreNode.node_id.startsWith("google-spreadsheet")) {
+    logger.warn("Folder that starts with google-spreadsheet.");
+    return;
   }
+  const uniqueIds = [
+    ...new Set(
+      // Google Drive node IDs can start either with gdrive- (files and folders) or with google-spreadsheet (sheets).
+      [coreNode.node_id, ...coreNode.parents].map((id) =>
+        id.replace("gdrive-", "")
+      )
+    ),
+  ];
+  newParents = uniqueIds.map((id) => `gdrive-${id}`);
+  newParentId = newParents[1] || null;
 
   if (
     skipIfParentsAreAlreadyCorrect &&
@@ -81,34 +66,13 @@ async function migrateNode({
   if (execute) {
     await withRetries(
       async () => {
-        let updateRes;
-        if (coreNode.document) {
-          updateRes = await coreAPI.updateDataSourceDocumentParents({
-            projectId: dataSource.dustAPIProjectId,
-            dataSourceId: dataSource.dustAPIDataSourceId,
-            documentId: coreNode.node_id,
-            parents: newParents,
-            parentId: newParentId,
-          });
-        } else if (coreNode.table) {
-          updateRes = await coreAPI.updateTableParents({
-            projectId: dataSource.dustAPIProjectId,
-            dataSourceId: dataSource.dustAPIDataSourceId,
-            tableId: coreNode.node_id,
-            parents: newParents,
-            parentId: newParentId,
-          });
-        } else {
-          logger.error(
-            {
-              nodeId: coreNode.node_id,
-              fromParents: coreNode.parents,
-              toParents: newParents,
-            },
-            "Folder with incorrect parents."
-          );
-          return;
-        }
+        const updateRes = await coreAPI.updateDataSourceDocumentParents({
+          projectId: dataSource.dustAPIProjectId,
+          dataSourceId: dataSource.dustAPIDataSourceId,
+          documentId: coreNode.node_id,
+          parents: newParents,
+          parentId: newParentId,
+        });
         if (updateRes.isErr()) {
           logger.error(
             {
@@ -163,67 +127,59 @@ async function migrateDataSource({
   const logger = parentLogger.child({ dataSourceId: dataSource.id });
   const corePrimary = getCorePrimaryDbConnection();
 
+  const { dustAPIProjectId, dustAPIDataSourceId } = dataSource;
   // Retrieve the core data source.
   const [coreDataSourceRows] = (await corePrimary.query(
     `SELECT id, data_source_id
      FROM data_sources
-     WHERE project = ?
-       AND data_source_id = ?`,
-    {
-      replacements: [
-        dataSource.dustAPIProjectId,
-        dataSource.dustAPIDataSourceId,
-      ],
-    }
+     WHERE project = :dustAPIProjectId
+       AND data_source_id = :dustAPIDataSourceId`,
+    { replacements: { dustAPIProjectId, dustAPIDataSourceId } }
   )) as { id: number; data_source_id: string }[][];
 
-  assert(
-    coreDataSourceRows.length === 1 &&
-      coreDataSourceRows[0].data_source_id === dataSource.dustAPIDataSourceId,
-    "Core data source mismatch"
-  );
+  if (
+    coreDataSourceRows.length !== 1 ||
+    coreDataSourceRows[0].data_source_id !== dataSource.dustAPIDataSourceId
+  ) {
+    logger.error(
+      { coreDataSourceRows, dustAPIProjectId, dustAPIDataSourceId },
+      "Core data source mismatch"
+    );
+    return;
+  }
+
   const coreDataSourceId = coreDataSourceRows[0].id;
 
   // For all nodes in the data source (can be big).
   let nextId = "";
+  let rows;
 
-  for (;;) {
-    const [rows] = (await (async () => {
-      return corePrimary.query(
-        `SELECT "node_id", "parents", "document", "table"
-         FROM data_sources_nodes
-         WHERE data_source = :coreDataSourceId
-           AND node_id > :nextId
-           AND EXISTS
-         (
-             SELECT 1
-             FROM UNNEST(parents) p
-             WHERE p NOT LIKE 'gdrive-%'
-         )
-         ORDER BY node_id
-         LIMIT :batchSize`,
-        {
-          replacements: {
-            coreDataSourceId,
-            nextId,
-            batchSize: QUERY_BATCH_SIZE,
-          },
-        }
-      );
-    })()) as {
-      parents: string[];
-      node_id: string;
-      document: number | null;
-      table: number | null;
-    }[][];
+  do {
+    rows = (await corePrimary.query(
+      `SELECT node_id, parents
+       FROM data_sources_nodes
+       WHERE data_source = :coreDataSourceId
+         AND node_id > :nextId
+         AND folder IS NOT NULL
+         AND EXISTS
+       (
+           SELECT 1
+           FROM UNNEST(parents) p
+           WHERE p NOT LIKE 'gdrive-%'
+       )
+       ORDER BY node_id
+       LIMIT :batchSize`,
+      {
+        replacements: {
+          coreDataSourceId,
+          nextId,
+          batchSize: QUERY_BATCH_SIZE,
+        },
+        type: QueryTypes.SELECT,
+      }
+    )) as Node[];
 
-    logger.info({ nextId, rowCount: rows.length }, "BATCH");
-
-    if (rows.length === 0) {
-      break;
-    }
-
-    nextId = rows[rows.length - 1].node_id;
+    nextId = rows[rows.length - 1]?.node_id;
 
     // concurrentExecutor on documents
     try {
@@ -251,7 +207,7 @@ async function migrateDataSource({
       );
       throw e;
     }
-  }
+  } while (rows.length === QUERY_BATCH_SIZE);
 }
 
 async function migrateAll({
@@ -275,7 +231,7 @@ async function migrateAll({
 
   for (const dataSource of dataSources) {
     if (dataSource.id >= nextDataSourceId) {
-      logger.info({ dataSourceId: dataSource.id }, "MIGRATING");
+      logger.info({ dataSourceId: dataSource.id }, "MIGRATE");
       await migrateDataSource({
         coreAPI,
         dataSource,
