@@ -108,29 +108,25 @@ export function computeNodesDiff({
       (coreNode) => coreNode.internalId === connectorsNode.internalId
     );
     if (coreNodes.length === 0) {
-      // Connector's notion unknown folder can map to core's syncing OR unknown folder.
-      // See https://github.com/dust-tt/dust/issues/10340
-      // Ignore slack channels missing in core - see https://github.com/dust-tt/dust/issues/10338
       if (
+        // Connector's notion-unknown folder can map to core's syncing OR unknown folder.
+        // See https://github.com/dust-tt/dust/issues/10340
         connectorsNode.internalId !== "notion-unknown" &&
-        !connectorsNode.internalId.startsWith("slack-channel-")
-      ) {
-        if (
-          // For snowflake we ignore the missing nodes if we returned a node that is a parent.
-          // This is because connectors returns all children tables when fed with internalIds while core returns only these ids
-          // See https://github.com/dust-tt/dust/issues/10400
-          !(
-            provider === "snowflake" &&
-            coreContentNodes.some((n) =>
-              connectorsNode.internalId.startsWith(n.internalId)
-            )
+        // Ignore Slack channels missing in core - see https://github.com/dust-tt/dust/issues/10338
+        !connectorsNode.internalId.startsWith("slack-channel-") &&
+        // For Snowflake we ignore the missing nodes if we returned a node that is a parent.
+        // This is because connectors returns all children tables when fed with internalIds while core returns only these ids
+        // See https://github.com/dust-tt/dust/issues/10400
+        !(
+          provider === "snowflake" &&
+          coreContentNodes.some((n) =>
+            connectorsNode.internalId.startsWith(n.internalId)
           )
-        ) {
-          // Connectors return tables even when viewType is documents, core doesn't
-          if (!(provider === "snowflake" && viewType === "documents")) {
-            missingNodes.push(connectorsNode);
-          }
-        }
+        ) &&
+        // Connectors return tables even when viewType is documents, core doesn't
+        !(provider === "snowflake" && viewType === "documents")
+      ) {
+        missingNodes.push(connectorsNode);
       }
     } else if (coreNodes.length > 1) {
       // this one should never ever happen, it's a real red flag
