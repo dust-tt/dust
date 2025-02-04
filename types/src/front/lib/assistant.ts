@@ -241,7 +241,7 @@ const LEGACY_OPEN_AI_TOOL_USE_META_PROMPT =
 export const GPT_3_5_TURBO_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
   modelId: GPT_3_5_TURBO_MODEL_ID,
-  displayName: "GPT 3.5 Turbo",
+  displayName: "GPT 3.5 turbo",
   contextSize: 16_384,
   recommendedTopK: 16,
   recommendedExhaustiveTopK: 24, // 12_288
@@ -257,7 +257,7 @@ export const GPT_3_5_TURBO_MODEL_CONFIG: ModelConfigurationType = {
 export const GPT_4_TURBO_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
   modelId: GPT_4_TURBO_MODEL_ID,
-  displayName: "GPT 4 Turbo",
+  displayName: "GPT 4 turbo",
   contextSize: 128_000,
   recommendedTopK: 32,
   recommendedExhaustiveTopK: 128, // 65_536
@@ -297,7 +297,7 @@ export const GPT_4O_20240806_MODEL_CONFIG: ModelConfigurationType = {
 export const GPT_4O_MINI_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
   modelId: GPT_4O_MINI_MODEL_ID,
-  displayName: "GPT 4o mini",
+  displayName: "GPT 4o-mini",
   contextSize: 128_000,
   recommendedTopK: 32,
   recommendedExhaustiveTopK: 128, // 65_536
@@ -311,7 +311,7 @@ export const GPT_4O_MINI_MODEL_CONFIG: ModelConfigurationType = {
 export const O1_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
   modelId: O1_MODEL_ID,
-  displayName: "O1",
+  displayName: "o1",
   contextSize: 200_000,
   recommendedTopK: 32,
   recommendedExhaustiveTopK: 128, // 65_536
@@ -327,7 +327,7 @@ export const O1_MODEL_CONFIG: ModelConfigurationType = {
 export const O1_HIGH_REASONING_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
   modelId: O1_MODEL_ID,
-  displayName: "O1 (High Reasoning)",
+  displayName: "o1 (High Reasoning)",
   contextSize: 200_000,
   recommendedTopK: 32,
   recommendedExhaustiveTopK: 128, // 65_536
@@ -345,7 +345,7 @@ export const O1_HIGH_REASONING_MODEL_CONFIG: ModelConfigurationType = {
 export const O1_MINI_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
   modelId: O1_MINI_MODEL_ID,
-  displayName: "O1 Mini",
+  displayName: "o1-mini",
   contextSize: 128_000,
   recommendedTopK: 32,
   recommendedExhaustiveTopK: 128, // 65_536
@@ -361,7 +361,7 @@ export const O1_MINI_MODEL_CONFIG: ModelConfigurationType = {
 export const O3_MINI_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
   modelId: O3_MINI_MODEL_ID,
-  displayName: "O3 Mini",
+  displayName: "o3-mini",
   contextSize: 200_000,
   recommendedTopK: 32,
   recommendedExhaustiveTopK: 128, // 65_536
@@ -375,7 +375,7 @@ export const O3_MINI_MODEL_CONFIG: ModelConfigurationType = {
 export const O3_MINI_HIGH_REASONING_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
   modelId: O3_MINI_MODEL_ID,
-  displayName: "O3 Mini (High Reasoning)",
+  displayName: "o3-mini (High Reasoning)",
   contextSize: 200_000,
   recommendedTopK: 32,
   recommendedExhaustiveTopK: 128, // 65_536
