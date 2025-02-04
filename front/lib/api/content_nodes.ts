@@ -104,10 +104,10 @@ export function computeNodesDiff({
   }
 
   connectorsContentNodes.forEach((connectorsNode) => {
-    const coreNodes = coreContentNodes.filter(
+    const matchingCoreNodes = coreContentNodes.filter(
       (coreNode) => coreNode.internalId === connectorsNode.internalId
     );
-    if (coreNodes.length === 0) {
+    if (matchingCoreNodes.length === 0) {
       if (
         // Connector's notion-unknown folder can map to core's syncing OR unknown folder.
         // See https://github.com/dust-tt/dust/issues/10340
@@ -128,17 +128,17 @@ export function computeNodesDiff({
       ) {
         missingNodes.push(connectorsNode);
       }
-    } else if (coreNodes.length > 1) {
+    } else if (matchingCoreNodes.length > 1) {
       // this one should never ever happen, it's a real red flag
       localLogger.info(
         {
           internalId: connectorsNode.internalId,
-          coreNodesId: coreNodes.map((n) => n.internalId),
+          coreNodesId: matchingCoreNodes.map((n) => n.internalId),
         },
         "[CoreNodes] Found more than one match"
       );
     } else {
-      const coreNode = coreNodes[0];
+      const matchingCoreNode = matchingCoreNodes[0];
       const diff = Object.fromEntries(
         Object.entries(connectorsNode)
           .filter(([key, value]) => {
@@ -149,9 +149,11 @@ export function computeNodesDiff({
             }
             // Custom exclusion rules. The goal here is to avoid logging irrelevant differences, scoping by connector.
 
-            // Titles: until ES backfill, there is a split issue on : that we fixed and can ignore, see https://github.com/dust-tt/dust/issues/10281
+            // Titles: until ES backfill, there is a split issue on ":" that we fixed and can ignore, see https://github.com/dust-tt/dust/issues/10281
             if (key === "title") {
-              if (connectorsNode.title.split(":")[0] === coreNode.title) {
+              if (
+                connectorsNode.title.split(":")[0] === matchingCoreNode.title
+              ) {
                 return false;
               }
             }
@@ -165,7 +167,8 @@ export function computeNodesDiff({
             ) {
               return false;
             }
-            const coreValue = coreNode[key as keyof DataSourceViewContentNode];
+            const coreValue =
+              matchingCoreNode[key as keyof DataSourceViewContentNode];
 
             // Special case for folder parents, the ones retrieved using getContentNodesForStaticDataSourceView do not
             // contain any parentInternalIds.
@@ -175,13 +178,13 @@ export function computeNodesDiff({
             // Ignore the type mismatch between core and connectors for mime types that were already identified.
             if (
               key === "type" &&
-              coreNode.mimeType &&
+              matchingCoreNode.mimeType &&
               ((value === "channel" &&
-                CHANNEL_MIME_TYPES.includes(coreNode.mimeType)) ||
+                CHANNEL_MIME_TYPES.includes(matchingCoreNode.mimeType)) ||
                 (value === "database" &&
-                  DATABASE_MIME_TYPES.includes(coreNode.mimeType)) ||
+                  DATABASE_MIME_TYPES.includes(matchingCoreNode.mimeType)) ||
                 (value === "file" &&
-                  FILE_MIME_TYPES.includes(coreNode.mimeType)))
+                  FILE_MIME_TYPES.includes(matchingCoreNode.mimeType)))
             ) {
               return false;
             }
@@ -199,7 +202,9 @@ export function computeNodesDiff({
             if (
               "parentInternalIds" === key &&
               provider === "google_drive" &&
-              coreNode?.parentInternalIds?.includes("gdrive_outside_sync")
+              matchingCoreNode?.parentInternalIds?.includes(
+                "gdrive_outside_sync"
+              )
             ) {
               return false;
             }
@@ -208,7 +213,7 @@ export function computeNodesDiff({
             if (
               ["parentInternalId", "parentInternalIds"].includes(key) &&
               provider === "notion" &&
-              coreNode?.parentInternalIds?.includes("notion-syncing")
+              matchingCoreNode?.parentInternalIds?.includes("notion-syncing")
             ) {
               return false;
             }
@@ -218,7 +223,8 @@ export function computeNodesDiff({
             // The value in core is an improvement over the value in connectors, so we omit the difference.
             if (
               key === "title" &&
-              coreNode.mimeType === "application/vnd.google-apps.spreadsheet"
+              matchingCoreNode.mimeType ===
+                "application/vnd.google-apps.spreadsheet"
             ) {
               return false;
             }
@@ -229,8 +235,8 @@ export function computeNodesDiff({
               key === "type" &&
               provider === "google_drive" &&
               value === "file" &&
-              coreNode.type === "folder" &&
-              coreNode.mimeType === MIME_TYPES.GOOGLE_DRIVE.SPREADSHEET
+              matchingCoreNode.type === "folder" &&
+              matchingCoreNode.mimeType === MIME_TYPES.GOOGLE_DRIVE.SPREADSHEET
             ) {
               return false;
             }
@@ -241,8 +247,8 @@ export function computeNodesDiff({
               key === "type" &&
               provider === "microsoft" &&
               value === "file" &&
-              coreNode.type === "folder" &&
-              coreNode.mimeType === MIME_TYPES.MICROSOFT.SPREADSHEET
+              matchingCoreNode.type === "folder" &&
+              matchingCoreNode.mimeType === MIME_TYPES.MICROSOFT.SPREADSHEET
             ) {
               return false;
             }
@@ -253,8 +259,9 @@ export function computeNodesDiff({
               key === "parentInternalIds" &&
               provider === "google_drive" &&
               !value &&
-              coreNode.parentInternalIds?.length === 1 &&
-              coreNode.parentInternalIds[0] === coreNode.internalId
+              matchingCoreNode.parentInternalIds?.length === 1 &&
+              matchingCoreNode.parentInternalIds[0] ===
+                matchingCoreNode.internalId
             ) {
               return false;
             }
@@ -298,7 +305,7 @@ export function computeNodesDiff({
             if (
               key === "expandable" &&
               provider === "intercom" &&
-              coreNode.internalId.startsWith("intercom-collection") &&
+              matchingCoreNode.internalId.startsWith("intercom-collection") &&
               value === false &&
               coreValue === true
             ) {
@@ -342,7 +349,7 @@ export function computeNodesDiff({
             key,
             {
               connectors: value,
-              core: coreNode[key as keyof DataSourceViewContentNode],
+              core: matchingCoreNode[key as keyof DataSourceViewContentNode],
             },
           ])
       );
@@ -359,7 +366,7 @@ export function computeNodesDiff({
         const mismatchNode = { ...connectorsNode };
         mismatchNode.title = `[MISMATCH - CONNECTOR] ${mismatchNode.title}`;
         mismatchNodes.push(mismatchNode);
-        const mismatchCoreNode = { ...coreNode };
+        const mismatchCoreNode = { ...matchingCoreNode };
         mismatchCoreNode.title = `[MISMATCH - CORE] ${mismatchCoreNode.title}`;
         mismatchNodes.push(mismatchCoreNode);
       }
