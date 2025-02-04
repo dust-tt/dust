@@ -3,6 +3,7 @@ import { PostTableParentsRequestSchema } from "@dust-tt/client";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
@@ -87,25 +88,26 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      const r = await PostTableParentsRequestSchema.safeParse(req.body);
+      const r = PostTableParentsRequestSchema.safeParse(req.body);
 
       if (r.error) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${r.error.message}`,
+            message: fromError(r.error).toString(),
           },
         });
       }
 
-      const { parents } = r.data;
+      const { parents, parent_id: parentId } = r.data;
 
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const updateRes = await coreAPI.updateTableParents({
         projectId: dataSource.dustAPIProjectId,
         dataSourceId: dataSource.dustAPIDataSourceId,
         tableId: tId,
+        parentId: parentId ?? null,
         parents,
       });
 

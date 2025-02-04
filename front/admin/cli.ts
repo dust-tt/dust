@@ -8,11 +8,8 @@ import parseArgs from "minimist";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
 import { renderConversationForModel } from "@app/lib/api/assistant/generation";
-import {
-  getTextContentFromMessage,
-  getTextRepresentationFromMessages,
-} from "@app/lib/api/assistant/utils";
-import config from "@app/lib/api/config";
+import { getTextRepresentationFromMessages } from "@app/lib/api/assistant/utils";
+import { default as config } from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { garbageCollectGoogleDriveDocument } from "@app/lib/api/poke/plugins/data_sources/garbage_collect_google_drive_document";
 import { Authenticator } from "@app/lib/auth";
@@ -22,7 +19,7 @@ import {
   internalSubscribeWorkspaceToFreeNoPlan,
   internalSubscribeWorkspaceToFreePlan,
 } from "@app/lib/plans/subscription";
-import { DustProdActionRegistry } from "@app/lib/registry";
+import { getDustProdActionRegistry } from "@app/lib/registry";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
@@ -66,7 +63,6 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       });
 
       args.wId = w.sId;
-      await workspace("show", args);
       return;
     }
 
@@ -196,7 +192,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
     default:
       console.log(`Unknown workspace command: ${command}`);
       console.log(
-        "Possible values: `find`, `show`, `create`, `set-limits`, `upgrade`, `downgrade`"
+        "Possible values: `find`, `create`, `set-limits`, `upgrade`, `downgrade`"
       );
   }
 };
@@ -448,7 +444,7 @@ const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
 const registry = async (command: string) => {
   switch (command) {
     case "dump": {
-      console.log(JSON.stringify(DustProdActionRegistry));
+      console.log(JSON.stringify(getDustProdActionRegistry()));
       return;
     }
 

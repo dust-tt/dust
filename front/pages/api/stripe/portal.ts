@@ -5,7 +5,8 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
-import { Authenticator, getSession } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
+import type { SessionWithUser } from "@app/lib/iam/provider";
 import { createCustomerPortalSession } from "@app/lib/plans/stripe";
 import { apiError } from "@app/logger/withlogging";
 
@@ -17,7 +18,8 @@ type PostStripePortalResponseBody = {
 };
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<PostStripePortalResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<PostStripePortalResponseBody>>,
+  session: SessionWithUser
 ): Promise<void> {
   const bodyValidation = PostStripePortalRequestBody.decode(req.body);
   if (isLeft(bodyValidation)) {
@@ -32,7 +34,6 @@ async function handler(
   }
 
   const workspaceId = bodyValidation.right.workspaceId;
-  const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(session, workspaceId);
 
   const owner = auth.workspace();

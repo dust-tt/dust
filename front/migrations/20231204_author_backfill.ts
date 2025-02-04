@@ -1,6 +1,6 @@
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { User } from "@app/lib/models/user";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 
 async function main() {
   console.log("Starting author backfill");
@@ -33,7 +33,7 @@ async function main() {
 
 async function backfillAuthor(workspaceId: number) {
   // set author as the first admin of the workspace
-  const author = await User.findOne({
+  const author = await UserModel.findOne({
     include: [
       {
         model: MembershipModel,

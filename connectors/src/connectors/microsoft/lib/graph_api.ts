@@ -437,6 +437,7 @@ export function itemToMicrosoftNode<T extends keyof MicrosoftEntityMapping>(
         internalId: getDriveItemInternalId(item),
         parentInternalId: null,
         mimeType: null,
+        webUrl: item.webUrl ?? null,
       };
     }
     case "file": {
@@ -447,6 +448,7 @@ export function itemToMicrosoftNode<T extends keyof MicrosoftEntityMapping>(
         internalId: getDriveItemInternalId(item),
         parentInternalId: null,
         mimeType: item.file?.mimeType ?? null,
+        webUrl: item.webUrl ?? null,
       };
     }
     case "drive": {
@@ -457,6 +459,7 @@ export function itemToMicrosoftNode<T extends keyof MicrosoftEntityMapping>(
         internalId: getDriveInternalId(item),
         parentInternalId: null,
         mimeType: null,
+        webUrl: item.webUrl ?? null,
       };
     }
     case "site": {
@@ -470,6 +473,7 @@ export function itemToMicrosoftNode<T extends keyof MicrosoftEntityMapping>(
         }),
         mimeType: null,
         parentInternalId: null,
+        webUrl: item.webUrl ?? null,
       };
     }
     case "team":

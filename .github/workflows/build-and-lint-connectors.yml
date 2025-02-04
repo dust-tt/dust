@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - types/**
+      - sdks/js/**
       - connectors/**
       - .github/workflows/build-and-lint-connectors.yml
 

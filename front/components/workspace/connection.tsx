@@ -1,17 +1,26 @@
 import {
   Button,
   Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   ExternalLinkIcon,
   Icon,
   IconButton,
   Input,
   Label,
   LockIcon,
-  Modal,
   Page,
   Popup,
   RadioGroup,
   RadioGroupChoice,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
   SliderToggle,
   useSendNotification,
 } from "@dust-tt/sparkle";
@@ -31,7 +40,11 @@ import {
   useFeatureFlags,
   useWorkspaceEnterpriseConnection,
 } from "@app/lib/swr/workspaces";
-import type { PostCreateEnterpriseConnectionRequestBodySchemaType } from "@app/pages/api/w/[wId]/enterprise-connection";
+import type {
+  IdpSpecificConnectionTypeDetails,
+  PostCreateEnterpriseConnectionRequestBodySchemaType,
+  SAMLConnectionTypeDetails,
+} from "@app/pages/api/w/[wId]/enterprise-connection";
 
 interface EnterpriseConnectionDetailsProps {
   owner: WorkspaceType;
@@ -43,6 +56,9 @@ interface EnterpriseConnectionDetailsProps {
 export interface EnterpriseConnectionStrategyDetails {
   callbackUrl: string;
   initiateLoginUrl: string;
+  // SAML Specific.
+  audienceUri: string;
+  samlAcsUrl: string;
 }
 
 export function EnterpriseConnectionDetails({
@@ -120,8 +136,8 @@ export function EnterpriseConnectionDetails({
         owner={owner}
       />
       <Page.P variant="secondary">
-        Easily integrate Okta or Microsoft Entra ID to enable Single Sign-On
-        (SSO) for your team.
+        Easily integrate SAML, Okta or Microsoft Entra ID to enable Single
+        Sign-On (SSO) for your team.
       </Page.P>
       <div className="flex w-full flex-col items-start gap-3">
         {enterpriseConnection ? (
@@ -235,7 +251,7 @@ function CreateOktaEnterpriseConnectionModal({
   strategyDetails: EnterpriseConnectionStrategyDetails;
 }) {
   const [enterpriseConnectionDetails, setEnterpriseConnectionDetails] =
-    useState<Partial<PostCreateEnterpriseConnectionRequestBodySchemaType>>({
+    useState<Partial<IdpSpecificConnectionTypeDetails>>({
       strategy: "okta",
     });
 
@@ -375,7 +391,7 @@ function CreateWAADEnterpriseConnectionModal({
   strategyDetails: EnterpriseConnectionStrategyDetails;
 }) {
   const [enterpriseConnectionDetails, setEnterpriseConnectionDetails] =
-    useState<Partial<PostCreateEnterpriseConnectionRequestBodySchemaType>>({
+    useState<Partial<IdpSpecificConnectionTypeDetails>>({
       strategy: "waad",
     });
 
@@ -498,6 +514,126 @@ function CreateWAADEnterpriseConnectionModal({
   );
 }
 
+function CreateSAMLEnterpriseConnectionModal({
+  createEnterpriseConnection,
+  onConnectionCreated,
+  strategyDetails,
+}: {
+  createEnterpriseConnection: (
+    enterpriseConnection: PostCreateEnterpriseConnectionRequestBodySchemaType
+  ) => Promise<void>;
+  onConnectionCreated: () => void;
+  strategyDetails: EnterpriseConnectionStrategyDetails;
+}) {
+  const [enterpriseConnectionDetails, setEnterpriseConnectionDetails] =
+    useState<Partial<SAMLConnectionTypeDetails>>({
+      strategy: "samlp",
+    });
+
+  const { audienceUri, samlAcsUrl } = strategyDetails;
+
+  const handleCertUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const base64Cert = (e.target?.result as string).split(",")[1];
+      setEnterpriseConnectionDetails({
+        ...enterpriseConnectionDetails,
+        x509SignInCertificate: base64Cert,
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  return (
+    <>
+      <div>
+        Discover how to set up SAML SSO – Read Our{" "}
+        <a
+          className="font-bold underline decoration-2"
+          href="https://docs.dust.tt/docs/saml-sso"
+          target="_blank"
+        >
+          Documentation
+        </a>
+        .
+      </div>
+      <Page.Layout direction="vertical">
+        <div>
+          Assertion Consumer Service URL:
+          <Input
+            name="Assertion Consumer Service URL"
+            placeholder="Assertion Consumer Service URL"
+            value={samlAcsUrl}
+            disabled
+            className="max-w-sm"
+          />
+        </div>
+        <div>
+          Audience URI (SP Entity ID):
+          <Input
+            name="Audience URI"
+            placeholder="Audience URI"
+            value={audienceUri}
+            disabled
+            className="max-w-sm"
+          />
+        </div>
+        <Page.Separator />
+        <div>
+          Sign In URL:
+          <Input
+            name="Sign In URL"
+            placeholder="https://<okta_tenant_name>.okta.com/app/..."
+            value={enterpriseConnectionDetails.signInUrl ?? ""}
+            onChange={(e) =>
+              setEnterpriseConnectionDetails({
+                ...enterpriseConnectionDetails,
+                signInUrl: e.target.value,
+              })
+            }
+            className="max-w-sm"
+          />
+        </div>
+        <div>
+          IdP Certificate:
+          <Input
+            type="file"
+            accept=".pem,.crt,.cer,.cert"
+            onChange={handleCertUpload}
+            className="max-w-sm"
+          />
+        </div>
+        <Page.Separator />
+        <div className="flex items-start">
+          <Button
+            variant="warning"
+            size="sm"
+            disabled={
+              !(
+                enterpriseConnectionDetails.signInUrl &&
+                enterpriseConnectionDetails.x509SignInCertificate
+              )
+            }
+            icon={LockIcon}
+            label="Create SAML Configuration"
+            onClick={async () => {
+              await createEnterpriseConnection(
+                enterpriseConnectionDetails as PostCreateEnterpriseConnectionRequestBodySchemaType
+              );
+              onConnectionCreated();
+            }}
+          />
+        </div>
+      </Page.Layout>
+    </>
+  );
+}
+
 function StrategyModalContent({
   onConnectionCreated,
   owner,
@@ -559,7 +695,13 @@ function StrategyModalContent({
       );
 
     case "samlp":
-      return <>Not implemented</>;
+      return (
+        <CreateSAMLEnterpriseConnectionModal
+          createEnterpriseConnection={createEnterpriseConnection}
+          onConnectionCreated={onConnectionCreated}
+          strategyDetails={strategyDetails}
+        />
+      );
 
     default:
       assertNever(strategy);
@@ -581,55 +723,72 @@ function CreateEnterpriseConnectionModal({
     useState<SupportedEnterpriseConnectionStrategies | null>(null);
 
   return (
-    <Modal
-      isOpen={isOpen}
-      title={"Create Single Sign On configuration"}
-      onClose={() => {
-        onClose(false);
-        setSelectedStrategy(null);
+    <Sheet
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose(false);
+          setSelectedStrategy(null);
+        }
       }}
-      hasChanged={false}
-      variant="side-sm"
     >
-      <Page variant="modal">
-        {selectedStrategy === null && (
-          <div className="flex flex-col gap-4">
-            <Page.P variant="secondary">
-              Dust supports Single Sign On (SSO) with Okta and Microsoft Entra
-              Id. Choose the SSO provider you'd like to integrate.
-            </Page.P>
-            <RadioGroup
-              value={selectedStrategy ?? ""}
-              onValueChange={(v) => {
-                setSelectedStrategy(
-                  v as SupportedEnterpriseConnectionStrategies
-                );
-              }}
-              className="flex-col gap-2"
-            >
-              <RadioGroupChoice
-                value="okta"
-                label={<Label className="pl-1">Okta SSO</Label>}
-              ></RadioGroupChoice>
-              <RadioGroupChoice
-                value="waad"
-                label={<Label className="pl-1">Microsoft Entra Id</Label>}
-              ></RadioGroupChoice>
-            </RadioGroup>
-          </div>
-        )}
-        {selectedStrategy && (
-          <StrategyModalContent
-            onConnectionCreated={() => {
-              onClose(true);
-            }}
-            owner={owner}
-            strategy={selectedStrategy}
-            strategyDetails={strategyDetails}
-          />
-        )}
-      </Page>
-    </Modal>
+      <SheetContent>
+        <SheetHeader>
+          <SheetTitle>Create Single Sign On configuration</SheetTitle>
+        </SheetHeader>
+        <SheetContainer>
+          <Page variant="modal">
+            {selectedStrategy === null && (
+              <div className="flex flex-col gap-4">
+                <Page.P variant="secondary">
+                  Dust supports Single Sign On (SSO) with Okta, Microsoft Entra
+                  Id and SAML. Choose the SSO provider you'd like to integrate.
+                </Page.P>
+                <RadioGroup
+                  value={selectedStrategy ?? ""}
+                  onValueChange={(v) => {
+                    setSelectedStrategy(
+                      v as SupportedEnterpriseConnectionStrategies
+                    );
+                  }}
+                  className="flex-col gap-2"
+                >
+                  <RadioGroupChoice
+                    value="samlp"
+                    label={
+                      <Label className="pl-1">
+                        SAML{" "}
+                        <span className="text-sm text-gray-600">
+                          (preferred)
+                        </span>
+                      </Label>
+                    }
+                  />
+                  <RadioGroupChoice
+                    value="okta"
+                    label={<Label className="pl-1">Okta SSO</Label>}
+                  />
+                  <RadioGroupChoice
+                    value="waad"
+                    label={<Label className="pl-1">Microsoft Entra Id</Label>}
+                  />
+                </RadioGroup>
+              </div>
+            )}
+            {selectedStrategy && (
+              <StrategyModalContent
+                onConnectionCreated={() => {
+                  onClose(true);
+                }}
+                owner={owner}
+                strategy={selectedStrategy}
+                strategyDetails={strategyDetails}
+              />
+            )}
+          </Page>
+        </SheetContainer>
+      </SheetContent>
+    </Sheet>
   );
 }
 
@@ -690,16 +849,33 @@ function ToggleEnforceEnterpriseConnectionModal({
 
   return (
     <Dialog
-      isOpen={isOpen}
-      title={dialog.title}
-      onValidate={async () => {
-        await handleToggleSsoEnforced(!owner.ssoEnforced);
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose(false);
+        }
       }}
-      onCancel={() => onClose(false)}
-      validateLabel={dialog.validateLabel}
-      validateVariant="warning"
     >
-      <div>{dialog.content}</div>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{dialog.title}</DialogTitle>
+        </DialogHeader>
+        <DialogContainer>{dialog.content}</DialogContainer>
+        <DialogFooter
+          leftButtonProps={{
+            label: "Cancel",
+            variant: "outline",
+            onClick: () => onClose(false),
+          }}
+          rightButtonProps={{
+            label: dialog.validateLabel,
+            variant: "warning",
+            onClick: async () => {
+              await handleToggleSsoEnforced(!owner.ssoEnforced);
+            },
+          }}
+        />
+      </DialogContent>
     </Dialog>
   );
 }
@@ -748,19 +924,37 @@ function DisableEnterpriseConnectionModal({
 
   return (
     <Dialog
-      isOpen={isOpen}
-      title={`Disable ${strategyHumanReadable} Single Sign On`}
-      onValidate={async () => {
-        await handleUpdateWorkspace();
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose(false);
+        }
       }}
-      onCancel={() => onClose(false)}
-      validateLabel={`Disable ${strategyHumanReadable} Single Sign On`}
-      validateVariant="warning"
     >
-      <div>
-        Anyone with an {strategyHumanReadable} account won't be able to access
-        your Dust workspace anymore.
-      </div>
+      <DialogContent size="md">
+        <DialogHeader>
+          <DialogTitle>
+            Disable ${strategyHumanReadable} Single Sign On
+          </DialogTitle>
+        </DialogHeader>
+        <DialogContainer>
+          Anyone with an {strategyHumanReadable} account won't be able to access
+          your Dust workspace anymore.
+        </DialogContainer>
+        <DialogFooter
+          leftButtonProps={{
+            label: "Cancel",
+            variant: "outline",
+          }}
+          rightButtonProps={{
+            label: `Disable ${strategyHumanReadable} Single Sign On`,
+            variant: "warning",
+            onClick: async () => {
+              await handleUpdateWorkspace();
+            },
+          }}
+        />
+      </DialogContent>
     </Dialog>
   );
 }

@@ -1,17 +1,21 @@
-import type { LightWorkspaceType, ModelId } from "@dust-tt/types";
+import type { ConversationWithoutContentType, ModelId } from "@dust-tt/types";
 import { removeNulls } from "@dust-tt/types";
 import { chunk } from "lodash";
 
+import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation/without_content";
+import type { Authenticator } from "@app/lib/auth";
 import { AgentBrowseAction } from "@app/lib/models/assistant/actions/browse";
+import { AgentConversationIncludeFileAction } from "@app/lib/models/assistant/actions/conversation/include_file";
 import { AgentDustAppRunAction } from "@app/lib/models/assistant/actions/dust_app_run";
 import { AgentProcessAction } from "@app/lib/models/assistant/actions/process";
 import { AgentRetrievalAction } from "@app/lib/models/assistant/actions/retrieval";
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import { AgentWebsearchAction } from "@app/lib/models/assistant/actions/websearch";
-import type { Conversation } from "@app/lib/models/assistant/conversation";
+import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import {
   AgentMessage,
   AgentMessageFeedback,
+  Conversation,
   ConversationParticipant,
   Mention,
   Message,
@@ -19,6 +23,7 @@ import {
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { RetrievalDocumentResource } from "@app/lib/resources/retrieval_document_resource";
 
 const DESTROY_MESSAGE_BATCH = 50;
@@ -55,6 +60,9 @@ async function destroyActionsRelatedResources(agentMessageIds: Array<ModelId>) {
   await AgentBrowseAction.destroy({
     where: { agentMessageId: agentMessageIds },
   });
+  await AgentConversationIncludeFileAction.destroy({
+    where: { agentMessageId: agentMessageIds },
+  });
 }
 
 async function destroyMessageRelatedResources(messageIds: Array<ModelId>) {
@@ -64,6 +72,7 @@ async function destroyMessageRelatedResources(messageIds: Array<ModelId>) {
   await Mention.destroy({
     where: { messageId: messageIds },
   });
+  // TODO: We should also destroy the parent message
   await Message.destroy({
     where: { id: messageIds },
   });
@@ -116,12 +125,46 @@ async function destroyContentFragments(
   }
 }
 
-// This belongs to the ConversationResource.
-export async function destroyConversation(
-  workspace: LightWorkspaceType,
-  conversation: Conversation
+async function destroyConversationDataSource(
+  auth: Authenticator,
+  {
+    conversation,
+  }: {
+    conversation: ConversationWithoutContentType;
+  }
 ) {
-  const { id: conversationId } = conversation;
+  const dataSource = await DataSourceResource.fetchByConversation(
+    auth,
+    conversation
+  );
+
+  if (dataSource) {
+    await dataSource.delete(auth, { hardDelete: true });
+  }
+}
+
+// This belongs to the ConversationResource. The authenticator is expected to have access to the
+// groups involved in the conversation.
+export async function destroyConversation(
+  auth: Authenticator,
+  {
+    conversationId,
+  }: {
+    conversationId: string;
+  }
+) {
+  const workspace = auth.getNonNullableWorkspace();
+  const conversationRes = await getConversationWithoutContent(
+    auth,
+    conversationId,
+    // We skip access checks as some conversations associated with deleted spaces may have become
+    // inaccessible, yet we want to be able to delete them here.
+    { includeDeleted: true, dangerouslySkipPermissionFiltering: true }
+  );
+  if (conversationRes.isErr()) {
+    throw conversationRes.error;
+  }
+  const conversation = conversationRes.value;
 
   const messages = await Message.findAll({
     attributes: [
@@ -131,7 +174,7 @@ export async function destroyConversation(
       "agentMessageId",
       "contentFragmentId",
     ],
-    where: { conversationId },
+    where: { conversationId: conversation.id },
   });
 
   // To preserve the DB, we delete messages in batches.
@@ -155,6 +198,9 @@ export async function destroyConversation(
     await UserMessage.destroy({
       where: { id: userMessageIds },
     });
+    await AgentMessageContent.destroy({
+      where: { agentMessageId: agentMessageIds },
+    });
     await AgentMessageFeedback.destroy({
       where: { agentMessageId: agentMessageIds },
     });
@@ -163,16 +209,23 @@ export async function destroyConversation(
     });
 
     await destroyContentFragments(messageAndContentFragmentIds, {
-      conversationId: conversation.sId,
       workspaceId: workspace.sId,
+      conversationId: conversation.sId,
     });
 
     await destroyMessageRelatedResources(messageIds);
   }
 
   await ConversationParticipant.destroy({
-    where: { conversationId: conversationId },
+    where: { conversationId: conversation.id },
   });
 
-  await conversation.destroy();
+  await destroyConversationDataSource(auth, { conversation });
+
+  const c = await Conversation.findOne({
+    where: { id: conversation.id },
+  });
+  if (c) {
+    await c.destroy();
+  }
 }

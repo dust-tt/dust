@@ -29,6 +29,10 @@ export function isNodeZendeskForbiddenError(
   );
 }
 
+export function isZendeskForbiddenError(err: unknown): err is ZendeskApiError {
+  return err instanceof ZendeskApiError && err.status === 403;
+}
+
 export function isZendeskExpiredCursorError(
   err: unknown
 ): err is ZendeskApiError {
@@ -42,7 +46,18 @@ export function isZendeskExpiredCursorError(
   );
 }
 
-export function isZendeskEpipeError(err: unknown): err is NodeZendeskError {
+/**
+ * Catches 404 errors that were already caught in fetchFromZendeskWithRetries and rethrown as ZendeskApiErrors.
+ * The idea is that we only try/catch the part where we call the API, without wrapping any of our code and from then
+ * only certain functions can actually handle 404 by returning a null.
+ */
+export function isZendeskNotFoundError(
+  err: unknown
+): err is ZendeskApiError & boolean {
+  return err instanceof ZendeskApiError && err.status === 404;
+}
+
+export function isNodeZendeskEpipeError(err: unknown): err is NodeZendeskError {
   return (
     typeof err === "object" &&
     err !== null &&

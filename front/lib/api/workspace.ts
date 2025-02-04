@@ -9,17 +9,23 @@ import type {
   WorkspaceSegmentationType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { ACTIVE_ROLES, Err, Ok } from "@dust-tt/types";
+import { ACTIVE_ROLES, Err, Ok, removeNulls } from "@dust-tt/types";
 import { Op } from "sequelize";
 
-import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
+import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
 import { Subscription } from "@app/lib/models/plan";
-import { Workspace, WorkspaceHasDomain } from "@app/lib/models/workspace";
+import { Workspace } from "@app/lib/models/workspace";
+import { WorkspaceHasDomain } from "@app/lib/models/workspace_has_domain";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
+import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
+import type { MembershipsPaginationParams } from "@app/lib/resources/membership_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { UserModel } from "@app/lib/resources/storage/models/user";
+import type { SearchMembersPaginationParams } from "@app/lib/resources/user_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
+import logger from "@app/logger/logger";
 import { launchDeleteWorkspaceWorkflow } from "@app/poke/temporal/client";
 
 export async function getWorkspaceInfos(
@@ -35,15 +41,7 @@ export async function getWorkspaceInfos(
     return null;
   }
 
-  return {
-    id: workspace.id,
-    sId: workspace.sId,
-    name: workspace.name,
-    role: "none",
-    segmentation: workspace.segmentation,
-    whiteListedProviders: workspace.whiteListedProviders,
-    defaultEmbeddingProvider: workspace.defaultEmbeddingProvider,
-  };
+  return renderLightWorkspaceType({ workspace });
 }
 
 export async function getWorkspaceVerifiedDomain(
@@ -108,15 +106,8 @@ export async function setInternalWorkspaceSegmentation(
   await workspace.update({
     segmentation,
   });
-  return {
-    id: workspace.id,
-    sId: workspace.sId,
-    name: workspace.name,
-    role: "none",
-    segmentation: workspace.segmentation,
-    whiteListedProviders: workspace.whiteListedProviders,
-    defaultEmbeddingProvider: workspace.defaultEmbeddingProvider,
-  };
+
+  return renderLightWorkspaceType({ workspace });
 }
 
 /**
@@ -136,14 +127,18 @@ export async function getMembers(
     roles?: MembershipRoleType[];
     activeOnly?: boolean;
   } = {},
-  paginationParams?: PaginationParams
-): Promise<{ members: UserTypeWithWorkspaces[]; total: number }> {
+  paginationParams?: MembershipsPaginationParams
+): Promise<{
+  members: UserTypeWithWorkspaces[];
+  total: number;
+  nextPageParams?: MembershipsPaginationParams;
+}> {
   const owner = auth.workspace();
   if (!owner) {
     return { members: [], total: 0 };
   }
 
-  const { memberships, total } = activeOnly
+  const { memberships, total, nextPageParams } = activeOnly
     ? await MembershipResource.getActiveMemberships({
         workspace: owner,
         roles,
@@ -155,53 +150,84 @@ export async function getMembers(
         paginationParams,
       });
 
-  const users = await UserResource.fetchByModelIds(
-    memberships.map((m) => m.userId)
+  const usersWithWorkspaces = await Promise.all(
+    memberships.map(async (m) => {
+      let role = "none" as RoleType;
+      if (m && !m.isRevoked()) {
+        switch (m.role) {
+          case "admin":
+          case "builder":
+          case "user":
+            role = m.role;
+            break;
+          default:
+            role = "none";
+        }
+      }
+
+      let user: UserResource | null;
+      if (!m.user) {
+        user = await UserResource.fetchByModelId(m.userId);
+      } else {
+        user = new UserResource(UserModel, m.user);
+      }
+
+      if (!user) {
+        return null;
+      }
+
+      return {
+        ...user.toJSON(),
+        workspaces: [{ ...owner, role, flags: null }],
+      };
+    })
   );
 
-  const usersWithWorkspaces = users.map((u) => {
-    const m = memberships.find((m) => m.userId === u.id);
-    let role = "none" as RoleType;
-    if (m && !m.isRevoked()) {
-      switch (m.role) {
-        case "admin":
-        case "builder":
-        case "user":
-          role = m.role;
-          break;
-        default:
-          role = "none";
-      }
-    }
-
-    return {
-      ...u.toJSON(),
-      workspaces: [{ ...owner, role, flags: null }],
-    };
-  });
-
-  return { members: usersWithWorkspaces, total };
+  return {
+    members: removeNulls(usersWithWorkspaces),
+    total,
+    nextPageParams,
+  };
 }
 
 export async function searchMembers(
   auth: Authenticator,
   options: {
-    email?: string;
+    searchTerm?: string;
+    searchEmails?: string[];
   },
-  paginationParams: PaginationParams
+  paginationParams: SearchMembersPaginationParams
 ): Promise<{ members: UserTypeWithWorkspaces[]; total: number }> {
   const owner = auth.workspace();
   if (!owner) {
     return { members: [], total: 0 };
   }
 
-  const { users, total } = await UserResource.listUsersWithEmailPredicat(
-    owner.id,
-    {
-      email: options.email,
-    },
-    paginationParams
-  );
+  let users: UserResource[];
+  let total: number;
+
+  if (options.searchEmails) {
+    if (options.searchEmails.length > MAX_SEARCH_EMAILS) {
+      logger.error("Too many emails provided.");
+      return { members: [], total: 0 };
+    }
+
+    users = await UserResource.listUserWithExactEmails(
+      owner,
+      options.searchEmails
+    );
+    total = users.length;
+  } else {
+    const results = await UserResource.listUsersWithEmailPredicat(
+      owner,
+      {
+        email: options.searchTerm,
+      },
+      paginationParams
+    );
+    users = results.users;
+    total = results.total;
+  }
 
   const { memberships } = await MembershipResource.getActiveMemberships({
     users,
@@ -356,6 +382,102 @@ export async function changeWorkspaceName(
 
   if (affectedCount === 0) {
     return new Err(new Error("Workspace not found."));
+  }
+
+  return new Ok(undefined);
+}
+
+export async function updateWorkspaceConversationsRetention(
+  owner: LightWorkspaceType,
+  nbDays: number
+): Promise<Result<void, Error>> {
+  const [affectedCount] = await Workspace.update(
+    { conversationsRetentionDays: nbDays === -1 ? null : nbDays },
+    {
+      where: {
+        id: owner.id,
+      },
+    }
+  );
+
+  if (affectedCount === 0) {
+    return new Err(new Error("Workspace not found."));
+  }
+
+  return new Ok(undefined);
+}
+
+export async function disableSSOEnforcement(
+  owner: LightWorkspaceType
+): Promise<Result<void, Error>> {
+  const [affectedCount] = await Workspace.update(
+    { ssoEnforced: false },
+    {
+      where: {
+        id: owner.id,
+        ssoEnforced: true,
+      },
+    }
+  );
+
+  if (affectedCount === 0) {
+    return new Err(new Error("SSO enforcement is already disabled."));
+  }
+
+  return new Ok(undefined);
+}
+
+interface WorkspaceMetadata {
+  maintenance?: "relocation" | "relocation-done";
+}
+
+export async function updateWorkspaceMetadata(
+  owner: LightWorkspaceType,
+  metadata: WorkspaceMetadata
+): Promise<Result<void, Error>> {
+  const previousMetadata = owner.metadata || {};
+  const newMetadata = { ...previousMetadata, ...metadata };
+  const [affectedCount] = await Workspace.update(
+    { metadata: newMetadata },
+    {
+      where: {
+        id: owner.id,
+      },
+    }
+  );
+
+  if (affectedCount === 0) {
+    return new Err(new Error("Workspace not found."));
+  }
+
+  return new Ok(undefined);
+}
+
+export async function setWorkspaceRelocating(
+  owner: LightWorkspaceType
+): Promise<Result<void, Error>> {
+  return updateWorkspaceMetadata(owner, { maintenance: "relocation" });
+}
+
+export async function setWorkspaceRelocated(
+  owner: LightWorkspaceType
+): Promise<Result<void, Error>> {
+  return updateWorkspaceMetadata(owner, { maintenance: "relocation-done" });
+}
+
+export async function updateExtensionConfiguration(
+  auth: Authenticator,
+  blacklistedDomains: string[]
+): Promise<Result<void, Error>> {
+  const config = await ExtensionConfigurationResource.fetchForWorkspace(auth);
+
+  if (config) {
+    await config.updateBlacklistedDomains(auth, { blacklistedDomains });
+  } else {
+    await ExtensionConfigurationResource.makeNew(
+      { blacklistedDomains },
+      auth.getNonNullableWorkspace().id
+    );
   }
 
   return new Ok(undefined);

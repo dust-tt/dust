@@ -10,7 +10,7 @@ import type {
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { supportedFileExtensions } from "@dust-tt/types";
+import { getSupportedFileExtensions } from "@dust-tt/types";
 import { EditorContent } from "@tiptap/react";
 import React, { useContext, useEffect, useRef, useState } from "react";
 
@@ -62,7 +62,6 @@ const InputBarContainer = ({
   const [isExpanded, setIsExpanded] = useState(false);
   function handleExpansionToggle() {
     setIsExpanded((currentExpanded) => !currentExpanded);
-
     // Focus at the end of the document when toggling expansion.
     editorService.focusEnd();
   }
@@ -99,14 +98,15 @@ const InputBarContainer = ({
 
   const contentEditableClasses = classNames(
     "inline-block w-full",
-    "border-0 pr-1 pl-2 sm:pl-0 outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0 py-3.5",
-    "whitespace-pre-wrap font-normal"
+    "border-0 px-2 outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0",
+    "whitespace-pre-wrap font-normal",
+    "pb-6 pt-4 sm:py-3.5" // Increased padding on mobile
   );
 
   return (
     <div
       id="InputBarContainer"
-      className="relative flex flex-1 flex-col sm:flex-row"
+      className="relative flex flex-1 cursor-text flex-col sm:flex-row sm:pt-0"
     >
       <EditorContent
         editor={editor}
@@ -125,7 +125,7 @@ const InputBarContainer = ({
           {actions.includes("attachment") && (
             <>
               <input
-                accept={supportedFileExtensions.join(",")}
+                accept={getSupportedFileExtensions().join(",")}
                 onChange={async (e) => {
                   await fileUploaderService.handleFileChange(e);
                   if (fileInputRef.current) {
@@ -142,7 +142,7 @@ const InputBarContainer = ({
                 variant="ghost-secondary"
                 icon={AttachmentIcon}
                 size="xs"
-                tooltip={`Add a document to the conversation (${supportedFileExtensions.join(", ")}).`}
+                tooltip={`Add a document to the conversation (${getSupportedFileExtensions().join(", ")}).`}
                 onClick={() => {
                   fileInputRef.current?.click();
                 }}

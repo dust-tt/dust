@@ -1,4 +1,4 @@
-import type { LightWorkspaceType } from "@dust-tt/client";
+import type { ExtensionWorkspaceType } from "@dust-tt/client";
 import {
   Button,
   LogoHorizontalColorLogo,
@@ -19,7 +19,7 @@ type ProtectedRouteProps = {
 
 export type ProtectedRouteChildrenProps = {
   user: StoredUser;
-  workspace: LightWorkspaceType;
+  workspace: ExtensionWorkspaceType;
   handleLogout: () => void;
 };
 
@@ -108,7 +108,7 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   }
 
   return (
-    <div className="flex h-screen flex-col gap-2 p-4">
+    <div className="flex h-screen flex-col gap-2 px-4 overflow-y-auto">
       {typeof children === "function"
         ? children({ user, workspace, handleLogout })
         : children}

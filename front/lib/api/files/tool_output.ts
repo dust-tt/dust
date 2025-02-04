@@ -1,13 +1,12 @@
-import { Readable } from "stream";
-import { pipeline } from "stream/promises";
-
 import { isJITActionsEnabled } from "@app/lib/api/assistant/jit_actions";
+import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
+import { processAndStoreFile } from "@app/lib/api/files/upload";
 import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 
-export async function internalCreateToolOutputCsvFile(
+export async function internalCreateToolOutputFile(
   auth: Authenticator,
   {
     title,
@@ -18,7 +17,7 @@ export async function internalCreateToolOutputCsvFile(
     title: string;
     conversationId: string;
     content: string;
-    contentType: "text/csv";
+    contentType: "text/csv" | "text/plain";
   }
 ): Promise<FileResource> {
   const workspace = auth.getNonNullableWorkspace();
@@ -36,40 +35,36 @@ export async function internalCreateToolOutputCsvFile(
     },
   });
 
-  // Write both the "original" and "processed" versions simultaneously
+  await processAndStoreFile(auth, { file: fileResource, reqOrString: content });
 
-  await Promise.all([
-    pipeline(
-      Readable.from(content),
-      fileResource.getWriteStream({
-        auth,
-        version: "original",
-      })
-    ),
-    pipeline(
-      Readable.from(content),
-      fileResource.getWriteStream({
-        auth,
-        version: "processed",
-      })
-    ),
-  ]);
-
-  await fileResource.markAsReady();
-
-  if (await isJITActionsEnabled(auth)) {
-    const r = await processAndUpsertToDataSource(auth, {
-      file: fileResource,
-      optionalContent: content,
-    });
-    if (r.isErr()) {
+  // If the tool returned no content, it makes no sense to upsert it to the data source
+  if (content && isJITActionsEnabled()) {
+    const jitDataSource = await getOrCreateConversationDataSourceFromFile(
+      auth,
+      fileResource
+    );
+    if (jitDataSource.isErr()) {
       logger.error(
         {
-          code: r.error.code,
-          message: r.error.message,
+          code: jitDataSource.error.code,
+          message: jitDataSource.error.message,
         },
-        "Failed to process and upsert to data source"
+        "Failed to get or create JIT data source"
       );
+    } else {
+      const r = await processAndUpsertToDataSource(auth, jitDataSource.value, {
+        file: fileResource,
+        optionalContent: content,
+      });
+      if (r.isErr()) {
+        logger.error(
+          {
+            code: r.error.code,
+            message: r.error.message,
+          },
+          "Failed to process and upsert to data source"
+        );
+      }
     }
   }
 

@@ -13,21 +13,19 @@ import type * as activities from "@connectors/connectors/webcrawler/temporal/act
 // timeout for crawling a single url = timeout for upserting (5 minutes) + 2mn
 // leeway to crawl on slow websites
 export const REQUEST_HANDLING_TIMEOUT = 420;
+// For each page crawl we have an heartbeat but some crawls seem to stall for longer periods. Giving
+// them 20mn to hearbeat.
+export const HEARTBEAT_TIMEOUT = 1200;
 
 export const MAX_TIME_TO_CRAWL_MINUTES = 240;
-
 export const MIN_EXTRACTED_TEXT_LENGTH = 1024;
-
 export const MAX_BLOCKED_RATIO = 0.9;
-
 export const MAX_PAGES_TOO_LARGE_RATIO = 0.9;
 
 const { crawlWebsiteByConnectorId, webCrawlerGarbageCollector } =
   proxyActivities<typeof activities>({
     startToCloseTimeout: `${MAX_TIME_TO_CRAWL_MINUTES} minutes`,
-    // for each page crawl, there are heartbeats, but a page crawl can last at max
-    // REQUEST_HANDLING_TIMEOUT seconds
-    heartbeatTimeout: `${REQUEST_HANDLING_TIMEOUT + 120} seconds`,
+    heartbeatTimeout: `${HEARTBEAT_TIMEOUT} seconds`,
     cancellationType: ActivityCancellationType.TRY_CANCEL,
     retry: {
       initialInterval: `${REQUEST_HANDLING_TIMEOUT * 2} seconds`,

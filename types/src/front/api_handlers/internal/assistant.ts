@@ -1,6 +1,6 @@
 import * as t from "io-ts";
 
-import { getSupportedContentFragmentTypeCodec } from "../../content_fragment";
+import { getSupportedNonImageMimeTypes } from "../../files";
 
 export const InternalPostMessagesRequestBodySchema = t.type({
   content: t.string,
@@ -21,11 +21,20 @@ const ContentFragmentBaseSchema = t.intersection([
   }),
 ]);
 
+export const getSupportedInlinedContentType = () => {
+  const [first, second, ...rest] = getSupportedNonImageMimeTypes();
+  return t.union([
+    t.literal(first),
+    t.literal(second),
+    ...rest.map((value) => t.literal(value)),
+  ]);
+};
+
 const ContentFragmentInputWithContentSchema = t.intersection([
   ContentFragmentBaseSchema,
   t.type({
     content: t.string,
-    contentType: getSupportedContentFragmentTypeCodec(),
+    contentType: getSupportedInlinedContentType(),
   }),
 ]);
 
@@ -44,7 +53,7 @@ export type ContentFragmentInputWithFileIdType = t.TypeOf<
   typeof ContentFragmentInputWithFileIdSchema
 >;
 
-export type ContentFragmentInputType =
+type ContentFragmentInputType =
   | ContentFragmentInputWithContentType
   | ContentFragmentInputWithFileIdType;
 
@@ -60,10 +69,7 @@ export const InternalPostContentFragmentRequestBodySchema = t.intersection([
       profilePictureUrl: t.union([t.string, t.null]),
     }),
   }),
-  t.union([
-    ContentFragmentInputWithContentSchema,
-    ContentFragmentInputWithFileIdSchema,
-  ]),
+  ContentFragmentInputWithFileIdSchema,
 ]);
 
 export const InternalPostConversationsRequestBodySchema = t.type({

@@ -5,25 +5,26 @@ import type {
 } from "@dust-tt/client";
 import { PostDataSourceDocumentRequestSchema } from "@dust-tt/client";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
-import { rateLimiter, sectionFullText } from "@dust-tt/types";
-import { dustManagedCredentials } from "@dust-tt/types";
-import { CoreAPI } from "@dust-tt/types";
+import {
+  CoreAPI,
+  dustManagedCredentials,
+  rateLimiter,
+  safeSubstring,
+  sectionFullText,
+} from "@dust-tt/types";
+import { validateUrl } from "@dust-tt/types/src/shared/utils/url_utils";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
-import { Authenticator } from "@app/lib/auth";
-import { getDocumentsPostDeleteHooksToRun } from "@app/lib/documents_post_process_hooks/hooks";
+import type { Authenticator } from "@app/lib/auth";
+import { runDocumentUpsertHooks } from "@app/lib/document_upsert_hooks/hooks";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import {
-  enqueueUpsertDocument,
-  runPostUpsertHooks,
-} from "@app/lib/upsert_queue";
-import { validateUrl } from "@app/lib/utils";
+import { enqueueUpsertDocument } from "@app/lib/upsert_queue";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import { launchRunPostDeleteHooksWorkflow } from "@app/temporal/documents_post_process_hooks/client";
 
 export const config = {
   api: {
@@ -127,6 +128,12 @@ export const config = {
  *           schema:
  *             type: object
  *             properties:
+ *               title:
+ *                 type: string
+ *                 description: The title of the document to upsert.
+ *               mime_type:
+ *                 type: string
+ *                 description: The MIME type of the document to upsert.
  *               text:
  *                 type: string
  *                 description: The text content of the document to upsert.
@@ -141,14 +148,17 @@ export const config = {
  *                 items:
  *                   type: string
  *                 description: Tags to associate with the document.
+ *               parent_id:
+ *                 type: string
+ *                 description: 'Reserved for internal use, should not be set. Document ID of the direct parent to associate with the document.'
  *               parents:
  *                 type: array
  *                 items:
  *                   type: string
- *                 description: Parent document IDs to associate with the document.
+ *                 description: 'Reserved for internal use, should not be set. Document and ancestor ids, with the following convention: parents[0] === documentId, parents[1] === parent_id, and then ancestors ids in order.'
  *               timestamp:
  *                 type: number
- *                 description: Unix timestamp (in seconds) for the document (e.g. 1698225000). Can be null or omitted.
+ *                 description: Reserved for internal use, should not be set. Unix timestamp (in seconds) of the time the document was last updated (e.g. 1698225000).
  *               light_document_output:
  *                 type: boolean
  *                 description: If true, a lightweight version of the document will be returned in the response (excluding the text, chunks and vectors). Defaults to false.
@@ -285,7 +295,11 @@ async function handler(
     }
   }
 
-  if (!dataSource || dataSource.space.sId !== spaceId) {
+  if (
+    !dataSource ||
+    dataSource.space.sId !== spaceId ||
+    !dataSource.canRead(auth)
+  ) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -369,9 +383,22 @@ async function handler(
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${r.error.message}`,
+            message: fromError(r.error).toString(),
           },
         });
+      }
+
+      // TODO(content-node): get rid of this once the use of timestamp columns in core has been rationalized
+      if (!auth.isSystemKey() && r.data.timestamp) {
+        logger.info(
+          {
+            workspaceId: owner.id,
+            dataSourceId: dataSource.sId,
+            timestamp: r.data.timestamp,
+            currentDate: Date.now(),
+          },
+          "[ContentNode] User-set timestamp."
+        );
       }
 
       let sourceUrl: string | null = null;
@@ -472,18 +499,63 @@ async function handler(
         });
       }
 
+      // Enforce parents consistency: we expect users to either not pass them (recommended) or pass them correctly.
+      const parentsDisclaimerMessage =
+        "The use of the parents field is discouraged, this field is intended for internal uses only.";
+      if (r.data.parents) {
+        if (r.data.parents.length === 0) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: `Invalid parents: parents must have at least one element.\n${parentsDisclaimerMessage}`,
+            },
+          });
+        }
+        if (r.data.parents[0] !== req.query.documentId) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: `Invalid parents: parents[0] should be equal to document_id.\n${parentsDisclaimerMessage}`,
+            },
+          });
+        }
+      }
+      if (
+        r.data.parents &&
+        (r.data.parents.length >= 2 || r.data.parent_id !== null) &&
+        r.data.parents[1] !== r.data.parent_id
+      ) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid parent id: parents[1] and parent_id should be equal.\n${parentsDisclaimerMessage}`,
+          },
+        });
+      }
+
+      const documentId = req.query.documentId as string;
+
+      const title = r.data.title ?? "Untitled document";
+      const mimeType = r.data.mime_type ?? "application/octet-stream";
+
       if (r.data.async === true) {
         const enqueueRes = await enqueueUpsertDocument({
           upsertDocument: {
             workspaceId: owner.sId,
             dataSourceId: dataSource.sId,
-            documentId: req.query.documentId as string,
+            documentId,
             tags: r.data.tags || [],
-            parents: r.data.parents || [],
+            parentId: r.data.parent_id || null,
+            parents: r.data.parents || [documentId],
             timestamp: r.data.timestamp || null,
             sourceUrl,
             section,
             upsertContext: r.data.upsert_context || null,
+            title,
+            mimeType,
           },
         });
         if (enqueueRes.isErr()) {
@@ -515,13 +587,16 @@ async function handler(
           projectId: dataSource.dustAPIProjectId,
           dataSourceId: dataSource.dustAPIDataSourceId,
           documentId: req.query.documentId as string,
-          tags: r.data.tags || [],
-          parents: r.data.parents || [],
+          tags: (r.data.tags || []).map((tag) => safeSubstring(tag, 0)),
+          parentId: r.data.parent_id || null,
+          parents: r.data.parents || [documentId],
           sourceUrl,
           timestamp: r.data.timestamp || null,
           section,
           credentials,
           lightDocumentOutput: r.data.light_document_output === true,
+          title,
+          mimeType,
         });
 
         if (upsertRes.isErr()) {
@@ -540,13 +615,12 @@ async function handler(
           data_source: dataSource.toJSON(),
         });
 
-        await runPostUpsertHooks({
-          workspaceId: owner.sId,
-          dataSource,
+        runDocumentUpsertHooks({
+          auth,
+          dataSourceId: dataSource.sId,
           documentId: req.query.documentId as string,
-          section,
-          document: upsertRes.value.document,
-          sourceUrl,
+          documentHash: upsertRes.value.document.hash,
+          dataSourceConnectorProvider: dataSource.connectorProvider || null,
           upsertContext: r.data.upsert_context || undefined,
         });
         return;
@@ -585,24 +659,6 @@ async function handler(
           document_id: req.query.documentId as string,
         },
       });
-
-      const postDeleteHooksToRun = await getDocumentsPostDeleteHooksToRun({
-        auth: await Authenticator.internalAdminForWorkspace(owner.sId),
-        dataSourceId: dataSource.sId,
-        documentId: req.query.documentId as string,
-        dataSourceConnectorProvider: dataSource.connectorProvider || null,
-      });
-
-      // TODO: parallel.
-      for (const { type: hookType } of postDeleteHooksToRun) {
-        await launchRunPostDeleteHooksWorkflow(
-          owner.sId,
-          dataSource.sId,
-          req.query.documentId as string,
-          dataSource.connectorProvider || null,
-          hookType
-        );
-      }
 
       return;
 

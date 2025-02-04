@@ -6,21 +6,16 @@ import { SUBSCRIPTION_STATUSES } from "@dust-tt/types";
 import type {
   CreationOptional,
   ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
   NonAttribute,
   Transaction,
 } from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import { DataTypes } from "sequelize";
 
-import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
+import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
-export class Plan extends Model<
-  InferAttributes<Plan>,
-  InferCreationAttributes<Plan>
-> {
-  declare id: CreationOptional<number>;
+export class Plan extends BaseModel<Plan> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -48,11 +43,6 @@ export class Plan extends Model<
 }
 Plan.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -153,11 +143,7 @@ Plan.init(
   }
 );
 
-export class Subscription extends Model<
-  InferAttributes<Subscription>,
-  InferCreationAttributes<Subscription>
-> {
-  declare id: CreationOptional<number>;
+export class Subscription extends WorkspaceAwareModel<Subscription> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -168,9 +154,6 @@ export class Subscription extends Model<
 
   declare startDate: Date;
   declare endDate: Date | null;
-
-  declare workspaceId: ForeignKey<Workspace["id"]>;
-  declare workspace: NonAttribute<Workspace>;
 
   declare planId: ForeignKey<Plan["id"]>;
   declare plan: NonAttribute<Plan>;
@@ -183,11 +166,6 @@ export class Subscription extends Model<
 }
 Subscription.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -271,17 +249,8 @@ Subscription.addHook(
 // Plan <> Subscription relationship: attribute "planId" in Subscription
 Plan.hasMany(Subscription, {
   foreignKey: { name: "planId", allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 Subscription.belongsTo(Plan, {
   foreignKey: { name: "planId", allowNull: false },
-});
-
-// Subscription <> Workspace relationship: attribute "workspaceId" in Subscription
-Workspace.hasMany(Subscription, {
-  foreignKey: { name: "workspaceId", allowNull: false },
-  onDelete: "CASCADE",
-});
-Subscription.belongsTo(Workspace, {
-  foreignKey: { name: "workspaceId", allowNull: false },
 });

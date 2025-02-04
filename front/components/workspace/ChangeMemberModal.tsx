@@ -2,8 +2,15 @@ import {
   Avatar,
   Button,
   Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
   ElementModal,
   Page,
+  Spinner,
   useSendNotification,
 } from "@dust-tt/sparkle";
 import type { ActiveRoleType, UserTypeWithWorkspaces } from "@dust-tt/types";
@@ -28,7 +35,6 @@ export function ChangeMemberModal({
   const { role = null } = member?.workspaces[0] ?? {};
 
   const sendNotification = useSendNotification();
-  const [revokeMemberModalOpen, setRevokeMemberModalOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState<ActiveRoleType | null>(
     role !== "none" ? role : null
   );
@@ -70,7 +76,7 @@ export function ChangeMemberModal({
           <div className="flex items-center gap-4">
             <Avatar size="lg" visual={member.image} name={member.fullName} />
             <div className="flex grow flex-col">
-              <div className="font-semibold text-element-900">
+              <div className="font-semibold text-foreground">
                 {member.fullName}
               </div>
               <div className="font-normal">{member.email}</div>
@@ -78,7 +84,7 @@ export function ChangeMemberModal({
           </div>
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2">
-              <div className="font-bold text-element-900">Role:</div>
+              <div className="font-bold text-foreground">Role:</div>
               <RoleDropDown
                 selectedRole={selectedRole || role}
                 onChange={setSelectedRole}
@@ -91,12 +97,53 @@ export function ChangeMemberModal({
           </div>
           <div className="flex flex-none flex-col gap-2">
             <div className="flex-none">
-              <Button
-                variant="warning"
-                label="Revoke member access"
-                size="sm"
-                onClick={() => setRevokeMemberModalOpen(true)}
-              />
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button
+                    variant="warning"
+                    label="Revoke member access"
+                    size="sm"
+                  />
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Confirm deletion</DialogTitle>
+                  </DialogHeader>
+                  {isSaving ? (
+                    <div className="flex justify-center py-8">
+                      <Spinner variant="dark" size="md" />
+                    </div>
+                  ) : (
+                    <>
+                      <DialogContainer>
+                        <div>
+                          Revoke access for user{" "}
+                          <span className="font-bold">{member.fullName}</span>?
+                        </div>
+                      </DialogContainer>
+                      <DialogFooter
+                        leftButtonProps={{
+                          label: "Cancel",
+                          variant: "outline",
+                        }}
+                        rightButtonProps={{
+                          label: "Yes, revoke",
+                          variant: "warning",
+                          onClick: async () => {
+                            await handleMembersRoleChange({
+                              members: [member],
+                              role: "none",
+                              sendNotification,
+                            });
+                            await mutateMembers();
+                            onClose();
+                          },
+                        }}
+                      />
+                    </>
+                  )}
+                </DialogContent>
+              </Dialog>
             </div>
             <Page.P>
               Deleting a member will remove them from the workspace. They will
@@ -105,31 +152,6 @@ export function ChangeMemberModal({
           </div>
         </div>
       </Page>
-      <Dialog
-        isOpen={revokeMemberModalOpen}
-        title="Revoke member access"
-        onValidate={async () => {
-          await handleMembersRoleChange({
-            members: [member],
-            role: "none",
-            sendNotification,
-          });
-          await mutateMembers();
-          setRevokeMemberModalOpen(false);
-          onClose();
-        }}
-        validateLabel="Yes, revoke"
-        validateVariant="warning"
-        onCancel={() => {
-          setRevokeMemberModalOpen(false);
-        }}
-        isSaving={isSaving}
-      >
-        <div>
-          Revoke access for user{" "}
-          <span className="font-bold">{member.fullName}</span>?
-        </div>
-      </Dialog>
     </ElementModal>
   );
 }

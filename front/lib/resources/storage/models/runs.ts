@@ -1,21 +1,11 @@
-import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-  NonAttribute,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import { DataTypes } from "sequelize";
 
-import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { AppModel } from "@app/lib/resources/storage/models/apps";
+import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
-export class RunModel extends Model<
-  InferAttributes<RunModel>,
-  InferCreationAttributes<RunModel>
-> {
-  declare id: CreationOptional<number>;
+export class RunModel extends WorkspaceAwareModel<RunModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -23,18 +13,12 @@ export class RunModel extends Model<
   declare runType: string;
 
   declare appId: ForeignKey<AppModel["id"]>;
-  declare workspaceId: ForeignKey<Workspace["id"]>;
 
   declare app: NonAttribute<AppModel>;
 }
 
 RunModel.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -66,23 +50,14 @@ RunModel.init(
 );
 AppModel.hasMany(RunModel, {
   foreignKey: { allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 RunModel.belongsTo(AppModel, {
   as: "app",
   foreignKey: { name: "appId", allowNull: false },
 });
-Workspace.hasMany(RunModel, {
-  foreignKey: { allowNull: false },
-  onDelete: "CASCADE",
-});
 
-export class RunUsageModel extends Model<
-  InferAttributes<RunUsageModel>,
-  InferCreationAttributes<RunUsageModel>
-> {
-  declare id: CreationOptional<number>;
-
+export class RunUsageModel extends WorkspaceAwareModel<RunUsageModel> {
   declare runId: ForeignKey<RunModel["id"]>;
 
   declare providerId: string; //ModelProviderIdType;
@@ -94,11 +69,6 @@ export class RunUsageModel extends Model<
 
 RunUsageModel.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     providerId: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -125,5 +95,8 @@ RunUsageModel.init(
 
 RunModel.hasMany(RunUsageModel, {
   foreignKey: { allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
+});
+RunUsageModel.belongsTo(RunModel, {
+  foreignKey: { allowNull: false },
 });

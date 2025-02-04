@@ -8,6 +8,10 @@ import type { InferAttributes, WhereOptions } from "sequelize";
 
 import { isGoogleDriveSpreadSheetFile } from "@connectors/connectors/google_drive/temporal/mime_types";
 import {
+  getDriveFileId,
+  getInternalId,
+} from "@connectors/connectors/google_drive/temporal/utils";
+import {
   GoogleDriveFiles,
   GoogleDriveSheet,
 } from "@connectors/lib/models/google_drive";
@@ -39,15 +43,6 @@ export async function isDriveObjectExpandable({
     parentId: objectId,
   };
 
-  if (viewType === "tables") {
-    // In tables view, we only show folders and spreadhsheets.
-    // A folder that only contains Documents is not expandable.
-    where.mimeType = [
-      "application/vnd.google-apps.folder",
-      "application/vnd.google-apps.spreadsheet",
-    ];
-  }
-
   return !!(await GoogleDriveFiles.findOne({
     attributes: ["id"],
     where,
@@ -59,8 +54,6 @@ async function _getLocalParents(
   contentNodeInternalId: string,
   memoizationKey: string
 ): Promise<string[]> {
-  const parents: string[] = [contentNodeInternalId];
-
   let parentId: string | null = null;
 
   if (isGoogleSheetContentNodeInternalId(contentNodeInternalId)) {
@@ -69,16 +62,23 @@ async function _getLocalParents(
     const { googleFileId } = getGoogleIdsFromSheetContentNodeInternalId(
       contentNodeInternalId
     );
-    parentId = googleFileId;
+    parentId = getInternalId(googleFileId);
   } else {
     const object = await GoogleDriveFiles.findOne({
       where: {
         connectorId,
-        driveFileId: contentNodeInternalId,
+        driveFileId: getDriveFileId(contentNodeInternalId),
       },
     });
-    parentId = object?.parentId ?? null;
+    if (!object) {
+      // edge case: If the object is not in our database, it has no local
+      // parents.
+      return [];
+    }
+    parentId = object.parentId ? getInternalId(object.parentId) : null;
   }
+
+  const parents: string[] = [contentNodeInternalId];
 
   if (!parentId) {
     return parents;

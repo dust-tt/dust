@@ -40,3 +40,26 @@ export type GroupType = {
   kind: GroupKind;
   workspaceId: ModelId;
 };
+
+const DustGroupIdsHeader = "X-Dust-Group-Ids";
+
+export function getGroupIdsFromHeaders(
+  headers: Record<string, string | string[] | undefined>
+): string[] | undefined {
+  const groupIds = headers[DustGroupIdsHeader.toLowerCase()];
+  if (typeof groupIds === "string" && groupIds.trim().length > 0) {
+    return groupIds.split(",").map((id) => id.trim());
+  } else {
+    return undefined;
+  }
+}
+
+export function getHeaderFromGroupIds(groupIds: string[] | undefined) {
+  if (!groupIds) {
+    return undefined;
+  }
+
+  return {
+    [DustGroupIdsHeader]: groupIds.join(","),
+  };
+}

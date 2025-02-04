@@ -14,19 +14,20 @@ import {
   guessDelimiter,
   Ok,
 } from "@dust-tt/types";
-import { parse } from "csv-parse";
+import { CsvError, parse } from "csv-parse";
 import * as t from "io-ts";
 import { DateTime } from "luxon";
 
 import { callAction } from "@app/lib/actions/helpers";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
+import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import logger from "@app/logger/logger";
 
 import type { DataSourceResource } from "../resources/data_source_resource";
 
 const MAX_TABLE_COLUMNS = 512;
+const MAX_COLUMN_NAME_LENGTH = 1024;
 
 type CsvParsingError = {
   type:
@@ -34,6 +35,7 @@ type CsvParsingError = {
     | "invalid_header"
     | "duplicate_header"
     | "invalid_record_length"
+    | "invalid_csv"
     | "empty_csv"
     | "too_many_columns"
     | "invalid_row_id";
@@ -65,6 +67,10 @@ export type TableOperationError =
   | {
       type: "invalid_request_error";
       inputValidationError: InputValidationError;
+    }
+  | {
+      type: "invalid_request_error";
+      message: string;
     }
   | {
       type: "not_found_error";
@@ -128,6 +134,7 @@ export async function upsertTableFromCsv({
   tableId,
   tableTimestamp,
   tableTags,
+  tableParentId,
   tableParents,
   csv,
   truncate,
@@ -135,6 +142,7 @@ export async function upsertTableFromCsv({
   detectedHeaders,
   title,
   mimeType,
+  sourceUrl,
 }: {
   auth: Authenticator;
   dataSource: DataSourceResource;
@@ -143,23 +151,16 @@ export async function upsertTableFromCsv({
   tableId: string;
   tableTimestamp: number | null;
   tableTags: string[];
+  tableParentId: string | null;
   tableParents: string[];
   csv: string | null;
   truncate: boolean;
   useAppForHeaderDetection: boolean;
   detectedHeaders?: DetectedHeadersType;
-  title?: string;
-  mimeType?: string;
+  title: string;
+  mimeType: string;
+  sourceUrl: string | null;
 }): Promise<Result<{ table: CoreAPITable }, TableOperationError>> {
-  const csvRowsRes = csv
-    ? await rowsFromCsv({
-        auth,
-        csv,
-        useAppForHeaderDetection,
-        detectedHeaders,
-      })
-    : null;
-
   const owner = auth.workspace();
 
   if (!owner) {
@@ -179,6 +180,22 @@ export async function upsertTableFromCsv({
       message: "Failed to get workspace.",
     });
   }
+
+  if (tableParentId && tableParents && tableParents[1] !== tableParentId) {
+    return new Err({
+      type: "invalid_request_error",
+      message: "Invalid request body, parents[1] and parent_id should be equal",
+    });
+  }
+
+  const csvRowsRes = csv
+    ? await rowsFromCsv({
+        auth,
+        csv,
+        useAppForHeaderDetection,
+        detectedHeaders,
+      })
+    : null;
 
   let csvRows: CoreAPIRow[] | undefined = undefined;
   if (csvRowsRes) {
@@ -235,9 +252,11 @@ export async function upsertTableFromCsv({
     description: tableDescription,
     timestamp: tableTimestamp,
     tags: tableTags,
+    parentId: tableParentId,
     parents: tableParents,
     title,
     mimeType,
+    sourceUrl,
   });
 
   if (tableRes.isErr()) {
@@ -348,6 +367,7 @@ export async function rowsFromCsv({
     CsvParsingError
   >
 > {
+  const now = performance.now();
   const delimiter = await guessDelimiter(csv);
   if (!delimiter) {
     return new Err({
@@ -356,30 +376,39 @@ export async function rowsFromCsv({
     });
   }
 
-  const headerRes = detectedHeaders
-    ? new Ok(detectedHeaders)
-    : await detectHeaders(auth, csv, delimiter, useAppForHeaderDetection);
+  // this differs with = {} in that it prevent errors when header values clash with object properties such as toString, constructor, ..
+  const valuesByCol: Record<string, string[]> = Object.create(null);
+  let header, rowIndex;
+  try {
+    const headerRes = detectedHeaders
+      ? new Ok(detectedHeaders)
+      : await detectHeaders(auth, csv, delimiter, useAppForHeaderDetection);
 
-  if (headerRes.isErr()) {
-    return headerRes;
-  }
-  const { header, rowIndex } = headerRes.value;
+    if (headerRes.isErr()) {
+      return headerRes;
+    }
+    ({ header, rowIndex } = headerRes.value);
 
-  let i = 0;
-  const parser = parse(csv, { delimiter });
-  const valuesByCol: Record<string, string[]> = {};
-  for await (const anyRecord of parser) {
-    if (i++ >= rowIndex) {
-      const record = anyRecord as string[];
-      for (const [i, h] of header.entries()) {
-        const col = record[i] || "";
-        if (!valuesByCol[h]) {
-          valuesByCol[h] = [col];
-        } else {
-          (valuesByCol[h] as string[]).push(col);
+    const parser = parse(csv, { delimiter });
+    let i = 0;
+    for await (const anyRecord of parser) {
+      if (i++ >= rowIndex) {
+        for (const [i, h] of header.entries()) {
+          valuesByCol[h] ??= [];
+          valuesByCol[h].push((anyRecord[i] ?? "").toString());
         }
       }
     }
+  } catch (e) {
+    if (e instanceof CsvError) {
+      logger.warn({ error: e });
+      return new Err({
+        type: "invalid_csv",
+        message: `Invalid CSV format: Please check for properly matched quotes in your data. ${e.message}`,
+      });
+    }
+    logger.error({ error: e }, "Error parsing CSV");
+    throw e;
   }
 
   if (!Object.values(valuesByCol).some((vs) => vs.length > 0)) {
@@ -496,6 +525,16 @@ export async function rowsFromCsv({
     rows.push({ row_id: rowId, value: record });
   }
 
+  logger.info(
+    {
+      durationMs: performance.now() - now,
+      nbRows,
+      nbCols: header.length,
+      workspaceId: auth.getNonNullableWorkspace().id,
+    },
+    "Parsing CSV"
+  );
+
   return new Ok({ detectedHeaders: { header, rowIndex }, rows });
 }
 
@@ -505,6 +544,14 @@ async function staticHeaderDetection(
   const firstRecordCells = firstRow.map(
     (h, i) => h.trim().toLocaleLowerCase() || `col_${i}`
   );
+
+  if (firstRecordCells.some((h) => h.length > MAX_COLUMN_NAME_LENGTH)) {
+    return new Err({
+      type: "invalid_header",
+      message: `Column name is too long (over ${MAX_COLUMN_NAME_LENGTH} characters).`,
+    });
+  }
+
   const header = getSanitizedHeaders(firstRecordCells);
 
   if (header.isErr()) {
@@ -550,7 +597,7 @@ async function detectHeaders(
   }
   headParser.destroy();
 
-  const action = DustProdActionRegistry["table-header-detection"];
+  const action = getDustProdAction("table-header-detection");
 
   const model = getSmallWhitelistedModel(auth.getNonNullableWorkspace());
   if (!model) {

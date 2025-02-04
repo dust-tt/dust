@@ -195,9 +195,7 @@ export async function allowSyncCollection({
   const accessToken = await getIntercomAccessToken(connectionId);
 
   if (collection?.permission === "none") {
-    await collection.update({
-      permission: "read",
-    });
+    await collection.update({ permission: "read" });
   } else if (!collection) {
     const intercomCollection = await fetchIntercomCollection({
       accessToken,
@@ -364,7 +362,6 @@ export async function retrieveIntercomHelpCentersPermissions({
         },
       });
       nodes = helpCentersFromDb.map((helpCenter) => ({
-        provider: connector.type,
         internalId: getHelpCenterInternalId(
           connectorId,
           helpCenter.helpCenterId
@@ -375,13 +372,11 @@ export async function retrieveIntercomHelpCentersPermissions({
         sourceUrl: null,
         expandable: true,
         permission: helpCenter.permission,
-        dustDocumentId: null,
         lastUpdatedAt: helpCenter.updatedAt.getTime(),
       }));
     } else {
       const helpCenters = await fetchIntercomHelpCenters({ accessToken });
       nodes = helpCenters.map((helpCenter) => ({
-        provider: connector.type,
         internalId: getHelpCenterInternalId(connectorId, helpCenter.id),
         parentInternalId: null,
         type: "database",
@@ -390,7 +385,6 @@ export async function retrieveIntercomHelpCentersPermissions({
         expandable: true,
         preventSelection: true,
         permission: "none",
-        dustDocumentId: null,
         lastUpdatedAt: null,
       }));
     }
@@ -425,7 +419,6 @@ export async function retrieveIntercomHelpCentersPermissions({
     });
     if (isReadPermissionsOnly) {
       nodes = collectionsInDb.map((collection) => ({
-        provider: connector.type,
         internalId: getHelpCenterCollectionInternalId(
           connectorId,
           collection.collectionId
@@ -438,7 +431,6 @@ export async function retrieveIntercomHelpCentersPermissions({
         sourceUrl: collection.url,
         expandable: true,
         permission: collection.permission,
-        dustDocumentId: null,
         lastUpdatedAt: collection.updatedAt.getTime() || null,
       }));
     } else {
@@ -452,7 +444,6 @@ export async function retrieveIntercomHelpCentersPermissions({
           (c) => c.collectionId === collection.id
         );
         return {
-          provider: connector.type,
           internalId: getHelpCenterCollectionInternalId(
             connectorId,
             collection.id
@@ -468,7 +459,6 @@ export async function retrieveIntercomHelpCentersPermissions({
           sourceUrl: collection.url,
           expandable: false, // WE DO NOT LET EXPAND BELOW LEVEL 1 WHEN SELECTING NODES
           permission: matchingCollectionInDb ? "read" : "none",
-          dustDocumentId: null,
           lastUpdatedAt: matchingCollectionInDb?.updatedAt.getTime() || null,
         };
       });
@@ -493,7 +483,6 @@ export async function retrieveIntercomHelpCentersPermissions({
       });
       const collectionNodes: ContentNode[] = collectionsInDb.map(
         (collection) => ({
-          provider: connector.type,
           internalId: getHelpCenterCollectionInternalId(
             connectorId,
             collection.collectionId
@@ -509,7 +498,6 @@ export async function retrieveIntercomHelpCentersPermissions({
           sourceUrl: collection.url,
           expandable: true,
           permission: collection.permission,
-          dustDocumentId: null,
           lastUpdatedAt: collection.lastUpsertedTs?.getTime() || null,
         })
       );
@@ -522,7 +510,6 @@ export async function retrieveIntercomHelpCentersPermissions({
         },
       });
       const articleNodes: ContentNode[] = articlesInDb.map((article) => ({
-        provider: connector.type,
         internalId: getHelpCenterArticleInternalId(
           connectorId,
           article.articleId
@@ -535,7 +522,6 @@ export async function retrieveIntercomHelpCentersPermissions({
         sourceUrl: article.url,
         expandable: false,
         permission: article.permission,
-        dustDocumentId: null,
         lastUpdatedAt: article.updatedAt.getTime(),
       }));
 

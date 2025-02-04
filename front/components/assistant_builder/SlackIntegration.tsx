@@ -3,13 +3,13 @@ import {
   InformationCircleIcon,
   Modal,
   Page,
-  SlackLogo,
 } from "@dust-tt/sparkle";
 import type {
-  BaseContentNode,
+  ContentNode,
   DataSourceType,
   WorkspaceType,
 } from "@dust-tt/types";
+import { isAdmin } from "@dust-tt/types";
 import { useCallback, useEffect, useState } from "react";
 
 import type { ContentNodeTreeItemStatus } from "@app/components/ContentNodeTree";
@@ -51,7 +51,7 @@ export function SlackIntegration({
   }, [existingSelection, newSelection]);
 
   const customIsNodeChecked = useCallback(
-    (node: BaseContentNode) => {
+    (node: ContentNode) => {
       return (
         newSelection?.some((c) => c.slackChannelId === node.internalId) || false
       );
@@ -127,7 +127,6 @@ export function SlackIntegration({
 interface SlackAssistantDefaultManagerProps {
   assistantHandle?: string;
   existingSelection: SlackChannel[];
-  isAdmin: boolean;
   onClose: () => void;
   onSave: (channels: SlackChannel[]) => void;
   owner: WorkspaceType;
@@ -138,7 +137,6 @@ interface SlackAssistantDefaultManagerProps {
 export function SlackAssistantDefaultManager({
   assistantHandle,
   existingSelection,
-  isAdmin,
   onClose,
   onSave,
   owner,
@@ -173,18 +171,14 @@ export function SlackAssistantDefaultManager({
         <div className="pt-8">
           <Page.Vertical gap="lg" align="stretch">
             <div className="flex flex-col gap-y-2">
-              <div className="grow text-sm font-medium text-element-800">
-                <SlackLogo className="h-8 w-8" />
-              </div>
-
-              <div className="text-sm font-normal text-element-900">
+              <div className="text-sm font-normal text-foreground">
                 Set this assistant as the default assistant on one or several of
                 your Slack channels. It will answer by default when the{" "}
                 <span className="font-bold">{assistantHandle}</span> Slack bot
                 is mentionned in these channels.
               </div>
 
-              {!isAdmin && (
+              {!isAdmin(owner) && (
                 <ContentMessage
                   size="md"
                   variant="pink"
@@ -198,7 +192,7 @@ export function SlackAssistantDefaultManager({
                 </ContentMessage>
               )}
 
-              {isAdmin && (
+              {isAdmin(owner) && (
                 <SlackIntegration
                   existingSelection={existingSelection}
                   onSelectionChange={handleSelectionChange}

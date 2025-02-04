@@ -1,13 +1,14 @@
 // Stored in a separate file to prevent a circular dependency issue.
 export const DEFAULT_BROWSE_ACTION_NAME = "browse";
+export const DEFAULT_BROWSE_ACTION_DESCRIPTION =
+  "Browse the content of a web page";
+
 export const DEFAULT_PROCESS_ACTION_NAME =
   "extract_structured_data_from_data_sources";
 
 export const DEFAULT_RETRIEVAL_ACTION_NAME = "search_data_sources";
 
-// The name below is used by the assistant builder when the user selects "Include data".
-export const DEFAULT_RETRIEVAL_NO_QUERY_ACTION_NAME =
-  "most_recent_in_data_sources";
+export const DEFAULT_RETRIEVAL_NO_QUERY_ACTION_NAME = "include_data_sources";
 
 export const DEFAULT_WEBSEARCH_ACTION_NAME = "web_search";
 export const DEFAULT_WEBSEARCH_ACTION_DESCRIPTION = "Perform a web search";
@@ -28,3 +29,19 @@ export const DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_DATA_DESCRIPTION = `The ta
 export const DEFAULT_CONVERSATION_SEARCH_ACTION_NAME =
   "search_conversation_files";
 export const DEFAULT_CONVERSATION_SEARCH_ACTION_DATA_DESCRIPTION = `Search within the 'searchable' conversation files as returned by \`${DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME}\``;
+
+export const DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY =
+  "__dust_conversation_history";
+
+export const DEFAULT_REASONING_ACTION_NAME = "advanced_reasoning";
+export const DEFAULT_REASONING_ACTION_DESCRIPTION =
+  "Offload a reasoning-heavy task to to a powerful reasoning model. The reasoning model does not have access to any tools.";
+
+// Github
+export const DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME =
+  "github_get_pull_request";
+export const DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_DESCRIPTION =
+  "Retrieve a pull request from a GitHub repository including its description, diff, comments and reviews";
+export const DEFAULT_GITHUB_CREATE_ISSUE_ACTION_NAME = "github_create_issue";
+export const DEFAULT_GITHUB_CREATE_ISSUE_ACTION_DESCRIPTION =
+  "Create a new issue in a GitHub repository";

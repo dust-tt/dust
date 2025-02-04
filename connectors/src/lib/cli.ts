@@ -3,6 +3,7 @@ import type {
   AdminSuccessResponseType,
   BatchAllResponseType,
   BatchCommandType,
+  ConnectorPermission,
   ConnectorsCommandType,
   GetParentsResponseType,
   Result,
@@ -16,6 +17,7 @@ import PQueue from "p-queue";
 import readline from "readline";
 
 import { getConnectorManager } from "@connectors/connectors";
+import { confluence } from "@connectors/connectors/confluence/lib/cli";
 import { github } from "@connectors/connectors/github/lib/cli";
 import { google_drive } from "@connectors/connectors/google_drive/lib/cli";
 import { intercom } from "@connectors/connectors/intercom/lib/cli";
@@ -34,6 +36,8 @@ export async function runCommand(adminCommand: AdminCommandType) {
   switch (adminCommand.majorCommand) {
     case "connectors":
       return connectors(adminCommand);
+    case "confluence":
+      return confluence(adminCommand);
     case "batch":
       return batch(adminCommand);
     case "notion":
@@ -156,6 +160,12 @@ export const connectors = async ({
       return { success: true };
     }
 
+    case "clear-error": {
+      connector.errorType = null;
+      await connector.save();
+      return { success: true };
+    }
+
     case "set-error": {
       if (!args.error) {
         throw new Error("Missing --error argument");
@@ -191,6 +201,31 @@ export const connectors = async ({
       }
 
       return { parents: parents.value };
+    }
+
+    case "set-permission": {
+      const { permissionKey, permissionValue } = args;
+      if (!permissionKey) {
+        throw new Error("Missing --permissionKey argument");
+      }
+      if (!permissionValue) {
+        throw new Error("Missing --permissionValue argument");
+      }
+      if (!["read", "write", "read_write", "none"].includes(permissionValue)) {
+        throw new Error("Invalid permissionValue argument");
+      }
+
+      const setPermissionsRes = await manager.setPermissions({
+        permissions: {
+          [permissionKey as string]: permissionValue as ConnectorPermission,
+        },
+      });
+
+      if (setPermissionsRes.isErr()) {
+        throw new Error(`Cannot set permissions: ${setPermissionsRes.error}`);
+      }
+
+      return { success: true };
     }
 
     default:
@@ -268,6 +303,7 @@ export const batch = async ({
         "intercom",
         "confluence",
         "github",
+        "google_drive",
         "snowflake",
         "zendesk",
       ];

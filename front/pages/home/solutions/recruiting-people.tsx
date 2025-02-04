@@ -1,5 +1,7 @@
 import type { ReactElement } from "react";
+import React from "react";
 
+import { BlogSection } from "@app/components/home/content/Product/BlogSection";
 import {
   CarousselContentBlock,
   HeaderContentBlock,
@@ -13,11 +15,13 @@ import {
 } from "@app/components/home/Particles";
 import type { SolutionSectionAssistantBlockProps } from "@app/components/home/SolutionSection";
 import { SolutionSection } from "@app/components/home/SolutionSection";
+import TrustedBy from "@app/components/home/TrustedBy";
 
 export async function getServerSideProps() {
   return {
     props: {
       shape: getParticleShapeIndexByName(shapeNames.torus),
+      gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
     },
   };
 }
@@ -53,6 +57,7 @@ export default function RecruitingPeople() {
         to={pageSettings.to}
         subtitle={pageSettings.description}
       />
+      <TrustedBy />
       <Grid>
         <SolutionSection
           title="Focus on&nbsp;being a&nbsp;business partner, not&nbsp;a&nbsp;help desk."
@@ -178,6 +183,10 @@ export default function RecruitingPeople() {
           ]}
         />
       </Grid>
+      <BlogSection
+        headerColorFrom="from-amber-200"
+        headerColorTo="to-amber-500"
+      />
     </>
   );
 }
@@ -204,7 +213,7 @@ const assistantExamples: SolutionSectionAssistantBlockProps[] = [
   },
   {
     emoji: "👋",
-    name: "@peopleGeneral",
+    name: "@askHR",
     backgroundColor: "bg-amber-300",
     description: (
       <>
@@ -226,40 +235,6 @@ const assistantExamples: SolutionSectionAssistantBlockProps[] = [
     ),
   },
   {
-    emoji: "🔬",
-    name: "@screeningPrep",
-    backgroundColor: "bg-amber-300",
-    description: (
-      <>
-        Provides a&nbsp;suggested analysis of&nbsp;a candidate CV given
-        a&nbsp;role description to&nbsp;highlight questions for a&nbsp;screening
-        interview
-      </>
-    ),
-  },
-  {
-    emoji: "💬",
-    name: "@hiringQuestions",
-    backgroundColor: "bg-amber-300",
-    description: (
-      <>
-        Suggests interviews questions based on&nbsp;roles, stage of&nbsp;the
-        interview and&nbsp;the company's culture
-      </>
-    ),
-  },
-  {
-    emoji: "🧐",
-    name: "@candidateInfo",
-    backgroundColor: "bg-amber-300",
-    description: (
-      <>
-        Summarize available information about a&nbsp;candidate based
-        on&nbsp;your&nbsp;company database
-      </>
-    ),
-  },
-  {
     emoji: "🏅",
     name: "@reviewPrep",
     backgroundColor: "bg-amber-300",
@@ -268,14 +243,6 @@ const assistantExamples: SolutionSectionAssistantBlockProps[] = [
         Collects achievements, drafts actionable reviews, helps formulate
         feedback
       </>
-    ),
-  },
-  {
-    emoji: "🧑‍🏫",
-    name: "@trainingDraft",
-    backgroundColor: "bg-amber-300",
-    description: (
-      <>Designs training modules and&nbsp;crafts employee development plans</>
     ),
   },
 ];

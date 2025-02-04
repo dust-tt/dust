@@ -1,9 +1,11 @@
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import {
-  postConnectionCredentials,
-  PostCredentialsBodySchema,
+  BigQueryCredentialsWithLocationSchema,
+  OAuthAPI,
+  SnowflakeCredentialsSchema,
 } from "@dust-tt/types";
 import { isLeft } from "fp-ts/Either";
+import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -13,7 +15,23 @@ import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
-type PostCredentialsResponseBody = {
+const PostSnowflakeCredentialsBodySchema = t.type({
+  provider: t.literal("snowflake"),
+  credentials: SnowflakeCredentialsSchema,
+});
+
+const PostBigQueryCredentialsBodySchema = t.type({
+  provider: t.literal("bigquery"),
+  credentials: BigQueryCredentialsWithLocationSchema,
+});
+
+const PostCredentialsBodySchema = t.union([
+  PostSnowflakeCredentialsBodySchema,
+  PostBigQueryCredentialsBodySchema,
+]);
+
+export type PostCredentialsBody = t.TypeOf<typeof PostCredentialsBodySchema>;
+export type PostCredentialsResponseBody = {
   credentials: {
     id: string;
   };
@@ -51,12 +69,14 @@ async function handler(
           },
         });
       }
-      const response = await postConnectionCredentials({
-        config: apiConfig.getOAuthAPIConfig(),
-        logger,
+
+      const response = await new OAuthAPI(
+        apiConfig.getOAuthAPIConfig(),
+        logger
+      ).postCredentials({
+        provider: bodyValidation.right.provider,
         workspaceId: owner.sId,
         userId: user.sId,
-        provider: bodyValidation.right.provider,
         credentials: bodyValidation.right.credentials,
       });
 
@@ -70,12 +90,11 @@ async function handler(
         });
       }
 
-      res.status(201).json({
+      return res.status(201).json({
         credentials: {
           id: response.value.credential.credential_id,
         },
       });
-      return;
 
     default:
       res.status(405).end();

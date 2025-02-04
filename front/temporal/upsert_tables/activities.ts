@@ -84,6 +84,7 @@ export async function upsertTableActivity(
     tableId: upsertQueueItem.tableId,
     tableTimestamp: upsertQueueItem.tableTimestamp ?? null,
     tableTags: upsertQueueItem.tableTags || [],
+    tableParentId: upsertQueueItem.tableParentId || null,
     tableParents: upsertQueueItem.tableParents || [],
     csv: upsertQueueItem.csv,
     truncate: upsertQueueItem.truncate,
@@ -91,6 +92,7 @@ export async function upsertTableActivity(
     detectedHeaders: upsertQueueItem.detectedHeaders,
     title: upsertQueueItem.title,
     mimeType: upsertQueueItem.mimeType,
+    sourceUrl: upsertQueueItem.sourceUrl ?? null,
   });
 
   if (tableRes.isErr()) {

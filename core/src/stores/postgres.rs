@@ -13,14 +13,13 @@ use tokio_postgres::types::ToSql;
 use tokio_postgres::{NoTls, Transaction};
 
 use crate::data_sources::data_source::DocumentStatus;
-use crate::data_sources::node::NodeType;
+use crate::data_sources::node::{Node, NodeType, ProviderVisibility};
 use crate::{
     blocks::block::BlockType,
     cached_request::CachedRequest,
     consts::DATA_SOURCE_DOCUMENT_SYSTEM_TAG_PREFIX,
     data_sources::data_source::{DataSource, DataSourceConfig, Document, DocumentVersion},
     data_sources::folder::Folder,
-    data_sources::node::Node,
     databases::{
         table::{get_table_unique_id, Table},
         table_schema::TableSchema,
@@ -40,9 +39,22 @@ use crate::{
     utils,
 };
 
+use super::store::{DocumentCreateParams, FolderUpsertParams, TableUpsertParams};
+
 #[derive(Clone)]
 pub struct PostgresStore {
     pool: Pool<PostgresConnectionManager<NoTls>>,
+}
+
+pub struct UpsertNode<'a> {
+    pub node_id: &'a str,
+    pub node_type: &'a NodeType,
+    pub timestamp: u64,
+    pub title: &'a str,
+    pub mime_type: &'a str,
+    pub provider_visibility: &'a Option<ProviderVisibility>,
+    pub parents: &'a Vec<String>,
+    pub source_url: &'a Option<String>,
 }
 
 impl PostgresStore {
@@ -82,6 +94,9 @@ impl PostgresStore {
 
     fn where_clauses_and_params_for_filter<'a>(
         filter: &'a Option<SearchFilter>,
+        tags_column: Option<&str>,
+        parents_column: &str,
+        timestamp_column: &str,
         from_idx: usize,
     ) -> (Vec<String>, Vec<&'a (dyn ToSql + Sync)>, usize) {
         let mut where_clauses: Vec<String> = vec![];
@@ -89,27 +104,29 @@ impl PostgresStore {
         let mut p_idx: usize = from_idx;
 
         if let Some(filter) = filter {
-            if let Some(tags_filter) = &filter.tags {
-                if let Some(tags) = &tags_filter.is_in {
-                    where_clauses.push(format!("tags_array && ${}", p_idx));
-                    params.push(tags as &(dyn ToSql + Sync));
-                    p_idx += 1;
-                }
-                if let Some(tags) = &tags_filter.is_not {
-                    where_clauses.push(format!("NOT tags_array && ${}", p_idx));
-                    params.push(tags as &(dyn ToSql + Sync));
-                    p_idx += 1;
+            if let Some(tags_column) = tags_column {
+                if let Some(tags_filter) = &filter.tags {
+                    if let Some(tags) = &tags_filter.is_in {
+                        where_clauses.push(format!("{} && ${}", tags_column, p_idx));
+                        params.push(tags as &(dyn ToSql + Sync));
+                        p_idx += 1;
+                    }
+                    if let Some(tags) = &tags_filter.is_not {
+                        where_clauses.push(format!("NOT {} && ${}", tags_column, p_idx));
+                        params.push(tags as &(dyn ToSql + Sync));
+                        p_idx += 1;
+                    }
                 }
             }
 
             if let Some(parents_filter) = &filter.parents {
                 if let Some(parents) = &parents_filter.is_in {
-                    where_clauses.push(format!("parents && ${}", p_idx));
+                    where_clauses.push(format!("{} && ${}", parents_column, p_idx));
                     params.push(parents as &(dyn ToSql + Sync));
                     p_idx += 1;
                 }
                 if let Some(parents) = &parents_filter.is_not {
-                    where_clauses.push(format!("NOT parents && ${}", p_idx));
+                    where_clauses.push(format!("NOT {} && ${}", parents_column, p_idx));
                     params.push(parents as &(dyn ToSql + Sync));
                     p_idx += 1;
                 }
@@ -117,12 +134,12 @@ impl PostgresStore {
 
             if let Some(ts_filter) = &filter.timestamp {
                 if let Some(ts) = ts_filter.gt.as_ref() {
-                    where_clauses.push(format!("timestamp > ${}", p_idx));
+                    where_clauses.push(format!("{} > ${}", timestamp_column, p_idx));
                     params.push(ts as &(dyn ToSql + Sync));
                     p_idx += 1;
                 }
                 if let Some(ts) = ts_filter.lt.as_ref() {
-                    where_clauses.push(format!("timestamp < ${}", p_idx));
+                    where_clauses.push(format!("{} < ${}", timestamp_column, p_idx));
                     params.push(ts as &(dyn ToSql + Sync));
                     p_idx += 1;
                 }
@@ -130,6 +147,59 @@ impl PostgresStore {
         }
 
         (where_clauses, params, p_idx)
+    }
+
+    async fn upsert_data_source_node(
+        &self,
+        upsert_params: UpsertNode<'_>,
+        data_source_row_id: i64,
+        row_id: i64,
+        tx: &Transaction<'_>,
+    ) -> Result<()> {
+        let created = utils::now();
+
+        let (document_row_id, table_row_id, folder_row_id) = match upsert_params.node_type {
+            NodeType::Document => (Some(row_id), None, None),
+            NodeType::Table => (None, Some(row_id), None),
+            NodeType::Folder => (None, None, Some(row_id)),
+        };
+
+        let stmt = tx
+            .prepare(
+                "INSERT INTO data_sources_nodes \
+                  (id, data_source, created, node_id, timestamp, title, mime_type, provider_visibility, parents, source_url, \
+                   document, \"table\", folder) \
+                  VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) \
+                  ON CONFLICT (data_source, node_id) DO UPDATE \
+                  SET timestamp = EXCLUDED.timestamp, title = EXCLUDED.title, \
+                    mime_type = EXCLUDED.mime_type, parents = EXCLUDED.parents, \
+                    document = EXCLUDED.document, \"table\" = EXCLUDED.\"table\", \
+                    folder = EXCLUDED.folder, source_url = EXCLUDED.source_url, \
+                    provider_visibility = EXCLUDED.provider_visibility \
+                  RETURNING id",
+            )
+            .await?;
+
+        let _ = tx
+            .query_one(
+                &stmt,
+                &[
+                    &data_source_row_id,
+                    &(created as i64),
+                    &upsert_params.node_id,
+                    &(upsert_params.timestamp as i64),
+                    &upsert_params.title,
+                    &upsert_params.mime_type,
+                    &upsert_params.provider_visibility,
+                    &upsert_params.parents,
+                    &upsert_params.source_url,
+                    &document_row_id,
+                    &table_row_id,
+                    &folder_row_id,
+                ],
+            )
+            .await?;
+        Ok(())
     }
 }
 
@@ -711,6 +781,7 @@ impl Store for PostgresStore {
         block_idx: usize,
         block_type: &BlockType,
         block_name: &String,
+        store_blocks_results: bool,
     ) -> Result<()> {
         let traces = run
             .traces
@@ -731,8 +802,16 @@ impl Store for PostgresStore {
                             .iter()
                             .enumerate()
                             .map(|(map_idx, execution)| {
-                                let execution_json = serde_json::to_string(&execution)?;
-
+                                let execution_json = match store_blocks_results {
+                                    true => serde_json::to_string(&execution)?,
+                                    false => serde_json::to_string(
+                                        &(BlockExecution {
+                                            value: None,
+                                            error: execution.error.clone(),
+                                            meta: execution.meta.clone(),
+                                        }),
+                                    )?,
+                                };
                                 Ok((
                                     block_idx,
                                     block_type.clone(),
@@ -760,8 +839,8 @@ impl Store for PostgresStore {
         let tx = c.transaction().await?;
         let stmt = tx
             .prepare(
-                "INSERT INTO block_executions (id, execution, project, created) VALUES (DEFAULT, $1, $2, $3)
-                   RETURNING id",
+                "INSERT INTO block_executions (id, execution, project, created) \
+                   VALUES (DEFAULT, $1, $2, $3) RETURNING id",
             )
             .await?;
 
@@ -946,12 +1025,14 @@ impl Store for PostgresStore {
                         let stmt = c
                             .prepare(
                                 "SELECT \
-                            runs_joins.block_idx, runs_joins.block_type, runs_joins.block_name, \
-                            runs_joins.input_idx, runs_joins.map_idx, block_executions.execution \
-                            FROM block_executions \
-                            INNER JOIN runs_joins \
-                            ON block_executions.id = runs_joins.block_execution \
-                            WHERE runs_joins.run = $1 AND block_type = $2 AND block_name = $3",
+                                   runs_joins.block_idx, runs_joins.block_type, \
+                                   runs_joins.block_name, runs_joins.input_idx, \
+                                   runs_joins.map_idx, block_executions.execution \
+                                   FROM block_executions \
+                                   INNER JOIN runs_joins \
+                                   ON block_executions.id = runs_joins.block_execution \
+                                   WHERE runs_joins.run = $1 AND block_type = $2 \
+                                   AND block_name = $3",
                             )
                             .await?;
                         let rows = c
@@ -1240,34 +1321,44 @@ impl Store for PostgresStore {
 
         let r = c
             .query(
-                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                "select id, internal_id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
                 &[&project_id, &data_source_id],
             )
             .await?;
 
-        let data_source_row_id: i64 = match r.len() {
+        let (data_source_row_id, data_source_internal_id): (i64, String) = match r.len() {
             0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
-            1 => r[0].get(0),
+            1 => (r[0].get(0), r[0].get(1)),
             _ => unreachable!(),
         };
 
         let r = match version_hash {
-            None => c
-                .query(
-                    "SELECT id, created, timestamp, tags_array, parents, source_url, hash, text_size, chunk_count \
-                       FROM data_sources_documents \
-                       WHERE data_source = $1 AND document_id = $2 AND status='latest' LIMIT 1",
+            None => {
+                c.query(
+                    "SELECT dsd.id, dsd.created, dsd.timestamp, dsd.tags_array, dsn.parents, \
+                       dsn.source_url, dsd.hash, dsd.text_size, dsd.chunk_count, dsn.title, \
+                       dsn.mime_type, dsn.provider_visibility \
+                       FROM data_sources_documents dsd \
+                       INNER JOIN data_sources_nodes dsn ON dsn.document=dsd.id \
+                       WHERE dsd.data_source = $1 AND dsd.document_id = $2 \
+                       AND dsd.status='latest' LIMIT 1",
                     &[&data_source_row_id, &document_id],
                 )
-                .await?,
-            Some(version_hash) => c
-                .query(
-                    "SELECT id, created, timestamp, tags_array, parents, source_url, hash, text_size, chunk_count \
-                       FROM data_sources_documents \
-                       WHERE data_source = $1 AND document_id = $2 AND hash = $3 LIMIT 1",
+                .await?
+            }
+            Some(version_hash) => {
+                c.query(
+                    "SELECT dsd.id, dsd.created, dsd.timestamp, dsd.tags_array, dsn.parents, \
+                       dsn.source_url, dsd.hash, dsd.text_size, dsd.chunk_count, dsn.title, \
+                       dsn.mime_type, dsn.provider_visibility \
+                       FROM data_sources_documents dsd \
+                       INNER JOIN data_sources_nodes dsn ON dsn.document=dsd.id \
+                       WHERE dsd.data_source = $1 AND dsd.document_id = $2 \
+                       AND dsd.hash = $3 LIMIT 1",
                     &[&data_source_row_id, &document_id, &version_hash],
                 )
-                .await?,
+                .await?
+            }
         };
 
         let d: Option<(
@@ -1280,6 +1371,9 @@ impl Store for PostgresStore {
             String,
             i64,
             i64,
+            Option<String>,
+            Option<String>,
+            Option<ProviderVisibility>,
         )> = match r.len() {
             0 => None,
             1 => Some((
@@ -1292,6 +1386,9 @@ impl Store for PostgresStore {
                 r[0].get(6),
                 r[0].get(7),
                 r[0].get(8),
+                r[0].get(9),
+                r[0].get(10),
+                r[0].get(11),
             )),
             _ => unreachable!(),
         };
@@ -1308,12 +1405,20 @@ impl Store for PostgresStore {
                 hash,
                 text_size,
                 chunk_count,
+                node_title,
+                node_mime_type,
+                node_provider_visibility,
             )) => Ok(Some(Document {
                 data_source_id: data_source_id.clone(),
+                data_source_internal_id: data_source_internal_id.clone(),
                 created: created as u64,
                 timestamp: timestamp as u64,
+                title: node_title.unwrap_or(document_id.clone()),
                 document_id,
                 tags,
+                mime_type: node_mime_type.unwrap_or("application/octet-stream".to_string()),
+                provider_visibility: node_provider_visibility,
+                parent_id: parents.get(1).cloned(),
                 parents,
                 source_url,
                 hash,
@@ -1335,7 +1440,7 @@ impl Store for PostgresStore {
     ) -> Result<()> {
         let document_id = document_id.to_string();
         let pool = self.pool.clone();
-        let c = pool.get().await?;
+        let mut c = pool.get().await?;
 
         let project_id = project.project_id();
         let data_source_id = data_source_id.to_string();
@@ -1353,12 +1458,17 @@ impl Store for PostgresStore {
             _ => unreachable!(),
         };
 
-        c.execute(
-            "UPDATE data_sources_documents SET parents = $1 \
-            WHERE data_source = $2 AND document_id = $3 AND status = 'latest'",
+        let tx = c.transaction().await?;
+
+        // Update parents on nodes table.
+        tx.execute(
+            "UPDATE data_sources_nodes SET parents = $1 \
+            WHERE data_source = $2 AND node_id = $3",
             &[&parents, &data_source_row_id, &document_id],
         )
         .await?;
+
+        tx.commit().await?;
 
         Ok(())
     }
@@ -1433,7 +1543,7 @@ impl Store for PostgresStore {
         let current_tags_result = tx
             .query(
                 "SELECT tags_array FROM data_sources_documents WHERE data_source = $1 \
-            AND document_id = $2 AND status = 'latest' FOR UPDATE",
+                   AND document_id = $2 AND status = 'latest' FOR UPDATE",
                 &[&data_source_row_id, &document_id],
             )
             .await?;
@@ -1474,6 +1584,7 @@ impl Store for PostgresStore {
         limit_offset: Option<(usize, usize)>,
         view_filter: &Option<SearchFilter>,
         latest_hash: &Option<String>,
+        include_count: bool,
     ) -> Result<(Vec<DocumentVersion>, usize)> {
         let project_id = project.project_id();
         let data_source_id = data_source_id.to_string();
@@ -1538,21 +1649,28 @@ impl Store for PostgresStore {
         let mut where_clauses: Vec<String> = vec![];
         let mut params: Vec<&(dyn ToSql + Sync)> = vec![];
 
-        where_clauses.push("data_source = $1".to_string());
+        where_clauses.push("dsd.data_source = $1".to_string());
         params.push(&data_source_row_id);
-        where_clauses.push("document_id = $2".to_string());
+        where_clauses.push("dsd.document_id = $2".to_string());
         params.push(&document_id);
-        where_clauses.push("created <= $3".to_string());
+        where_clauses.push("dsd.created <= $3".to_string());
         params.push(&latest_hash_created);
 
-        let (filter_clauses, filter_params, p_idx) =
-            Self::where_clauses_and_params_for_filter(view_filter, params.len() + 1);
+        let (filter_clauses, filter_params, p_idx) = Self::where_clauses_and_params_for_filter(
+            view_filter,
+            Some("dsd.tags_array"),
+            "dsn.parents",
+            "dsd.timestamp",
+            params.len() + 1,
+        );
 
         where_clauses.extend(filter_clauses);
         params.extend(filter_params);
 
         let sql = format!(
-            "SELECT hash, created, status FROM data_sources_documents \
+            "SELECT dsd.hash, dsd.created, dsd.status \
+               FROM data_sources_documents dsd \
+               INNER JOIN data_sources_nodes dsn ON dsn.document=dsd.id \
                WHERE {} ORDER BY created DESC",
             where_clauses.join(" AND ")
         );
@@ -1591,21 +1709,27 @@ impl Store for PostgresStore {
             });
         }
 
-        let total = match limit_offset {
-            None => versions.len(),
-            Some(_) => {
-                let stmt = c
-                    .prepare(
-                        format!(
-                            "SELECT COUNT(*) FROM data_sources_documents WHERE {}",
-                            where_clauses.join(" AND ")
+        let total = if include_count {
+            match limit_offset {
+                None => versions.len(),
+                Some(_) => {
+                    let stmt = c
+                        .prepare(
+                            format!(
+                                "SELECT COUNT(*) FROM data_sources_documents dsd \
+                                INNER JOIN data_sources_nodes dsn ON dsn.document=dsd.id \
+                                WHERE {}",
+                                where_clauses.join(" AND ")
+                            )
+                            .as_str(),
                         )
-                        .as_str(),
-                    )
-                    .await?;
-                let t: i64 = c.query_one(&stmt, &params).await?.get(0);
-                t as usize
+                        .await?;
+                    let t: i64 = c.query_one(&stmt, &params).await?.get(0);
+                    t as usize
+                }
             }
+        } else {
+            0
         };
 
         Ok((versions, total))
@@ -1618,6 +1742,7 @@ impl Store for PostgresStore {
         filter: &Option<SearchFilter>,
         view_filter: &Option<SearchFilter>,
         limit_offset: Option<(usize, usize)>,
+        include_count: bool,
     ) -> Result<(Vec<String>, usize)> {
         let pool = self.pool.clone();
         let c = pool.get().await?;
@@ -1636,31 +1761,52 @@ impl Store for PostgresStore {
 
         let data_source_row_id: i64 = r.get(0);
 
-        where_clauses.push("data_source = $1".to_string());
+        where_clauses.push("dsd.data_source = $1".to_string());
         params.push(&data_source_row_id);
-        where_clauses.push("status = 'latest'".to_string());
+        where_clauses.push("dsd.status = 'latest'".to_string());
 
-        let (filter_clauses, filter_params, p_idx) =
-            Self::where_clauses_and_params_for_filter(filter, params.len() + 1);
+        let (filter_clauses, filter_params, p_idx) = Self::where_clauses_and_params_for_filter(
+            filter,
+            Some("dsd.tags_array"),
+            "dsn.parents",
+            "dsd.timestamp",
+            params.len() + 1,
+        );
 
         where_clauses.extend(filter_clauses);
         params.extend(filter_params);
 
         let (view_filter_clauses, view_filter_params, p_idx) =
-            Self::where_clauses_and_params_for_filter(view_filter, p_idx);
+            Self::where_clauses_and_params_for_filter(
+                view_filter,
+                Some("dsd.tags_array"),
+                "dsn.parents",
+                "dsd.timestamp",
+                p_idx,
+            );
 
         where_clauses.extend(view_filter_clauses);
         params.extend(view_filter_params);
 
         // compute the total count
-        let count_query = format!(
-            "SELECT COUNT(*) FROM data_sources_documents WHERE {}",
-            where_clauses.join(" AND ")
-        );
-        let count: i64 = c.query_one(&count_query, &params).await?.get(0);
+        let count = if include_count {
+            let count_query = format!(
+                "SELECT COUNT(*) \
+                   FROM data_sources_documents dsd \
+                   INNER JOIN data_sources_nodes dsn ON dsn.document=dsd.id \
+                   WHERE {}",
+                where_clauses.join(" AND ")
+            );
+            let count: i64 = c.query_one(&count_query, &params).await?.get(0);
+            count as usize
+        } else {
+            0
+        };
 
         let mut query = format!(
-            "SELECT document_id FROM data_sources_documents WHERE {} ORDER BY timestamp DESC",
+            "SELECT document_id FROM data_sources_documents dsd \
+              INNER JOIN data_sources_nodes dsn ON dsn.document=dsd.id \
+              WHERE {} ORDER BY dsd.timestamp DESC",
             where_clauses.join(" AND ")
         );
 
@@ -1681,37 +1827,27 @@ impl Store for PostgresStore {
         Ok((document_ids, count as usize))
     }
 
-    async fn upsert_data_source_document(
+    async fn create_data_source_document(
         &self,
         project: &Project,
-        data_source_id: &str,
-        document: &Document,
-    ) -> Result<()> {
+        data_source_id: String,
+        create_params: DocumentCreateParams,
+    ) -> Result<Document> {
         let project_id = project.project_id();
-        let data_source_id = data_source_id.to_string();
-        let document_id = document.document_id.clone();
-        let document_created = document.created;
-        let document_timestamp = document.timestamp;
-        let document_tags = document.tags.clone();
-        let document_parents = document.parents.clone();
-        let document_source_url = document.source_url.clone();
-        let document_hash = document.hash.clone();
-        let document_text_size = document.text_size;
-        let document_chunk_count = document.chunks.len() as u64;
 
         let pool = self.pool.clone();
         let mut c = pool.get().await?;
 
         let r = c
             .query(
-                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                "select id, internal_id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
                 &[&project_id, &data_source_id],
             )
             .await?;
 
-        let data_source_row_id: i64 = match r.len() {
+        let (data_source_row_id, data_source_internal_id): (i64, String) = match r.len() {
             0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
-            1 => r[0].get(0),
+            1 => (r[0].get(0), r[0].get(1)),
             _ => unreachable!(),
         };
 
@@ -1724,39 +1860,85 @@ impl Store for PostgresStore {
             )
             .await?;
         let _ = tx
-            .query(&stmt, &[&data_source_row_id, &document_id])
+            .query(&stmt, &[&data_source_row_id, &create_params.document_id])
             .await?;
 
         let stmt = tx
             .prepare(
                 "INSERT INTO data_sources_documents \
-                   (id, data_source, created, document_id, timestamp, tags_array, parents, \
-                    source_url, hash, text_size, chunk_count, status) \
-                   VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id",
+                   (id, data_source, created, document_id, timestamp, tags_array, \
+                    hash, text_size, chunk_count, status) \
+                   VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9) \
+                   RETURNING id, created",
             )
             .await?;
 
-        tx.query_one(
-            &stmt,
-            &[
-                &data_source_row_id,
-                &(document_created as i64),
-                &document_id,
-                &(document_timestamp as i64),
-                &document_tags,
-                &document_parents,
-                &document_source_url,
-                &document_hash,
-                &(document_text_size as i64),
-                &(document_chunk_count as i64),
-                &"latest",
-            ],
+        let r = tx
+            .query_one(
+                &stmt,
+                &[
+                    &data_source_row_id,
+                    &(create_params.created as i64),
+                    &create_params.document_id,
+                    &(create_params.timestamp as i64),
+                    &create_params.tags,
+                    &create_params.hash,
+                    &(create_params.text_size as i64),
+                    &(create_params.chunk_count as i64),
+                    &"latest",
+                ],
+            )
+            .await?;
+
+        let document_row_id: i64 = r.get(0);
+        let created: i64 = r.get(1);
+
+        // TODO: defaults
+        let title = create_params.title.unwrap_or("".to_string());
+        let mime_type = create_params.mime_type.unwrap_or("".to_string());
+        let provider_visibility = create_params.provider_visibility;
+
+        let document = Document {
+            data_source_id,
+            data_source_internal_id: data_source_internal_id.to_string(),
+            title,
+            mime_type,
+            provider_visibility,
+            created: created as u64,
+            document_id: create_params.document_id,
+            timestamp: create_params.timestamp,
+            tags: create_params.tags,
+            parent_id: create_params.parents.get(1).cloned(),
+            parents: create_params.parents,
+            source_url: create_params.source_url,
+            hash: create_params.hash,
+            text_size: create_params.text_size,
+            chunk_count: create_params.chunk_count,
+            chunks: vec![],
+            text: None,
+            token_count: None,
+        };
+
+        self.upsert_data_source_node(
+            UpsertNode {
+                node_id: &document.document_id,
+                node_type: &NodeType::Document,
+                timestamp: document.timestamp,
+                title: &document.title,
+                mime_type: &document.mime_type,
+                provider_visibility: &document.provider_visibility,
+                parents: &document.parents,
+                source_url: &document.source_url,
+            },
+            data_source_row_id,
+            document_row_id,
+            &tx,
         )
         .await?;
 
         tx.commit().await?;
 
-        Ok(())
+        Ok(document)
     }
 
     async fn list_data_source_documents(
@@ -1767,6 +1949,7 @@ impl Store for PostgresStore {
         document_ids: &Option<Vec<String>>,
         limit_offset: Option<(usize, usize)>,
         remove_system_tags: bool,
+        include_count: bool,
     ) -> Result<(Vec<Document>, usize)> {
         let project_id = project.project_id();
         let data_source_id = data_source_id.to_string();
@@ -1776,26 +1959,31 @@ impl Store for PostgresStore {
 
         let r = c
             .query(
-                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                "select id, internal_id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
                 &[&project_id, &data_source_id],
             )
             .await?;
 
-        let data_source_row_id: i64 = match r.len() {
+        let (data_source_row_id, data_source_internal_id): (i64, String) = match r.len() {
             0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
-            1 => r[0].get(0),
+            1 => (r[0].get(0), r[0].get(1)),
             _ => unreachable!(),
         };
 
         let mut where_clauses: Vec<String> = vec![];
         let mut params: Vec<&(dyn ToSql + Sync)> = vec![];
 
-        where_clauses.push("data_source = $1".to_string());
+        where_clauses.push("dsd.data_source = $1".to_string());
         params.push(&data_source_row_id);
-        where_clauses.push("status = 'latest'".to_string());
+        where_clauses.push("dsd.status = 'latest'".to_string());
 
-        let (filter_clauses, filter_params, mut p_idx) =
-            Self::where_clauses_and_params_for_filter(view_filter, params.len() + 1);
+        let (filter_clauses, filter_params, mut p_idx) = Self::where_clauses_and_params_for_filter(
+            view_filter,
+            Some("dsd.tags_array"),
+            "dsn.parents",
+            "dsd.timestamp",
+            params.len() + 1,
+        );
 
         where_clauses.extend(filter_clauses);
         params.extend(filter_params);
@@ -1811,15 +1999,20 @@ impl Store for PostgresStore {
                 })
                 .collect();
 
-            where_clauses.push(format!("document_id IN ({})", id_placeholders.join(", ")));
+            where_clauses.push(format!(
+                "dsd.document_id IN ({})",
+                id_placeholders.join(", ")
+            ));
             params.extend(ids.iter().map(|id| id as &(dyn ToSql + Sync)));
         }
 
         let sql = format!(
-            "SELECT id, created, document_id, timestamp, tags_array, parents, source_url, hash, \
-                    text_size, chunk_count \
-               FROM data_sources_documents \
-               WHERE {} ORDER BY timestamp DESC",
+            "SELECT dsd.id, dsd.created, dsd.document_id, dsd.timestamp, dsd.tags_array, \
+               dsn.parents, dsn.source_url, dsd.hash, dsd.text_size, dsd.chunk_count, \
+               dsn.title, dsn.mime_type, dsn.provider_visibility \
+               FROM data_sources_documents dsd \
+               INNER JOIN data_sources_nodes dsn ON dsn.document=dsd.id \
+               WHERE {} ORDER BY dsd.timestamp DESC",
             where_clauses.join(" AND "),
         );
 
@@ -1855,6 +2048,9 @@ impl Store for PostgresStore {
                 let hash: String = r.get(7);
                 let text_size: i64 = r.get(8);
                 let chunk_count: i64 = r.get(9);
+                let node_title: Option<String> = r.get(10);
+                let node_mime_type: Option<String> = r.get(11);
+                let node_provider_visibility: Option<ProviderVisibility> = r.get(12);
 
                 let tags = if remove_system_tags {
                     // Remove tags that are prefixed with the system tag prefix.
@@ -1867,10 +2063,15 @@ impl Store for PostgresStore {
 
                 Ok(Document {
                     data_source_id: data_source_id.clone(),
+                    data_source_internal_id: data_source_internal_id.clone(),
                     created: created as u64,
                     timestamp: timestamp as u64,
+                    title: node_title.unwrap_or(document_id.clone()),
+                    mime_type: node_mime_type.unwrap_or("application/octet-stream".to_string()),
+                    provider_visibility: node_provider_visibility,
                     document_id,
                     tags,
+                    parent_id: parents.get(1).cloned(),
                     parents,
                     source_url,
                     hash,
@@ -1883,22 +2084,27 @@ impl Store for PostgresStore {
             })
             .collect::<Result<Vec<_>>>()?;
 
-        let total = match limit_offset {
-            None => documents.len(),
-            Some(_) => {
-                let stmt = c
-                    .prepare(
-                        format!(
-                            "SELECT COUNT(*) FROM data_sources_documents \
-                               WHERE {}",
-                            where_clauses.join(" AND ")
+        let total: usize = if include_count {
+            match limit_offset {
+                None => documents.len(),
+                Some(_) => {
+                    let stmt = c
+                        .prepare(
+                            format!(
+                                "SELECT COUNT(*) FROM data_sources_documents dsd \
+                                    INNER JOIN data_sources_nodes dsn ON dsn.document=dsd.id \
+                                    WHERE {}",
+                                where_clauses.join(" AND ")
+                            )
+                            .as_str(),
                         )
-                        .as_str(),
-                    )
-                    .await?;
-                let t: i64 = c.query_one(&stmt, &params).await?.get(0);
-                t as usize
+                        .await?;
+                    let t: i64 = c.query_one(&stmt, &params).await?.get(0);
+                    t as usize
+                }
             }
+        } else {
+            0
         };
 
         Ok((documents, total))
@@ -1915,9 +2121,11 @@ impl Store for PostgresStore {
         let document_id = document_id.to_string();
 
         let pool = self.pool.clone();
-        let c = pool.get().await?;
+        let mut c = pool.get().await?;
 
-        let r = c
+        let tx = c.transaction().await?;
+
+        let r = tx
             .query(
                 "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
                 &[&project_id, &data_source_id],
@@ -1930,13 +2138,26 @@ impl Store for PostgresStore {
             _ => unreachable!(),
         };
 
-        let stmt = c
+        let stmt = tx
+            .prepare(
+                "DELETE FROM data_sources_nodes \
+                   WHERE data_source = $1 AND node_id = $2 AND document IS NOT NULL",
+            )
+            .await?;
+        let _ = tx
+            .query(&stmt, &[&data_source_row_id, &document_id])
+            .await?;
+        let stmt = tx
             .prepare(
                 "UPDATE data_sources_documents SET status = 'deleted' \
                    WHERE data_source = $1 AND document_id = $2",
             )
             .await?;
-        let _ = c.query(&stmt, &[&data_source_row_id, &document_id]).await?;
+        let _ = tx
+            .query(&stmt, &[&data_source_row_id, &document_id])
+            .await?;
+
+        tx.commit().await?;
 
         Ok(())
     }
@@ -1970,6 +2191,17 @@ impl Store for PostgresStore {
             1 => r[0].get(0),
             _ => unreachable!(),
         };
+
+        if status == "active" {
+            let stmt = c
+                .prepare(
+                    "DELETE FROM data_sources_nodes \
+                            WHERE data_source = $1 AND node_id = $2 AND document IS NOT NULL",
+                )
+                .await?;
+
+            let _ = c.query(&stmt, &[&data_source_row_id, &document_id]).await?;
+        }
 
         let stmt = c
             .prepare(
@@ -2014,6 +2246,39 @@ impl Store for PostgresStore {
         let deletion_batch_size: u64 = 512;
         let mut total_deleted_rows: u64 = 0;
 
+        let stmt_nodes = c
+            .prepare(
+                "DELETE FROM data_sources_nodes WHERE id IN (
+                   SELECT id FROM data_sources_nodes WHERE data_source = $1 \
+                   AND document IS NOT NULL LIMIT $2
+                 ) RETURNING document",
+            )
+            .await?;
+
+        let stmt_documents = c
+            .prepare("DELETE FROM data_sources_documents WHERE id = ANY($1)")
+            .await?;
+
+        // First remove active documents, which are linked to a node
+        loop {
+            let documents: Vec<i64> = c
+                .query(
+                    &stmt_nodes,
+                    &[&data_source_row_id, &(deletion_batch_size as i64)],
+                )
+                .await?
+                .iter()
+                .map(|row| row.get(0))
+                .collect();
+
+            let deleted_rows = c.execute(&stmt_documents, &[&documents]).await?;
+            total_deleted_rows += deleted_rows;
+            if deleted_rows < deletion_batch_size {
+                break;
+            }
+        }
+
+        // Then remove all remaining documents
         let stmt = c
             .prepare(
                 "DELETE FROM data_sources_documents WHERE id IN (
@@ -2073,8 +2338,8 @@ impl Store for PostgresStore {
             let stmt = tx
                 .prepare(
                     "SELECT id, url, last_heartbeat
-                    FROM sqlite_workers
-                    WHERE last_heartbeat > $1 ORDER BY RANDOM() LIMIT 1",
+                       FROM sqlite_workers
+                       WHERE last_heartbeat > $1 ORDER BY RANDOM() LIMIT 1",
                 )
                 .await?;
             let r = tx
@@ -2116,8 +2381,8 @@ impl Store for PostgresStore {
         let stmt = tx
             .prepare(
                 "SELECT id, created, table_ids_hash, sqlite_worker \
-                FROM databases \
-                WHERE table_ids_hash = $1;",
+                   FROM databases \
+                   WHERE table_ids_hash = $1;",
             )
             .await?;
         let r = tx.query(&stmt, &[&table_ids_hash]).await?;
@@ -2137,11 +2402,11 @@ impl Store for PostgresStore {
                     create_database(&mut tx, &table_ids_hash, worker_ttl, &Some(database_row_id))
                         .await
                 } else {
-                    // There is a sqlite_worker assigned to the database.
-                    // We need to check if the sqlite_worker is still alive.
-                    // If it is, we can release the lock and return the database.
-                    // If it is not, we need to delete the database and create a new one.
-                    // We need to keep the lock until the database is deleted and a new one is created.
+                    // There is a sqlite_worker assigned to the database. We need to check if the
+                    // sqlite_worker is still alive. If it is, we can release the lock and return
+                    // the database. If it is not, we need to delete the database and create a new
+                    // one. We need to keep the lock until the database is deleted and a new one is
+                    // created.
 
                     // Get the sqlite_worker row id.
                     let sqlite_worker_row_id = sqlite_worker_row_id.unwrap();
@@ -2149,8 +2414,8 @@ impl Store for PostgresStore {
                         let stmt = tx
                             .prepare(
                                 "SELECT url, last_heartbeat \
-                                FROM sqlite_workers \
-                                WHERE id = $1 AND last_heartbeat > $2 LIMIT 1",
+                                   FROM sqlite_workers \
+                                  WHERE id = $1 AND last_heartbeat > $2 LIMIT 1",
                             )
                             .await?;
                         let r = tx
@@ -2212,8 +2477,8 @@ impl Store for PostgresStore {
         let stmt = c
             .prepare(
                 "SELECT id, created, table_ids_hash, sqlite_worker \
-                FROM databases \
-                WHERE table_ids_hash = $1;",
+                   FROM databases \
+                   WHERE table_ids_hash = $1;",
             )
             .await?;
         let r = c.query(&stmt, &[&table_ids_hash]).await?;
@@ -2305,7 +2570,7 @@ impl Store for PostgresStore {
         let stmt = c
             .prepare(
                 "SELECT table_ids_hash \
-                FROM databases \
+                   FROM databases \
                 WHERE table_ids_hash LIKE $1",
             )
             .await?;
@@ -2335,98 +2600,126 @@ impl Store for PostgresStore {
             .collect::<Vec<_>>())
     }
 
-    async fn upsert_table(
+    async fn upsert_data_source_table(
         &self,
-        project: &Project,
-        data_source_id: &str,
-        table_id: &str,
-        name: &str,
-        description: &str,
-        timestamp: u64,
-        tags: &Vec<String>,
-        parents: &Vec<String>,
-        remote_database_table_id: Option<String>,
-        remote_database_secret_id: Option<String>,
+        project: Project,
+        data_source_id: String,
+        upsert_params: TableUpsertParams,
     ) -> Result<Table> {
         let project_id = project.project_id();
-        let data_source_id = data_source_id.to_string();
 
         let table_created = utils::now();
-        let table_id = table_id.to_string();
-        let table_name = name.to_string();
-        let table_description = description.to_string();
-        let table_timestamp = timestamp;
-        let table_tags = tags.clone();
-        let table_parents = parents.clone();
-        let table_remote_database_table_id = remote_database_table_id.clone();
-        let table_remote_database_secret_id = remote_database_secret_id.clone();
 
         let pool = self.pool.clone();
-        let c = pool.get().await?;
+        let mut c = pool.get().await?;
 
-        // Get the data source row id.
-        let stmt = c
-            .prepare(
-                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+        let tx = c.transaction().await?;
+        let r = tx
+            .query(
+                "select id, internal_id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                &[&project_id, &data_source_id],
             )
             .await?;
-        let r = c.query(&stmt, &[&project_id, &data_source_id]).await?;
-        let data_source_row_id: i64 = match r.len() {
+        let (data_source_row_id, data_source_internal_id): (i64, String) = match r.len() {
             0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
-            1 => r[0].get(0),
+            1 => (r[0].get(0), r[0].get(1)),
             _ => unreachable!(),
         };
 
-        // Upsert Table.
-        let stmt = c
+        let stmt = tx
             .prepare(
                 "INSERT INTO tables \
-                   (id, data_source, created, table_id, name, description,
-                    timestamp, tags_array, parents, remote_database_table_id, remote_database_secret_id) \
-                   VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10) \
+                   (id, data_source, created, table_id, name, description, timestamp, \
+                    tags_array, remote_database_table_id, remote_database_secret_id) \
+                   VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9) \
                    ON CONFLICT (table_id, data_source) DO UPDATE \
                    SET name = EXCLUDED.name, description = EXCLUDED.description, \
-                   timestamp = EXCLUDED.timestamp, tags_array = EXCLUDED.tags_array, parents = EXCLUDED.parents, \
-                     remote_database_table_id = EXCLUDED.remote_database_table_id, remote_database_secret_id = EXCLUDED.remote_database_secret_id \
-                   RETURNING id",
+                   timestamp = EXCLUDED.timestamp, tags_array = EXCLUDED.tags_array, \
+                     remote_database_table_id = EXCLUDED.remote_database_table_id, \
+                     remote_database_secret_id = EXCLUDED.remote_database_secret_id \
+                   RETURNING id, created, schema, schema_stale_at",
             )
             .await?;
 
-        c.query_one(
-            &stmt,
-            &[
-                &data_source_row_id,
-                &(table_created as i64),
-                &table_id,
-                &table_name,
-                &table_description,
-                &(table_timestamp as i64),
-                &table_tags,
-                &table_parents,
-                &table_remote_database_table_id,
-                &table_remote_database_secret_id,
-            ],
+        let table_row = tx
+            .query_one(
+                &stmt,
+                &[
+                    &data_source_row_id,
+                    &(table_created as i64),
+                    &upsert_params.table_id,
+                    &upsert_params.name,
+                    &upsert_params.description,
+                    &(upsert_params.timestamp as i64),
+                    &upsert_params.tags,
+                    &upsert_params.remote_database_table_id,
+                    &upsert_params.remote_database_secret_id,
+                ],
+            )
+            .await?;
+
+        let table_row_id = table_row.get::<usize, i64>(0);
+        let table_created = table_row.get::<usize, i64>(1) as u64;
+        let raw_schema = table_row.get::<usize, Option<String>>(2);
+        let table_schema_stale_at = table_row.get::<usize, Option<i64>>(3);
+
+        let parsed_schema: Option<TableSchema> = match raw_schema {
+            None => None,
+            Some(schema) => {
+                if schema.is_empty() {
+                    None
+                } else {
+                    Some(serde_json::from_str(&schema)?)
+                }
+            }
+        };
+
+        let title = upsert_params.title;
+
+        let table = Table::new(
+            project,
+            data_source_id,
+            data_source_internal_id,
+            table_created,
+            upsert_params.table_id,
+            upsert_params.name,
+            upsert_params.description,
+            upsert_params.timestamp,
+            title,
+            upsert_params.mime_type,
+            upsert_params.provider_visibility,
+            upsert_params.tags,
+            upsert_params.parents.get(1).cloned(),
+            upsert_params.parents,
+            upsert_params.source_url,
+            parsed_schema,
+            table_schema_stale_at.map(|t| t as u64),
+            upsert_params.remote_database_table_id,
+            upsert_params.remote_database_secret_id,
+        );
+
+        self.upsert_data_source_node(
+            UpsertNode {
+                node_id: table.table_id(),
+                node_type: &NodeType::Table,
+                timestamp: table.timestamp(),
+                title: table.title(),
+                mime_type: table.mime_type(),
+                provider_visibility: table.provider_visibility(),
+                parents: table.parents(),
+                source_url: table.source_url(),
+            },
+            data_source_row_id,
+            table_row_id,
+            &tx,
         )
         .await?;
+        tx.commit().await?;
 
-        Ok(Table::new(
-            project,
-            &data_source_id,
-            table_created,
-            &table_id,
-            &table_name,
-            &table_description,
-            timestamp,
-            table_tags,
-            table_parents,
-            &None,
-            None,
-            table_remote_database_table_id,
-            table_remote_database_secret_id,
-        ))
+        Ok(table)
     }
 
-    async fn update_table_schema(
+    async fn update_data_source_table_schema(
         &self,
         project: &Project,
         data_source_id: &str,
@@ -2473,7 +2766,7 @@ impl Store for PostgresStore {
         Ok(())
     }
 
-    async fn update_table_parents(
+    async fn update_data_source_table_parents(
         &self,
         project: &Project,
         data_source_id: &str,
@@ -2485,7 +2778,7 @@ impl Store for PostgresStore {
         let table_id = table_id.to_string();
 
         let pool = self.pool.clone();
-        let c = pool.get().await?;
+        let mut c = pool.get().await?;
 
         // Get the data source row id.
         let stmt = c
@@ -2500,17 +2793,24 @@ impl Store for PostgresStore {
             _ => unreachable!(),
         };
 
-        // Update parents.
-        let stmt = c
-            .prepare("UPDATE tables SET parents = $1 WHERE data_source = $2 AND table_id = $3")
+        let tx = c.transaction().await?;
+
+        // Update parents on nodes table.
+        let stmt = tx
+            .prepare(
+                "UPDATE data_sources_nodes SET parents = $1 \
+                   WHERE data_source = $2 AND node_id = $3",
+            )
             .await?;
-        c.query(&stmt, &[&parents, &data_source_row_id, &table_id])
+        tx.query(&stmt, &[&parents, &data_source_row_id, &table_id])
             .await?;
+
+        tx.commit().await?;
 
         Ok(())
     }
 
-    async fn invalidate_table_schema(
+    async fn invalidate_data_source_table_schema(
         &self,
         project: &Project,
         data_source_id: &str,
@@ -2550,7 +2850,7 @@ impl Store for PostgresStore {
         Ok(())
     }
 
-    async fn load_table(
+    async fn load_data_source_table(
         &self,
         project: &Project,
         data_source_id: &str,
@@ -2566,23 +2866,25 @@ impl Store for PostgresStore {
         // Get the data source row id.
         let stmt = c
             .prepare(
-                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                "select id, internal_id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
             )
             .await?;
         let r = c.query(&stmt, &[&project_id, &data_source_id]).await?;
-        let data_source_row_id: i64 = match r.len() {
+        let (data_source_row_id, data_source_internal_id): (i64, String) = match r.len() {
             0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
-            1 => r[0].get(0),
+            1 => (r[0].get(0), r[0].get(1)),
             _ => unreachable!(),
         };
 
         let stmt = c
             .prepare(
-                "SELECT created, table_id, name, description, \
-                        timestamp, tags_array, parents, \
-                        schema, schema_stale_at, \
-                        remote_database_table_id, remote_database_secret_id FROM tables \
-                WHERE data_source = $1 AND table_id = $2 LIMIT 1",
+                "SELECT t.created, t.table_id, t.name, t.description, \
+                        t.timestamp, t.tags_array, dsn.parents, dsn.source_url, \
+                        t.schema, t.schema_stale_at, \
+                        t.remote_database_table_id, t.remote_database_secret_id, \
+                        dsn.title, dsn.mime_type, dsn.provider_visibility \
+                        FROM tables t INNER JOIN data_sources_nodes dsn ON dsn.table=t.id \
+                        WHERE t.data_source = $1 AND t.table_id = $2 LIMIT 1",
             )
             .await?;
         let r = c.query(&stmt, &[&data_source_row_id, &table_id]).await?;
@@ -2596,9 +2898,13 @@ impl Store for PostgresStore {
             Vec<String>,
             Vec<String>,
             Option<String>,
+            Option<String>,
             Option<i64>,
             Option<String>,
             Option<String>,
+            String,
+            String,
+            Option<ProviderVisibility>,
         )> = match r.len() {
             0 => None,
             1 => Some((
@@ -2613,6 +2919,10 @@ impl Store for PostgresStore {
                 r[0].get(8),
                 r[0].get(9),
                 r[0].get(10),
+                r[0].get(11),
+                r[0].get(12),
+                r[0].get(13),
+                r[0].get(14),
             )),
             _ => unreachable!(),
         };
@@ -2627,10 +2937,14 @@ impl Store for PostgresStore {
                 timestamp,
                 tags,
                 parents,
+                source_url,
                 schema,
                 schema_stale_at,
                 remote_database_table_id,
                 remote_database_secret_id,
+                title,
+                mime_type,
+                provider_visibility,
             )) => {
                 let parsed_schema: Option<TableSchema> = match schema {
                     None => None,
@@ -2642,17 +2956,24 @@ impl Store for PostgresStore {
                         }
                     }
                 };
+
                 Ok(Some(Table::new(
-                    project,
-                    &data_source_id,
+                    project.clone(),
+                    data_source_id.clone(),
+                    data_source_internal_id.clone(),
                     created as u64,
-                    &table_id,
-                    &name,
-                    &description,
+                    table_id,
+                    name,
+                    description,
                     timestamp as u64,
+                    title,
+                    mime_type,
+                    provider_visibility,
                     tags,
+                    parents.get(1).cloned(),
                     parents,
-                    &parsed_schema,
+                    source_url,
+                    parsed_schema,
                     schema_stale_at.map(|t| t as u64),
                     remote_database_table_id,
                     remote_database_secret_id,
@@ -2661,7 +2982,7 @@ impl Store for PostgresStore {
         }
     }
 
-    async fn list_tables(
+    async fn list_data_source_tables(
         &self,
         project: &Project,
         data_source_id: &str,
@@ -2678,25 +2999,30 @@ impl Store for PostgresStore {
         // get the data source row id
         let r = c
             .query(
-                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                "select id, internal_id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
                 &[&project_id, &data_source_id],
             )
             .await?;
 
-        let data_source_row_id: i64 = match r.len() {
+        let (data_source_row_id, data_source_internal_id): (i64, String) = match r.len() {
             0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
-            1 => r[0].get(0),
+            1 => (r[0].get(0), r[0].get(1)),
             _ => unreachable!(),
         };
 
         let mut where_clauses: Vec<String> = vec![];
         let mut params: Vec<&(dyn ToSql + Sync)> = vec![];
 
-        where_clauses.push("data_source = $1".to_string());
+        where_clauses.push("t.data_source = $1".to_string());
         params.push(&data_source_row_id);
 
-        let (filter_clauses, filter_params, mut p_idx) =
-            Self::where_clauses_and_params_for_filter(view_filter, params.len() + 1);
+        let (filter_clauses, filter_params, mut p_idx) = Self::where_clauses_and_params_for_filter(
+            view_filter,
+            Some("t.tags_array"),
+            "dsn.parents",
+            "t.timestamp",
+            params.len() + 1,
+        );
 
         where_clauses.extend(filter_clauses);
         params.extend(filter_params);
@@ -2712,16 +3038,18 @@ impl Store for PostgresStore {
                 })
                 .collect();
 
-            where_clauses.push(format!("table_id IN ({})", id_placeholders.join(", ")));
+            where_clauses.push(format!("t.table_id IN ({})", id_placeholders.join(", ")));
             params.extend(ids.iter().map(|id| id as &(dyn ToSql + Sync)));
         }
 
         let sql = format!(
-            "SELECT created, table_id, name, description, timestamp, tags_array, \
-                                parents, schema, schema_stale_at, \
-                                remote_database_table_id, remote_database_secret_id \
-                                FROM tables \
-               WHERE {} ORDER BY timestamp DESC",
+            "SELECT t.created, t.table_id, t.name, t.description, \
+                    t.timestamp, t.tags_array, dsn.parents, \
+                    t.schema, t.schema_stale_at, \
+                    t.remote_database_table_id, t.remote_database_secret_id, \
+                    dsn.title, dsn.mime_type, dsn.source_url, dsn.provider_visibility \
+                FROM tables t INNER JOIN data_sources_nodes dsn ON dsn.table=t.id \
+                WHERE {} ORDER BY t.timestamp DESC",
             where_clauses.join(" AND "),
         );
 
@@ -2759,6 +3087,10 @@ impl Store for PostgresStore {
                 let schema_stale_at: Option<i64> = r.get(8);
                 let remote_database_table_id: Option<String> = r.get(9);
                 let remote_database_secret_id: Option<String> = r.get(10);
+                let title: String = r.get(11);
+                let mime_type: String = r.get(12);
+                let source_url: Option<String> = r.get(13);
+                let provider_visibility: Option<ProviderVisibility> = r.get(14);
 
                 let parsed_schema: Option<TableSchema> = match schema {
                     None => None,
@@ -2772,16 +3104,22 @@ impl Store for PostgresStore {
                 };
 
                 Ok(Table::new(
-                    project,
-                    &data_source_id,
+                    project.clone(),
+                    data_source_id.clone(),
+                    data_source_internal_id.clone(),
                     created as u64,
-                    &table_id,
-                    &name,
-                    &description,
+                    table_id,
+                    name,
+                    description,
                     timestamp as u64,
+                    title,
+                    mime_type,
+                    provider_visibility,
                     tags,
+                    parents.get(1).cloned(),
                     parents,
-                    &parsed_schema,
+                    source_url,
+                    parsed_schema,
                     schema_stale_at.map(|t| t as u64),
                     remote_database_table_id,
                     remote_database_secret_id,
@@ -2795,8 +3133,9 @@ impl Store for PostgresStore {
                 let stmt = c
                     .prepare(
                         format!(
-                            "SELECT COUNT(*) FROM tables \
-                                   WHERE {}",
+                            "SELECT COUNT(*) FROM tables t \
+                               INNER JOIN data_sources_nodes dsn ON dsn.table=t.id \
+                               WHERE {}",
                             where_clauses.join(" AND ")
                         )
                         .as_str(),
@@ -2810,7 +3149,7 @@ impl Store for PostgresStore {
         Ok((tables, total))
     }
 
-    async fn delete_table(
+    async fn delete_data_source_table(
         &self,
         project: &Project,
         data_source_id: &str,
@@ -2823,7 +3162,9 @@ impl Store for PostgresStore {
         let pool = self.pool.clone();
         let mut c = pool.get().await?;
 
-        let r = c
+        let tx = c.transaction().await?;
+
+        let r = tx
             .query(
                 "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
                 &[&project_id, &data_source_id],
@@ -2835,8 +3176,13 @@ impl Store for PostgresStore {
             _ => unreachable!(),
         };
 
-        let tx = c.transaction().await?;
-
+        let stmt = tx
+            .prepare(
+                "DELETE FROM data_sources_nodes WHERE data_source = $1 \
+                   AND node_id = $2 AND \"table\" IS NOT NULL",
+            )
+            .await?;
+        let _ = tx.query(&stmt, &[&data_source_row_id, &table_id]).await?;
         let stmt = tx
             .prepare("DELETE FROM tables WHERE data_source = $1 AND table_id = $2")
             .await?;
@@ -2849,50 +3195,90 @@ impl Store for PostgresStore {
 
     async fn upsert_data_source_folder(
         &self,
-        project: &Project,
-        data_source_id: &str,
-        folder: &Folder,
-    ) -> Result<()> {
+        project: Project,
+        data_source_id: String,
+        upsert_params: FolderUpsertParams,
+    ) -> Result<Folder> {
         let project_id = project.project_id();
-        let data_source_id = data_source_id.to_string();
 
         let pool = self.pool.clone();
-        let c = pool.get().await?;
+        let mut c = pool.get().await?;
 
-        let stmt = c
-            .prepare(
-                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+        let created = utils::now();
+
+        // get the data source row id
+        let tx = c.transaction().await?;
+        let r = tx
+            .query(
+                "select id, internal_id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                &[&project_id, &data_source_id],
             )
             .await?;
-        let r = c.query(&stmt, &[&project_id, &data_source_id]).await?;
-        let data_source_row_id: i64 = match r.len() {
+
+        let (data_source_row_id, data_source_internal_id): (i64, String) = match r.len() {
             0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
-            1 => r[0].get(0),
+            1 => (r[0].get(0), r[0].get(1)),
             _ => unreachable!(),
         };
 
-        let stmt = c
+        let stmt = tx
             .prepare(
                 "INSERT INTO data_sources_folders \
-               (id, data_source, created, folder_id) \
-               VALUES (DEFAULT, $1, $2, $3) \
-               ON CONFLICT (data_source, folder_id) DO UPDATE \
-               SET created = EXCLUDED.created \
-               RETURNING id",
+                       (id, data_source, created, folder_id) \
+                       VALUES (DEFAULT, $1, $2, $3) \
+                       ON CONFLICT (folder_id, data_source)  DO UPDATE \
+                       SET folder_id = data_sources_folders.folder_id \
+                       RETURNING id, created",
             )
             .await?;
 
-        let _ = c
+        let r = tx
             .query_one(
                 &stmt,
                 &[
                     &data_source_row_id,
-                    &(folder.created as i64),
-                    &folder.folder_id,
+                    &(created as i64),
+                    &upsert_params.folder_id,
                 ],
             )
             .await?;
-        Ok(())
+
+        let folder_row_id: i64 = r.get(0);
+        let created: i64 = r.get(1);
+
+        let folder = Folder::new(
+            data_source_id,
+            data_source_internal_id,
+            upsert_params.folder_id,
+            created as u64,
+            upsert_params.title,
+            upsert_params.parents.get(1).cloned(),
+            upsert_params.parents,
+            upsert_params.mime_type,
+            upsert_params.source_url,
+            upsert_params.provider_visibility,
+        );
+
+        self.upsert_data_source_node(
+            UpsertNode {
+                node_id: folder.folder_id(),
+                node_type: &NodeType::Folder,
+                timestamp: folder.timestamp(),
+                provider_visibility: folder.provider_visibility(),
+                title: folder.title(),
+                mime_type: folder.mime_type(),
+                parents: folder.parents(),
+                source_url: folder.source_url(),
+            },
+            data_source_row_id,
+            folder_row_id,
+            &tx,
+        )
+        .await?;
+
+        tx.commit().await?;
+
+        Ok(folder)
     }
 
     async fn load_data_source_folder(
@@ -2901,195 +3287,235 @@ impl Store for PostgresStore {
         data_source_id: &str,
         folder_id: &str,
     ) -> Result<Option<Folder>> {
-        let project_id = project.project_id();
         let data_source_id = data_source_id.to_string();
         let folder_id = folder_id.to_string();
 
         let pool = self.pool.clone();
         let c = pool.get().await?;
 
-        let r = c
-            .query(
-                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
-                &[&project_id, &data_source_id],
-            )
-            .await?;
+        match self
+            .get_data_source_node(&project, &data_source_id, &folder_id)
+            .await?
+        {
+            None => Ok(None),
+            Some((node, row_id)) => {
+                let stmt = c
+                    .prepare(
+                        "SELECT id \
+                           FROM data_sources_folders \
+                           WHERE id = $1 LIMIT 1",
+                    )
+                    .await?;
+                let row = c.query(&stmt, &[&row_id]).await?;
 
-        let data_source_row_id: i64 = match r.len() {
-            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
-            1 => r[0].get(0),
-            _ => unreachable!(),
-        };
-
-        let stmt = c
-            .prepare(
-                "SELECT id, created \
-                 FROM data_sources_folders \
-                 WHERE data_source = $1 AND folder_id = $2 LIMIT 1",
-            )
-            .await?;
-        let row = c.query(&stmt, &[&data_source_row_id, &folder_id]).await?;
-
-        match row.len() {
-            0 => Ok(None),
-            1 => {
-                let created: i64 = row[0].get::<_, i64>(1);
-
-                Ok(Some(Folder {
-                    data_source_id,
-                    folder_id,
-                    created: created as u64,
-                }))
+                match row.len() {
+                    0 => Ok(None),
+                    1 => Ok(Some(node.into_folder())),
+                    _ => unreachable!(),
+                }
             }
-            _ => unreachable!(),
         }
     }
 
-    async fn delete_data_source_folder(&self, data_source_id: &str, folder_id: &str) -> Result<()> {
-        let pool = self.pool.clone();
-        let c = pool.get().await?;
-
-        let r = c
-            .query(
-                "SELECT id FROM data_sources WHERE data_source_id = $1 LIMIT 2",
-                &[&data_source_id],
-            )
-            .await?;
-
-        let data_source_row_id: i64 = match r.len() {
-            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
-            1 => r[0].get(0),
-            _ => unreachable!(),
-        };
-
-        let stmt = c
-            .prepare("DELETE FROM data_sources_folders WHERE data_source = $1 AND folder_id = $2")
-            .await?;
-        let _ = c.query(&stmt, &[&data_source_row_id, &folder_id]).await?;
-        Ok(())
-    }
-
-    async fn upsert_data_source_node(&self, data_source_id: &str, node: &Node) -> Result<()> {
+    async fn list_data_source_folders(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        view_filter: &Option<SearchFilter>,
+        folder_ids: &Option<Vec<String>>,
+        limit_offset: Option<(usize, usize)>,
+    ) -> Result<(Vec<Folder>, usize)> {
+        let project_id = project.project_id();
         let data_source_id = data_source_id.to_string();
 
         let pool = self.pool.clone();
         let c = pool.get().await?;
 
+        // get the data source row id
         let r = c
             .query(
-                "SELECT id FROM data_sources WHERE data_source_id = $1 LIMIT 1",
-                &[&data_source_id],
+                "select id, internal_id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                &[&project_id, &data_source_id],
             )
             .await?;
 
+        let (data_source_row_id, data_source_internal_id): (i64, String) = match r.len() {
+            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
+            1 => (r[0].get(0), r[0].get(1)),
+            _ => unreachable!(),
+        };
+
+        let mut where_clauses: Vec<String> = vec![];
+        let mut params: Vec<&(dyn ToSql + Sync)> = vec![];
+
+        where_clauses.push("dsn.data_source = $1".to_string());
+        params.push(&data_source_row_id);
+
+        let (filter_clauses, filter_params, mut p_idx) = Self::where_clauses_and_params_for_filter(
+            &view_filter,
+            None,
+            "dsn.parents",
+            "dsn.timestamp",
+            params.len() + 1,
+        );
+
+        where_clauses.extend(filter_clauses);
+        params.extend(filter_params);
+
+        // Add folder_ids filter if provided.
+        if let Some(ref ids) = folder_ids {
+            // Create a dynamic list of placeholders for the folder IDs.
+            let id_placeholders: Vec<String> = (0..ids.len())
+                .map(|_| {
+                    let placeholder = format!("${}", p_idx);
+                    p_idx += 1; // Increment p_idx after each table.
+                    placeholder
+                })
+                .collect();
+
+            where_clauses.push(format!("dsn.node_id IN ({})", id_placeholders.join(", ")));
+            params.extend(ids.iter().map(|id| id as &(dyn ToSql + Sync)));
+        }
+
+        let sql = format!(
+            "SELECT dsn.node_id, dsn.title, dsn.timestamp, dsn.parents, dsn.mime_type, dsn.source_url, dsn.provider_visibility \
+               FROM data_sources_nodes dsn \
+               WHERE dsn.folder IS NOT NULL AND {} ORDER BY dsn.timestamp DESC",
+            where_clauses.join(" AND "),
+        );
+
+        let (rows, total) = match limit_offset {
+            None => {
+                let stmt = c.prepare(&sql).await?;
+                let rows = c.query(&stmt, &params).await?;
+                let total = rows.len();
+                (rows, total)
+            }
+            Some((limit, offset)) => {
+                let limit = limit as i64;
+                let offset = offset as i64;
+
+                let mut params_with_limits = params.clone();
+                params_with_limits.push(&limit);
+                params_with_limits.push(&offset);
+
+                let stmt = c
+                    .prepare(&(sql + &format!(" LIMIT ${} OFFSET ${}", p_idx, p_idx + 1)))
+                    .await?;
+                let rows = c.query(&stmt, &params_with_limits).await?;
+
+                let stmt = c
+                    .prepare(
+                        format!(
+                            "SELECT COUNT(*) FROM data_sources_nodes dsn \
+                                WHERE folder IS NOT NULL AND {}",
+                            where_clauses.join(" AND ")
+                        )
+                        .as_str(),
+                    )
+                    .await?;
+                let t: i64 = c.query_one(&stmt, &params).await?.get(0);
+                (rows, t as usize)
+            }
+        };
+
+        let folders: Vec<Folder> = rows
+            .into_iter()
+            .map(|r| {
+                let node_id: String = r.get(0);
+                let title: String = r.get(1);
+                let timestamp: i64 = r.get(2);
+                let parents: Vec<String> = r.get(3);
+                let mime_type: String = r.get(4);
+                let source_url: Option<String> = r.get(5);
+                let provider_visibility: Option<ProviderVisibility> = r.get(6);
+
+                Ok(Folder::new(
+                    data_source_id.clone(),
+                    data_source_internal_id.clone(),
+                    node_id,
+                    timestamp as u64,
+                    title,
+                    parents.get(1).cloned(),
+                    parents,
+                    mime_type,
+                    source_url,
+                    provider_visibility,
+                ))
+            })
+            .collect::<Result<Vec<_>>>()?;
+        Ok((folders, total))
+    }
+
+    async fn delete_data_source_folder(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        folder_id: &str,
+    ) -> Result<()> {
+        let project_id = project.project_id();
+        let pool = self.pool.clone();
+        let mut c = pool.get().await?;
+
+        let tx = c.transaction().await?;
+
+        let r = tx
+            .query(
+                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                &[&project_id, &data_source_id],
+            )
+            .await?;
         let data_source_row_id: i64 = match r.len() {
             0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
             1 => r[0].get(0),
             _ => unreachable!(),
         };
 
-        let (document_row_id, table_row_id, folder_row_id) = match node.node_type {
-            NodeType::Document => {
-                let r = c.query(
-                    "SELECT id FROM data_sources_documents WHERE data_source = $1 AND document_id = $2 LIMIT 1",
-                    &[&data_source_row_id, &node.node_id],
-                ).await?;
-
-                let document_row_id: i64 = match r.len() {
-                    0 => Err(anyhow!("Unknown Document: {}", node.node_id))?,
-                    1 => r[0].get(0),
-                    _ => unreachable!(),
-                };
-                (Some(document_row_id), None, None)
-            }
-            NodeType::Table => {
-                let r = c
-                    .query(
-                        "SELECT id FROM tables WHERE data_source = $1 AND table_id = $2 LIMIT 1",
-                        &[&data_source_row_id, &node.node_id],
-                    )
-                    .await?;
-
-                let table_row_id: i64 = match r.len() {
-                    0 => Err(anyhow!("Unknown Table: {}", node.node_id))?,
-                    1 => r[0].get(0),
-                    _ => unreachable!(),
-                };
-                (None, Some(table_row_id), None)
-            }
-            NodeType::Folder => {
-                let r = c.query(
-                    "SELECT id FROM data_sources_folders WHERE data_source = $1 AND folder_id = $2 LIMIT 1",
-                    &[&data_source_row_id, &node.node_id],
-                ).await?;
-
-                let folder_row_id: i64 = match r.len() {
-                    0 => Err(anyhow!("Unknown Folder: {}", node.node_id))?,
-                    1 => r[0].get(0),
-                    _ => unreachable!(),
-                };
-                (None, None, Some(folder_row_id))
-            }
-        };
-
-        let stmt = c
+        let stmt = tx
             .prepare(
-                "INSERT INTO data_sources_nodes \
-               (id, data_source, created, node_id, timestamp, title, mime_type, parents, document, \"table\", folder) \
-               VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10) \
-               ON CONFLICT (data_source, node_id) DO UPDATE \
-               SET created = EXCLUDED.created, timestamp = EXCLUDED.timestamp, title = EXCLUDED.title, \
-                   mime_type = EXCLUDED.mime_type, parents = EXCLUDED.parents, document = EXCLUDED.document, \
-                   \"table\" = EXCLUDED.\"table\", folder = EXCLUDED.folder RETURNING id",
+                "DELETE FROM data_sources_nodes \
+                   WHERE data_source = $1 AND node_id = $2 AND folder IS NOT NULL",
             )
             .await?;
+        let _ = tx.query(&stmt, &[&data_source_row_id, &folder_id]).await?;
+        let stmt = tx
+            .prepare("DELETE FROM data_sources_folders WHERE data_source = $1 AND folder_id = $2")
+            .await?;
+        let _ = tx.query(&stmt, &[&data_source_row_id, &folder_id]).await?;
 
-        let _ = c
-            .query_one(
-                &stmt,
-                &[
-                    &data_source_row_id,
-                    &(node.created as i64),
-                    &node.node_id,
-                    &(node.timestamp as i64),
-                    &node.title,
-                    &node.mime_type,
-                    &node.parents,
-                    &document_row_id,
-                    &table_row_id,
-                    &folder_row_id,
-                ],
-            )
-            .await?;
+        tx.commit().await?;
+
         Ok(())
     }
 
     async fn get_data_source_node(
         &self,
+        project: &Project,
         data_source_id: &str,
         node_id: &str,
-    ) -> Result<Option<Node>> {
+    ) -> Result<Option<(Node, i64)>> {
+        let project_id = project.project_id();
         let pool = self.pool.clone();
         let c = pool.get().await?;
 
         let r = c
             .query(
-                "SELECT id FROM data_sources WHERE data_source_id = $1 LIMIT 1",
-                &[&data_source_id],
+                "select id, internal_id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                &[&project_id, &data_source_id],
             )
             .await?;
 
-        let data_source_row_id: i64 = match r.len() {
+        let (data_source_row_id, data_source_internal_id): (i64, String) = match r.len() {
             0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
-            1 => r[0].get(0),
+            1 => (r[0].get(0), r[0].get(1)),
             _ => unreachable!(),
         };
 
         let stmt = c
             .prepare(
-                "SELECT created, timestamp, title, mime_type, parents, document, \"table\", folder, node_id \
-                 FROM data_sources_nodes \
-                 WHERE data_source = $1 AND node_id = $2 LIMIT 1",
+                "SELECT timestamp, title, mime_type, provider_visibility, parents, node_id, document, \"table\", folder, source_url \
+                   FROM data_sources_nodes \
+                   WHERE data_source = $1 AND node_id = $2 LIMIT 1",
             )
             .await?;
         let row = c.query(&stmt, &[&data_source_row_id, &node_id]).await?;
@@ -3097,59 +3523,167 @@ impl Store for PostgresStore {
         match row.len() {
             0 => Ok(None),
             1 => {
-                let created: i64 = row[0].get::<_, i64>(0);
-                let timestamp: i64 = row[0].get::<_, i64>(1);
-                let title: String = row[0].get::<_, String>(2);
-                let mime_type: String = row[0].get::<_, String>(3);
+                let timestamp: i64 = row[0].get::<_, i64>(0);
+                let title: String = row[0].get::<_, String>(1);
+                let mime_type: String = row[0].get::<_, String>(2);
+                let provider_visibility: Option<ProviderVisibility> =
+                    row[0].get::<_, Option<ProviderVisibility>>(3);
                 let parents: Vec<String> = row[0].get::<_, Vec<String>>(4);
                 let node_id: String = row[0].get::<_, String>(5);
-                let node_type: NodeType = match (
-                    row[0].get::<_, Option<i64>>(6),
-                    row[0].get::<_, Option<i64>>(7),
-                    row[0].get::<_, Option<i64>>(8),
-                ) {
-                    (Some(_), None, None) => NodeType::Document,
-                    (None, Some(_), None) => NodeType::Table,
-                    (None, None, Some(_)) => NodeType::Folder,
+                let document_row_id = row[0].get::<_, Option<i64>>(6);
+                let table_row_id = row[0].get::<_, Option<i64>>(7);
+                let folder_row_id = row[0].get::<_, Option<i64>>(8);
+                let (node_type, row_id) = match (document_row_id, table_row_id, folder_row_id) {
+                    (Some(id), None, None) => (NodeType::Document, id),
+                    (None, Some(id), None) => (NodeType::Table, id),
+                    (None, None, Some(id)) => (NodeType::Folder, id),
                     _ => unreachable!(),
                 };
-
-                Ok(Some(Node {
-                    node_id,
-                    created: created as u64,
-                    timestamp: timestamp as u64,
-                    node_type,
-                    title,
-                    mime_type,
-                    parents,
-                }))
+                let source_url: Option<String> = row[0].get::<_, Option<String>>(9);
+                Ok(Some((
+                    Node::new(
+                        &data_source_id,
+                        &data_source_internal_id,
+                        &node_id,
+                        node_type,
+                        timestamp as u64,
+                        &title,
+                        &mime_type,
+                        provider_visibility,
+                        parents.get(1).cloned(),
+                        parents,
+                        source_url,
+                    ),
+                    row_id,
+                )))
             }
             _ => unreachable!(),
         }
     }
 
-    async fn delete_data_source_node(&self, data_source_id: &str, node_id: &str) -> Result<()> {
+    async fn list_data_source_nodes(
+        &self,
+        id_cursor: i64,
+        batch_size: i64,
+    ) -> Result<Vec<(Node, i64, i64)>> {
         let pool = self.pool.clone();
         let c = pool.get().await?;
 
+        let stmt = c
+            .prepare(
+                "SELECT dsn.timestamp, dsn.title, dsn.mime_type, dsn.provider_visibility, dsn.parents, dsn.node_id, dsn.document, dsn.\"table\", dsn.folder, ds.data_source_id, ds.internal_id, dsn.source_url, dsn.id \
+                   FROM data_sources_nodes dsn JOIN data_sources ds ON dsn.data_source = ds.id \
+                   WHERE dsn.id > $1 ORDER BY dsn.id ASC LIMIT $2",
+            )
+            .await?;
+        let rows = c.query(&stmt, &[&id_cursor, &batch_size]).await?;
+
+        let nodes: Vec<(Node, i64, i64)> = rows
+            .iter()
+            .map(|row| {
+                let timestamp: i64 = row.get::<_, i64>(0);
+                let title: String = row.get::<_, String>(1);
+                let mime_type: String = row.get::<_, String>(2);
+                let provider_visibility: Option<ProviderVisibility> =
+                    row.get::<_, Option<ProviderVisibility>>(3);
+                let parents: Vec<String> = row.get::<_, Vec<String>>(4);
+                let node_id: String = row.get::<_, String>(5);
+                let document_row_id = row.get::<_, Option<i64>>(6);
+                let table_row_id = row.get::<_, Option<i64>>(7);
+                let folder_row_id = row.get::<_, Option<i64>>(8);
+                let data_source_id: String = row.get::<_, String>(9);
+                let data_source_internal_id: String = row.get::<_, String>(10);
+                let (node_type, element_row_id) =
+                    match (document_row_id, table_row_id, folder_row_id) {
+                        (Some(id), None, None) => (NodeType::Document, id),
+                        (None, Some(id), None) => (NodeType::Table, id),
+                        (None, None, Some(id)) => (NodeType::Folder, id),
+                        _ => unreachable!(),
+                    };
+                let source_url: Option<String> = row.get::<_, Option<String>>(11);
+                let row_id = row.get::<_, i64>(12);
+                (
+                    Node::new(
+                        &data_source_id,
+                        &data_source_internal_id,
+                        &node_id,
+                        node_type,
+                        timestamp as u64,
+                        &title,
+                        &mime_type,
+                        provider_visibility,
+                        parents.get(1).cloned(),
+                        parents,
+                        source_url,
+                    ),
+                    row_id,
+                    element_row_id,
+                )
+            })
+            .collect::<Vec<_>>();
+        Ok(nodes)
+    }
+
+    async fn count_nodes_children(&self, nodes: &Vec<Node>) -> Result<HashMap<String, u64>> {
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        // Extract all node IDs we want to count children for and get corresponding data_source_row_ids
+        let node_ids: Vec<String> = nodes.iter().map(|n| n.node_id.clone()).collect();
+        let data_source_internal_ids: Vec<String> = nodes
+            .iter()
+            .map(|n| n.data_source_internal_id.clone())
+            .collect();
         let r = c
             .query(
-                "SELECT id FROM data_sources WHERE data_source_id = $1 LIMIT 2",
-                &[&data_source_id],
+                "SELECT ds.id, p.node_id FROM data_sources ds
+                    JOIN UNNEST(
+                        $1::text[],
+                        $2::text[]
+                    ) AS p(node_id, internal_id)
+                ON ds.internal_id = p.internal_id",
+                &[&node_ids, &data_source_internal_ids],
             )
             .await?;
 
-        let data_source_row_id: i64 = match r.len() {
-            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
-            1 => r[0].get(0),
-            _ => unreachable!(),
-        };
-
+        let data_source_row_ids: Vec<i64> = r.iter().map(|row| row.get(0)).collect();
+        let node_ids: Vec<String> = r.iter().map(|row| row.get(1)).collect();
+        // using index (data_source, parents[2]), check for existence of children
         let stmt = c
-            .prepare("DELETE FROM data_sources_nodes WHERE data_source = $1 AND node_id = $2")
+            .prepare(
+                "SELECT p.node_id,
+                    EXISTS (
+                        SELECT 1
+                        FROM data_sources_nodes dsn
+                        WHERE dsn.data_source = p.data_source
+                        AND dsn.parents[2] = p.node_id
+                        LIMIT 1
+                    ) as has_children
+                    FROM UNNEST(
+                        $1::bigint[],
+                        $2::text[]
+                    ) AS p(data_source, node_id)",
+            )
             .await?;
-        let _ = c.query(&stmt, &[&data_source_row_id, &node_id]).await?;
-        Ok(())
+        let rows = c.query(&stmt, &[&data_source_row_ids, &node_ids]).await?;
+
+        // Convert the results into a HashMap
+        let counts = rows
+            .iter()
+            .map(|row| {
+                let parent_id: String = row.get(0);
+                let has_children: bool = row.get(1);
+                (
+                    parent_id,
+                    match has_children {
+                        true => 1,
+                        false => 0,
+                    },
+                )
+            })
+            .collect::<HashMap<String, u64>>();
+
+        Ok(counts)
     }
 
     async fn llm_cache_get(

@@ -2,10 +2,16 @@ import {
   Button,
   ContentMessage,
   Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   InformationCircleIcon,
   PlusIcon,
+  Tooltip,
+  useSendNotification,
 } from "@dust-tt/sparkle";
-import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   APIError,
   DataSourceViewSelectionConfigurations,
@@ -23,6 +29,7 @@ import { RequestDataSourceModal } from "@app/components/data_source/RequestDataS
 import SpaceManagedDatasourcesViewsModal from "@app/components/spaces/SpaceManagedDatasourcesViewsModal";
 import { useAwaitableDialog } from "@app/hooks/useAwaitableDialog";
 import { getDisplayNameForDataSource, isManaged } from "@app/lib/data_sources";
+import { useKillSwitches } from "@app/lib/swr/kill";
 import {
   useSpaceDataSourceViews,
   useSpaceDataSourceViewsWithDetails,
@@ -53,6 +60,10 @@ export function EditSpaceManagedDataSourcesViews({
   const router = useRouter();
 
   const { AwaitableDialog, showDialog } = useAwaitableDialog();
+
+  const { killSwitches } = useKillSwitches();
+
+  const isSavingDisabled = killSwitches?.includes("save_data_source_views");
 
   // DataSources Views of the current space.
   const {
@@ -113,33 +124,35 @@ export function EditSpaceManagedDataSourcesViews({
         validateVariant: "warning",
         alertDialog: true,
         children: (
-          <div className="space-y-4 text-slate-900">
-            <p>The following data sources are currently in use:</p>
-
-            {deletedViewsWithUsage.map((view) => (
-              <p key={view.sId} className="font-medium">
-                {getDisplayNameForDataSource(view.dataSource)}{" "}
-                <span className="italic text-slate-500">
-                  (used by {view.usage.count} assistant
-                  {view.usage.count > 1 ? "s" : ""})
-                </span>
-              </p>
-            ))}
-
+          <div className="space-y-4 text-foreground">
             <ContentMessage
               size="md"
               variant="warning"
               title="Warning"
               icon={InformationCircleIcon}
             >
-              <p>
-                Deleting these data sources will affect the assistants using
-                them. These assistants will no longer have access to this data
-                and may not work as expected.
-              </p>
+              Deleting these data sources will affect the assistants using them.
+              These assistants will no longer have access to this data and may
+              not work as expected.
             </ContentMessage>
 
-            <p>Are you sure you want to remove them?</p>
+            <div>
+              The following data sources are currently in use:
+              <ul className="ml-6 list-disc">
+                {deletedViewsWithUsage.map((view) => (
+                  <li key={view.sId} className="font-medium">
+                    {getDisplayNameForDataSource(view.dataSource)}{" "}
+                    <span className="italic text-muted-foreground">
+                      (used by {view.usage.count} assistant
+                      {view.usage.count > 1 ? "s" : ""})
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="font-semibold">
+              Are you sure you want to remove them?
+            </div>
           </div>
         ),
       });
@@ -264,6 +277,38 @@ export function EditSpaceManagedDataSourcesViews({
   if (isSystemSpaceDataSourceViewsLoading || isSpaceDataSourceViewsLoading) {
     return false;
   }
+
+  function handleCloseDataSourcesModal() {
+    setShowDataSourcesModal(false);
+  }
+
+  function handleGoToConnectionsManagement() {
+    void router.push(
+      `/w/${owner?.sId}/spaces/${systemSpace?.sId}/categories/managed`
+    );
+  }
+
+  const addToSpaceButton = (
+    <Button
+      label={
+        dataSourceView
+          ? `Add data from ${getDisplayNameForDataSource(dataSourceView.dataSource)}`
+          : "Add data from connections"
+      }
+      variant="primary"
+      icon={PlusIcon}
+      size="sm"
+      onClick={() => {
+        if (systemSpaceDataSourceViews.length === 0) {
+          setShowNoConnectionDialog(true);
+        } else {
+          setShowDataSourcesModal(true);
+        }
+      }}
+      disabled={isSavingDisabled}
+    />
+  );
+
   return isAdmin ? (
     <>
       <SpaceManagedDatasourcesViewsModal
@@ -292,38 +337,39 @@ export function EditSpaceManagedDataSourcesViews({
         }}
         initialSelectedDataSources={filteredDataSourceViews}
       />
+
       <Dialog
-        isOpen={showNoConnectionDialog}
-        onCancel={() => setShowNoConnectionDialog(false)}
-        cancelLabel="Close"
-        validateLabel="Go to connections management"
-        onValidate={() => {
-          void router.push(
-            `/w/${owner.sId}/spaces/${systemSpace.sId}/categories/managed`
-          );
-        }}
-        title="No connection set up"
+        open={showNoConnectionDialog}
+        onOpenChange={(open) => !open && setShowNoConnectionDialog(false)}
       >
-        <p>You have no connection set up.</p>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>No connection set up</DialogTitle>
+          </DialogHeader>
+          <DialogContainer>You have no connection set up.</DialogContainer>
+          <DialogFooter
+            leftButtonProps={{
+              label: "Close",
+              variant: "outline",
+              onClick: handleCloseDataSourcesModal,
+            }}
+            rightButtonProps={{
+              label: "Go to connections management",
+              variant: "primary",
+              onClick: handleGoToConnectionsManagement,
+            }}
+          />
+        </DialogContent>
       </Dialog>
       <AwaitableDialog />
-      <Button
-        label={
-          dataSourceView
-            ? `Add data from ${getDisplayNameForDataSource(dataSourceView.dataSource)}`
-            : "Add data from connections"
-        }
-        variant="primary"
-        icon={PlusIcon}
-        size="sm"
-        onClick={() => {
-          if (systemSpaceDataSourceViews.length === 0) {
-            setShowNoConnectionDialog(true);
-          } else {
-            setShowDataSourcesModal(true);
-          }
-        }}
-      />
+      {isSavingDisabled ? (
+        <Tooltip
+          trigger={addToSpaceButton}
+          label="Editing spaces is temporarily disabled and will be re-enabled shortly."
+        />
+      ) : (
+        addToSpaceButton
+      )}
     </>
   ) : (
     <RequestDataSourceModal

@@ -1,4 +1,5 @@
 import type { ModelId } from "@dust-tt/types";
+import { MIME_TYPES } from "@dust-tt/types";
 
 import { syncArticle } from "@connectors/connectors/zendesk/lib/sync_article";
 import {
@@ -10,10 +11,14 @@ import {
   changeZendeskClientSubdomain,
   createZendeskClient,
   fetchRecentlyUpdatedArticles,
-  fetchRecentlyUpdatedTickets,
+  fetchZendeskManyUsers,
+  fetchZendeskTicketComments,
+  fetchZendeskTickets,
+  getZendeskBrandSubdomain,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
+import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import { ZendeskTimestampCursor } from "@connectors/lib/models/zendesk";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -121,6 +126,7 @@ export async function syncZendeskArticleUpdateBatchActivity({
       if (section.category_id) {
         let category = await ZendeskCategoryResource.fetchByCategoryId({
           connectorId,
+          brandId,
           categoryId: section.category_id,
         });
         /// fetching and adding the category to the db if it is newly created, and the Help Center is selected
@@ -135,10 +141,21 @@ export async function syncZendeskArticleUpdateBatchActivity({
                 brandId,
                 name: fetchedCategory.name || "Category",
                 categoryId,
-                permission: "read",
+                permission: "none",
                 url: fetchedCategory.html_url,
                 description: fetchedCategory.description,
               },
+            });
+            // upserting a folder to data_sources_folders: here the Help Center is selected so it should appear in the parents
+            const parents = category.getParentInternalIds(connectorId);
+            await upsertDataSourceFolder({
+              dataSourceConfig,
+              folderId: parents[0],
+              parents,
+              parentId: parents[1],
+              title: category.name,
+              mimeType: MIME_TYPES.ZENDESK.CATEGORY,
+              sourceUrl: category.url,
             });
           } else {
             /// ignoring these to proceed with the other articles, but these might have to be checked at some point
@@ -149,17 +166,20 @@ export async function syncZendeskArticleUpdateBatchActivity({
           }
         }
         /// syncing the article if the category exists and is selected
-        if (category && category.permission === "read") {
+        if (
+          category &&
+          (category.permission === "read" || hasHelpCenterPermissions)
+        ) {
           return syncArticle({
             connectorId,
             category,
             article,
             section,
             user,
+            helpCenterIsAllowed: hasHelpCenterPermissions,
             dataSourceConfig,
             currentSyncDateMs,
             loggerArgs,
-            forceResync: false,
           });
         }
       }
@@ -201,13 +221,14 @@ export async function syncZendeskTicketUpdateBatchActivity({
   const { accessToken, subdomain } = await getZendeskSubdomainAndAccessToken(
     connector.connectionId
   );
-  const zendeskApiClient = createZendeskClient({ accessToken, subdomain });
-  const brandSubdomain = await changeZendeskClientSubdomain(zendeskApiClient, {
+  const brandSubdomain = await getZendeskBrandSubdomain({
     connectorId,
     brandId,
+    subdomain,
+    accessToken,
   });
 
-  const { tickets, hasMore, nextLink } = await fetchRecentlyUpdatedTickets(
+  const { tickets, hasMore, nextLink } = await fetchZendeskTickets(
     accessToken,
     url ? { url } : { brandSubdomain, startTime }
   );
@@ -218,15 +239,22 @@ export async function syncZendeskTicketUpdateBatchActivity({
       if (ticket.status === "deleted") {
         return deleteTicket({
           connectorId,
+          brandId,
           ticketId: ticket.id,
           dataSourceConfig,
           loggerArgs,
         });
-      } else if (ticket.status === "solved") {
-        const comments = await zendeskApiClient.tickets.getComments(ticket.id);
-        const { result: users } = await zendeskApiClient.users.showMany(
-          comments.map((c) => c.author_id)
-        );
+      } else if (["solved", "closed"].includes(ticket.status)) {
+        const comments = await fetchZendeskTicketComments({
+          accessToken,
+          brandSubdomain,
+          ticketId: ticket.id,
+        });
+        const users = await fetchZendeskManyUsers({
+          accessToken,
+          brandSubdomain,
+          userIds: comments.map((c) => c.author_id),
+        });
         return syncTicket({
           connectorId,
           ticket,

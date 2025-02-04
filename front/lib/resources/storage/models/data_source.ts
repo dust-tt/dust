@@ -3,19 +3,18 @@ import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { Conversation } from "@app/lib/models/assistant/conversation";
-import { User } from "@app/lib/models/user";
-import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
-import { SoftDeletableModel } from "@app/lib/resources/storage/wrappers";
+import { UserModel } from "@app/lib/resources/storage/models/user";
+import { SoftDeletableWorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
-export class DataSourceModel extends SoftDeletableModel<DataSourceModel> {
+export class DataSourceModel extends SoftDeletableWorkspaceAwareModel<DataSourceModel> {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
   // Corresponds to the ID of the last user to configure the connection.
-  declare editedByUserId: ForeignKey<User["id"]>;
+  declare editedByUserId: ForeignKey<UserModel["id"]> | null;
   declare editedAt: Date;
 
   declare name: string;
@@ -25,23 +24,16 @@ export class DataSourceModel extends SoftDeletableModel<DataSourceModel> {
   declare dustAPIDataSourceId: string;
   declare connectorId: string | null;
   declare connectorProvider: ConnectorProvider | null;
-  declare workspaceId: ForeignKey<Workspace["id"]>;
   declare vaultId: ForeignKey<SpaceModel["id"]>;
   declare conversationId: ForeignKey<Conversation["id"]>;
 
-  declare editedByUser: NonAttribute<User>;
+  declare editedByUser: NonAttribute<UserModel>;
   declare conversation: NonAttribute<Conversation>;
   declare space: NonAttribute<SpaceModel>;
-  declare workspace: NonAttribute<Workspace>;
 }
 
 DataSourceModel.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -98,24 +90,15 @@ DataSourceModel.init(
     ],
   }
 );
-Workspace.hasMany(DataSourceModel, {
-  as: "workspace",
-  foreignKey: { name: "workspaceId", allowNull: false },
-  onDelete: "CASCADE",
-});
 Conversation.hasMany(DataSourceModel, {
   as: "conversation",
   foreignKey: { name: "conversationId", allowNull: true },
   onDelete: "RESTRICT",
 });
-DataSourceModel.belongsTo(Workspace, {
-  as: "workspace",
-  foreignKey: { name: "workspaceId", allowNull: false },
-});
 
-DataSourceModel.belongsTo(User, {
+DataSourceModel.belongsTo(UserModel, {
   as: "editedByUser",
-  foreignKey: { name: "editedByUserId", allowNull: false },
+  foreignKey: { name: "editedByUserId", allowNull: true },
 });
 
 DataSourceModel.belongsTo(SpaceModel, {

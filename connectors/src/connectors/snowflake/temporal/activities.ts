@@ -1,21 +1,27 @@
 import type { ModelId } from "@dust-tt/types";
+import { isSnowflakeCredentials, MIME_TYPES } from "@dust-tt/types";
 
 import {
   connectToSnowflake,
   fetchTables,
   isConnectionReadonly,
 } from "@connectors/connectors/snowflake/lib/snowflake_api";
-import { getConnectorAndCredentials } from "@connectors/connectors/snowflake/lib/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
-  deleteTable,
-  upsertTableFromConnectors,
+  deleteDataSourceFolder,
+  deleteDataSourceTable,
+  upsertDataSourceFolder,
+  upsertDataSourceRemoteTable,
 } from "@connectors/lib/data_sources";
 import {
   RemoteDatabaseModel,
   RemoteSchemaModel,
   RemoteTableModel,
 } from "@connectors/lib/models/remote_databases";
+import {
+  getConnectorAndCredentials,
+  parseSchemaInternalId,
+} from "@connectors/lib/remote_databases/utils";
 import {
   syncFailed,
   syncStarted,
@@ -26,6 +32,7 @@ import logger from "@connectors/logger/logger";
 export async function syncSnowflakeConnection(connectorId: ModelId) {
   const getConnectorAndCredentialsRes = await getConnectorAndCredentials({
     connectorId,
+    isTypeGuard: isSnowflakeCredentials,
     logger,
   });
   if (getConnectorAndCredentialsRes.isErr()) {
@@ -35,6 +42,8 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
   await syncStarted(connectorId);
 
   const { credentials, connector } = getConnectorAndCredentialsRes.value;
+
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
   const connectionRes = await connectToSnowflake(credentials);
   if (connectionRes.isErr()) {
@@ -60,6 +69,37 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
     }),
   ]);
 
+  // removing the unselected databases (from core and connectors)
+  const unselectedDatabases = allDatabases.filter(
+    (db) => db.permission === "unselected"
+  );
+  for (const db of unselectedDatabases) {
+    await deleteDataSourceFolder({ dataSourceConfig, folderId: db.internalId });
+    await db.destroy();
+    for (const schema of allSchemas.filter(
+      (schema) =>
+        schema.databaseName === db.name && schema.permission === "inherited"
+    )) {
+      await deleteDataSourceFolder({
+        dataSourceConfig,
+        folderId: schema.internalId,
+      });
+      await schema.destroy();
+    }
+  }
+
+  // removing the unselected schemas (from core and connectors)
+  const unselectedSchema = allSchemas.filter(
+    (schema) => schema.permission === "unselected"
+  );
+  for (const schema of unselectedSchema) {
+    await deleteDataSourceFolder({
+      dataSourceConfig,
+      folderId: schema.internalId,
+    });
+    await schema.destroy();
+  }
+
   const readonlyConnectionCheck = await isConnectionReadonly({
     credentials,
     connection,
@@ -74,7 +114,7 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
     await syncFailed(connectorId, "remote_database_connection_not_readonly");
 
     for (const t of allTables) {
-      await deleteTable({
+      await deleteDataSourceTable({
         dataSourceConfig: dataSourceConfigFromConnector(connector),
         tableId: t.internalId,
       });
@@ -101,8 +141,12 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
   );
 
   const readGrantedInternalIds = new Set([
-    ...allDatabases.map((db) => db.internalId),
-    ...allSchemas.map((s) => s.internalId),
+    ...allDatabases
+      .filter((db) => db.permission === "selected")
+      .map((db) => db.internalId),
+    ...allSchemas
+      .filter((s) => s.permission === "selected")
+      .map((s) => s.internalId),
     ...allTables
       .filter((t) => t.permission === "selected")
       .map((t) => t.internalId),
@@ -110,6 +154,50 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
   const tableByInternalId = Object.fromEntries(
     allTables.map((table) => [table.internalId, table])
   );
+
+  // upserting data_sources_folders for the databases
+  for (const db of allDatabases) {
+    if (readGrantedInternalIds.has(db.internalId)) {
+      await upsertDataSourceFolder({
+        dataSourceConfig,
+        folderId: db.internalId,
+        title: db.name,
+        parents: [db.internalId],
+        parentId: null,
+        mimeType: MIME_TYPES.SNOWFLAKE.DATABASE,
+      });
+    }
+  }
+
+  // upserting data_sources_folders for the schemas
+  for (const schema of allSchemas) {
+    const { database_name: dbName, name: schemaName } = parseSchemaInternalId(
+      schema.internalId
+    );
+
+    let parents = [schema.internalId];
+    let schemaShouldBeSynced = false;
+
+    if (readGrantedInternalIds.has(dbName)) {
+      schemaShouldBeSynced = true;
+      parents = [schema.internalId, dbName];
+    } else if (readGrantedInternalIds.has(schema.internalId)) {
+      schemaShouldBeSynced = true;
+      parents = [schema.internalId];
+    }
+
+    if (schemaShouldBeSynced) {
+      // if the parent database is selected, it should be added as a parent, otherwise the schema is a root
+      await upsertDataSourceFolder({
+        dataSourceConfig,
+        folderId: schema.internalId,
+        title: schemaName,
+        parents: parents,
+        parentId: parents[1] || null,
+        mimeType: MIME_TYPES.SNOWFLAKE.SCHEMA,
+      });
+    }
+  }
 
   const parseTableInternalId = (
     tableInternalId: string
@@ -135,12 +223,27 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
   };
 
   for (const internalId of internalIdsOnSnowflake) {
-    if (isTableReadGranted(internalId)) {
+    const [dbName, schemaName, tableName] = parseTableInternalId(internalId);
+    const schemaInternalId = [dbName, schemaName].join(".");
+
+    let tableShouldBeSynced = false;
+    let parents = [internalId];
+
+    if (readGrantedInternalIds.has(dbName)) {
+      tableShouldBeSynced = true;
+      parents = [internalId, schemaInternalId, dbName];
+    } else if (readGrantedInternalIds.has(schemaInternalId)) {
+      tableShouldBeSynced = true;
+      parents = [internalId, schemaInternalId];
+    } else if (readGrantedInternalIds.has(internalId)) {
+      tableShouldBeSynced = true;
+      parents = [internalId];
+    }
+
+    if (tableShouldBeSynced) {
       let table = tableByInternalId[internalId];
       if (!table || !table.lastUpsertedAt) {
         if (!table) {
-          const [dbName, schemaName, tableName] =
-            parseTableInternalId(internalId);
           table = await RemoteTableModel.create({
             connectorId,
             internalId,
@@ -151,20 +254,17 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
           });
         }
 
-        await upsertTableFromConnectors({
-          dataSourceConfig: dataSourceConfigFromConnector(connector),
+        await upsertDataSourceRemoteTable({
+          dataSourceConfig,
           tableId: internalId,
           tableName: internalId,
           remoteDatabaseTableId: internalId,
           remoteDatabaseSecretId: connector.connectionId,
           tableDescription: "",
-          parents: [
-            table.internalId,
-            `${table.databaseName}.${table.schemaName}`,
-            table.databaseName,
-          ],
+          parents,
+          parentId: parents[1] || null,
           title: table.name,
-          mimeType: "application/vnd.snowflake.table",
+          mimeType: MIME_TYPES.SNOWFLAKE.TABLE,
         });
         await table.update({
           lastUpsertedAt: new Date(),
@@ -179,7 +279,7 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
       !internalIdsOnSnowflake.has(t.internalId)
     ) {
       if (t.lastUpsertedAt) {
-        await deleteTable({
+        await deleteDataSourceTable({
           dataSourceConfig: dataSourceConfigFromConnector(connector),
           tableId: t.internalId,
         });

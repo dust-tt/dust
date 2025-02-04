@@ -6,11 +6,7 @@ import {
   Spinner,
   TextArea,
 } from "@dust-tt/sparkle";
-import type {
-  DataSourceType,
-  LightWorkspaceType,
-  SpaceType,
-} from "@dust-tt/types";
+import type { LightWorkspaceType, SpaceType } from "@dust-tt/types";
 import { isDataSourceNameValid } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
@@ -24,7 +20,6 @@ import {
 } from "@app/lib/swr/spaces";
 
 interface SpaceFolderModalProps {
-  dataSources: DataSourceType[];
   dataSourceViewId: string | null;
   isOpen: boolean;
   onClose: () => void;
@@ -33,7 +28,6 @@ interface SpaceFolderModalProps {
 }
 
 export default function SpaceFolderModal({
-  dataSources,
   dataSourceViewId,
   isOpen,
   onClose,
@@ -90,11 +84,6 @@ export default function SpaceFolderModal({
       nameError = "Name is required.";
     } else if (isDataSourceNameValid(name).isErr()) {
       nameError = "Name is invalid, must be multiple characters with no space.";
-    } else if (
-      (!dataSourceView || dataSourceView.dataSource.name !== name) &&
-      dataSources.find((ds) => ds.name === name)
-    ) {
-      nameError = "A data source with this name already exists.";
     }
 
     if (nameError) {

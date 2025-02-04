@@ -1,5 +1,7 @@
 import type { ReactElement } from "react";
+import React from "react";
 
+import { BlogSection } from "@app/components/home/content/Product/BlogSection";
 import {
   CarousselContentBlock,
   HeaderContentBlock,
@@ -13,11 +15,13 @@ import {
 } from "@app/components/home/Particles";
 import type { SolutionSectionAssistantBlockProps } from "@app/components/home/SolutionSection";
 import { SolutionSection } from "@app/components/home/SolutionSection";
+import TrustedBy from "@app/components/home/TrustedBy";
 
 export async function getServerSideProps() {
   return {
     props: {
       shape: getParticleShapeIndexByName(shapeNames.cube),
+      gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
     },
   };
 }
@@ -59,6 +63,7 @@ export default function Engineering() {
         to={pageSettings.to}
         subtitle={pageSettings.description}
       />
+      <TrustedBy />
       <Grid>
         <SolutionSection
           title={"Improve Code Quality."}
@@ -160,6 +165,10 @@ export default function Engineering() {
           ]}
         />
       </Grid>
+      <BlogSection
+        headerColorFrom="from-emerald-200"
+        headerColorTo="to-emerald-500"
+      />
     </>
   );
 }
@@ -169,28 +178,6 @@ Engineering.getLayout = (page: ReactElement, pageProps: LandingLayoutProps) => {
 };
 
 const assistantExamples: SolutionSectionAssistantBlockProps[] = [
-  {
-    emoji: "⭐️",
-    name: "@engGeneral",
-    backgroundColor: "bg-emerald-300",
-    description: (
-      <>
-        Answers general questions about code architecture and&nbsp;engineering
-        team processes
-      </>
-    ),
-  },
-  {
-    emoji: "🏴‍☠️",
-    name: "@codeGenius",
-    backgroundColor: "bg-emerald-300",
-    description: (
-      <>
-        Answers general questions about code to&nbsp;avoid a&nbsp;trip
-        to&nbsp;StackOverflow
-      </>
-    ),
-  },
   {
     emoji: "📚",
     name: "@codebase",

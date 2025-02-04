@@ -1,28 +1,35 @@
-name: 'Slack Notification'
-description: 'Send deployment notifications to Slack'
+name: "Slack Notification"
+description: "Send deployment notifications to Slack"
 
 inputs:
   step:
-    description: 'Deployment step (start/build_success/failure)'
+    description: "Deployment step (start/build_success/failure)"
     required: true
   component:
-    description: 'Component being deployed'
+    description: "Component being deployed"
     required: true
   image_tag:
-    description: 'Image tag being deployed'
+    description: "Image tag being deployed"
     required: true
   channel:
-    description: 'Slack channel'
+    description: "Slack channel"
     required: true
   thread_ts:
-    description: 'Slack thread timestamp'
+    description: "Slack thread timestamp"
     required: false
   slack_token:
-    description: 'Slack bot token'
+    description: "Slack bot token"
     required: true
   blocked:
-    description: 'Is deployment blocked?'
+    description: "Is deployment blocked?"
     required: false
+  region:
+    description: "Region being deployed to"
+    required: false
+  is_revert:
+    description: "Whether reverting or deploying"
+    required: false
+    default: "false"
 
 outputs:
   thread_ts:
@@ -78,7 +85,8 @@ runs:
         payload: |
           channel: ${{ inputs.channel }}
           text: |
-            🚀 Starting deployment of ${{ inputs.component }} `${{ inputs.image_tag }}`
+            ${{ inputs.is_revert == 'true' && '⏮️' || '🚀' }} ${{ inputs.is_revert == 'true' && 'Starting revert of' || 'Starting deployment of' }} ${{ inputs.component }} `${{ inputs.image_tag }}`
+            • Region: `${{ inputs.region }}`
             • Commit: <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ inputs.image_tag }}>
             • Workflow: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View build>
             • Author: ${{ steps.slack_user.outputs.id != '' && format('<@{0}>', steps.slack_user.outputs.id) || format('`{0}`', steps.author.outputs.name) }}
@@ -93,6 +101,6 @@ runs:
           channel: ${{ inputs.channel }}
           thread_ts: "${{ inputs.thread_ts }}"
           text: |
-            ❌ Build pipeline failed
+            ❌ ${{ inputs.is_revert == 'true' && 'Revert' || 'Build' }} pipeline failed
             ${{ inputs.blocked == 'true' && format('Is blocked by channel topic: {0}', inputs.blocked) }}
             • Check logs: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View details>

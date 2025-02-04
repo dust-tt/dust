@@ -32,7 +32,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
     };
 
     return (
-      <div className={cn("s-relative s-m-px s-flex-grow", className)}>
+      <div className={cn("s-relative s-flex-grow", className)}>
         <Input
           type="text"
           name={name}
@@ -57,7 +57,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
             <div
               className={cn(
                 "s-px-2",
-                disabled ? "s-text-element-600" : "s-text-element-900"
+                disabled ? "s-text-element-600" : "s-text-foreground"
               )}
             >
               <Icon

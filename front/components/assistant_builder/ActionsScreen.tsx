@@ -1,7 +1,9 @@
 import {
   BookOpenIcon,
   Button,
-  CardButton,
+  Card,
+  CardActionButton,
+  CardGrid,
   Checkbox,
   Chip,
   ContentMessage,
@@ -13,7 +15,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   Icon,
-  IconButton,
   InformationCircleIcon,
   Input,
   Modal,
@@ -24,7 +25,11 @@ import {
   TextArea,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type { SpaceType, WorkspaceType } from "@dust-tt/types";
+import type {
+  ModelConfigurationType,
+  SpaceType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import { assertNever, MAX_STEPS_USE_PER_RUN_LIMIT } from "@dust-tt/types";
 import assert from "assert";
 import type { ReactNode } from "react";
@@ -41,9 +46,15 @@ import {
   isActionDustAppRunValid as hasErrorActionDustAppRun,
 } from "@app/components/assistant_builder/actions/DustAppRunAction";
 import {
+  ActionGithubCreateIssue,
+  ActionGithubGetPullRequest,
+  hasErrorActionGithub,
+} from "@app/components/assistant_builder/actions/GithubAction";
+import {
   ActionProcess,
   hasErrorActionProcess,
 } from "@app/components/assistant_builder/actions/ProcessAction";
+import { ActionReasoning } from "@app/components/assistant_builder/actions/ReasoningAction";
 import {
   ActionRetrievalExhaustive,
   ActionRetrievalSearch,
@@ -65,12 +76,16 @@ import type {
   AssistantBuilderActionConfigurationWithId,
   AssistantBuilderPendingAction,
   AssistantBuilderProcessConfiguration,
+  AssistantBuilderReasoningConfiguration,
   AssistantBuilderRetrievalConfiguration,
   AssistantBuilderSetActionType,
   AssistantBuilderState,
   AssistantBuilderTableConfiguration,
 } from "@app/components/assistant_builder/types";
-import { getDefaultActionConfiguration } from "@app/components/assistant_builder/types";
+import {
+  getDefaultActionConfiguration,
+  isDefaultActionName,
+} from "@app/components/assistant_builder/types";
 import { ACTION_SPECIFICATIONS } from "@app/lib/api/assistant/actions/utils";
 
 const DATA_SOURCES_ACTION_CATEGORIES = [
@@ -89,6 +104,9 @@ const ADVANCED_ACTION_CATEGORIES = ["DUST_APP_RUN"] as const satisfies Array<
 // Note: not all capabilities are actions (eg: visualization)
 const CAPABILITIES_ACTION_CATEGORIES = [
   "WEB_NAVIGATION",
+  "GITHUB_GET_PULL_REQUEST",
+  "GITHUB_CREATE_ISSUE",
+  "REASONING",
 ] as const satisfies Array<AssistantBuilderActionConfiguration["type"]>;
 
 function ActionModeSection({
@@ -117,9 +135,21 @@ export function hasActionError(
       return hasErrorActionTablesQuery(action);
     case "WEB_NAVIGATION":
       return hasErrorActionWebNavigation(action);
+    case "GITHUB_GET_PULL_REQUEST":
+      return hasErrorActionGithub(action);
+    case "GITHUB_CREATE_ISSUE":
+      return hasErrorActionGithub(action);
+    case "REASONING":
+      return null;
     default:
       assertNever(action);
   }
+}
+
+function actionDisplayName(action: AssistantBuilderActionConfiguration) {
+  return `${ACTION_SPECIFICATIONS[action.type].label}${
+    !isDefaultActionName(action) ? " - " + action.name : ""
+  }`;
 }
 
 type SpaceIdToActions = Record<
@@ -136,6 +166,8 @@ interface ActionScreenProps {
   setEdited: (edited: boolean) => void;
   setAction: (action: AssistantBuilderSetActionType) => void;
   pendingAction: AssistantBuilderPendingAction;
+  enableReasoningTool: boolean;
+  reasoningModels: ModelConfigurationType[];
 }
 
 export default function ActionsScreen({
@@ -145,6 +177,8 @@ export default function ActionsScreen({
   setEdited,
   setAction,
   pendingAction,
+  enableReasoningTool,
+  reasoningModels,
 }: ActionScreenProps) {
   const { spaces } = useContext(AssistantBuilderContext);
 
@@ -188,6 +222,9 @@ export default function ActionsScreen({
           break;
 
         case "WEB_NAVIGATION":
+        case "GITHUB_GET_PULL_REQUEST":
+        case "GITHUB_CREATE_ISSUE":
+        case "REASONING":
           break;
 
         default:
@@ -382,6 +419,33 @@ export default function ActionsScreen({
                       maxStepsPerRun,
                     }));
                   }}
+                  setReasoningModel={
+                    enableReasoningTool &&
+                    builderState.actions.find((a) => a.type === "REASONING")
+                      ? (model) => {
+                          setEdited(true);
+                          setBuilderState((state) => ({
+                            ...state,
+                            actions: state.actions.map((a) =>
+                              a.type === "REASONING"
+                                ? {
+                                    ...a,
+                                    configuration: {
+                                      ...a.configuration,
+                                      modelId: model.modelId,
+                                      providerId: model.providerId,
+                                      reasoningEffort:
+                                        model.reasoningEffort ?? null,
+                                    },
+                                  }
+                                : a
+                            ),
+                          }));
+                        }
+                      : undefined
+                  }
+                  reasoningModels={reasoningModels}
+                  builderState={builderState}
                 />
               </>
             )}
@@ -413,26 +477,24 @@ export default function ActionsScreen({
               />
             </div>
           )}
-          <div className="mx-auto grid w-full grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
+          <CardGrid>
             {configurableActions.map((a) => (
-              <div className="flex w-full" key={a.name}>
-                <ActionCard
-                  action={a}
-                  key={a.name}
-                  editAction={() => {
-                    setAction({
-                      type: "edit",
-                      action: a,
-                    });
-                  }}
-                  deleteAction={() => {
-                    deleteAction(a.name);
-                  }}
-                  isLegacyConfig={isLegacyConfig}
-                />
-              </div>
+              <ActionCard
+                action={a}
+                key={a.name}
+                editAction={() => {
+                  setAction({
+                    type: "edit",
+                    action: a,
+                  });
+                }}
+                deleteAction={() => {
+                  deleteAction(a.name);
+                }}
+                isLegacyConfig={isLegacyConfig}
+              />
             ))}
-          </div>
+          </CardGrid>
         </div>
 
         <Capabilities
@@ -441,6 +503,7 @@ export default function ActionsScreen({
           setEdited={setEdited}
           setAction={setAction}
           deleteAction={deleteAction}
+          enableReasoningTool={enableReasoningTool}
         />
       </div>
     </>
@@ -622,24 +685,24 @@ function ActionCard({
   }
   const actionError = hasActionError(action);
   return (
-    <CardButton
+    <Card
       variant="primary"
       onClick={editAction}
-      className="mx-auto inline-block w-72"
+      action={
+        <CardActionButton
+          size="mini"
+          icon={XMarkIcon}
+          onClick={(e: any) => {
+            deleteAction();
+            e.stopPropagation();
+          }}
+        />
+      }
     >
       <div className="flex w-full flex-col gap-2 text-sm">
-        <div className="flex w-full gap-1 font-medium text-element-900">
-          <Icon visual={spec.cardIcon} size="sm" className="text-element-900" />
-          <div className="w-full truncate">{spec.label}</div>
-          <IconButton
-            icon={XMarkIcon}
-            variant="outline"
-            size="sm"
-            onClick={(e) => {
-              deleteAction();
-              e.stopPropagation();
-            }}
-          />
+        <div className="flex w-full gap-1 font-medium text-foreground">
+          <Icon visual={spec.cardIcon} size="sm" className="text-foreground" />
+          <div className="w-full truncate">{actionDisplayName(action)}</div>
         </div>
         {isLegacyConfig ? (
           <div className="mx-auto">
@@ -651,20 +714,16 @@ function ActionCard({
             />
           </div>
         ) : (
-          <>
+          <div className="w-full truncate text-muted-foreground">
             {actionError ? (
-              <div className="w-full truncate text-base text-warning-500">
-                {actionError}
-              </div>
+              <span className="text-warning-500">{actionError}</span>
             ) : (
-              <div className="w-full truncate text-base text-element-700">
-                {action.description}
-              </div>
+              <>{action.description}</>
             )}
-          </>
+          </div>
         )}
       </div>
-    </CardButton>
+    </Card>
   );
 }
 
@@ -808,6 +867,14 @@ function ActionConfigEditor({
     case "WEB_NAVIGATION":
       return <ActionWebNavigation />;
 
+    case "GITHUB_GET_PULL_REQUEST":
+      return <ActionGithubGetPullRequest />;
+    case "GITHUB_CREATE_ISSUE":
+      return <ActionGithubCreateIssue />;
+
+    case "REASONING":
+      return <ActionReasoning />;
+
     default:
       assertNever(action);
   }
@@ -863,7 +930,7 @@ function ActionEditor({
       <ActionModeSection show={true}>
         <div className="flex w-full flex-row items-center justify-between px-1">
           <Page.Header
-            title={ACTION_SPECIFICATIONS[action.type].label}
+            title={actionDisplayName(action)}
             icon={ACTION_SPECIFICATIONS[action.type].cardIcon}
           />
           {shouldDisplayAdvancedSettings && (
@@ -898,7 +965,6 @@ function ActionEditor({
             />
           )}
         </div>
-
         {showInvalidActionNameError && (
           <div className="text-sm text-warning-500">
             {showInvalidActionNameError}
@@ -936,8 +1002,9 @@ function ActionEditor({
                 What's the data?
               </div>
               <div className="text-sm text-element-600">
-                Provide a brief description of the data content and context to
-                help the assistant determine when to utilize it effectively
+                Provide a brief description (maximum 800 characters) of the data
+                content and context to help the assistant determine when to
+                utilize it effectively
               </div>
             </div>
           ) : (
@@ -972,10 +1039,29 @@ function ActionEditor({
 function AdvancedSettings({
   maxStepsPerRun,
   setMaxStepsPerRun,
+  reasoningModels,
+  setReasoningModel,
+  builderState,
 }: {
   maxStepsPerRun: number | null;
   setMaxStepsPerRun: (maxStepsPerRun: number | null) => void;
+  reasoningModels?: ModelConfigurationType[];
+  setReasoningModel: ((model: ModelConfigurationType) => void) | undefined;
+  builderState: AssistantBuilderState;
 }) {
+  const reasoningConfig = builderState.actions.find(
+    (a) => a.type === "REASONING"
+  )?.configuration as AssistantBuilderReasoningConfiguration | undefined;
+
+  const reasoningModel =
+    reasoningModels?.find(
+      (m) =>
+        m.modelId === reasoningConfig?.modelId &&
+        m.providerId === reasoningConfig?.providerId &&
+        (m.reasoningEffort ?? null) ===
+          (reasoningConfig?.reasoningEffort ?? null)
+    ) ?? reasoningModels?.[0];
+
   return (
     <Popover
       popoverTriggerAsChild
@@ -1017,6 +1103,30 @@ function AdvancedSettings({
                 }
               }}
             />
+            {(reasoningModels?.length ?? 0) > 1 && setReasoningModel && (
+              <div className="flex flex-col gap-2">
+                <div className="font-semibold text-element-800">
+                  Reasoning model
+                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="primary"
+                      label={reasoningModel?.displayName}
+                    />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    {(reasoningModels ?? []).map((model) => (
+                      <DropdownMenuItem
+                        key={model.modelId + (model.reasoningEffort ?? "")}
+                        label={model.displayName}
+                        onClick={() => setReasoningModel(model)}
+                      />
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            )}
           </div>
         </div>
       }
@@ -1032,7 +1142,13 @@ function AddAction({ onAddAction }: AddActionProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="primary" label="Add a tool" icon={PlusIcon} />
+        <Button
+          variant="primary"
+          label="Add a tool"
+          data-gtm-label="toolAddingButton"
+          data-gtm-location="toolsPanel"
+          icon={PlusIcon}
+        />
       </DropdownMenuTrigger>
 
       <DropdownMenuContent>
@@ -1088,6 +1204,7 @@ function Capabilities({
   setEdited,
   setAction,
   deleteAction,
+  enableReasoningTool,
 }: {
   builderState: AssistantBuilderState;
   setBuilderState: (
@@ -1096,6 +1213,7 @@ function Capabilities({
   setEdited: (edited: boolean) => void;
   setAction: (action: AssistantBuilderSetActionType) => void;
   deleteAction: (name: string) => void;
+  enableReasoningTool: boolean;
 }) {
   const Capability = ({
     name,
@@ -1117,60 +1235,157 @@ function Capabilities({
           onCheckedChange={enabled ? onDisable : onEnable}
         />
         <div>
-          <div className="flex text-base font-semibold text-element-900">
+          <div className="flex text-sm font-semibold text-foreground">
             {name}
           </div>
-          <div className="text-base text-element-700">{description}</div>
+          <div className="text-sm text-element-700">{description}</div>
         </div>
       </div>
     );
   };
 
-  return (
-    <div className="mx-auto grid w-full grid-cols-1 md:grid-cols-2">
-      <Capability
-        name="Web Search & Browse"
-        description="Assistant can search (Google) and retrieve information from specific websites."
-        enabled={
-          !!builderState.actions.find((a) => a.type === "WEB_NAVIGATION")
-        }
-        onEnable={() => {
-          setEdited(true);
-          const defaultWebNavigationAction =
-            getDefaultActionConfiguration("WEB_NAVIGATION");
-          assert(defaultWebNavigationAction);
-          setAction({
-            type: "insert",
-            action: defaultWebNavigationAction,
-          });
-        }}
-        onDisable={() => {
-          const defaultWebNavigationAction =
-            getDefaultActionConfiguration("WEB_NAVIGATION");
-          assert(defaultWebNavigationAction);
-          deleteAction(defaultWebNavigationAction.name);
-        }}
-      />
+  const { platformActionsConfigurations } = useContext(AssistantBuilderContext);
 
-      <Capability
-        name="Data Visualization"
-        description="Assistant can generate charts and graphs."
-        enabled={builderState.visualizationEnabled}
-        onEnable={() => {
-          setEdited(true);
-          setBuilderState((state) => ({
-            ...state,
-            visualizationEnabled: true,
-          }));
-        }}
-        onDisable={() => {
-          setEdited(true);
-          setBuilderState((state) => ({
-            ...state,
-            visualizationEnabled: false,
-          }));
-        }}
-      />
-    </div>
+  const showGithubActions = useMemo(() => {
+    if (
+      builderState.actions.find((a) => a.type === "GITHUB_GET_PULL_REQUEST")
+    ) {
+      return true;
+    }
+    return platformActionsConfigurations.find((c) => c.provider === "github");
+  }, [platformActionsConfigurations, builderState]);
+
+  return (
+    <>
+      <div className="mx-auto grid w-full grid-cols-1 gap-y-4 md:grid-cols-2">
+        <Capability
+          name="Web search & browse"
+          description="Assistant can search (Google) and retrieve information from specific websites."
+          enabled={
+            !!builderState.actions.find((a) => a.type === "WEB_NAVIGATION")
+          }
+          onEnable={() => {
+            setEdited(true);
+            const defaultWebNavigationAction =
+              getDefaultActionConfiguration("WEB_NAVIGATION");
+            assert(defaultWebNavigationAction);
+            setAction({
+              type: "insert",
+              action: defaultWebNavigationAction,
+            });
+          }}
+          onDisable={() => {
+            const defaultWebNavigationAction =
+              getDefaultActionConfiguration("WEB_NAVIGATION");
+            assert(defaultWebNavigationAction);
+            deleteAction(defaultWebNavigationAction.name);
+          }}
+        />
+
+        <Capability
+          name="Data visualization"
+          description="Assistant can generate charts and graphs."
+          enabled={builderState.visualizationEnabled}
+          onEnable={() => {
+            setEdited(true);
+            setBuilderState((state) => ({
+              ...state,
+              visualizationEnabled: true,
+            }));
+          }}
+          onDisable={() => {
+            setEdited(true);
+            setBuilderState((state) => ({
+              ...state,
+              visualizationEnabled: false,
+            }));
+          }}
+        />
+
+        {enableReasoningTool && (
+          <Capability
+            name="Reasoning"
+            description="Assistant can decide to trigger a reasoning model for complex tasks"
+            enabled={!!builderState.actions.find((a) => a.type === "REASONING")}
+            onEnable={() => {
+              setEdited(true);
+              const defaultReasoningAction =
+                getDefaultActionConfiguration("REASONING");
+              assert(defaultReasoningAction);
+              setAction({
+                type: "insert",
+                action: defaultReasoningAction,
+              });
+            }}
+            onDisable={() => {
+              const defaultReasoningAction =
+                getDefaultActionConfiguration("REASONING");
+              assert(defaultReasoningAction);
+              deleteAction(defaultReasoningAction.name);
+            }}
+          />
+        )}
+      </div>
+
+      {showGithubActions && (
+        <>
+          <Page.H variant="h6">Github Actions</Page.H>
+
+          <div className="mx-auto grid w-full grid-cols-1 md:grid-cols-2">
+            <Capability
+              name="Pull request retrieval"
+              description="Assistant can retrieve pull requests by number, including diffs"
+              enabled={
+                !!builderState.actions.find(
+                  (a) => a.type === "GITHUB_GET_PULL_REQUEST"
+                )
+              }
+              onEnable={() => {
+                setEdited(true);
+                const defaultGithubGetPullRequestAction =
+                  getDefaultActionConfiguration("GITHUB_GET_PULL_REQUEST");
+                assert(defaultGithubGetPullRequestAction);
+                setAction({
+                  type: "insert",
+                  action: defaultGithubGetPullRequestAction,
+                });
+              }}
+              onDisable={() => {
+                const defaulGithubGetPullRequestAction =
+                  getDefaultActionConfiguration("GITHUB_GET_PULL_REQUEST");
+                assert(defaulGithubGetPullRequestAction);
+                deleteAction(defaulGithubGetPullRequestAction.name);
+              }}
+            />
+
+            <Capability
+              name="Issue creation"
+              description="Assistant can create issues"
+              enabled={
+                !!builderState.actions.find(
+                  (a) => a.type === "GITHUB_CREATE_ISSUE"
+                )
+              }
+              onEnable={() => {
+                setEdited(true);
+                const defaultGithubCreateIssueAction =
+                  getDefaultActionConfiguration("GITHUB_CREATE_ISSUE");
+                assert(defaultGithubCreateIssueAction);
+                setAction({
+                  type: "insert",
+                  action: defaultGithubCreateIssueAction,
+                });
+              }}
+              onDisable={() => {
+                const defaulGithubCreateIssueAction =
+                  getDefaultActionConfiguration("GITHUB_CREATE_ISSUE");
+                assert(defaulGithubCreateIssueAction);
+                deleteAction(defaulGithubCreateIssueAction.name);
+              }}
+            />
+          </div>
+        </>
+      )}
+    </>
   );
 }

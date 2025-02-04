@@ -23,9 +23,9 @@ import { useRouter } from "next/router";
 import { useRef, useState } from "react";
 import { useSWRConfig } from "swr";
 
-import Deploy from "@app/components/app/Deploy";
 import NewBlock from "@app/components/app/NewBlock";
 import SpecRunView from "@app/components/app/SpecRunView";
+import { ViewAppAPIModal } from "@app/components/app/ViewAppAPIModal";
 import { subNavigationApp } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
@@ -63,7 +63,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   const isAdmin = auth.isAdmin();
 
-  if (!owner || !subscription || !space || !space.canList(auth)) {
+  if (!owner || !subscription || !space || !space.canReadOrAdministrate(auth)) {
     return {
       notFound: true,
     };
@@ -106,7 +106,9 @@ const isRunnable = (
       if (
         key != "use_cache" &&
         key != "error_as_output" &&
-        key != "function_call"
+        key != "function_call" &&
+        key != "logprobs" &&
+        key != "top_logprobs"
       ) {
         if (!config[name][key] || config[name][key].length == 0) {
           return false;
@@ -123,6 +125,11 @@ const isRunnable = (
     switch (block.type) {
       case "data":
         if (!block.spec.dataset || block.spec.dataset.length == 0) {
+          return false;
+        }
+        break;
+      case "database":
+        if (!block.spec.query || block.spec.query.length == 0) {
           return false;
         }
         break;
@@ -360,7 +367,6 @@ export default function AppView({
                 await handleNewBlock(null, blockType);
               }}
               spec={spec}
-              direction="down"
               small={false}
             />
             <Button
@@ -412,12 +418,11 @@ export default function AppView({
             ) : null}
             {!readOnly && run ? (
               <div className="hidden flex-initial sm:block">
-                <Deploy
+                <ViewAppAPIModal
                   disabled={readOnly || !(run?.status.run == "succeeded")}
                   owner={owner}
                   app={app}
                   run={run}
-                  spec={spec}
                 />
               </div>
             ) : null}
@@ -468,7 +473,6 @@ export default function AppView({
                     await handleNewBlock(null, blockType);
                   }}
                   spec={spec}
-                  direction="up"
                   small={false}
                 />
               </div>

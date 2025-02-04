@@ -20,6 +20,7 @@ function NextLinkWrapper({
   onClick,
   replace = false,
   shallow = false,
+  prefetch,
   target = "_self",
   rel,
 }: {
@@ -39,6 +40,7 @@ function NextLinkWrapper({
   onClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
   replace?: boolean;
   shallow?: boolean;
+  prefetch?: boolean;
   target?: string;
   rel?: string;
 }) {
@@ -53,6 +55,7 @@ function NextLinkWrapper({
       rel={rel}
       shallow={shallow}
       replace={replace}
+      prefetch={prefetch}
     >
       {children}
     </Link>

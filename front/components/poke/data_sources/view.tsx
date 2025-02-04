@@ -4,7 +4,6 @@ import type {
   CoreAPIDataSource,
   DataSourceType,
 } from "@dust-tt/types";
-import { isWebhookBasedProvider } from "@dust-tt/types";
 import { JsonViewer } from "@textea/json-viewer";
 import Link from "next/link";
 import { useState } from "react";
@@ -16,6 +15,7 @@ import {
   PokeTableCell,
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
+import { isWebhookBasedProvider } from "@app/lib/connector_providers";
 import { formatTimestampToFriendlyDate, timeAgoFrom } from "@app/lib/utils";
 
 export function ViewDataSourceTable({
@@ -78,6 +78,12 @@ export function ViewDataSourceTable({
                 <PokeTableRow>
                   <PokeTableCell>Description</PokeTableCell>
                   <PokeTableCell>{dataSource.description}</PokeTableCell>
+                </PokeTableRow>
+                <PokeTableRow>
+                  <PokeTableCell>Created at</PokeTableCell>
+                  <PokeTableCell>
+                    {formatTimestampToFriendlyDate(dataSource.createdAt)}
+                  </PokeTableCell>
                 </PokeTableRow>
                 <PokeTableRow>
                   <PokeTableCell>Edited by</PokeTableCell>

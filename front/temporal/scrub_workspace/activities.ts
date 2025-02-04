@@ -29,6 +29,7 @@ import { subscriptionForWorkspaces } from "@app/lib/plans/subscription";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -49,7 +50,10 @@ export async function sendDataDeletionEmail({
     if (!ws) {
       throw new Error("No workspace found");
     }
-    const { members: admins } = await getMembers(auth, { roles: ["admin"] });
+    const { members: admins } = await getMembers(auth, {
+      roles: ["admin"],
+      activeOnly: true,
+    });
     for (const a of admins) {
       await sendAdminDataDeletionEmail({
         email: a.email,
@@ -86,9 +90,12 @@ export async function scrubWorkspaceData({
 }: {
   workspaceId: string;
 }) {
-  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId, {
+    dangerouslyRequestAllGroups: true,
+  });
   await deleteAllConversations(auth);
   await archiveAssistants(auth);
+  await deleteTrackers(auth);
   await deleteDatasources(auth);
   await deleteSpaces(auth);
   await cleanupCustomerio(auth);
@@ -113,11 +120,8 @@ export async function pauseAllConnectors({
   }
 }
 
-async function deleteAllConversations(auth: Authenticator) {
-  const workspace = auth.workspace();
-  if (!workspace) {
-    throw new Error("No workspace found");
-  }
+export async function deleteAllConversations(auth: Authenticator) {
+  const workspace = auth.getNonNullableWorkspace();
   const conversations = await Conversation.findAll({
     where: { workspaceId: workspace.id },
   });
@@ -130,7 +134,7 @@ async function deleteAllConversations(auth: Authenticator) {
   for (const conversationChunk of conversationChunks) {
     await Promise.all(
       conversationChunk.map(async (c) => {
-        await destroyConversation(workspace, c);
+        await destroyConversation(auth, { conversationId: c.sId });
       })
     );
   }
@@ -148,6 +152,20 @@ async function archiveAssistants(auth: Authenticator) {
   );
   for (const agentConfiguration of agentConfigurationsToArchive) {
     await archiveAgentConfiguration(auth, agentConfiguration.sId);
+  }
+}
+
+async function deleteTrackers(auth: Authenticator) {
+  const workspace = auth.workspace();
+  if (!workspace) {
+    throw new Error("No workspace found");
+  }
+
+  const trackers = await TrackerConfigurationResource.listByWorkspace(auth, {
+    includeDeleted: true,
+  });
+  for (const tracker of trackers) {
+    await tracker.delete(auth, { hardDelete: true });
   }
 }
 

@@ -32,7 +32,7 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<PostDocumentResponseBody>>,
   auth: Authenticator,
-  space: SpaceResource
+  { space }: { space: SpaceResource }
 ): Promise<void> {
   const { dsId } = req.query;
   if (typeof dsId !== "string") {
@@ -96,8 +96,32 @@ async function handler(
         });
       }
 
+      const {
+        name,
+        source_url,
+        text,
+        section,
+        tags,
+        parent_id,
+        parents,
+        timestamp,
+        light_document_output,
+        mime_type,
+        title,
+      } = bodyValidation.right;
+
       const upsertResult = await upsertDocument({
-        ...bodyValidation.right,
+        document_id: name, // using the name as the document_id since we don't have one here
+        source_url,
+        text,
+        section,
+        tags,
+        parent_id,
+        parents,
+        timestamp,
+        light_document_output,
+        mime_type,
+        title,
         dataSource,
         auth,
       });
@@ -114,6 +138,14 @@ async function handler(
             });
           case "invalid_url":
           case "text_or_section_required":
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: upsertResult.error.message,
+              },
+            });
+          case "invalid_parent_id":
             return apiError(req, res, {
               status_code: 400,
               api_error: {
@@ -148,5 +180,5 @@ async function handler(
 }
 
 export default withSessionAuthenticationForWorkspace(
-  withResourceFetchingFromRoute(handler, "space")
+  withResourceFetchingFromRoute(handler, { space: { requireCanRead: true } })
 );

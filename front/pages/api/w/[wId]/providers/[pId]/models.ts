@@ -1,4 +1,17 @@
 import type { WithAPIErrorResponse } from "@dust-tt/types";
+import {
+  FIREWORKS_DEEPSEEK_R1_MODEL_ID,
+  GEMINI_1_5_FLASH_LATEST_MODEL_ID,
+  GEMINI_1_5_PRO_LATEST_MODEL_ID,
+  GEMINI_2_FLASH_PREVIEW_MODEL_ID,
+  GEMINI_2_FLASH_THINKING_PREVIEW_MODEL_ID,
+  TOGETHERAI_DEEPSEEK_R1_MODEL_ID,
+  TOGETHERAI_DEEPSEEK_V3_MODEL_ID,
+  TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_ID,
+  TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_ID,
+  TOGETHERAI_QWEN_72B_INSTRUCT_MODEL_ID,
+  TOGETHERAI_QWEN_QWQ_32B_PREVIEW_MODEL_ID,
+} from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -237,9 +250,45 @@ async function handler(
         case "google_ai_studio":
           return res.status(200).json({
             models: [
-              { id: "gemini-1.5-flash-latest" },
-              { id: "gemini-1.5-pro-latest" },
+              { id: GEMINI_1_5_FLASH_LATEST_MODEL_ID },
+              { id: GEMINI_1_5_PRO_LATEST_MODEL_ID },
+              { id: GEMINI_2_FLASH_PREVIEW_MODEL_ID },
+              { id: GEMINI_2_FLASH_THINKING_PREVIEW_MODEL_ID },
             ],
+          });
+
+        case "togetherai":
+          if (embed) {
+            res.status(200).json({ models: [] });
+            return;
+          }
+          return res.status(200).json({
+            models: [
+              // llama
+              { id: TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_ID },
+              // qwen
+              { id: TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_ID },
+              { id: TOGETHERAI_QWEN_QWQ_32B_PREVIEW_MODEL_ID },
+              { id: TOGETHERAI_QWEN_72B_INSTRUCT_MODEL_ID },
+              // deepseek
+              { id: TOGETHERAI_DEEPSEEK_V3_MODEL_ID },
+              { id: TOGETHERAI_DEEPSEEK_R1_MODEL_ID },
+            ],
+          });
+        case "fireworks":
+          return res.status(200).json({
+            models: [
+              { id: "llama-v3p1-8b-instruct" },
+              { id: FIREWORKS_DEEPSEEK_R1_MODEL_ID },
+            ],
+          });
+        case "deepseek":
+          if (embed) {
+            res.status(200).json({ models: [] });
+            return;
+          }
+          return res.status(200).json({
+            models: [{ id: "deepseek-chat" }, { id: "deepseek-reasoner" }],
           });
 
         default:

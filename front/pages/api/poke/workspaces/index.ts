@@ -11,9 +11,11 @@ import { Op } from "sequelize";
 
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { getWorkspaceVerifiedDomain } from "@app/lib/api/workspace";
-import { Authenticator, getSession } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
+import type { SessionWithUser } from "@app/lib/iam/provider";
 import { Plan, Subscription } from "@app/lib/models/plan";
-import { Workspace, WorkspaceHasDomain } from "@app/lib/models/workspace";
+import { Workspace } from "@app/lib/models/workspace";
+import { WorkspaceHasDomain } from "@app/lib/models/workspace_has_domain";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
 import {
   FREE_TEST_PLAN_CODE,
@@ -28,6 +30,7 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { isDomain, isEmailValid } from "@app/lib/utils";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { apiError } from "@app/logger/withlogging";
 
 export type PokeWorkspaceType = LightWorkspaceType & {
@@ -69,9 +72,9 @@ const getPlanPriority = (planCode: string) => {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetPokeWorkspacesResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<GetPokeWorkspacesResponseBody>>,
+  session: SessionWithUser
 ): Promise<void> {
-  const session = await getSession(req, res);
   const auth = await Authenticator.fromSuperUserSession(session, null);
 
   if (!auth.isDustSuperUser()) {
@@ -295,15 +298,10 @@ async function handler(
               }
             );
 
-            const lightWorkspace: LightWorkspaceType = {
-              id: ws.id,
-              sId: ws.sId,
-              name: ws.name,
-              role: "admin" as const, // Explicitly type this as "admin"
-              segmentation: ws.segmentation,
-              whiteListedProviders: ws.whiteListedProviders,
-              defaultEmbeddingProvider: ws.defaultEmbeddingProvider,
-            };
+            const lightWorkspace = renderLightWorkspaceType({
+              workspace: ws,
+              role: "admin",
+            });
 
             const auth = await Authenticator.internalAdminForWorkspace(ws.sId);
             const dataSources = await DataSourceResource.listByWorkspace(auth);

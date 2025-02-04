@@ -1,10 +1,9 @@
 import type {
   ConnectorPermission,
-  ConnectorsAPIError,
   ContentNode,
+  ContentNodesViewType,
   Result,
 } from "@dust-tt/types";
-import type { ContentNodesViewType } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import { Op } from "sequelize";
 
@@ -39,9 +38,17 @@ import {
   launchIntercomSyncWorkflow,
   stopIntercomSyncWorkflow,
 } from "@connectors/connectors/intercom/temporal/client";
-import type { ConnectorManagerError } from "@connectors/connectors/interface";
-import { BaseConnectorManager } from "@connectors/connectors/interface";
+import type {
+  CreateConnectorErrorCode,
+  RetrievePermissionsErrorCode,
+  UpdateConnectorErrorCode,
+} from "@connectors/connectors/interface";
+import {
+  BaseConnectorManager,
+  ConnectorManagerError,
+} from "@connectors/connectors/interface";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import {
   IntercomArticle,
   IntercomCollection,
@@ -60,7 +67,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
   }: {
     dataSourceConfig: DataSourceConfig;
     connectionId: string;
-  }): Promise<Result<string, ConnectorManagerError>> {
+  }): Promise<Result<string, ConnectorManagerError<CreateConnectorErrorCode>>> {
     const intercomAccessToken = await getIntercomAccessToken(connectionId);
 
     let connector = null;
@@ -117,17 +124,14 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
     connectionId,
   }: {
     connectionId?: string | null;
-  }): Promise<Result<string, ConnectorsAPIError>> {
+  }): Promise<Result<string, ConnectorManagerError<UpdateConnectorErrorCode>>> {
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
       logger.error(
         { connectorId: this.connectorId },
         "[Intercom] Connector not found."
       );
-      return new Err({
-        message: "Connector not found",
-        type: "connector_not_found",
-      });
+      throw new Error(`Connector ${this.connectorId} not found`);
     }
 
     const intercomWorkspace = await IntercomWorkspace.findOne({
@@ -135,10 +139,9 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
     });
 
     if (!intercomWorkspace) {
-      return new Err({
-        type: "connector_update_error",
-        message: "Error retrieving intercom workspace to update connector",
-      });
+      throw new Error(
+        "Error retrieving intercom workspace to update connector"
+      );
     }
 
     if (connectionId) {
@@ -149,16 +152,15 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
       });
 
       if (!newIntercomWorkspace) {
-        return new Err({
-          type: "connector_update_error",
-          message: "Error retrieving connection info to update connector",
-        });
+        throw new Error("Error retrieving connection info to update connector");
       }
       if (intercomWorkspace.intercomWorkspaceId !== newIntercomWorkspace.id) {
-        return new Err({
-          type: "connector_oauth_target_mismatch",
-          message: "Cannot change workspace of a Intercom connector",
-        });
+        return new Err(
+          new ConnectorManagerError(
+            "CONNECTOR_OAUTH_TARGET_MISMATCH",
+            "Cannot change workspace of a Intercom connector"
+          )
+        );
       }
 
       await connector.update({ connectionId: newConnectionId });
@@ -315,14 +317,18 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
     parentInternalId: string | null;
     filterPermission: ConnectorPermission | null;
     viewType: ContentNodesViewType;
-  }): Promise<Result<ContentNode[], Error>> {
+  }): Promise<
+    Result<ContentNode[], ConnectorManagerError<RetrievePermissionsErrorCode>>
+  > {
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
       logger.error(
         { connectorId: this.connectorId },
         "[Intercom] Connector not found."
       );
-      return new Err(new Error("Connector not found"));
+      return new Err(
+        new ConnectorManagerError("CONNECTOR_NOT_FOUND", "Connector not found")
+      );
     }
 
     if (filterPermission === "read" && parentInternalId === null) {
@@ -349,7 +355,16 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
       const nodes = [...helpCenterNodes, ...convosNodes];
       return new Ok(nodes);
     } catch (e) {
-      return new Err(e as Error);
+      if (e instanceof ExternalOAuthTokenError) {
+        return new Err(
+          new ConnectorManagerError(
+            "EXTERNAL_OAUTH_TOKEN_ERROR",
+            "Authorization error, please re-authorize Intercom."
+          )
+        );
+      }
+      // Unanhdled error, throwing to get a 500.
+      throw e;
     }
   }
 
@@ -604,7 +619,6 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
     const nodes: ContentNode[] = [];
     for (const helpCenter of helpCenters) {
       nodes.push({
-        provider: "intercom",
         internalId: getHelpCenterInternalId(
           this.connectorId,
           helpCenter.helpCenterId
@@ -615,13 +629,11 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
         sourceUrl: null,
         expandable: true,
         permission: helpCenter.permission,
-        dustDocumentId: null,
         lastUpdatedAt: null,
       });
     }
     for (const collection of collections) {
       nodes.push({
-        provider: "intercom",
         internalId: getHelpCenterCollectionInternalId(
           this.connectorId,
           collection.collectionId
@@ -637,13 +649,11 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
         sourceUrl: collection.url,
         expandable: true,
         permission: collection.permission,
-        dustDocumentId: null,
         lastUpdatedAt: collection.lastUpsertedTs?.getTime() || null,
       });
     }
     for (const article of articles) {
       nodes.push({
-        provider: "intercom",
         internalId: getHelpCenterArticleInternalId(
           this.connectorId,
           article.articleId
@@ -659,13 +669,11 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
         sourceUrl: article.url,
         expandable: false,
         permission: article.permission,
-        dustDocumentId: null,
         lastUpdatedAt: article.lastUpsertedTs?.getTime() || null,
       });
     }
     if (isAllConversations) {
       nodes.push({
-        provider: "intercom",
         internalId: getTeamsInternalId(this.connectorId),
         parentInternalId: null,
         type: "channel",
@@ -676,13 +684,11 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
           intercomWorkspace.syncAllConversations === "activated"
             ? "read"
             : "none",
-        dustDocumentId: null,
         lastUpdatedAt: null,
       });
     }
     for (const team of teams) {
       nodes.push({
-        provider: "intercom",
         internalId: getTeamInternalId(this.connectorId, team.teamId),
         parentInternalId: getTeamsInternalId(this.connectorId),
         type: "channel",
@@ -690,7 +696,6 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
         sourceUrl: null,
         expandable: false,
         permission: team.permission,
-        dustDocumentId: null,
         lastUpdatedAt: null,
       });
     }

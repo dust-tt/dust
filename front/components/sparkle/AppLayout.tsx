@@ -1,7 +1,6 @@
 import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
 import Head from "next/head";
 import type { NextRouter } from "next/router";
-import { useRouter } from "next/router";
 import Script from "next/script";
 import React, { useEffect, useState } from "react";
 
@@ -10,6 +9,7 @@ import type { SidebarNavigation } from "@app/components/navigation/config";
 import { Navigation } from "@app/components/navigation/Navigation";
 import { QuickStartGuide } from "@app/components/QuickStartGuide";
 import { useAppKeyboardShortcuts } from "@app/hooks/useAppKeyboardShortcuts";
+import { useUser } from "@app/lib/swr/user";
 import { classNames } from "@app/lib/utils";
 
 // This function is used to navigate back to the previous page (eg modal like page close) and
@@ -37,6 +37,7 @@ export default function AppLayout({
   pageTitle,
   navChildren,
   titleChildren,
+  hasTopPadding,
   children,
 }: {
   owner: WorkspaceType;
@@ -48,34 +49,41 @@ export default function AppLayout({
   navChildren?: React.ReactNode;
   titleChildren?: React.ReactNode;
   children: React.ReactNode;
+  hasTopPadding?: boolean;
 }) {
-  const router = useRouter();
   const [loaded, setLoaded] = useState(false);
-  const [showQuickGuide, setShowQuickGuide] = useState(false);
-
-  useEffect(() => {
-    setShowQuickGuide(router.query.quickGuide === "true");
-  }, [router.query]);
-
-  const handleCloseQuickGuide = () => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { quickGuide: _, ...restQuery } = router.query;
-    void router.push(
-      {
-        pathname: router.pathname,
-        query: restQuery,
-      },
-      undefined,
-      { shallow: true }
-    );
-  };
-
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const { user } = useUser();
   const { isNavigationBarOpen, setIsNavigationBarOpen } =
     useAppKeyboardShortcuts(owner);
 
   useEffect(() => {
     setLoaded(true);
   }, []);
+
+  useEffect(() => {
+    const theme = localStorage.getItem("theme");
+    setIsDarkMode(theme === "dark");
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && user?.sId) {
+      // Identify the user with GTM
+      window.dataLayer = window.dataLayer || [];
+      window.dataLayer.push({
+        userId: user.sId,
+        event: "userIdentified",
+      });
+
+      // Identify the user with Common Room
+      if (window.signals) {
+        window.signals.identify({
+          email: user.email,
+          name: user.fullName,
+        });
+      }
+    }
+  }, [user?.email, user?.fullName, user?.sId]);
 
   return (
     <>
@@ -131,7 +139,8 @@ export default function AppLayout({
           content="width=device-width, initial-scale=1, maximum-scale=1"
         />
       </Head>
-      <div className="light flex h-full flex-row">
+
+      <div className={`flex h-full flex-row ${isDarkMode ? "dark" : "light"}`}>
         <Navigation
           hideSidebar={hideSidebar}
           isNavigationBarOpen={isNavigationBarOpen}
@@ -141,20 +150,19 @@ export default function AppLayout({
           navChildren={navChildren}
           subNavigation={subNavigation}
         />
-        <div className="relative h-full w-full flex-1 flex-col overflow-x-hidden overflow-y-hidden">
+        <div className="relative h-full w-full flex-1 flex-col overflow-x-hidden overflow-y-hidden dark:bg-black">
           <main
             id={CONVERSATION_PARENT_SCROLL_DIV_ID.page}
             className={classNames(
               "flex h-full w-full flex-col items-center overflow-y-auto",
-              titleChildren ? "" : "lg:pt-8"
+              hasTopPadding ?? !titleChildren ? "lg:pt-8" : ""
             )}
           >
-            {/* TODO: This should be moved to a TopBar component. */}
             <div
               className={classNames(
-                "sticky left-0 top-0 z-30 mb-4 flex w-full flex-col pl-12 lg:pl-0",
+                "flex w-full flex-col border-b border-primary-50 pl-12 lg:pl-0",
                 !hideSidebar
-                  ? "border-b border-structure-300/30 bg-white/80 backdrop-blur"
+                  ? "border-b border-structure-300/30 bg-white/80 backdrop-blur dark:border-structure-300-dark/30 dark:bg-black/80"
                   : "",
                 titleChildren ? "" : "lg:hidden"
               )}
@@ -164,7 +172,7 @@ export default function AppLayout({
               </div>
             </div>
 
-            <div className="flex h-[calc(100%-5rem)] w-full flex-col items-center px-4 sm:px-8">
+            <div className="flex h-full w-full flex-col items-center overflow-y-auto px-4 sm:px-8">
               {isWideMode ? (
                 loaded && children
               ) : (
@@ -176,22 +184,16 @@ export default function AppLayout({
           </main>
         </div>
       </div>
-      <QuickStartGuide show={showQuickGuide} onClose={handleCloseQuickGuide} />
-      <>
-        <Script
-          src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GA_TRACKING_ID}`}
-          strategy="afterInteractive"
-        />
-        <Script id="google-analytics" strategy="afterInteractive">
-          {`
-          window.dataLayer = window.dataLayer || [];
-          function gtag(){window.dataLayer.push(arguments);}
-          gtag('js', new Date());
-
-          gtag('config', '${process.env.NEXT_PUBLIC_GA_TRACKING_ID}');
-          `}
-        </Script>
-      </>
+      <QuickStartGuide />
+      <Script id="google-tag-manager" strategy="afterInteractive">
+        {`
+              (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+              new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+              j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+              'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+              })(window,document,'script','dataLayer','${process.env.NEXT_PUBLIC_GTM_TRACKING_ID}');
+            `}
+      </Script>
     </>
   );
 }

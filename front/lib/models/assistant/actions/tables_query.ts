@@ -1,11 +1,5 @@
-import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-  NonAttribute,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import { DataTypes } from "sequelize";
 
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
@@ -13,12 +7,9 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { FileModel } from "@app/lib/resources/storage/models/files";
+import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
-export class AgentTablesQueryConfiguration extends Model<
-  InferAttributes<AgentTablesQueryConfiguration>,
-  InferCreationAttributes<AgentTablesQueryConfiguration>
-> {
-  declare id: CreationOptional<number>;
+export class AgentTablesQueryConfiguration extends WorkspaceAwareModel<AgentTablesQueryConfiguration> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -32,11 +23,6 @@ export class AgentTablesQueryConfiguration extends Model<
 
 AgentTablesQueryConfiguration.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -84,11 +70,7 @@ AgentTablesQueryConfiguration.belongsTo(AgentConfiguration, {
   foreignKey: { name: "agentConfigurationId", allowNull: false },
 });
 
-export class AgentTablesQueryConfigurationTable extends Model<
-  InferAttributes<AgentTablesQueryConfigurationTable>,
-  InferCreationAttributes<AgentTablesQueryConfigurationTable>
-> {
-  declare id: CreationOptional<number>;
+export class AgentTablesQueryConfigurationTable extends WorkspaceAwareModel<AgentTablesQueryConfigurationTable> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -106,11 +88,6 @@ export class AgentTablesQueryConfigurationTable extends Model<
 
 AgentTablesQueryConfigurationTable.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -134,6 +111,8 @@ AgentTablesQueryConfigurationTable.init(
         fields: ["dataSourceViewId", "tableId", "tablesQueryConfigurationId"],
         name: "agent_tables_query_configuration_table_unique_dsv",
       },
+      { fields: ["dataSourceId"] },
+      { fields: ["dataSourceViewId"] },
     ],
     sequelize: frontSequelize,
   }
@@ -141,11 +120,11 @@ AgentTablesQueryConfigurationTable.init(
 
 AgentTablesQueryConfiguration.hasMany(AgentTablesQueryConfigurationTable, {
   foreignKey: { name: "tablesQueryConfigurationId", allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 AgentTablesQueryConfigurationTable.belongsTo(AgentTablesQueryConfiguration, {
   foreignKey: { name: "tablesQueryConfigurationId", allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 
 // Config <> Data source.
@@ -168,11 +147,7 @@ AgentTablesQueryConfigurationTable.belongsTo(DataSourceViewModel, {
   foreignKey: { allowNull: false },
 });
 
-export class AgentTablesQueryAction extends Model<
-  InferAttributes<AgentTablesQueryAction>,
-  InferCreationAttributes<AgentTablesQueryAction>
-> {
-  declare id: CreationOptional<number>;
+export class AgentTablesQueryAction extends WorkspaceAwareModel<AgentTablesQueryAction> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare runId: string | null;
@@ -196,11 +171,6 @@ export class AgentTablesQueryAction extends Model<
 
 AgentTablesQueryAction.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,

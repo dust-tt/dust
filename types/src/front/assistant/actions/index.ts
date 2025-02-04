@@ -4,17 +4,26 @@ import {
 } from "../../../front/assistant/generation";
 import { ModelConfigurationType } from "../../../front/lib/assistant";
 import { ModelId } from "../../../shared/model_id";
-import { SupportedContentFragmentType } from "../../content_fragment";
+import { SupportedFileContentType } from "../../files";
 import { ConversationType } from "../conversation";
 
 export type ActionGeneratedFileType = {
   fileId: string;
   title: string;
-  contentType: SupportedContentFragmentType;
+  contentType: SupportedFileContentType;
   snippet: string | null;
 };
 
-type BaseActionType =
+export type GithubBaseActionType =
+  | "github_get_pull_request_action"
+  | "github_create_issue_action";
+// | "github_review_pull_request_action";
+
+export type ConversationBaseActionType =
+  | "conversation_list_files_action"
+  | "conversation_include_file_action";
+
+export type BaseActionType =
   | "dust_app_run_action"
   | "tables_query_action"
   | "retrieval_action"
@@ -22,8 +31,9 @@ type BaseActionType =
   | "websearch_action"
   | "browse_action"
   | "visualization_action"
-  | "conversation_list_files_action"
-  | "conversation_include_file_action";
+  | "reasoning_action"
+  | ConversationBaseActionType
+  | GithubBaseActionType;
 
 export abstract class BaseAction {
   readonly id: ModelId;
@@ -53,3 +63,12 @@ export abstract class BaseAction {
     model: ModelConfigurationType;
   }): Promise<FunctionMessageTypeModel>;
 }
+
+export const PlatformActionsProviders = ["github"] as const;
+export type PlatformActionsProviderType =
+  (typeof PlatformActionsProviders)[number];
+
+export type PlatformActionsConfigurationType = {
+  provider: PlatformActionsProviderType;
+  connectionId: string;
+};

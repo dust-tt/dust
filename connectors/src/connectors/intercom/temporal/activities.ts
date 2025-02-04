@@ -1,4 +1,5 @@
 import type { ModelId } from "@dust-tt/types";
+import { MIME_TYPES } from "@dust-tt/types";
 import { Op } from "sequelize";
 
 import { getIntercomAccessToken } from "@connectors/connectors/intercom/lib/intercom_access_token";
@@ -8,8 +9,13 @@ import {
   fetchIntercomConversations,
   fetchIntercomHelpCenter,
   fetchIntercomTeam,
+  fetchIntercomTeams,
 } from "@connectors/connectors/intercom/lib/intercom_api";
 import type { IntercomSyncAllConversationsStatus } from "@connectors/connectors/intercom/lib/types";
+import {
+  getTeamInternalId,
+  getTeamsInternalId,
+} from "@connectors/connectors/intercom/lib/utils";
 import {
   deleteConversation,
   deleteTeamAndConversations,
@@ -24,13 +30,15 @@ import {
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
-  IntercomConversation,
-  IntercomWorkspace,
-} from "@connectors/lib/models/intercom";
+  deleteDataSourceFolder,
+  upsertDataSourceFolder,
+} from "@connectors/lib/data_sources";
 import {
   IntercomCollection,
+  IntercomConversation,
   IntercomHelpCenter,
   IntercomTeam,
+  IntercomWorkspace,
 } from "@connectors/lib/models/intercom";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
@@ -443,6 +451,14 @@ export async function syncTeamOnlyActivity({
     dataSourceId: dataSourceConfig.dataSourceId,
   };
 
+  const intercomWorkspace = await IntercomWorkspace.findOne({
+    where: { connectorId: connector.id },
+  });
+
+  if (!intercomWorkspace) {
+    throw new Error("Error retrieving intercom workspace to update connector");
+  }
+
   const teamOnDB = await IntercomTeam.findOne({
     where: {
       connectorId,
@@ -466,21 +482,57 @@ export async function syncTeamOnlyActivity({
 
   // If the team does not exists on Intercom we delete the team and its conversations
   const accessToken = await getIntercomAccessToken(connector.connectionId);
-  const teamOnIntercom = await fetchIntercomTeam({ accessToken, teamId });
-  if (!teamOnIntercom) {
-    await deleteTeamAndConversations({
-      connectorId,
-      dataSourceConfig,
-      team: teamOnDB,
+  let teamOnIntercom;
+  try {
+    teamOnIntercom = await fetchIntercomTeam({ accessToken, teamId });
+    if (!teamOnIntercom || teamOnIntercom.type !== "team") {
+      await deleteTeamAndConversations({
+        connectorId,
+        dataSourceConfig,
+        team: teamOnDB,
+      });
+      return false;
+    }
+
+    // Otherwise we update the team name and lastUpsertedTs
+    await teamOnDB.update({
+      name: teamOnIntercom.name,
+      lastUpsertedTs: new Date(currentSyncMs),
     });
-    return false;
+  } catch (error) {
+    logger.error(
+      {
+        error: error instanceof Error ? error : JSON.stringify(error),
+        ...(error instanceof Error && {
+          errorMessage: error.message || "Unknown error",
+          errorStack: error.stack,
+        }),
+        teamId,
+        ...loggerArgs,
+      },
+      "[Intercom] Failed to fetch team"
+    );
+    throw error;
   }
 
-  // Otherwise we update the team name and lastUpsertedTs
-  await teamOnDB.update({
-    name: teamOnIntercom.name,
-    lastUpsertedTs: new Date(currentSyncMs),
+  // Also make sure a datasource folder node is created for the team
+  const teamInternalId = getTeamInternalId(connectorId, teamOnDB.teamId);
+  const syncAllActivated =
+    intercomWorkspace.syncAllConversations === "activated" ||
+    intercomWorkspace.syncAllConversations === "scheduled_activate";
+  await upsertDataSourceFolder({
+    dataSourceConfig: dataSourceConfigFromConnector(connector),
+    folderId: teamInternalId,
+    title: teamOnIntercom.name,
+    parents: [
+      teamInternalId,
+      ...(syncAllActivated ? [getTeamsInternalId(connectorId)] : []),
+    ],
+    parentId: syncAllActivated ? getTeamsInternalId(connectorId) : null,
+    mimeType: MIME_TYPES.INTERCOM.TEAM,
+    timestampMs: currentSyncMs,
   });
+
   return true;
 }
 
@@ -575,6 +627,85 @@ export async function syncConversationBatchActivity({
       }),
     { concurrency: 10 }
   );
+}
+
+/**
+ * This activity is responsible for fetching all the teams and syncing them both with connectors (intercom_teams) and
+ * core db (data_sources_folders/nodes).
+ */
+export async function syncAllTeamsActivity({
+  connectorId,
+  currentSyncMs,
+}: {
+  connectorId: ModelId;
+  currentSyncMs: number;
+}): Promise<void> {
+  const connector = await _getIntercomConnectorOrRaise(connectorId);
+  const accessToken = await getIntercomAccessToken(connector.connectionId);
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  const teamsOnIntercom = await fetchIntercomTeams({ accessToken });
+
+  for (const teamOnIntercom of teamsOnIntercom) {
+    const teamOnDb = await IntercomTeam.findOne({
+      where: { connectorId, teamId: teamOnIntercom.id },
+    });
+    const folderId = getTeamInternalId(connectorId, teamOnIntercom.id);
+
+    // Upsert the folder in core to either create it or override the parents.
+    await upsertDataSourceFolder({
+      dataSourceConfig,
+      folderId,
+      title: teamOnIntercom.name,
+      parents: [folderId, getTeamsInternalId(connectorId)],
+      parentId: getTeamsInternalId(connectorId),
+      mimeType: MIME_TYPES.INTERCOM.TEAM,
+      timestampMs: currentSyncMs,
+    });
+
+    // We create a team in db with permission "none" because if it was not already in db it means that it was not explicitly selected by the user.
+    // We need to create these teams to make it possible to delete the entries in the core db when the user unselects the All Conversations button.
+    if (!teamOnDb) {
+      await IntercomTeam.create({
+        connectorId,
+        teamId: teamOnIntercom.id,
+        name: teamOnIntercom.name,
+        permission: "none",
+        lastUpsertedTs: new Date(currentSyncMs),
+      });
+    } else {
+      await teamOnDb.update({
+        name: teamOnIntercom.name,
+        lastUpsertedTs: new Date(currentSyncMs),
+      });
+    }
+  }
+}
+
+/**
+ * This activity is responsible for deleting the data_sources_folders for the teams that are not allowed.
+ */
+export async function deleteRevokedTeamsActivity({
+  connectorId,
+}: {
+  connectorId: ModelId;
+}): Promise<void> {
+  const connector = await _getIntercomConnectorOrRaise(connectorId);
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  const unauthorizedTeams = await IntercomTeam.findAll({
+    attributes: ["teamId"],
+    where: { connectorId, permission: "none" },
+  });
+  const unauthorizedTeamIds = unauthorizedTeams.map((t) => t.teamId);
+
+  for (const teamId of unauthorizedTeamIds) {
+    await deleteDataSourceFolder({
+      dataSourceConfig,
+      folderId: getTeamInternalId(connectorId, teamId),
+      loggerArgs: { provider: "intercom" },
+    });
+  }
 }
 
 /**
@@ -697,4 +828,22 @@ export async function getSyncAllConversationsStatusActivity({
   }
 
   return intercomWorkspace.syncAllConversations;
+}
+
+export async function upsertIntercomTeamsFolderActivity({
+  connectorId,
+}: {
+  connectorId: ModelId;
+}) {
+  const connector = await _getIntercomConnectorOrRaise(connectorId);
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  await upsertDataSourceFolder({
+    dataSourceConfig,
+    folderId: getTeamsInternalId(connectorId),
+    title: "Conversations",
+    parents: [getTeamsInternalId(connectorId)],
+    parentId: null,
+    mimeType: MIME_TYPES.INTERCOM.TEAMS_FOLDER,
+  });
 }

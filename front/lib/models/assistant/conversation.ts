@@ -5,27 +5,17 @@ import type {
   ParticipantActionType,
   UserMessageOrigin,
 } from "@dust-tt/types";
-import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-  NonAttribute,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import { DataTypes } from "sequelize";
 
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
-import { User } from "@app/lib/models/user";
-import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
+import { UserModel } from "@app/lib/resources/storage/models/user";
+import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
-export class Conversation extends Model<
-  InferAttributes<Conversation>,
-  InferCreationAttributes<Conversation>
-> {
-  declare id: CreationOptional<number>;
+export class Conversation extends WorkspaceAwareModel<Conversation> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -33,20 +23,14 @@ export class Conversation extends Model<
   declare title: string | null;
   declare visibility: CreationOptional<ConversationVisibility>;
 
-  // TODO(2024-11-04 flav) `groupId` clean-up.
-  declare groupIds: number[];
   declare requestedGroupIds: number[][];
 
-  declare workspaceId: ForeignKey<Workspace["id"]>;
+  // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
+  declare groupIds?: number[];
 }
 
 Conversation.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -70,14 +54,15 @@ Conversation.init(
       allowNull: false,
       defaultValue: "unlisted",
     },
-    // TODO(2024-11-04 flav) `groupId` clean-up.
-    groupIds: {
-      type: DataTypes.ARRAY(DataTypes.INTEGER),
+    requestedGroupIds: {
+      type: DataTypes.ARRAY(DataTypes.ARRAY(DataTypes.BIGINT)),
       allowNull: false,
       defaultValue: [],
     },
-    requestedGroupIds: {
-      type: DataTypes.ARRAY(DataTypes.ARRAY(DataTypes.INTEGER)),
+
+    // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
+    groupIds: {
+      type: DataTypes.ARRAY(DataTypes.INTEGER),
       allowNull: false,
       defaultValue: [],
     },
@@ -98,38 +83,20 @@ Conversation.init(
   }
 );
 
-Workspace.hasMany(Conversation, {
-  foreignKey: { name: "workspaceId", allowNull: false },
-  onDelete: "CASCADE",
-});
-
-Conversation.belongsTo(Workspace, {
-  foreignKey: { name: "workspaceId", allowNull: false },
-});
-
-export class ConversationParticipant extends Model<
-  InferAttributes<ConversationParticipant>,
-  InferCreationAttributes<ConversationParticipant>
-> {
-  declare id: CreationOptional<number>;
+export class ConversationParticipant extends WorkspaceAwareModel<ConversationParticipant> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
   declare action: ParticipantActionType;
 
   declare conversationId: ForeignKey<Conversation["id"]>;
-  declare userId: ForeignKey<User["id"]>;
+  declare userId: ForeignKey<UserModel["id"]>;
 
   declare conversation?: NonAttribute<Conversation>;
-  declare user?: NonAttribute<User>;
+  declare user?: NonAttribute<UserModel>;
 }
 ConversationParticipant.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -169,24 +136,20 @@ ConversationParticipant.init(
 );
 Conversation.hasMany(ConversationParticipant, {
   foreignKey: { name: "conversationId", allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 ConversationParticipant.belongsTo(Conversation, {
   foreignKey: { name: "conversationId", allowNull: false },
 });
-User.hasMany(ConversationParticipant, {
+UserModel.hasMany(ConversationParticipant, {
   foreignKey: { name: "userId", allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
-ConversationParticipant.belongsTo(User, {
+ConversationParticipant.belongsTo(UserModel, {
   foreignKey: { name: "userId", allowNull: false },
 });
 
-export class UserMessage extends Model<
-  InferAttributes<UserMessage>,
-  InferCreationAttributes<UserMessage>
-> {
-  declare id: CreationOptional<number>;
+export class UserMessage extends WorkspaceAwareModel<UserMessage> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -199,16 +162,11 @@ export class UserMessage extends Model<
   declare userContextProfilePictureUrl: string | null;
   declare userContextOrigin: UserMessageOrigin | null;
 
-  declare userId: ForeignKey<User["id"]> | null;
+  declare userId: ForeignKey<UserModel["id"]> | null;
 }
 
 UserMessage.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -254,18 +212,14 @@ UserMessage.init(
   }
 );
 
-User.hasMany(UserMessage, {
+UserModel.hasMany(UserMessage, {
   foreignKey: { name: "userId", allowNull: true }, // null = message is not associated with a user
 });
-UserMessage.belongsTo(User, {
+UserMessage.belongsTo(UserModel, {
   foreignKey: { name: "userId", allowNull: true },
 });
 
-export class AgentMessage extends Model<
-  InferAttributes<AgentMessage>,
-  InferCreationAttributes<AgentMessage>
-> {
-  declare id: CreationOptional<number>;
+export class AgentMessage extends WorkspaceAwareModel<AgentMessage> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare runIds: string[] | null;
@@ -280,15 +234,12 @@ export class AgentMessage extends Model<
   declare agentConfigurationVersion: number;
 
   declare agentMessageContents?: NonAttribute<AgentMessageContent[]>;
+  declare message?: NonAttribute<Message>;
+  declare feedbacks?: NonAttribute<AgentMessageFeedback[]>;
 }
 
 AgentMessage.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -332,31 +283,25 @@ AgentMessage.init(
   }
 );
 
-export class AgentMessageFeedback extends Model<
-  InferAttributes<AgentMessageFeedback>,
-  InferCreationAttributes<AgentMessageFeedback>
-> {
-  declare id: CreationOptional<number>;
+export class AgentMessageFeedback extends WorkspaceAwareModel<AgentMessageFeedback> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare workspaceId: ForeignKey<Workspace["id"]>;
   declare agentConfigurationId: string;
   declare agentConfigurationVersion: number;
   declare agentMessageId: ForeignKey<AgentMessage["id"]>;
-  declare userId: ForeignKey<User["id"]>;
+  declare userId: ForeignKey<UserModel["id"]>;
+  declare isConversationShared: boolean;
 
   declare thumbDirection: AgentMessageFeedbackDirection;
   declare content: string | null;
+
+  declare agentMessage: NonAttribute<AgentMessage>;
+  declare user: NonAttribute<UserModel>;
 }
 
 AgentMessageFeedback.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -383,6 +328,11 @@ AgentMessageFeedback.init(
       type: DataTypes.TEXT,
       allowNull: true,
     },
+    isConversationShared: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
   },
   {
     modelName: "agent_message_feedback",
@@ -406,22 +356,21 @@ AgentMessageFeedback.init(
   }
 );
 
-Workspace.hasMany(AgentMessageFeedback, {
-  foreignKey: { name: "workspaceId", allowNull: false },
-  onDelete: "RESTRICT",
-});
 AgentMessage.hasMany(AgentMessageFeedback, {
+  as: "feedbacks",
   onDelete: "RESTRICT",
 });
-User.hasMany(AgentMessageFeedback, {
+UserModel.hasMany(AgentMessageFeedback, {
   onDelete: "SET NULL",
 });
+AgentMessageFeedback.belongsTo(UserModel, {
+  as: "user",
+});
+AgentMessageFeedback.belongsTo(AgentMessage, {
+  as: "agentMessage",
+});
 
-export class Message extends Model<
-  InferAttributes<Message>,
-  InferCreationAttributes<Message>
-> {
-  declare id: CreationOptional<number>;
+export class Message extends WorkspaceAwareModel<Message> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -442,15 +391,12 @@ export class Message extends Model<
   declare agentMessage?: NonAttribute<AgentMessage>;
   declare contentFragment?: NonAttribute<ContentFragmentModel>;
   declare reactions?: NonAttribute<MessageReaction[]>;
+
+  declare conversation?: NonAttribute<Conversation>;
 }
 
 Message.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -528,7 +474,7 @@ Message.init(
 
 Conversation.hasMany(Message, {
   foreignKey: { name: "conversationId", allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 Message.belongsTo(Conversation, {
   as: "conversation",
@@ -536,7 +482,7 @@ Message.belongsTo(Conversation, {
 });
 
 UserMessage.hasOne(Message, {
-  as: "userMessage",
+  as: "message",
   foreignKey: { name: "userMessageId", allowNull: true },
 });
 Message.belongsTo(UserMessage, {
@@ -545,7 +491,7 @@ Message.belongsTo(UserMessage, {
 });
 
 AgentMessage.hasOne(Message, {
-  as: "agentMessage",
+  as: "message",
   foreignKey: { name: "agentMessageId", allowNull: true },
 });
 Message.belongsTo(AgentMessage, {
@@ -557,7 +503,7 @@ Message.belongsTo(Message, {
   foreignKey: { name: "parentId", allowNull: true },
 });
 ContentFragmentModel.hasOne(Message, {
-  as: "contentFragment",
+  as: "message",
   foreignKey: { name: "contentFragmentId", allowNull: true },
 });
 Message.belongsTo(ContentFragmentModel, {
@@ -565,18 +511,14 @@ Message.belongsTo(ContentFragmentModel, {
   foreignKey: { name: "contentFragmentId", allowNull: true },
 });
 
-export class MessageReaction extends Model<
-  InferAttributes<MessageReaction>,
-  InferCreationAttributes<MessageReaction>
-> {
-  declare id: CreationOptional<number>;
+export class MessageReaction extends WorkspaceAwareModel<MessageReaction> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
   declare messageId: ForeignKey<Message["id"]>;
 
   // User is nullable so that we can store reactions from a Slackbot message
-  declare userId: ForeignKey<User["id"]> | null;
+  declare userId: ForeignKey<UserModel["id"]> | null;
   declare userContextUsername: string;
   declare userContextFullName: string | null;
 
@@ -585,11 +527,6 @@ export class MessageReaction extends Model<
 
 MessageReaction.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -633,23 +570,19 @@ MessageReaction.init(
 Message.hasMany(MessageReaction, {
   as: "reactions",
   foreignKey: { name: "messageId", allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 MessageReaction.belongsTo(Message, {
   foreignKey: { name: "messageId", allowNull: false },
 });
-User.hasMany(MessageReaction, {
+UserModel.hasMany(MessageReaction, {
   foreignKey: { name: "userId", allowNull: true }, // null = mention is from a user using a Slackbot
 });
-MessageReaction.belongsTo(User, {
+MessageReaction.belongsTo(UserModel, {
   foreignKey: { name: "userId", allowNull: true }, // null = mention is not a user using a Slackbot
 });
 
-export class Mention extends Model<
-  InferAttributes<Mention>,
-  InferCreationAttributes<Mention>
-> {
-  declare id: CreationOptional<number>;
+export class Mention extends WorkspaceAwareModel<Mention> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -661,11 +594,6 @@ export class Mention extends Model<
 
 Mention.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -697,7 +625,7 @@ Mention.init(
 
 Message.hasMany(Mention, {
   foreignKey: { name: "messageId", allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 Mention.belongsTo(Message, {
   foreignKey: { name: "messageId", allowNull: false },

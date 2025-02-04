@@ -13,11 +13,13 @@ import sgMail from "@sendgrid/mail";
 import { sign } from "jsonwebtoken";
 import { Op } from "sequelize";
 
+import { getAuth0UsersFromEmail } from "@app/lib/api/auth0";
 import config from "@app/lib/api/config";
+import { config as regionConfig } from "@app/lib/api/regions/config";
 import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY } from "@app/lib/invitations";
-import { MembershipInvitation } from "@app/lib/models/workspace";
+import { MembershipInvitation } from "@app/lib/models/membership_invitation";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { isEmailValid } from "@app/lib/utils";
@@ -152,6 +154,14 @@ function getMembershipInvitationUrlForToken(
   invitationToken: string
 ) {
   return `${config.getClientFacingUrl()}/w/${owner.sId}/join/?t=${invitationToken}`;
+}
+
+export function getTokenFromMembershipInvitationUrl(
+  url: string
+): string | null {
+  const urlObj = new URL(url);
+  const token = urlObj.searchParams.get("t");
+  return token;
 }
 
 export function getMembershipInvitationUrl(
@@ -369,6 +379,21 @@ export async function handleMembershipInvitations(
   const { members: existingMembers } = await getMembers(auth, {
     activeOnly: true,
   });
+
+  const auth0Users = await getAuth0UsersFromEmail(
+    invitationRequests.map((invite) => invite.email)
+  );
+
+  const otherRegionUsers = auth0Users
+    .filter(
+      (user) =>
+        // Type isn't accurate, user.app_metadata can be undefined.
+        typeof user.app_metadata === "object" &&
+        "region" in user.app_metadata &&
+        user.app_metadata.region !== regionConfig.getCurrentRegion()
+    )
+    .map((user) => user.email);
+
   const unconsumedInvitations =
     await getRecentPendingAndRevokedInvitations(auth);
   if (
@@ -430,6 +455,13 @@ export async function handleMembershipInvitations(
         };
       }
 
+      if (otherRegionUsers.find((m) => m === email)) {
+        return {
+          success: false,
+          email,
+          error_message: "Cannot send invitation to members in other regions.",
+        };
+      }
       try {
         const invitation = await updateOrCreateInvitation(owner, email, role);
         await sendWorkspaceInvitationEmail(owner, user, invitation);

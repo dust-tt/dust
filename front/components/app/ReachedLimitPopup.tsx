@@ -1,4 +1,13 @@
-import { Dialog, Hoverable, Page } from "@dust-tt/sparkle";
+import {
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Hoverable,
+  Page,
+} from "@dust-tt/sparkle";
 import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import type { NextRouter } from "next/router";
@@ -175,19 +184,30 @@ export function ReachedLimitPopup({
         onClose={() => setIsFairUsageModalOpened(false)}
       />
       <Dialog
-        title={title}
-        isOpen={isOpened}
-        onValidate={
-          onValidate ||
-          (() => {
+        open={isOpened}
+        onOpenChange={(open) => {
+          if (!open) {
             onClose();
-          })
-        }
-        onCancel={() => onClose()}
-        cancelLabel="Close"
-        validateLabel={validateLabel}
+          }
+        }}
       >
-        {children}
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{title}</DialogTitle>
+          </DialogHeader>
+          <DialogContainer>{children}</DialogContainer>
+          <DialogFooter
+            leftButtonProps={{
+              label: "Cancel",
+              variant: "outline",
+            }}
+            rightButtonProps={{
+              label: validateLabel,
+              variant: "highlight",
+              onClick: onValidate || (() => onClose()),
+            }}
+          />
+        </DialogContent>
       </Dialog>
     </>
   );

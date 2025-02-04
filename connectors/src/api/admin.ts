@@ -21,6 +21,14 @@ const whitelistedCommands = [
     command: "find-url",
   },
   { majorCommand: "slack", command: "whitelist-bot" },
+  {
+    majorCommand: "connectors",
+    command: "set-error",
+  },
+  {
+    majorCommand: "connectors",
+    command: "clear-error",
+  },
 ];
 
 const _adminAPIHandler = async (

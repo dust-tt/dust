@@ -23,13 +23,14 @@ import {
   handleTextFile,
 } from "@connectors/connectors/shared/file";
 import {
-  deleteFromDataSource,
+  deleteDataSourceDocument,
+  deleteDataSourceFolder,
   MAX_DOCUMENT_TXT_LEN,
   MAX_FILE_SIZE_TO_DOWNLOAD,
   MAX_LARGE_DOCUMENT_TXT_LEN,
   renderDocumentTitleAndContent,
   sectionLength,
-  upsertToDatasource,
+  upsertDataSourceDocument,
 } from "@connectors/lib/data_sources";
 import type { MicrosoftNodeModel } from "@connectors/lib/models/microsoft";
 import logger from "@connectors/logger/logger";
@@ -162,7 +163,7 @@ export async function syncOneFile({
     name: file.name ?? "",
     parentInternalId,
     mimeType: file.file.mimeType ?? "",
-    webUrl: file.webUrl ?? "",
+    webUrl: file.webUrl ?? null,
   };
 
   if (mimeType === "application/vnd.ms-excel" || mimeType === "text/csv") {
@@ -274,7 +275,6 @@ export async function syncOneFile({
         documentLength > 0 && documentLength < maxDocumentLen;
 
       if (isInSizeRange) {
-        localLogger.info({ documentSection }, "Document section");
         const content = await renderDocumentTitleAndContent({
           dataSourceConfig,
           title: file.name ?? null,
@@ -297,7 +297,7 @@ export async function syncOneFile({
           })),
         ];
 
-        await upsertToDatasource({
+        await upsertDataSourceDocument({
           dataSourceConfig,
           documentId,
           documentContent: content,
@@ -305,9 +305,12 @@ export async function syncOneFile({
           timestampMs: upsertTimestampMs,
           tags,
           parents,
+          parentId: parents[1] || null,
           upsertContext: {
             sync_type: isBatchSync ? "batch" : "incremental",
           },
+          title: file.name ?? "",
+          mimeType: file.file.mimeType ?? "application/octet-stream",
           async: true,
         });
 
@@ -349,7 +352,7 @@ export async function getParents({
   connectorId: ModelId;
   internalId: string;
   startSyncTs: number;
-}): Promise<string[]> {
+}): Promise<[string, ...string[]]> {
   const parentInternalId = await getParentId(
     connectorId,
     internalId,
@@ -391,9 +394,11 @@ const getParentId = cacheWithRedis(
 
 export async function deleteFolder({
   connectorId,
+  dataSourceConfig,
   internalId,
 }: {
   connectorId: number;
+  dataSourceConfig: DataSourceConfig;
   internalId: string;
 }) {
   const folder = await MicrosoftNodeResource.fetchByInternalId(
@@ -415,8 +420,13 @@ export async function deleteFolder({
   );
 
   if (root) {
-    await root.delete();
+    // Roots represent the user selection for synchronization As such, they
+    // should be deleted first, explicitly by users, before deleting the
+    // underlying folder
+    throw new Error("Unexpected: attempt to delete folder with root node");
   }
+
+  await deleteDataSourceFolder({ dataSourceConfig, folderId: internalId });
 
   if (folder) {
     await folder.delete();
@@ -450,8 +460,12 @@ export async function deleteFile({
     file.mimeType === "text/csv"
   ) {
     await deleteAllSheets(dataSourceConfig, file);
+    await deleteDataSourceFolder({
+      dataSourceConfig,
+      folderId: file.internalId,
+    });
   } else {
-    await deleteFromDataSource(dataSourceConfig, internalId);
+    await deleteDataSourceDocument(dataSourceConfig, internalId);
   }
   return file.delete();
 }
@@ -471,21 +485,39 @@ export function isAlreadySeenItem({
   );
 }
 
-export async function recursiveNodeDeletion(
-  nodeId: string,
-  connectorId: ModelId,
-  dataSourceConfig: DataSourceConfig
-): Promise<string[]> {
+export async function recursiveNodeDeletion({
+  nodeId,
+  connectorId,
+  dataSourceConfig,
+}: {
+  nodeId: string;
+  connectorId: ModelId;
+  dataSourceConfig: DataSourceConfig;
+}): Promise<string[]> {
   const node = await MicrosoftNodeResource.fetchByInternalId(
     connectorId,
     nodeId
   );
-  const deletedFiles: string[] = [];
 
   if (!node) {
     logger.warn({ connectorId, nodeId }, "Node not found for deletion");
-    return deletedFiles;
+    return [];
   }
+
+  // A folder should not be deleted if it is marked as root, i.e. if the user selected it for sync
+  // recursiveNodeDeletion must therefore skip root nodes, rather than throwing:
+  // for instance, if a non-root folder A is moved out of sync, but has a child B that is a root,
+  // then we should recursively delete A, but not delete the child B
+  const root = await MicrosoftRootResource.fetchByInternalId(
+    connectorId,
+    nodeId
+  );
+
+  if (root) {
+    return [];
+  }
+
+  const deletedFiles: string[] = [];
 
   const { nodeType } = typeAndPathFromInternalId(nodeId);
 
@@ -506,15 +538,16 @@ export async function recursiveNodeDeletion(
   } else if (nodeType === "folder" || nodeType === "drive") {
     const children = await node.fetchChildren();
     for (const child of children) {
-      const result = await recursiveNodeDeletion(
-        child.internalId,
+      const result = await recursiveNodeDeletion({
+        nodeId: child.internalId,
         connectorId,
-        dataSourceConfig
-      );
+        dataSourceConfig,
+      });
       deletedFiles.push(...result);
     }
     await deleteFolder({
       connectorId,
+      dataSourceConfig,
       internalId: node.internalId,
     });
     deletedFiles.push(node.internalId);

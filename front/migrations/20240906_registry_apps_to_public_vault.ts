@@ -1,26 +1,23 @@
+import config from "@app/lib/api/config";
 import { Workspace } from "@app/lib/models/workspace";
-import {
-  DustProdActionRegistry,
-  PRODUCTION_DUST_APPS_WORKSPACE_ID,
-} from "@app/lib/registry";
+import { getDustProdActionRegistry } from "@app/lib/registry";
 import { AppModel } from "@app/lib/resources/storage/models/apps";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { makeScript } from "@app/scripts/helpers";
 
-const PUBLIC_VAULT_SQID = "vlt_rICtlrSEpWqX";
-
 makeScript({}, async ({ execute }, logger) => {
-  const vaultId = getResourceIdFromSId(PUBLIC_VAULT_SQID);
+  const publicVaultSqid = config.getDustAppsSpaceId();
+  const vaultId = getResourceIdFromSId(publicVaultSqid);
   const dustAppsWorkspace = await Workspace.findOne({
-    where: { sId: PRODUCTION_DUST_APPS_WORKSPACE_ID },
+    where: { sId: config.getDustAppsWorkspaceId() },
   });
   if (!dustAppsWorkspace) {
     throw new Error(
-      `Could not find workspace with sId ${PRODUCTION_DUST_APPS_WORKSPACE_ID}`
+      `Could not find workspace with sId ${config.getDustAppsWorkspaceId()}`
     );
   }
   if (!vaultId) {
-    throw new Error(`Could not find vault with SQID ${PUBLIC_VAULT_SQID}`);
+    throw new Error(`Could not find vault with SQID ${publicVaultSqid}`);
   }
 
   for (const [
@@ -28,7 +25,7 @@ makeScript({}, async ({ execute }, logger) => {
     {
       app: { appId },
     },
-  ] of Object.entries(DustProdActionRegistry)) {
+  ] of Object.entries(getDustProdActionRegistry())) {
     console.log(
       execute ? "" : "[DRY RUN] ",
       `Updating app ${appName} (sId=${appId}) in ${dustAppsWorkspace.name} workspace ` +
@@ -50,7 +47,7 @@ makeScript({}, async ({ execute }, logger) => {
         {
           appName,
           appId,
-          workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
+          workspaceId: config.getDustAppsWorkspaceId(),
           vaultId,
           execute,
         },

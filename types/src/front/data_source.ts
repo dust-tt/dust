@@ -13,66 +13,14 @@ export const CONNECTOR_PROVIDERS = [
   "webcrawler",
   "snowflake",
   "zendesk",
+  "bigquery",
 ] as const;
 
-export const MANAGED_DS_DELETABLE: ConnectorProvider[] = [
-  "webcrawler",
-  "snowflake",
-];
-
-export const CONNECTOR_TYPE_TO_NAME: Record<ConnectorProvider, string> = {
-  confluence: "Confluence",
-  github: "GitHub",
-  google_drive: "Google Drive",
-  intercom: "Intercom",
-  notion: "Notion",
-  slack: "Slack",
-  microsoft: "Microsoft",
-  webcrawler: "Website",
-  snowflake: "Snowflake",
-  zendesk: "Zendesk",
-};
-
-export const CONNECTOR_TYPE_TO_MISMATCH_ERROR: Record<
-  ConnectorProvider,
-  string
-> = {
-  confluence: `You cannot select another Confluence Domain.\nPlease contact us at support@dust.tt if you initially selected the wrong Domain.`,
-  slack: `You cannot select another Slack Team.\nPlease contact us at support@dust.tt if you initially selected the wrong Team.`,
-  notion:
-    "You cannot select another Notion Workspace.\nPlease contact us at support@dust.tt if you initially selected a wrong Workspace.",
-  github:
-    "You cannot create a new Github app installation.\nPlease contact us at support@dust.tt if you initially selected a wrong Organization or if you completely uninstalled the Github app.",
-  google_drive:
-    "You cannot select another Google Drive Domain.\nPlease contact us at support@dust.tt if you initially selected a wrong shared Drive.",
-  intercom:
-    "You cannot select another Intercom Workspace.\nPlease contact us at support@dust.tt if you initially selected a wrong Workspace.",
-  microsoft: `Microsoft / mismatch error.`,
-  webcrawler: "You cannot change the URL. Please add a new Public URL instead.",
-  snowflake:
-    "You cannot change the Snowflake account. Please add a new Snowflake connection instead.",
-  zendesk:
-    "You cannot select another Zendesk Workspace.\nPlease contact us at support@dust.tt if you initially selected a wrong Workspace.",
-};
-
 export type ConnectorProvider = (typeof CONNECTOR_PROVIDERS)[number];
-
-export type LabsConnectorProvider = "google_drive" | "gong";
-
-export const WEBHOOK_BASED_CONNECTORS: ConnectorProvider[] = [
-  "slack",
-  "github",
-];
-
-export function isWebhookBasedProvider(provider: ConnectorProvider): boolean {
-  return WEBHOOK_BASED_CONNECTORS.includes(provider);
-}
 
 export function isConnectorProvider(val: string): val is ConnectorProvider {
   return (CONNECTOR_PROVIDERS as unknown as string[]).includes(val);
 }
-
-export const PROVIDERS_WITH_SETTINGS: ConnectorProvider[] = ["webcrawler"];
 
 export type EditedByUser = {
   editedAt: number | null;
@@ -127,7 +75,3 @@ export function isDataSourceNameValid(name: string): Result<void, string> {
 
   return new Ok(undefined);
 }
-
-export const REMOTE_DATABASE_CONNECTOR_PROVIDERS: ConnectorProvider[] = [
-  "snowflake",
-];

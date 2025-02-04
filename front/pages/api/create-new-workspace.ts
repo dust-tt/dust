@@ -2,7 +2,7 @@ import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
-import { getSession } from "@app/lib/auth";
+import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { createWorkspace } from "@app/lib/iam/workspaces";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -11,14 +11,9 @@ import { createAndLogMembership } from "@app/pages/api/login";
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<{ sId: string }>>
+  res: NextApiResponse<WithAPIErrorResponse<{ sId: string }>>,
+  session: SessionWithUser
 ): Promise<void> {
-  const session = await getSession(req, res);
-  if (!session) {
-    res.status(401).end();
-    return;
-  }
-
   if (req.method !== "POST") {
     return apiError(req, res, {
       status_code: 405,

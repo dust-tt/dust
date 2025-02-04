@@ -1,34 +1,19 @@
-import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional } from "sequelize";
+import { DataTypes } from "sequelize";
 
 import type { MicrosoftNodeType } from "@connectors/connectors/microsoft/lib/types";
 import { sequelizeConnection } from "@connectors/resources/storage";
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 
-export class MicrosoftConfigurationModel extends Model<
-  InferAttributes<MicrosoftConfigurationModel>,
-  InferCreationAttributes<MicrosoftConfigurationModel>
-> {
-  declare id: CreationOptional<number>;
+export class MicrosoftConfigurationModel extends ConnectorBaseModel<MicrosoftConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
   declare pdfEnabled: boolean;
   declare csvEnabled: boolean;
   declare largeFilesEnabled: boolean;
 }
 MicrosoftConfigurationModel.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -38,10 +23,6 @@ MicrosoftConfigurationModel.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
-    },
-    connectorId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
     },
     pdfEnabled: {
       type: DataTypes.BOOLEAN,
@@ -63,33 +44,22 @@ MicrosoftConfigurationModel.init(
     sequelize: sequelizeConnection,
     modelName: "microsoft_configurations",
     indexes: [{ fields: ["connectorId"], unique: true }],
+    relationship: "hasOne",
   }
 );
-
-ConnectorModel.hasMany(MicrosoftConfigurationModel);
 
 // MicrosoftRoot stores the drive/folders/channels selected by the user to sync.
 // In order to be able to uniquely identify each node, we store the GET path
 // to the item in the itemApiPath field (e.g. /drives/{drive-id}), except for the toplevel
 // sites-root and teams-root, which are stored as "sites-root" and "teams-root" respectively.
-export class MicrosoftRootModel extends Model<
-  InferAttributes<MicrosoftRootModel>,
-  InferCreationAttributes<MicrosoftRootModel>
-> {
-  declare id: CreationOptional<number>;
+export class MicrosoftRootModel extends ConnectorBaseModel<MicrosoftRootModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
   declare internalId: string;
   declare nodeType: MicrosoftNodeType;
 }
 MicrosoftRootModel.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -99,10 +69,6 @@ MicrosoftRootModel.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
-    },
-    connectorId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
     },
     internalId: {
       type: DataTypes.STRING,
@@ -122,20 +88,14 @@ MicrosoftRootModel.init(
     ],
   }
 );
-ConnectorModel.hasMany(MicrosoftRootModel);
 
 // MicrosftNode stores nodes (e.g. files, folder, channels, ...) synced from Microsoft.
-export class MicrosoftNodeModel extends Model<
-  InferAttributes<MicrosoftNodeModel>,
-  InferCreationAttributes<MicrosoftNodeModel>
-> {
-  declare id: CreationOptional<number>;
+export class MicrosoftNodeModel extends ConnectorBaseModel<MicrosoftNodeModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare lastSeenTs: Date | null;
   declare lastUpsertedTs: Date | null;
   declare skipReason: string | null;
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
   declare internalId: string;
   declare nodeType: MicrosoftNodeType;
   declare name: string | null;
@@ -147,11 +107,6 @@ export class MicrosoftNodeModel extends Model<
 
 MicrosoftNodeModel.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -173,10 +128,6 @@ MicrosoftNodeModel.init(
     skipReason: {
       type: DataTypes.STRING,
       allowNull: true,
-    },
-    connectorId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
     },
     internalId: {
       type: DataTypes.STRING(512),
@@ -217,4 +168,3 @@ MicrosoftNodeModel.init(
     ],
   }
 );
-ConnectorModel.hasMany(MicrosoftNodeModel);

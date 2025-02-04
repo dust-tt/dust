@@ -15,6 +15,7 @@ import { Op, Sequelize } from "sequelize";
 
 import { browseActionTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/browse";
 import { dustAppRunTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/dust_app_run";
+import { reasoningActionTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/reasoning";
 import { tableQueryTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/tables_query";
 import { websearchActionTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/websearch";
 import {
@@ -37,6 +38,10 @@ import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_
 import { UserResource } from "@app/lib/resources/user_resource";
 
 import { conversationIncludeFileTypesFromAgentMessageIds } from "./actions/conversation/include_file";
+import {
+  githubCreateIssueActionTypesFromAgentMessageIds,
+  githubGetPullRequestActionTypesFromAgentMessageIds,
+} from "./actions/github";
 import { processActionTypesFromAgentMessageIds } from "./actions/process";
 import { retrievalActionTypesFromAgentMessageIds } from "./actions/retrieval";
 
@@ -121,6 +126,9 @@ async function batchRenderAgentMessages(
     agentWebsearchActions,
     agentBrowseActions,
     agentConversationIncludeFileActions,
+    agentGithubGetPullRequestActions,
+    agentGithubCreateIssueActions,
+    agentReasoningActions,
   ] = await Promise.all([
     (async () => {
       const agentConfigurationIds: string[] = agentMessages.reduce(
@@ -144,13 +152,18 @@ async function batchRenderAgentMessages(
     })(),
     (async () =>
       retrievalActionTypesFromAgentMessageIds(auth, agentMessageIds))(),
-    (async () => dustAppRunTypesFromAgentMessageIds(agentMessageIds))(),
+    (async () => dustAppRunTypesFromAgentMessageIds(auth, agentMessageIds))(),
     (async () => tableQueryTypesFromAgentMessageIds(auth, agentMessageIds))(),
     (async () => processActionTypesFromAgentMessageIds(agentMessageIds))(),
     (async () => websearchActionTypesFromAgentMessageIds(agentMessageIds))(),
     (async () => browseActionTypesFromAgentMessageIds(agentMessageIds))(),
     (async () =>
       conversationIncludeFileTypesFromAgentMessageIds(agentMessageIds))(),
+    (async () =>
+      githubGetPullRequestActionTypesFromAgentMessageIds(agentMessageIds))(),
+    (async () =>
+      githubCreateIssueActionTypesFromAgentMessageIds(agentMessageIds))(),
+    (async () => reasoningActionTypesFromAgentMessageIds(agentMessageIds))(),
   ]);
 
   // The only async part here is the content parsing, but it's "fake async" as the content parsing is not doing
@@ -172,6 +185,9 @@ async function batchRenderAgentMessages(
         agentWebsearchActions,
         agentBrowseActions,
         agentConversationIncludeFileActions,
+        agentGithubGetPullRequestActions,
+        agentGithubCreateIssueActions,
+        agentReasoningActions,
       ]
         .flat()
         .filter((a) => a.agentMessageId === agentMessage.id)
@@ -416,7 +432,7 @@ export async function fetchConversationMessages(
   });
 
   if (!conversation) {
-    return new Err(new Error("Conversation not found."));
+    return new Err(new ConversationError("conversation_not_found"));
   }
 
   const { hasMore, messages } = await fetchMessagesForPage(

@@ -1,18 +1,24 @@
+import type { ExtensionWorkspaceType } from "@dust-tt/client";
 import { Button, CameraIcon, DocumentPlusIcon } from "@dust-tt/sparkle";
 import { InputBarContext } from "@extension/components/input_bar/InputBarContext";
+import { useCurrentUrlAndDomain } from "@extension/hooks/useCurrentDomain";
 import type { FileUploaderService } from "@extension/hooks/useFileUploaderService";
 import { useContext, useEffect } from "react";
 
 type AttachFragmentProps = {
+  owner: ExtensionWorkspaceType;
   fileUploaderService: FileUploaderService;
+  isLoading: boolean;
 };
 
 export const AttachFragment = ({
+  owner,
   fileUploaderService,
+  isLoading,
 }: AttachFragmentProps) => {
+  // Blinking animation.
   const { attachPageBlinking, setAttachPageBlinking } =
     useContext(InputBarContext);
-
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (attachPageBlinking) {
@@ -23,12 +29,28 @@ export const AttachFragment = ({
     return () => clearTimeout(timer);
   }, [attachPageBlinking]);
 
+  // Blacklisting logic to disable share buttons.
+  const { currentDomain, currentUrl } = useCurrentUrlAndDomain();
+  const blacklistedConfig: string[] = owner.blacklistedDomains ?? [];
+
+  const isBlacklisted =
+    currentDomain === "chrome" ||
+    blacklistedConfig.some((d) =>
+      d.startsWith("http://") || d.startsWith("https://")
+        ? currentUrl.startsWith(d)
+        : currentDomain.endsWith(d)
+    );
+
   return (
     <>
       <div className="block sm:hidden">
         <Button
           icon={DocumentPlusIcon}
-          tooltip="Attach text from page"
+          tooltip={
+            !isBlacklisted
+              ? "Attach text from page"
+              : "Attachment disabled on this website"
+          }
           variant="outline"
           size="sm"
           className={attachPageBlinking ? "animate-[bgblink_200ms_3]" : ""}
@@ -38,12 +60,17 @@ export const AttachFragment = ({
               includeCapture: false,
             })
           }
+          disabled={isLoading || isBlacklisted}
         />
       </div>
       <div className="block sm:hidden">
         <Button
           icon={CameraIcon}
-          tooltip="Attach page screenshot"
+          tooltip={
+            !isBlacklisted
+              ? "Attach page screenshot"
+              : "Attachment disabled on this website"
+          }
           variant="outline"
           size="sm"
           onClick={() =>
@@ -52,13 +79,18 @@ export const AttachFragment = ({
               includeCapture: true,
             })
           }
+          disabled={isLoading || isBlacklisted}
         />
       </div>
       <div className="hidden sm:block">
         <Button
           icon={DocumentPlusIcon}
           label="Add page text"
-          tooltip="Attach text from page"
+          tooltip={
+            !isBlacklisted
+              ? "Attach text from page"
+              : "Attachment disabled on this website"
+          }
           variant="outline"
           size="sm"
           className={attachPageBlinking ? "animate-[bgblink_200ms_3]" : ""}
@@ -68,13 +100,18 @@ export const AttachFragment = ({
               includeCapture: false,
             })
           }
+          disabled={isLoading || isBlacklisted}
         />
       </div>
       <div className="hidden sm:block">
         <Button
           icon={CameraIcon}
           label="Add page screenshot"
-          tooltip="Attach page screenshot"
+          tooltip={
+            !isBlacklisted
+              ? "Attach page screenshot"
+              : "Attachment disabled on this website"
+          }
           variant="outline"
           size="sm"
           onClick={() =>
@@ -83,6 +120,7 @@ export const AttachFragment = ({
               includeCapture: true,
             })
           }
+          disabled={isLoading || isBlacklisted}
         />
       </div>
     </>

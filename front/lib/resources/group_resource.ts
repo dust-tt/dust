@@ -101,14 +101,10 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   // Internal fetcher for Authenticator only
 
-  static async superAdminFetchWorkspaceGroups(
-    userResource: UserResource,
+  // Use with care as this gives access to all groups in the workspace.
+  static async internalFetchAllWorkspaceGroups(
     workspaceId: ModelId
   ): Promise<GroupResource[]> {
-    if (!userResource.isDustSuperUser) {
-      throw new Error("User is not a super admin.");
-    }
-
     const groups = await this.model.findAll({
       where: {
         workspaceId,
@@ -121,26 +117,16 @@ export class GroupResource extends BaseResource<GroupModel> {
   static async listWorkspaceGroupsFromKey(
     key: KeyResource
   ): Promise<GroupResource[]> {
-    let whereCondition: WhereOptions<GroupModel> = {
-      workspaceId: key.workspaceId,
-    };
-
-    // If the key is a system key, we also include the global group.
-    if (key.isSystem) {
-      whereCondition = {
-        ...whereCondition,
-        [Op.or]: [
-          { kind: { [Op.in]: ["system", "global"] } },
-          { id: key.groupId },
-        ],
-      };
-    } else {
-      // If it's not a system key, we only fetch the associated group.
-      whereCondition = {
-        ...whereCondition,
-        id: key.groupId,
-      };
-    }
+    const whereCondition: WhereOptions<GroupModel> = key.isSystem
+      ? // If the key is a system key, we include all groups in the workspace.
+        {
+          workspaceId: key.workspaceId,
+        }
+      : // If it's not a system key, we only fetch the associated group.
+        {
+          workspaceId: key.workspaceId,
+          id: key.groupId,
+        };
 
     const groups = await this.model.findAll({
       where: whereCondition,
@@ -636,6 +622,20 @@ export class GroupResource extends BaseResource<GroupModel> {
     return new Ok(undefined);
   }
 
+  // Updates
+
+  async updateName(
+    auth: Authenticator,
+    newName: string
+  ): Promise<Result<undefined, Error>> {
+    if (!auth.canAdministrate(this.requestedPermissions())) {
+      return new Err(new Error("Only admins can update group names."));
+    }
+
+    await this.update({ name: newName });
+    return new Ok(undefined);
+  }
+
   // Deletion
 
   async delete(
@@ -698,7 +698,7 @@ export class GroupResource extends BaseResource<GroupModel> {
             permissions: ["read"],
           },
         ],
-        roles: [{ role: "admin", permissions: ["read", "write"] }],
+        roles: [{ role: "admin", permissions: ["read", "write", "admin"] }],
         workspaceId: this.workspaceId,
       },
     ];

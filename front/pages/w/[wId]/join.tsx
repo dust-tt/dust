@@ -11,6 +11,7 @@ import {
 } from "@app/lib/api/workspace";
 import { getPendingMembershipInvitationForToken } from "@app/lib/iam/invitations";
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
+import { getSignUpUrl } from "@app/lib/signup";
 
 /**
  * 3 ways to end up here:
@@ -137,11 +138,10 @@ export default function Join({
   signUpCallbackUrl,
   workspace,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  let signUpUrl = `/api/auth/login?returnTo=${signUpCallbackUrl}&screen_hint=signup`;
-
-  if (invitationEmail) {
-    signUpUrl += `&login_hint=${encodeURIComponent(invitationEmail)}`;
-  }
+  const signUpUrl = getSignUpUrl({
+    signupCallbackUrl: signUpCallbackUrl,
+    invitationEmail: invitationEmail ?? undefined,
+  });
 
   return (
     <OnboardingLayout

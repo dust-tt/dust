@@ -3,8 +3,10 @@ import type {
   DataSourceSearchResponseType,
 } from "@dust-tt/client";
 import type {
+  AdminCommandType,
   ConnectorProvider,
   ConnectorType,
+  ConversationWithoutContentType,
   CoreAPIDataSource,
   CoreAPIDocument,
   CoreAPIError,
@@ -13,7 +15,6 @@ import type {
   DataSourceType,
   DataSourceWithConnectorDetailsType,
   FrontDataSourceDocumentSectionType,
-  ModelId,
   PlanType,
   Result,
   UpsertTableFromCsvRequestType,
@@ -22,6 +23,7 @@ import type {
 } from "@dust-tt/types";
 import {
   assertNever,
+  concurrentExecutor,
   ConnectorsAPI,
   CoreAPI,
   DEFAULT_EMBEDDING_PROVIDER_ID,
@@ -30,10 +32,10 @@ import {
   EMBEDDING_CONFIGS,
   Err,
   isDataSourceNameValid,
-  MANAGED_DS_DELETABLE,
   Ok,
   sectionFullText,
 } from "@dust-tt/types";
+import { validateUrl } from "@dust-tt/types/src/shared/utils/url_utils";
 import assert from "assert";
 import type { Transaction } from "sequelize";
 
@@ -43,16 +45,21 @@ import { rowsFromCsv, upsertTableFromCsv } from "@app/lib/api/tables";
 import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
+import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { DustError } from "@app/lib/error";
+import { Lock } from "@app/lib/lock";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { enqueueUpsertTable } from "@app/lib/upsert_queue";
-import { validateUrl } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { launchScrubDataSourceWorkflow } from "@app/poke/temporal/client";
+
+import type { FileResource } from "../resources/file_resource";
+import { getConversationWithoutContent } from "./assistant/conversation/without_content";
+import { isJITActionsEnabled } from "./assistant/jit_actions";
 
 export async function getDataSources(
   auth: Authenticator,
@@ -114,7 +121,7 @@ export async function hardDeleteDataSource(
   const { dustAPIProjectId } = dataSource;
   if (dataSource.connectorId && dataSource.connectorProvider) {
     if (
-      !MANAGED_DS_DELETABLE.includes(dataSource.connectorProvider) &&
+      !CONNECTOR_CONFIGURATIONS[dataSource.connectorProvider].isDeletable &&
       !auth.isAdmin()
     ) {
       return new Err({
@@ -174,7 +181,10 @@ async function warnPostDeletion(
   switch (dataSourceProvider) {
     case "github":
       // get admin emails
-      const { members } = await getMembers(auth, { roles: ["admin"] });
+      const { members } = await getMembers(auth, {
+        roles: ["admin"],
+        activeOnly: true,
+      });
       const adminEmails = members.map((u) => u.email);
       // send email to admins
       for (const email of adminEmails) {
@@ -222,29 +232,37 @@ export async function augmentDataSourceWithConnectorDetails(
   };
 }
 
-export async function upsertDocument({
-  name,
-  source_url,
-  text,
-  section,
-  tags,
-  parents,
-  timestamp,
-  light_document_output,
-  dataSource,
-  auth,
-}: {
-  name: string;
+export interface UpsertDocumentArgs {
+  document_id: string;
   source_url?: string | null;
   text?: string | null;
   section?: FrontDataSourceDocumentSectionType | null;
   tags?: string[] | null;
+  parent_id?: string | null;
   parents?: string[] | null;
   timestamp?: number | null;
   light_document_output?: boolean;
   dataSource: DataSourceResource;
   auth: Authenticator;
-}): Promise<
+  mime_type: string;
+  title: string;
+}
+
+export async function upsertDocument({
+  document_id,
+  source_url,
+  text,
+  section,
+  tags,
+  parent_id,
+  parents,
+  timestamp,
+  light_document_output,
+  dataSource,
+  auth,
+  mime_type,
+  title,
+}: UpsertDocumentArgs): Promise<
   Result<
     {
       document:
@@ -257,6 +275,33 @@ export async function upsertDocument({
     DustError
   >
 > {
+  // enforcing validation on the parents and parent_id
+  const documentId = document_id;
+  const documentParents = parents || [documentId];
+  const documentParentId = parent_id ?? null;
+
+  // parents must comply to the invariant parents[0] === document_id
+  if (documentParents[0] !== documentId) {
+    return new Err(
+      new DustError(
+        "invalid_parents",
+        "Invalid request body, parents[0] and document_id should be equal"
+      )
+    );
+  }
+  // parents and parentId must comply to the invariant parents[1] === parentId || (parentId === null && parents.length < 2)
+  if (
+    (documentParents.length >= 2 || documentParentId !== null) &&
+    documentParents[1] !== documentParentId
+  ) {
+    return new Err(
+      new DustError(
+        "invalid_parent_id",
+        "Invalid request body, parents[1] and parent_id should be equal"
+      )
+    );
+  }
+
   let sourceUrl: string | null = null;
   if (source_url) {
     const { valid: isSourceUrlValid, standardized: standardizedSourceUrl } =
@@ -364,23 +409,13 @@ export async function upsertDocument({
   // Data source operations are performed with our credentials.
   const credentials = dustManagedCredentials();
 
-  const documentId = name;
-  const documentParents = parents || [];
-
-  // Ensure that the documentId is included in the parents as the first item.
-  // remove it if it's already present and add it as the first item.
-  const indexOfDocumentId = documentParents.indexOf(documentId);
-  if (indexOfDocumentId !== -1) {
-    documentParents.splice(indexOfDocumentId, 1);
-  }
-  documentParents.unshift(documentId);
-
   // Create document with the Dust internal API.
   const upsertRes = await coreAPI.upsertDataSourceDocument({
     projectId: dataSource.dustAPIProjectId,
     dataSourceId: dataSource.dustAPIDataSourceId,
-    documentId: documentId,
+    documentId,
     tags: nonNullTags,
+    parentId: documentParentId,
     parents: documentParents,
     sourceUrl,
     // TEMPORARY -- need to unstuck a specific entry
@@ -389,6 +424,8 @@ export async function upsertDocument({
     section: generatedSection,
     credentials,
     lightDocumentOutput: light_document_output === true,
+    title,
+    mimeType: mime_type,
   });
 
   if (upsertRes.isErr()) {
@@ -403,6 +440,25 @@ export async function upsertDocument({
   return new Ok(upsertRes.value);
 }
 
+export interface UpsertTableArgs {
+  tableId: string;
+  name: string;
+  description: string;
+  truncate: boolean;
+  csv?: string | null;
+  tags?: string[] | null;
+  parentId?: string | null;
+  parents?: string[] | null;
+  timestamp?: number | null;
+  async: boolean;
+  dataSource: DataSourceResource;
+  auth: Authenticator;
+  useAppForHeaderDetection?: boolean;
+  title: string;
+  mimeType: string;
+  sourceUrl?: string | null;
+}
+
 export async function upsertTable({
   tableId,
   name,
@@ -410,6 +466,7 @@ export async function upsertTable({
   truncate,
   csv,
   tags,
+  parentId,
   parents,
   timestamp,
   async,
@@ -418,32 +475,47 @@ export async function upsertTable({
   useAppForHeaderDetection,
   title,
   mimeType,
-}: {
-  tableId?: string | null;
-  name: string;
-  description: string;
-  truncate: boolean;
-  csv?: string | null;
-  tags?: string[] | null;
-  parents?: string[] | null;
-  timestamp?: number | null;
-  async: boolean;
-  dataSource: DataSourceResource;
-  auth: Authenticator;
-  useAppForHeaderDetection?: boolean;
-  title?: string;
-  mimeType?: string;
-}) {
-  const nonNullTableId = tableId ?? generateRandomModelSId();
-  const tableParents: string[] = parents ?? [];
+  sourceUrl,
+}: UpsertTableArgs) {
+  const tableParents = parents ?? [tableId];
+  const tableParentId = parentId ?? null;
 
-  // Ensure that the nonNullTableId is included in the parents as the first item.
-  // remove it if it's already present and add it as the first item.
-  const indexOfTableId = tableParents.indexOf(nonNullTableId);
-  if (indexOfTableId !== -1) {
-    tableParents.splice(indexOfTableId, 1);
+  // parents must comply to the invariant parents[0] === document_id
+  if (tableParents[0] !== tableId) {
+    return new Err(
+      new DustError(
+        "invalid_parents",
+        "Invalid request body, parents[0] and table_id should be equal"
+      )
+    );
   }
-  tableParents.unshift(nonNullTableId);
+
+  // parents and parentId must comply to the invariant parents[1] === parentId
+  if (
+    (tableParents.length >= 2 || tableParentId !== null) &&
+    tableParents[1] !== tableParentId
+  ) {
+    return new Err(
+      new DustError(
+        "invalid_parent_id",
+        "Invalid request body, parents[1] and parent_id should be equal"
+      )
+    );
+  }
+  let standardizedSourceUrl: string | null = null;
+  if (sourceUrl) {
+    const { valid: isSourceUrlValid, standardized } = validateUrl(sourceUrl);
+
+    if (!isSourceUrlValid) {
+      return new Err(
+        new DustError(
+          "invalid_url",
+          "Invalid request body, `source_url` if provided must be a valid URL."
+        )
+      );
+    }
+    standardizedSourceUrl = standardized;
+  }
 
   const flags = await getFeatureFlags(auth.getNonNullableWorkspace());
 
@@ -470,11 +542,12 @@ export async function upsertTable({
       upsertTable: {
         workspaceId: auth.getNonNullableWorkspace().sId,
         dataSourceId: dataSource.sId,
-        tableId: nonNullTableId,
+        tableId,
         tableName: name,
         tableDescription: description,
         tableTimestamp: timestamp ?? null,
         tableTags: tags ?? [],
+        tableParentId,
         tableParents,
         csv: csv ?? null,
         truncate,
@@ -482,6 +555,7 @@ export async function upsertTable({
         detectedHeaders,
         title,
         mimeType,
+        sourceUrl: standardizedSourceUrl,
       },
     });
     if (enqueueRes.isErr()) {
@@ -494,17 +568,19 @@ export async function upsertTable({
   const tableRes = await upsertTableFromCsv({
     auth,
     dataSource: dataSource,
-    tableId: nonNullTableId,
+    tableId,
     tableName: name,
     tableDescription: description,
     tableTimestamp: timestamp ?? null,
     tableTags: tags || [],
+    tableParentId,
     tableParents,
     csv: csv ?? null,
     truncate,
     useAppForHeaderDetection: useApp,
     title,
     mimeType,
+    sourceUrl: standardizedSourceUrl,
   });
 
   return tableRes;
@@ -513,9 +589,11 @@ export async function upsertTable({
 export async function handleDataSourceSearch({
   searchQuery,
   dataSource,
+  dataSourceView,
 }: {
   searchQuery: DataSourceSearchQuery;
   dataSource: DataSourceResource;
+  dataSourceView?: DataSourceViewResource;
 }): Promise<
   Result<
     DataSourceSearchResponseType,
@@ -548,6 +626,16 @@ export async function handleDataSourceSearch({
           lt: searchQuery.timestamp_lt ?? null,
         },
       },
+      view_filter: dataSourceView
+        ? {
+            parents: {
+              in: dataSourceView.parentsIn,
+              not: [],
+            },
+            tags: null,
+            timestamp: null,
+          }
+        : undefined,
       credentials: credentials,
     }
   );
@@ -587,8 +675,9 @@ export async function handleDataSourceTableCSVUpsert({
       code:
         | "missing_csv"
         | "data_source_error"
-        | "invalid_rows"
+        | "invalid_csv"
         | "resource_not_found"
+        | "invalid_parent_id"
         | "internal_error";
     }
   >
@@ -605,15 +694,7 @@ export async function handleDataSourceTableCSVUpsert({
   }
 
   const tableId = params.tableId ?? generateRandomModelSId();
-  const tableParents: string[] = params.parents ?? [];
-
-  // Ensure that the tableId is included in the parents as the first item.
-  // remove it if it's already present and add it as the first item.
-  const indexOfTableId = tableParents.indexOf(tableId);
-  if (indexOfTableId !== -1) {
-    tableParents.splice(indexOfTableId, 1);
-  }
-  tableParents.unshift(tableId);
+  const tableParents: string[] = params.parents ?? [tableId];
 
   const flags = await getFeatureFlags(owner);
 
@@ -629,7 +710,7 @@ export async function handleDataSourceTableCSVUpsert({
     if (csvRowsRes?.isErr()) {
       return new Err({
         name: "dust_error",
-        code: "invalid_rows",
+        code: "invalid_csv",
         message: "Failed to parse CSV: " + csvRowsRes.error.message,
       });
     }
@@ -647,6 +728,7 @@ export async function handleDataSourceTableCSVUpsert({
         tableDescription: description,
         tableTimestamp: params.timestamp ?? null,
         tableTags: params.tags ?? [],
+        tableParentId: params.parentId ?? null,
         tableParents,
         csv: csv ?? null,
         truncate,
@@ -654,6 +736,7 @@ export async function handleDataSourceTableCSVUpsert({
         detectedHeaders,
         title: params.title,
         mimeType: params.mimeType,
+        sourceUrl: params.sourceUrl ?? null,
       },
     });
     if (enqueueRes.isErr()) {
@@ -679,12 +762,14 @@ export async function handleDataSourceTableCSVUpsert({
     tableDescription: description,
     tableTimestamp: params.timestamp ?? null,
     tableTags: params.tags || [],
+    tableParentId: params.parentId ?? null,
     tableParents,
     csv: csv ?? null,
     truncate,
     useAppForHeaderDetection,
     title: params.title,
     mimeType: params.mimeType,
+    sourceUrl: params.sourceUrl ?? null,
   });
 
   if (tableRes.isErr()) {
@@ -700,7 +785,7 @@ export async function handleDataSourceTableCSVUpsert({
       if ("csvParsingError" in tableRes.error) {
         return new Err({
           name: "dust_error",
-          code: "internal_error",
+          code: "invalid_csv",
           message:
             "Failed to parse CSV: " + tableRes.error.csvParsingError.message,
         });
@@ -710,6 +795,12 @@ export async function handleDataSourceTableCSVUpsert({
           code: "internal_error",
           message:
             "Invalid request body: " + tableRes.error.inputValidationError,
+        });
+      } else if ("message" in tableRes.error) {
+        return new Err({
+          name: "dust_error",
+          code: "invalid_parent_id",
+          message: "Invalid request body: " + tableRes.error.message,
         });
       } else {
         assertNever(tableRes.error);
@@ -741,14 +832,14 @@ export async function createDataSourceWithoutProvider(
     space,
     name,
     description,
-    conversationId,
+    conversation,
   }: {
     plan: PlanType;
     owner: WorkspaceType;
     space: SpaceResource;
     name: string;
     description: string | null;
-    conversationId?: ModelId;
+    conversation?: ConversationWithoutContentType;
   }
 ): Promise<
   Result<
@@ -785,6 +876,14 @@ export async function createDataSourceWithoutProvider(
       name: "dust_error",
       code: "plan_limit_error",
       message: "Your plan does not allow you to create more data sources.",
+    });
+  }
+
+  if (dataSources.some((ds) => ds.name === name)) {
+    return new Err({
+      name: "dust_error",
+      code: "invalid_request_error",
+      message: "Data source with that name already exist.",
     });
   }
 
@@ -833,7 +932,6 @@ export async function createDataSourceWithoutProvider(
 
   const dataSourceView =
     await DataSourceViewResource.createDataSourceAndDefaultView(
-      auth,
       {
         name,
         description,
@@ -841,15 +939,16 @@ export async function createDataSourceWithoutProvider(
         dustAPIDataSourceId: dustDataSource.value.data_source.data_source_id,
         workspaceId: owner.id,
         assistantDefaultSelected: false,
-        conversationId: conversationId,
+        conversationId: conversation?.id,
       },
-      space
+      space,
+      auth.user()
     );
 
   try {
     // Asynchronous tracking without awaiting, handled safely
     void ServerSideTracking.trackDataSourceCreated({
-      user: auth.getNonNullableUser(),
+      user: auth.user() ?? undefined,
       workspace: owner,
       dataSource: dataSourceView.dataSource.toJSON(),
     });
@@ -863,4 +962,233 @@ export async function createDataSourceWithoutProvider(
   }
 
   return new Ok(dataSourceView);
+}
+
+async function getOrCreateConversationDataSource(
+  auth: Authenticator,
+  conversation: ConversationWithoutContentType
+): Promise<
+  Result<
+    DataSourceResource,
+    Omit<DustError, "code"> & {
+      code: "internal_server_error" | "invalid_request_error";
+    }
+  >
+> {
+  const jitEnabled = isJITActionsEnabled();
+
+  if (!jitEnabled) {
+    return new Err({
+      name: "dust_error",
+      code: "invalid_request_error",
+      message: "JIT processing is not enabled for this file.",
+    });
+  }
+
+  const lockName = "conversationDataSource" + conversation.id;
+
+  const res = await Lock.executeWithLock(
+    lockName,
+    async (): Promise<
+      Result<
+        DataSourceResource,
+        Omit<DustError, "code"> & {
+          code: "internal_server_error" | "invalid_request_error";
+        }
+      >
+    > => {
+      // Fetch the datasource linked to the conversation...
+      let dataSource = await DataSourceResource.fetchByConversation(
+        auth,
+        conversation
+      );
+
+      if (!dataSource) {
+        // ...or create a new one.
+        const conversationsSpace =
+          await SpaceResource.fetchWorkspaceConversationsSpace(auth);
+
+        // IMPORTANT: never use the conversation sID in the name or description, as conversation sIDs
+        // are used as secrets to share the conversation within the workspace users.
+        const r = await createDataSourceWithoutProvider(auth, {
+          plan: auth.getNonNullablePlan(),
+          owner: auth.getNonNullableWorkspace(),
+          space: conversationsSpace,
+          name: generateRandomModelSId("conv"),
+          description: "Files uploaded to conversation",
+          conversation: conversation,
+        });
+
+        if (r.isErr()) {
+          return new Err({
+            name: "dust_error",
+            code: "internal_server_error",
+            message: `Failed to create datasource : ${r.error}`,
+          });
+        }
+
+        dataSource = r.value.dataSource;
+      }
+
+      return new Ok(dataSource);
+    }
+  );
+
+  return res;
+}
+
+export async function getOrCreateConversationDataSourceFromFile(
+  auth: Authenticator,
+  file: FileResource
+): Promise<
+  Result<
+    DataSourceResource,
+    Omit<DustError, "code"> & {
+      code: "internal_server_error" | "invalid_request_error";
+    }
+  >
+> {
+  // Note: this assume that if we don't have useCaseMetadata, the file is fine.
+  const hasRequiredMetadata =
+    !!file.useCaseMetadata && !!file.useCaseMetadata.conversationId;
+
+  if (!hasRequiredMetadata) {
+    return new Err({
+      name: "dust_error",
+      code: "invalid_request_error",
+      message: "File is missing required metadata for JIT processing.",
+    });
+  }
+
+  const cRes = await getConversationWithoutContent(
+    auth,
+    file.useCaseMetadata.conversationId
+  );
+  if (cRes.isErr()) {
+    return new Err({
+      name: "dust_error",
+      code: "internal_server_error",
+      message: `Failed to fetch conversation.`,
+    });
+  }
+
+  return getOrCreateConversationDataSource(auth, cRes.value);
+}
+
+async function getAllManagedDataSources(auth: Authenticator) {
+  const dataSources = await DataSourceResource.listByWorkspace(auth);
+
+  return dataSources.filter((ds) => ds.connectorId !== null);
+}
+
+export async function pauseAllManagedDataSources(
+  auth: Authenticator,
+  { markAsError }: { markAsError: boolean }
+) {
+  const dataSources = await getAllManagedDataSources(auth);
+
+  const connectorsAPI = new ConnectorsAPI(
+    config.getConnectorsAPIConfig(),
+    logger
+  );
+
+  const res = await concurrentExecutor(
+    dataSources,
+    async (ds) => {
+      assert(ds.connectorId, "Connector ID is required");
+
+      const { connectorId } = ds;
+
+      if (markAsError) {
+        const setErrorCommand: AdminCommandType = {
+          majorCommand: "connectors",
+          command: "set-error",
+          args: {
+            connectorId,
+            error: "oauth_token_revoked",
+            wId: auth.getNonNullableWorkspace().sId,
+            dsId: ds.sId,
+          },
+        };
+
+        const setErrorRes = await connectorsAPI.admin(setErrorCommand);
+        if (setErrorRes.isErr()) {
+          return new Err(new Error(setErrorRes.error.message));
+        }
+      }
+
+      const pauseRes = await connectorsAPI.pauseConnector(ds.connectorId);
+      if (pauseRes.isErr()) {
+        return new Err(new Error(pauseRes.error.message));
+      }
+
+      logger.info(
+        {
+          connectorId: ds.connectorId,
+          connectorProvider: ds.connectorProvider,
+          dataSourceName: ds.name,
+          workspaceId: auth.getNonNullableWorkspace().sId,
+        },
+        "Paused connector"
+      );
+
+      return new Ok(pauseRes.value);
+    },
+    { concurrency: 5 }
+  );
+
+  const failed = res.filter((r) => r.isErr());
+  if (failed.length > 0) {
+    return new Err(new Error(`Failed to pause ${failed.length} connectors.`));
+  }
+
+  return new Ok(res);
+}
+
+export async function resumeAllManagedDataSources(auth: Authenticator) {
+  const dataSources = await getAllManagedDataSources(auth);
+
+  const connectorsAPI = new ConnectorsAPI(
+    config.getConnectorsAPIConfig(),
+    logger
+  );
+
+  const res = await concurrentExecutor(
+    dataSources,
+    async (ds) => {
+      assert(ds.connectorId, "Connector ID is required");
+
+      const { connectorId } = ds;
+
+      const setErrorCommand: AdminCommandType = {
+        majorCommand: "connectors",
+        command: "clear-error",
+        args: {
+          connectorId,
+          wId: auth.getNonNullableWorkspace().sId,
+          dsId: ds.sId,
+        },
+      };
+
+      const setErrorRes = await connectorsAPI.admin(setErrorCommand);
+      if (setErrorRes.isErr()) {
+        return new Err(new Error(setErrorRes.error.message));
+      }
+
+      const resumeRes = await connectorsAPI.resumeConnector(ds.connectorId);
+      if (resumeRes.isErr()) {
+        return new Err(new Error(resumeRes.error.message));
+      }
+
+      return new Ok(resumeRes.value);
+    },
+    { concurrency: 5 }
+  );
+
+  const failed = res.filter((r) => r.isErr());
+  if (failed.length > 0) {
+    return new Err(new Error(`Failed to resume ${failed.length} connectors.`));
+  }
+
+  return new Ok(res);
 }

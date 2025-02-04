@@ -22,6 +22,7 @@ import { useRouter } from "next/router";
 import { useState } from "react";
 
 import { DeleteAssistantDialog } from "@app/components/assistant/DeleteAssistantDialog";
+import { useURLSheet } from "@app/hooks/useURLSheet";
 import { useUpdateUserFavorite } from "@app/lib/swr/assistants";
 import { useUser } from "@app/lib/swr/user";
 
@@ -31,15 +32,20 @@ interface AssistantDetailsButtonBarProps {
   canDelete?: boolean;
   isMoreInfoVisible?: boolean;
   showAddRemoveToFavorite?: boolean;
+  isAgentConfigurationValidating: boolean;
 }
 
 export function AssistantDetailsButtonBar({
   agentConfiguration,
+  isAgentConfigurationValidating,
   owner,
 }: AssistantDetailsButtonBarProps) {
   const { user } = useUser();
 
   const [showDeletionModal, setShowDeletionModal] = useState(false);
+  const { onOpenChange: onOpenChangeAssistantModal } =
+    useURLSheet("assistantDetails");
+
   const router = useRouter();
 
   const { updateUserFavorite, isUpdatingFavorite } = useUpdateUserFavorite({
@@ -68,6 +74,7 @@ export function AssistantDetailsButtonBar({
           agentConfiguration={agentConfiguration}
           onClose={() => {
             setShowDeletionModal(false);
+            onOpenChangeAssistantModal(false);
           }}
           isPrivateAssistant={agentConfiguration.scope === "private"}
         />
@@ -88,6 +95,8 @@ export function AssistantDetailsButtonBar({
               <>
                 <DropdownMenuItem
                   label="Duplicate (New)"
+                  data-gtm-label="assistantDuplicationButton"
+                  data-gtm-location="assistantDetails"
                   icon={ClipboardIcon}
                   onClick={async (e) => {
                     await router.push(
@@ -118,19 +127,22 @@ export function AssistantDetailsButtonBar({
     // builders can all edit, non-builders can only edit personal/shared assistants
     isBuilder(owner) || !(agentConfiguration.scope === "workspace");
 
+  const isFavoriteDisabled =
+    isAgentConfigurationValidating || isUpdatingFavorite;
+
   return (
     <div className="flex flex-row items-center gap-2 px-1.5">
       <div className="group">
         <Button
           icon={
-            agentConfiguration.userFavorite || isUpdatingFavorite
+            agentConfiguration.userFavorite || isFavoriteDisabled
               ? StarIcon
               : StarStrokeIcon
           }
           size="sm"
           className="group-hover:hidden"
           variant="outline"
-          disabled={isUpdatingFavorite}
+          disabled={isFavoriteDisabled}
           onClick={() => updateUserFavorite(!agentConfiguration.userFavorite)}
         />
 
@@ -139,7 +151,7 @@ export function AssistantDetailsButtonBar({
           size="sm"
           className="hidden group-hover:block"
           variant="outline"
-          disabled={isUpdatingFavorite}
+          disabled={isFavoriteDisabled}
           onClick={() => updateUserFavorite(!agentConfiguration.userFavorite)}
         />
       </div>
@@ -156,6 +168,7 @@ export function AssistantDetailsButtonBar({
 
       {agentConfiguration.scope !== "global" && (
         <Link
+          onClick={(e) => !canEditAssistant && e.preventDefault()}
           href={`/w/${owner.sId}/builder/assistants/${
             agentConfiguration.sId
           }?flow=${

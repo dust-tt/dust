@@ -163,7 +163,7 @@ pub async fn load_tables_from_identifiers(
             let (project, data_source_name) = project_and_data_source_by_data_source_view
                 .get(&(*workspace_id, *data_source_or_view_id))
                 .expect("Unreachable: missing project.");
-            store.load_table(&project, &data_source_name, &table_id)
+            store.load_data_source_table(&project, &data_source_name, &table_id)
         },
     ))
     .await?)

@@ -16,7 +16,6 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import type { SidebarNavigation } from "@app/components/navigation/config";
 import { getTopNavigationTabs } from "@app/components/navigation/config";
 import { HelpDropdown } from "@app/components/navigation/HelpDropdown";
-import { QuickStartGuide } from "@app/components/QuickStartGuide";
 import { UserMenu } from "@app/components/UserMenu";
 import WorkspacePicker from "@app/components/WorkspacePicker";
 import { useAppStatus } from "@app/lib/swr/useAppStatus";
@@ -39,7 +38,6 @@ export const NavigationSidebar = React.forwardRef<
 ) {
   const router = useRouter();
   const { user } = useUser();
-  const [showQuickGuide, setShowQuickGuide] = useState(false);
   const [activePath, setActivePath] = useState("");
 
   useEffect(() => {
@@ -56,7 +54,10 @@ export const NavigationSidebar = React.forwardRef<
   );
 
   return (
-    <div ref={ref} className="flex min-w-0 grow flex-col bg-structure-50">
+    <div
+      ref={ref}
+      className="flex min-w-0 grow flex-col bg-structure-50 dark:bg-structure-50-dark"
+    >
       <div className="flex flex-col">
         {user && user.workspaces.length > 1 ? (
           <WorkspacePicker
@@ -97,11 +98,11 @@ export const NavigationSidebar = React.forwardRef<
               </TabsList>
               {navs.map((tab) => (
                 <TabsContent key={tab.id} value={tab.id}>
-                  {subNavigation && tab.isCurrent(activePath) && (
-                    <>
-                      {subNavigation.map((nav) => (
-                        <div key={nav.id} className="px-2">
-                          <NavigationList>
+                  <NavigationList className="px-3">
+                    {subNavigation && tab.isCurrent(activePath) && (
+                      <>
+                        {subNavigation.map((nav) => (
+                          <>
                             {nav.label && (
                               <NavigationListLabel
                                 label={nav.label}
@@ -138,11 +139,11 @@ export const NavigationSidebar = React.forwardRef<
                                 )}
                               </React.Fragment>
                             ))}
-                          </NavigationList>
-                        </div>
-                      ))}
-                    </>
-                  )}
+                          </>
+                        ))}
+                      </>
+                    )}
+                  </NavigationList>
                 </TabsContent>
               ))}
             </Tabs>
@@ -155,10 +156,6 @@ export const NavigationSidebar = React.forwardRef<
           <UserMenu user={user} owner={owner} />
           <div className="flex-grow" />
           <HelpDropdown owner={owner} user={user} />
-          <QuickStartGuide
-            show={showQuickGuide}
-            onClose={() => setShowQuickGuide(false)}
-          />
         </div>
       )}
     </div>

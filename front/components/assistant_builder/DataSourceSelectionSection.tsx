@@ -61,7 +61,7 @@ export default function DataSourceSelectionSection({
 
       <div className="overflow-hidden pt-4">
         <div className="flex flex-row items-start">
-          <div className="flex-grow pb-2 text-sm font-semibold text-element-900">
+          <div className="flex-grow pb-2 text-sm font-semibold text-foreground">
             Selected Data Sources
           </div>
           <div>
@@ -96,7 +96,7 @@ export default function DataSourceSelectionSection({
                 <Tree.Item
                   key={dsConfig.dataSourceView.sId}
                   type={
-                    canBeExpanded(viewType, dsConfig.dataSourceView.dataSource)
+                    canBeExpanded(dsConfig.dataSourceView.dataSource)
                       ? "node"
                       : "leaf"
                   } // todo make useConnectorPermissions hook work for non managed ds (Folders)
@@ -122,7 +122,7 @@ export default function DataSourceSelectionSection({
                     return (
                       <Tree.Item
                         key={`${dsConfig.dataSourceView.sId}-${node.internalId}`}
-                        label={node.titleWithParentsContext ?? node.title}
+                        label={node.title}
                         type={node.expandable ? "node" : "leaf"}
                         visual={getVisualForContentNode(node)}
                         className="whitespace-nowrap"
@@ -148,20 +148,20 @@ export default function DataSourceSelectionSection({
                               size="xs"
                               icon={BracesIcon}
                               onClick={() => {
-                                if (node.dustDocumentId) {
+                                if (node.type === "file") {
                                   setDataSourceViewToDisplay(
                                     dsConfig.dataSourceView
                                   );
-                                  setDocumentToDisplay(node.dustDocumentId);
+                                  setDocumentToDisplay(node.internalId);
                                 }
                               }}
                               className={classNames(
-                                node.dustDocumentId
+                                node.type === "file"
                                   ? ""
                                   : "pointer-events-none opacity-0"
                               )}
-                              disabled={!node.dustDocumentId}
-                              variant="ghost"
+                              disabled={node.type !== "file"}
+                              variant="outline"
                             />
                           </div>
                         }

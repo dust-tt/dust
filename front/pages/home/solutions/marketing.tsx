@@ -1,5 +1,7 @@
 import type { ReactElement } from "react";
+import React from "react";
 
+import { BlogSection } from "@app/components/home/content/Product/BlogSection";
 import {
   CarousselContentBlock,
   HeaderContentBlock,
@@ -13,11 +15,13 @@ import {
 } from "@app/components/home/Particles";
 import type { SolutionSectionAssistantBlockProps } from "@app/components/home/SolutionSection";
 import { SolutionSection } from "@app/components/home/SolutionSection";
+import TrustedBy from "@app/components/home/TrustedBy";
 
 export async function getServerSideProps() {
   return {
     props: {
       shape: getParticleShapeIndexByName(shapeNames.pyramid),
+      gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
     },
   };
 }
@@ -58,6 +62,7 @@ export default function Marketing() {
         to={pageSettings.to}
         subtitle={pageSettings.description}
       />
+      <TrustedBy />
       <Grid>
         <SolutionSection
           title={
@@ -154,6 +159,10 @@ export default function Marketing() {
           ]}
         />
       </Grid>
+      <BlogSection
+        headerColorFrom="from-pink-200"
+        headerColorTo="from-pink-300"
+      />
     </>
   );
 }
@@ -182,39 +191,6 @@ const assistantExamples: SolutionSectionAssistantBlockProps[] = [
       <>
         Generates versioned&nbsp;content for social media outlets taking into
         account company guidelines
-      </>
-    ),
-  },
-  {
-    emoji: "⭐️",
-    name: "@marketing",
-    backgroundColor: "bg-pink-300",
-    description: (
-      <>
-        Answer any question about your&nbsp;team's marketing knowledge base.
-        Resurface past ideas and&nbsp;create new ones
-      </>
-    ),
-  },
-  {
-    emoji: "🔬",
-    name: "@dataInsights",
-    backgroundColor: "bg-pink-300",
-    description: (
-      <>
-        Analyzes user and&nbsp;customer surveys quantitatively based
-        on&nbsp;your natural language questions
-      </>
-    ),
-  },
-  {
-    emoji: "🧐",
-    name: "@competitive",
-    backgroundColor: "bg-pink-300",
-    description: (
-      <>
-        Tracks competitors websites to highlight changes and pro-actively detect
-        market positioning opportunities
       </>
     ),
   },

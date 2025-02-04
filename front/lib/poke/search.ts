@@ -5,6 +5,10 @@ import type { PokeItemBase } from "@dust-tt/types/dist/front/lib/poke";
 import config from "@app/lib/api/config";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
+import {
+  dataSourceToPokeJSON,
+  dataSourceViewToPokeJSON,
+} from "@app/lib/poke/utils";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
@@ -64,7 +68,7 @@ async function searchPokeResourcesBySId(
         return [];
       }
 
-      return [await dataSourceView.toPokeJSON()];
+      return [await dataSourceViewToPokeJSON(dataSourceView)];
 
     case "data_source":
       const dataSource = await DataSourceResource.fetchByNameOrId(auth, sId);
@@ -72,7 +76,7 @@ async function searchPokeResourcesBySId(
         return [];
       }
 
-      return [await dataSource.toPokeJSON()];
+      return [await dataSourceToPokeJSON(dataSource)];
 
     default:
       return [];

@@ -1,6 +1,6 @@
+import { isSupportedPlainTextContentType } from "@dust-tt/client";
 import type {
   FileUseCase,
-  PlainTextContentType,
   Result,
   SupportedFileContentType,
 } from "@dust-tt/types";
@@ -9,7 +9,8 @@ import {
   CoreAPI,
   Err,
   getSmallWhitelistedModel,
-  isSupportedPlainTextContentType,
+  isSupportedDelimitedTextContentType,
+  isSupportedImageContentType,
   Ok,
   removeNulls,
   slugify,
@@ -18,22 +19,20 @@ import { Writable } from "stream";
 import { pipeline } from "stream/promises";
 
 import { runAction } from "@app/lib/actions/server";
-import { isJITActionsEnabled } from "@app/lib/api/assistant/jit_actions";
 import config from "@app/lib/api/config";
-import {
-  createDataSourceWithoutProvider,
-  upsertDocument,
-  upsertTable,
+import type {
+  UpsertDocumentArgs,
+  UpsertTableArgs,
 } from "@app/lib/api/data_sources";
+import { upsertDocument, upsertTable } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
-import { Conversation } from "@app/lib/models/assistant/conversation";
-import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
+import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { FileResource } from "@app/lib/resources/file_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
+
+const ENABLE_LLM_SNIPPETS = false;
 
 class MemoryWritable extends Writable {
   private chunks: string[];
@@ -57,36 +56,42 @@ class MemoryWritable extends Writable {
   }
 }
 
-const notSupportedError: ProcessingFunction = async ({ file }) => {
-  return new Err(
-    new Error(
-      "Processing not supported for " +
-        `content type ${file.contentType} and use case ${file.useCase}`
-    )
-  );
-};
-
 async function generateSnippet(
   auth: Authenticator,
-  content: string,
-  contentType: SupportedFileContentType
+  file: FileResource,
+  content: string
 ): Promise<Result<string, Error>> {
+  const startTime = Date.now();
   const owner = auth.getNonNullableWorkspace();
 
-  if (
-    contentType === "text/csv" ||
-    contentType === "text/comma-separated-values"
-  ) {
+  if (isSupportedImageContentType(file.contentType)) {
+    return new Err(
+      new Error("Image files are not supported for file snippets.")
+    );
+  }
+
+  if (isSupportedDelimitedTextContentType(file.contentType)) {
     // Parse only the headers from the CSV file
     const headers = content.split("\n")[0];
 
-    let snippet = `CSV file with headers: ${headers}`;
+    let snippet = `${file.contentType} file with headers: ${headers}`;
     if (snippet.length > 256) {
       snippet = snippet.slice(0, 242) + "... (truncated)";
     }
 
     return new Ok(snippet);
-  } else {
+  }
+
+  if (isSupportedPlainTextContentType(file.contentType)) {
+    if (!ENABLE_LLM_SNIPPETS) {
+      // Take the first 256 characters
+      if (content.length > 256) {
+        return new Ok(content.slice(0, 242) + "... (truncated)");
+      } else {
+        return new Ok(content);
+      }
+    }
+
     const model = getSmallWhitelistedModel(owner);
     if (!model) {
       return new Err(
@@ -95,7 +100,7 @@ async function generateSnippet(
     }
 
     const appConfig = cloneBaseConfig(
-      DustProdActionRegistry["conversation-file-summarizer"].config
+      getDustProdAction("conversation-file-summarizer").config
     );
     appConfig.MODEL.provider_id = model.providerId;
     appConfig.MODEL.model_id = model.modelId;
@@ -175,6 +180,15 @@ async function generateSnippet(
           );
         }
         const snippet = results[0][0].value as string;
+        const endTime = Date.now();
+        logger.info(
+          {
+            workspaceId: owner.sId,
+            fileId: file.sId,
+          },
+          `Snippet generation took ${endTime - startTime}ms`
+        );
+
         return new Ok(snippet);
       case "running":
         return new Err(
@@ -184,6 +198,8 @@ async function generateSnippet(
         assertNever(run);
     }
   }
+
+  return new Err(new Error("Unsupported file type"));
 }
 
 // Upload to dataSource
@@ -192,13 +208,18 @@ const upsertDocumentToDatasource: ProcessingFunction = async ({
   file,
   content,
   dataSource,
+  upsertArgs,
 }) => {
-  const documentId = file.sId; // Use the file id as the document id to make it easy to track the document back to the file.
-  const sourceUrl = file.getPublicUrl(auth);
-
-  // TODO(JIT) note, upsertDocument do not call runPostUpsertHooks (seems used for document tracker)
+  // Use the file id as the document id to make it easy to track the document back to the file.
+  const sourceUrl = file.getPrivateUrl(auth);
+  let documentId = file.sId;
+  if (upsertArgs && "document_id" in upsertArgs) {
+    documentId = upsertArgs.document_id;
+  }
+  const { title: upsertTitle, ...restArgs } = upsertArgs ?? {};
   const upsertDocumentRes = await upsertDocument({
-    name: documentId,
+    // Beware, most values here are default values that are overrided by the ...restArgs below.
+    document_id: documentId,
     source_url: sourceUrl,
     text: content,
     parents: [documentId],
@@ -206,6 +227,11 @@ const upsertDocumentToDatasource: ProcessingFunction = async ({
     light_document_output: true,
     dataSource,
     auth,
+    mime_type: file.contentType,
+    title: upsertTitle ?? file.fileName,
+
+    // Used to override defaults.
+    ...restArgs,
   });
 
   if (upsertDocumentRes.isErr()) {
@@ -225,9 +251,18 @@ const upsertTableToDatasource: ProcessingFunction = async ({
   file,
   content,
   dataSource,
+  upsertArgs,
 }) => {
-  const tableId = file.sId; // Use the file sId as the table id to make it easy to track the table back to the file.
+  // Use the file sId as the table id to make it easy to track the table back to the file.
+  let tableId = file.sId;
+  if (upsertArgs && "tableId" in upsertArgs) {
+    tableId = upsertArgs.tableId ?? tableId;
+  }
+  const { title: upsertTitle, ...restArgs } = upsertArgs ?? {};
+
   const upsertTableRes = await upsertTable({
+    // Beware, most values here are default values that are overrided by the ...restArgs below,
+    // including description.
     tableId,
     name: slugify(file.fileName),
     description: "Table uploaded from file",
@@ -239,8 +274,12 @@ const upsertTableToDatasource: ProcessingFunction = async ({
     dataSource,
     auth,
     useAppForHeaderDetection: true,
-    title: file.fileName,
+    title: upsertTitle ?? file.fileName,
     mimeType: file.contentType,
+    sourceUrl: file.getPrivateUrl(auth),
+
+    // Used to override defaults, for manual file uploads where some fields are user-defined.
+    ...restArgs,
   });
 
   if (upsertTableRes.isErr()) {
@@ -256,7 +295,6 @@ const upsertTableToDatasource: ProcessingFunction = async ({
 };
 
 // Processing for datasource upserts.
-
 type ProcessingFunction = ({
   auth,
   file,
@@ -267,71 +305,53 @@ type ProcessingFunction = ({
   file: FileResource;
   content: string;
   dataSource: DataSourceResource;
+  upsertArgs?: UpsertDocumentArgs | UpsertTableArgs;
 }) => Promise<Result<undefined, Error>>;
 
-type ProcessingPerUseCase = {
-  [k in FileUseCase]: ProcessingFunction | undefined;
+const getProcessingFunction = ({
+  contentType,
+  useCase,
+}: {
+  contentType: SupportedFileContentType;
+  useCase: FileUseCase;
+}): ProcessingFunction | undefined => {
+  if (isSupportedImageContentType(contentType)) {
+    return undefined;
+  }
+
+  // Use isSupportedDelimitedTextContentType() everywhere to have a common source of truth
+  if (isSupportedDelimitedTextContentType(contentType)) {
+    if (
+      useCase === "conversation" ||
+      useCase === "tool_output" ||
+      useCase === "folder_table"
+    ) {
+      return upsertTableToDatasource;
+    } else if (useCase === "folder_document") {
+      return upsertDocumentToDatasource;
+    } else {
+      return undefined;
+    }
+  }
+
+  if (
+    isSupportedPlainTextContentType(contentType) &&
+    (useCase === "conversation" ||
+      useCase === "tool_output" ||
+      useCase === "folder_document")
+  ) {
+    return upsertDocumentToDatasource;
+  }
+
+  return undefined;
 };
 
-type ProcessingPerContentType = {
-  [k in PlainTextContentType]: ProcessingPerUseCase | undefined;
-};
-
-const processingPerContentType: ProcessingPerContentType = {
-  "application/msword": {
-    conversation: upsertDocumentToDatasource,
-    folder: notSupportedError,
-    avatar: notSupportedError,
-    tool_output: notSupportedError,
-  },
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {
-    conversation: upsertDocumentToDatasource,
-    folder: notSupportedError,
-    avatar: notSupportedError,
-    tool_output: notSupportedError,
-  },
-  "application/pdf": {
-    conversation: upsertDocumentToDatasource,
-    folder: notSupportedError,
-    avatar: notSupportedError,
-    tool_output: notSupportedError,
-  },
-  "text/comma-separated-values": {
-    conversation: upsertTableToDatasource,
-    folder: notSupportedError,
-    avatar: notSupportedError,
-    tool_output: upsertTableToDatasource,
-  },
-  "text/csv": {
-    conversation: upsertTableToDatasource,
-    folder: notSupportedError,
-    avatar: notSupportedError,
-    tool_output: upsertTableToDatasource,
-  },
-  "text/markdown": {
-    conversation: upsertDocumentToDatasource,
-    folder: notSupportedError,
-    avatar: notSupportedError,
-    tool_output: notSupportedError,
-  },
-  "text/plain": {
-    conversation: upsertDocumentToDatasource,
-    folder: notSupportedError,
-    avatar: notSupportedError,
-    tool_output: notSupportedError,
-  },
-  "text/tab-separated-values": {
-    conversation: upsertDocumentToDatasource, // Should it be upsertTableToDatasource?
-    folder: notSupportedError,
-    avatar: notSupportedError,
-    tool_output: notSupportedError,
-  },
-  "text/tsv": {
-    conversation: upsertDocumentToDatasource, // Should it be upsertTableToDatasource?
-    folder: notSupportedError,
-    avatar: notSupportedError,
-    tool_output: notSupportedError,
-  },
+export const isUpsertSupported = (arg: {
+  contentType: SupportedFileContentType;
+  useCase: FileUseCase;
+}): boolean => {
+  const processing = getProcessingFunction(arg);
+  return !!processing;
 };
 
 const maybeApplyProcessing: ProcessingFunction = async ({
@@ -339,22 +359,31 @@ const maybeApplyProcessing: ProcessingFunction = async ({
   content,
   file,
   dataSource,
+  upsertArgs,
 }) => {
-  const contentTypeProcessing =
-    isSupportedPlainTextContentType(file.contentType) &&
-    processingPerContentType[file.contentType];
-  if (!contentTypeProcessing) {
-    return new Ok(undefined);
-  }
+  const processing = getProcessingFunction(file);
 
-  const processing = contentTypeProcessing[file.useCase];
   if (processing) {
-    const res = await processing({ auth, file, content, dataSource });
+    const startTime = Date.now();
+    const res = await processing({
+      auth,
+      file,
+      content,
+      dataSource,
+      upsertArgs,
+    });
     if (res.isErr()) {
       return res;
-    } else {
-      return new Ok(undefined);
     }
+
+    const endTime = Date.now();
+    logger.info(
+      {
+        workspaceId: auth.workspace()?.sId,
+        fileId: file.sId,
+      },
+      `Processing took ${endTime - startTime}ms`
+    );
   }
 
   return new Ok(undefined);
@@ -363,7 +392,7 @@ const maybeApplyProcessing: ProcessingFunction = async ({
 async function getFileContent(
   auth: Authenticator,
   file: FileResource
-): Promise<string> {
+): Promise<string | null> {
   // Create a stream to hold the content of the file
   const writableStream = new MemoryWritable();
 
@@ -376,7 +405,7 @@ async function getFileContent(
   const content = writableStream.getContent();
 
   if (!content) {
-    throw new Error("No content extracted from file for JIT processing.");
+    return null;
   }
 
   return content;
@@ -384,7 +413,16 @@ async function getFileContent(
 
 export async function processAndUpsertToDataSource(
   auth: Authenticator,
-  { file, optionalContent }: { file: FileResource; optionalContent?: string }
+  dataSource: DataSourceResource,
+  {
+    file,
+    optionalContent,
+    upsertArgs,
+  }: {
+    file: FileResource;
+    optionalContent?: string;
+    upsertArgs?: UpsertDocumentArgs | UpsertTableArgs;
+  }
 ): Promise<
   Result<
     FileResource,
@@ -397,29 +435,6 @@ export async function processAndUpsertToDataSource(
     }
   >
 > {
-  const jitEnabled = await isJITActionsEnabled(auth);
-  const isJitCompatibleUseCase =
-    file.useCase === "conversation" || file.useCase === "tool_output";
-  const hasJitRequiredMetadata =
-    isJitCompatibleUseCase &&
-    !!file.useCaseMetadata &&
-    !!file.useCaseMetadata.conversationId;
-  const isJitSupportedContentType = isSupportedPlainTextContentType(
-    file.contentType
-  );
-
-  if (!jitEnabled || !isJitCompatibleUseCase || !isJitSupportedContentType) {
-    return new Ok(file);
-  }
-
-  if (!hasJitRequiredMetadata) {
-    return new Err({
-      name: "dust_error",
-      code: "invalid_request_error",
-      message: "File is missing required metadata for JIT processing.",
-    });
-  }
-
   if (file.status !== "ready") {
     return new Err({
       name: "dust_error",
@@ -428,66 +443,32 @@ export async function processAndUpsertToDataSource(
     });
   }
 
+  if (!isUpsertSupported(file)) {
+    return new Err({
+      name: "dust_error",
+      code: "invalid_request_error",
+      message: "File is not supported for upsert.",
+    });
+  }
+
   const content = optionalContent
     ? optionalContent
     : await getFileContent(auth, file);
 
   if (!content) {
+    logger.error(
+      {
+        fileId: file.sId,
+        workspaceId: auth.workspace()?.sId,
+        contentSupplied: !!optionalContent,
+      },
+      "No content extracted from file."
+    );
     return new Err({
       name: "dust_error",
       code: "internal_server_error",
-      message: "No content extracted from file for JIT processing.",
+      message: "No content extracted from file.",
     });
-  }
-
-  const workspace = auth.getNonNullableWorkspace();
-
-  const conversation = await Conversation.findOne({
-    where: {
-      sId: file.useCaseMetadata.conversationId,
-      workspaceId: workspace.id,
-    },
-  });
-
-  if (conversation === null) {
-    return new Err({
-      name: "dust_error",
-      code: "internal_server_error",
-      message: `Failed to fetch conversation.`,
-    });
-  }
-
-  // Fetch the datasource linked to the conversation...
-  let dataSource = await DataSourceResource.fetchByConversationId(
-    auth,
-    conversation.id
-  );
-
-  if (!dataSource) {
-    // ...or create a new one.
-    const conversationsSpace =
-      await SpaceResource.fetchWorkspaceConversationsSpace(auth);
-
-    // IMPORTANT: never use the conversation sID in the name or description, as conversation sIDs are used as secrets to share the conversation within the workspace users.
-    const name = generateRandomModelSId("conv-");
-    const r = await createDataSourceWithoutProvider(auth, {
-      plan: auth.getNonNullablePlan(),
-      owner: auth.getNonNullableWorkspace(),
-      space: conversationsSpace,
-      name: name,
-      description: "Files uploaded to conversation",
-      conversationId: conversation.id,
-    });
-
-    if (r.isErr()) {
-      return new Err({
-        name: "dust_error",
-        code: "internal_server_error",
-        message: `Failed to create datasource : ${r.error}`,
-      });
-    }
-
-    dataSource = r.value.dataSource;
   }
 
   const [processingRes, snippetRes] = await Promise.all([
@@ -496,8 +477,9 @@ export async function processAndUpsertToDataSource(
       file,
       content,
       dataSource,
+      upsertArgs,
     }),
-    generateSnippet(auth, content, file.contentType),
+    generateSnippet(auth, file, content),
   ]);
 
   if (processingRes.isErr()) {

@@ -9,12 +9,13 @@ export interface LinkWrapperProps {
   replace?: boolean;
   shallow?: boolean;
   target?: string;
+  prefetch?: boolean;
 }
 
 export const LinkWrapper = React.forwardRef<
   HTMLAnchorElement,
   LinkWrapperProps
->(({ children, href, rel, replace, shallow, target }, ref) => {
+>(({ children, href, rel, replace, shallow, target, prefetch }, ref) => {
   const { components } = React.useContext(SparkleContext);
 
   if (href) {
@@ -26,6 +27,7 @@ export const LinkWrapper = React.forwardRef<
         rel={rel}
         replace={replace}
         shallow={shallow}
+        prefetch={prefetch}
       >
         {children}
       </components.link>

@@ -1,10 +1,11 @@
 import {
-  AssistantPreview,
+  AssistantCard,
+  AssistantCardMore,
   Button,
+  CardGrid,
   CompanyIcon,
   LockIcon,
   MagnifyingGlassIcon,
-  MoreIcon,
   PlusIcon,
   RobotIcon,
   RocketIcon,
@@ -137,7 +138,7 @@ export function AssistantBrowser({
       {/* Search bar */}
       <div
         id="search-container"
-        className="flex w-full flex-row items-center justify-center gap-2 px-4 align-middle"
+        className="flex w-full flex-row items-center justify-center gap-2 align-middle"
       >
         <SearchInput
           name="search"
@@ -153,6 +154,8 @@ export function AssistantBrowser({
               variant="primary"
               icon={PlusIcon}
               label="Create"
+              data-gtm-label="assistantCreationButton"
+              data-gtm-location="homepage"
               size="sm"
             />
 
@@ -163,6 +166,8 @@ export function AssistantBrowser({
                 variant="primary"
                 icon={RobotIcon}
                 label="Manage"
+                data-gtm-label="assistantManagementButton"
+                data-gtm-location="homepage"
                 size="sm"
               />
             )}
@@ -171,7 +176,7 @@ export function AssistantBrowser({
       </div>
 
       {/* Assistant tabs */}
-      <div className="w-full px-4">
+      <div className="w-full">
         <ScrollArea aria-orientation="horizontal">
           <Tabs value={viewTab} onValueChange={setSelectedTab}>
             <TabsList>
@@ -195,27 +200,23 @@ export function AssistantBrowser({
       </div>
 
       {!viewTab && (
-        <div className="text-center">
+        <div className="my-12 text-center text-sm text-muted-foreground">
           No assistants found. Try adjusting your search criteria.
         </div>
       )}
 
       {viewTab && (
-        <div className="relative grid w-full grid-cols-1 gap-2 px-4 md:grid-cols-3">
+        <CardGrid className="mb-12">
           {agentsByTab[viewTab].map((agent) => (
-            <AssistantPreview
+            <AssistantCard
               key={agent.sId}
               title={agent.name}
               pictureUrl={agent.pictureUrl}
               subtitle={agent.lastAuthors?.join(", ") ?? ""}
               description={agent.description}
-              variant="minimal"
               onClick={() => handleAssistantClick(agent)}
-              actionElement={
-                <Button
-                  icon={MoreIcon}
-                  variant="outline"
-                  size="sm"
+              action={
+                <AssistantCardMore
                   onClick={(e: Event) => {
                     e.stopPropagation();
                     setQueryParam(router, "assistantDetails", agent.sId);
@@ -224,7 +225,7 @@ export function AssistantBrowser({
               }
             />
           ))}
-        </div>
+        </CardGrid>
       )}
     </>
   );

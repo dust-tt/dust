@@ -4,8 +4,9 @@ import type {
   UserMessageType,
 } from "@dust-tt/client";
 import {
-  AssistantPreview,
+  AssistantCard,
   Button,
+  CardGrid,
   RobotIcon,
   Spinner,
   useSendNotification,
@@ -101,20 +102,18 @@ export function AgentSuggestion({
             <Spinner />
           </div>
         ) : (
-          <div className="mt-3 grid gap-2 md:grid-cols-3">
+          <CardGrid className="mb-12">
             {topAgents.map((agent, id) => (
-              <AssistantPreview
+              <AssistantCard
                 key={`${agent.sId}-${id}`}
-                variant="minimal"
                 description={agent.description}
                 subtitle={agent.lastAuthors?.join(", ") ?? ""}
                 title={agent.name}
                 pictureUrl={agent.pictureUrl}
-                hasAction={false}
                 onClick={() => handleSelectSuggestion(agent)}
               />
             ))}
-          </div>
+          </CardGrid>
         )}
       </div>
     </>

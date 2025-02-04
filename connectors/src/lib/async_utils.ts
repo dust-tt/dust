@@ -43,3 +43,6 @@ export async function concurrentExecutor<T, V>(
 
   return r;
 }
+
+export const setTimeoutAsync = (ms: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, ms));

@@ -141,14 +141,12 @@ export function useFileUploaderService(conversationId?: string) {
   ): Result<FileBlob, FileBlobUploadError>[] => {
     return selectedFiles.reduce(
       (acc, file) => {
-        if (fileBlobs.some((f) => f.id === file.name)) {
-          sendNotification({
-            type: "error",
-            title: "File already exists.",
-            description: `File "${file.name}" is already uploaded.`,
-          });
-
-          return acc; // Ignore if file already exists.
+        while (fileBlobs.some((f) => f.id === file.name)) {
+          const [base, ext] = file.name.split(/\.(?=[^.]+$)/);
+          const name = findAvailableTitle(base, ext, [
+            ...fileBlobs.map((f) => f.filename),
+          ]);
+          file = new File([file], name, { type: file.type });
         }
 
         const contentType = file.type;
@@ -269,7 +267,7 @@ export function useFileUploaderService(conversationId?: string) {
 
       if (fileBlob.fileId) {
         // Intentionally not awaiting the fetch call to allow it to run asynchronously.
-        void dustAPI.deleteFile(fileBlob.fileId);
+        void dustAPI.deleteFile({ fileID: fileBlob.fileId });
       }
 
       const allFilesReady = fileBlobs.every((f) => f.isUploading === false);

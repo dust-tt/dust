@@ -10,6 +10,7 @@ import {
   PlusIcon,
   RobotIcon,
   ScrollArea,
+  ScrollBar,
 } from "@dust-tt/sparkle";
 import type {
   LightAgentConfigurationType,
@@ -81,7 +82,7 @@ export function AssistantPicker({
           }}
         />
         <DropdownMenuSeparator />
-        <ScrollArea className="border-1 -mb-1 -mt-1 h-[300px]">
+        <ScrollArea className="flex max-h-[300px] flex-col" hideScrollBar>
           {searchedAssistants.map((c) => (
             <DropdownMenuItem
               key={`assistant-picker-${c.sId}`}
@@ -93,6 +94,7 @@ export function AssistantPicker({
               }}
             />
           ))}
+          <ScrollBar className="py-0" />
         </ScrollArea>
         <DropdownMenuSeparator />
         {showFooterButtons && (

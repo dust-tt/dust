@@ -9,7 +9,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
-import { Authenticator, getSession } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
+import type { SessionWithUser } from "@app/lib/iam/provider";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import { apiError } from "@app/logger/withlogging";
 
@@ -27,9 +28,9 @@ async function handler(
     WithAPIErrorResponse<
       PokeCreateTemplateResponseBody | PokeFetchAssistantTemplateResponse
     >
-  >
+  >,
+  session: SessionWithUser
 ): Promise<void> {
-  const session = await getSession(req, res);
   const auth = await Authenticator.fromSuperUserSession(session, null);
 
   if (!auth.isDustSuperUser()) {

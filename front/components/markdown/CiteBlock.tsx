@@ -9,13 +9,11 @@ export type CitationsContextType = {
     [key: string]: MarkdownCitation;
   };
   updateActiveReferences: (doc: MarkdownCitation, index: number) => void;
-  setHoveredReference: (index: number | null) => void;
 };
 
 export const CitationsContext = React.createContext<CitationsContextType>({
   references: {},
   updateActiveReferences: () => null,
-  setHoveredReference: () => null,
 });
 
 function isCiteProps(props: ReactMarkdownProps): props is ReactMarkdownProps & {
@@ -25,7 +23,7 @@ function isCiteProps(props: ReactMarkdownProps): props is ReactMarkdownProps & {
 }
 
 export function CiteBlock(props: ReactMarkdownProps) {
-  const { references, updateActiveReferences, setHoveredReference } =
+  const { references, updateActiveReferences } =
     React.useContext(CitationsContext);
   const refs =
     isCiteProps(props) && props.references
@@ -59,9 +57,8 @@ export function CiteBlock(props: ReactMarkdownProps) {
                 href={link ?? undefined}
                 target="_blank"
                 rel="noopener noreferrer"
-                onMouseEnter={() => setHoveredReference(r.counter)}
               >
-                <div className="flex h-4 w-4 items-center justify-center rounded-full border border-violet-200 bg-violet-100 text-xs font-semibold text-element-800 hover:border-violet-400">
+                <div className="flex h-4 w-4 items-center justify-center rounded-full bg-primary-600 text-xs font-medium text-primary-200">
                   {r.counter}
                 </div>
               </a>

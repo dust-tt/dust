@@ -1,18 +1,32 @@
-import { Dialog, useSendNotification } from "@dust-tt/sparkle";
+import {
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  Spinner,
+} from "@dust-tt/sparkle";
 import type {
   DataSourceViewType,
   LightWorkspaceType,
   PlanType,
-  PostDataSourceWithNameDocumentRequestBody,
 } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import {
+  concurrentExecutor,
+  getSupportedNonImageFileExtensions,
+} from "@dust-tt/types";
 import type { ChangeEvent } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 
+import { useFileDrop } from "@app/components/assistant/conversation/FileUploaderContext";
 import { DocumentLimitPopup } from "@app/components/data_source/DocumentLimitPopup";
-import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
-
-const UPLOAD_ACCEPT = [".txt", ".pdf", ".md", ".csv"];
+import type {
+  FileBlob,
+  FileBlobWithFileId,
+} from "@app/hooks/useFileUploaderService";
+import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
+import { useUpsertFileAsDatasourceEntry } from "@app/lib/swr/file";
 
 type MultipleDocumentsUploadProps = {
   dataSourceView: DataSourceViewType;
@@ -35,11 +49,6 @@ export const MultipleDocumentsUpload = ({
   const [isLimitPopupOpen, setIsLimitPopupOpen] = useState(false);
   const [wasOpened, setWasOpened] = useState(isOpen);
 
-  const [isBulkFilesUploading, setIsBulkFilesUploading] = useState<null | {
-    total: number;
-    completed: number;
-  }>(null);
-
   const close = useCallback(
     (save: boolean) => {
       // Clear the values of the file input
@@ -51,128 +60,126 @@ export const MultipleDocumentsUpload = ({
     [onClose]
   );
 
-  const sendNotification = useSendNotification();
+  // Used for creating files, with text extraction post-processing
+  const fileUploaderService = useFileUploaderService({
+    owner,
+    useCase: "folder_document",
+  });
 
-  const handleUpsert = useCallback(
-    async (text: string, documentId: string) => {
-      const body: PostDataSourceWithNameDocumentRequestBody = {
-        name: documentId,
-        timestamp: null,
-        parents: null,
-        section: {
-          prefix: null,
-          content: text,
-          sections: [],
-        },
-        text: null,
-        source_url: undefined,
-        tags: [],
-        light_document_output: true,
-        upsert_context: null,
-        async: false,
-      };
+  const doUpsertFileAsDataSourceEntry = useUpsertFileAsDatasourceEntry(
+    owner,
+    dataSourceView
+  );
+  const [isBulkFilesUploading, setIsBulkFilesUploading] = useState<null | {
+    total: number;
+    completed: number;
+  }>(null);
 
-      try {
-        const res = await fetch(
-          `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_sources/${
-            dataSourceView.dataSource.sId
-          }/documents`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(body),
-          }
-        );
-
-        if (!res.ok) {
-          let errMsg = "";
-          try {
-            const data = await res.json();
-            errMsg = data.error.message;
-          } catch (e) {
-            errMsg = "An error occurred while uploading your document.";
-          }
-          return new Err(errMsg);
-        }
-      } catch (e) {
-        return new Err("An error occurred while uploading your document.");
+  const uploadFiles = useCallback(
+    async (files: File[]) => {
+      // Empty file input
+      if (files.length === 0) {
+        close(false);
+        return;
       }
 
-      return new Ok(null);
+      // Open plan popup if limit is reached
+      if (
+        plan.limits.dataSources.documents.count != -1 &&
+        files.length + totalNodesCount > plan.limits.dataSources.documents.count
+      ) {
+        setIsLimitPopupOpen(true);
+        return;
+      }
+
+      setIsBulkFilesUploading({
+        total: files.length,
+        completed: 0,
+      });
+
+      // upload Files and get FileBlobs (only keep successful uploads)
+      // Each individual error triggers a notification
+      const fileBlobs = (
+        await fileUploaderService.handleFilesUpload(files)
+      )?.filter(
+        (fileBlob: FileBlob): fileBlob is FileBlobWithFileId =>
+          !!fileBlob.fileId
+      );
+      if (!fileBlobs || fileBlobs.length === 0) {
+        setIsBulkFilesUploading(null);
+        close(false);
+        fileUploaderService.resetUpload();
+        return;
+      }
+
+      // upsert the file as Data Source Documents
+      await concurrentExecutor(
+        fileBlobs,
+        async (blob: { fileId: string; filename: string }) => {
+          // This also notifies in case of error
+          await doUpsertFileAsDataSourceEntry({
+            fileId: blob.fileId,
+            // Have to use the filename to avoid fileId becoming apparent in the UI.
+            upsertArgs: {
+              title: blob.filename,
+              document_id: blob.filename,
+            },
+          });
+
+          setIsBulkFilesUploading((prev) => ({
+            total: fileBlobs.length,
+            completed: prev ? prev.completed + 1 : 1,
+          }));
+        },
+        { concurrency: 4 }
+      );
+
+      // Reset the upload state
+      setIsBulkFilesUploading(null);
+      fileUploaderService.resetUpload();
+      close(true);
     },
-    [dataSourceView.dataSource.sId, dataSourceView.spaceId, owner.sId]
+    [
+      fileUploaderService,
+      close,
+      plan.limits.dataSources.documents.count,
+      totalNodesCount,
+      doUpsertFileAsDataSourceEntry,
+    ]
   );
 
+  // Process dropped files if any.
+  const { droppedFiles, setDroppedFiles } = useFileDrop();
+  useEffect(() => {
+    const handleDroppedFiles = async () => {
+      const droppedFilesCopy = [...droppedFiles];
+      if (droppedFilesCopy.length > 0) {
+        // Make sure the files are cleared after processing
+        setDroppedFiles([]);
+        await uploadFiles(droppedFilesCopy);
+      }
+    };
+    void handleDroppedFiles();
+  }, [droppedFiles, setDroppedFiles, uploadFiles]);
+
+  // Handle file change from file input.
   const handleFileChange = useCallback(
     async (
       e: ChangeEvent<HTMLInputElement> & { target: { files: File[] } }
     ) => {
-      if (e.target.files && e.target.files.length > 0) {
-        if (
-          plan.limits.dataSources.documents.count != -1 &&
-          e.target.files.length + totalNodesCount >
-            plan.limits.dataSources.documents.count
-        ) {
-          setIsLimitPopupOpen(true);
-          return;
-        }
-        const files = e.target.files;
-        let i = 0;
-        for (const file of files) {
-          setIsBulkFilesUploading({
-            total: files.length,
-            completed: i++,
-          });
-          try {
-            const uploadRes = await handleFileUploadToText(file);
-            if (uploadRes.isErr()) {
-              sendNotification({
-                type: "error",
-                title: `Error uploading document ${file.name}`,
-                description: uploadRes.error.message,
-              });
-            } else {
-              const upsertRes = await handleUpsert(
-                uploadRes.value.content,
-                file.name
-              );
-              if (upsertRes.isErr()) {
-                sendNotification({
-                  type: "error",
-                  title: `Error uploading document ${file.name}`,
-                  description: upsertRes.error,
-                });
-              }
-            }
-          } catch (e) {
-            sendNotification({
-              type: "error",
-              title: "Error uploading document",
-              description: `An error occurred while uploading your documents.`,
-            });
-          }
-        }
-        setIsBulkFilesUploading(null);
-        close(true);
-      } else {
-        close(false);
-      }
+      const selectedFiles = Array.from(
+        (e?.target as HTMLInputElement).files ?? []
+      );
+      await uploadFiles(selectedFiles);
     },
-    [
-      handleUpsert,
-      close,
-      plan.limits.dataSources.documents.count,
-      sendNotification,
-      totalNodesCount,
-    ]
+    [uploadFiles]
   );
 
   const handleFileInputBlur = useCallback(() => {
     close(false);
   }, [close]);
 
+  // Effect: add event listener to file input
   useEffect(() => {
     const ref = fileInputRef.current;
     ref?.addEventListener("cancel", handleFileInputBlur);
@@ -181,6 +188,7 @@ export const MultipleDocumentsUpload = ({
     };
   }, [handleFileInputBlur]);
 
+  // Effect: open file input when the dialog is opened
   useEffect(() => {
     if (isOpen && !wasOpened) {
       const ref = fileInputRef.current;
@@ -197,30 +205,36 @@ export const MultipleDocumentsUpload = ({
         onClose={() => setIsLimitPopupOpen(false)}
         owner={owner}
       />
-      <Dialog
-        onCancel={() => {
-          //no-op as we can't cancel file upload
-        }}
-        onValidate={() => {
-          //no-op as we can't cancel file upload
-        }}
-        // isSaving is always true since we are showing this Dialog while
-        // uploading files only
-        isSaving={true}
-        isOpen={isBulkFilesUploading !== null}
-        title="Uploading files"
-      >
-        {isBulkFilesUploading && (
-          <>
-            Processing files {isBulkFilesUploading.completed} /{" "}
-            {isBulkFilesUploading.total}
-          </>
-        )}
+      <Dialog open={isBulkFilesUploading !== null}>
+        <DialogContent
+          size="md"
+          isAlertDialog
+          onOpenAutoFocus={(e) => e.preventDefault()}
+        >
+          <DialogHeader hideButton>
+            <DialogTitle>Uploading files</DialogTitle>
+            <DialogDescription>
+              {isBulkFilesUploading && (
+                <>
+                  Processing files {isBulkFilesUploading.completed} /{" "}
+                  {isBulkFilesUploading.total}
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogContainer>
+            {isBulkFilesUploading && (
+              <div className="flex justify-center">
+                <Spinner variant="dark" size="md" />
+              </div>
+            )}
+          </DialogContainer>
+        </DialogContent>
       </Dialog>
       <input
         className="hidden"
         type="file"
-        accept={UPLOAD_ACCEPT.join(",")}
+        accept={getSupportedNonImageFileExtensions().join(", ")}
         ref={fileInputRef}
         multiple={true}
         onChange={handleFileChange}

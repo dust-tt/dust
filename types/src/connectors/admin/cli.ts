@@ -12,8 +12,10 @@ export const ConnectorsCommandSchema = t.type({
     t.literal("resume"),
     t.literal("full-resync"),
     t.literal("set-error"),
+    t.literal("clear-error"),
     t.literal("restart"),
     t.literal("get-parents"),
+    t.literal("set-permission"),
   ]),
   args: t.record(
     t.string,
@@ -22,6 +24,45 @@ export const ConnectorsCommandSchema = t.type({
 });
 
 export type ConnectorsCommandType = t.TypeOf<typeof ConnectorsCommandSchema>;
+
+/**
+ * <Confluence>
+ */
+export const ConfluenceCommandSchema = t.type({
+  majorCommand: t.literal("confluence"),
+  command: t.union([
+    t.literal("me"),
+    t.literal("upsert-page"),
+    t.literal("upsert-pages"),
+    t.literal("update-parents"),
+  ]),
+  args: t.type({
+    connectorId: t.union([t.number, t.undefined]),
+    pageId: t.union([t.number, t.undefined]),
+    spaceId: t.union([t.string, t.undefined]),
+    file: t.union([t.string, t.undefined]),
+    keyInFile: t.union([t.string, t.undefined]),
+  }),
+});
+export type ConfluenceCommandType = t.TypeOf<typeof ConfluenceCommandSchema>;
+
+export const ConfluenceMeResponseSchema = t.type({
+  me: t.UnknownRecord,
+});
+export type ConfluenceMeResponseType = t.TypeOf<
+  typeof ConfluenceMeResponseSchema
+>;
+
+export const ConfluenceUpsertPageResponseSchema = t.type({
+  workflowId: t.string,
+  workflowUrl: t.union([t.string, t.undefined]),
+});
+export type ConfluenceUpsertPageResponseType = t.TypeOf<
+  typeof ConfluenceUpsertPageResponseSchema
+>;
+/**
+ * </Confluence>
+ */
 
 export const GithubCommandSchema = t.type({
   majorCommand: t.literal("github"),
@@ -219,13 +260,25 @@ export type IntercomForceResyncArticlesResponseType = t.TypeOf<
  */
 export const ZendeskCommandSchema = t.type({
   majorCommand: t.literal("zendesk"),
-  command: t.literal("check-is-admin"),
+  command: t.union([
+    t.literal("check-is-admin"),
+    t.literal("count-tickets"),
+    t.literal("resync-tickets"),
+    t.literal("fetch-ticket"),
+    t.literal("fetch-brand"),
+    t.literal("resync-help-centers"),
+    t.literal("resync-brand-metadata"),
+  ]),
   args: t.type({
     connectorId: t.union([t.number, t.undefined]),
+    brandId: t.union([t.number, t.undefined]),
+    query: t.union([t.string, t.undefined]),
+    forceResync: t.union([t.literal("true"), t.undefined]),
+    ticketId: t.union([t.number, t.undefined]),
   }),
 });
-
 export type ZendeskCommandType = t.TypeOf<typeof ZendeskCommandSchema>;
+
 export const ZendeskCheckIsAdminResponseSchema = t.type({
   userRole: t.string,
   userActive: t.boolean,
@@ -233,6 +286,29 @@ export const ZendeskCheckIsAdminResponseSchema = t.type({
 });
 export type ZendeskCheckIsAdminResponseType = t.TypeOf<
   typeof ZendeskCheckIsAdminResponseSchema
+>;
+
+export const ZendeskCountTicketsResponseSchema = t.type({
+  ticketCount: t.number,
+});
+export type ZendeskCountTicketsResponseType = t.TypeOf<
+  typeof ZendeskCountTicketsResponseSchema
+>;
+
+export const ZendeskFetchTicketResponseSchema = t.type({
+  ticket: t.union([t.UnknownRecord, t.null]), // Zendesk type, can't be iots'd,
+  isTicketOnDb: t.boolean,
+});
+export type ZendeskFetchTicketResponseType = t.TypeOf<
+  typeof ZendeskFetchTicketResponseSchema
+>;
+
+export const ZendeskFetchBrandResponseSchema = t.type({
+  brand: t.union([t.UnknownRecord, t.null]), // Zendesk type, can't be iots'd,
+  brandOnDb: t.union([t.UnknownRecord, t.null]),
+});
+export type ZendeskFetchBrandResponseType = t.TypeOf<
+  typeof ZendeskFetchBrandResponseSchema
 >;
 /**
  * </Zendesk>
@@ -259,6 +335,7 @@ export type MicrosoftCommandType = t.TypeOf<typeof MicrosoftCommandSchema>;
 export const AdminCommandSchema = t.union([
   BatchCommandSchema,
   ConnectorsCommandSchema,
+  ConfluenceCommandSchema,
   GithubCommandSchema,
   GoogleDriveCommandSchema,
   IntercomCommandSchema,
@@ -377,6 +454,8 @@ export const AdminResponseSchema = t.union([
   AdminSuccessResponseSchema,
   BatchAllResponseSchema,
   CheckFileGenericResponseSchema,
+  ConfluenceMeResponseSchema,
+  ConfluenceUpsertPageResponseSchema,
   GetParentsResponseSchema,
   IntercomCheckConversationResponseSchema,
   IntercomCheckMissingConversationsResponseSchema,
@@ -390,6 +469,9 @@ export const AdminResponseSchema = t.union([
   TemporalUnprocessedWorkflowsResponseSchema,
   IntercomForceResyncArticlesResponseSchema,
   ZendeskCheckIsAdminResponseSchema,
+  ZendeskCountTicketsResponseSchema,
+  ZendeskFetchTicketResponseSchema,
+  ZendeskFetchBrandResponseSchema,
 ]);
 
 export type AdminResponseType = t.TypeOf<typeof AdminResponseSchema>;

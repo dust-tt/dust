@@ -1,24 +1,14 @@
 import type { CrawlingFrequency, DepthOption } from "@dust-tt/types";
-import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional, ForeignKey } from "sequelize";
+import { DataTypes } from "sequelize";
 
 import { sequelizeConnection } from "@connectors/resources/storage";
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 
-export class WebCrawlerConfigurationModel extends Model<
-  InferAttributes<WebCrawlerConfigurationModel>,
-  InferCreationAttributes<WebCrawlerConfigurationModel>
-> {
-  declare id: CreationOptional<number>;
+export class WebCrawlerConfigurationModel extends ConnectorBaseModel<WebCrawlerConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare url: string;
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
   declare maxPageToCrawl: number;
   declare crawlMode: "child" | "website";
   declare depth: DepthOption;
@@ -28,11 +18,6 @@ export class WebCrawlerConfigurationModel extends Model<
 
 WebCrawlerConfigurationModel.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -76,13 +61,8 @@ WebCrawlerConfigurationModel.init(
     modelName: "webcrawler_configurations",
   }
 );
-ConnectorModel.hasMany(WebCrawlerConfigurationModel);
 
-export class WebCrawlerConfigurationHeader extends Model<
-  InferAttributes<WebCrawlerConfigurationHeader>,
-  InferCreationAttributes<WebCrawlerConfigurationHeader>
-> {
-  declare id: CreationOptional<number>;
+export class WebCrawlerConfigurationHeader extends ConnectorBaseModel<WebCrawlerConfigurationHeader> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare key: string;
@@ -94,11 +74,6 @@ export class WebCrawlerConfigurationHeader extends Model<
 
 WebCrawlerConfigurationHeader.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -133,11 +108,7 @@ WebCrawlerConfigurationHeader.init(
 
 WebCrawlerConfigurationModel.hasMany(WebCrawlerConfigurationHeader);
 
-export class WebCrawlerFolder extends Model<
-  InferAttributes<WebCrawlerFolder>,
-  InferCreationAttributes<WebCrawlerFolder>
-> {
-  declare id: CreationOptional<number>;
+export class WebCrawlerFolder extends ConnectorBaseModel<WebCrawlerFolder> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare parentUrl: string | null;
@@ -146,7 +117,6 @@ export class WebCrawlerFolder extends Model<
   // used as parent to WebCrawlerPage.
   declare internalId: string;
   declare lastSeenAt: Date;
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
   declare webcrawlerConfigurationId: ForeignKey<
     WebCrawlerConfigurationModel["id"]
   >;
@@ -154,11 +124,6 @@ export class WebCrawlerFolder extends Model<
 
 WebCrawlerFolder.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -202,14 +167,9 @@ WebCrawlerFolder.init(
     modelName: "webcrawler_folders",
   }
 );
-ConnectorModel.hasMany(WebCrawlerFolder);
 WebCrawlerConfigurationModel.hasMany(WebCrawlerFolder);
 
-export class WebCrawlerPage extends Model<
-  InferAttributes<WebCrawlerPage>,
-  InferCreationAttributes<WebCrawlerPage>
-> {
-  declare id: CreationOptional<number>;
+export class WebCrawlerPage extends ConnectorBaseModel<WebCrawlerPage> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare title: string | null;
@@ -218,7 +178,6 @@ export class WebCrawlerPage extends Model<
   declare documentId: string;
   declare depth: number;
   declare lastSeenAt: Date;
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
   declare webcrawlerConfigurationId: ForeignKey<
     WebCrawlerConfigurationModel["id"]
   >;
@@ -226,11 +185,6 @@ export class WebCrawlerPage extends Model<
 
 WebCrawlerPage.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -282,5 +236,4 @@ WebCrawlerPage.init(
     modelName: "webcrawler_pages",
   }
 );
-ConnectorModel.hasMany(WebCrawlerPage);
 WebCrawlerConfigurationModel.hasMany(WebCrawlerPage);

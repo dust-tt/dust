@@ -36,11 +36,11 @@ export const Grid = ({
 );
 
 const hClasses = {
-  h1: "font-objektiv text-4xl font-bold tracking-tight md:text-5xl lg:text-6xl py-2",
-  h2: "font-objektiv text-3xl font-bold tracking-tight lg:text-4xl xl:text-5xl py-2",
-  h3: "font-objektiv text-xl font-bold tracking-tight lg:text-2xl xl:text-3xl py-1",
-  h4: "font-objektiv text-lg font-bold tracking-tight lg:text-xl xl:text-2xl",
-  h5: "font-objektiv text-lg font-bold tracking-tight lg:text-xl xl:text-xl",
+  h1: "font-objektiv text-4xl font-bold tracking-tight md:text-5xl lg:text-5xl py-2 text-left",
+  h2: "font-objektiv text-3xl font-bold tracking-tight lg:text-4xl xl:text-5xl py-2 text-left",
+  h3: "font-objektiv text-xl font-bold tracking-tight lg:text-2xl xl:text-3xl py-1 text-left",
+  h4: "font-objektiv text-lg font-bold tracking-tight lg:text-xl xl:text-2xl text-left",
+  h5: "font-objektiv text-lg font-bold tracking-tight lg:text-xl xl:text-xl text-left",
 };
 
 interface ContentProps {
@@ -95,7 +95,7 @@ export const Span = ({ children, className = "" }: ContentProps) => (
 );
 
 const pClasses = {
-  xxs: "font-objektiv text-xs text-slate-500 md:text-sm leading-relaxed",
+  xxs: "font-objektiv text-xs text-muted-foreground md:text-sm leading-relaxed",
   xs: "font-objektiv text-sm text-slate-400 md:text-base leading-relaxed",
   sm: "font-objektiv text-base text-slate-400 md:text-lg leading-relaxed",
   md: "font-objektiv text-lg md:text-lg text-slate-300 lg:text-xl leading-relaxed",
@@ -127,7 +127,7 @@ export const P = ({
 }: PProps) => {
   if (dotCSS) {
     return (
-      <div className={classNames(className, "flex gap-2 lg:gap-3")}>
+      <div className={classNames("flex gap-2 lg:gap-3", className)}>
         <Icon
           visual={shapeClasses[shape]}
           className={classNames("mt-0.5 shrink-0", dotCSS)}
@@ -137,14 +137,14 @@ export const P = ({
       </div>
     );
   } else {
-    return <p className={classNames(className, pClasses[size])}>{children}</p>;
+    return <p className={classNames(pClasses[size], className)}>{children}</p>;
   }
 };
 
 const aClasses = {
   primary: "text-action-400 hover:text-action-400 active:text-action-600",
-  secondary: "text-slate-200 hover:text-slate-100 active:text-slate-500",
-  tertiary: "text-slate-400 hover:text-slate-100 active:text-slate-500",
+  secondary: "text-slate-200 hover:text-slate-100 active:text-muted-foreground",
+  tertiary: "text-slate-400 hover:text-slate-100 active:text-muted-foreground",
 };
 
 interface AProps extends AnchorHTMLAttributes<HTMLAnchorElement> {

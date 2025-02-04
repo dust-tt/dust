@@ -6,6 +6,7 @@ import {
   sleep,
   workflowInfo,
 } from "@temporalio/workflow";
+import { uniq } from "lodash";
 
 import type { FolderUpdatesSignal } from "@connectors/connectors/google_drive/temporal/signals";
 import { folderUpdatesSignal } from "@connectors/connectors/google_drive/temporal/signals";
@@ -60,13 +61,17 @@ export async function fullSyncWorkflow({
           if (nodeIdsToDelete.includes(folderId)) {
             nodeIdsToDelete.splice(nodeIdsToDelete.indexOf(folderId), 1);
           }
-          nodeIdsToSync.push(folderId);
+          if (!nodeIdsToSync.includes(folderId)) {
+            nodeIdsToSync.push(folderId);
+          }
           break;
         case "removed":
           if (nodeIdsToSync.includes(folderId)) {
             nodeIdsToSync.splice(nodeIdsToSync.indexOf(folderId), 1);
           }
-          nodeIdsToDelete.push(folderId);
+          if (!nodeIdsToDelete.includes(folderId)) {
+            nodeIdsToDelete.push(folderId);
+          }
           break;
         default:
         //
@@ -77,6 +82,10 @@ export async function fullSyncWorkflow({
   if (startSyncTs === undefined) {
     startSyncTs = new Date().getTime();
   }
+
+  // Temp to clean up the running workflows state
+  nodeIdsToSync = uniq(nodeIdsToSync);
+  nodeIdsToDelete = uniq(nodeIdsToDelete);
 
   await populateDeltas(connectorId, nodeIdsToSync);
 
@@ -95,6 +104,9 @@ export async function fullSyncWorkflow({
         }
       });
     }
+
+    // Temp to clean up the running workflows state
+    nodeIdsToSync = uniq(nodeIdsToSync);
 
     const nodeId = nodeIdsToSync.pop();
 
@@ -132,6 +144,9 @@ export async function fullSyncWorkflow({
       });
     }
   }
+
+  // Temp to clean up the running workflows state
+  nodeIdsToDelete = uniq(nodeIdsToDelete);
 
   if (nodeIdsToDelete.length > 0) {
     await microsoftDeletionActivity({
@@ -197,7 +212,7 @@ export async function microsoftGarbageCollectionWorkflow({
       rootNodeIds,
       startGarbageCollectionTs,
     });
-    await sleep("1 minute");
+    await sleep("30 seconds");
   }
 }
 

@@ -65,7 +65,7 @@ async function handler(
       const csvData = await unsafeGetUsageData(
         new Date(query.start_date),
         query.end_date ? new Date(query.end_date) : new Date(),
-        owner.sId
+        owner
       );
       res.setHeader("Content-Type", "text/csv");
       res.status(200).send(csvData);

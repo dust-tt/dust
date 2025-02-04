@@ -31,74 +31,59 @@ type PriceTableItem = {
 
 const ENTERPRISE_PLAN_ITEMS: PriceTableItem[] = [
   {
-    label: "From 100 users",
+    label: "Everything in Pro, plus:",
     variant: "check",
     display: ["landing", "subscribe"],
   },
   {
-    label: "Multiple workspaces",
+    label: "Multiple private spaces",
     variant: "check",
     display: ["landing", "subscribe"],
   },
   {
-    label: "Privacy and Data Security",
+    label: "Larger storage and file size limits",
     variant: "check",
     display: ["landing", "subscribe"],
   },
   {
-    label: "Advanced models (GPT-4, Claude…)",
+    label: "Custom price on programmatic usage (API, GSheet, Zapier)",
     variant: "check",
     display: ["landing", "subscribe"],
   },
   {
-    label: "Unlimited custom assistants",
+    label: "Single Sign-On (SSO) (Okta, Entra ID, Jumpcloud)",
     variant: "check",
     display: ["landing", "subscribe"],
   },
   {
-    label: "Unlimited messages",
+    label: "Flexible payment options (SEPA, Credit Card)",
     variant: "check",
     display: ["landing", "subscribe"],
   },
   {
-    label: "Custom programmatic usage (API)",
+    label: "Priority support & dedicated account management",
     variant: "check",
     display: ["landing", "subscribe"],
   },
   {
-    label: "Unlimited data sources",
+    label: "Priority access to new features",
     variant: "check",
     display: ["landing", "subscribe"],
   },
   {
-    label: "Connections (GitHub, Google Drive, Notion, Slack, ...)",
+    label: "US / EU data hosting",
     variant: "check",
-    display: ["landing", "subscribe"],
+    display: ["landing"],
   },
   {
-    label: "Single Sign-On (SSO)",
+    label: "(soon) User provisioning",
     variant: "check",
-    display: ["landing", "subscribe"],
+    display: ["landing"],
   },
   {
-    label: "Dust Slackbot",
+    label: "(soon) Salesforce Connection",
     variant: "check",
-    display: ["landing", "subscribe"],
-  },
-  {
-    label: "Assistants can execute actions",
-    variant: "check",
-    display: ["landing", "subscribe"],
-  },
-  {
-    label: "Unlimited spaces",
-    variant: "check",
-    display: ["landing", "subscribe"],
-  },
-  {
-    label: "Dedicated account support",
-    variant: "check",
-    display: ["landing", "subscribe"],
+    display: ["landing"],
   },
 ];
 
@@ -126,45 +111,17 @@ export function ProPriceTable({
       display: ["landing", "subscribe"],
     },
     {
-      label: "One workspace",
-      variant: "dash",
-      display: ["landing"],
-    },
-    {
-      label: "Privacy and Data Security",
-      variant: "check",
-      display: ["landing"],
-    },
-    {
       label: "Advanced models (GPT-4, Claude…)",
       variant: "check",
       display: ["landing", "subscribe"],
     },
     {
-      label: "Unlimited custom assistants",
+      label: "Custom assistants which can execute actions",
       variant: "check",
       display: ["landing", "subscribe"],
     },
     {
-      label: (
-        <>
-          Unlimited messages (
-          <Hoverable onClick={() => setIsFairUseModalOpened(true)}>
-            Fair use limits apply*
-          </Hoverable>
-          )
-        </>
-      ),
-      variant: "check",
-      display: ["landing", "subscribe"],
-    },
-    {
-      label: "Limited Programmatic usage (API)",
-      variant: "dash",
-      display: ["landing", "subscribe"],
-    },
-    {
-      label: "Up to 1Gb/user of data sources",
+      label: "Custom actions (Dust Apps)",
       variant: "check",
       display: ["landing", "subscribe"],
     },
@@ -174,22 +131,43 @@ export function ProPriceTable({
       display: ["landing", "subscribe"],
     },
     {
-      label: "Google & GitHub Authentication",
+      label: "Native integrations (Zendesk, Slack, Chrome Extension)",
+      variant: "check",
+      display: ["landing", "subscribe"],
+    },
+    {
+      label: "Privacy and Data Security (SOC2, Zero Data Retention)",
+      variant: "check",
+      display: ["landing"],
+    },
+    {
+      label: (
+        <>
+          Unlimited messages (
+          <Hoverable
+            className="cursor-pointer text-gray-400 underline hover:text-gray-500"
+            onClick={() => setIsFairUseModalOpened(true)}
+          >
+            Fair use limits apply*
+          </Hoverable>
+          )
+        </>
+      ),
+      variant: "check",
+      display: ["landing", "subscribe"],
+    },
+    {
+      label: "Fixed price on programmatic usage (API, GSheet, Zapier)",
       variant: "dash",
       display: ["landing", "subscribe"],
     },
     {
-      label: "Dust Slackbot",
-      variant: "check",
+      label: "Up to 1Gb/user of data sources",
+      variant: "dash",
       display: ["landing", "subscribe"],
     },
     {
-      label: "Assistants can execute actions",
-      variant: "check",
-      display: ["landing", "subscribe"],
-    },
-    {
-      label: "One space",
+      label: "One private space",
       variant: "dash",
       display: ["landing"],
     },
@@ -212,7 +190,7 @@ export function ProPriceTable({
         title="Pro"
         price={price}
         color="emerald"
-        priceLabel="/ month / user, excl. tax"
+        priceLabel="/ month / user, excl. tax."
         size={size}
         magnified={false}
       >
@@ -221,7 +199,9 @@ export function ProPriceTable({
             <Button
               variant="highlight"
               size={biggerButtonSize}
-              label="Start now, 15 days free"
+              label={
+                display === "landing" ? "Start now, 15 days free" : "Start now"
+              }
               icon={RocketIcon}
               disabled={isProcessing}
               onClick={onClick}
@@ -237,44 +217,34 @@ export function ProPriceTable({
             />
           )
         )}
-        {onClick && (!plan || plan.code !== PRO_PLAN_SEAT_29_CODE) && (
-          <PriceTable.ActionContainer>
-            <Button
-              variant="highlight"
-              size={biggerButtonSize}
-              label="Start now, 15 days free"
-              icon={RocketIcon}
-              disabled={isProcessing}
-              onClick={onClick}
-            />
-          </PriceTable.ActionContainer>
-        )}
       </PriceTable>
     </>
   );
 }
 function EnterprisePriceTable({
   size,
-  onClick,
   isProcessing,
 }: {
   size: "sm" | "xs";
-  onClick?: () => void;
   isProcessing?: boolean;
 }) {
   const biggerButtonSize = size === "xs" ? "sm" : "md";
   return (
-    <PriceTable title="Enterprise" price="Custom" size={size} magnified={false}>
+    <PriceTable
+      title="Enterprise"
+      price="Custom"
+      size={size}
+      priceLabel=" pay-per-use, 100+ users"
+      magnified={false}
+    >
       <PriceTable.ActionContainer position="top">
-        {onClick && (
-          <Button
-            variant="highlight"
-            size={biggerButtonSize}
-            label="Contact us"
-            disabled={isProcessing}
-            onClick={onClick}
-          />
-        )}
+        <Button
+          href="/home/contact"
+          variant="highlight"
+          size={biggerButtonSize}
+          disabled={isProcessing}
+          label="Contact Sales"
+        />
       </PriceTable.ActionContainer>
       {ENTERPRISE_PLAN_ITEMS.map((item, index) => (
         <PriceTable.Item
@@ -283,17 +253,6 @@ function EnterprisePriceTable({
           variant={item.variant}
         />
       ))}
-      <PriceTable.ActionContainer>
-        {onClick && (
-          <Button
-            variant="highlight"
-            size={biggerButtonSize}
-            label="Contact us"
-            disabled={isProcessing}
-            onClick={onClick}
-          />
-        )}
-      </PriceTable.ActionContainer>
     </PriceTable>
   );
 }
@@ -301,7 +260,6 @@ function EnterprisePriceTable({
 interface PricePlanProps {
   plan?: PlanType;
   onClickProPlan?: () => void;
-  onClickEnterprisePlan?: () => void;
   isProcessing?: boolean;
   flexCSS?: string;
   display: PriceTableDisplay;
@@ -311,7 +269,6 @@ export function PricePlans({
   flexCSS = "mx-4 flex flex-row w-full md:-mx-12 md:gap-4 lg:gap-6 xl:mx-0 xl:gap-8 2xl:gap-10",
   plan,
   onClickProPlan,
-  onClickEnterprisePlan,
   isProcessing,
   display,
 }: PricePlanProps) {
@@ -344,11 +301,7 @@ export function PricePlans({
               />
             </TabsContent>
             <TabsContent value="enterprise">
-              <EnterprisePriceTable
-                size="xs"
-                isProcessing={isProcessing}
-                onClick={onClickEnterprisePlan}
-              />
+              <EnterprisePriceTable size="xs" isProcessing={isProcessing} />
             </TabsContent>
           </div>
         </Tabs>
@@ -363,11 +316,7 @@ export function PricePlans({
           onClick={onClickProPlan}
           display={display}
         />
-        <EnterprisePriceTable
-          size="sm"
-          isProcessing={isProcessing}
-          onClick={onClickEnterprisePlan}
-        />
+        <EnterprisePriceTable size="sm" isProcessing={isProcessing} />
       </div>
     </>
   );

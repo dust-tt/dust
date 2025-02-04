@@ -2,8 +2,8 @@ import {
   isSupportedFileContentType,
   isSupportedImageContentType,
   isSupportedPlainTextContentType,
-  supportedImage,
-  supportedPlainText,
+  supportedImageFileFormats,
+  supportedOtherFileFormats,
 } from "@dust-tt/client";
 import { DropzoneOverlay, useSendNotification } from "@dust-tt/sparkle";
 import { useFileDrop } from "@extension/components/conversation/FileUploaderContext";
@@ -19,9 +19,10 @@ const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
 const generateFileName = (blob: Blob) => {
   const extensions =
-    (isSupportedImageContentType(blob.type) && supportedImage[blob.type]) ||
+    (isSupportedImageContentType(blob.type) &&
+      supportedImageFileFormats[blob.type]) ||
     (isSupportedPlainTextContentType(blob.type) &&
-      supportedPlainText[blob.type]);
+      supportedOtherFileFormats[blob.type]);
   const extension = extensions ? extensions[0] : "";
   const name = Array(12)
     .fill(null)

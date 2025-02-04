@@ -1,29 +1,21 @@
-import { Page } from "@dust-tt/sparkle";
-import { useSendNotification } from "@dust-tt/sparkle";
+import { Page, useSendNotification } from "@dust-tt/sparkle";
 import type {
   AgentMention,
   LightAgentConfigurationType,
   MentionType,
   Result,
   SubscriptionType,
+  UploadedContentFragment,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
-import type { UploadedContentFragment } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
-import { Transition } from "@headlessui/react";
 import { useRouter } from "next/router";
-import {
-  Fragment,
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { AssistantBrowserContainer } from "@app/components/assistant/conversation/AssistantBrowserContainer";
+import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
 import { FixedAssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
@@ -36,10 +28,12 @@ import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { updateMessagePagesWithOptimisticData } from "@app/lib/client/conversation/event_handlers";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import type { DustError } from "@app/lib/error";
-import { useConversationMessages } from "@app/lib/swr/conversations";
+import {
+  useConversationMessages,
+  useConversations,
+} from "@app/lib/swr/conversations";
 
 interface ConversationContainerProps {
-  conversationId: string | null;
   owner: WorkspaceType;
   subscription: SubscriptionType;
   user: UserType;
@@ -48,15 +42,14 @@ interface ConversationContainerProps {
 }
 
 export function ConversationContainer({
-  conversationId,
   owner,
   subscription,
   user,
   isBuilder,
   agentIdToMention,
 }: ConversationContainerProps) {
-  const [activeConversationId, setActiveConversationId] =
-    useState(conversationId);
+  const { activeConversationId } = useConversationsNavigation();
+
   const [planLimitReached, setPlanLimitReached] = useState(false);
   const [stickyMentions, setStickyMentions] = useState<AgentMention[]>([]);
 
@@ -64,10 +57,18 @@ export function ConversationContainer({
     useContext(InputBarContext);
 
   const assistantToMention = useRef<LightAgentConfigurationType | null>(null);
+  const { scrollConversationsToTop } = useConversationsNavigation();
 
   const router = useRouter();
 
   const sendNotification = useSendNotification();
+
+  const { mutateConversations } = useConversations({
+    workspaceId: owner.sId,
+    options: {
+      disabled: true, // We don't need to fetch conversations here.
+    },
+  });
 
   const { mutateMessages } = useConversationMessages({
     conversationId: activeConversationId,
@@ -169,6 +170,8 @@ export function ConversationContainer({
           populateCache: true,
         }
       );
+      await mutateConversations();
+      scrollConversationsToTop();
     } catch (err) {
       // If the API errors, the original data will be
       // rolled back by SWR automatically.
@@ -231,17 +234,26 @@ export function ConversationContainer({
         });
       } else {
         // We start the push before creating the message to optimize for instantaneity as well.
-        setActiveConversationId(conversationRes.value.sId);
-        void router.push(
+        await router.push(
           `/w/${owner.sId}/assistant/${conversationRes.value.sId}`,
           undefined,
           { shallow: true }
         );
+        await mutateConversations();
+        scrollConversationsToTop();
 
         return new Ok(undefined);
       }
     },
-    [isSubmitting, owner, user, sendNotification, router]
+    [
+      isSubmitting,
+      owner,
+      user,
+      sendNotification,
+      router,
+      mutateConversations,
+      scrollConversationsToTop,
+    ]
   );
 
   useEffect(() => {
@@ -287,47 +299,27 @@ export function ConversationContainer({
       description="Drag and drop your text files (txt, doc, pdf) and image files (jpg, png) here."
       title="Attach files to the conversation"
     >
-      <Transition
-        show={!!activeConversationId}
-        as={Fragment}
-        enter="transition-all duration-300 ease-out"
-        enterFrom="flex-none w-full h-0"
-        enterTo="flex flex-1 w-full"
-        leave="transition-all duration-0 ease-out"
-        leaveFrom="flex flex-1 w-full"
-        leaveTo="flex-none w-full h-0"
-      >
-        {activeConversationId ? (
-          <ConversationViewer
-            owner={owner}
-            user={user}
-            conversationId={activeConversationId}
-            // TODO(2024-06-20 flav): Fix extra-rendering loop with sticky mentions.
-            onStickyMentionsChange={onStickyMentionsChange}
-          />
-        ) : (
-          <div></div>
-        )}
-      </Transition>
+      {activeConversationId ? (
+        <ConversationViewer
+          owner={owner}
+          user={user}
+          conversationId={activeConversationId}
+          // TODO(2024-06-20 flav): Fix extra-rendering loop with sticky mentions.
+          onStickyMentionsChange={onStickyMentionsChange}
+        />
+      ) : (
+        <div></div>
+      )}
 
-      <Transition
-        as={Fragment}
-        show={!activeConversationId}
-        enter="transition-opacity duration-100 ease-out"
-        enterFrom="opacity-0 min-h-[20vh]"
-        enterTo="opacity-100"
-        leave="transition-opacity duration-100 ease-out"
-        leaveFrom="opacity-100"
-        leaveTo="opacity-0 min-h-[20vh]"
-      >
+      {!activeConversationId && (
         <div
           id="assistant-input-header"
-          className="flex h-fit min-h-[20vh] w-full max-w-4xl flex-col justify-end gap-8 px-4 py-2"
+          className="flex h-fit min-h-[20vh] w-full max-w-4xl flex-col justify-end gap-8 py-2"
         >
           <Page.Header title={greeting} />
           <Page.SectionHeader title="Start a conversation" />
         </div>
-      </Transition>
+      )}
 
       <FixedAssistantInputBar
         owner={owner}
@@ -338,16 +330,7 @@ export function ConversationContainer({
         conversationId={activeConversationId}
       />
 
-      <Transition
-        show={!activeConversationId}
-        enter="transition-opacity duration-100 ease-out"
-        enterFrom="opacity-0"
-        enterTo="opacity-100"
-        leave="transition-opacity duration-100 ease-out"
-        leaveFrom="opacity-100"
-        leaveTo="opacity-0"
-        className={"flex w-full justify-center"}
-      >
+      {!activeConversationId && (
         <AssistantBrowserContainer
           onAgentConfigurationClick={setInputbarMention}
           setAssistantToMention={(assistant) => {
@@ -356,7 +339,7 @@ export function ConversationContainer({
           owner={owner}
           isBuilder={isBuilder}
         />
-      </Transition>
+      )}
 
       <ReachedLimitPopup
         isOpened={planLimitReached}

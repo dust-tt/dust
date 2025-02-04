@@ -133,6 +133,7 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
     await WebCrawlerConfigurationHeader.bulkCreate(
       Object.entries(blob.headers).map(([key, value]) => {
         return {
+          connectorId: blob.connectorId,
           key: key,
           value: value,
           webcrawlerConfigurationId: config.id,
@@ -221,6 +222,7 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
       await WebCrawlerConfigurationHeader.bulkCreate(
         headersList.map(([key, value]) => {
           return {
+            connectorId: this.connectorId,
             key: key,
             value: value,
             webcrawlerConfigurationId: this.id,

@@ -1,4 +1,5 @@
 import type { ModelId } from "@dust-tt/types";
+import { MIME_TYPES } from "@dust-tt/types";
 import TurndownService from "turndown";
 
 import type {
@@ -8,10 +9,10 @@ import type {
 } from "@connectors/@types/node-zendesk";
 import { getArticleInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
 import {
-  deleteFromDataSource,
+  deleteDataSourceDocument,
   renderDocumentTitleAndContent,
   renderMarkdownSection,
-  upsertToDatasource,
+  upsertDataSourceDocument,
 } from "@connectors/lib/data_sources";
 import logger from "@connectors/logger/logger";
 import type { ZendeskCategoryResource } from "@connectors/resources/zendesk_resources";
@@ -25,26 +26,23 @@ const turndownService = new TurndownService();
  */
 export async function deleteArticle(
   connectorId: ModelId,
-  article: ZendeskFetchedArticle,
+  brandId: number,
+  articleId: number,
   dataSourceConfig: DataSourceConfig,
   loggerArgs: Record<string, string | number | null>
 ): Promise<void> {
   logger.info(
-    {
-      ...loggerArgs,
-      connectorId,
-      articleId: article.id,
-      name: article.name,
-    },
+    { ...loggerArgs, connectorId, articleId },
     "[Zendesk] Deleting article."
   );
-  await deleteFromDataSource(
+  await deleteDataSourceDocument(
     dataSourceConfig,
-    getArticleInternalId({ connectorId, articleId: article.id })
+    getArticleInternalId({ connectorId, brandId, articleId })
   );
   await ZendeskArticleResource.deleteByArticleId({
     connectorId,
-    articleId: article.id,
+    brandId,
+    articleId,
   });
 }
 
@@ -58,9 +56,9 @@ export async function syncArticle({
   section,
   user,
   currentSyncDateMs,
+  helpCenterIsAllowed,
   dataSourceConfig,
   loggerArgs,
-  forceResync,
 }: {
   connectorId: ModelId;
   dataSourceConfig: DataSourceConfig;
@@ -68,21 +66,16 @@ export async function syncArticle({
   section: ZendeskFetchedSection | null;
   category: ZendeskCategoryResource;
   user: ZendeskFetchedUser | null;
+  helpCenterIsAllowed: boolean;
   currentSyncDateMs: number;
   loggerArgs: Record<string, string | number | null>;
-  forceResync: boolean;
 }) {
   let articleInDb = await ZendeskArticleResource.fetchByArticleId({
     connectorId,
+    brandId: category.brandId,
     articleId: article.id,
   });
   const updatedAtDate = new Date(article.updated_at);
-
-  const shouldPerformUpsertion =
-    forceResync ||
-    !articleInDb ||
-    !articleInDb.lastUpsertedTs ||
-    articleInDb.lastUpsertedTs < updatedAtDate; // upserting if the article was updated after the last upsert
 
   // we either create a new article or update the existing one
   if (!articleInDb) {
@@ -113,14 +106,8 @@ export async function syncArticle({
       articleUpdatedAt: updatedAtDate,
       dataSourceLastUpsertedAt: articleInDb?.lastUpsertedTs ?? null,
     },
-    shouldPerformUpsertion
-      ? "[Zendesk] Article to sync."
-      : "[Zendesk] Article already up to date. Skipping sync."
+    "[Zendesk] Article to sync."
   );
-
-  if (!shouldPerformUpsertion) {
-    return;
-  }
 
   const articleContentInMarkdown =
     typeof article.body === "string"
@@ -156,10 +143,15 @@ export async function syncArticle({
 
     const documentId = getArticleInternalId({
       connectorId,
+      brandId: category.brandId,
       articleId: article.id,
     });
 
-    await upsertToDatasource({
+    const parents = articleInDb.getParentInternalIds(
+      connectorId,
+      helpCenterIsAllowed
+    );
+    await upsertDataSourceDocument({
       dataSourceConfig,
       documentId,
       documentContent,
@@ -170,9 +162,12 @@ export async function syncArticle({
         `createdAt:${createdAt.getTime()}`,
         `updatedAt:${updatedAt.getTime()}`,
       ],
-      parents: articleInDb.getParentInternalIds(connectorId),
+      parents,
+      parentId: parents[1],
       loggerArgs: { ...loggerArgs, articleId: article.id },
       upsertContext: { sync_type: "batch" },
+      title: article.title,
+      mimeType: MIME_TYPES.ZENDESK.ARTICLE,
       async: true,
     });
     await articleInDb.update({ lastUpsertedTs: new Date(currentSyncDateMs) });

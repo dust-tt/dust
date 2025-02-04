@@ -25,15 +25,14 @@ import {
   getAgentConfigurations,
   unsafeHardDeleteAgentConfiguration,
 } from "@app/lib/api/assistant/configuration";
-import {
-  getAgentConfigurationGroupIdsFromActions,
-  getAgentConfigurationGroupIdsFromActionsLegacy,
-} from "@app/lib/api/assistant/permissions";
+import { getAgentConfigurationGroupIdsFromActions } from "@app/lib/api/assistant/permissions";
 import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { AppResource } from "@app/lib/resources/app_resource";
+import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { apiError } from "@app/logger/withlogging";
 
@@ -78,7 +77,7 @@ async function handler(
         });
       }
 
-      const { view, limit, withUsage, withAuthors, sort } =
+      const { view, limit, withUsage, withAuthors, withFeedbacks, sort } =
         queryValidation.right;
       let viewParam = view ? view : "all";
       // @ts-expect-error: added for backwards compatibility
@@ -118,10 +117,7 @@ async function handler(
           usageMap[agentConfiguration.sId]
             ? {
                 ...agentConfiguration,
-                usage: {
-                  messageCount: usageMap[agentConfiguration.sId].messageCount,
-                  timePeriodSec: usageMap[agentConfiguration.sId].timePeriodSec,
-                },
+                usage: _.omit(usageMap[agentConfiguration.sId], ["agentId"]),
               }
             : agentConfiguration
         );
@@ -131,25 +127,58 @@ async function handler(
           auth,
           agents: agentConfigurations,
         });
-        agentConfigurations = await Promise.all(
-          agentConfigurations.map(
-            async (
-              agentConfiguration,
-              index
-            ): Promise<LightAgentConfigurationType> => {
-              return {
-                ...agentConfiguration,
-                lastAuthors: recentAuthors[index],
-              };
-            }
-          )
+        agentConfigurations = agentConfigurations.map(
+          (agentConfiguration, index) => {
+            return {
+              ...agentConfiguration,
+              lastAuthors: recentAuthors[index],
+            };
+          }
         );
+      }
+      if (withFeedbacks === "true") {
+        const feedbacks =
+          await AgentMessageFeedbackResource.getFeedbackCountForAssistants(
+            auth,
+            agentConfigurations
+              .filter((agent) => agent.scope !== "global")
+              .map((agent) => agent.sId),
+            30
+          );
+        agentConfigurations = agentConfigurations.map((agentConfiguration) => ({
+          ...agentConfiguration,
+          feedbacks: {
+            up:
+              feedbacks.find(
+                (f) =>
+                  f.agentConfigurationId === agentConfiguration.sId &&
+                  f.thumbDirection === "up"
+              )?.count ?? 0,
+            down:
+              feedbacks.find(
+                (f) =>
+                  f.agentConfigurationId === agentConfiguration.sId &&
+                  f.thumbDirection === "down"
+              )?.count ?? 0,
+          },
+        }));
       }
 
       return res.status(200).json({
         agentConfigurations,
       });
     case "POST":
+      const killSwitches = await KillSwitchResource.listEnabledKillSwitches();
+      if (killSwitches?.includes("save_agent_configurations")) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "app_auth_error",
+            message:
+              "Saving agent configurations is temporarily disabled, try again later.",
+          },
+        });
+      }
       const bodyValidation =
         PostOrPatchAgentConfigurationRequestBodySchema.decode(req.body);
       if (isLeft(bodyValidation)) {
@@ -299,10 +328,6 @@ export async function createOrUpgradeAgentConfiguration({
     model: assistant.model,
     agentConfigurationId,
     templateId: assistant.templateId ?? null,
-    groupIds: await getAgentConfigurationGroupIdsFromActionsLegacy(
-      auth,
-      actions
-    ),
     requestedGroupIds: await getAgentConfigurationGroupIdsFromActions(
       auth,
       actions
@@ -425,6 +450,61 @@ export async function createOrUpgradeAgentConfiguration({
           type: "browse_configuration",
           name: action.name ?? null,
           description: action.description ?? null,
+        },
+        agentConfigurationRes.value
+      );
+      if (res.isErr()) {
+        // If we fail to create an action, we should delete the agent configuration
+        // we just created and re-throw the error.
+        await unsafeHardDeleteAgentConfiguration(agentConfigurationRes.value);
+        return res;
+      }
+      actionConfigs.push(res.value);
+    } else if (action.type === "github_get_pull_request_configuration") {
+      const res = await createAgentActionConfiguration(
+        auth,
+        {
+          type: "github_get_pull_request_configuration",
+          name: action.name ?? null,
+          description: action.description ?? null,
+        },
+        agentConfigurationRes.value
+      );
+      if (res.isErr()) {
+        // If we fail to create an action, we should delete the agent configuration
+        // we just created and re-throw the error.
+        await unsafeHardDeleteAgentConfiguration(agentConfigurationRes.value);
+        return res;
+      }
+      actionConfigs.push(res.value);
+    } else if (action.type === "github_create_issue_configuration") {
+      const res = await createAgentActionConfiguration(
+        auth,
+        {
+          type: "github_create_issue_configuration",
+          name: action.name ?? null,
+          description: action.description ?? null,
+        },
+        agentConfigurationRes.value
+      );
+      if (res.isErr()) {
+        // If we fail to create an action, we should delete the agent configuration
+        // we just created and re-throw the error.
+        await unsafeHardDeleteAgentConfiguration(agentConfigurationRes.value);
+        return res;
+      }
+      actionConfigs.push(res.value);
+    } else if (action.type === "reasoning_configuration") {
+      const res = await createAgentActionConfiguration(
+        auth,
+        {
+          type: "reasoning_configuration",
+          name: action.name ?? null,
+          description: action.description ?? null,
+          providerId: action.providerId,
+          modelId: action.modelId,
+          temperature: action.temperature,
+          reasoningEffort: action.reasoningEffort,
         },
         agentConfigurationRes.value
       );

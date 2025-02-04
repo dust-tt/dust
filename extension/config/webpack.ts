@@ -10,12 +10,26 @@ import ExtReloader from "webpack-ext-reloader";
 import TerserPlugin from "terser-webpack-plugin";
 import { BundleAnalyzerPlugin } from "webpack-bundle-analyzer";
 
-import { Environment, isDevEnv } from "./env";
+import { Environment } from "./env";
+import { execSync } from "child_process";
 
-const readFileAsync = promisify(fs.readFile);
 const rootDir = path.resolve(__dirname, "../");
+
 const resolvePath = (...segments: string[]) =>
   path.resolve(rootDir, ...segments);
+
+const readFileAsync = promisify(fs.readFile).bind(fs) as (
+  path: string
+) => Promise<string>;
+
+// Get git commit hash
+const getCommitHash = () => {
+  try {
+    return execSync("git rev-parse --short HEAD").toString().trim();
+  } catch (e) {
+    return "development";
+  }
+};
 
 export const getConfig = async ({
   env,
@@ -24,10 +38,14 @@ export const getConfig = async ({
   env: Environment;
   shouldBuild: "none" | "prod" | "analyze";
 }): Promise<Configuration> => {
-  const isDevelopment = isDevEnv(env);
-  const manifestFilePath = resolvePath("./manifest.json");
-  const maniFestFileRawContent = await readFileAsync(manifestFilePath, "utf8");
-  const version = JSON.parse(maniFestFileRawContent).version;
+  const isDevelopment = env === "development";
+  const baseManifestPath = resolvePath("./config/manifest.base.json");
+  const envManifestPath = resolvePath(`./config/manifest.${env}.json`);
+
+  const baseManifest = JSON.parse(await readFileAsync(baseManifestPath));
+  const envManifest = JSON.parse(await readFileAsync(envManifestPath));
+  const mergedManifest = { ...baseManifest, ...envManifest };
+  const version = mergedManifest.version;
 
   const buildDirPath = resolvePath("./build");
 
@@ -35,7 +53,7 @@ export const getConfig = async ({
     shouldBuild === "prod" ? resolvePath("./packages") : null;
 
   return {
-    mode: env,
+    mode: isDevelopment ? "development" : "production",
     node: false,
     optimization: {
       minimize: !isDevelopment,
@@ -81,6 +99,8 @@ export const getConfig = async ({
         events: false,
         net: false,
         redis: false,
+        http: require.resolve("stream-http"),
+        https: require.resolve("https-browserify"),
       },
     },
     module: {
@@ -113,12 +133,16 @@ export const getConfig = async ({
       ],
     },
     plugins: [
+      new webpack.DefinePlugin({
+        global: "globalThis",
+      }),
       new WebpackBar({
         name: `DustExt [${env}]`,
         color: "#3B82F6",
       }),
       new webpack.EnvironmentPlugin({
         VERSION: version,
+        COMMIT_HASH: getCommitHash(),
       }),
       new webpack.ProvidePlugin({
         Buffer: ["buffer", "Buffer"],
@@ -129,7 +153,14 @@ export const getConfig = async ({
       new CopyPlugin({
         patterns: [
           {
-            from: manifestFilePath,
+            from: baseManifestPath,
+            transform: (content) => {
+              const finalManifest = {
+                ...JSON.parse(content.toString()),
+                ...envManifest,
+              };
+              return Buffer.from(JSON.stringify(finalManifest, null, 2));
+            },
             to: path.join(buildDirPath, "manifest.json"),
           },
           {
@@ -151,7 +182,7 @@ export const getConfig = async ({
       packageDirPath
         ? new ZipPlugin({
             path: packageDirPath,
-            filename: `Dust_Extension.v${version}.zip`,
+            filename: `Dust_Extension.${env}.v${version}.zip`,
           })
         : null,
       isDevelopment

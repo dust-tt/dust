@@ -1,3 +1,8 @@
+import type {
+  AgentConfigurationType,
+  ModelId,
+  WorkspaceType,
+} from "@dust-tt/types";
 import { stringify } from "csv-stringify/sync";
 import { format } from "date-fns/format";
 import { Op, QueryTypes, Sequelize } from "sequelize";
@@ -9,11 +14,10 @@ import {
   Message,
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
-import { User } from "@app/lib/models/user";
-import { Workspace } from "@app/lib/models/workspace";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 
 export interface WorkspaceUsageQueryResult {
   createdAt: string;
@@ -73,7 +77,8 @@ interface AgentUsageQueryResult {
 }
 
 interface FeedbackQueryResult {
-  created_at: Date;
+  id: ModelId;
+  createdAt: Date;
   userName: string;
   userEmail: string;
   agentConfigurationId: string;
@@ -85,8 +90,9 @@ interface FeedbackQueryResult {
 export async function unsafeGetUsageData(
   startDate: Date,
   endDate: Date,
-  wId: string
+  workspace: WorkspaceType
 ): Promise<string> {
+  const wId = workspace.sId;
   const results = await frontSequelize.query<WorkspaceUsageQueryResult>(
     `
       SELECT
@@ -161,14 +167,8 @@ export async function unsafeGetUsageData(
 export async function getMessageUsageData(
   startDate: Date,
   endDate: Date,
-  workspaceId: string
+  workspace: WorkspaceType
 ): Promise<string> {
-  const workspace = await Workspace.findOne({
-    where: { sId: workspaceId },
-  });
-  if (!workspace) {
-    throw new Error(`Workspace not found for sId: ${workspaceId}`);
-  }
   const wId = workspace.id;
   const results = await frontSequelize.query<MessageUsageQueryResult>(
     `
@@ -227,14 +227,8 @@ export async function getMessageUsageData(
 export async function getUserUsageData(
   startDate: Date,
   endDate: Date,
-  workspaceId: string
+  workspace: WorkspaceType
 ): Promise<string> {
-  const workspace = await Workspace.findOne({
-    where: { sId: workspaceId },
-  });
-  if (!workspace) {
-    throw new Error(`Workspace not found for sId: ${workspaceId}`);
-  }
   const wId = workspace.id;
   const userMessages = await Message.findAll({
     attributes: [
@@ -318,14 +312,8 @@ export async function getUserUsageData(
 export async function getBuildersUsageData(
   startDate: Date,
   endDate: Date,
-  workspaceId: string
+  workspace: WorkspaceType
 ): Promise<string> {
-  const workspace = await Workspace.findOne({
-    where: { sId: workspaceId },
-  });
-  if (!workspace) {
-    throw new Error(`Workspace not found for sId: ${workspaceId}`);
-  }
   const wId = workspace.id;
   const agentConfigurations = await AgentConfiguration.findAll({
     attributes: [
@@ -360,7 +348,7 @@ export async function getBuildersUsageData(
     },
     include: [
       {
-        model: User,
+        model: UserModel,
         as: "user",
         attributes: [],
         required: true,
@@ -396,17 +384,46 @@ export async function getBuildersUsageData(
   return generateCsvFromQueryResult(buildersUsage);
 }
 
+export async function getAssistantUsageData(
+  startDate: Date,
+  endDate: Date,
+  workspace: WorkspaceType,
+  agentConfiguration: AgentConfigurationType
+): Promise<number> {
+  const wId = workspace.id;
+  const mentions = await frontSequelize.query<{ messages: number }>(
+    `
+    SELECT COUNT(a."id") AS "messages"
+    FROM "agent_messages" a
+    JOIN "agent_configurations" ac ON a."agentConfigurationId" = ac."sId"
+    WHERE
+      a."createdAt" BETWEEN :startDate AND :endDate
+      AND ac."workspaceId" = :wId
+      AND ac."status" = 'active'
+      AND ac."sId" = :agentConfigurationId
+    `,
+    {
+      type: QueryTypes.SELECT,
+      replacements: {
+        startDate: format(startDate, "yyyy-MM-dd'T'00:00:00"),
+        endDate: format(endDate, "yyyy-MM-dd'T'23:59:59"),
+        agentConfigurationId: agentConfiguration.sId,
+        wId,
+      },
+    }
+  );
+
+  if (!mentions.length) {
+    return 0;
+  }
+  return mentions[0].messages;
+}
+
 export async function getAssistantsUsageData(
   startDate: Date,
   endDate: Date,
-  workspaceId: string
+  workspace: WorkspaceType
 ): Promise<string> {
-  const workspace = await Workspace.findOne({
-    where: { sId: workspaceId },
-  });
-  if (!workspace) {
-    throw new Error(`Workspace not found for sId: ${workspaceId}`);
-  }
   const wId = workspace.id;
   const mentions = await frontSequelize.query<AgentUsageQueryResult>(
     `
@@ -421,6 +438,7 @@ export async function getAssistantsUsageData(
       ARRAY_AGG(DISTINCT aut."email") AS "authorEmails",
       COUNT(a."id") AS "messages",
       COUNT(DISTINCT u."id") AS "distinctUsersReached",
+      COUNT(DISTINCT m."conversationId") AS "distinctConversations",
       MAX(CAST(ac."createdAt" AS DATE)) AS "lastEdit"
     FROM
       "agent_messages" a
@@ -432,7 +450,7 @@ export async function getAssistantsUsageData(
       JOIN "users" aut ON ac."authorId" = aut."id"
     WHERE
       a."createdAt" BETWEEN :startDate AND :endDate
-      AND ac."workspaceId" = ${wId}
+      AND ac."workspaceId" = :wId
       AND ac."status" = 'active'
       AND ac."scope" != 'private'
     GROUP BY
@@ -447,6 +465,7 @@ export async function getAssistantsUsageData(
       replacements: {
         startDate: format(startDate, "yyyy-MM-dd'T'00:00:00"), // Use first day of start month
         endDate: format(endDate, "yyyy-MM-dd'T'23:59:59"), // Use last day of end month
+        wId,
       },
     }
   );
@@ -459,42 +478,33 @@ export async function getAssistantsUsageData(
 export async function getFeedbacksUsageData(
   startDate: Date,
   endDate: Date,
-  workspaceId: string
+  workspace: WorkspaceType
 ): Promise<string> {
-  const workspace = await Workspace.findOne({
-    where: { sId: workspaceId },
-  });
-  if (!workspace) {
-    throw new Error(`Workspace not found for sId: ${workspaceId}`);
-  }
-
   const feedbacks =
-    await AgentMessageFeedbackResource.listByWorkspaceAndDateRange({
-      workspace: workspace,
+    await AgentMessageFeedbackResource.getFeedbackUsageDataForWorkspace({
       startDate,
       endDate,
+      workspace,
     });
 
-  if (!feedbacks.length) {
+  if (feedbacks.length === 0) {
     return "No data available for the selected period.";
   }
 
-  const feedbackResults: FeedbackQueryResult[] = await Promise.all(
-    feedbacks.map(async (feedback) => {
-      const user = await feedback.fetchUser();
-      return {
-        created_at: feedback.createdAt,
-        userName: user?.fullName() || "",
-        userEmail: user?.email || "",
-        agentConfigurationId: feedback.agentConfigurationId,
-        agentConfigurationVersion: feedback.agentConfigurationVersion,
-        thumb: feedback.thumbDirection,
-        content: feedback.content,
-      };
-    })
-  );
-
-  return generateCsvFromQueryResult(feedbackResults);
+  const feedbacksWithMinimalFields = feedbacks.map((feedback) => {
+    const jsonFeedback = feedback.toJSON();
+    return {
+      id: jsonFeedback.id,
+      createdAt: jsonFeedback.createdAt,
+      userName: jsonFeedback.userName,
+      userEmail: jsonFeedback.userEmail,
+      agentConfigurationId: jsonFeedback.agentConfigurationId,
+      agentConfigurationVersion: jsonFeedback.agentConfigurationVersion,
+      thumb: jsonFeedback.thumbDirection,
+      content: jsonFeedback.content?.replace(/\r?\n/g, "\\n") || null,
+    } as FeedbackQueryResult;
+  });
+  return generateCsvFromQueryResult(feedbacksWithMinimalFields);
 }
 
 function generateCsvFromQueryResult(

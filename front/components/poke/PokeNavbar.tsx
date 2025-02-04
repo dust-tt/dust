@@ -28,6 +28,7 @@ export const PokeNavbar: React.FC = () => (
         <Button href="/poke/plans" variant="ghost" label="Plans" />
         <Button href="/poke/templates" variant="ghost" label="Templates" />
         <Button href="/poke/plugins" variant="ghost" label="Plugins" />
+        <Button href="/poke/kill" variant="ghost" label="Kill Switches" />
       </div>
     </div>
     <PokeSearchCommand />
@@ -54,13 +55,14 @@ export function PokeSearchCommand() {
       }
     };
     document.addEventListener("keydown", down);
+
     return () => document.removeEventListener("keydown", down);
-  }, []);
+  }, [open, results]);
 
   return (
     <>
       <PokeButton variant="outline" size="sm" onClick={() => setOpen(true)}>
-        Search
+        Search (⌘K)
       </PokeButton>
       <PokeCommandDialog
         open={open}
@@ -87,15 +89,15 @@ export function PokeSearchCommand() {
             <div className="p-4 text-sm">Enter at least 2 characters...</div>
           )}
 
-          {results.map(({ id, link, name }) =>
+          {results.map(({ id, link, name }, index) =>
             link ? (
               <Link href={link} key={id}>
-                <PokeCommandItem value={name}>
+                <PokeCommandItem value={name} index={index}>
                   {name} (id: {id})
                 </PokeCommandItem>
               </Link>
             ) : (
-              <PokeCommandItem key={id} value={name}>
+              <PokeCommandItem key={id} value={name} index={index}>
                 {name} (id: {id})
               </PokeCommandItem>
             )

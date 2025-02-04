@@ -2,6 +2,7 @@ import type { ValidateMemberResponseType } from "@dust-tt/client";
 import { ValidateMemberRequestSchema } from "@dust-tt/client";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -25,7 +26,7 @@ async function handler(
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: `Invalid request body: ${r.error.message}`,
+        message: fromError(r.error).toString(),
       },
     });
   }
@@ -34,26 +35,32 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      const user = await UserResource.fetchByEmail(email);
-
+      const users = await UserResource.listByEmail(email);
       const workspace = auth.getNonNullableWorkspace();
 
-      if (!user) {
+      if (!users.length) {
         return res.status(200).json({
           valid: false,
         });
       }
 
-      const workspaceMembership =
-        await MembershipResource.getActiveMembershipOfUserInWorkspace({
-          user,
-          workspace,
-        });
+      // Check memberships for all users with this email until we find an active one
+      for (const user of users) {
+        const workspaceMembership =
+          await MembershipResource.getActiveMembershipOfUserInWorkspace({
+            user,
+            workspace,
+          });
 
-      const valid = !!workspaceMembership;
+        if (workspaceMembership) {
+          return res.status(200).json({
+            valid: true,
+          });
+        }
+      }
 
       return res.status(200).json({
-        valid,
+        valid: false,
       });
 
     default:

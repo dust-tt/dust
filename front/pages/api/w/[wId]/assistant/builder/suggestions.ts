@@ -21,7 +21,7 @@ import { runAction } from "@app/lib/actions/server";
 import { filterSuggestedNames } from "@app/lib/api/assistant/agent";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
+import { cloneBaseConfig, getDustProdActionRegistry } from "@app/lib/registry";
 import { apiError } from "@app/logger/withlogging";
 
 async function handler(
@@ -76,7 +76,7 @@ async function handler(
       }
 
       const config = cloneBaseConfig(
-        DustProdActionRegistry[
+        getDustProdActionRegistry()[
           `assistant-builder-${suggestionsType}-suggestions`
         ].config
       );

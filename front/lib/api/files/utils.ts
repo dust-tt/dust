@@ -1,10 +1,11 @@
 import type { ConversationType, Result } from "@dust-tt/types";
-import { Err, Ok, removeNulls } from "@dust-tt/types";
+import { contentTypeForExtension, Err, Ok, removeNulls } from "@dust-tt/types";
 import type { File } from "formidable";
 import { IncomingForm } from "formidable";
 import type { IncomingMessage } from "http";
 import type { Writable } from "stream";
 
+import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
 import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
@@ -22,7 +23,8 @@ export const parseUploadRequest = async (
       code:
         | "internal_server_error"
         | "file_too_large"
-        | "file_type_not_supported";
+        | "file_type_not_supported"
+        | "file_is_empty";
     }
   >
 > => {
@@ -39,6 +41,19 @@ export const parseUploadRequest = async (
 
       // Ensure the file is of the correct type.
       filter: function (part) {
+        if (
+          part.mimetype != file.contentType &&
+          part.mimetype == "application/octet-stream"
+        ) {
+          const fileExtension = file.fileName.split(".").at(-1)?.toLowerCase();
+          if (fileExtension) {
+            // Lookup by extension
+            return (
+              contentTypeForExtension("." + fileExtension) === file.contentType
+            );
+          }
+        }
+
         return part.mimetype === file.contentType;
       },
     });
@@ -62,7 +77,16 @@ export const parseUploadRequest = async (
         return new Err({
           name: "dust_error",
           code: "file_too_large",
-          message: "File is too large.",
+          message:
+            "File is too large or the size passed to the File instance in the DB does not match the size of the uploaded file.",
+        });
+      }
+      // entire message: options.allowEmptyFiles is false, file size should be greater than 0
+      if (error.message.startsWith("options.allowEmptyFiles")) {
+        return new Err({
+          name: "dust_error",
+          code: "file_is_empty",
+          message: "File is empty.",
         });
       }
     }
@@ -112,21 +136,30 @@ export async function maybeUpsertFileAttachment(
           await fileResource.setUseCaseMetadata({
             conversationId: conversation.sId,
           });
-
-          const r = await processAndUpsertToDataSource(auth, {
-            file: fileResource,
-          });
-          if (r.isErr()) {
-            // For now, silently log the error
-            logger.warn({
-              fileModelId: fileResource.id,
-              workspaceId: conversation.owner.sId,
-              contentType: fileResource.contentType,
-              useCase: fileResource.useCase,
-              useCaseMetadata: fileResource.useCaseMetadata,
-              message: "Failed to upsert the file.",
-              error: r.error,
-            });
+          const jitDataSource = await getOrCreateConversationDataSourceFromFile(
+            auth,
+            fileResource
+          );
+          if (!jitDataSource.isErr()) {
+            const r = await processAndUpsertToDataSource(
+              auth,
+              jitDataSource.value,
+              {
+                file: fileResource,
+              }
+            );
+            if (r.isErr()) {
+              // For now, silently log the error
+              logger.warn({
+                fileModelId: fileResource.id,
+                workspaceId: conversation.owner.sId,
+                contentType: fileResource.contentType,
+                useCase: fileResource.useCase,
+                useCaseMetadata: fileResource.useCaseMetadata,
+                message: "Failed to upsert the file.",
+                error: r.error,
+              });
+            }
           }
         }
       }),

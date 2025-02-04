@@ -1,4 +1,12 @@
-import { Dialog } from "@dust-tt/sparkle";
+import {
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Spinner,
+} from "@dust-tt/sparkle";
 import type { DataSourceType, LightWorkspaceType } from "@dust-tt/types";
 import { useMemo, useState } from "react";
 
@@ -52,20 +60,43 @@ export function DeleteStaticDataSourceDialog({
 
   return (
     <Dialog
-      alertDialog
-      isOpen={isOpen}
-      title={`Removing ${name}`}
-      onValidate={onDelete}
-      isSaving={isLoading || isUsageLoading}
-      onCancel={onClose}
-      validateVariant="warning"
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose();
+        }
+      }}
     >
-      <div>
-        {message}
-        <br />
-        <br />
-        <b>Are you sure you want to remove ?</b>
-      </div>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Confirm deletion</DialogTitle>
+        </DialogHeader>
+        {isLoading ? (
+          <div className="flex justify-center py-8">
+            <Spinner variant="dark" size="md" />
+          </div>
+        ) : (
+          <>
+            <DialogContainer>
+              {message}
+              <b>Are you sure you want to delete ?</b>
+            </DialogContainer>
+            <DialogFooter
+              leftButtonProps={{
+                label: "Cancel",
+                variant: "outline",
+              }}
+              rightButtonProps={{
+                label: "Delete",
+                variant: "warning",
+                onClick: async () => {
+                  void onDelete();
+                },
+              }}
+            />
+          </>
+        )}
+      </DialogContent>
     </Dialog>
   );
 }

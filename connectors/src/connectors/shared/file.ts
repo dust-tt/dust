@@ -5,17 +5,20 @@ import type {
   Result,
 } from "@dust-tt/types";
 import {
-  CONNECTOR_TYPE_TO_NAME,
   Err,
   isTextExtractionSupportedContentType,
   Ok,
   pagePrefixesPerMimeType,
+  parseAndStringifyCsv,
+  slugify,
   TextExtraction,
 } from "@dust-tt/types";
-import { parseAndStringifyCsv, slugify } from "@dust-tt/types";
 
 import { apiConfig } from "@connectors/lib/api/config";
-import { upsertTableFromCsv } from "@connectors/lib/data_sources";
+import {
+  ignoreTablesError,
+  upsertDataSourceTableFromCsv,
+} from "@connectors/lib/data_sources";
 import type { Logger } from "@connectors/logger/logger";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
@@ -61,26 +64,29 @@ export async function handleCsvFile({
 
   const tableCsv = Buffer.from(data).toString("utf-8").trim();
   const tableName = slugify(fileName.substring(0, 32));
-  const tableDescription = `Structured data from ${CONNECTOR_TYPE_TO_NAME[provider]} (${fileName})`;
+  const tableDescription = `Structured data from ${provider} (${fileName})`;
 
   try {
     const stringifiedContent = await parseAndStringifyCsv(tableCsv);
-    await upsertTableFromCsv({
-      dataSourceConfig,
-      tableId,
-      tableName,
-      tableDescription,
-      tableCsv: stringifiedContent,
-      loggerArgs: {
-        connectorId,
-        fileId: tableId,
-        fileName: tableName,
-      },
-      truncate: true,
-      parents,
-      title: fileName,
-      mimeType: "text/csv",
-    });
+    await ignoreTablesError(`${provider} CSV File`, () =>
+      upsertDataSourceTableFromCsv({
+        dataSourceConfig,
+        tableId,
+        tableName,
+        tableDescription,
+        tableCsv: stringifiedContent,
+        loggerArgs: {
+          connectorId,
+          fileId: tableId,
+          fileName: tableName,
+        },
+        truncate: true,
+        parents,
+        parentId: parents[1] || null,
+        title: fileName,
+        mimeType: "text/csv",
+      })
+    );
   } catch (err) {
     localLogger.warn({ error: err }, "Error while parsing or upserting table");
     return new Err(err as Error);

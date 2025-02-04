@@ -1,5 +1,10 @@
 import { DustAPI } from "@dust-tt/client";
 import type {
+  ActionGeneratedFileType,
+  AgentActionSpecification,
+  DatasetSchema,
+  DustAppParameters,
+  DustAppRunActionType,
   DustAppRunBlockEvent,
   DustAppRunConfigurationType,
   DustAppRunErrorEvent,
@@ -8,17 +13,27 @@ import type {
   FunctionCallType,
   FunctionMessageTypeModel,
   ModelId,
+  Result,
+  SpecificationType,
+  SupportedFileContentType,
 } from "@dust-tt/types";
-import type { DustAppParameters, DustAppRunActionType } from "@dust-tt/types";
-import type { AgentActionSpecification } from "@dust-tt/types";
-import type { SpecificationType } from "@dust-tt/types";
-import type { DatasetSchema } from "@dust-tt/types";
-import type { Result } from "@dust-tt/types";
-import { BaseAction } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import {
+  BaseAction,
+  Err,
+  getDustAppRunResultsFileTitle,
+  getHeaderFromGroupIds,
+  Ok,
+  SUPPORTED_MODEL_CONFIGS,
+} from "@dust-tt/types";
 
+import { DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY } from "@app/lib/api/assistant/actions/constants";
+import {
+  getToolResultOutputCsvFileAndSnippet,
+  getToolResultOutputPlainTextFileAndSnippet,
+} from "@app/lib/api/assistant/actions/result_file_helpers";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
+import { renderConversationForModel } from "@app/lib/api/assistant/generation";
 import config from "@app/lib/api/config";
 import { getDatasetSchema } from "@app/lib/api/datasets";
 import type { Authenticator } from "@app/lib/auth";
@@ -26,6 +41,8 @@ import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { extractConfig } from "@app/lib/config";
 import { AgentDustAppRunAction } from "@app/lib/models/assistant/actions/dust_app_run";
 import { AppResource } from "@app/lib/resources/app_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
+import { FileModel } from "@app/lib/resources/storage/models/files";
 import { sanitizeJSONOutput } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
@@ -45,6 +62,10 @@ interface DustAppRunActionBlob {
   functionCallId: string | null;
   functionCallName: string | null;
   step: number;
+  resultsFileId: string | null;
+  resultsFileSnippet: string | null;
+  resultsFileContentType: SupportedFileContentType | null;
+  generatedFiles: ActionGeneratedFileType[];
 }
 
 export class DustAppRunAction extends BaseAction {
@@ -62,10 +83,13 @@ export class DustAppRunAction extends BaseAction {
   readonly functionCallId: string | null;
   readonly functionCallName: string | null;
   readonly step: number;
+  readonly resultsFileId: string | null;
+  readonly resultsFileSnippet: string | null;
+  readonly resultsFileContentType: SupportedFileContentType | null;
   readonly type = "dust_app_run_action";
 
   constructor(blob: DustAppRunActionBlob) {
-    super(blob.id, "dust_app_run_action");
+    super(blob.id, "dust_app_run_action", blob.generatedFiles || []);
 
     this.agentMessageId = blob.agentMessageId;
     this.appWorkspaceId = blob.appWorkspaceId;
@@ -77,6 +101,9 @@ export class DustAppRunAction extends BaseAction {
     this.functionCallId = blob.functionCallId;
     this.functionCallName = blob.functionCallName;
     this.step = blob.step;
+    this.resultsFileId = blob.resultsFileId;
+    this.resultsFileSnippet = blob.resultsFileSnippet;
+    this.resultsFileContentType = blob.resultsFileContentType;
   }
 
   renderForFunctionCall(): FunctionCallType {
@@ -89,6 +116,23 @@ export class DustAppRunAction extends BaseAction {
 
   async renderForMultiActionsModel(): Promise<FunctionMessageTypeModel> {
     let content = "";
+
+    const hasResultsFile =
+      this.resultsFileId &&
+      this.resultsFileSnippet &&
+      this.resultsFileContentType;
+
+    if (hasResultsFile) {
+      const attachment = getDustAppRunResultsFileAttachment({
+        resultsFileId: this.resultsFileId,
+        resultsFileSnippet: this.resultsFileSnippet,
+        resultsFileContentType: this.resultsFileContentType,
+        includeSnippet: true,
+        appName: this.appName,
+      });
+
+      content += `${attachment}\n\n`;
+    }
 
     // Note action.output can be any valid JSON including null.
     content += `OUTPUT:\n`;
@@ -154,6 +198,13 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
     if (datasetName) {
       // We have a dataset name we need to find associated schema.
       schema = await getDatasetSchema(auth, app, datasetName);
+      // remove from the schema the magic input key
+      if (schema) {
+        schema = schema.filter(
+          (s) => s.key !== DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY
+        );
+      }
+
       if (!schema) {
         return new Err(
           new Error(
@@ -257,6 +308,25 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
       }
     }
 
+    // Fetch the dataset schema again to check whether the magic input key is present.
+    const appSpec = JSON.parse(
+      app.savedSpecification || "[]"
+    ) as SpecificationType;
+    const inputSpec = appSpec.find((b) => b.type === "input");
+    const inputConfig = inputSpec ? appConfig[inputSpec.name] : null;
+    const datasetName: string | null = inputConfig ? inputConfig.dataset : null;
+
+    let schema: DatasetSchema | null = null;
+    if (datasetName) {
+      schema = await getDatasetSchema(auth, app, datasetName);
+    }
+    let shouldIncludeConversationHistory = false;
+    if (
+      schema?.find((s) => s.key === DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY)
+    ) {
+      shouldIncludeConversationHistory = true;
+    }
+
     // Create the AgentDustAppRunAction object in the database and yield an event for the generation
     // of the params. We store the action here as the params have been generated, if an error occurs
     // later on, the action won't have an output but the error will be stored on the parent agent
@@ -271,6 +341,9 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
       functionCallName: actionConfiguration.name,
       agentMessageId: agentMessage.agentMessageId,
       step,
+      resultsFileId: null,
+      resultsFileSnippet: null,
+      workspaceId: owner.id,
     });
 
     yield {
@@ -290,6 +363,10 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
         functionCallName: actionConfiguration.name,
         agentMessageId: agentMessage.agentMessageId,
         step,
+        resultsFileId: null,
+        resultsFileSnippet: null,
+        resultsFileContentType: null,
+        generatedFiles: [],
       }),
     };
 
@@ -300,17 +377,70 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
       useLocalInDev: true,
     });
     const requestedGroupIds = auth.groups().map((g) => g.sId);
+    const apiConfig = config.getDustAPIConfig();
     const api = new DustAPI(
-      config.getDustAPIConfig(),
-      { ...prodCredentials, groupIds: requestedGroupIds },
-      logger,
+      apiConfig,
       {
-        useLocalInDev: true,
-      }
+        ...prodCredentials,
+        extraHeaders: getHeaderFromGroupIds(requestedGroupIds),
+      },
+      logger,
+      apiConfig.nodeEnv === "development" ? "http://localhost:3000" : null
     );
 
     // As we run the app (using a system API key here), we do force using the workspace credentials so
     // that the app executes in the exact same conditions in which they were developed.
+    if (shouldIncludeConversationHistory) {
+      const model = SUPPORTED_MODEL_CONFIGS.find(
+        (m) =>
+          m.modelId === agentConfiguration.model.modelId &&
+          m.providerId === agentConfiguration.model.providerId
+      );
+      if (!model) {
+        yield {
+          type: "dust_app_run_error",
+          created: Date.now(),
+          configurationId: agentConfiguration.sId,
+          messageId: agentMessage.sId,
+          error: {
+            code: "dust_app_run_error",
+            message: `Model not found: ${agentConfiguration.model.modelId}`,
+          },
+        };
+        return;
+      }
+      const MIN_GENERATION_TOKENS = 2048;
+      const allowedTokenCount = model.contextSize - MIN_GENERATION_TOKENS;
+      const prompt = "";
+
+      const convoRes = await renderConversationForModel(auth, {
+        conversation,
+        model,
+        prompt,
+        allowedTokenCount,
+        excludeImages: true,
+      });
+      if (convoRes.isErr()) {
+        yield {
+          type: "dust_app_run_error",
+          created: Date.now(),
+          configurationId: agentConfiguration.sId,
+          messageId: agentMessage.sId,
+          error: {
+            code: "dust_app_run_error",
+            message: `Error rendering conversation for model: ${convoRes.error.message}`,
+          },
+        };
+        return;
+      }
+
+      const renderedConvo = convoRes.value;
+      const messages = renderedConvo.modelConversation.messages;
+
+      params[DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY] =
+        JSON.stringify(messages);
+    }
+
     const runRes = await api.runAppStreamed(
       {
         workspaceId: actionConfiguration.appWorkspaceId,
@@ -331,7 +461,7 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
         messageId: agentMessage.sId,
         error: {
           code: "dust_app_run_error",
-          message: `Error running Dust app: ${runRes.error.message}`,
+          message: `Dust App ${app.name}: ${runRes.error.message}`,
         },
       };
       return;
@@ -377,6 +507,10 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
             output: null,
             agentMessageId: agentMessage.agentMessageId,
             step: action.step,
+            resultsFileId: null,
+            resultsFileSnippet: null,
+            resultsFileContentType: null,
+            generatedFiles: [],
           }),
         };
       }
@@ -401,12 +535,136 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
       }
     }
 
-    const output = sanitizeJSONOutput(lastBlockOutput);
+    function containsFileOutput(output: unknown): output is {
+      __dust_file?: {
+        type: string;
+        content: unknown;
+      };
+    } {
+      return (
+        typeof output === "object" &&
+        output !== null &&
+        "__dust_file" in output &&
+        typeof output.__dust_file === "object" &&
+        output.__dust_file !== null &&
+        "type" in output.__dust_file &&
+        "content" in output.__dust_file
+      );
+    }
 
-    // Update DustAppRunAction with the output of the last block.
+    function containsValidStructuredOutput(output: {
+      __dust_file?: { type: string; content: unknown };
+    }): output is {
+      __dust_file?: {
+        type: "structured";
+        content: Array<
+          Record<string, string | number | boolean | null | undefined>
+        >;
+      };
+    } {
+      return (
+        output.__dust_file?.type === "structured" &&
+        Array.isArray(output.__dust_file.content) &&
+        output.__dust_file.content.length > 0 &&
+        output.__dust_file.content.every(
+          (r) =>
+            typeof r === "object" &&
+            Object.values(r).every(
+              (v) =>
+                !v ||
+                typeof v === "string" ||
+                typeof v === "number" ||
+                typeof v === "boolean"
+            )
+        )
+      );
+    }
+
+    function containsValidDocumentOutput(output: {
+      __dust_file?: { type: string; content: unknown };
+    }): output is {
+      __dust_file?: {
+        type: "document";
+        content: string;
+      };
+    } {
+      return (
+        output.__dust_file?.type === "document" &&
+        typeof output.__dust_file.content === "string"
+      );
+    }
+
+    const sanitizedOutput = sanitizeJSONOutput(lastBlockOutput);
+
+    const updateParams: {
+      resultsFileId: number | null;
+      resultsFileSnippet: string | null;
+      output: unknown | null;
+    } = {
+      resultsFileId: null,
+      resultsFileSnippet: null,
+      output: null,
+    };
+
+    let resultFile: ActionGeneratedFileType | null = null;
+
+    if (containsFileOutput(sanitizedOutput) && sanitizedOutput.__dust_file) {
+      if (containsValidStructuredOutput(sanitizedOutput)) {
+        const fileTitle = getDustAppRunResultsFileTitle({
+          appName: app.name,
+          resultsFileContentType: "text/csv",
+        });
+
+        const { file, snippet } = await getToolResultOutputCsvFileAndSnippet(
+          auth,
+          {
+            title: fileTitle,
+            conversationId: conversation.sId,
+            results: sanitizedOutput.__dust_file.content,
+          }
+        );
+
+        resultFile = {
+          fileId: file.sId,
+          title: fileTitle,
+          contentType: file.contentType,
+          snippet: file.snippet,
+        };
+
+        delete sanitizedOutput.__dust_file;
+        updateParams.resultsFileId = file.id;
+        updateParams.resultsFileSnippet = snippet;
+      } else if (containsValidDocumentOutput(sanitizedOutput)) {
+        const fileTitle = getDustAppRunResultsFileTitle({
+          appName: app.name,
+          resultsFileContentType: "text/plain",
+        });
+
+        const { file, snippet } =
+          await getToolResultOutputPlainTextFileAndSnippet(auth, {
+            title: fileTitle,
+            conversationId: conversation.sId,
+            content: sanitizedOutput.__dust_file.content,
+          });
+
+        resultFile = {
+          fileId: file.sId,
+          title: fileTitle,
+          contentType: file.contentType,
+          snippet: file.snippet,
+        };
+
+        delete sanitizedOutput.__dust_file;
+        updateParams.resultsFileId = file.id;
+        updateParams.resultsFileSnippet = snippet;
+      }
+    }
+
+    // Update DustAppRunAction with the output and file references
     await action.update({
+      ...updateParams,
+      output: sanitizedOutput,
       runId: await dustRunId,
-      output,
     });
 
     logger.info(
@@ -415,7 +673,7 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
         conversationId: conversation.sId,
         elapsed: Date.now() - now,
       },
-      "[ASSISTANT_TRACE] DustAppRun acion run execution"
+      "[ASSISTANT_TRACE] DustAppRun action run execution"
     );
 
     yield {
@@ -432,9 +690,13 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
         functionCallId,
         functionCallName: actionConfiguration.name,
         runningBlock: null,
-        output,
+        output: sanitizedOutput,
         agentMessageId: agentMessage.agentMessageId,
         step: action.step,
+        resultsFileId: resultFile?.fileId ?? null,
+        resultsFileSnippet: updateParams.resultsFileSnippet,
+        resultsFileContentType: resultFile?.contentType ?? null,
+        generatedFiles: resultFile ? [resultFile] : [],
       }),
     };
   }
@@ -495,15 +757,39 @@ async function dustAppRunActionSpecification({
 // used outside of api/assistant. We allow a ModelId interface here because we don't have `sId` on
 // actions (the `sId` is on the `Message` object linked to the `UserMessage` parent of this action).
 export async function dustAppRunTypesFromAgentMessageIds(
+  auth: Authenticator,
   agentMessageIds: ModelId[]
 ): Promise<DustAppRunActionType[]> {
+  const owner = auth.getNonNullableWorkspace();
+
   const actions = await AgentDustAppRunAction.findAll({
     where: {
       agentMessageId: agentMessageIds,
     },
+    include: [
+      {
+        model: FileModel,
+        as: "resultsFile",
+      },
+    ],
   });
 
   return actions.map((action) => {
+    const resultsFile: ActionGeneratedFileType | null = action.resultsFile
+      ? {
+          fileId: FileResource.modelIdToSId({
+            id: action.resultsFile.id,
+            workspaceId: owner.id,
+          }),
+          title: getDustAppRunResultsFileTitle({
+            appName: action.appName,
+            resultsFileContentType: action.resultsFile.contentType,
+          }),
+          contentType: action.resultsFile.contentType,
+          snippet: action.resultsFileSnippet,
+        }
+      : null;
+
     return new DustAppRunAction({
       id: action.id,
       appWorkspaceId: action.appWorkspaceId,
@@ -516,6 +802,40 @@ export async function dustAppRunTypesFromAgentMessageIds(
       functionCallName: action.functionCallName,
       agentMessageId: action.agentMessageId,
       step: action.step,
+      resultsFileId: resultsFile?.fileId ?? null,
+      resultsFileSnippet: action.resultsFileSnippet,
+      resultsFileContentType: resultsFile?.contentType ?? null,
+      generatedFiles: resultsFile ? [resultsFile] : [],
     });
   });
+}
+
+export function getDustAppRunResultsFileAttachment({
+  resultsFileId,
+  resultsFileSnippet,
+  resultsFileContentType,
+  includeSnippet = true,
+  appName,
+}: {
+  resultsFileId: string | null;
+  resultsFileSnippet: string | null;
+  resultsFileContentType: SupportedFileContentType;
+  includeSnippet: boolean;
+  appName: string;
+}): string | null {
+  if (!resultsFileId || !resultsFileSnippet) {
+    return null;
+  }
+
+  const attachment =
+    `<file ` +
+    `id="${resultsFileId}" type="${resultsFileContentType}" title=${getDustAppRunResultsFileTitle(
+      { appName, resultsFileContentType }
+    )}`;
+
+  if (!includeSnippet) {
+    return `${attachment} />`;
+  }
+
+  return `${attachment}>\n${resultsFileSnippet}\n</file>`;
 }

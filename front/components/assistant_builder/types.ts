@@ -1,8 +1,11 @@
 import { CircleIcon, SquareIcon, TriangleIcon } from "@dust-tt/sparkle";
 import type {
   AgentConfigurationScope,
+  AgentReasoningEffort,
   AppType,
   DataSourceViewSelectionConfigurations,
+  ModelIdType,
+  ModelProviderIdType,
   PlanType,
   ProcessSchemaPropertyType,
   SubscriptionType,
@@ -10,6 +13,7 @@ import type {
   TimeframeUnit,
   WorkspaceType,
 } from "@dust-tt/types";
+import { DEFAULT_MAX_STEPS_USE_PER_RUN } from "@dust-tt/types";
 import {
   assertNever,
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
@@ -19,13 +23,19 @@ import type { SVGProps } from "react";
 import type React from "react";
 
 import {
+  DEFAULT_GITHUB_CREATE_ISSUE_ACTION_DESCRIPTION,
+  DEFAULT_GITHUB_CREATE_ISSUE_ACTION_NAME,
+  DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_DESCRIPTION,
+  DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME,
   DEFAULT_PROCESS_ACTION_NAME,
+  DEFAULT_REASONING_ACTION_DESCRIPTION,
+  DEFAULT_REASONING_ACTION_NAME,
   DEFAULT_RETRIEVAL_ACTION_NAME,
   DEFAULT_RETRIEVAL_NO_QUERY_ACTION_NAME,
   DEFAULT_TABLES_QUERY_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/api/assistant/actions/constants";
-import type { FetchAssistantTemplateResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates/[tId]";
+import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
 
 export const ACTION_MODES = [
   "GENERIC",
@@ -35,6 +45,31 @@ export const ACTION_MODES = [
   "TABLES_QUERY",
   "PROCESS",
 ] as const;
+
+export function isDefaultActionName(
+  action: AssistantBuilderActionConfiguration
+) {
+  switch (action.type) {
+    case "RETRIEVAL_SEARCH":
+      return action.name.includes(DEFAULT_RETRIEVAL_ACTION_NAME);
+    case "RETRIEVAL_EXHAUSTIVE":
+      return action.name.includes(DEFAULT_RETRIEVAL_NO_QUERY_ACTION_NAME);
+    case "DUST_APP_RUN":
+      return action.name.includes(
+        ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_NAME
+      );
+    case "TABLES_QUERY":
+      return action.name.includes(DEFAULT_TABLES_QUERY_ACTION_NAME);
+    case "PROCESS":
+      return action.name.includes(DEFAULT_PROCESS_ACTION_NAME);
+    case "WEB_NAVIGATION":
+      return action.name.includes(DEFAULT_WEBSEARCH_ACTION_NAME);
+    case "REASONING":
+      return action.name.includes(DEFAULT_REASONING_ACTION_NAME);
+    default:
+      return false;
+  }
+}
 
 // Retrieval configuration
 
@@ -52,7 +87,7 @@ export type AssistantBuilderRetrievalConfiguration = {
 };
 
 export type AssistantBuilderRetrievalExhaustiveConfiguration = {
-  timeFrame?: AssistantBuilderTimeFrame;
+  timeFrame?: AssistantBuilderTimeFrame | null;
 } & AssistantBuilderRetrievalConfiguration;
 
 // DustAppRun configuration
@@ -76,8 +111,19 @@ export type AssistantBuilderProcessConfiguration = {
   schema: ProcessSchemaPropertyType[];
 };
 
-// Websearch configuration
-export type AssistantBuilderWebNavigationConfiguration = Record<string, never>; // no relevant params identified yet
+// Websearch configuration (no configuraiton)
+export type AssistantBuilderWebNavigationConfiguration = Record<string, never>;
+
+// Github configuration (no configuraiton)
+export type AssistantBuilderGithubConfiguration = Record<string, never>;
+
+// Reasoning configuration
+export type AssistantBuilderReasoningConfiguration = {
+  modelId: ModelIdType | null;
+  providerId: ModelProviderIdType | null;
+  temperature: number | null;
+  reasoningEffort: AgentReasoningEffort | null;
+};
 
 // Builder State
 
@@ -105,6 +151,18 @@ export type AssistantBuilderActionConfiguration = (
   | {
       type: "WEB_NAVIGATION";
       configuration: AssistantBuilderWebNavigationConfiguration;
+    }
+  | {
+      type: "GITHUB_GET_PULL_REQUEST";
+      configuration: AssistantBuilderGithubConfiguration;
+    }
+  | {
+      type: "GITHUB_CREATE_ISSUE";
+      configuration: AssistantBuilderGithubConfiguration;
+    }
+  | {
+      type: "REASONING";
+      configuration: AssistantBuilderReasoningConfiguration;
     }
 ) & {
   name: string;
@@ -197,7 +255,7 @@ export function getDefaultAssistantState() {
       },
       temperature: 0.7,
     },
-    maxStepsPerRun: 3,
+    maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,
     templateId: null,
   } satisfies AssistantBuilderState;
@@ -223,6 +281,7 @@ export function getDefaultRetrievalExhaustiveActionConfiguration() {
     type: "RETRIEVAL_EXHAUSTIVE",
     configuration: {
       dataSourceConfigurations: {},
+      timeFrame: null,
     } as AssistantBuilderRetrievalExhaustiveConfiguration,
     name: DEFAULT_RETRIEVAL_NO_QUERY_ACTION_NAME,
     description: "",
@@ -282,6 +341,41 @@ export function getDefaultWebsearchActionConfiguration(): AssistantBuilderAction
   };
 }
 
+export function getDefaultGithubGetPullRequestActionConfiguration(): AssistantBuilderActionConfiguration {
+  return {
+    type: "GITHUB_GET_PULL_REQUEST",
+    configuration: {},
+    name: DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME,
+    description: DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_DESCRIPTION,
+    noConfigurationRequired: true,
+  };
+}
+
+export function getDefaultGithubCreateIssueActionConfiguration(): AssistantBuilderActionConfiguration {
+  return {
+    type: "GITHUB_CREATE_ISSUE",
+    configuration: {},
+    name: DEFAULT_GITHUB_CREATE_ISSUE_ACTION_NAME,
+    description: DEFAULT_GITHUB_CREATE_ISSUE_ACTION_DESCRIPTION,
+    noConfigurationRequired: true,
+  };
+}
+
+export function getDefaultReasoningActionConfiguration(): AssistantBuilderActionConfiguration {
+  return {
+    type: "REASONING",
+    configuration: {
+      providerId: null,
+      modelId: null,
+      temperature: null,
+      reasoningEffort: null,
+    },
+    name: DEFAULT_REASONING_ACTION_NAME,
+    description: DEFAULT_REASONING_ACTION_DESCRIPTION,
+    noConfigurationRequired: false,
+  } satisfies AssistantBuilderActionConfiguration;
+}
+
 export function getDefaultActionConfiguration(
   actionType: AssistantBuilderActionType | null
 ): AssistantBuilderActionConfigurationWithId | null {
@@ -301,6 +395,12 @@ export function getDefaultActionConfiguration(
         return getDefaultProcessActionConfiguration();
       case "WEB_NAVIGATION":
         return getDefaultWebsearchActionConfiguration();
+      case "GITHUB_GET_PULL_REQUEST":
+        return getDefaultGithubGetPullRequestActionConfiguration();
+      case "GITHUB_CREATE_ISSUE":
+        return getDefaultGithubCreateIssueActionConfiguration();
+      case "REASONING":
+        return getDefaultReasoningActionConfiguration();
       default:
         assertNever(actionType);
     }
@@ -329,7 +429,6 @@ export type AssistantBuilderProps = {
   defaultTemplate: FetchAssistantTemplateResponse | null;
   flow: BuilderFlow;
   initialBuilderState: AssistantBuilderInitialState | null;
-  isAdmin: boolean;
   owner: WorkspaceType;
   plan: PlanType;
   subscription: SubscriptionType;
@@ -343,6 +442,10 @@ type BuilderScreenInfos = {
   id: string;
   label: string;
   icon: (props: SVGProps<SVGSVGElement>) => React.JSX.Element;
+  dataGtm: {
+    label: string;
+    location: string;
+  };
 };
 
 export const BUILDER_SCREENS_INFOS: Record<BuilderScreen, BuilderScreenInfos> =
@@ -350,16 +453,28 @@ export const BUILDER_SCREENS_INFOS: Record<BuilderScreen, BuilderScreenInfos> =
     instructions: {
       id: "instructions",
       label: "Instructions",
+      dataGtm: {
+        label: "assistantInstructionsButton",
+        location: "assistantBuilder",
+      },
       icon: CircleIcon,
     },
     actions: {
       id: "actions",
       label: "Tools & Data sources",
+      dataGtm: {
+        label: "assistantToolsButton",
+        location: "assistantBuilder",
+      },
       icon: SquareIcon,
     },
     naming: {
       id: "naming",
       label: "Naming",
+      dataGtm: {
+        label: "assistantNamingButton",
+        location: "assistantBuilder",
+      },
       icon: TriangleIcon,
     },
   };

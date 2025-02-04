@@ -1,31 +1,26 @@
-import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-  NonAttribute,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import { DataTypes } from "sequelize";
 
 import { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/process";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
+import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
 /**
  * Configuration of Datasources used for Retrieval Action.
  */
-export class AgentDataSourceConfiguration extends Model<
-  InferAttributes<AgentDataSourceConfiguration>,
-  InferCreationAttributes<AgentDataSourceConfiguration>
-> {
-  declare id: CreationOptional<number>;
+export class AgentDataSourceConfiguration extends WorkspaceAwareModel<AgentDataSourceConfiguration> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
   declare parentsIn: string[] | null;
   declare parentsNotIn: string[] | null;
+
+  declare tagsMode: "custom" | "auto" | null;
+  declare tagsIn: string[] | null;
+  declare tagsNotIn: string[] | null;
 
   declare dataSourceId: ForeignKey<DataSourceModel["id"]>;
   declare dataSourceViewId: ForeignKey<DataSourceViewModel["id"]>;
@@ -44,11 +39,6 @@ export class AgentDataSourceConfiguration extends Model<
 }
 AgentDataSourceConfiguration.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -67,31 +57,53 @@ AgentDataSourceConfiguration.init(
       type: DataTypes.ARRAY(DataTypes.STRING),
       allowNull: true,
     },
+    tagsMode: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    tagsIn: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: true,
+    },
+    tagsNotIn: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: true,
+    },
   },
   {
     modelName: "agent_data_source_configuration",
     indexes: [
-      {
-        fields: ["retrievalConfigurationId"],
-      },
-      {
-        fields: ["processConfigurationId"],
-      },
-      {
-        fields: ["dataSourceId"],
-      },
-      {
-        fields: ["dataSourceViewId"],
-      },
+      { fields: ["retrievalConfigurationId"] },
+      { fields: ["processConfigurationId"] },
+      { fields: ["dataSourceId"] },
+      { fields: ["dataSourceViewId"] },
     ],
     sequelize: frontSequelize,
     hooks: {
-      beforeValidate: (dataSourceConfig: AgentDataSourceConfiguration) => {
+      beforeValidate: (dsConfig: AgentDataSourceConfiguration) => {
+        // Checking parents.
         if (
-          (dataSourceConfig.parentsIn === null) !==
-          (dataSourceConfig.parentsNotIn === null)
+          (dsConfig.parentsIn === null) !==
+          (dsConfig.parentsNotIn === null)
         ) {
           throw new Error("Parents must be both set or both null");
+        }
+        // Checking tags.
+        if ((dsConfig.tagsIn === null) !== (dsConfig.tagsNotIn === null)) {
+          throw new Error("Tags must be both set or both null");
+        }
+        if (dsConfig.tagsMode === "custom") {
+          if (!dsConfig.tagsIn?.length && !dsConfig.tagsNotIn?.length) {
+            throw new Error(
+              "TagsIn/notIn can't be both empty if tagsMode is custom"
+            );
+          }
+        } else {
+          if (dsConfig.tagsIn !== null || dsConfig.tagsNotIn !== null) {
+            throw new Error(
+              "TagsIn/notIn must be null if tagsMode is auto or null"
+            );
+          }
         }
       },
     },
@@ -101,7 +113,7 @@ AgentDataSourceConfiguration.init(
 // Retrieval config <> Data source config
 AgentRetrievalConfiguration.hasMany(AgentDataSourceConfiguration, {
   foreignKey: { name: "retrievalConfigurationId", allowNull: true },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 AgentDataSourceConfiguration.belongsTo(AgentRetrievalConfiguration, {
   foreignKey: { name: "retrievalConfigurationId", allowNull: true },
@@ -110,7 +122,7 @@ AgentDataSourceConfiguration.belongsTo(AgentRetrievalConfiguration, {
 // Process config <> Data source config
 AgentProcessConfiguration.hasMany(AgentDataSourceConfiguration, {
   foreignKey: { name: "processConfigurationId", allowNull: true },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 AgentDataSourceConfiguration.belongsTo(AgentProcessConfiguration, {
   foreignKey: { name: "processConfigurationId", allowNull: true },

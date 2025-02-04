@@ -2,6 +2,7 @@ import type { ModelId } from "@dust-tt/types";
 import {
   getGoogleSheetTableId,
   InvalidStructuredDataHeaderError,
+  MIME_TYPES,
   slugify,
 } from "@dust-tt/types";
 import { Context } from "@temporalio/activity";
@@ -11,13 +12,21 @@ import type { sheets_v4 } from "googleapis";
 import { google } from "googleapis";
 import type { OAuth2Client } from "googleapis-common";
 
+import {
+  getSourceUrlForGoogleDriveFiles,
+  getSourceUrlForGoogleDriveSheet,
+} from "@connectors/connectors/google_drive";
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
+import { getInternalId } from "@connectors/connectors/google_drive/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
-  deleteTable,
+  deleteDataSourceFolder,
+  deleteDataSourceTable,
+  ignoreTablesError,
   MAX_FILE_SIZE_TO_DOWNLOAD,
-  upsertTableFromCsv,
+  upsertDataSourceFolder,
+  upsertDataSourceTableFromCsv,
 } from "@connectors/lib/data_sources";
 import { ProviderWorkflowError, TablesError } from "@connectors/lib/error";
 import type { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
@@ -29,7 +38,7 @@ import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
 
 const MAXIMUM_NUMBER_OF_GSHEET_ROWS = 50000;
 
-type Sheet = sheets_v4.Schema$ValueRange & {
+export type Sheet = sheets_v4.Schema$ValueRange & {
   id: number;
   spreadsheet: {
     id: string;
@@ -51,10 +60,9 @@ async function upsertGdriveTable(
   connector: ConnectorResource,
   sheet: Sheet,
   parents: string[],
-  rows: string[][],
-  loggerArgs: object
+  rows: string[][]
 ) {
-  const dataSourceConfig = await dataSourceConfigFromConnector(connector);
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
   const { id, spreadsheet, title } = sheet;
   const tableId = getGoogleSheetTableId(spreadsheet.id, id);
@@ -69,25 +77,27 @@ async function upsertGdriveTable(
 
   // Upserting is safe: Core truncates any previous table with the same Id before
   // the operation. Note: Renaming a sheet in Google Drive retains its original Id.
-  await upsertTableFromCsv({
-    dataSourceConfig,
-    tableId,
-    tableName,
-    tableDescription,
-    tableCsv: csv,
-    loggerArgs: {
-      connectorId: connector.id,
-      sheetId: id,
-      spreadsheetId: spreadsheet.id,
-    },
-    truncate: true,
-    parents: [tableId, ...parents],
-    useAppForHeaderDetection: true,
-    title: `${spreadsheet.title} - ${title}`,
-    mimeType: "application/vnd.google-apps.spreadsheet",
-  });
-
-  logger.info(loggerArgs, "[Spreadsheet] Table upserted.");
+  await ignoreTablesError("Google Drive GSheet", () =>
+    upsertDataSourceTableFromCsv({
+      dataSourceConfig,
+      tableId,
+      tableName,
+      tableDescription,
+      tableCsv: csv,
+      loggerArgs: {
+        connectorId: connector.id,
+        sheetId: id,
+        spreadsheetId: spreadsheet.id,
+      },
+      truncate: true,
+      parents: [tableId, ...parents],
+      parentId: parents[0] || null,
+      useAppForHeaderDetection: true,
+      title: `${spreadsheet.title} - ${title}`,
+      mimeType: "application/vnd.google-apps.spreadsheet",
+      sourceUrl: getSourceUrlForGoogleDriveSheet(sheet),
+    })
+  );
 }
 
 function findDataRangeAndSelectRows(allRows: string[][]): string[][] {
@@ -180,11 +190,11 @@ async function processSheet(
     "[Spreadsheet] Processing sheet in Google Spreadsheet."
   );
 
-  const rows = await getValidRows(sheet.values, loggerArgs);
+  const rows = getValidRows(sheet.values, loggerArgs);
   // Assuming the first line as headers, at least one additional data line is required.
   if (rows.length > 1) {
     try {
-      await upsertGdriveTable(connector, sheet, parents, rows, loggerArgs);
+      await upsertGdriveTable(connector, sheet, parents, rows);
     } catch (err) {
       if (err instanceof TablesError) {
         logger.warn(
@@ -458,6 +468,17 @@ export async function syncSpreadSheet(
               // Allow to locally retry the API call.
               continue;
             }
+          } else if (
+            err instanceof Error &&
+            "code" in err &&
+            err.code === 404
+          ) {
+            localLogger.info(
+              "[Spreadsheet] Consistently getting 404 Not Found from Google Sheets, skipping further processing."
+            );
+            return {
+              isSupported: false,
+            };
           }
 
           throw err;
@@ -478,17 +499,24 @@ export async function syncSpreadSheet(
         },
       });
 
-      const parents = [
-        file.id,
-        ...(
-          await getFileParentsMemoized(
-            connectorId,
-            oauth2client,
-            file,
-            startSyncTs
-          )
-        ).map((f) => f.id),
-      ];
+      const parentGoogleIds = await getFileParentsMemoized(
+        connectorId,
+        oauth2client,
+        file,
+        startSyncTs
+      );
+      const parents = parentGoogleIds.map((parent) => getInternalId(parent));
+
+      // Upsert spreadsheet as a folder, because it is a parent of the sheets.
+      await upsertDataSourceFolder({
+        dataSourceConfig: dataSourceConfigFromConnector(connector),
+        folderId: getInternalId(file.id),
+        parents,
+        parentId: parents[1] || null,
+        title: spreadsheet.data.properties?.title ?? "Untitled Spreadsheet",
+        mimeType: MIME_TYPES.GOOGLE_DRIVE.SPREADSHEET,
+        sourceUrl: getSourceUrlForGoogleDriveFiles(file),
+      });
 
       const successfulSheetIdImports: number[] = [];
       for (const sheet of sheets) {
@@ -538,7 +566,7 @@ async function deleteSheetForSpreadsheet(
   );
 
   // First remove the upserted table in core.
-  await deleteTable({
+  await deleteDataSourceTable({
     dataSourceConfig,
     tableId: getGoogleSheetTableId(spreadsheetFileId, sheet.driveSheetId),
     loggerArgs: {
@@ -585,6 +613,16 @@ export async function deleteSpreadsheet(
     },
     "[Spreadsheet] Deleting Google Spreadsheet."
   );
+
+  // Delete the spreadsheet folder, that contains the sheets.
+  await deleteDataSourceFolder({
+    dataSourceConfig: dataSourceConfigFromConnector(connector),
+    folderId: getInternalId(file.driveFileId),
+    loggerArgs: {
+      connectorId: connector.id,
+      spreadsheetId: file.driveFileId,
+    },
+  });
 
   if (sheetsInSpreadsheet.length > 0) {
     await deleteAllSheets(connector, sheetsInSpreadsheet, file);

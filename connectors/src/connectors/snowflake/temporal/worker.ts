@@ -3,6 +3,7 @@ import { Worker } from "@temporalio/worker";
 import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 
 import * as activities from "@connectors/connectors/snowflake/temporal/activities";
+import { SnowflakeCastKnownErrorsInterceptor } from "@connectors/connectors/snowflake/temporal/cast_known_errors";
 import { QUEUE_NAME } from "@connectors/connectors/snowflake/temporal/config";
 import * as sync_status from "@connectors/lib/sync_status";
 import {
@@ -28,6 +29,7 @@ export async function runSnowflakeWorker() {
         (ctx: Context) => {
           return new ActivityInboundLogInterceptor(ctx, logger);
         },
+        () => new SnowflakeCastKnownErrorsInterceptor(),
       ],
     },
     bundlerOptions: {

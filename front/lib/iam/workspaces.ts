@@ -1,6 +1,7 @@
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import { Workspace, WorkspaceHasDomain } from "@app/lib/models/workspace";
+import { Workspace } from "@app/lib/models/workspace";
+import { WorkspaceHasDomain } from "@app/lib/models/workspace_has_domain";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
@@ -66,11 +67,10 @@ export async function createWorkspaceInternal({
   return workspace;
 }
 
-export async function findWorkspaceWithVerifiedDomain(
-  session: SessionWithUser
-): Promise<WorkspaceHasDomain | null> {
-  const { user } = session;
-
+export async function findWorkspaceWithVerifiedDomain(user: {
+  email: string;
+  email_verified: boolean;
+}): Promise<WorkspaceHasDomain | null> {
   if (!user.email_verified) {
     return null;
   }

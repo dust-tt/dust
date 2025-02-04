@@ -4,12 +4,18 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Modal,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
   Spinner,
   useSendNotification,
 } from "@dust-tt/sparkle";
 import type {
   DataSourceType,
+  ExtensionConfigurationType,
   SubscriptionType,
   WhitelistableFeature,
   WorkspaceDomain,
@@ -20,7 +26,6 @@ import { WHITELISTABLE_FEATURES } from "@dust-tt/types";
 import { format } from "date-fns/format";
 import { keyBy } from "lodash";
 import type { InferGetServerSidePropsType } from "next";
-import Link from "next/link";
 import { useRouter } from "next/router";
 import React from "react";
 
@@ -32,6 +37,7 @@ import { PluginList } from "@app/components/poke/plugins/PluginList";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { SpaceDataTable } from "@app/components/poke/spaces/table";
 import { ActiveSubscriptionTable } from "@app/components/poke/subscriptions/table";
+import { TrackerDataTable } from "@app/components/poke/trackers/table";
 import { WorkspaceInfoTable } from "@app/components/poke/workspace/table";
 import config from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
@@ -45,7 +51,9 @@ import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import { FREE_NO_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { renderSubscriptionFromModels } from "@app/lib/plans/renderers";
-import { DustProdActionRegistry } from "@app/lib/registry";
+import type { ActionRegistry } from "@app/lib/registry";
+import { getDustProdActionRegistry } from "@app/lib/registry";
+import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   owner: WorkspaceType;
@@ -53,9 +61,10 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   subscriptions: SubscriptionType[];
   dataSources: DataSourceType[];
   whitelistableFeatures: WhitelistableFeature[];
-  registry: typeof DustProdActionRegistry;
+  registry: ActionRegistry;
   workspaceVerifiedDomain: WorkspaceDomain | null;
   worspaceCreationDay: string;
+  extensionConfig: ExtensionConfigurationType | null;
   baseUrl: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
@@ -93,6 +102,9 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   const workspaceVerifiedDomain = await getWorkspaceVerifiedDomain(owner);
   const worspaceCreationDate = await getWorkspaceCreationDate(owner.sId);
 
+  const extensionConfig =
+    await ExtensionConfigurationResource.fetchForWorkspace(auth);
+
   return {
     props: {
       owner,
@@ -103,9 +115,10 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
       ),
       whitelistableFeatures:
         WHITELISTABLE_FEATURES as unknown as WhitelistableFeature[],
-      registry: DustProdActionRegistry,
+      registry: getDustProdActionRegistry(),
       workspaceVerifiedDomain,
       worspaceCreationDay: format(worspaceCreationDate, "yyyy-MM-dd"),
+      extensionConfig: extensionConfig?.toJSON() ?? null,
       baseUrl: config.getClientFacingUrl(),
     },
   };
@@ -120,13 +133,10 @@ const WorkspacePage = ({
   registry,
   workspaceVerifiedDomain,
   worspaceCreationDay,
+  extensionConfig,
   baseUrl,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
   const router = useRouter();
-
-  const [showDustAppLogsModal, setShowDustAppLogsModal] = React.useState(false);
-  const [showDeleteWorkspaceModal, setShowDeleteWorkspaceModal] =
-    React.useState(false);
 
   const { submit: onWorkspaceUpdate } = useSubmitFunction(
     async (segmentation: WorkspaceSegmentationType) => {
@@ -153,58 +163,28 @@ const WorkspacePage = ({
 
   return (
     <>
-      <DustAppLogsModal
-        show={showDustAppLogsModal}
-        onClose={() => {
-          setShowDustAppLogsModal(false);
-        }}
-        owner={owner}
-        registry={registry}
-        baseUrl={baseUrl}
-      />
-      <DeleteWorkspaceModal
-        show={showDeleteWorkspaceModal}
-        onClose={() => {
-          setShowDeleteWorkspaceModal(false);
-        }}
-        owner={owner}
-        subscription={activeSubscription}
-        dataSources={dataSources}
-      />
-
       <div className="min-h-screen bg-structure-50">
         <PokeNavbar />
         <div className="ml-8 p-6">
           <div className="flex justify-between gap-3">
             <div className="flex-grow">
               <span className="text-2xl font-bold">{owner.name}</span>
-              <div>
-                <Link
+              <div className="flex gap-4 pt-2">
+                <Button
                   href={`/poke/${owner.sId}/memberships`}
-                  className="text-xs text-action-400"
-                >
-                  View members
-                </Link>
-              </div>
-              <div>
-                <a
-                  className="cursor-pointer text-xs text-action-400"
-                  onClick={() => {
-                    setShowDustAppLogsModal(true);
-                  }}
-                >
-                  View dust app logs
-                </a>
-              </div>
-              <div>
-                <a
-                  className="cursor-pointer text-xs text-action-400"
-                  onClick={() => {
-                    setShowDeleteWorkspaceModal(true);
-                  }}
-                >
-                  Delete workspace data (GDPR)
-                </a>
+                  label="View members"
+                  variant="outline"
+                />
+                <DustAppLogsModal
+                  owner={owner}
+                  registry={registry}
+                  baseUrl={baseUrl}
+                />
+                <DeleteWorkspaceModal
+                  owner={owner}
+                  subscription={activeSubscription}
+                  dataSources={dataSources}
+                />
               </div>
             </div>
             <div>
@@ -241,6 +221,7 @@ const WorkspacePage = ({
                   owner={owner}
                   workspaceVerifiedDomain={workspaceVerifiedDomain}
                   worspaceCreationDay={worspaceCreationDay}
+                  extensionConfig={extensionConfig}
                 />
                 <div className="flex flex-grow flex-col gap-4">
                   <PluginList
@@ -265,6 +246,7 @@ const WorkspacePage = ({
                 owner={owner}
                 whitelistableFeatures={whitelistableFeatures}
               />
+              <TrackerDataTable owner={owner} />
             </div>
           </div>
         </div>
@@ -273,68 +255,63 @@ const WorkspacePage = ({
   );
 };
 
-function DustAppLogsModal({
-  show,
-  onClose,
+export function DustAppLogsModal({
   owner,
   registry,
   baseUrl,
 }: {
-  show: boolean;
-  onClose: () => void;
   owner: WorkspaceType;
-  registry: typeof DustProdActionRegistry;
+  registry: ActionRegistry;
   baseUrl: string;
 }) {
   return (
-    <Modal
-      isOpen={show}
-      onClose={onClose}
-      hasChanged={false}
-      title={"View Dust App Logs"}
-    >
-      <div className="flex flex-col gap-2 pt-4">
-        {Object.entries(registry).map(
-          ([
-            action,
-            {
-              app: { appId, workspaceId: appWorkspaceid, appSpaceId },
-            },
-          ]) => {
-            const url = `${baseUrl}/w/${appWorkspaceid}/spaces/${appSpaceId}/apps/${appId}/runs?wIdTarget=${owner.sId}`;
+    <Sheet>
+      <SheetTrigger asChild>
+        <Button label="View Dust App Logs" variant="outline" />
+      </SheetTrigger>
+      <SheetContent>
+        <SheetHeader>
+          <SheetTitle>View Dust App Logs</SheetTitle>
+        </SheetHeader>
+        <SheetContainer>
+          {Object.entries(registry).map(
+            ([
+              action,
+              {
+                app: { appId, workspaceId: appWorkspaceid, appSpaceId },
+              },
+            ]) => {
+              const url = `${baseUrl}/w/${appWorkspaceid}/spaces/${appSpaceId}/apps/${appId}/runs?wIdTarget=${owner.sId}`;
 
-            return (
-              <div key={appId}>
-                <div className="flex flex-row items-center space-x-2">
-                  <div className="flex-1">
-                    <h3
-                      className="cursor-pointer text-lg font-semibold text-action-600"
-                      onClick={() => {
-                        window.open(url, "_blank", "noopener,noreferrer");
-                      }}
-                    >
-                      {action}
-                    </h3>
+              return (
+                <div key={appId}>
+                  <div className="flex flex-row items-center space-x-2">
+                    <div className="flex-1">
+                      <h3
+                        className="cursor-pointer text-lg font-semibold text-action-600"
+                        onClick={() => {
+                          window.open(url, "_blank", "noopener,noreferrer");
+                        }}
+                      >
+                        {action}
+                      </h3>
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          }
-        )}
-      </div>
-    </Modal>
+              );
+            }
+          )}
+        </SheetContainer>
+      </SheetContent>
+    </Sheet>
   );
 }
 
-function DeleteWorkspaceModal({
-  show,
-  onClose,
+export function DeleteWorkspaceModal({
   owner,
   subscription,
   dataSources,
 }: {
-  show: boolean;
-  onClose: () => void;
   owner: WorkspaceType;
   subscription: SubscriptionType;
   dataSources: DataSourceType[];
@@ -381,46 +358,50 @@ function DeleteWorkspaceModal({
   );
 
   return (
-    <Modal
-      isOpen={show}
-      onClose={onClose}
-      hasChanged={false}
-      title="Delete Workspace Data (GDPR)"
-    >
-      <div className="flex flex-col gap-2 pt-4">
-        <div className="flex flex-col gap-2 pt-4">
-          <div>
-            {dataSources.length > 0 && (
-              <p className="mb-4 text-sm text-warning">
-                Delete data sources before deleting the workspace.
-              </p>
-            )}
-            {subscription.plan.code !== FREE_NO_PLAN_CODE && (
-              <p className="mb-4 text-sm text-warning">
-                Downgrade workspace before deleting its data.
-              </p>
-            )}
-            {isLoading ? (
-              <p className="mb-4 text-sm text-warning">
-                Deleting workspace data...
-                <Spinner />
-              </p>
-            ) : (
-              <Button
-                label="Delete the workspace"
-                variant="outline"
-                onClick={onDeleteWorkspace}
-                disabled={
-                  subscription.plan.code !== FREE_NO_PLAN_CODE ||
-                  workspaceHasManagedDataSources
-                }
-              />
-            )}
+    <Sheet>
+      <SheetTrigger asChild>
+        <Button label="Delete the workspace" variant="warning" />
+      </SheetTrigger>
+      <SheetContent>
+        <SheetHeader>
+          <SheetTitle>Delete Workspace Data (GDPR)</SheetTitle>
+        </SheetHeader>
+        <SheetContainer>
+          <div className="flex flex-col gap-2 pt-4">
+            <div className="flex flex-col gap-2 pt-4">
+              <div>
+                {dataSources.length > 0 && (
+                  <p className="mb-4 text-sm text-warning">
+                    Delete data sources before deleting the workspace.
+                  </p>
+                )}
+                {subscription.plan.code !== FREE_NO_PLAN_CODE && (
+                  <p className="mb-4 text-sm text-warning">
+                    Downgrade workspace before deleting its data.
+                  </p>
+                )}
+                {isLoading ? (
+                  <p className="mb-4 text-sm text-warning">
+                    Deleting workspace data...
+                    <Spinner />
+                  </p>
+                ) : (
+                  <Button
+                    label="Delete the workspace"
+                    variant="outline"
+                    onClick={onDeleteWorkspace}
+                    disabled={
+                      subscription.plan.code !== FREE_NO_PLAN_CODE ||
+                      workspaceHasManagedDataSources
+                    }
+                  />
+                )}
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
-    </Modal>
+        </SheetContainer>
+      </SheetContent>
+    </Sheet>
   );
 }
-
 export default WorkspacePage;

@@ -3,7 +3,12 @@ import React from "react";
 
 import { BUTTON_SIZES, BUTTON_VARIANTS } from "@sparkle/components/Button";
 
-import { PlusIcon, RobotIcon, SplitButton } from "../index_with_tw_base";
+import {
+  CameraIcon,
+  PlusIcon,
+  RobotIcon,
+  SplitButton,
+} from "../index_with_tw_base";
 
 const meta: Meta<React.ComponentProps<typeof SplitButton>> = {
   title: "Primitives/SplitButton",
@@ -43,13 +48,23 @@ export const ExampleButton: Story = {
       {
         label: "Second",
         icon: RobotIcon,
-        tooltip: "Second tooltip",
+        tooltip: "Disabled tooltip",
+        disabled: true,
+      },
+      {
+        label: "Photo",
+        icon: CameraIcon,
+        tooltip: "Disabled photo",
         disabled: true,
       },
       {
         label: "Third",
-        icon: PlusIcon,
         tooltip: "Third tooltip",
+      },
+      {
+        label: "Fourth",
+        tooltip: "Loading tooltip",
+        isLoading: true,
       },
     ],
   },

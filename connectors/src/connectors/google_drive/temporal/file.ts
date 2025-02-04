@@ -1,9 +1,11 @@
 import type { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
+import { Ok } from "@dust-tt/types";
 import tracer from "dd-trace";
 import type { OAuth2Client } from "googleapis-common";
 import { GaxiosError } from "googleapis-common";
 import type { CreationAttributes } from "sequelize";
 
+import { getSourceUrlForGoogleDriveFiles } from "@connectors/connectors/google_drive";
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import {
   getMimeTypesToDownload,
@@ -13,21 +15,22 @@ import {
 } from "@connectors/connectors/google_drive/temporal/mime_types";
 import { syncSpreadSheet } from "@connectors/connectors/google_drive/temporal/spreadsheets";
 import {
-  getDocumentId,
   getDriveClient,
+  getInternalId,
 } from "@connectors/connectors/google_drive/temporal/utils";
 import {
   handleCsvFile,
   handleTextExtraction,
   handleTextFile,
 } from "@connectors/connectors/shared/file";
-import { MAX_FILE_SIZE_TO_DOWNLOAD } from "@connectors/lib/data_sources";
 import {
   MAX_DOCUMENT_TXT_LEN,
+  MAX_FILE_SIZE_TO_DOWNLOAD,
   MAX_LARGE_DOCUMENT_TXT_LEN,
   renderDocumentTitleAndContent,
+  renderMarkdownSection,
   sectionLength,
-  upsertToDatasource,
+  upsertDataSourceDocument,
 } from "@connectors/lib/data_sources";
 import {
   GoogleDriveConfig,
@@ -182,9 +185,14 @@ async function handleFileExport(
   if (file.mimeType === "text/plain") {
     result = handleTextFile(res.data, maxDocumentLen);
   } else if (file.mimeType === "text/csv") {
-    const parents = (
-      await getFileParentsMemoized(connectorId, oauth2client, file, startSyncTs)
-    ).map((f) => f.id);
+    const parentGoogleIds = await getFileParentsMemoized(
+      connectorId,
+      oauth2client,
+      file,
+      startSyncTs
+    );
+
+    const parents = parentGoogleIds.map((parent) => getInternalId(parent));
 
     result = await handleCsvFile({
       data: res.data,
@@ -195,8 +203,28 @@ async function handleFileExport(
       dataSourceConfig,
       provider: "google_drive",
       connectorId,
-      parents: [file.id, ...parents],
+      parents,
     });
+  } else if (file.mimeType === "text/markdown") {
+    const textContent = handleTextFile(res.data, maxDocumentLen);
+    if (textContent.isErr()) {
+      result = textContent;
+    } else {
+      result = new Ok(
+        await renderDocumentTitleAndContent({
+          dataSourceConfig,
+          title: file.name || "",
+          createdAt: new Date(file.createdAtMs),
+          content: await renderMarkdownSection(
+            dataSourceConfig,
+            textContent.value.content || ""
+          ),
+          ...(file.updatedAtMs
+            ? { updatedAt: new Date(file.updatedAtMs) }
+            : {}),
+        })
+      );
+    }
   } else {
     result = await handleTextExtraction(res.data, localLogger, file.mimeType);
   }
@@ -235,7 +263,7 @@ export async function syncOneFile(
         },
       });
 
-      const documentId = getDocumentId(file.id);
+      const documentId = getInternalId(file.id);
       const fileInDb = await GoogleDriveFiles.findOne({
         where: { connectorId, driveFileId: file.id },
       });
@@ -323,7 +351,7 @@ async function syncOneFileTable(
   let skipReason: string | undefined;
   const upsertTimestampMs = undefined;
 
-  const documentId = getDocumentId(file.id);
+  const documentId = getInternalId(file.id);
 
   if (isGoogleDriveSpreadSheetFile(file)) {
     const res = await syncSpreadSheet(
@@ -383,7 +411,7 @@ async function syncOneFileTextDocument(
     csvEnabled: config?.csvEnabled || false,
   });
 
-  const documentId = getDocumentId(file.id);
+  const documentId = getInternalId(file.id);
 
   if (MIME_TYPES_TO_EXPORT[file.mimeType]) {
     documentContent = await handleGoogleDriveExport(
@@ -470,23 +498,29 @@ async function upsertGdriveDocument(
   const documentLen = documentContent ? sectionLength(documentContent) : 0;
 
   if (documentLen > 0 && documentLen <= maxDocumentLen) {
-    const parents = (
-      await getFileParentsMemoized(connectorId, oauth2client, file, startSyncTs)
-    ).map((f) => f.id);
-    parents.push(file.id);
-    parents.reverse();
+    const parentGoogleIds = await getFileParentsMemoized(
+      connectorId,
+      oauth2client,
+      file,
+      startSyncTs
+    );
 
-    await upsertToDatasource({
+    const parents = parentGoogleIds.map((parent) => getInternalId(parent));
+
+    await upsertDataSourceDocument({
       dataSourceConfig,
       documentId,
       documentContent: content,
-      documentUrl: file.webViewLink,
+      documentUrl: getSourceUrlForGoogleDriveFiles(file),
       timestampMs: file.updatedAtMs,
       tags,
       parents,
+      parentId: parents[1] || null,
       upsertContext: {
         sync_type: isBatchSync ? "batch" : "incremental",
       },
+      title: file.name,
+      mimeType: file.mimeType,
       async: true,
     });
     return file.updatedAtMs;

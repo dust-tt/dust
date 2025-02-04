@@ -7,6 +7,7 @@ class MyDocument extends Document {
     return (
       <Html>
         <Head>
+          <base href={process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL} />
           <link rel="preconnect" href="https://fonts.googleapis.com" />
           <link
             rel="preconnect"

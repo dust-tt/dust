@@ -19,6 +19,7 @@ export async function getFavoriteStates(
 
   const relations = await AgentUserRelation.findAll({
     where: {
+      workspaceId: auth.getNonNullableWorkspace().id,
       agentConfiguration: { [Op.in]: configurationIds },
       userId: user.id,
     },

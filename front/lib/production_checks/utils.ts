@@ -13,7 +13,7 @@ let frontPrimaryDbInstance: Sequelize | null = null;
 export function getConnectorsReplicaDbConnection() {
   if (!connectorsReplicaDbInstance) {
     connectorsReplicaDbInstance = new Sequelize(
-      config.getConnectorsDatabaseReadReplicaUri() as string,
+      config.getConnectorsDatabaseReadReplicaUri(),
       {
         logging: false,
       }
@@ -26,7 +26,7 @@ export function getConnectorsReplicaDbConnection() {
 export function getCoreReplicaDbConnection() {
   if (!coreReplicaDbInstance) {
     coreReplicaDbInstance = new Sequelize(
-      config.getCoreDatabaseReadReplicaUri() as string,
+      config.getCoreDatabaseReadReplicaUri(),
       {
         logging: false,
       }
@@ -39,7 +39,7 @@ export function getCoreReplicaDbConnection() {
 export function getFrontReplicaDbConnection() {
   if (!frontReplicaDbInstance) {
     frontReplicaDbInstance = new Sequelize(
-      config.getFrontDatabaseReadReplicaUri() as string,
+      config.getFrontDatabaseReadReplicaUri(),
       {
         logging: false,
       }
@@ -52,7 +52,7 @@ export function getFrontReplicaDbConnection() {
 export function getConnectorsPrimaryDbConnection() {
   if (!connectorsPrimaryDbInstance) {
     connectorsPrimaryDbInstance = new Sequelize(
-      config.getConnectorsDatabasePrimaryUri() as string,
+      config.getConnectorsDatabasePrimaryUri(),
       {
         logging: false,
       }
@@ -64,12 +64,9 @@ export function getConnectorsPrimaryDbConnection() {
 
 export function getCorePrimaryDbConnection() {
   if (!corePrimaryDbInstance) {
-    corePrimaryDbInstance = new Sequelize(
-      config.getCoreDatabasePrimaryUri() as string,
-      {
-        logging: false,
-      }
-    );
+    corePrimaryDbInstance = new Sequelize(config.getCoreDatabasePrimaryUri(), {
+      logging: false,
+    });
   }
 
   return corePrimaryDbInstance;
@@ -78,7 +75,7 @@ export function getCorePrimaryDbConnection() {
 export function getFrontPrimaryDbConnection() {
   if (!frontPrimaryDbInstance) {
     frontPrimaryDbInstance = new Sequelize(
-      config.getFrontDatabasePrimaryUri() as string,
+      config.getFrontDatabasePrimaryUri(),
       {
         logging: false,
       }

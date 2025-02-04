@@ -1,11 +1,23 @@
-import { Dialog } from "@dust-tt/sparkle";
-import type { ComponentProps } from "react";
-import { useState } from "react";
+import type { Button } from "@dust-tt/sparkle";
+import {
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@dust-tt/sparkle";
+import React, { useState } from "react";
 
-type ShowDialogProps = Omit<
-  ComponentProps<typeof Dialog>,
-  "isOpen" | "onCancel" | "onValidate"
->;
+type ShowDialogProps = {
+  title: string;
+  children: React.ReactNode;
+  alertDialog?: boolean;
+  validateLabel?: string;
+  validateVariant?: React.ComponentProps<typeof Button>["variant"];
+  cancelLabel?: string;
+};
+
 interface DialogState {
   isOpen: boolean;
   props: ShowDialogProps | null;
@@ -38,18 +50,62 @@ export function useAwaitableDialog() {
     setDialogState({ isOpen: false, props: null });
   };
 
-  const DialogRenderer = () =>
-    dialogState.props ? (
+  const AwaitableDialog = () => {
+    if (!dialogState.props) {
+      return null;
+    }
+
+    const {
+      title,
+      children,
+      alertDialog,
+      validateLabel,
+      validateVariant,
+      cancelLabel,
+    } = dialogState.props;
+
+    return (
       <Dialog
-        {...dialogState.props}
-        isOpen={dialogState.isOpen}
-        onCancel={handleCancel}
-        onValidate={handleConfirm}
-      />
-    ) : null;
+        open={dialogState.isOpen}
+        // If user dismisses the dialog some other way (e.g. clicking outside when not alert), treat it as cancel:
+        onOpenChange={(open) => {
+          if (!open) {
+            handleCancel();
+          }
+        }}
+      >
+        <DialogContent
+          isAlertDialog={alertDialog}
+          trapFocusScope={!!alertDialog}
+        >
+          <DialogHeader hideButton={true}>
+            <DialogTitle>{title}</DialogTitle>
+          </DialogHeader>
+          <DialogContainer>{children}</DialogContainer>
+
+          <DialogFooter
+            leftButtonProps={
+              cancelLabel
+                ? {
+                    label: cancelLabel,
+                    variant: "outline",
+                    onClick: handleCancel,
+                  }
+                : undefined
+            }
+            rightButtonProps={{
+              label: validateLabel ?? "Ok",
+              variant: validateVariant ?? "primary",
+              onClick: handleConfirm,
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+    );
+  };
 
   return {
-    AwaitableDialog: DialogRenderer,
+    AwaitableDialog,
     showDialog,
   };
 }

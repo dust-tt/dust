@@ -1,12 +1,11 @@
 import type { Result } from "@dust-tt/types";
 import { Err, getOAuthConnectionAccessToken, Ok } from "@dust-tt/types";
-import { hash as blake3 } from "blake3";
 import { isLeft } from "fp-ts/lib/Either";
 import { createWriteStream } from "fs";
 import { mkdtemp, readdir, rm } from "fs/promises";
 import fs from "fs-extra";
 import * as reporter from "io-ts-reporters";
-import { Octokit } from "octokit";
+import { Octokit, RequestError } from "octokit";
 import { tmpdir } from "os";
 import { basename, extname, join, resolve } from "path";
 import type { Readable } from "stream";
@@ -30,8 +29,17 @@ import {
   GetDiscussionPayloadSchema,
   GetRepoDiscussionsPayloadSchema,
 } from "@connectors/connectors/github/lib/github_graphql";
+import {
+  getCodeDirInternalId,
+  getCodeFileInternalId,
+  getDirectoryUrl,
+  getFileUrl,
+} from "@connectors/connectors/github/lib/utils";
 import { apiConfig } from "@connectors/lib/api/config";
-import { ExternalOAuthTokenError } from "@connectors/lib/error";
+import {
+  ExternalOAuthTokenError,
+  ProviderWorkflowError,
+} from "@connectors/lib/error";
 import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
 import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
@@ -176,34 +184,53 @@ export async function getRepoIssuesPage(
   login: string,
   page: number
 ): Promise<GithubIssue[]> {
-  const octokit = await getOctokit(connectionId);
+  try {
+    const octokit = await getOctokit(connectionId);
 
-  const issues = (
-    await octokit.rest.issues.listForRepo({
-      owner: login,
-      repo: repoName,
-      per_page: API_PAGE_SIZE,
-      page: page,
-      state: "all",
-    })
-  ).data;
+    const issues = (
+      await octokit.rest.issues.listForRepo({
+        owner: login,
+        repo: repoName,
+        per_page: API_PAGE_SIZE,
+        page: page,
+        state: "all",
+      })
+    ).data;
 
-  return issues.map((i) => ({
-    id: i.id,
-    number: i.number,
-    title: i.title,
-    url: i.html_url,
-    creator: i.user
-      ? {
-          id: i.user.id,
-          login: i.user.login,
-        }
-      : null,
-    createdAt: new Date(i.created_at),
-    updatedAt: new Date(i.updated_at),
-    body: i.body,
-    isPullRequest: !!i.pull_request,
-  }));
+    return issues.map((i) => ({
+      id: i.id,
+      number: i.number,
+      title: i.title,
+      url: i.html_url,
+      creator: i.user
+        ? {
+            id: i.user.id,
+            login: i.user.login,
+          }
+        : null,
+      createdAt: new Date(i.created_at),
+      updatedAt: new Date(i.updated_at),
+      body: i.body,
+      isPullRequest: !!i.pull_request,
+    }));
+  } catch (err) {
+    if (isBadCredentials(err)) {
+      throw new ProviderWorkflowError(
+        "github",
+        `401 - Transient BadCredentialErrror`,
+        "transient_upstream_activity_error"
+      );
+    }
+    // Handle disabled issues case - GitHub returns 410 Gone when issues are disabled
+    if (
+      err instanceof RequestError &&
+      err.status === 410 &&
+      err.message === "Issues are disabled for this repo"
+    ) {
+      return [];
+    }
+    throw err;
+  }
 }
 
 export async function getIssue(
@@ -245,12 +272,19 @@ export async function getIssue(
     // by safely ignoring the issue and logging the error.
     if (
       isGithubRequestRedirectCountExceededError(err) ||
-      isGithubRequestErrorNotFound(err) ||
-      isBadCredentials(err)
+      isGithubRequestErrorNotFound(err)
     ) {
       logger.info({ err: err.message }, "Failed to get issue.");
 
       return null;
+    }
+
+    if (isBadCredentials(err)) {
+      throw new ProviderWorkflowError(
+        "github",
+        `401 - Transient BadCredentialErrror`,
+        "transient_upstream_activity_error"
+      );
     }
 
     throw err;
@@ -633,6 +667,7 @@ const EXTENSION_WHITELIST = [
 
   // Documentation
   ".md", // Markdown
+  ".mdx", // Markdown with JSX
   ".rst", // ReStructured Text
   ".adoc", // AsciiDoc
   ".tex", // LaTeX
@@ -847,37 +882,36 @@ export async function processRepository({
       const fileName = basename(file);
 
       const parents = [];
-      for (let i = 0; i < path.length; i++) {
-        const p = `github-code-${repoId}-dir-${path.slice(0, i + 1).join("/")}`;
-        const pathInternalId = `github-code-${repoId}-dir-${blake3(p)
-          .toString("hex")
-          .substring(0, 16)}`;
+      // we order parents bottom to top, so we take paths in the opposite order
+      for (let i = path.length - 1; i >= 0; i--) {
         parents.push({
-          internalId: pathInternalId,
+          internalId: getCodeDirInternalId(
+            repoId,
+            path.slice(0, i + 1).join("/")
+          ),
           dirName: path[i] as string,
           dirPath: path.slice(0, i),
         });
       }
 
-      const documentId = `github-code-${repoId}-file-${blake3(
-        `github-code-${repoId}-file-${path.join("/")}/${fileName}`
-      )
-        .toString("hex")
-        .substring(0, 16)}`;
+      const documentId = getCodeFileInternalId(
+        repoId,
+        `${path.join("/")}/${fileName}`
+      );
 
-      const parentInternalId =
-        parents.length === 0
-          ? null
-          : (parents[parents.length - 1]?.internalId as string);
+      const parentInternalId = parents[0]?.internalId ?? null;
 
       // Files
       files.push({
         fileName,
         filePath: path,
-        sourceUrl: `https://github.com/${repoLogin}/${repoName}/blob/${defaultBranch}/${join(
-          path.join("/"),
+        sourceUrl: getFileUrl(
+          repoLogin,
+          repoName,
+          defaultBranch,
+          path,
           fileName
-        )}`,
+        ),
         sizeBytes: size,
         documentId,
         parentInternalId,
@@ -891,19 +925,22 @@ export async function processRepository({
         if (p && !seenDirs[p.internalId]) {
           seenDirs[p.internalId] = true;
 
-          const dirParent = parents[i - 1];
+          const dirParent = parents[i + 1];
           const dirParentInternalId = dirParent ? dirParent.internalId : null;
 
           directories.push({
             dirName: p.dirName,
             dirPath: p.dirPath,
-            sourceUrl: `https://github.com/${repoLogin}/${repoName}/blob/${defaultBranch}/${join(
-              p.dirPath.join("/"),
+            sourceUrl: getDirectoryUrl(
+              repoLogin,
+              repoName,
+              defaultBranch,
+              p.dirPath,
               p.dirName
-            )}`,
+            ),
             internalId: p.internalId,
             parentInternalId: dirParentInternalId,
-            parents: parents.slice(0, i).map((p) => p.internalId),
+            parents: parents.slice(i).map((p) => p.internalId),
           });
         }
       }

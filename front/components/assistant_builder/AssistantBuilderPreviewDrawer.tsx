@@ -1,11 +1,12 @@
 import {
+  BarChartIcon,
   Button,
   ChatBubbleBottomCenterTextIcon,
+  cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  LightbulbIcon,
   MagicIcon,
   Markdown,
   MoreIcon,
@@ -19,6 +20,7 @@ import {
 import type {
   AssistantBuilderRightPanelStatus,
   AssistantBuilderRightPanelTab,
+  ModelConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { Separator } from "@radix-ui/react-select";
@@ -27,6 +29,7 @@ import { useContext, useEffect } from "react";
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
+import { FeedbacksSection } from "@app/components/assistant_builder/FeedbacksSection";
 import {
   usePreviewAssistant,
   useTryAssistantCore,
@@ -41,8 +44,7 @@ import { getDefaultActionConfiguration } from "@app/components/assistant_builder
 import { ConfirmContext } from "@app/components/Confirm";
 import { ACTION_SPECIFICATIONS } from "@app/lib/api/assistant/actions/utils";
 import { useUser } from "@app/lib/swr/user";
-import { classNames } from "@app/lib/utils";
-import type { FetchAssistantTemplateResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates/[tId]";
+import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
 
 interface AssistantBuilderRightPanelProps {
   screen: BuilderScreen;
@@ -54,7 +56,9 @@ interface AssistantBuilderRightPanelProps {
   rightPanelStatus: AssistantBuilderRightPanelStatus;
   openRightPanelTab: (tabName: AssistantBuilderRightPanelTab) => void;
   builderState: AssistantBuilderState;
+  agentConfigurationId: string | null;
   setAction: (action: AssistantBuilderSetActionType) => void;
+  reasoningModels: ModelConfigurationType[];
 }
 
 export default function AssistantBuilderRightPanel({
@@ -67,7 +71,9 @@ export default function AssistantBuilderRightPanel({
   rightPanelStatus,
   openRightPanelTab,
   builderState,
+  agentConfigurationId,
   setAction,
+  reasoningModels,
 }: AssistantBuilderRightPanelProps) {
   const {
     shouldAnimate: shouldAnimatePreviewDrawer,
@@ -77,6 +83,7 @@ export default function AssistantBuilderRightPanel({
     owner,
     builderState,
     isPreviewOpened: rightPanelStatus.tab === "Preview",
+    reasoningModels,
   });
 
   const { user } = useUser();
@@ -104,31 +111,38 @@ export default function AssistantBuilderRightPanel({
 
   return (
     <div className="flex h-full flex-col">
-      {template && (
-        <div className="shrink-0 bg-white pt-5">
-          <Tabs
-            value={rightPanelStatus.tab ?? "Preview"}
-            onValueChange={(t) =>
-              openRightPanelTab(t as AssistantBuilderRightPanelTab)
-            }
-            className="hidden lg:flex"
-          >
-            <TabsList className="inline-flex h-10 items-center gap-2 border-b border-separator">
+      <div className="shrink-0 bg-white pt-5">
+        <Tabs
+          value={rightPanelStatus.tab ?? "Preview"}
+          onValueChange={(t) =>
+            openRightPanelTab(t as AssistantBuilderRightPanelTab)
+          }
+          className="hidden lg:block"
+        >
+          <TabsList>
+            {template && (
               <TabsTrigger value="Template" label="Template" icon={MagicIcon} />
+            )}
+            <TabsTrigger
+              value="Preview"
+              label="Preview"
+              icon={ChatBubbleBottomCenterTextIcon}
+            />
+            {/* The agentConfigurationId is truthy if not a new assistant */}
+            {agentConfigurationId && (
               <TabsTrigger
-                value="Preview"
-                label="Preview"
-                icon={ChatBubbleBottomCenterTextIcon}
+                value="Performance"
+                label="Performance"
+                icon={BarChartIcon}
               />
-            </TabsList>
-          </Tabs>
-        </div>
-      )}
+            )}
+          </TabsList>
+        </Tabs>
+      </div>
       <div
-        className={classNames(
-          template !== null
-            ? "grow-1 mb-5 h-full overflow-y-auto rounded-b-xl border-x border-b border-structure-200 bg-structure-50 pt-5"
-            : "grow-1 mb-5 mt-5 h-full overflow-y-auto rounded-xl border border-structure-200 bg-structure-50",
+        className={cn(
+          "grow-1 mb-5 h-full overflow-y-auto",
+          rightPanelStatus.tab === "Preview" ? "" : "border-b border-border",
           shouldAnimatePreviewDrawer &&
             rightPanelStatus.tab === "Preview" &&
             rightPanelStatus.openedAt != null &&
@@ -180,12 +194,8 @@ export default function AssistantBuilderRightPanel({
         {rightPanelStatus.tab === "Template" &&
           template &&
           screen === "instructions" && (
-            <div className="mb-72 flex flex-col gap-4 px-6">
-              <div className="flex items-end justify-between pt-2">
-                <Page.Header
-                  icon={LightbulbIcon}
-                  title="Template's Instructions manual"
-                />
+            <div className="mb-72 flex flex-col gap-4">
+              <div className="flex items-end justify-end justify-between pt-2">
                 <TemplateDropDownMenu
                   screen={screen}
                   removeTemplate={removeTemplate}
@@ -194,7 +204,6 @@ export default function AssistantBuilderRightPanel({
                   openRightPanelTab={openRightPanelTab}
                 />
               </div>
-              <Page.Separator />
               {template?.helpInstructions && (
                 <Markdown content={template?.helpInstructions ?? ""} />
               )}
@@ -203,12 +212,8 @@ export default function AssistantBuilderRightPanel({
         {rightPanelStatus.tab === "Template" &&
           template &&
           screen === "actions" && (
-            <div className="mb-72 flex flex-col gap-4 px-6">
-              <div className="flex items-end justify-between pt-2">
-                <Page.Header
-                  icon={LightbulbIcon}
-                  title={"Template's Tools manual"}
-                />
+            <div className="mb-72 flex flex-col gap-4">
+              <div className="flex items-end justify-end justify-between pt-2">
                 <TemplateDropDownMenu
                   screen={screen}
                   removeTemplate={removeTemplate}
@@ -222,10 +227,7 @@ export default function AssistantBuilderRightPanel({
                 {template && template.helpActions && (
                   <>
                     <div>
-                      <Markdown
-                        content={template?.helpActions ?? ""}
-                        textSize="sm"
-                      />
+                      <Markdown content={template?.helpActions ?? ""} />
                     </div>
                     <Separator />
                   </>
@@ -263,6 +265,15 @@ export default function AssistantBuilderRightPanel({
               </div>
             </div>
           )}
+        {rightPanelStatus.tab === "Performance" && agentConfigurationId && (
+          <div className="ml-4 mt-4">
+            <Page.SectionHeader title="Feedback" />
+            <FeedbacksSection
+              owner={owner}
+              agentConfigurationId={agentConfigurationId}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

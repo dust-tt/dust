@@ -5,6 +5,12 @@ import {
   Chip,
   CompanyIcon,
   Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -26,7 +32,7 @@ import type {
   LightWorkspaceType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { isBuilder } from "@dust-tt/types";
+import { isAdmin, isBuilder } from "@dust-tt/types";
 import { useState } from "react";
 
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
@@ -109,7 +115,6 @@ interface SharingButtonProps {
   agentConfigurationId: string | null;
   baseUrl: string;
   initialScope: NonGlobalScope;
-  isAdmin: boolean;
   newScope: NonGlobalScope;
   owner: WorkspaceType;
   setNewLinkedSlackChannels: (channels: SlackChannel[]) => void;
@@ -123,7 +128,6 @@ export function SharingButton({
   agentConfigurationId,
   baseUrl,
   initialScope,
-  isAdmin,
   newScope,
   owner,
   setNewLinkedSlackChannels,
@@ -167,7 +171,6 @@ export function SharingButton({
             setNewLinkedSlackChannels(slackChannels);
           }}
           assistantHandle="@Dust"
-          isAdmin={isAdmin}
           show={slackDrawerOpened}
           slackDataSource={slackDataSource}
           onClose={() => setSlackDrawerOpened(false)}
@@ -181,6 +184,8 @@ export function SharingButton({
             icon={ArrowUpOnSquareIcon}
             variant="outline"
             isSelect
+            data-gtm-label="sharingButton"
+            data-gtm-location="assistantBuilder"
             onClick={() => setIsPopoverOpen(!isPopoverOpen)}
           />
         </PopoverTrigger>
@@ -193,6 +198,7 @@ export function SharingButton({
                 initialScope={initialScope}
                 newScope={newScope}
                 setNewScope={setNewScope}
+                origin="page"
               />
               <div className="text-sm text-element-700">
                 <div>
@@ -244,7 +250,7 @@ export function SharingButton({
                       // If not admins, but there are channels selected, prevent from removing.
                       disabled={
                         !slackDataSource ||
-                        (slackChannelSelected.length > 0 && !isAdmin)
+                        (slackChannelSelected.length > 0 && !isAdmin(owner))
                       }
                       onClick={() => {
                         if (slackChannelSelected.length > 0) {
@@ -302,6 +308,7 @@ interface SharingDropdownProps {
   initialScope: AgentConfigurationScope;
   newScope: AgentConfigurationScope;
   setNewScope: (scope: NonGlobalScope) => void;
+  origin: "page" | "modal";
 }
 
 /*
@@ -314,6 +321,7 @@ export function SharingDropdown({
   initialScope,
   newScope,
   setNewScope,
+  origin,
 }: SharingDropdownProps) {
   const [requestNewScope, setModalNewScope] = useState<NonGlobalScope | null>(
     null
@@ -370,7 +378,7 @@ export function SharingDropdown({
   return (
     <div>
       {requestNewScope && confirmationModalData && (
-        <ScopeChangeModal
+        <ScopeChangeDialog
           show={requestNewScope !== null}
           confirmationModalData={confirmationModalData}
           usageText={confirmationModalData.showUsage ? usageText : undefined}
@@ -380,7 +388,7 @@ export function SharingDropdown({
           }
         />
       )}
-      <DropdownMenu>
+      <DropdownMenu modal={origin === "modal"}>
         <DropdownMenuTrigger disabled={!allowedToChange} asChild>
           <div className="group flex cursor-pointer items-center gap-2">
             <SharingChip scope={newScope} />
@@ -443,7 +451,7 @@ export function SharingChip({ scope }: { scope: AgentConfigurationScope }) {
   );
 }
 
-function ScopeChangeModal({
+function ScopeChangeDialog({
   show,
   confirmationModalData,
   usageText,
@@ -458,24 +466,42 @@ function ScopeChangeModal({
 }) {
   return (
     <Dialog
-      isOpen={show}
-      title={confirmationModalData.title}
-      onCancel={onClose}
-      validateLabel={confirmationModalData.confirmText}
-      validateVariant={confirmationModalData.variant}
-      onValidate={async () => {
-        setSharingScope();
-        onClose();
+      open={show}
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose();
+        }
       }}
-      alertDialog
     >
-      <div>
-        <div className="pb-2">
-          {usageText && <span className="font-bold">{usageText}&nbsp;</span>}
-          {confirmationModalData.text}
-        </div>
-        <div className="font-bold">Are you sure you want to proceed ?</div>
-      </div>
+      <DialogContent>
+        <DialogHeader hideButton>
+          <DialogTitle>{confirmationModalData.title}</DialogTitle>
+          {usageText && <DialogDescription>{usageText}</DialogDescription>}
+        </DialogHeader>
+        <DialogContainer>
+          <div>
+            {confirmationModalData.text}
+            <div className="font-bold">Are you sure you want to proceed ?</div>
+          </div>
+        </DialogContainer>
+        <DialogFooter
+          leftButtonProps={{
+            label: "Cancel",
+            variant: "outline",
+            onClick: () => {
+              onClose();
+            },
+          }}
+          rightButtonProps={{
+            label: confirmationModalData.confirmText,
+            variant: "warning",
+            onClick: async () => {
+              setSharingScope();
+              onClose();
+            },
+          }}
+        />
+      </DialogContent>
     </Dialog>
   );
 }

@@ -1,8 +1,10 @@
 import {
   BracesIcon,
+  ChatBubbleThoughtIcon,
   CommandLineIcon,
   ExternalLinkIcon,
   FolderIcon,
+  GithubIcon,
   Icon,
   IconButton,
   PlanetIcon,
@@ -24,7 +26,10 @@ import {
   GLOBAL_AGENTS_SID,
   isBrowseConfiguration,
   isDustAppRunConfiguration,
+  isGithubCreateIssueConfiguration,
+  isGithubGetPullRequestConfiguration,
   isProcessConfiguration,
+  isReasoningConfiguration,
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
   isWebsearchConfiguration,
@@ -40,7 +45,6 @@ import { getVisualForContentNode } from "@app/lib/content_nodes";
 import {
   canBeExpanded,
   getDisplayNameForDataSource,
-  isFolder,
 } from "@app/lib/data_sources";
 import {
   useDataSourceViewContentNodes,
@@ -219,12 +223,7 @@ function getDataSourceConfigurationsForTableAction(
           dsConfigs[table.dataSourceViewId] = {
             workspaceId: table.workspaceId,
             dataSourceViewId: table.dataSourceViewId,
-            filter: {
-              parents:
-                dataSourceView && isFolder(dataSourceView.dataSource)
-                  ? null
-                  : { in: [], not: [] },
-            },
+            filter: { parents: dataSourceView ? { in: [], not: [] } : null },
           };
         }
 
@@ -271,13 +270,41 @@ function renderOtherAction(
           <Icon visual={PlanetIcon} size="sm" />
           <div>
             Assistant can navigate the web (browse any provided links, make a
-            google search, etc.) to answer
+            google search, etc.) to answer.
           </div>
+        </div>
+      </ActionSection>
+    );
+  } else if (isReasoningConfiguration(action)) {
+    return (
+      <ActionSection title="Reasoning" key={`other-${index}`}>
+        <Icon visual={ChatBubbleThoughtIcon} size="sm" />
+        <div>
+          Assistant can perform step by step reasoning to solve complex
+          problems. Slow but powerful.
         </div>
       </ActionSection>
     );
   } else if (isBrowseConfiguration(action)) {
     return null;
+  } else if (isGithubGetPullRequestConfiguration(action)) {
+    return (
+      <ActionSection title="Github" key={`other-${index}`}>
+        <div className="flex gap-2 text-muted-foreground">
+          <Icon visual={GithubIcon} size="sm" />
+          <div>Assistant can retrieve pull requests from Github.</div>
+        </div>
+      </ActionSection>
+    );
+  } else if (isGithubCreateIssueConfiguration(action)) {
+    return (
+      <ActionSection title="Github" key={`other-${index}`}>
+        <div className="flex gap-2 text-muted-foreground">
+          <Icon visual={GithubIcon} size="sm" />
+          <div>Assistant can create issues on Github.</div>
+        </div>
+      </ActionSection>
+    );
   } else if (
     !isRetrievalConfiguration(action) &&
     !isTablesQueryConfiguration(action)
@@ -355,11 +382,7 @@ function DataSourceViewsSection({
           return (
             <Tree.Item
               key={`${dsConfig.dataSourceViewId}-${JSON.stringify(dsConfig.filter)}`}
-              type={
-                canBeExpanded(viewType, dataSourceView?.dataSource)
-                  ? "node"
-                  : "leaf"
-              }
+              type={canBeExpanded(dataSourceView?.dataSource) ? "node" : "leaf"}
               label={dataSourceName}
               visual={dsLogo ?? FolderIcon}
               className="whitespace-nowrap"
@@ -422,7 +445,7 @@ function DataSourceViewSelectedNodes({
       {nodes.map((node) => (
         <Tree.Item
           key={node.internalId}
-          label={node.titleWithParentsContext ?? node.title}
+          label={node.title}
           type={node.expandable && viewType !== "tables" ? "node" : "leaf"}
           visual={getVisualForContentNode(node)}
           className="whitespace-nowrap"
@@ -446,15 +469,15 @@ function DataSourceViewSelectedNodes({
                 size="xs"
                 icon={BracesIcon}
                 onClick={() => {
-                  if (node.dustDocumentId) {
+                  if (node.type === "file") {
                     setDataSourceViewToDisplay(dataSourceView);
-                    setDocumentToDisplay(node.dustDocumentId);
+                    setDocumentToDisplay(node.internalId);
                   }
                 }}
                 className={classNames(
-                  node.dustDocumentId ? "" : "pointer-events-none opacity-0"
+                  node.type === "file" ? "" : "pointer-events-none opacity-0"
                 )}
-                disabled={!node.dustDocumentId}
+                disabled={node.type !== "file"}
                 variant="outline"
               />
             </div>

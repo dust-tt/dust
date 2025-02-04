@@ -17,7 +17,6 @@ export function getRootNodes(): ContentNode[] {
 
 export function getSitesRootAsContentNode(): ContentNode {
   return {
-    provider: "microsoft",
     internalId: internalIdFromTypeAndPath({
       itemAPIPath: "",
       nodeType: "sites-root",
@@ -26,7 +25,6 @@ export function getSitesRootAsContentNode(): ContentNode {
     type: "folder",
     title: "Sites",
     sourceUrl: null,
-    dustDocumentId: null,
     lastUpdatedAt: null,
     preventSelection: true,
     expandable: true,
@@ -36,7 +34,6 @@ export function getSitesRootAsContentNode(): ContentNode {
 
 export function getTeamsRootAsContentNode(): ContentNode {
   return {
-    provider: "microsoft",
     internalId: internalIdFromTypeAndPath({
       itemAPIPath: "",
       nodeType: "teams-root",
@@ -45,7 +42,6 @@ export function getTeamsRootAsContentNode(): ContentNode {
     type: "folder",
     title: "Teams",
     sourceUrl: null,
-    dustDocumentId: null,
     lastUpdatedAt: null,
     preventSelection: true,
     expandable: true,
@@ -54,7 +50,6 @@ export function getTeamsRootAsContentNode(): ContentNode {
 }
 export function getTeamAsContentNode(team: microsoftgraph.Team): ContentNode {
   return {
-    provider: "microsoft",
     internalId: internalIdFromTypeAndPath({
       itemAPIPath: `/teams/${team.id}`,
       nodeType: "team",
@@ -62,8 +57,7 @@ export function getTeamAsContentNode(team: microsoftgraph.Team): ContentNode {
     parentInternalId: null,
     type: "folder",
     title: team.displayName || "unnamed",
-    sourceUrl: team.webUrl ?? "",
-    dustDocumentId: null,
+    sourceUrl: team.webUrl ?? null,
     lastUpdatedAt: null,
     preventSelection: true,
     expandable: true,
@@ -80,7 +74,6 @@ export function getSiteAsContentNode(
     throw new Error("Site id is required");
   }
   return {
-    provider: "microsoft",
     internalId: internalIdFromTypeAndPath({
       itemAPIPath: getSiteAPIPath(site),
       nodeType: "site",
@@ -88,8 +81,7 @@ export function getSiteAsContentNode(
     parentInternalId: parentInternalId || null,
     type: "folder",
     title: site.displayName || site.name || "unnamed",
-    sourceUrl: site.webUrl ?? "",
-    dustDocumentId: null,
+    sourceUrl: site.webUrl ?? null,
     lastUpdatedAt: null,
     preventSelection: true,
     expandable: true,
@@ -111,7 +103,6 @@ export function getChannelAsContentNode(
   }
 
   return {
-    provider: "microsoft",
     internalId: internalIdFromTypeAndPath({
       itemAPIPath: `/teams/${parentInternalId}/channels/${channel.id}`,
       nodeType: "channel",
@@ -119,8 +110,7 @@ export function getChannelAsContentNode(
     parentInternalId,
     type: "channel",
     title: channel.displayName || "unnamed",
-    sourceUrl: channel.webUrl ?? "",
-    dustDocumentId: null,
+    sourceUrl: channel.webUrl ?? null,
     lastUpdatedAt: null,
     expandable: false,
     permission: "none",
@@ -136,13 +126,11 @@ export function getDriveAsContentNode(
     throw new Error("Drive id is required");
   }
   return {
-    provider: "microsoft",
     internalId: getDriveInternalId(drive),
     parentInternalId,
     type: "folder",
     title: drive.name || "unnamed",
-    sourceUrl: drive.webUrl ?? "",
-    dustDocumentId: null,
+    sourceUrl: drive.webUrl ?? null,
     lastUpdatedAt: null,
     expandable: true,
     permission: "none",
@@ -153,13 +141,11 @@ export function getFolderAsContentNode(
   parentInternalId: string
 ): ContentNode {
   return {
-    provider: "microsoft",
     internalId: getDriveItemInternalId(folder),
     parentInternalId,
     type: "folder",
     title: folder.name || "unnamed",
-    sourceUrl: folder.webUrl ?? "",
-    dustDocumentId: null,
+    sourceUrl: folder.webUrl ?? null,
     lastUpdatedAt: null,
     expandable: true,
     permission: "none",
@@ -171,13 +157,11 @@ export function getFileAsContentNode(
   parentInternalId: string
 ): ContentNode {
   return {
-    provider: "microsoft",
     internalId: getDriveItemInternalId(file),
     parentInternalId,
     type: "file",
     title: file.name || "unnamed",
-    sourceUrl: file.webUrl ?? "",
-    dustDocumentId: null,
+    sourceUrl: file.webUrl ?? null,
     lastUpdatedAt: null,
     expandable: false,
     permission: "none",
@@ -207,13 +191,11 @@ export function getMicrosoftNodeAsContentNode(
   }
 
   return {
-    provider: "microsoft",
     internalId: node.internalId,
     parentInternalId: node.parentInternalId,
     type,
     title: node.name || "unnamed",
-    sourceUrl: node.webUrl ?? "",
-    dustDocumentId: null,
+    sourceUrl: node.webUrl ?? null,
     lastUpdatedAt: null,
     expandable: isExpandable,
     permission: "none",

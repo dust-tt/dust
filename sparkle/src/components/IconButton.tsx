@@ -28,7 +28,7 @@ const styleVariants: Record<ButtonVariantType, string> = {
     "active:s-text-warning-600 dark:active:s-text-warning-600-dark" +
     "s-text-element-500 dark:s-text-element-500-dark",
   highlight:
-    "s-text-element-900 dark:s-text-element-900-dark" +
+    "s-text-foreground dark:s-text-foreground-dark" +
     "hover:s-text-action-400 dark:hover:s-text-action-500-dark" +
     "active:s-text-action-600 dark:active:s-text-action-600-dark" +
     "s-text-element-500 dark:s-text-element-500-dark",

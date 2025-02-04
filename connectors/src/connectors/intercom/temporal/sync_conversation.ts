@@ -1,4 +1,5 @@
 import type { ModelId } from "@dust-tt/types";
+import { MIME_TYPES } from "@dust-tt/types";
 import TurndownService from "turndown";
 
 import { getIntercomAccessToken } from "@connectors/connectors/intercom/lib/intercom_access_token";
@@ -16,18 +17,20 @@ import {
 } from "@connectors/connectors/intercom/lib/utils";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
-  deleteFromDataSource,
+  deleteDataSourceDocument,
+  deleteDataSourceFolder,
   renderDocumentTitleAndContent,
   renderMarkdownSection,
-  upsertToDatasource,
+  upsertDataSourceDocument,
 } from "@connectors/lib/data_sources";
-import { IntercomTeam } from "@connectors/lib/models/intercom";
 import {
   IntercomConversation,
+  IntercomTeam,
   IntercomWorkspace,
 } from "@connectors/lib/models/intercom";
 import logger from "@connectors/logger/logger";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
+
 const turndownService = new TurndownService();
 
 export async function deleteTeamAndConversations({
@@ -57,6 +60,12 @@ export async function deleteTeamAndConversations({
     { concurrency: 10 }
   );
 
+  // Delete datasource team node
+  await deleteDataSourceFolder({
+    dataSourceConfig,
+    folderId: getTeamInternalId(connectorId, team.teamId),
+  });
+
   await team.destroy();
 }
 
@@ -74,7 +83,7 @@ export async function deleteConversation({
     conversationId
   );
   await Promise.all([
-    deleteFromDataSource(dataSourceConfig, dsConversationId),
+    deleteDataSourceDocument(dataSourceConfig, dsConversationId),
     IntercomConversation.destroy({
       where: {
         connectorId,
@@ -155,10 +164,10 @@ export async function syncConversation({
 
   const conversationTeamId = conversation.team_assignee_id?.toString() ?? null;
 
-  if (
-    intercomWorkspace.syncAllConversations !== "activated" &&
-    intercomWorkspace.syncAllConversations !== "scheduled_activate"
-  ) {
+  const syncAllActivated =
+    intercomWorkspace.syncAllConversations === "activated" ||
+    intercomWorkspace.syncAllConversations === "scheduled_activate";
+  if (!syncAllActivated) {
     if (!conversationTeamId) {
       logger.error(
         "[Intercom] Conversation has no team assignee & sync all convo is not activated. Skipping sync",
@@ -184,7 +193,7 @@ export async function syncConversation({
     }
   }
 
-  let conversationOnDB = await IntercomConversation.findOne({
+  const conversationOnDB = await IntercomConversation.findOne({
     where: {
       connectorId,
       conversationId: conversation.id,
@@ -195,7 +204,7 @@ export async function syncConversation({
   const updatedAtDate = new Date(conversation.updated_at * 1000);
 
   if (!conversationOnDB) {
-    conversationOnDB = await IntercomConversation.create({
+    await IntercomConversation.create({
       connectorId,
       conversationId: conversation.id,
       teamId: conversationTeamId,
@@ -295,20 +304,26 @@ export async function syncConversation({
     datasourceTags.push(`tag:${tag.name}`);
   });
 
-  const parents = [];
+  // parents in the Core datasource map the internal ids that are used in the permission system
+  // they self reference the document id
+  const documentId = getConversationInternalId(connectorId, conversation.id);
+  const parents = [documentId];
   if (conversationTeamId) {
     parents.push(getTeamInternalId(connectorId, conversationTeamId));
   }
-  parents.push(getTeamsInternalId(connectorId));
+  if (syncAllActivated) {
+    parents.push(getTeamsInternalId(connectorId));
+  }
 
-  await upsertToDatasource({
+  await upsertDataSourceDocument({
     dataSourceConfig,
-    documentId: getConversationInternalId(connectorId, conversation.id),
+    documentId,
     documentContent: renderedPage,
     documentUrl: conversationUrl,
     timestampMs: updatedAtDate.getTime(),
     tags: datasourceTags,
     parents,
+    parentId: parents[1] || null,
     loggerArgs: {
       ...loggerArgs,
       conversationId: conversation.id,
@@ -316,6 +331,8 @@ export async function syncConversation({
     upsertContext: {
       sync_type: syncType,
     },
+    title: convoTitle,
+    mimeType: MIME_TYPES.INTERCOM.CONVERSATION,
     async: true,
   });
 }

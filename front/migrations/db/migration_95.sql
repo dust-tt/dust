@@ -1,5 +1,3 @@
--- Migration created on Sep 28, 2024
-
 CREATE OR REPLACE FUNCTION public.sqidsShuffle(alphabet TEXT) RETURNS TEXT AS $$
 DECLARE
   chars TEXT[];
@@ -155,9 +153,9 @@ $$ LANGUAGE plpgsql;
 
 
 CREATE OR REPLACE FUNCTION public.workspace_id_from_sid(sid TEXT)
-RETURNS INTEGER AS $$
+RETURNS BIGINT AS $$
 DECLARE
-    decoded INTEGER[];
+    decoded BIGINT[];
 BEGIN
     -- Remove the prefix up to and including '_'
     sid := substring(sid from position('_' in sid) + 1);
@@ -171,9 +169,9 @@ END;
 $$ LANGUAGE plpgsql IMMUTABLE;
 
 CREATE OR REPLACE FUNCTION public.id_from_sid(sid TEXT)
-RETURNS INTEGER AS $$
+RETURNS BIGINT AS $$
 DECLARE
-    decoded INTEGER[];
+    decoded BIGINT[];
 BEGIN
     -- Remove the prefix up to and including '_'
     sid := substring(sid from position('_' in sid) + 1);

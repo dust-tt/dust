@@ -1,21 +1,16 @@
 import type { AppVisibility, DatasetSchema } from "@dust-tt/types";
-import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-  NonAttribute,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import { DataTypes } from "sequelize";
 
-import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
-import { SoftDeletableModel } from "@app/lib/resources/storage/wrappers";
+import {
+  SoftDeletableWorkspaceAwareModel,
+  WorkspaceAwareModel,
+} from "@app/lib/resources/storage/wrappers/workspace_models";
 
 // TODO(2024-10-04 flav) Remove visibility from here.
-export class AppModel extends SoftDeletableModel<AppModel> {
-  declare id: CreationOptional<number>;
+export class AppModel extends SoftDeletableWorkspaceAwareModel<AppModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -29,18 +24,11 @@ export class AppModel extends SoftDeletableModel<AppModel> {
   declare dustAPIProjectId: string;
 
   declare vaultId: ForeignKey<SpaceModel["id"]>;
-  declare workspaceId: ForeignKey<Workspace["id"]>;
 
   declare space: NonAttribute<SpaceModel>;
-  declare workspace: NonAttribute<Workspace>;
 }
 AppModel.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -94,12 +82,6 @@ AppModel.init(
   }
 );
 
-Workspace.hasMany(AppModel, {
-  foreignKey: { allowNull: false },
-  onDelete: "CASCADE",
-});
-AppModel.belongsTo(Workspace);
-
 SpaceModel.hasMany(AppModel, {
   foreignKey: { allowNull: false, name: "vaultId" },
   onDelete: "RESTRICT",
@@ -108,26 +90,15 @@ AppModel.belongsTo(SpaceModel, {
   foreignKey: { allowNull: false, name: "vaultId" },
 });
 
-export class Provider extends Model<
-  InferAttributes<Provider>,
-  InferCreationAttributes<Provider>
-> {
-  declare id: CreationOptional<number>;
+export class Provider extends WorkspaceAwareModel<Provider> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
   declare providerId: string;
   declare config: string;
-
-  declare workspaceId: ForeignKey<Workspace["id"]>;
 }
 Provider.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -153,15 +124,8 @@ Provider.init(
     indexes: [{ fields: ["workspaceId"] }],
   }
 );
-Workspace.hasMany(Provider, {
-  foreignKey: { allowNull: false },
-  onDelete: "CASCADE",
-});
 
-export class Dataset extends Model<
-  InferAttributes<Dataset>,
-  InferCreationAttributes<Dataset>
-> {
+export class Dataset extends WorkspaceAwareModel<Dataset> {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -170,16 +134,10 @@ export class Dataset extends Model<
   declare description: string | null;
   declare schema: DatasetSchema | null;
 
-  declare workspaceId: ForeignKey<Workspace["id"]>;
   declare appId: ForeignKey<AppModel["id"]>;
 }
 Dataset.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -211,20 +169,11 @@ Dataset.init(
 
 AppModel.hasMany(Dataset, {
   foreignKey: { allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 Dataset.belongsTo(AppModel);
 
-Workspace.hasMany(Dataset, {
-  foreignKey: { allowNull: false },
-  onDelete: "CASCADE",
-});
-
-export class Clone extends Model<
-  InferAttributes<Clone>,
-  InferCreationAttributes<Clone>
-> {
-  declare id: CreationOptional<number>;
+export class Clone extends WorkspaceAwareModel<Clone> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -233,11 +182,6 @@ export class Clone extends Model<
 }
 Clone.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      primaryKey: true,
-      autoIncrement: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -248,22 +192,6 @@ Clone.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    fromId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      references: {
-        model: "apps",
-        key: "id",
-      },
-    },
-    toId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      references: {
-        model: "apps",
-        key: "id",
-      },
-    },
   },
   {
     modelName: "clone",
@@ -272,9 +200,9 @@ Clone.init(
 );
 Clone.belongsTo(AppModel, {
   foreignKey: { name: "fromId", allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 Clone.belongsTo(AppModel, {
   foreignKey: { name: "toId", allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });

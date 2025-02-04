@@ -1,6 +1,10 @@
 import * as t from "io-ts";
 
-export const OAUTH_USE_CASES = ["connection", "labs_transcripts"] as const;
+export const OAUTH_USE_CASES = [
+  "connection",
+  "labs_transcripts",
+  "platform_actions",
+] as const;
 
 export type OAuthUseCase = (typeof OAUTH_USE_CASES)[number];
 
@@ -56,7 +60,11 @@ export function isValidZendeskSubdomain(s: unknown): s is string {
 
 // Credentials Providers
 
-export const CREDENTIALS_PROVIDERS = ["snowflake"] as const;
+export const CREDENTIALS_PROVIDERS = [
+  "snowflake",
+  "modjo",
+  "bigquery",
+] as const;
 export type CredentialsProvider = (typeof CREDENTIALS_PROVIDERS)[number];
 
 export function isCredentialProvider(obj: unknown): obj is CredentialsProvider {
@@ -73,16 +81,75 @@ export const SnowflakeCredentialsSchema = t.type({
   warehouse: t.string,
 });
 export type SnowflakeCredentials = t.TypeOf<typeof SnowflakeCredentialsSchema>;
-export type ConnectionCredentials = SnowflakeCredentials;
 
-// POST Credentials
-
-export const PostSnowflakeCredentialsBodySchema = t.type({
-  provider: t.literal("snowflake"),
-  credentials: SnowflakeCredentialsSchema,
+export const CheckBigQueryCredentialsSchema = t.type({
+  type: t.string,
+  project_id: t.string,
+  private_key_id: t.string,
+  private_key: t.string,
+  client_email: t.string,
+  client_id: t.string,
+  auth_uri: t.string,
+  token_uri: t.string,
+  auth_provider_x509_cert_url: t.string,
+  client_x509_cert_url: t.string,
+  universe_domain: t.string,
 });
 
-export const PostCredentialsBodySchema = PostSnowflakeCredentialsBodySchema;
+export type CheckBigQueryCredentials = t.TypeOf<
+  typeof CheckBigQueryCredentialsSchema
+>;
+
+export const BigQueryCredentialsWithLocationSchema = t.type({
+  type: t.string,
+  project_id: t.string,
+  private_key_id: t.string,
+  private_key: t.string,
+  client_email: t.string,
+  client_id: t.string,
+  auth_uri: t.string,
+  token_uri: t.string,
+  auth_provider_x509_cert_url: t.string,
+  client_x509_cert_url: t.string,
+  universe_domain: t.string,
+  location: t.string,
+});
+
+export type BigQueryCredentialsWithLocation = t.TypeOf<
+  typeof BigQueryCredentialsWithLocationSchema
+>;
+
+export const ApiKeyCredentialsSchema = t.type({
+  api_key: t.string,
+});
+export type ModjoCredentials = t.TypeOf<typeof ApiKeyCredentialsSchema>;
+
+export type ConnectionCredentials =
+  | SnowflakeCredentials
+  | ModjoCredentials
+  | BigQueryCredentialsWithLocation;
+
+export function isSnowflakeCredentials(
+  credentials: ConnectionCredentials
+): credentials is SnowflakeCredentials {
+  return "username" in credentials && "password" in credentials;
+}
+
+export function isModjoCredentials(
+  credentials: ConnectionCredentials
+): credentials is ModjoCredentials {
+  return "api_key" in credentials;
+}
+
+export function isBigQueryWithLocationCredentials(
+  credentials: ConnectionCredentials
+): credentials is BigQueryCredentialsWithLocation {
+  return (
+    "type" in credentials &&
+    "project_id" in credentials &&
+    "location" in credentials
+  );
+}
 
 export type OauthAPIPostCredentialsResponse = {
   credential: {

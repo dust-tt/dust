@@ -13,7 +13,6 @@ import type {
   ModelMessageTypeMultiActions,
   Result,
   RetrievalConfigurationType,
-  SupportedContentFragmentType,
   TablesQueryConfigurationType,
 } from "@dust-tt/types";
 import {
@@ -22,8 +21,6 @@ import {
   isAgentMessageType,
   isContentFragmentMessageTypeModel,
   isContentFragmentType,
-  isSupportedImageContentType,
-  isSupportedPlainTextContentType,
   isUserMessageType,
   Ok,
   removeNulls,
@@ -37,145 +34,22 @@ import {
   DEFAULT_CONVERSATION_SEARCH_ACTION_DATA_DESCRIPTION,
   DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
 } from "@app/lib/api/assistant/actions/constants";
-import {
-  isConversationIncludableFileContentType,
-  makeConversationIncludeFileConfiguration,
-} from "@app/lib/api/assistant/actions/conversation/include_file";
+import { makeConversationIncludeFileConfiguration } from "@app/lib/api/assistant/actions/conversation/include_file";
 import { makeConversationListFilesAction } from "@app/lib/api/assistant/actions/conversation/list_files";
+import { listFiles } from "@app/lib/api/assistant/jit_utils";
 import {
   getTextContentFromMessage,
   getTextRepresentationFromMessages,
 } from "@app/lib/api/assistant/utils";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { renderLightContentFragmentForModel } from "@app/lib/resources/content_fragment_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import logger from "@app/logger/logger";
 
-export async function isJITActionsEnabled(
-  auth: Authenticator
-): Promise<boolean> {
-  let use = false;
-
-  // For now we limit the feature flag to development and dust workspace only to not introduce an extraneous DB call
-  // on the critical path of conversations.
-  const flags = await getFeatureFlags(auth.getNonNullableWorkspace());
-  if (flags.includes("conversations_jit_actions")) {
-    use = true;
-  }
-
-  return use;
-}
-
-function isQueryableContentType(
-  contentType: SupportedContentFragmentType
-): boolean {
-  if (isSupportedImageContentType(contentType)) {
-    return false;
-  }
-  // For now we only allow including text files.
-  switch (contentType) {
-    case "application/msword":
-    case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-    case "application/pdf":
-    case "text/markdown":
-    case "text/plain":
-    case "dust-application/slack":
-    case "text/tab-separated-values":
-    case "text/tsv":
-      return false;
-
-    case "text/comma-separated-values":
-    case "text/csv":
-      return true;
-    default:
-      assertNever(contentType);
-  }
-}
-
-function isSearchableContentType(
-  contentType: SupportedContentFragmentType
-): boolean {
-  if (isSupportedImageContentType(contentType)) {
-    return false;
-  }
-  // For now we only allow including text files.
-  switch (contentType) {
-    case "application/msword":
-    case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-    case "application/pdf":
-    case "text/markdown":
-    case "text/plain":
-    case "dust-application/slack":
-    case "text/tab-separated-values":
-    case "text/tsv":
-      return true;
-
-    case "text/comma-separated-values":
-    case "text/csv":
-      return false;
-    default:
-      assertNever(contentType);
-  }
-}
-
-export function listFiles(
-  conversation: ConversationType
-): ConversationFileType[] {
-  const files: ConversationFileType[] = [];
-  for (const versions of conversation.content) {
-    const m = versions[versions.length - 1];
-
-    if (
-      isContentFragmentType(m) &&
-      isSupportedPlainTextContentType(m.contentType) &&
-      m.contentFragmentVersion === "latest"
-    ) {
-      if (m.fileId) {
-        const canDoJIT = m.snippet !== null;
-        const isIncludable = isConversationIncludableFileContentType(
-          m.contentType
-        );
-        const isQueryable = canDoJIT && isQueryableContentType(m.contentType);
-        const isSearchable = canDoJIT && isSearchableContentType(m.contentType);
-
-        files.push({
-          fileId: m.fileId,
-          title: m.title,
-          contentType: m.contentType,
-          snippet: m.snippet,
-          isIncludable,
-          isQueryable,
-          isSearchable,
-        });
-      }
-    } else if (isAgentMessageType(m)) {
-      const generatedFiles = m.actions.flatMap((a) => a.getGeneratedFiles());
-
-      for (const f of generatedFiles) {
-        const canDoJIT = f.snippet != null;
-        const isIncludable = isConversationIncludableFileContentType(
-          f.contentType
-        );
-        const isQueryable = canDoJIT && isQueryableContentType(f.contentType);
-        const isSearchable = canDoJIT && isSearchableContentType(f.contentType);
-
-        files.push({
-          fileId: f.fileId,
-          contentType: f.contentType,
-          title: f.title,
-          snippet: f.snippet,
-          isIncludable,
-          isQueryable,
-          isSearchable,
-        });
-      }
-    }
-  }
-
-  return files;
+export function isJITActionsEnabled(): boolean {
+  return true;
 }
 
 async function getJITActions(
@@ -282,7 +156,7 @@ export async function getEmulatedAndJITActions(
   const emulatedActions: AgentActionType[] = [];
   let jitActions: ActionConfigurationType[] = [];
 
-  if (await isJITActionsEnabled(auth)) {
+  if (isJITActionsEnabled()) {
     const files = listFiles(conversation);
 
     const a = makeConversationListFilesAction({

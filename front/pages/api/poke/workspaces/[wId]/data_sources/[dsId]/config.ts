@@ -4,7 +4,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
-import { Authenticator, getSession } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
+import type { SessionWithUser } from "@app/lib/iam/provider";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
@@ -16,9 +17,9 @@ export type SetConfigResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<SetConfigResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<SetConfigResponseBody>>,
+  session: SessionWithUser
 ): Promise<void> {
-  const session = await getSession(req, res);
   const auth = await Authenticator.fromSuperUserSession(
     session,
     req.query.wId as string

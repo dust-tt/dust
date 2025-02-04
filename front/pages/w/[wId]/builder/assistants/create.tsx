@@ -75,9 +75,7 @@ export default function CreateAssistant({
     router.query.templateId ? (router.query.templateId as string) : null
   );
 
-  const { assistantTemplates } = useAssistantTemplates({
-    workspaceId: owner.sId,
-  });
+  const { assistantTemplates } = useAssistantTemplates();
 
   const [filteredTemplates, setFilteredTemplates] = useState<{
     templates: typeof assistantTemplates;
@@ -210,6 +208,8 @@ export default function CreateAssistant({
                 <Button
                   icon={DocumentIcon}
                   label="New Assistant"
+                  data-gtm-label="assistantCreationButton"
+                  data-gtm-location="assistantCreationPage"
                   size="md"
                   variant="highlight"
                 />
@@ -233,7 +233,7 @@ export default function CreateAssistant({
                   .map((tagName) => (
                     <Button
                       label={templateTagsMapping[tagName].label}
-                      variant="ghost"
+                      variant="outline"
                       key={tagName}
                       size="xs"
                       onClick={() => scrollToTag(tagName)}

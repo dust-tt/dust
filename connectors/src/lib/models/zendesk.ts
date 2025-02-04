@@ -1,13 +1,8 @@
-import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional } from "sequelize";
+import { DataTypes } from "sequelize";
 
 import { sequelizeConnection } from "@connectors/resources/storage";
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 
 function throwOnUnsafeInteger(value: number | null) {
   if (value !== null && !Number.isSafeInteger(value)) {
@@ -15,27 +10,16 @@ function throwOnUnsafeInteger(value: number | null) {
   }
 }
 
-export class ZendeskTimestampCursor extends Model<
-  InferAttributes<ZendeskTimestampCursor>,
-  InferCreationAttributes<ZendeskTimestampCursor>
-> {
-  declare id: CreationOptional<number>;
+export class ZendeskTimestampCursor extends ConnectorBaseModel<ZendeskTimestampCursor> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
   // start date of the last successful sync
   declare timestampCursor: Date;
-
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 
 ZendeskTimestampCursor.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -57,33 +41,17 @@ ZendeskTimestampCursor.init(
     indexes: [{ fields: ["connectorId"], unique: true }],
   }
 );
-ConnectorModel.hasMany(ZendeskTimestampCursor, {
-  foreignKey: { allowNull: false },
-  onDelete: "RESTRICT",
-});
-ZendeskTimestampCursor.belongsTo(ConnectorModel);
 
-export class ZendeskConfiguration extends Model<
-  InferAttributes<ZendeskConfiguration>,
-  InferCreationAttributes<ZendeskConfiguration>
-> {
-  declare id: CreationOptional<number>;
+export class ZendeskConfiguration extends ConnectorBaseModel<ZendeskConfiguration> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
   declare subdomain: string;
   declare retentionPeriodDays: number;
-
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 
 ZendeskConfiguration.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -108,19 +76,11 @@ ZendeskConfiguration.init(
     sequelize: sequelizeConnection,
     modelName: "zendesk_configurations",
     indexes: [{ fields: ["connectorId"], unique: true }],
+    relationship: "hasOne",
   }
 );
-ConnectorModel.hasMany(ZendeskConfiguration, {
-  foreignKey: { allowNull: false },
-  onDelete: "RESTRICT",
-});
-ZendeskConfiguration.belongsTo(ConnectorModel);
 
-export class ZendeskBrand extends Model<
-  InferAttributes<ZendeskBrand>,
-  InferCreationAttributes<ZendeskBrand>
-> {
-  declare id: CreationOptional<number>;
+export class ZendeskBrand extends ConnectorBaseModel<ZendeskBrand> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -131,20 +91,12 @@ export class ZendeskBrand extends Model<
   declare name: string;
   declare url: string;
   declare subdomain: string;
-  declare hasHelpCenter: boolean;
 
   declare lastUpsertedTs?: Date;
-
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 
 ZendeskBrand.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -180,10 +132,6 @@ ZendeskBrand.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    hasHelpCenter: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-    },
     lastUpsertedTs: {
       type: DataTypes.DATE,
       allowNull: true,
@@ -193,26 +141,17 @@ ZendeskBrand.init(
     sequelize: sequelizeConnection,
     modelName: "zendesk_brands",
     indexes: [
-      { fields: ["connectorId"] },
       {
         fields: ["connectorId", "brandId"],
         unique: true,
-        name: "zendesk_connector_brand_idx",
+        name: "zendesk_brands_connector_brand_idx",
       },
-      { fields: ["brandId"] },
+      { fields: ["connectorId"] },
     ],
   }
 );
-ConnectorModel.hasMany(ZendeskBrand, {
-  foreignKey: { allowNull: false },
-  onDelete: "RESTRICT",
-});
 
-export class ZendeskCategory extends Model<
-  InferAttributes<ZendeskCategory>,
-  InferCreationAttributes<ZendeskCategory>
-> {
-  declare id: CreationOptional<number>;
+export class ZendeskCategory extends ConnectorBaseModel<ZendeskCategory> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -225,17 +164,10 @@ export class ZendeskCategory extends Model<
   declare url: string;
 
   declare lastUpsertedTs?: Date;
-
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 
 ZendeskCategory.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -282,25 +214,20 @@ ZendeskCategory.init(
     modelName: "zendesk_categories",
     indexes: [
       {
-        fields: ["connectorId", "categoryId"],
+        fields: ["connectorId", "brandId", "categoryId"],
         unique: true,
-        name: "zendesk_connector_category_idx",
+        name: "zendesk_categories_connector_brand_category_idx",
       },
-      { fields: ["categoryId"] },
+      {
+        fields: ["connectorId", "brandId"],
+        name: "zendesk_categories_connector_brand_idx",
+      },
       { fields: ["connectorId"] },
     ],
   }
 );
-ConnectorModel.hasMany(ZendeskCategory, {
-  foreignKey: { allowNull: false },
-  onDelete: "RESTRICT",
-});
 
-export class ZendeskArticle extends Model<
-  InferAttributes<ZendeskArticle>,
-  InferCreationAttributes<ZendeskArticle>
-> {
-  declare id: CreationOptional<number>;
+export class ZendeskArticle extends ConnectorBaseModel<ZendeskArticle> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -313,17 +240,10 @@ export class ZendeskArticle extends Model<
   declare url: string;
 
   declare lastUpsertedTs: Date | null;
-
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 
 ZendeskArticle.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -371,25 +291,24 @@ ZendeskArticle.init(
     modelName: "zendesk_articles",
     indexes: [
       {
-        fields: ["connectorId", "articleId"],
+        fields: ["connectorId", "brandId", "articleId"],
         unique: true,
-        name: "zendesk_connector_article_idx",
+        name: "zendesk_articles_connector_brand_article_idx",
       },
-      { fields: ["articleId"] },
+      {
+        fields: ["connectorId", "brandId", "categoryId"],
+        name: "zendesk_articles_connector_brand_category_idx",
+      },
+      {
+        fields: ["connectorId", "brandId"],
+        name: "zendesk_articles_connector_brand_idx",
+      },
       { fields: ["connectorId"] },
     ],
   }
 );
-ConnectorModel.hasMany(ZendeskArticle, {
-  foreignKey: { allowNull: false },
-  onDelete: "RESTRICT",
-});
 
-export class ZendeskTicket extends Model<
-  InferAttributes<ZendeskTicket>,
-  InferCreationAttributes<ZendeskTicket>
-> {
-  declare id: CreationOptional<number>;
+export class ZendeskTicket extends ConnectorBaseModel<ZendeskTicket> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -402,17 +321,10 @@ export class ZendeskTicket extends Model<
 
   declare ticketUpdatedAt: Date;
   declare lastUpsertedTs: Date;
-
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 
 ZendeskTicket.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -459,17 +371,15 @@ ZendeskTicket.init(
     modelName: "zendesk_tickets",
     indexes: [
       {
-        fields: ["connectorId", "ticketId"],
+        fields: ["connectorId", "brandId", "ticketId"],
         unique: true,
-        name: "zendesk_connector_ticket_idx",
+        name: "zendesk_tickets_connector_brand_ticket_idx",
       },
-      { fields: ["ticketId"] },
+      {
+        fields: ["connectorId", "brandId"],
+        name: "zendesk_tickets_connector_brand_idx",
+      },
       { fields: ["connectorId"] },
     ],
   }
 );
-
-ConnectorModel.hasMany(ZendeskTicket, {
-  foreignKey: { allowNull: false },
-  onDelete: "RESTRICT",
-});

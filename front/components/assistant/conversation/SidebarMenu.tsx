@@ -2,7 +2,6 @@ import {
   Button,
   ChatBubbleBottomCenterPlusIcon,
   Checkbox,
-  Dialog,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -16,12 +15,12 @@ import {
   NavigationListLabel,
   PlusIcon,
   RobotIcon,
-  ScrollArea,
+  SearchInput,
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { useSendNotification } from "@dust-tt/sparkle";
-import type { ConversationType } from "@dust-tt/types";
+import type { ConversationWithoutContentType } from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";
 import { isBuilder, isOnlyUser } from "@dust-tt/types";
 import moment from "moment";
@@ -29,13 +28,15 @@ import type { NextRouter } from "next/router";
 import { useRouter } from "next/router";
 import React, { useCallback, useContext, useState } from "react";
 
+import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
+import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import {
   useConversations,
   useDeleteConversation,
 } from "@app/lib/swr/conversations";
-import { classNames } from "@app/lib/utils";
+import { classNames, removeDiacritics, subFilter } from "@app/lib/utils";
 
 type AssistantSidebarMenuProps = {
   owner: WorkspaceType;
@@ -51,13 +52,15 @@ type GroupLabel =
 
 export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
   const router = useRouter();
+  const { conversationsNavigationRef } = useConversationsNavigation();
+
   const { setSidebarOpen } = useContext(SidebarContext);
   const { conversations, isConversationsError } = useConversations({
     workspaceId: owner.sId,
   });
   const [isMultiSelect, setIsMultiSelect] = useState(false);
   const [selectedConversations, setSelectedConversations] = useState<
-    ConversationType[]
+    ConversationWithoutContentType[]
   >([]);
   const doDelete = useDeleteConversation(owner);
 
@@ -65,6 +68,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
     "all" | "selection" | null
   >(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [titleFilter, setTitleFilter] = useState<string>("");
   const sendNotification = useSendNotification();
 
   const toggleMultiSelect = useCallback(() => {
@@ -73,7 +77,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
   }, [setIsMultiSelect, setSelectedConversations]);
 
   const toggleConversationSelection = useCallback(
-    (c: ConversationType) => {
+    (c: ConversationWithoutContentType) => {
       if (selectedConversations.includes(c)) {
         setSelectedConversations((prev) => prev.filter((id) => id !== c));
       } else {
@@ -120,14 +124,16 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
     setShowDeleteDialog(null);
   }, [conversations, doDelete, sendNotification]);
 
-  const groupConversationsByDate = (conversations: ConversationType[]) => {
+  const groupConversationsByDate = (
+    conversations: ConversationWithoutContentType[]
+  ) => {
     const today = moment().startOf("day");
     const yesterday = moment().subtract(1, "days").startOf("day");
     const lastWeek = moment().subtract(1, "weeks").startOf("day");
     const lastMonth = moment().subtract(1, "months").startOf("day");
     const lastYear = moment().subtract(1, "years").startOf("day");
 
-    const groups: Record<GroupLabel, ConversationType[]> = {
+    const groups: Record<GroupLabel, ConversationWithoutContentType[]> = {
       Today: [],
       Yesterday: [],
       "Last Week": [],
@@ -136,17 +142,27 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
       Older: [],
     };
 
-    conversations.forEach((conversation: ConversationType) => {
-      const createdDate = moment(conversation.created);
-      if (createdDate.isSameOrAfter(today)) {
+    conversations.forEach((conversation: ConversationWithoutContentType) => {
+      if (
+        titleFilter &&
+        !subFilter(
+          removeDiacritics(titleFilter).toLowerCase(),
+          removeDiacritics(conversation.title ?? "").toLowerCase()
+        )
+      ) {
+        return;
+      }
+
+      const updatedAt = moment(conversation.updated ?? conversation.created);
+      if (updatedAt.isSameOrAfter(today)) {
         groups["Today"].push(conversation);
-      } else if (createdDate.isSameOrAfter(yesterday)) {
+      } else if (updatedAt.isSameOrAfter(yesterday)) {
         groups["Yesterday"].push(conversation);
-      } else if (createdDate.isSameOrAfter(lastWeek)) {
+      } else if (updatedAt.isSameOrAfter(lastWeek)) {
         groups["Last Week"].push(conversation);
-      } else if (createdDate.isSameOrAfter(lastMonth)) {
+      } else if (updatedAt.isSameOrAfter(lastMonth)) {
         groups["Last Month"].push(conversation);
-      } else if (createdDate.isSameOrAfter(lastYear)) {
+      } else if (updatedAt.isSameOrAfter(lastYear)) {
         groups["Last 12 Months"].push(conversation);
       } else {
         groups["Older"].push(conversation);
@@ -158,7 +174,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
 
   const conversationsByDate = conversations.length
     ? groupConversationsByDate(conversations)
-    : ({} as Record<GroupLabel, ConversationType[]>);
+    : ({} as Record<GroupLabel, ConversationWithoutContentType[]>);
 
   const { setAnimate } = useContext(InputBarContext);
 
@@ -168,31 +184,14 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
 
   return (
     <>
-      <Dialog
-        title="Clear conversation history"
-        isOpen={showDeleteDialog === "all"}
-        onCancel={() => setShowDeleteDialog(null)}
-        onValidate={deleteAll}
-        validateVariant="warning"
-        isSaving={isDeleting}
-      >
-        Are you sure you want to delete ALL conversations&nbsp;?
-        <br />
-        <b>This action cannot be undone.</b>
-      </Dialog>
-      <Dialog
-        title="Delete conversations"
-        isOpen={showDeleteDialog === "selection"}
-        onCancel={() => setShowDeleteDialog(null)}
-        onValidate={deleteSelection}
-        validateVariant="warning"
-        isSaving={isDeleting}
-      >
-        Are you sure you want to delete {selectedConversations.length}{" "}
-        conversations?
-        <br />
-        <b>This action cannot be undone.</b>
-      </Dialog>
+      <DeleteConversationsDialog
+        isOpen={showDeleteDialog !== null}
+        isDeleting={isDeleting}
+        onClose={() => setShowDeleteDialog(null)}
+        onDelete={showDeleteDialog === "all" ? deleteAll : deleteSelection}
+        type={showDeleteDialog || "all"}
+        selectedCount={selectedConversations.length}
+      />
       <div
         className={classNames(
           "flex grow flex-col",
@@ -215,13 +214,19 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                   variant="ghost"
                   icon={XMarkIcon}
                   onClick={toggleMultiSelect}
-                  className="mr-2"
                 />
               </div>
             ) : (
               <div className="z-50 flex justify-end gap-2 p-2 shadow-tale">
+                <SearchInput
+                  name="search"
+                  placeholder="Search"
+                  value={titleFilter}
+                  onChange={setTitleFilter}
+                />
                 <Button
                   href={`/w/${owner.sId}/assistant/new`}
+                  shallow
                   label="New"
                   icon={ChatBubbleBottomCenterPlusIcon}
                   className="shrink"
@@ -239,22 +244,26 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                     }
                   }}
                 />
-                <DropdownMenu>
+                <DropdownMenu modal={false}>
                   <DropdownMenuTrigger asChild>
                     <Button size="sm" icon={MoreIcon} variant="outline" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
                     <DropdownMenuLabel>Assistants</DropdownMenuLabel>
                     <DropdownMenuItem
-                      label="Create new assistant"
                       href={`/w/${owner.sId}/builder/assistants/create`}
                       icon={PlusIcon}
+                      label="Create new assistant"
+                      data-gtm-label="assistantCreationButton"
+                      data-gtm-location="sidebarMenu"
                     />
                     {isBuilder(owner) && (
                       <DropdownMenuItem
                         href={`/w/${owner.sId}/builder/assistants`}
-                        label="Manage assistants"
                         icon={RobotIcon}
+                        label="Manage assistants"
+                        data-gtm-label="assistantManagementButton"
+                        data-gtm-location="sidebarMenu"
                       />
                     )}
                     <DropdownMenuLabel>Conversations</DropdownMenuLabel>
@@ -275,11 +284,14 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
               </div>
             )}
             {isConversationsError && (
-              <Label className="py-1 text-xs font-medium text-element-800">
+              <Label className="px-3 py-4 text-xs font-medium text-muted-foreground">
                 Error loading conversations
               </Label>
             )}
-            <ScrollArea className="w-full px-2">
+            <NavigationList
+              className="w-full px-3"
+              ref={conversationsNavigationRef}
+            >
               {conversationsByDate &&
                 Object.keys(conversationsByDate).map((dateLabel) => (
                   <RenderConversations
@@ -293,7 +305,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                     owner={owner}
                   />
                 ))}
-            </ScrollArea>
+            </NavigationList>
           </div>
         </div>
       </div>
@@ -306,11 +318,11 @@ const RenderConversations = ({
   dateLabel,
   ...props
 }: {
-  conversations: ConversationType[];
+  conversations: ConversationWithoutContentType[];
   dateLabel: string;
   isMultiSelect: boolean;
-  selectedConversations: ConversationType[];
-  toggleConversationSelection: (c: ConversationType) => void;
+  selectedConversations: ConversationWithoutContentType[];
+  toggleConversationSelection: (c: ConversationWithoutContentType) => void;
   router: NextRouter;
   owner: WorkspaceType;
 }) => {
@@ -319,18 +331,16 @@ const RenderConversations = ({
   }
 
   return (
-    <div>
+    <>
       <NavigationListLabel label={dateLabel} />
-      <NavigationList>
-        {conversations.map((conversation) => (
-          <RenderConversation
-            key={conversation.sId}
-            conversation={conversation}
-            {...props}
-          />
-        ))}
-      </NavigationList>
-    </div>
+      {conversations.map((conversation) => (
+        <RenderConversation
+          key={conversation.sId}
+          conversation={conversation}
+          {...props}
+        />
+      ))}
+    </>
   );
 };
 
@@ -342,10 +352,10 @@ const RenderConversation = ({
   router,
   owner,
 }: {
-  conversation: ConversationType;
+  conversation: ConversationWithoutContentType;
   isMultiSelect: boolean;
-  selectedConversations: ConversationType[];
-  toggleConversationSelection: (c: ConversationType) => void;
+  selectedConversations: ConversationWithoutContentType[];
+  toggleConversationSelection: (c: ConversationWithoutContentType) => void;
   router: NextRouter;
   owner: WorkspaceType;
 }) => {
@@ -377,6 +387,7 @@ const RenderConversation = ({
           selected={router.query.cId === conversation.sId}
           label={conversationLabel}
           href={`/w/${owner.sId}/assistant/${conversation.sId}`}
+          shallow
         />
       )}
     </>

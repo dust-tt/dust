@@ -7,11 +7,13 @@ import { useRef } from "react";
 type AttachFileProps = {
   fileUploaderService: FileUploaderService;
   editorService: EditorService;
+  isLoading: boolean;
 };
 
 export const AttachFile = ({
   fileUploaderService,
   editorService,
+  isLoading,
 }: AttachFileProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   return (
@@ -38,6 +40,7 @@ export const AttachFile = ({
         onClick={async () => {
           fileInputRef.current?.click();
         }}
+        disabled={isLoading}
       />
     </>
   );

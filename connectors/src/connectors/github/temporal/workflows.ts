@@ -25,19 +25,22 @@ const {
 
 const {
   githubGetReposResultPageActivity,
-  githubGetRepoIssuesResultPageActivity,
   githubGetRepoDiscussionsResultPageActivity,
   githubIssueGarbageCollectActivity,
   githubDiscussionGarbageCollectActivity,
+  githubUpsertDiscussionsFolderActivity,
+  githubUpsertIssuesFolderActivity,
+  githubUpsertRepositoryFolderActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minute",
 });
 
-const { githubRepoGarbageCollectActivity } = proxyActivities<typeof activities>(
-  {
-    startToCloseTimeout: "20 minute",
-  }
-);
+const {
+  githubGetRepoIssuesResultPageActivity,
+  githubRepoGarbageCollectActivity,
+} = proxyActivities<typeof activities>({
+  startToCloseTimeout: "20 minute",
+});
 
 const { githubUpsertIssueActivity, githubUpsertDiscussionActivity } =
   proxyActivities<typeof activities>({
@@ -58,6 +61,9 @@ const { githubCodeSyncActivity } = proxyActivities<typeof activities>({
 const MAX_CONCURRENT_REPO_SYNC_WORKFLOWS = 3;
 const MAX_CONCURRENT_ISSUE_SYNC_ACTIVITIES_PER_WORKFLOW = 8;
 
+/**
+ * This workflow is used to fetch and sync all the repositories of a GitHub connector.
+ */
 export async function githubFullSyncWorkflow(
   dataSourceConfig: DataSourceConfig,
   connectorId: ModelId,
@@ -118,6 +124,9 @@ export async function githubFullSyncWorkflow(
   await githubSaveSuccessSyncActivity(dataSourceConfig);
 }
 
+/**
+ * This workflow is used to sync the given repositories of a GitHub connector.
+ */
 export async function githubReposSyncWorkflow(
   dataSourceConfig: DataSourceConfig,
   connectorId: ModelId,
@@ -159,6 +168,9 @@ export async function githubReposSyncWorkflow(
   await githubSaveSuccessSyncActivity(dataSourceConfig);
 }
 
+/**
+ * This workflow is used to sync all the issues of a GitHub connector.
+ */
 export async function githubRepoIssuesSyncWorkflow({
   dataSourceConfig,
   connectorId,
@@ -174,6 +186,14 @@ export async function githubRepoIssuesSyncWorkflow({
   repoLogin: string;
   pageNumber: number;
 }): Promise<boolean> {
+  // upserting the folder with all the issues
+  await githubUpsertIssuesFolderActivity({
+    connectorId,
+    repoId,
+    repoLogin,
+    repoName,
+  });
+
   const queue = new PQueue({
     concurrency: MAX_CONCURRENT_ISSUE_SYNC_ACTIVITIES_PER_WORKFLOW,
   });
@@ -213,6 +233,9 @@ export async function githubRepoIssuesSyncWorkflow({
   return true;
 }
 
+/**
+ * This workflow is used to sync all the discussions of a GitHub connector.
+ */
 export async function githubRepoDiscussionsSyncWorkflow({
   dataSourceConfig,
   connectorId,
@@ -228,6 +251,14 @@ export async function githubRepoDiscussionsSyncWorkflow({
   repoLogin: string;
   nextCursor: string | null;
 }): Promise<string | null> {
+  // upserting the folder with all the discussions
+  await githubUpsertDiscussionsFolderActivity({
+    connectorId,
+    repoId,
+    repoLogin,
+    repoName,
+  });
+
   const queue = new PQueue({
     concurrency: MAX_CONCURRENT_ISSUE_SYNC_ACTIVITIES_PER_WORKFLOW,
   });
@@ -264,6 +295,9 @@ export async function githubRepoDiscussionsSyncWorkflow({
   return cursor;
 }
 
+/**
+ * This workflow is used to sync all the issues, discussions and code of a GitHub connector.
+ */
 export async function githubRepoSyncWorkflow({
   dataSourceConfig,
   connectorId,
@@ -283,6 +317,14 @@ export async function githubRepoSyncWorkflow({
   isFullSync: boolean;
   forceCodeResync?: boolean;
 }) {
+  // upserting the root folder for the repository
+  await githubUpsertRepositoryFolderActivity({
+    connectorId,
+    repoId,
+    repoName,
+    repoLogin,
+  });
+
   if (!syncCodeOnly) {
     let pageNumber = 1; // 1-indexed
     for (;;) {

@@ -1,38 +1,21 @@
 import type { GroupKind } from "@dust-tt/types";
 import { isGlobalGroupKind, isSystemGroupKind } from "@dust-tt/types";
-import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-  Transaction,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional, Transaction } from "sequelize";
+import { DataTypes } from "sequelize";
 
-import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
-export class GroupModel extends Model<
-  InferAttributes<GroupModel>,
-  InferCreationAttributes<GroupModel>
-> {
-  declare id: CreationOptional<number>;
+export class GroupModel extends WorkspaceAwareModel<GroupModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
   declare name: string;
   declare kind: GroupKind;
-
-  declare workspaceId: ForeignKey<Workspace["id"]>;
 }
 
 GroupModel.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -81,9 +64,3 @@ GroupModel.addHook(
     }
   }
 );
-
-Workspace.hasMany(GroupModel, {
-  foreignKey: { allowNull: false },
-  onDelete: "RESTRICT",
-});
-GroupModel.belongsTo(Workspace);

@@ -2,9 +2,10 @@ import type { CancelMessageGenerationResponseType } from "@dust-tt/client";
 import { CancelMessageGenerationRequestSchema } from "@dust-tt/client";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
-import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
+import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation/without_content";
 import { cancelMessageGenerationEvent } from "@app/lib/api/assistant/pubsub";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -14,6 +15,8 @@ import { apiError } from "@app/logger/withlogging";
  * @swagger
  * /api/v1/w/{wId}/assistant/conversations/{cId}/cancel:
  *   post:
+ *     tags:
+ *       - Conversations
  *     summary: Cancel message generation in a conversation
  *     parameters:
  *       - name: wId
@@ -95,7 +98,7 @@ async function handler(
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${r.error.message}`,
+            message: fromError(r.error).toString(),
           },
         });
       }

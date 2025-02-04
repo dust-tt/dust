@@ -1,9 +1,10 @@
 import type {
   ConnectorProvider,
+  ConversationWithoutContentType,
   DataSourceType,
   ModelId,
-  PokeDataSourceType,
   Result,
+  UserType,
 } from "@dust-tt/types";
 import { formatUserFullName, Ok, removeNulls } from "@dust-tt/types";
 import type {
@@ -11,18 +12,18 @@ import type {
   CreationAttributes,
   ModelStatic,
   Transaction,
+  WhereOptions,
 } from "sequelize";
 import { Op } from "sequelize";
 
 import { getDataSourceUsage } from "@app/lib/api/agent_data_sources";
-import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
-import { User } from "@app/lib/models/user";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
   getResourceIdFromSId,
@@ -30,7 +31,6 @@ import {
   makeSId,
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import { getWorkspaceByModelId } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 
 import { DataSourceViewModel } from "./storage/models/data_source_view";
@@ -66,13 +66,13 @@ export interface DataSourceResource
 export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
   static model: ModelStatic<DataSourceModel> = DataSourceModel;
 
-  readonly editedByUser?: Attributes<User>;
+  readonly editedByUser?: Attributes<UserModel>;
 
   constructor(
     model: ModelStatic<DataSourceModel>,
     blob: Attributes<DataSourceModel>,
     space: SpaceResource,
-    { editedByUser }: { editedByUser?: Attributes<User> } = {}
+    { editedByUser }: { editedByUser?: Attributes<UserModel> } = {}
   ) {
     super(DataSourceResource.model, blob, space);
 
@@ -80,18 +80,18 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
   }
 
   static async makeNew(
-    auth: Authenticator,
     blob: Omit<
       CreationAttributes<DataSourceModel>,
       "editedAt" | "editedByUserId" | "vaultId"
     >,
     space: SpaceResource,
+    editedByUser?: UserType | null,
     transaction?: Transaction
   ) {
     const dataSource = await DataSourceModel.create(
       {
         ...blob,
-        editedByUserId: auth.getNonNullableUser().id,
+        editedByUserId: editedByUser?.id ?? null,
         editedAt: new Date(),
         vaultId: space.id,
       },
@@ -111,8 +111,9 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
     if (options?.includeEditedBy) {
       result.includes = [
         {
-          model: User,
+          model: UserModel,
           as: "editedByUser",
+          required: false,
         },
       ];
     }
@@ -263,14 +264,14 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
     return dataSource ?? null;
   }
 
-  static async fetchByConversationId(
+  static async fetchByConversation(
     auth: Authenticator,
-    conversationId: number,
+    conversation: ConversationWithoutContentType,
     options?: FetchDataSourceOptions
   ): Promise<DataSourceResource | null> {
     const [dataSource] = await this.baseFetch(auth, options, {
       where: {
-        conversationId,
+        conversationId: conversation.id,
         workspaceId: auth.getNonNullableWorkspace().id,
       },
     });
@@ -335,12 +336,19 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
 
   static async listByWorkspace(
     auth: Authenticator,
-    options?: FetchDataSourceOptions
+    options?: FetchDataSourceOptions,
+    includeConversationDataSources?: boolean
   ): Promise<DataSourceResource[]> {
+    const where: WhereOptions<DataSourceModel> = {
+      workspaceId: auth.getNonNullableWorkspace().id,
+    };
+    if (!includeConversationDataSources) {
+      where["conversationId"] = {
+        [Op.is]: undefined,
+      };
+    }
     return this.baseFetch(auth, options, {
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
+      where,
     });
   }
 
@@ -456,13 +464,13 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
 
   async setEditedBy(auth: Authenticator) {
     await this.update({
-      editedByUserId: auth.getNonNullableUser().id,
+      editedByUserId: auth.user()?.id ?? null,
       editedAt: new Date(),
     });
   }
 
   private makeEditedBy(
-    editedByUser: Attributes<User> | undefined,
+    editedByUser: Attributes<UserModel> | undefined,
     editedAt: Date | undefined
   ) {
     if (!editedByUser || !editedAt) {
@@ -543,19 +551,6 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
       connectorProvider: this.connectorProvider,
       assistantDefaultSelected: this.assistantDefaultSelected,
       ...this.makeEditedBy(this.editedByUser, this.editedAt),
-    };
-  }
-
-  async toPokeJSON(): Promise<PokeDataSourceType> {
-    const workspace = await getWorkspaceByModelId(this.workspaceId);
-
-    return {
-      ...this.toJSON(),
-      link: workspace
-        ? `${config.getClientFacingUrl()}/poke/${workspace.sId}/data_sources/${this.sId}`
-        : null,
-      name: `Data Source View (${this.name})`,
-      space: this.space.toPokeJSON(),
     };
   }
 }

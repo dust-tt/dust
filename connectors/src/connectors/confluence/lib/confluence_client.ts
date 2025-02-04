@@ -2,7 +2,10 @@ import { ConfluenceClientError } from "@dust-tt/types";
 import { isLeft } from "fp-ts/Either";
 import * as t from "io-ts";
 
+import { setTimeoutAsync } from "@connectors/lib/async_utils";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
+import logger from "@connectors/logger/logger";
+import { statsDClient } from "@connectors/logger/withlogging";
 
 const CatchAllCodec = t.record(t.string, t.unknown); // Catch-all for unknown properties.
 
@@ -141,6 +144,13 @@ const ConfluenceReadOperationRestrictionsCodec = t.type({
   restrictions: RestrictionsCodec,
 });
 
+// If Confluence does not provide a retry-after header, we use this constant to signal no delay.
+const NO_RETRY_AFTER_DELAY = -1;
+// Number of times we retry when rate limited and Confluence does provide a retry-after header.
+const MAX_RATE_LIMIT_RETRY_COUNT = 5;
+// If Confluence returns a retry-after header with a delay greater than this value, we cap it.
+const MAX_RETRY_AFTER_DELAY = 300_000; // 5 minutes
+
 // Space types that we support indexing in Dust.
 export const CONFLUENCE_SUPPORTED_SPACE_TYPES = [
   "global",
@@ -159,6 +169,17 @@ function extractCursorFromLinks(links: { next?: string }): string | null {
   return url.searchParams.get("cursor");
 }
 
+function getRetryAfterDuration(response: Response): number {
+  const retryAfter = response.headers.get("retry-after"); // https://developer.atlassian.com/cloud/confluence/rate-limiting/
+  if (retryAfter) {
+    const delay = parseInt(retryAfter, 10);
+
+    return !Number.isNaN(delay) ? delay * 1000 : NO_RETRY_AFTER_DELAY;
+  }
+
+  return NO_RETRY_AFTER_DELAY;
+}
+
 export class ConfluenceClient {
   private readonly apiUrl = "https://api.atlassian.com";
   private readonly restApiBaseUrl: string;
@@ -172,7 +193,11 @@ export class ConfluenceClient {
     this.legacyRestApiBaseUrl = `/ex/confluence/${cloudId}/wiki/rest/api`;
   }
 
-  private async request<T>(endpoint: string, codec: t.Type<T>): Promise<T> {
+  private async request<T>(
+    endpoint: string,
+    codec: t.Type<T>,
+    retryCount: number = 0
+  ): Promise<T> {
     const response = await (async () => {
       try {
         return await fetch(`${this.apiUrl}${endpoint}`, {
@@ -184,6 +209,11 @@ export class ConfluenceClient {
           signal: AbortSignal.timeout(30000),
         });
       } catch (e) {
+        statsDClient.increment("external.api.calls", 1, [
+          "provider:confluence",
+          "status:error",
+        ]);
+
         if (
           e instanceof DOMException &&
           (e.name === "TimeoutError" || e.name === "AbortError")
@@ -219,6 +249,59 @@ export class ConfluenceClient {
         throw new ExternalOAuthTokenError();
       }
 
+      // Handle rate limiting from Confluence API
+      // https://developer.atlassian.com/cloud/confluence/rate-limiting/
+      //
+      // Current strategy:
+      // 1. If Confluence provides a retry-after header, we honor it immediately
+      //    by sleeping in the client. This is not ideal but provides the most
+      //    accurate rate limit handling until we can use Temporal's nextRetryDelay.
+      // 2. If no retry-after header is provided, we throw a transient error and
+      //    let Temporal handle the retry with exponential backoff.
+      //
+      // Once we upgrade to Temporal SDK >= X.Y.Z, we should:
+      // - Remove the client-side sleep
+      // - Use ApplicationFailure.create() with nextRetryDelay
+      // - See: https://docs.temporal.io/develop/typescript/failure-detection#activity-next-retry-delay
+      if (response.status === 429) {
+        statsDClient.increment("external.api.calls", 1, [
+          "provider:confluence",
+          "status:rate_limited",
+        ]);
+
+        if (retryCount < MAX_RATE_LIMIT_RETRY_COUNT) {
+          const delayMs = getRetryAfterDuration(response);
+          logger.warn(
+            {
+              endpoint,
+              delayMs,
+            },
+            "[Confluence] Rate limit hit"
+          );
+
+          // Only retry rate-limited requests when the server provides a Retry-After delay.
+          if (
+            delayMs !== NO_RETRY_AFTER_DELAY &&
+            delayMs < MAX_RETRY_AFTER_DELAY
+          ) {
+            await setTimeoutAsync(delayMs);
+            return this.request(endpoint, codec, retryCount + 1);
+          }
+        }
+
+        // Otherwise throw regular error to let downstream handle retries (e.g: Temporal).
+        throw new ConfluenceClientError("Confluence API rate limit exceeded", {
+          type: "http_response_error",
+          status: response.status,
+          data: { url: `${this.apiUrl}${endpoint}`, response },
+        });
+      }
+
+      statsDClient.increment("external.api.calls", 1, [
+        "provider:confluence",
+        "status:error",
+      ]);
+
       throw new ConfluenceClientError(
         `Confluence API responded with status: ${response.status}: ${this.apiUrl}${endpoint}`,
         {
@@ -228,6 +311,11 @@ export class ConfluenceClient {
         }
       );
     }
+
+    statsDClient.increment("external.api.calls", 1, [
+      "provider:confluence",
+      "status:success",
+    ]);
 
     const responseBody = await response.json();
     const result = codec.decode(responseBody);
@@ -259,6 +347,11 @@ export class ConfluenceClient {
           signal: AbortSignal.timeout(30000),
         });
       } catch (e) {
+        statsDClient.increment("external.api.calls", 1, [
+          "provider:confluence",
+          "status:error",
+        ]);
+
         if (
           e instanceof DOMException &&
           (e.name === "TimeoutError" || e.name === "AbortError")
@@ -289,6 +382,11 @@ export class ConfluenceClient {
     })();
 
     if (!response.ok) {
+      statsDClient.increment("external.api.calls", 1, [
+        "provider:confluence",
+        "status:error",
+      ]);
+
       throw new ConfluenceClientError(
         `Confluence API responded with status: ${response.status}: ${this.apiUrl}${endpoint}`,
         {
@@ -298,6 +396,11 @@ export class ConfluenceClient {
         }
       );
     }
+
+    statsDClient.increment("external.api.calls", 1, [
+      "provider:confluence",
+      "status:success",
+    ]);
 
     if (response.status === 204) {
       return undefined; // Return undefined for 204 No Content.
@@ -334,10 +437,18 @@ export class ConfluenceClient {
     };
   }
 
-  async getChildPages(parentPageId: string, pageCursor: string | null) {
+  async getChildPages({
+    parentPageId,
+    pageCursor,
+    limit,
+  }: {
+    parentPageId: string;
+    pageCursor: string | null;
+    limit?: number;
+  }) {
     const params = new URLSearchParams({
       sort: "id",
-      limit: "100",
+      limit: limit?.toString() ?? "100",
     });
 
     if (pageCursor) {
@@ -408,12 +519,13 @@ export class ConfluenceClient {
   async getPagesInSpace(
     spaceId: string,
     depth: "all" | "root" = "all",
-    pageCursor?: string
+    sort: "id" | "-modified-date" = "id",
+    pageCursor?: string | null
   ) {
     const params = new URLSearchParams({
       depth,
+      sort,
       limit: "25",
-      sort: "id",
       status: "current",
     });
 
@@ -423,6 +535,46 @@ export class ConfluenceClient {
 
     const pages = await this.request(
       `${this.restApiBaseUrl}/spaces/${spaceId}/pages?${params.toString()}`,
+      ConfluencePaginatedResults(ConfluencePageCodec)
+    );
+    const nextPageCursor = extractCursorFromLinks(pages._links);
+
+    return {
+      pages: pages.results,
+      nextPageCursor,
+    };
+  }
+
+  async getPagesByIdsInSpace({
+    spaceId,
+    sort,
+    pageCursor,
+    pageIds,
+    limit,
+  }: {
+    spaceId: string;
+    sort?: "id" | "-modified-date";
+    pageCursor?: string | null;
+    pageIds?: string[];
+    limit?: number;
+  }) {
+    const params = new URLSearchParams({
+      sort: sort ?? "id",
+      limit: limit?.toString() ?? "25",
+      status: "current",
+      "space-id": spaceId,
+    });
+
+    if (pageCursor) {
+      params.append("cursor", pageCursor);
+    }
+
+    if (pageIds && pageIds.length > 0) {
+      params.append("id", pageIds.join(","));
+    }
+
+    const pages = await this.request(
+      `${this.restApiBaseUrl}/pages?${params.toString()}`,
       ConfluencePaginatedResults(ConfluencePageCodec)
     );
     const nextPageCursor = extractCursorFromLinks(pages._links);
@@ -455,10 +607,17 @@ export class ConfluenceClient {
   }
 
   async getPageReadRestrictions(pageId: string) {
-    return this.request(
-      `${this.legacyRestApiBaseUrl}/content/${pageId}/restriction/byOperation/read`,
-      ConfluenceReadOperationRestrictionsCodec
-    );
+    try {
+      return await this.request(
+        `${this.legacyRestApiBaseUrl}/content/${pageId}/restriction/byOperation/read`,
+        ConfluenceReadOperationRestrictionsCodec
+      );
+    } catch (err) {
+      if (err instanceof ConfluenceClientError && err.status === 404) {
+        return null;
+      }
+      throw err;
+    }
   }
 
   async getUserAccount() {

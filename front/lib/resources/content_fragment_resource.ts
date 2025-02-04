@@ -6,9 +6,10 @@ import type {
   ModelConfigurationType,
   ModelId,
   Result,
+  SupportedContentFragmentType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { Err, isSupportedImageContentFragmentType, Ok } from "@dust-tt/types";
+import { Err, isSupportedImageContentType, Ok } from "@dust-tt/types";
 import type {
   Attributes,
   CreationAttributes,
@@ -28,6 +29,8 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 
+export const CONTENT_OUTDATED_MSG =
+  "Content is outdated. Please refer to the latest version of this content.";
 const MAX_BYTE_SIZE_CSV_RENDER_FULL_CONTENT = 500 * 1024; // 500 KB
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -56,6 +59,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
         ...blob,
         sId: generateRandomModelSId("cf"),
         version: "latest",
+        workspaceId: blob.workspaceId,
       },
       {
         transaction,
@@ -88,6 +92,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
           ...blob,
           sId,
           version: "latest",
+          workspaceId: blob.workspaceId,
         },
         {
           transaction: t,
@@ -234,7 +239,8 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       const file = await FileResource.fetchByModelId(this.fileId);
       fileSid = file?.sId ?? null;
 
-      // Note: For CSV files outputted by tools, we have a "snippet" version of the output with the first rows stored in GCP, maybe it's better than our "summary" snippet stored on File.
+      // Note: For CSV files outputted by tools, we have a "snippet" version of the output with the
+      // first rows stored in GCP, maybe it's better than our "summary" snippet stored on File.
       // Need more testing, for now we are using the "summary" snippet.
       snippet = file?.snippet ?? null;
     }
@@ -265,6 +271,12 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
   }
 }
 
+export function getContentFragmentBaseCloudStorageForWorkspace(
+  workspaceId: string
+) {
+  return `content_fragments/w/${workspaceId}/assistant/conversations/`;
+}
+
 // TODO(2024-03-22 pr): Move as method of message resource after migration of
 // message to resource pattern
 export function fileAttachmentLocation({
@@ -278,48 +290,16 @@ export function fileAttachmentLocation({
   messageId: string;
   contentFormat: "raw" | "text";
 }) {
-  const filePath = `content_fragments/w/${workspaceId}/assistant/conversations/${conversationId}/content_fragment/${messageId}/${contentFormat}`;
+  const filePath = `${getContentFragmentBaseCloudStorageForWorkspace(workspaceId)}${conversationId}/content_fragment/${messageId}/${contentFormat}`;
+
   return {
     filePath,
-    internalUrl: `https://storage.googleapis.com/${
-      getPrivateUploadBucket().name
-    }/${filePath}`,
+    internalUrl: `https://storage.googleapis.com/${getPrivateUploadBucket().name}/${filePath}`,
     downloadUrl: `${appConfig.getClientFacingUrl()}/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${messageId}/raw_content_fragment?format=${contentFormat}`,
   };
 }
 
-export async function storeContentFragmentText({
-  workspaceId,
-  conversationId,
-  messageId,
-  content,
-}: {
-  workspaceId: string;
-  conversationId: string;
-  messageId: string;
-  content: string;
-}): Promise<number | null> {
-  if (content === "") {
-    return null;
-  }
-
-  const { filePath } = fileAttachmentLocation({
-    workspaceId,
-    conversationId,
-    messageId,
-    contentFormat: "text",
-  });
-
-  await getPrivateUploadBucket().uploadRawContentToBucket({
-    content,
-    contentType: "text/plain",
-    filePath,
-  });
-
-  return Buffer.byteLength(content);
-}
-
-export async function getContentFragmentText({
+async function getContentFragmentText({
   workspaceId,
   conversationId,
   messageId,
@@ -338,7 +318,20 @@ export async function getContentFragmentText({
   return getPrivateUploadBucket().fetchFileContent(filePath);
 }
 
-export async function getProcessedFileContent(
+async function getOriginalFileContent(
+  workspace: WorkspaceType,
+  fileId: string
+): Promise<string> {
+  const fileCloudStoragePath = FileResource.getCloudStoragePathForId({
+    fileId,
+    workspaceId: workspace.sId,
+    version: "original",
+  });
+
+  return getPrivateUploadBucket().fetchFileContent(fileCloudStoragePath);
+}
+
+async function getProcessedFileContent(
   workspace: WorkspaceType,
   fileId: string
 ): Promise<string> {
@@ -351,7 +344,7 @@ export async function getProcessedFileContent(
   return getPrivateUploadBucket().fetchFileContent(fileCloudStoragePath);
 }
 
-export async function getSnippetFileContent(
+async function getSnippetFileContent(
   workspace: WorkspaceType,
   fileId: string
 ): Promise<string> {
@@ -377,7 +370,7 @@ async function getSignedUrlForProcessedContent(
   return getPrivateUploadBucket().getSignedUrl(fileCloudStoragePath);
 }
 
-async function renderFromFileId(
+export async function renderFromFileId(
   workspace: WorkspaceType,
   {
     contentType,
@@ -389,7 +382,7 @@ async function renderFromFileId(
     textBytes,
     contentFragmentVersion,
   }: {
-    contentType: string;
+    contentType: SupportedContentFragmentType;
     excludeImages: boolean;
     fileId: string;
     forceFullCSVInclude: boolean;
@@ -399,7 +392,7 @@ async function renderFromFileId(
     contentFragmentVersion: ContentFragmentVersion;
   }
 ): Promise<Result<ContentFragmentMessageTypeModel, Error>> {
-  if (isSupportedImageContentFragmentType(contentType)) {
+  if (isSupportedImageContentType(contentType)) {
     if (excludeImages || !model.supportsVision) {
       return new Ok({
         role: "content_fragment",
@@ -442,9 +435,22 @@ async function renderFromFileId(
       textBytes &&
       textBytes > MAX_BYTE_SIZE_CSV_RENDER_FULL_CONTENT;
 
-    const content = shouldRetrieveSnippetVersion
+    let content = shouldRetrieveSnippetVersion
       ? await getSnippetFileContent(workspace, fileId)
       : await getProcessedFileContent(workspace, fileId);
+
+    if (!shouldRetrieveSnippetVersion && !content) {
+      logger.warn(
+        {
+          fileId,
+          contentType,
+          workspaceId: workspace.sId,
+        },
+        "No content extracted from file processed version, we are retrieving the original file as a fallback."
+      );
+
+      content = await getOriginalFileContent(workspace, fileId);
+    }
 
     return new Ok({
       role: "content_fragment",
@@ -479,7 +485,7 @@ export async function renderLightContentFragmentForModel(
 ): Promise<ContentFragmentMessageTypeModel> {
   const { contentType, fileId, title, contentFragmentVersion } = message;
 
-  if (fileId && isSupportedImageContentFragmentType(contentType)) {
+  if (fileId && isSupportedImageContentType(contentType)) {
     if (excludeImages || !model.supportsVision) {
       return {
         role: "content_fragment",
@@ -569,8 +575,7 @@ export async function renderContentFragmentForModel(
               contentType,
               title,
               version: contentFragmentVersion,
-              content:
-                "Content is outdated. Please refer to the latest version of this content.",
+              content: CONTENT_OUTDATED_MSG,
             }),
           },
         ],
@@ -582,7 +587,7 @@ export async function renderContentFragmentForModel(
         contentType,
         excludeImages,
         fileId,
-        forceFullCSVInclude: message.snippet != null, // JIT
+        forceFullCSVInclude: false,
         model,
         title,
         textBytes,

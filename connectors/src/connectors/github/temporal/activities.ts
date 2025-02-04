@@ -1,5 +1,5 @@
 import type { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
+import { assertNever, MIME_TYPES } from "@dust-tt/types";
 import { Context } from "@temporalio/activity";
 import { hash as blake3 } from "blake3";
 import { promises as fs } from "fs";
@@ -22,15 +22,29 @@ import {
   getReposPage,
   processRepository,
 } from "@connectors/connectors/github/lib/github_api";
+import {
+  getCodeRootInternalId,
+  getDiscussionInternalId,
+  getDiscussionsInternalId,
+  getDiscussionsUrl,
+  getIssueInternalId,
+  getIssuesInternalId,
+  getIssuesUrl,
+  getRepositoryInternalId,
+  getRepoUrl,
+} from "@connectors/connectors/github/lib/utils";
 import { QUEUE_NAME } from "@connectors/connectors/github/temporal/config";
 import { newWebhookSignal } from "@connectors/connectors/github/temporal/signals";
 import { getCodeSyncWorkflowId } from "@connectors/connectors/github/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
-  deleteFromDataSource,
+  deleteDataSourceDocument,
+  deleteDataSourceFolder,
   renderDocumentTitleAndContent,
   renderMarkdownSection,
-  upsertToDatasource,
+  upsertDataSourceDocument,
+  upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import {
@@ -265,7 +279,7 @@ export async function githubUpsertIssueActivity(
     content: renderedIssue,
   } = renderedIssueResult;
 
-  const documentId = getIssueDocumentId(repoId.toString(), issueNumber);
+  const documentId = getIssueInternalId(repoId.toString(), issueNumber);
   const issueAuthor = renderGithubUser(issue.creator);
   const tags = [
     `title:${issue.title}`,
@@ -277,25 +291,27 @@ export async function githubUpsertIssueActivity(
     tags.push(`author:${issueAuthor}`);
   }
 
+  const parents: [string, string, string] = [
+    documentId,
+    getIssuesInternalId(repoId),
+    getRepositoryInternalId(repoId),
+  ];
   // TODO: last commentor, last comment date, issue labels (as tags)
-  await upsertToDatasource({
+  await upsertDataSourceDocument({
     dataSourceConfig,
     documentId,
     documentContent: renderedIssue,
     documentUrl: issue.url,
     timestampMs: updatedAtTimestamp,
     tags: tags,
-    // The convention for parents is to use the external id string; it is ok for
-    // repos, but not practical for issues since the external id is the
-    // issue number, which is not guaranteed unique in the workspace.
-    // Therefore as a special case we use getIssueDocumentId() to get a parent string
-    // The repo id from github is globally unique so used as-is, as per
-    // convention to use the external id string.
-    parents: [documentId, `${repoId}-issues`, repoId.toString()],
+    parents,
+    parentId: parents[1],
     loggerArgs: logger.bindings(),
     upsertContext: {
       sync_type: isBatchSync ? "batch" : "incremental",
     },
+    title: issue.title,
+    mimeType: MIME_TYPES.GITHUB.ISSUE,
     async: true,
   });
 
@@ -452,7 +468,7 @@ export async function githubUpsertDiscussionActivity(
     logger
   );
 
-  const documentId = getDiscussionDocumentId(
+  const documentId = getDiscussionInternalId(
     repoId.toString(),
     discussionNumber
   );
@@ -462,24 +478,26 @@ export async function githubUpsertDiscussionActivity(
     `updatedAt:${new Date(discussion.updatedAt).getTime()}`,
   ];
 
-  await upsertToDatasource({
+  const parents: [string, string, string] = [
+    documentId,
+    getDiscussionsInternalId(repoId),
+    getRepositoryInternalId(repoId),
+  ];
+  await upsertDataSourceDocument({
     dataSourceConfig,
     documentId,
     documentContent: renderedDiscussion,
     documentUrl: discussion.url,
     timestampMs: new Date(discussion.createdAt).getTime(),
     tags,
-    // The convention for parents is to use the external id string; it is ok for
-    // repos, but not practical for discussions since the external id is the
-    // issue number, which is not guaranteed unique in the workspace. Therefore
-    // as a special case we use getDiscussionDocumentId() to get a parent string
-    // The repo id from github is globally unique so used as-is, as per
-    // convention to use the external id string.
-    parents: [documentId, `${repoId}-discussions`, repoId.toString()],
+    parents,
+    parentId: parents[1],
     loggerArgs: logger.bindings(),
     upsertContext: {
       sync_type: isBatchSync ? "batch" : "incremental",
     },
+    title: discussion.title,
+    mimeType: MIME_TYPES.GITHUB.DISCUSSION,
     async: true,
   });
 
@@ -657,6 +675,24 @@ export async function githubRepoGarbageCollectActivity(
     logger
   );
 
+  // deleting the folders that are tied to a repository from data_source_folders (core)
+  await deleteDataSourceFolder({
+    dataSourceConfig,
+    folderId: getDiscussionsInternalId(repoId),
+  });
+  await deleteDataSourceFolder({
+    dataSourceConfig,
+    folderId: getIssuesInternalId(repoId),
+  });
+  await deleteDataSourceFolder({
+    dataSourceConfig,
+    folderId: getCodeRootInternalId(repoId),
+  });
+  await deleteDataSourceFolder({
+    dataSourceConfig,
+    folderId: getRepositoryInternalId(repoId),
+  });
+
   // Finally delete the repository object if it exists.
   await GithubCodeRepository.destroy({
     where: {
@@ -681,23 +717,29 @@ async function deleteIssue(
     },
   });
   if (!issueInDb) {
-    throw new Error(
-      `Issue not found in DB (issueNumber: ${issueNumber}, repoId: ${repoId}, connectorId: ${connector.id})`
+    logger.info(
+      `Issue not found in DB (issueNumber: ${issueNumber}, repoId: ${repoId}, connectorId: ${connector.id}), skipping deletion`
     );
   }
 
-  const documentId = getIssueDocumentId(repoId.toString(), issueNumber);
+  const documentId = getIssueInternalId(repoId.toString(), issueNumber);
   logger.info({ documentId }, "Deleting GitHub issue from Dust data source.");
-  await deleteFromDataSource(dataSourceConfig, documentId, logger.bindings());
+  await deleteDataSourceDocument(
+    dataSourceConfig,
+    documentId,
+    logger.bindings()
+  );
 
-  logger.info("Deleting GitHub issue from database.");
-  await GithubIssue.destroy({
-    where: {
-      repoId: repoId.toString(),
-      issueNumber,
-      connectorId: connector.id,
-    },
-  });
+  if (issueInDb) {
+    logger.info("Deleting GitHub issue from database.");
+    await GithubIssue.destroy({
+      where: {
+        repoId: repoId.toString(),
+        issueNumber,
+        connectorId: connector.id,
+      },
+    });
+  }
 }
 
 async function deleteDiscussion(
@@ -719,7 +761,7 @@ async function deleteDiscussion(
     logger.warn("Discussion not found in DB");
   }
 
-  const documentId = getDiscussionDocumentId(
+  const documentId = getDiscussionInternalId(
     repoId.toString(),
     discussionNumber
   );
@@ -727,7 +769,11 @@ async function deleteDiscussion(
     { documentId },
     "Deleting GitHub discussion from Dust data source."
   );
-  await deleteFromDataSource(dataSourceConfig, documentId, logger.bindings());
+  await deleteDataSourceDocument(
+    dataSourceConfig,
+    documentId,
+    logger.bindings()
+  );
 
   logger.info({ documentId }, "Deleting GitHub discussion from database.");
   await GithubDiscussion.destroy({
@@ -747,20 +793,6 @@ function renderGithubUser(user: GithubUser | null): string {
     return `@${user.login}`;
   }
   return `@${user.id}`;
-}
-
-export function getIssueDocumentId(
-  repoId: string,
-  issueNumber: number
-): string {
-  return `github-issue-${repoId}-${issueNumber}`;
-}
-
-export function getDiscussionDocumentId(
-  repoId: string,
-  discussionNumber: number
-): string {
-  return `github-discussion-${repoId}-${discussionNumber}`;
 }
 
 export function formatCodeContentForUpsert(
@@ -802,7 +834,7 @@ async function garbageCollectCodeSync(
     filesToDelete.forEach((f) =>
       fq.add(async () => {
         Context.current().heartbeat();
-        await deleteFromDataSource(
+        await deleteDataSourceDocument(
           dataSourceConfig,
           f.documentId,
           logger.bindings()
@@ -831,6 +863,17 @@ async function garbageCollectCodeSync(
         directoriesToDelete: directoriesToDelete.length,
       },
       "GarbageCollectCodeSync: deleting directories"
+    );
+
+    await concurrentExecutor(
+      directoriesToDelete,
+      async (d) => {
+        await deleteDataSourceFolder({
+          dataSourceConfig,
+          folderId: d.internalId,
+        });
+      },
+      { concurrency: 10 }
     );
 
     await GithubCodeDirectory.destroy({
@@ -898,6 +941,12 @@ export async function githubCodeSyncActivity({
       logger.child({ task: "garbageCollectCodeSyncDisabled" })
     );
 
+    // deleting the code root folder from data_source_folders (core)
+    await deleteDataSourceFolder({
+      dataSourceConfig,
+      folderId: getCodeRootInternalId(repoId),
+    });
+
     // Finally delete the repository object if it exists.
     await GithubCodeRepository.destroy({
       where: {
@@ -908,6 +957,17 @@ export async function githubCodeSyncActivity({
 
     return;
   }
+
+  // upserting a folder for the code root in data_source_folders (core)
+  await upsertDataSourceFolder({
+    dataSourceConfig,
+    folderId: getCodeRootInternalId(repoId),
+    title: "Code",
+    parents: [getCodeRootInternalId(repoId), getRepositoryInternalId(repoId)],
+    parentId: getRepositoryInternalId(repoId),
+    mimeType: MIME_TYPES.GITHUB.CODE_ROOT,
+    sourceUrl: getRepoUrl(repoLogin, repoName),
+  });
 
   let githubCodeRepository = await GithubCodeRepository.findOne({
     where: {
@@ -925,7 +985,7 @@ export async function githubCodeSyncActivity({
       createdAt: codeSyncStartedAt,
       updatedAt: codeSyncStartedAt,
       lastSeenAt: codeSyncStartedAt,
-      sourceUrl: `https://github.com/${repoLogin}/${repoName}`,
+      sourceUrl: getRepoUrl(repoLogin, repoName),
       forceDailySync: false,
     });
   }
@@ -933,7 +993,7 @@ export async function githubCodeSyncActivity({
   // We update the repo name and source url in case they changed. We also update the lastSeenAt as
   // soon as possible to prevent further attempt to incrementally synchronize it.
   githubCodeRepository.repoName = repoName;
-  githubCodeRepository.sourceUrl = `https://github.com/${repoLogin}/${repoName}`;
+  githubCodeRepository.sourceUrl = getRepoUrl(repoLogin, repoName);
   githubCodeRepository.lastSeenAt = codeSyncStartedAt;
   await githubCodeRepository.save();
 
@@ -979,6 +1039,12 @@ export async function githubCodeSyncActivity({
 
       Context.current().heartbeat();
 
+      // deleting the code root folder from data_source_folders (core)
+      await deleteDataSourceFolder({
+        dataSourceConfig,
+        folderId: getCodeRootInternalId(repoId),
+      });
+
       // Finally delete the repository object if it exists.
       await GithubCodeRepository.destroy({
         where: {
@@ -1014,16 +1080,28 @@ export async function githubCodeSyncActivity({
     // incoherent state (files that moved will appear twice before final cleanup). This seems fine
     // given that syncing stallness is already considered an incident.
 
-    const rootInternalId = `github-code-${repoId}`;
+    const rootInternalId = getCodeRootInternalId(repoId);
     const updatedDirectories: { [key: string]: boolean } = {};
     let repoUpdatedAt: Date | null = null;
 
     const fq = new PQueue({ concurrency: 4 });
-    files.forEach((f) =>
+    const fqPromises = files.map((f) =>
       fq.add(async () => {
         Context.current().heartbeat();
         // Read file (files are 1MB at most).
-        const content = await fs.readFile(f.localFilePath);
+        let content;
+        try {
+          content = await fs.readFile(f.localFilePath);
+        } catch (e) {
+          logger.warn(
+            { repoId, fileName: f.fileName, documentId: f.documentId, err: e },
+            "[Github] Error reading file"
+          );
+          if (e instanceof Error && "code" in e && e.code === "ENOENT") {
+            return;
+          }
+          throw e;
+        }
         const contentHash = blake3(content).toString("hex");
         const parentInternalId = f.parentInternalId || rootInternalId;
 
@@ -1080,19 +1158,27 @@ export async function githubCodeSyncActivity({
             `lasUpdatedAt:${codeSyncStartedAt.getTime()}`,
           ];
 
+          const parents: [...string[], string, string] = [
+            ...f.parents,
+            rootInternalId,
+            getRepositoryInternalId(repoId),
+          ];
           // Time to upload the file to the data source.
-          await upsertToDatasource({
+          await upsertDataSourceDocument({
             dataSourceConfig,
             documentId: f.documentId,
             documentContent: formatCodeContentForUpsert(f.sourceUrl, content),
             documentUrl: f.sourceUrl,
             timestampMs: codeSyncStartedAt.getTime(),
             tags,
-            parents: [...f.parents, rootInternalId, repoId.toString()],
+            parents,
+            parentId: parents[1],
             loggerArgs: logger.bindings(),
             upsertContext: {
               sync_type: isBatchSync ? "batch" : "incremental",
             },
+            title: f.fileName,
+            mimeType: MIME_TYPES.GITHUB.CODE_FILE,
             async: true,
           });
 
@@ -1117,13 +1203,28 @@ export async function githubCodeSyncActivity({
         await githubCodeFile.save();
       })
     );
-    await fq.onIdle();
+    await Promise.all(fqPromises);
 
     const dq = new PQueue({ concurrency: 8 });
-    directories.forEach((d) =>
+    const dqPromises = directories.map((d) =>
       dq.add(async () => {
         Context.current().heartbeat();
         const parentInternalId = d.parentInternalId || rootInternalId;
+
+        const parents: [...string[], string, string] = [
+          ...d.parents,
+          getCodeRootInternalId(repoId),
+          getRepositoryInternalId(repoId),
+        ];
+        await upsertDataSourceFolder({
+          dataSourceConfig,
+          folderId: d.internalId,
+          parents,
+          parentId: parents[1],
+          title: d.dirName,
+          mimeType: MIME_TYPES.GITHUB.CODE_DIRECTORY,
+          sourceUrl: d.sourceUrl,
+        });
 
         // Find directory or create it.
         let githubCodeDirectory = await GithubCodeDirectory.findOne({
@@ -1174,7 +1275,7 @@ export async function githubCodeSyncActivity({
         await githubCodeDirectory.save();
       })
     );
-    await dq.onIdle();
+    await Promise.all(dqPromises);
 
     Context.current().heartbeat();
 
@@ -1240,5 +1341,86 @@ export async function githubCodeSyncDailyCronActivity({
     memo: {
       connectorId: connectorId,
     },
+  });
+}
+
+export async function githubUpsertRepositoryFolderActivity({
+  connectorId,
+  repoId,
+  repoName,
+  repoLogin,
+}: {
+  connectorId: ModelId;
+  repoId: number;
+  repoName: string;
+  repoLogin: string;
+}) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
+  }
+  await upsertDataSourceFolder({
+    dataSourceConfig: dataSourceConfigFromConnector(connector),
+    folderId: getRepositoryInternalId(repoId),
+    title: repoName,
+    parents: [getRepositoryInternalId(repoId)],
+    parentId: null,
+    sourceUrl: getRepoUrl(repoLogin, repoName),
+    mimeType: MIME_TYPES.GITHUB.REPOSITORY,
+  });
+}
+
+export async function githubUpsertIssuesFolderActivity({
+  connectorId,
+  repoId,
+  repoLogin,
+  repoName,
+}: {
+  connectorId: ModelId;
+  repoId: number;
+  repoLogin: string;
+  repoName: string;
+}) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
+  }
+  await upsertDataSourceFolder({
+    dataSourceConfig: dataSourceConfigFromConnector(connector),
+    folderId: getIssuesInternalId(repoId),
+    title: "Issues",
+    parents: [getIssuesInternalId(repoId), getRepositoryInternalId(repoId)],
+    parentId: getRepositoryInternalId(repoId),
+    mimeType: MIME_TYPES.GITHUB.ISSUES,
+    sourceUrl: getIssuesUrl(getRepoUrl(repoLogin, repoName)),
+  });
+}
+
+export async function githubUpsertDiscussionsFolderActivity({
+  connectorId,
+  repoId,
+  repoLogin,
+  repoName,
+}: {
+  connectorId: ModelId;
+  repoId: number;
+  repoLogin: string;
+  repoName: string;
+}) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
+  }
+  await upsertDataSourceFolder({
+    dataSourceConfig: dataSourceConfigFromConnector(connector),
+    folderId: getDiscussionsInternalId(repoId),
+    title: "Discussions",
+    parents: [
+      getDiscussionsInternalId(repoId),
+      getRepositoryInternalId(repoId),
+    ],
+    parentId: getRepositoryInternalId(repoId),
+    mimeType: MIME_TYPES.GITHUB.DISCUSSIONS,
+    sourceUrl: getDiscussionsUrl(getRepoUrl(repoLogin, repoName)),
   });
 }

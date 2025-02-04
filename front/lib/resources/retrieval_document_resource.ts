@@ -68,6 +68,7 @@ export class RetrievalDocumentResource extends BaseResource<RetrievalDocument> {
           {
             ...blob,
             dataSourceViewId: dataSourceView.id,
+            workspaceId: dataSourceView.workspaceId,
           },
           { transaction }
         );
@@ -79,6 +80,7 @@ export class RetrievalDocumentResource extends BaseResource<RetrievalDocument> {
               offset: c.offset,
               score: c.score,
               retrievalDocumentId: doc.id,
+              workspaceId: dataSourceView.workspaceId,
             },
             { transaction }
           );

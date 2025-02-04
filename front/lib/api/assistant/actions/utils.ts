@@ -1,6 +1,8 @@
 import type { Icon } from "@dust-tt/sparkle";
 import {
+  ChatBubbleThoughtIcon,
   CommandLineIcon,
+  GithubIcon,
   MagnifyingGlassIcon,
   PlanetIcon,
   ScanIcon,
@@ -73,6 +75,27 @@ export const ACTION_SPECIFICATIONS: Record<
       "Navigate the web (browse any provided links, make a google search, etc.)",
     cardIcon: PlanetIcon,
     dropDownIcon: PlanetIcon,
+    flag: null,
+  },
+  GITHUB_GET_PULL_REQUEST: {
+    label: "Retrieve pull request",
+    description: "Retrieve a pull request from Github",
+    cardIcon: GithubIcon,
+    dropDownIcon: GithubIcon,
+    flag: null,
+  },
+  GITHUB_CREATE_ISSUE: {
+    label: "Create issue",
+    description: "Create an issue on Github",
+    cardIcon: GithubIcon,
+    dropDownIcon: GithubIcon,
+    flag: null,
+  },
+  REASONING: {
+    label: "Reasoning",
+    description: "Complex step by step reasoning",
+    cardIcon: ChatBubbleThoughtIcon,
+    dropDownIcon: ChatBubbleThoughtIcon,
     flag: null,
   },
 };
@@ -183,6 +206,9 @@ export function getCitationsCount({
     case "process_configuration":
     case "browse_configuration":
     case "conversation_include_file_configuration":
+    case "github_get_pull_request_configuration":
+    case "github_create_issue_configuration":
+    case "reasoning_configuration":
       return 0;
     default:
       assertNever(action);

@@ -2,13 +2,14 @@ import type { AgentUsageType } from "@dust-tt/types";
 import { pluralize } from "@dust-tt/types";
 import type { ReactNode } from "react";
 
-export function assistantUsageMessage({
+export function assistantUsageMessage<T extends boolean>({
   assistantName,
   usage,
   isLoading,
   isError,
   shortVersion,
   boldVersion,
+  asString,
 }: {
   assistantName: string | null;
   usage: AgentUsageType | null;
@@ -16,42 +17,93 @@ export function assistantUsageMessage({
   isError: boolean;
   shortVersion?: boolean;
   boldVersion?: boolean;
-}): ReactNode {
+  asString?: T;
+}): T extends true ? string : ReactNode {
   if (isError) {
-    return "Error loading usage data.";
+    return "Error loading usage data." as T extends true ? string : ReactNode;
   }
 
   if (isLoading) {
-    return "Loading usage data...";
+    return "Loading usage data..." as T extends true ? string : ReactNode;
   }
 
   function boldIfRequested(text: string) {
-    return boldVersion ? <span className="font-bold">{text}</span> : text;
+    return boldVersion && !asString ? (
+      <span className="font-bold">{text}</span>
+    ) : (
+      text
+    );
   }
 
   if (usage) {
     const days = usage.timePeriodSec / (60 * 60 * 24);
+    const nb = usage.messageCount || 0;
 
     if (shortVersion) {
-      const messageCount = boldIfRequested(
-        `${usage.messageCount} message${pluralize(usage.messageCount)}`
-      );
+      const messageCount = boldIfRequested(`${nb} message${pluralize(nb)}`);
 
       return (
-        <>
-          {messageCount} over the last {days} days
-        </>
-      );
+        asString ? (
+          `${nb} message${pluralize(nb)} over the last ${days} days`
+        ) : (
+          <>
+            {messageCount} over the last {days} days
+          </>
+        )
+      ) as T extends true ? string : ReactNode;
     }
-    const messageCount = boldIfRequested(
-      `${usage.messageCount} time${pluralize(usage.messageCount)}`
-    );
+
+    const messageCount = boldIfRequested(`${nb} time${pluralize(nb)}`);
 
     return (
-      <>
-        {assistantName ? "@" + assistantName : "This assistant"} has been used{" "}
-        {messageCount} in the last {usage.timePeriodSec / (60 * 60 * 24)} days.
-      </>
-    );
+      asString ? (
+        `${assistantName ? "@" + assistantName : "This assistant"} has been used ${nb} time${pluralize(nb)} in the last ${usage.timePeriodSec / (60 * 60 * 24)} days.`
+      ) : (
+        <>
+          {assistantName ? "@" + assistantName : "This assistant"} has been used{" "}
+          {messageCount} in the last {usage.timePeriodSec / (60 * 60 * 24)}{" "}
+          days.
+        </>
+      )
+    ) as T extends true ? string : ReactNode;
   }
+
+  return "" as T extends true ? string : ReactNode;
+}
+
+export function assistantActiveUsersMessage<T extends boolean>({
+  usage,
+  isLoading,
+  isError,
+  asString,
+}: {
+  usage: AgentUsageType | null;
+  isLoading: boolean;
+  isError: boolean;
+  asString?: T;
+}): T extends true ? string : ReactNode {
+  if (isError) {
+    return "Error loading usage data." as T extends true ? string : ReactNode;
+  }
+
+  if (isLoading) {
+    return "Loading usage data..." as T extends true ? string : ReactNode;
+  }
+
+  if (usage) {
+    const days = usage.timePeriodSec / (60 * 60 * 24);
+    const nb = usage.userCount || 0;
+
+    return (
+      asString ? (
+        `${nb} active user${pluralize(nb)} over the last ${days} days`
+      ) : (
+        <>
+          {nb} active user{pluralize(nb)} over the last {days} days
+        </>
+      )
+    ) as T extends true ? string : ReactNode;
+  }
+
+  return "" as T extends true ? string : ReactNode;
 }

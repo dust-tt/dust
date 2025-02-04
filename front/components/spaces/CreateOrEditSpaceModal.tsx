@@ -1,12 +1,13 @@
 import {
   Button,
   DataTable,
-  ExclamationCircleStrokeIcon,
+  ExclamationCircleIcon,
   Icon,
   Input,
   Modal,
   Page,
   ScrollArea,
+  SearchInput,
   SliderToggle,
   useSendNotification,
   XMarkIcon,
@@ -17,17 +18,23 @@ import type {
   PaginationState,
   SortingState,
 } from "@tanstack/react-table";
+import _ from "lodash";
 import { useRouter } from "next/router";
+import * as React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { BatchAddMembersPopover } from "@app/components/spaces/BatchAddMembersPopover";
 import { ConfirmDeleteSpaceDialog } from "@app/components/spaces/ConfirmDeleteSpaceDialog";
 import { SearchMembersPopover } from "@app/components/spaces/SearchMembersPopover";
+import { useMembersCount } from "@app/lib/swr/memberships";
 import {
   useCreateSpace,
   useDeleteSpace,
   useSpaceInfo,
   useUpdateSpace,
 } from "@app/lib/swr/spaces";
+
+const MIN_MEMBERS_FOR_BATCH_OPTION = 50;
 
 type RowData = {
   icon: string;
@@ -67,6 +74,7 @@ export function CreateOrEditSpaceModal({
   owner,
   space,
 }: CreateOrEditSpaceModalProps) {
+  const membersCount = useMembersCount(owner);
   const [spaceName, setSpaceName] = useState<string | null>(
     space?.name ?? null
   );
@@ -75,6 +83,13 @@ export function CreateOrEditSpaceModal({
   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isRestricted, setIsRestricted] = useState(false);
+  const [searchSelectedMembers, setSearchSelectedMembers] =
+    useState<string>("");
+
+  const deduplicatedMembers = useMemo(
+    () => _.uniqBy(selectedMembers, "sId"),
+    [selectedMembers]
+  );
 
   const doCreate = useCreateSpace({ owner });
   const doUpdate = useUpdateSpace({ owner });
@@ -125,7 +140,7 @@ export function CreateOrEditSpaceModal({
       if (isRestricted) {
         await doUpdate(space, {
           isRestricted: true,
-          memberIds: selectedMembers.map((vm) => vm.sId),
+          memberIds: deduplicatedMembers.map((vm) => vm.sId),
           name: spaceName,
         });
       } else {
@@ -145,7 +160,7 @@ export function CreateOrEditSpaceModal({
         createdSpace = await doCreate({
           name: spaceName,
           isRestricted: true,
-          memberIds: selectedMembers.map((vm) => vm.sId),
+          memberIds: deduplicatedMembers.map((vm) => vm.sId),
         });
       } else {
         createdSpace = await doCreate({
@@ -169,7 +184,7 @@ export function CreateOrEditSpaceModal({
     isRestricted,
     mutateSpaceInfo,
     onCreated,
-    selectedMembers,
+    deduplicatedMembers,
     space,
     spaceName,
   ]);
@@ -201,7 +216,7 @@ export function CreateOrEditSpaceModal({
       variant="side-md"
       hasChanged={
         !!spaceName &&
-        (!isRestricted || (isRestricted && selectedMembers.length > 0))
+        (!isRestricted || (isRestricted && deduplicatedMembers.length > 0))
       }
       isSaving={isSaving}
       className="flex overflow-visible" // overflow-visible is needed to avoid clipping the delete button
@@ -219,7 +234,7 @@ export function CreateOrEditSpaceModal({
             />
             {!space && (
               <div className="flex gap-1 text-xs text-element-700">
-                <Icon visual={ExclamationCircleStrokeIcon} size="xs" />
+                <Icon visual={ExclamationCircleIcon} size="xs" />
                 <span>Space name must be unique</span>
               </div>
             )}
@@ -245,15 +260,33 @@ export function CreateOrEditSpaceModal({
           </div>
           {isRestricted && (
             <>
-              <SearchMembersPopover
-                owner={owner}
-                selectedMembers={selectedMembers}
-                onMembersUpdated={setSelectedMembers}
+              <div className="flex flex-row justify-end gap-2">
+                <SearchMembersPopover
+                  owner={owner}
+                  selectedMembers={deduplicatedMembers}
+                  onMembersUpdated={setSelectedMembers}
+                />
+                {membersCount >= MIN_MEMBERS_FOR_BATCH_OPTION && (
+                  <BatchAddMembersPopover
+                    owner={owner}
+                    selectedMembers={deduplicatedMembers}
+                    onMembersUpdated={setSelectedMembers}
+                  />
+                )}
+              </div>
+              <SearchInput
+                name="search"
+                placeholder="Search (email)"
+                value={searchSelectedMembers}
+                onChange={(s) => {
+                  setSearchSelectedMembers(s);
+                }}
               />
               <ScrollArea className="h-full">
                 <MembersTable
                   onMembersUpdated={setSelectedMembers}
-                  selectedMembers={selectedMembers}
+                  selectedMembers={deduplicatedMembers}
+                  searchSelectedMembers={searchSelectedMembers}
                 />
               </ScrollArea>
             </>
@@ -287,16 +320,18 @@ export function CreateOrEditSpaceModal({
 interface MembersTableProps {
   onMembersUpdated: (members: UserType[]) => void;
   selectedMembers: UserType[];
+  searchSelectedMembers: string;
 }
 
 function MembersTable({
   onMembersUpdated,
   selectedMembers,
+  searchSelectedMembers,
 }: MembersTableProps) {
   const sendNotifications = useSendNotification();
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
-    pageSize: 10,
+    pageSize: 50,
   });
   const [sorting, setSorting] = useState<SortingState>([
     { id: "email", desc: false },
@@ -317,6 +352,7 @@ function MembersTable({
     return [
       {
         id: "name",
+        accessorKey: "name",
         cell: (info: Info) => (
           <>
             <DataTable.CellContent
@@ -334,28 +370,31 @@ function MembersTable({
             </DataTable.CellContent>
           </>
         ),
-        enableSorting: false,
+        enableSorting: true,
       },
       {
         id: "email",
+        accessorKey: "email",
         cell: (info: Info) => (
-          <DataTable.CellContent>
-            <span className="text-element-700">{info.row.original.email}</span>
-          </DataTable.CellContent>
+          <DataTable.BasicCellContent label={info.row.original.email} />
         ),
         enableSorting: true,
       },
       {
         id: "action",
+        meta: {
+          className: "w-12",
+        },
         cell: (info: Info) => {
           return (
-            <div className="flex w-full justify-end">
+            <DataTable.CellContent>
               <Button
                 icon={XMarkIcon}
-                variant="ghost"
+                size="xs"
+                variant="ghost-secondary"
                 onClick={() => removeMember(info.row.original.userId)}
               />
-            </div>
+            </DataTable.CellContent>
           );
         },
       },
@@ -370,13 +409,15 @@ function MembersTable({
       data={rows}
       columns={columns}
       columnsBreakpoints={{
-        email: "md",
+        name: "md",
       }}
       pagination={pagination}
       setPagination={setPagination}
       sorting={sorting}
       setSorting={setSorting}
       totalRowCount={rows.length}
+      filter={searchSelectedMembers}
+      filterColumn="email"
     />
   );
 }

@@ -1,12 +1,23 @@
-import { Citation } from "@dust-tt/sparkle";
+import {
+  Citation,
+  CitationClose,
+  CitationIcons,
+  CitationImage,
+  CitationTitle,
+  DocumentIcon,
+  Icon,
+  ImageIcon,
+} from "@dust-tt/sparkle";
 import type { FileUploaderService } from "@extension/hooks/useFileUploaderService";
 
 interface InputBarCitationsProps {
   fileUploaderService: FileUploaderService;
+  disabled: boolean;
 }
 
 export function InputBarCitations({
   fileUploaderService,
+  disabled,
 }: InputBarCitationsProps) {
   const processContentFragments = () => {
     const nodes: React.ReactNode[] = [];
@@ -16,16 +27,30 @@ export function InputBarCitations({
 
       nodes.push(
         <Citation
+          disabled={disabled}
           key={`cf-${blob.id}`}
-          title={blob.id}
-          size="xs"
-          type={isImage ? "image" : "document"}
-          imgSrc={blob.preview}
-          onClose={() => {
-            fileUploaderService.removeFile(blob.id);
-          }}
+          className="w-48"
           isLoading={blob.isUploading}
-        />
+          action={
+            <CitationClose
+              onClick={() => fileUploaderService.removeFile(blob.id)}
+            />
+          }
+        >
+          {isImage ? (
+            <>
+              <CitationImage imgSrc={blob.preview ?? ""} />
+              <CitationIcons>
+                <Icon visual={ImageIcon} />
+              </CitationIcons>
+            </>
+          ) : (
+            <CitationIcons>
+              <Icon visual={DocumentIcon} />
+            </CitationIcons>
+          )}
+          <CitationTitle>{blob.id}</CitationTitle>
+        </Citation>
       );
     }
 
@@ -37,7 +62,7 @@ export function InputBarCitations({
   }
 
   return (
-    <div className="mr-4 flex gap-2 overflow-auto border-b border-structure-300/50 pb-3">
+    <div className="flex gap-2 overflow-auto border-b border-separator pb-3">
       {processContentFragments()}
     </div>
   );

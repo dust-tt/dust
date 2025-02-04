@@ -1,5 +1,10 @@
-import type { ModelId, Result } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import type { Result } from "@dust-tt/types";
+import {
+  Err,
+  getZendeskGarbageCollectionWorkflowId,
+  getZendeskSyncWorkflowId,
+  Ok,
+} from "@dust-tt/types";
 import type { WorkflowHandle } from "@temporalio/client";
 import {
   WorkflowExecutionAlreadyStartedError,
@@ -24,16 +29,6 @@ import {
   ZendeskBrandResource,
   ZendeskCategoryResource,
 } from "@connectors/resources/zendesk_resources";
-
-export function getZendeskSyncWorkflowId(connectorId: ModelId): string {
-  return `zendesk-sync-${connectorId}`;
-}
-
-export function getZendeskGarbageCollectionWorkflowId(
-  connectorId: ModelId
-): string {
-  return `zendesk-gc-${connectorId}`;
-}
 
 export async function launchZendeskSyncWorkflow(
   connector: ConnectorResource,
@@ -86,6 +81,7 @@ export async function launchZendeskSyncWorkflow(
   ];
 
   const workflowId = getZendeskSyncWorkflowId(connector.id);
+  const minute = connector.id % 30; // spreading workflows across each half-hour
   try {
     await client.workflow.signalWithStart(zendeskSyncWorkflow, {
       args: [{ connectorId: connector.id }],
@@ -95,7 +91,7 @@ export async function launchZendeskSyncWorkflow(
       signal: zendeskUpdatesSignal,
       signalArgs: [signals],
       memo: { connectorId: connector.id },
-      cronSchedule: "*/30 * * * *", // Every 30 minutes.
+      cronSchedule: `${minute},${30 + minute} * * * *`, // Every 30 minutes.
     });
   } catch (err) {
     return new Err(err as Error);
@@ -198,4 +194,25 @@ export async function launchZendeskGarbageCollectionWorkflow(
   }
 
   return new Ok(undefined);
+}
+
+/**
+ * Launches a Zendesk workflow that will resync the tickets.
+ *
+ * It recreates the signals necessary to resync every brand whose tickets are selected by the user.
+ */
+export async function launchZendeskTicketReSyncWorkflow(
+  connector: ConnectorResource,
+  { forceResync = false }: { forceResync?: boolean } = {}
+): Promise<Result<string, Error>> {
+  const brandIds = await ZendeskBrandResource.fetchTicketsAllowedBrandIds(
+    connector.id
+  );
+
+  const result = await launchZendeskSyncWorkflow(connector, {
+    brandIds,
+    forceResync,
+  });
+
+  return result.isErr() ? result : new Ok(connector.id.toString());
 }

@@ -3,12 +3,15 @@ import type {
   AgentConfigurationScope,
   AgentConfigurationType,
   AgentModelConfigurationType,
+  AgentReasoningEffort,
   AgentsGetViewType,
   AgentStatus,
   AppType,
   DataSourceConfiguration,
   LightAgentConfigurationType,
   ModelId,
+  ModelIdType,
+  ModelProviderIdType,
   ProcessSchemaPropertyType,
   ProcessTagsFilter,
   Result,
@@ -32,14 +35,19 @@ import { Op, Sequelize, UniqueConstraintError } from "sequelize";
 
 import {
   DEFAULT_BROWSE_ACTION_NAME,
+  DEFAULT_GITHUB_CREATE_ISSUE_ACTION_NAME,
+  DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME,
   DEFAULT_PROCESS_ACTION_NAME,
+  DEFAULT_REASONING_ACTION_NAME,
   DEFAULT_RETRIEVAL_ACTION_NAME,
   DEFAULT_TABLES_QUERY_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/api/assistant/actions/constants";
 import { fetchBrowseActionConfigurations } from "@app/lib/api/assistant/configuration/browse";
 import { fetchDustAppRunActionConfigurations } from "@app/lib/api/assistant/configuration/dust_app_run";
+import { fetchGithubActionConfigurations } from "@app/lib/api/assistant/configuration/github";
 import { fetchAgentProcessActionConfigurations } from "@app/lib/api/assistant/configuration/process";
+import { fetchReasoningActionConfigurations } from "@app/lib/api/assistant/configuration/reasoning";
 import { fetchAgentRetrievalActionConfigurations } from "@app/lib/api/assistant/configuration/retrieval";
 import {
   createTableDataSourceConfiguration,
@@ -57,7 +65,9 @@ import { getPublicUploadBucket } from "@app/lib/file_storage";
 import { AgentBrowseConfiguration } from "@app/lib/models/assistant/actions/browse";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
+import { AgentGithubConfiguration } from "@app/lib/models/assistant/actions/github";
 import { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/process";
+import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import { AgentTablesQueryConfiguration } from "@app/lib/models/assistant/actions/tables_query";
 import { AgentWebsearchConfiguration } from "@app/lib/models/assistant/actions/websearch";
@@ -177,6 +187,7 @@ function determineGlobalAgentIdsToFetch(
     case "workspace":
     case "published":
     case "archived":
+    case "current_user":
       return []; // fetch no global agents
     case "global":
     case "list":
@@ -272,6 +283,24 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
         ...baseAgentsSequelizeQuery,
         where: baseWhereConditions,
       });
+    case "current_user":
+      const authorId = auth.getNonNullableUser().id;
+      const r = await AgentConfiguration.findAll({
+        attributes: ["sId"],
+        group: "sId",
+        where: {
+          workspaceId: owner.id,
+          authorId,
+        },
+      });
+
+      return AgentConfiguration.findAll({
+        ...baseAgentsSequelizeQuery,
+        where: {
+          ...baseWhereConditions,
+          sId: { [Op.in]: [...new Set(r.map((r) => r.sId))] },
+        },
+      });
     case "archived":
       // Get the latest version of all archived agents.
       // For each sId, we want to fetch the one with the highest version, only if it's status is "archived".
@@ -347,6 +376,7 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
       }
       const relations = await AgentUserRelation.findAll({
         where: {
+          workspaceId: owner.id,
           userId,
           favorite: true,
         },
@@ -441,6 +471,8 @@ async function fetchWorkspaceAgentConfigurationsForView(
     tableQueryActionsConfigurationsPerAgent,
     websearchActionsConfigurationsPerAgent,
     browseActionsConfigurationsPerAgent,
+    githubActionsConfigurationsPerAgent,
+    reasoningActionsConfigurationsPerAgent,
     favoriteStatePerAgent,
   ] = await Promise.all([
     fetchAgentRetrievalActionConfigurations({ configurationIds, variant }),
@@ -449,6 +481,8 @@ async function fetchWorkspaceAgentConfigurationsForView(
     fetchTableQueryActionConfigurations({ configurationIds, variant }),
     fetchWebsearchActionConfigurations({ configurationIds, variant }),
     fetchBrowseActionConfigurations({ configurationIds, variant }),
+    fetchGithubActionConfigurations({ configurationIds, variant }),
+    fetchReasoningActionConfigurations({ configurationIds, variant }),
     user
       ? getFavoriteStates(auth, { configurationIds: configurationSIds })
       : Promise.resolve(new Map<string, boolean>()),
@@ -462,43 +496,42 @@ async function fetchWorkspaceAgentConfigurationsForView(
       // Retrieval configurations.
       const retrievalActionsConfigurations =
         retrievalActionsConfigurationsPerAgent.get(agent.id) ?? [];
-
       actions.push(...retrievalActionsConfigurations);
 
       // Dust app run configurations.
       const dustAppRunActionsConfigurations =
         dustAppRunActionsConfigurationsPerAgent.get(agent.id) ?? [];
-
       actions.push(...dustAppRunActionsConfigurations);
 
       // Websearch configurations.
       const websearchActionsConfigurations =
         websearchActionsConfigurationsPerAgent.get(agent.id) ?? [];
-
       actions.push(...websearchActionsConfigurations);
 
       // Browse configurations.
       const browseActionsConfigurations =
         browseActionsConfigurationsPerAgent.get(agent.id) ?? [];
-
       actions.push(...browseActionsConfigurations);
 
       // Table query configurations.
       const tableQueryActionsConfigurations =
         tableQueryActionsConfigurationsPerAgent.get(agent.id) ?? [];
-
       actions.push(...tableQueryActionsConfigurations);
 
       // Process configurations.
-      const processActionConfigurations =
+      const processActionsConfigurations =
         processActionsConfigurationsPerAgent.get(agent.id) ?? [];
+      actions.push(...processActionsConfigurations);
 
-      actions.push(...processActionConfigurations);
-    }
+      // Github configurations
+      const githubActionsConfigurations =
+        githubActionsConfigurationsPerAgent.get(agent.id) ?? [];
+      actions.push(...githubActionsConfigurations);
 
-    let template: TemplateResource | null = null;
-    if (agent.templateId) {
-      template = await TemplateResource.fetchByModelId(agent.templateId);
+      // Reasoning configurations
+      const reasoningActionsConfigurations =
+        reasoningActionsConfigurationsPerAgent.get(agent.id) ?? [];
+      actions.push(...reasoningActionsConfigurations);
     }
 
     const agentConfigurationType: AgentConfigurationType = {
@@ -522,15 +555,16 @@ async function fetchWorkspaceAgentConfigurationsForView(
       versionAuthorId: agent.authorId,
       maxStepsPerRun: agent.maxStepsPerRun,
       visualizationEnabled: agent.visualizationEnabled ?? false,
-      templateId: template?.sId ?? null,
-      groupIds: agent.groupIds.map((id) =>
-        GroupResource.modelIdToSId({ id, workspaceId: owner.id })
-      ),
+      templateId: agent.templateId
+        ? TemplateResource.modelIdToSId({ id: agent.templateId })
+        : null,
       requestedGroupIds: agent.requestedGroupIds.map((groups) =>
         groups.map((id) =>
           GroupResource.modelIdToSId({ id, workspaceId: owner.id })
         )
       ),
+      // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
+      groupIds: [],
     };
 
     agentConfigurationTypes.push(agentConfigurationType);
@@ -617,8 +651,8 @@ export async function getAgentConfigurations<V extends "light" | "full">({
     }),
   ]);
 
-  // Filter out agents that the user does not have access to
-  // user should be in all groups that are in the agent's groupIds
+  // Filter out agents that the user does not have access to user should be in all groups that are
+  // in the agent's groupIds
   const allowedAgentConfigurations = dangerouslySkipPermissionFiltering
     ? allAgentConfigurations
     : allAgentConfigurations
@@ -693,8 +727,6 @@ export async function createAgentConfiguration(
     model,
     agentConfigurationId,
     templateId,
-    // TODO(2024-11-04 flav) `groupIds` clean up.
-    groupIds,
     requestedGroupIds,
   }: {
     name: string;
@@ -708,8 +740,6 @@ export async function createAgentConfiguration(
     model: AgentModelConfigurationType;
     agentConfigurationId?: string;
     templateId: string | null;
-    // TODO(2024-11-04 flav) `groupIds` clean up.
-    groupIds: number[];
     requestedGroupIds: number[][];
   }
 ): Promise<Result<LightAgentConfigurationType, Error>> {
@@ -724,7 +754,11 @@ export async function createAgentConfiguration(
   }
 
   if (maxStepsPerRun < 0 || maxStepsPerRun > MAX_STEPS_USE_PER_RUN_LIMIT) {
-    return new Err(new Error("maxStepsPerRun must be between 0 and 8."));
+    return new Err(
+      new Error(
+        `maxStepsPerRun must be between 0 and ${MAX_STEPS_USE_PER_RUN_LIMIT}.`
+      )
+    );
   }
 
   const isValidPictureUrl =
@@ -799,13 +833,13 @@ export async function createAgentConfiguration(
             providerId: model.providerId,
             modelId: model.modelId,
             temperature: model.temperature,
+            reasoningEffort: model.reasoningEffort,
             maxStepsPerRun,
             visualizationEnabled,
             pictureUrl,
             workspaceId: owner.id,
             authorId: user.id,
             templateId: template?.id,
-            groupIds,
             requestedGroupIds,
           },
           {
@@ -839,10 +873,6 @@ export async function createAgentConfiguration(
       maxStepsPerRun: agent.maxStepsPerRun,
       visualizationEnabled: agent.visualizationEnabled ?? false,
       templateId: template?.sId ?? null,
-      // TODO(2024-11-04 flav) `groupIds` clean up.
-      groupIds: agent.groupIds.map((id) =>
-        GroupResource.modelIdToSId({ id, workspaceId: owner.id })
-      ),
       requestedGroupIds: agent.requestedGroupIds.map((groups) =>
         groups.map((id) =>
           GroupResource.modelIdToSId({ id, workspaceId: owner.id })
@@ -958,6 +988,19 @@ export async function createAgentActionConfiguration(
     | {
         type: "browse_configuration";
       }
+    | {
+        type: "github_get_pull_request_configuration";
+      }
+    | {
+        type: "github_create_issue_configuration";
+      }
+    | {
+        type: "reasoning_configuration";
+        providerId: ModelProviderIdType;
+        modelId: ModelIdType;
+        temperature: number | null;
+        reasoningEffort: AgentReasoningEffort | null;
+      }
   ) & {
     name: string | null;
     description: string | null;
@@ -990,6 +1033,7 @@ export async function createAgentActionConfiguration(
             agentConfigurationId: agentConfiguration.id,
             name: action.name,
             description: action.description,
+            workspaceId: owner.id,
           },
           { transaction: t }
         );
@@ -1018,6 +1062,7 @@ export async function createAgentActionConfiguration(
         appWorkspaceId: action.appWorkspaceId,
         appId: action.appId,
         agentConfigurationId: agentConfiguration.id,
+        workspaceId: owner.id,
       });
 
       return new Ok({
@@ -1038,6 +1083,7 @@ export async function createAgentActionConfiguration(
             agentConfigurationId: agentConfiguration.id,
             name: action.name,
             description: action.description,
+            workspaceId: owner.id,
           },
           { transaction: t }
         );
@@ -1078,6 +1124,7 @@ export async function createAgentActionConfiguration(
             schema: action.schema,
             name: action.name,
             description: action.description,
+            workspaceId: owner.id,
           },
           { transaction: t }
         );
@@ -1106,6 +1153,7 @@ export async function createAgentActionConfiguration(
         agentConfigurationId: agentConfiguration.id,
         name: action.name,
         description: action.description,
+        workspaceId: owner.id,
       });
 
       return new Ok({
@@ -1122,6 +1170,7 @@ export async function createAgentActionConfiguration(
         agentConfigurationId: agentConfiguration.id,
         name: action.name,
         description: action.description,
+        workspaceId: owner.id,
       });
 
       return new Ok({
@@ -1129,6 +1178,67 @@ export async function createAgentActionConfiguration(
         sId: browseConfig.sId,
         type: "browse_configuration",
         name: action.name || DEFAULT_BROWSE_ACTION_NAME,
+        description: action.description,
+      });
+    }
+    case "github_get_pull_request_configuration": {
+      const githubConfig = await AgentGithubConfiguration.create({
+        sId: generateRandomModelSId(),
+        agentConfigurationId: agentConfiguration.id,
+        actionType: "github_get_pull_request_action",
+        name: action.name,
+        description: action.description,
+        workspaceId: owner.id,
+      });
+
+      return new Ok({
+        id: githubConfig.id,
+        sId: githubConfig.sId,
+        type: "github_get_pull_request_configuration",
+        name: action.name || DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME,
+        description: action.description,
+      });
+    }
+    case "github_create_issue_configuration": {
+      const githubConfig = await AgentGithubConfiguration.create({
+        sId: generateRandomModelSId(),
+        agentConfigurationId: agentConfiguration.id,
+        actionType: "github_create_issue_action",
+        name: action.name,
+        description: action.description,
+        workspaceId: owner.id,
+      });
+
+      return new Ok({
+        id: githubConfig.id,
+        sId: githubConfig.sId,
+        type: "github_create_issue_configuration",
+        name: action.name || DEFAULT_GITHUB_CREATE_ISSUE_ACTION_NAME,
+        description: action.description,
+      });
+    }
+    case "reasoning_configuration": {
+      const reasoningConfig = await AgentReasoningConfiguration.create({
+        sId: generateRandomModelSId(),
+        agentConfigurationId: agentConfiguration.id,
+        name: action.name,
+        description: action.description,
+        providerId: action.providerId,
+        modelId: action.modelId,
+        temperature: action.temperature,
+        reasoningEffort: action.reasoningEffort,
+        workspaceId: owner.id,
+      });
+
+      return new Ok({
+        id: reasoningConfig.id,
+        sId: reasoningConfig.sId,
+        type: "reasoning_configuration",
+        providerId: action.providerId,
+        modelId: action.modelId,
+        temperature: action.temperature,
+        reasoningEffort: action.reasoningEffort,
+        name: action.name || DEFAULT_REASONING_ACTION_NAME,
         description: action.description,
       });
     }
@@ -1157,13 +1267,13 @@ async function _createAgentDataSourcesConfigData(
     processConfigurationId: ModelId | null;
   }
 ): Promise<AgentDataSourceConfiguration[]> {
+  const owner = auth.getNonNullableWorkspace();
+
   // Although we have the capability to support multiple workspaces,
   // currently, we only support one workspace, which is the one the user is in.
   // This allows us to use the current authenticator to fetch resources.
   assert(
-    dataSourceConfigurations.every(
-      (dsc) => dsc.workspaceId === auth.getNonNullableWorkspace().sId
-    )
+    dataSourceConfigurations.every((dsc) => dsc.workspaceId === owner.sId)
   );
 
   // DataSourceViewResource.listByWorkspace() applies the permissions check.
@@ -1193,6 +1303,10 @@ async function _createAgentDataSourcesConfigData(
             retrievalConfigurationId: retrievalConfigurationId,
             processConfigurationId: processConfigurationId,
             dataSourceViewId: dataSourceView.id,
+            workspaceId: owner.id,
+            tagsMode: null,
+            tagsIn: null,
+            tagsNotIn: null,
           },
           { transaction: t }
         );

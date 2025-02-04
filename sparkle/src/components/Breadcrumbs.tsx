@@ -87,7 +87,7 @@ export function Breadcrumbs({ items }: BreadcrumbProps) {
                   href={item.href || "#"}
                   className={
                     index === items.length - 1
-                      ? "s-text-element-900"
+                      ? "s-text-foreground"
                       : "s-text-element-700"
                   }
                 >

@@ -1,21 +1,29 @@
 import type { ModelId } from "@dust-tt/types";
+import { getZendeskGarbageCollectionWorkflowId } from "@dust-tt/types";
 
 import {
   getArticleInternalId,
+  getCategoryInternalId,
+  getHelpCenterInternalId,
   getTicketInternalId,
+  getTicketsInternalId,
 } from "@connectors/connectors/zendesk/lib/id_conversions";
 import { deleteArticle } from "@connectors/connectors/zendesk/lib/sync_article";
 import { deleteCategory } from "@connectors/connectors/zendesk/lib/sync_category";
 import { deleteTicket } from "@connectors/connectors/zendesk/lib/sync_ticket";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
-  changeZendeskClientSubdomain,
-  createZendeskClient,
+  fetchZendeskArticle,
+  getZendeskBrandSubdomain,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import { ZENDESK_BATCH_SIZE } from "@connectors/connectors/zendesk/temporal/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
-import { deleteFromDataSource } from "@connectors/lib/data_sources";
+import {
+  deleteDataSourceDocument,
+  deleteDataSourceFolder,
+} from "@connectors/lib/data_sources";
+import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
   ZendeskArticleResource,
@@ -24,28 +32,6 @@ import {
   ZendeskConfigurationResource,
   ZendeskTicketResource,
 } from "@connectors/resources/zendesk_resources";
-
-/**
- * Looks for empty Help Centers (no category with read permissions) and removes their permissions.
- */
-export async function checkEmptyHelpCentersActivity(
-  connectorId: ModelId
-): Promise<void> {
-  const brands =
-    await ZendeskBrandResource.fetchHelpCenterReadAllowedBrands(connectorId);
-
-  for (const brand of brands) {
-    const categoriesWithReadPermissions =
-      await ZendeskCategoryResource.fetchByBrandIdReadOnly({
-        connectorId,
-        brandId: brand.brandId,
-      });
-    const noMoreAllowedCategories = categoriesWithReadPermissions.length === 0;
-    if (noMoreAllowedCategories) {
-      await brand.revokeHelpCenterPermissions();
-    }
-  }
-}
 
 /**
  * Retrieves the IDs of the Brands whose tickets are to be deleted.
@@ -79,18 +65,6 @@ export async function removeOutdatedTicketBatchActivity(
       `[Zendesk] Configuration not found, connectorId: ${connectorId}`
     );
   }
-  const ticketIds = await ZendeskTicketResource.fetchOutdatedTicketIds({
-    connectorId,
-    expirationDate: new Date(
-      Date.now() - configuration.retentionPeriodDays * 24 * 60 * 60 * 1000 // conversion from days to ms
-    ),
-    batchSize: ZENDESK_BATCH_SIZE,
-  });
-
-  if (ticketIds.length === 0) {
-    return { hasMore: false };
-  }
-
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
@@ -100,17 +74,41 @@ export async function removeOutdatedTicketBatchActivity(
     workspaceId: dataSourceConfig.workspaceId,
     connectorId,
     provider: "zendesk",
+    workflowId: getZendeskGarbageCollectionWorkflowId(connectorId),
     dataSourceId: dataSourceConfig.dataSourceId,
   };
 
+  const ticketIdsWithBrandIds =
+    await ZendeskTicketResource.fetchOutdatedTicketIds({
+      connectorId,
+      expirationDate: new Date(
+        Date.now() - configuration.retentionPeriodDays * 24 * 60 * 60 * 1000 // conversion from days to ms
+      ),
+      batchSize: ZENDESK_BATCH_SIZE,
+    });
+  logger.info(
+    { ...loggerArgs, ticketCount: ticketIdsWithBrandIds.length },
+    "[Zendesk] Removing outdated tickets."
+  );
+
+  if (ticketIdsWithBrandIds.length === 0) {
+    return { hasMore: false };
+  }
+
   await concurrentExecutor(
-    ticketIds,
-    (ticketId) =>
-      deleteTicket({ connectorId, ticketId, dataSourceConfig, loggerArgs }),
+    ticketIdsWithBrandIds,
+    ({ brandId, ticketId }) =>
+      deleteTicket({
+        connectorId,
+        brandId,
+        ticketId,
+        dataSourceConfig,
+        loggerArgs,
+      }),
     { concurrency: 10 }
   );
 
-  return { hasMore: ticketIds.length === ZENDESK_BATCH_SIZE }; // true iff there are more tickets to process
+  return { hasMore: ticketIdsWithBrandIds.length === ZENDESK_BATCH_SIZE }; // true iff there are more tickets to process
 }
 
 /**
@@ -147,25 +145,37 @@ export async function removeMissingArticleBatchActivity({
     workspaceId: dataSourceConfig.workspaceId,
     connectorId,
     provider: "zendesk",
+    workflowId: getZendeskGarbageCollectionWorkflowId(connectorId),
     dataSourceId: dataSourceConfig.dataSourceId,
   };
 
-  const zendeskApiClient = createZendeskClient(
-    await getZendeskSubdomainAndAccessToken(connector.connectionId)
+  const { subdomain, accessToken } = await getZendeskSubdomainAndAccessToken(
+    connector.connectionId
   );
-  await changeZendeskClientSubdomain(zendeskApiClient, {
+  const brandSubdomain = await getZendeskBrandSubdomain({
     connectorId,
     brandId,
+    accessToken,
+    subdomain,
   });
 
   // not deleting in batch for now, assuming we won't have that many articles to delete at once
   await concurrentExecutor(
     articleIds,
     async (articleId) => {
-      const article =
-        await zendeskApiClient.helpcenter.articles.show(articleId);
+      const article = await fetchZendeskArticle({
+        brandSubdomain,
+        articleId,
+        accessToken,
+      });
       if (!article) {
-        await deleteArticle(connectorId, article, dataSourceConfig, loggerArgs);
+        await deleteArticle(
+          connectorId,
+          brandId,
+          articleId,
+          dataSourceConfig,
+          loggerArgs
+        );
       }
     },
     { concurrency: 10 }
@@ -184,50 +194,29 @@ export async function removeForbiddenCategoriesActivity(
     throw new Error("[Zendesk] Connector not found.");
   }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const loggerArgs = {
+    workspaceId: dataSourceConfig.workspaceId,
+    connectorId,
+    provider: "zendesk",
+    workflowId: getZendeskGarbageCollectionWorkflowId(connectorId),
+    dataSourceId: dataSourceConfig.dataSourceId,
+  };
 
   const batchSize = 2; // we process categories 2 by 2 since each of them typically contains ~50 articles
-  const categoryIds =
+  const categoryIdsWithBrand =
     await ZendeskCategoryResource.fetchReadForbiddenCategoryIds({
       connectorId,
       batchSize,
     });
-  for (const categoryId of categoryIds) {
-    await deleteCategory({ connectorId, categoryId, dataSourceConfig });
-  }
-  return { hasMore: categoryIds.length === batchSize };
-}
-
-/**
- * This activity is responsible for removing all the empty categories (category with no readable article).
- */
-export async function removeEmptyCategoriesActivity(connectorId: number) {
-  const connector = await ConnectorResource.fetchById(connectorId);
-  if (!connector) {
-    throw new Error("[Zendesk] Connector not found.");
-  }
-  const dataSourceConfig = dataSourceConfigFromConnector(connector);
-
-  const categoryIds = (
-    await ZendeskCategoryResource.fetchIdsForConnector(connectorId)
-  ).map(({ categoryId }) => categoryId);
-
-  const categoriesToDelete = new Set<number>();
-  await concurrentExecutor(
-    categoryIds,
-    async (categoryId) => {
-      const articles = await ZendeskArticleResource.fetchByCategoryIdReadOnly({
-        connectorId,
-        categoryId,
-      });
-      if (articles.length === 0) {
-        categoriesToDelete.add(categoryId);
-      }
-    },
-    { concurrency: 10 }
+  logger.info(
+    { ...loggerArgs, categoryCount: categoryIdsWithBrand.length },
+    "[Zendesk] Removing categories with no permission."
   );
-  for (const categoryId of categoriesToDelete) {
-    await deleteCategory({ connectorId, categoryId, dataSourceConfig });
+
+  for (const ids of categoryIdsWithBrand) {
+    await deleteCategory({ connectorId, ...ids, dataSourceConfig });
   }
+  return { hasMore: categoryIdsWithBrand.length === batchSize };
 }
 
 /**
@@ -236,7 +225,46 @@ export async function removeEmptyCategoriesActivity(connectorId: number) {
 export async function deleteBrandsWithNoPermissionActivity(
   connectorId: ModelId
 ): Promise<void> {
-  await ZendeskBrandResource.deleteBrandsWithNoPermission(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error("[Zendesk] Connector not found.");
+  }
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const loggerArgs = {
+    workspaceId: dataSourceConfig.workspaceId,
+    connectorId,
+    provider: "zendesk",
+    workflowId: getZendeskGarbageCollectionWorkflowId(connectorId),
+    dataSourceId: dataSourceConfig.dataSourceId,
+  };
+
+  // deleting from data_sources_folders (core)
+  const brands =
+    await ZendeskBrandResource.fetchBrandsWithNoPermission(connectorId);
+
+  await concurrentExecutor(
+    brands,
+    async (brandId) => {
+      await deleteDataSourceFolder({
+        dataSourceConfig,
+        folderId: getHelpCenterInternalId({ connectorId, brandId }),
+      });
+      await deleteDataSourceFolder({
+        dataSourceConfig,
+        folderId: getTicketsInternalId({ connectorId, brandId }),
+      });
+    },
+    { concurrency: 10 }
+  );
+
+  // deleting from zendesk_brands (connectors)
+  const deletedCount =
+    await ZendeskBrandResource.deleteBrandsWithNoPermission(connectorId);
+
+  logger.info(
+    { ...loggerArgs, deletedCount },
+    "[Zendesk] Deleting brands with no permission."
+  );
 }
 
 /**
@@ -254,33 +282,50 @@ export async function deleteTicketBatchActivity({
     throw new Error("[Zendesk] Connector not found.");
   }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const loggerArgs = {
+    workspaceId: dataSourceConfig.workspaceId,
+    connectorId,
+    provider: "zendesk",
+    workflowId: getZendeskGarbageCollectionWorkflowId(connectorId),
+    dataSourceId: dataSourceConfig.dataSourceId,
+  };
 
   const ticketIds = await ZendeskTicketResource.fetchTicketIdsByBrandId({
     connectorId,
     brandId,
     batchSize: ZENDESK_BATCH_SIZE,
   });
+  logger.info(
+    { ...loggerArgs, brandId, ticketCount: ticketIds.length },
+    "[Zendesk] Deleting a batch of tickets."
+  );
+
   /// deleting the tickets in the data source
   await concurrentExecutor(
     ticketIds,
     (ticketId) =>
-      deleteFromDataSource(
+      deleteDataSourceDocument(
         dataSourceConfig,
-        getTicketInternalId({ connectorId, ticketId })
+        getTicketInternalId({ connectorId, brandId, ticketId })
       ),
     { concurrency: 10 }
   );
   /// deleting the tickets stored in the db
-  await ZendeskTicketResource.deleteByTicketIds({ connectorId, ticketIds });
+  await ZendeskTicketResource.deleteByTicketIds({
+    connectorId,
+    brandId,
+    ticketIds,
+  });
 
   /// returning false if we know for sure there isn't any more ticket to process
   return { hasMore: ticketIds.length === ZENDESK_BATCH_SIZE };
 }
 
 /**
- * Deletes a batch of articles from the db and the data source for a brand.
+ * Deletes a batch of categories from connectors (zendesk_categories) and from core (data_sources_folders/nodes) for a brand.
+ * Only delete categories that are not explicitly selected by the user and that were synced through their Help Center.
  */
-export async function deleteArticleBatchActivity({
+export async function deleteCategoryBatchActivity({
   connectorId,
   brandId,
 }: {
@@ -292,44 +337,63 @@ export async function deleteArticleBatchActivity({
     throw new Error("[Zendesk] Connector not found.");
   }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const loggerArgs = {
+    workspaceId: dataSourceConfig.workspaceId,
+    connectorId,
+    provider: "zendesk",
+    workflowId: getZendeskGarbageCollectionWorkflowId(connectorId),
+    dataSourceId: dataSourceConfig.dataSourceId,
+  };
 
-  /// deleting the articles in the data source
-  const articleIds = await ZendeskArticleResource.fetchArticleIdsByBrandId({
+  const categoryIds =
+    await ZendeskCategoryResource.fetchCategoriesNotSelectedInBrand({
+      connectorId,
+      brandId,
+      batchSize: ZENDESK_BATCH_SIZE,
+    });
+
+  for (const categoryId of categoryIds) {
+    await deleteDataSourceFolder({
+      dataSourceConfig,
+      folderId: getCategoryInternalId({ connectorId, brandId, categoryId }),
+    });
+
+    const articlesInCategory = await ZendeskArticleResource.fetchByCategoryId({
+      categoryId,
+      brandId,
+      connectorId,
+    });
+
+    await concurrentExecutor(
+      articlesInCategory,
+      (article) =>
+        deleteDataSourceDocument(
+          dataSourceConfig,
+          getArticleInternalId({
+            connectorId,
+            brandId,
+            articleId: article.articleId,
+          })
+        ),
+      { concurrency: 10 }
+    );
+    /// deleting the articles stored in the db
+    await ZendeskArticleResource.deleteByArticleIds({
+      connectorId,
+      brandId,
+      articleIds: articlesInCategory.map((a) => a.articleId),
+    });
+  }
+
+  const deletedCount = await ZendeskCategoryResource.deleteByCategoryIds({
     connectorId,
     brandId,
-    batchSize: ZENDESK_BATCH_SIZE,
+    categoryIds,
   });
-  await concurrentExecutor(
-    articleIds,
-    (articleId) =>
-      deleteFromDataSource(
-        dataSourceConfig,
-        getArticleInternalId({ connectorId, articleId })
-      ),
-    { concurrency: 10 }
+  logger.info(
+    { ...loggerArgs, brandId, deletedCount },
+    "[Zendesk] Deleting a batch of categories."
   );
-  /// deleting the articles stored in the db
-  await ZendeskArticleResource.deleteByArticleIds({ connectorId, articleIds });
-
-  /// returning false if we know for sure there isn't any more article to process
-  return { hasMore: articleIds.length === ZENDESK_BATCH_SIZE };
-}
-
-/**
- * Deletes a batch of categories from the db.
- */
-export async function deleteCategoryBatchActivity({
-  connectorId,
-  brandId,
-}: {
-  connectorId: number;
-  brandId: number;
-}): Promise<{ hasMore: boolean }> {
-  const deletedCount = await ZendeskCategoryResource.deleteByBrandId({
-    connectorId,
-    brandId,
-    batchSize: ZENDESK_BATCH_SIZE,
-  });
 
   return { hasMore: deletedCount === ZENDESK_BATCH_SIZE };
 }

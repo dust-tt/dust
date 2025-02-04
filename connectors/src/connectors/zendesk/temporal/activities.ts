@@ -1,6 +1,11 @@
 import type { ModelId } from "@dust-tt/types";
+import { MIME_TYPES } from "@dust-tt/types";
 import _ from "lodash";
 
+import {
+  getCategoryInternalId,
+  getHelpCenterInternalId,
+} from "@connectors/connectors/zendesk/lib/id_conversions";
 import { syncArticle } from "@connectors/connectors/zendesk/lib/sync_article";
 import { syncCategory } from "@connectors/connectors/zendesk/lib/sync_category";
 import { syncTicket } from "@connectors/connectors/zendesk/lib/sync_ticket";
@@ -9,12 +14,21 @@ import {
   changeZendeskClientSubdomain,
   createZendeskClient,
   fetchZendeskArticlesInCategory,
+  fetchZendeskBrand,
   fetchZendeskCategoriesInBrand,
-  fetchZendeskTicketsInBrand,
+  fetchZendeskCategory,
+  fetchZendeskManyUsers,
+  fetchZendeskTicketComments,
+  fetchZendeskTickets,
+  getZendeskBrandSubdomain,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import { ZENDESK_BATCH_SIZE } from "@connectors/connectors/zendesk/temporal/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
+import {
+  deleteDataSourceFolder,
+  upsertDataSourceFolder,
+} from "@connectors/lib/data_sources";
 import { ZendeskTimestampCursor } from "@connectors/lib/models/zendesk";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import { heartbeat } from "@connectors/lib/temporal";
@@ -107,12 +121,14 @@ export async function syncZendeskBrandActivity({
     );
   }
 
-  const zendeskApiClient = createZendeskClient(
-    await getZendeskSubdomainAndAccessToken(connector.connectionId)
+  const { subdomain, accessToken } = await getZendeskSubdomainAndAccessToken(
+    connector.connectionId
   );
-  const {
-    result: { brand: fetchedBrand },
-  } = await zendeskApiClient.brand.show(brandId);
+  const fetchedBrand = await fetchZendeskBrand({
+    subdomain,
+    accessToken,
+    brandId,
+  });
 
   // if the brand is not on Zendesk anymore, we delete it
   if (!fetchedBrand) {
@@ -121,7 +137,88 @@ export async function syncZendeskBrandActivity({
     return { helpCenterAllowed: false, ticketsAllowed: false };
   }
 
-  // otherwise, we update the brand data and lastUpsertedTs
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  const helpCenterNode = brandInDb.getHelpCenterContentNode(connectorId, {
+    richTitle: true,
+  });
+  // syncing the folders in data_sources_folders (core) for the nodes that are selected among the Help Center and the Tickets
+  if (brandInDb.helpCenterPermission === "read") {
+    await upsertDataSourceFolder({
+      dataSourceConfig,
+      folderId: helpCenterNode.internalId,
+      parents: [helpCenterNode.internalId],
+      parentId: null,
+      title: helpCenterNode.title,
+      mimeType: MIME_TYPES.ZENDESK.HELP_CENTER,
+      timestampMs: currentSyncDateMs,
+    });
+
+    // updating the parents for the already selected categories to add the Help Center
+    const selectedCategories =
+      await ZendeskCategoryResource.fetchByBrandIdReadOnly({
+        connectorId,
+        brandId,
+      });
+    for (const category of selectedCategories) {
+      // here we can just take all the possible parents since we are syncing the categories through their Help Center
+      const parents = category.getParentInternalIds(connectorId);
+      await upsertDataSourceFolder({
+        dataSourceConfig,
+        folderId: parents[0],
+        parents,
+        parentId: parents[1],
+        title: category.name,
+        mimeType: MIME_TYPES.ZENDESK.CATEGORY,
+        sourceUrl: category.url,
+        timestampMs: currentSyncDateMs,
+      });
+    }
+  } else {
+    await deleteDataSourceFolder({
+      dataSourceConfig,
+      folderId: helpCenterNode.internalId,
+    });
+
+    // deleting categories that were only synced because the Help Center was selected but were not explicitely selected by the user in the UI
+    const categoriesNotSelected =
+      await ZendeskCategoryResource.fetchBrandUnselectedCategories({
+        connectorId,
+        brandId,
+      });
+    for (const category of categoriesNotSelected) {
+      await deleteDataSourceFolder({
+        dataSourceConfig,
+        folderId: getCategoryInternalId({
+          connectorId,
+          brandId,
+          categoryId: category.categoryId,
+        }),
+      });
+    }
+  }
+
+  const ticketsNode = brandInDb.getTicketsContentNode(connectorId, {
+    richTitle: true,
+  });
+  if (brandInDb.ticketsPermission === "read") {
+    await upsertDataSourceFolder({
+      dataSourceConfig,
+      folderId: ticketsNode.internalId,
+      parents: [ticketsNode.internalId],
+      parentId: null,
+      title: ticketsNode.title,
+      mimeType: MIME_TYPES.ZENDESK.TICKETS,
+      timestampMs: currentSyncDateMs,
+    });
+  } else {
+    await deleteDataSourceFolder({
+      dataSourceConfig,
+      folderId: ticketsNode.internalId,
+    });
+  }
+
+  // updating the entry in db
   await brandInDb.update({
     name: fetchedBrand.name || "Brand",
     url: fetchedBrand?.url || brandInDb.url,
@@ -137,6 +234,7 @@ export async function syncZendeskBrandActivity({
 
 /**
  * Retrieves the IDs of every brand in db that has read permissions on their Help Center or in one of their Categories.
+ * Removes the permissions beforehand for Help Center that have been deleted or disabled on Zendesk.
  * This activity will be used to retrieve the brands that need to be incrementally synced.
  *
  * Note: in this approach; if a single category has read permissions and not its Help Center,
@@ -148,7 +246,36 @@ export async function getZendeskHelpCenterReadAllowedBrandIdsActivity(
   // fetching the brands that have a Help Center selected as a whole
   const brandsWithHelpCenter =
     await ZendeskBrandResource.fetchHelpCenterReadAllowedBrandIds(connectorId);
-  // fetching the brands that have at least one Category selected
+
+  // cleaning up Brands (resp. Help Centers) that don't exist on Zendesk anymore (resp. have been deleted)
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error("[Zendesk] Connector not found.");
+  }
+  const { subdomain, accessToken } = await getZendeskSubdomainAndAccessToken(
+    connector.connectionId
+  );
+  for (const brandId of brandsWithHelpCenter) {
+    const fetchedBrand = await fetchZendeskBrand({
+      accessToken,
+      subdomain,
+      brandId,
+    });
+    const brandInDb = await ZendeskBrandResource.fetchByBrandId({
+      connectorId,
+      brandId,
+    });
+    if (!fetchedBrand) {
+      await brandInDb?.revokeTicketsPermissions();
+      await brandInDb?.revokeHelpCenterPermissions();
+    } else if (!fetchedBrand.has_help_center) {
+      await brandInDb?.revokeHelpCenterPermissions();
+    }
+  }
+
+  // fetching the brands that have at least one Category selected:
+  // we need to do that because we can only fetch diffs at the brand level.
+  // We will filter later on the categories allowed.
   const brandWithCategories =
     await ZendeskCategoryResource.fetchBrandIdsOfReadOnlyCategories(
       connectorId
@@ -192,13 +319,20 @@ export async function syncZendeskCategoryBatchActivity({
     throw new Error("[Zendesk] Connector not found.");
   }
 
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
   const { accessToken, subdomain } = await getZendeskSubdomainAndAccessToken(
     connector.connectionId
   );
-  const zendeskApiClient = createZendeskClient({ accessToken, subdomain });
-  const brandSubdomain = await changeZendeskClientSubdomain(zendeskApiClient, {
+  const brandSubdomain = await getZendeskBrandSubdomain({
     brandId,
     connectorId,
+    accessToken,
+    subdomain,
+  });
+  const brandInDb = await ZendeskBrandResource.fetchByBrandId({
+    connectorId,
+    brandId,
   });
 
   const { categories, hasMore, nextLink } = await fetchZendeskCategoriesInBrand(
@@ -208,8 +342,16 @@ export async function syncZendeskCategoryBatchActivity({
 
   await concurrentExecutor(
     categories,
-    async (category) =>
-      syncCategory({ connectorId, brandId, category, currentSyncDateMs }),
+    async (category) => {
+      return syncCategory({
+        connectorId,
+        brandId,
+        category,
+        isHelpCenterSelected: brandInDb?.helpCenterPermission === "read",
+        currentSyncDateMs,
+        dataSourceConfig,
+      });
+    },
     {
       concurrency: 10,
       onBatchComplete: heartbeat,
@@ -240,13 +382,17 @@ export async function syncZendeskCategoryActivity({
   categoryId: number;
   brandId: number;
   currentSyncDateMs: number;
-}): Promise<{ shouldSyncArticles: boolean }> {
+}): Promise<{
+  shouldSyncArticles: boolean;
+  helpCenterIsAllowed: boolean | null;
+}> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
   }
   const categoryInDb = await ZendeskCategoryResource.fetchByCategoryId({
     connectorId,
+    brandId,
     categoryId,
   });
   if (!categoryInDb) {
@@ -255,26 +401,60 @@ export async function syncZendeskCategoryActivity({
     );
   }
 
-  // if all rights were revoked, we have nothing to sync
+  // Remove the category if was explicitly unselected in the UI.
   if (categoryInDb.permission === "none") {
-    return { shouldSyncArticles: false };
+    await deleteDataSourceFolder({
+      dataSourceConfig: dataSourceConfigFromConnector(connector),
+      folderId: getCategoryInternalId({ connectorId, brandId, categoryId }),
+    });
+    // note that the articles will be deleted in the garbage collection
+    return { shouldSyncArticles: false, helpCenterIsAllowed: null };
   }
 
-  const zendeskApiClient = createZendeskClient(
-    await getZendeskSubdomainAndAccessToken(connector.connectionId)
+  const { accessToken, subdomain } = await getZendeskSubdomainAndAccessToken(
+    connector.connectionId
   );
-  await changeZendeskClientSubdomain(zendeskApiClient, {
+  const brandSubdomain = await getZendeskBrandSubdomain({
     connectorId,
+    accessToken,
+    subdomain,
     brandId,
   });
 
   // if the category is not on Zendesk anymore, we remove its permissions
-  const { result: fetchedCategory } =
-    await zendeskApiClient.helpcenter.categories.show(categoryId);
+  const fetchedCategory = await fetchZendeskCategory({
+    accessToken,
+    brandSubdomain,
+    categoryId,
+  });
   if (!fetchedCategory) {
     await categoryInDb.revokePermissions();
-    return { shouldSyncArticles: false };
+    return { shouldSyncArticles: false, helpCenterIsAllowed: null };
   }
+
+  // upserting a folder to data_sources_folders (core)
+  const brandInDb = await ZendeskBrandResource.fetchByBrandId({
+    connectorId,
+    brandId,
+  });
+  const folderId = getCategoryInternalId({ connectorId, brandId, categoryId });
+  // adding the parents to the array of parents iff the Help Center was selected
+  const parentId =
+    brandInDb?.helpCenterPermission === "read"
+      ? getHelpCenterInternalId({ connectorId, brandId })
+      : null;
+  const parents = parentId ? [folderId, parentId] : [folderId];
+
+  await upsertDataSourceFolder({
+    dataSourceConfig: dataSourceConfigFromConnector(connector),
+    folderId,
+    parents,
+    parentId,
+    title: fetchedCategory.name,
+    mimeType: MIME_TYPES.ZENDESK.CATEGORY,
+    sourceUrl: fetchedCategory.html_url,
+    timestampMs: currentSyncDateMs,
+  });
 
   // otherwise, we update the category name and lastUpsertedTs
   await categoryInDb.update({
@@ -283,7 +463,10 @@ export async function syncZendeskCategoryActivity({
     description: fetchedCategory.description,
     lastUpsertedTs: new Date(currentSyncDateMs),
   });
-  return { shouldSyncArticles: true };
+  return {
+    shouldSyncArticles: true,
+    helpCenterIsAllowed: brandInDb?.helpCenterPermission === "read",
+  };
 }
 
 /**
@@ -292,15 +475,17 @@ export async function syncZendeskCategoryActivity({
  */
 export async function syncZendeskArticleBatchActivity({
   connectorId,
+  brandId,
   categoryId,
   currentSyncDateMs,
-  forceResync,
+  helpCenterIsAllowed,
   url,
 }: {
   connectorId: ModelId;
+  brandId: number;
   categoryId: number;
   currentSyncDateMs: number;
-  forceResync: boolean;
+  helpCenterIsAllowed: boolean;
   url: string | null;
 }): Promise<{ hasMore: boolean; nextLink: string | null }> {
   const connector = await ConnectorResource.fetchById(connectorId);
@@ -316,6 +501,7 @@ export async function syncZendeskArticleBatchActivity({
   };
   const category = await ZendeskCategoryResource.fetchByCategoryId({
     connectorId,
+    brandId,
     categoryId,
   });
   if (!category) {
@@ -346,9 +532,11 @@ export async function syncZendeskArticleBatchActivity({
 
   const sections =
     await zendeskApiClient.helpcenter.sections.listByCategory(categoryId);
-  const { result: users } = await zendeskApiClient.users.showMany(
-    articles.map((article) => article.author_id)
-  );
+  const users = await fetchZendeskManyUsers({
+    accessToken,
+    brandSubdomain,
+    userIds: articles.map((article) => article.author_id),
+  });
 
   await concurrentExecutor(
     articles,
@@ -361,9 +549,9 @@ export async function syncZendeskArticleBatchActivity({
           sections.find((section) => section.id === article.section_id) || null,
         user: users.find((user) => user.id === article.author_id) || null,
         dataSourceConfig,
+        helpCenterIsAllowed,
         currentSyncDateMs,
         loggerArgs,
-        forceResync,
       }),
     {
       concurrency: 10,
@@ -409,21 +597,19 @@ export async function syncZendeskTicketBatchActivity({
   const { subdomain, accessToken } = await getZendeskSubdomainAndAccessToken(
     connector.connectionId
   );
-  const zendeskApiClient = createZendeskClient({ subdomain, accessToken });
-  const brandSubdomain = await changeZendeskClientSubdomain(zendeskApiClient, {
+  const brandSubdomain = await getZendeskBrandSubdomain({
     connectorId,
     brandId,
+    accessToken,
+    subdomain,
   });
 
-  const { tickets, hasMore, nextLink } = await fetchZendeskTicketsInBrand(
+  const startTime =
+    Math.floor(currentSyncDateMs / 1000) -
+    configuration.retentionPeriodDays * 24 * 60 * 60; // days to seconds
+  const { tickets, hasMore, nextLink } = await fetchZendeskTickets(
     accessToken,
-    url
-      ? { url }
-      : {
-          brandSubdomain,
-          pageSize: ZENDESK_BATCH_SIZE,
-          retentionPeriodDays: configuration.retentionPeriodDays,
-        }
+    url ? { url } : { brandSubdomain, startTime }
   );
 
   if (tickets.length === 0) {
@@ -434,18 +620,32 @@ export async function syncZendeskTicketBatchActivity({
     return { hasMore: false, nextLink: "" };
   }
 
+  const closedTickets = tickets.filter((t) =>
+    ["closed", "solved"].includes(t.status)
+  );
+
   const comments2d = await concurrentExecutor(
-    tickets,
-    async (ticket) => zendeskApiClient.tickets.getComments(ticket.id),
+    closedTickets,
+    async (ticket) =>
+      fetchZendeskTicketComments({
+        accessToken,
+        brandSubdomain,
+        ticketId: ticket.id,
+      }),
     { concurrency: 3, onBatchComplete: heartbeat }
   );
-  const userIds = _.uniq(
-    _.flatten(comments2d.map((comments) => comments.map((c) => c.author_id)))
-  );
-  const { result: users } = await zendeskApiClient.users.showMany(userIds);
+  const users = await fetchZendeskManyUsers({
+    accessToken,
+    brandSubdomain,
+    userIds: [
+      ...new Set(
+        comments2d.flatMap((comments) => comments.map((c) => c.author_id))
+      ),
+    ],
+  });
 
   const res = await concurrentExecutor(
-    _.zip(tickets, comments2d),
+    _.zip(closedTickets, comments2d),
     async ([ticket, comments]) => {
       if (!ticket || !comments) {
         throw new Error(

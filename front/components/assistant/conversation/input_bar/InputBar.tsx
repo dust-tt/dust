@@ -18,7 +18,7 @@ import InputBarContainer, {
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import type { DustError } from "@app/lib/error";
-import { useAgentConfigurations } from "@app/lib/swr/assistants";
+import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { useConversation } from "@app/lib/swr/conversations";
 import { classNames } from "@app/lib/utils";
 
@@ -82,10 +82,10 @@ export function AssistantInputBar({
     options: { disabled: true }, // We just want to get the mutation function
   });
 
+  // We use this specific hook because this component is involved in the new conversation page.
   const { agentConfigurations: baseAgentConfigurations } =
-    useAgentConfigurations({
+    useUnifiedAgentConfigurations({
       workspaceId: owner.sId,
-      agentsGetView: "list",
     });
 
   // Files upload.
@@ -169,7 +169,8 @@ export function AssistantInputBar({
       ...new Set(rawMentions.map((mention) => mention.id)),
     ].map((id) => ({ configurationId: id }));
 
-    // When we are creating a new conversation, we will disable the input bar, show a loading spinner and in case of error, re-enable the input bar
+    // When we are creating a new conversation, we will disable the input bar, show a loading
+    // spinner and in case of error, re-enable the input bar
     if (!conversationId) {
       setLoading(true);
       setDisableSendButton(true);
@@ -238,7 +239,7 @@ export function AssistantInputBar({
         }),
       }
     );
-    await mutateConversation();
+    mutateConversation();
   };
 
   useEffect(() => {
@@ -253,7 +254,7 @@ export function AssistantInputBar({
   }, [isStopping, generationContext.generatingMessages, conversationId]);
 
   return (
-    <div className={cn("flex w-full flex-col", isFloating && "sm:px-3")}>
+    <div className="flex w-full flex-col">
       {generationContext.generatingMessages.some(
         (m) => m.conversationId === conversationId
       ) && (
@@ -278,12 +279,12 @@ export function AssistantInputBar({
         >
           <div
             className={classNames(
-              "relative flex w-full flex-1 flex-col items-stretch gap-0 self-stretch pl-2 sm:flex-row sm:pl-5",
-              "bg-primary-50",
-              "transition-all",
+              "relative flex w-full flex-1 flex-col items-stretch gap-0 self-stretch pl-3 sm:flex-row",
+              "rounded-3xl bg-muted-background transition-all",
+              "border border-border-dark sm:border-border-dark/50 sm:focus-within:border-border-dark",
               isFloating
-                ? "rounded-3xl border border-border-dark focus-within:ring-1 focus-within:ring-highlight-300 sm:border-border-dark/50 sm:focus-within:border-border-dark sm:focus-within:ring-2 sm:focus-within:ring-offset-2"
-                : "border-t",
+                ? "focus-within:ring-highlight/30sm:focus-within:ring-2 focus-within:ring-1"
+                : "focus-within:border-highlight-300",
               isAnimating ? "duration-600 animate-shake" : "duration-300"
             )}
           >

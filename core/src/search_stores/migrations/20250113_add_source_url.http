@@ -1,0 +1,9 @@
+PUT core.data_sources_nodes/_mapping
+{
+  "properties": {
+    "source_url": {
+      "type": "keyword",
+      "index": false
+    }
+  }
+}

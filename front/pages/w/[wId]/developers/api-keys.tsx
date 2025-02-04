@@ -1,20 +1,33 @@
 import {
   BookOpenIcon,
   Button,
+  ClipboardCheckIcon,
   ClipboardIcon,
   Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   IconButton,
   Input,
-  Modal,
   Page,
   PlusIcon,
   ScrollArea,
+  ScrollBar,
   ShapesIcon,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
   Spinner,
+  useCopyToClipboard,
 } from "@dust-tt/sparkle";
 import type {
   GroupType,
@@ -27,8 +40,7 @@ import type {
 import { prettifyGroupName } from "@dust-tt/types";
 import _ from "lodash";
 import type { InferGetServerSidePropsType } from "next";
-import React, { useMemo } from "react";
-import { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useSWRConfig } from "swr";
 
 import { subNavigationAdmin } from "@app/components/navigation/config";
@@ -75,11 +87,13 @@ export function APIKeys({
   groups: GroupType[];
 }) {
   const { mutate } = useSWRConfig();
+  const [isCopiedWorkspaceId, copyWorkspaceId] = useCopyToClipboard();
+  const [isCopiedDomain, copyDomain] = useCopyToClipboard();
+  const [isCopiedApiKey, copyApiKey] = useCopyToClipboard();
   const [newApiKeyName, setNewApiKeyName] = useState("");
   const [newApiKeyGroup, setNewApiKeyGroup] = useState<GroupType>(
     _.find(groups, (g) => g.kind === "global") || groups[0]
   );
-  const [isNewApiKeyPromptOpen, setIsNewApiKeyPromptOpen] = useState(false);
   const [isNewApiKeyCreatedOpen, setIsNewApiKeyCreatedOpen] = useState(false);
 
   const { isValidating, keys } = useKeys(owner);
@@ -102,7 +116,6 @@ export function APIKeys({
           body: JSON.stringify({ name, group_id: group?.sId }),
         });
         await mutate(`/api/w/${owner.sId}/keys`);
-        setIsNewApiKeyPromptOpen(false);
         setNewApiKeyName("");
         setIsNewApiKeyCreatedOpen(true);
       }
@@ -127,104 +140,80 @@ export function APIKeys({
 
   return (
     <>
-      <Modal
-        isOpen={isNewApiKeyCreatedOpen}
-        title="API Key Created"
-        onClose={() => {
-          setIsNewApiKeyCreatedOpen(false);
+      <Sheet
+        open={isNewApiKeyCreatedOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setIsNewApiKeyCreatedOpen(false);
+          }
         }}
-        hasChanged={false}
       >
-        <div className="mt-4">
-          <p className="text-sm text-gray-700">
-            Your API key will remain visible for 10 minutes only. <br />
-            You can use it to authenticate with the Dust API. <br />
-          </p>
-          <br />
-          <div className="mt-4">
-            <Page.H variant="h5">Workspace ID</Page.H>
-            <Page.Horizontal align="stretch">
-              <pre>{owner.sId}</pre>
-              <IconButton
-                tooltip="Copy to clipboard"
-                icon={ClipboardIcon}
-                onClick={() => {
-                  void navigator.clipboard.writeText(owner.sId);
-                }}
-              />
-            </Page.Horizontal>
-          </div>
-          <div className="mt-4">
-            <Page.H variant="h5">API Key</Page.H>
-            <Page.Horizontal align="stretch">
-              <pre>{keys[0]?.secret}</pre>
-              <IconButton
-                tooltip="Copy to clipboard"
-                icon={ClipboardIcon}
-                onClick={() => {
-                  void navigator.clipboard.writeText(keys[0]?.secret);
-                }}
-              />
-            </Page.Horizontal>
-          </div>
-        </div>
-      </Modal>
-
-      <Dialog
-        isOpen={isNewApiKeyPromptOpen}
-        title="New API Key"
-        onValidate={() =>
-          handleGenerate({ name: newApiKeyName, group: newApiKeyGroup })
-        }
-        onCancel={() => setIsNewApiKeyPromptOpen(false)}
-      >
-        <Input
-          name="API Key"
-          placeholder="Type an API key name"
-          value={newApiKeyName}
-          onChange={(e) => setNewApiKeyName(e.target.value)}
-        />
-        <div className="align-center flex flex-row items-center gap-2 p-2">
-          <span className="mr-1 flex flex-initial text-sm font-medium leading-8 text-gray-700">
-            Assign permissions to space:{" "}
-          </span>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                label={prettifyGroupName(newApiKeyGroup)}
-                size="sm"
-                variant="outline"
-              />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <ScrollArea className="h-[300px]">
-                {groups
-                  .sort((a, b) => {
-                    // Put global groups first
-                    if (a.kind === "global" && b.kind !== "global") {
-                      return -1;
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>API Key Created</SheetTitle>
+          </SheetHeader>
+          <SheetContainer>
+            <div className="mt-4">
+              <p className="text-sm text-gray-700">
+                Your API key will remain visible for 10 minutes only. You can
+                use it to authenticate with the Dust API.
+              </p>
+              <br />
+              <div className="mt-4">
+                <Page.H variant="h5">Domain</Page.H>
+                <Page.Horizontal align="center">
+                  <pre className="font-mono flex-grow overflow-x-auto rounded bg-slate-50 p-2">
+                    {process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}
+                  </pre>
+                  <IconButton
+                    tooltip="Copy to clipboard"
+                    icon={isCopiedDomain ? ClipboardCheckIcon : ClipboardIcon}
+                    onClick={async () => {
+                      await copyDomain(
+                        process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL ?? ""
+                      );
+                    }}
+                  />
+                </Page.Horizontal>
+              </div>
+              <div className="mt-4">
+                <Page.H variant="h5">Workspace ID</Page.H>
+                <Page.Horizontal align="center">
+                  <pre className="font-mono flex-grow overflow-x-auto rounded bg-slate-50 p-2">
+                    {owner.sId}
+                  </pre>
+                  <IconButton
+                    tooltip="Copy to clipboard"
+                    icon={
+                      isCopiedWorkspaceId ? ClipboardCheckIcon : ClipboardIcon
                     }
-                    if (a.kind !== "global" && b.kind === "global") {
-                      return 1;
-                    }
-
-                    // Then sort alphabetically case insensitive
-                    return prettifyGroupName(a)
-                      .toLowerCase()
-                      .localeCompare(prettifyGroupName(b).toLowerCase());
-                  })
-                  .map((group: GroupType) => (
-                    <DropdownMenuItem
-                      key={group.id}
-                      label={prettifyGroupName(group)}
-                      onClick={() => setNewApiKeyGroup(group)}
-                    />
-                  ))}
-              </ScrollArea>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </Dialog>
+                    onClick={async () => {
+                      await copyWorkspaceId(owner.sId);
+                    }}
+                  />
+                </Page.Horizontal>
+              </div>
+              <div className="mt-4">
+                <Page.H variant="h5">API Key</Page.H>
+                <Page.Horizontal align="center">
+                  <pre className="font-mono flex-grow overflow-x-auto rounded bg-slate-50 p-2">
+                    {keys[0]?.secret}
+                  </pre>
+                  <IconButton
+                    tooltip="Copy to clipboard"
+                    icon={isCopiedApiKey ? ClipboardCheckIcon : ClipboardIcon}
+                    onClick={async () => {
+                      if (keys[0]?.secret) {
+                        await copyApiKey(keys[0].secret);
+                      }
+                    }}
+                  />
+                </Page.Horizontal>
+              </div>
+            </div>
+          </SheetContainer>
+        </SheetContent>
+      </Sheet>
       <Page.Horizontal align="stretch">
         <div className="w-full" />
         <Button
@@ -236,12 +225,88 @@ export function APIKeys({
             window.open("https://docs.dust.tt/reference", "_blank");
           }}
         />
-        <Button
-          label="Create API Key"
-          icon={PlusIcon}
-          disabled={isGenerating || isRevoking}
-          onClick={() => setIsNewApiKeyPromptOpen(true)}
-        />
+        <Dialog modal={false}>
+          <DialogTrigger asChild>
+            <Button
+              label="Create API Key"
+              icon={PlusIcon}
+              disabled={isGenerating || isRevoking}
+            />
+          </DialogTrigger>
+          <DialogContent size="md">
+            <DialogHeader>
+              <DialogTitle>New API Key</DialogTitle>
+            </DialogHeader>
+            <DialogContainer>
+              <Input
+                name="API Key"
+                placeholder="Type an API key name"
+                value={newApiKeyName}
+                onChange={(e) => setNewApiKeyName(e.target.value)}
+              />
+              <div className="align-center flex flex-row items-center gap-2 p-2">
+                <span className="mr-1 flex flex-initial py-2 text-sm font-medium leading-8 text-gray-700">
+                  Assign permissions to space:{" "}
+                </span>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      label={prettifyGroupName(newApiKeyGroup)}
+                      size="sm"
+                      variant="outline"
+                    />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <ScrollArea
+                      className="flex max-h-[300px] flex-col"
+                      hideScrollBar
+                    >
+                      {groups
+                        .sort((a, b) => {
+                          // Put global groups first
+                          if (a.kind === "global" && b.kind !== "global") {
+                            return -1;
+                          }
+                          if (a.kind !== "global" && b.kind === "global") {
+                            return 1;
+                          }
+
+                          // Then sort alphabetically case insensitive
+                          return prettifyGroupName(a)
+                            .toLowerCase()
+                            .localeCompare(prettifyGroupName(b).toLowerCase());
+                        })
+                        .map((group: GroupType) => (
+                          <DropdownMenuItem
+                            key={group.id}
+                            label={prettifyGroupName(group)}
+                            onClick={() => setNewApiKeyGroup(group)}
+                          />
+                        ))}
+                      <ScrollBar className="py-0" />
+                    </ScrollArea>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </DialogContainer>
+            <DialogFooter
+              leftButtonProps={{
+                label: "Cancel",
+                variant: "outline",
+              }}
+              rightButtonProps={{
+                label: "Ok",
+                variant: "primary",
+                onClick: async () => {
+                  await handleGenerate({
+                    name: newApiKeyName,
+                    group: newApiKeyGroup,
+                  });
+                },
+              }}
+            />
+          </DialogContent>
+        </Dialog>
       </Page.Horizontal>
       <div className="space-y-4 divide-y divide-gray-200">
         <ul role="list" className="pt-4">
@@ -273,6 +338,16 @@ export function APIKeys({
                           >
                             Name:{" "}
                             <strong>{key.name ? key.name : "Unnamed"}</strong>
+                          </p>
+                          <p
+                            className={classNames(
+                              "font-mono truncate text-sm text-slate-700"
+                            )}
+                          >
+                            Domain:{" "}
+                            <strong>
+                              {process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}
+                            </strong>
                           </p>
                           {key.groupId && (
                             <p

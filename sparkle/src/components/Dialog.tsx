@@ -1,128 +1,199 @@
-import { Dialog as HeadlessDialog, Transition } from "@headlessui/react";
-import React, { Fragment, useRef } from "react";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
+import { FocusScope } from "@radix-ui/react-focus-scope";
+import { cva } from "class-variance-authority";
+import * as React from "react";
 
-import ConfettiBackground from "@sparkle/components/ConfettiBackground";
-import Spinner from "@sparkle/components/Spinner";
-import { classNames } from "@sparkle/lib/utils";
+import { Button, ScrollArea } from "@sparkle/components";
+import { XMarkIcon } from "@sparkle/icons";
+import { cn } from "@sparkle/lib/utils";
 
-import { Button } from "./Button";
+const Dialog = DialogPrimitive.Root;
+const DialogTrigger = DialogPrimitive.Trigger;
+const DialogClose = DialogPrimitive.Close;
+const DialogPortal = DialogPrimitive.Portal;
 
-export type BaseDialogProps = {
-  backgroundType?: "confetti" | "snow" | "none";
-  children: React.ReactNode;
-  disabled?: boolean;
-  isOpen: boolean;
-  isSaving?: boolean;
-  onValidate: () => void;
-  title: string;
-  validateLabel?: string;
-  validateVariant?: React.ComponentProps<typeof Button>["variant"];
-  cancelLabel?: string;
+const DialogOverlay = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Overlay>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
+>(({ className, ...props }, ref) => (
+  <DialogPrimitive.Overlay
+    className={cn(
+      "s-fixed s-inset-0 s-z-50 s-bg-muted-foreground/75 data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-fade-out-0 data-[state=open]:s-fade-in-0",
+      className
+    )}
+    {...props}
+    ref={ref}
+  />
+));
+DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
+
+const DIALOG_SIZES = ["md", "lg", "xl"] as const;
+type DialogSizeType = (typeof DIALOG_SIZES)[number];
+
+const sizeClasses: Record<DialogSizeType, string> = {
+  md: "sm:s-max-w-md",
+  lg: "sm:s-max-w-xl",
+  xl: "sm:s-max-w-3xl",
 };
 
-export type DialogProps = BaseDialogProps & {
-  alertDialog?: false;
-  onCancel: () => void;
-};
+const dialogVariants = cva(
+  "s-fixed s-left-[50%] s-top-[50%] s-z-50 s-grid s-w-full s-overflow-hidden s-rounded-2xl s-border s-border-border s-translate-x-[-50%] s-translate-y-[-50%] s-border s-bg-background s-p-2 s-shadow-lg s-duration-200 data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-fade-out-0 data-[state=open]:s-fade-in-0 data-[state=closed]:s-zoom-out-95 data-[state=open]:s-zoom-in-95 data-[state=closed]:s-slide-out-to-left-1/2 data-[state=closed]:s-slide-out-to-top-[48%] data-[state=open]:s-slide-in-from-left-1/2 data-[state=open]:s-slide-in-from-top-[48%] s-sm:rounded-lg",
+  {
+    variants: {
+      size: sizeClasses,
+    },
+    defaultVariants: {
+      size: "md",
+    },
+  }
+);
 
-export type AlertDialogProps = BaseDialogProps & {
-  alertDialog: true;
-  onCancel?: () => void;
-};
-
-export function Dialog({
-  backgroundType = "none",
-  children,
-  disabled,
-  isOpen,
-  isSaving,
-  title,
-  validateLabel = "Ok",
-  validateVariant = "primary",
-  onValidate,
-  ...props
-}: AlertDialogProps | DialogProps) {
-  const referentRef = useRef<HTMLDivElement>(null);
-
-  return (
-    <Transition show={isOpen} as={Fragment} appear={true}>
-      <HeadlessDialog
-        as="div"
-        className="s-relative s-z-50"
-        // If it's an alert dialog, we don't want to close it when clicking outside.
-        onClose={props.alertDialog ? () => {} : props.onCancel}
-        role={props.alertDialog ? "alertdialog" : "dialog"}
-      >
-        <Transition.Child
-          as={Fragment}
-          enter="s-ease-out s-duration-150"
-          enterFrom="s-opacity-0"
-          enterTo="s-opacity-100"
-          leave="s-ease-in s-duration-150"
-          leaveFrom="s-opacity-100"
-          leaveTo="s-opacity-0"
-        >
-          <div className="s-fixed s-inset-0 s-bg-structure-50/80 s-backdrop-blur-sm s-transition-opacity" />
-        </Transition.Child>
-
-        <div className="s-fixed s-inset-0 s-z-50">
-          <div className="s-flex s-min-h-full s-items-center s-justify-center">
-            <Transition.Child
-              as={Fragment}
-              enter="s-ease-out s-duration-300"
-              enterFrom="s-opacity-0 s-translate-y-4 s-scale-95"
-              enterTo="s-opacity-100 s-translate-y-0 s-scale-100"
-              leave="s-ease-in s-duration-200"
-              leaveFrom="s-opacity-100 s-translate-y-0 s-scale-100"
-              leaveTo="s-opacity-0 s-translate-y-4 s-scale-95"
-            >
-              <HeadlessDialog.Panel
-                className={classNames(
-                  "s-relative s-rounded-xl s-border s-border-structure-100 s-bg-structure-0 s-p-4 s-shadow-xl s-transition-all",
-                  "s-w-full sm:s-w-[448px]",
-                  "s-flex s-flex-col s-gap-6"
-                )}
-                ref={referentRef}
-              >
-                <HeadlessDialog.Title className="s-truncate s-text-lg s-font-medium s-text-element-950">
-                  {title}
-                </HeadlessDialog.Title>
-                <div className="s-text-base s-text-element-700">{children}</div>
-                <div className="s-flex s-w-full s-justify-end">
-                  <div className="s-flex s-gap-2">
-                    {!isSaving && (
-                      <>
-                        {props.onCancel && (
-                          <Button
-                            label={props.cancelLabel ?? "Cancel"}
-                            variant="outline"
-                            onClick={props.onCancel}
-                          />
-                        )}
-                        <Button
-                          disabled={disabled}
-                          label={validateLabel}
-                          variant={validateVariant}
-                          onClick={onValidate}
-                        />
-                      </>
-                    )}
-                    {isSaving && <Spinner variant="color" />}
-                  </div>
-                </div>
-                {backgroundType !== "none" && (
-                  <div className="s-absolute s-bottom-0 s-left-0 s-right-0 s-top-0 s-z-0">
-                    <ConfettiBackground
-                      variant={backgroundType}
-                      referentSize={referentRef}
-                    />
-                  </div>
-                )}
-              </HeadlessDialog.Panel>
-            </Transition.Child>
-          </div>
-        </div>
-      </HeadlessDialog>
-    </Transition>
-  );
+interface DialogContentProps
+  extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
+  size?: DialogSizeType;
+  trapFocusScope?: boolean;
+  isAlertDialog?: boolean;
 }
+
+const DialogContent = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Content>,
+  DialogContentProps
+>(
+  (
+    { className, children, size, trapFocusScope, isAlertDialog, ...props },
+    ref
+  ) => (
+    <DialogPortal>
+      <DialogOverlay />
+      <FocusScope trapped={trapFocusScope} asChild>
+        <DialogPrimitive.Content
+          ref={ref}
+          className={cn(dialogVariants({ size }), className)}
+          onInteractOutside={
+            isAlertDialog ? (e) => e.preventDefault() : props.onInteractOutside
+          }
+          {...props}
+        >
+          {children}
+        </DialogPrimitive.Content>
+      </FocusScope>
+    </DialogPortal>
+  )
+);
+DialogContent.displayName = DialogPrimitive.Content.displayName;
+
+interface NewDialogHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
+  hideButton?: boolean;
+}
+
+const DialogHeader = ({
+  className,
+  children,
+  hideButton = false,
+  ...props
+}: NewDialogHeaderProps) => (
+  <div
+    className={cn(
+      "s-z-50 s-flex s-flex-none s-flex-col s-gap-0 s-p-5 s-text-left",
+      className
+    )}
+    {...props}
+  >
+    {children}
+    <DialogClose asChild className="s-absolute s-right-3 s-top-3">
+      {!hideButton && <Button icon={XMarkIcon} variant="ghost" size="sm" />}
+    </DialogClose>
+  </div>
+);
+DialogHeader.displayName = "DialogHeader";
+
+const DialogContainer = ({
+  children,
+}: React.HTMLAttributes<HTMLDivElement>) => (
+  <ScrollArea className="s-w-full s-flex-grow">
+    <div className="s-relative s-flex s-flex-col s-gap-2 s-p-5 s-text-left s-text-sm s-text-foreground">
+      {children}
+    </div>
+  </ScrollArea>
+);
+DialogContainer.displayName = "DialogContainer";
+
+interface DialogFooterProps extends React.HTMLAttributes<HTMLDivElement> {
+  leftButtonProps?: React.ComponentProps<typeof Button>;
+  rightButtonProps?: React.ComponentProps<typeof Button>;
+  dialogCloseClassName?: string;
+}
+
+const DialogFooter = ({
+  className,
+  children,
+  leftButtonProps,
+  rightButtonProps,
+  dialogCloseClassName,
+  ...props
+}: DialogFooterProps) => (
+  <div
+    className={cn(
+      "s-flex s-flex-none s-flex-row s-justify-end s-gap-2 s-px-3 s-py-3",
+      className
+    )}
+    {...props}
+  >
+    {leftButtonProps &&
+      (leftButtonProps.disabled ? (
+        <Button {...leftButtonProps} />
+      ) : (
+        <DialogClose className={dialogCloseClassName} asChild>
+          <Button {...leftButtonProps} />
+        </DialogClose>
+      ))}
+    {rightButtonProps &&
+      (rightButtonProps.disabled ? (
+        <Button {...rightButtonProps} />
+      ) : (
+        <DialogClose className={dialogCloseClassName} asChild>
+          <Button {...rightButtonProps} />
+        </DialogClose>
+      ))}
+    {children}
+  </div>
+);
+DialogFooter.displayName = "DialogFooter";
+
+const DialogTitle = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Title>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
+>(({ className, ...props }, ref) => (
+  <DialogPrimitive.Title
+    ref={ref}
+    className={cn("s-text-lg s-font-semibold s-text-foreground", className)}
+    {...props}
+  />
+));
+DialogTitle.displayName = DialogPrimitive.Title.displayName;
+
+const DialogDescription = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Description>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description>
+>(({ className, ...props }, ref) => (
+  <DialogPrimitive.Description
+    ref={ref}
+    className={cn("s-text-sm s-text-muted-foreground", className)}
+    {...props}
+  />
+));
+DialogDescription.displayName = DialogPrimitive.Description.displayName;
+
+export {
+  Dialog,
+  DialogClose,
+  DialogContainer,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogOverlay,
+  DialogPortal,
+  DialogTitle,
+  DialogTrigger,
+};

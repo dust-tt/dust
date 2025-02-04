@@ -40,13 +40,10 @@ const {
   removeMissingArticleBatchActivity,
   getZendeskBrandsWithHelpCenterToDeleteActivity,
   getZendeskBrandsWithTicketsToDeleteActivity,
-  checkEmptyHelpCentersActivity,
   deleteBrandsWithNoPermissionActivity,
   deleteCategoryBatchActivity,
   deleteTicketBatchActivity,
-  deleteArticleBatchActivity,
   removeForbiddenCategoriesActivity,
-  removeEmptyCategoriesActivity,
 } = proxyActivities<typeof gc_activities>({
   startToCloseTimeout: "15 minutes",
 });
@@ -75,15 +72,15 @@ export async function zendeskSyncWorkflow({
   const isInitialSync = !cursor;
 
   const brandIds = new Set<number>();
-  const brandSignals: ZendeskUpdateSignal[] = [];
+  const brandSignals = new Map<number, ZendeskUpdateSignal>();
   const brandHelpCenterIds = new Set<number>();
-  const brandHelpCenterSignals: ZendeskUpdateSignal[] = [];
+  const brandHelpCenterSignals = new Map<number, ZendeskUpdateSignal>();
   const brandTicketsIds = new Set<number>();
-  const brandTicketSignals: ZendeskUpdateSignal[] = [];
+  const brandTicketSignals = new Map<number, ZendeskUpdateSignal>();
 
   const categoryIds = new Set<number>();
   const categoryBrands: Record<number, number> = {};
-  const categorySignals: ZendeskCategoryUpdateSignal[] = [];
+  const categorySignals = new Map<number, ZendeskCategoryUpdateSignal>();
 
   // If we get a signal, update the workflow state by adding help center ids.
   // Signals are sent when permissions are updated by the admin.
@@ -94,23 +91,23 @@ export async function zendeskSyncWorkflow({
         switch (signal.type) {
           case "brand": {
             brandIds.add(signal.zendeskId);
-            brandSignals.push(signal);
+            brandSignals.set(signal.zendeskId, signal);
             break;
           }
           case "help-center": {
             brandHelpCenterIds.add(signal.zendeskId);
-            brandHelpCenterSignals.push(signal);
+            brandHelpCenterSignals.set(signal.zendeskId, signal);
             break;
           }
           case "tickets": {
             brandTicketsIds.add(signal.zendeskId);
-            brandTicketSignals.push(signal);
+            brandTicketSignals.set(signal.zendeskId, signal);
             break;
           }
           case "category": {
             categoryIds.add(signal.categoryId);
             categoryBrands[signal.categoryId] = signal.brandId;
-            categorySignals.push(signal);
+            categorySignals.set(signal.categoryId, signal);
             break;
           }
           default:
@@ -152,9 +149,7 @@ export async function zendeskSyncWorkflow({
     // copying the set to avoid issues with concurrent modifications
     const brandIdsToProcess = new Set(brandIds);
     for (const brandId of brandIdsToProcess) {
-      const relatedSignal = brandSignals.find(
-        (signal) => signal.zendeskId === brandId
-      );
+      const relatedSignal = brandSignals.get(brandId);
       const forceResync = relatedSignal?.forceResync || false;
 
       await executeChild(zendeskBrandSyncWorkflow, {
@@ -171,15 +166,10 @@ export async function zendeskSyncWorkflow({
   while (brandHelpCenterIds.size > 0) {
     const brandIdsToProcess = new Set(brandHelpCenterIds);
     for (const brandId of brandIdsToProcess) {
-      const relatedSignal = brandHelpCenterSignals.find(
-        (signal) => signal.zendeskId === brandId
-      );
-      const forceResync = relatedSignal?.forceResync || false;
-
       await executeChild(zendeskBrandHelpCenterSyncWorkflow, {
         workflowId: `${workflowId}-help-center-${brandId}`,
         searchAttributes: parentSearchAttributes,
-        args: [{ connectorId, brandId, currentSyncDateMs, forceResync }],
+        args: [{ connectorId, brandId, currentSyncDateMs }],
         memo,
       });
       brandHelpCenterIds.delete(brandId);
@@ -188,9 +178,7 @@ export async function zendeskSyncWorkflow({
   while (brandTicketsIds.size > 0) {
     const brandIdsToProcess = new Set(brandTicketsIds);
     for (const brandId of brandIdsToProcess) {
-      const relatedSignal = brandTicketSignals.find(
-        (signal) => signal.zendeskId === brandId
-      );
+      const relatedSignal = brandTicketSignals.get(brandId);
       const forceResync = relatedSignal?.forceResync || false;
 
       await executeChild(zendeskBrandTicketsSyncWorkflow, {
@@ -205,10 +193,6 @@ export async function zendeskSyncWorkflow({
   while (categoryIds.size > 0) {
     const categoryIdsToProcess = new Set(categoryIds);
     for (const categoryId of categoryIdsToProcess) {
-      const relatedSignal = categorySignals.find(
-        (signal) => signal.categoryId === categoryId
-      );
-      const forceResync = relatedSignal?.forceResync || false;
       const brandId = categoryBrands[categoryId];
       if (!brandId) {
         throw new Error(
@@ -219,9 +203,7 @@ export async function zendeskSyncWorkflow({
       await executeChild(zendeskCategorySyncWorkflow, {
         workflowId: `${workflowId}-category-${categoryId}`,
         searchAttributes: parentSearchAttributes,
-        args: [
-          { connectorId, categoryId, brandId, currentSyncDateMs, forceResync },
-        ],
+        args: [{ connectorId, categoryId, brandId, currentSyncDateMs }],
         memo,
       });
       categoryIds.delete(categoryId);
@@ -301,7 +283,6 @@ export async function zendeskBrandSyncWorkflow({
       connectorId,
       brandId,
       currentSyncDateMs,
-      forceResync,
     });
   }
   if (ticketsAllowed) {
@@ -322,12 +303,10 @@ export async function zendeskBrandHelpCenterSyncWorkflow({
   connectorId,
   brandId,
   currentSyncDateMs,
-  forceResync,
 }: {
   connectorId: ModelId;
   brandId: number;
   currentSyncDateMs: number;
-  forceResync: boolean;
 }) {
   const { helpCenterAllowed } = await syncZendeskBrandActivity({
     connectorId,
@@ -339,7 +318,6 @@ export async function zendeskBrandHelpCenterSyncWorkflow({
       connectorId,
       brandId,
       currentSyncDateMs,
-      forceResync,
     });
   }
 }
@@ -382,27 +360,27 @@ export async function zendeskCategorySyncWorkflow({
   categoryId,
   brandId,
   currentSyncDateMs,
-  forceResync,
 }: {
   connectorId: ModelId;
   categoryId: number;
   brandId: number;
   currentSyncDateMs: number;
-  forceResync: boolean;
 }) {
-  const { shouldSyncArticles } = await syncZendeskCategoryActivity({
-    connectorId,
-    categoryId,
-    currentSyncDateMs,
-    brandId,
-  });
+  const { shouldSyncArticles, helpCenterIsAllowed } =
+    await syncZendeskCategoryActivity({
+      connectorId,
+      categoryId,
+      currentSyncDateMs,
+      brandId,
+    });
   if (shouldSyncArticles) {
     await runZendeskActivityWithPagination((url) =>
       syncZendeskArticleBatchActivity({
         connectorId,
+        brandId,
         categoryId,
         currentSyncDateMs,
-        forceResync,
+        helpCenterIsAllowed: helpCenterIsAllowed === true,
         url,
       })
     );
@@ -454,23 +432,9 @@ export async function zendeskGarbageCollectionWorkflow({
     hasMoreCategories = hasMore;
   }
 
-  // deleting the categories that have no article anymore
-  await removeEmptyCategoriesActivity(connectorId);
-
-  // updating the permissions of the Help Centers that have no category anymore for a cleanup at the next step
-  await checkEmptyHelpCentersActivity(connectorId);
-
   // cleaning the articles and categories of the brands that have no permission on their Help Center anymore
   brandIds = await getZendeskBrandsWithHelpCenterToDeleteActivity(connectorId);
   for (const brandId of brandIds) {
-    let hasMoreArticles = true;
-    while (hasMoreArticles) {
-      const { hasMore } = await deleteArticleBatchActivity({
-        connectorId,
-        brandId,
-      });
-      hasMoreArticles = hasMore;
-    }
     let hasMoreCategories = true;
     while (hasMoreCategories) {
       const { hasMore } = await deleteCategoryBatchActivity({
@@ -505,12 +469,10 @@ async function runZendeskBrandHelpCenterSyncActivities({
   connectorId,
   brandId,
   currentSyncDateMs,
-  forceResync,
 }: {
   connectorId: ModelId;
   brandId: number;
   currentSyncDateMs: number;
-  forceResync: boolean;
 }) {
   const categoryIdsToSync = new Set<number>();
 
@@ -535,9 +497,10 @@ async function runZendeskBrandHelpCenterSyncActivities({
     await runZendeskActivityWithPagination((url) =>
       syncZendeskArticleBatchActivity({
         connectorId,
+        brandId,
         categoryId,
+        helpCenterIsAllowed: true, // We know the Help Center is allowed because we're in this function.
         currentSyncDateMs,
-        forceResync,
         url,
       })
     );

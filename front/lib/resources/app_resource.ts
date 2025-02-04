@@ -77,11 +77,15 @@ export class AppResource extends ResourceWithSpace<AppModel> {
     return app ?? null;
   }
 
-  static async listByWorkspace(auth: Authenticator) {
+  static async listByWorkspace(
+    auth: Authenticator,
+    options?: { includeDeleted: boolean }
+  ) {
     return this.baseFetch(auth, {
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
       },
+      includeDeleted: options?.includeDeleted,
     });
   }
 

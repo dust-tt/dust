@@ -14,13 +14,14 @@ import { Err, Ok, Result } from "../../shared/result";
 
 export type ConnectorsAPIResponse<T> = Result<T, ConnectorsAPIError>;
 export type ConnectorSyncStatus = "succeeded" | "failed";
-const CONNECTORS_ERROR_TYPES = [
+export const CONNECTORS_ERROR_TYPES = [
   "oauth_token_revoked",
   "third_party_internal_error",
   "webcrawling_error",
   "webcrawling_error_empty_content",
   "webcrawling_error_content_too_large",
   "webcrawling_error_blocked",
+  "webcrawling_synchronization_limit_reached",
   "remote_database_connection_not_readonly",
   "remote_database_network_error",
 ] as const;
@@ -55,6 +56,8 @@ export type ConnectorType = {
  */
 export type ConnectorPermission = "read" | "write" | "read_write" | "none";
 export type ContentNodeType = "file" | "folder" | "database" | "channel";
+// currently used for Slack, for which channels can be public or private
+export type ProviderVisibility = "public" | "private";
 
 /*
  * This constant defines the priority order for sorting content nodes by their type.
@@ -95,25 +98,20 @@ export const contentNodeTypeSortOrder: Record<ContentNodeType, number> = {
  * information. More details here:
  * https://www.notion.so/dust-tt/Design-Doc-Microsoft-ids-parents-c27726652aae45abafaac587b971a41d?pvs=4
  */
-export interface BaseContentNode {
+export interface ContentNode {
   internalId: string;
   // The direct parent ID of this content node
   parentInternalId: string | null;
   type: ContentNodeType;
   title: string;
-  titleWithParentsContext?: string;
   sourceUrl: string | null;
   expandable: boolean;
   preventSelection?: boolean;
   permission: ConnectorPermission;
-  dustDocumentId: string | null;
   lastUpdatedAt: number | null;
-  providerVisibility?: "public" | "private";
+  providerVisibility?: ProviderVisibility;
+  mimeType?: string;
 }
-
-export type ContentNode = BaseContentNode & {
-  provider: ConnectorProvider;
-};
 
 export type ContentNodeWithParentIds = ContentNode & {
   // A list of all parent IDs up to the root node, including the direct parent
@@ -370,6 +368,15 @@ export class ConnectorsAPI {
       permission: ConnectorPermission;
     }[];
   }): Promise<ConnectorsAPIResponse<void>> {
+    // Connector permission changes are logged so user actions can be traced
+    this._logger.info(
+      {
+        connectorId,
+        resources,
+      },
+      "Setting connector permissions"
+    );
+
     const res = await this._fetchWithError(
       `${this._url}/connectors/${encodeURIComponent(connectorId)}/permissions`,
       {
@@ -557,11 +564,11 @@ export class ConnectorsAPI {
 
   async linkSlackChannelsWithAgent({
     connectorId,
-    slackChannelIds,
+    slackChannelInternalIds,
     agentConfigurationId,
   }: {
     connectorId: string;
-    slackChannelIds: string[];
+    slackChannelInternalIds: string[];
     agentConfigurationId: string;
   }): Promise<ConnectorsAPIResponse<{ success: true }>> {
     const res = await this._fetchWithError(
@@ -572,7 +579,7 @@ export class ConnectorsAPI {
         body: JSON.stringify({
           connector_id: connectorId,
           agent_configuration_id: agentConfigurationId,
-          slack_channel_ids: slackChannelIds,
+          slack_channel_internal_ids: slackChannelInternalIds,
         }),
       }
     );

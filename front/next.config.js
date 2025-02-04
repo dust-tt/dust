@@ -1,5 +1,22 @@
 const path = require("path");
 
+const CONTENT_SECURITY_POLICIES = [
+  "default-src 'none';",
+  `script-src 'self' 'unsafe-inline' 'unsafe-eval' *.googletagmanager.com *.google-analytics.com *.hsforms.net *.hs-scripts.com *.hs-analytics.net *.hubspot.com *.hs-banner.com *.hscollectedforms.net *.cr-relay.com;`,
+  `style-src 'self' 'unsafe-inline' *.typekit.net;`,
+  `img-src 'self' data: https:;`,
+  `connect-src 'self' blob: *.google-analytics.com cdn.jsdelivr.net *.hsforms.com *.hscollectedforms.net *.hubspot.com *.cr-relay.com;`,
+  `frame-src 'self' *.wistia.net eu.viz.dust.tt viz.dust.tt *.hsforms.net;`,
+  `font-src 'self' data: *.typekit.net;`,
+  `object-src 'none';`,
+  `form-action 'self';`,
+  `base-uri 'self';`,
+  `frame-ancestors 'self';`,
+  `manifest-src 'self';`,
+  `worker-src 'self';`,
+  `upgrade-insecure-requests;`,
+].join(" ");
+
 module.exports = {
   transpilePackages: ["@uiw/react-textarea-code-editor"],
   // As of Next 14.2.3 swc minification creates a bug in the generated client side files.
@@ -30,6 +47,11 @@ module.exports = {
         permanent: true,
       },
       {
+        source: "/jobs",
+        destination: "https://jobs.ashbyhq.com/dust",
+        permanent: true,
+      },
+      {
         source: "/w/:wId/u/chat/:cId",
         destination: "/w/:wId/assistant/:cId",
         permanent: false,
@@ -44,7 +66,7 @@ module.exports = {
         headers: [
           {
             key: "Content-Security-Policy",
-            value: "frame-ancestors 'self'",
+            value: CONTENT_SECURITY_POLICIES,
           },
           {
             key: "Strict-Transport-Security",

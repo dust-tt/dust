@@ -4,8 +4,6 @@ import * as React from "react";
 
 import { H4, Strong } from "@app/components/home/ContentComponents";
 import { menuConfig } from "@app/components/home/menu/config";
-import { classNames } from "@app/lib/utils";
-
 import {
   NavigationMenu,
   NavigationMenuContent,
@@ -14,11 +12,12 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
   navigationMenuTriggerStyle,
-} from "./NavigationMenu";
+} from "@app/components/home/menu/NavigationMenu";
+import { classNames } from "@app/lib/utils";
 
 export function MainNavigation() {
   return (
-    <NavigationMenu className="mr-4 hidden md:flex">
+    <NavigationMenu className="mr-4 hidden xl:flex">
       <NavigationMenuList>
         {menuConfig.mainNav.map((item, index) => {
           return (
@@ -96,7 +95,7 @@ const ListItem = React.forwardRef<
         >
           <div className="flex h-6 items-center gap-0.5">
             <Icon
-              className="text-slate-600"
+              className="text-muted-foreground"
               visual={ChevronRightIcon}
               size="md"
             />

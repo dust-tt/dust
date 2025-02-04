@@ -1,15 +1,21 @@
 import type { ModelId } from "@dust-tt/types";
+import _ from "lodash";
 import type { Client } from "node-zendesk";
 import { createClient } from "node-zendesk";
 
 import type {
   ZendeskFetchedArticle,
+  ZendeskFetchedBrand,
   ZendeskFetchedCategory,
   ZendeskFetchedTicket,
+  ZendeskFetchedTicketComment,
   ZendeskFetchedUser,
 } from "@connectors/@types/node-zendesk";
-import { ZendeskApiError } from "@connectors/connectors/zendesk/lib/errors";
-import { ExternalOAuthTokenError } from "@connectors/lib/error";
+import {
+  isZendeskNotFoundError,
+  ZendeskApiError,
+} from "@connectors/connectors/zendesk/lib/errors";
+import { setTimeoutAsync } from "@connectors/lib/async_utils";
 import logger from "@connectors/logger/logger";
 import type { ZendeskCategoryResource } from "@connectors/resources/zendesk_resources";
 import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
@@ -17,11 +23,8 @@ import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
 const ZENDESK_RATE_LIMIT_MAX_RETRIES = 5;
 const ZENDESK_RATE_LIMIT_TIMEOUT_SECONDS = 60;
 
-/**
- * Retrieves the endpoint part from a URL used to call the Zendesk API.
- */
-function getEndpointFromUrl(url: string): string {
-  return url.split("api/v2")[1] as string;
+function getEndpointFromZendeskUrl(url: string): string {
+  return url.replace(/^https?:\/\/(.*)\.zendesk\.com(.*)/, "$2");
 }
 
 export function createZendeskClient({
@@ -43,21 +46,35 @@ export async function changeZendeskClientSubdomain(
   client: Client,
   { connectorId, brandId }: { connectorId: ModelId; brandId: number }
 ): Promise<string> {
-  const brandSubdomain = await getZendeskBrandSubdomain(client, {
+  const brandInDb = await ZendeskBrandResource.fetchByBrandId({
     connectorId,
     brandId,
   });
-  client.config.subdomain = brandSubdomain;
-  return brandSubdomain;
+  if (brandInDb) {
+    client.config.subdomain = brandInDb.subdomain;
+    return brandInDb.subdomain;
+  }
+  const {
+    result: { brand },
+  } = await client.brand.show(brandId);
+  client.config.subdomain = brand.subdomain;
+  return brand.subdomain;
 }
 
 /**
  * Retrieves a brand's subdomain from the database if it exists, fetches it from the Zendesk API otherwise.
  */
-async function getZendeskBrandSubdomain(
-  client: Client,
-  { connectorId, brandId }: { connectorId: ModelId; brandId: number }
-): Promise<string> {
+export async function getZendeskBrandSubdomain({
+  connectorId,
+  brandId,
+  subdomain,
+  accessToken,
+}: {
+  connectorId: ModelId;
+  brandId: number;
+  subdomain: string;
+  accessToken: string;
+}): Promise<string> {
   const brandInDb = await ZendeskBrandResource.fetchByBrandId({
     connectorId,
     brandId,
@@ -65,10 +82,10 @@ async function getZendeskBrandSubdomain(
   if (brandInDb) {
     return brandInDb.subdomain;
   }
-
-  const {
-    result: { brand },
-  } = await client.brand.show(brandId);
+  const brand = await fetchZendeskBrand({ subdomain, accessToken, brandId });
+  if (!brand) {
+    throw new Error(`Brand ${brandId} not found in Zendesk.`);
+  }
   return brand.subdomain;
 }
 
@@ -80,10 +97,15 @@ async function getZendeskBrandSubdomain(
  */
 async function handleZendeskRateLimit(response: Response): Promise<boolean> {
   if (response.status === 429) {
-    const retryAfter = Math.max(
-      Number(response.headers.get("Retry-After")) || 1,
-      1
-    );
+    let retryAfter = 1;
+
+    const headerValue = response.headers.get("retry-after"); // https://developer.zendesk.com/api-reference/introduction/rate-limits/
+    if (headerValue) {
+      const delay = parseInt(headerValue, 10);
+      if (!Number.isNaN(delay)) {
+        retryAfter = Math.max(delay, 1);
+      }
+    }
     if (retryAfter > ZENDESK_RATE_LIMIT_TIMEOUT_SECONDS) {
       logger.info(
         { retryAfter },
@@ -97,7 +119,7 @@ async function handleZendeskRateLimit(response: Response): Promise<boolean> {
       { response, retryAfter },
       "[Zendesk] Rate limit hit, waiting before retrying."
     );
-    await new Promise((resolve) => setTimeout(resolve, retryAfter * 1000));
+    await setTimeoutAsync(retryAfter * 1000);
     return true;
   }
   return false;
@@ -105,6 +127,7 @@ async function handleZendeskRateLimit(response: Response): Promise<boolean> {
 
 /**
  * Runs a GET request to the Zendesk API with a maximum number of retries before throwing.
+ * TODO(2024-12-20): add some basic io-ts validation here (pass a codec as argument and decode with it)
  */
 async function fetchFromZendeskWithRetries({
   url,
@@ -142,39 +165,93 @@ async function fetchFromZendeskWithRetries({
   try {
     response = await rawResponse.json();
   } catch (e) {
-    if (rawResponse.status === 404) {
-      logger.error(
-        { rawResponse, text: rawResponse.text },
-        `[Zendesk] Zendesk API 404 error on: ${getEndpointFromUrl(url)}`
-      );
-      return null;
-    } else if (rawResponse.status === 403) {
-      throw new ExternalOAuthTokenError();
-    }
-    logger.error(
-      { rawResponse, status: rawResponse.status, text: rawResponse.text },
-      "[Zendesk] Error parsing Zendesk API response"
+    throw new ZendeskApiError(
+      "Error parsing Zendesk API response",
+      rawResponse.status,
+      { rawResponse, endpoint: getEndpointFromZendeskUrl(url) }
     );
-    throw new Error("Error parsing Zendesk API response");
   }
   if (!rawResponse.ok) {
-    if (response.type === "error.list" && response.errors?.length) {
-      const error = response.errors[0];
-      if (error.code === "unauthorized") {
-        throw new ExternalOAuthTokenError();
-      }
-      if (error.code === "not_found") {
-        return null;
-      }
-    }
-    throw new ZendeskApiError(
-      "Zendesk API error.",
-      rawResponse.status,
-      response
-    );
+    throw new ZendeskApiError("Zendesk API error.", rawResponse.status, {
+      response,
+      rawResponse,
+      endpoint: getEndpointFromZendeskUrl(url),
+    });
   }
 
   return response;
+}
+
+/**
+ * Fetches a single brand from the Zendesk API.
+ */
+export async function fetchZendeskBrand({
+  subdomain,
+  accessToken,
+  brandId,
+}: {
+  subdomain: string;
+  accessToken: string;
+  brandId: number;
+}): Promise<ZendeskFetchedBrand | null> {
+  const url = `https://${subdomain}.zendesk.com/api/v2/brands/${brandId}`;
+  try {
+    const response = await fetchFromZendeskWithRetries({ url, accessToken });
+    return response?.brand ?? null;
+  } catch (e) {
+    if (isZendeskNotFoundError(e)) {
+      return null;
+    }
+    throw e;
+  }
+}
+
+/**
+ * Fetches a single article from the Zendesk API.
+ */
+export async function fetchZendeskArticle({
+  brandSubdomain,
+  accessToken,
+  articleId,
+}: {
+  brandSubdomain: string;
+  accessToken: string;
+  articleId: number;
+}): Promise<ZendeskFetchedArticle | null> {
+  const url = `https://${brandSubdomain}.zendesk.com/api/v2/help_center/articles/${articleId}`;
+  try {
+    const response = await fetchFromZendeskWithRetries({ url, accessToken });
+    return response?.article ?? null;
+  } catch (e) {
+    if (isZendeskNotFoundError(e)) {
+      return null;
+    }
+    throw e;
+  }
+}
+
+/**
+ * Fetches a single category from the Zendesk API.
+ */
+export async function fetchZendeskCategory({
+  brandSubdomain,
+  accessToken,
+  categoryId,
+}: {
+  brandSubdomain: string;
+  accessToken: string;
+  categoryId: number;
+}): Promise<ZendeskFetchedCategory | null> {
+  const url = `https://${brandSubdomain}.zendesk.com/api/v2/help_center/categories/${categoryId}`;
+  try {
+    const response = await fetchFromZendeskWithRetries({ url, accessToken });
+    return response?.category ?? null;
+  } catch (e) {
+    if (isZendeskNotFoundError(e)) {
+      return null;
+    }
+    throw e;
+  }
 }
 
 /**
@@ -194,17 +271,24 @@ export async function fetchZendeskCategoriesInBrand(
   hasMore: boolean;
   nextLink: string | null;
 }> {
-  const response = await fetchFromZendeskWithRetries({
-    url:
-      url ?? // using the URL if we got one, reconstructing it otherwise
-      `https://${brandSubdomain}.zendesk.com/api/v2/help_center/categories?page[size]=${pageSize}`,
-    accessToken,
-  });
-  return {
-    categories: response.categories,
-    hasMore: response.meta.has_more,
-    nextLink: response.links.next,
-  };
+  try {
+    const response = await fetchFromZendeskWithRetries({
+      url:
+        url ?? // using the URL if we got one, reconstructing it otherwise
+        `https://${brandSubdomain}.zendesk.com/api/v2/help_center/categories?page[size]=${pageSize}`,
+      accessToken,
+    });
+    return {
+      categories: response.categories,
+      hasMore: response.meta.has_more,
+      nextLink: response.links.next,
+    };
+  } catch (e) {
+    if (isZendeskNotFoundError(e)) {
+      return { categories: [], hasMore: false, nextLink: null };
+    }
+    throw e;
+  }
 }
 
 /**
@@ -225,15 +309,32 @@ export async function fetchRecentlyUpdatedArticles({
   endTime: number;
 }> {
   // this endpoint retrieves changes in content, not only in metadata despite what is mentioned in the documentation.
-  const response = await fetchFromZendeskWithRetries({
-    url: `https://${brandSubdomain}.zendesk.com/api/v2/help_center/incremental/articles.json?start_time=${startTime}`,
-    accessToken,
-  });
-  return {
-    articles: response.articles,
-    hasMore: response.next_page !== null && response.articles.length !== 0,
-    endTime: response.end_time,
-  };
+  const url = `https://${brandSubdomain}.zendesk.com/api/v2/help_center/incremental/articles.json?start_time=${startTime}`;
+  try {
+    const response = await fetchFromZendeskWithRetries({ url, accessToken });
+    return {
+      articles: response.articles,
+      hasMore: response.next_page !== null && response.articles.length !== 0,
+      endTime: response.end_time,
+    };
+  } catch (e) {
+    if (isZendeskNotFoundError(e)) {
+      const user = await fetchZendeskCurrentUser({
+        subdomain: brandSubdomain,
+        accessToken,
+      });
+      // only admins and agents can fetch this endpoint: https://developer.zendesk.com/documentation/help_center/help-center-api/understanding-incremental-article-exports/#authenticating-the-requests
+      if (user && user.role !== "admin" && user.role !== "agent") {
+        const { role, suspended, active } = user;
+        throw new ZendeskApiError(
+          "Error fetching the incremental articles endpoint, user must be admin/agent.",
+          403,
+          { ...e.data, role, suspended, active }
+        );
+      }
+    }
+    throw e;
+  }
 }
 
 /**
@@ -270,7 +371,7 @@ export async function fetchZendeskArticlesInCategory(
 /**
  * Fetches a batch of the recently updated tickets from the Zendesk API using the incremental API endpoint.
  */
-export async function fetchRecentlyUpdatedTickets(
+export async function fetchZendeskTickets(
   accessToken: string,
   {
     brandSubdomain,
@@ -287,7 +388,7 @@ export async function fetchRecentlyUpdatedTickets(
   const response = await fetchFromZendeskWithRetries({
     url:
       url ?? // using the URL if we got one, reconstructing it otherwise
-      `https://${brandSubdomain}.zendesk.com/api/v2/incremental/tickets/cursor.json?start_time=${startTime}`,
+      `https://${brandSubdomain}.zendesk.com/api/v2/incremental/tickets/cursor?start_time=${startTime}`,
     accessToken,
   });
   return {
@@ -301,48 +402,77 @@ export async function fetchRecentlyUpdatedTickets(
 }
 
 /**
- * Fetches a batch of tickets from the Zendesk API.
- * Only fetches tickets that have been solved, and that were updated within the retention period.
+ * Fetches a single ticket from the Zendesk API.
  */
-export async function fetchZendeskTicketsInBrand(
-  accessToken: string,
-  {
-    brandSubdomain,
-    pageSize,
-    retentionPeriodDays,
-    url,
-  }:
-    | {
-        brandSubdomain: string;
-        pageSize: number;
-        retentionPeriodDays: number;
-        url?: never;
-      }
-    | {
-        brandSubdomain?: never;
-        pageSize?: never;
-        retentionPeriodDays?: never;
-        url: string;
-      }
-): Promise<{
-  tickets: ZendeskFetchedTicket[];
-  hasMore: boolean;
-  nextLink: string | null;
-}> {
-  const response = await fetchFromZendeskWithRetries({
-    url:
-      url ?? // using the URL if we got one, reconstructing it otherwise
-      `https://${brandSubdomain}.zendesk.com/api/v2/search/export.json?filter[type]=ticket&page[size]=${pageSize}&query=${encodeURIComponent(
-        `status:solved updated>${retentionPeriodDays}days`
-      )}`,
-    accessToken,
-  });
+export async function fetchZendeskTicket({
+  accessToken,
+  brandSubdomain,
+  ticketId,
+}: {
+  accessToken: string;
+  brandSubdomain: string;
+  ticketId: number;
+}): Promise<ZendeskFetchedTicket | null> {
+  const url = `https://${brandSubdomain}.zendesk.com/api/v2/tickets/${ticketId}`;
+  try {
+    const response = await fetchFromZendeskWithRetries({ url, accessToken });
+    return response?.ticket ?? null;
+  } catch (e) {
+    if (isZendeskNotFoundError(e)) {
+      return null;
+    }
+    throw e;
+  }
+}
 
-  return {
-    tickets: response.results,
-    hasMore: response.meta.has_more,
-    nextLink: response.links.next,
-  };
+/**
+ * Fetches a single ticket from the Zendesk API.
+ */
+export async function fetchZendeskTicketComments({
+  accessToken,
+  brandSubdomain,
+  ticketId,
+}: {
+  accessToken: string;
+  brandSubdomain: string;
+  ticketId: number;
+}): Promise<ZendeskFetchedTicketComment[]> {
+  const comments = [];
+  let url: string = `https://${brandSubdomain}.zendesk.com/api/v2/tickets/${ticketId}/comments?page[size]=100`;
+  let hasMore = true;
+
+  while (hasMore) {
+    const response = await fetchFromZendeskWithRetries({ url, accessToken });
+    comments.push(...response.comments);
+    hasMore = response.hasMore || false;
+    url = response.nextLink;
+  }
+  return comments;
+}
+
+/**
+ * Fetches the number of tickets in a Brand from the Zendesk API.
+ * Only counts tickets that have been solved, and that were updated within the retention period.
+ */
+export async function fetchZendeskTicketCount({
+  accessToken,
+  brandSubdomain,
+  retentionPeriodDays,
+  query = null,
+}: {
+  brandSubdomain: string;
+  accessToken: string;
+} & (
+  | { retentionPeriodDays?: number; query: string }
+  | { retentionPeriodDays: number; query?: null }
+)): Promise<number> {
+  logger.warn(
+    "Ticket count relies on the Search API, which has proved unreliable."
+  );
+  query ||= `type:ticket status:solved updated>${retentionPeriodDays}days`;
+  const url = `https://${brandSubdomain}.zendesk.com/api/v2/search/count?query=${encodeURIComponent(query)}`;
+  const response = await fetchFromZendeskWithRetries({ url, accessToken });
+  return parseInt(response.count, 10);
 }
 
 /**
@@ -355,10 +485,36 @@ export async function fetchZendeskCurrentUser({
   subdomain: string;
   accessToken: string;
 }): Promise<ZendeskFetchedUser> {
-  const response = await fetch(
-    `https://${subdomain}.zendesk.com/api/v2/users/me`,
-    { headers: { Authorization: `Bearer ${accessToken}` } }
-  );
-  const data = await response.json();
-  return data.user;
+  const url = `https://${subdomain}.zendesk.com/api/v2/users/me`;
+  const response = await fetchFromZendeskWithRetries({ url, accessToken });
+  return response.user;
+}
+
+export function isUserAdmin(user: ZendeskFetchedUser): boolean {
+  return user.active && user.role === "admin";
+}
+
+/**
+ * Fetches a multiple users at once from the Zendesk API.
+ * May run multiple queries, more precisely we need userCount // 100 + 1 API calls.
+ */
+export async function fetchZendeskManyUsers({
+  accessToken,
+  brandSubdomain,
+  userIds,
+}: {
+  accessToken: string;
+  brandSubdomain: string;
+  userIds: number[];
+}): Promise<ZendeskFetchedUser[]> {
+  const users: ZendeskFetchedUser[] = [];
+  // we can fetch at most 100 users at once: https://developer.zendesk.com/api-reference/ticketing/users/users/#show-many-users
+  for (const chunk of _.chunk(userIds, 100)) {
+    const response = await fetchFromZendeskWithRetries({
+      url: `https://${brandSubdomain}.zendesk.com/api/v2/users/show_many?ids=${chunk.join(",")}`,
+      accessToken,
+    });
+    users.push(...response.users);
+  }
+  return users;
 }

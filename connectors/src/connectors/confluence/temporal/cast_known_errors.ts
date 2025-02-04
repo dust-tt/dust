@@ -22,6 +22,14 @@ export class ConfluenceCastKnownErrorsInterceptor
         err.type === "http_response_error"
       ) {
         switch (err.status) {
+          case 429:
+            throw new ProviderWorkflowError(
+              "confluence",
+              "429 - Rate Limit Exceeded",
+              "rate_limit_error",
+              err
+            );
+
           case 500:
             throw new ProviderWorkflowError(
               "confluence",

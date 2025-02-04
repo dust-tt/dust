@@ -1,10 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 
-import {
-  Cog6ToothIcon,
-  Cog6ToothStrokeIcon,
-  IconToggleButton,
-} from "../index_with_tw_base";
+import { Cog6ToothIcon, IconToggleButton } from "../index_with_tw_base";
 
 const meta = {
   title: "Primitives/IconToggleButton",
@@ -18,7 +14,7 @@ export const IconToggleButtonSecondary: Story = {
   args: {
     variant: "secondary",
     tooltip: "This a secondary IconButton",
-    icon: Cog6ToothStrokeIcon,
+    icon: Cog6ToothIcon,
     iconSelected: Cog6ToothIcon,
     selected: false,
   },

@@ -6,6 +6,7 @@ import { UpsertDatabaseTableRequestSchema } from "@dust-tt/client";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
@@ -53,7 +54,7 @@ import { apiError } from "@app/logger/withlogging";
  *             schema:
  *               type: array
  *               items:
- *                 $ref: '#/components/schemas/Datasource'
+ *                 $ref: '#/components/schemas/Table'
  *       400:
  *         description: Invalid request
  *   post:
@@ -92,6 +93,9 @@ import { apiError } from "@app/logger/withlogging";
  *               name:
  *                 type: string
  *                 description: Name of the table
+ *               title:
+ *                 type: string
+ *                 description: Title of the table
  *               table_id:
  *                 type: string
  *                 description: Unique identifier for the table
@@ -100,7 +104,7 @@ import { apiError } from "@app/logger/withlogging";
  *                 description: Description of the table
  *               timestamp:
  *                 type: number
- *                 description: Timestamp of the table
+ *                 description: Reserved for internal use, should not be set. Unix timestamp (in seconds) of the time the document was last updated (e.g. 1698225000).
  *               tags:
  *                 type: array
  *                 items:
@@ -110,14 +114,20 @@ import { apiError } from "@app/logger/withlogging";
  *                 type: array
  *                 items:
  *                   type: string
- *                 description: Parent tables of this table
+ *                   description: 'Reserved for internal use, should not be set. Table and ancestor ids, with the following convention: parents[0] === table_id, parents[1] === parent_id, and then ancestors ids in order'
+ *               parent_id:
+ *                 type: string
+ *                 description: 'Reserved for internal use, should not be set. ID of the direct parent to associate with the table'
+ *               mime_type:
+ *                 type: string
+ *                 description: Mime type of the table
  *     responses:
  *       200:
  *         description: The table
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Datasource'
+ *               $ref: '#/components/schemas/Table'
  *       400:
  *         description: Invalid request
  *       405:
@@ -166,7 +176,11 @@ async function handler(
     }
   }
 
-  if (!dataSource || dataSource.space.sId !== spaceId) {
+  if (
+    !dataSource ||
+    dataSource.space.sId !== spaceId ||
+    !dataSource.canRead(auth)
+  ) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -226,11 +240,24 @@ async function handler(
             timestamp: table.timestamp,
             tags: table.tags,
             parents: table.parents,
+            parent_id: table.parent_id,
+            mime_type: table.mime_type,
+            title: table.title,
           };
         }),
       });
 
     case "POST":
+      if (!dataSource.canWrite(auth)) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "data_source_auth_error",
+            message: "You are not allowed to update data in this data source.",
+          },
+        });
+      }
+
       const r = UpsertDatabaseTableRequestSchema.safeParse(req.body);
 
       if (r.error) {
@@ -238,7 +265,7 @@ async function handler(
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${r.error.message}`,
+            message: fromError(r.error).toString(),
           },
         });
       }
@@ -250,15 +277,17 @@ async function handler(
         timestamp,
         tags,
         parents,
+        parent_id: parentId,
         remote_database_table_id: remoteDatabaseTableId,
         remote_database_secret_id: remoteDatabaseSecretId,
+        source_url: sourceUrl,
       } = r.data;
 
       let mimeType: string;
       let title: string;
       if (auth.isSystemKey()) {
         // If the request is from a system key, the request must provide both title and mimeType.
-        if (!r.data.mimeType) {
+        if (!r.data.mime_type) {
           return apiError(req, res, {
             status_code: 400,
             api_error: {
@@ -277,11 +306,23 @@ async function handler(
           });
         }
 
-        mimeType = r.data.mimeType;
+        mimeType = r.data.mime_type;
         title = r.data.title;
       } else {
+        // TODO(content-node): get rid of this once the use of timestamp columns in core has been rationalized
+        if (r.data.timestamp) {
+          logger.info(
+            {
+              workspaceId: owner.id,
+              dataSourceId: dataSource.sId,
+              timestamp: r.data.timestamp,
+              currentDate: Date.now(),
+            },
+            "[ContentNode] User-set timestamp."
+          );
+        }
         // If the request is from a regular API key, the request must not provide mimeType.
-        if (r.data.mimeType) {
+        if (r.data.mime_type) {
           return apiError(req, res, {
             status_code: 400,
             api_error: {
@@ -301,7 +342,7 @@ async function handler(
         } else {
           const titleTag = tags?.find((t) => t.startsWith("title:"));
           if (titleTag) {
-            title = titleTag.split(":")[1];
+            title = titleTag.split(":").slice(1).join(":");
           } else {
             title = name;
           }
@@ -345,6 +386,44 @@ async function handler(
         });
       }
 
+      // Enforce parents consistency: we expect users to either not pass them (recommended) or pass them correctly.
+      const parentsDisclaimerMessage =
+        "The use of the parents field is discouraged, this field is intended for internal uses only.";
+      if (parents) {
+        if (parents.length === 0) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: `Invalid parents: parents must have at least one element.\n${parentsDisclaimerMessage}`,
+            },
+          });
+        }
+        if (parents[0] !== tableId) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: `Invalid parents: parents[0] should be equal to document_id.\n${parentsDisclaimerMessage}`,
+            },
+          });
+        }
+      }
+      if (
+        parents &&
+        (parents.length >= 2 || parentId !== null) &&
+        parents[1] !== parentId
+      ) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid parent id: parents[1] and parent_id should be equal.\n${parentsDisclaimerMessage}`,
+          },
+        });
+      }
+
+      // Enforce that the table is a parent of itself by default.
       const upsertRes = await coreAPI.upsertTable({
         projectId: dataSource.dustAPIProjectId,
         dataSourceId: dataSource.dustAPIDataSourceId,
@@ -353,11 +432,14 @@ async function handler(
         description,
         timestamp: timestamp ?? null,
         tags: tags || [],
-        parents: parents || [],
+        // Table is a parent of itself by default.
+        parents: parents || [tableId],
+        parentId: parentId ?? null,
         remoteDatabaseTableId: remoteDatabaseTableId ?? null,
         remoteDatabaseSecretId: remoteDatabaseSecretId ?? null,
         title,
         mimeType,
+        sourceUrl: sourceUrl ?? null,
       });
 
       if (upsertRes.isErr()) {
@@ -394,6 +476,8 @@ async function handler(
           timestamp: table.timestamp,
           tags: table.tags,
           parents: table.parents,
+          mime_type: table.mime_type,
+          title: table.title,
         },
       });
 

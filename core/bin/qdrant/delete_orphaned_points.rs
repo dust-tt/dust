@@ -66,27 +66,38 @@ async fn delete_orphaned_points_for_data_source(
 
     let ds = store
         .load_data_source_by_internal_id(data_source_internal_id)
-        .await?
-        .ok_or_else(|| anyhow!("data source not found"))?;
+        .await?;
 
-    let qdrant_client = ds.main_qdrant_client(qdrant_clients);
+    match ds {
+        Some(ds) => {
+            let qdrant_client = ds.main_qdrant_client(qdrant_clients);
 
-    for document_id in document_ids {
-        if let Err(e) =
-            delete_orphaned_points_for_document_id(store, &ds, &qdrant_client, document_id).await
-        {
-            eprintln!(
-                "error deleting point for document_id: {} in data_source_internal_id: {}: {}",
-                document_id, data_source_internal_id, e
+            for document_id in document_ids {
+                if let Err(e) =
+                    delete_orphaned_points_for_document_id(store, &ds, &qdrant_client, document_id)
+                        .await
+                {
+                    eprintln!(
+                        "error deleting point for document_id: {} in data_source_internal_id: {}: {}",
+                        document_id, data_source_internal_id, e
+                    );
+                }
+            }
+
+            println!(
+                "finished processing data_source_internal_id: {}",
+                data_source_internal_id
             );
+            return Ok(());
+        }
+        None => {
+            eprintln!(
+                "data source not found for data_source_internal_id: {}",
+                data_source_internal_id
+            );
+            return Ok(());
         }
     }
-
-    println!(
-        "finished processing data_source_internal_id: {}",
-        data_source_internal_id
-    );
-    Ok(())
 }
 
 #[tokio::main]

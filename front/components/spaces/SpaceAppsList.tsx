@@ -8,19 +8,27 @@ import {
   Spinner,
   usePaginationFromUrl,
 } from "@dust-tt/sparkle";
-import type { ConnectorType, SpaceType, WorkspaceType } from "@dust-tt/types";
-import type { CellContext } from "@tanstack/react-table";
+import type {
+  AppType,
+  ConnectorType,
+  LightWorkspaceType,
+  SpaceType,
+  WorkspaceType,
+} from "@dust-tt/types";
+import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { sortBy } from "lodash";
+import Link from "next/link";
 import { useRouter } from "next/router";
 import type { ComponentType } from "react";
-import { useRef } from "react";
-import { useState } from "react";
 import * as React from "react";
+import { useRef, useState } from "react";
 
 import { SpaceCreateAppModal } from "@app/components/spaces/SpaceCreateAppModal";
-import { useApps } from "@app/lib/swr/apps";
+import type { ActionApp } from "@app/lib/registry";
+import { useApps, useSavedRunStatus } from "@app/lib/swr/apps";
 
 type RowData = {
+  app: AppType;
   category: string;
   name: string;
   icon: ComponentType;
@@ -30,7 +38,7 @@ type RowData = {
   onClick?: () => void;
 };
 
-const getTableColumns = () => {
+const getTableColumns = (): ColumnDef<RowData, string>[] => {
   return [
     {
       id: "name",
@@ -40,15 +48,100 @@ const getTableColumns = () => {
         </DataTable.CellContent>
       ),
       accessorFn: (row: RowData) => row.name,
+      meta: {
+        className: "w-full",
+      },
     },
   ];
+};
+
+// A column is added for internal Dust apps, that are used to power Dust product.
+// registryApp contains the list of all these Dust apps, that are expected to live in this space.
+// For standard apps, if registryApps is not set, column is not displayed.
+const getDustAppsColumns = (
+  owner: WorkspaceType,
+  registryApps: ActionApp[]
+): ColumnDef<RowData, string> => ({
+  id: "status",
+  cell: (info: CellContext<RowData, string>) => {
+    const { app } = info.row.original;
+    const registryApp = Object.values(registryApps).find(
+      (a) => a.appId === app.sId
+    );
+    if (!registryApp) {
+      return (
+        <DataTable.CellContent>
+          <span>No registry app</span>
+        </DataTable.CellContent>
+      );
+    }
+    return (
+      <DataTable.CellContent>
+        <AppHashChecker owner={owner} app={app} registryApp={registryApp} />
+      </DataTable.CellContent>
+    );
+  },
+  accessorFn: (row: RowData) => row.name,
+});
+
+type AppHashCheckerProps = {
+  owner: LightWorkspaceType;
+  app: AppType;
+  registryApp: ActionApp;
+};
+
+const AppHashChecker = ({ owner, app, registryApp }: AppHashCheckerProps) => {
+  const { run, isRunError } = useSavedRunStatus(owner, app, (data) => {
+    switch (data?.run?.status?.run) {
+      case "running":
+        return 100;
+      default:
+        return 0;
+    }
+  });
+
+  if (
+    registryApp.appHash &&
+    run?.app_hash &&
+    registryApp.appHash !== run.app_hash
+  ) {
+    return (
+      <span>
+        Inconsistent hashes,{" "}
+        <Link
+          className="text-highlight"
+          href={`/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/specification?hash=${registryApp.appHash}`}
+          onClick={(e) => {
+            e.stopPropagation();
+          }}
+        >
+          compare
+        </Link>
+      </span>
+    );
+  }
+
+  if (isRunError) {
+    return <span>Error: {isRunError.error?.message}</span>;
+  }
+
+  if (!run) {
+    return <span>No run found</span>;
+  }
+
+  if (run?.status.run === "errored") {
+    return <span>Run failed</span>;
+  }
+
+  return "";
 };
 
 interface SpaceAppsListProps {
   canWriteInSpace: boolean;
   onSelect: (sId: string) => void;
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   space: SpaceType;
+  registryApps?: ActionApp[] | null;
 }
 
 export const SpaceAppsList = ({
@@ -56,6 +149,7 @@ export const SpaceAppsList = ({
   canWriteInSpace,
   space,
   onSelect,
+  registryApps,
 }: SpaceAppsListProps) => {
   const router = useRouter();
   const [isCreateAppModalOpened, setIsCreateAppModalOpened] = useState(false);
@@ -73,6 +167,7 @@ export const SpaceAppsList = ({
   const rows: RowData[] = React.useMemo(
     () =>
       sortBy(apps, "name").map((app) => ({
+        app,
         sId: app.sId,
         category: "apps",
         name: app.name,
@@ -89,6 +184,11 @@ export const SpaceAppsList = ({
         <Spinner size="lg" />
       </div>
     );
+  }
+
+  const columns = getTableColumns();
+  if (registryApps) {
+    columns.push(getDustAppsColumns(owner, registryApps));
   }
 
   return (
@@ -140,7 +240,7 @@ export const SpaceAppsList = ({
           </div>
           <DataTable
             data={rows}
-            columns={getTableColumns()}
+            columns={columns}
             className="pb-4"
             filter={appSearch}
             filterColumn="name"

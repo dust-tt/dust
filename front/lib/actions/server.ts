@@ -1,12 +1,12 @@
 import type { DustAppConfigType, DustAppType } from "@dust-tt/client";
 import { DustAPI } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/types";
+import { Err, getHeaderFromGroupIds, Ok } from "@dust-tt/types";
 
 import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import type { DustRegistryActionName } from "@app/lib/registry";
-import { DustProdActionRegistry } from "@app/lib/registry";
+import { getDustProdAction } from "@app/lib/registry";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/withlogging";
 
@@ -60,7 +60,7 @@ export async function runActionStreamed(
     });
   }
 
-  const action = DustProdActionRegistry[actionName];
+  const action = getDustProdAction(actionName);
 
   const loggerArgs = {
     workspace: {
@@ -89,7 +89,10 @@ export async function runActionStreamed(
   const requestedGroupIds = auth.groups().map((g) => g.sId);
   const api = new DustAPI(
     apiConfig.getDustAPIConfig(),
-    { ...prodCredentials, groupIds: requestedGroupIds },
+    {
+      ...prodCredentials,
+      extraHeaders: getHeaderFromGroupIds(requestedGroupIds),
+    },
     logger
   );
 
@@ -174,7 +177,7 @@ export async function runAction(
     });
   }
 
-  const action = DustProdActionRegistry[actionName];
+  const action = getDustProdAction(actionName);
 
   const loggerArgs = {
     workspace: {
@@ -202,7 +205,10 @@ export async function runAction(
   const requestedGroupIds = auth.groups().map((g) => g.sId);
   const api = new DustAPI(
     apiConfig.getDustAPIConfig(),
-    { ...prodCredentials, groupIds: requestedGroupIds },
+    {
+      ...prodCredentials,
+      extraHeaders: getHeaderFromGroupIds(requestedGroupIds),
+    },
     logger
   );
 

@@ -5,7 +5,7 @@ import type {
 import { compareAgentsForSort } from "@dust-tt/types";
 import { useMemo } from "react";
 
-import { useAgentConfigurations } from "@app/lib/swr/assistants";
+import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 
 function makeEditorSuggestions(
   agentConfigurations: LightAgentConfigurationType[]
@@ -25,9 +25,9 @@ const useAssistantSuggestions = (
   inListAgentConfigurations: LightAgentConfigurationType[],
   owner: WorkspaceType
 ) => {
-  const { agentConfigurations } = useAgentConfigurations({
+  // We use this specific hook because this component is involved in the new conversation page.
+  const { agentConfigurations } = useUnifiedAgentConfigurations({
     workspaceId: owner.sId,
-    agentsGetView: "list",
   });
 
   // `useMemo` will ensure that suggestions is only recalculated

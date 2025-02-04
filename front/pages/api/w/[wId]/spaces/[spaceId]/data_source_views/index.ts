@@ -21,6 +21,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { isManaged, isWebsite } from "@app/lib/data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 
@@ -45,9 +46,8 @@ async function handler(
       GetSpaceDataSourceViewsResponseBody | PostSpaceDataSourceViewsResponseBody
     >
   >,
-
   auth: Authenticator,
-  space: SpaceResource
+  { space }: { space: SpaceResource }
 ): Promise<void> {
   switch (req.method) {
     case "GET": {
@@ -143,14 +143,25 @@ async function handler(
     }
 
     case "POST": {
-      if (!space.canWrite(auth)) {
+      if (!space.canAdministrate(auth)) {
         // Only admins, or builders who have to the space, can create a new view
         return apiError(req, res, {
           status_code: 403,
           api_error: {
             type: "workspace_auth_error",
+            message: "Only users that are `admins` can administrate spaces.",
+          },
+        });
+      }
+
+      const killSwitches = await KillSwitchResource.listEnabledKillSwitches();
+      if (killSwitches?.includes("save_data_source_views")) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "app_auth_error",
             message:
-              "Only users that are `admins` or `builder` can administrate spaces.",
+              "Saving data source views is temporarily disabled, try again later.",
           },
         });
       }
@@ -197,10 +208,10 @@ async function handler(
       }
       const dataSourceView =
         await DataSourceViewResource.createViewInSpaceFromDataSource(
-          auth,
           space,
           dataSource,
-          parentsIn
+          parentsIn,
+          auth.user()
         );
       return res.status(201).json({
         dataSourceView: dataSourceView.toJSON(),
@@ -220,5 +231,7 @@ async function handler(
 }
 
 export default withSessionAuthenticationForWorkspace(
-  withResourceFetchingFromRoute(handler, "space")
+  withResourceFetchingFromRoute(handler, {
+    space: { requireCanReadOrAdministrate: true },
+  })
 );

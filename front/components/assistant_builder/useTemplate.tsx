@@ -4,7 +4,7 @@ import { useCallback, useState } from "react";
 
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import { getDefaultAssistantState } from "@app/components/assistant_builder/types";
-import type { FetchAssistantTemplateResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates/[tId]";
+import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
 
 export function useTemplate(
   initialTemplate: FetchAssistantTemplateResponse | null

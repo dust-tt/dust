@@ -3,11 +3,23 @@ const colors = require("tailwindcss/colors"); // eslint-disable-line @typescript
 
 module.exports = {
   theme: {
+    screens: {
+      xxs: "384px",
+      xs: "512px",
+      sm: "640px",
+      md: "768px",
+      lg: "1024px",
+      xl: "1280px",
+      "2xl": "1536px",
+    },
     fontFamily: {
       sans: ["'darkmode-off-cc'", "sans-serif"],
       objektiv: ["'objektiv-mk1'", "sans-serif"],
     },
     extend: {
+      borderRadius: {
+        "4xl": "2rem",
+      },
       maxWidth: {
         48: "12rem",
       },
@@ -29,14 +41,22 @@ module.exports = {
         xl: "0 20px 25px rgba(15, 23, 42, 0.12)",
         "2xl": "0 25px 50px rgba(15, 23, 42, 0.12)",
         tale: "0px 0px 12px 12px #F6F8FB",
+        "tale-white": "0px 0px 12px 12px #FFF",
       },
       zIndex: {
         60: "60",
       },
+      minWidth: (theme) => ({
+        ...theme("spacing"),
+      }),
       minHeight: (theme) => ({
         ...theme("spacing"),
       }),
       keyframes: {
+        appear: {
+          "0%": { opacity: "0", width: "0" },
+          "100%": { opacity: "1", width: "320px" },
+        },
         "move-square": {
           "0%": {
             paddingLeft: "0",
@@ -121,6 +141,9 @@ module.exports = {
           "100%": {
             opacity: 0,
           },
+        },
+        transitionProperty: {
+          width: "width",
         },
         fadeout: {
           "0%": {
@@ -217,9 +240,9 @@ module.exports = {
         primary: {
           DEFAULT: colors.slate[800],
           light: { DEFAULT: colors.slate[700], dark: colors.slate[300] },
-          dark: { DEFAULT: colors.slate[950], dark: colors.slate[50] },
+          dark: { DEFAULT: colors.slate[950], dark: "#F6F8FB" },
           muted: { DEFAULT: colors.slate[400], dark: colors.slate[600] },
-          950: { DEFAULT: colors.slate[950], dark: colors.slate[50] },
+          950: { DEFAULT: colors.slate[950], dark: "#F6F8FB" },
           900: { DEFAULT: colors.slate[900], dark: colors.slate[100] },
           800: { DEFAULT: colors.slate[800], dark: colors.slate[200] },
           700: { DEFAULT: colors.slate[700], dark: colors.slate[300] },
@@ -288,7 +311,7 @@ module.exports = {
           300: { DEFAULT: colors.slate[300], dark: colors.slate[600] },
         },
         element: {
-          950: { DEFAULT: colors.slate[950], dark: colors.slate[50] },
+          950: { DEFAULT: colors.slate[950], dark: "#F6F8FB" },
           900: { DEFAULT: colors.slate[900], dark: colors.slate[100] },
           800: { DEFAULT: colors.slate[700], dark: colors.slate[200] },
           700: { DEFAULT: colors.slate[500], dark: colors.slate[300] },

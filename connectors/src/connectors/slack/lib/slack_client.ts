@@ -98,7 +98,7 @@ export async function getSlackClient(
           if (slackError.code === ErrorCode.PlatformError) {
             const platformError = e as WebAPIPlatformError;
             if (
-              ["account_inactive", "invalid_auth"].includes(
+              ["account_inactive", "invalid_auth", "missing_scope"].includes(
                 platformError.data.error
               )
             ) {

@@ -1,96 +1,166 @@
-import type { Meta } from "@storybook/react";
-import React, { useState } from "react";
+import type { Meta, StoryObj } from "@storybook/react";
+import React from "react";
 
-import { Button, Dialog } from "../index_with_tw_base";
+import { Button } from "@sparkle/components";
 
-const meta = {
-  title: "Modules/Dialog",
+import {
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "../index_with_tw_base";
+
+const meta: Meta<typeof Dialog> = {
+  title: "Components/Dialog",
   component: Dialog,
-} satisfies Meta<typeof Dialog>;
+  tags: ["autodocs"],
+};
 
 export default meta;
+type Story = StoryObj<typeof Dialog>;
 
-export const DialogExample = () => {
-  const [isOpen1, setisOpen1] = useState(false);
-  const [isOpen2, setisOpen2] = useState(false);
-  const [isOpen3, setisOpen3] = useState(false);
-  const [isOpen4, setisOpen4] = useState(false);
-  const [isOpen5, setisOpen5] = useState(false);
+export const Basic: Story = {
+  render: () => (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button label="Open Dialog" />
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit Profile</DialogTitle>
+          <DialogDescription>
+            Make changes to your profile settings here
+          </DialogDescription>
+        </DialogHeader>
+        <DialogContainer>
+          Your profile details will be updated based on the information you
+          provide.
+        </DialogContainer>
+        <DialogFooter
+          leftButtonProps={{
+            label: "Cancel",
+            variant: "outline",
+          }}
+          rightButtonProps={{
+            label: "Save Changes",
+            variant: "highlight",
+          }}
+        />
+      </DialogContent>
+    </Dialog>
+  ),
+};
 
-  return (
-    <div className="items-start s-flex s-flex-col s-gap-10">
-      <div>
-        <Dialog
-          isOpen={isOpen1}
-          title="Dialog title"
-          cancelLabel="Cancel"
-          onValidate={() => setisOpen1(false)}
-          onCancel={() => setisOpen1(false)}
-          validateVariant="primary"
-        >
-          <div>I'm the modal content</div>
-        </Dialog>
-        <Button
-          label="Dialog with primary validate"
-          onClick={() => setisOpen1(true)}
+export const WithForm: Story = {
+  render: () => (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button label="Edit User" />
+      </DialogTrigger>
+      <DialogContent size="lg">
+        <DialogHeader>
+          <DialogTitle>Edit User Settings</DialogTitle>
+        </DialogHeader>
+        <DialogContainer>
+          <div className="s-grid s-gap-4 s-py-4">
+            <div className="s-grid s-gap-2">
+              <label className="s-text-sm s-font-medium">Name</label>
+              <input
+                className="s-border-input s-rounded-md s-border s-bg-transparent s-px-3 s-py-1 s-text-sm"
+                placeholder="Enter name..."
+              />
+            </div>
+            <div className="s-grid s-gap-2">
+              <label className="s-text-sm s-font-medium">Email</label>
+              <input
+                className="s-border-input s-rounded-md s-border s-bg-transparent s-px-3 s-py-1 s-text-sm"
+                placeholder="Enter email..."
+                type="email"
+              />
+            </div>
+          </div>
+        </DialogContainer>
+        <DialogFooter
+          leftButtonProps={{
+            label: "Cancel",
+            variant: "ghost",
+          }}
+          rightButtonProps={{
+            label: "Save",
+            variant: "primary",
+          }}
         />
-      </div>
-      <div>
-        <Dialog
-          isOpen={isOpen2}
-          title="Dialog title"
-          cancelLabel="Cancel"
-          onValidate={() => setisOpen2(false)}
-          onCancel={() => setisOpen2(false)}
-          validateVariant="warning"
-        >
-          <div>I'm the modal content</div>
-        </Dialog>
-        <Button
-          label="Dialog with warning validate"
-          onClick={() => setisOpen2(true)}
+      </DialogContent>
+    </Dialog>
+  ),
+};
+
+export const AlertDialog: Story = {
+  render: () => (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button variant="warning" label="Delete Account" />
+      </DialogTrigger>
+      <DialogContent size="md">
+        <DialogHeader>
+          <DialogTitle>Are you absolutely sure?</DialogTitle>
+          <DialogDescription>
+            This action cannot be undone. This will permanently delete your
+            account and remove your data from our servers.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter
+          leftButtonProps={{
+            label: "Cancel",
+            variant: "ghost",
+          }}
+          rightButtonProps={{
+            label: "Delete Account",
+            variant: "warning",
+          }}
         />
-      </div>
-      <div>
-        <Dialog
-          isOpen={isOpen3}
-          title="Dialog title"
-          cancelLabel="Cancel"
-          onValidate={() => setisOpen3(false)}
-          onCancel={() => setisOpen3(false)}
-          backgroundType="snow"
-        >
-          <div>I'm the modal content</div>
-        </Dialog>
-        <Button
-          label="Dialog with BACKGROUND"
-          onClick={() => setisOpen3(true)}
-        />
-      </div>
-      <div>
-        <Dialog
-          disabled
-          isOpen={isOpen4}
-          title="Dialog title"
-          cancelLabel="Cancel"
-          onValidate={() => setisOpen4(false)}
-          onCancel={() => setisOpen4(false)}
-        >
-          <div>I'm the modal content</div>
-        </Dialog>
-        <Button label="Dialog with disabled" onClick={() => setisOpen4(true)} />
-      </div>
-      <div>
-        <Dialog
-          alertDialog={true}
-          isOpen={isOpen5}
-          title="Alert Dialog title"
-          onValidate={() => setisOpen5(false)}
-        >
-          <div>I'm the modal content</div>
-        </Dialog>
-        <Button label="Alert dialog" onClick={() => setisOpen5(true)} />
-      </div>
-    </div>
-  );
+      </DialogContent>
+    </Dialog>
+  ),
+};
+
+export const LargeContent: Story = {
+  render: () => (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button label="View Terms" />
+      </DialogTrigger>
+      <DialogContent size="xl">
+        <DialogHeader>
+          <DialogTitle>Terms of Service</DialogTitle>
+        </DialogHeader>
+        <DialogContainer>
+          <div className="s-space-y-4">
+            <h3 className="s-font-semibold">1. Introduction</h3>
+            <p className="s-text-sm s-text-muted-foreground">
+              Lorem ipsum dolor sit amet consectetur adipisicing elit. Quod
+              possimus sit modi reprehenderit sed dolorem nisi nostrum,
+              dignissimos tempora eligendi!
+            </p>
+            <h3 className="s-font-semibold">2. Terms of Use</h3>
+            <p className="s-text-sm s-text-muted-foreground">
+              Lorem ipsum dolor sit amet consectetur adipisicing elit. Quod
+              possimus sit modi reprehenderit sed dolorem nisi nostrum,
+              dignissimos tempora eligendi!
+            </p>
+            <h3 className="s-font-semibold">3. Privacy Policy</h3>
+            <p className="s-text-sm s-text-muted-foreground">
+              Lorem ipsum dolor sit amet consectetur adipisicing elit. Quod
+              possimus sit modi reprehenderit sed dolorem nisi nostrum,
+              dignissimos tempora eligendi!
+            </p>
+          </div>
+        </DialogContainer>
+      </DialogContent>
+    </Dialog>
+  ),
 };

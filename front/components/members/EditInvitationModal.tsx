@@ -65,7 +65,7 @@ export function EditInvitationModal({
             {new Date(invitation.createdAt).toLocaleDateString()}
           </div>
           <div className="flex items-center gap-2">
-            <div className="font-semibold text-element-900">Role:</div>
+            <div className="font-semibold text-foreground">Role:</div>
             <RoleDropDown
               selectedRole={selectedRole}
               onChange={setSelectedRole}

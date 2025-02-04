@@ -1,6 +1,11 @@
-import type { ConnectorsAPIError, ContentNode, Result } from "@dust-tt/types";
-import type { ConnectorPermission, ContentNodesViewType } from "@dust-tt/types";
+import type {
+  ConnectorPermission,
+  ContentNode,
+  ContentNodesViewType,
+  Result,
+} from "@dust-tt/types";
 import { assertNever, Err, Ok } from "@dust-tt/types";
+import { Op } from "sequelize";
 
 import type { GithubRepo } from "@connectors/connectors/github/lib/github_api";
 import {
@@ -8,11 +13,35 @@ import {
   getReposPage,
   installationIdFromConnectionId,
 } from "@connectors/connectors/github/lib/github_api";
-import { getGithubCodeOrDirectoryParentIds } from "@connectors/connectors/github/lib/hierarchy";
-import { matchGithubInternalIdType } from "@connectors/connectors/github/lib/utils";
+import {
+  getGithubCodeDirectoryParentIds,
+  getGithubCodeFileParentIds,
+} from "@connectors/connectors/github/lib/hierarchy";
+import {
+  getCodeRootInternalId,
+  getDiscussionInternalId,
+  getDiscussionsInternalId,
+  getDiscussionsUrl,
+  getDiscussionUrl,
+  getGithubIdsFromDiscussionInternalId,
+  getGithubIdsFromIssueInternalId,
+  getIssueInternalId,
+  getIssuesInternalId,
+  getIssuesUrl,
+  getIssueUrl,
+  getRepositoryInternalId,
+  matchGithubInternalIdType,
+} from "@connectors/connectors/github/lib/utils";
 import { launchGithubFullSyncWorkflow } from "@connectors/connectors/github/temporal/client";
-import type { ConnectorManagerError } from "@connectors/connectors/interface";
-import { BaseConnectorManager } from "@connectors/connectors/interface";
+import type {
+  CreateConnectorErrorCode,
+  RetrievePermissionsErrorCode,
+  UpdateConnectorErrorCode,
+} from "@connectors/connectors/interface";
+import {
+  BaseConnectorManager,
+  ConnectorManagerError,
+} from "@connectors/connectors/interface";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
   GithubCodeDirectory,
@@ -36,7 +65,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
   }: {
     dataSourceConfig: DataSourceConfig;
     connectionId: string;
-  }): Promise<Result<string, ConnectorManagerError>> {
+  }): Promise<Result<string, ConnectorManagerError<CreateConnectorErrorCode>>> {
     const installationId = await installationIdFromConnectionId(connectionId);
     if (!installationId) {
       throw new Error("Github: received connectionId is invalid");
@@ -70,14 +99,11 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
     connectionId,
   }: {
     connectionId?: string | null;
-  }): Promise<Result<string, ConnectorsAPIError>> {
+  }): Promise<Result<string, ConnectorManagerError<UpdateConnectorErrorCode>>> {
     const c = await ConnectorResource.fetchById(this.connectorId);
     if (!c) {
       logger.error({ connectorId: this.connectorId }, "Connector not found");
-      return new Err({
-        message: "Connector not found",
-        type: "connector_not_found",
-      });
+      throw new Error("Connector not found");
     }
 
     if (connectionId) {
@@ -88,10 +114,12 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         ]);
 
       if (oldGithubInstallationId !== newGithubInstallationId) {
-        return new Err({
-          type: "connector_oauth_target_mismatch",
-          message: "Cannot change the Installation Id of a Github Data Source",
-        });
+        return new Err(
+          new ConnectorManagerError(
+            "CONNECTOR_OAUTH_TARGET_MISMATCH",
+            "Cannot change the Installation Id of a Github Data Source"
+          )
+        );
       }
 
       await c.update({ connectionId });
@@ -224,11 +252,15 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
     parentInternalId: string | null;
     filterPermission: ConnectorPermission | null;
     viewType: ContentNodesViewType;
-  }): Promise<Result<ContentNode[], Error>> {
+  }): Promise<
+    Result<ContentNode[], ConnectorManagerError<RetrievePermissionsErrorCode>>
+  > {
     const c = await ConnectorResource.fetchById(this.connectorId);
     if (!c) {
       logger.error({ connectorId: this.connectorId }, "Connector not found");
-      return new Err(new Error("Connector not found"));
+      return new Err(
+        new ConnectorManagerError("CONNECTOR_NOT_FOUND", "Connector not found")
+      );
     }
 
     const connectionId = c.connectionId;
@@ -242,7 +274,12 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         const pageRes = await getReposPage(connectionId, pageNumber);
 
         if (pageRes.isErr()) {
-          return new Err(pageRes.error);
+          return new Err(
+            new ConnectorManagerError(
+              "EXTERNAL_OAUTH_TOKEN_ERROR",
+              pageRes.error.message
+            )
+          );
         }
 
         const page = pageRes.value;
@@ -253,15 +290,13 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
 
         nodes = nodes.concat(
           page.map((repo) => ({
-            provider: c.type,
-            internalId: repo.id.toString(),
+            internalId: getRepositoryInternalId(repo.id),
             parentInternalId: null,
             type: "folder",
             title: repo.name,
             sourceUrl: repo.url,
             expandable: true,
             permission: "read",
-            dustDocumentId: null,
             lastUpdatedAt: null,
           }))
         );
@@ -273,162 +308,165 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
 
       return new Ok(nodes);
     } else {
-      if (parentInternalId.startsWith("github-code-")) {
-        const [files, directories] = await Promise.all([
-          (async () => {
-            return GithubCodeFile.findAll({
-              where: {
-                connectorId: c.id,
-                parentInternalId,
-              },
+      const { type, repoId } = matchGithubInternalIdType(parentInternalId);
+      if (isNaN(repoId)) {
+        return new Err(
+          new ConnectorManagerError(
+            "INVALID_PARENT_INTERNAL_ID",
+            `Invalid parentInternalId Github repoId: ${parentInternalId}`
+          )
+        );
+      }
+
+      switch (type) {
+        case "REPO_FULL": {
+          const [latestDiscussion, latestIssue, repoRes, codeRepo] =
+            await Promise.all([
+              GithubDiscussion.findOne({
+                where: {
+                  connectorId: c.id,
+                  repoId: repoId.toString(),
+                },
+                order: [["updatedAt", "DESC"]],
+              }),
+              GithubIssue.findOne({
+                where: {
+                  connectorId: c.id,
+                  repoId: repoId.toString(),
+                },
+                order: [["updatedAt", "DESC"]],
+              }),
+              getRepo(connectionId, repoId),
+              GithubCodeRepository.findOne({
+                where: {
+                  connectorId: c.id,
+                  repoId: repoId.toString(),
+                },
+              }),
+            ]);
+
+          if (repoRes.isErr()) {
+            return new Err(
+              new ConnectorManagerError(
+                "EXTERNAL_OAUTH_TOKEN_ERROR",
+                repoRes.error.message
+              )
+            );
+          }
+
+          const repo = repoRes.value;
+
+          const nodes: ContentNode[] = [];
+
+          if (latestIssue) {
+            nodes.push({
+              internalId: getIssuesInternalId(repoId),
+              parentInternalId,
+              type: "database",
+              title: "Issues",
+              sourceUrl: getIssuesUrl(repo.url),
+              expandable: false,
+              permission: "read",
+              lastUpdatedAt: latestIssue.updatedAt.getTime(),
             });
-          })(),
-          (async () => {
-            return GithubCodeDirectory.findAll({
-              where: {
-                connectorId: c.id,
-                parentInternalId,
-              },
+          }
+
+          if (latestDiscussion) {
+            nodes.push({
+              internalId: getDiscussionsInternalId(repoId),
+              parentInternalId,
+              type: "channel",
+              title: "Discussions",
+              sourceUrl: getDiscussionsUrl(repo.url),
+              expandable: false,
+              permission: "read",
+              lastUpdatedAt: latestDiscussion.updatedAt.getTime(),
             });
-          })(),
-        ]);
+          }
 
-        files.sort((a, b) => {
-          return a.fileName.localeCompare(b.fileName);
-        });
-        directories.sort((a, b) => {
-          return a.dirName.localeCompare(b.dirName);
-        });
+          if (codeRepo) {
+            nodes.push({
+              internalId: getCodeRootInternalId(repoId),
+              parentInternalId,
+              type: "folder",
+              title: "Code",
+              sourceUrl: repo.url,
+              expandable: true,
+              permission: "read",
+              lastUpdatedAt: codeRepo.codeUpdatedAt.getTime(),
+            });
+          }
 
-        const nodes: ContentNode[] = [];
-
-        directories.forEach((directory) => {
-          nodes.push({
-            provider: c.type,
-            internalId: directory.internalId,
-            parentInternalId,
-            type: "folder",
-            title: directory.dirName,
-            sourceUrl: directory.sourceUrl,
-            expandable: true,
-            permission: "read",
-            dustDocumentId: null,
-            lastUpdatedAt: directory.codeUpdatedAt.getTime(),
-          });
-        });
-
-        files.forEach((file) => {
-          nodes.push({
-            provider: c.type,
-            internalId: file.documentId,
-            parentInternalId,
-            type: "file",
-            title: file.fileName,
-            sourceUrl: file.sourceUrl,
-            expandable: false,
-            permission: "read",
-            dustDocumentId: file.documentId,
-            lastUpdatedAt: file.codeUpdatedAt.getTime(),
-          });
-        });
-
-        return new Ok(nodes);
-      } else {
-        // If parentInternalId is set and does not start with `github-code` it means that it is
-        // supposed to be the repoId. We support issues and discussions and also want to add the code
-        // repo resource if it exists (code sync enabled).
-        const repoId = parseInt(parentInternalId, 10);
-        if (isNaN(repoId)) {
-          return new Err(new Error(`Invalid repoId: ${parentInternalId}`));
+          return new Ok(nodes);
         }
-
-        const [latestDiscussion, latestIssue, repoRes, codeRepo] =
-          await Promise.all([
-            (async () => {
-              return GithubDiscussion.findOne({
-                where: {
-                  connectorId: c.id,
-                  repoId: repoId.toString(),
-                },
-                limit: 1,
-                order: [["updatedAt", "DESC"]],
-              });
-            })(),
-            (async () => {
-              return GithubIssue.findOne({
-                where: {
-                  connectorId: c.id,
-                  repoId: repoId.toString(),
-                },
-                limit: 1,
-                order: [["updatedAt", "DESC"]],
-              });
-            })(),
-            getRepo(connectionId, repoId),
-            (async () => {
-              return GithubCodeRepository.findOne({
-                where: {
-                  connectorId: c.id,
-                  repoId: repoId.toString(),
-                },
-              });
-            })(),
+        case "REPO_CODE":
+        case "REPO_CODE_DIR": {
+          const [files, directories] = await Promise.all([
+            GithubCodeFile.findAll({
+              where: {
+                connectorId: c.id,
+                parentInternalId,
+              },
+            }),
+            GithubCodeDirectory.findAll({
+              where: {
+                connectorId: c.id,
+                parentInternalId,
+              },
+            }),
           ]);
 
-        if (repoRes.isErr()) {
-          return repoRes;
-        }
-
-        const repo = repoRes.value;
-
-        const nodes: ContentNode[] = [];
-
-        if (latestIssue) {
-          nodes.push({
-            provider: c.type,
-            internalId: `${repoId}-issues`,
-            parentInternalId,
-            type: "database",
-            title: "Issues",
-            sourceUrl: repo.url + "/issues",
-            expandable: false,
-            permission: "read",
-            dustDocumentId: null,
-            lastUpdatedAt: latestIssue.updatedAt.getTime(),
+          files.sort((a, b) => {
+            return a.fileName.localeCompare(b.fileName);
           });
-        }
-
-        if (latestDiscussion) {
-          nodes.push({
-            provider: c.type,
-            internalId: `${repoId}-discussions`,
-            parentInternalId,
-            type: "channel",
-            title: "Discussions",
-            sourceUrl: repo.url + "/discussions",
-            expandable: false,
-            permission: "read",
-            dustDocumentId: null,
-            lastUpdatedAt: latestDiscussion.updatedAt.getTime(),
+          directories.sort((a, b) => {
+            return a.dirName.localeCompare(b.dirName);
           });
-        }
 
-        if (codeRepo) {
-          nodes.push({
-            provider: c.type,
-            internalId: `github-code-${repoId}`,
-            parentInternalId,
-            type: "folder",
-            title: "Code",
-            sourceUrl: repo.url,
-            expandable: true,
-            permission: "read",
-            dustDocumentId: null,
-            lastUpdatedAt: codeRepo.codeUpdatedAt.getTime(),
+          const nodes: ContentNode[] = [];
+
+          directories.forEach((directory) => {
+            nodes.push({
+              internalId: directory.internalId,
+              parentInternalId,
+              type: "folder",
+              title: directory.dirName,
+              sourceUrl: directory.sourceUrl,
+              expandable: true,
+              permission: "read",
+              lastUpdatedAt: directory.codeUpdatedAt.getTime(),
+            });
           });
-        }
 
-        return new Ok(nodes);
+          files.forEach((file) => {
+            nodes.push({
+              internalId: file.documentId,
+              parentInternalId,
+              type: "file",
+              title: file.fileName,
+              sourceUrl: file.sourceUrl,
+              expandable: false,
+              permission: "read",
+              lastUpdatedAt: file.codeUpdatedAt.getTime(),
+            });
+          });
+
+          return new Ok(nodes);
+        }
+        // we should never be getting issues, discussions, code files, single issues or discussions as parent
+        case "REPO_ISSUES":
+        case "REPO_DISCUSSIONS":
+        case "REPO_CODE_FILE":
+        case "REPO_DISCUSSION":
+        case "REPO_ISSUE":
+          return new Err(
+            new ConnectorManagerError(
+              "INVALID_PARENT_INTERNAL_ID",
+              `Invalid parentInternalId Github type: ${type}`
+            )
+          );
+        default:
+          assertNever(type);
       }
     }
   }
@@ -456,6 +494,10 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
     //  All issues of the repo, or all discussions of the repo
     const allIssuesFromRepoIds: number[] = [];
     const allDiscussionsFromRepoIds: number[] = [];
+
+    //  Single issues or discussions
+    const issueIds: { repoId: string; issueNumber: number }[] = [];
+    const discussionIds: { repoId: string; discussionNumber: number }[] = [];
 
     // The full code, or a specific folder or file in the code
     const allCodeFromRepoIds: string[] = [];
@@ -485,6 +527,12 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
           break;
         case "REPO_CODE_FILE":
           codeFileIds.push(internalId);
+          break;
+        case "REPO_DISCUSSION":
+          discussionIds.push(getGithubIdsFromDiscussionInternalId(internalId));
+          break;
+        case "REPO_ISSUE":
+          issueIds.push(getGithubIdsFromIssueInternalId(internalId));
           break;
         default:
           assertNever(type);
@@ -530,6 +578,22 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       }),
     ]);
 
+    // Issues and Discussions are also stored in the db
+    const [issues, discussions] = await Promise.all([
+      GithubIssue.findAll({
+        where: {
+          connectorId: c.id,
+          [Op.or]: issueIds,
+        },
+      }),
+      GithubDiscussion.findAll({
+        where: {
+          connectorId: c.id,
+          [Op.or]: discussionIds,
+        },
+      }),
+    ]);
+
     // Constructing Nodes for Full Repo
     fullRepoIds.forEach((repoId) => {
       const repo = uniqueRepos[repoId];
@@ -537,16 +601,13 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         return;
       }
       nodes.push({
-        provider: c.type,
-        internalId: repoId.toString(),
+        internalId: getRepositoryInternalId(repoId),
         parentInternalId: null,
         type: "folder",
         title: repo.name,
-        titleWithParentsContext: `[${repo.name}] - Full repository`,
         sourceUrl: repo.url,
         expandable: true,
         permission: "read",
-        dustDocumentId: null,
         lastUpdatedAt: null,
       });
     });
@@ -558,16 +619,13 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         return;
       }
       nodes.push({
-        provider: c.type,
-        internalId: `${repoId}-issues`,
-        parentInternalId: repoId.toString(),
+        internalId: getIssuesInternalId(repoId),
+        parentInternalId: getRepositoryInternalId(repoId),
         type: "database",
         title: "Issues",
-        titleWithParentsContext: `[${repo.name}] Issues`,
-        sourceUrl: repo.url + "/issues",
+        sourceUrl: getIssuesUrl(repo.url),
         expandable: false,
         permission: "read",
-        dustDocumentId: null,
         lastUpdatedAt: null,
       });
     });
@@ -577,74 +635,91 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         return;
       }
       nodes.push({
-        provider: c.type,
-        internalId: `${repoId}-discussions`,
-        parentInternalId: repoId.toString(),
+        internalId: getDiscussionsInternalId(repoId),
+        parentInternalId: getRepositoryInternalId(repoId),
         type: "channel",
         title: "Discussions",
-        titleWithParentsContext: `[${repo.name}] Discussions`,
-        sourceUrl: repo.url + "/discussions",
+        sourceUrl: getDiscussionsUrl(repo.url),
         expandable: false,
         permission: "read",
-        dustDocumentId: null,
         lastUpdatedAt: null,
+      });
+    });
+
+    issues.forEach((issue) => {
+      const { repoId, issueNumber } = issue;
+      const repo = uniqueRepos[parseInt(repoId, 10)];
+      if (!repo) {
+        return;
+      }
+      nodes.push({
+        internalId: getIssueInternalId(repoId, issueNumber),
+        parentInternalId: getIssuesInternalId(repoId),
+        type: "file",
+        title: `Issue #${issueNumber}`,
+        sourceUrl: getIssueUrl(repo.url, issueNumber),
+        expandable: false,
+        permission: "read",
+        lastUpdatedAt: issue.updatedAt.getTime(),
+      });
+    });
+
+    discussions.forEach((discussion) => {
+      const { repoId, discussionNumber } = discussion;
+      const repo = uniqueRepos[parseInt(repoId, 10)];
+      if (!repo) {
+        return;
+      }
+      nodes.push({
+        internalId: getDiscussionInternalId(repoId, discussionNumber),
+        parentInternalId: getDiscussionsInternalId(repoId),
+        type: "file",
+        title: `Discussion #${discussionNumber}`,
+        sourceUrl: getDiscussionUrl(repo.url, discussionNumber),
+        expandable: false,
+        permission: "read",
+        lastUpdatedAt: discussion.updatedAt.getTime(),
       });
     });
 
     // Constructing Nodes for Code
     fullCodeInRepos.forEach((codeRepo) => {
-      const repo = uniqueRepos[parseInt(codeRepo.repoId)];
       nodes.push({
-        provider: c.type,
-        internalId: `github-code-${codeRepo.repoId}`,
-        parentInternalId: codeRepo.repoId,
+        internalId: getCodeRootInternalId(codeRepo.repoId),
+        parentInternalId: getRepositoryInternalId(codeRepo.repoId),
         type: "folder",
         title: "Code",
-        titleWithParentsContext: repo ? `[${repo.name}] Code` : "Code",
         sourceUrl: codeRepo.sourceUrl,
         expandable: true,
         permission: "read",
-        dustDocumentId: null,
         lastUpdatedAt: codeRepo.codeUpdatedAt.getTime(),
       });
     });
 
     // Constructing Nodes for Code Directories
     codeDirectories.forEach((directory) => {
-      const repo = uniqueRepos[parseInt(directory.repoId)];
       nodes.push({
-        provider: c.type,
         internalId: directory.internalId,
         parentInternalId: directory.parentInternalId,
         type: "folder",
         title: directory.dirName,
-        titleWithParentsContext: repo
-          ? `[${repo.name}] ${directory.dirName} (code)`
-          : directory.dirName,
         sourceUrl: directory.sourceUrl,
         expandable: true,
         permission: "read",
-        dustDocumentId: null,
         lastUpdatedAt: directory.codeUpdatedAt.getTime(),
       });
     });
 
     // Constructing Nodes for Code Files
     codeFiles.forEach((file) => {
-      const repo = uniqueRepos[parseInt(file.repoId)];
       nodes.push({
-        provider: c.type,
         internalId: file.documentId,
         parentInternalId: file.parentInternalId,
         type: "file",
         title: file.fileName,
-        titleWithParentsContext: repo
-          ? `[${repo.name}] ${file.fileName} (code)`
-          : file.fileName,
         sourceUrl: file.sourceUrl,
         expandable: false,
         permission: "read",
-        dustDocumentId: file.documentId,
         lastUpdatedAt: file.codeUpdatedAt.getTime(),
       });
     });
@@ -658,8 +733,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
     internalId: string;
     memoizationKey?: string;
   }): Promise<Result<string[], Error>> {
-    const baseParents: string[] = [internalId];
-
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
       return new Err(
@@ -667,27 +740,50 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       );
     }
 
-    if (internalId.startsWith(`github-code-`)) {
-      const repoId = parseInt(internalId.split("-")[2] || "", 10);
-      if (internalId.split("-").length > 3) {
-        const parents = await getGithubCodeOrDirectoryParentIds(
+    const { type, repoId } = matchGithubInternalIdType(internalId);
+
+    switch (type) {
+      case "REPO_FULL": {
+        return new Ok([internalId]);
+      }
+      case "REPO_ISSUES":
+      case "REPO_DISCUSSIONS": {
+        return new Ok([internalId, getRepositoryInternalId(repoId)]);
+      }
+      case "REPO_CODE": {
+        return new Ok([internalId, getRepositoryInternalId(repoId)]);
+      }
+      case "REPO_CODE_DIR": {
+        const parents = await getGithubCodeDirectoryParentIds(
           connector.id,
           internalId,
           repoId
         );
-        return new Ok([...baseParents, ...parents]);
-      } else {
-        return new Ok([...baseParents, `${repoId}`]);
+        return new Ok([internalId, ...parents]);
       }
-    } else {
-      const repoId = parseInt(internalId.split("-")[0] || "", 10);
-      if (
-        internalId.endsWith("-issues") ||
-        internalId.endsWith("-discussions")
-      ) {
-        return new Ok([...baseParents, `${repoId}`]);
+      case "REPO_CODE_FILE": {
+        const parents = await getGithubCodeFileParentIds(
+          connector.id,
+          internalId,
+          repoId
+        );
+        return new Ok([internalId, ...parents]);
       }
-      return new Ok(baseParents);
+      case "REPO_ISSUE":
+        return new Ok([
+          internalId,
+          getIssuesInternalId(repoId),
+          getRepositoryInternalId(repoId),
+        ]);
+      case "REPO_DISCUSSION":
+        return new Ok([
+          internalId,
+          getDiscussionsInternalId(repoId),
+          getRepositoryInternalId(repoId),
+        ]);
+      default: {
+        assertNever(type);
+      }
     }
   }
 

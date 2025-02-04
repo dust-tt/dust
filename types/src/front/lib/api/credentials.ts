@@ -10,6 +10,9 @@ const {
   DUST_MANAGED_GOOGLE_AI_STUDIO_API_KEY = "",
   DUST_MANAGED_SERP_API_KEY = "",
   DUST_MANAGED_BROWSERLESS_API_KEY = "",
+  DUST_MANAGED_TOGETHERAI_API_KEY = "",
+  DUST_MANAGED_DEEPSEEK_API_KEY = "",
+  DUST_MANAGED_FIREWORKS_API_KEY = "",
 } = process.env;
 
 export const credentialsFromProviders = (
@@ -58,6 +61,15 @@ export const credentialsFromProviders = (
       case "google_ai_studio":
         credentials["GOOGLE_AI_STUDIO_API_KEY"] = config.api_key;
         break;
+      case "togetherai":
+        credentials["TOGETHERAI_API_KEY"] = config.api_key;
+        break;
+      case "deepseek":
+        credentials["DEEPSEEK_API_KEY"] = config.api_key;
+        break;
+      case "fireworks":
+        credentials["FIREWORKS_API_KEY"] = config.api_key;
+        break;
     }
   });
   return credentials;
@@ -74,5 +86,8 @@ export const dustManagedCredentials = (): CredentialsType => {
     GOOGLE_AI_STUDIO_API_KEY: DUST_MANAGED_GOOGLE_AI_STUDIO_API_KEY,
     SERP_API_KEY: DUST_MANAGED_SERP_API_KEY,
     BROWSERLESS_API_KEY: DUST_MANAGED_BROWSERLESS_API_KEY,
+    TOGETHERAI_API_KEY: DUST_MANAGED_TOGETHERAI_API_KEY,
+    DEEPSEEK_API_KEY: DUST_MANAGED_DEEPSEEK_API_KEY,
+    FIREWORKS_API_KEY: DUST_MANAGED_FIREWORKS_API_KEY,
   };
 };

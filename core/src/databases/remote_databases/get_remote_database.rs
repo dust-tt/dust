@@ -1,11 +1,11 @@
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 
 use crate::{
     databases::remote_databases::remote_database::RemoteDatabase,
     oauth::{client::OauthClient, credential::CredentialProvider},
 };
 
-use super::snowflake::SnowflakeRemoteDatabase;
+use super::{bigquery::get_bigquery_remote_database, snowflake::SnowflakeRemoteDatabase};
 
 pub async fn get_remote_database(
     credential_id: &str,
@@ -17,5 +17,13 @@ pub async fn get_remote_database(
             let db = SnowflakeRemoteDatabase::new(content)?;
             Ok(Box::new(db) as Box<dyn RemoteDatabase + Sync + Send>)
         }
+        CredentialProvider::Bigquery => {
+            let db = get_bigquery_remote_database(content).await?;
+            Ok(db)
+        }
+        _ => Err(anyhow!(
+            "{:?} is not a supported remote database provider",
+            provider
+        ))?,
     }
 }

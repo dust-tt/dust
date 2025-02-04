@@ -21,6 +21,7 @@ type SparkleLinkProps = {
   shallow?: boolean;
   target?: string;
   rel?: string;
+  prefetch?: boolean;
 };
 
 export type SparkleContextLinkType = ComponentType<

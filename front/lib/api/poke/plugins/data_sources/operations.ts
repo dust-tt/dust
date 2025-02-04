@@ -52,13 +52,11 @@ export const connectorOperationsPlugin = createPlugin(
     }
 
     const dataSource = await DataSourceResource.fetchById(auth, dataSourceId);
-
     if (!dataSource) {
       return new Err(new Error("Data source not found."));
     }
 
     const { connectorId } = dataSource;
-
     if (!connectorId) {
       return new Err(new Error("No connector on datasource."));
     }

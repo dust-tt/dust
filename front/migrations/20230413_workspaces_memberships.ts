@@ -1,9 +1,9 @@
-import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 
 async function main() {
-  const users = await User.findAll();
+  const users = await UserModel.findAll();
 
   const chunks = [];
   for (let i = 0; i < users.length; i += 16) {

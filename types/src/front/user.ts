@@ -40,10 +40,15 @@ export type LightWorkspaceType = {
   segmentation: WorkspaceSegmentationType;
   whiteListedProviders: ModelProviderIdType[] | null;
   defaultEmbeddingProvider: EmbeddingProviderIdType | null;
+  metadata: Record<string, string | number | boolean | object> | null;
 };
 
 export type WorkspaceType = LightWorkspaceType & {
   ssoEnforced?: boolean;
+};
+
+export type ExtensionWorkspaceType = WorkspaceType & {
+  blacklistedDomains: string[] | null;
 };
 
 export type UserProviderType =
@@ -69,7 +74,11 @@ export type UserType = {
 };
 
 export type UserTypeWithWorkspaces = UserType & {
-  workspaces: LightWorkspaceType[];
+  workspaces: WorkspaceType[];
+};
+
+export type UserTypeWithExtensionWorkspaces = UserType & {
+  workspaces: ExtensionWorkspaceType[];
 };
 
 export type UserMetadataType = {
@@ -165,4 +174,27 @@ export function isOnlyAdmin(
     return false;
   }
   return owner.role === "admin";
+}
+
+const DustUserEmailHeader = "x-api-user-email";
+
+export function getUserEmailFromHeaders(headers: {
+  [key: string]: string | string[] | undefined;
+}) {
+  const email = headers[DustUserEmailHeader];
+  if (typeof email === "string") {
+    return email;
+  }
+
+  return undefined;
+}
+
+export function getHeaderFromUserEmail(email: string | undefined) {
+  if (!email) {
+    return undefined;
+  }
+
+  return {
+    [DustUserEmailHeader]: email,
+  };
 }

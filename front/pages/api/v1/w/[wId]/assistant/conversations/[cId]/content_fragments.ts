@@ -1,13 +1,15 @@
 import type { PostContentFragmentResponseType } from "@dust-tt/client";
 import { PublicPostContentFragmentRequestBodySchema } from "@dust-tt/client";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
+import { isContentFragmentInputWithContentType } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 import {
   getConversation,
-  normalizeContentFragmentType,
   postNewContentFragment,
 } from "@app/lib/api/assistant/conversation";
+import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -86,17 +88,20 @@ async function handler(
       const r = PublicPostContentFragmentRequestBodySchema.safeParse(req.body);
 
       if (r.error) {
+        const ve = fromError(r.error);
+        console.log(ve.toString());
+
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${r.error.message}`,
+            message: fromError(r.error).toString(),
           },
         });
       }
 
       if (r.data.content) {
-        const { content, contentType } = r.data;
+        const { content } = r.data;
         if (content.length === 0 || content.length > 128 * 1024) {
           return apiError(req, res, {
             status_code: 400,
@@ -107,19 +112,32 @@ async function handler(
             },
           });
         }
-        const normalizedContentType = normalizeContentFragmentType({
-          contentType,
-          url: req.url,
-        });
-        r.data.contentType = normalizedContentType;
       }
-      const { context, ...contentFragment } = r.data;
+      const { context, ...rest } = r.data;
+      let contentFragment = rest;
+
+      // If we receive a content fragment that is not file based, we transform it to a file-based
+      // one.
+      if (isContentFragmentInputWithContentType(contentFragment)) {
+        const contentFragmentRes = await toFileContentFragment(auth, {
+          contentFragment,
+        });
+        if (contentFragmentRes.isErr()) {
+          throw new Error(contentFragmentRes.error.message);
+        }
+        contentFragment = contentFragmentRes.value;
+      }
 
       const contentFragmentRes = await postNewContentFragment(
         auth,
         conversation,
         contentFragment,
-        context
+        {
+          email: context?.email ?? null,
+          fullName: context?.fullName ?? null,
+          username: context?.username ?? null,
+          profilePictureUrl: context?.profilePictureUrl ?? null,
+        }
       );
 
       if (contentFragmentRes.isErr()) {

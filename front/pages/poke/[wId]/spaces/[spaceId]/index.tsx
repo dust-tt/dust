@@ -6,10 +6,13 @@ import type {
 import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 
+import { DataSourceViewsDataTable } from "@app/components/poke/data_source_views/table";
 import { MembersDataTable } from "@app/components/poke/members/table";
+import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { ViewSpaceViewTable } from "@app/components/poke/spaces/view";
 import { getMembers } from "@app/lib/api/workspace";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
+import { spaceToPokeJSON } from "@app/lib/poke/utils";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import PokeLayout from "@app/pages/poke/PokeLayout";
@@ -61,12 +64,12 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     props: {
       members: userWithWorkspaces,
       owner,
-      space: space.toPokeJSON(),
+      space: spaceToPokeJSON(space),
     },
   };
 });
 
-export default function DataSourceViewPage({
+export default function SpacePage({
   members,
   owner,
   space,
@@ -76,11 +79,19 @@ export default function DataSourceViewPage({
       <ViewSpaceViewTable space={space} />
       <div className="flex grow flex-col">
         <MembersDataTable members={members} owner={owner} readonly />
+        <PluginList
+          resourceType="spaces"
+          workspaceResource={{
+            workspace: owner,
+            resourceId: space.sId,
+          }}
+        />
+        <DataSourceViewsDataTable owner={owner} spaceId={space.sId} />
       </div>
     </div>
   );
 }
 
-DataSourceViewPage.getLayout = (page: ReactElement) => {
+SpacePage.getLayout = (page: ReactElement) => {
   return <PokeLayout>{page}</PokeLayout>;
 };

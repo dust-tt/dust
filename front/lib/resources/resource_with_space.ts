@@ -19,8 +19,8 @@ import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import type { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import type {
   ModelStaticSoftDeletable,
-  SoftDeletableModel,
-} from "@app/lib/resources/storage/wrappers";
+  SoftDeletableWorkspaceAwareModel,
+} from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
   InferIncludeType,
   ResourceFindOptions,
@@ -34,7 +34,7 @@ interface ModelWithSpace extends ResourceWithId {
 }
 
 export abstract class ResourceWithSpace<
-  M extends SoftDeletableModel & ModelWithSpace,
+  M extends SoftDeletableWorkspaceAwareModel & ModelWithSpace,
 > extends BaseResource<M> {
   readonly workspaceId: ModelWithSpace["workspaceId"];
 
@@ -50,7 +50,7 @@ export abstract class ResourceWithSpace<
 
   protected static async baseFetchWithAuthorization<
     T extends ResourceWithSpace<M>,
-    M extends SoftDeletableModel & ModelWithSpace,
+    M extends SoftDeletableWorkspaceAwareModel & ModelWithSpace,
     IncludeType extends Partial<InferIncludeType<M>>,
   >(
     this: {
@@ -63,6 +63,7 @@ export abstract class ResourceWithSpace<
     } & { model: ModelStaticSoftDeletable<M> },
     auth: Authenticator,
     {
+      attributes,
       includes,
       limit,
       order,
@@ -80,6 +81,7 @@ export abstract class ResourceWithSpace<
     ];
 
     const blobs = await this.model.findAll({
+      attributes,
       where: where as WhereOptions<M>,
       include: includeClauses,
       limit,
@@ -153,16 +155,16 @@ export abstract class ResourceWithSpace<
 
   // Permissions.
 
-  requestedPermissions(opts?: { returnNewFormat: boolean }) {
-    return this.space.requestedPermissions(opts);
+  requestedPermissions() {
+    return this.space.requestedPermissions();
   }
 
   canAdministrate(auth: Authenticator) {
     return this.space.canAdministrate(auth);
   }
 
-  canList(auth: Authenticator) {
-    return this.space.canList(auth);
+  canReadOrAdministrate(auth: Authenticator) {
+    return this.space.canReadOrAdministrate(auth);
   }
 
   canRead(auth: Authenticator) {

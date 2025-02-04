@@ -3,6 +3,12 @@ import {
   CardIcon,
   Chip,
   Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -11,12 +17,11 @@ import {
   Page,
   ShapesIcon,
   Spinner,
+  useSendNotification,
 } from "@dust-tt/sparkle";
-import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   SubscriptionPerSeatPricing,
   SubscriptionType,
-  UserType,
   WorkspaceType,
 } from "@dust-tt/types";
 import type * as t from "io-ts";
@@ -28,15 +33,10 @@ import React, { useEffect, useState } from "react";
 import { subNavigationAdmin } from "@app/components/navigation/config";
 import { PricePlans } from "@app/components/plans/PlansTables";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { SubscriptionContactUsDrawer } from "@app/components/SubscriptionContactUsDrawer";
 import { getPriceAsString } from "@app/lib/client/subscription";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import {
-  FREE_TEST_PLAN_CODE,
-  FREE_UPGRADED_PLAN_CODE,
-  isUpgraded,
-} from "@app/lib/plans/plan_codes";
+import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { getPerSeatSubscriptionPricing } from "@app/lib/plans/subscription";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
@@ -45,7 +45,6 @@ import type { PatchSubscriptionRequestBody } from "@app/pages/api/w/[wId]/subscr
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
-  user: UserType;
   trialDaysRemaining: number | null;
   workspaceSeats: number;
   perSeatPricing: SubscriptionPerSeatPricing | null;
@@ -86,7 +85,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       owner,
       subscription,
       trialDaysRemaining,
-      user,
       workspaceSeats,
       perSeatPricing,
     },
@@ -95,7 +93,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
 export default function Subscription({
   owner,
-  user,
   subscription,
   trialDaysRemaining,
   workspaceSeats,
@@ -106,7 +103,6 @@ export default function Subscription({
   const [isWebhookProcessing, setIsWebhookProcessing] =
     React.useState<boolean>(false);
 
-  const [showContactUsDrawer, setShowContactUsDrawer] = useState(false);
   const [showSkipFreeTrialDialog, setShowSkipFreeTrialDialog] = useState(false);
   const [showCancelFreeTrialDialog, setShowCancelFreeTrialDialog] =
     useState(false);
@@ -269,13 +265,13 @@ export default function Subscription({
   const chipColor = !isUpgraded(plan) ? "emerald" : "sky";
 
   const onClickProPlan = async () => handleSubscribePlan();
-  const onClickEnterprisePlan = () => {
-    setShowContactUsDrawer(true);
-  };
+
   const planLabel =
     trialDaysRemaining === null
       ? plan.name
       : `${plan.name}: ${trialDaysRemaining} days of trial remaining`;
+
+  const displayPricingTable = subscription.stripeSubscriptionId === null;
 
   return (
     <AppLayout
@@ -306,13 +302,6 @@ export default function Subscription({
         </>
       )}
 
-      <SubscriptionContactUsDrawer
-        show={showContactUsDrawer}
-        onClose={() => {
-          setShowContactUsDrawer(false);
-        }}
-        initialEmail={user.email}
-      />
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header
           title="Subscription"
@@ -410,28 +399,24 @@ export default function Subscription({
               </div>
             </Page.Vertical>
           )}
-          {!plan ||
-            ([FREE_TEST_PLAN_CODE, FREE_UPGRADED_PLAN_CODE].includes(
-              plan.code
-            ) && (
-              <>
-                <div className="pt-2">
-                  <Page.H variant="h5">Manage my plan</Page.H>
-                  <div className="h-full w-full pt-2">
-                    <PricePlans
-                      plan={plan}
-                      onClickProPlan={onClickProPlan}
-                      onClickEnterprisePlan={onClickEnterprisePlan}
-                      isProcessing={isProcessing}
-                      display="subscribe"
-                    />
-                  </div>
+          {displayPricingTable && (
+            <>
+              <div className="pt-2">
+                <Page.H variant="h5">Manage my plan</Page.H>
+                <div className="h-full w-full pt-2">
+                  <PricePlans
+                    plan={plan}
+                    onClickProPlan={onClickProPlan}
+                    isProcessing={isProcessing}
+                    display="subscribe"
+                  />
                 </div>
-                <Link href="/terms" target="_blank" className="text-sm">
-                  Terms of use apply to all plans.
-                </Link>
-              </>
-            ))}
+              </div>
+              <Link href="/terms" target="_blank" className="text-sm">
+                Terms of use apply to all plans.
+              </Link>
+            </>
+          )}
         </Page.Vertical>
       </Page.Vertical>
       <div className="h-12" />
@@ -458,28 +443,46 @@ function SkipFreeTrialDialog({
 }) {
   return (
     <Dialog
-      isOpen={show}
-      title={`End trial`}
-      onCancel={onClose}
-      validateLabel="End trial & get full access"
-      validateVariant="primary"
-      onValidate={() => {
-        onValidate();
+      open={show}
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose();
+        }
       }}
-      isSaving={isSaving}
     >
-      <Page.Vertical gap="md">
-        <Page.P>
-          Ending your trial will allow you to invite more than{" "}
-          {plan.limits.users.maxUsers} members to your workspace.
-        </Page.P>
-        <Page.P>
-          {(() => {
-            if (workspaceSeats === 1) {
+      <DialogContent size="md">
+        <DialogHeader>
+          <DialogTitle>End trial</DialogTitle>
+          <DialogDescription>
+            Ending your trial will allow you to invite more than{" "}
+            {plan.limits.users.maxUsers} members to your workspace.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogContainer>
+          {isSaving ? (
+            <div className="flex justify-center py-8">
+              <Spinner variant="dark" size="md" />
+            </div>
+          ) : (
+            (() => {
+              if (workspaceSeats === 1) {
+                return (
+                  <>
+                    Billing will start immediately for your workspace. <br />
+                    Currently: {workspaceSeats} member,{" "}
+                    {getPriceAsString({
+                      currency: perSeatPricing.seatCurrency,
+                      priceInCents: perSeatPricing.seatPrice,
+                    })}
+                    monthly (excluding taxes).
+                  </>
+                );
+              }
               return (
                 <>
-                  Billing will start immediately for your workspace. <br />
-                  Currently: {workspaceSeats} member,{" "}
+                  Billing will start immediately for your workspace:.
+                  <br />
+                  Currently: {workspaceSeats} members,{" "}
                   {getPriceAsString({
                     currency: perSeatPricing.seatCurrency,
                     priceInCents: perSeatPricing.seatPrice,
@@ -487,22 +490,21 @@ function SkipFreeTrialDialog({
                   monthly (excluding taxes).
                 </>
               );
-            }
-            return (
-              <>
-                Billing will start immediately for your workspace:.
-                <br />
-                Currently: {workspaceSeats} members,{" "}
-                {getPriceAsString({
-                  currency: perSeatPricing.seatCurrency,
-                  priceInCents: perSeatPricing.seatPrice,
-                })}
-                monthly (excluding taxes).
-              </>
-            );
-          })()}
-        </Page.P>
-      </Page.Vertical>
+            })()
+          )}
+        </DialogContainer>
+        <DialogFooter
+          leftButtonProps={{
+            label: "Cancel",
+            variant: "outline",
+          }}
+          rightButtonProps={{
+            label: "End trial & get full access",
+            variant: "primary",
+            onClick: onValidate,
+          }}
+        />
+      </DialogContent>
     </Dialog>
   );
 }
@@ -520,24 +522,42 @@ function CancelFreeTrialDialog({
 }) {
   return (
     <Dialog
-      isOpen={show}
-      title={`Cancel subscription`}
-      onCancel={onClose}
-      validateLabel="Yes, cancel subscription"
-      validateVariant="warning"
-      onValidate={onValidate}
-      isSaving={isSaving}
+      open={show}
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose();
+        }
+      }}
     >
-      <Page.Vertical gap="md">
-        <Page.P>
-          <span className="font-bold">
+      <DialogContent size="md">
+        <DialogHeader>
+          <DialogTitle>Cancel subscription</DialogTitle>
+          <DialogDescription>
             All your workspace data will be deleted and you will lose access to
             your Dust workspace.
-          </span>
-        </Page.P>
-
-        <Page.P>Are you sure you want to cancel ?</Page.P>
-      </Page.Vertical>
+          </DialogDescription>
+        </DialogHeader>
+        <DialogContainer>
+          {isSaving ? (
+            <div className="flex justify-center py-8">
+              <Spinner variant="dark" size="md" />
+            </div>
+          ) : (
+            <div className="font-bold">Are you sure you want to proceed?</div>
+          )}
+        </DialogContainer>
+        <DialogFooter
+          leftButtonProps={{
+            label: "Cancel",
+            variant: "outline",
+          }}
+          rightButtonProps={{
+            label: "Yes, cancel subscription",
+            variant: "warning",
+            onClick: onValidate,
+          }}
+        />
+      </DialogContent>
     </Dialog>
   );
 }

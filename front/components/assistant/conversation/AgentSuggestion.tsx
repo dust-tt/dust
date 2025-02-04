@@ -1,6 +1,8 @@
 import {
-  AssistantPreview,
+  AssistantCard,
+  AssistantCardMore,
   Button,
+  CardGrid,
   RobotIcon,
   Spinner,
   useSendNotification,
@@ -90,10 +92,10 @@ export function AgentSuggestion({
   return (
     <>
       <div className="pt-4">
-        <div className="flex items-center gap-2">
-          <span className="grow text-sm text-element-800">
+        <div className="flex items-center gap-2 pb-2">
+          <p className="grow text-base text-muted-foreground">
             Which Assistant would you like to chat with?
-          </span>
+          </p>
           <AssistantPicker
             owner={owner}
             assistants={otherAgents}
@@ -106,8 +108,8 @@ export function AgentSuggestion({
             }}
             pickerButton={
               <Button
-                variant="ghost"
-                size="xs"
+                variant="outline"
+                size="sm"
                 icon={RobotIcon}
                 label="Select another"
                 isSelect
@@ -121,20 +123,24 @@ export function AgentSuggestion({
             <Spinner />
           </div>
         ) : (
-          <div className="mt-3 grid gap-2 md:grid-cols-3">
+          <CardGrid>
             {topAgents.map((agent, id) => (
-              <AssistantPreview
+              <AssistantCard
                 key={`${agent.sId}-${id}`}
-                variant="minimal"
                 description={agent.description}
                 subtitle={agent.lastAuthors?.join(", ") ?? ""}
                 title={agent.name}
                 pictureUrl={agent.pictureUrl}
                 onClick={() => handleSelectSuggestion(agent)}
-                onActionClick={() => showAssistantDetails(agent)}
+                variant="secondary"
+                action={
+                  <AssistantCardMore
+                    onClick={() => showAssistantDetails(agent)}
+                  />
+                }
               />
             ))}
-          </div>
+          </CardGrid>
         )}
       </div>
     </>

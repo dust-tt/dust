@@ -1,7 +1,7 @@
 import { UserMessage } from "@app/lib/models/assistant/conversation";
-import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 
 async function main() {
   console.log("Starting imageUrl backfill");
@@ -33,7 +33,7 @@ async function main() {
 
 async function backfillImageUrl(workspaceId: number) {
   // get all users from workspace whose imageUrl is null
-  const users = await User.findAll({
+  const users = await UserModel.findAll({
     where: {
       imageUrl: null,
     },

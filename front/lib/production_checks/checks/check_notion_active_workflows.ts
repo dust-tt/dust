@@ -75,7 +75,7 @@ async function areTemporalWorkflowsRunning(
       if (h.events) {
         h.events.forEach((e) => {
           if (e.eventTime?.seconds) {
-            const d = new Date(e.eventTime?.seconds * 1000);
+            const d = new Date(Number(e.eventTime.seconds) * 1000);
             if (!latest || d > latest) {
               latest = d;
             }

@@ -6,6 +6,7 @@ import {
   isSupportedModel,
   ModelIdCodec,
   ModelProviderIdCodec,
+  ReasoningEffortCodec,
   SupportedModel,
 } from "../../lib/assistant";
 
@@ -15,6 +16,7 @@ const LimitCodec = createRangeCodec(0, 100);
 // of AgentGetViewType
 export const GetAgentConfigurationsQuerySchema = t.type({
   view: t.union([
+    t.literal("current_user"),
     t.literal("list"),
     t.literal("workspace"),
     t.literal("published"),
@@ -25,12 +27,17 @@ export const GetAgentConfigurationsQuerySchema = t.type({
   ]),
   withUsage: t.union([t.literal("true"), t.literal("false"), t.undefined]),
   withAuthors: t.union([t.literal("true"), t.literal("false"), t.undefined]),
+  withFeedbacks: t.union([t.literal("true"), t.literal("false"), t.undefined]),
   limit: t.union([LimitCodec, t.undefined]),
   sort: t.union([
     t.literal("priority"),
     t.literal("alphabetical"),
     t.undefined,
   ]),
+});
+
+export const GetAgentConfigurationsHistoryQuerySchema = t.type({
+  limit: t.union([LimitCodec, t.undefined]),
 });
 
 export const GetAgentConfigurationsLeaderboardQuerySchema = t.type({
@@ -99,6 +106,22 @@ const BrowseActionConfigurationSchema = t.type({
   type: t.literal("browse_configuration"),
 });
 
+const GithubGetPullRequestActionConfigurationSchema = t.type({
+  type: t.literal("github_get_pull_request_configuration"),
+});
+
+const GithubCreateIssueActionConfigurationSchema = t.type({
+  type: t.literal("github_create_issue_configuration"),
+});
+
+const ReasoningActionConfigurationSchema = t.type({
+  type: t.literal("reasoning_configuration"),
+  modelId: ModelIdCodec,
+  providerId: ModelProviderIdCodec,
+  temperature: t.union([t.number, t.null]),
+  reasoningEffort: t.union([ReasoningEffortCodec, t.null]),
+});
+
 const ProcessActionConfigurationSchema = t.type({
   type: t.literal("process_configuration"),
   dataSources: t.array(
@@ -161,6 +184,9 @@ const ActionConfigurationSchema = t.intersection([
     ProcessActionConfigurationSchema,
     WebsearchActionConfigurationSchema,
     BrowseActionConfigurationSchema,
+    GithubGetPullRequestActionConfigurationSchema,
+    GithubCreateIssueActionConfigurationSchema,
+    ReasoningActionConfigurationSchema,
   ]),
   requiredMultiActionsCommonFields,
 ]);
@@ -173,6 +199,9 @@ const ModelConfigurationSchema = t.intersection([
   }),
   // TODO(2024-11-04 flav) Clean up this legacy type.
   t.partial(multiActionsCommonFields),
+  t.partial({
+    reasoningEffort: ReasoningEffortCodec,
+  }),
 ]);
 const IsSupportedModelSchema = new t.Type<SupportedModel>(
   "SupportedModel",

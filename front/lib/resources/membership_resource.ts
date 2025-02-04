@@ -5,10 +5,11 @@ import type {
   RequireAtLeastOne,
   Result,
 } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import { assertNever, Err, Ok } from "@dust-tt/types";
 import type {
   Attributes,
   FindOptions,
+  IncludeOptions,
   InferAttributes,
   ModelStatic,
   Transaction,
@@ -16,11 +17,10 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
-import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
-import { canForceUserRole } from "@app/lib/development";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
@@ -33,9 +33,17 @@ type GetMembershipsOptions = RequireAtLeastOne<{
   transaction?: Transaction;
 };
 
+export type MembershipsPaginationParams = {
+  orderColumn: "createdAt";
+  orderDirection: "asc" | "desc";
+  lastValue: number | null | undefined;
+  limit: number;
+};
+
 type MembershipsWithTotal = {
   memberships: MembershipResource[];
   total: number;
+  nextPageParams?: MembershipsPaginationParams;
 };
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -47,11 +55,44 @@ export interface MembershipResource
 export class MembershipResource extends BaseResource<MembershipModel> {
   static model: ModelStatic<MembershipModel> = MembershipModel;
 
+  readonly user?: Attributes<UserModel>;
+
   constructor(
     model: ModelStatic<MembershipModel>,
-    blob: Attributes<MembershipModel>
+    blob: Attributes<MembershipModel>,
+    { user }: { user?: Attributes<UserModel> } = {}
   ) {
     super(MembershipModel, blob);
+
+    this.user = user;
+  }
+
+  static async getMembershipsForWorkspace({
+    workspace,
+    transaction,
+  }: {
+    workspace: LightWorkspaceType;
+    transaction?: Transaction;
+  }): Promise<MembershipsWithTotal> {
+    const orderedResourcesFromModels = (resources: MembershipModel[]) =>
+      resources
+        .sort((a, b) => a.startAt.getTime() - b.startAt.getTime())
+        .map(
+          (resource) => new MembershipResource(MembershipModel, resource.get())
+        );
+
+    const whereClause: WhereOptions<InferAttributes<MembershipModel>> = {
+      workspaceId: workspace.id,
+    };
+
+    const findOptions: FindOptions<InferAttributes<MembershipModel>> = {
+      where: whereClause,
+      transaction,
+    };
+
+    const { rows, count } = await MembershipModel.findAndCountAll(findOptions);
+
+    return { memberships: orderedResourcesFromModels(rows), total: count };
   }
 
   static async getActiveMemberships({
@@ -61,7 +102,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     transaction,
     paginationParams,
   }: GetMembershipsOptions & {
-    paginationParams?: PaginationParams;
+    paginationParams?: MembershipsPaginationParams;
   }): Promise<MembershipsWithTotal> {
     if (!workspace && !users?.length) {
       throw new Error("At least one of workspace or userIds must be provided.");
@@ -76,9 +117,21 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       },
     };
 
+    const paginationWhereClause: WhereOptions<
+      InferAttributes<MembershipModel>
+    > = {};
+
+    const includeClause: IncludeOptions[] = [];
+
     if (users) {
       whereClause.userId = users.map((u) => u.id);
+    } else {
+      includeClause.push({
+        model: UserModel,
+        required: true,
+      });
     }
+
     if (workspace) {
       whereClause.workspaceId = workspace.id;
     }
@@ -90,6 +143,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
 
     const findOptions: FindOptions<InferAttributes<MembershipModel>> = {
       where: whereClause,
+      include: includeClause,
       transaction,
     };
 
@@ -99,9 +153,15 @@ export class MembershipResource extends BaseResource<MembershipModel> {
 
       if (lastValue) {
         const op = orderDirection === "desc" ? Op.lt : Op.gt;
-        whereClause[orderColumn as any] = {
-          [op]: lastValue,
-        };
+        switch (orderColumn) {
+          case "createdAt":
+            paginationWhereClause[orderColumn] = {
+              [op]: new Date(lastValue),
+            };
+            break;
+          default:
+            assertNever(orderColumn);
+        }
       }
 
       findOptions.order = [
@@ -110,14 +170,41 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       findOptions.limit = limit;
     }
 
-    const { rows, count } = await MembershipModel.findAndCountAll(findOptions);
+    const rows = await MembershipModel.findAll({
+      ...findOptions,
+      where: { ...findOptions.where, ...paginationWhereClause },
+    });
+
+    // Need a separate query to get the total count, findAndCountAll does not support pagination based on where clause.
+    const count = await MembershipModel.count(findOptions);
+
+    let nextPageParams: MembershipsPaginationParams | undefined;
+    if (paginationParams?.limit && rows.length === paginationParams.limit) {
+      const lastRow = rows[rows.length - 1];
+      let lastValue: number;
+      switch (paginationParams.orderColumn) {
+        case "createdAt":
+          lastValue = lastRow.createdAt.getTime();
+          break;
+        default:
+          assertNever(paginationParams.orderColumn);
+      }
+
+      nextPageParams = {
+        ...paginationParams,
+        lastValue,
+      };
+    }
 
     return {
       memberships: rows.map(
         (membership) =>
-          new MembershipResource(MembershipModel, membership.get())
+          new MembershipResource(MembershipModel, membership.get(), {
+            user: membership.user?.get(),
+          })
       ),
       total: count,
+      nextPageParams,
     };
   }
 
@@ -128,7 +215,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     transaction,
     paginationParams,
   }: GetMembershipsOptions & {
-    paginationParams?: PaginationParams;
+    paginationParams?: MembershipsPaginationParams;
   }): Promise<MembershipsWithTotal> {
     const orderedResourcesFromModels = (resources: MembershipModel[]) =>
       resources
@@ -309,6 +396,16 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     });
   }
 
+  static async deleteAllForWorkspace(
+    workspace: LightWorkspaceType,
+    transaction?: Transaction
+  ) {
+    return this.model.destroy({
+      where: { workspaceId: workspace.id },
+      transaction,
+    });
+  }
+
   /**
    * Caller of this method should call `ServerSideTracking.trackCreateMembership`.
    */
@@ -425,6 +522,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     workspace,
     newRole,
     allowTerminated = false,
+    allowLastAdminRemoval = false,
     transaction,
   }: {
     user: UserResource;
@@ -432,6 +530,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     newRole: Exclude<MembershipRoleType, "revoked">;
     // If true, allow updating the role of a terminated membership (which will also un-terminate it).
     allowTerminated?: boolean;
+    allowLastAdminRemoval?: boolean;
     transaction?: Transaction;
   }): Promise<
     Result<
@@ -477,7 +576,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
         });
 
         if (adminsCount < 2) {
-          if (canForceUserRole(workspace)) {
+          if (allowLastAdminRemoval) {
             logger.warn(
               {
                 panic: false,

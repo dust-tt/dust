@@ -1,0 +1,70 @@
+name: List Image Tags
+
+on:
+  workflow_dispatch:
+    inputs:
+      region:
+        description: "Region to list images from"
+        type: choice
+        options:
+          - "us-central1"
+          - "europe-west1"
+        default: "us-central1"
+        required: true
+      component:
+        description: "Component to deploy"
+        type: choice
+        options:
+          - alerting-temporal
+          - connectors
+          - core
+          - front
+          - front-edge
+          - front-qa
+          - metabase
+          - oauth
+          - prodbox
+          - viz
+        required: true
+    secrets:
+      GCLOUD_US_PROJECT_ID:
+        required: true
+      GCLOUD_EU_PROJECT_ID:
+        required: true
+
+jobs:
+  list-tags:
+    permissions:
+      contents: read
+      id-token: write
+
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set project ID
+        id: project
+        run: |
+          if [ "${{ inputs.region }}" = "us-central1" ]; then
+            echo "PROJECT_ID=${{ secrets.GCLOUD_US_PROJECT_ID }}" >> $GITHUB_OUTPUT
+          else
+            echo "PROJECT_ID=${{ secrets.GCLOUD_EU_PROJECT_ID }}" >> $GITHUB_OUTPUT
+          fi
+
+      - id: "auth"
+        name: "Authenticate to Google Cloud"
+        uses: "google-github-actions/auth@v2"
+        with:
+          create_credentials_file: true
+          workload_identity_provider: "projects/357744735673/locations/global/workloadIdentityPools/github-pool-apps/providers/github-provider-apps"
+          service_account: "github-build-invoker@${{ steps.project.outputs.PROJECT_ID }}.iam.gserviceaccount.com"
+
+      - name: "Set up Cloud SDK"
+        uses: "google-github-actions/setup-gcloud@v2"
+
+      - name: List available tags
+        run: |
+          echo "Latest tags for ${{ inputs.component }} in ${{ inputs.region }}:"
+          echo "-------------------------------------------"
+          gcloud container images list-tags "${{ inputs.region }}-docker.pkg.dev/${{ steps.project.outputs.PROJECT_ID }}/dust-images/${{ inputs.component }}" \
+            --limit=10 \
+            --sort-by=~timestamp \
+            --format="table(timestamp.date('%Y-%m-%d %H:%M:%S'),tags[0])"

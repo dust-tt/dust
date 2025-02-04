@@ -1,12 +1,16 @@
 import {
   Button,
   Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   Page,
-  PlusIcon,
   Popup,
   SearchInput,
+  useSendNotification,
 } from "@dust-tt/sparkle";
-import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   PlanType,
   SubscriptionPerSeatPricing,
@@ -30,7 +34,11 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import type { EnterpriseConnectionStrategyDetails } from "@app/components/workspace/connection";
 import { EnterpriseConnectionDetails } from "@app/components/workspace/connection";
 import config from "@app/lib/api/config";
-import { makeEnterpriseConnectionInitiateLoginUrl } from "@app/lib/api/enterprise_connection";
+import {
+  makeAudienceUri,
+  makeEnterpriseConnectionInitiateLoginUrl,
+  makeSamlAcsUrl,
+} from "@app/lib/api/enterprise_connection";
 import {
   checkWorkspaceSeatAvailabilityUsingAuth,
   getWorkspaceVerifiedDomain,
@@ -68,6 +76,9 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     {
       callbackUrl: config.getAuth0TenantUrl(),
       initiateLoginUrl: makeEnterpriseConnectionInitiateLoginUrl(owner.sId),
+      // SAML specific.
+      audienceUri: makeAudienceUri(owner),
+      samlAcsUrl: makeSamlAcsUrl(owner),
     };
 
   const perSeatPricing = await getPerSeatSubscriptionPricing(subscription);
@@ -101,22 +112,22 @@ export default function WorkspaceAdmin({
   const [showNoInviteLinkPopup, setShowNoInviteLinkPopup] = useState(false);
   const [isActivateAutoJoinOpened, setIsActivateAutoJoinOpened] =
     useState(false);
-  const [inviteEmailModalOpen, setInviteEmailModalOpen] = useState(false);
   const [inviteBlockedPopupReason, setInviteBlockedPopupReason] =
     useState<WorkspaceLimit | null>(null);
 
   const { domain = "", domainAutoJoinEnabled = false } =
     workspaceVerifiedDomain ?? {};
 
-  const onInviteClick = () => {
+  const onInviteClick = (event: MouseEvent) => {
     if (!isUpgraded(plan)) {
       setInviteBlockedPopupReason("cant_invite_free_plan");
+      event.preventDefault();
     } else if (subscription.paymentFailingSince) {
       setInviteBlockedPopupReason("cant_invite_payment_failure");
+      event.preventDefault();
     } else if (!workspaceHasAvailableSeats) {
       setInviteBlockedPopupReason("cant_invite_no_seats_available");
-    } else {
-      setInviteEmailModalOpen(true);
+      event.preventDefault();
     }
   };
 
@@ -224,10 +235,11 @@ export default function WorkspaceAdmin({
               setSearchTerm(s);
             }}
           />
-          <Button
-            label="Invite members"
-            icon={PlusIcon}
-            onClick={onInviteClick}
+          <InviteEmailModal
+            owner={owner}
+            prefillText=""
+            perSeatPricing={perSeatPricing}
+            onInviteClick={onInviteClick}
           />
         </div>
         <InvitationsList owner={owner} searchText={searchTerm} />
@@ -235,15 +247,6 @@ export default function WorkspaceAdmin({
           currentUserId={user.sId}
           owner={owner}
           searchText={searchTerm}
-        />
-        <InviteEmailModal
-          showModal={inviteEmailModalOpen}
-          onClose={() => {
-            setInviteEmailModalOpen(false);
-          }}
-          owner={owner}
-          prefillText={""}
-          perSeatPricing={perSeatPricing}
         />
         {popup}
       </Page.Vertical>
@@ -307,17 +310,33 @@ function DomainAutoJoinModal({
 
   return (
     <Dialog
-      isOpen={isOpen}
-      title={title}
-      onValidate={async () => {
-        await handleUpdateWorkspace();
-        onClose();
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose();
+        }
       }}
-      onCancel={() => onClose()}
-      validateLabel={validateLabel}
-      validateVariant={validateVariant}
     >
-      <div>{description}</div>
+      <DialogContent size="md" isAlertDialog>
+        <DialogHeader hideButton>
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
+        <DialogContainer>{description}</DialogContainer>
+        <DialogFooter
+          leftButtonProps={{
+            label: "Cancel",
+            variant: "outline",
+          }}
+          rightButtonProps={{
+            label: validateLabel,
+            variant: validateVariant,
+            onClick: async () => {
+              await handleUpdateWorkspace();
+              onClose();
+            },
+          }}
+        />
+      </DialogContent>
     </Dialog>
   );
 }

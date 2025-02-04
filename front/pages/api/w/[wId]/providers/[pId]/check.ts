@@ -59,13 +59,16 @@ async function handler(
         case "azure_openai":
           try {
             const parsed = new URL(config.endpoint);
-            if (!parsed.hostname.endsWith(".openai.azure.com")) {
+            if (
+              !parsed.hostname.endsWith(".openai.azure.com") &&
+              !parsed.hostname.endsWith(".cognitive.microsoft.com")
+            ) {
               return apiError(req, res, {
                 status_code: 400,
                 api_error: {
                   type: "invalid_request_error",
                   message:
-                    "The endpoint is invalid (expecting `openai.azure.com`).",
+                    "The endpoint is invalid (expecting `openai.azure.com` or `cognitive.microsoft.com`).",
                 },
               });
             }
@@ -241,6 +244,62 @@ async function handler(
           }
           await rGoogleAIStudio.json();
           return res.status(200).json({ ok: true });
+
+        case "togetherai":
+          const tModelsRes = await fetch("https://api.together.xyz/v1/models", {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${config.api_key}`,
+            },
+          });
+          if (!tModelsRes.ok) {
+            const err = await tModelsRes.json();
+            res.status(400).json({ ok: false, error: err.error.message });
+          } else {
+            await tModelsRes.json();
+            res.status(200).json({ ok: true });
+          }
+          return;
+
+        case "deepseek":
+          const testDeepseek = await fetch(`https://api.deepseek.com/models`, {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${config.api_key}`,
+            },
+          });
+          if (!testDeepseek.ok) {
+            const err = await testDeepseek.json();
+            res.status(400).json({ ok: false, error: err.error });
+          } else {
+            await testDeepseek.json();
+            res.status(200).json({ ok: true });
+          }
+          return;
+
+        case "fireworks":
+          const testFireworks = await fetch(
+            `https://api.fireworks.ai/inference/v1/chat/completions`,
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${config.api_key}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                model: "accounts/fireworks/models/llama-v3p1-8b-instruct",
+                messages: [{ role: "user", content: "Hello, Fireworks" }],
+              }),
+            }
+          );
+          if (!testFireworks.ok) {
+            const err = await testFireworks.json();
+            res.status(400).json({ ok: false, error: err.error });
+          } else {
+            await testFireworks.json();
+            res.status(200).json({ ok: true });
+          }
+          return;
 
         default:
           return apiError(req, res, {

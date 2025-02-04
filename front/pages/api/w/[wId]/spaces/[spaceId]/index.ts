@@ -46,7 +46,7 @@ async function handler(
     WithAPIErrorResponse<GetSpaceResponseBody | PatchSpaceResponseBody>
   >,
   auth: Authenticator,
-  space: SpaceResource
+  { space }: { space: SpaceResource }
 ): Promise<void> {
   switch (req.method) {
     case "GET": {
@@ -165,10 +165,10 @@ async function handler(
             );
             if (dataSource) {
               await DataSourceViewResource.createViewInSpaceFromDataSource(
-                auth,
                 space,
                 dataSource,
-                dataSourceConfig.parentsIn
+                dataSourceConfig.parentsIn,
+                auth.user()
               );
             }
           }
@@ -197,8 +197,7 @@ async function handler(
           status_code: 403,
           api_error: {
             type: "workspace_auth_error",
-            message:
-              "Only users that are `admins` or `builder` can administrate spaces.",
+            message: "Only users that are `admins` can administrate spaces.",
           },
         });
       }
@@ -242,5 +241,7 @@ async function handler(
 }
 
 export default withSessionAuthenticationForWorkspace(
-  withResourceFetchingFromRoute(handler, "space")
+  withResourceFetchingFromRoute(handler, {
+    space: { requireCanReadOrAdministrate: true },
+  })
 );

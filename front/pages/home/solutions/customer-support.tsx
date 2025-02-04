@@ -1,8 +1,27 @@
+import { Button } from "@dust-tt/sparkle";
+import Link from "next/link";
 import type { ReactElement } from "react";
 
+import { BenefitsSection } from "@app/components/home/content/Solutions/BenefitsSection";
+import {
+  AssistantExamples,
+  Benefits,
+  DemoVideo,
+  Hero,
+  Metrics,
+  pageSettings,
+  Quote,
+  Stories,
+  UseCases,
+} from "@app/components/home/content/Solutions/configs/supportConfig";
+import { CustomerStoriesSection } from "@app/components/home/content/Solutions/CustomerStoriesSection";
+import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
+import { HeroSection } from "@app/components/home/content/Solutions/HeroSection";
+import { UseCasesSection } from "@app/components/home/content/Solutions/UseCasesSection";
 import {
   CarousselContentBlock,
-  HeaderContentBlock,
+  MetricSection,
+  QuoteSection,
 } from "@app/components/home/ContentBlocks";
 import { Grid } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
@@ -11,147 +30,94 @@ import {
   getParticleShapeIndexByName,
   shapeNames,
 } from "@app/components/home/Particles";
-import type { SolutionSectionAssistantBlockProps } from "@app/components/home/SolutionSection";
-import { SolutionSection } from "@app/components/home/SolutionSection";
+import TrustedBy from "@app/components/home/TrustedBy";
+import { classNames } from "@app/lib/utils";
 
 export async function getServerSideProps() {
   return {
     props: {
       shape: getParticleShapeIndexByName(shapeNames.octahedron),
+      gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
     },
   };
 }
 
-interface pageSettingsProps {
-  uptitle: string;
-  title: React.ReactNode;
-  description: React.ReactNode;
-  from: string;
-  to: string;
-}
-
-const pageSettings: pageSettingsProps = {
-  uptitle: "Success and Support",
-  title: <>Help your Support&nbsp;Teams, help your customers.</>,
-  from: "from-sky-200",
-  to: "to-sky-500",
-  description: (
-    <>
-      Equip your&nbsp;team with AI&nbsp;assistants to&nbsp;accelerate issue
-      resolution and&nbsp;increase customer&nbsp;satisfaction.
-    </>
-  ),
-};
+const GRID_SECTION_CLASSES = classNames(
+  "flex flex-col gap-8",
+  "col-span-12",
+  "lg:col-span-12 lg:col-start-1",
+  "xl:col-span-12 xl:col-start-1",
+  "2xl:col-start-1"
+);
 
 export default function CustomerSupport() {
   return (
     <>
-      <HeaderContentBlock
-        uptitle={"Dust for " + pageSettings.uptitle}
-        title={pageSettings.title}
-        from={pageSettings.from}
-        to={pageSettings.to}
-        subtitle={pageSettings.description}
-      />
-      <Grid>
-        <SolutionSection
-          title={<>Exceed customer&nbsp;expectations.</>}
-          blocks={[
-            {
-              color: "sky",
-              contentBlocks: [
-                {
-                  title: (
-                    <>Parse tickets and&nbsp;get to&nbsp;resolution faster</>
-                  ),
-                  content: [
-                    <>
-                      Allow agents to&nbsp;understand customer messages
-                      and&nbsp;technical errors faster and&nbsp;in
-                      50+&nbsp;languages.
-                    </>,
-                    <>
-                      Build AI assistants based on&nbsp;company knowledge
-                      and&nbsp;past support interactions to&nbsp;bring
-                      the&nbsp;company's collective intelligence to&nbsp;the
-                      support team's fingertips.
-                    </>,
-                  ],
-                },
-                {
-                  title: (
-                    <>Keep your&nbsp;team up-to-date at&nbsp;all&nbsp;times</>
-                  ),
-                  content: [
-                    <>Break down information silos.</>,
-                    <>
-                      Give your frontline team access to&nbsp;up-to-date
-                      information on&nbsp;projects, ongoing product incidents
-                      or&nbsp;issues to&nbsp;help them&nbsp;take action
-                      thoughtfully.
-                    </>,
-                  ],
-                },
-              ],
-              assistantBlocks: [
-                assistantExamples[0],
-                assistantExamples[4],
-                assistantExamples[5],
-              ],
-            },
-          ]}
+      <div className="container flex w-full flex-col gap-0 px-2 py-2 pb-12">
+        <HeroSection
+          {...Hero}
+          fromColor={pageSettings.from}
+          toColor={pageSettings.to}
         />
-        <SolutionSection
-          title="Elevated team collaboration."
-          blocks={[
-            {
-              color: "sky",
-              contentBlocks: [
-                {
-                  title: (
-                    <>
-                      Bring new team members
-                      <br />
-                      up-to-speed&nbsp;fast
-                    </>
-                  ),
-                  content: [
-                    <>
-                      Reduce your&nbsp;onboarding and&nbsp;training time
-                      drastically.
-                    </>,
-                    <>
-                      Put your&nbsp;documentation on&nbsp;processes
-                      and&nbsp;methods to&nbsp;work to&nbsp;help the&nbsp;team
-                      learn autonomously.
-                    </>,
-                  ],
-                },
-                {
-                  title: (
-                    <>
-                      Maintain visibility
-                      <br />
-                      on&nbsp;customer needs
-                    </>
-                  ),
-                  content: [
-                    <>
-                      Surface insights from&nbsp;interactions with customers
-                      to&nbsp;your Support, Success and&nbsp;Product teams.
-                    </>,
-                    <>
-                      Maintain a&nbsp;continuous understanding of&nbsp;customer
-                      needs to inform your&nbsp;product priorities.
-                    </>,
-                  ],
-                },
-              ],
-              assistantBlocks: [assistantExamples[3], assistantExamples[2]],
-            },
-          ]}
-        />
-      </Grid>
+        <Grid>
+          <div className={GRID_SECTION_CLASSES}>
+            <BenefitsSection
+              benefits={Benefits}
+              fromColor={pageSettings.from}
+              toColor={pageSettings.to}
+            />
+            <MetricSection {...Metrics} />
+          </div>
+          <div className={GRID_SECTION_CLASSES}>
+            <UseCasesSection
+              useCase={UseCases}
+              fromColor={pageSettings.from}
+              toColor={pageSettings.to}
+            />
+          </div>
+          <div className={GRID_SECTION_CLASSES}>
+            <DemoVideoSection
+              demoVideo={DemoVideo}
+              fromColor={pageSettings.from}
+              toColor={pageSettings.to}
+            />
+          </div>
+          <div className={GRID_SECTION_CLASSES}>
+            <QuoteSection {...Quote} />
+            <CustomerStoriesSection
+              title="Customer stories"
+              stories={Stories}
+              fromColor={pageSettings.from}
+              toColor={pageSettings.to}
+            />
+          </div>
+          <TrustedBy />
+          <div className={GRID_SECTION_CLASSES}>
+            {Hero.ctaButtons && (
+              <div className="mt-4 flex justify-center gap-4">
+                {Hero.ctaButtons.primary && (
+                  <Link href={Hero.ctaButtons.primary.href} shallow={true}>
+                    <Button
+                      variant="highlight"
+                      size="md"
+                      label={Hero.ctaButtons.primary.label}
+                      icon={Hero.ctaButtons.primary.icon}
+                    />
+                  </Link>
+                )}
+                {Hero.ctaButtons.secondary && (
+                  <Button
+                    variant="outline"
+                    size="md"
+                    label={Hero.ctaButtons.secondary.label}
+                    href={Hero.ctaButtons.secondary.href}
+                  />
+                )}
+              </div>
+            )}
+          </div>
+        </Grid>
+      </div>
     </>
   );
 }
@@ -163,88 +129,13 @@ CustomerSupport.getLayout = (
   return <LandingLayout pageProps={pageProps}>{page}</LandingLayout>;
 };
 
-const assistantExamples: SolutionSectionAssistantBlockProps[] = [
-  {
-    emoji: "🤝",
-    backgroundColor: "bg-sky-300",
-    name: "@supportExpert",
-    description: (
-      <>
-        Surfaces relevant information from&nbsp;your Help Center, FAQs,
-        knowledge base, online documentation, and&nbsp;tickets. Understands
-        errors codes without help from&nbsp;the tech&nbsp;team
-      </>
-    ),
-  },
-  {
-    emoji: "📡",
-    backgroundColor: "bg-sky-300",
-    name: "@productInfo",
-    description: (
-      <>
-        Answer questions on&nbsp;product evolutions, engineering activity,
-        alerts, and&nbsp;downtime
-      </>
-    ),
-  },
-  {
-    emoji: "🔮",
-    backgroundColor: "bg-sky-300",
-    name: "@supportAnalyst",
-    description: (
-      <>
-        Identifies patterns and&nbsp;sentiment in&nbsp;support interactions
-        to&nbsp;highlight recurring needs and&nbsp;actionable initiatives based
-        on&nbsp;the internal product team nomenclature and&nbsp;infrastructure
-      </>
-    ),
-  },
-  {
-    emoji: "💡",
-    backgroundColor: "bg-sky-300",
-    name: "@supportOnboarding",
-    description: (
-      <>
-        Helps new members of&nbsp;the support team navigate the&nbsp;tools
-        and&nbsp;processes in&nbsp;their first weeks to&nbsp;set them up for
-        success
-      </>
-    ),
-  },
-  {
-    emoji: "🚨",
-    backgroundColor: "bg-sky-300",
-    name: "@supportAlerts",
-    description: (
-      <>
-        Connects to&nbsp;product and&nbsp;engineering communication channels
-        to&nbsp;surface ongoing engineering activity, incidents or&nbsp;issues
-        and&nbsp;highlight the&nbsp;possible impact on&nbsp;users
-        and&nbsp;customers
-      </>
-    ),
-  },
-  {
-    emoji: "😳",
-    backgroundColor: "bg-sky-300",
-    name: "@whatWouldUserDo",
-    description: (
-      <>
-        Crafts training, product documentation and&nbsp;training materials
-        through the&nbsp;eyes of&nbsp;your users to&nbsp;help improve content
-        ahead of&nbsp;issues
-      </>
-    ),
-  },
-];
-
 export function CustomerCaroussel() {
   return (
     <CarousselContentBlock
       title={pageSettings.uptitle}
       subtitle={pageSettings.title}
       description={pageSettings.description}
-      assistants={assistantExamples}
+      assistants={AssistantExamples}
       from={pageSettings.from}
       to={pageSettings.to}
       border="border-pink-100/60"

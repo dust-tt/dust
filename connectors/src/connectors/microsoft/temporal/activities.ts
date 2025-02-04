@@ -1,5 +1,5 @@
 import type { ModelId } from "@dust-tt/types";
-import { cacheWithRedis } from "@dust-tt/types";
+import { cacheWithRedis, MIME_TYPES, removeNulls } from "@dust-tt/types";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import { GraphError } from "@microsoft/microsoft-graph-client";
 import type { DriveItem } from "@microsoft/microsoft-graph-types";
@@ -40,7 +40,10 @@ import {
 import { getMimeTypesToSync } from "@connectors/connectors/microsoft/temporal/mime_types";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
-import { updateDocumentParentsField } from "@connectors/lib/data_sources";
+import {
+  updateDataSourceDocumentParents,
+  upsertDataSourceFolder,
+} from "@connectors/lib/data_sources";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
@@ -76,27 +79,42 @@ export async function getRootNodesToSyncFromResources(
 
   // get root folders and drives and drill down site-root and sites to their
   // child drives (converted to MicrosoftNode types)
-  const rootFolderAndDriveNodes = await Promise.all(
-    rootResources
-      .filter(
-        (resource) =>
-          resource.nodeType === "folder" || resource.nodeType === "drive"
-      )
-      .map(async (resource) => {
-        const item = await getItem(
-          client,
-          typeAndPathFromInternalId(resource.internalId).itemAPIPath
-        );
+  const rootFolderAndDriveNodes = removeNulls(
+    await Promise.all(
+      rootResources
+        .filter(
+          (resource) =>
+            resource.nodeType === "folder" || resource.nodeType === "drive"
+        )
+        .map(async (resource) => {
+          try {
+            const item = await getItem(
+              client,
+              typeAndPathFromInternalId(resource.internalId).itemAPIPath
+            );
 
-        const node = itemToMicrosoftNode(
-          resource.nodeType as "folder" | "drive",
-          item
-        );
-        return {
-          ...node,
-          name: `${node.name} (${extractPath(item)})`,
-        };
-      })
+            const node = itemToMicrosoftNode(
+              resource.nodeType as "folder" | "drive",
+              item
+            );
+            return {
+              ...node,
+              name: `${node.name} (${extractPath(item)})`,
+            };
+          } catch (error) {
+            logger.error(
+              {
+                connectorId,
+                error,
+                id: resource.internalId,
+                panic: true,
+              },
+              "Failed to get item"
+            );
+            return null;
+          }
+        })
+    )
   );
 
   const rootSitePaths: string[] = rootResources
@@ -178,6 +196,23 @@ export async function getRootNodesToSyncFromResources(
   const nodeResources = await MicrosoftNodeResource.batchUpdateOrCreate(
     connectorId,
     nodesToSync
+  );
+
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  await concurrentExecutor(
+    nodeResources,
+    async (createdOrUpdatedResource) =>
+      upsertDataSourceFolder({
+        dataSourceConfig,
+        folderId: createdOrUpdatedResource.internalId,
+        parents: [createdOrUpdatedResource.internalId],
+        parentId: null,
+        title: createdOrUpdatedResource.name ?? "",
+        mimeType: MIME_TYPES.MICROSOFT.FOLDER,
+        sourceUrl: createdOrUpdatedResource.webUrl ?? undefined,
+      }),
+    { concurrency: 5 }
   );
 
   return nodeResources.map((r) => r.internalId);
@@ -412,6 +447,7 @@ export async function syncFiles({
   });
 
   const alreadySeenResources = Object.values(alreadySeenResourcesById);
+
   const createdOrUpdatedResources =
     await MicrosoftNodeResource.batchUpdateOrCreate(
       connectorId,
@@ -430,6 +466,27 @@ export async function syncFiles({
           })
         )
     );
+
+  const parentsOfParent = await getParents({
+    connectorId: parent.connectorId,
+    internalId: parent.internalId,
+    startSyncTs,
+  });
+
+  await concurrentExecutor(
+    createdOrUpdatedResources,
+    async (createdOrUpdatedResource) =>
+      upsertDataSourceFolder({
+        dataSourceConfig,
+        folderId: createdOrUpdatedResource.internalId,
+        parents: [createdOrUpdatedResource.internalId, ...parentsOfParent],
+        parentId: parentsOfParent[0],
+        title: createdOrUpdatedResource.name ?? "Untitled Folder",
+        mimeType: MIME_TYPES.MICROSOFT.FOLDER,
+        sourceUrl: createdOrUpdatedResource.webUrl ?? undefined,
+      }),
+    { concurrency: 5 }
+  );
 
   return {
     count,
@@ -565,7 +622,7 @@ export async function syncDeltaForRootNodesInDrive({
       if (driveItem.deleted) {
         // no need to delete children here since they will all be listed
         // in the delta with the 'deleted' field set
-        await deleteFolder({ connectorId, internalId });
+        await deleteFolder({ connectorId, dataSourceConfig, internalId });
       } else {
         const isMoved = await isFolderMovedInSameRoot({
           connectorId,
@@ -608,8 +665,29 @@ export async function syncDeltaForRootNodesInDrive({
           lastSeenTs: new Date(),
         });
 
+        const parents = await getParents({
+          connectorId,
+          internalId: blob.internalId,
+          startSyncTs,
+        });
+
+        logger.info(
+          { parents, title: blob.name, internalId: blob.internalId },
+          "Upserting folder"
+        );
+
+        await upsertDataSourceFolder({
+          dataSourceConfig,
+          folderId: blob.internalId,
+          parents,
+          parentId: parents[1] || null,
+          title: blob.name ?? "Untitled Folder",
+          mimeType: MIME_TYPES.MICROSOFT.FOLDER,
+          sourceUrl: blob.webUrl ?? undefined,
+        });
+
         if (isMoved) {
-          await updateDescendantsParentsInQdrant({
+          await updateDescendantsParentsInCore({
             dataSourceConfig,
             folder: resource,
             startSyncTs,
@@ -783,7 +861,7 @@ async function isFolderMovedInSameRoot({
   return oldParentId !== newParentId;
 }
 
-async function updateDescendantsParentsInQdrant({
+async function updateDescendantsParentsInCore({
   folder,
   dataSourceConfig,
   startSyncTs,
@@ -795,6 +873,22 @@ async function updateDescendantsParentsInQdrant({
   const children = await folder.fetchChildren();
   const files = children.filter((child) => child.nodeType === "file");
   const folders = children.filter((child) => child.nodeType === "folder");
+
+  const parents = await getParents({
+    connectorId: folder.connectorId,
+    internalId: folder.internalId,
+    startSyncTs,
+  });
+  await upsertDataSourceFolder({
+    dataSourceConfig,
+    folderId: folder.internalId,
+    parents,
+    parentId: parents[1] || null,
+    title: folder.name ?? "Untitled Folder",
+    mimeType: MIME_TYPES.MICROSOFT.FOLDER,
+    sourceUrl: folder.webUrl ?? undefined,
+  });
+
   await concurrentExecutor(
     files,
     async (file) => updateParentsField({ file, dataSourceConfig, startSyncTs }),
@@ -803,7 +897,7 @@ async function updateDescendantsParentsInQdrant({
     }
   );
   for (const childFolder of folders) {
-    await updateDescendantsParentsInQdrant({
+    await updateDescendantsParentsInCore({
       dataSourceConfig,
       folder: childFolder,
       startSyncTs,
@@ -826,10 +920,11 @@ async function updateParentsField({
     startSyncTs,
   });
 
-  await updateDocumentParentsField({
+  await updateDataSourceDocumentParents({
     dataSourceConfig,
     documentId: file.internalId,
     parents,
+    parentId: parents[1] || null,
   });
 }
 
@@ -849,7 +944,11 @@ export async function microsoftDeletionActivity({
   const results = await concurrentExecutor(
     nodeIdsToDelete,
     async (nodeId) =>
-      recursiveNodeDeletion(nodeId, connectorId, dataSourceConfig),
+      recursiveNodeDeletion({
+        nodeId,
+        connectorId,
+        dataSourceConfig,
+      }),
     { concurrency: DELETE_CONCURRENCY }
   );
 
@@ -882,7 +981,7 @@ export async function microsoftGarbageCollectionActivity({
 
   const nodes = await MicrosoftNodeResource.fetchByPaginatedIds({
     connectorId,
-    pageSize: 300,
+    pageSize: 500,
     idCursor,
   });
 
@@ -926,7 +1025,11 @@ export async function microsoftGarbageCollectionActivity({
         switch (node.nodeType) {
           case "drive":
             if (!driveOrItem || !rootNodeIds.includes(node.internalId)) {
-              await deleteFolder({ connectorId, internalId: node.internalId });
+              await deleteFolder({
+                connectorId,
+                dataSourceConfig,
+                internalId: node.internalId,
+              });
             }
             break;
           case "folder": {
@@ -942,7 +1045,11 @@ export async function microsoftGarbageCollectionActivity({
                 startGarbageCollectionTs,
               }))
             ) {
-              await deleteFolder({ connectorId, internalId: node.internalId });
+              await deleteFolder({
+                connectorId,
+                dataSourceConfig,
+                internalId: node.internalId,
+              });
             }
             break;
           }
@@ -1094,6 +1201,14 @@ async function scrubRemovedFolders({
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
+  logger.info(
+    {
+      connectorId: connector.id,
+      nodes: nodes.map((n) => n.toJSON()),
+    },
+    "Scrubbing removed folders"
+  );
+
   for (const node of nodes) {
     if (node.nodeType === "file") {
       await deleteFile({
@@ -1102,11 +1217,11 @@ async function scrubRemovedFolders({
         dataSourceConfig,
       });
     } else if (node.nodeType === "folder") {
-      await recursiveNodeDeletion(
-        node.internalId,
-        connector.id,
-        dataSourceConfig
-      );
+      await recursiveNodeDeletion({
+        nodeId: node.internalId,
+        connectorId: connector.id,
+        dataSourceConfig,
+      });
     }
   }
 }

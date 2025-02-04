@@ -90,7 +90,8 @@ interface DataSourceViewsSelectorProps {
   useCase:
     | "spaceDatasourceManagement"
     | "assistantBuilder"
-    | "transcriptsProcessing";
+    | "transcriptsProcessing"
+    | "trackerBuilder";
   dataSourceViews: DataSourceViewType[];
   allowedSpaces?: SpaceType[];
   selectionConfigurations: DataSourceViewSelectionConfigurations;
@@ -156,6 +157,10 @@ export function DataSourceViewsSelector({
   const folders = filteredDSVs.filter((dsv) => isFolder(dsv.dataSource));
   const websites = filteredDSVs.filter((dsv) => isWebsite(dsv.dataSource));
 
+  const displayManagedDsv =
+    managedDsv.length > 0 &&
+    (useCase === "assistantBuilder" || useCase === "trackerBuilder");
+
   const defaultSpace = useMemo(() => {
     const firstKey = Object.keys(selectionConfigurations)[0] ?? null;
     return firstKey
@@ -205,7 +210,7 @@ export function DataSourceViewsSelector({
   } else {
     return (
       <Tree isLoading={false}>
-        {managedDsv.length > 0 && useCase === "assistantBuilder" && (
+        {displayManagedDsv && (
           <Tree.Item
             key="connected"
             label="Connected Data"
@@ -467,9 +472,7 @@ export function DataSourceViewSelector({
         label={getDisplayNameForDataSource(dataSourceView.dataSource)}
         visual={LogoComponent}
         defaultCollapsed={defaultCollapsed}
-        type={
-          canBeExpanded(viewType, dataSourceView.dataSource) ? "node" : "leaf"
-        }
+        type={canBeExpanded(dataSourceView.dataSource) ? "node" : "leaf"}
         checkbox={
           hideCheckbox || (!isRootSelectable && !hasActiveSelection)
             ? undefined

@@ -6,10 +6,11 @@ import type {
   DataSourceViewCategory,
   DataSourceViewType,
   ModelId,
-  PokeDataSourceViewType,
   Result,
+  UserType,
 } from "@dust-tt/types";
 import { formatUserFullName, Ok, removeNulls } from "@dust-tt/types";
+import assert from "assert";
 import type {
   Attributes,
   CreationAttributes,
@@ -20,19 +21,19 @@ import type {
 import { Op } from "sequelize";
 
 import { getDataSourceViewUsage } from "@app/lib/api/agent_data_sources";
-import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { isFolder, isWebsite } from "@app/lib/data_sources";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
-import { User } from "@app/lib/models/user";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
-import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
-import type { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
+import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
   getResourceIdFromSId,
@@ -40,7 +41,6 @@ import {
   makeSId,
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import { getWorkspaceByModelId } from "@app/lib/workspace";
 
 const getDataSourceCategory = (
   dataSourceResource: DataSourceResource
@@ -73,13 +73,13 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
   static model: ModelStatic<DataSourceViewModel> = DataSourceViewModel;
 
   private ds?: DataSourceResource;
-  readonly editedByUser?: Attributes<User>;
+  readonly editedByUser?: Attributes<UserModel>;
 
   constructor(
     model: ModelStatic<DataSourceViewModel>,
     blob: Attributes<DataSourceViewModel>,
     space: SpaceResource,
-    { editedByUser }: { editedByUser?: Attributes<User> } = {}
+    { editedByUser }: { editedByUser?: Attributes<UserModel> } = {}
   ) {
     super(DataSourceViewModel, blob, space);
 
@@ -89,19 +89,19 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
   // Creation.
 
   private static async makeNew(
-    auth: Authenticator,
     blob: Omit<
       CreationAttributes<DataSourceViewModel>,
       "editedAt" | "editedByUserId" | "vaultId"
     >,
     space: SpaceResource,
     dataSource: DataSourceResource,
+    editedByUser?: UserType | null,
     transaction?: Transaction
   ) {
     const dataSourceView = await DataSourceViewResource.model.create(
       {
         ...blob,
-        editedByUserId: auth.getNonNullableUser().id,
+        editedByUserId: editedByUser?.id ?? null,
         editedAt: new Date(),
         vaultId: space.id,
       },
@@ -118,34 +118,40 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
   }
 
   static async createDataSourceAndDefaultView(
-    auth: Authenticator,
     blob: Omit<CreationAttributes<DataSourceModel>, "editedAt" | "vaultId">,
-    space: SpaceResource
+    space: SpaceResource,
+    editedByUser?: UserType | null,
+    transaction?: Transaction
   ) {
-    return frontSequelize.transaction(async (transaction) => {
+    const createDataSourceAndView = async (t: Transaction) => {
       const dataSource = await DataSourceResource.makeNew(
-        auth,
         blob,
         space,
-        transaction
+        editedByUser,
+        t
       );
       return this.createDefaultViewInSpaceFromDataSourceIncludingAllDocuments(
-        auth,
-        dataSource.space,
+        space,
         dataSource,
-        transaction
+        editedByUser,
+        t
       );
-    });
+    };
+
+    if (transaction) {
+      return createDataSourceAndView(transaction);
+    }
+
+    return frontSequelize.transaction(createDataSourceAndView);
   }
 
   static async createViewInSpaceFromDataSource(
-    auth: Authenticator,
     space: SpaceResource,
     dataSource: DataSourceResource,
-    parentsIn: string[]
+    parentsIn: string[],
+    editedByUser?: UserType | null
   ) {
     return this.makeNew(
-      auth,
       {
         dataSourceId: dataSource.id,
         parentsIn,
@@ -153,19 +159,19 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
         kind: "custom",
       },
       space,
-      dataSource
+      dataSource,
+      editedByUser
     );
   }
 
   // This view has access to all documents, which is represented by null.
   private static async createDefaultViewInSpaceFromDataSourceIncludingAllDocuments(
-    auth: Authenticator,
     space: SpaceResource,
     dataSource: DataSourceResource,
+    editedByUser?: UserType | null,
     transaction?: Transaction
   ) {
     return this.makeNew(
-      auth,
       {
         dataSourceId: dataSource.id,
         parentsIn: null,
@@ -174,6 +180,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       },
       space,
       dataSource,
+      editedByUser,
       transaction
     );
   }
@@ -188,8 +195,9 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     if (options?.includeEditedBy) {
       result.includes = [
         {
-          model: User,
+          model: UserModel,
           as: "editedByUser",
+          required: false,
         },
       ];
     }
@@ -239,7 +247,8 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
 
   static async listByWorkspace(
     auth: Authenticator,
-    fetchDataSourceViewOptions?: FetchDataSourceViewOptions
+    fetchDataSourceViewOptions?: FetchDataSourceViewOptions,
+    includeConversationDataSources?: boolean
   ) {
     const dataSourceViews = await this.baseFetch(
       auth,
@@ -251,7 +260,11 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       }
     );
 
-    return dataSourceViews.filter((dsv) => dsv.canList(auth));
+    return dataSourceViews.filter(
+      (dsv) =>
+        (!dsv.space.isConversations() || includeConversationDataSources) &&
+        dsv.canReadOrAdministrate(auth)
+    );
   }
 
   static async listBySpace(
@@ -267,7 +280,33 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     spaces: SpaceResource[],
     fetchDataSourceViewOptions?: FetchDataSourceViewOptions
   ) {
+    // We inject the auth workspaceId to make sure we rely on the associated index as there is no
+    // cross-workspace data source support at this stage.
     return this.baseFetch(auth, fetchDataSourceViewOptions, {
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        vaultId: spaces.map((s) => s.id),
+      },
+    });
+  }
+
+  static async listAssistantDefaultSelected(auth: Authenticator) {
+    const globalGroup = await GroupResource.fetchWorkspaceGlobalGroup(auth);
+    assert(globalGroup.isOk(), "Failed to fetch global group");
+
+    const spaces = await SpaceResource.listForGroups(auth, [globalGroup.value]);
+
+    return this.baseFetch(auth, undefined, {
+      includes: [
+        {
+          model: DataSourceModel,
+          as: "dataSourceForView",
+          required: true,
+          where: {
+            assistantDefaultSelected: true,
+          },
+        },
+      ],
       where: {
         vaultId: spaces.map((s) => s.id),
       },
@@ -280,8 +319,11 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     space: SpaceResource,
     fetchDataSourceViewOptions?: FetchDataSourceViewOptions
   ) {
+    // We inject the auth workspaceId to make sure we rely on the associated index as there is no
+    // cross-workspace data source support at this stage.
     return this.baseFetch(auth, fetchDataSourceViewOptions, {
       where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
         dataSourceId: dataSources.map((ds) => ds.id),
         vaultId: space.id,
       },
@@ -293,8 +335,11 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     dataSources: DataSourceResource[],
     fetchDataSourceViewOptions?: FetchDataSourceViewOptions
   ) {
+    // We inject the auth workspaceId to make sure we rely on the associated index as there is no
+    // cross-workspace data source support at this stage.
     return this.baseFetch(auth, fetchDataSourceViewOptions, {
       where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
         dataSourceId: dataSources.map((ds) => ds.id),
       },
     });
@@ -363,9 +408,9 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     conversation: ConversationType
   ): Promise<DataSourceViewResource | null> {
     // Fetch the data source view associated with the datasource that is associated with the conversation.
-    const dataSource = await DataSourceResource.fetchByConversationId(
+    const dataSource = await DataSourceResource.fetchByConversation(
       auth,
-      conversation.id
+      conversation
     );
     if (!dataSource) {
       return null;
@@ -388,7 +433,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
   static async search(
     auth: Authenticator,
     searchParams: {
-      [key in AllowedSearchColumns]: string | number | undefined;
+      [key in AllowedSearchColumns]?: string;
     }
   ): Promise<DataSourceViewResource[]> {
     const owner = auth.workspace();
@@ -401,10 +446,25 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     };
 
     for (const [key, value] of Object.entries(searchParams)) {
-      if (value && key !== "vaultKind") {
-        whereClause[key] = value;
-      } else {
-        whereClause["$space.kind$"] = searchParams.vaultKind;
+      if (value) {
+        switch (key) {
+          case "dataSourceId":
+          case "vaultId":
+            const vaultModelId = getResourceIdFromSId(value);
+
+            if (vaultModelId) {
+              whereClause[key] = vaultModelId;
+            }
+            break;
+
+          case "vaultKind":
+            whereClause["$space.kind$"] = searchParams.vaultKind;
+            break;
+
+          default:
+            whereClause[key] = value;
+            break;
+        }
       }
     }
 
@@ -428,13 +488,13 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
 
   async setEditedBy(auth: Authenticator) {
     await this.update({
-      editedByUserId: auth.getNonNullableUser().id,
+      editedByUserId: auth.user()?.id ?? null,
       editedAt: new Date(),
     });
   }
 
   private makeEditedBy(
-    editedByUser: Attributes<User> | undefined,
+    editedByUser: Attributes<UserModel> | undefined,
     editedAt: Date | undefined
   ) {
     if (!editedByUser || !editedAt) {
@@ -600,20 +660,6 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       },
       tags: null,
       timestamp: null,
-    };
-  }
-
-  async toPokeJSON(): Promise<PokeDataSourceViewType> {
-    const workspace = await getWorkspaceByModelId(this.workspaceId);
-
-    return {
-      ...this.toJSON(),
-      dataSource: await this.dataSource.toPokeJSON(),
-      link: workspace
-        ? `${config.getClientFacingUrl()}/poke/${workspace.sId}/spaces/${this.space.sId}/data_source_views/${this.sId}`
-        : null,
-      name: `Data Source (${this.dataSource.name})`,
-      space: this.space.toPokeJSON(),
     };
   }
 }

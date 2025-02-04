@@ -2,12 +2,18 @@ import {
   Button,
   CloudArrowLeftRightIcon,
   Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  useSendNotification,
 } from "@dust-tt/sparkle";
-import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   ConnectorProvider,
   ConnectorType,
@@ -19,12 +25,19 @@ import type {
   SpaceType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { Err, isOAuthProvider, Ok, setupOAuthConnection } from "@dust-tt/types";
+import {
+  assertNever,
+  Err,
+  isOAuthProvider,
+  Ok,
+  setupOAuthConnection,
+} from "@dust-tt/types";
 import { useRouter } from "next/router";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 import { CreateConnectionConfirmationModal } from "@app/components/data_source/CreateConnectionConfirmationModal";
-import { CreateConnectionSnowflakeModal } from "@app/components/data_source/CreateConnectionSnowflakeModal";
+import { CreateOrUpdateConnectionBigQueryModal } from "@app/components/data_source/CreateOrUpdateConnectionBigQueryModal";
+import { CreateOrUpdateConnectionSnowflakeModal } from "@app/components/data_source/CreateOrUpdateConnectionSnowflakeModal";
 import {
   CONNECTOR_CONFIGURATIONS,
   getConnectorProviderLogoWithFallback,
@@ -105,20 +118,47 @@ export const AddConnectionMenu = ({
 
   const router = useRouter();
   const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+  const { systemSpace } = useSystemSpace({ workspaceId: owner.sId });
+
+  const handleOnClose = useCallback(
+    () =>
+      setShowConfirmConnection((prev) => ({
+        isOpen: false,
+        integration: prev.integration,
+      })),
+    []
+  );
+
+  const handleCredentialProviderManagedDataSource = useCallback(
+    async ({
+      connectionId,
+      provider,
+      suffix,
+    }: {
+      connectionId: string;
+      provider: ConnectorProvider;
+      suffix: string | null;
+    }) => {
+      if (!systemSpace) {
+        throw new Error("System space is required");
+      }
+
+      return postDataSource({
+        owner,
+        systemSpace,
+        provider,
+        connectionId,
+        suffix,
+      });
+    },
+    [owner, systemSpace]
+  );
 
   const availableIntegrations = integrations.filter(
     (i) =>
       isConnectorProviderAllowedForPlan(plan, i.connectorProvider) &&
       isConnectionIdRequiredForProvider(i.connectorProvider)
   );
-
-  const { systemSpace } = useSystemSpace({
-    workspaceId: owner.sId,
-  });
-
-  if (!systemSpace) {
-    return null;
-  }
 
   const postDataSource = async ({
     owner,
@@ -170,6 +210,10 @@ export const AddConnectionMenu = ({
         throw connectionIdRes.error;
       }
 
+      if (!systemSpace) {
+        throw new Error("System space is required");
+      }
+
       setShowConfirmConnection((prev) => ({
         isOpen: false,
         integration: prev.integration,
@@ -212,24 +256,6 @@ export const AddConnectionMenu = ({
     }
   };
 
-  const handleCredentialProviderManagedDataSource = async ({
-    connectionId,
-    provider,
-    suffix,
-  }: {
-    connectionId: string;
-    provider: ConnectorProvider;
-    suffix: string | null;
-  }) => {
-    return postDataSource({
-      owner,
-      systemSpace,
-      provider,
-      connectionId,
-      suffix,
-    });
-  };
-
   const handleConnectionClick = (integration: DataSourceIntegration) => {
     const configuration =
       CONNECTOR_CONFIGURATIONS[integration.connectorProvider];
@@ -270,6 +296,10 @@ export const AddConnectionMenu = ({
     }
   };
 
+  if (!systemSpace) {
+    return null;
+  }
+
   const { integration, isOpen } = showConfirmConnection || {};
   const connectorProvider = integration?.connectorProvider;
 
@@ -277,86 +307,159 @@ export const AddConnectionMenu = ({
     availableIntegrations.length > 0 && (
       <>
         <Dialog
-          isOpen={showUpgradePopup}
-          onCancel={() => setShowUpgradePopup(false)}
-          title={`${plan.name} plan`}
-          onValidate={() => {
-            void router.push(`/w/${owner.sId}/subscription`);
+          open={showUpgradePopup}
+          onOpenChange={(open) => {
+            if (!open) {
+              setShowUpgradePopup(false);
+            }
           }}
         >
-          <p>Unlock this managed data source by upgrading your plan.</p>
-        </Dialog>
-
-        {connectorProvider === "snowflake" ? (
-          <CreateConnectionSnowflakeModal
-            owner={owner}
-            connectorProviderConfiguration={
-              CONNECTOR_CONFIGURATIONS[connectorProvider]
-            }
-            isOpen={isOpen}
-            onClose={() =>
-              setShowConfirmConnection((prev) => ({
-                isOpen: false,
-                integration: prev.integration,
-              }))
-            }
-            onSubmit={(
-              args: Omit<
-                Parameters<typeof handleCredentialProviderManagedDataSource>[0],
-                "suffix"
-              >
-            ) =>
-              handleCredentialProviderManagedDataSource({
-                ...args,
-                suffix: integration?.setupWithSuffix ?? null,
-              })
-            }
-            onCreated={onCreated}
-          />
-        ) : (
-          connectorProvider && (
-            <CreateConnectionConfirmationModal
-              connectorProviderConfiguration={
-                CONNECTOR_CONFIGURATIONS[connectorProvider]
-              }
-              isOpen={isOpen}
-              onClose={() =>
-                setShowConfirmConnection((prev) => ({
-                  isOpen: false,
-                  integration: prev.integration,
-                }))
-              }
-              onConfirm={(extraConfig: Record<string, string>) => {
-                if (showConfirmConnection.integration) {
-                  void handleOauthProviderManagedDataSource(
-                    connectorProvider,
-                    integration.setupWithSuffix,
-                    extraConfig
-                  );
-                }
+          <DialogContent size="md" isAlertDialog>
+            <DialogHeader hideButton>
+              <DialogTitle>${plan.name} plan</DialogTitle>
+            </DialogHeader>
+            <DialogContainer>
+              Unlock this managed data source by upgrading your plan.
+            </DialogContainer>
+            <DialogFooter
+              leftButtonProps={{
+                label: "Cancel",
+                variant: "outline",
+              }}
+              rightButtonProps={{
+                label: "Validate",
+                variant: "primary",
+                onClick: () => {
+                  void router.push(`/w/${owner.sId}/subscription`);
+                },
               }}
             />
-          )
-        )}
+          </DialogContent>
+        </Dialog>
+
+        {[connectorProvider].map((c) => {
+          switch (c) {
+            case "bigquery":
+              return (
+                <CreateOrUpdateConnectionBigQueryModal
+                  owner={owner}
+                  connectorProviderConfiguration={CONNECTOR_CONFIGURATIONS[c]}
+                  isOpen={isOpen}
+                  onClose={handleOnClose}
+                  createDatasource={(
+                    args: Omit<
+                      Parameters<
+                        typeof handleCredentialProviderManagedDataSource
+                      >[0],
+                      "suffix"
+                    >
+                  ) =>
+                    handleCredentialProviderManagedDataSource({
+                      ...args,
+                      suffix: integration?.setupWithSuffix ?? null,
+                    })
+                  }
+                  onSuccess={onCreated}
+                />
+              );
+            case "snowflake":
+              return (
+                <CreateOrUpdateConnectionSnowflakeModal
+                  owner={owner}
+                  connectorProviderConfiguration={CONNECTOR_CONFIGURATIONS[c]}
+                  isOpen={isOpen}
+                  onClose={handleOnClose}
+                  createDatasource={(
+                    args: Omit<
+                      Parameters<
+                        typeof handleCredentialProviderManagedDataSource
+                      >[0],
+                      "suffix"
+                    >
+                  ) =>
+                    handleCredentialProviderManagedDataSource({
+                      ...args,
+                      suffix: integration?.setupWithSuffix ?? null,
+                    })
+                  }
+                  onSuccess={onCreated}
+                />
+              );
+            case "github":
+            case "confluence":
+            case "google_drive":
+            case "intercom":
+            case "notion":
+            case "slack":
+            case "microsoft":
+            case "zendesk":
+            case "webcrawler":
+              return (
+                <CreateConnectionConfirmationModal
+                  connectorProviderConfiguration={CONNECTOR_CONFIGURATIONS[c]}
+                  isOpen={isOpen}
+                  onClose={handleOnClose}
+                  onConfirm={(extraConfig: Record<string, string>) => {
+                    if (showConfirmConnection.integration) {
+                      void handleOauthProviderManagedDataSource(
+                        c,
+                        integration?.setupWithSuffix ?? null,
+                        extraConfig
+                      );
+                    }
+                  }}
+                />
+              );
+            case undefined:
+              return null;
+            default:
+              assertNever(c);
+          }
+        })}
+
         <Dialog
-          isOpen={showPreviewPopupForProvider.isOpen}
-          title="Coming Soon!"
-          validateLabel="Contact us"
-          onValidate={() => {
-            window.open(
-              `mailto:support@dust.tt?subject=Early access to the ${showPreviewPopupForProvider.connector} connection`
-            );
-          }}
-          onCancel={() => {
-            setShowPreviewPopupForProvider((prev) => ({
-              isOpen: false,
-              connector: prev.connector,
-            }));
+          open={showPreviewPopupForProvider.isOpen}
+          onOpenChange={(open) => {
+            if (!open) {
+              setShowPreviewPopupForProvider((prev) => ({
+                isOpen: false,
+                connector: prev.connector,
+              }));
+            }
           }}
         >
-          Please email us at support@dust.tt for early access.
+          <DialogContent size="md">
+            <DialogHeader>
+              <DialogTitle>Coming Soon!</DialogTitle>
+              <DialogDescription>
+                Please email us at support@dust.tt for early access.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter
+              leftButtonProps={{
+                label: "Cancel",
+                variant: "outline",
+                onClick: () => {
+                  setShowPreviewPopupForProvider((prev) => ({
+                    isOpen: false,
+                    connector: prev.connector,
+                  }));
+                },
+              }}
+              rightButtonProps={{
+                label: "Contact us",
+                variant: "highlight",
+                onClick: () => {
+                  window.open(
+                    `mailto:support@dust.tt?subject=Early access to the ${showPreviewPopupForProvider.connector} connection`
+                  );
+                },
+              }}
+            />
+          </DialogContent>
         </Dialog>
-        <DropdownMenu>
+
+        <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
             <Button
               label="Add Connections"

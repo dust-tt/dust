@@ -1,24 +1,25 @@
 import { getSession as getAuth0Session } from "@auth0/nextjs-auth0";
-import type { DustAPICredentials } from "@dust-tt/client";
 import type {
+  APIErrorWithStatusCode,
   GroupType,
   LightWorkspaceType,
   PermissionType,
+  PlanType,
   ResourcePermission,
+  Result,
   RoleType,
+  SubscriptionType,
   UserType,
   WhitelistableFeature,
   WorkspaceType,
 } from "@dust-tt/types";
-import type { PlanType, SubscriptionType } from "@dust-tt/types";
-import type { Result } from "@dust-tt/types";
-import type { APIErrorWithStatusCode } from "@dust-tt/types";
 import {
   Err,
   hasRolePermissions,
   isAdmin,
   isBuilder,
   isDevelopment,
+  isSupportedEnterpriseConnectionStrategy,
   isUser,
   Ok,
   WHITELISTABLE_FEATURES,
@@ -33,6 +34,7 @@ import type {
 import type { Auth0JwtPayload } from "@app/lib/api/auth0";
 import { getUserFromAuth0Token } from "@app/lib/api/auth0";
 import config from "@app/lib/api/config";
+import { SSOEnforcedError } from "@app/lib/iam/errors";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { isValidSession } from "@app/lib/iam/provider";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
@@ -228,7 +230,7 @@ export class Authenticator {
     if (workspace) {
       [groups, subscription] = await Promise.all([
         user?.isDustSuperUser
-          ? GroupResource.superAdminFetchWorkspaceGroups(user, workspace.id)
+          ? GroupResource.internalFetchAllWorkspaceGroups(workspace.id)
           : [],
         subscriptionForWorkspace(renderLightWorkspaceType({ workspace })),
       ]);
@@ -303,16 +305,17 @@ export class Authenticator {
   }: {
     token: Auth0JwtPayload;
     wId: string;
-  }): Promise<Authenticator> {
+  }): Promise<
+    Result<
+      Authenticator,
+      {
+        code: "user_not_found" | "workspace_not_found" | "sso_enforced";
+      }
+    >
+  > {
     const user = await getUserFromAuth0Token(token);
     if (!user) {
-      return new Authenticator({
-        role: "none",
-        groups: [],
-        user: null,
-        subscription: null,
-        workspace: null,
-      });
+      return new Err({ code: "user_not_found" });
     }
 
     const workspace = await Workspace.findOne({
@@ -321,7 +324,22 @@ export class Authenticator {
       },
     });
     if (!workspace) {
-      throw new Error("Workspace not found.");
+      return new Err({ code: "workspace_not_found" });
+    }
+
+    const strategy =
+      token[`${config.getAuth0NamespaceClaim()}connection.strategy`];
+    if (
+      workspace.ssoEnforced &&
+      strategy &&
+      !isSupportedEnterpriseConnectionStrategy(strategy)
+    ) {
+      return new Err(
+        new SSOEnforcedError(
+          "Access requires Single Sign-On (SSO) authentication. Use your SSO provider to sign in.",
+          workspace.sId
+        )
+      );
     }
 
     let role = "none" as RoleType;
@@ -340,13 +358,15 @@ export class Authenticator {
       subscriptionForWorkspace(renderLightWorkspaceType({ workspace })),
     ]);
 
-    return new Authenticator({
-      workspace,
-      groups,
-      user,
-      role,
-      subscription,
-    });
+    return new Ok(
+      new Authenticator({
+        workspace,
+        groups,
+        user,
+        role,
+        subscription,
+      })
+    );
   }
 
   /**
@@ -389,7 +409,12 @@ export class Authenticator {
     let role = "none" as RoleType;
     const isKeyWorkspace = keyWorkspace.id === workspace?.id;
     if (isKeyWorkspace) {
-      role = "builder";
+      // System keys have admin role on their workspace.
+      if (key.isSystem) {
+        role = "admin";
+      } else {
+        role = "builder";
+      }
     }
 
     const getSubscriptionForWorkspace = (workspace: Workspace) =>
@@ -525,9 +550,11 @@ export class Authenticator {
     });
   }
 
-  /* As above, with role `admin` */
+  /* As above, with role `admin`. Use requestAllGroups with care as it gives access to all groups
+   * within the workpsace. */
   static async internalAdminForWorkspace(
-    workspaceId: string
+    workspaceId: string,
+    options?: { dangerouslyRequestAllGroups: boolean }
   ): Promise<Authenticator> {
     const workspace = await Workspace.findOne({
       where: {
@@ -538,18 +565,23 @@ export class Authenticator {
       throw new Error(`Could not find workspace with sId ${workspaceId}`);
     }
 
-    let globalGroup: GroupResource | null = null;
-    let subscription: SubscriptionType | null = null;
-
-    [globalGroup, subscription] = await Promise.all([
-      GroupResource.internalFetchWorkspaceGlobalGroup(workspace.id),
+    const [groups, subscription] = await Promise.all([
+      (async () => {
+        if (options?.dangerouslyRequestAllGroups) {
+          return GroupResource.internalFetchAllWorkspaceGroups(workspace.id);
+        } else {
+          const globalGroup =
+            await GroupResource.internalFetchWorkspaceGlobalGroup(workspace.id);
+          return globalGroup ? [globalGroup] : [];
+        }
+      })(),
       subscriptionForWorkspace(renderLightWorkspaceType({ workspace })),
     ]);
 
     return new Authenticator({
       workspace,
       role: "admin",
-      groups: globalGroup ? [globalGroup] : [],
+      groups,
       subscription,
     });
   }
@@ -653,6 +685,7 @@ export class Authenticator {
           ssoEnforced: this._workspace.ssoEnforced,
           whiteListedProviders: this._workspace.whiteListedProviders,
           defaultEmbeddingProvider: this._workspace.defaultEmbeddingProvider,
+          metadata: this._workspace.metadata,
         }
       : null;
   }
@@ -977,7 +1010,10 @@ export async function prodAPICredentialsForOwner(
   }: {
     useLocalInDev: boolean;
   } = { useLocalInDev: false }
-): Promise<DustAPICredentials> {
+): Promise<{
+  apiKey: string;
+  workspaceId: string;
+}> {
   if (
     isDevelopment() &&
     !config.getDustAPIConfig().url.startsWith("http://localhost") &&

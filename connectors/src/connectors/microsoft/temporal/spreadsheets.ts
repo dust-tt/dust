@@ -1,5 +1,5 @@
 import type { Result } from "@dust-tt/types";
-import { Err, Ok, slugify } from "@dust-tt/types";
+import { Err, MIME_TYPES, Ok, slugify } from "@dust-tt/types";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import { stringify } from "csv-stringify/sync";
 
@@ -15,7 +15,12 @@ import {
 import { getParents } from "@connectors/connectors/microsoft/temporal/file";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
-import { deleteTable, upsertTableFromCsv } from "@connectors/lib/data_sources";
+import {
+  deleteDataSourceTable,
+  ignoreTablesError,
+  upsertDataSourceFolder,
+  upsertDataSourceTableFromCsv,
+} from "@connectors/lib/data_sources";
 import { ProviderWorkflowError, TablesError } from "@connectors/lib/error";
 import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
@@ -41,6 +46,7 @@ async function upsertSpreadsheetInDb(
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     lastUpsertedTs: new Date(),
     parentInternalId,
+    webUrl: file.webUrl ?? null,
   });
 }
 
@@ -48,7 +54,7 @@ async function upsertWorksheetInDb(
   connector: ConnectorResource,
   internalId: string,
   worksheet: microsoftgraph.WorkbookWorksheet,
-  parentInternalId: string
+  spreadsheet: microsoftgraph.DriveItem
 ) {
   return MicrosoftNodeResource.upsert({
     internalId,
@@ -58,7 +64,10 @@ async function upsertWorksheetInDb(
     name: worksheet.name ?? "",
     mimeType: "text/csv",
     lastUpsertedTs: new Date(),
-    parentInternalId,
+    parentInternalId: getDriveItemInternalId(spreadsheet),
+    // At our current comprehension, there are no easily findable source url to
+    // directly access the worksheet, so we link to the parent spreadsheet
+    webUrl: spreadsheet.webUrl ?? null,
   });
 }
 
@@ -67,9 +76,8 @@ async function upsertMSTable(
   internalId: string,
   spreadsheet: microsoftgraph.DriveItem,
   worksheet: microsoftgraph.WorkbookWorksheet,
-  parents: string[],
-  rows: string[][],
-  loggerArgs: object
+  parents: [string, string, ...string[]],
+  rows: string[][]
 ) {
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
@@ -83,26 +91,30 @@ async function upsertMSTable(
 
   // Upserting is safe: Core truncates any previous table with the same Id before
   // the operation. Note: Renaming a sheet in Google Drive retains its original Id.
-  await upsertTableFromCsv({
-    dataSourceConfig,
-    tableId: internalId,
-    tableName,
-    tableDescription,
-    tableCsv: csv,
-    loggerArgs: {
-      connectorId: connector.id,
-      sheetId: internalId,
-      spreadsheetId: spreadsheet.id ?? "",
-    },
-    truncate: true,
-    parents,
-    useAppForHeaderDetection: true,
-    title: `${spreadsheet.name} - ${worksheet.name}`,
-    mimeType:
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  });
-
-  logger.info(loggerArgs, "[Spreadsheet] Table upserted.");
+  await ignoreTablesError("Microsoft Excel", () =>
+    upsertDataSourceTableFromCsv({
+      dataSourceConfig,
+      tableId: internalId,
+      tableName,
+      tableDescription,
+      tableCsv: csv,
+      loggerArgs: {
+        connectorId: connector.id,
+        sheetId: internalId,
+        spreadsheetId: spreadsheet.id ?? "",
+      },
+      truncate: true,
+      parents,
+      parentId: parents[1],
+      useAppForHeaderDetection: true,
+      title: `${spreadsheet.name} - ${worksheet.name}`,
+      mimeType:
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      // At our current comprehension, there are no easily findable source url to
+      // directly access the worksheet, so we link to the parent spreadsheet
+      sourceUrl: spreadsheet.webUrl ?? undefined,
+    })
+  );
 }
 
 async function processSheet({
@@ -180,7 +192,7 @@ async function processSheet({
 
   // Assuming the first line as headers, at least one additional data line is required.
   if (rows.length > 1) {
-    const parents = [
+    const parents: [string, string, ...string[]] = [
       worksheetInternalId,
       ...(await getParents({
         connectorId: connector.id,
@@ -196,8 +208,7 @@ async function processSheet({
         spreadsheet,
         worksheet,
         parents,
-        rows,
-        loggerArgs
+        rows
       );
     } catch (err) {
       logger.error(
@@ -227,7 +238,7 @@ async function processSheet({
       connector,
       worksheetInternalId,
       worksheet,
-      spreadsheetInternalId
+      spreadsheet
     );
 
     return new Ok(null);
@@ -291,6 +302,22 @@ export async function handleSpreadSheet({
     parentInternalId
   );
 
+  const parents = await getParents({
+    connectorId,
+    internalId: documentId,
+    startSyncTs,
+  });
+
+  await upsertDataSourceFolder({
+    dataSourceConfig: dataSourceConfigFromConnector(connector),
+    folderId: documentId,
+    title: file.name ?? "Untitled spreadsheet",
+    parents,
+    parentId: parentInternalId,
+    mimeType: MIME_TYPES.MICROSOFT.SPREADSHEET,
+    sourceUrl: file.webUrl ?? undefined,
+  });
+
   // List synced sheets.
   const syncedWorksheets = await spreadsheet.fetchChildren();
 
@@ -338,7 +365,7 @@ export async function deleteAllSheets(
   await concurrentExecutor(
     await spreadsheet.fetchChildren(),
     async (sheet) => {
-      await deleteTable({
+      await deleteDataSourceTable({
         dataSourceConfig,
         tableId: sheet.internalId,
         loggerArgs: {

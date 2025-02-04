@@ -3,6 +3,7 @@ import type {
   AppType,
   DataSourceViewType,
   PlanType,
+  PlatformActionsConfigurationType,
   SpaceType,
   SubscriptionType,
   TemplateAgentConfigurationType,
@@ -27,6 +28,7 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { generateMockAgentConfigurationFromTemplate } from "@app/lib/api/assistant/templates";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { PlatformActionsConfigurationResource } from "@app/lib/resources/platform_actions_configuration_resource";
 import { useAssistantTemplate } from "@app/lib/swr/assistants";
 
 function getDuplicateAndTemplateIdFromQuery(query: ParsedUrlQuery) {
@@ -40,7 +42,6 @@ function getDuplicateAndTemplateIdFromQuery(query: ParsedUrlQuery) {
 }
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
-  isAdmin: boolean;
   owner: WorkspaceType;
   subscription: SubscriptionType;
   plan: PlanType;
@@ -55,6 +56,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   flow: BuilderFlow;
   baseUrl: string;
   templateId: string | null;
+  platformActionsConfigurations: PlatformActionsConfigurationType[];
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const plan = auth.plan();
@@ -65,8 +67,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const { spaces, dataSourceViews, dustApps } =
-    await getAccessibleSourcesAndApps(auth);
+  const [{ spaces, dataSourceViews, dustApps }, platformActionsConfigurations] =
+    await Promise.all([
+      getAccessibleSourcesAndApps(auth),
+      PlatformActionsConfigurationResource.listByWorkspace(auth),
+    ]);
 
   const flow: BuilderFlow = BUILDER_FLOWS.includes(
     context.query.flow as BuilderFlow
@@ -124,12 +129,14 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       dataSourceViews: dataSourceViews.map((v) => v.toJSON()),
       dustApps: dustApps.map((a) => a.toJSON()),
       flow,
-      isAdmin: auth.isAdmin(),
       owner,
       plan,
       subscription,
       templateId,
       spaces: spaces.map((s) => s.toJSON()),
+      platformActionsConfigurations: platformActionsConfigurations.map((c) =>
+        c.toJSON()
+      ),
     },
   };
 });
@@ -142,16 +149,13 @@ export default function CreateAssistant({
   dataSourceViews,
   dustApps,
   flow,
-  isAdmin,
   owner,
   plan,
   subscription,
   templateId,
+  platformActionsConfigurations,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const { assistantTemplate } = useAssistantTemplate({
-    templateId,
-    workspaceId: owner.sId,
-  });
+  const { assistantTemplate } = useAssistantTemplate({ templateId });
 
   if (agentConfiguration) {
     throwIfInvalidAgentConfiguration(agentConfiguration);
@@ -166,6 +170,7 @@ export default function CreateAssistant({
       spaces={spaces}
       dustApps={dustApps}
       dataSourceViews={dataSourceViews}
+      platformActionsConfigurations={platformActionsConfigurations}
     >
       <AssistantBuilder
         owner={owner}
@@ -203,7 +208,6 @@ export default function CreateAssistant({
             : null
         }
         agentConfigurationId={null}
-        isAdmin={isAdmin}
         defaultIsEdited={assistantTemplate !== null}
         baseUrl={baseUrl}
         defaultTemplate={assistantTemplate}

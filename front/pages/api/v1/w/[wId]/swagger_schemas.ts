@@ -93,6 +93,9 @@
  *           example: "openai"
  *     Context:
  *       type: object
+ *       required:
+ *         - username
+ *         - timezone
  *       properties:
  *         username:
  *           type: string
@@ -318,6 +321,9 @@
  *           example: "7f3a9c2b1e"
  *     Message:
  *       type: object
+ *       required:
+ *         - content
+ *         - mentions
  *       properties:
  *         content:
  *           type: string
@@ -325,12 +331,15 @@
  *           example: "This is my message"
  *         mentions:
  *           type: array
+ *           description: Empty array is accepted but won't trigger any agent.
  *           items:
  *             $ref: '#/components/schemas/Mention'
  *         context:
  *           $ref: '#/components/schemas/Context'
  *     ContentFragment:
  *       type: object
+ *       required:
+ *         - title
  *       properties:
  *         title:
  *           type: string
@@ -338,19 +347,19 @@
  *           example: "My content fragment"
  *         content:
  *           type: string
- *           description: The content of the content fragment
+ *           description: The content of the content fragment (optional if `fileId` is set)
  *           example: "This is my content fragment extracted text"
+ *         contentType:
+ *           type: string
+ *           description: The content type of the content fragment (optional if `fileId` is set)
+ *           example: "text/plain"
  *         url:
  *           type: string
  *           description: The URL of the content fragment
  *           example: "https://example.com/content"
- *         contentType:
- *           type: string
- *           description: The content type of the content fragment
- *           example: "text/plain"
  *         fileId:
  *           type: string
- *           description: The id of the previously uploaded file
+ *           description: The id of the previously uploaded file (optional if `content` and `contentType` are set)
  *           example: fil_123456
  *         context:
  *           $ref: '#/components/schemas/Context'
@@ -407,6 +416,73 @@
  *           type: boolean
  *           description: Whether this datasource is selected by default for assistants
  *           example: true
+ *     Table:
+ *       type: object
+ *       properties:
+ *         name:
+ *           type: string
+ *           description: Name of the table
+ *           example: "Roi data"
+ *           deprecated: true
+ *         title:
+ *           type: string
+ *           description: Title of the table
+ *           example: "ROI Data"
+ *         table_id:
+ *           type: string
+ *           description: Unique identifier for the table
+ *           example: "1234f4567c"
+ *         description:
+ *           type: string
+ *           description: Description of the table
+ *           example: "roi data for Q1"
+ *         mime_type:
+ *           type: string
+ *           description: MIME type of the table
+ *           example: "text/csv"
+ *         schema:
+ *           type: array
+ *           description: Array of column definitions
+ *           items:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 description: Name of the column
+ *                 example: "roi"
+ *               value_type:
+ *                 type: string
+ *                 description: Data type of the column
+ *                 enum: [text, int, float, bool, date]
+ *                 example: "int"
+ *               possible_values:
+ *                 type: array
+ *                 description: Array of possible values for the column (null if unrestricted)
+ *                 items:
+ *                   type: string
+ *                 nullable: true
+ *                 example: ["1", "2", "3"]
+ *         timestamp:
+ *           type: number
+ *           description: Unix timestamp of table creation/modification
+ *           example: 1732810375150
+ *         tags:
+ *           type: array
+ *           description: Array of tags associated with the table
+ *           items:
+ *             type: string
+ *         parent_id:
+ *           type: string
+ *           description: ID of the table parent
+ *           items:
+ *             type: string
+ *           example: "1234f4567c"
+ *         parents:
+ *           type: array
+ *           description: Array of parent table IDs
+ *           items:
+ *             type: string
+ *           example: ["1234f4567c"]
  *     DatasourceView:
  *       type: object
  *       properties:
@@ -508,6 +584,14 @@
  *         document_id:
  *           type: string
  *           example: "2c4a6e8d0f"
+ *         title:
+ *           type: string
+ *           description: Title of the document
+ *           example: "Customer Support FAQ"
+ *         mime_type:
+ *           type: string
+ *           description: MIME type of the table
+ *           example: "text/md"
  *         timestamp:
  *           type: number
  *           example: 1625097600
@@ -516,6 +600,12 @@
  *           items:
  *             type: string
  *           example: ["customer_support", "faq"]
+ *         parent_id:
+ *           type: string
+ *           description: ID of the document parent
+ *           items:
+ *             type: string
+ *           example: "1234f4567c"
  *         parents:
  *           type: array
  *           items:

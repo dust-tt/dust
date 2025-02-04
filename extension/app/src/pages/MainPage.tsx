@@ -6,7 +6,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  LogoHorizontalColorLogo,
   LogoutIcon,
 } from "@dust-tt/sparkle";
 import { AssistantFavorites } from "@extension/components/assistants/AssistantFavorites";
@@ -17,7 +16,6 @@ import { ConversationsListButton } from "@extension/components/conversation/Conv
 import { FileDropProvider } from "@extension/components/conversation/FileUploaderContext";
 import { DropzoneContainer } from "@extension/components/DropzoneContainer";
 import { InputBarProvider } from "@extension/components/input_bar/InputBarContext";
-import { Link } from "react-router-dom";
 
 export const MainPage = ({
   user,
@@ -25,6 +23,9 @@ export const MainPage = ({
   handleLogout,
 }: ProtectedRouteChildrenProps) => {
   const { handleSelectWorkspace } = useAuth();
+
+  const isMac = /macintosh|mac os x/i.test(navigator.userAgent);
+  const shortcut = isMac ? "⇧⌘E" : "⇧+Ctrl+E";
 
   return (
     <>
@@ -49,7 +50,7 @@ export const MainPage = ({
                       return (
                         <DropdownMenuItem
                           key={w.sId}
-                          onClick={() => void handleSelectWorkspace(w.sId)}
+                          onClick={() => void handleSelectWorkspace(w)}
                           label={w.name}
                         />
                       );
@@ -61,14 +62,14 @@ export const MainPage = ({
           </div>
         }
         rightActions={
-          <div className="flex flex-row items-right">
-            <ConversationsListButton size="md" />
+          <div className="flex flex-row items-right space-x-1">
+            <ConversationsListButton size="sm" />
 
             <DropdownMenu>
               <DropdownMenuTrigger>
-                <div className="px-2">
+                <div>
                   <Avatar
-                    size="md"
+                    size="sm"
                     visual={
                       user.image
                         ? user.image
@@ -91,14 +92,9 @@ export const MainPage = ({
           </div>
         }
       />
-
       <div className="flex items-start justify-between">
-        <div className="fixed bottom-0 right-0 z-10">
-          <Link to="https://dust.tt" target="_blank">
-            <div className="rounded-tl-2xl border-t border-l border-gray-200 bg-white p-4">
-              <LogoHorizontalColorLogo className="h-6 w-24" />
-            </div>
-          </Link>
+        <div className="fixed bottom-0 right-0 z-10 p-2 text-sm element">
+          <p className="text-sm font-normal text-element-700">{shortcut}</p>
         </div>
       </div>
       <div className="h-full w-full pt-28 max-w-4xl mx-auto flex justify-center">
@@ -113,7 +109,7 @@ export const MainPage = ({
                 conversationId={null}
                 user={user}
               />
-              <AssistantFavorites />
+              <AssistantFavorites user={user} />
             </InputBarProvider>
           </DropzoneContainer>
         </FileDropProvider>

@@ -43,7 +43,6 @@ export default function ConnectorSyncingChip({
   }
 
   if (connector.errorType) {
-    let label = "";
     switch (connector.errorType) {
       case "oauth_token_revoked":
         return (
@@ -65,43 +64,41 @@ export default function ConnectorSyncingChip({
           />
         );
       case "webcrawling_error_content_too_large":
-        label = "Page too large: this page contains too much data.";
         return (
           <Tooltip
-            label={label}
-            className="max-w-md"
-            trigger={
-              <Chip className="w-36" color="warning">
-                <div className="w-full truncate">{label}</div>
-              </Chip>
+            label={
+              "The synchronization failed because too many excessively large pages were found."
             }
+            className="max-w-md"
+            trigger={<Chip color="warning">Pages too large</Chip>}
           />
         );
       case "webcrawling_error_empty_content":
-        label =
-          "Unable to read: this site's content loads in a way we can't read.";
         return (
           <Tooltip
-            label={label}
+            label={"The synchronization failed to retrieve any content."}
             className="max-w-md"
-            trigger={
-              <Chip className="w-36" color="warning">
-                <div className="w-full truncate">{label}</div>
-              </Chip>
-            }
+            trigger={<Chip color="warning">Empty content</Chip>}
           />
         );
       case "webcrawling_error_blocked":
-        label = "Access denied: the site blocks automated visits.";
         return (
           <Tooltip
-            label={label}
-            className="max-w-md"
-            trigger={
-              <Chip className="w-36" color="warning">
-                <div className="w-full truncate">{label}</div>
-              </Chip>
+            label={
+              "The synchronization failed because the websites blocks automated visits."
             }
+            className="max-w-md"
+            trigger={<Chip color="warning">Access blocked</Chip>}
+          />
+        );
+      case "webcrawling_synchronization_limit_reached":
+        return (
+          <Tooltip
+            label={
+              "The website synchronization reached the maximum page limit."
+            }
+            className="max-w-md"
+            trigger={<Chip color="warning">Limit reached</Chip>}
           />
         );
       case "webcrawling_error":

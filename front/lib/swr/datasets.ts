@@ -35,21 +35,22 @@ export function useDatasets({
 export function useDataset(
   owner: LightWorkspaceType,
   app: AppType,
-  dataset: string,
+  dataset: string | undefined,
   showData = false
 ) {
   const datasetFetcher: Fetcher<GetDatasetResponseBody> = fetcher;
-
+  const disabled = !dataset;
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/datasets/${dataset}${
       showData ? "?data=true" : ""
     }`,
-    datasetFetcher
+    datasetFetcher,
+    { disabled }
   );
 
   return {
     dataset: data ? data.dataset : null,
-    isDatasetLoading: !error && !data,
+    isDatasetLoading: !error && !data && !disabled,
     isDatasetError: !!error,
     mutateDataset: mutate,
   };

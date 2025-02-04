@@ -7,10 +7,12 @@ export const apiConfig = {
       apiKey: EnvironmentConfig.getOptionalEnvVariable("OAUTH_API_KEY") ?? null,
     };
   },
+  getDustFrontAPIUrl: (): string => {
+    return EnvironmentConfig.getEnvVariable("DUST_FRONT_API");
+  },
   getDustAPIConfig: (): { url: string; nodeEnv: string } => {
     return {
-      // Dust production API URL is hardcoded for now.
-      url: "https://dust.tt",
+      url: EnvironmentConfig.getEnvVariable("DUST_FRONT_API"),
       nodeEnv: EnvironmentConfig.getEnvVariable("NODE_ENV"),
     };
   },

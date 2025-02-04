@@ -156,7 +156,11 @@ async function handler(
     }
   }
 
-  if (!dataSource || dataSource.space.sId !== spaceId) {
+  if (
+    !dataSource ||
+    dataSource.space.sId !== spaceId ||
+    !dataSource.canRead(auth)
+  ) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -212,6 +216,16 @@ async function handler(
       return res.status(200).json({ row });
 
     case "DELETE":
+      if (!dataSource.canWrite(auth)) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "data_source_auth_error",
+            message: "You are not allowed to update data in this data source.",
+          },
+        });
+      }
+
       const deleteRes = await coreAPI.deleteTableRow({
         projectId: dataSource.dustAPIProjectId,
         dataSourceId: dataSource.dustAPIDataSourceId,

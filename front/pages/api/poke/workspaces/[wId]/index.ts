@@ -9,7 +9,8 @@ import {
   deleteWorkspace,
   setInternalWorkspaceSegmentation,
 } from "@app/lib/api/workspace";
-import { Authenticator, getSession } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
+import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
 
 export const WorkspaceTypeSchema = t.type({
@@ -30,9 +31,9 @@ async function handler(
     WithAPIErrorResponse<
       SegmentWorkspaceResponseBody | DeleteWorkspaceResponseBody
     >
-  >
+  >,
+  session: SessionWithUser
 ): Promise<void> {
-  const session = await getSession(req, res);
   const auth = await Authenticator.fromSuperUserSession(
     session,
     req.query.wId as string

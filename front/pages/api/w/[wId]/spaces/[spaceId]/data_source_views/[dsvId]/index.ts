@@ -8,8 +8,8 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import { handlePatchDataSourceView } from "@app/lib/api/data_source_view";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import type { SpaceResource } from "@app/lib/resources/space_resource";
+import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { apiError } from "@app/logger/withlogging";
 
 export type PatchDataSourceViewResponseBody = {
@@ -23,28 +23,10 @@ export type GetDataSourceViewResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<GetDataSourceViewResponseBody>>,
-
   auth: Authenticator,
-  space: SpaceResource
+  { dataSourceView }: { dataSourceView: DataSourceViewResource }
 ): Promise<void> {
-  const { dsvId } = req.query;
-  if (typeof dsvId !== "string") {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid path parameters.",
-      },
-    });
-  }
-
-  const dataSourceView = await DataSourceViewResource.fetchById(auth, dsvId);
-
-  if (
-    !dataSourceView ||
-    space.sId !== dataSourceView.space.sId ||
-    !dataSourceView.canList(auth)
-  ) {
+  if (!dataSourceView.canReadOrAdministrate(auth)) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -62,6 +44,18 @@ async function handler(
     }
 
     case "PATCH": {
+      const killSwitches = await KillSwitchResource.listEnabledKillSwitches();
+      if (killSwitches?.includes("save_data_source_views")) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "app_auth_error",
+            message:
+              "Saving data source views is temporarily disabled, try again later.",
+          },
+        });
+      }
+
       const patchBodyValidation = PatchDataSourceViewSchema.decode(req.body);
 
       if (isLeft(patchBodyValidation)) {
@@ -113,14 +107,13 @@ async function handler(
     }
 
     case "DELETE": {
-      if (!dataSourceView.canWrite(auth)) {
+      if (!dataSourceView.canAdministrate(auth)) {
         // Only admins, or builders who have to the space, can patch.
         return apiError(req, res, {
           status_code: 403,
           api_error: {
             type: "workspace_auth_error",
-            message:
-              "Only users that are `admins` or `builder` can administrate spaces.",
+            message: "Only users that are `admins` can administrate spaces.",
           },
         });
       }
@@ -161,5 +154,7 @@ async function handler(
 }
 
 export default withSessionAuthenticationForWorkspace(
-  withResourceFetchingFromRoute(handler, "space")
+  withResourceFetchingFromRoute(handler, {
+    dataSourceView: { requireCanReadOrAdministrate: true },
+  })
 );

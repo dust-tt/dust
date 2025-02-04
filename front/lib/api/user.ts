@@ -1,16 +1,18 @@
 import type {
   Result,
-  RoleType,
   UserMetadataType,
   UserType,
+  UserTypeWithExtensionWorkspaces,
   UserTypeWithWorkspaces,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 
 import type { Authenticator } from "@app/lib/auth";
-import { UserMetadata } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
+import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
+import { UserMetadataModel } from "@app/lib/resources/storage/models/user";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 
 import { MembershipResource } from "../resources/membership_resource";
@@ -57,7 +59,7 @@ export async function getUserMetadata(
   user: UserType,
   key: string
 ): Promise<UserMetadataType | null> {
-  const metadata = await UserMetadata.findOne({
+  const metadata = await UserMetadataModel.findOne({
     where: {
       userId: user.id,
       key,
@@ -84,7 +86,7 @@ export async function setUserMetadata(
   user: UserType,
   update: UserMetadataType
 ): Promise<void> {
-  const metadata = await UserMetadata.findOne({
+  const metadata = await UserMetadataModel.findOne({
     where: {
       userId: user.id,
       key: update.key,
@@ -92,7 +94,7 @@ export async function setUserMetadata(
   });
 
   if (!metadata) {
-    await UserMetadata.create({
+    await UserMetadataModel.create({
       userId: user.id,
       key: update.key,
       value: update.value,
@@ -139,42 +141,42 @@ export async function fetchRevokedWorkspace(
   return new Ok(workspace);
 }
 
-export async function getUserWithWorkspaces(
-  user: UserResource
-): Promise<UserTypeWithWorkspaces> {
+export async function getUserWithWorkspaces<T extends boolean>(
+  user: UserResource,
+  populateExtensionConfig: T = false as T
+): Promise<
+  T extends true ? UserTypeWithExtensionWorkspaces : UserTypeWithWorkspaces
+> {
   const { memberships } = await MembershipResource.getActiveMemberships({
     users: [user],
   });
+  const workspaceIds = memberships.map((m) => m.workspaceId);
   const workspaces = await Workspace.findAll({
     where: {
-      id: memberships.map((m) => m.workspaceId),
+      id: workspaceIds,
     },
   });
+
+  const configs = populateExtensionConfig
+    ? await ExtensionConfigurationResource.internalFetchForWorkspaces(
+        workspaceIds
+      )
+    : [];
 
   return {
     ...user.toJSON(),
     workspaces: workspaces.map((w) => {
-      const m = memberships.find((m) => m.workspaceId === w.id);
-      let role = "none" as RoleType;
-      if (m) {
-        switch (m.role) {
-          case "admin":
-          case "builder":
-          case "user":
-            role = m.role;
-            break;
-          default:
-            role = "none";
-        }
-      }
       return {
-        id: w.id,
-        sId: w.sId,
-        name: w.name,
-        role,
-        segmentation: w.segmentation || null,
-        whiteListedProviders: w.whiteListedProviders,
-        defaultEmbeddingProvider: w.defaultEmbeddingProvider,
+        ...renderLightWorkspaceType({
+          workspace: w,
+          role: memberships.find((m) => m.workspaceId === w.id)?.role ?? "none",
+        }),
+        ssoEnforced: w.ssoEnforced,
+        ...(populateExtensionConfig && {
+          blacklistedDomains:
+            configs.find((c) => c.workspaceId === w.id)?.blacklistedDomains ??
+            null,
+        }),
       };
     }),
   };

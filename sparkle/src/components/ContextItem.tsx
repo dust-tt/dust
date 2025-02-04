@@ -153,7 +153,7 @@ ContextItem.SectionHeader = function ({
         hasBorder ? "s-border-b s-border-structure-200" : ""
       )}
     >
-      <div className="s-text-xl s-font-medium s-text-element-900 dark:s-text-element-900-dark">
+      <div className="s-text-xl s-font-medium s-text-foreground dark:s-text-foreground-dark">
         {title}
       </div>
       {description && (

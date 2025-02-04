@@ -8,7 +8,7 @@ import type {
 import type { UserType } from "@dust-tt/types";
 import { ConversationError, Err, Ok } from "@dust-tt/types";
 
-import { canAccessConversation } from "@app/lib/api/assistant/conversation";
+import { canAccessConversation } from "@app/lib/api/assistant/conversation/auth";
 import type { Authenticator } from "@app/lib/auth";
 import {
   Message,
@@ -106,10 +106,7 @@ export async function createMessageReaction(
     reaction: string;
   }
 ): Promise<boolean | null> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
+  const owner = auth.getNonNullableWorkspace();
 
   const message = await Message.findOne({
     where: {
@@ -128,6 +125,7 @@ export async function createMessageReaction(
     userContextUsername: context.username,
     userContextFullName: context.fullName,
     reaction,
+    workspaceId: owner.id,
   });
   return newReaction !== null;
 }

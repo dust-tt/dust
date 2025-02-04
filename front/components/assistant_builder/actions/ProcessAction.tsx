@@ -424,7 +424,7 @@ export function ActionProcess({
         (actionConfiguration.tagsFilter?.in || []).length > 0) && (
         <div className="flex flex-col">
           <div className="flex flex-row items-center gap-4 pb-4">
-            <div className="text-sm font-semibold text-element-900">
+            <div className="text-sm font-semibold text-foreground">
               Folder tags filtering
             </div>
             <div>
@@ -539,7 +539,7 @@ export function ActionProcess({
       )}
 
       <div className={"flex flex-row items-center gap-4 pb-4"}>
-        <div className="text-sm font-semibold text-element-900">
+        <div className="text-sm font-semibold text-foreground">
           Process data from the last
         </div>
         <input
@@ -575,7 +575,7 @@ export function ActionProcess({
 
       <div className="flex flex-col">
         <div className="flex flex-row items-start">
-          <div className="flex-grow pb-2 text-sm font-semibold text-element-900">
+          <div className="flex-grow pb-2 text-sm font-semibold text-foreground">
             Schema
           </div>
           {actionConfiguration.schema.length > 0 && !isGeneratingSchema && (

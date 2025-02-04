@@ -1,8 +1,8 @@
 import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   ConversationError,
-  ConversationMessageReactions,
   ConversationType,
+  ConversationWithoutContentType,
   LightWorkspaceType,
 } from "@dust-tt/types";
 import { useCallback, useMemo } from "react";
@@ -17,6 +17,7 @@ import {
   useSWRInfiniteWithDefaults,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
+import type { GetConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
 import type { FetchConversationParticipantsResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/participants";
 
 export function useConversation({
@@ -52,13 +53,19 @@ export function useConversation({
   };
 }
 
-export function useConversations({ workspaceId }: { workspaceId: string }) {
-  const conversationFetcher: Fetcher<{ conversations: ConversationType[] }> =
-    fetcher;
+export function useConversations({
+  workspaceId,
+  options,
+}: {
+  workspaceId: string;
+  options?: { disabled: boolean };
+}) {
+  const conversationFetcher: Fetcher<GetConversationsResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/w/${workspaceId}/assistant/conversations`,
-    conversationFetcher
+    conversationFetcher,
+    options
   );
 
   return {
@@ -66,30 +73,6 @@ export function useConversations({ workspaceId }: { workspaceId: string }) {
     isConversationsLoading: !error && !data,
     isConversationsError: error,
     mutateConversations: mutate,
-  };
-}
-
-export function useConversationReactions({
-  conversationId,
-  workspaceId,
-}: {
-  conversationId: string;
-  workspaceId: string;
-}) {
-  const conversationReactionsFetcher: Fetcher<{
-    reactions: ConversationMessageReactions;
-  }> = fetcher;
-
-  const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/assistant/conversations/${conversationId}/reactions`,
-    conversationReactionsFetcher
-  );
-
-  return {
-    reactions: useMemo(() => (data ? data.reactions : []), [data]),
-    isReactionsLoading: !error && !data,
-    isReactionsError: error,
-    mutateReactions: mutate,
   };
 }
 
@@ -125,6 +108,7 @@ export function useConversationMessages({
   conversationId: string | null;
   workspaceId: string;
   limit: number;
+  startAtRank?: number;
 }) {
   const messagesFetcher: Fetcher<FetchConversationMessagesResponse> = fetcher;
 
@@ -172,9 +156,11 @@ export function useConversationMessages({
 export function useConversationParticipants({
   conversationId,
   workspaceId,
+  options,
 }: {
   conversationId: string | null;
   workspaceId: string;
+  options?: { disabled: boolean };
 }) {
   const conversationParticipantsFetcher: Fetcher<FetchConversationParticipantsResponse> =
     fetcher;
@@ -183,7 +169,8 @@ export function useConversationParticipants({
     conversationId
       ? `/api/w/${workspaceId}/assistant/conversations/${conversationId}/participants`
       : null,
-    conversationParticipantsFetcher
+    conversationParticipantsFetcher,
+    options
   );
 
   return {
@@ -203,7 +190,9 @@ export const useDeleteConversation = (owner: LightWorkspaceType) => {
     workspaceId: owner.sId,
   });
 
-  const doDelete = async (conversation: ConversationType | null) => {
+  const doDelete = async (
+    conversation: ConversationWithoutContentType | null
+  ) => {
     if (!conversation) {
       return false;
     }

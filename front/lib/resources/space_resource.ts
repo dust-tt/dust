@@ -1,11 +1,11 @@
 import type {
   ModelId,
-  PokeSpaceType,
   ResourcePermission,
   Result,
+  SpaceKind,
   SpaceType,
 } from "@dust-tt/types";
-import { Err } from "@dust-tt/types";
+import { concurrentExecutor, Err } from "@dust-tt/types";
 import { Ok } from "@dust-tt/types";
 import assert from "assert";
 import type {
@@ -26,7 +26,7 @@ import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces"
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import type { ModelStaticSoftDeletable } from "@app/lib/resources/storage/wrappers";
+import type { ModelStaticSoftDeletable } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -58,23 +58,31 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
   static async makeNew(
     blob: CreationAttributes<SpaceModel>,
-    groups: GroupResource[]
+    groups: GroupResource[],
+    transaction?: Transaction
   ) {
-    return frontSequelize.transaction(async (transaction) => {
-      const space = await SpaceModel.create(blob, { transaction });
+    const createSpace = async (t: Transaction) => {
+      const space = await SpaceModel.create(blob, { transaction: t });
 
       for (const group of groups) {
         await GroupSpaceModel.create(
           {
             groupId: group.id,
             vaultId: space.id,
+            workspaceId: space.workspaceId,
           },
-          { transaction }
+          { transaction: t }
         );
       }
 
       return new this(SpaceModel, space.get(), groups);
-    });
+    };
+
+    if (transaction) {
+      return createSpace(transaction);
+    }
+
+    return frontSequelize.transaction(createSpace);
   }
 
   static async makeDefaultsForWorkspace(
@@ -89,9 +97,11 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   ) {
     assert(auth.isAdmin(), "Only admins can call `makeDefaultsForWorkspace`");
 
-    const existingSpaces = await this.listWorkspaceDefaultSpaces(auth);
+    const existingSpaces = await this.listWorkspaceDefaultSpaces(auth, {
+      includeConversationsSpace: true,
+    });
     const systemSpace =
-      existingSpaces.find((s) => s.kind === "system") ||
+      existingSpaces.find((s) => s.isSystem()) ||
       (await SpaceResource.makeNew(
         {
           name: "System",
@@ -102,7 +112,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       ));
 
     const globalSpace =
-      existingSpaces.find((s) => s.kind === "global") ||
+      existingSpaces.find((s) => s.isGlobal()) ||
       (await SpaceResource.makeNew(
         {
           name: "Company Data",
@@ -113,7 +123,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       ));
 
     const conversationsSpace =
-      existingSpaces.find((s) => s.kind === "conversations") ||
+      existingSpaces.find((s) => s.isConversations()) ||
       (await SpaceResource.makeNew(
         {
           name: "Conversations",
@@ -183,9 +193,11 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
   static async listWorkspaceSpaces(
     auth: Authenticator,
-    options?: { includeConversationsSpace?: boolean }
+    options?: { includeConversationsSpace?: boolean; includeDeleted?: boolean }
   ): Promise<SpaceResource[]> {
-    const spaces = await this.baseFetch(auth);
+    const spaces = await this.baseFetch(auth, {
+      includeDeleted: options?.includeDeleted,
+    });
 
     if (!options?.includeConversationsSpace) {
       return spaces.filter((s) => !s.isConversations());
@@ -196,11 +208,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   static async listWorkspaceSpacesAsMember(auth: Authenticator) {
     const spaces = await this.baseFetch(auth);
 
-    // using canRead() as we know that only members can read spaces (but admins can list them)
-    // also, conversations space is not meant for members
-    return spaces.filter(
-      (s) => s.canList(auth) && s.canRead(auth) && !s.isConversations()
-    );
+    // Filtering to the spaces the auth can read that are not conversations.
+    return spaces.filter((s) => s.canRead(auth) && !s.isConversations());
   }
 
   static async listWorkspaceDefaultSpaces(
@@ -220,18 +229,42 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     });
   }
 
-  static async listForGroups(auth: Authenticator, groups: GroupResource[]) {
+  static async listForGroups(
+    auth: Authenticator,
+    groups: GroupResource[],
+    options?: { includeConversationsSpace?: boolean }
+  ) {
     const groupSpaces = await GroupSpaceModel.findAll({
       where: {
         groupId: groups.map((g) => g.id),
       },
     });
 
-    const spaces = await this.baseFetch(auth, {
-      where: {
-        id: groupSpaces.map((v) => v.vaultId),
-      },
-    });
+    const allExceptConversations: Exclude<SpaceKind, "conversations">[] = [
+      "system",
+      "global",
+      "regular",
+      "public",
+    ];
+
+    let spaces: SpaceResource[] = [];
+
+    if (options?.includeConversationsSpace) {
+      spaces = await this.baseFetch(auth, {
+        where: {
+          id: groupSpaces.map((v) => v.vaultId),
+        },
+      });
+    } else {
+      spaces = await this.baseFetch(auth, {
+        where: {
+          id: groupSpaces.map((v) => v.vaultId),
+          kind: {
+            [Op.in]: allExceptConversations,
+          },
+        },
+      });
+    }
 
     return spaces.filter((s) => s.canRead(auth));
   }
@@ -321,6 +354,28 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       transaction,
     });
 
+    // Groups and spaces are currently tied together in a 1-1 way, even though the model allow a n-n relation between them.
+    // When deleting a space, we delete the dangling groups as it won't be available in the UI anymore.
+    // This should be changed when we separate the management of groups and spaces
+    await concurrentExecutor(
+      this.groups,
+      async (group) => {
+        // As the model allows it, ensure the group is not associated with any other space.
+        const count = await GroupSpaceModel.count({
+          where: {
+            groupId: group.id,
+          },
+          transaction,
+        });
+        if (count === 0) {
+          await group.delete(auth, { transaction });
+        }
+      },
+      {
+        concurrency: 8,
+      }
+    );
+
     await SpaceModel.destroy({
       where: {
         id: this.id,
@@ -346,6 +401,13 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     }
 
     await this.update({ name: newName });
+    // For regular spaces that only have a single group, update
+    // the group's name too (see https://github.com/dust-tt/tasks/issues/1738)
+    const regularGroups = this.groups.filter((g) => g.isRegular());
+    if (regularGroups.length === 1 && (this.isRegular() || this.isPublic())) {
+      await regularGroups[0].updateName(auth, `Group for space ${newName}`);
+    }
+
     return new Ok(undefined);
   }
 
@@ -432,6 +494,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     await GroupSpaceModel.create({
       groupId: group.id,
       vaultId: this.id,
+      workspaceId: this.workspaceId,
     });
   }
 
@@ -470,11 +533,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
    *
    * @returns Array of ResourcePermission objects based on space type
    */
-  requestedPermissions(
-    { returnNewFormat }: { returnNewFormat: boolean } = {
-      returnNewFormat: false,
-    }
-  ): ResourcePermission[] {
+  requestedPermissions(): ResourcePermission[] {
     const globalGroup = this.isRegular()
       ? this.groups.find((group) => group.isGlobal())
       : undefined;
@@ -484,8 +543,11 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       return [
         {
           workspaceId: this.workspaceId,
-          roles: [{ role: "admin", permissions: ["admin"] }],
-          groups: [],
+          roles: [{ role: "admin", permissions: ["admin", "write"] }],
+          groups: this.groups.map((group) => ({
+            id: group.id,
+            permissions: ["read", "write"],
+          })),
         },
       ];
     }
@@ -510,13 +572,13 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       ];
     }
 
-    // Default Workspace space and Conversations space.
+    // Global Workspace space and Conversations space.
     if (this.isGlobal() || this.isConversations()) {
       return [
         {
           workspaceId: this.workspaceId,
           roles: [
-            { role: "admin", permissions: ["read", "write"] },
+            { role: "admin", permissions: ["admin", "read", "write"] },
             { role: "builder", permissions: ["read", "write"] },
           ],
           groups: this.groups.map((group) => ({
@@ -533,27 +595,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     // and agent_configurations. This will allow proper handling of multiple groups instead
     // of only using the global group as a temporary solution.
     if (globalGroup) {
-      // TODO(2024-11-04 flav) `groupId` clean-up.
-      if (!returnNewFormat) {
-        return [
-          {
-            workspaceId: this.workspaceId,
-            roles: [
-              { role: "admin", permissions: ["admin", "read", "write"] },
-              { role: "builder", permissions: ["read", "write"] },
-              { role: "user", permissions: ["read"] },
-            ],
-            // Temporary: Only using global group until we implement multi-group support
-            groups: [
-              {
-                id: globalGroup.id,
-                permissions: ["read"],
-              },
-            ],
-          },
-        ];
-      }
-
       return [
         {
           workspaceId: this.workspaceId,
@@ -574,7 +615,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return [
       {
         workspaceId: this.workspaceId,
-        roles: [{ role: "admin", permissions: ["admin", "write"] }],
+        roles: [{ role: "admin", permissions: ["admin"] }],
         groups: this.groups.map((group) => ({
           id: group.id,
           permissions: ["read", "write"],
@@ -595,7 +636,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return auth.canRead(this.requestedPermissions());
   }
 
-  canList(auth: Authenticator) {
+  canReadOrAdministrate(auth: Authenticator) {
     return this.canRead(auth) || this.canAdministrate(auth);
   }
 
@@ -645,13 +686,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       name: this.name,
       sId: this.sId,
       updatedAt: this.updatedAt.getTime(),
-    };
-  }
-
-  toPokeJSON(): PokeSpaceType {
-    return {
-      ...this.toJSON(),
-      groups: this.groups.map((group) => group.toJSON()),
     };
   }
 }

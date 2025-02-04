@@ -1,4 +1,5 @@
 use super::file_storage_document::FileStorageDocument;
+use super::node::{Node, NodeType, ProviderVisibility};
 use super::qdrant::{DustQdrantClient, QdrantCluster};
 use crate::consts::DATA_SOURCE_DOCUMENT_SYSTEM_TAG_PREFIX;
 use crate::data_sources::qdrant::{QdrantClients, QdrantDataSourceConfig};
@@ -9,7 +10,8 @@ use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
 use crate::providers::provider::ProviderID;
 use crate::run::Credentials;
 use crate::search_filter::{Filterable, SearchFilter};
-use crate::stores::store::Store;
+use crate::search_stores::search_store::SearchStore;
+use crate::stores::store::{DocumentCreateParams, Store};
 use crate::utils;
 use anyhow::{anyhow, Result};
 use futures::future::try_join_all;
@@ -66,9 +68,14 @@ pub struct Chunk {
     pub offset: usize,
     pub vector: Option<Vec<f64>>,
     pub score: Option<f64>,
+    // Empty unless search was ran with `target_document_tokens`
+    // and the chunk's `text` was expanded with content from other chunks.
+    // In this case, this field will contain the offsets of the chunks that
+    // were included to produce the chunk's `text`.
+    pub expanded_offsets: Vec<usize>,
 }
 
-/// Document is used as a data-strucutre for insertion into the SQL store (no
+/// Document is used as a data-structure for insertion into the SQL store (no
 /// chunks, they are directly inserted in the vector search db). It is also used
 /// as a result from search (only the retrieved chunks are provided in the
 /// result). `hash` covers both the original document id and text and the
@@ -135,10 +142,15 @@ pub struct Chunk {
 #[derive(Debug, Serialize, Clone)]
 pub struct Document {
     pub data_source_id: String,
+    pub data_source_internal_id: String,
     pub created: u64,
     pub document_id: String,
     pub timestamp: u64,
+    pub title: String,
+    pub mime_type: String,
+    pub provider_visibility: Option<ProviderVisibility>,
     pub tags: Vec<String>,
+    pub parent_id: Option<String>,
     pub parents: Vec<String>,
     pub source_url: Option<String>,
     pub hash: String,
@@ -153,9 +165,14 @@ pub struct Document {
 impl Document {
     pub fn new(
         data_source_id: &str,
+        data_source_internal_id: &str,
         document_id: &str,
         timestamp: u64,
+        title: &str,
+        mime_type: &str,
+        provider_visibility: &Option<ProviderVisibility>,
         tags: &Vec<String>,
+        parent_id: &Option<String>,
         parents: &Vec<String>,
         source_url: &Option<String>,
         hash: &str,
@@ -163,10 +180,15 @@ impl Document {
     ) -> Result<Self> {
         Ok(Document {
             data_source_id: data_source_id.to_string(),
+            data_source_internal_id: data_source_internal_id.to_string(),
             created: utils::now(),
             document_id: document_id.to_string(),
             timestamp,
+            title: title.to_string(),
+            mime_type: mime_type.to_string(),
+            provider_visibility: provider_visibility.clone(),
             tags: tags.clone(),
+            parent_id: parent_id.clone(),
             parents: parents.clone(),
             source_url: source_url.clone(),
             hash: hash.to_string(),
@@ -197,6 +219,24 @@ impl Filterable for Document {
 
     fn get_parents(&self) -> Vec<String> {
         self.parents.clone()
+    }
+}
+
+impl From<Document> for Node {
+    fn from(document: Document) -> Node {
+        Node::new(
+            &document.data_source_id,
+            &document.data_source_internal_id,
+            &document.document_id,
+            NodeType::Document,
+            document.timestamp,
+            &document.title,
+            &document.mime_type,
+            document.provider_visibility,
+            document.parent_id,
+            document.parents.clone(),
+            document.source_url,
+        )
     }
 }
 
@@ -275,6 +315,21 @@ pub struct DataSourceConfig {
 
     pub extras: Option<Value>,
     pub qdrant_config: QdrantDataSourceConfig,
+}
+
+// This type represent the blob required to upsert a document within a datasource.
+#[derive(serde::Serialize)]
+pub struct DocumnentBlobPayload {
+    pub document_id: String,
+    pub timestamp: u64,
+    pub tags: Vec<String>,
+    pub parent_id: Option<String>,
+    pub parents: Vec<String>,
+    pub source_url: Option<String>,
+    pub section: Section,
+    pub title: String,
+    pub mime_type: String,
+    pub provider_visibility: Option<ProviderVisibility>,
 }
 
 /// The `data_source_id` is the unique identifier that allows routing to the right data in SQL store
@@ -434,6 +489,7 @@ impl DataSource {
         &self,
         store: Box<dyn Store + Sync + Send>,
         qdrant_clients: QdrantClients,
+        search_store: Box<dyn SearchStore + Sync + Send>,
         document_id: String,
         parents: Vec<String>,
     ) -> Result<()> {
@@ -450,6 +506,22 @@ impl DataSource {
 
         self.update_document_payload(qdrant_clients, document_id_hash, "parents", parents)
             .await?;
+
+        let document = store
+            .load_data_source_document(
+                &self.project,
+                &self.data_source_id(),
+                &document_id.to_string(),
+                &None,
+            )
+            .await?;
+
+        match document {
+            Some(document) => {
+                search_store.index_node(Node::from(document)).await?;
+            }
+            None => (),
+        }
         Ok(())
     }
 
@@ -581,12 +653,16 @@ impl DataSource {
         store: Box<dyn Store + Sync + Send>,
         qdrant_clients: QdrantClients,
         document_id: &str,
+        title: String,
+        mime_type: String,
+        provider_visibility: &Option<ProviderVisibility>,
         timestamp: Option<u64>,
         tags: &Vec<String>,
         parents: &Vec<String>,
         source_url: &Option<String>,
         text: Section,
         preserve_system_tags: bool,
+        search_store: Box<dyn SearchStore + Sync + Send>,
     ) -> Result<Document> {
         let full_text = text.full_text();
         // Disallow preserve_system_tags=true if tags contains a string starting with the system
@@ -658,10 +734,15 @@ impl DataSource {
 
         let document = Document::new(
             &self.data_source_id,
+            &self.internal_id,
             document_id,
             timestamp,
+            title.as_str(),
+            mime_type.as_str(),
+            provider_visibility,
             &tags,
-            &parents,
+            &parents.get(1).cloned(),
+            parents,
             source_url,
             &document_hash,
             full_text.len() as u64,
@@ -700,7 +781,7 @@ impl DataSource {
                 &qdrant_clients,
                 &document_id,
                 &document_id_hash,
-                document,
+                document.clone(),
                 &document_hash,
                 &text,
                 // Cache is not used when writing to the shadow collection.
@@ -709,14 +790,28 @@ impl DataSource {
             .await?;
         }
 
-        // Upsert document (SQL).
+        // TODO(@fontanierh): use a different type for "DocumentWithTextAndTokenCount"
+        let create_params = DocumentCreateParams {
+            document_id: main_collection_document.document_id.clone(),
+            title: Some(main_collection_document.title.clone()),
+            mime_type: Some(main_collection_document.mime_type.clone()),
+            provider_visibility: main_collection_document.provider_visibility.clone(),
+            timestamp: main_collection_document.timestamp,
+            tags: main_collection_document.tags.clone(),
+            parents: main_collection_document.parents.clone(),
+            source_url: main_collection_document.source_url.clone(),
+            hash: main_collection_document.hash.clone(),
+            text_size: main_collection_document.text_size,
+            chunk_count: main_collection_document.chunk_count,
+            created: main_collection_document.created,
+        };
+
         store
-            .upsert_data_source_document(
-                &self.project,
-                &self.data_source_id,
-                &main_collection_document,
-            )
+            .create_data_source_document(&self.project, self.data_source_id.clone(), create_params)
             .await?;
+
+        // Upsert document in search index.
+        search_store.index_node(Node::from(document)).await?;
 
         // Clean-up old superseded versions.
         self.scrub_document_superseded_versions(store, &document_id)
@@ -908,6 +1003,7 @@ impl DataSource {
                     offset: i,
                     vector: Some(v.vector.clone()),
                     score: None,
+                    expanded_offsets: vec![],
                 }
             })
             .collect::<Vec<_>>();
@@ -1387,6 +1483,8 @@ impl DataSource {
                                             == chunk.offset
                                     {
                                         let c_offset = parsed_results[counter].1;
+                                        chunk.expanded_offsets.push(c_offset);
+
                                         if chunk.offset < c_offset {
                                             chunk.text.push_str(
                                                 &(" ".to_owned()
@@ -1500,6 +1598,7 @@ impl DataSource {
                 // With top_k documents, we should be guaranteed to have at least top_k chunks, if
                 // we make the assumption that each document has at least one chunk.
                 Some((top_k, 0)),
+                false,
             )
             .await?;
 
@@ -1668,8 +1767,17 @@ impl DataSource {
         &self,
         store: Box<dyn Store + Sync + Send>,
         qdrant_clients: QdrantClients,
+        search_store: Box<dyn SearchStore + Sync + Send>,
         document_id: &str,
     ) -> Result<()> {
+        let document = match store
+            .load_data_source_document(&self.project, &self.data_source_id, document_id, &None)
+            .await?
+        {
+            Some(document) => document,
+            None => return Ok(()),
+        };
+
         // Delete the document in the main embedder collection.
         self.delete_document_for_embedder(self.embedder_config(), &qdrant_clients, document_id)
             .await?;
@@ -1691,6 +1799,9 @@ impl DataSource {
         store
             .delete_data_source_document(&self.project, &self.data_source_id, document_id)
             .await?;
+
+        // Delete document from search index.
+        search_store.delete_node(Node::from(document)).await?;
 
         // We also scrub it directly. We used to scrub async but now that we store a GCS version
         // for each data_source_documents entry we can scrub directly at the time of delete.
@@ -1796,6 +1907,7 @@ impl DataSource {
                 None,
                 &None,
                 &None,
+                false,
             )
             .await?;
 
@@ -1852,6 +1964,7 @@ impl DataSource {
                 None,
                 &None,
                 &None,
+                false,
             )
             .await?;
 
@@ -1911,6 +2024,7 @@ impl DataSource {
         store: Box<dyn Store + Sync + Send>,
         databases_store: Box<dyn DatabasesStore + Sync + Send>,
         qdrant_clients: QdrantClients,
+        search_store: Box<dyn SearchStore + Sync + Send>,
     ) -> Result<()> {
         if self.shadow_write_qdrant_cluster().is_some() {
             Err(anyhow!(
@@ -1938,12 +2052,14 @@ impl DataSource {
 
         // Delete tables (concurrently).
         let (tables, total) = store
-            .list_tables(&self.project, &self.data_source_id, &None, &None, None)
+            .list_data_source_tables(&self.project, &self.data_source_id, &None, &None, None)
             .await?;
         try_join_all(
             tables
                 .iter()
-                .map(|t| t.delete(store.clone(), databases_store.clone())),
+                // not deleting from search index here, as it's done more efficiently in the
+                // full-nodes deletion below
+                .map(|t| t.delete(store.clone(), databases_store.clone(), None)),
         )
         .await?;
 
@@ -1952,6 +2068,27 @@ impl DataSource {
             table_count = total,
             "Deleted tables"
         );
+
+        // Delete folders (concurrently).
+        let (folders, total) = store
+            .list_data_source_folders(&self.project, &self.data_source_id, &None, &None, None)
+            .await?;
+
+        try_join_all(folders.iter().map(|f| {
+            store.delete_data_source_folder(&self.project, &self.data_source_id, &f.folder_id())
+        }))
+        .await?;
+
+        info!(
+            data_source_internal_id = self.internal_id(),
+            table_count = total,
+            "Deleted folders"
+        );
+
+        // Delete all nodes from the search index
+        search_store
+            .delete_data_source_nodes(&self.data_source_id)
+            .await?;
 
         // Delete data source and documents (SQL).
         let deleted_rows = store
@@ -1965,6 +2102,47 @@ impl DataSource {
         );
 
         Ok(())
+    }
+
+    pub async fn retrieve_api_blob(
+        &self,
+        store: Box<dyn Store + Sync + Send>,
+        document_id: &str,
+    ) -> Result<Option<DocumnentBlobPayload>> {
+        let store = store.clone();
+
+        // Only fetch latest version by passing None as version_hash.
+        let d = match store
+            .load_data_source_document(&self.project, &self.data_source_id, document_id, &None)
+            .await?
+        {
+            Some(d) => d,
+            None => {
+                return Ok(None);
+            }
+        };
+
+        let document_id_hash = make_document_id_hash(document_id);
+
+        let stored_doc =
+            FileStorageDocument::get_stored_document(&self, d.created, &document_id_hash, &d.hash)
+                .await?;
+
+        // Create payload according to DataSourcesDocumentsUpsertPayload struct.
+        let api_blob = DocumnentBlobPayload {
+            document_id: document_id.to_string(),
+            timestamp: d.timestamp,
+            tags: d.get_tags(),
+            parent_id: d.parent_id,
+            parents: d.parents,
+            source_url: d.source_url,
+            section: stored_doc.sections,
+            title: d.title,
+            mime_type: d.mime_type,
+            provider_visibility: d.provider_visibility,
+        };
+
+        Ok(Some(api_blob))
     }
 }
 
@@ -2152,6 +2330,7 @@ fn parse_points_into_chunks(
                     offset: chunk_offset as usize,
                     vector: None,
                     score: maybe_score,
+                    expanded_offsets: vec![],
                 },
             ))
         })

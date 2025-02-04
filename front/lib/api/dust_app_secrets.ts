@@ -2,7 +2,7 @@ import type { DustAppSecretType } from "@dust-tt/types";
 import { decrypt, redactString } from "@dust-tt/types";
 
 import type { Authenticator } from "@app/lib/auth";
-import { DustAppSecret } from "@app/lib/models/workspace";
+import { DustAppSecret } from "@app/lib/models/dust_app_secret";
 
 export async function getDustAppSecrets(
   auth: Authenticator,

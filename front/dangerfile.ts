@@ -1,7 +1,9 @@
 import { danger, fail, warn } from "danger";
 
+const sdkAckLabel = "sdk-ack";
 const migrationAckLabel = "migration-ack";
 const documentationAckLabel = "documentation-ack";
+const auth0UpdateLabelAck = "auth0-update-ack";
 
 const hasLabel = (label: string) => {
   return danger.github.issue.labels.some((l) => l.name === label);
@@ -34,6 +36,22 @@ function checkMigrationLabel() {
   }
 }
 
+function failSDKAck() {
+  fail(
+    "Files in `**/sdks/js/` have been modified. " +
+      `Changing the types defined in the SDK could break existing client.\n` +
+      `Additions (new types, new values) are generally fine but **removals are NOT OK** : it would break the contract of the Public API.\n` +
+      `Please add the \`${sdkAckLabel}\` label to acknowledge ` +
+      `that your are not breaking the existing Public API contract.`
+  );
+}
+
+function checkSDKLabel() {
+  if (!hasLabel(sdkAckLabel)) {
+    failSDKAck();
+  }
+}
+
 function checkDeployPlanSection() {
   const PRDescription = danger.github.pr.body;
 
@@ -46,6 +64,29 @@ function checkDeployPlanSection() {
       "Please include a detailed Deploy Plan section in your PR description."
     );
   }
+}
+
+function checkAuth0UpdateLabel() {
+  if (!hasLabel(auth0UpdateLabelAck)) {
+    failAuth0UpdateLabel();
+  } else {
+    warnAuth0UpdateLabel(auth0UpdateLabelAck);
+  }
+}
+
+function failAuth0UpdateLabel() {
+  fail(
+    "`**/lib/utils/blacklisted_email_domains.ts` has been modified. " +
+      `Please add the \`${auth0UpdateLabelAck}\` label to acknowledge that the Auth0 blacklist has been updated.`
+  );
+}
+
+function warnAuth0UpdateLabel(auth0UpdateLabelAck: string) {
+  warn(
+    "`**/lib/utils/blacklisted_email_domains.ts` has been modified and the PR has the `" +
+      auth0UpdateLabelAck +
+      "` label. Don't forget to update the Auth0 blacklist."
+  );
 }
 
 function checkDocumentationLabel() {
@@ -95,6 +136,22 @@ function checkModifiedFiles() {
 
   if (modifiedPublicApiFiles.length > 0) {
     checkDocumentationLabel();
+  }
+
+  const modifiedAuth0Files = danger.git.modified_files.filter((path) => {
+    return path.startsWith("front/lib/utils/blacklisted_email_domains.ts");
+  });
+
+  if (modifiedAuth0Files.length > 0) {
+    checkAuth0UpdateLabel();
+  }
+
+  const modifiedSdksFiles = danger.git.modified_files.filter((path) => {
+    return path.startsWith("sdks/js/");
+  });
+
+  if (modifiedSdksFiles.length > 0) {
+    checkSDKLabel();
   }
 }
 

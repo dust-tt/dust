@@ -1,29 +1,18 @@
-import type {
-  CoreAPIDocument,
-  CoreAPILightDocument,
-  Result,
-  UpsertContext,
-} from "@dust-tt/types";
+import type { Result } from "@dust-tt/types";
 import {
   Err,
   FrontDataSourceDocumentSection,
   Ok,
-  sectionFullText,
   UpsertContextSchema,
 } from "@dust-tt/types";
 import { Storage } from "@google-cloud/storage";
 import * as t from "io-ts";
 import { v4 as uuidv4 } from "uuid";
 
-import { Authenticator } from "@app/lib/auth";
-import { getDocumentsPostUpsertHooksToRun } from "@app/lib/documents_post_process_hooks/hooks";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/withlogging";
-import { launchRunPostUpsertHooksWorkflow } from "@app/temporal/documents_post_process_hooks/client";
 import { launchUpsertDocumentWorkflow } from "@app/temporal/upsert_queue/client";
 import { launchUpsertTableWorkflow } from "@app/temporal/upsert_tables/client";
-
-import type { DataSourceResource } from "./resources/data_source_resource";
 
 const { DUST_UPSERT_QUEUE_BUCKET, SERVICE_ACCOUNT } = process.env;
 
@@ -32,11 +21,14 @@ export const EnqueueUpsertDocument = t.type({
   dataSourceId: t.string,
   documentId: t.string,
   tags: t.union([t.array(t.string), t.null]),
+  parentId: t.union([t.string, t.null, t.undefined]),
   parents: t.union([t.array(t.string), t.null]),
   sourceUrl: t.union([t.string, t.null]),
   timestamp: t.union([t.number, t.null]),
   section: FrontDataSourceDocumentSection,
   upsertContext: t.union([UpsertContextSchema, t.null]),
+  title: t.string,
+  mimeType: t.string,
 });
 
 const DetectedHeaders = t.type({
@@ -44,26 +36,24 @@ const DetectedHeaders = t.type({
   rowIndex: t.number,
 });
 
-export const EnqueueUpsertTable = t.intersection([
-  t.type({
-    workspaceId: t.string,
-    dataSourceId: t.string,
-    tableId: t.string,
-    tableName: t.string,
-    tableDescription: t.string,
-    tableTimestamp: t.union([t.number, t.undefined, t.null]),
-    tableTags: t.union([t.array(t.string), t.undefined, t.null]),
-    tableParents: t.union([t.array(t.string), t.undefined, t.null]),
-    csv: t.union([t.string, t.null]),
-    truncate: t.boolean,
-    useAppForHeaderDetection: t.union([t.boolean, t.undefined, t.null]),
-    detectedHeaders: t.union([DetectedHeaders, t.undefined]),
-  }),
-  t.partial({
-    title: t.string,
-    mimeType: t.string,
-  }),
-]);
+export const EnqueueUpsertTable = t.type({
+  workspaceId: t.string,
+  dataSourceId: t.string,
+  tableId: t.string,
+  tableName: t.string,
+  tableDescription: t.string,
+  tableTimestamp: t.union([t.number, t.undefined, t.null]),
+  tableTags: t.union([t.array(t.string), t.undefined, t.null]),
+  tableParentId: t.union([t.string, t.undefined, t.null]),
+  tableParents: t.union([t.array(t.string), t.undefined, t.null]),
+  csv: t.union([t.string, t.null]),
+  truncate: t.boolean,
+  useAppForHeaderDetection: t.union([t.boolean, t.undefined, t.null]),
+  detectedHeaders: t.union([DetectedHeaders, t.undefined]),
+  title: t.string,
+  mimeType: t.string,
+  sourceUrl: t.union([t.string, t.undefined, t.null]),
+});
 
 type EnqueueUpsertDocumentType = t.TypeOf<typeof EnqueueUpsertDocument>;
 
@@ -86,6 +76,15 @@ export async function enqueueUpsertDocument({
     },
     "[UpsertQueue] Enqueueing document"
   );
+
+  if (
+    upsertDocument.parentId &&
+    upsertDocument.parents?.[1] !== upsertDocument.parentId
+  ) {
+    throw new Error(
+      "Invalid parent id: parents[1] and parentId should be equal"
+    );
+  }
 
   return enqueueUpsert({
     upsertItem: upsertDocument,
@@ -111,6 +110,15 @@ export async function enqueueUpsertTable({
     },
     "[UpsertQueue] Enqueueing table"
   );
+
+  if (
+    upsertTable.tableParentId &&
+    upsertTable.tableParents?.[1] !== upsertTable.tableParentId
+  ) {
+    throw new Error(
+      "Invalid parent id: parents[1] and tableParentId should be equal"
+    );
+  }
 
   return enqueueUpsert({
     upsertItem: upsertTable,
@@ -172,50 +180,5 @@ async function enqueueUpsert({
     } else {
       throw e;
     }
-  }
-}
-
-export async function runPostUpsertHooks({
-  workspaceId,
-  dataSource,
-  documentId,
-  section,
-  document,
-  sourceUrl,
-  upsertContext,
-}: {
-  workspaceId: string;
-  dataSource: DataSourceResource;
-  documentId: string;
-  section: t.TypeOf<typeof FrontDataSourceDocumentSection>;
-  document: CoreAPILightDocument | CoreAPIDocument;
-  sourceUrl: string | null;
-  upsertContext?: UpsertContext;
-}) {
-  const fullText = sectionFullText(section);
-  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-
-  const postUpsertHooksToRun = await getDocumentsPostUpsertHooksToRun({
-    auth,
-    dataSourceId: dataSource.sId,
-    documentId: documentId,
-    documentText: fullText,
-    documentHash: document.hash,
-    dataSourceConnectorProvider: dataSource.connectorProvider || null,
-    documentSourceUrl: sourceUrl || undefined,
-    upsertContext,
-  });
-
-  // TODO: parallel.
-  for (const { type: hookType, debounceMs } of postUpsertHooksToRun) {
-    await launchRunPostUpsertHooksWorkflow(
-      workspaceId,
-      dataSource.sId,
-      documentId,
-      document.hash,
-      dataSource.connectorProvider || null,
-      hookType,
-      debounceMs
-    );
   }
 }

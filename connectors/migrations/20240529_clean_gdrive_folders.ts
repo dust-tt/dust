@@ -3,7 +3,7 @@ import { QueryTypes } from "sequelize";
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
 import {
   getAuthObject,
-  getDocumentId,
+  getInternalId,
 } from "@connectors/connectors/google_drive/temporal/utils";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import {
@@ -104,7 +104,7 @@ async function main() {
         driveFileId: folderId,
         name: file.name,
         mimeType: file.mimeType,
-        dustFileId: getDocumentId(folderId),
+        dustFileId: getInternalId(folderId),
       });
     }
   }

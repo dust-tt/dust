@@ -35,8 +35,7 @@ use dust::{
     blocks::block::BlockType,
     data_sources::{
         data_source::{self, Section},
-        folder::Folder,
-        node::{Node, NodeType},
+        node::{Node, ProviderVisibility},
         qdrant::QdrantClients,
     },
     databases::{
@@ -50,8 +49,14 @@ use dust::{
     providers::provider::{provider, ProviderID},
     run,
     search_filter::{Filterable, SearchFilter},
+    search_stores::search_store::{
+        ElasticsearchSearchStore, NodesSearchFilter, NodesSearchOptions, SearchStore,
+    },
     sqlite_workers::client::{self, HEARTBEAT_INTERVAL_MS},
-    stores::{postgres, store},
+    stores::{
+        postgres,
+        store::{self, FolderUpsertParams, TableUpsertParams},
+    },
     utils::{self, error_response, APIError, APIResponse, CoreRequestMakeSpan},
 };
 
@@ -61,7 +66,7 @@ static GLOBAL: Jemalloc = Jemalloc;
 /// API State
 
 struct RunManager {
-    pending_apps: Vec<(app::App, run::Credentials, run::Secrets)>,
+    pending_apps: Vec<(app::App, run::Credentials, run::Secrets, bool)>,
     pending_runs: Vec<String>,
 }
 
@@ -69,7 +74,7 @@ struct APIState {
     store: Box<dyn store::Store + Sync + Send>,
     databases_store: Box<dyn databases_store::DatabasesStore + Sync + Send>,
     qdrant_clients: QdrantClients,
-
+    search_store: Box<dyn SearchStore + Sync + Send>,
     run_manager: Arc<Mutex<RunManager>>,
 }
 
@@ -78,11 +83,13 @@ impl APIState {
         store: Box<dyn store::Store + Sync + Send>,
         databases_store: Box<dyn databases_store::DatabasesStore + Sync + Send>,
         qdrant_clients: QdrantClients,
+        search_store: Box<dyn SearchStore + Sync + Send>,
     ) -> Self {
         APIState {
             store,
             qdrant_clients,
             databases_store,
+            search_store,
             run_manager: Arc::new(Mutex::new(RunManager {
                 pending_apps: vec![],
                 pending_runs: vec![],
@@ -90,9 +97,17 @@ impl APIState {
         }
     }
 
-    fn run_app(&self, app: app::App, credentials: run::Credentials, secrets: run::Secrets) {
+    fn run_app(
+        &self,
+        app: app::App,
+        credentials: run::Credentials,
+        secrets: run::Secrets,
+        store_blocks_results: bool,
+    ) {
         let mut run_manager = self.run_manager.lock();
-        run_manager.pending_apps.push((app, credentials, secrets));
+        run_manager
+            .pending_apps
+            .push((app, credentials, secrets, store_blocks_results));
     }
 
     async fn stop_loop(&self) {
@@ -116,7 +131,7 @@ impl APIState {
         let mut loop_count = 0;
 
         loop {
-            let apps: Vec<(app::App, run::Credentials, run::Secrets)> = {
+            let apps: Vec<(app::App, run::Credentials, run::Secrets, bool)> = {
                 let mut manager = self.run_manager.lock();
                 let apps = manager.pending_apps.drain(..).collect::<Vec<_>>();
                 apps.iter().for_each(|app| {
@@ -138,7 +153,15 @@ impl APIState {
 
                     match app
                         .0
-                        .run(app.1, app.2, store, databases_store, qdrant_clients, None)
+                        .run(
+                            app.1,
+                            app.2,
+                            store,
+                            databases_store,
+                            qdrant_clients,
+                            None,
+                            app.3,
+                        )
                         .await
                     {
                         Ok(()) => {
@@ -580,6 +603,7 @@ struct RunsCreatePayload {
     config: run::RunConfig,
     credentials: run::Credentials,
     secrets: Vec<Secret>,
+    store_blocks_results: Option<bool>,
 }
 
 async fn run_helper(
@@ -823,7 +847,12 @@ async fn runs_create(
         Ok(app) => {
             // The run is empty for now, we can clone it for the response.
             let run = app.run_ref().unwrap().clone();
-            state.run_app(app, credentials, secrets);
+            state.run_app(
+                app,
+                credentials,
+                secrets,
+                payload.store_blocks_results.unwrap_or(true),
+            );
             (
                 StatusCode::OK,
                 Json(APIResponse {
@@ -908,6 +937,7 @@ async fn runs_create_stream(
                         databases_store,
                         qdrant_clients,
                         Some(tx.clone()),
+                        payload.store_blocks_results.unwrap_or(true),
                     )
                     .await
                 {
@@ -1467,6 +1497,7 @@ async fn data_sources_documents_update_tags(
 
 #[derive(serde::Deserialize)]
 struct DataSourcesDocumentsUpdateParentsPayload {
+    parent_id: Option<String>,
     parents: Vec<String>,
 }
 
@@ -1476,6 +1507,38 @@ async fn data_sources_documents_update_parents(
     Json(payload): Json<DataSourcesDocumentsUpdateParentsPayload>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
+
+    if payload.parents.get(0) != Some(&document_id) {
+        return error_response(
+            StatusCode::BAD_REQUEST,
+            "invalid_parents",
+            "Failed to update document parents - parents[0] and document_id should be equal",
+            None,
+        );
+    }
+
+    match &payload.parent_id {
+        Some(parent_id) => {
+            if payload.parents.get(1) != Some(parent_id) {
+                return error_response(
+                    StatusCode::BAD_REQUEST,
+                    "invalid_parent_id",
+                    "Failed to update document parents - parents[1] and parent_id should be equal",
+                    None,
+                );
+            }
+        }
+        None => {
+            if payload.parents.len() > 1 {
+                return error_response(
+                    StatusCode::BAD_REQUEST,
+                    "invalid_parent_id",
+                    "Failed to update document parents - parent_id should not be null if parents[1] is defined",
+                    None,
+                );
+            }
+        }
+    }
 
     match state
         .store
@@ -1499,6 +1562,7 @@ async fn data_sources_documents_update_parents(
                 .update_parents(
                     state.store.clone(),
                     state.qdrant_clients.clone(),
+                    state.search_store.clone(),
                     document_id,
                     payload.parents,
                 )
@@ -1573,6 +1637,7 @@ async fn data_sources_documents_versions_list(
                 None => None,
             },
             &query.latest_hash,
+            true,
         )
         .await
     {
@@ -1604,11 +1669,15 @@ struct DataSourcesDocumentsUpsertPayload {
     document_id: String,
     timestamp: Option<u64>,
     tags: Vec<String>,
+    parent_id: Option<String>,
     parents: Vec<String>,
     source_url: Option<String>,
     section: Section,
     credentials: run::Credentials,
     light_document_output: Option<bool>,
+    title: String,
+    mime_type: String,
+    provider_visibility: Option<ProviderVisibility>,
 }
 
 async fn data_sources_documents_upsert(
@@ -1621,6 +1690,38 @@ async fn data_sources_documents_upsert(
         Some(v) => v,
         None => false,
     };
+
+    if payload.parents.get(0) != Some(&payload.document_id) {
+        return error_response(
+            StatusCode::BAD_REQUEST,
+            "invalid_parents",
+            "Failed to upsert document - parents[0] and document_id should be equal",
+            None,
+        );
+    }
+
+    match &payload.parent_id {
+        Some(parent_id) => {
+            if payload.parents.get(1) != Some(parent_id) {
+                return error_response(
+                    StatusCode::BAD_REQUEST,
+                    "invalid_parent_id",
+                    "Failed to upsert document - parents[1] and parent_id should be equal",
+                    None,
+                );
+            }
+        }
+        None => {
+            if payload.parents.len() > 1 {
+                return error_response(
+                    StatusCode::BAD_REQUEST,
+                    "invalid_parent_id",
+                    "Failed to upsert document - parent_id should not be null if parents[1] is defined",
+                    None,
+                );
+            }
+        }
+    }
 
     match state
         .store
@@ -1647,12 +1748,16 @@ async fn data_sources_documents_upsert(
                         state.store.clone(),
                         state.qdrant_clients.clone(),
                         &payload.document_id,
+                        payload.title,
+                        payload.mime_type,
+                        &payload.provider_visibility,
                         payload.timestamp,
                         &payload.tags,
                         &payload.parents,
                         &payload.source_url,
                         payload.section,
                         true, // preserve system tags
+                        state.search_store.clone(),
                     )
                     .await
                 {
@@ -1691,6 +1796,63 @@ async fn data_sources_documents_upsert(
                     }
                 }
             }
+        },
+    }
+}
+
+// Get a document blob from a data source.
+
+async fn data_sources_documents_retrieve_blob(
+    Path((project_id, data_source_id, document_id)): Path<(i64, String, String)>,
+    State(state): State<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+
+    match state
+        .store
+        .load_data_source(&project, &data_source_id)
+        .await
+    {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to retrieve data source",
+            Some(e),
+        ),
+        Ok(ds) => match ds {
+            None => error_response(
+                StatusCode::NOT_FOUND,
+                "data_source_not_found",
+                &format!("No data source found for id `{}`", data_source_id),
+                None,
+            ),
+            Some(ds) => match ds
+                .retrieve_api_blob(state.store.clone(), &document_id)
+                .await
+            {
+                Err(e) => error_response(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "internal_server_error",
+                    "Failed to retrieve document blob",
+                    Some(e),
+                ),
+                Ok(None) => error_response(
+                    StatusCode::NOT_FOUND,
+                    "data_source_document_not_found",
+                    &format!("No document found for id `{}`", document_id),
+                    None,
+                ),
+                Ok(Some(blob)) => {
+                    let blob_value = serde_json::to_value(blob).unwrap();
+                    (
+                        StatusCode::OK,
+                        Json(APIResponse {
+                            error: None,
+                            response: Some(blob_value),
+                        }),
+                    )
+                }
+            },
         },
     }
 }
@@ -1760,6 +1922,7 @@ async fn data_sources_documents_list(
             &document_ids,
             limit_offset,
             true, // remove system tags
+            true,
         )
         .await
     {
@@ -1904,6 +2067,7 @@ async fn data_sources_documents_delete(
                 .delete_document(
                     state.store.clone(),
                     state.qdrant_clients.clone(),
+                    state.search_store.clone(),
                     &document_id,
                 )
                 .await
@@ -2011,6 +2175,7 @@ async fn data_sources_delete(
                     state.store.clone(),
                     state.databases_store.clone(),
                     state.qdrant_clients.clone(),
+                    state.search_store.clone(),
                 )
                 .await
             {
@@ -2045,15 +2210,18 @@ struct DatabasesTablesUpsertPayload {
     description: String,
     timestamp: Option<u64>,
     tags: Vec<String>,
+    parent_id: Option<String>,
     parents: Vec<String>,
+    source_url: Option<String>,
 
     // Remote DB specifics
     remote_database_table_id: Option<String>,
     remote_database_secret_id: Option<String>,
 
     // Node meta:
-    title: Option<String>,
-    mime_type: Option<String>,
+    title: String,
+    mime_type: String,
+    provider_visibility: Option<ProviderVisibility>,
 }
 
 async fn tables_upsert(
@@ -2063,73 +2231,86 @@ async fn tables_upsert(
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
 
-    // TODO(KW_SEARCH_INFRA): make title/mime_type not optional.
-    let maybe_ds_node = match (payload.title, payload.mime_type) {
-        (Some(title), Some(mime_type)) => Some(Node {
-            node_id: payload.table_id.clone(),
-            created: utils::now(),
-            timestamp: payload.timestamp.unwrap_or(utils::now()),
-            node_type: NodeType::Table,
-            title,
-            mime_type,
-            parents: payload.parents.clone(),
-        }),
-        _ => None,
-    };
+    if payload.parents.get(0) != Some(&payload.table_id) {
+        return error_response(
+            StatusCode::BAD_REQUEST,
+            "invalid_parents",
+            "Failed to upsert table - parents[0] and table_id should be equal",
+            None,
+        );
+    }
 
-    let table = match state
-        .store
-        .upsert_table(
-            &project,
-            &data_source_id,
-            &payload.table_id,
-            &payload.name,
-            &payload.description,
-            match payload.timestamp {
-                Some(timestamp) => timestamp,
-                None => utils::now(),
-            },
-            &payload.tags,
-            &payload.parents,
-            payload.remote_database_table_id,
-            payload.remote_database_secret_id,
-        )
-        .await
-    {
-        Ok(table) => table,
-        Err(e) => {
-            return error_response(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "internal_server_error",
-                "Failed to upsert table",
-                Some(e),
-            )
+    match &payload.parent_id {
+        Some(parent_id) => {
+            if payload.parents.get(1) != Some(parent_id) {
+                return error_response(
+                    StatusCode::BAD_REQUEST,
+                    "invalid_parent_id",
+                    "Failed to upsert table - parents[1] and parent_id should be equal",
+                    None,
+                );
+            }
         }
-    };
-
-    // Upsert the data source node if title and mime_type are present
-    if let Some(n) = &maybe_ds_node {
-        if let Err(e) = state
-            .store
-            .upsert_data_source_node(&data_source_id, n)
-            .await
-        {
-            return error_response(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "internal_server_error",
-                "Failed to upsert data source node",
-                Some(e),
-            );
+        None => {
+            if payload.parents.len() > 1 {
+                return error_response(
+                        StatusCode::BAD_REQUEST,
+                        "invalid_parent_id",
+                        "Failed to upsert table - parent_id should not be null if parents[1] is defined",
+                        None,
+                    );
+            }
         }
     }
 
-    (
-        StatusCode::OK,
-        Json(APIResponse {
-            error: None,
-            response: Some(json!({ "table": table })),
-        }),
-    )
+    match state
+        .store
+        .upsert_data_source_table(
+            project,
+            data_source_id,
+            TableUpsertParams {
+                table_id: payload.table_id,
+                name: payload.name,
+                description: payload.description,
+                timestamp: payload.timestamp.unwrap_or(utils::now()),
+                tags: payload.tags,
+                parents: payload.parents,
+                source_url: payload.source_url,
+                remote_database_table_id: payload.remote_database_table_id,
+                remote_database_secret_id: payload.remote_database_secret_id,
+                title: payload.title,
+                mime_type: payload.mime_type,
+                provider_visibility: payload.provider_visibility,
+            },
+        )
+        .await
+    {
+        Ok(table) => match state
+            .search_store
+            .index_node(Node::from(table.clone()))
+            .await
+        {
+            Ok(_) => (
+                StatusCode::OK,
+                Json(APIResponse {
+                    error: None,
+                    response: Some(json!({ "table": table })),
+                }),
+            ),
+            Err(e) => error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "internal_server_error",
+                "Failed to index table",
+                Some(e),
+            ),
+        },
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to upsert table",
+            Some(e),
+        ),
+    }
 }
 
 /// Retrieve table from a data source.
@@ -2164,7 +2345,7 @@ async fn tables_retrieve(
 
     match state
         .store
-        .load_table(&project, &data_source_id, &table_id)
+        .load_data_source_table(&project, &data_source_id, &table_id)
         .await
     {
         Err(e) => error_response(
@@ -2246,7 +2427,7 @@ async fn tables_list(
 
     match state
         .store
-        .list_tables(
+        .list_data_source_tables(
             &project,
             &data_source_id,
             &view_filter,
@@ -2284,7 +2465,62 @@ async fn tables_delete(
 
     match state
         .store
-        .load_table(&project, &data_source_id, &table_id)
+        .load_data_source_table(&project, &data_source_id, &table_id)
+        .await
+    {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to load table",
+            Some(e),
+        ),
+        Ok(None) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!({
+                    "success": true,
+                })),
+            }),
+        ),
+        Ok(Some(table)) => {
+            match table
+                .delete(
+                    state.store.clone(),
+                    state.databases_store.clone(),
+                    Some(state.search_store.clone()),
+                )
+                .await
+            {
+                Err(e) => error_response(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "internal_server_error",
+                    "Failed to delete table",
+                    Some(e),
+                ),
+                Ok(_) => (
+                    StatusCode::OK,
+                    Json(APIResponse {
+                        error: None,
+                        response: Some(json!({
+                            "success": true,
+                        })),
+                    }),
+                ),
+            }
+        }
+    }
+}
+
+async fn tables_retrieve_blob(
+    Path((project_id, data_source_id, table_id)): Path<(i64, String, String)>,
+    State(state): State<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+
+    match state
+        .store
+        .load_data_source_table(&project, &data_source_id, &table_id)
         .await
     {
         Err(e) => error_response(
@@ -2299,43 +2535,24 @@ async fn tables_delete(
             &format!("No table found for id `{}`", table_id),
             None,
         ),
-        Ok(Some(table)) => {
-            // We delete the data source node first, then the table.
-            match state
-                .store
-                .delete_data_source_node(&data_source_id, &table_id)
-                .await
-            {
-                Err(e) => error_response(
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "internal_server_error",
-                    "Failed to delete data source node",
-                    Some(e),
-                ),
-                Ok(_) => {
-                    match table
-                        .delete(state.store.clone(), state.databases_store.clone())
-                        .await
-                    {
-                        Err(e) => error_response(
-                            StatusCode::INTERNAL_SERVER_ERROR,
-                            "internal_server_error",
-                            "Failed to delete table",
-                            Some(e),
-                        ),
-                        Ok(_) => (
-                            StatusCode::OK,
-                            Json(APIResponse {
-                                error: None,
-                                response: Some(json!({
-                                    "success": true,
-                                })),
-                            }),
-                        ),
-                    }
-                }
+        Ok(Some(table)) => match table.retrieve_api_blob(state.databases_store.clone()).await {
+            Err(e) => error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "internal_server_error",
+                "Failed to retrieve document blob",
+                Some(e),
+            ),
+            Ok(blob) => {
+                let blob_value = serde_json::to_value(blob).unwrap();
+                (
+                    StatusCode::OK,
+                    Json(APIResponse {
+                        error: None,
+                        response: Some(blob_value),
+                    }),
+                )
             }
-        }
+        },
     }
 }
 
@@ -2346,9 +2563,41 @@ async fn tables_update_parents(
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
 
+    if payload.parents.get(0) != Some(&table_id) {
+        return error_response(
+            StatusCode::BAD_REQUEST,
+            "invalid_parents",
+            "Failed to update table parents - parents[0] and table_id should be equal",
+            None,
+        );
+    }
+
+    match &payload.parent_id {
+        Some(parent_id) => {
+            if payload.parents.get(1) != Some(parent_id) {
+                return error_response(
+                    StatusCode::BAD_REQUEST,
+                    "invalid_parent_id",
+                    "Failed to update table parents - parents[1] and parent_id should be equal",
+                    None,
+                );
+            }
+        }
+        None => {
+            if payload.parents.len() > 1 {
+                return error_response(
+                        StatusCode::BAD_REQUEST,
+                        "invalid_parent_id",
+                        "Failed to update table parents - parent_id should not be null if parents[1] is defined",
+                        None,
+                    );
+            }
+        }
+    }
+
     match state
         .store
-        .load_table(&project, &data_source_id, &table_id)
+        .load_data_source_table(&project, &data_source_id, &table_id)
         .await
     {
         Err(e) => error_response(
@@ -2364,7 +2613,11 @@ async fn tables_update_parents(
             None,
         ),
         Ok(Some(table)) => match table
-            .update_parents(state.store.clone(), payload.parents.clone())
+            .update_parents(
+                state.store.clone(),
+                state.search_store.clone(),
+                payload.parents.clone(),
+            )
             .await
         {
             Err(e) => error_response(
@@ -2401,7 +2654,7 @@ async fn tables_rows_upsert(
 
     match state
         .store
-        .load_table(&project, &data_source_id, &table_id)
+        .load_data_source_table(&project, &data_source_id, &table_id)
         .await
     {
         Err(e) => {
@@ -2490,7 +2743,7 @@ async fn tables_rows_retrieve(
 
     match state
         .store
-        .load_table(&project, &data_source_id, &table_id)
+        .load_data_source_table(&project, &data_source_id, &table_id)
         .await
     {
         Err(e) => {
@@ -2566,7 +2819,7 @@ async fn tables_rows_delete(
 
     match state
         .store
-        .load_table(&project, &data_source_id, &table_id)
+        .load_data_source_table(&project, &data_source_id, &table_id)
         .await
     {
         Err(e) => {
@@ -2658,7 +2911,7 @@ async fn tables_rows_list(
 
     match state
         .store
-        .load_table(&project, &data_source_id, &table_id)
+        .load_data_source_table(&project, &data_source_id, &table_id)
         .await
     {
         Err(e) => {
@@ -2720,8 +2973,12 @@ async fn tables_rows_list(
 struct FoldersUpsertPayload {
     folder_id: String,
     timestamp: Option<u64>,
+    parent_id: Option<String>,
     parents: Vec<String>,
     title: String,
+    mime_type: String,
+    source_url: Option<String>,
+    provider_visibility: Option<ProviderVisibility>,
 }
 
 async fn folders_upsert(
@@ -2731,58 +2988,82 @@ async fn folders_upsert(
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
 
-    let folder = Folder {
-        data_source_id: data_source_id.to_string(),
-        folder_id: payload.folder_id.clone(),
-        created: utils::now(),
-    };
-
-    match state
-        .store
-        .upsert_data_source_folder(&project, &data_source_id, &folder)
-        .await
-    {
-        Err(e) => {
-            return error_response(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "internal_server_error",
-                "Failed to upsert folder",
-                Some(e),
-            )
-        }
-        Ok(()) => (),
+    if payload.parents.get(0) != Some(&payload.folder_id) {
+        return error_response(
+            StatusCode::BAD_REQUEST,
+            "invalid_parents",
+            "Failed to upsert folder - parents[0] and folder_id should be equal",
+            None,
+        );
     }
 
-    let node = Node {
-        node_id: folder.folder_id.clone(),
-        created: folder.created,
-        timestamp: payload.timestamp.unwrap_or(utils::now()),
-        node_type: NodeType::Folder,
-        title: payload.title.clone(),
-        mime_type: "application/vnd.dust.folder".to_string(),
-        parents: payload.parents.clone(),
-    };
+    match &payload.parent_id {
+        Some(parent_id) => {
+            if payload.parents.get(1) != Some(parent_id) {
+                return error_response(
+                    StatusCode::BAD_REQUEST,
+                    "invalid_parent_id",
+                    "Failed to upsert folder - parents[1] and parent_id should be equal",
+                    None,
+                );
+            }
+        }
+        None => {
+            if payload.parents.len() > 1 {
+                return error_response(
+                        StatusCode::BAD_REQUEST,
+                        "invalid_parent_id",
+                        "Failed to upsert folder - parent_id should not be null if parents[1] is defined",
+                        None,
+                    );
+            }
+        }
+    }
 
     match state
         .store
-        .upsert_data_source_node(&data_source_id, &node)
+        .upsert_data_source_folder(
+            project,
+            data_source_id,
+            FolderUpsertParams {
+                folder_id: payload.folder_id,
+                timestamp: payload.timestamp.unwrap_or(utils::now()),
+                parents: payload.parents,
+                title: payload.title,
+                mime_type: payload.mime_type,
+                source_url: payload.source_url,
+                provider_visibility: payload.provider_visibility,
+            },
+        )
         .await
     {
         Err(e) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
             "internal_server_error",
-            "Failed to upsert node",
+            "Failed to upsert folder",
             Some(e),
         ),
-        Ok(_) => (
-            StatusCode::OK,
-            Json(APIResponse {
-                error: None,
-                response: Some(json!({
-                    "folder": folder
-                })),
-            }),
-        ),
+        Ok(folder) => match state
+            .search_store
+            .index_node(Node::from(folder.clone()))
+            .await
+        {
+            Ok(_) => (
+                StatusCode::OK,
+                Json(APIResponse {
+                    error: None,
+                    response: Some(json!({
+                        "folder": folder
+                    })),
+                }),
+            ),
+            Err(e) => error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "internal_server_error",
+                "Failed to index folder",
+                Some(e),
+            ),
+        },
     }
 }
 
@@ -2815,69 +3096,173 @@ async fn folders_retrieve(
     }
 }
 
+#[derive(serde::Deserialize)]
+struct FoldersListQuery {
+    limit: Option<usize>,
+    offset: Option<usize>,
+    folder_ids: Option<String>,  // Parsed as JSON.
+    view_filter: Option<String>, // Parsed as JSON.
+}
+
+async fn folders_list(
+    Path((project_id, data_source_id)): Path<(i64, String)>,
+    State(state): State<Arc<APIState>>,
+    Query(query): Query<FoldersListQuery>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+    let view_filter: Option<SearchFilter> = match query
+        .view_filter
+        .as_ref()
+        .and_then(|f| Some(serde_json::from_str(f)))
+    {
+        Some(Ok(f)) => Some(f),
+        None => None,
+        Some(Err(e)) => {
+            return error_response(
+                StatusCode::BAD_REQUEST,
+                "invalid_view_filter",
+                "Failed to parse view_filter query parameter",
+                Some(e.into()),
+            )
+        }
+    };
+
+    let limit_offset: Option<(usize, usize)> = match (query.limit, query.offset) {
+        (Some(limit), Some(offset)) => Some((limit, offset)),
+        _ => None,
+    };
+
+    let folder_ids: Option<Vec<String>> = match query.folder_ids {
+        Some(ref ids) => match serde_json::from_str(ids) {
+            Ok(parsed_ids) => Some(parsed_ids),
+            Err(e) => {
+                return error_response(
+                    StatusCode::BAD_REQUEST,
+                    "invalid_folder_ids",
+                    "Failed to parse folder_ids query parameter",
+                    Some(e.into()),
+                )
+            }
+        },
+        None => None,
+    };
+
+    match state
+        .store
+        .list_data_source_folders(
+            &project,
+            &data_source_id,
+            &view_filter,
+            &folder_ids,
+            limit_offset,
+        )
+        .await
+    {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to list folders",
+            Some(e),
+        ),
+        Ok((folders, total)) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!({
+                    "limit": query.limit,
+                    "offset": query.offset,
+                    "folders": folders,
+                    "total": total,
+                })),
+            }),
+        ),
+    }
+}
+
 async fn folders_delete(
     Path((project_id, data_source_id, folder_id)): Path<(i64, String, String)>,
     State(state): State<Arc<APIState>>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
 
-    match state
-        .store
-        .load_data_source_folder(&project, &data_source_id, &folder_id)
-        .await
-    {
+    let result = async {
+        let folder = match state
+            .store
+            .load_data_source_folder(&project, &data_source_id, &folder_id)
+            .await?
+        {
+            Some(folder) => folder,
+            None => return Ok(()),
+        };
+        state
+            .store
+            .delete_data_source_folder(&project, &data_source_id, &folder_id)
+            .await?;
+        state.search_store.delete_node(Node::from(folder)).await?;
+        Ok(())
+    }
+    .await;
+
+    match result {
         Err(e) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
             "internal_server_error",
-            "Failed to load folder",
+            "Failed to delete folder",
             Some(e),
         ),
-        Ok(None) => error_response(
-            StatusCode::NOT_FOUND,
-            "folder_not_found",
-            &format!("No folder found for id `{}`", folder_id),
-            None,
+        Ok(_) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!({"success": true})),
+            }),
         ),
-        Ok(Some(_)) => {
-            match state
-                .store
-                .delete_data_source_node(&data_source_id, &folder_id)
-                .await
-            {
-                Err(e) => {
-                    return error_response(
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        "internal_server_error",
-                        "Failed to delete folder",
-                        Some(e),
-                    )
-                }
-                Ok(_) => (),
-            }
-
-            match state
-                .store
-                .delete_data_source_folder(&data_source_id, &folder_id)
-                .await
-            {
-                Err(e) => error_response(
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "internal_server_error",
-                    "Failed to delete folder",
-                    Some(e),
-                ),
-                Ok(_) => (
-                    StatusCode::OK,
-                    Json(APIResponse {
-                        error: None,
-                        response: Some(json!({
-                            "success": true,
-                        })),
-                    }),
-                ),
-            }
-        }
     }
+}
+
+#[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct NodesSearchPayload {
+    query: Option<String>,
+    filter: NodesSearchFilter,
+    options: Option<NodesSearchOptions>,
+}
+
+async fn nodes_search(
+    State(state): State<Arc<APIState>>,
+    Json(payload): Json<NodesSearchPayload>,
+) -> (StatusCode, Json<APIResponse>) {
+    let (nodes, next_cursor) = match state
+        .search_store
+        .search_nodes(
+            payload.query,
+            payload.filter,
+            payload.options,
+            state.store.clone(),
+        )
+        .await
+    {
+        Ok((nodes, next_cursor)) => (nodes, next_cursor),
+        Err(e) => {
+            return error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "internal_server_error",
+                "Failed to search nodes",
+                Some(e),
+            );
+        }
+    };
+
+    (
+        StatusCode::OK,
+        Json(APIResponse {
+            error: None,
+            response: Some(json!({
+                "nodes": nodes,
+                "next_page_cursor": next_cursor,
+            })),
+        }),
+    )
 }
 
 #[derive(serde::Deserialize)]
@@ -2900,7 +3285,11 @@ async fn databases_query_run(
             .map(|(project_id, data_source_id, table_id)| {
                 let project = project::Project::new_from_id(project_id);
                 let store = state.store.clone();
-                async move { store.load_table(&project, &data_source_id, &table_id).await }
+                async move {
+                    store
+                        .load_data_source_table(&project, &data_source_id, &table_id)
+                        .await
+                }
             }),
     )
     .await
@@ -3179,10 +3568,19 @@ fn main() {
                 Err(_) => Err(anyhow!("DATABASES_STORE_DATABASE_URI not set."))?,
             };
 
+        let url = std::env::var("ELASTICSEARCH_URL").expect("ELASTICSEARCH_URL must be set");
+        let username =
+            std::env::var("ELASTICSEARCH_USERNAME").expect("ELASTICSEARCH_USERNAME must be set");
+        let password =
+            std::env::var("ELASTICSEARCH_PASSWORD").expect("ELASTICSEARCH_PASSWORD must be set");
+
+        let search_store : Box<dyn SearchStore + Sync + Send> = Box::new(ElasticsearchSearchStore::new(&url, &username, &password).await?);
+
         let state = Arc::new(APIState::new(
             store,
             databases_store,
             QdrantClients::build().await?,
+            search_store,
         ));
 
         let router = Router::new()
@@ -3252,6 +3650,10 @@ fn main() {
             post(data_sources_documents_upsert),
         )
         .route(
+            "/projects/:project_id/data_sources/:data_source_id/documents/:document_id/blob",
+            get(data_sources_documents_retrieve_blob),
+        )
+        .route(
             "/projects/:project_id/data_sources/:data_source_id/documents/:document_id/tags",
             patch(data_sources_documents_update_tags),
         )
@@ -3306,6 +3708,10 @@ fn main() {
             delete(tables_delete),
         )
         .route(
+            "/projects/:project_id/data_sources/:data_source_id/tables/:table_id/blob",
+            get(tables_retrieve_blob),
+        )
+        .route(
             "/projects/:project_id/data_sources/:data_source_id/tables/:table_id/rows",
             post(tables_rows_upsert),
         )
@@ -3326,6 +3732,7 @@ fn main() {
             post(databases_query_run),
         )
         .route("/sqlite_workers", delete(sqlite_workers_delete))
+
         // Folders
         .route(
             "/projects/:project_id/data_sources/:data_source_id/folders",
@@ -3336,9 +3743,16 @@ fn main() {
             get(folders_retrieve),
         )
         .route(
+            "/projects/:project_id/data_sources/:data_source_id/folders",
+            get(folders_list),
+        )
+        .route(
             "/projects/:project_id/data_sources/:data_source_id/folders/:folder_id",
             delete(folders_delete),
         )
+
+        //Search
+        .route("/nodes/search", post(nodes_search))
 
         // Misc
         .route("/tokenize", post(tokenize))

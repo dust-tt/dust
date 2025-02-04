@@ -19,19 +19,17 @@ import {
   getTablesQueryResultsFileTitle,
   Ok,
 } from "@dust-tt/types";
-import { stringify } from "csv-stringify";
 
 import { runActionStreamed } from "@app/lib/actions/server";
 import { DEFAULT_TABLES_QUERY_ACTION_NAME } from "@app/lib/api/assistant/actions/constants";
+import { getToolResultOutputCsvFileAndSnippet } from "@app/lib/api/assistant/actions/result_file_helpers";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
 import { renderConversationForModel } from "@app/lib/api/assistant/generation";
-import { generateCSVSnippet } from "@app/lib/api/csv";
-import { internalCreateToolOutputCsvFile } from "@app/lib/api/files/tool_output";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
-import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
+import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { sanitizeJSONOutput } from "@app/lib/utils";
@@ -265,7 +263,7 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
     }
 
     let actionDescription =
-      "Query data tables specificied by the user by executing a generated SQL query. " +
+      "Query data tables described below by executing a SQL query automatically generated from the conversation context. " +
       "The function does not require any inputs, the SQL query will be inferred from the conversation history.";
     if (description) {
       actionDescription += `\nDescription of the data tables:\n${description}`;
@@ -309,8 +307,10 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
       params: rawInputs,
       output,
       functionCallId,
+      functionCallName: actionConfiguration.name,
       agentMessageId: agentMessage.agentMessageId,
       step: step,
+      workspaceId: owner.id,
     });
 
     yield {
@@ -380,7 +380,7 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
 
     // Generating configuration
     const config = cloneBaseConfig(
-      DustProdActionRegistry["assistant-v2-query-tables"].config
+      getDustProdAction("assistant-v2-query-tables").config
     );
     const tables = actionConfiguration.tables.map((t) => ({
       workspace_id: t.workspaceId,
@@ -566,7 +566,7 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
         output: sanitizedOutput,
       });
 
-      const { file, snippet } = await getTablesQueryOutputCsvFileAndSnippet(
+      const { file, snippet } = await getToolResultOutputCsvFileAndSnippet(
         auth,
         {
           title: queryTitle,
@@ -614,44 +614,4 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
     };
     return;
   }
-}
-
-async function getTablesQueryOutputCsvFileAndSnippet(
-  auth: Authenticator,
-  {
-    title,
-    conversationId,
-    results,
-  }: {
-    title: string;
-    conversationId: string;
-    results: Array<Record<string, string | number | boolean>>;
-  }
-): Promise<{
-  file: FileResource;
-  snippet: string;
-}> {
-  const toCsv = (
-    records: Array<Record<string, string | number | boolean>>,
-    options: { header: boolean } = { header: true }
-  ): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      stringify(records, options, (err, data) => {
-        if (err) {
-          reject(err);
-        }
-        resolve(data);
-      });
-    });
-  };
-  const csvOutput = await toCsv(results);
-
-  const file = await internalCreateToolOutputCsvFile(auth, {
-    title,
-    conversationId: conversationId,
-    content: csvOutput,
-    contentType: "text/csv",
-  });
-
-  return { file, snippet: generateCSVSnippet(csvOutput) };
 }

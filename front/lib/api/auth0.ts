@@ -1,3 +1,4 @@
+import type { Session } from "@auth0/nextjs-auth0";
 import type { Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import { ManagementClient } from "auth0";
@@ -8,6 +9,8 @@ import jwksClient from "jwks-rsa";
 import type { NextApiRequest } from "next";
 
 import config from "@app/lib/api/config";
+import type { RegionType } from "@app/lib/api/regions/config";
+import { config as regionsConfig } from "@app/lib/api/regions/config";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 
@@ -36,12 +39,15 @@ export type ScopeType =
   | "delete:file"
   | "read:agent";
 
-export const Auth0JwtPayloadSchema = t.type({
-  azp: t.string,
-  exp: t.number,
-  scope: t.string,
-  sub: t.string,
-});
+export const Auth0JwtPayloadSchema = t.intersection([
+  t.type({
+    azp: t.string,
+    exp: t.number,
+    scope: t.string,
+    sub: t.string,
+  }),
+  t.record(t.string, t.union([t.string, t.number, t.undefined])),
+]);
 
 export type Auth0JwtPayload = t.TypeOf<typeof Auth0JwtPayloadSchema> &
   jwt.JwtPayload;
@@ -73,6 +79,36 @@ export function getAuth0ManagemementClient(): ManagementClient {
   }
 
   return auth0ManagemementClient;
+}
+
+// Store the region in the user's app_metadata to redirect to the right region.
+export async function setRegionForUser(session: Session, region: RegionType) {
+  const managementClient = getAuth0ManagemementClient();
+
+  return managementClient.users.update(
+    {
+      id: session.user.sub,
+    },
+    {
+      app_metadata: {
+        region,
+      },
+    }
+  );
+}
+
+export function getRegionForUserSession(session: Session): RegionType | null {
+  const regionClaim = `${config.getAuth0NamespaceClaim()}region`;
+
+  return session.user[regionClaim] ?? null;
+}
+
+export function getRegionForJwtToken(
+  token: Auth0JwtPayload
+): RegionType | null {
+  const regionClaim = `${config.getAuth0NamespaceClaim()}region`;
+
+  return token[regionClaim] ?? null;
 }
 
 /**
@@ -117,9 +153,14 @@ export async function verifyAuth0Token(
   // TODO(thomas): Remove this when all clients are updated.
   const legacyAudience = `https://${auth0Domain}/api/v2/`;
   const decoded = jwt.decode(accessToken, { json: true });
-  const useLegacy = !decoded || decoded.aud !== audience;
 
-  logger.info({ useLegacy, audience: decoded?.aud }, "Using legacy audience.");
+  const useLegacy =
+    !decoded ||
+    (Array.isArray(decoded.aud)
+      ? !decoded.aud.includes(audience)
+      : decoded.aud !== audience);
+
+  logger.info({ useLegacy, audience: decoded?.aud }, "Get Auth0 token");
 
   return new Promise((resolve) => {
     jwt.verify(
@@ -154,6 +195,15 @@ export async function verifyAuth0Token(
           return resolve(new Err(Error("Invalid token payload.")));
         }
 
+        const region = getRegionForJwtToken(payloadValidation.right);
+        if (region && regionsConfig.getCurrentRegion() !== region) {
+          logger.info(
+            { region, requiredRegion: regionsConfig.getCurrentRegion() },
+            "Invalid region."
+          );
+          return resolve(new Err(Error("Invalid region.")));
+        }
+
         if (requiredScope && !useLegacy) {
           const availableScopes = decoded.scope.split(" ");
           if (!availableScopes.includes(requiredScope)) {
@@ -179,4 +229,40 @@ export async function getUserFromAuth0Token(
   accessToken: Auth0JwtPayload
 ): Promise<UserResource | null> {
   return UserResource.fetchByAuth0Sub(accessToken.sub);
+}
+
+export async function getAuth0UsersFromEmail(emails: string[]) {
+  const emailQueries = emails.map(
+    (email) => `email:"${email.replace(/([+\-&|!(){}[\]^"~*?:\\/])/g, "\\$1")}"`
+  );
+
+  // URL length limit is 2048 characters, keep some margin for base URL and encoded characters.
+  const chunkSize = 1900;
+  const emailRequestChunks: string[] = [];
+  let currentChunk = "";
+
+  for (const query of emailQueries) {
+    const separator = currentChunk ? " OR " : "";
+    if ((currentChunk + separator + query).length > chunkSize) {
+      emailRequestChunks.push(currentChunk);
+      currentChunk = query;
+    } else {
+      currentChunk = currentChunk + separator + query;
+    }
+  }
+  if (currentChunk) {
+    emailRequestChunks.push(currentChunk);
+  }
+
+  const auth0Users = [];
+  for (const chunk of emailRequestChunks) {
+    const res = await getAuth0ManagemementClient().users.getAll({
+      q: chunk,
+    });
+    if (res.data) {
+      auth0Users.push(...res.data);
+    }
+  }
+
+  return auth0Users;
 }

@@ -5,13 +5,14 @@ import {
   executeChild,
   proxyActivities,
   setHandler,
+  sleep,
   workflowInfo,
 } from "@temporalio/workflow";
+import { uniq } from "lodash";
 
 import type * as activities from "@connectors/connectors/google_drive/temporal/activities";
 import type { FolderUpdatesSignal } from "@connectors/connectors/google_drive/temporal/signals";
 import type * as sync_status from "@connectors/lib/sync_status";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 import { GOOGLE_DRIVE_USER_SPACE_VIRTUAL_DRIVE_ID } from "../lib/consts";
 import { folderUpdatesSignal } from "./signals";
@@ -24,6 +25,7 @@ const {
   garbageCollectorFinished,
   markFolderAsVisited,
   shouldGarbageCollect,
+  upsertSharedWithMeFolder,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "20 minutes",
 });
@@ -87,7 +89,9 @@ export async function googleDriveFullSync({
     for (const { action, folderId } of folderUpdates) {
       switch (action) {
         case "added":
-          foldersToBrowse.push(folderId);
+          if (!foldersToBrowse.includes(folderId)) {
+            foldersToBrowse.push(folderId);
+          }
           break;
         case "removed":
           foldersToBrowse.splice(foldersToBrowse.indexOf(folderId), 1);
@@ -100,6 +104,11 @@ export async function googleDriveFullSync({
       }
     }
   });
+
+  await upsertSharedWithMeFolder(connectorId);
+
+  // Temp to clean up the running workflows state
+  foldersToBrowse = uniq(foldersToBrowse);
 
   while (foldersToBrowse.length > 0) {
     const folder = foldersToBrowse.pop();
@@ -123,7 +132,7 @@ export async function googleDriveFullSync({
         `Synced ${totalCount} files`
       );
     } while (nextPageToken);
-    await markFolderAsVisited(connectorId, folder);
+    await markFolderAsVisited(connectorId, folder, startSyncTs);
     if (workflowInfo().historyLength > 4000) {
       await continueAsNew<typeof googleDriveFullSync>({
         connectorId,
@@ -134,6 +143,9 @@ export async function googleDriveFullSync({
         mimeTypeFilter,
       });
     }
+
+    // Temp to clean up the running workflows state
+    foldersToBrowse = uniq(foldersToBrowse);
   }
   await syncSucceeded(connectorId);
 
@@ -166,7 +178,6 @@ type DrivesToSyncType = {
  */
 export async function googleDriveIncrementalSync(
   connectorId: ModelId,
-  dataSourceConfig: DataSourceConfig,
   startSyncTs: number | undefined = undefined,
   drivesToSync: DrivesToSyncType | undefined = undefined,
   nextPageToken: string | undefined = undefined
@@ -199,7 +210,6 @@ export async function googleDriveIncrementalSync(
     do {
       nextPageToken = await incrementalSync(
         connectorId,
-        dataSourceConfig,
         googleDrive.id,
         googleDrive.isShared,
         startSyncTs,
@@ -210,7 +220,6 @@ export async function googleDriveIncrementalSync(
       if (workflowInfo().historyLength > 4000) {
         await continueAsNew<typeof googleDriveIncrementalSync>(
           connectorId,
-          dataSourceConfig,
           startSyncTs,
           drivesToSync,
           nextPageToken
@@ -238,6 +247,9 @@ export async function googleDriveIncrementalSync(
   }
 
   await syncSucceeded(connectorId);
+
+  await sleep("5 minutes");
+  await continueAsNew<typeof googleDriveIncrementalSync>(connectorId);
 }
 
 export async function googleDriveGarbageCollectorWorkflow(

@@ -1,4 +1,5 @@
 import type { ModelId } from "@dust-tt/types";
+import { MIME_TYPES } from "@dust-tt/types";
 import TurndownService from "turndown";
 
 import { getIntercomAccessToken } from "@connectors/connectors/intercom/lib/intercom_access_token";
@@ -12,13 +13,17 @@ import {
   getCollectionInAppUrl,
   getHelpCenterArticleInternalId,
   getHelpCenterCollectionInternalId,
-  getHelpCenterInternalId,
+  getParentIdsForArticle,
+  getParentIdsForCollection,
 } from "@connectors/connectors/intercom/lib/utils";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
-  deleteFromDataSource,
+  deleteDataSourceDocument,
+  deleteDataSourceFolder,
   renderDocumentTitleAndContent,
   renderMarkdownSection,
-  upsertToDatasource,
+  upsertDataSourceDocument,
+  upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
 import type { IntercomHelpCenter } from "@connectors/lib/models/intercom";
 import {
@@ -26,6 +31,7 @@ import {
   IntercomCollection,
 } from "@connectors/lib/models/intercom";
 import logger from "@connectors/logger/logger";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const turndownService = new TurndownService();
@@ -102,13 +108,17 @@ export async function deleteCollectionWithChildren({
         article.articleId
       );
       await Promise.all([
-        deleteFromDataSource(dataSourceConfig, dsArticleId),
+        deleteDataSourceDocument(dataSourceConfig, dsArticleId),
         article.destroy(),
       ]);
     })
   );
 
   // Then we delete the collection
+  await deleteDataSourceFolder({
+    dataSourceConfig,
+    folderId: getHelpCenterCollectionInternalId(connectorId, collectionId),
+  });
   await collection.destroy();
   logger.info(
     { ...loggerArgs, collectionId },
@@ -162,7 +172,7 @@ export async function upsertCollectionWithChildren({
   }
 
   // Sync the Collection
-  let collectionOnDb = await IntercomCollection.findOne({
+  const collectionOnDb = await IntercomCollection.findOne({
     where: {
       connectorId,
       collectionId,
@@ -180,7 +190,7 @@ export async function upsertCollectionWithChildren({
       lastUpsertedTs: new Date(currentSyncMs),
     });
   } else {
-    collectionOnDb = await IntercomCollection.create({
+    await IntercomCollection.create({
       connectorId: connectorId,
       collectionId: collection.id,
       intercomWorkspaceId: collection.workspace_id,
@@ -193,6 +203,30 @@ export async function upsertCollectionWithChildren({
       lastUpsertedTs: new Date(currentSyncMs),
     });
   }
+  // Update datasource folder node
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (connector === null) {
+    throw new Error("Unexpected: connector not found");
+  }
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const internalCollectionId = getHelpCenterCollectionInternalId(
+    connectorId,
+    collectionId
+  );
+  const collectionParents = await getParentIdsForCollection({
+    connectorId,
+    collectionId,
+  });
+  await upsertDataSourceFolder({
+    dataSourceConfig,
+    folderId: internalCollectionId,
+    title: collection.name,
+    parents: collectionParents,
+    parentId: collectionParents[1] || null,
+    mimeType: MIME_TYPES.INTERCOM.COLLECTION,
+    sourceUrl: collection.url || fallbackCollectionUrl,
+    timestampMs: currentSyncMs,
+  });
 
   // Then we call ourself recursively on the children collections
   const accessToken = await getIntercomAccessToken(connectionId);
@@ -367,10 +401,9 @@ export async function upsertArticle({
       documentId,
       connectorId,
       parentCollectionId,
-      helpCenterId,
     });
 
-    await upsertToDatasource({
+    await upsertDataSourceDocument({
       dataSourceConfig,
       documentId,
       documentContent: renderedPage,
@@ -382,6 +415,7 @@ export async function upsertArticle({
         `updatedAt:${updatedAtDate.getTime()}`,
       ],
       parents,
+      parentId: parents[1],
       loggerArgs: {
         ...loggerArgs,
         articleId: article.id,
@@ -389,6 +423,8 @@ export async function upsertArticle({
       upsertContext: {
         sync_type: "batch",
       },
+      title: article.title,
+      mimeType: MIME_TYPES.INTERCOM.ARTICLE,
       async: true,
     });
     await articleOnDb.update({
@@ -400,53 +436,4 @@ export async function upsertArticle({
       "[Intercom] Article has no content. Skipping sync."
     );
   }
-}
-
-// Parents in the Core datasource should map the internal ids that we use in the permission modal
-// Order is important: We want the id of the article, then all parents collection in order, then the help center
-async function getParentIdsForArticle({
-  documentId,
-  connectorId,
-  parentCollectionId,
-  helpCenterId,
-}: {
-  documentId: string;
-  connectorId: number;
-  parentCollectionId: string;
-  helpCenterId: string;
-}) {
-  // Initialize the internal IDs array with the article ID.
-  const parentIds = [documentId];
-
-  // Add the parent collection ID.
-  parentIds.push(
-    getHelpCenterCollectionInternalId(connectorId, parentCollectionId)
-  );
-
-  // Fetch and add any grandparent collection IDs.
-  let currentParentId = parentCollectionId;
-
-  // There's max 2-levels on Intercom.
-  for (let i = 0; i < 2; i++) {
-    const currentParent = await IntercomCollection.findOne({
-      where: {
-        connectorId,
-        collectionId: currentParentId,
-      },
-    });
-
-    if (currentParent && currentParent.parentId) {
-      currentParentId = currentParent.parentId;
-      parentIds.push(
-        getHelpCenterCollectionInternalId(connectorId, currentParentId)
-      );
-    } else {
-      break;
-    }
-  }
-
-  // Add the help center internal ID.
-  parentIds.push(getHelpCenterInternalId(connectorId, helpCenterId));
-
-  return parentIds;
 }

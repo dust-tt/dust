@@ -23,13 +23,13 @@ const baseClasses =
 
 const iconClasses = {
   secondary: {
-    idle: "s-text-element-900",
+    idle: "s-text-foreground",
     selected: "s-text-action-500",
     hover: "hover:s-text-action-400",
     active: "active:s-text-action-600",
     disabled: "s-text-element-500",
     dark: {
-      idle: "dark:s-text-element-900-dark",
+      idle: "dark:s-text-foreground-dark",
       selected: "dark:s-text-action-500-dark",
       hover: "dark:hover:s-text-action-500-dark",
       active: "dark:active:s-text-action-600-dark",

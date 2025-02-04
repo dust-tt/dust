@@ -34,8 +34,8 @@ type ChipProps = {
 };
 
 const sizeVariants: Record<ChipSizeType, string> = {
-  xs: "s-rounded-lg s-h-7 s-text-xs s-font-medium s-px-3 s-gap-2",
-  sm: "s-rounded-xl s-h-9 s-text-sm s-font-medium s-px-3 s-gap-2.5",
+  xs: "s-rounded-lg s-min-h-7 s-text-xs s-font-medium s-px-3 s-gap-2",
+  sm: "s-rounded-xl s-min-h-9 s-text-sm s-font-medium s-px-3 s-gap-2.5",
 };
 
 const backgroundVariants: Record<ChipColorType, string> = {
@@ -52,7 +52,7 @@ const backgroundVariants: Record<ChipColorType, string> = {
 const textVariants: Record<ChipColorType, string> = {
   emerald: "s-text-emerald-900",
   amber: "s-text-amber-900",
-  slate: "s-text-slate-900",
+  slate: "s-text-foreground",
   purple: "s-text-purple-900",
   warning: "s-text-warning-900",
   sky: "s-text-sky-900",
@@ -78,23 +78,20 @@ const chipVariants = cva("s-inline-flex s-box-border s-items-center", {
   },
 });
 
-export function Chip({
-  size,
-  color,
-  label,
-  children,
-  className,
-  isBusy,
-  icon,
-}: ChipProps) {
-  return (
+const Chip = React.forwardRef<HTMLDivElement, ChipProps>(
+  (
+    { size, color, label, children, className, isBusy, icon }: ChipProps,
+    ref
+  ) => (
     <div
       className={cn(
         chipVariants({ size, background: color, text: color }),
         className
       )}
       aria-label={label}
+      ref={ref}
     >
+      {children}
       {icon && <Icon visual={icon} size={size as IconProps["size"]} />}
       {label && (
         <span className={cn("s-pointer s-grow s-cursor-default s-truncate")}>
@@ -105,28 +102,10 @@ export function Chip({
           )}
         </span>
       )}
-      {children}
     </div>
-  );
-}
+  )
+);
 
-interface ListChipProps {
-  children: ReactNode;
-  className?: string;
-  isWrapping?: boolean;
-}
+Chip.displayName = "Chip";
 
-Chip.List = function ({ children, className, isWrapping }: ListChipProps) {
-  return (
-    <div className={cn("s-flex", className)}>
-      <div
-        className={cn(
-          "s-flex s-flex-row s-gap-2",
-          isWrapping ? "s-flex-wrap" : ""
-        )}
-      >
-        {children}
-      </div>
-    </div>
-  );
-};
+export { Chip };

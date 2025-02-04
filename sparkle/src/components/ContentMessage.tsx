@@ -23,13 +23,13 @@ const CONTENT_MESSAGE_SIZES = ["sm", "md", "lg"] as const;
 type ContentMessageSizeType = (typeof CONTENT_MESSAGE_SIZES)[number];
 
 const contentMessageVariants = cva(
-  "s-flex s-flex-col s-gap-2 s-rounded-2xl s-p-4",
+  "s-flex s-flex-col s-gap-1 s-rounded-2xl s-p-4",
   {
     variants: {
       variant: {
         emerald: "s-bg-emerald-100",
         amber: "s-bg-amber-100",
-        slate: "s-bg-slate-100",
+        slate: "s-bg-muted-background s-border s-border-border",
         purple: "s-bg-purple-100",
         warning: "s-bg-warning-100",
         sky: "s-bg-sky-100",
@@ -66,12 +66,12 @@ const iconVariants = cva("s-shrink-0", {
   },
 });
 
-const titleVariants = cva("s-text-base s-font-semibold", {
+const titleVariants = cva("s-text-sm s-font-semibold", {
   variants: {
     variant: {
       emerald: "s-text-emerald-800",
       amber: "s-text-amber-800",
-      slate: "s-text-slate-800",
+      slate: "s-text-foreground",
       purple: "s-text-purple-800",
       warning: "s-text-warning-800",
       sky: "s-text-sky-800",
@@ -87,7 +87,7 @@ const textVariants = cva("s-text-sm", {
     variant: {
       emerald: "s-text-emerald-950",
       amber: "s-text-amber-950",
-      slate: "s-text-slate-950",
+      slate: "s-text-muted-foreground",
       purple: "s-text-purple-950",
       warning: "s-text-warning-950",
       sky: "s-text-sky-950",
@@ -121,7 +121,7 @@ export function ContentMessage({
         <div className="s-flex s-items-center s-gap-1.5">
           {icon && (
             <Icon
-              size="sm"
+              size="xs"
               visual={icon}
               className={iconVariants({ variant })}
             />

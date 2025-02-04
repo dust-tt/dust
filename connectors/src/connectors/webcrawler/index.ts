@@ -1,6 +1,5 @@
 import type {
   ConnectorPermission,
-  ConnectorsAPIError,
   ContentNode,
   ContentNodesViewType,
   Result,
@@ -15,6 +14,15 @@ import {
   WebCrawlerHeaderRedactedValue,
 } from "@dust-tt/types";
 
+import type {
+  CreateConnectorErrorCode,
+  RetrievePermissionsErrorCode,
+  UpdateConnectorErrorCode,
+} from "@connectors/connectors/interface";
+import {
+  BaseConnectorManager,
+  ConnectorManagerError,
+} from "@connectors/connectors/interface";
 import {
   getDisplayNameForFolder,
   getDisplayNameForPage,
@@ -30,8 +38,6 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { WebCrawlerConfigurationResource } from "@connectors/resources/webcrawler_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
 
-import type { ConnectorManagerError } from "../interface";
-import { BaseConnectorManager } from "../interface";
 import {
   launchCrawlWebsiteWorkflow,
   stopCrawlWebsiteWorkflow,
@@ -45,7 +51,7 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
     dataSourceConfig: DataSourceConfig;
     connectionId: string;
     configuration: WebCrawlerConfigurationType;
-  }): Promise<Result<string, ConnectorManagerError>> {
+  }): Promise<Result<string, ConnectorManagerError<CreateConnectorErrorCode>>> {
     if (!configuration) {
       throw new Error("Configuration is required");
     }
@@ -127,17 +133,21 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
     parentInternalId: string | null;
     filterPermission: ConnectorPermission | null;
     viewType: ContentNodesViewType;
-  }): Promise<Result<ContentNode[], Error>> {
+  }): Promise<
+    Result<ContentNode[], ConnectorManagerError<RetrievePermissionsErrorCode>>
+  > {
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
-      return new Err(new Error("Connector not found"));
+      return new Err(
+        new ConnectorManagerError("CONNECTOR_NOT_FOUND", "Connector not found")
+      );
     }
 
     const webCrawlerConfig =
       await WebCrawlerConfigurationResource.fetchByConnectorId(connector.id);
 
     if (!webCrawlerConfig) {
-      return new Err(new Error("Webcrawler configuration not found"));
+      throw new Error("Webcrawler configuration not found");
     }
     let parentUrl: string | null = null;
     if (parentInternalId) {
@@ -191,7 +201,6 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
         .filter((f) => !excludedFoldersSet.has(f.url))
         .map((folder): ContentNode => {
           return {
-            provider: "webcrawler",
             internalId: folder.internalId,
             parentInternalId: folder.parentUrl
               ? stableIdForUrl({
@@ -200,10 +209,9 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
                 })
               : null,
             title: getDisplayNameForFolder(folder),
-            sourceUrl: null,
+            sourceUrl: folder.url,
             expandable: true,
             permission: "read",
-            dustDocumentId: null,
             type: "folder",
             lastUpdatedAt: folder.updatedAt.getTime(),
           };
@@ -214,7 +222,6 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
               normalizeFolderUrl(page.url)
             );
             return {
-              provider: "webcrawler",
               internalId: isFileAndFolder
                 ? stableIdForUrl({
                     url: normalizeFolderUrl(page.url),
@@ -231,7 +238,6 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
               sourceUrl: page.url,
               expandable: isFileAndFolder ? true : false,
               permission: "read",
-              dustDocumentId: page.documentId,
               type: "file",
               lastUpdatedAt: page.updatedAt.getTime(),
             };
@@ -266,28 +272,24 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
 
     folders.forEach((folder) => {
       nodes.push({
-        provider: "webcrawler",
         internalId: folder.internalId,
         parentInternalId: folder.parentUrl,
         title: getDisplayNameForFolder(folder),
         sourceUrl: folder.url,
         expandable: true,
         permission: "read",
-        dustDocumentId: null,
         type: "folder",
         lastUpdatedAt: folder.updatedAt.getTime(),
       });
     });
     pages.forEach((page) => {
       nodes.push({
-        provider: "webcrawler",
         internalId: page.documentId,
         parentInternalId: page.parentUrl,
         title: getDisplayNameForPage(page),
         sourceUrl: page.url,
         expandable: false,
         permission: "read",
-        dustDocumentId: page.documentId,
         type: "file",
         lastUpdatedAt: page.updatedAt.getTime(),
       });
@@ -464,7 +466,9 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
     return new Ok(undefined);
   }
 
-  async update(): Promise<Result<string, ConnectorsAPIError>> {
+  async update(): Promise<
+    Result<string, ConnectorManagerError<UpdateConnectorErrorCode>>
+  > {
     throw new Error("Method not implemented.");
   }
 

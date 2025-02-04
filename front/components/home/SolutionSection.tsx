@@ -107,6 +107,7 @@ const renderSolutionSectionBlock = ({
     </div>
   );
 };
+
 interface SolutionSectionContentBlockProps {
   title: ReactNode;
   content: ReactNode | ReactNode[];
@@ -120,7 +121,7 @@ const SolutionSectionContentBlock = ({
     const contents = Array.isArray(content) ? content : [content];
 
     return contents.map((block, index) => (
-      <P size="xs" className="max-w-[500px] text-slate-600" key={index}>
+      <P size="xs" className="max-w-[500px] text-muted-foreground" key={index}>
         {block}
       </P>
     ));
@@ -128,7 +129,7 @@ const SolutionSectionContentBlock = ({
 
   return (
     <div className={classNames("flex grow basis-0 flex-col gap-3")}>
-      <H5 className="text-slate-900">{title}</H5>
+      <H5 className="text-foreground">{title}</H5>
       {renderContentBlocks()}
     </div>
   );
@@ -157,7 +158,7 @@ export const SolutionSectionAssistantBlock = ({
       )}
     >
       <Avatar size="xl" emoji={emoji} backgroundColor={backgroundColor} />
-      <H5 className="truncate text-slate-900">{name}</H5>
+      <H5 className="truncate text-foreground">{name}</H5>
       <P size="xs" className="text-slate-700">
         {description}
       </P>

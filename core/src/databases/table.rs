@@ -7,10 +7,12 @@ use serde_json::Value;
 use tracing::info;
 
 use crate::{
+    data_sources::node::{Node, NodeType, ProviderVisibility},
     databases::{database::HasValue, table_schema::TableSchema},
     databases_store::store::DatabasesStore,
     project::Project,
     search_filter::{Filterable, SearchFilter},
+    search_stores::search_store::SearchStore,
     sqlite_workers::client::HEARTBEAT_INTERVAL_MS,
     stores::store::Store,
     utils,
@@ -46,10 +48,35 @@ pub fn get_table_type_for_tables(tables: Vec<&Table>) -> Result<TableType> {
     }
 }
 
+#[derive(serde::Serialize)]
+pub struct TableBlobPayload {
+    pub table_id: String,
+    pub name: String,
+    pub description: String,
+    pub timestamp: Option<u64>,
+    pub tags: Vec<String>,
+    pub parent_id: Option<String>,
+    pub parents: Vec<String>,
+    pub source_url: Option<String>,
+
+    // Remote DB specifics
+    pub remote_database_table_id: Option<String>,
+    pub remote_database_secret_id: Option<String>,
+
+    // Node meta:
+    pub title: String,
+    pub mime_type: String,
+    pub provider_visibility: Option<ProviderVisibility>,
+
+    // Rows
+    pub rows: Vec<Row>,
+}
+
 #[derive(Debug, Serialize, Clone, Deserialize)]
 pub struct Table {
     project: Project,
     data_source_id: String,
+    data_source_internal_id: String,
     created: u64,
 
     table_id: String,
@@ -57,7 +84,12 @@ pub struct Table {
     description: String,
     timestamp: u64,
     tags: Vec<String>,
+    title: String,
+    mime_type: String,
+    provider_visibility: Option<ProviderVisibility>,
+    parent_id: Option<String>,
     parents: Vec<String>,
+    source_url: Option<String>,
 
     schema: Option<TableSchema>,
     schema_stale_at: Option<u64>,
@@ -68,31 +100,43 @@ pub struct Table {
 
 impl Table {
     pub fn new(
-        project: &Project,
-        data_source_id: &str,
+        project: Project,
+        data_source_id: String,
+        data_source_internal_id: String,
         created: u64,
-        table_id: &str,
-        name: &str,
-        description: &str,
+        table_id: String,
+        name: String,
+        description: String,
         timestamp: u64,
+        title: String,
+        mime_type: String,
+        provider_visibility: Option<ProviderVisibility>,
         tags: Vec<String>,
+        parent_id: Option<String>,
         parents: Vec<String>,
-        schema: &Option<TableSchema>,
+        source_url: Option<String>,
+        schema: Option<TableSchema>,
         schema_stale_at: Option<u64>,
         remote_database_table_id: Option<String>,
         remote_database_secret_id: Option<String>,
     ) -> Self {
         Table {
-            project: project.clone(),
-            data_source_id: data_source_id.to_string(),
+            project,
+            data_source_id,
+            data_source_internal_id,
             created,
-            table_id: table_id.to_string(),
-            name: name.to_string(),
-            description: description.to_string(),
+            table_id,
+            name,
+            description,
             timestamp,
             tags,
+            title,
+            mime_type,
+            provider_visibility,
+            parent_id,
             parents,
-            schema: schema.clone(),
+            source_url,
+            schema,
             schema_stale_at,
             remote_database_table_id,
             remote_database_secret_id,
@@ -110,6 +154,24 @@ impl Table {
     }
     pub fn table_id(&self) -> &str {
         &self.table_id
+    }
+    pub fn title(&self) -> &str {
+        &self.title
+    }
+    pub fn mime_type(&self) -> &str {
+        &self.mime_type
+    }
+    pub fn provider_visibility(&self) -> &Option<ProviderVisibility> {
+        &self.provider_visibility
+    }
+    pub fn parent_id(&self) -> &Option<String> {
+        &self.parent_id
+    }
+    pub fn parents(&self) -> &Vec<String> {
+        &self.parents
+    }
+    pub fn source_url(&self) -> &Option<String> {
+        &self.source_url
     }
     pub fn name(&self) -> &str {
         &self.name
@@ -148,10 +210,12 @@ impl Table {
         self.schema = Some(schema);
     }
 
+    // if search_store is provided, delete the table node from the search index
     pub async fn delete(
         &self,
         store: Box<dyn Store + Sync + Send>,
         databases_store: Box<dyn DatabasesStore + Sync + Send>,
+        search_store: Option<Box<dyn SearchStore + Sync + Send>>,
     ) -> Result<()> {
         if self.table_type()? == TableType::Local {
             // Invalidate the databases that use the table.
@@ -180,8 +244,13 @@ impl Table {
         }
 
         store
-            .delete_table(&self.project, &self.data_source_id, &self.table_id)
+            .delete_data_source_table(&self.project, &self.data_source_id, &self.table_id)
             .await?;
+
+        // Delete the table node from the search index.
+        if let Some(search_store) = search_store {
+            search_store.delete_node(Node::from(self.clone())).await?;
+        }
 
         Ok(())
     }
@@ -189,17 +258,73 @@ impl Table {
     pub async fn update_parents(
         &self,
         store: Box<dyn Store + Sync + Send>,
+        search_store: Box<dyn SearchStore + Sync + Send>,
         parents: Vec<String>,
     ) -> Result<()> {
         store
-            .update_table_parents(
+            .update_data_source_table_parents(
                 &self.project,
                 &self.data_source_id,
                 &&self.table_id,
                 &parents,
             )
             .await?;
+
+        search_store.index_node(Node::from(self.clone())).await?;
         Ok(())
+    }
+
+    pub async fn retrieve_api_blob(
+        &self,
+        databases_store: Box<dyn DatabasesStore + Sync + Send>,
+    ) -> Result<TableBlobPayload> {
+        let rows = match self.table_type()? {
+            TableType::Local => {
+                let local_table = LocalTable::from_table(self.clone())?;
+                let (rows, _) = local_table.list_rows(databases_store, None).await?;
+                rows
+            }
+            TableType::Remote(_) => {
+                // For remote tables, we don't have direct access to rows
+                // Return empty vec since rows will be fetched through DB connection
+                vec![]
+            }
+        };
+
+        Ok(TableBlobPayload {
+            table_id: self.table_id().to_string(),
+            name: self.name().to_string(),
+            description: self.description().to_string(),
+            timestamp: Some(self.timestamp()),
+            tags: self.get_tags().clone(),
+            parent_id: self.parent_id().clone(),
+            parents: self.parents().clone(),
+            source_url: self.source_url().clone(),
+            remote_database_table_id: self.remote_database_table_id().map(|s| s.to_string()),
+            remote_database_secret_id: self.remote_database_secret_id().map(|s| s.to_string()),
+            title: self.title().to_string(),
+            mime_type: self.mime_type().to_string(),
+            provider_visibility: self.provider_visibility().clone(),
+            rows,
+        })
+    }
+}
+
+impl From<Table> for Node {
+    fn from(table: Table) -> Node {
+        Node::new(
+            &table.data_source_id,
+            &table.data_source_internal_id,
+            &table.table_id,
+            NodeType::Table,
+            table.timestamp,
+            &table.title,
+            &table.mime_type,
+            table.provider_visibility,
+            table.parents.get(1).cloned(),
+            table.parents,
+            table.source_url,
+        )
     }
 }
 
@@ -294,7 +419,7 @@ impl LocalTable {
 
         now = utils::now();
         store
-            .update_table_schema(
+            .update_data_source_table_schema(
                 &self.table.project,
                 &self.table.data_source_id,
                 &self.table.table_id,
@@ -317,7 +442,7 @@ impl LocalTable {
             // This is why we invalidate the schema when doing incremental updates, and next time
             // the schema is requested, it will be recomputed from all the rows.
             store
-                .invalidate_table_schema(
+                .invalidate_data_source_table_schema(
                     &self.table.project,
                     &self.table.data_source_id,
                     &self.table.table_id,
@@ -416,7 +541,7 @@ impl LocalTable {
                 let schema = self.compute_schema(databases_store).await?;
 
                 store
-                    .update_table_schema(
+                    .update_data_source_table_schema(
                         &self.table.project,
                         &self.table.data_source_id,
                         &self.table.table_id,
@@ -534,16 +659,22 @@ mod tests {
 
         let schema = TableSchema::from_rows_async(rows).await?;
         let table = Table::new(
-            &Project::new_from_id(42),
-            "data_source_id",
+            Project::new_from_id(42),
+            "data_source_id".to_string(),
+            "data_source_internal_id".to_string(),
             utils::now(),
-            "table_id",
-            "test_dbml",
-            "Test records for DBML rendering",
+            "table_id".to_string(),
+            "test_dbml".to_string(),
+            "Test records for DBML rendering".to_string(),
             utils::now(),
+            "test_dbml".to_string(),
+            "text/plain".to_string(),
+            None,
             vec![],
+            None,
             vec![],
-            &Some(schema),
+            None,
+            Some(schema),
             None,
             None,
             None,

@@ -10,55 +10,60 @@ import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import { hardDeleteSpace } from "@app/lib/api/spaces";
 import { areAllSubscriptionsCanceled } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
-import { AgentBrowseAction } from "@app/lib/models/assistant/actions/browse";
+import {
+  AgentBrowseAction,
+  AgentBrowseConfiguration,
+} from "@app/lib/models/assistant/actions/browse";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import {
   AgentDustAppRunAction,
   AgentDustAppRunConfiguration,
 } from "@app/lib/models/assistant/actions/dust_app_run";
-import { AgentProcessAction } from "@app/lib/models/assistant/actions/process";
 import {
-  AgentRetrievalAction,
-  AgentRetrievalConfiguration,
-} from "@app/lib/models/assistant/actions/retrieval";
+  AgentProcessAction,
+  AgentProcessConfiguration,
+} from "@app/lib/models/assistant/actions/process";
+import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import {
   AgentTablesQueryAction,
   AgentTablesQueryConfiguration,
   AgentTablesQueryConfigurationTable,
 } from "@app/lib/models/assistant/actions/tables_query";
-import { AgentWebsearchAction } from "@app/lib/models/assistant/actions/websearch";
+import {
+  AgentWebsearchAction,
+  AgentWebsearchConfiguration,
+} from "@app/lib/models/assistant/actions/websearch";
 import {
   AgentConfiguration,
   AgentUserRelation,
   GlobalAgentSettings,
 } from "@app/lib/models/assistant/agent";
-import {
-  AgentMessage,
-  AgentMessageFeedback,
-  Conversation,
-  ConversationParticipant,
-  Mention,
-  Message,
-  MessageReaction,
-  UserMessage,
-} from "@app/lib/models/assistant/conversation";
+import { DustAppSecret } from "@app/lib/models/dust_app_secret";
+import { FeatureFlag } from "@app/lib/models/feature_flag";
+import { MembershipInvitation } from "@app/lib/models/membership_invitation";
 import { Subscription } from "@app/lib/models/plan";
-import { UserMetadata } from "@app/lib/models/user";
-import { MembershipInvitation, Workspace } from "@app/lib/models/workspace";
+import { Workspace } from "@app/lib/models/workspace";
+import { WorkspaceHasDomain } from "@app/lib/models/workspace_has_domain";
 import { AppResource } from "@app/lib/resources/app_resource";
-import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { RetrievalDocumentResource } from "@app/lib/resources/retrieval_document_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { frontSequelize } from "@app/lib/resources/storage";
 import { Provider } from "@app/lib/resources/storage/models/apps";
+import {
+  LabsTranscriptsConfigurationModel,
+  LabsTranscriptsHistoryModel,
+} from "@app/lib/resources/storage/models/labs_transcripts";
+import { UserMetadataModel } from "@app/lib/resources/storage/models/user";
+import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import { deleteAllConversations } from "@app/temporal/scrub_workspace/activities";
+import { PlatformActionsConfigurationModel } from "@app/lib/resources/storage/models/platform_actions";
 
 const hardDeleteLogger = logger.child({ activity: "hard-delete" });
 
@@ -162,7 +167,7 @@ export async function isWorkflowDeletableActivity({
   workspaceId: string;
 }) {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-  const workspace = await auth.getNonNullableWorkspace();
+  const workspace = auth.getNonNullableWorkspace();
 
   return areAllSubscriptionsCanceled(renderLightWorkspaceType({ workspace }));
 }
@@ -172,142 +177,10 @@ export async function deleteConversationsActivity({
 }: {
   workspaceId: string;
 }) {
-  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-  const workspace = auth.workspace();
-
-  if (!workspace) {
-    throw new Error("Could not find the workspace.");
-  }
-
-  const conversations = await Conversation.findAll({
-    where: {
-      workspaceId: workspace.id,
-    },
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId, {
+    dangerouslyRequestAllGroups: true,
   });
-  const chunkSize = 8;
-  const chunks: Conversation[][] = [];
-  for (let i = 0; i < conversations.length; i += chunkSize) {
-    chunks.push(conversations.slice(i, i + chunkSize));
-  }
-
-  await frontSequelize.transaction(async (t) => {
-    for (let i = 0; i < chunks.length; i++) {
-      const chunk = chunks[i];
-      if (!chunk) {
-        continue;
-      }
-      await Promise.all(
-        chunk.map((c) => {
-          return (async (): Promise<void> => {
-            const messages = await Message.findAll({
-              where: { conversationId: c.id },
-              transaction: t,
-            });
-            for (const msg of messages) {
-              if (msg.userMessageId) {
-                await UserMessage.destroy({
-                  where: { id: msg.userMessageId },
-                  transaction: t,
-                });
-              }
-              if (msg.agentMessageId) {
-                const agentMessage = await AgentMessage.findOne({
-                  where: { id: msg.agentMessageId },
-                  transaction: t,
-                });
-                if (agentMessage) {
-                  const retrievalAction = await AgentRetrievalAction.findOne({
-                    where: {
-                      agentMessageId: agentMessage.id,
-                    },
-                    transaction: t,
-                  });
-                  if (retrievalAction) {
-                    await RetrievalDocumentResource.deleteAllForActions([
-                      retrievalAction.id,
-                    ]);
-
-                    await AgentRetrievalAction.destroy({
-                      where: { id: retrievalAction.id },
-                      transaction: t,
-                    });
-                  }
-
-                  await AgentMessageFeedback.destroy({
-                    where: { agentMessageId: agentMessage.id },
-                    transaction: t,
-                  });
-
-                  // Delete associated actions.
-
-                  await AgentBrowseAction.destroy({
-                    where: { agentMessageId: agentMessage.id },
-                    transaction: t,
-                  });
-
-                  await AgentProcessAction.destroy({
-                    where: { agentMessageId: agentMessage.id },
-                    transaction: t,
-                  });
-
-                  await AgentTablesQueryAction.destroy({
-                    where: { agentMessageId: agentMessage.id },
-                    transaction: t,
-                  });
-
-                  await AgentWebsearchAction.destroy({
-                    where: { agentMessageId: agentMessage.id },
-                    transaction: t,
-                  });
-
-                  await agentMessage.destroy({ transaction: t });
-                }
-              }
-              if (msg.contentFragmentId) {
-                const contentFragment =
-                  await ContentFragmentResource.fetchByModelId(
-                    msg.contentFragmentId,
-                    t
-                  );
-                if (contentFragment) {
-                  await contentFragment.destroy(
-                    {
-                      conversationId: c.sId,
-                      messageId: msg.sId,
-                      workspaceId: workspace.sId,
-                    },
-                    t
-                  );
-                }
-              }
-              await MessageReaction.destroy({
-                where: { messageId: msg.id },
-                transaction: t,
-              });
-              await Mention.destroy({
-                where: { messageId: msg.id },
-                transaction: t,
-              });
-              await msg.destroy({ transaction: t });
-            }
-            await ConversationParticipant.destroy({
-              where: { conversationId: c.id },
-              transaction: t,
-            });
-
-            hardDeleteLogger.info(
-              {
-                conversationId: c.sId,
-              },
-              "Deleting conversation"
-            );
-
-            await c.destroy({ transaction: t });
-          })();
-        })
-      );
-    }
-  });
+  await deleteAllConversations(auth);
 }
 
 export async function deleteAgentsActivity({
@@ -328,96 +201,139 @@ export async function deleteAgentsActivity({
     },
   });
 
-  await frontSequelize.transaction(async (t) => {
-    await GlobalAgentSettings.destroy({
-      where: {
-        workspaceId: workspace.id,
-      },
-      transaction: t,
-    });
-    for (const agent of agents) {
-      const retrievalConfigurations = await AgentRetrievalConfiguration.findAll(
-        {
-          where: {
-            agentConfigurationId: agent.id,
-          },
-          transaction: t,
-        }
-      );
-      await AgentDataSourceConfiguration.destroy({
-        where: {
-          retrievalConfigurationId: {
-            [Op.in]: retrievalConfigurations.map((r) => r.id),
-          },
-        },
-        transaction: t,
-      });
-      await AgentRetrievalConfiguration.destroy({
-        where: {
-          agentConfigurationId: agent.id,
-        },
-        transaction: t,
-      });
-      const dustAppRunConfigurations =
-        await AgentDustAppRunConfiguration.findAll({
-          where: {
-            agentConfigurationId: agent.id,
-          },
-          transaction: t,
-        });
-      await AgentDustAppRunAction.destroy({
-        where: {
-          dustAppRunConfigurationId: {
-            [Op.in]: dustAppRunConfigurations.map((r) => r.sId),
-          },
-        },
-        transaction: t,
-      });
-      await AgentDustAppRunConfiguration.destroy({
-        where: {
-          agentConfigurationId: agent.id,
-        },
-        transaction: t,
-      });
-      const tablesQueryConfigurations =
-        await AgentTablesQueryConfiguration.findAll({
-          where: {
-            agentConfigurationId: agent.id,
-          },
-          transaction: t,
-        });
-      await AgentTablesQueryAction.destroy({
-        where: {
-          tablesQueryConfigurationId: {
-            [Op.in]: tablesQueryConfigurations.map((r) => r.sId),
-          },
-        },
-        transaction: t,
-      });
-      await AgentTablesQueryConfigurationTable.destroy({
-        where: {
-          tablesQueryConfigurationId: {
-            [Op.in]: tablesQueryConfigurations.map((r) => r.id),
-          },
-        },
-        transaction: t,
-      });
-      await AgentTablesQueryConfiguration.destroy({
-        where: {
-          agentConfigurationId: agent.id,
-        },
-        transaction: t,
-      });
-      await AgentUserRelation.destroy({
-        where: {
-          agentConfiguration: agent.sId,
-        },
-        transaction: t,
-      });
-      hardDeleteLogger.info({ agentId: agent.sId }, "Deleting agent");
-      await agent.destroy({ transaction: t });
-    }
+  await GlobalAgentSettings.destroy({
+    where: {
+      workspaceId: workspace.id,
+    },
   });
+  for (const agent of agents) {
+    const retrievalConfigurations = await AgentRetrievalConfiguration.findAll({
+      where: {
+        agentConfigurationId: agent.id,
+      },
+    });
+    await AgentDataSourceConfiguration.destroy({
+      where: {
+        retrievalConfigurationId: {
+          [Op.in]: retrievalConfigurations.map((r) => r.id),
+        },
+      },
+    });
+    await AgentRetrievalConfiguration.destroy({
+      where: {
+        agentConfigurationId: agent.id,
+      },
+    });
+
+    const dustAppRunConfigurations = await AgentDustAppRunConfiguration.findAll(
+      {
+        where: {
+          agentConfigurationId: agent.id,
+        },
+      }
+    );
+    await AgentDustAppRunAction.destroy({
+      where: {
+        dustAppRunConfigurationId: {
+          [Op.in]: dustAppRunConfigurations.map((r) => r.sId),
+        },
+      },
+    });
+    await AgentDustAppRunConfiguration.destroy({
+      where: {
+        agentConfigurationId: agent.id,
+      },
+    });
+
+    const tablesQueryConfigurations =
+      await AgentTablesQueryConfiguration.findAll({
+        where: {
+          agentConfigurationId: agent.id,
+        },
+      });
+    await AgentTablesQueryAction.destroy({
+      where: {
+        tablesQueryConfigurationId: {
+          [Op.in]: tablesQueryConfigurations.map((r) => r.sId),
+        },
+      },
+    });
+    await AgentTablesQueryConfigurationTable.destroy({
+      where: {
+        tablesQueryConfigurationId: {
+          [Op.in]: tablesQueryConfigurations.map((r) => r.id),
+        },
+      },
+    });
+    await AgentTablesQueryConfiguration.destroy({
+      where: {
+        agentConfigurationId: agent.id,
+      },
+    });
+
+    const agentBrowseConfigurations = await AgentBrowseConfiguration.findAll({
+      where: {
+        agentConfigurationId: agent.id,
+      },
+    });
+    await AgentBrowseAction.destroy({
+      where: {
+        browseConfigurationId: {
+          [Op.in]: agentBrowseConfigurations.map((r) => r.sId),
+        },
+      },
+    });
+    await AgentBrowseConfiguration.destroy({
+      where: {
+        agentConfigurationId: agent.id,
+      },
+    });
+
+    const agentWebsearchConfigurations =
+      await AgentWebsearchConfiguration.findAll({
+        where: {
+          agentConfigurationId: agent.id,
+        },
+      });
+    await AgentWebsearchAction.destroy({
+      where: {
+        websearchConfigurationId: {
+          [Op.in]: agentWebsearchConfigurations.map((r) => r.sId),
+        },
+      },
+    });
+    await AgentWebsearchConfiguration.destroy({
+      where: {
+        agentConfigurationId: agent.id,
+      },
+    });
+
+    const agentProcessConfigurations = await AgentProcessConfiguration.findAll({
+      where: {
+        agentConfigurationId: agent.id,
+      },
+    });
+    await AgentProcessAction.destroy({
+      where: {
+        processConfigurationId: {
+          [Op.in]: agentProcessConfigurations.map((r) => r.sId),
+        },
+      },
+    });
+    await AgentProcessConfiguration.destroy({
+      where: {
+        agentConfigurationId: agent.id,
+      },
+    });
+
+    await AgentUserRelation.destroy({
+      where: {
+        agentConfiguration: agent.sId,
+      },
+    });
+    hardDeleteLogger.info({ agentId: agent.sId }, "Deleting agent");
+    await agent.destroy();
+  }
 }
 
 export async function deleteAppsActivity({
@@ -428,7 +344,9 @@ export async function deleteAppsActivity({
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
   const workspace = auth.getNonNullableWorkspace();
 
-  const apps = await AppResource.listByWorkspace(auth);
+  const apps = await AppResource.listByWorkspace(auth, {
+    includeDeleted: true,
+  });
 
   for (const app of apps) {
     const res = await hardDeleteApp(auth, app);
@@ -437,15 +355,12 @@ export async function deleteAppsActivity({
     }
   }
 
-  await frontSequelize.transaction(async (t) => {
-    await KeyResource.deleteAllForWorkspace(workspace, t);
+  await KeyResource.deleteAllForWorkspace(workspace);
 
-    await Provider.destroy({
-      where: {
-        workspaceId: workspace.id,
-      },
-      transaction: t,
-    });
+  await Provider.destroy({
+    where: {
+      workspaceId: workspace.id,
+    },
   });
 }
 
@@ -493,6 +408,21 @@ export async function deleteRunOnDustAppsActivity({
   }
 }
 
+export const deleteTrackersActivity = async ({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) => {
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+  const trackers = await TrackerConfigurationResource.listByWorkspace(auth, {
+    includeDeleted: true,
+  });
+
+  for (const tracker of trackers) {
+    await tracker.delete(auth, { hardDelete: true });
+  }
+};
+
 export async function deleteMembersActivity({
   workspaceId,
 }: {
@@ -505,60 +435,54 @@ export async function deleteMembersActivity({
     throw new Error("Could not find the workspace.");
   }
 
-  await frontSequelize.transaction(async (t) => {
-    await MembershipInvitation.destroy({
-      where: {
-        workspaceId: workspace.id,
-      },
-      transaction: t,
-    });
+  await MembershipInvitation.destroy({
+    where: {
+      workspaceId: workspace.id,
+    },
+  });
 
-    const { memberships } = await MembershipResource.getLatestMemberships({
-      workspace,
-      transaction: t,
-    });
+  const { memberships } = await MembershipResource.getMembershipsForWorkspace({
+    workspace,
+  });
 
-    for (const membership of memberships) {
-      const user = await UserResource.fetchByModelId(membership.userId, t);
-      if (user) {
-        const { memberships: membershipsOfUser } =
-          await MembershipResource.getLatestMemberships({
-            users: [user],
-            transaction: t,
-          });
+  for (const membership of memberships) {
+    const user = await UserResource.fetchByModelId(membership.userId);
+    if (user) {
+      const { memberships: membershipsOfUser } =
+        await MembershipResource.getLatestMemberships({
+          users: [user],
+        });
 
-        // If the user we're removing the membership of only has one membership, we delete the user.
-        if (membershipsOfUser.length === 1) {
-          await UserMetadata.destroy({
-            where: {
-              userId: user.id,
-            },
-            transaction: t,
-          });
-          hardDeleteLogger.info(
-            {
-              membershipId: membership.id,
-              userId: user.sId,
-            },
-            "Deleting Membership and user"
-          );
-
-          // Delete the user's files.
-          await FileResource.deleteAllForUser(user.toJSON(), t);
-          await membership.delete(auth, { transaction: t });
-          await user.delete(auth, { transaction: t });
-        }
-      } else {
+      // If the user we're removing the membership of only has one membership, we delete the user.
+      if (membershipsOfUser.length === 1) {
+        await UserMetadataModel.destroy({
+          where: {
+            userId: user.id,
+          },
+        });
         hardDeleteLogger.info(
           {
             membershipId: membership.id,
+            userId: user.sId,
           },
-          "Deleting Membership"
+          "Deleting Membership and user"
         );
-        await membership.delete(auth, { transaction: t });
+
+        // Delete the user's files.
+        await FileResource.deleteAllForUser(user.toJSON());
+        await membership.delete(auth, {});
+        await user.delete(auth, {});
       }
+    } else {
+      hardDeleteLogger.info(
+        {
+          membershipId: membership.id,
+        },
+        "Deleting Membership"
+      );
+      await membership.delete(auth, {});
     }
-  });
+  }
 }
 
 export async function deleteSpacesActivity({
@@ -569,9 +493,15 @@ export async function deleteSpacesActivity({
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
   const spaces = await SpaceResource.listWorkspaceSpaces(auth, {
     includeConversationsSpace: true,
+    includeDeleted: true,
   });
 
   for (const space of spaces) {
+    const res = await space.delete(auth, { hardDelete: false });
+    if (res.isErr()) {
+      throw res.error;
+    }
+
     await scrubSpaceActivity({
       spaceId: space.sId,
       workspaceId,
@@ -587,22 +517,71 @@ export async function deleteWorkspaceActivity({
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
   const workspace = auth.getNonNullableWorkspace();
 
-  await frontSequelize.transaction(async (t) => {
-    await Subscription.destroy({
-      where: {
-        workspaceId: workspace.id,
-      },
-      transaction: t,
-    });
-    await FileResource.deleteAllForWorkspace(workspace, t);
+  await Subscription.destroy({
+    where: {
+      workspaceId: workspace.id,
+    },
+  });
+  await FileResource.deleteAllForWorkspace(workspace);
+  await RunResource.deleteAllForWorkspace(workspace);
+  await MembershipResource.deleteAllForWorkspace(workspace);
+  await WorkspaceHasDomain.destroy({
+    where: { workspaceId: workspace.id },
+  });
+  await AgentUserRelation.destroy({
+    where: { workspaceId: workspace.id },
+  });
+  await ExtensionConfigurationResource.deleteForWorkspace(auth, {});
+  await DustAppSecret.destroy({
+    where: {
+      workspaceId: workspace.id,
+    },
+  });
+  await FeatureFlag.destroy({
+    where: {
+      workspaceId: workspace.id,
+    },
+  });
+  await PlatformActionsConfigurationModel.destroy({
+    where: {
+      workspaceId: workspace.id,
+    },
+  });
 
-    hardDeleteLogger.info({ workspaceId }, "Deleting Workspace");
+  hardDeleteLogger.info({ workspaceId }, "Deleting Workspace");
 
-    await Workspace.destroy({
-      where: {
-        id: workspace.id,
+  await Workspace.destroy({
+    where: {
+      id: workspace.id,
+    },
+  });
+}
+
+export async function deleteTranscriptsActivity({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+  const workspace = auth.getNonNullableWorkspace();
+
+  const configs = await LabsTranscriptsConfigurationModel.findAll({
+    where: {
+      workspaceId: workspace.id,
+    },
+  });
+
+  await LabsTranscriptsHistoryModel.destroy({
+    where: {
+      configurationId: {
+        [Op.in]: configs.map((c) => c.id),
       },
-      transaction: t,
-    });
+    },
+  });
+
+  await LabsTranscriptsConfigurationModel.destroy({
+    where: {
+      workspaceId: workspace.id,
+    },
   });
 }

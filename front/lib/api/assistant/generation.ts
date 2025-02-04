@@ -83,6 +83,7 @@ export async function constructPromptMultiActions(
 
   // INSTRUCTIONS section
   let instructions = "INSTRUCTIONS:\n";
+
   if (agentConfiguration.instructions) {
     instructions += `${agentConfiguration.instructions}\n`;
   } else if (fallbackPrompt) {
@@ -193,7 +194,7 @@ export async function renderConversationForModel(
     Error
   >
 > {
-  if (!(await isJITActionsEnabled(auth))) {
+  if (!isJITActionsEnabled()) {
     return renderConversationForModelMultiActions({
       conversation,
       model,

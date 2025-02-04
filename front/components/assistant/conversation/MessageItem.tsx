@@ -1,19 +1,24 @@
-import type {
-  CitationType,
-  ConversationMessageFeedbackSelectorProps,
+import {
+  Avatar,
+  Citation,
+  CitationIcons,
+  CitationImage,
+  CitationTitle,
+  DocumentTextIcon,
+  Icon,
+  SlackLogo,
 } from "@dust-tt/sparkle";
-import { Citation, ZoomableImageCitationWrapper } from "@dust-tt/sparkle";
 import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   MessageWithContentFragmentsType,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { isSupportedImageContentType } from "@dust-tt/types";
 import React from "react";
 import { useSWRConfig } from "swr";
 
 import { AgentMessage } from "@app/components/assistant/conversation/AgentMessage";
+import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
 import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import { useSubmitFunction } from "@app/lib/client/utils";
@@ -33,7 +38,6 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
     {
       conversationId,
       messageFeedback,
-      isInModal,
       isLastMessage,
       message,
       owner,
@@ -49,28 +53,31 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       useSubmitFunction(
         async ({
           thumb,
-          isToRemove,
+          shouldRemoveExistingFeedback,
           feedbackContent,
+          isConversationShared,
         }: {
           thumb: string;
-          isToRemove: boolean;
-          feedbackContent?: string | null;
+          shouldRemoveExistingFeedback: boolean;
+          feedbackContent: string | null;
+          isConversationShared: boolean;
         }) => {
           const res = await fetch(
             `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${message.sId}/feedbacks`,
             {
-              method: isToRemove ? "DELETE" : "POST",
+              method: shouldRemoveExistingFeedback ? "DELETE" : "POST",
               headers: {
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({
                 thumbDirection: thumb,
                 feedbackContent,
+                isConversationShared,
               }),
             }
           );
           if (res.ok) {
-            if (feedbackContent && !isToRemove) {
+            if (feedbackContent && !shouldRemoveExistingFeedback) {
               sendNotification({
                 title: "Feedback submitted",
                 description:
@@ -89,85 +96,92 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       return null;
     }
 
-    const messageFeedbackWithSubmit: ConversationMessageFeedbackSelectorProps =
-      {
-        feedback: messageFeedback
-          ? {
-              thumb: messageFeedback.thumbDirection,
-              feedbackContent: messageFeedback.content,
-            }
-          : null,
-        onSubmitThumb,
-        isSubmittingThumb,
-      };
+    const messageFeedbackWithSubmit: FeedbackSelectorProps = {
+      feedback: messageFeedback
+        ? {
+            thumb: messageFeedback.thumbDirection,
+            feedbackContent: messageFeedback.content,
+            isConversationShared: messageFeedback.isConversationShared,
+          }
+        : null,
+      onSubmitThumb,
+      isSubmittingThumb,
+    };
 
     switch (type) {
       case "user_message":
         const citations = message.contenFragments
           ? message.contenFragments.map((contentFragment) => {
-              const isZoomable = isSupportedImageContentType(
-                contentFragment.contentType
-              );
-              const citationType: CitationType = [
+              const citationType = [
                 "dust-application/slack",
+                "text/vnd.dust.attachment.slack.thread",
               ].includes(contentFragment.contentType)
                 ? "slack"
                 : "document";
 
-              if (isZoomable) {
-                return (
-                  <ZoomableImageCitationWrapper
-                    key={contentFragment.sId}
-                    size="xs"
-                    title={contentFragment.title}
-                    imgSrc={`${contentFragment.sourceUrl}?action=view`}
-                    alt={contentFragment.title}
-                  />
-                );
-              } else {
-                return (
-                  <Citation
-                    key={contentFragment.sId}
-                    title={contentFragment.title}
-                    sizing="fluid"
-                    size="xs"
-                    type={citationType}
-                    href={contentFragment.sourceUrl || undefined}
-                    imgSrc={contentFragment.sourceUrl || undefined}
-                    avatarSrc={
-                      contentFragment.context.profilePictureUrl || undefined
-                    }
-                  />
-                );
-              }
+              const icon =
+                citationType === "slack" ? SlackLogo : DocumentTextIcon;
+
+              return (
+                <Citation
+                  key={contentFragment.sId}
+                  href={contentFragment.sourceUrl ?? undefined}
+                  tooltip={contentFragment.title}
+                >
+                  <div className="flex gap-2">
+                    {contentFragment.context.profilePictureUrl && (
+                      <CitationIcons>
+                        <Avatar
+                          visual={contentFragment.context.profilePictureUrl}
+                          size="xs"
+                        />
+                      </CitationIcons>
+                    )}
+                    {contentFragment.sourceUrl ? (
+                      <>
+                        <CitationImage imgSrc={contentFragment.sourceUrl} />
+                        <CitationIcons>
+                          <Icon visual={icon} />
+                        </CitationIcons>
+                      </>
+                    ) : (
+                      <CitationIcons>
+                        <Icon visual={icon} />
+                      </CitationIcons>
+                    )}
+                  </div>
+                  <CitationTitle>{contentFragment.title}</CitationTitle>
+                </Citation>
+              );
             })
           : undefined;
 
         return (
-          <div key={`message-id-${sId}`} ref={ref}>
+          <div
+            key={`message-id-${sId}`}
+            ref={ref}
+            className="w-fit min-w-60 max-w-full"
+          >
             <UserMessage
               citations={citations}
               conversationId={conversationId}
               isLastMessage={isLastMessage}
               message={message}
               owner={owner}
-              size={isInModal ? "compact" : "normal"}
             />
           </div>
         );
 
       case "agent_message":
         return (
-          <div key={`message-id-${sId}`} ref={ref}>
+          <div key={`message-id-${sId}`} ref={ref} className="w-full">
             <AgentMessage
               conversationId={conversationId}
-              isInModal={isInModal}
               isLastMessage={isLastMessage}
               message={message}
               messageFeedback={messageFeedbackWithSubmit}
               owner={owner}
               user={user}
-              size={isInModal ? "compact" : "normal"}
             />
           </div>
         );

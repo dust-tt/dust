@@ -3,7 +3,7 @@
  * content of emails themselves.
  */
 import type { Result } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import { Err, isDevelopment, Ok } from "@dust-tt/types";
 import sgMail from "@sendgrid/mail";
 
 import config from "@app/lib/api/config";
@@ -160,6 +160,17 @@ export async function sendProactiveTrialCancelledEmail(
 // Avoid using this function directly, use sendEmailWithTemplate instead.
 export async function sendEmail(email: string, message: any) {
   const msg = { ...message, to: email };
+
+  // In dev we want to make sure we don't send emails to real users.
+  // We prevent sending an email if it's not to a @dust.tt address.
+  if (isDevelopment() && !email.endsWith("@dust.tt")) {
+    logger.error(
+      { email, subject: message.subject },
+      "Prevented sending email in development mode to an external email."
+    );
+    return;
+  }
+
   try {
     await getSgMailClient().send(msg);
     logger.info({ email, subject: message.subject }, "Sending email");

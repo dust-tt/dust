@@ -1,20 +1,12 @@
 import type { ModelId } from "@dust-tt/types";
 
-import {
-  allowSyncZendeskHelpCenter,
-  forbidSyncZendeskHelpCenter,
-} from "@connectors/connectors/zendesk/lib/help_center_permissions";
-import {
-  allowSyncZendeskTickets,
-  forbidSyncZendeskTickets,
-} from "@connectors/connectors/zendesk/lib/ticket_permissions";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
-import { createZendeskClient } from "@connectors/connectors/zendesk/lib/zendesk_api";
+import { fetchZendeskBrand } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import logger from "@connectors/logger/logger";
 import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
 
 /**
- * Mark a brand as permission "read", with all its children (help center and tickets + children).
+ * Mark a brand as permission "read" in db to indicate it was explicitly selected by the user.
  * Creates the brand by fetching it from Zendesk if it does not exist in db.
  */
 export async function allowSyncZendeskBrand({
@@ -26,34 +18,36 @@ export async function allowSyncZendeskBrand({
   connectionId: string;
   brandId: number;
 }): Promise<boolean> {
-  let brand = await ZendeskBrandResource.fetchByBrandId({
+  const brand = await ZendeskBrandResource.fetchByBrandId({
     connectorId,
     brandId,
   });
 
+  // fetching the brand from Zendesk
+  const { subdomain, accessToken } =
+    await getZendeskSubdomainAndAccessToken(connectionId);
+  const fetchedBrand = await fetchZendeskBrand({
+    brandId,
+    subdomain,
+    accessToken,
+  });
+
+  if (!fetchedBrand) {
+    logger.error(
+      { connectorId, brandId },
+      "[Zendesk] Brand could not be fetched."
+    );
+    return false;
+  }
+
+  // creating the brand if it does not exist yet in db
   if (brand) {
     await brand.grantTicketsPermissions();
-    if (brand.hasHelpCenter) {
+    if (fetchedBrand.has_help_center) {
       await brand.grantHelpCenterPermissions();
     }
   } else {
-    // fetching the brand from Zendesk
-    const zendeskApiClient = createZendeskClient(
-      await getZendeskSubdomainAndAccessToken(connectionId)
-    );
-    const {
-      result: { brand: fetchedBrand },
-    } = await zendeskApiClient.brand.show(brandId);
-
-    if (!fetchedBrand) {
-      logger.error(
-        { connectorId, brandId },
-        "[Zendesk] Brand could not be fetched."
-      );
-      return false;
-    }
-
-    brand = await ZendeskBrandResource.makeNew({
+    await ZendeskBrandResource.makeNew({
       blob: {
         subdomain: fetchedBrand.subdomain,
         connectorId: connectorId,
@@ -61,30 +55,16 @@ export async function allowSyncZendeskBrand({
         name: fetchedBrand.name || "Brand",
         ticketsPermission: "read",
         helpCenterPermission: fetchedBrand.has_help_center ? "read" : "none",
-        hasHelpCenter: fetchedBrand.has_help_center,
         url: fetchedBrand.url,
       },
     });
   }
 
-  if (brand?.hasHelpCenter) {
-    await allowSyncZendeskHelpCenter({
-      connectorId,
-      connectionId,
-      brandId,
-    });
-  }
-  await allowSyncZendeskTickets({
-    connectorId,
-    connectionId,
-    brandId,
-  });
-
   return true;
 }
 
 /**
- * Mark a brand as permission "none", with all its children (help center and tickets + children).
+ * Mark a brand as permission "none" in db to indicate it was explicitly unselected by the user.
  */
 export async function forbidSyncZendeskBrand({
   connectorId,
@@ -92,22 +72,21 @@ export async function forbidSyncZendeskBrand({
 }: {
   connectorId: ModelId;
   brandId: number;
-}): Promise<ZendeskBrandResource | null> {
+}): Promise<boolean> {
   const brand = await ZendeskBrandResource.fetchByBrandId({
     connectorId,
     brandId,
   });
   if (!brand) {
     logger.error(
-      { brandId },
+      { connectorId, brandId },
       "[Zendesk] Brand not found, could not disable sync."
     );
-    return null;
+    return false;
   }
 
-  // revoke permissions for the two children resources (help center and tickets + respective children)
-  await forbidSyncZendeskHelpCenter({ connectorId, brandId });
-  await forbidSyncZendeskTickets({ connectorId, brandId });
+  await brand.revokeHelpCenterPermissions();
+  await brand.revokeTicketsPermissions();
 
-  return brand;
+  return true;
 }

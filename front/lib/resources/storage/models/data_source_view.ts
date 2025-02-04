@@ -2,20 +2,19 @@ import type { DataSourceViewKind } from "@dust-tt/types";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { User } from "@app/lib/models/user";
-import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
-import { SoftDeletableModel } from "@app/lib/resources/storage/wrappers";
+import { UserModel } from "@app/lib/resources/storage/models/user";
+import { SoftDeletableWorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
-export class DataSourceViewModel extends SoftDeletableModel<DataSourceViewModel> {
+export class DataSourceViewModel extends SoftDeletableWorkspaceAwareModel<DataSourceViewModel> {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
   // Corresponds to the ID of the last user to configure the connection.
-  declare editedByUserId: ForeignKey<User["id"]>;
+  declare editedByUserId: ForeignKey<UserModel["id"]> | null;
   declare editedAt: Date;
 
   declare kind: DataSourceViewKind;
@@ -23,20 +22,13 @@ export class DataSourceViewModel extends SoftDeletableModel<DataSourceViewModel>
 
   declare dataSourceId: ForeignKey<DataSourceModel["id"]>;
   declare vaultId: ForeignKey<SpaceModel["id"]>;
-  declare workspaceId: ForeignKey<Workspace["id"]>;
 
   declare dataSourceForView: NonAttribute<DataSourceModel>;
-  declare editedByUser: NonAttribute<User>;
+  declare editedByUser: NonAttribute<UserModel>;
   declare space: NonAttribute<SpaceModel>;
-  declare workspace: NonAttribute<Workspace>;
 }
 DataSourceViewModel.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -78,11 +70,6 @@ DataSourceViewModel.init(
     ],
   }
 );
-Workspace.hasMany(DataSourceViewModel, {
-  foreignKey: { allowNull: false },
-  onDelete: "RESTRICT",
-});
-DataSourceViewModel.belongsTo(Workspace);
 
 SpaceModel.hasMany(DataSourceViewModel, {
   foreignKey: { allowNull: false, name: "vaultId" },
@@ -102,7 +89,7 @@ DataSourceViewModel.belongsTo(DataSourceModel, {
   foreignKey: { name: "dataSourceId", allowNull: false },
 });
 
-DataSourceViewModel.belongsTo(User, {
+DataSourceViewModel.belongsTo(UserModel, {
   as: "editedByUser",
-  foreignKey: { name: "editedByUserId", allowNull: false },
+  foreignKey: { name: "editedByUserId", allowNull: true },
 });

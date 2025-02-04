@@ -3,14 +3,45 @@ import type {
   DataSourceType,
   LightWorkspaceType,
 } from "@dust-tt/types";
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 import useSWR from "swr";
 
 import { fetcher } from "@app/lib/swr/swr";
 import type { PokeFetchAssistantTemplateResponse } from "@app/pages/api/poke/templates/[tId]";
+import type { PullTemplatesResponseBody } from "@app/pages/api/poke/templates/pull";
 import type { GetDocumentsResponseBody } from "@app/pages/api/poke/workspaces/[wId]/data_sources/[dsId]/documents";
-import type { FetchAssistantTemplatesResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates";
+import type { GetTablesResponseBody } from "@app/pages/api/poke/workspaces/[wId]/data_sources/[dsId]/tables";
+import type { FetchAssistantTemplatesResponse } from "@app/pages/api/templates";
+
+export function usePokePullTemplates() {
+  const { mutateAssistantTemplates } = usePokeAssistantTemplates();
+  const [isPulling, setIsPulling] = useState(false);
+
+  const doPull = useCallback(async () => {
+    setIsPulling(true);
+    const response = await fetch("/api/poke/templates/pull", {
+      method: "POST",
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to pull templates");
+    }
+
+    const data = (await response.json()) as PullTemplatesResponseBody;
+    setIsPulling(false);
+    if (data.success && data.count > 0) {
+      void mutateAssistantTemplates();
+      return data;
+    }
+    return data;
+  }, [mutateAssistantTemplates]);
+
+  return {
+    doPull,
+    isPulling,
+  };
+}
 
 export function usePokeAssistantTemplates() {
   const assistantTemplatesFetcher: Fetcher<FetchAssistantTemplatesResponse> =
@@ -52,7 +83,7 @@ export function usePokeAssistantTemplate({
   };
 }
 
-export function useConversation({
+export function usePokeConversation({
   workspaceId,
   conversationId,
 }: {
@@ -77,7 +108,7 @@ export function useConversation({
   };
 }
 
-export function useDocuments(
+export function usePokeDocuments(
   owner: LightWorkspaceType,
   dataSource: DataSourceType,
   limit: number,
@@ -95,5 +126,26 @@ export function useDocuments(
     isDocumentsLoading: !error && !data,
     isDocumentsError: error,
     mutateDocuments: mutate,
+  };
+}
+
+export function usePokeTables(
+  owner: LightWorkspaceType,
+  dataSource: DataSourceType,
+  limit: number,
+  offset: number
+) {
+  const tablesFetcher: Fetcher<GetTablesResponseBody> = fetcher;
+  const { data, error, mutate } = useSWR(
+    `/api/poke/workspaces/${owner.sId}/data_sources/${dataSource.sId}/tables?limit=${limit}&offset=${offset}`,
+    tablesFetcher
+  );
+
+  return {
+    tables: useMemo(() => (data ? data.tables : []), [data]),
+    total: data ? data.total : 0,
+    isTablesLoading: !error && !data,
+    isTablesError: error,
+    mutateTables: mutate,
   };
 }

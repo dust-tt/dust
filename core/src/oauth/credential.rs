@@ -13,6 +13,8 @@ use super::encryption::{seal_str, unseal_str};
 #[serde(rename_all = "snake_case")]
 pub enum CredentialProvider {
     Snowflake,
+    Modjo,
+    Bigquery,
 }
 
 impl fmt::Display for CredentialProvider {
@@ -106,6 +108,25 @@ impl Credential {
         let keys_to_check = match provider {
             CredentialProvider::Snowflake => {
                 vec!["account", "warehouse", "username", "password", "role"]
+            }
+            CredentialProvider::Modjo => {
+                vec!["api_key"]
+            }
+            CredentialProvider::Bigquery => {
+                vec![
+                    "type",
+                    "project_id",
+                    "private_key_id",
+                    "private_key",
+                    "client_email",
+                    "client_id",
+                    "auth_uri",
+                    "token_uri",
+                    "auth_provider_x509_cert_url",
+                    "client_x509_cert_url",
+                    "universe_domain",
+                    "location",
+                ]
             }
         };
 

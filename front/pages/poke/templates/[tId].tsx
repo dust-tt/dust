@@ -1,15 +1,20 @@
 import {
-  AssistantPreview,
+  AssistantCard,
   ColorPicker,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
   EmojiPicker,
+  Input,
   Markdown,
   TextArea,
+  useSendNotification,
 } from "@dust-tt/sparkle";
-import { Input } from "@dust-tt/sparkle";
-import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   CreateTemplateFormType,
   TemplateTagCodeType,
@@ -36,13 +41,6 @@ import { MultiSelect } from "react-multi-select-component";
 import { makeUrlForEmojiAndBackgroud } from "@app/components/assistant_builder/avatar_picker/utils";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { PokeButton } from "@app/components/poke/shadcn/ui/button";
-import {
-  PokeDialog,
-  PokeDialogContent,
-  PokeDialogHeader,
-  PokeDialogTitle,
-  PokeDialogTrigger,
-} from "@app/components/poke/shadcn/ui/dialog";
 import {
   PokeForm,
   PokeFormControl,
@@ -428,23 +426,22 @@ function PreviewDialog({ form }: { form: any }) {
   );
 
   return (
-    <PokeDialog open={open} onOpenChange={setOpen}>
-      <PokeDialogTrigger asChild>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
         <PokeButton variant="secondary">✨ Preview Template Card</PokeButton>
-      </PokeDialogTrigger>
-      <PokeDialogContent className="bg-structure-50 sm:max-w-[600px]">
-        <PokeDialogHeader>
-          <PokeDialogTitle>Preview</PokeDialogTitle>
-        </PokeDialogHeader>
-        <AssistantPreview
+      </DialogTrigger>
+      <DialogContent className="bg-structure-50 sm:max-w-[600px]">
+        <DialogHeader>
+          <DialogTitle>Preview</DialogTitle>
+        </DialogHeader>
+        <AssistantCard
           title={form.getValues("handle")}
           pictureUrl={avatarVisual}
           description={form.getValues("description") ?? ""}
-          variant="list"
           onClick={() => console.log("clicked")}
         />
-      </PokeDialogContent>
-    </PokeDialog>
+      </DialogContent>
+    </Dialog>
   );
 }
 

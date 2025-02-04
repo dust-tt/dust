@@ -16,7 +16,8 @@ type RedisUsageTagsType =
   | "message_events"
   | "retry_agent_message"
   | "update_authors"
-  | "user_message_events";
+  | "user_message_events"
+  | "reasoning_generation";
 
 export async function getRedisClient({
   origin,

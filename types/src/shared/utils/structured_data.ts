@@ -54,7 +54,9 @@ export async function guessDelimiter(csv: string): Promise<string | undefined> {
   for (const d of [",", ";", "\t"]) {
     const records: unknown[][] = [];
     try {
-      const parser = parse(csv, { delimiter: d });
+      // We parse at most 8 lines with skipEmptyLines with the goal of getting 2 valid ones,
+      // otherwise let's consider the file as broken beyond repair.
+      const parser = parse(csv, { delimiter: d, to: 8, skipEmptyLines: true });
       for await (const record of parser) {
         records.push(record);
         if (records.length === 2) {
@@ -83,14 +85,16 @@ export async function guessDelimiter(csv: string): Promise<string | undefined> {
   return delimiter;
 }
 
+// This function is used by connectors to turn a , ; \t separated file into a comma separated file.
+// It also will raise if the file can't be parsed.
 export async function parseAndStringifyCsv(tableCsv: string): Promise<string> {
   const delimiter = await guessDelimiter(tableCsv);
-
   const records: unknown[] = [];
 
   try {
     const parser = parse(tableCsv, {
       delimiter,
+      skipEmptyLines: true,
       columns: (c) => c,
     });
 

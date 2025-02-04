@@ -557,6 +557,7 @@ impl TryFrom<ChatResponse> for AssistantChatMessage {
             role: ChatMessageRole::Assistant,
             name: None,
             content: text_content,
+            reasoning_content: None,
             function_call,
             function_calls,
         })
@@ -1674,6 +1675,8 @@ impl LLM for AnthropicLLM {
         mut max_tokens: Option<i32>,
         _presence_penalty: Option<f32>,
         _frequency_penalty: Option<f32>,
+        _logprobs: Option<bool>,
+        _top_logprobs: Option<i32>,
         _extras: Option<Value>,
         event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMChatGeneration> {
@@ -1795,6 +1798,7 @@ impl LLM for AnthropicLLM {
             }),
             completions: AssistantChatMessage::try_from(c).into_iter().collect(),
             provider_request_id: request_id,
+            logprobs: None,
         })
     }
 }

@@ -11,7 +11,7 @@ import { TIME_FRAME_UNIT_TO_LABEL } from "@app/components/assistant_builder/shar
 import type { AssistantBuilderTimeFrame } from "@app/components/assistant_builder/types";
 
 interface TimeUnitDropdownProps<
-  T extends { timeFrame?: AssistantBuilderTimeFrame },
+  T extends { timeFrame?: AssistantBuilderTimeFrame | null },
 > {
   timeFrame: AssistantBuilderTimeFrame;
   disabled?: boolean;
@@ -20,7 +20,7 @@ interface TimeUnitDropdownProps<
 }
 
 export function TimeUnitDropdown<
-  T extends { timeFrame?: AssistantBuilderTimeFrame },
+  T extends { timeFrame?: AssistantBuilderTimeFrame | null },
 >({ timeFrame, updateAction, onEdit, disabled }: TimeUnitDropdownProps<T>) {
   return (
     <DropdownMenu>

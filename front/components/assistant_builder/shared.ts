@@ -6,9 +6,6 @@ import type {
 import type { ConnectorProvider } from "@dust-tt/types";
 import {
   assertNever,
-  getGoogleSheetTableIdFromContentNodeInternalId,
-  getMicrosoftSheetContentNodeInternalIdFromTableId,
-  getNotionDatabaseTableIdFromContentNodeInternalId,
   isGoogleSheetContentNodeInternalId,
 } from "@dust-tt/types";
 
@@ -43,6 +40,7 @@ const CONNECTOR_PROVIDER_TO_RESOURCE_NAME: Record<
   webcrawler: { singular: "page", plural: "pages" },
   snowflake: { singular: "table", plural: "tables" },
   zendesk: { singular: "element", plural: "elements" },
+  bigquery: { singular: "table", plural: "tables" },
 };
 
 export const getConnectorProviderResourceName = (
@@ -286,29 +284,20 @@ export function getTableIdForContentNode(
   }
 
   switch (dataSource.connectorProvider) {
-    case "notion":
-      return getNotionDatabaseTableIdFromContentNodeInternalId(
-        contentNode.internalId
-      );
-
     case "google_drive":
       if (!isGoogleSheetContentNodeInternalId(contentNode.internalId)) {
         throw new Error(
           `Google Drive ContentNode internalId ${contentNode.internalId} is not a Google Sheet internal ID`
         );
       }
-      return getGoogleSheetTableIdFromContentNodeInternalId(
-        contentNode.internalId
-      );
-
-    case "microsoft":
-      return getMicrosoftSheetContentNodeInternalIdFromTableId(
-        contentNode.internalId
-      );
+      return contentNode.internalId;
 
     // For static tables, the tableId is the contentNode internalId.
     case null:
     case "snowflake":
+    case "microsoft":
+    case "notion":
+    case "bigquery":
       return contentNode.internalId;
 
     case "confluence":

@@ -85,16 +85,3 @@ export function getNotionDatabaseTableIdFromContentNodeInternalId(
   // so we can just use the same function.
   return getNotionDatabaseTableId(internalId);
 }
-
-// Recover the Content Node ID for a Notion database (which is also the notion-provided database ID)
-// from the Table ID.
-export function getNotionDatabaseContentNodeInternalIdFromTableId(
-  tableId: string
-): string {
-  if (!tableId.startsWith("notion-")) {
-    throw new Error(
-      `Invalid tableId format. Expected a tableId in the format notion-<databaseId>`
-    );
-  }
-  return tableId.replace("notion-", "");
-}

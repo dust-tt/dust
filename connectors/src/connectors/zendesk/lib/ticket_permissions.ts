@@ -1,12 +1,9 @@
 import type { ModelId } from "@dust-tt/types";
 
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
-import { createZendeskClient } from "@connectors/connectors/zendesk/lib/zendesk_api";
+import { fetchZendeskBrand } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import logger from "@connectors/logger/logger";
-import {
-  ZendeskBrandResource,
-  ZendeskTicketResource,
-} from "@connectors/resources/zendesk_resources";
+import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
 
 /**
  * Marks the node "Tickets" of a Brand as permission "read".
@@ -30,12 +27,13 @@ export async function allowSyncZendeskTickets({
     return true;
   }
   // fetching the brand from Zendesk
-  const zendeskApiClient = createZendeskClient(
-    await getZendeskSubdomainAndAccessToken(connectionId)
-  );
-  const {
-    result: { brand: fetchedBrand },
-  } = await zendeskApiClient.brand.show(brandId);
+  const { subdomain, accessToken } =
+    await getZendeskSubdomainAndAccessToken(connectionId);
+  const fetchedBrand = await fetchZendeskBrand({
+    brandId,
+    subdomain,
+    accessToken,
+  });
 
   if (fetchedBrand) {
     await ZendeskBrandResource.makeNew({
@@ -46,7 +44,6 @@ export async function allowSyncZendeskTickets({
         name: fetchedBrand.name || "Brand",
         ticketsPermission: "read",
         helpCenterPermission: "none",
-        hasHelpCenter: fetchedBrand.has_help_center,
         url: fetchedBrand.url,
       },
     });
@@ -68,25 +65,21 @@ export async function forbidSyncZendeskTickets({
 }: {
   connectorId: ModelId;
   brandId: number;
-}): Promise<ZendeskBrandResource | null> {
+}): Promise<boolean> {
   const brand = await ZendeskBrandResource.fetchByBrandId({
     connectorId,
     brandId,
   });
   if (!brand) {
     logger.error(
-      { brandId },
+      { connectorId, brandId },
       "[Zendesk] Brand not found, could not disable sync."
     );
-    return null;
+    return false;
   }
 
   // updating the field ticketsPermission to "none" for the brand
   await brand.revokeTicketsPermissions();
-  // revoking the permissions for all the children tickets
-  await ZendeskTicketResource.revokePermissionsForBrand({
-    connectorId,
-    brandId,
-  });
-  return brand;
+
+  return true;
 }

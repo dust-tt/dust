@@ -6,8 +6,8 @@ import { getParents } from "@connectors/connectors/notion/lib/parents";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
-  updateDocumentParentsField,
-  updateTableParentsField,
+  updateDataSourceDocumentParents,
+  updateDataSourceTableParents,
 } from "@connectors/lib/data_sources";
 import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -124,6 +124,7 @@ async function updateParentsFieldForConnector(
             connector.id,
             "notionPageId" in node ? node.notionPageId : node.notionDatabaseId,
             [],
+            false,
             undefined,
             undefined
           );
@@ -151,18 +152,20 @@ async function updateParentsFieldForConnector(
         if (execute) {
           try {
             if (documentId) {
-              await updateDocumentParentsField({
+              await updateDataSourceDocumentParents({
                 dataSourceConfig: dataSourceConfigFromConnector(connector),
                 documentId,
                 parents,
+                parentId: parents[1] || null,
                 retries: 3,
               });
             }
             if (tableId) {
-              await updateTableParentsField({
+              await updateDataSourceTableParents({
                 dataSourceConfig: dataSourceConfigFromConnector(connector),
                 tableId,
                 parents,
+                parentId: parents[1] || null,
                 retries: 3,
               });
             }

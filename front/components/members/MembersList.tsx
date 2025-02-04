@@ -6,7 +6,7 @@ import type {
 } from "@dust-tt/types";
 import type { CellContext, PaginationState } from "@tanstack/react-table";
 import _ from "lodash";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
 import { ChangeMemberModal } from "@app/components/workspace/ChangeMemberModal";
@@ -50,6 +50,10 @@ export function MembersList({
     pageIndex: 0,
     pageSize: 25,
   });
+  useEffect(() => {
+    setPagination({ pageIndex: 0, pageSize: 25 });
+  }, [searchText, setPagination]);
+
   const [selectedMember, setSelectedMember] =
     useState<UserTypeWithWorkspaces | null>(null);
   const {
@@ -68,22 +72,25 @@ export function MembersList({
       id: "name",
       header: "Name",
       cell: (info: Info) => (
-        <DataTable.CellContent
-          avatarUrl={info.row.original.icon}
-          description={info.row.original.email}
-        >
+        <DataTable.CellContent avatarUrl={info.row.original.icon}>
           {info.row.original.name}{" "}
           {info.row.original.userId === currentUserId ? " (you)" : ""}
         </DataTable.CellContent>
       ),
       enableSorting: false,
-      meta: {
-        width: "46rem",
-      },
+    },
+    {
+      id: "email",
+      accessorKey: "email",
+      header: "Email",
+      cell: (info: Info) => (
+        <DataTable.CellContent>{info.row.original.email}</DataTable.CellContent>
+      ),
     },
     {
       id: "role",
       header: "Role",
+      accessorFn: (row: RowData) => row.role,
       cell: (info: Info) => (
         <DataTable.CellContent>
           <Chip
@@ -97,7 +104,7 @@ export function MembersList({
         </DataTable.CellContent>
       ),
       meta: {
-        width: "6rem",
+        className: "w-32",
       },
     },
   ];

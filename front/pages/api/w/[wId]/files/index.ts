@@ -1,23 +1,42 @@
 import type {
-  FileUploadRequestResponseBody,
+  FileTypeWithUploadUrl,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
 import {
-  ensureContentTypeForUseCase,
   ensureFileSize,
-  FileUploadUrlRequestSchema,
   isSupportedFileContentType,
   rateLimiter,
 } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { isUploadSupported } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+
+// File upload form validation.
+
+const FileUploadUrlRequestSchema = t.type({
+  contentType: t.string,
+  fileName: t.string,
+  fileSize: t.number,
+  useCase: t.union([
+    t.literal("conversation"),
+    t.literal("avatar"),
+    t.literal("folder_document"),
+    t.literal("folder_table"),
+  ]),
+  useCaseMetadata: t.union([t.undefined, t.type({ conversationId: t.string })]),
+});
+
+export interface FileUploadRequestResponseBody {
+  file: FileTypeWithUploadUrl;
+}
 
 async function handler(
   req: NextApiRequest,
@@ -71,7 +90,7 @@ async function handler(
         });
       }
 
-      if (!ensureContentTypeForUseCase(contentType, useCase)) {
+      if (!isUploadSupported({ contentType, useCase })) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {

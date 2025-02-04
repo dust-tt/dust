@@ -11,6 +11,7 @@ import {
   removeNulls,
 } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
+import Link from "next/link";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
@@ -19,12 +20,15 @@ import { SpaceAppsList } from "@app/components/spaces/SpaceAppsList";
 import type { SpaceLayoutProps } from "@app/components/spaces/SpaceLayout";
 import { SpaceLayout } from "@app/components/spaces/SpaceLayout";
 import { SpaceResourcesList } from "@app/components/spaces/SpaceResourcesList";
+import config from "@app/lib/api/config";
 import {
   augmentDataSourceWithConnectorDetails,
   getDataSources,
 } from "@app/lib/api/data_sources";
 import { isManaged } from "@app/lib/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import type { ActionApp } from "@app/lib/registry";
+import { getDustProdActionRegistry } from "@app/lib/registry";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
@@ -35,6 +39,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     space: SpaceType;
     systemSpace: SpaceType;
     integrations: DataSourceIntegration[];
+    registryApps: ActionApp[] | null;
   }
 >(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
@@ -52,7 +57,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
 
   const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
   const space = await SpaceResource.fetchById(auth, spaceId);
-  if (!space || !systemSpace || !space.canList(auth)) {
+  if (!space || !systemSpace || !space.canReadOrAdministrate(auth)) {
     return {
       notFound: true,
     };
@@ -117,6 +122,14 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     }
   }
 
+  const isDustAppsSpace =
+    owner.sId === config.getDustAppsWorkspaceId() &&
+    space.sId === config.getDustAppsSpaceId();
+
+  const registryApps = isDustAppsSpace
+    ? Object.values(getDustProdActionRegistry()).map((action) => action.app)
+    : null;
+
   return {
     props: {
       category: context.query.category as DataSourceViewCategory,
@@ -129,6 +142,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       space: space.toJSON(),
       systemSpace: systemSpace.toJSON(),
       integrations,
+      registryApps,
     },
   };
 });
@@ -142,16 +156,34 @@ export default function Space({
   space,
   systemSpace,
   integrations,
+  registryApps,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   return (
     <Page.Vertical gap="xl" align="stretch">
       {space.kind === "system" && (
-        <Page.Header
-          title="Connection Admin"
-          description="Manage the applications and data Dust has access to."
-          icon={CloudArrowLeftRightIcon}
-        />
+        <>
+          <Page.Header
+            title="Connection Admin"
+            description={
+              <>
+                Here you can authorize Connections and control what data Dust
+                can access. Once connected, data can be distributed to Open
+                Spaces (accessible to all workspace members) or Restricted
+                Spaces (limited access). <br />
+                Need help? Check out our{" "}
+                <Link
+                  href="https://docs.dust.tt/docs/data"
+                  className="text-highlight"
+                  target="_blank"
+                >
+                  guide
+                </Link>
+              </>
+            }
+            icon={CloudArrowLeftRightIcon}
+          />
+        </>
       )}
       {category === "apps" ? (
         <SpaceAppsList
@@ -161,6 +193,7 @@ export default function Space({
           onSelect={(sId) => {
             void router.push(`/w/${owner.sId}/spaces/${space.sId}/apps/${sId}`);
           }}
+          registryApps={registryApps}
         />
       ) : (
         <SpaceResourcesList

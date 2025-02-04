@@ -41,6 +41,13 @@ import { apiError } from "@app/logger/withlogging";
  *         schema:
  *           type: string
  *       - in: query
+ *         name: document_ids
+ *         description: The IDs of the documents to fetch (optional)
+ *         schema:
+ *           type: array
+ *           items:
+ *             type: string
+ *       - in: query
  *         name: limit
  *         description: Limit the number of documents returned
  *         schema:
@@ -107,7 +114,11 @@ async function handler(
     }
   }
 
-  if (!dataSource || dataSource.space.sId !== spaceId) {
+  if (
+    !dataSource ||
+    dataSource.space.sId !== spaceId ||
+    !dataSource.canRead(auth)
+  ) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -135,10 +146,16 @@ async function handler(
         ? parseInt(req.query.offset as string)
         : 0;
 
+      let documentIds = req.query.document_ids;
+      if (typeof documentIds === "string") {
+        documentIds = [documentIds];
+      }
+
       const documents = await coreAPI.getDataSourceDocuments(
         {
           projectId: dataSource.dustAPIProjectId,
           dataSourceId: dataSource.dustAPIDataSourceId,
+          documentIds,
         },
         { limit, offset }
       );

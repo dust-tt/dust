@@ -9,53 +9,53 @@ import {
   Page,
   Popover,
   ScrollArea,
+  ScrollBar,
   Spinner,
 } from "@dust-tt/sparkle";
 import type {
   APIError,
   AssistantCreativityLevel,
   BuilderSuggestionsType,
+  LightAgentConfigurationType,
   ModelConfigurationType,
   ModelIdType,
-  PlanType,
   Result,
   SupportedModel,
   WorkspaceType,
 } from "@dust-tt/types";
 import {
-  CLAUDE_3_5_SONNET_20241022_MODEL_ID,
-  GPT_4O_MODEL_ID,
-  MISTRAL_LARGE_MODEL_ID,
-} from "@dust-tt/types";
-import { isProviderWhitelisted } from "@dust-tt/types";
-import {
   ASSISTANT_CREATIVITY_LEVEL_DISPLAY_NAMES,
   ASSISTANT_CREATIVITY_LEVEL_TEMPERATURES,
+  CLAUDE_3_5_SONNET_20241022_MODEL_ID,
   Err,
+  GPT_4O_MODEL_ID,
   md5,
+  MISTRAL_LARGE_MODEL_ID,
   Ok,
 } from "@dust-tt/types";
-import { Transition } from "@headlessui/react";
 import { CharacterCount } from "@tiptap/extension-character-count";
 import Document from "@tiptap/extension-document";
 import { History } from "@tiptap/extension-history";
 import Text from "@tiptap/extension-text";
 import type { Editor, JSONContent } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
-import {
-  MODEL_PROVIDER_LOGOS,
-  USED_MODEL_CONFIGS,
-} from "@app/components/providers/types";
+import { MODEL_PROVIDER_LOGOS } from "@app/components/providers/types";
 import { ParagraphExtension } from "@app/components/text_editor/extensions";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import {
   plainTextFromTipTapContent,
   tipTapContentFromPlainText,
 } from "@app/lib/client/assistant_builder/instructions";
-import { isUpgraded } from "@app/lib/plans/plan_codes";
+import { useAgentConfigurationHistory } from "@app/lib/swr/assistants";
 import { classNames } from "@app/lib/utils";
 import { debounce } from "@app/lib/utils/debounce";
 
@@ -102,7 +102,6 @@ const useInstructionEditorService = (editor: Editor | null) => {
 
 export function InstructionScreen({
   owner,
-  plan,
   builderState,
   setBuilderState,
   setEdited,
@@ -111,9 +110,10 @@ export function InstructionScreen({
   instructionsError,
   doTypewriterEffect,
   setDoTypewriterEffect,
+  agentConfigurationId,
+  models,
 }: {
   owner: WorkspaceType;
-  plan: PlanType;
   builderState: AssistantBuilderState;
   setBuilderState: (
     statefn: (state: AssistantBuilderState) => AssistantBuilderState
@@ -124,6 +124,8 @@ export function InstructionScreen({
   instructionsError: string | null;
   doTypewriterEffect: boolean;
   setDoTypewriterEffect: (doTypewriterEffect: boolean) => void;
+  agentConfigurationId: string | null;
+  models: ModelConfigurationType[];
 }) {
   const editor = useEditor({
     extensions: [
@@ -152,6 +154,44 @@ export function InstructionScreen({
     },
   });
   const editorService = useInstructionEditorService(editor);
+
+  const { agentConfigurationHistory } = useAgentConfigurationHistory({
+    workspaceId: owner.sId,
+    agentConfigurationId,
+    disabled: !agentConfigurationId,
+    limit: 30,
+  });
+  // Keep a memory of overriden versions, to not lose them when switching back and forth
+  const [currentConfig, setCurrentConfig] =
+    useState<LightAgentConfigurationType | null>(null);
+  // versionNumber -> instructions
+  const [overridenConfigInstructions, setOverridenConfigInstructions] =
+    useState<{
+      [key: string]: string;
+    }>({});
+
+  // Deduplicate configs based on instructions
+  const configsWithUniqueInstructions: LightAgentConfigurationType[] =
+    useMemo(() => {
+      const uniqueInstructions = new Set<string>();
+      const configs: LightAgentConfigurationType[] = [];
+      agentConfigurationHistory?.forEach((config) => {
+        if (
+          !config.instructions ||
+          uniqueInstructions.has(config.instructions)
+        ) {
+          return;
+        } else {
+          uniqueInstructions.add(config.instructions);
+          configs.push(config);
+        }
+      });
+      return configs;
+    }, [agentConfigurationHistory]);
+
+  useEffect(() => {
+    setCurrentConfig(agentConfigurationHistory?.[0] || null);
+  }, [agentConfigurationHistory]);
 
   const [letterIndex, setLetterIndex] = useState(0);
 
@@ -201,7 +241,7 @@ export function InstructionScreen({
       editorProps: {
         attributes: {
           class:
-            "overflow-auto min-h-[240px] h-full border bg-structure-50 transition-all " +
+            "overflow-auto min-h-60 h-full border bg-structure-50 transition-all " +
             "duration-200 rounded-xl " +
             (instructionsError ||
             currentCharacterCount >= INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT
@@ -234,10 +274,47 @@ export function InstructionScreen({
           </Page.P>
         </div>
         <div className="flex-grow" />
+        {configsWithUniqueInstructions &&
+          configsWithUniqueInstructions.length > 1 &&
+          currentConfig && (
+            <div className="mr-2 mt-2 self-end">
+              <PromptHistory
+                history={configsWithUniqueInstructions}
+                onConfigChange={(config) => {
+                  // Remember the instructions of the version we're leaving, if overriden
+                  if (
+                    currentConfig &&
+                    currentConfig.instructions !== builderState.instructions
+                  ) {
+                    setOverridenConfigInstructions((prev) => ({
+                      ...prev,
+                      [currentConfig.version]: builderState.instructions,
+                    }));
+                  }
+
+                  // Bring new version's instructions to the editor, fetch overriden instructions if any
+                  setCurrentConfig(config);
+                  editorService.resetContent(
+                    tipTapContentFromPlainText(
+                      overridenConfigInstructions[config.version] ||
+                        config.instructions ||
+                        ""
+                    )
+                  );
+                  setBuilderState((state) => ({
+                    ...state,
+                    instructions:
+                      overridenConfigInstructions[config.version] ||
+                      config.instructions ||
+                      "",
+                  }));
+                }}
+                currentConfig={currentConfig}
+              />
+            </div>
+          )}
         <div className="mt-2 self-end">
           <AdvancedSettings
-            owner={owner}
-            plan={plan}
             generationSettings={builderState.generationSettings}
             setGenerationSettings={(generationSettings) => {
               setEdited(true);
@@ -246,11 +323,12 @@ export function InstructionScreen({
                 generationSettings,
               }));
             }}
+            models={models}
           />
         </div>
       </div>
       <div className="flex h-full flex-col gap-1">
-        <div className="relative h-full min-h-[240px] grow gap-1 p-px">
+        <div className="relative h-full min-h-60 grow gap-1 p-px">
           <EditorContent
             editor={editor}
             className="absolute bottom-0 left-0 right-0 top-0"
@@ -294,7 +372,7 @@ const InstructionsCharacterCount = ({
     <span
       className={classNames(
         "text-end text-xs",
-        count >= maxCount ? "text-red-500" : "text-slate-500"
+        count >= maxCount ? "text-red-500" : "text-muted-foreground"
       )}
     >
       {count} / {maxCount} characters
@@ -312,6 +390,7 @@ function ModelList({ modelConfigs, onClick }: ModelListProps) {
     onClick({
       modelId: modelConfig.modelId,
       providerId: modelConfig.providerId,
+      reasoningEffort: modelConfig.reasoningEffort,
     });
   };
 
@@ -330,19 +409,21 @@ function ModelList({ modelConfigs, onClick }: ModelListProps) {
   );
 }
 
-function AdvancedSettings({
-  owner,
-  plan,
+export function AdvancedSettings({
   generationSettings,
   setGenerationSettings,
+  models,
 }: {
-  owner: WorkspaceType;
-  plan: PlanType;
   generationSettings: AssistantBuilderState["generationSettings"];
   setGenerationSettings: (
     generationSettingsSettings: AssistantBuilderState["generationSettings"]
   ) => void;
+  models: ModelConfigurationType[];
 }) {
+  if (!models) {
+    return null;
+  }
+
   const supportedModelConfig = getSupportedModelConfig(
     generationSettings.modelSettings
   );
@@ -353,13 +434,7 @@ function AdvancedSettings({
 
   const bestPerformingModelConfigs: ModelConfigurationType[] = [];
   const otherModelConfigs: ModelConfigurationType[] = [];
-  for (const modelConfig of USED_MODEL_CONFIGS) {
-    if (
-      !isProviderWhitelisted(owner, modelConfig.providerId) ||
-      (modelConfig.largeModel && !isUpgraded(plan))
-    ) {
-      continue;
-    }
+  for (const modelConfig of models) {
     if (isBestPerformingModel(modelConfig.modelId)) {
       bestPerformingModelConfigs.push(modelConfig);
     } else {
@@ -398,7 +473,7 @@ function AdvancedSettings({
               </DropdownMenuTrigger>
               <DropdownMenuContent>
                 <DropdownMenuLabel label="Best performing models" />
-                <ScrollArea className="h-[300px]">
+                <ScrollArea className="flex max-h-72 flex-col" hideScrollBar>
                   <ModelList
                     modelConfigs={bestPerformingModelConfigs}
                     onClick={(modelSettings) => {
@@ -418,6 +493,7 @@ function AdvancedSettings({
                       });
                     }}
                   />
+                  <ScrollBar className="py-0" />
                 </ScrollArea>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -461,6 +537,64 @@ function AdvancedSettings({
   );
 }
 
+function PromptHistory({
+  history,
+  onConfigChange,
+  currentConfig,
+}: {
+  history: LightAgentConfigurationType[];
+  onConfigChange: (config: LightAgentConfigurationType) => void;
+  currentConfig: LightAgentConfigurationType;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const latestConfig = history[0];
+
+  const getStringRepresentation = useCallback(
+    (config: LightAgentConfigurationType) => {
+      const dateFormatter = new Intl.DateTimeFormat(navigator.language, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "numeric",
+      });
+      return config.version === latestConfig?.version
+        ? "Latest Version"
+        : config.versionCreatedAt
+          ? dateFormatter.format(new Date(config.versionCreatedAt))
+          : `v${config.version}`;
+    },
+    [latestConfig]
+  );
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          label={getStringRepresentation(currentConfig)}
+          variant="outline"
+          size="sm"
+          isSelect
+          onClick={() => setIsOpen(!isOpen)}
+        />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
+        <ScrollArea className="flex max-h-72 flex-col">
+          {history.map((config) => (
+            <DropdownMenuItem
+              key={config.version}
+              label={getStringRepresentation(config)}
+              onClick={() => {
+                onConfigChange(config);
+              }}
+            />
+          ))}
+        </ScrollArea>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 const STATIC_SUGGESTIONS = [
   "Break down your instructions into steps to leverage the model's reasoning capabilities.",
   "Give context on how you'd like the assistant to act, e.g. 'Act like a senior analyst'.",
@@ -498,6 +632,16 @@ function Suggestions({
   // the ref allows comparing previous instructions to current instructions
   // in the effect below
   const previousInstructions = useRef<string | null>(instructions);
+
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    if (suggestionsStatus !== "no_suggestions") {
+      setIsVisible(true);
+    } else {
+      setIsVisible(false);
+    }
+  }, [suggestionsStatus]);
 
   useEffect(() => {
     // update suggestions when (and only when) instructions change
@@ -582,14 +726,11 @@ function Suggestions({
   };
 
   return (
-    <Transition
-      show={suggestionsStatus !== "no_suggestions"}
-      enter="transition-[max-height] duration-1000"
-      enterFrom="max-h-0"
-      enterTo="max-h-full"
-      leave="transition-[max-height] duration-1000"
-      leaveFrom="max-h-full"
-      leaveTo="max-h-0"
+    <div
+      className={classNames(
+        "transition-all duration-1000 ease-in-out",
+        isVisible ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
+      )}
     >
       <div className="relative flex flex-col">
         <div className="flex items-center gap-2 text-base font-bold text-element-800">
@@ -644,7 +785,7 @@ function Suggestions({
           })()}
         </div>
       </div>
-    </Transition>
+    </div>
   );
 }
 
@@ -658,25 +799,19 @@ function AnimatedSuggestion({
   afterEnter?: () => void;
 }) {
   return (
-    <Transition
-      appear={true}
-      enter="transition-all ease-out duration-300"
-      enterFrom="opacity-0 w-0"
-      enterTo="opacity-100 w-[320px]"
-      leave="ease-in duration-300"
-      leaveFrom="opacity-100 w-[320px]"
-      leaveTo="opacity-0 w-0"
-      afterEnter={afterEnter}
+    <div
+      className="w-80 animate-[appear_0.3s_ease-out]"
+      onAnimationEnd={afterEnter}
     >
       <ContentMessage
         size="sm"
         title=""
         variant={variant}
-        className="h-full w-[308px]"
+        className="h-full w-80"
       >
         {suggestion}
       </ContentMessage>
-    </Transition>
+    </div>
   );
 }
 

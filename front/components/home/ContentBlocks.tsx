@@ -1,4 +1,5 @@
 import { ArrowRightIcon, Button, RocketIcon } from "@dust-tt/sparkle";
+import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import React from "react";
@@ -17,6 +18,7 @@ import {
   H3,
   H5,
   P,
+  Strong,
 } from "@app/components/home/ContentComponents";
 import type { SolutionSectionAssistantBlockProps } from "@app/components/home/SolutionSection";
 import { SolutionSectionAssistantBlock } from "@app/components/home/SolutionSection";
@@ -48,11 +50,11 @@ export const ImgBlock: React.FC<ImgBlockProps> = ({
   };
 
   return (
-    <div className={classNames("flex flex-col gap-12", className)}>
+    <div className={classNames("flex flex-col gap-2", className)}>
       <div className="ml-[10%] pr-[20%] md:m-0 md:pr-[28%]">
         {children ? children : null}
       </div>
-      <div className="flex flex-col gap-2 lg:gap-4">
+      <div className="flex flex-col px-0 py-6">
         <H3 className="text-white">{title}</H3>
         {renderContent()}
       </div>
@@ -81,13 +83,13 @@ export const BlogBlock: React.FC<BlogBlockProps> = ({
       target="_blank"
       className={classNames(
         className,
-        "flex flex-col overflow-hidden rounded-2xl bg-slate-200 drop-shadow-xl",
+        "flex h-full w-full flex-col overflow-hidden rounded-2xl bg-slate-200 drop-shadow-xl",
         "group transition duration-300 ease-out",
-        "scale-100 hover:scale-100 hover:bg-white"
+        "hover:bg-white"
       )}
     >
       {children ? (
-        <div className="relative aspect-video overflow-hidden rounded-t-xl">
+        <div className="relative aspect-[16/9] w-full overflow-hidden rounded-t-xl">
           {React.Children.map(children, (child) => {
             if (
               React.isValidElement<React.ImgHTMLAttributes<HTMLImageElement>>(
@@ -96,19 +98,25 @@ export const BlogBlock: React.FC<BlogBlockProps> = ({
               child.type === "img"
             ) {
               return React.cloneElement(child, {
-                className:
-                  "absolute h-full w-full object-cover brightness-100 transition duration-300 ease-out group-hover:brightness-110 border border-slate-900/10 rounded-t-2xl",
+                className: classNames(
+                  "absolute h-full w-full object-cover",
+                  "brightness-100 transition duration-300 ease-out",
+                  "group-hover:brightness-110",
+                  "border border-slate-900/10 rounded-t-2xl"
+                ),
               });
             }
             return child;
           })}
         </div>
       ) : null}
-      <div className="flex flex-col gap-3 p-6">
-        <H5 className="text-slate-900">{title}</H5>
-        <P size="xs" className="text-slate-900">
-          {content}
-        </P>
+      <div className="flex flex-col p-6">
+        <div className="flex flex-col gap-2">
+          <H5 className="line-clamp-2 text-foreground">{title}</H5>
+          <P size="xs" className="line-clamp-3 text-foreground">
+            {content}
+          </P>
+        </div>
       </div>
     </a>
   );
@@ -143,7 +151,7 @@ export const HeaderContentBlock = ({
       )}
     >
       {uptitle && (
-        <P size="lg" className="text-slate-500">
+        <P size="lg" className="text-muted-foreground">
           {uptitle}
         </P>
       )}
@@ -156,19 +164,99 @@ export const HeaderContentBlock = ({
         </P>
       )}
       {hasCTA && (
-        <div>
-          <Link href="/pricing" shallow={true}>
-            <Button
-              variant="highlight"
-              size="md"
-              label="Get started"
-              icon={RocketIcon}
-            />
-          </Link>
+        <div className="flex gap-4">
+          <Button
+            variant="highlight"
+            size="md"
+            label="Get started"
+            href="/pricing"
+            icon={RocketIcon}
+          />
+          <Button
+            href="/home/contact"
+            variant="outline"
+            size="md"
+            label="Talk to sales"
+          />
         </div>
       )}
     </div>
   </Grid>
+);
+
+interface MetricComponentProps {
+  metrics: {
+    value: string;
+    description: ReactNode;
+    logo?: string;
+  }[];
+  from: string;
+  to: string;
+}
+
+export const MetricSection = ({ metrics, from, to }: MetricComponentProps) => (
+  <div
+    className={classNames(
+      "grid w-full grid-cols-2 gap-8 sm:grid-cols-2",
+      metrics.length === 2
+        ? "lg:grid-cols-2"
+        : metrics.length === 3
+          ? "lg:grid-cols-3"
+          : "lg:grid-cols-4"
+    )}
+  >
+    {metrics.map((metric, index) => (
+      <div key={index} className="flex flex-col items-center text-center">
+        {metric.logo && (
+          <Image alt="alan" src={metric.logo} width={200} height={100} />
+        )}
+        <H1 from={from} to={to} className="mt-0">
+          {metric.value}
+        </H1>
+
+        <div className="flex flex-col items-center">
+          <P size="lg" className="max-w-[400px] text-white">
+            {metric.description}
+          </P>
+        </div>
+      </div>
+    ))}
+  </div>
+);
+
+interface QuoteProps {
+  quote: string;
+  name: string;
+  title: string;
+  logo: string;
+}
+
+export const QuoteSection = ({ quote, logo, name, title }: QuoteProps) => (
+  <div className="col-span-12 flex flex-col rounded-4xl pb-2 pt-4 md:col-span-10 md:col-start-2 lg:col-span-10 lg:col-start-2">
+    <div className="flex justify-center">
+      <div className="flex items-center justify-center">
+        <Image
+          src={logo}
+          width={200}
+          height={48}
+          alt="Company Logo"
+          className="h-auto w-[140px] xs:w-[160px] sm:w-[200px]"
+        />
+        <P
+          size="sm"
+          className="text-sm text-primary-400 xs:text-left xs:text-base sm:text-lg"
+        >
+          <Strong>
+            <span className="text-pink-300">{name}</span>
+          </Strong>
+          <br /> {title}
+        </P>
+      </div>
+    </div>
+    <div className="flex flex-col items-center rounded-4xl p-4 text-center font-objektiv text-base italic text-white xs:text-lg sm:text-xl lg:text-2xl">
+      &ldquo; {quote} &rdquo;
+    </div>
+  </div>
 );
 
 interface CarousselContentBlockProps {
@@ -194,28 +282,35 @@ export const CarousselContentBlock = ({
 }: CarousselContentBlockProps) => (
   <div
     className={classNames(
-      "flex h-full flex-col gap-6 rounded-3xl border bg-gradient-to-br py-8",
+      "flex flex-col gap-6 rounded-3xl border bg-gradient-to-br py-8 md:h-full",
       from,
       to,
       border
     )}
   >
-    <div className="flex flex-1 flex-col gap-6 px-8">
+    <div className="flex flex-col gap-4 px-8 md:flex-1">
       <H3 className="text-slate-800">{"Dust for " + title}</H3>
       <div className="flex flex-col gap-2">
-        <H2 className="max-w-[600px] text-white">{subtitle}</H2>
-        <P size="md" className="max-w-[720px] text-slate-600">
+        <H2 className="w-full text-white">{subtitle}</H2>
+        <P size="md" className="w-full text-slate-700">
           {description}
         </P>
       </div>
-      <div className="w-full text-center">
-        <Link href={href} shallow={true} className="block w-full">
+      <div className="w-full text-left">
+        <Link href={href} shallow={true} className="inline-block max-w-full">
           <Button
-            label={"Discover Dust for " + title}
-            variant="ghost"
+            label={"Discover Dust"}
+            variant="outline"
             size="md"
             icon={ArrowRightIcon}
-            className="max-w-full"
+            className="flex max-w-full md:hidden"
+          />
+          <Button
+            label={"Discover Dust for " + title}
+            variant="outline"
+            size="md"
+            icon={ArrowRightIcon}
+            className="hidden max-w-full md:flex"
           />
         </Link>
       </div>
@@ -223,12 +318,12 @@ export const CarousselContentBlock = ({
     <Carousel className="w-full" isLooping={true}>
       <CarouselContent>
         {assistants.map((block, index) => (
-          <CarouselItem key={index} className="basis-1/2 px-8 md:basis-1/3">
+          <CarouselItem key={index} className="basis-1/2 px-6 md:basis-1/4">
             <SolutionSectionAssistantBlock {...block} />
           </CarouselItem>
         ))}
       </CarouselContent>
-      <div className="flex w-full flex-row items-center justify-end gap-3 px-8">
+      <div className="flex w-full flex-row items-center justify-end gap-3 px-8 md:hidden">
         <CarouselPrevious />
         <CarouselNext />
       </div>

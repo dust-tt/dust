@@ -10,11 +10,11 @@ import { Op } from "sequelize";
 import { listConfluenceSpaces } from "@connectors/connectors/confluence/lib/confluence_api";
 import type { ConfluenceSpaceType } from "@connectors/connectors/confluence/lib/confluence_client";
 import {
-  getIdFromConfluenceInternalId,
-  isConfluenceInternalPageId,
-  isConfluenceInternalSpaceId,
-  makeConfluenceInternalPageId,
-  makeConfluenceInternalSpaceId,
+  getConfluenceIdFromInternalId,
+  isInternalPageId,
+  isInternalSpaceId,
+  makePageInternalId,
+  makeSpaceInternalId,
 } from "@connectors/connectors/confluence/lib/internal_ids";
 import type { ConfluenceConfiguration } from "@connectors/lib/models/confluence";
 import {
@@ -40,21 +40,19 @@ export function createContentNodeFromSpace(
   permission: ConnectorPermission,
   { isExpandable }: { isExpandable: boolean }
 ): ContentNode {
+  const spaceId = isConfluenceSpaceModel(space) ? space.spaceId : space.id;
   const urlSuffix = isConfluenceSpaceModel(space)
     ? space.urlSuffix
     : space._links.webui;
-  const spaceId = isConfluenceSpaceModel(space) ? space.spaceId : space.id;
 
   return {
-    provider: "confluence",
-    internalId: makeConfluenceInternalSpaceId(spaceId),
+    internalId: makeSpaceInternalId(spaceId),
     parentInternalId: null,
     type: "folder",
     title: space.name || "Unnamed Space",
     sourceUrl: `${baseUrl}/wiki${urlSuffix}`,
     expandable: isExpandable,
     permission,
-    dustDocumentId: null,
     lastUpdatedAt: null,
   };
 }
@@ -66,18 +64,16 @@ export function createContentNodeFromPage(
   isExpandable = false
 ): ContentNode {
   return {
-    provider: "confluence",
-    internalId: makeConfluenceInternalPageId(page.pageId),
+    internalId: makePageInternalId(page.pageId),
     parentInternalId:
       parent.type === "space"
-        ? makeConfluenceInternalSpaceId(parent.id)
-        : makeConfluenceInternalPageId(parent.id),
+        ? makeSpaceInternalId(parent.id)
+        : makePageInternalId(parent.id),
     type: "file",
     title: page.title,
     sourceUrl: `${baseUrl}/wiki${page.externalUrl}`,
     expandable: isExpandable,
     permission: "read",
-    dustDocumentId: null,
     lastUpdatedAt: null,
   };
 }
@@ -102,7 +98,7 @@ async function getSynchronizedSpaces(
   confluenceConfig: ConfluenceConfiguration,
   parentInternalId: string
 ): Promise<Result<ContentNode[], Error>> {
-  const confluenceId = getIdFromConfluenceInternalId(parentInternalId);
+  const confluenceId = getConfluenceIdFromInternalId(parentInternalId);
 
   const parentSpace = await ConfluenceSpace.findOne({
     attributes: ["id", "spaceId"],
@@ -149,7 +145,7 @@ async function getSynchronizedChildrenPages(
   confluenceConfig: ConfluenceConfiguration,
   parentInternalId: string
 ): Promise<Result<ContentNode[], Error>> {
-  const confluenceId = getIdFromConfluenceInternalId(parentInternalId);
+  const confluenceId = getConfluenceIdFromInternalId(parentInternalId);
 
   const parentPage = await ConfluencePage.findOne({
     attributes: ["id", "pageId"],
@@ -196,7 +192,7 @@ export async function retrieveHierarchyForParent(
   const { id: connectorId } = connector;
 
   if (parentInternalId) {
-    if (isConfluenceInternalSpaceId(parentInternalId)) {
+    if (isInternalSpaceId(parentInternalId)) {
       const resources = await getSynchronizedSpaces(
         connectorId,
         confluenceConfig,
@@ -208,7 +204,7 @@ export async function retrieveHierarchyForParent(
       }
 
       return new Ok(resources.value);
-    } else if (isConfluenceInternalPageId(parentInternalId)) {
+    } else if (isInternalPageId(parentInternalId)) {
       const resources = await getSynchronizedChildrenPages(
         connectorId,
         confluenceConfig,

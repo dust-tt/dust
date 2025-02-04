@@ -1,17 +1,21 @@
-import { AssistantPreview, Button, Page } from "@dust-tt/sparkle";
+import { AssistantCard, Button, CardGrid, Page } from "@dust-tt/sparkle";
 import { usePublicAgentConfigurations } from "@extension/components/assistants/usePublicAgentConfigurations";
 import { InputBarContext } from "@extension/components/input_bar/InputBarContext";
+import type { StoredUser } from "@extension/lib/storage";
 import { useCallback, useContext } from "react";
 
-export function AssistantFavorites() {
+type AssistantFavoritesProps = {
+  user: StoredUser;
+};
+
+export function AssistantFavorites({ user }: AssistantFavoritesProps) {
   const {
     agentConfigurations,
     isAgentConfigurationsLoading,
     isAgentConfigurationsError,
-  } = usePublicAgentConfigurations("favorites");
+  } = usePublicAgentConfigurations("favorites", ["authors"]);
 
   const { setSelectedAssistant } = useContext(InputBarContext);
-
   const handleAssistantClick = useCallback(
     (agentId: string) => {
       const scrollContainer = document.getElementById("assistant-input-header");
@@ -40,22 +44,20 @@ export function AssistantFavorites() {
     <div className="h-full w-full pt-2 pb-12">
       <Page.SectionHeader title="Favorites" />
       {hasFavorites ? (
-        <div className="relative grid w-full grid-cols-1 sm:grid-cols-2 gap-2">
+        <CardGrid className="mb-12">
           {agentConfigurations.map(
             ({ sId, name, pictureUrl, lastAuthors, description }) => (
-              <AssistantPreview
+              <AssistantCard
                 key={sId}
                 title={name}
                 pictureUrl={pictureUrl}
                 subtitle={lastAuthors?.join(", ") ?? ""}
                 description={description}
-                variant="minimal"
                 onClick={() => handleAssistantClick(sId)}
-                hasAction={false}
               />
             )
           )}
-        </div>
+        </CardGrid>
       ) : (
         <div className="flex flex-col items-center pt-20 gap-4">
           <p className="text-slate-400">
@@ -63,7 +65,7 @@ export function AssistantFavorites() {
           </p>
           <Button
             label="Add favorites on Dust"
-            href={`${process.env.DUST_DOMAIN}`}
+            href={`${user.dustDomain}`}
             target="_blank"
           />
         </div>

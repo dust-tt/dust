@@ -21,15 +21,27 @@ const meta = {
       control: { type: "select" },
     },
     size: {
-      description: "The size of the button",
+      description:
+        "The size of the button (Note: 'mini' size requires an icon and cannot have a label)",
       options: BUTTON_SIZES,
       control: { type: "select" },
     },
     icon: {
-      description: "Optional icon to display in the button",
+      description: "Icon to display in the button (Required for mini size)",
       options: Object.keys(ICONS),
       mapping: ICONS,
       control: { type: "select" },
+      if: { arg: "size", neq: "mini" },
+    },
+    label: {
+      description: "Button label (Not available for mini size)",
+      control: { type: "text" },
+      if: { arg: "size", neq: "mini" },
+    },
+    disabled: {
+      description: "Whether the button should be disabled",
+      control: "boolean",
+      defaultValue: false,
     },
     isLoading: {
       description: "Whether the button should display a loading spinner",
@@ -48,7 +60,13 @@ const meta = {
       control: "text",
     },
   },
-} satisfies Meta<React.ComponentProps<typeof Button>>;
+  render: (args) => {
+    if (args.size === "mini" && !args.icon) {
+      args.icon = ICONS.PlusIcon;
+    }
+    return <Button {...args} />;
+  },
+} satisfies Meta<typeof Button>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -61,5 +79,10 @@ export const ExampleButton: Story = {
     isLoading: false,
     isPulsing: false,
     isSelect: false,
+    disabled: false,
   },
+};
+
+export const MiniButton: Story = {
+  render: () => <Button size="mini" icon={PlusIcon} />,
 };

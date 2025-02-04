@@ -3,26 +3,30 @@ import React from "react";
 
 import type { BuilderScreen } from "@app/components/assistant_builder/types";
 
+interface PrevNextButtonsProps {
+  screen: BuilderScreen;
+  setScreen: (screen: BuilderScreen) => void;
+  setCurrentTab: (tab: string) => void;
+}
+
 export function PrevNextButtons({
   screen,
   setScreen,
-}: {
-  screen: BuilderScreen;
-  setScreen: (screen: BuilderScreen) => void;
-}) {
+  setCurrentTab,
+}: PrevNextButtonsProps) {
   return (
     <div className="flex py-6">
       {screen !== "instructions" && (
         <Button
           label="Previous"
           size="md"
-          variant="highlight"
+          variant="primary"
+          data-gtm-label="prevButton"
+          data-gtm-location="assistantBuilder"
           onClick={() => {
-            if (screen === "actions") {
-              setScreen("instructions");
-            } else if (screen === "naming") {
-              setScreen("actions");
-            }
+            const newScreen = screen === "actions" ? "instructions" : "actions";
+            setScreen(newScreen);
+            setCurrentTab(newScreen);
           }}
         />
       )}
@@ -31,13 +35,13 @@ export function PrevNextButtons({
         <Button
           label="Next"
           size="md"
-          variant="highlight"
+          variant="primary"
+          data-gtm-label="nextButton"
+          data-gtm-location="assistantBuilder"
           onClick={() => {
-            if (screen === "instructions") {
-              setScreen("actions");
-            } else if (screen === "actions") {
-              setScreen("naming");
-            }
+            const newScreen = screen === "instructions" ? "actions" : "naming";
+            setScreen(newScreen);
+            setCurrentTab(newScreen);
           }}
         />
       )}

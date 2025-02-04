@@ -2,16 +2,20 @@ import type {
   ConnectorProvider,
   ModelId,
   Result,
-  SlackConfiguration,
+  SlackConfigurationType,
   WebCrawlerConfiguration,
 } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 
+import { BigQueryConnectorManager } from "@connectors/connectors/bigquery";
 import { ConfluenceConnectorManager } from "@connectors/connectors/confluence";
 import { GithubConnectorManager } from "@connectors/connectors/github";
 import { GoogleDriveConnectorManager } from "@connectors/connectors/google_drive";
 import { IntercomConnectorManager } from "@connectors/connectors/intercom";
-import type { ConnectorManagerError } from "@connectors/connectors/interface";
+import type {
+  ConnectorManagerError,
+  CreateConnectorErrorCode,
+} from "@connectors/connectors/interface";
 import { MicrosoftConnectorManager } from "@connectors/connectors/microsoft";
 import { NotionConnectorManager } from "@connectors/connectors/notion";
 import { SlackConnectorManager } from "@connectors/connectors/slack";
@@ -59,6 +63,8 @@ export function getConnectorManager({
       return new SnowflakeConnectorManager(connectorId);
     case "zendesk":
       return new ZendeskConnectorManager(connectorId);
+    case "bigquery":
+      return new BigQueryConnectorManager(connectorId);
     default:
       assertNever(connectorProvider);
   }
@@ -89,9 +95,11 @@ export function createConnector({
       params: {
         dataSourceConfig: DataSourceConfig;
         connectionId: string;
-        configuration: SlackConfiguration;
+        configuration: SlackConfigurationType;
       };
-    }): Promise<Result<string, ConnectorManagerError>> {
+    }): Promise<
+  Result<string, ConnectorManagerError<CreateConnectorErrorCode>>
+> {
   switch (connectorProvider) {
     case "confluence":
       return ConfluenceConnectorManager.create(params);
@@ -113,6 +121,8 @@ export function createConnector({
       return SnowflakeConnectorManager.create(params);
     case "zendesk":
       return ZendeskConnectorManager.create(params);
+    case "bigquery":
+      return BigQueryConnectorManager.create(params);
     default:
       assertNever(connectorProvider);
   }

@@ -11,7 +11,7 @@ import { apiError } from "@app/logger/withlogging";
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
 import { acceptableTranscriptProvidersCodec } from "@app/pages/api/w/[wId]/labs/transcripts";
 
-const PROVIDERS_WITH_WORKSPACE_CONFIGURATIONS = ["gong"];
+const PROVIDERS_WITH_WORKSPACE_CONFIGURATIONS = ["gong", "modjo"];
 
 export const GetDefaultTranscriptsConfigurationBodySchema = t.type({
   provider: acceptableTranscriptProvidersCodec,
@@ -61,12 +61,8 @@ async function handler(
         });
 
       if (!transcriptsConfiguration) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "transcripts_configuration_not_found",
-            message: "The transcripts configuration was not found.",
-          },
+        return res.status(200).json({
+          configuration: null,
         });
       }
 

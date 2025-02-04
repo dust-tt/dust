@@ -48,6 +48,7 @@ export interface PluginManifest<T extends PluginArgs> {
   id: string;
   name: string;
   resourceTypes: string[];
+  warning?: string;
 }
 
 export interface PluginWorkspaceResource {

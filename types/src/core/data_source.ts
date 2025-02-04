@@ -1,3 +1,6 @@
+import { ProviderVisibility } from "../front/lib/connectors_api";
+import { CoreAPIRow } from "../front/lib/core_api";
+
 export type QdrantCluster = "cluster-0";
 export const DEFAULT_QDRANT_CLUSTER: QdrantCluster = "cluster-0";
 
@@ -48,6 +51,8 @@ export type CoreAPIDocument = {
   data_source_id: string;
   created: number;
   document_id: string;
+  parents: string[];
+  parent_id: string | null;
   timestamp: number;
   tags: string[];
   source_url?: string | null;
@@ -61,7 +66,45 @@ export type CoreAPIDocument = {
     vector?: number[] | null;
     score?: number | null;
   }[];
+  title: string | null;
+  mime_type: string | null;
   text?: string | null;
+};
+
+export type CoreAPIDocumentBlob = {
+  document_id: string;
+  timestamp: number;
+  tags: string[];
+  parent_id: string | null;
+  parents: string[];
+  source_url: string | null;
+  section: CoreAPIDataSourceDocumentSection;
+  title: string;
+  mime_type: string;
+  provider_visibility: ProviderVisibility | null;
+};
+
+export type CoreAPITableBlob = {
+  table_id: string;
+  name: string;
+  description: string;
+  timestamp: number;
+  tags: string[];
+  parent_id?: string;
+  parents: string[];
+  source_url?: string;
+
+  // Remote DB specifics.
+  remote_database_table_id?: string;
+  remote_database_secret_id?: string;
+
+  // Node meta.
+  title: string;
+  mime_type: string;
+  provider_visibility?: ProviderVisibility;
+
+  // Rows.
+  rows: CoreAPIRow[];
 };
 
 export type CoreAPILightDocument = {
@@ -70,6 +113,15 @@ export type CoreAPILightDocument = {
   chunk_count: number;
   token_count: number;
   created: number;
+};
+
+export type CoreAPIFolder = {
+  data_source_id: string;
+  folder_id: string;
+  timestamp: number;
+  title: string;
+  parent_id: string | null;
+  parents: string[];
 };
 
 export type CoreAPIDocumentVersionStatus = "latest" | "superseded" | "deleted";

@@ -1,3 +1,6 @@
+// WARNING: only changing this list will have no effect
+// The blacklist should be updated in auth0 too (actions -> triggers -> pre-user-registration)
+// This list is commited here for reference & traceability
 const BLACKLISTED_EMAIL_DOMAINS = new Set([
   "0-mail.com",
   "027168.com",
@@ -3119,8 +3122,10 @@ const BLACKLISTED_EMAIL_DOMAINS = new Set([
   "tempemail.net",
   "tempinbox.co.uk",
   "tempinbox.com",
+  "tempmail.cc",
   "tempmail.cn",
   "tempmail.co",
+  "tempmail.com",
   "tempmail.de",
   "tempmail.eu",
   "tempmail.it",

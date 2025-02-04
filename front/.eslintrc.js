@@ -73,6 +73,7 @@ module.exports = {
     {
       // Force the setting of a swagger description on each public api endpoint
       files: ["pages/api/v1/**/*.ts"],
+      excludedFiles: ["**/*.test.ts"],
       plugins: ["jsdoc"],
       rules: {
         "jsdoc/no-missing-syntax": [

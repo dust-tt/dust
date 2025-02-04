@@ -1,39 +1,26 @@
 import type {
   ConnectorPermission,
+  SlackAutoReadPattern,
   SlackbotWhitelistType,
 } from "@dust-tt/types";
-import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional, ForeignKey } from "sequelize";
+import { DataTypes } from "sequelize";
 
 import { sequelizeConnection } from "@connectors/resources/storage";
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 
-export class SlackConfigurationModel extends Model<
-  InferAttributes<SlackConfigurationModel>,
-  InferCreationAttributes<SlackConfigurationModel>
-> {
-  declare id: CreationOptional<number>;
+export class SlackConfigurationModel extends ConnectorBaseModel<SlackConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare slackTeamId: string;
   declare botEnabled: boolean;
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
   // Whitelisted domains are in the format "domain:group_id".
   declare whitelistedDomains?: readonly string[];
-  declare autoReadChannelPattern?: string | null;
+  declare autoReadChannelPatterns: SlackAutoReadPattern[];
 }
+
 SlackConfigurationModel.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -57,9 +44,10 @@ SlackConfigurationModel.init(
       type: DataTypes.ARRAY(DataTypes.STRING),
       allowNull: true,
     },
-    autoReadChannelPattern: {
-      type: DataTypes.STRING,
+    autoReadChannelPatterns: {
+      type: DataTypes.JSONB,
       allowNull: true,
+      defaultValue: [],
     },
   },
   {
@@ -74,29 +62,19 @@ SlackConfigurationModel.init(
       },
     ],
     modelName: "slack_configurations",
+    relationship: "hasOne",
   }
 );
-ConnectorModel.hasOne(SlackConfigurationModel);
 
-export class SlackMessages extends Model<
-  InferAttributes<SlackMessages>,
-  InferCreationAttributes<SlackMessages>
-> {
-  declare id: CreationOptional<number>;
+export class SlackMessages extends ConnectorBaseModel<SlackMessages> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
   declare channelId: string;
   declare messageTs?: string;
   declare documentId: string;
 }
 SlackMessages.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -106,10 +84,6 @@ SlackMessages.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
-    },
-    connectorId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
     },
     channelId: {
       type: DataTypes.STRING,
@@ -128,21 +102,15 @@ SlackMessages.init(
     sequelize: sequelizeConnection,
     modelName: "slack_messages",
     indexes: [
-      { fields: ["connectorId", "channelId", "messageTs"], unique: true },
+      { fields: ["connectorId", "channelId", "documentId"], unique: true },
     ],
   }
 );
-ConnectorModel.hasOne(SlackMessages);
 
-export class SlackChannel extends Model<
-  InferAttributes<SlackChannel>,
-  InferCreationAttributes<SlackChannel>
-> {
-  declare id: CreationOptional<number>;
+export class SlackChannel extends ConnectorBaseModel<SlackChannel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
   declare slackChannelId: string;
   declare slackChannelName: string;
 
@@ -153,11 +121,6 @@ export class SlackChannel extends Model<
 }
 SlackChannel.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -167,10 +130,6 @@ SlackChannel.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
-    },
-    connectorId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
     },
     slackChannelId: {
       type: DataTypes.STRING,
@@ -203,16 +162,10 @@ SlackChannel.init(
     ],
   }
 );
-ConnectorModel.hasMany(SlackChannel);
 
-export class SlackChatBotMessage extends Model<
-  InferAttributes<SlackChatBotMessage>,
-  InferCreationAttributes<SlackChatBotMessage>
-> {
-  declare id: CreationOptional<number>;
+export class SlackChatBotMessage extends ConnectorBaseModel<SlackChatBotMessage> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
   declare channelId: string;
   declare message: string;
   declare slackUserId: string;
@@ -230,21 +183,11 @@ export class SlackChatBotMessage extends Model<
 }
 SlackChatBotMessage.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
     },
     updatedAt: {
       type: DataTypes.DATE,
-    },
-    connectorId: {
-      type: DataTypes.INTEGER,
-
-      allowNull: false,
     },
     channelId: {
       type: DataTypes.STRING,
@@ -309,29 +252,18 @@ SlackChatBotMessage.init(
     indexes: [{ fields: ["connectorId", "channelId", "threadTs"] }],
   }
 );
-ConnectorModel.hasOne(SlackChatBotMessage);
 
-export class SlackBotWhitelistModel extends Model<
-  InferAttributes<SlackBotWhitelistModel>,
-  InferCreationAttributes<SlackBotWhitelistModel>
-> {
-  declare id: CreationOptional<number>;
+export class SlackBotWhitelistModel extends ConnectorBaseModel<SlackBotWhitelistModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare botName: string;
   declare groupIds: string[];
   declare whitelistType: SlackbotWhitelistType;
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
   declare slackConfigurationId: ForeignKey<SlackConfigurationModel["id"]>;
 }
 
 SlackBotWhitelistModel.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -364,5 +296,4 @@ SlackBotWhitelistModel.init(
   }
 );
 
-ConnectorModel.hasMany(SlackBotWhitelistModel);
 SlackConfigurationModel.hasMany(SlackBotWhitelistModel);

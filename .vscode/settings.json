@@ -8,5 +8,17 @@
   },
   "eslint.run": "onSave",
   "typescript.preferences.importModuleSpecifier": "non-relative",
-  "github-actions.workflows.pinned.workflows": []
+  "github-actions.workflows.pinned.workflows": [],
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.formatOnSave": true,
+  "[rust]": {
+    "editor.defaultFormatter": "rust-lang.rust-analyzer",
+    "editor.formatOnSave": true,
+    "editor.tabSize": 4
+  },
+  "rust-analyzer.inlayHints.chainingHints.enable": false,
+  "rust-analyzer.inlayHints.closingBraceHints.enable": false,
+  "rust-analyzer.inlayHints.parameterHints.enable": false,
+  "rust-analyzer.inlayHints.typeHints.enable": false,
+  "rust-analyzer.lens.implementations.enable": false
 }

@@ -3,6 +3,7 @@ import { PublicPostEditMessagesRequestBodySchema } from "@dust-tt/client";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import { isUserMessageType } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
@@ -15,6 +16,8 @@ import { apiError } from "@app/logger/withlogging";
  * @swagger
  * /api/v1/w/{wId}/assistant/conversations/{cId}/messages/{mId}/edit:
  *   post:
+ *     tags:
+ *       - Conversations
  *     summary: Edit an existing message in a conversation
  *     parameters:
  *       - name: wId
@@ -125,7 +128,7 @@ async function handler(
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${r.error.message}`,
+            message: fromError(r.error).toString(),
           },
         });
       }

@@ -1,6 +1,0 @@
-apiVersion: cloud.google.com/v1
-kind: BackendConfig
-metadata:
-  name: apache-tika-backendconfig
-spec:
-  timeoutSec: 120

@@ -1,35 +1,19 @@
-import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional } from "sequelize";
+import { DataTypes } from "sequelize";
 
 import { sequelizeConnection } from "@connectors/resources/storage";
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 
-export class GithubConnectorState extends Model<
-  InferAttributes<GithubConnectorState>,
-  InferCreationAttributes<GithubConnectorState>
-> {
-  declare id: CreationOptional<number>;
+export class GithubConnectorState extends ConnectorBaseModel<GithubConnectorState> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
   declare installationId: string | null;
   declare webhooksEnabledAt?: Date | null;
   declare codeSyncEnabled: boolean;
-
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 GithubConnectorState.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -61,15 +45,11 @@ GithubConnectorState.init(
       { fields: ["connectorId"], unique: true },
       { fields: ["installationId"] },
     ],
+    relationship: "hasOne",
   }
 );
-ConnectorModel.hasOne(GithubConnectorState);
 
-export class GithubIssue extends Model<
-  InferAttributes<GithubIssue>,
-  InferCreationAttributes<GithubIssue>
-> {
-  declare id: CreationOptional<number>;
+export class GithubIssue extends ConnectorBaseModel<GithubIssue> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -77,16 +57,9 @@ export class GithubIssue extends Model<
 
   declare repoId: string;
   declare issueNumber: number;
-
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 GithubIssue.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -120,28 +93,16 @@ GithubIssue.init(
     modelName: "github_issues",
   }
 );
-ConnectorModel.hasMany(GithubIssue);
 
-export class GithubDiscussion extends Model<
-  InferAttributes<GithubDiscussion>,
-  InferCreationAttributes<GithubDiscussion>
-> {
-  declare id: CreationOptional<number>;
+export class GithubDiscussion extends ConnectorBaseModel<GithubDiscussion> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
   declare repoId: string;
   declare discussionNumber: number;
-
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 GithubDiscussion.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -171,13 +132,8 @@ GithubDiscussion.init(
     modelName: "github_discussions",
   }
 );
-ConnectorModel.hasMany(GithubDiscussion);
 
-export class GithubCodeRepository extends Model<
-  InferAttributes<GithubCodeRepository>,
-  InferCreationAttributes<GithubCodeRepository>
-> {
-  declare id: CreationOptional<number>;
+export class GithubCodeRepository extends ConnectorBaseModel<GithubCodeRepository> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare lastSeenAt: CreationOptional<Date>;
@@ -189,16 +145,9 @@ export class GithubCodeRepository extends Model<
   declare repoName: string;
 
   declare sourceUrl: string;
-
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 GithubCodeRepository.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -247,13 +196,8 @@ GithubCodeRepository.init(
     modelName: "github_code_repositories",
   }
 );
-ConnectorModel.hasMany(GithubCodeRepository);
 
-export class GithubCodeFile extends Model<
-  InferAttributes<GithubCodeFile>,
-  InferCreationAttributes<GithubCodeFile>
-> {
-  declare id: CreationOptional<number>;
+export class GithubCodeFile extends ConnectorBaseModel<GithubCodeFile> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare lastSeenAt: CreationOptional<Date>;
@@ -266,16 +210,9 @@ export class GithubCodeFile extends Model<
   declare fileName: string;
   declare sourceUrl: string;
   declare contentHash: string;
-
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 GithubCodeFile.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -330,13 +267,8 @@ GithubCodeFile.init(
     modelName: "github_code_files",
   }
 );
-ConnectorModel.hasMany(GithubCodeFile);
 
-export class GithubCodeDirectory extends Model<
-  InferAttributes<GithubCodeDirectory>,
-  InferCreationAttributes<GithubCodeDirectory>
-> {
-  declare id: CreationOptional<number>;
+export class GithubCodeDirectory extends ConnectorBaseModel<GithubCodeDirectory> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare lastSeenAt: CreationOptional<Date>;
@@ -348,16 +280,9 @@ export class GithubCodeDirectory extends Model<
 
   declare dirName: string;
   declare sourceUrl: string;
-
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 GithubCodeDirectory.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -408,4 +333,3 @@ GithubCodeDirectory.init(
     modelName: "github_code_directories",
   }
 );
-ConnectorModel.hasMany(GithubCodeDirectory);

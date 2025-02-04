@@ -476,6 +476,12 @@ export function dumpSpecification(
             block.spec.instructions
           )}\n\`\`\`\n`;
         }
+        if (block.spec.logprobs) {
+          out += `  logprobs: true\n`;
+        }
+        if (block.spec.top_logprobs) {
+          out += `  top_logprobs: ${block.spec.top_logprobs}\n`;
+        }
         out += `  messages_code: \n\`\`\`\n${escapeTripleBackticks(
           block.spec.messages_code
         )}\n\`\`\`\n`;

@@ -11,9 +11,18 @@ import {
   AgentDustAppRunConfiguration,
 } from "@app/lib/models/assistant/actions/dust_app_run";
 import {
+  AgentGithubCreateIssueAction,
+  AgentGithubGetPullRequestAction,
+} from "@app/lib/models/assistant/actions/github";
+import { AgentGithubConfiguration } from "@app/lib/models/assistant/actions/github";
+import {
   AgentProcessAction,
   AgentProcessConfiguration,
 } from "@app/lib/models/assistant/actions/process";
+import {
+  AgentReasoningAction,
+  AgentReasoningConfiguration,
+} from "@app/lib/models/assistant/actions/reasoning";
 import {
   AgentRetrievalAction,
   AgentRetrievalConfiguration,
@@ -45,20 +54,18 @@ import {
   MessageReaction,
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
-import { ConversationClassification } from "@app/lib/models/conversation_classification";
 import {
-  DocumentTrackerChangeSuggestion,
-  TrackedDocument,
+  TrackerConfigurationModel,
+  TrackerDataSourceConfigurationModel,
+  TrackerGenerationModel,
 } from "@app/lib/models/doc_tracker";
+import { DustAppSecret } from "@app/lib/models/dust_app_secret";
+import { ExtensionConfigurationModel } from "@app/lib/models/extension";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
+import { MembershipInvitation } from "@app/lib/models/membership_invitation";
 import { Plan, Subscription } from "@app/lib/models/plan";
-import { User, UserMetadata } from "@app/lib/models/user";
-import {
-  DustAppSecret,
-  MembershipInvitation,
-  Workspace,
-  WorkspaceHasDomain,
-} from "@app/lib/models/workspace";
+import { Workspace } from "@app/lib/models/workspace";
+import { WorkspaceHasDomain } from "@app/lib/models/workspace_has_domain";
 import {
   AppModel,
   Clone,
@@ -73,18 +80,24 @@ import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_me
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
+import { KillSwitchModel } from "@app/lib/resources/storage/models/kill_switches";
 // Labs - Can be removed at all times if a solution is dropped
 import {
   LabsTranscriptsConfigurationModel,
   LabsTranscriptsHistoryModel,
 } from "@app/lib/resources/storage/models/labs_transcripts";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
+import { PlatformActionsConfigurationModel } from "@app/lib/resources/storage/models/platform_actions";
 import {
   RunModel,
   RunUsageModel,
 } from "@app/lib/resources/storage/models/runs";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { TemplateModel } from "@app/lib/resources/storage/models/templates";
+import {
+  UserMetadataModel,
+  UserModel,
+} from "@app/lib/resources/storage/models/user";
 import logger from "@app/logger/logger";
 
 async function main() {
@@ -92,8 +105,8 @@ async function main() {
     service: "front",
     logger: logger,
   });
-  await User.sync({ alter: true });
-  await UserMetadata.sync({ alter: true });
+  await UserModel.sync({ alter: true });
+  await UserMetadataModel.sync({ alter: true });
   await Workspace.sync({ alter: true });
   await WorkspaceHasDomain.sync({ alter: true });
   await MembershipModel.sync({ alter: true });
@@ -119,8 +132,12 @@ async function main() {
 
   await RunModel.sync({ alter: true });
   await RunUsageModel.sync({ alter: true });
-  await TrackedDocument.sync({ alter: true });
-  await DocumentTrackerChangeSuggestion.sync({ alter: true });
+
+  await TrackerConfigurationModel.sync({ alter: true });
+  await TrackerDataSourceConfigurationModel.sync({ alter: true });
+  await TrackerGenerationModel.sync({ alter: true });
+
+  await ExtensionConfigurationModel.sync({ alter: true });
 
   await Plan.sync({ alter: true });
   await Subscription.sync({ alter: true });
@@ -137,6 +154,8 @@ async function main() {
   await AgentProcessConfiguration.sync({ alter: true });
   await AgentWebsearchConfiguration.sync({ alter: true });
   await AgentBrowseConfiguration.sync({ alter: true });
+  await AgentGithubConfiguration.sync({ alter: true });
+  await AgentReasoningConfiguration.sync({ alter: true });
 
   await AgentDataSourceConfiguration.sync({ alter: true });
 
@@ -156,13 +175,17 @@ async function main() {
   await AgentBrowseAction.sync({ alter: true });
   await AgentConversationIncludeFileAction.sync({ alter: true });
   await AgentMessageContent.sync({ alter: true });
+  await AgentGithubGetPullRequestAction.sync({ alter: true });
+  await AgentGithubCreateIssueAction.sync({ alter: true });
+  await AgentReasoningAction.sync({ alter: true });
 
   await RetrievalDocument.sync({ alter: true });
   await RetrievalDocumentChunk.sync({ alter: true });
 
   await FeatureFlag.sync({ alter: true });
+  await KillSwitchModel.sync({ alter: true });
 
-  await ConversationClassification.sync({ alter: true });
+  await PlatformActionsConfigurationModel.sync({ alter: true });
 
   // Labs - Can be removed at all times if a solution is dropped
   await LabsTranscriptsConfigurationModel.sync({ alter: true });

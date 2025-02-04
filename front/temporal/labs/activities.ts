@@ -16,6 +16,7 @@ import {
   getConversation,
   postNewContentFragment,
 } from "@app/lib/api/assistant/conversation";
+import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { default as apiConfig } from "@app/lib/api/config";
 import { sendEmailWithTemplate } from "@app/lib/api/email";
@@ -35,6 +36,10 @@ import {
   retrieveGoogleTranscriptContent,
   retrieveGoogleTranscripts,
 } from "@app/temporal/labs/utils/google";
+import {
+  retrieveModjoTranscriptContent,
+  retrieveModjoTranscripts,
+} from "@app/temporal/labs/utils/modjo";
 
 export async function retrieveNewTranscriptsActivity(
   transcriptsConfigurationId: ModelId
@@ -101,6 +106,15 @@ export async function retrieveNewTranscriptsActivity(
       transcriptsIdsToProcess.push(...gongTranscriptsIds);
       break;
 
+    case "modjo":
+      const modjoTranscriptsIds = await retrieveModjoTranscripts(
+        auth,
+        transcriptsConfiguration,
+        localLogger
+      );
+      transcriptsIdsToProcess.push(...modjoTranscriptsIds);
+      break;
+
     default:
       assertNever(transcriptsConfiguration.provider);
   }
@@ -151,8 +165,8 @@ export async function processTranscriptActivity(
     user.sId,
     workspace.sId
   );
-
-  if (!auth.workspace()) {
+  const owner = auth.workspace();
+  if (!owner) {
     await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
     throw new Error(
       `Could not find workspace for user (workspaceId: ${transcriptsConfiguration.workspaceId}).`
@@ -193,6 +207,11 @@ export async function processTranscriptActivity(
   let transcriptContent = "";
   let userParticipated = true;
 
+  localLogger.info(
+    {},
+    "[processTranscriptActivity] No history found. Proceeding."
+  );
+
   switch (transcriptsConfiguration.provider) {
     case "google_drive":
       const googleResult = await retrieveGoogleTranscriptContent(
@@ -226,6 +245,27 @@ export async function processTranscriptActivity(
       userParticipated = gongResult.userParticipated;
       break;
 
+    case "modjo":
+      const modjoResult = await retrieveModjoTranscriptContent(
+        auth,
+        transcriptsConfiguration,
+        fileId,
+        localLogger
+      );
+      if (!modjoResult) {
+        localLogger.info(
+          {
+            fileId,
+          },
+          "[processTranscriptActivity] No Gong result found. Stopping."
+        );
+        return;
+      }
+      transcriptTitle = modjoResult.transcriptTitle || "";
+      transcriptContent = modjoResult.transcriptContent || "";
+      userParticipated = modjoResult.userParticipated;
+      break;
+
     default:
       assertNever(transcriptsConfiguration.provider);
   }
@@ -235,6 +275,7 @@ export async function processTranscriptActivity(
       configurationId: transcriptsConfiguration.id,
       fileId,
       fileName: transcriptTitle,
+      workspaceId: owner.id,
     });
   } catch (error) {
     if (error instanceof UniqueConstraintError) {
@@ -247,41 +288,27 @@ export async function processTranscriptActivity(
     throw error;
   }
 
-  const owner = auth.workspace();
+  // FF enables storing all Gong/Modjo transcripts in a single datasource view
+  let fullStorageFF = false;
+  let fullStorageDataSourceViewId = null;
 
-  if (!owner) {
-    localLogger.error(
-      {},
-      "[processTranscriptActivity] No owner found. Stopping."
-    );
-    await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
-    return;
-  }
+  const featureFlags = await getFeatureFlags(owner);
+  fullStorageFF = featureFlags.includes("labs_transcripts_full_storage");
 
-  // labs_transcripts_gong_full_storage FF enables storing all Gong transcripts in a single datasource view
-  let gongFullStorageFF = false;
-  let gongFullStorageDataSourceViewId = null;
-  if (transcriptsConfiguration.provider === "gong") {
-    const featureFlags = await getFeatureFlags(owner);
-    gongFullStorageFF = featureFlags.includes(
-      "labs_transcripts_gong_full_storage"
-    );
+  if (fullStorageFF) {
+    const defaultTranscriptsStorageConfiguration =
+      await LabsTranscriptsConfigurationResource.fetchDefaultFullStorageConfigurationForWorkspace(
+        auth
+      );
 
-    if (gongFullStorageFF) {
-      const defaultGongTranscriptsStorageConfiguration =
-        await LabsTranscriptsConfigurationResource.fetchDefaultFullStorageConfigurationForWorkspace(
-          auth
-        );
-
-      gongFullStorageDataSourceViewId =
-        defaultGongTranscriptsStorageConfiguration?.dataSourceViewId;
-    }
+    fullStorageDataSourceViewId =
+      defaultTranscriptsStorageConfiguration?.dataSourceViewId;
   }
 
   // Decide to store transcript or not (user might not have participated)
   const shouldStoreTranscript =
     (userParticipated && !!transcriptsConfiguration.dataSourceViewId) ||
-    (gongFullStorageFF && !!gongFullStorageDataSourceViewId);
+    (fullStorageFF && !!fullStorageDataSourceViewId);
 
   // Decide to process transcript or not (user needs to have participated)
   const shouldProcessTranscript =
@@ -293,8 +320,8 @@ export async function processTranscriptActivity(
       userParticipated,
       transcriptsConfigurationDataSourceViewId:
         transcriptsConfiguration.dataSourceViewId,
-      gongFullStorageFF,
-      gongFullStorageDataSourceViewId,
+      fullStorageFF,
+      fullStorageDataSourceViewId,
       shouldStoreTranscript,
       shouldProcessTranscript,
     },
@@ -305,8 +332,8 @@ export async function processTranscriptActivity(
     localLogger.info(
       {
         dataSourceViewId: transcriptsConfiguration.dataSourceViewId,
-        gongFullStorageFF,
-        gongFullStorageDataSourceViewId,
+        fullStorageFF,
+        fullStorageDataSourceViewId,
         transcriptsConfiguration,
         transcriptTitle,
         transcriptContentLength: transcriptContent.length,
@@ -315,8 +342,7 @@ export async function processTranscriptActivity(
     );
 
     const dataSourceViewId =
-      gongFullStorageDataSourceViewId ||
-      transcriptsConfiguration.dataSourceViewId;
+      fullStorageDataSourceViewId || transcriptsConfiguration.dataSourceViewId;
 
     if (!dataSourceViewId) {
       localLogger.error(
@@ -367,7 +393,8 @@ export async function processTranscriptActivity(
       dataSourceId: dataSource.dustAPIDataSourceId,
       documentId: transcriptTitle,
       tags: ["transcript", transcriptsConfiguration.provider],
-      parents: [],
+      parentId: null,
+      parents: [transcriptTitle],
       sourceUrl: null,
       timestamp: null,
       section: {
@@ -377,6 +404,8 @@ export async function processTranscriptActivity(
       },
       credentials,
       lightDocumentOutput: true,
+      title: transcriptTitle,
+      mimeType: "text/plain",
     });
 
     if (upsertRes.isErr()) {
@@ -388,6 +417,11 @@ export async function processTranscriptActivity(
         "[processTranscriptActivity] Error storing transcript to Datasource. Keep going to process."
       );
     }
+
+    await transcriptsConfiguration.setStorageStatusForFileId(
+      fileId,
+      shouldStoreTranscript
+    );
 
     localLogger.info(
       {
@@ -448,18 +482,30 @@ export async function processTranscriptActivity(
       origin: null,
     };
 
-    const contentFragmentData = {
-      title: transcriptTitle,
-      content: transcriptContent.toString(),
-      url: null,
-      contentType: "text/plain",
-      baseContext,
-    };
+    const cfRes = await toFileContentFragment(auth, {
+      contentFragment: {
+        title: transcriptTitle,
+        content: transcriptContent,
+        contentType: "text/plain",
+        url: null,
+      },
+      fileName: `${transcriptTitle}.txt`,
+    });
+    if (cfRes.isErr()) {
+      localLogger.error(
+        {
+          conversationSid: initialConversation.sId,
+          error: cfRes.error,
+        },
+        "[processTranscriptActivity] Error creating file for content fragment. Stopping."
+      );
+      return;
+    }
 
     const contentFragmentRes = await postNewContentFragment(
       auth,
       initialConversation,
-      contentFragmentData,
+      cfRes.value,
       baseContext
     );
 
@@ -569,13 +615,13 @@ export async function processTranscriptActivity(
       },
       subject: `[DUST] Meeting summary - ${transcriptTitle}`,
       body: `${htmlAnswer}<div style="text-align: center; margin-top: 20px;">
-    <a href="https://dust.tt/w/${owner.sId}/assistant/${conversation.sId}" 
-      style="display: inline-block; 
-              padding: 10px 20px; 
-              background-color: #000000; 
-              color: #ffffff; 
-              text-decoration: none; 
-              border-radius: 0.75rem; 
+    <a href="https://dust.tt/w/${owner.sId}/assistant/${conversation.sId}"
+      style="display: inline-block;
+              padding: 10px 20px;
+              background-color: #000000;
+              color: #ffffff;
+              text-decoration: none;
+              border-radius: 0.75rem;
               font-weight: bold;">
       Open this conversation in Dust
     </a>

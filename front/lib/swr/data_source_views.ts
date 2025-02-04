@@ -16,7 +16,6 @@ import {
 } from "@app/lib/swr/swr";
 import type { GetDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]/data_source_views";
 import type { GetDataSourceViewContentNodes } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/content-nodes";
-import type { ListTablesResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables";
 import type { GetDataSourceConfigurationResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/configuration";
 
 type DataSourceViewsAndInternalIds = {
@@ -109,6 +108,7 @@ export function useDataSourceViewContentNodes({
   viewType,
   disabled = false,
   swrOptions,
+  showConnectorsNodes,
 }: {
   owner: LightWorkspaceType;
   dataSourceView?: DataSourceViewType;
@@ -118,6 +118,8 @@ export function useDataSourceViewContentNodes({
   viewType?: ContentNodesViewType;
   disabled?: boolean;
   swrOptions?: SWRConfiguration;
+  // TODO(20250126, nodes-core): Remove this after project end
+  showConnectorsNodes?: boolean;
 }): {
   isNodesError: boolean;
   isNodesLoading: boolean;
@@ -129,6 +131,10 @@ export function useDataSourceViewContentNodes({
 } {
   const params = new URLSearchParams();
   appendPaginationParams(params, pagination);
+
+  if (showConnectorsNodes) {
+    params.set("connNodes", "true");
+  }
 
   const url = dataSourceView
     ? `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/content-nodes?${params}`
@@ -196,30 +202,5 @@ export function useDataSourceViewConnectorConfiguration({
     mutateConfiguration: mutate,
     isConfigurationLoading: !disabled && !error && !data,
     isConfigurationError: error,
-  };
-}
-
-export function useDataSourceViewTables({
-  dataSourceView,
-  workspaceId,
-}: {
-  dataSourceView: DataSourceViewType | null;
-  workspaceId: string;
-}) {
-  const tablesFetcher: Fetcher<ListTablesResponseBody> = fetcher;
-  const disabled = !dataSourceView;
-
-  const { data, error, mutate } = useSWRWithDefaults(
-    disabled
-      ? null
-      : `/api/w/${workspaceId}/spaces/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/tables`,
-    tablesFetcher
-  );
-
-  return {
-    tables: useMemo(() => (data ? data.tables : []), [data]),
-    isTablesLoading: !disabled && !error && !data,
-    isTablesError: error,
-    mutateTables: mutate,
   };
 }

@@ -8,20 +8,24 @@ import type {
   UserMessageType,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
-import { ConversationError, isEmptyString } from "@dust-tt/types";
+import {
+  ConversationError,
+  isContentFragmentInputWithContentType,
+  isEmptyString,
+} from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 import {
   createConversation,
   getConversation,
   getUserConversations,
-  normalizeContentFragmentType,
   postNewContentFragment,
 } from "@app/lib/api/assistant/conversation";
+import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
-import { maybeUpsertFileAttachment } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 
@@ -48,6 +52,8 @@ import { apiError } from "@app/logger/withlogging";
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - message
  *             properties:
  *               message:
  *                 $ref: '#/components/schemas/Message'
@@ -63,7 +69,6 @@ import { apiError } from "@app/logger/withlogging";
  *               title:
  *                 type: string
  *                 description: The title of the conversation
- *                 nullable: true
  *                 example: My conversation
  *               visibility:
  *                 type: string
@@ -105,7 +110,7 @@ async function handler(
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${r.error.message}`,
+            message: fromError(r.error).toString(),
           },
         });
       }
@@ -156,7 +161,7 @@ async function handler(
       }
 
       let conversation = await createConversation(auth, {
-        title,
+        title: title ?? null,
         visibility,
       });
 
@@ -164,25 +169,30 @@ async function handler(
       let newMessage: UserMessageType | null = null;
 
       for (const resolvedFragment of resolvedFragments) {
-        if (resolvedFragment.content) {
-          resolvedFragment.contentType = normalizeContentFragmentType({
-            contentType: resolvedFragment.contentType,
-            url: req.url,
+        const { context, ...rest } = resolvedFragment;
+        let contentFragment = rest;
+
+        if (isContentFragmentInputWithContentType(contentFragment)) {
+          const contentFragmentRes = await toFileContentFragment(auth, {
+            contentFragment,
           });
+          if (contentFragmentRes.isErr()) {
+            throw new Error(contentFragmentRes.error.message);
+          }
+          contentFragment = contentFragmentRes.value;
         }
 
-        await maybeUpsertFileAttachment(auth, {
-          contentFragments: [resolvedFragment],
+        const cfRes = await postNewContentFragment(
+          auth,
           conversation,
-        });
-
-        const { context, ...cf } = resolvedFragment;
-        const cfRes = await postNewContentFragment(auth, conversation, cf, {
-          username: context?.username || null,
-          fullName: context?.fullName || null,
-          email: context?.email || null,
-          profilePictureUrl: context?.profilePictureUrl || null,
-        });
+          contentFragment,
+          {
+            username: context?.username ?? null,
+            fullName: context?.fullName ?? null,
+            email: context?.email ?? null,
+            profilePictureUrl: context?.profilePictureUrl ?? null,
+          }
+        );
         if (cfRes.isErr()) {
           return apiError(req, res, {
             status_code: 400,
@@ -232,9 +242,9 @@ async function handler(
             context: {
               timezone: message.context.timezone,
               username: message.context.username,
-              fullName: message.context.fullName,
-              email: message.context.email,
-              profilePictureUrl: message.context.profilePictureUrl,
+              fullName: message.context.fullName ?? null,
+              email: message.context.email ?? null,
+              profilePictureUrl: message.context.profilePictureUrl ?? null,
               origin: message.context.origin ?? "api",
             },
           },

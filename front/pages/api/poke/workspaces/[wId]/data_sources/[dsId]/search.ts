@@ -3,18 +3,20 @@ import { DataSourceSearchQuerySchema } from "@dust-tt/client";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { handleDataSourceSearch } from "@app/lib/api/data_sources";
-import { Authenticator, getSession } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
+import type { SessionWithUser } from "@app/lib/iam/provider";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { apiError } from "@app/logger/withlogging";
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<DataSourceSearchResponseType>>
+  res: NextApiResponse<WithAPIErrorResponse<DataSourceSearchResponseType>>,
+  session: SessionWithUser
 ): Promise<void> {
-  const session = await getSession(req, res);
   const auth = await Authenticator.fromSuperUserSession(
     session,
     req.query.wId as string
@@ -62,14 +64,14 @@ async function handler(
         req.query.tags_not = [req.query.tags_not];
       }
 
-      const r = await DataSourceSearchQuerySchema.safeParse(req.query);
+      const r = DataSourceSearchQuerySchema.safeParse(req.query);
 
       if (r.error) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${r.error.message}`,
+            message: fromError(r.error).toString(),
           },
         });
       }

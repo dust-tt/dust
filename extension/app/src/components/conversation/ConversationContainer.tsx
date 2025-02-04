@@ -1,7 +1,7 @@
 import type {
   AgentMentionType,
   ContentFragmentType,
-  LightWorkspaceType,
+  ExtensionWorkspaceType,
 } from "@dust-tt/client";
 import { Page, useSendNotification } from "@dust-tt/sparkle";
 import { ConversationViewer } from "@extension/components/conversation/ConversationViewer";
@@ -35,7 +35,7 @@ import { useNavigate } from "react-router-dom";
 
 interface ConversationContainerProps {
   conversationId: string | null;
-  owner: LightWorkspaceType;
+  owner: ExtensionWorkspaceType;
   user: StoredUser;
 }
 
@@ -261,7 +261,7 @@ export function ConversationContainer({
           </div>
           <div
             id="assistant-input-header"
-            className="sticky bottom-0 z-20 pb-2 w-full bg-white"
+            className="sticky bottom-0 pb-4 z-20  w-full bg-white"
           >
             <AssistantInputBar
               owner={owner}

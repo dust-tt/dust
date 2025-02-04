@@ -5,22 +5,27 @@ import { getAccessToken } from "@extension/lib/auth";
 export const useDustAPI = () => {
   const { token, isAuthenticated, isUserSetup, user, workspace } = useAuth();
 
+  const commitHash = process.env.COMMIT_HASH;
+  const extensionVersion = process.env.VERSION;
   if (!isAuthenticated || !isUserSetup || !user || !workspace || !token) {
     throw new Error("Not authenticated");
   }
 
-  if (!process.env.DUST_DOMAIN || !process.env.NODE_ENV) {
+  if (!process.env.NODE_ENV) {
     throw new Error("Dust domain or node env not set");
   }
 
   return new DustAPI(
     {
-      url: process.env.DUST_DOMAIN,
-      nodeEnv: process.env.NODE_ENV,
+      url: user.dustDomain,
     },
     {
       apiKey: () => getAccessToken(),
       workspaceId: workspace.sId,
+      extraHeaders: {
+        "X-Dust-Extension-Version": extensionVersion || "development",
+        "X-Commit-Hash": commitHash || "development",
+      },
     },
     console
   );

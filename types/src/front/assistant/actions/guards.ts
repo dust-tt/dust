@@ -10,11 +10,16 @@ import {
   DustAppRunActionType,
   DustAppRunConfigurationType,
 } from "../../../front/assistant/actions/dust_app_run";
+import {
+  GithubCreateIssueConfigurationType,
+  GithubGetPullRequestConfigurationType,
+} from "../../../front/assistant/actions/github";
 import { BaseAction } from "../../../front/assistant/actions/index";
 import {
   ProcessActionType,
   ProcessConfigurationType,
 } from "../../../front/assistant/actions/process";
+import { ReasoningConfigurationType } from "../../../front/assistant/actions/reasoning";
 import {
   RetrievalActionType,
   RetrievalConfigurationType,
@@ -118,6 +123,17 @@ export function isWebsearchConfiguration(
   );
 }
 
+export function isReasoningConfiguration(
+  arg: unknown
+): arg is ReasoningConfigurationType {
+  return (
+    !!arg &&
+    typeof arg === "object" &&
+    "type" in arg &&
+    arg.type === "reasoning_configuration"
+  );
+}
+
 export function isWebsearchActionType(
   arg: AgentActionType
 ): arg is WebsearchActionType {
@@ -139,6 +155,40 @@ export function isBrowseActionType(
   arg: AgentActionType
 ): arg is BrowseActionType {
   return arg.type === "browse_action";
+}
+
+export function isGithubGetPullRequestConfiguration(
+  arg: unknown
+): arg is GithubGetPullRequestConfigurationType {
+  return (
+    !!arg &&
+    typeof arg === "object" &&
+    "type" in arg &&
+    arg.type === "github_get_pull_request_configuration"
+  );
+}
+
+export function isGithubGetPullRequestActionType(
+  arg: AgentActionType
+): arg is BrowseActionType {
+  return arg.type === "github_get_pull_request_action";
+}
+
+export function isGithubCreateIssueConfiguration(
+  arg: unknown
+): arg is GithubCreateIssueConfigurationType {
+  return (
+    !!arg &&
+    typeof arg === "object" &&
+    "type" in arg &&
+    arg.type === "github_create_issue_configuration"
+  );
+}
+
+export function isGithubCreateIssueActionType(
+  arg: AgentActionType
+): arg is BrowseActionType {
+  return arg.type === "github_create_issue_action";
 }
 
 export function isConversationIncludeFileConfiguration(

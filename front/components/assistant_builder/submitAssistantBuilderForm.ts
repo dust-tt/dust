@@ -1,6 +1,7 @@
 import type {
   AgentConfigurationType,
   LightAgentConfigurationType,
+  ModelConfigurationType,
   PostOrPatchAgentConfigurationRequestBody,
   Result,
   RetrievalTimeframe,
@@ -17,7 +18,14 @@ import type {
   AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
 import {
+  DEFAULT_BROWSE_ACTION_DESCRIPTION,
   DEFAULT_BROWSE_ACTION_NAME,
+  DEFAULT_GITHUB_CREATE_ISSUE_ACTION_DESCRIPTION,
+  DEFAULT_GITHUB_CREATE_ISSUE_ACTION_NAME,
+  DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_DESCRIPTION,
+  DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME,
+  DEFAULT_REASONING_ACTION_DESCRIPTION,
+  DEFAULT_REASONING_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/api/assistant/actions/constants";
@@ -32,6 +40,7 @@ export async function submitAssistantBuilderForm({
   agentConfigurationId,
   slackData,
   isDraft,
+  reasoningModels,
 }: {
   owner: WorkspaceType;
   builderState: AssistantBuilderState;
@@ -41,6 +50,7 @@ export async function submitAssistantBuilderForm({
     slackChannelsLinkedWithAgent: SlackChannelLinkedWithAgent[];
   };
   isDraft?: boolean;
+  reasoningModels: ModelConfigurationType[];
 }): Promise<
   Result<LightAgentConfigurationType | AgentConfigurationType, Error>
 > {
@@ -159,7 +169,7 @@ export async function submitAssistantBuilderForm({
           {
             type: "browse_configuration",
             name: DEFAULT_BROWSE_ACTION_NAME,
-            description: "Browse the content of a web page",
+            description: DEFAULT_BROWSE_ACTION_DESCRIPTION,
           },
         ];
 
@@ -192,6 +202,54 @@ export async function submitAssistantBuilderForm({
           },
         ];
 
+      case "GITHUB_GET_PULL_REQUEST":
+        return [
+          {
+            type: "github_get_pull_request_configuration",
+            name: DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME,
+            description: DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_DESCRIPTION,
+          },
+        ];
+
+      case "GITHUB_CREATE_ISSUE":
+        return [
+          {
+            type: "github_create_issue_configuration",
+            name: DEFAULT_GITHUB_CREATE_ISSUE_ACTION_NAME,
+            description: DEFAULT_GITHUB_CREATE_ISSUE_ACTION_DESCRIPTION,
+          },
+        ];
+
+      case "REASONING":
+        // User doesn't have any reasoning models available.
+        if (!reasoningModels.length) {
+          return [];
+        }
+
+        const selectedSupportedReasoningModel = reasoningModels.find(
+          (m) =>
+            m.modelId === a.configuration.modelId &&
+            m.providerId === a.configuration.providerId &&
+            (m.reasoningEffort ?? null) ===
+              (a.configuration.reasoningEffort ?? null)
+        );
+
+        // If the selected model is no longer available, we switch to the first available model.
+        const reasoningModel =
+          selectedSupportedReasoningModel || reasoningModels[0];
+
+        return [
+          {
+            type: "reasoning_configuration",
+            name: DEFAULT_REASONING_ACTION_NAME,
+            description: DEFAULT_REASONING_ACTION_DESCRIPTION,
+            modelId: reasoningModel.modelId,
+            providerId: reasoningModel.providerId,
+            temperature: a.configuration.temperature,
+            reasoningEffort: reasoningModel.reasoningEffort ?? null,
+          },
+        ];
+
       default:
         assertNever(a);
     }
@@ -217,6 +275,8 @@ export async function submitAssistantBuilderForm({
         modelId: builderState.generationSettings.modelSettings.modelId,
         providerId: builderState.generationSettings.modelSettings.providerId,
         temperature: builderState.generationSettings.temperature,
+        reasoningEffort:
+          builderState.generationSettings.modelSettings.reasoningEffort,
       },
       maxStepsPerRun,
       visualizationEnabled: builderState.visualizationEnabled,
@@ -272,7 +332,7 @@ export async function submitAssistantBuilderForm({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          slack_channel_ids: selectedSlackChannels.map(
+          slack_channel_internal_ids: selectedSlackChannels.map(
             ({ slackChannelId }) => slackChannelId
           ),
         }),

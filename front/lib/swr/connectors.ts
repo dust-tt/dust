@@ -194,8 +194,12 @@ export function useToggleSlackChatBot({
 
       sendNotification({
         type: "success",
-        title: "Slack Bot Enabled Successfully",
-        description: "The Slack bot is now active and ready to use.",
+        title: botEnabled
+          ? "Slack Bot Enabled Successfully"
+          : "Slack Bot Disabled Successfully",
+        description: botEnabled
+          ? "The Slack bot is now active and ready to use."
+          : "The Slack bot has been disabled.",
       });
       return configValue;
     } else {

@@ -7,27 +7,20 @@ import * as reporter from "io-ts-reporters";
 import type { Connection, RowStatement, SnowflakeError } from "snowflake-sdk";
 import snowflake from "snowflake-sdk";
 
+import type {
+  RemoteDBDatabase,
+  RemoteDBSchema,
+  RemoteDBTable,
+} from "@connectors/lib/remote_databases/utils";
+import {
+  remoteDBDatabaseCodec,
+  remoteDBSchemaCodec,
+  remoteDBTableCodec,
+} from "@connectors/lib/remote_databases/utils";
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type SnowflakeRow = Record<string, any>;
-export type SnowflakeRows = Array<SnowflakeRow>;
-
-const snowflakeDatabaseCodec = t.type({
-  name: t.string,
-});
-type SnowflakeDatabase = t.TypeOf<typeof snowflakeDatabaseCodec>;
-
-const snowflakeSchemaCodec = t.type({
-  name: t.string,
-  database_name: t.string,
-});
-type SnowflakeSchema = t.TypeOf<typeof snowflakeSchemaCodec>;
-
-const snowflakeTableCodec = t.type({
-  name: t.string,
-  database_name: t.string,
-  schema_name: t.string,
-});
-type SnowflakeTable = t.TypeOf<typeof snowflakeTableCodec>;
+type SnowflakeRow = Record<string, any>;
+type SnowflakeRows = Array<SnowflakeRow>;
 
 const snowflakeGrantCodec = t.type({
   privilege: t.string,
@@ -48,7 +41,7 @@ type TestConnectionErrorCode =
   | "NO_TABLES"
   | "UNKNOWN";
 
-class TestConnectionError extends Error {
+export class TestConnectionError extends Error {
   code: TestConnectionErrorCode;
 
   constructor(code: TestConnectionErrorCode, message: string) {
@@ -165,12 +158,12 @@ export const fetchDatabases = async ({
 }: {
   credentials: SnowflakeCredentials;
   connection?: Connection;
-}): Promise<Result<Array<SnowflakeDatabase>, Error>> => {
+}): Promise<Result<Array<RemoteDBDatabase>, Error>> => {
   const query = "SHOW DATABASES";
-  return _fetchRows<SnowflakeDatabase>({
+  return _fetchRows<RemoteDBDatabase>({
     credentials,
     query,
-    codec: snowflakeDatabaseCodec,
+    codec: remoteDBDatabaseCodec,
     connection,
   });
 };
@@ -186,14 +179,14 @@ export const fetchSchemas = async ({
   credentials: SnowflakeCredentials;
   fromDatabase?: string;
   connection?: Connection;
-}): Promise<Result<Array<SnowflakeSchema>, Error>> => {
+}): Promise<Result<Array<RemoteDBSchema>, Error>> => {
   const query = fromDatabase
     ? `SHOW SCHEMAS IN DATABASE ${fromDatabase}`
     : "SHOW SCHEMAS";
-  return _fetchRows<SnowflakeSchema>({
+  return _fetchRows<RemoteDBSchema>({
     credentials,
     query,
-    codec: snowflakeSchemaCodec,
+    codec: remoteDBSchemaCodec,
     connection,
   });
 };
@@ -209,15 +202,15 @@ export const fetchTables = async ({
   credentials: SnowflakeCredentials;
   fromSchema?: string;
   connection?: Connection;
-}): Promise<Result<Array<SnowflakeTable>, Error>> => {
+}): Promise<Result<Array<RemoteDBTable>, Error>> => {
   const query = fromSchema
     ? `SHOW TABLES IN SCHEMA ${fromSchema}`
     : "SHOW TABLES";
 
-  return _fetchRows<SnowflakeTable>({
+  return _fetchRows<RemoteDBTable>({
     credentials,
     query,
-    codec: snowflakeTableCodec,
+    codec: remoteDBTableCodec,
     connection,
   });
 };

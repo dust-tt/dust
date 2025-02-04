@@ -88,7 +88,7 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<PostSpaceDataSourceResponseBody>>,
   auth: Authenticator,
-  space: SpaceResource
+  { space }: { space: SpaceResource }
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
   const plan = auth.getNonNullablePlan();
@@ -294,7 +294,7 @@ const handleDataSourceWithProvider = async ({
     configuration = {
       botEnabled: true,
       whitelistedDomains: undefined,
-      autoReadChannelPattern: undefined,
+      autoReadChannelPatterns: [],
     };
   }
 
@@ -384,7 +384,6 @@ const handleDataSourceWithProvider = async ({
 
   const dataSourceView =
     await DataSourceViewResource.createDataSourceAndDefaultView(
-      auth,
       {
         assistantDefaultSelected:
           isConnectorProviderAssistantDefaultSelected(provider),
@@ -395,7 +394,8 @@ const handleDataSourceWithProvider = async ({
         name: dataSourceName,
         workspaceId: owner.id,
       },
-      space
+      space,
+      auth.user()
     );
 
   const { dataSource } = dataSourceView;
@@ -502,5 +502,7 @@ const handleDataSourceWithProvider = async ({
 };
 
 export default withSessionAuthenticationForWorkspace(
-  withResourceFetchingFromRoute(handler, "space")
+  withResourceFetchingFromRoute(handler, {
+    space: { requireCanReadOrAdministrate: true },
+  })
 );

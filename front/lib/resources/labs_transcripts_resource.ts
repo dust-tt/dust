@@ -1,4 +1,4 @@
-import type { LabsConnectorProvider, Result } from "@dust-tt/types";
+import type { LabsTranscriptsProviderType, Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type { CreationAttributes } from "sequelize";
 import type {
@@ -85,7 +85,7 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     provider,
   }: {
     auth: Authenticator;
-    provider: LabsConnectorProvider;
+    provider: LabsTranscriptsProviderType;
   }): Promise<LabsTranscriptsConfigurationResource | null> {
     const owner = auth.workspace();
 
@@ -244,6 +244,20 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     await history?.update({ conversationId });
 
     return history.get();
+  }
+
+  async setStorageStatusForFileId(fileId: string, stored: boolean) {
+    const history = await LabsTranscriptsHistoryModel.findOne({
+      where: {
+        configurationId: this.id,
+        fileId,
+      },
+    });
+
+    if (!history) {
+      return null;
+    }
+    await history.update({ stored });
   }
 
   async fetchHistoryForFileId(

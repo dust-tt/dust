@@ -1,4 +1,13 @@
-import { Citation } from "@dust-tt/sparkle";
+import {
+  Citation,
+  CitationClose,
+  CitationIcons,
+  CitationImage,
+  CitationTitle,
+  DocumentIcon,
+  Icon,
+  ImageIcon,
+} from "@dust-tt/sparkle";
 
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 
@@ -14,19 +23,34 @@ export function InputBarCitations({
 
     for (const blob of fileUploaderService.fileBlobs) {
       const isImage = Boolean(blob.preview);
-
       nodes.push(
-        <Citation
-          key={`cf-${blob.id}`}
-          title={blob.id}
-          size="xs"
-          type={isImage ? "image" : "document"}
-          imgSrc={blob.preview}
-          onClose={() => {
-            fileUploaderService.removeFile(blob.id);
-          }}
-          isLoading={blob.isUploading}
-        />
+        <>
+          <Citation
+            key={`cf-${blob.id}`}
+            className="w-40"
+            isLoading={blob.isUploading}
+            action={
+              <CitationClose
+                onClick={() => fileUploaderService.removeFile(blob.id)}
+              />
+            }
+            tooltip={blob.id}
+          >
+            {isImage ? (
+              <>
+                <CitationImage imgSrc={blob.preview ?? ""} />
+                <CitationIcons>
+                  <Icon visual={ImageIcon} />
+                </CitationIcons>
+              </>
+            ) : (
+              <CitationIcons>
+                <Icon visual={DocumentIcon} />
+              </CitationIcons>
+            )}
+            <CitationTitle>{blob.id}</CitationTitle>
+          </Citation>
+        </>
       );
     }
 
@@ -38,7 +62,7 @@ export function InputBarCitations({
   }
 
   return (
-    <div className="mr-4 flex gap-2 overflow-auto border-b border-structure-300/50 pb-3 pt-4">
+    <div className="mr-3 flex gap-2 overflow-auto border-b border-separator pb-3 pt-3">
       {processContentFragments()}
     </div>
   );

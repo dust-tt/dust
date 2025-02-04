@@ -1,3 +1,4 @@
+import type { MenuItem } from "@dust-tt/sparkle";
 import {
   Button,
   Cog6ToothIcon,
@@ -10,8 +11,10 @@ import {
   Spinner,
   useHashParam,
   usePaginationFromUrl,
+  useSendNotification,
 } from "@dust-tt/sparkle";
 import type {
+  APIError,
   ConnectorType,
   ContentNodesViewType,
   DataSourceViewContentNode,
@@ -21,7 +24,11 @@ import type {
   SpaceType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { isValidContentNodesViewType } from "@dust-tt/types";
+import {
+  isDevelopment,
+  isDustWorkspace,
+  isValidContentNodesViewType,
+} from "@dust-tt/types";
 import type {
   CellContext,
   ColumnDef,
@@ -31,8 +38,10 @@ import { useRouter } from "next/router";
 import * as React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { FileDropProvider } from "@app/components/assistant/conversation/FileUploaderContext";
 import { ConnectorPermissionsModal } from "@app/components/ConnectorPermissionsModal";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
+import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import type {
   ContentActionKey,
   ContentActionsRef,
@@ -56,6 +65,7 @@ import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
 type RowData = DataSourceViewContentNode & {
   icon: React.ComponentType;
   onClick?: () => void;
+  menuItems?: MenuItem[];
 };
 
 const columnsBreakpoints = {
@@ -83,17 +93,27 @@ const getTableColumns = (showSpaceUsage: boolean): ColumnDef<RowData>[] => {
       id: "spaces",
       accessorKey: "spaces",
       meta: {
-        width: "14rem",
+        className: "w-48",
       },
       cell: (info: CellContext<RowData, SpaceType[]>) => (
-        <DataTable.CellContent>
-          {info.getValue().length > 0
-            ? info
-                .getValue()
-                .map((v) => v.name)
-                .join(", ")
-            : "-"}
-        </DataTable.CellContent>
+        <DataTable.BasicCellContent
+          label={
+            info.getValue().length > 0
+              ? info
+                  .getValue()
+                  .map((v) => v.name)
+                  .join(", ")
+              : "-"
+          }
+          tooltip={
+            info.getValue().length > 0
+              ? info
+                  .getValue()
+                  .map((v) => v.name)
+                  .join(", ")
+              : "-"
+          }
+        />
       ),
     });
   }
@@ -103,15 +123,29 @@ const getTableColumns = (showSpaceUsage: boolean): ColumnDef<RowData>[] => {
     id: "lastUpdatedAt",
     accessorKey: "lastUpdatedAt",
     meta: {
-      width: "12rem",
+      className: "w-48",
     },
     cell: (info: CellContext<RowData, number>) => (
-      <DataTable.CellContent>
-        {info.getValue()
-          ? formatTimestampToFriendlyDate(info.getValue(), "short")
-          : "-"}
-      </DataTable.CellContent>
+      <DataTable.BasicCellContent
+        label={
+          info.getValue()
+            ? formatTimestampToFriendlyDate(info.getValue(), "short")
+            : "-"
+        }
+      />
     ),
+  });
+
+  columns.push({
+    id: "actions",
+    header: "",
+    meta: {
+      className: "flex justify-end items-center",
+    },
+    cell: (info) =>
+      info.row.original.menuItems && (
+        <DataTable.MoreButton menuItems={info.row.original.menuItems} />
+      ),
   });
 
   return columns;
@@ -162,6 +196,8 @@ type SpaceDataSourceViewContentListProps = {
   plan: PlanType;
   space: SpaceType;
   systemSpace: SpaceType;
+  // TODO(20250126, nodes-core): Remove this after project end
+  showConnectorsNodes?: boolean;
 };
 
 export const SpaceDataSourceViewContentList = ({
@@ -176,10 +212,12 @@ export const SpaceDataSourceViewContentList = ({
   plan,
   space,
   systemSpace,
+  showConnectorsNodes,
 }: SpaceDataSourceViewContentListProps) => {
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
   const [showConnectorPermissionsModal, setShowConnectorPermissionsModal] =
     useState(false);
+  const sendNotification = useSendNotification();
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const contentActionsRef = useRef<ContentActionsRef>(null);
 
@@ -195,7 +233,7 @@ export const SpaceDataSourceViewContentList = ({
     workspaceId: owner.sId,
     disabled: !showSpaceUsage,
   });
-  const { dataSourceViews } = useDataSourceViews(owner, {
+  const { dataSourceViews, mutateDataSourceViews } = useDataSourceViews(owner, {
     disabled: !showSpaceUsage,
   });
   const handleViewTypeChange = useCallback(
@@ -211,8 +249,9 @@ export const SpaceDataSourceViewContentList = ({
     [setPagination, setViewType, viewType, pagination.pageSize]
   );
 
-  const isServerPagination =
-    isFolder(dataSourceView.dataSource) && !dataSourceSearch;
+  // TODO(20250127, nodes-core): turn to true and remove when implementing pagination
+  const isServerPagination = false;
+  // isFolder(dataSourceView.dataSource) && !dataSourceSearch;
 
   const columns = useMemo(
     () => getTableColumns(showSpaceUsage),
@@ -230,6 +269,8 @@ export const SpaceDataSourceViewContentList = ({
     parentId,
     pagination: isServerPagination ? pagination : undefined,
     viewType: isValidContentNodesViewType(viewType) ? viewType : "documents",
+    // TODO(20250126, nodes-core): Remove this after project end
+    showConnectorsNodes,
   });
 
   const { hasContent: hasDocuments, isNodesValidating: isDocumentsValidating } =
@@ -249,6 +290,76 @@ export const SpaceDataSourceViewContentList = ({
 
   const isDataSourceManaged = isManaged(dataSourceView.dataSource);
 
+  const addToSpace = useCallback(
+    async (contentNode: DataSourceViewContentNode, spaceSId: string) => {
+      const existingViewForSpace = dataSourceViews.find(
+        (d) =>
+          d.spaceId === spaceSId &&
+          d.dataSource.sId === dataSourceView.dataSource.sId
+      );
+
+      try {
+        let res;
+        if (existingViewForSpace) {
+          res = await fetch(
+            `/api/w/${owner.sId}/spaces/${spaceSId}/data_source_views/${existingViewForSpace.sId}`,
+            {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                parentsToAdd: [contentNode.internalId],
+              }),
+            }
+          );
+        } else {
+          res = await fetch(
+            `/api/w/${owner.sId}/spaces/${spaceSId}/data_source_views`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                dataSourceId: dataSourceView.dataSource.sId,
+                parentsIn: [contentNode.internalId],
+              }),
+            }
+          );
+        }
+
+        if (!res.ok) {
+          const rawError: { error: APIError } = await res.json();
+          sendNotification({
+            title: "Error while adding data to space",
+            description: rawError.error.message,
+            type: "error",
+          });
+        } else {
+          sendNotification({
+            title: "Data added to space",
+            type: "success",
+          });
+          await mutateDataSourceViews();
+        }
+      } catch (e) {
+        sendNotification({
+          title: "Error while adding data to space",
+          description: `An Unknown error ${e} occurred while adding data to space.`,
+          type: "error",
+        });
+      }
+    },
+    [
+      dataSourceView.dataSource.sId,
+      dataSourceViews,
+      mutateDataSourceViews,
+      owner.sId,
+      sendNotification,
+    ]
+  );
+
   useEffect(() => {
     if (!isTablesValidating && !isDocumentsValidating) {
       if (isDataSourceManaged) {
@@ -257,9 +368,9 @@ export const SpaceDataSourceViewContentList = ({
       }
       // If the view only has content in one of the two views, we switch to that view.
       // if both view have content, or neither views have content, we default to documents.
-      if (hasTables === true && hasDocuments === false) {
+      if (hasTables && !hasDocuments) {
         handleViewTypeChange("tables");
-      } else if (hasTables === false && hasDocuments === true) {
+      } else if (!hasTables && hasDocuments) {
         handleViewTypeChange("documents");
       } else if (!viewType) {
         handleViewTypeChange("documents");
@@ -279,7 +390,10 @@ export const SpaceDataSourceViewContentList = ({
     () =>
       nodes?.map((contentNode) => ({
         ...contentNode,
-        icon: getVisualForContentNode(contentNode),
+        icon: getVisualForContentNode(
+          contentNode,
+          isDevelopment() || isDustWorkspace(owner)
+        ),
         spaces: spaces.filter((space) =>
           dataSourceViews
             .filter(
@@ -302,22 +416,30 @@ export const SpaceDataSourceViewContentList = ({
             }
           },
         }),
-        moreMenuItems: getMenuItems(
+        dropdownMenuProps: {
+          modal: false,
+        },
+        menuItems: getMenuItems(
           canReadInSpace,
           canWriteInSpace,
           dataSourceView,
           contentNode,
-          contentActionsRef
+          contentActionsRef,
+          spaces,
+          dataSourceViews,
+          addToSpace
         ),
       })) || [],
     [
-      canWriteInSpace,
-      canReadInSpace,
-      dataSourceView,
       nodes,
-      onSelect,
+      owner,
       spaces,
+      canReadInSpace,
+      canWriteInSpace,
+      dataSourceView,
       dataSourceViews,
+      addToSpace,
+      onSelect,
     ]
   );
 
@@ -368,143 +490,150 @@ export const SpaceDataSourceViewContentList = ({
   const isEmpty = rows.length === 0 && !isNodesLoading;
 
   return (
-    <>
-      <div
-        className={classNames(
-          "flex gap-2",
-          isEmpty
-            ? "h-36 w-full items-center justify-center rounded-xl bg-muted-background"
-            : ""
-        )}
+    // MultipleDocumentsUpload listens to the file drop context and uploads the files.
+    <FileDropProvider>
+      <DropzoneContainer
+        description="Drag and drop your files here."
+        title="Add Files"
+        disabled={!canWriteInSpace}
       >
-        {!isEmpty && (
-          <>
-            <SearchInput
-              name="search"
-              placeholder="Search (Name)"
-              value={dataSourceSearch}
-              onChange={(s) => {
-                setPagination(
-                  { pageIndex: 0, pageSize: pagination.pageSize },
-                  "replace"
-                );
-                setDataSourceSearch(s);
-              }}
-            />
-          </>
-        )}
-        {isEmpty && emptyContent}
-        {isFolder(dataSourceView.dataSource) && (
-          <>
-            {((viewType === "tables" && hasDocuments) ||
-              (viewType === "documents" && hasTables)) && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    size="sm"
-                    label={viewType === "documents" ? "Documents" : "Tables"}
-                    variant="outline"
-                    isSelect
-                  />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem
-                    label="Documents"
-                    onClick={() => handleViewTypeChange("documents")}
-                  />
-                  <DropdownMenuItem
-                    label="Tables"
-                    onClick={() => handleViewTypeChange("tables")}
-                  />
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-            <FoldersHeaderMenu
+        <div
+          className={classNames(
+            "flex w-full gap-2",
+            isEmpty
+              ? "h-36 items-center justify-center rounded-xl bg-muted-background"
+              : "pb-2"
+          )}
+        >
+          {!isEmpty && (
+            <>
+              <SearchInput
+                name="search"
+                placeholder="Search (Name)"
+                value={dataSourceSearch}
+                onChange={(s) => {
+                  setPagination(
+                    { pageIndex: 0, pageSize: pagination.pageSize },
+                    "replace"
+                  );
+                  setDataSourceSearch(s);
+                }}
+              />
+            </>
+          )}
+          {isEmpty && emptyContent}
+          {isFolder(dataSourceView.dataSource) && (
+            <>
+              {((viewType === "tables" && hasDocuments) ||
+                (viewType === "documents" && hasTables)) && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      size="sm"
+                      label={viewType === "documents" ? "Documents" : "Tables"}
+                      variant="outline"
+                      isSelect
+                    />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem
+                      label="Documents"
+                      onClick={() => handleViewTypeChange("documents")}
+                    />
+                    <DropdownMenuItem
+                      label="Tables"
+                      onClick={() => handleViewTypeChange("tables")}
+                    />
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+              <FoldersHeaderMenu
+                owner={owner}
+                space={space}
+                canWriteInSpace={canWriteInSpace}
+                folder={dataSourceView}
+                contentActionsRef={contentActionsRef}
+              />
+            </>
+          )}
+          {isWebsite(dataSourceView.dataSource) && (
+            <WebsitesHeaderMenu
               owner={owner}
               space={space}
               canWriteInSpace={canWriteInSpace}
-              folder={dataSourceView}
-              contentActionsRef={contentActionsRef}
+              dataSourceView={dataSourceView}
             />
-          </>
+          )}
+          {isManaged(dataSourceView.dataSource) &&
+            space.kind !== "system" &&
+            !isEmpty && (
+              <EditSpaceManagedDataSourcesViews
+                owner={owner}
+                space={space}
+                systemSpace={systemSpace}
+                isAdmin={isAdmin}
+                dataSourceView={dataSourceView}
+                onSelectedDataUpdated={onSelectedDataUpdated}
+              />
+            )}
+          {isManaged(dataSourceView.dataSource) &&
+            connector &&
+            !parentId &&
+            space.kind === "system" && (
+              <div className="flex flex-col items-center gap-2 text-sm text-element-700">
+                {!isNodesLoading && rows.length === 0 && (
+                  <div>Connection ready. Select the data to sync.</div>
+                )}
+
+                <ConnectorPermissionsModal
+                  owner={owner}
+                  connector={connector}
+                  dataSource={dataSourceView.dataSource}
+                  isOpen={showConnectorPermissionsModal}
+                  onClose={(save) => {
+                    setShowConnectorPermissionsModal(false);
+                    if (save) {
+                      void mutateContentNodes();
+                    }
+                  }}
+                  readOnly={false}
+                  isAdmin={isAdmin}
+                  onManageButtonClick={() => {
+                    setShowConnectorPermissionsModal(true);
+                  }}
+                />
+              </div>
+            )}
+        </div>
+        {isNodesLoading && (
+          <div className="mt-8 flex justify-center">
+            <Spinner />
+          </div>
         )}
-        {isWebsite(dataSourceView.dataSource) && (
-          <WebsitesHeaderMenu
-            owner={owner}
-            space={space}
-            canWriteInSpace={canWriteInSpace}
-            dataSourceView={dataSourceView}
+        {rows.length > 0 && (
+          <DataTable
+            data={rows}
+            columns={columns}
+            filter={dataSourceSearch}
+            filterColumn="title"
+            className="pb-4"
+            sorting={sorting}
+            setSorting={setSorting}
+            totalRowCount={isServerPagination ? totalNodesCount : undefined}
+            pagination={pagination}
+            setPagination={setPagination}
+            columnsBreakpoints={columnsBreakpoints}
           />
         )}
-        {isManaged(dataSourceView.dataSource) &&
-          space.kind !== "system" &&
-          !isEmpty && (
-            <EditSpaceManagedDataSourcesViews
-              owner={owner}
-              space={space}
-              systemSpace={systemSpace}
-              isAdmin={isAdmin}
-              dataSourceView={dataSourceView}
-              onSelectedDataUpdated={onSelectedDataUpdated}
-            />
-          )}
-        {isManaged(dataSourceView.dataSource) &&
-          connector &&
-          !parentId &&
-          space.kind === "system" && (
-            <div className="flex flex-col items-center gap-2 text-sm text-element-700">
-              {!isNodesLoading && rows.length === 0 && (
-                <div>Connection ready. Select the data to sync.</div>
-              )}
-
-              <ConnectorPermissionsModal
-                owner={owner}
-                connector={connector}
-                dataSource={dataSourceView.dataSource}
-                isOpen={showConnectorPermissionsModal}
-                onClose={(save) => {
-                  setShowConnectorPermissionsModal(false);
-                  if (save) {
-                    void mutateContentNodes();
-                  }
-                }}
-                readOnly={false}
-                isAdmin={isAdmin}
-                onManageButtonClick={() => {
-                  setShowConnectorPermissionsModal(true);
-                }}
-              />
-            </div>
-          )}
-      </div>
-      {isNodesLoading && (
-        <div className="mt-8 flex justify-center">
-          <Spinner />
-        </div>
-      )}
-      {rows.length > 0 && (
-        <DataTable
-          data={rows}
-          columns={columns}
-          filter={dataSourceSearch}
-          filterColumn="title"
-          className="pb-4"
-          sorting={sorting}
-          setSorting={setSorting}
-          totalRowCount={isServerPagination ? totalNodesCount : undefined}
-          pagination={pagination}
-          setPagination={setPagination}
-          columnsBreakpoints={columnsBreakpoints}
+        <ContentActions
+          ref={contentActionsRef}
+          dataSourceView={dataSourceView}
+          totalNodesCount={totalNodesCount}
+          owner={owner}
+          plan={plan}
+          onSave={onSaveAction}
         />
-      )}
-      <ContentActions
-        ref={contentActionsRef}
-        dataSourceView={dataSourceView}
-        totalNodesCount={totalNodesCount}
-        owner={owner}
-        plan={plan}
-        onSave={onSaveAction}
-      />
-    </>
+      </DropzoneContainer>
+    </FileDropProvider>
   );
 };

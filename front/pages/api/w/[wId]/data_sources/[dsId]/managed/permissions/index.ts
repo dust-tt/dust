@@ -282,6 +282,18 @@ export async function getManagedDataSourcePermissionsHandler(
         },
       });
     }
+    if (permissionsRes.error.type === "connector_authorization_error") {
+      return apiError(req, res, {
+        status_code: 401,
+        api_error: {
+          type: "data_source_auth_error",
+          message:
+            "Authorization error while retrieving the data source permissions.",
+        },
+      });
+    }
+    // Other error codes are invalid requests from front to connectors or 500s which should be
+    // treated as 500.
     return apiError(req, res, {
       status_code: 500,
       api_error: {

@@ -6,6 +6,7 @@ import {
   NotionConnectorPageCacheEntry,
   NotionConnectorResourcesToCheckCacheEntry,
   NotionConnectorState,
+  NotionDatabase,
   NotionPage,
 } from "@connectors/lib/models/notion";
 import type {
@@ -39,6 +40,12 @@ export class NotionConnectorStrategy
     transaction: Transaction
   ): Promise<void> {
     await NotionPage.destroy({
+      where: {
+        connectorId: connector.id,
+      },
+      transaction,
+    });
+    await NotionDatabase.destroy({
       where: {
         connectorId: connector.id,
       },

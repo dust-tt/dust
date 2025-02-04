@@ -13,6 +13,7 @@ import type {
   RetrievalDocumentPublicType,
   WebsearchActionPublicType,
   WebsearchResultPublicType,
+  WorkspaceType,
 } from "@dust-tt/client";
 import {
   assertNever,
@@ -22,33 +23,36 @@ import {
   isWebsearchActionType,
   removeNulls,
 } from "@dust-tt/client";
-import type {
-  ConversationMessageEmojiSelectorProps,
-  ConversationMessageSizeType,
-} from "@dust-tt/sparkle";
 import {
   ArrowPathIcon,
   Button,
-  ChatBubbleThoughtIcon,
   Chip,
   Citation,
+  CitationIcons,
+  CitationIndex,
+  CitationTitle,
   ClipboardIcon,
   ContentMessage,
   ConversationMessage,
   DocumentDuplicateIcon,
+  DocumentTextIcon,
   EyeIcon,
   Markdown,
+  Page,
   Popover,
   useSendNotification,
 } from "@dust-tt/sparkle";
 import { AgentMessageActions } from "@extension/components/conversation/AgentMessageActions";
+import type { FeedbackSelectorProps } from "@extension/components/conversation/FeedbackSelector";
+import { FeedbackSelector } from "@extension/components/conversation/FeedbackSelector";
 import { GenerationContext } from "@extension/components/conversation/GenerationContextProvider";
-import type { MarkdownCitation } from "@extension/components/conversation/MarkdownCitation";
 import {
   CitationsContext,
   CiteBlock,
   getCiteDirective,
 } from "@extension/components/markdown/CiteBlock";
+import type { MarkdownCitation } from "@extension/components/markdown/MarkdownCitation";
+import { citationIconMap } from "@extension/components/markdown/MarkdownCitation";
 import {
   MentionBlock,
   mentionDirective,
@@ -57,6 +61,7 @@ import { useSubmitFunction } from "@extension/components/utils/useSubmitFunction
 import { useEventSource } from "@extension/hooks/useEventSource";
 import { assertNeverAndIgnore } from "@extension/lib/assertNeverAndIgnore";
 import { retryMessage } from "@extension/lib/conversation";
+import type { StoredUser } from "@extension/lib/storage";
 import {
   useCallback,
   useContext,
@@ -69,6 +74,27 @@ import type { Components } from "react-markdown";
 import type { ReactMarkdownProps } from "react-markdown/lib/complex-types";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 import { visit } from "unist-util-visit";
+
+function cleanUpCitations(message: string): string {
+  const regex = / ?:cite\[[a-zA-Z0-9, ]+\]/g;
+  return message.replace(regex, "");
+}
+
+export const FeedbackSelectorPopoverContent = ({
+  owner,
+  agentMessageToRender,
+}: {
+  owner: WorkspaceType;
+  agentMessageToRender: AgentMessagePublicType;
+}) => {
+  return (
+    <div className="mb-4 mt-2 flex flex-col gap-2">
+      <Page.P variant="secondary">
+        Your feedback is available to editors of the assistant.
+      </Page.P>
+    </div>
+  );
+};
 
 export function visualizationDirective() {
   return (tree: any) => {
@@ -87,10 +113,12 @@ export function visualizationDirective() {
 export function makeDocumentCitation(
   document: RetrievalDocumentPublicType
 ): MarkdownCitation {
+  const IconComponent =
+    citationIconMap[getProviderFromRetrievedDocument(document)];
   return {
     href: document.sourceUrl ?? undefined,
     title: getTitleFromRetrievedDocument(document),
-    type: getProviderFromRetrievedDocument(document),
+    icon: <IconComponent />,
   };
 }
 
@@ -101,7 +129,7 @@ export function makeWebsearchResultsCitation(
     description: result.snippet,
     href: result.link,
     title: result.title,
-    type: "document" as const,
+    icon: <DocumentTextIcon />,
   };
 }
 
@@ -109,9 +137,9 @@ interface AgentMessageProps {
   conversationId: string;
   isLastMessage: boolean;
   message: AgentMessagePublicType;
-  messageEmoji?: ConversationMessageEmojiSelectorProps;
+  messageFeedback: FeedbackSelectorProps;
   owner: LightWorkspaceType;
-  size: ConversationMessageSizeType;
+  user: StoredUser;
 }
 
 /**
@@ -124,9 +152,9 @@ export function AgentMessage({
   conversationId,
   isLastMessage,
   message,
-  messageEmoji,
+  messageFeedback,
   owner,
-  size,
+  user,
 }: AgentMessageProps) {
   const sendNotification = useSendNotification();
 
@@ -143,6 +171,8 @@ export function AgentMessage({
   const [activeReferences, setActiveReferences] = useState<
     { index: number; document: MarkdownCitation }[]
   >([]);
+
+  const isGlobalAgent = message.configuration.id === -1;
 
   const shouldStream = (() => {
     if (message.status !== "created") {
@@ -167,7 +197,7 @@ export function AgentMessage({
 
   const buildEventSourceURL = useCallback(
     (lastEvent: string | null) => {
-      const esURL = `${process.env.DUST_DOMAIN}/api/v1/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${message.sId}/events`;
+      const esURL = `${user.dustDomain}/api/v1/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${message.sId}/events`;
       let lastEventId = "";
       if (lastEvent) {
         const eventPayload: {
@@ -222,6 +252,10 @@ export function AgentMessage({
       case "process_params":
       case "websearch_params":
       case "browse_params":
+      case "github_get_pull_request_params":
+      case "reasoning_started":
+      case "reasoning_thinking":
+      case "reasoning_tokens":
       case "conversation_include_file_params":
         setStreamedAgentMessage((m) => {
           return updateMessageWithAction(m, event.action);
@@ -273,7 +307,7 @@ export function AgentMessage({
             break;
           default:
             // Log message and do nothing. Don't crash if a new token classification is not handled here.
-            assertNeverAndIgnore(event.classification);
+            assertNeverAndIgnore(event);
             break;
         }
         break;
@@ -350,20 +384,6 @@ export function AgentMessage({
     }
   }
 
-  const [lastHoveredReference, setLastHoveredReference] = useState<
-    number | null
-  >(null);
-
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (lastHoveredReference !== null) {
-      timer = setTimeout(() => {
-        setLastHoveredReference(null);
-      }, 1000); // Reset after 1 second.
-    }
-    return () => clearTimeout(timer);
-  }, [lastHoveredReference]);
-
   const generationContext = useContext(GenerationContext);
   if (!generationContext) {
     throw new Error(
@@ -438,7 +458,7 @@ export function AgentMessage({
             label="See visualization on Dust website"
             onClick={() => {
               window.open(
-                `${process.env.DUST_DOMAIN}/w/${owner.sId}/assistant/${conversationId}`
+                `${user.dustDomain}/w/${owner.sId}/assistant/${conversationId}`
               );
             }}
           />
@@ -456,14 +476,19 @@ export function AgentMessage({
   );
 
   const citations = useMemo(
-    () => getCitations({ activeReferences, lastHoveredReference }),
-    [activeReferences, lastHoveredReference]
+    () => getCitations({ activeReferences }),
+    [activeReferences]
   );
 
-  function cleanUpCitations(message: string): string {
-    const regex = / ?:cite\[[a-zA-Z0-9, ]+\]/g;
-    return message.replace(regex, "");
-  }
+  const PopoverContent = useCallback(
+    () => (
+      <FeedbackSelectorPopoverContent
+        owner={owner}
+        agentMessageToRender={agentMessageToRender}
+      />
+    ),
+    [owner, agentMessageToRender]
+  );
 
   const buttons =
     message.status === "failed"
@@ -472,7 +497,7 @@ export function AgentMessage({
           <Button
             key="copy-msg-button"
             tooltip="Copy to clipboard"
-            variant="outline"
+            variant="ghost"
             size="xs"
             onClick={() => {
               void navigator.clipboard.writeText(
@@ -480,18 +505,34 @@ export function AgentMessage({
               );
             }}
             icon={ClipboardIcon}
+            className="text-muted-foreground"
           />,
           <Button
             key="retry-msg-button"
             tooltip="Retry"
-            variant="outline"
+            variant="ghost"
             size="xs"
             onClick={() => {
               void retryHandler(agentMessageToRender);
             }}
             icon={ArrowPathIcon}
+            className="text-muted-foreground"
             disabled={isRetryHandlerProcessing || shouldStream}
           />,
+          // One cannot leave feedback on global agents.
+          ...(isGlobalAgent ||
+          agentMessageToRender.configuration.status === "draft"
+            ? []
+            : [
+                <div key="separator" className="flex items-center">
+                  <div className="h-5 w-px bg-border" />
+                </div>,
+                <FeedbackSelector
+                  key="feedback-selector"
+                  {...messageFeedback}
+                  getPopoverInfo={PopoverContent}
+                />,
+              ]),
         ];
 
   return (
@@ -500,7 +541,6 @@ export function AgentMessage({
       name={`@${agentConfiguration.name}`}
       buttons={buttons}
       avatarBusy={agentMessageToRender.status === "created"}
-      messageEmoji={messageEmoji}
       renderName={() => {
         return (
           <div className="flex flex-row items-center gap-2">
@@ -511,7 +551,6 @@ export function AgentMessage({
         );
       }}
       type="agent"
-      size={size}
       citations={citations}
     >
       <div>
@@ -554,22 +593,15 @@ export function AgentMessage({
 
     return (
       <div className="flex flex-col gap-y-4">
-        <AgentMessageActions
-          agentMessage={agentMessage}
-          size={size}
-          owner={owner}
-        />
+        <div className="flex flex-col gap-2">
+          <AgentMessageActions agentMessage={agentMessage} owner={owner} />
 
-        {agentMessage.chainOfThought?.length ? (
-          <ContentMessage
-            title="Assistant thoughts"
-            variant="slate"
-            icon={ChatBubbleThoughtIcon}
-          >
-            {agentMessage.chainOfThought}
-          </ContentMessage>
-        ) : null}
-
+          {agentMessage.chainOfThought?.length ? (
+            <ContentMessage title="Assistant thoughts" variant="slate">
+              {agentMessage.chainOfThought}
+            </ContentMessage>
+          ) : null}
+        </div>
         {agentMessage.content !== null && (
           <div>
             {lastTokenClassification !== "chain_of_thought" &&
@@ -582,7 +614,6 @@ export function AgentMessage({
                 value={{
                   references,
                   updateActiveReferences,
-                  setHoveredReference: setLastHoveredReference,
                 }}
               >
                 <Markdown
@@ -630,27 +661,22 @@ export function AgentMessage({
 
 function getCitations({
   activeReferences,
-  lastHoveredReference,
 }: {
   activeReferences: {
     index: number;
     document: MarkdownCitation;
   }[];
-  lastHoveredReference: number | null;
 }) {
   activeReferences.sort((a, b) => a.index - b.index);
   return activeReferences.map(({ document, index }) => {
     return (
-      <Citation
-        key={index}
-        size="xs"
-        sizing="fluid"
-        isBlinking={lastHoveredReference === index}
-        type={document.type}
-        title={document.title}
-        href={document.href}
-        index={index}
-      />
+      <Citation key={index} href={document.href}>
+        <CitationIcons>
+          <CitationIndex>{index}</CitationIndex>
+          {document.icon}
+        </CitationIcons>
+        <CitationTitle>{document.title}</CitationTitle>
+      </Citation>
     );
   });
 }

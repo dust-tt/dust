@@ -53,9 +53,11 @@ makeScript({}, async ({ execute }, logger) => {
     );
     const groupIds = uniq([
       ...vaultIds.map((vaultId) => groupIdsByVaultId[vaultId]).flat(),
+      // @ts-expect-error `groupIds` was removed.
       ...agent.groupIds,
     ]);
     const newGroupIds = groupIds.filter(
+      // @ts-expect-error `groupIds` was removed.
       (groupId) => !agent.groupIds.includes(groupId)
     );
 

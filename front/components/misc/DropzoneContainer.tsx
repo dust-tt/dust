@@ -7,12 +7,14 @@ interface DropzoneContainerProps {
   children: React.ReactNode;
   description: string;
   title: string;
+  disabled?: boolean;
 }
 
 export function DropzoneContainer({
   children,
   description,
   title,
+  disabled,
 }: DropzoneContainerProps) {
   const { setDroppedFiles } = useFileDrop();
 
@@ -44,6 +46,10 @@ export function DropzoneContainer({
       setDroppedFiles(files);
     }
   };
+
+  if (disabled) {
+    return children;
+  }
 
   return (
     <div

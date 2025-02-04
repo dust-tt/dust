@@ -191,6 +191,11 @@ async function handleUserMessageEvents(
             case "websearch_params":
             case "browse_params":
             case "conversation_include_file_params":
+            case "github_get_pull_request_params":
+            case "github_create_issue_params":
+            case "reasoning_started":
+            case "reasoning_thinking":
+            case "reasoning_tokens":
             case "agent_error":
             case "agent_action_success":
             case "generation_tokens":
@@ -264,7 +269,7 @@ async function handleUserMessageEvents(
             error: e,
             conversationId: conversation.sId,
             workspaceId: conversation.owner.sId,
-            type: "handl_user_message_events",
+            type: "handle_user_message_events",
             userMessageId: userMessage?.sId,
             agentMessageIds: agentMessages.map((m) => m.sId),
           },
@@ -345,6 +350,11 @@ export async function retryAgentMessageWithPubSub(
               case "websearch_params":
               case "browse_params":
               case "conversation_include_file_params":
+              case "github_get_pull_request_params":
+              case "github_create_issue_params":
+              case "reasoning_started":
+              case "reasoning_thinking":
+              case "reasoning_tokens":
               case "agent_error":
               case "agent_action_success":
               case "generation_tokens":

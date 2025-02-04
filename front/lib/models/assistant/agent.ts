@@ -1,32 +1,23 @@
 import type {
   AgentConfigurationScope,
+  AgentReasoningEffort,
   AgentStatus,
   GlobalAgentStatus,
   ModelIdType,
   ModelProviderIdType,
 } from "@dust-tt/types";
-import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-  NonAttribute,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import { DataTypes } from "sequelize";
 
-import { User } from "@app/lib/models/user";
-import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { TemplateModel } from "@app/lib/resources/storage/models/templates";
+import { UserModel } from "@app/lib/resources/storage/models/user";
+import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
 /**
  * Agent configuration
  */
-export class AgentConfiguration extends Model<
-  InferAttributes<AgentConfiguration>,
-  InferCreationAttributes<AgentConfiguration>
-> {
-  declare id: CreationOptional<number>;
+export class AgentConfiguration extends WorkspaceAwareModel<AgentConfiguration> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -43,30 +34,27 @@ export class AgentConfiguration extends Model<
   declare providerId: ModelProviderIdType;
   declare modelId: ModelIdType;
   declare temperature: number;
+  declare reasoningEffort: AgentReasoningEffort | null;
 
   declare pictureUrl: string;
 
-  declare workspaceId: ForeignKey<Workspace["id"]>;
-  declare authorId: ForeignKey<User["id"]>;
+  declare authorId: ForeignKey<UserModel["id"]>;
 
   declare maxStepsPerRun: number;
   declare visualizationEnabled: boolean;
 
   declare templateId: ForeignKey<TemplateModel["id"]> | null;
 
-  declare groupIds: number[];
   declare requestedGroupIds: number[][];
 
-  declare author: NonAttribute<User>;
+  // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
+  declare groupIds?: number[];
+
+  declare author: NonAttribute<UserModel>;
 }
 
 AgentConfiguration.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -121,6 +109,10 @@ AgentConfiguration.init(
       allowNull: false,
       defaultValue: 0.7,
     },
+    reasoningEffort: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
     maxStepsPerRun: {
       type: DataTypes.INTEGER,
       allowNull: true,
@@ -134,14 +126,15 @@ AgentConfiguration.init(
       type: DataTypes.TEXT,
       allowNull: false,
     },
-    // TODO(2024-11-04 flav) `groupIds` clean up.
-    groupIds: {
-      type: DataTypes.ARRAY(DataTypes.INTEGER),
+    requestedGroupIds: {
+      type: DataTypes.ARRAY(DataTypes.ARRAY(DataTypes.BIGINT)),
       allowNull: false,
       defaultValue: [],
     },
-    requestedGroupIds: {
-      type: DataTypes.ARRAY(DataTypes.ARRAY(DataTypes.INTEGER)),
+
+    // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
+    groupIds: {
+      type: DataTypes.ARRAY(DataTypes.INTEGER),
       allowNull: false,
       defaultValue: [],
     },
@@ -176,47 +169,28 @@ AgentConfiguration.init(
   }
 );
 
-//  Agent config <> Workspace
-Workspace.hasMany(AgentConfiguration, {
-  foreignKey: { name: "workspaceId", allowNull: false },
-  onDelete: "CASCADE",
-});
-AgentConfiguration.belongsTo(Workspace, {
-  foreignKey: { name: "workspaceId", allowNull: false },
-});
-
 // Agent config <> Author
-User.hasMany(AgentConfiguration, {
+UserModel.hasMany(AgentConfiguration, {
   foreignKey: { name: "authorId", allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
-AgentConfiguration.belongsTo(User, {
+AgentConfiguration.belongsTo(UserModel, {
   foreignKey: { name: "authorId", allowNull: false },
 });
 
 /**
  * Global Agent settings
  */
-export class GlobalAgentSettings extends Model<
-  InferAttributes<GlobalAgentSettings>,
-  InferCreationAttributes<GlobalAgentSettings>
-> {
-  declare id: CreationOptional<number>;
+export class GlobalAgentSettings extends WorkspaceAwareModel<GlobalAgentSettings> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
   declare agentId: string;
-  declare workspaceId: ForeignKey<Workspace["id"]>;
 
   declare status: GlobalAgentStatus;
 }
 GlobalAgentSettings.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -246,15 +220,6 @@ GlobalAgentSettings.init(
     ],
   }
 );
-//  Global Agent config <> Workspace
-Workspace.hasMany(GlobalAgentSettings, {
-  foreignKey: { name: "workspaceId", allowNull: false },
-  onDelete: "CASCADE",
-});
-GlobalAgentSettings.belongsTo(Workspace, {
-  foreignKey: { name: "workspaceId", allowNull: false },
-});
-
 TemplateModel.hasOne(AgentConfiguration, {
   foreignKey: { name: "templateId", allowNull: true },
   onDelete: "SET NULL",
@@ -264,11 +229,7 @@ AgentConfiguration.belongsTo(TemplateModel, {
   foreignKey: { name: "templateId", allowNull: true },
 });
 
-export class AgentUserRelation extends Model<
-  InferAttributes<AgentUserRelation>,
-  InferCreationAttributes<AgentUserRelation>
-> {
-  declare id: CreationOptional<number>;
+export class AgentUserRelation extends WorkspaceAwareModel<AgentUserRelation> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -276,17 +237,11 @@ export class AgentUserRelation extends Model<
 
   declare favorite: boolean;
 
-  declare userId: ForeignKey<User["id"]>;
-  declare workspaceId: ForeignKey<Workspace["id"]>;
+  declare userId: ForeignKey<UserModel["id"]>;
 }
 
 AgentUserRelation.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -322,17 +277,10 @@ AgentUserRelation.init(
   }
 );
 
-User.hasMany(AgentUserRelation, {
+UserModel.hasMany(AgentUserRelation, {
   foreignKey: { allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
-Workspace.hasMany(AgentUserRelation, {
-  foreignKey: { allowNull: false },
-  onDelete: "CASCADE",
-});
-AgentUserRelation.belongsTo(User, {
-  foreignKey: { allowNull: false },
-});
-AgentUserRelation.belongsTo(Workspace, {
+AgentUserRelation.belongsTo(UserModel, {
   foreignKey: { allowNull: false },
 });

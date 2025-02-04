@@ -17,11 +17,9 @@ export function ActionDetailsWrapper({
   return (
     <Collapsible defaultOpen={defaultOpen}>
       <Collapsible.Button>
-        <div className="flex flex-row items-center gap-x-2">
-          <Icon className="text-brand" size="xs" visual={visual} />
-          <span className="text-sm font-bold text-element-900">
-            {actionName}
-          </span>
+        <div className="flex flex-row items-center gap-x-2 text-foreground">
+          <Icon size="sm" visual={visual} />
+          <span className="text-base font-semibold">{actionName}</span>
         </div>
       </Collapsible.Button>
       <Collapsible.Panel>{children}</Collapsible.Panel>

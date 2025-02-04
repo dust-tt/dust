@@ -1,17 +1,22 @@
-import type {
-  ConnectorsAPIError,
-  ContentNode,
-  ContentNodesViewType,
-  Result,
-} from "@dust-tt/types";
+import type { ContentNode, ContentNodesViewType, Result } from "@dust-tt/types";
 import {
   Err,
-  getNotionDatabaseTableId,
   getOAuthConnectionAccessToken,
+  MIME_TYPES,
   Ok,
 } from "@dust-tt/types";
+import _ from "lodash";
 import { v4 as uuidv4 } from "uuid";
 
+import type {
+  CreateConnectorErrorCode,
+  RetrievePermissionsErrorCode,
+  UpdateConnectorErrorCode,
+} from "@connectors/connectors/interface";
+import {
+  BaseConnectorManager,
+  ConnectorManagerError,
+} from "@connectors/connectors/interface";
 import { validateAccessToken } from "@connectors/connectors/notion/lib/notion_api";
 import {
   launchNotionSyncWorkflow,
@@ -19,6 +24,7 @@ import {
 } from "@connectors/connectors/notion/temporal/client";
 import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import {
   NotionConnectorState,
   NotionDatabase,
@@ -28,11 +34,17 @@ import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
-import type { ConnectorManagerError } from "../interface";
-import { BaseConnectorManager } from "../interface";
 import { getOrphanedCount, getParents, hasChildren } from "./lib/parents";
 
 const logger = mainLogger.child({ provider: "notion" });
+
+function nodeIdFromNotionId(notionId: string) {
+  return `notion-${notionId}`;
+}
+
+function notionIdFromNodeId(nodeId: string) {
+  return _.last(nodeId.split("notion-"))!;
+}
 
 async function workspaceIdFromConnectionId(connectionId: string) {
   const tokRes = await getOAuthConnectionAccessToken({
@@ -57,7 +69,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
   }: {
     dataSourceConfig: DataSourceConfig;
     connectionId: string;
-  }): Promise<Result<string, ConnectorManagerError>> {
+  }): Promise<Result<string, ConnectorManagerError<CreateConnectorErrorCode>>> {
     const tokRes = await getOAuthConnectionAccessToken({
       config: apiConfig.getOAuthAPIConfig(),
       logger,
@@ -84,6 +96,27 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       {}
     );
 
+    // For each connector, there are 2 special folders (root folders):
+    // - Syncing: contains all the pages visited during the sync process whose ancestry could not be resolved (one of the ancestors not synced yet).
+    // - Orphaned Resources: contains all the pages whose ancestors are not all synced/given access to.
+    await upsertDataSourceFolder({
+      dataSourceConfig: dataSourceConfigFromConnector(connector),
+      folderId: nodeIdFromNotionId("unknown"),
+      parents: [nodeIdFromNotionId("unknown")],
+      parentId: null,
+      title: "Orphaned Resources",
+      mimeType: MIME_TYPES.NOTION.UNKNOWN_FOLDER,
+    });
+    // Upsert to data_sources_folders (core) a top-level folder for the syncing resources.
+    await upsertDataSourceFolder({
+      dataSourceConfig: dataSourceConfigFromConnector(connector),
+      folderId: nodeIdFromNotionId("syncing"),
+      parents: [nodeIdFromNotionId("syncing")],
+      parentId: null,
+      title: "Syncing",
+      mimeType: MIME_TYPES.NOTION.SYNCING_FOLDER,
+    });
+
     try {
       await launchNotionSyncWorkflow(connector.id);
     } catch (e) {
@@ -106,14 +139,11 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
     connectionId,
   }: {
     connectionId?: string | null;
-  }): Promise<Result<string, ConnectorsAPIError>> {
+  }): Promise<Result<string, ConnectorManagerError<UpdateConnectorErrorCode>>> {
     const c = await ConnectorResource.fetchById(this.connectorId);
     if (!c) {
       logger.error({ connectorId: this.connectorId }, "Connector not found");
-      return new Err({
-        message: "Connector not found",
-        type: "connector_not_found",
-      });
+      throw new Error(`Connector ${this.connectorId} not found`);
     }
 
     if (connectionId) {
@@ -146,24 +176,22 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
             "Error retrieving workspace Id from new connection"
           );
         }
-        return new Err({
-          type: "connector_update_error",
-          message:
-            "Error retrieving workspace Ids from connections while checking update validity",
-        });
+
+        throw new Error(
+          "Error retrieving workspace Ids from connections while checking update validity"
+        );
       }
 
       if (!workspaceIdRes.value || !newWorkspaceIdRes.value) {
-        return new Err({
-          type: "connector_update_error",
-          message: "Error retrieving connection info to update connector",
-        });
+        throw new Error("Error retrieving connection info to update connector");
       }
       if (workspaceIdRes.value !== newWorkspaceIdRes.value) {
-        return new Err({
-          type: "connector_oauth_target_mismatch",
-          message: "Cannot change workspace of a Notion connector",
-        });
+        return new Err(
+          new ConnectorManagerError(
+            "CONNECTOR_OAUTH_TARGET_MISMATCH",
+            "Cannot change workspace of a Notion connector"
+          )
+        );
       }
 
       await c.update({ connectionId });
@@ -185,10 +213,9 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
           },
           "Error launching notion sync workflow post update."
         );
-        return new Err({
-          type: "connector_update_error",
-          message: "Error restarting sync workflow after updating connector",
-        });
+        throw new Error(
+          "Error restarting sync workflow after updating connector"
+        );
       }
     }
 
@@ -403,26 +430,31 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
   }: {
     parentInternalId: string | null;
     viewType: ContentNodesViewType;
-  }): Promise<Result<ContentNode[], Error>> {
+  }): Promise<
+    Result<ContentNode[], ConnectorManagerError<RetrievePermissionsErrorCode>>
+  > {
     const c = await ConnectorResource.fetchById(this.connectorId);
     if (!c) {
       logger.error({ connectorId: this.connectorId }, "Connector not found");
-      return new Err(new Error("Connector not found"));
+      return new Err(
+        new ConnectorManagerError("CONNECTOR_NOT_FOUND", "Connector not found")
+      );
     }
 
-    const parentId = parentInternalId || "workspace";
+    const notionId =
+      (parentInternalId && notionIdFromNodeId(parentInternalId)) || "workspace";
 
     const [pages, dbs] = await Promise.all([
       NotionPage.findAll({
         where: {
           connectorId: this.connectorId,
-          parentId,
+          parentId: notionId,
         },
       }),
       NotionDatabase.findAll({
         where: {
           connectorId: this.connectorId,
-          parentId,
+          parentId: notionId,
         },
       }),
     ]);
@@ -432,18 +464,16 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       const expandable = Boolean(hasChildrenByPageId[page.notionPageId]);
 
       return {
-        provider: c.type,
-        internalId: page.notionPageId,
+        internalId: nodeIdFromNotionId(page.notionPageId),
         parentInternalId:
           !page.parentId || page.parentId === "workspace"
             ? null
-            : page.parentId,
+            : nodeIdFromNotionId(page.parentId),
         type: "file",
         title: page.title || "",
         sourceUrl: page.notionUrl || null,
         expandable,
         permission: "read",
-        dustDocumentId: `notion-${page.notionPageId}`,
         lastUpdatedAt: page.lastUpsertedTs?.getTime() || null,
       };
     };
@@ -456,16 +486,16 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
 
     const getDbNodes = async (db: NotionDatabase): Promise<ContentNode> => {
       return {
-        provider: c.type,
-        internalId: db.notionDatabaseId,
+        internalId: nodeIdFromNotionId(db.notionDatabaseId),
         parentInternalId:
-          !db.parentId || db.parentId === "workspace" ? null : db.parentId,
+          !db.parentId || db.parentId === "workspace"
+            ? null
+            : nodeIdFromNotionId(db.parentId),
         type: "database",
         title: db.title || "",
         sourceUrl: db.notionUrl || null,
         expandable: true,
         permission: "read",
-        dustDocumentId: `notion-database-${db.notionDatabaseId}`,
         lastUpdatedAt: db.structuredDataUpsertedTs?.getTime() ?? null,
       };
     };
@@ -479,16 +509,14 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
         // We also need to return a "fake" top-level folder call "Orphaned" to include resources
         // we haven't been able to find a parent for.
         folderNodes.push({
-          provider: c.type,
           // Orphaned resources in the database will have "unknown" as their parentId.
-          internalId: "unknown",
+          internalId: nodeIdFromNotionId("unknown"),
           parentInternalId: null,
           type: "folder",
           title: "Orphaned Resources",
           sourceUrl: null,
           expandable: true,
           permission: "read",
-          dustDocumentId: null,
           lastUpdatedAt: null,
         });
       }
@@ -508,17 +536,19 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
   }: {
     internalIds: string[];
   }): Promise<Result<ContentNode[], Error>> {
+    const notionIds = internalIds.map((id) => notionIdFromNodeId(id));
+
     const [pages, dbs] = await Promise.all([
       NotionPage.findAll({
         where: {
           connectorId: this.connectorId,
-          notionPageId: internalIds,
+          notionPageId: notionIds,
         },
       }),
       NotionDatabase.findAll({
         where: {
           connectorId: this.connectorId,
-          notionDatabaseId: internalIds,
+          notionDatabaseId: notionIds,
         },
       }),
     ]);
@@ -526,54 +556,48 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
     const hasChildrenByPageId = await hasChildren(pages, this.connectorId);
     const pageNodes: ContentNode[] = await Promise.all(
       pages.map(async (page) => ({
-        provider: "notion",
-        internalId: page.notionPageId,
+        internalId: nodeIdFromNotionId(page.notionPageId),
         parentInternalId:
           !page.parentId || page.parentId === "workspace"
             ? null
-            : page.parentId,
+            : nodeIdFromNotionId(page.parentId),
         type: "file",
         title: page.title || "",
         sourceUrl: page.notionUrl || null,
         expandable: Boolean(hasChildrenByPageId[page.notionPageId]),
         permission: "read",
-        dustDocumentId: `notion-${page.notionPageId}`,
         lastUpdatedAt: page.lastUpsertedTs?.getTime() || null,
-        dustTableId: null,
       }))
     );
 
     const dbNodes: ContentNode[] = dbs.map((db) => ({
-      provider: "notion",
-      internalId: db.notionDatabaseId,
+      internalId: nodeIdFromNotionId(db.notionDatabaseId),
       parentInternalId:
-        !db.parentId || db.parentId === "workspace" ? null : db.parentId,
+        !db.parentId || db.parentId === "workspace"
+          ? null
+          : nodeIdFromNotionId(db.parentId),
       type: "database",
       title: db.title || "",
       sourceUrl: db.notionUrl || null,
       expandable: true,
       permission: "read",
-      dustDocumentId: null,
       lastUpdatedAt: null,
-      dustTableId: getNotionDatabaseTableId(db.notionDatabaseId),
     }));
 
     const contentNodes = pageNodes.concat(dbNodes);
 
-    if (internalIds.indexOf("unknown") !== -1) {
+    if (notionIds.includes("unknown")) {
       const orphanedCount = await getOrphanedCount(this.connectorId);
       if (orphanedCount > 0) {
         contentNodes.push({
-          provider: "notion",
           // Orphaned resources in the database will have "unknown" as their parentId.
-          internalId: "unknown",
+          internalId: nodeIdFromNotionId("unknown"),
           parentInternalId: null,
           type: "folder",
           title: "Orphaned Resources",
           sourceUrl: null,
           expandable: true,
           permission: "read",
-          dustDocumentId: null,
           lastUpdatedAt: null,
         });
       }
@@ -588,6 +612,13 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
     internalId: string;
     memoizationKey?: string;
   }): Promise<Result<string[], Error>> {
+    const notionId = notionIdFromNodeId(internalId);
+
+    // The two nodes unknonwn and syncing are special folders always found at the root (no parent).
+    if (notionId === "unknown" || notionId === "syncing") {
+      return new Ok([internalId]);
+    }
+
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
       logger.error({ connectorId: this.connectorId }, "Connector not found");
@@ -599,13 +630,14 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
     try {
       const parents = await getParents(
         this.connectorId,
-        internalId,
+        notionId,
         [],
+        false,
         memo,
         undefined
       );
 
-      return new Ok(parents);
+      return new Ok(parents.map((p) => nodeIdFromNotionId(p)));
     } catch (e) {
       logger.error(
         { connectorId: this.connectorId, internalId, memoizationKey, error: e },

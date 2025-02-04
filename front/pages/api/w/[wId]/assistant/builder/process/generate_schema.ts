@@ -5,16 +5,16 @@ import type {
 import {
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
+  InternalPostBuilderProcessActionGenerateSchemaRequestBodySchema,
   ioTsParsePayload,
   PROCESS_SCHEMA_ALLOWED_TYPES,
 } from "@dust-tt/types";
-import { InternalPostBuilderProcessActionGenerateSchemaRequestBodySchema } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { runAction } from "@app/lib/actions/server";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
+import { cloneBaseConfig, getDustProdActionRegistry } from "@app/lib/registry";
 import { apiError } from "@app/logger/withlogging";
 
 async function handler(
@@ -58,7 +58,7 @@ async function handler(
       }
 
       const config = cloneBaseConfig(
-        DustProdActionRegistry[
+        getDustProdActionRegistry()[
           "assistant-builder-process-action-schema-generator"
         ].config
       );

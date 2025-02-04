@@ -27,10 +27,7 @@ export function AssistantTemplateModal({
   templateId,
 }: AssistantTemplateModalProps) {
   const { assistantTemplate, isAssistantTemplateLoading } =
-    useAssistantTemplate({
-      templateId,
-      workspaceId: owner.sId,
-    });
+    useAssistantTemplate({ templateId });
 
   if (!templateId) {
     return null;
@@ -56,13 +53,19 @@ export function AssistantTemplateModal({
           <div className="flex max-h-32 max-w-lg flex-row gap-3">
             <Avatar size="lg" visual={pictureUrl} />
             <div className="flex flex-col gap-1">
-              <span className="text-lg font-medium text-element-900">
+              <span className="text-lg font-medium text-foreground">
                 @{handle}
               </span>
               <Link
                 href={`/w/${owner.sId}/builder/assistants/new?flow=${flow}&templateId=${sId}`}
               >
-                <Button label="Use this template" variant="primary" size="sm" />
+                <Button
+                  label="Use this template"
+                  variant="primary"
+                  data-gtm-label="useTemplateButton"
+                  data-gtm-location="templateModal"
+                  size="sm"
+                />
               </Link>
             </div>
           </div>

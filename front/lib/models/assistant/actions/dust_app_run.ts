@@ -1,21 +1,14 @@
 import type { DustAppParameters } from "@dust-tt/types";
-import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import { DataTypes } from "sequelize";
 
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { FileModel } from "@app/lib/resources/storage/models/files";
+import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
-export class AgentDustAppRunConfiguration extends Model<
-  InferAttributes<AgentDustAppRunConfiguration>,
-  InferCreationAttributes<AgentDustAppRunConfiguration>
-> {
-  declare id: CreationOptional<number>;
+export class AgentDustAppRunConfiguration extends WorkspaceAwareModel<AgentDustAppRunConfiguration> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -29,11 +22,6 @@ export class AgentDustAppRunConfiguration extends Model<
 
 AgentDustAppRunConfiguration.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -83,11 +71,7 @@ AgentDustAppRunConfiguration.belongsTo(AgentConfiguration, {
 /**
  * DustAppRun Action
  */
-export class AgentDustAppRunAction extends Model<
-  InferAttributes<AgentDustAppRunAction>,
-  InferCreationAttributes<AgentDustAppRunAction>
-> {
-  declare id: CreationOptional<number>;
+export class AgentDustAppRunAction extends WorkspaceAwareModel<AgentDustAppRunAction> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare runId: string | null;
@@ -105,14 +89,13 @@ export class AgentDustAppRunAction extends Model<
 
   declare step: number;
   declare agentMessageId: ForeignKey<AgentMessage["id"]>;
+  declare resultsFileId: ForeignKey<FileModel["id"]> | null;
+  declare resultsFileSnippet: string | null;
+  declare resultsFile: NonAttribute<FileModel>;
 }
+
 AgentDustAppRunAction.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -131,7 +114,6 @@ AgentDustAppRunAction.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-
     appWorkspaceId: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -164,6 +146,10 @@ AgentDustAppRunAction.init(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
+    resultsFileSnippet: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
   },
   {
     modelName: "agent_dust_app_run_action",
@@ -171,6 +157,10 @@ AgentDustAppRunAction.init(
     indexes: [
       {
         fields: ["agentMessageId"],
+        concurrently: true,
+      },
+      {
+        fields: ["resultsFileId"],
         concurrently: true,
       },
     ],
@@ -183,4 +173,14 @@ AgentDustAppRunAction.belongsTo(AgentMessage, {
 
 AgentMessage.hasMany(AgentDustAppRunAction, {
   foreignKey: { name: "agentMessageId", allowNull: false },
+});
+
+FileModel.hasMany(AgentDustAppRunAction, {
+  foreignKey: { name: "resultsFileId", allowNull: true },
+  onDelete: "SET NULL",
+});
+AgentDustAppRunAction.belongsTo(FileModel, {
+  as: "resultsFile",
+  foreignKey: { name: "resultsFileId", allowNull: true },
+  onDelete: "SET NULL",
 });

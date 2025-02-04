@@ -75,8 +75,8 @@ export function Pagination({
         )}
       >
         <Button
-          variant="ghost"
-          size={size === "xs" ? "xs" : "sm"}
+          variant="outline"
+          size="xs"
           disabled={!canPreviousPage}
           icon={ChevronLeftIcon}
           onClick={previousPage}
@@ -93,8 +93,8 @@ export function Pagination({
         </div>
 
         <Button
-          variant="ghost"
-          size={size === "xs" ? "xs" : "sm"}
+          variant="outline"
+          size="xs"
           disabled={!canNextPage}
           icon={ChevronRightIcon}
           onClick={nextPage}
@@ -103,8 +103,7 @@ export function Pagination({
 
       <span
         className={classNames(
-          "s-text-slate-400",
-          size === "xs" ? "s-text-xs" : "s-text-sm",
+          "s-text-xs s-text-muted-foreground",
           showDetails ? "s-visible" : "s-collapse"
         )}
       >
@@ -126,8 +125,8 @@ function renderPageNumber(
     <button
       key={pageNumber}
       className={classNames(
-        "s-font-semibold s-transition-colors s-duration-100",
-        currentPage === pageNumber ? "s-text-action-500" : "s-text-slate-400",
+        "s-font-medium s-transition-colors s-duration-200",
+        currentPage === pageNumber ? "s-text-foreground" : "s-text-primary-400",
         size === "xs" ? "s-text-xs" : "s-text-sm"
       )}
       onClick={() => onPageClick(pageNumber)}
@@ -141,7 +140,7 @@ function renderEllipses(size: "sm" | "xs") {
   return (
     <span
       className={classNames(
-        "s-text-sm s-font-semibold s-text-slate-400",
+        "s-text-sm s-font-medium s-text-muted-foreground",
         size === "xs" ? "s-text-xs" : "s-text-sm"
       )}
     >

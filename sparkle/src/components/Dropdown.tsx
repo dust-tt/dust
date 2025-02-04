@@ -24,9 +24,10 @@ export const menuStyleClasses = {
     {
       variants: {
         variant: {
-          default: "focus:s-text-primary-950 focus:s-bg-primary-150",
+          default:
+            "focus:s-text-primary-950 hover:s-bg-primary-150 focus:s-bg-primary-150",
           warning:
-            "s-text-warning-500 hover:s-bg-warning-50 active:s-bg-warning-100",
+            "s-text-warning-500 hover:s-bg-warning-50 focus:s-bg-warning-50 active:s-bg-warning-100",
         },
       },
       defaultVariants: {
@@ -177,7 +178,9 @@ export type DropdownMenuItemProps = MutuallyExclusiveProps<
     inset?: boolean;
     variant?: ItemVariantType;
   } & Omit<LinkWrapperProps, "children" | "className">,
-  LabelAndIconProps & { description?: string }
+  LabelAndIconProps & {
+    description?: string;
+  }
 >;
 
 const DropdownMenuItem = React.forwardRef<
@@ -199,6 +202,7 @@ const DropdownMenuItem = React.forwardRef<
       asChild,
       replace,
       shallow,
+      prefetch,
       ...props
     },
     ref
@@ -220,6 +224,7 @@ const DropdownMenuItem = React.forwardRef<
           rel={rel}
           replace={replace}
           shallow={shallow}
+          prefetch={prefetch}
         >
           <ItemWithLabelIconAndDescription
             label={label}
@@ -379,6 +384,33 @@ const DropdownMenuSearchbar = React.forwardRef<
 
 DropdownMenuSearchbar.displayName = "DropdownMenuSearchbar";
 
+interface DropdownMenuStaticItemProps {
+  label: string;
+  value?: string;
+  children?: React.ReactNode;
+  className?: string;
+}
+
+const DropdownMenuStaticItem = React.forwardRef<
+  HTMLDivElement,
+  DropdownMenuStaticItemProps
+>(({ label, value, children, className }, ref) => (
+  <div
+    ref={ref}
+    className={cn(
+      "s-flex s-h-9 s-items-center s-gap-2 s-px-2 s-text-sm s-text-foreground",
+      className
+    )}
+  >
+    <span className="s-grow s-font-medium">{label}</span>
+    {value && (
+      <span className="s-shrink-0 s-text-muted-foreground">{value}</span>
+    )}
+    {children && <div className="s-shrink-0">{children}</div>}
+  </div>
+));
+DropdownMenuStaticItem.displayName = "DropdownMenuStaticItem";
+
 export {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -392,6 +424,7 @@ export {
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuShortcut,
+  DropdownMenuStaticItem,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,

@@ -1,6 +1,7 @@
 import "react-image-crop/dist/ReactCrop.css";
 
 import {
+  BarChartIcon,
   Button,
   ChatBubbleBottomCenterTextIcon,
   ChevronLeftIcon,
@@ -65,6 +66,8 @@ import {
   AppLayoutSimpleSaveCancelTitle,
 } from "@app/components/sparkle/AppLayoutTitle";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
+import { useKillSwitches } from "@app/lib/swr/kill";
+import { useModels } from "@app/lib/swr/models";
 
 function isValidTab(tab: string): tab is BuilderScreen {
   return BUILDER_SCREENS.includes(tab as BuilderScreen);
@@ -80,10 +83,14 @@ export default function AssistantBuilder({
   defaultIsEdited,
   baseUrl,
   defaultTemplate,
-  isAdmin,
 }: AssistantBuilderProps) {
   const router = useRouter();
   const sendNotification = useSendNotification();
+
+  const { killSwitches } = useKillSwitches();
+  const { models, reasoningModels } = useModels({ owner });
+
+  const isSavingDisabled = killSwitches?.includes("save_agent_configurations");
 
   const defaultScope =
     flow === "workspace_assistants" ? "workspace" : "private";
@@ -326,6 +333,7 @@ export default function AssistantBuilder({
           selectedSlackChannels: selectedSlackChannels || [],
           slackChannelsLinkedWithAgent,
         },
+        reasoningModels,
       });
 
       if (res.isErr()) {
@@ -339,13 +347,17 @@ export default function AssistantBuilder({
         if (slackDataSource) {
           await mutateSlackChannels();
         }
-        // Redirect to the assistant list once saved.
-        if (flow === "personal_assistants") {
-          await router.push(
-            `/w/${owner.sId}/assistant/new?selectedTab=personal`
-          );
+        if (isBuilder(owner)) {
+          // Redirect to the assistant list once saved.
+          if (flow === "personal_assistants") {
+            await router.push(
+              `/w/${owner.sId}/assistant/new?selectedTab=personal`
+            );
+          } else {
+            await router.push(`/w/${owner.sId}/builder/assistants`);
+          }
         } else {
-          await router.push(`/w/${owner.sId}/builder/assistants`);
+          await router.push(`/w/${owner.sId}/assistant/new`);
         }
       }
     }
@@ -380,8 +392,13 @@ export default function AssistantBuilder({
               onCancel={async () => {
                 await appLayoutBack(owner, router);
               }}
-              onSave={onAssistantSave}
+              onSave={isSavingDisabled ? undefined : onAssistantSave}
               isSaving={isSavingOrDeleting}
+              saveTooltip={
+                isSavingDisabled
+                  ? "Saving assistants is temporarily disabled and will be re-enabled shortly."
+                  : undefined
+              }
             />
           )
         }
@@ -405,6 +422,8 @@ export default function AssistantBuilder({
                         value={tab.id}
                         label={tab.label}
                         icon={tab.icon}
+                        data-gtm-label={tab.dataGtm.label}
+                        data-gtm-location={tab.dataGtm.location}
                       />
                     ))}
                     <div className="flex w-full items-center justify-end">
@@ -413,7 +432,6 @@ export default function AssistantBuilder({
                         initialScope={
                           initialBuilderState?.scope ?? defaultScope
                         }
-                        isAdmin={isAdmin}
                         newScope={builderState.scope}
                         owner={owner}
                         showSlackIntegration={showSlackIntegration}
@@ -441,7 +459,6 @@ export default function AssistantBuilder({
                     return (
                       <InstructionScreen
                         owner={owner}
-                        plan={plan}
                         builderState={builderState}
                         setBuilderState={setBuilderState}
                         setEdited={setEdited}
@@ -450,6 +467,8 @@ export default function AssistantBuilder({
                         instructionsError={instructionsError}
                         doTypewriterEffect={doTypewriterEffect}
                         setDoTypewriterEffect={setDoTypewriterEffect}
+                        agentConfigurationId={agentConfigurationId}
+                        models={models}
                       />
                     );
                   case "actions":
@@ -461,6 +480,8 @@ export default function AssistantBuilder({
                         setEdited={setEdited}
                         setAction={setAction}
                         pendingAction={pendingAction}
+                        enableReasoningTool={reasoningModels.length > 0}
+                        reasoningModels={reasoningModels}
                       />
                     );
 
@@ -480,11 +501,16 @@ export default function AssistantBuilder({
                     assertNever(screen);
                 }
               })()}
-              <PrevNextButtons screen={screen} setScreen={setScreen} />
+              <PrevNextButtons
+                screen={screen}
+                setScreen={setScreen}
+                setCurrentTab={setCurrentTab}
+              />
             </div>
           }
           buttonsRightPanel={
             <>
+              {/* Chevron button */}
               <Button
                 size="sm"
                 variant="ghost"
@@ -496,39 +522,40 @@ export default function AssistantBuilder({
                 disabled={isBuilderStateEmpty}
                 onClick={toggleRightPanel}
               />
-              {rightPanelStatus.tab === null && template === null && (
-                <Button
-                  icon={ChatBubbleBottomCenterTextIcon}
-                  onClick={() => openRightPanelTab("Preview")}
-                  size="md"
-                  tooltip={
-                    isBuilderStateEmpty
-                      ? "Add instructions or tools to Preview"
-                      : "Preview"
-                  }
-                  variant="highlight"
-                  disabled={isBuilderStateEmpty}
-                  className={cn(
-                    isPreviewButtonAnimating && "animate-breathing-scale"
-                  )}
-                />
-              )}
-              {rightPanelStatus.tab === null && template !== null && (
+              {rightPanelStatus.tab === null && (
                 <div className="flex flex-col gap-3">
+                  {/* Preview Button */}
                   <Button
                     icon={ChatBubbleBottomCenterTextIcon}
                     onClick={() => openRightPanelTab("Preview")}
                     size="sm"
                     variant="outline"
                     tooltip="Preview your assistant"
+                    className={cn(
+                      isPreviewButtonAnimating && "animate-breathing-scale"
+                    )}
+                    disabled={isBuilderStateEmpty}
                   />
-                  <Button
-                    icon={MagicIcon}
-                    onClick={() => openRightPanelTab("Template")}
-                    size="sm"
-                    variant="outline"
-                    tooltip="Template instructions"
-                  />
+                  {/* Performance Button */}
+                  {!!agentConfigurationId && (
+                    <Button
+                      icon={BarChartIcon}
+                      onClick={() => openRightPanelTab("Performance")}
+                      size="sm"
+                      variant="outline"
+                      tooltip="Inspect feedback and performance"
+                    />
+                  )}
+                  {/* Template Button */}
+                  {template !== null && (
+                    <Button
+                      icon={MagicIcon}
+                      onClick={() => openRightPanelTab("Template")}
+                      size="sm"
+                      variant="outline"
+                      tooltip="Template instructions"
+                    />
+                  )}
                 </div>
               )}
             </>
@@ -550,7 +577,9 @@ export default function AssistantBuilder({
               rightPanelStatus={rightPanelStatus}
               openRightPanelTab={openRightPanelTab}
               builderState={builderState}
+              agentConfigurationId={agentConfigurationId}
               setAction={setAction}
+              reasoningModels={reasoningModels}
             />
           }
           isRightPanelOpen={rightPanelStatus.tab !== null}

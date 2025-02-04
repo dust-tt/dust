@@ -53,7 +53,7 @@ import { apiError } from "@app/logger/withlogging";
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Datasource'
+ *               $ref: '#/components/schemas/Table'
  *       404:
  *         description: The table was not found
  *       405:
@@ -139,7 +139,11 @@ async function handler(
     }
   }
 
-  if (!dataSource || dataSource.space.sId !== spaceId) {
+  if (
+    !dataSource ||
+    dataSource.space.sId !== spaceId ||
+    !dataSource.canRead(auth)
+  ) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -205,6 +209,9 @@ async function handler(
           timestamp: table.timestamp,
           tags: table.tags,
           parents: table.parents,
+          parent_id: table.parent_id,
+          mime_type: table.mime_type,
+          title: table.title,
         },
       });
 
@@ -215,6 +222,15 @@ async function handler(
           api_error: {
             type: "data_source_not_found",
             message: "The data source you requested was not found.",
+          },
+        });
+      }
+      if (!dataSource.canWrite(auth)) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "data_source_auth_error",
+            message: "You are not allowed to update data in this data source.",
           },
         });
       }

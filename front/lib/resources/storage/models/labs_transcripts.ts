@@ -1,45 +1,30 @@
 import type { LabsTranscriptsProviderType } from "@dust-tt/types";
-import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-  NonAttribute,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import { DataTypes } from "sequelize";
 
 import type { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { User } from "@app/lib/models/user";
-import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
+import { UserModel } from "@app/lib/resources/storage/models/user";
+import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
-export class LabsTranscriptsConfigurationModel extends Model<
-  InferAttributes<LabsTranscriptsConfigurationModel>,
-  InferCreationAttributes<LabsTranscriptsConfigurationModel>
-> {
-  declare id: CreationOptional<number>;
+export class LabsTranscriptsConfigurationModel extends WorkspaceAwareModel<LabsTranscriptsConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare connectionId: string;
+  declare connectionId: string | null;
   declare provider: LabsTranscriptsProviderType;
   declare agentConfigurationId: ForeignKey<AgentConfiguration["sId"]> | null;
   declare isActive: boolean;
   declare isDefaultFullStorage: boolean;
 
-  declare userId: ForeignKey<User["id"]>;
-  declare workspaceId: ForeignKey<Workspace["id"]>;
+  declare userId: ForeignKey<UserModel["id"]>;
   declare dataSourceViewId: ForeignKey<DataSourceViewModel["id"]> | null;
+  declare credentialId: string | null;
 }
 
 LabsTranscriptsConfigurationModel.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -52,7 +37,7 @@ LabsTranscriptsConfigurationModel.init(
     },
     connectionId: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
     },
     provider: {
       type: DataTypes.STRING,
@@ -72,6 +57,10 @@ LabsTranscriptsConfigurationModel.init(
       allowNull: false,
       defaultValue: false,
     },
+    credentialId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
   },
   {
     modelName: "labs_transcripts_configuration",
@@ -79,23 +68,16 @@ LabsTranscriptsConfigurationModel.init(
     indexes: [
       { fields: ["userId"] },
       { fields: ["userId", "workspaceId"], unique: true },
+      { fields: ["dataSourceViewId"] },
     ],
   }
 );
 
-User.hasMany(LabsTranscriptsConfigurationModel, {
+UserModel.hasMany(LabsTranscriptsConfigurationModel, {
   foreignKey: { name: "userId", allowNull: false },
 });
-LabsTranscriptsConfigurationModel.belongsTo(User, {
+LabsTranscriptsConfigurationModel.belongsTo(UserModel, {
   foreignKey: { name: "userId", allowNull: false },
-});
-
-Workspace.hasMany(LabsTranscriptsConfigurationModel, {
-  foreignKey: { name: "workspaceId", allowNull: false },
-  onDelete: "CASCADE",
-});
-LabsTranscriptsConfigurationModel.belongsTo(Workspace, {
-  foreignKey: { name: "workspaceId", allowNull: false },
 });
 
 DataSourceViewModel.hasMany(LabsTranscriptsConfigurationModel, {
@@ -106,11 +88,7 @@ LabsTranscriptsConfigurationModel.belongsTo(DataSourceViewModel, {
   foreignKey: { name: "dataSourceViewId", allowNull: true },
 });
 
-export class LabsTranscriptsHistoryModel extends Model<
-  InferAttributes<LabsTranscriptsHistoryModel>,
-  InferCreationAttributes<LabsTranscriptsHistoryModel>
-> {
-  declare id: CreationOptional<number>;
+export class LabsTranscriptsHistoryModel extends WorkspaceAwareModel<LabsTranscriptsHistoryModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -122,15 +100,12 @@ export class LabsTranscriptsHistoryModel extends Model<
   declare configurationId: ForeignKey<LabsTranscriptsConfigurationModel["id"]>;
 
   declare configuration: NonAttribute<LabsTranscriptsConfigurationModel>;
+
+  declare stored?: boolean;
 }
 
 LabsTranscriptsHistoryModel.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -152,6 +127,11 @@ LabsTranscriptsHistoryModel.init(
     conversationId: {
       type: DataTypes.STRING,
       allowNull: true,
+    },
+    stored: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
   },
   {

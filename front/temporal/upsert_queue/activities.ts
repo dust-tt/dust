@@ -1,16 +1,14 @@
-import { CoreAPI, dustManagedCredentials } from "@dust-tt/types";
+import { CoreAPI, dustManagedCredentials, safeSubstring } from "@dust-tt/types";
 import { Storage } from "@google-cloud/storage";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 
 import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
+import { runDocumentUpsertHooks } from "@app/lib/document_upsert_hooks/hooks";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { WorkflowError } from "@app/lib/temporal_monitoring";
-import {
-  EnqueueUpsertDocument,
-  runPostUpsertHooks,
-} from "@app/lib/upsert_queue";
+import { EnqueueUpsertDocument } from "@app/lib/upsert_queue";
 import mainLogger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/withlogging";
 
@@ -88,13 +86,18 @@ export async function upsertDocumentActivity(
     projectId: dataSource.dustAPIProjectId,
     dataSourceId: dataSource.dustAPIDataSourceId,
     documentId: upsertQueueItem.documentId,
-    tags: upsertQueueItem.tags || [],
-    parents: upsertQueueItem.parents || [],
+    tags: ((upsertQueueItem.tags as string[] | null) || []).map((tag) =>
+      safeSubstring(tag, 0)
+    ),
+    parentId: upsertQueueItem.parentId || null,
+    parents: upsertQueueItem.parents || [upsertQueueItem.documentId],
     sourceUrl: upsertQueueItem.sourceUrl,
     timestamp: upsertQueueItem.timestamp,
     section: upsertQueueItem.section,
     credentials,
     lightDocumentOutput: true,
+    mimeType: upsertQueueItem.mimeType,
+    title: upsertQueueItem.title,
   });
 
   if (upsertRes.isErr()) {
@@ -141,13 +144,12 @@ export async function upsertDocumentActivity(
     []
   );
 
-  await runPostUpsertHooks({
-    workspaceId: upsertQueueItem.workspaceId,
-    dataSource,
+  runDocumentUpsertHooks({
+    auth,
+    dataSourceId: dataSource.sId,
     documentId: upsertQueueItem.documentId,
-    section: upsertQueueItem.section,
-    document: upsertRes.value.document,
-    sourceUrl: upsertQueueItem.sourceUrl,
+    documentHash: upsertRes.value.document.hash,
+    dataSourceConnectorProvider: dataSource.connectorProvider || null,
     upsertContext: upsertQueueItem.upsertContext || undefined,
   });
 }

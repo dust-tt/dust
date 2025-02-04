@@ -2,15 +2,18 @@ import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 
-import { Icon } from "@sparkle/components/Icon";
-import { LinkWrapper, LinkWrapperProps } from "@sparkle/components/LinkWrapper";
-import Spinner, { SpinnerProps } from "@sparkle/components/Spinner";
 import {
+  Icon,
+  LinkWrapper,
+  LinkWrapperProps,
+  Spinner,
   TooltipContent,
+  TooltipPortal,
   TooltipProvider,
   TooltipRoot,
   TooltipTrigger,
-} from "@sparkle/components/Tooltip";
+} from "@sparkle/components/";
+import { SpinnerProps } from "@sparkle/components/Spinner";
 import { ChevronDownIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 
@@ -25,26 +28,67 @@ export const BUTTON_VARIANTS = [
 
 export type ButtonVariantType = (typeof BUTTON_VARIANTS)[number];
 
-export const BUTTON_SIZES = ["xs", "sm", "md"] as const;
-
+export const BUTTON_SIZES = ["mini", "xs", "sm", "md"] as const;
 export type ButtonSizeType = (typeof BUTTON_SIZES)[number];
 
 const styleVariants: Record<ButtonVariantType, string> = {
-  primary:
-    "s-bg-primary s-text-white hover:s-bg-primary-light active:s-bg-primary-dark disabled:s-bg-primary-muted",
-  highlight:
-    "s-bg-highlight s-text-white hover:s-bg-highlight-light active:s-bg-highlight-dark disabled:s-bg-highlight-muted",
-  warning:
-    "s-bg-warning s-text-white hover:s-bg-warning-light active:s-bg-warning-dark disabled:s-bg-warning-muted",
-  outline:
-    "s-border s-text-primary-dark s-bg-background s-border-border-dark hover:s-text-primary hover:s-bg-primary-150 hover:s-border-primary-150 active:s-bg-primary-300 disabled:s-text-primary-muted disabled:s-border-structure-100",
-  ghost:
-    "s-border s-border-primary-200/0 s-text-primary-950 hover:s-bg-primary-150 hover:s-text-primary-900 hover:s-border-primary-150 active:s-bg-primary-300 disabled:s-text-primary-400",
-  "ghost-secondary":
-    "s-border s-border-primary-200/0 s-text-muted-foreground hover:s-bg-primary-150 hover:s-text-primary-900 hover:s-border-primary-150 active:s-bg-primary-300 disabled:s-text-primary-400",
+  primary: cn(
+    "s-bg-primary-800 dark:s-bg-primary-800-night",
+    "s-text-primary-50 dark:s-text-primary-50-night",
+    "hover:s-bg-primary-light dark:hover:s-bg-primary-light-night",
+    "active:s-bg-primary-dark dark:active:s-bg-primary-dark-night",
+    "disabled:s-bg-primary-muted dark:disabled:s-bg-primary-muted-night"
+  ),
+  highlight: cn(
+    "s-bg-highlight dark:s-bg-highlight-night",
+    "s-text-highlight-50 dark:s-text-highlight-50-night",
+    "hover:s-bg-highlight-light dark:hover:s-bg-highlight-light-dark",
+    "active:s-bg-highlight-dark dark:active:s-bg-highlight-dark-night",
+    "disabled:s-bg-highlight-muted dark:disabled:s-bg-highlight-muted-night"
+  ),
+  warning: cn(
+    "s-bg-warning dark:s-bg-warning-night",
+    "s-text-warning-50 dark:s-text-warning-50-night",
+    "hover:s-bg-warning-light dark:hover:s-bg-warning-light-night",
+    "active:s-bg-warning-dark dark:active:s-bg-warning-dark-night",
+    "disabled:s-bg-warning-muted dark:disabled:s-bg-warning-muted-night"
+  ),
+  outline: cn(
+    "s-border",
+    "s-text-primary-800 dark:s-text-primary-800-night",
+    "s-bg-background dark:s-bg-background-night",
+    "s-border-border-dark",
+    "hover:s-text-primary dark:hover:s-text-primary-night",
+    "hover:s-bg-primary-150 dark:hover:s-bg-primary-150-night",
+    "hover:s-border-primary-150 dark:hover:s-border-primary-150-night",
+    "active:s-bg-primary-300 dark:active:s-bg-primary-300-night",
+    "disabled:s-text-primary-muted",
+    "disabled:s-border-structure-100 dark:disabled:s-border-structure-100-night"
+  ),
+  ghost: cn(
+    "s-border",
+    "s-border-primary-200/0",
+    "s-text-primary-950 dark:s-text-primary-950-night",
+    "hover:s-bg-primary-150 dark:hover:s-bg-primary-150-night",
+    "hover:s-text-primary-900 dark:hover:s-text-primary-900-night",
+    "hover:s-border-primary-150 dark:hover:s-border-primary-150-night",
+    "active:s-bg-primary-300 dark:active:s-bg-primary-300-night",
+    "disabled:s-text-primary-400 dark:disabled:s-text-primary-400-night"
+  ),
+  "ghost-secondary": cn(
+    "s-border",
+    "s-border-primary-200/0 dark:s-border-primary-200/0-night",
+    "s-text-muted-foreground",
+    "hover:s-bg-primary-150 dark:hover:s-bg-primary-150-night",
+    "hover:s-text-primary-900 dark:hover:s-text-primary-900-night",
+    "hover:s-border-primary-150 dark:hover:s-border-primary-150-night",
+    "active:s-bg-primary-300 dark:active:s-bg-primary-300-night",
+    "disabled:s-text-primary-400 dark:disabled:s-text-primary-400-night"
+  ),
 };
 
 const sizeVariants: Record<ButtonSizeType, string> = {
+  mini: "s-h-7 s-p-1.5 s-rounded-lg s-text-sm s-gap-1.5",
   xs: "s-h-7 s-px-2.5 s-rounded-lg s-text-xs s-gap-1.5",
   sm: "s-h-9 s-px-3 s-rounded-xl s-text-sm s-gap-2",
   md: "s-h-12 s-px-4 s-py-2 s-rounded-2xl s-text-base s-gap-2.5",
@@ -52,8 +96,7 @@ const sizeVariants: Record<ButtonSizeType, string> = {
 
 const buttonVariants = cva(
   "s-inline-flex s-items-center s-justify-center s-whitespace-nowrap s-font-medium s-ring-offset-background s-transition-colors " +
-    "focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring focus-visible:s-ring-offset-2 " +
-    "disabled:s-pointer-events-none",
+    "focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring focus-visible:s-ring-offset-2",
   {
     variants: {
       variant: styleVariants,
@@ -90,18 +133,11 @@ export interface MetaButtonProps
 }
 
 const MetaButton = React.forwardRef<HTMLButtonElement, MetaButtonProps>(
-  (
-    { className, variant, size = "sm", asChild = false, children, ...props },
-    ref
-  ) => {
+  ({ className, asChild = false, children, ...props }, ref) => {
     const Comp = asChild ? Slot : "button";
 
     return (
-      <Comp
-        className={cn(variant && buttonVariants({ variant, size }), className)}
-        ref={ref}
-        {...props}
-      >
+      <Comp className={className} ref={ref} {...props}>
         {children}
       </Comp>
     );
@@ -109,28 +145,40 @@ const MetaButton = React.forwardRef<HTMLButtonElement, MetaButtonProps>(
 );
 MetaButton.displayName = "MetaButton";
 
-export interface ButtonProps
-  extends Omit<MetaButtonProps, "children">,
-    Omit<LinkWrapperProps, "children" | "className"> {
-  label?: string;
+type CommonButtonProps = Omit<MetaButtonProps, "children"> &
+  Omit<LinkWrapperProps, "children"> & {
+    isSelect?: boolean;
+    isLoading?: boolean;
+    isPulsing?: boolean;
+    tooltip?: string;
+  };
+
+export type MiniButtonProps = CommonButtonProps & {
+  size: "mini";
+  icon: React.ComponentType;
+  label?: never;
+};
+
+export type RegularButtonProps = CommonButtonProps & {
+  size?: Exclude<ButtonSizeType, "mini">;
   icon?: React.ComponentType;
-  isSelect?: boolean;
-  isLoading?: boolean;
-  isPulsing?: boolean;
-  tooltip?: string;
-}
+  label?: string;
+};
+
+export type ButtonProps = MiniButtonProps | RegularButtonProps;
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   (
     {
       label,
       icon,
+      className,
       isLoading = false,
       variant = "primary",
       tooltip,
       isSelect = false,
       isPulsing = false,
-      size,
+      size = "sm",
       href,
       target,
       rel,
@@ -141,20 +189,21 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     },
     ref
   ) => {
-    const buttonSize = size || "sm";
+    const iconsSize = size === "mini" ? "sm" : size;
+
     const spinnerVariant = isLoading
       ? (variant && spinnerVariantsMapIsLoading[variant]) || "slate400"
       : (variant && spinnerVariantsMap[variant]) || "slate400";
 
     const renderIcon = (visual: React.ComponentType, extraClass = "") => (
-      <Icon visual={visual} size={buttonSize} className={extraClass} />
+      <Icon visual={visual} size={iconsSize} className={extraClass} />
     );
 
     const content = (
       <>
         {isLoading ? (
           <div className="-s-mx-0.5">
-            <Spinner size={buttonSize} variant={spinnerVariant} />
+            <Spinner size={iconsSize} variant={spinnerVariant} />
           </div>
         ) : (
           icon && renderIcon(icon, "-s-mx-0.5")
@@ -167,10 +216,13 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const innerButton = (
       <MetaButton
         ref={ref}
-        size={buttonSize}
-        variant={variant}
+        size={size}
         disabled={isLoading || props.disabled}
-        className={isPulsing ? "s-animate-pulse" : ""}
+        className={cn(
+          buttonVariants({ variant, size }),
+          isPulsing && "s-animate-pulse",
+          className
+        )}
         aria-label={ariaLabel || tooltip || label}
         style={
           {
@@ -188,7 +240,9 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       <TooltipProvider>
         <TooltipRoot>
           <TooltipTrigger asChild>{innerButton}</TooltipTrigger>
-          <TooltipContent>{tooltip}</TooltipContent>
+          <TooltipPortal>
+            <TooltipContent>{tooltip}</TooltipContent>
+          </TooltipPortal>
         </TooltipRoot>
       </TooltipProvider>
     ) : (
@@ -210,5 +264,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     );
   }
 );
+
+Button.displayName = "Button";
 
 export { Button, buttonVariants, MetaButton };

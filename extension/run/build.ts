@@ -3,7 +3,7 @@ import { getConfig } from "../config/webpack";
 
 async function main() {
   const config = await getConfig({
-    env: "production",
+    env: process.argv.includes("--release") ? "release" : "production",
     shouldBuild: process.argv.includes("--analyze") ? "analyze" : "prod",
   });
   const compiler = webpack(config);

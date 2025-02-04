@@ -1,5 +1,5 @@
 import type { PendingUpdate } from "@extension/lib/storage";
-import { savePendingUpdate } from "@extension/lib/storage";
+import { getStoredUser, savePendingUpdate } from "@extension/lib/storage";
 
 import {
   AUTH0_CLIENT_DOMAIN,
@@ -23,9 +23,13 @@ const log = console.error;
 
 const state: {
   refreshingToken: boolean;
+  refreshRequests: ((
+    auth: Auth0AuthorizeResponse | AuthBackgroundResponse
+  ) => void)[];
   lastHandler: (() => void) | undefined;
 } = {
   refreshingToken: false,
+  refreshRequests: [],
   lastHandler: undefined,
 };
 
@@ -47,11 +51,6 @@ chrome.runtime.onInstalled.addListener(() => {
   void chrome.storage.local.set({ extensionReady: false });
   void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
   chrome.contextMenus.create({
-    id: "ask_dust",
-    title: "Ask @dust to summarize this page",
-    contexts: ["all"],
-  });
-  chrome.contextMenus.create({
     id: "add_tab_content",
     title: "Add tab content to conversation",
     contexts: ["all"],
@@ -67,6 +66,53 @@ chrome.runtime.onInstalled.addListener(() => {
     title: "Add selection to conversation",
     contexts: ["selection"],
   });
+});
+
+/**
+ * Util & listeners to disable context menu items based on the domain.
+ */
+const shouldDisableContextMenuForDomain = async (
+  url: string
+): Promise<boolean> => {
+  if (url.startsWith("chrome://")) {
+    return true;
+  }
+
+  const user = await getStoredUser();
+  if (!user || !user.selectedWorkspace) {
+    return false;
+  }
+
+  const blacklistedDomains =
+    user.workspaces.find((w) => w.sId === user.selectedWorkspace)
+      ?.blacklistedDomains || [];
+
+  return blacklistedDomains.some((d) => url.includes(d));
+};
+
+const toggleContextMenus = (isDisabled: boolean) => {
+  ["add_tab_content", "add_tab_screenshot", "add_selection"].forEach(
+    (menuId) => {
+      chrome.contextMenus.update(menuId, { enabled: !isDisabled });
+    }
+  );
+};
+
+// Add URL change listener to update context menu state.
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  if (changeInfo.status === "complete" && tab.url) {
+    const isDisabled = await shouldDisableContextMenuForDomain(tab.url);
+    toggleContextMenus(isDisabled);
+  }
+});
+
+// Also add URL change listener for active tab changes.
+chrome.tabs.onActivated.addListener(async (activeInfo) => {
+  const tab = await chrome.tabs.get(activeInfo.tabId);
+  if (tab.url) {
+    const isDisabled = await shouldDisableContextMenuForDomain(tab.url);
+    toggleContextMenus(isDisabled);
+  }
 });
 
 chrome.runtime.onConnect.addListener((port) => {
@@ -86,20 +132,24 @@ chrome.runtime.onConnect.addListener((port) => {
 
 const getActionHandler = (menuItemId: string | number) => {
   switch (menuItemId) {
-    case "ask_dust":
-      return () => {
-        const params = JSON.stringify({
-          includeContent: true,
-          includeCapture: false,
-          text: ":mention[dust]{sId=dust} summarize this page.",
-          configurationId: "dust",
-        });
-        void chrome.runtime.sendMessage({
-          type: "EXT_ROUTE_CHANGE",
-          pathname: "/run",
-          search: `?${params}`,
-        });
-      };
+    /**
+     * We have the logic to add an action that will open a convo and pre-post a message.
+     * We're not using it anymore at the moment but keeping ref here for future iteration
+     * if we want to experiment again with quick actions.
+     *
+     * const params = JSON.stringify({
+     *    includeContent: true,
+     *    includeCapture: false,
+     *    text: ":mention[dust]{sId=dust} summarize this page.",
+     *    configurationId: "dust",
+     *  });
+     *  void chrome.runtime.sendMessage({
+     *    type: "EXT_ROUTE_CHANGE",
+     *    pathname: "/run",
+     *    search: `?${params}`,
+     *  });
+     *
+     */
     case "add_tab_content":
       return () => {
         void chrome.runtime.sendMessage({
@@ -321,10 +371,103 @@ chrome.runtime.onMessage.addListener(
 );
 
 /**
+ * Listener for messages sent from external websites that are whitelisted on the manifest.
+ * It allows to open the side panel and navigate to a specific conversation.
+ *
+ * We return true to keep the message channel open for async response.
+ */
+chrome.runtime.onMessageExternal.addListener((request) => {
+  if (
+    request.action !== "openSidePanel" ||
+    !request.conversationId ||
+    !request.workspaceId ||
+    !/^[a-zA-Z0-9_-]{10,}$/.test(request.conversationId) ||
+    !/^[a-zA-Z0-9_-]{10,}$/.test(request.workspaceId)
+  ) {
+    log("[onMessageExternal] Invalid params:", request);
+    return true;
+  }
+
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    if (tabs[0]) {
+      void chrome.sidePanel
+        .open({
+          windowId: tabs[0].windowId,
+        })
+        .then(() => {
+          chrome.storage.local.get(
+            ["extensionReady", "user"],
+            ({ extensionReady, user }) => {
+              if (request.workspaceId != user?.selectedWorkspace) {
+                log("[onMessageExternal] User selected another workspace.");
+                return;
+              }
+
+              const sendMessage = () => {
+                const params = JSON.stringify({
+                  conversationId: request.conversationId,
+                });
+                void chrome.runtime.sendMessage({
+                  type: "EXT_ROUTE_CHANGE",
+                  pathname: "/run",
+                  search: `?${params}`,
+                });
+              };
+
+              if (!extensionReady) {
+                let retries = 0;
+                const MAX_RETRIES = 15;
+                const RETRY_INTERVAL = 500; // Check every 500ms 15 times = 7.5s total.
+
+                const checkReady = () => {
+                  if (retries >= MAX_RETRIES) {
+                    log(
+                      "[onMessageExternal] Max retries reached waiting for extension ready."
+                    );
+                    return;
+                  }
+
+                  chrome.storage.local.get(
+                    ["extensionReady"],
+                    ({ extensionReady }) => {
+                      if (chrome.runtime.lastError) {
+                        log(
+                          "[onMessageExternal] Error checking extension ready:",
+                          chrome.runtime.lastError
+                        );
+                        return;
+                      }
+
+                      if (extensionReady) {
+                        sendMessage();
+                      } else {
+                        retries++;
+                        setTimeout(checkReady, RETRY_INTERVAL);
+                      }
+                    }
+                  );
+                };
+                checkReady();
+              } else {
+                sendMessage();
+              }
+            }
+          );
+        })
+        .catch((err) => {
+          log("[onMessageExternal] Error opening side panel:", err);
+        });
+    }
+  });
+
+  return true;
+});
+
+/**
  * Authenticate the user using Auth0.
  */
 const authenticate = async (
-  { isForceLogin }: AuthBackgroundMessage,
+  { isForceLogin, connection }: AuthBackgroundMessage,
   sendResponse: (auth: Auth0AuthorizeResponse | AuthBackgroundResponse) => void
 ) => {
   // First we call /authorize endpoint to get the authorization code (PKCE flow).
@@ -340,6 +483,7 @@ const authenticate = async (
     code_challenge_method: "S256",
     code_challenge: codeChallenge,
     prompt: isForceLogin ? "login" : "",
+    connection: connection ?? "",
   };
 
   const queryString = new URLSearchParams(options).toString();
@@ -385,9 +529,8 @@ const refreshToken = async (
   refreshToken: string,
   sendResponse: (auth: Auth0AuthorizeResponse | AuthBackgroundResponse) => void
 ) => {
-  if (state.refreshingToken) {
-    return false;
-  } else {
+  state.refreshRequests.push(sendResponse);
+  if (!state.refreshingToken) {
     state.refreshingToken = true;
     try {
       const tokenUrl = `https://${AUTH0_CLIENT_DOMAIN}/oauth/token`;
@@ -409,15 +552,22 @@ const refreshToken = async (
       }
 
       const data = await response.json();
-      sendResponse({
-        idToken: data.id_token,
-        accessToken: data.access_token,
-        refreshToken: data.refresh_token || refreshToken,
-        expiresIn: data.expires_in,
+      const handlers = state.refreshRequests;
+      state.refreshRequests = [];
+      handlers.forEach((sendResponse) => {
+        sendResponse({
+          accessToken: data.access_token,
+          refreshToken: data.refresh_token || refreshToken,
+          expiresIn: data.expires_in,
+        });
       });
     } catch (error) {
       log("Token refresh failed: unknown error", error);
-      sendResponse({ success: false });
+      const handlers = state.refreshRequests;
+      state.refreshRequests = [];
+      handlers.forEach((sendResponse) => {
+        sendResponse({ success: false });
+      });
     } finally {
       state.refreshingToken = false;
     }
@@ -453,8 +603,8 @@ const exchangeCodeForTokens = async (
     }
 
     const data = await response.json();
+
     return {
-      idToken: data.id_token,
       accessToken: data.access_token,
       refreshToken: data.refresh_token,
       expiresIn: data.expires_in,

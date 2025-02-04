@@ -7,7 +7,6 @@ import {
   LogoHorizontalColorLayer2Logo,
   LogoHorizontalColorLogo,
 } from "@dust-tt/sparkle";
-import { Transition } from "@headlessui/react";
 import Head from "next/head";
 import Link from "next/link";
 import Script from "next/script";
@@ -26,6 +25,7 @@ import { classNames } from "@app/lib/utils";
 export interface LandingLayoutProps {
   shape: number;
   postLoginReturnToUrl?: string;
+  gtmTrackingId?: string;
 }
 
 export default function LandingLayout({
@@ -35,20 +35,23 @@ export default function LandingLayout({
   children: React.ReactNode;
   pageProps: LandingLayoutProps;
 }) {
-  const { postLoginReturnToUrl = "/api/login", shape } = pageProps;
-
-  const [currentShape, setCurrentShape] = useState(shape);
-  const [showCookieBanner, setShowCookieBanner] = useState<boolean>(true);
-  const [hasAcceptedCookies, setHasAcceptedCookies] = useState<boolean>(false);
+  const {
+    postLoginReturnToUrl = "/api/login",
+    shape,
+    gtmTrackingId,
+  } = pageProps;
 
   const [acceptedCookie, setAcceptedCookie, removeAcceptedCookie] = useCookies([
     "dust-cookies-accepted",
   ]);
+  const [currentShape, setCurrentShape] = useState(shape);
+  const [showCookieBanner, setShowCookieBanner] = useState<boolean>(false);
+  const [hasAcceptedCookies, setHasAcceptedCookies] = useState<boolean>(false);
+
   useEffect(() => {
-    if (acceptedCookie["dust-cookies-accepted"]) {
-      setHasAcceptedCookies(true);
-      setShowCookieBanner(false);
-    }
+    const hasAccepted = Boolean(acceptedCookie["dust-cookies-accepted"]);
+    setHasAcceptedCookies(hasAccepted);
+    setShowCookieBanner(!hasAccepted);
   }, [acceptedCookie]);
 
   useEffect(() => {
@@ -80,8 +83,8 @@ export default function LandingLayout({
     <RootLayout>
       <Header />
       <ScrollingHeader>
-        <div className="flex h-full w-full items-center gap-4 px-6 lg:gap-10">
-          <div className="hidden h-[24px] w-[96px] lg:block">
+        <div className="flex h-full w-full items-center gap-4 px-6 xl:gap-10">
+          <div className="hidden h-[24px] w-[96px] xl:block">
             <Link href="/home">
               <Hover3D className="relative h-[24px] w-[96px]">
                 <Div3D depth={0} className="h-[24px] w-[96px]">
@@ -94,18 +97,25 @@ export default function LandingLayout({
             </Link>
           </div>
           <MobileNavigation />
-          <div className="block lg:hidden">
+          <div className="block xl:hidden">
             <LogoHorizontalColorLogo className="h-[24px] w-[96px]" />
           </div>
           <MainNavigation />
-          <div className="flex flex-grow justify-end">
+          <div className="flex flex-grow justify-end gap-4">
+            <Button
+              href="/home/contact"
+              className="hidden xs:block"
+              variant="outline"
+              size="sm"
+              label="Request a demo"
+            />
             <Button
               variant="highlight"
               size="sm"
               label="Sign in"
               icon={LoginIcon}
               onClick={() => {
-                window.location.href = `/api/auth/login?returnTo=${postLoginReturnToUrl}`;
+                window.location.href = `/api/auth/login?prompt=login&returnTo=${postLoginReturnToUrl}`;
               }}
             />
           </div>
@@ -113,6 +123,7 @@ export default function LandingLayout({
       </ScrollingHeader>
       {/* Keeping the background dark */}
       <div className="fixed bottom-0 left-0 right-0 top-0 -z-50 bg-slate-900" />
+      <div className="fixed inset-0 -z-30 bg-slate-900/50" />
       <div className="fixed bottom-0 left-0 right-0 top-0 -z-40 overflow-hidden transition duration-1000">
         <Particles currentShape={currentShape} />
       </div>
@@ -131,31 +142,29 @@ export default function LandingLayout({
           className="fixed bottom-4 right-4"
           show={showCookieBanner}
           onClickAccept={() => {
-            setAcceptedCookie("dust-cookies-accepted", "true");
+            setAcceptedCookie("dust-cookies-accepted", "true", {
+              path: "/",
+              maxAge: 183 * 24 * 60 * 60, // 6 months in seconds
+              sameSite: "lax",
+            });
             setHasAcceptedCookies(true);
             setShowCookieBanner(false);
           }}
           onClickRefuse={() => {
-            removeAcceptedCookie("dust-cookies-accepted");
+            removeAcceptedCookie("dust-cookies-accepted", { path: "/" });
             setShowCookieBanner(false);
           }}
         />
         {hasAcceptedCookies && (
-          <>
-            <Script
-              src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GA_TRACKING_ID}`}
-              strategy="afterInteractive"
-            />
-            <Script id="google-analytics" strategy="afterInteractive">
-              {`
-             window.dataLayer = window.dataLayer || [];
-             function gtag(){window.dataLayer.push(arguments);}
-             gtag('js', new Date());
-
-             gtag('config', '${process.env.NEXT_PUBLIC_GA_TRACKING_ID}');
+          <Script id="google-tag-manager" strategy="afterInteractive">
+            {`
+              (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+              new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+              j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+              'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+              })(window,document,'script','dataLayer','${gtmTrackingId}');
             `}
-            </Script>
-          </>
+          </Script>
         )}
         <FooterNavigation />
       </main>
@@ -174,22 +183,26 @@ const CookieBanner = ({
   onClickRefuse: () => void;
   className?: string;
 }) => {
+  const [isVisible, setIsVisible] = useState(show);
+
+  useEffect(() => {
+    setIsVisible(show);
+  }, [show]);
+
+  if (!isVisible) {
+    return null;
+  }
+
   return (
-    <Transition
-      show={show}
-      enter="transition-opacity duration-300"
-      appear={true}
-      enterFrom="opacity-0"
-      enterTo="opacity-100"
-      leave="transition-opacity duration-300"
-      leaveFrom="opacity-100"
-      leaveTo="opacity-0"
+    <div
       className={classNames(
         "z-30 flex w-64 flex-col gap-3 rounded-xl border border-structure-100 bg-white p-4 shadow-xl",
+        "s-transition-opacity s-duration-300 s-ease-in-out",
+        isVisible ? "s-opacity-100" : "s-opacity-0",
         className || ""
       )}
     >
-      <div className="text-sm font-normal text-element-900">
+      <div className="text-sm font-normal text-foreground">
         We use{" "}
         <A variant="primary">
           <Link
@@ -206,23 +219,28 @@ const CookieBanner = ({
           variant="outline"
           size="sm"
           label="Reject"
-          onClick={onClickRefuse}
+          onClick={() => {
+            setIsVisible(false);
+            onClickRefuse();
+          }}
         />
         <Button
           variant="highlight"
           size="sm"
           label="Accept All"
-          onClick={onClickAccept}
+          onClick={() => {
+            setIsVisible(false);
+            onClickAccept();
+          }}
         />
       </div>
-    </Transition>
+    </div>
   );
 };
-
 const Header = () => {
   return (
     <Head>
-      <title>Dust - Build custom AI assistants to speed up your work</title>
+      <title>Accelerate your entire organization with custom AI agents</title>
       <link rel="shortcut icon" href="/static/favicon.png" />
 
       <meta name="apple-mobile-web-app-title" content="Dust" />
@@ -276,7 +294,7 @@ const Header = () => {
       <meta
         id="og-title"
         property="og:title"
-        content="Dust - Build custom AI assistants to speed up your work"
+        content="Dust - Accelerate your entire organization with custom AI agents"
       />
       <meta id="og-image" property="og:image" content="/static/og_image.png" />
 

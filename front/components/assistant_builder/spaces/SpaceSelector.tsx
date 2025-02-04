@@ -1,5 +1,10 @@
 import {
   Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   Icon,
   RadioGroup,
   RadioGroupChoice,
@@ -96,7 +101,7 @@ export function SpaceSelector({
                         className={classNames(
                           "font-bold",
                           "align-middle",
-                          isDisabled ? "text-element-700" : "text-element-900"
+                          isDisabled ? "text-element-700" : "text-foreground"
                         )}
                       >
                         {getSpaceName(space)}
@@ -104,7 +109,7 @@ export function SpaceSelector({
                     </div>
                   }
                 >
-                  <div className="flex flex-col">
+                  <div className="flex w-full flex-col">
                     {selectedSpace === space.sId && (
                       <div className="ml-4 mt-1">
                         {renderChildren(selectedSpaceObj)}
@@ -119,13 +124,29 @@ export function SpaceSelector({
       </RadioGroup>
       <Separator />
       <Dialog
-        alertDialog={true}
-        isOpen={isAlertDialogOpen}
-        onValidate={() => setAlertIsDialogOpen(false)}
-        title="Changing source selection"
+        open={isAlertDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setAlertIsDialogOpen(false);
+          }
+        }}
       >
-        An assistant can access one source of data only. The other tools are
-        using a different source.
+        <DialogContent size="md" isAlertDialog>
+          <DialogHeader hideButton>
+            <DialogTitle>Changing source selection</DialogTitle>
+          </DialogHeader>
+          <DialogContainer>
+            An assistant can access one source of data only. The other tools are
+            using a different source.
+          </DialogContainer>
+          <DialogFooter
+            rightButtonProps={{
+              label: "Ok",
+              variant: "outline",
+              onClick: () => setAlertIsDialogOpen(false),
+            }}
+          />
+        </DialogContent>
       </Dialog>
     </>
   );

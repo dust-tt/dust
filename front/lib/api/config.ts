@@ -11,6 +11,9 @@ const config = {
   getAuth0TenantUrl: (): string => {
     return EnvironmentConfig.getEnvVariable("AUTH0_TENANT_DOMAIN_URL");
   },
+  getAuth0AudienceUri: (): string => {
+    return EnvironmentConfig.getEnvVariable("AUTH0_AUDIENCE_URI");
+  },
   getDustApiAudience: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_API_AUDIENCE");
   },
@@ -22,6 +25,12 @@ const config = {
   },
   getAuth0WebApplicationId: (): string => {
     return EnvironmentConfig.getEnvVariable("AUTH0_WEB_APP_CLIENT_ID");
+  },
+  getAuth0ExtensionApplicationId: (): string => {
+    return EnvironmentConfig.getEnvVariable("AUTH0_EXTENSION_CLIENT_ID");
+  },
+  getAuth0NamespaceClaim: (): string => {
+    return EnvironmentConfig.getEnvVariable("AUTH0_CLAIM_NAMESPACE");
   },
   getDustInviteTokenSecret: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_INVITE_TOKEN_SECRET");
@@ -100,19 +109,28 @@ const config = {
       apiKey: EnvironmentConfig.getOptionalEnvVariable("OAUTH_API_KEY") ?? null,
     };
   },
-  getDevelopmentDustAppsWorkspaceId: (): string | undefined => {
-    return EnvironmentConfig.getOptionalEnvVariable(
-      "DEVELOPMENT_DUST_APPS_WORKSPACE_ID"
+  getDustAppsWorkspaceId: (): string => {
+    return EnvironmentConfig.getEnvVariable("DUST_APPS_WORKSPACE_ID");
+  },
+  getDustAppsSpaceId: (): string => {
+    return EnvironmentConfig.getEnvVariable("DUST_APPS_SPACE_ID");
+  },
+  getDustAppsHelperDatasourceViewId: (): string => {
+    return EnvironmentConfig.getEnvVariable(
+      "DUST_APPS_HELPER_DATASOURCE_VIEW_ID"
     );
   },
-  getDevelopmentDustAppsSpaceId: (): string | undefined => {
-    return EnvironmentConfig.getOptionalEnvVariable(
-      "DEVELOPMENT_DUST_APPS_VAULT_ID"
-    );
+  getRegionResolverSecret: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("REGION_RESOLVER_SECRET");
   },
   // OAuth
   getOAuthGithubApp: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_GITHUB_APP");
+  },
+  getOAuthGithubAppPlatformActions: (): string => {
+    return EnvironmentConfig.getEnvVariable(
+      "OAUTH_GITHUB_APP_PLATFORM_ACTIONS"
+    );
   },
   getOAuthNotionClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_NOTION_CLIENT_ID");

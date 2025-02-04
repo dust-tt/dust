@@ -1,7 +1,7 @@
 import { Sequelize } from "sequelize";
 
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { deleteFromDataSource } from "@connectors/lib/data_sources";
+import { deleteDataSourceDocument } from "@connectors/lib/data_sources";
 import { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
@@ -121,7 +121,7 @@ async function main() {
 
 async function deleteDocument(connector: ConnectorModel, fileId: string) {
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  await deleteFromDataSource(dataSourceConfig, fileId);
+  await deleteDataSourceDocument(dataSourceConfig, fileId);
 }
 
 main()

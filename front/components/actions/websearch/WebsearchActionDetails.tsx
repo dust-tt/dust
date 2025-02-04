@@ -32,15 +32,15 @@ export function WebsearchActionDetails({
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">
         <div className="flex flex-col gap-1">
-          <span className="text-sm font-bold text-slate-900">Query</span>
-          <div className="text-sm font-normal text-slate-500">
+          <span className="text-sm font-bold text-foreground">Query</span>
+          <div className="text-sm font-normal text-muted-foreground">
             {action.query}
           </div>
         </div>
         <div>
           <Collapsible defaultOpen={defaultOpen}>
             <Collapsible.Button>
-              <span className="text-sm font-bold text-slate-900">Results</span>
+              <span className="text-sm font-bold text-foreground">Results</span>
             </Collapsible.Button>
             <Collapsible.Panel>
               <PaginatedCitationsGrid items={resultsCitations} />

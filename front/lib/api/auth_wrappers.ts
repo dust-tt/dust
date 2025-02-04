@@ -1,7 +1,10 @@
-import { DustUserEmailHeader } from "@dust-tt/client";
 import type {
   UserTypeWithWorkspaces,
   WithAPIErrorResponse,
+} from "@dust-tt/types";
+import {
+  getGroupIdsFromHeaders,
+  getUserEmailFromHeaders,
 } from "@dust-tt/types";
 import type { TokenExpiredError } from "jsonwebtoken";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -18,9 +21,8 @@ import {
   getAPIKey,
   getAuthType,
   getBearerToken,
+  getSession,
 } from "@app/lib/auth";
-import { getSession } from "@app/lib/auth";
-import { getGroupIdsFromHeaders } from "@app/lib/http_api/group_header";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -115,6 +117,17 @@ export function withSessionAuthenticationForWorkspace<T>(
           api_error: {
             type: "workspace_not_found",
             message: "The workspace was not found.",
+          },
+        });
+      }
+
+      const maintenance = owner.metadata?.maintenance;
+      if (maintenance) {
+        return apiError(req, res, {
+          status_code: 503,
+          api_error: {
+            type: "service_unavailable",
+            message: `Service is currently unavailable. [${maintenance}]`,
           },
         });
       }
@@ -235,10 +248,22 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
           });
         }
 
-        const auth = await Authenticator.fromAuth0Token({
+        const authRes = await Authenticator.fromAuth0Token({
           token: decoded.value,
           wId,
         });
+        if (authRes.isErr()) {
+          return apiError(req, res, {
+            status_code: 403,
+            api_error: {
+              type: authRes.error.code,
+              message:
+                "The user does not have an active session or is not authenticated.",
+            },
+          });
+        }
+        const auth = authRes.value;
+
         if (auth.user() === null) {
           return apiError(req, res, {
             status_code: 401,
@@ -258,6 +283,18 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
             },
           });
         }
+
+        const maintenance = auth.workspace()?.metadata?.maintenance;
+        if (maintenance) {
+          return apiError(req, res, {
+            status_code: 503,
+            api_error: {
+              type: "not_authenticated", // TODO Change this to "service_unavailable" - not_authenticated better for now as itis correctly handled by the extension
+              message: `Service is currently unavailable. [${maintenance}]`,
+            },
+          });
+        }
+
         return handler(
           req,
           res,
@@ -292,6 +329,17 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
         });
       }
 
+      const maintenance = owner.metadata?.maintenance;
+      if (maintenance) {
+        return apiError(req, res, {
+          status_code: 503,
+          api_error: {
+            type: "service_unavailable",
+            message: `Service is currently unavailable. [${maintenance}]`,
+          },
+        });
+      }
+
       // Authenticator created from the a key has the builder role if the key is associated with
       // the workspace.
       if (!workspaceAuth.isBuilder() && !allowUserOutsideCurrentWorkspace) {
@@ -310,11 +358,8 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
       // This operation is only performed if:
       // 1. The user associated with the email is a member of the current workspace.
       // 2. The system key is being used for authentication.
-      const userEmailFromHeader = req.headers[DustUserEmailHeader];
-      if (
-        typeof userEmailFromHeader === "string" &&
-        !allowUserOutsideCurrentWorkspace
-      ) {
+      const userEmailFromHeader = getUserEmailFromHeaders(req.headers);
+      if (userEmailFromHeader && !allowUserOutsideCurrentWorkspace) {
         workspaceAuth =
           (await workspaceAuth.exchangeSystemKeyForUserAuthByEmail(
             workspaceAuth,
@@ -429,7 +474,11 @@ export function withAuth0TokenAuthentication<T>(
         });
       }
 
-      const userWithWorkspaces = await getUserWithWorkspaces(user);
+      const isFromExtension = req.headers["x-request-origin"] === "extension";
+      const userWithWorkspaces = await getUserWithWorkspaces(
+        user,
+        isFromExtension
+      );
 
       return handler(req, res, userWithWorkspaces);
     }

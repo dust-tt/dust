@@ -24,7 +24,10 @@ import {
   isBrowseConfiguration,
   isConversationIncludeFileConfiguration,
   isDustAppRunConfiguration,
+  isGithubCreateIssueConfiguration,
+  isGithubGetPullRequestConfiguration,
   isProcessConfiguration,
+  isReasoningConfiguration,
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
   isWebsearchConfiguration,
@@ -49,7 +52,7 @@ import { getRedisClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
-import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
+import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import logger from "@app/logger/logger";
 
 const CANCELLATION_CHECK_INTERVAL = 500;
@@ -231,11 +234,13 @@ async function* runMultiActionsAgentLoop(
           break;
 
         case "agent_message_content":
+          const owner = auth.getNonNullableWorkspace();
           // We store the raw content emitted by the agent.
           await AgentMessageContent.create({
             agentMessageId: agentMessage.agentMessageId,
             step: i,
             content: event.content,
+            workspaceId: owner.id,
           });
           agentMessage.rawContents.push({
             step: i,
@@ -346,7 +351,10 @@ async function* runMultiActionsAgent(
   }
 
   let fallbackPrompt = "You are a conversational assistant";
-  if (agentConfiguration.actions.length) {
+  if (
+    agentConfiguration.actions.length ||
+    agentConfiguration.visualizationEnabled
+  ) {
     fallbackPrompt += " with access to tool use.";
   } else {
     fallbackPrompt += ".";
@@ -478,7 +486,7 @@ async function* runMultiActionsAgent(
   }
 
   const config = cloneBaseConfig(
-    DustProdActionRegistry["assistant-v2-multi-actions-agent"].config
+    getDustProdAction("assistant-v2-multi-actions-agent").config
   );
   if (isLegacyAgent) {
     config.MODEL.function_call =
@@ -489,6 +497,9 @@ async function* runMultiActionsAgent(
   config.MODEL.provider_id = model.providerId;
   config.MODEL.model_id = model.modelId;
   config.MODEL.temperature = agentConfiguration.model.temperature;
+  if (agentConfiguration.model.reasoningEffort) {
+    config.MODEL.reasoning_effort = agentConfiguration.model.reasoningEffort;
+  }
 
   const res = await runActionStreamed(
     auth,
@@ -1194,6 +1205,142 @@ async function* runAction(
           agentMessage.actions.push(event.action);
           break;
 
+        default:
+          assertNever(event);
+      }
+    }
+  } else if (isGithubGetPullRequestConfiguration(actionConfiguration)) {
+    const eventStream = getRunnerForActionConfiguration(
+      actionConfiguration
+    ).run(auth, {
+      agentConfiguration: configuration,
+      conversation,
+      agentMessage,
+      rawInputs: inputs,
+      functionCallId,
+      step,
+    });
+
+    for await (const event of eventStream) {
+      switch (event.type) {
+        case "github_get_pull_request_params":
+          yield event;
+          break;
+        case "github_get_pull_request_error":
+          yield {
+            type: "agent_error",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            error: {
+              code: event.error.code,
+              message: event.error.message,
+            },
+          };
+          return;
+        case "github_get_pull_request_success":
+          yield {
+            type: "agent_action_success",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            action: event.action,
+          };
+
+          // We stitch the action into the agent message. The conversation is expected to include
+          // the agentMessage object, updating this object will update the conversation as well.
+          agentMessage.actions.push(event.action);
+          break;
+
+        default:
+          assertNever(event);
+      }
+    }
+  } else if (isGithubCreateIssueConfiguration(actionConfiguration)) {
+    const eventStream = getRunnerForActionConfiguration(
+      actionConfiguration
+    ).run(auth, {
+      agentConfiguration: configuration,
+      conversation,
+      agentMessage,
+      rawInputs: inputs,
+      functionCallId,
+      step,
+    });
+
+    for await (const event of eventStream) {
+      switch (event.type) {
+        case "github_create_issue_params":
+          yield event;
+          break;
+        case "github_create_issue_error":
+          yield {
+            type: "agent_error",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            error: {
+              code: event.error.code,
+              message: event.error.message,
+            },
+          };
+          return;
+        case "github_create_issue_success":
+          yield {
+            type: "agent_action_success",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            action: event.action,
+          };
+
+          // We stitch the action into the agent message. The conversation is expected to include
+          // the agentMessage object, updating this object will update the conversation as well.
+          agentMessage.actions.push(event.action);
+          break;
+
+        default:
+          assertNever(event);
+      }
+    }
+  } else if (isReasoningConfiguration(actionConfiguration)) {
+    const eventStream = getRunnerForActionConfiguration(
+      actionConfiguration
+    ).run(auth, {
+      agentConfiguration: configuration,
+      conversation,
+      agentMessage,
+      rawInputs: inputs,
+      functionCallId,
+      step,
+    });
+
+    for await (const event of eventStream) {
+      switch (event.type) {
+        case "reasoning_error":
+          yield {
+            type: "agent_error",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            error: event.error,
+          };
+          return;
+        case "reasoning_started":
+        case "reasoning_thinking":
+        case "reasoning_tokens":
+          yield event;
+          break;
+        case "reasoning_success":
+          yield {
+            type: "agent_action_success",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            action: event.action,
+          };
+          agentMessage.actions.push(event.action);
+          break;
         default:
           assertNever(event);
       }

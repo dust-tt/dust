@@ -11,18 +11,23 @@ pub trait Filterable {
 }
 
 /// A filter to apply to the search query based on `tags`. All documents returned must have at least
-/// one tag in `is_in` and none of the tags in `is_not`.
+/// one tag in `is_in` and none of the tags in `is_not`. The `is_in_map` field allows to
+/// specify tags per data_source_id.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TagsFilter {
     #[serde(rename = "in")]
     pub is_in: Option<Vec<String>>,
+    #[serde(rename = "in_map")]
+    pub is_in_map: Option<HashMap<String, Vec<String>>>,
     #[serde(rename = "not")]
     pub is_not: Option<Vec<String>>,
+    #[serde(rename = "not_map")]
+    pub is_not_map: Option<HashMap<String, Vec<String>>>,
 }
 
 /// A filter to apply to the search query based on document parents. All documents returned must have at least
 /// one parent in `is_in` and none of their parents in `is_not`. The `is_in_map` field allows to
-/// sepecify parents per data_source_id.
+/// specify parents per data_source_id.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ParentsFilter {
     #[serde(rename = "in")]
@@ -103,12 +108,48 @@ impl SearchFilter {
                             }
                         },
                     }
+                    match &tags.is_in_map {
+                        None => (),
+                        Some(ref is_in_map) => match &mut self_tags.is_in_map {
+                            None => self_tags.is_in_map = Some(is_in_map.clone()),
+                            Some(ref mut self_is_in_map) => {
+                                for (k, v) in is_in_map.iter() {
+                                    match self_is_in_map.get_mut(k) {
+                                        None => {
+                                            self_is_in_map.insert(k.clone(), v.clone());
+                                        }
+                                        Some(ref mut self_v) => {
+                                            self_v.extend(v.clone());
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                    }
                     match &tags.is_not {
                         None => (),
                         Some(ref is_not) => match &mut self_tags.is_not {
                             None => self_tags.is_not = Some(is_not.clone()),
                             Some(ref mut self_is_not) => {
                                 self_is_not.extend(is_not.clone());
+                            }
+                        },
+                    }
+                    match &tags.is_not_map {
+                        None => (),
+                        Some(ref is_not_map) => match &mut self_tags.is_not_map {
+                            None => self_tags.is_not_map = Some(is_not_map.clone()),
+                            Some(ref mut self_is_not_map) => {
+                                for (k, v) in is_not_map.iter() {
+                                    match self_is_not_map.get_mut(k) {
+                                        None => {
+                                            self_is_not_map.insert(k.clone(), v.clone());
+                                        }
+                                        Some(ref mut self_v) => {
+                                            self_v.extend(v.clone());
+                                        }
+                                    }
+                                }
                             }
                         },
                     }
@@ -236,9 +277,67 @@ impl SearchFilter {
     // We postprocess `parents.is_in_map` if it is set to augment or set `parents.is_in` based on
     // the current `data_source_id`` and set `parents.is_in_map` to `None` since this is a virtual
     // filter that we never want to send to qdrant.
+    // We do the same for `tags.is_in_map` and `tags.is_not_map`.
     pub fn postprocess_for_data_source(&self, data_source_id: &str) -> SearchFilter {
         let filter = SearchFilter {
-            tags: self.tags.clone(),
+            tags: match &self.tags {
+                Some(tags) => {
+                    let mut is_in: Option<Vec<String>> = None;
+                    let mut is_not: Option<Vec<String>> = None;
+
+                    match &tags.is_in {
+                        Some(v) => {
+                            is_in = Some(v.clone());
+                        }
+                        None => (),
+                    }
+
+                    match &tags.is_in_map {
+                        Some(h) => match h.get(data_source_id) {
+                            Some(v) => match &mut is_in {
+                                Some(is_in) => {
+                                    is_in.extend(v.clone());
+                                }
+                                None => {
+                                    is_in = Some(v.clone());
+                                }
+                            },
+                            None => (),
+                        },
+                        None => (),
+                    }
+
+                    match &tags.is_not {
+                        Some(v) => {
+                            is_not = Some(v.clone());
+                        }
+                        None => (),
+                    }
+
+                    match &tags.is_not_map {
+                        Some(h) => match h.get(data_source_id) {
+                            Some(v) => match &mut is_not {
+                                Some(is_not) => {
+                                    is_not.extend(v.clone());
+                                }
+                                None => {
+                                    is_not = Some(v.clone());
+                                }
+                            },
+                            None => (),
+                        },
+                        None => (),
+                    }
+
+                    Some(TagsFilter {
+                        is_in,
+                        is_in_map: None,
+                        is_not,
+                        is_not_map: None,
+                    })
+                }
+                None => None,
+            },
             parents: match &self.parents {
                 Some(parents) => {
                     let mut is_in: Option<Vec<String>> = None;
@@ -281,12 +380,27 @@ impl SearchFilter {
     pub fn ensure_postprocessed(&self) -> Result<()> {
         match &self.parents {
             Some(parents) => match &parents.is_in_map {
-                Some(_) => Err(anyhow!(
-                    "SearchFilter must be postprocessed before being used"
-                )),
-                None => Ok(()),
+                Some(_) => {
+                    return Err(anyhow!(
+                        "SearchFilter must be postprocessed before being used (parents.is_in_map)"
+                    ))
+                }
+                None => (),
             },
-            None => Ok(()),
+            None => (),
         }
+        match &self.tags {
+            Some(tags) => match (&tags.is_in_map, &tags.is_not_map) {
+                (Some(_), _) | (_, Some(_)) => {
+                    return Err(anyhow!(
+                        "SearchFilter must be postprocessed before being used (tags.is_in_map or tags.is_not_map)"
+                    ));
+                }
+                (None, None) => (),
+            },
+            None => (),
+        }
+
+        Ok(())
     }
 }

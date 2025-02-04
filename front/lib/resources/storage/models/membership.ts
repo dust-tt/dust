@@ -1,21 +1,12 @@
 import type { MembershipRoleType } from "@dust-tt/types";
-import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import { DataTypes } from "sequelize";
 
-import { User } from "@app/lib/models/user";
-import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { UserModel } from "@app/lib/resources/storage/models/user";
+import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
-export class MembershipModel extends Model<
-  InferAttributes<MembershipModel>,
-  InferCreationAttributes<MembershipModel>
-> {
-  declare id: CreationOptional<number>;
+export class MembershipModel extends WorkspaceAwareModel<MembershipModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -23,16 +14,11 @@ export class MembershipModel extends Model<
   declare startAt: Date;
   declare endAt: Date | null;
 
-  declare userId: ForeignKey<User["id"]>;
-  declare workspaceId: ForeignKey<Workspace["id"]>;
+  declare userId: ForeignKey<UserModel["id"]>;
+  declare user: NonAttribute<UserModel>;
 }
 MembershipModel.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -66,13 +52,9 @@ MembershipModel.init(
     ],
   }
 );
-User.hasMany(MembershipModel, {
+UserModel.hasMany(MembershipModel, {
   foreignKey: { allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
-Workspace.hasMany(MembershipModel, {
-  foreignKey: { allowNull: false },
-  onDelete: "CASCADE",
-});
-MembershipModel.belongsTo(Workspace);
-MembershipModel.belongsTo(User);
+
+MembershipModel.belongsTo(UserModel);

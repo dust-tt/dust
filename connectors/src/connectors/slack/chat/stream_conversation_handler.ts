@@ -2,12 +2,9 @@ import type {
   AgentActionPublicType,
   ConversationPublicType,
   DustAPI,
-} from "@dust-tt/client";
-import type {
-  LightAgentConfigurationType,
-  Result,
   UserMessageType,
-} from "@dust-tt/types";
+} from "@dust-tt/client";
+import type { LightAgentConfigurationType, Result } from "@dust-tt/types";
 import { ACTION_RUNNING_LABELS, assertNever, Err, Ok } from "@dust-tt/types";
 import type { ChatPostMessageResponse, WebClient } from "@slack/web-api";
 import slackifyMarkdown from "slackify-markdown";
@@ -146,6 +143,11 @@ export async function streamConversationToSlack(
       case "websearch_params":
       case "browse_params":
       case "conversation_include_file_params":
+      case "github_get_pull_request_params":
+      case "github_create_issue_params":
+      case "reasoning_started":
+      case "reasoning_thinking":
+      case "reasoning_tokens":
         await postSlackMessageUpdate(
           {
             isComplete: false,

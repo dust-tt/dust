@@ -20,16 +20,18 @@ import {
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { sendEmail } from "@app/lib/api/email";
 import type { Authenticator } from "@app/lib/auth";
-import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import { filterAndSortAgents } from "@app/lib/utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 
+import { toFileContentFragment } from "./conversation/content_fragment";
+
 const { PRODUCTION_DUST_WORKSPACE_ID } = process.env;
 
-function renderUserType(user: User): UserType {
+function renderUserType(user: UserModel): UserType {
   return {
     sId: user.sId,
     id: user.id,
@@ -104,7 +106,7 @@ export async function userAndWorkspacesFromEmail({
     EmailTriggerError
   >
 > {
-  const user = await User.findOne({
+  const user = await UserModel.findOne({
     where: { email },
   });
 
@@ -307,15 +309,27 @@ export async function triggerFromEmail({
   // console.log("REST_OF_THREAD", restOfThread, restOfThread.length);
 
   if (restOfThread.length > 0) {
-    await postNewContentFragment(
-      auth,
-      conversation,
-      {
+    const cfRes = await toFileContentFragment(auth, {
+      contentFragment: {
         title: `Email thread: ${email.subject}`,
         content: restOfThread,
+        contentType: "text/plain",
         url: null,
-        contentType: "file_attachment",
       },
+      fileName: `email-thread.txt`,
+    });
+    if (cfRes.isErr()) {
+      return new Err({
+        type: "message_creation_error",
+        message:
+          `Error creating file for content fragment: ` + cfRes.error.message,
+      });
+    }
+
+    const contentFragmentRes = await postNewContentFragment(
+      auth,
+      conversation,
+      cfRes.value,
       {
         username: user.username,
         fullName: user.fullName,
@@ -323,6 +337,14 @@ export async function triggerFromEmail({
         profilePictureUrl: user.image,
       }
     );
+    if (contentFragmentRes.isErr()) {
+      return new Err({
+        type: "message_creation_error",
+        message:
+          `Error creating file for content fragment: ` +
+          contentFragmentRes.error.message,
+      });
+    }
 
     const updatedConversationRes = await getConversation(
       auth,

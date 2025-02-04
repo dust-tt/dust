@@ -49,7 +49,7 @@ const animatedTextVariants: Record<AnimatedTextVariantType, string> = {
   highlight: "s-text-highlight",
   emerald: "s-text-emerald-800",
   amber: "s-text-amber-800",
-  slate: "s-text-slate-600",
+  slate: "s-text-muted-foreground",
   purple: "s-text-purple-800-800",
   warning: "s-text-warning-800",
   sky: "s-text-sky-800",

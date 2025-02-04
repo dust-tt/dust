@@ -3,7 +3,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { getUserMetadata, setUserMetadata } from "@app/lib/api/user";
-import { getSession } from "@app/lib/auth";
+import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { apiError } from "@app/logger/withlogging";
 
@@ -20,9 +20,9 @@ async function handler(
     WithAPIErrorResponse<
       PostUserMetadataResponseBody | GetUserMetadataResponseBody
     >
-  >
+  >,
+  session: SessionWithUser
 ): Promise<void> {
-  const session = await getSession(req, res);
   const user = await getUserFromSession(session);
 
   if (!user) {

@@ -85,14 +85,26 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<GetAppsResponseType>>,
   auth: Authenticator,
-  space: SpaceResource
+  { space }: { space: SpaceResource }
 ): Promise<void> {
+  if (!space.canReadOrAdministrate(auth)) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "space_not_found",
+        message: "The space you requested was not found.",
+      },
+    });
+  }
+
   switch (req.method) {
     case "GET":
       const apps = await AppResource.listBySpace(auth, space);
 
       res.status(200).json({
-        apps: apps.map((app) => app.toJSON()),
+        apps: apps
+          .filter((app) => app.canRead(auth))
+          .map((app) => app.toJSON()),
       });
       return;
 
@@ -108,5 +120,7 @@ async function handler(
 }
 
 export default withPublicAPIAuthentication(
-  withResourceFetchingFromRoute(handler, "space")
+  withResourceFetchingFromRoute(handler, {
+    space: { requireCanReadOrAdministrate: true },
+  })
 );

@@ -10,6 +10,12 @@ const getGongAccessToken = async (
   transcriptsConfiguration: LabsTranscriptsConfigurationResource,
   logger: Logger
 ) => {
+  if (!transcriptsConfiguration.connectionId) {
+    throw new Error(
+      "[retrieveGongTranscripts] No connectionId found for transcriptsConfiguration Gong oauth connection."
+    );
+  }
+
   const tokRes = await getOAuthConnectionAccessToken({
     config: config.getOAuthAPIConfig(),
     logger,
@@ -22,7 +28,7 @@ const getGongAccessToken = async (
         connectionId: transcriptsConfiguration.connectionId,
         error: tokRes.error,
       },
-      "Error retrieving Gong access token"
+      "[retrieveGongTranscripts] Error retrieving Gong access token"
     );
     throw new Error("Error retrieving Gong access token");
   }
@@ -56,9 +62,9 @@ export async function retrieveGongTranscripts(
     localLogger
   );
 
-  // TEMP: Get the last 2 weeks if labs_transcripts_gong_full_storage FF is enabled.
+  // TEMP: Get the last 2 weeks if labs_transcripts_full_storage FF is enabled.
   const flags = await getFeatureFlags(auth.getNonNullableWorkspace());
-  const daysOfHistory = flags.includes("labs_transcripts_gong_full_storage")
+  const daysOfHistory = flags.includes("labs_transcripts_full_storage")
     ? 14
     : 1;
 

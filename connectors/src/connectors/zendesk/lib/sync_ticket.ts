@@ -1,4 +1,5 @@
 import type { ModelId } from "@dust-tt/types";
+import { MIME_TYPES } from "@dust-tt/types";
 import TurndownService from "turndown";
 
 import type {
@@ -8,10 +9,10 @@ import type {
 } from "@connectors/@types/node-zendesk";
 import { getTicketInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
 import {
-  deleteFromDataSource,
+  deleteDataSourceDocument,
   renderDocumentTitleAndContent,
   renderMarkdownSection,
-  upsertToDatasource,
+  upsertDataSourceDocument,
 } from "@connectors/lib/data_sources";
 import logger from "@connectors/logger/logger";
 import { ZendeskTicketResource } from "@connectors/resources/zendesk_resources";
@@ -24,11 +25,13 @@ const turndownService = new TurndownService();
  */
 export async function deleteTicket({
   connectorId,
+  brandId,
   ticketId,
   dataSourceConfig,
   loggerArgs,
 }: {
   connectorId: ModelId;
+  brandId: number;
   ticketId: number;
   dataSourceConfig: DataSourceConfig;
   loggerArgs: Record<string, string | number | null>;
@@ -37,12 +40,13 @@ export async function deleteTicket({
     { ...loggerArgs, connectorId, ticketId },
     "[Zendesk] Deleting ticket."
   );
-  await deleteFromDataSource(
+  await deleteDataSourceDocument(
     dataSourceConfig,
-    getTicketInternalId({ connectorId, ticketId })
+    getTicketInternalId({ connectorId, brandId, ticketId })
   );
   await ZendeskTicketResource.deleteByTicketId({
     connectorId,
+    brandId,
     ticketId,
   });
 }
@@ -73,6 +77,7 @@ export async function syncTicket({
 }) {
   let ticketInDb = await ZendeskTicketResource.fetchByTicketId({
     connectorId,
+    brandId,
     ticketId: ticket.id,
   });
 
@@ -85,11 +90,16 @@ export async function syncTicket({
     !ticketInDb.lastUpsertedTs ||
     ticketInDb.lastUpsertedTs < updatedAtDate;
 
+  // Tickets can be created without a subject using the API or by email,
+  // if they were never attended in the Agent Workspace their subject is not populated.
+  ticket.subject ||= "No subject";
+
+  const ticketUrl = ticket.url.replace("/api/v2/", "/").replace(".json", ""); // converting the API URL into the web URL;
   if (!ticketInDb) {
     ticketInDb = await ZendeskTicketResource.makeNew({
       blob: {
         subject: ticket.subject,
-        url: ticket.url.replace("/api/v2/", "/").replace(".json", ""), // converting the API URL into the web URL
+        url: ticketUrl,
         lastUpsertedTs: new Date(currentSyncDateMs),
         ticketUpdatedAt: updatedAtDate,
         ticketId: ticket.id,
@@ -101,7 +111,7 @@ export async function syncTicket({
   } else {
     await ticketInDb.update({
       subject: ticket.subject,
-      url: ticket.url.replace("/api/v2/", "/").replace(".json", ""), // converting the API URL into the web URL
+      url: ticketUrl,
       lastUpsertedTs: new Date(currentSyncDateMs),
       ticketUpdatedAt: updatedAtDate,
       permission: "read",
@@ -185,7 +195,7 @@ ${comments
       );
       author = null;
     }
-    return `[${comment?.created_at}] ${author ? `${author.name} (${author.email})` : "Unknown User"}:\n${comment.body}`;
+    return `[${comment?.created_at}] ${author ? `${author.name} (${author.email})` : "Unknown User"}:\n${(comment.plain_body || comment.body).replace(/[\u2028\u2029]/g, "")}`; // removing line and paragraph separators
   })
   .join("\n")}
 `.trim();
@@ -206,14 +216,16 @@ ${comments
 
     const documentId = getTicketInternalId({
       connectorId,
+      brandId,
       ticketId: ticket.id,
     });
 
-    await upsertToDatasource({
+    const parents = ticketInDb.getParentInternalIds(connectorId);
+    await upsertDataSourceDocument({
       dataSourceConfig,
       documentId,
       documentContent,
-      documentUrl: ticket.url,
+      documentUrl: ticketUrl,
       timestampMs: updatedAtDate.getTime(),
       tags: [
         ...ticket.tags,
@@ -221,9 +233,12 @@ ${comments
         `updatedAt:${updatedAtDate.getTime()}`,
         `createdAt:${createdAtDate.getTime()}`,
       ],
-      parents: ticketInDb.getParentInternalIds(connectorId),
+      parents,
+      parentId: parents[1],
       loggerArgs: { ...loggerArgs, ticketId: ticket.id },
       upsertContext: { sync_type: "batch" },
+      title: ticket.subject,
+      mimeType: MIME_TYPES.ZENDESK.TICKET,
       async: true,
     });
     await ticketInDb.update({ lastUpsertedTs: new Date(currentSyncDateMs) });

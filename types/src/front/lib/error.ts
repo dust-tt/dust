@@ -8,6 +8,7 @@ export type InternalErrorWithStatusCode = {
 
 export type APIErrorType =
   | "not_authenticated"
+  | "sso_enforced"
   | "missing_authorization_header_error"
   | "malformed_authorization_header_error"
   | "invalid_basic_authorization_error"
@@ -37,7 +38,6 @@ export type APIErrorType =
   | "workspace_user_not_found"
   | "method_not_supported_error"
   | "personal_workspace_not_found"
-  | "workspace_not_found"
   | "action_unknown_error"
   | "action_api_error"
   | "membership_not_found"
@@ -61,6 +61,7 @@ export type APIErrorType =
   | "subscription_payment_failed"
   | "subscription_not_found"
   | "subscription_state_invalid"
+  | "service_unavailable"
   // Use by assistant creation / update
   | "assistant_saving_error"
   // Used in the DustAPI client:
@@ -91,6 +92,7 @@ export type APIErrorType =
   | "file_not_found"
   | "file_too_large"
   | "file_type_not_supported"
+  | "file_is_empty"
   // Runs:
   | "run_not_found"
   // Spaces:
@@ -102,7 +104,9 @@ export type APIErrorType =
   | ConversationErrorType
   // Plugins:
   | "plugin_not_found"
-  | "plugin_execution_failed";
+  | "plugin_execution_failed"
+  // Trackers:
+  | "tracker_not_found";
 
 export type APIError = {
   type: APIErrorType;

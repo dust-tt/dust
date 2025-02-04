@@ -53,11 +53,14 @@ import { apiError } from "@app/logger/withlogging";
  *           schema:
  *             type: object
  *             properties:
+ *               parent_id:
+ *                 type: string
+ *                 description: Direct parent ID of the document
  *               parents:
  *                 type: array
  *                 items:
  *                   type: string
- *                 description: Array of parent document IDs
+ *                 description: 'Document and ancestor ids, with the following convention: parents[0] === documentId, parents[1] === parentId, and then ancestors ids in order'
  *     responses:
  *       200:
  *         description: The parents were updated
@@ -111,7 +114,11 @@ async function handler(
     }
   }
 
-  if (!dataSource || dataSource.space.sId !== spaceId) {
+  if (
+    !dataSource ||
+    dataSource.space.sId !== spaceId ||
+    !dataSource.canRead(auth)
+  ) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -133,6 +140,16 @@ async function handler(
 
   switch (req.method) {
     case "POST":
+      if (!dataSource.canWrite(auth)) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "data_source_auth_error",
+            message: "You are not allowed to update data in this data source.",
+          },
+        });
+      }
+
       if (
         !req.body ||
         !Array.isArray(req.body.parents) ||
@@ -151,6 +168,7 @@ async function handler(
         projectId: dataSource.dustAPIProjectId,
         dataSourceId: dataSource.dustAPIDataSourceId,
         documentId: req.query.documentId as string,
+        parentId: req.body.parent_id ?? null,
         parents: req.body.parents,
       });
 

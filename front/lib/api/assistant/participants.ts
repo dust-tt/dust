@@ -17,13 +17,13 @@ import {
   Message,
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
-import { User } from "@app/lib/models/user";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 
 async function fetchAllUsersById(
   userIds: ModelId[]
 ): Promise<UserParticipantType[]> {
   const users = (
-    await User.findAll({
+    await UserModel.findAll({
       attributes: ["firstName", "lastName", "imageUrl", "username"],
       where: {
         id: {
@@ -31,7 +31,7 @@ async function fetchAllUsersById(
         },
       },
     })
-  ).filter((u) => u !== null) as User[];
+  ).filter((u) => u !== null) as UserModel[];
 
   return users.map((u) => ({
     fullName: formatUserFullName(u),

@@ -1,17 +1,25 @@
 import type {
   ConversationPublicType,
   PublicPostContentFragmentRequestBody,
+  SupportedFileContentType,
+  UserMessageType,
 } from "@dust-tt/client";
-import { DustAPI } from "@dust-tt/client";
+import { DustAPI, isSupportedFileContentType } from "@dust-tt/client";
 import type {
   AgentMessageSuccessEvent,
   APIError,
   LightAgentConfigurationType,
   ModelId,
   Result,
-  UserMessageType,
 } from "@dust-tt/types";
-import { Err, Ok, sectionFullText } from "@dust-tt/types";
+import {
+  Err,
+  getHeaderFromGroupIds,
+  getHeaderFromUserEmail,
+  Ok,
+  removeNulls,
+  sectionFullText,
+} from "@dust-tt/types";
 import type { WebClient } from "@slack/web-api";
 import type { MessageElement } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
 import removeMarkdown from "remove-markdown";
@@ -55,6 +63,8 @@ import {
 } from "./temporal/activities";
 
 const { DUST_FRONT_API } = process.env;
+
+const MAX_FILE_SIZE_TO_UPLOAD = 10 * 1024 * 1024; // 10 MB
 
 type BotAnswerParams = {
   slackTeamId: string;
@@ -339,14 +349,6 @@ async function answerMessage(
     userType: slackUserInfo.is_bot ? "bot" : "user",
   });
 
-  const buildContentFragmentRes = await makeContentFragment(
-    slackClient,
-    slackChannel,
-    slackThreadTs || slackMessageTs,
-    lastSlackChatBotMessage?.messageTs || slackThreadTs || slackMessageTs,
-    connector
-  );
-
   if (!DUST_FRONT_API) {
     throw new Error("DUST_FRONT_API environment variable is not defined");
   }
@@ -366,17 +368,39 @@ async function answerMessage(
     {
       workspaceId: connector.workspaceId,
       apiKey: connector.workspaceAPIKey,
-      groupIds: requestedGroups,
-      userEmail: userEmailHeader,
+      extraHeaders: {
+        ...getHeaderFromGroupIds(requestedGroups),
+        ...getHeaderFromUserEmail(userEmailHeader),
+      },
     },
     logger,
-    {
-      useLocalInDev: false,
-      urlOverride: DUST_FRONT_API,
-    }
+    DUST_FRONT_API
   );
 
-  const agentConfigurationsRes = await dustAPI.getAgentConfigurations();
+  // Do not await this promise, we want to continue the execution of the function in parallel.
+  const buildContentFragmentPromise = makeContentFragments(
+    slackClient,
+    dustAPI,
+    slackChannel,
+    slackThreadTs || slackMessageTs,
+    lastSlackChatBotMessage?.messageTs || slackThreadTs || slackMessageTs,
+    connector,
+    lastSlackChatBotMessage?.conversationId || null
+  );
+
+  buildContentFragmentPromise.catch((error) => {
+    // To avoid silently failing, we log the error here.
+    logger.error(
+      {
+        error,
+        connectorId: connector.id,
+        slackTeamId,
+      },
+      "Error in buildContentFragmentPromise"
+    );
+  });
+
+  const agentConfigurationsRes = await dustAPI.getAgentConfigurations({});
   if (agentConfigurationsRes.isErr()) {
     return new Err(new Error(agentConfigurationsRes.error.message));
   }
@@ -385,7 +409,7 @@ async function answerMessage(
     (ac) => ac.status === "active"
   );
 
-  // Slack sends the message with user ids when someone is mentionned (bot or user).
+  // Slack sends the message with user ids when someone is mentioned (bot or user).
   // Here we remove the bot id from the message and we replace user ids by their display names.
   // Example: <@U01J9JZQZ8Z> What is the command to upgrade a workspace in production (cc
   // <@U91J1JEQZ1A>) ?
@@ -557,7 +581,25 @@ async function answerMessage(
     },
   });
 
-  const buildSlackMessageError = (errRes: Err<Error | APIError>) => {
+  const buildSlackMessageError = (
+    errRes: Err<Error | APIError>,
+    errorKind:
+      | "buildContentFragment"
+      | "postContentFragment"
+      | "getConversation"
+      | "createConversation"
+      | "postUserMessage"
+      | "streamConversationToSlack"
+  ) => {
+    logger.error(
+      {
+        error: errRes.error,
+        errorKind,
+        connectorId: connector.id,
+        slackTeamId,
+      },
+      "slackBot response error"
+    );
     return new Err(
       new SlackMessageError(
         errRes.error.message,
@@ -586,8 +628,14 @@ async function answerMessage(
     },
   };
 
+  // Await the promise to get the content fragment.
+  const buildContentFragmentRes = await buildContentFragmentPromise;
+
   if (buildContentFragmentRes.isErr()) {
-    return buildSlackMessageError(buildContentFragmentRes);
+    return buildSlackMessageError(
+      buildContentFragmentRes,
+      "buildContentFragment"
+    );
   }
 
   let conversation: ConversationPublicType | undefined = undefined;
@@ -602,12 +650,17 @@ async function answerMessage(
     // If it doesn't exists, we will create a new one later.
     if (existsRes.isOk()) {
       if (buildContentFragmentRes.value) {
-        const contentFragmentRes = await dustAPI.postContentFragment({
-          conversationId: lastSlackChatBotMessage.conversationId,
-          contentFragment: buildContentFragmentRes.value,
-        });
-        if (contentFragmentRes.isErr()) {
-          return buildSlackMessageError(contentFragmentRes);
+        for (const cf of buildContentFragmentRes.value) {
+          const contentFragmentRes = await dustAPI.postContentFragment({
+            conversationId: lastSlackChatBotMessage.conversationId,
+            contentFragment: cf,
+          });
+          if (contentFragmentRes.isErr()) {
+            return buildSlackMessageError(
+              contentFragmentRes,
+              "postContentFragment"
+            );
+          }
         }
       }
 
@@ -616,7 +669,7 @@ async function answerMessage(
         message: messageReqBody,
       });
       if (messageRes.isErr()) {
-        return buildSlackMessageError(messageRes);
+        return buildSlackMessageError(messageRes, "postUserMessage");
       }
       userMessage = messageRes.value;
 
@@ -624,7 +677,7 @@ async function answerMessage(
         conversationId: lastSlackChatBotMessage.conversationId,
       });
       if (conversationRes.isErr()) {
-        return buildSlackMessageError(conversationRes);
+        return buildSlackMessageError(conversationRes, "getConversation");
       }
       conversation = conversationRes.value;
     }
@@ -635,10 +688,10 @@ async function answerMessage(
       title: null,
       visibility: "unlisted",
       message: messageReqBody,
-      contentFragment: buildContentFragmentRes.value || undefined,
+      contentFragments: buildContentFragmentRes.value || undefined,
     });
     if (convRes.isErr()) {
-      return buildSlackMessageError(convRes);
+      return buildSlackMessageError(convRes, "createConversation");
     }
 
     conversation = convRes.value.conversation;
@@ -666,7 +719,7 @@ async function answerMessage(
   });
 
   if (streamRes.isErr()) {
-    return buildSlackMessageError(streamRes);
+    return buildSlackMessageError(streamRes, "streamConversationToSlack");
   }
 
   return streamRes;
@@ -688,13 +741,16 @@ export async function getBotEnabled(
   return new Ok(slackConfig.botEnabled);
 }
 
-async function makeContentFragment(
+async function makeContentFragments(
   slackClient: WebClient,
+  dustAPI: DustAPI,
   channelId: string,
   threadTs: string,
   startingAtTs: string | null,
-  connector: ConnectorResource
-): Promise<Result<PublicPostContentFragmentRequestBody | null, Error>> {
+  connector: ConnectorResource,
+  conversationId: string | null
+): Promise<Result<PublicPostContentFragmentRequestBody[] | null, Error>> {
+  const allContentFragments: PublicPostContentFragmentRequestBody[] = [];
   let allMessages: MessageElement[] = [];
 
   const slackBotMessages = await SlackChatBotMessage.findAll({
@@ -724,6 +780,80 @@ async function makeContentFragment(
         continue;
       }
       allMessages.push(reply);
+    }
+  }
+
+  const supportedFiles = removeNulls(
+    allMessages.filter((m) => m.files).flatMap((m) => m.files)
+  ).filter(
+    (f) =>
+      isSupportedFileContentType(f.mimetype ?? "") &&
+      !!f.size &&
+      !!f.url_private_download &&
+      f.size <= MAX_FILE_SIZE_TO_UPLOAD
+  );
+
+  if (supportedFiles.length > 0) {
+    logger.info({ conversationId }, "Found supported files, uploading them.");
+
+    // Download the files and upload them to the conversation.
+    for (const f of supportedFiles) {
+      const response = await fetch(f.url_private_download!, {
+        headers: {
+          Authorization: `Bearer ${slackClient.token}`,
+        },
+      });
+
+      // Ensure we got a successful response and that it's not an html file (redirection from slack)
+      if (
+        !response.ok ||
+        response.headers.get("content-type")?.includes("html")
+      ) {
+        logger.warn(
+          {
+            file: f,
+            error: response,
+          },
+          "Failed to download slack file. Could be a scope issue as workspace need to re-authorize the app for files."
+        );
+        continue;
+      }
+
+      const fileContent = await response.blob();
+
+      const fileName = f.name || f.title || "notitle";
+
+      const fileRes = await dustAPI.uploadFile({
+        contentType: f.mimetype as SupportedFileContentType,
+        fileName: fileName,
+        fileSize: f.size!,
+        useCase: "conversation",
+        useCaseMetadata: conversationId ? { conversationId } : undefined,
+        fileObject: new File([fileContent], fileName, {
+          type: f.mimetype,
+        }),
+      });
+
+      if (fileRes.isErr()) {
+        // We log an error, but we continue the loop to try to upload the other files.
+        // The only stopping error is if the thread content can not be uploaded. (see below)
+        logger.error(
+          {
+            file: f,
+            conversationId,
+            error: fileRes.error,
+          },
+          "Failed to upload slack file to conversation"
+        );
+        continue;
+      } else {
+        allContentFragments.push({
+          title: fileName,
+          url: fileRes.value.publicUrl,
+          fileId: fileRes.value.id,
+          context: null,
+        });
+      }
     }
   }
 
@@ -770,11 +900,31 @@ async function makeContentFragment(
   // Prepend $url to the content to make it available to the model.
   const section = `$url: ${url}\n${sectionFullText(content)}`;
 
-  return new Ok({
+  const contentType = "text/vnd.dust.attachment.slack.thread";
+  const fileName = `slack_thread-${channel.channel.name}-${threadTs}.txt`;
+
+  const blob = new Blob([section]);
+  const fileSize = blob.size;
+
+  const fileRes = await dustAPI.uploadFile({
+    contentType,
+    fileName,
+    fileSize: fileSize,
+    useCase: "conversation",
+    useCaseMetadata: conversationId ? { conversationId } : undefined,
+    fileObject: new File([blob], fileName, { type: contentType }),
+  });
+
+  if (fileRes.isErr()) {
+    return new Err(new Error(fileRes.error.message));
+  }
+
+  allContentFragments.push({
     title: `Thread content from #${channel.channel.name}`,
-    content: section,
     url: url,
-    contentType: "dust-application/slack",
+    fileId: fileRes.value.id,
     context: null,
   });
+
+  return new Ok(allContentFragments);
 }

@@ -22,12 +22,14 @@ export function AssistantPicker({
   onItemClick,
   pickerButton,
   size = "md",
+  isLoading,
 }: {
   owner: LightWorkspaceType;
   assistants: LightAgentConfigurationType[];
   onItemClick: (assistant: LightAgentConfigurationType) => void;
   pickerButton?: React.ReactNode;
   size?: "xs" | "sm" | "md";
+  isLoading?: boolean;
 }) {
   const [searchText, setSearchText] = useState("");
   const [searchedAssistants, setSearchedAssistants] = useState<
@@ -56,6 +58,7 @@ export function AssistantPicker({
             isSelect
             size={size}
             tooltip="Pick an assistant"
+            disabled={isLoading ?? false}
           />
         )}
       </DropdownMenuTrigger>
@@ -64,7 +67,6 @@ export function AssistantPicker({
           ref={searchbarRef}
           placeholder="Search"
           name="input"
-          size="xs"
           value={searchText}
           onChange={setSearchText}
           onKeyDown={(e) => {
@@ -76,7 +78,7 @@ export function AssistantPicker({
           }}
         />
         <DropdownMenuSeparator className="mt-2" />
-        <ScrollArea className="mt-1 h-[300px]">
+        <ScrollArea className="flex flex-col mt-1 max-h-[300px] overflow-y-auto">
           {searchedAssistants.map((c) => (
             <DropdownMenuItem
               key={`assistant-picker-${c.sId}`}
