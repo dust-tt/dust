@@ -94,6 +94,7 @@ export function computeNodesDiff({
       {
         connectorsContentNodesLength: connectorsContentNodes.length,
         coreContentNodesLength: coreContentNodes.length,
+        pagination,
       },
       "[CoreNodes] Different number of nodes returned by connectors and core"
     );
