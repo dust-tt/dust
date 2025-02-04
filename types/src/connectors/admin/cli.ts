@@ -16,6 +16,7 @@ export const ConnectorsCommandSchema = t.type({
     t.literal("restart"),
     t.literal("get-parents"),
     t.literal("set-permission"),
+    t.literal("garbage-collect"),
   ]),
   args: t.record(
     t.string,
