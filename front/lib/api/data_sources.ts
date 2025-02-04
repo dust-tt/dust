@@ -1,4 +1,7 @@
-import type { DataSourceSearchQuery, DataSourceSearchResponseType } from "@dust-tt/client";
+import type {
+  DataSourceSearchQuery,
+  DataSourceSearchResponseType,
+} from "@dust-tt/client";
 import type {
   AdminCommandType,
   ConnectorProvider,
