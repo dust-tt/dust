@@ -6,7 +6,6 @@ import {
   FolderTableIcon,
   LockIcon,
   Square3Stack3DIcon,
-  TableIcon,
 } from "@dust-tt/sparkle";
 import type { ContentNode } from "@dust-tt/types";
 import { assertNever, MIME_TYPES } from "@dust-tt/types";
