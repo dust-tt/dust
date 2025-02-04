@@ -72,7 +72,13 @@ export const ASSISTANT_MANAGER_TABS = [
 export type AssistantManagerTabsType =
   (typeof ASSISTANT_MANAGER_TABS)[number]["id"];
 
-type RowData = {
+type TBaseData = {
+  onClick?: () => void;
+  moreMenuItems?: MenuItem[];
+  action?: React.ReactNode;
+};
+
+type RowData = TBaseData & {
   name: string;
   description: string;
   pictureUrl: string;
@@ -80,9 +86,6 @@ type RowData = {
   feedbacks: { up: number; down: number } | undefined;
   lastUpdate: string | null;
   scope: AgentConfigurationScope;
-  onClick?: () => void;
-  moreMenuItems?: MenuItem[];
-  action?: React.ReactNode;
 };
 
 const calculateFeedback = (row: Row<RowData>) => {
