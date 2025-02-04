@@ -41,7 +41,10 @@ import {
   useSpaces,
   useSpacesAsAdmin,
 } from "@app/lib/swr/spaces";
-import { DEFAULT_STATIC_DATA_SOURCE_PAGINATION_LIMIT } from "@app/lib/api/data_source_view";
+
+// TODO(nodes-core): remove this upon project cleanup
+// copied from lib/api/data_source_view.ts
+const DEFAULT_STATIC_DATA_SOURCE_PAGINATION_LIMIT = 10_000;
 
 interface SpaceSideBarMenuProps {
   owner: LightWorkspaceType;

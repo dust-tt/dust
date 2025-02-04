@@ -46,7 +46,7 @@ import {
 import logger from "@app/logger/logger";
 
 // TODO(nodes-core): remove this upon project cleanup
-export const DEFAULT_STATIC_DATA_SOURCE_PAGINATION_LIMIT = 2;
+const DEFAULT_STATIC_DATA_SOURCE_PAGINATION_LIMIT = 10_000;
 
 export function filterAndCropContentNodesByView(
   dataSourceView: DataSourceViewResource,
