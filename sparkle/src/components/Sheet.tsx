@@ -128,7 +128,7 @@ const SheetContainer = ({ children }: React.HTMLAttributes<HTMLDivElement>) => {
       )}
       onScrollStateChange={setIsScrolled}
     >
-      <div className="s-relative s-flex s-flex-col s-gap-2 s-p-5 s-text-left s-text-sm s-text-foreground">
+      <div className="s-relative s-flex s-flex-col s-gap-5 s-p-5 s-text-left s-text-sm s-text-foreground">
         {children}
       </div>
     </ScrollArea>

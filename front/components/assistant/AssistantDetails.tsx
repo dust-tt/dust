@@ -86,7 +86,7 @@ function AssistantDetailsInfo({
 
       {agentConfiguration?.instructions ? (
         <div className="flex flex-col gap-5">
-          <div className="text-lg font-bold text-primary">Instructions</div>
+          <div className="text-lg font-bold text-foreground">Instructions</div>
           <ReadOnlyTextArea content={agentConfiguration.instructions} />
         </div>
       ) : (
@@ -149,7 +149,7 @@ function AssistantDetailsPerformance({
                 <div className="flex flex-col gap-1 text-lg font-bold">
                   {agentAnalytics?.users ? (
                     <>
-                      <div className="truncate text-primary">
+                      <div className="truncate text-foreground">
                         {agentAnalytics.users.length}
                       </div>
 

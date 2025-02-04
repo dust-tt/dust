@@ -332,7 +332,7 @@ const RenderConversations = ({
 
   return (
     <>
-      <NavigationListLabel label={dateLabel} />
+      <NavigationListLabel label={dateLabel} isSticky />
       {conversations.map((conversation) => (
         <RenderConversation
           key={conversation.sId}
