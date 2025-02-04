@@ -1,4 +1,3 @@
-import type { MenuItem } from "@dust-tt/sparkle";
 import {
   Avatar,
   Button,
@@ -72,13 +71,15 @@ export const ASSISTANT_MANAGER_TABS = [
 export type AssistantManagerTabsType =
   (typeof ASSISTANT_MANAGER_TABS)[number]["id"];
 
-type TBaseData = {
-  onClick?: () => void;
-  moreMenuItems?: MenuItem[];
-  action?: React.ReactNode;
+type MoreMenuItem = {
+  label: string;
+  icon: React.ComponentType;
+  onClick: (e: React.MouseEvent) => void;
+  variant?: "warning" | "default";
+  kind: "item";
 };
 
-type RowData = TBaseData & {
+type RowData = {
   name: string;
   description: string;
   pictureUrl: string;
@@ -86,6 +87,9 @@ type RowData = TBaseData & {
   feedbacks: { up: number; down: number } | undefined;
   lastUpdate: string | null;
   scope: AgentConfigurationScope;
+  onClick?: () => void;
+  moreMenuItems?: MoreMenuItem[];
+  action?: React.ReactNode;
 };
 
 const calculateFeedback = (row: Row<RowData>) => {
