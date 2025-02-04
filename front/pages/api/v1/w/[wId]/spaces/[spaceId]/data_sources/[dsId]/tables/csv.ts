@@ -145,7 +145,7 @@ async function handler(
                 message: upsertRes.error.message,
               },
             });
-          case "invalid_rows":
+          case "invalid_csv":
             return apiError(req, res, {
               status_code: 400,
               api_error: {

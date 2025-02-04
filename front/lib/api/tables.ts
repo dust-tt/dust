@@ -376,18 +376,19 @@ export async function rowsFromCsv({
     });
   }
 
-  const headerRes = detectedHeaders
-    ? new Ok(detectedHeaders)
-    : await detectHeaders(auth, csv, delimiter, useAppForHeaderDetection);
-
-  if (headerRes.isErr()) {
-    return headerRes;
-  }
-  const { header, rowIndex } = headerRes.value;
-
   // this differs with = {} in that it prevent errors when header values clash with object properties such as toString, constructor, ..
   const valuesByCol: Record<string, string[]> = Object.create(null);
+  let header, rowIndex;
   try {
+    const headerRes = detectedHeaders
+      ? new Ok(detectedHeaders)
+      : await detectHeaders(auth, csv, delimiter, useAppForHeaderDetection);
+
+    if (headerRes.isErr()) {
+      return headerRes;
+    }
+    ({ header, rowIndex } = headerRes.value);
+
     const parser = parse(csv, { delimiter });
     let i = 0;
     for await (const anyRecord of parser) {
