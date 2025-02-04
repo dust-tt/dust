@@ -2287,7 +2287,7 @@ async fn tables_upsert(
     {
         Ok(table) => match state
             .search_store
-            .index_node(Node::from(table.clone()), Some(table.get_tags()))
+            .index_node(Node::from(table.clone()))
             .await
         {
             Ok(_) => (
@@ -3045,7 +3045,7 @@ async fn folders_upsert(
         ),
         Ok(folder) => match state
             .search_store
-            .index_node(Node::from(folder.clone()), None)
+            .index_node(Node::from(folder.clone()))
             .await
         {
             Ok(_) => (

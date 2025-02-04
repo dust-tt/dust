@@ -79,7 +79,7 @@ pub trait SearchStore {
         store: Box<dyn Store + Sync + Send>,
     ) -> Result<(Vec<CoreContentNode>, Option<String>)>;
 
-    async fn index_node(&self, node: Node, tags: Option<Vec<String>>) -> Result<()>;
+    async fn index_node(&self, node: Node) -> Result<()>;
     async fn delete_node(&self, node: Node) -> Result<()>;
     async fn delete_data_source_nodes(&self, data_source_id: &str) -> Result<()>;
 
@@ -264,8 +264,7 @@ impl SearchStore for ElasticsearchSearchStore {
         Ok((result, next_cursor))
     }
 
-    async fn index_node(&self, node: Node, tags: Option<Vec<String>>) -> Result<()> {
-        println!("index_node {:?}", tags);
+    async fn index_node(&self, node: Node) -> Result<()> {
         let now = utils::now();
 
         let doc = json!({
@@ -280,7 +279,7 @@ impl SearchStore for ElasticsearchSearchStore {
             "parent_id": node.parent_id,
             "parents": node.parents,
             "source_url": node.source_url,
-            "tags": tags
+            "tags": node.tags
         });
 
         // Note: in elasticsearch, the index API updates the document if it

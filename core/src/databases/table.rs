@@ -270,9 +270,7 @@ impl Table {
             )
             .await?;
 
-        search_store
-            .index_node(Node::from(self.clone()), Some(self.get_tags()))
-            .await?;
+        search_store.index_node(Node::from(self.clone())).await?;
         Ok(())
     }
 
@@ -325,7 +323,8 @@ impl From<Table> for Node {
             table.provider_visibility,
             table.parents.get(1).cloned(),
             table.parents,
-            table.source_url,
+            table.source_url.clone(),
+            table.tags,
         )
     }
 }

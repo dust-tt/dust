@@ -14,6 +14,7 @@ use tokio_postgres::{NoTls, Transaction};
 
 use crate::data_sources::data_source::DocumentStatus;
 use crate::data_sources::node::{Node, NodeType, ProviderVisibility};
+use crate::search_filter::Filterable;
 use crate::{
     blocks::block::BlockType,
     cached_request::CachedRequest,
@@ -55,6 +56,7 @@ pub struct UpsertNode<'a> {
     pub provider_visibility: &'a Option<ProviderVisibility>,
     pub parents: &'a Vec<String>,
     pub source_url: &'a Option<String>,
+    pub tags: &'a Vec<String>,
 }
 
 impl PostgresStore {
@@ -167,9 +169,9 @@ impl PostgresStore {
         let stmt = tx
             .prepare(
                 "INSERT INTO data_sources_nodes \
-                  (id, data_source, created, node_id, timestamp, title, mime_type, provider_visibility, parents, source_url, \
+                  (id, data_source, created, node_id, timestamp, title, mime_type, provider_visibility, parents, source_url, tags_array, \
                    document, \"table\", folder) \
-                  VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) \
+                  VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) \
                   ON CONFLICT (data_source, node_id) DO UPDATE \
                   SET timestamp = EXCLUDED.timestamp, title = EXCLUDED.title, \
                     mime_type = EXCLUDED.mime_type, parents = EXCLUDED.parents, \
@@ -193,6 +195,7 @@ impl PostgresStore {
                     &upsert_params.provider_visibility,
                     &upsert_params.parents,
                     &upsert_params.source_url,
+                    &upsert_params.tags,
                     &document_row_id,
                     &table_row_id,
                     &folder_row_id,
@@ -1331,7 +1334,7 @@ impl Store for PostgresStore {
             1 => (r[0].get(0), r[0].get(1)),
             _ => unreachable!(),
         };
-
+        // TODO(Thomas-020425): Read tags from nodes table.
         let r = match version_hash {
             None => {
                 c.query(
@@ -1929,6 +1932,7 @@ impl Store for PostgresStore {
                 provider_visibility: &document.provider_visibility,
                 parents: &document.parents,
                 source_url: &document.source_url,
+                tags: &document.tags,
             },
             data_source_row_id,
             document_row_id,
@@ -2708,6 +2712,7 @@ impl Store for PostgresStore {
                 provider_visibility: table.provider_visibility(),
                 parents: table.parents(),
                 source_url: table.source_url(),
+                tags: &table.get_tags(),
             },
             data_source_row_id,
             table_row_id,
@@ -3269,6 +3274,7 @@ impl Store for PostgresStore {
                 mime_type: folder.mime_type(),
                 parents: folder.parents(),
                 source_url: folder.source_url(),
+                tags: &vec![],
             },
             data_source_row_id,
             folder_row_id,
@@ -3513,7 +3519,7 @@ impl Store for PostgresStore {
 
         let stmt = c
             .prepare(
-                "SELECT timestamp, title, mime_type, provider_visibility, parents, node_id, document, \"table\", folder, source_url \
+                "SELECT timestamp, title, mime_type, provider_visibility, parents, node_id, document, \"table\", folder, source_url, tags_array \
                    FROM data_sources_nodes \
                    WHERE data_source = $1 AND node_id = $2 LIMIT 1",
             )
@@ -3533,6 +3539,7 @@ impl Store for PostgresStore {
                 let document_row_id = row[0].get::<_, Option<i64>>(6);
                 let table_row_id = row[0].get::<_, Option<i64>>(7);
                 let folder_row_id = row[0].get::<_, Option<i64>>(8);
+                let tags: Vec<String> = row[0].get::<_, Vec<String>>(9);
                 let (node_type, row_id) = match (document_row_id, table_row_id, folder_row_id) {
                     (Some(id), None, None) => (NodeType::Document, id),
                     (None, Some(id), None) => (NodeType::Table, id),
@@ -3553,6 +3560,7 @@ impl Store for PostgresStore {
                         parents.get(1).cloned(),
                         parents,
                         source_url,
+                        tags,
                     ),
                     row_id,
                 )))
@@ -3571,7 +3579,7 @@ impl Store for PostgresStore {
 
         let stmt = c
             .prepare(
-                "SELECT dsn.timestamp, dsn.title, dsn.mime_type, dsn.provider_visibility, dsn.parents, dsn.node_id, dsn.document, dsn.\"table\", dsn.folder, ds.data_source_id, ds.internal_id, dsn.source_url, dsn.id \
+                "SELECT dsn.timestamp, dsn.title, dsn.mime_type, dsn.provider_visibility, dsn.parents, dsn.node_id, dsn.document, dsn.\"table\", dsn.folder, ds.data_source_id, ds.internal_id, dsn.source_url, dsn.id, dsn.tags_array \
                    FROM data_sources_nodes dsn JOIN data_sources ds ON dsn.data_source = ds.id \
                    WHERE dsn.id > $1 ORDER BY dsn.id ASC LIMIT $2",
             )
@@ -3593,6 +3601,7 @@ impl Store for PostgresStore {
                 let folder_row_id = row.get::<_, Option<i64>>(8);
                 let data_source_id: String = row.get::<_, String>(9);
                 let data_source_internal_id: String = row.get::<_, String>(10);
+                let tags: Vec<String> = row.get::<_, Vec<String>>(11);
                 let (node_type, element_row_id) =
                     match (document_row_id, table_row_id, folder_row_id) {
                         (Some(id), None, None) => (NodeType::Document, id),
@@ -3615,6 +3624,7 @@ impl Store for PostgresStore {
                         parents.get(1).cloned(),
                         parents,
                         source_url,
+                        tags,
                     ),
                     row_id,
                     element_row_id,
