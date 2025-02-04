@@ -100,7 +100,7 @@ export function computeNodesDiff({
       },
       "[CoreNodes] Different number of nodes returned by connectors and core"
     );
-    return;
+    return [];
   }
 
   connectorsContentNodes.forEach((connectorsNode) => {
