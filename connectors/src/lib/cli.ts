@@ -107,8 +107,8 @@ export const connectors = async ({
   if (!args.wId) {
     throw new Error("Missing --wId argument");
   }
-  if (!args.dsId) {
-    throw new Error("Missing --dsId argument");
+  if (!args.dsId && !args.connectorId) {
+    throw new Error("Missing --dsId or --connectorId argument");
   }
 
   // We retrieve by data source name as we can have multiple data source with the same provider for
@@ -116,7 +116,8 @@ export const connectors = async ({
   const connector = await ConnectorModel.findOne({
     where: {
       workspaceId: `${args.wId}`,
-      dataSourceId: args.dsId,
+      ...(args.dsId ? { dataSourceId: args.dsId } : {}),
+      ...(args.connectorId ? { id: args.connectorId } : {}),
     },
   });
 
