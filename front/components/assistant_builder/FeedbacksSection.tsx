@@ -5,6 +5,7 @@ import {
   ExternalLinkIcon,
   HandThumbDownIcon,
   HandThumbUpIcon,
+  Hoverable,
   Icon,
   NavigationListLabel,
   Spinner,
@@ -211,34 +212,46 @@ function FeedbackCard({ owner, feedback }: FeedbackCardProps) {
         )
       }
     >
-      <div className="flex w-full flex-row gap-3">
-        {feedback.userImageUrl ? (
-          <Avatar
-            size="xs"
-            visual={feedback.userImageUrl}
-            name={feedback.userName}
-          />
-        ) : (
-          <Spinner size="xs" />
-        )}
-        <div className="flex flex-col gap-3 text-sm font-normal text-foreground">
-          <div className="flex flex-col gap-2">
+      <div className="flex w-full flex-col gap-3 text-sm font-normal text-foreground">
+        <div className="flex w-full flex-row gap-3">
+          {feedback.userImageUrl ? (
+            <Avatar
+              size="sm"
+              visual={feedback.userImageUrl}
+              name={feedback.userName}
+            />
+          ) : (
+            <Spinner size="sm" />
+          )}
+          <div className="flex flex-col">
             <div className="font-semibold">{feedback.userName}</div>
             <div className="text-muted-foreground">{timeSinceFeedback} ago</div>
           </div>
-          <div className="flex flex-row gap-3">
-            <div className="rounded-full bg-primary-400 p-2">
-              <Icon
-                size="xs"
-                className="text-primary"
-                visual={
-                  feedback.thumbDirection === "up"
-                    ? HandThumbUpIcon
-                    : HandThumbDownIcon
-                }
-              />
-            </div>
+        </div>
+        <div className="flex w-full flex-row gap-3 text-base">
+          <div className="rounded-full bg-primary-300 p-2">
+            <Icon
+              size="xs"
+              className="text-foreground"
+              visual={
+                feedback.thumbDirection === "up"
+                  ? HandThumbUpIcon
+                  : HandThumbDownIcon
+              }
+            />
+          </div>
+          <div className="flex flex-col gap-2">
             {feedback.content}
+            {conversationUrl ?? (
+              <Hoverable
+                variant="primary"
+                href={conversationUrl ?? ""}
+                tooltip="View conversation"
+                target="_blank"
+              >
+                View conversation
+              </Hoverable>
+            )}
           </div>
         </div>
       </div>
