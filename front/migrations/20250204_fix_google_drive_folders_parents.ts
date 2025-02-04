@@ -1,3 +1,4 @@
+import type { ProviderVisibility } from "@dust-tt/types";
 import { concurrentExecutor, CoreAPI, Ok } from "@dust-tt/types";
 import { QueryTypes } from "sequelize";
 
@@ -14,6 +15,11 @@ const NODE_CONCURRENCY = 16;
 interface Node {
   parents: string[];
   node_id: string;
+  source_url: string;
+  timestamp: number;
+  title: string;
+  mime_type: string;
+  provider_visibility: ProviderVisibility | null;
 }
 
 async function migrateNode({
@@ -66,12 +72,17 @@ async function migrateNode({
   if (execute) {
     await withRetries(
       async () => {
-        const updateRes = await coreAPI.updateDataSourceDocumentParents({
+        const updateRes = await coreAPI.upsertDataSourceFolder({
           projectId: dataSource.dustAPIProjectId,
           dataSourceId: dataSource.dustAPIDataSourceId,
-          documentId: coreNode.node_id,
+          folderId: coreNode.node_id,
           parents: newParents,
           parentId: newParentId,
+          sourceUrl: coreNode.source_url,
+          providerVisibility: coreNode.provider_visibility,
+          mimeType: coreNode.mime_type,
+          title: coreNode.title,
+          timestamp: coreNode.timestamp,
         });
         if (updateRes.isErr()) {
           logger.error(
@@ -156,7 +167,13 @@ async function migrateDataSource({
 
   do {
     rows = (await corePrimary.query(
-      `SELECT node_id, parents
+      `SELECT node_id,
+              parents,
+              source_url,
+              timestamp,
+              title,
+              mime_type,
+              provider_visibility
        FROM data_sources_nodes
        WHERE data_source = :coreDataSourceId
          AND node_id > :nextId
