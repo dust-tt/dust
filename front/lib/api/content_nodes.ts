@@ -8,7 +8,10 @@ import type {
 } from "@dust-tt/types";
 import { assertNever, MIME_TYPES } from "@dust-tt/types";
 
-import type { OffsetPaginationParams } from "@app/lib/api/pagination";
+import type {
+  CursorPaginationParams,
+  OffsetPaginationParams,
+} from "@app/lib/api/pagination";
 import {
   CHANNEL_MIME_TYPES,
   DATABASE_MIME_TYPES,
@@ -78,7 +81,7 @@ export function computeNodesDiff({
   connectorsContentNodes: DataSourceViewContentNode[];
   coreContentNodes: DataSourceViewContentNode[];
   provider: ConnectorProvider | null;
-  pagination: OffsetPaginationParams | undefined;
+  pagination: OffsetPaginationParams | CursorPaginationParams | undefined;
   viewType: ContentNodesViewType;
   localLogger: typeof logger;
 }) {
