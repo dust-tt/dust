@@ -41,6 +41,7 @@ import {
   useSpaces,
   useSpacesAsAdmin,
 } from "@app/lib/swr/spaces";
+import { DEFAULT_STATIC_DATA_SOURCE_PAGINATION_LIMIT } from "@app/lib/api/data_source_view";
 
 interface SpaceSideBarMenuProps {
   owner: LightWorkspaceType;
@@ -502,6 +503,15 @@ const SpaceDataSourceViewItem = ({
   const notExpandableNodesLabel =
     notExpandableNodes.length === 1 ? "item" : "items";
 
+  // TODO(nodes-core): remove this upon project cleanup
+  // if looking at a static datasource view with more than the pagination limit,
+  // show a ">" to indicate that there are more items
+  const staticDsPlusIfMoreThanLimit =
+    item.category === "folder" &&
+    nodes.length >= DEFAULT_STATIC_DATA_SOURCE_PAGINATION_LIMIT
+      ? "+"
+      : "";
+
   return (
     <Tree.Item
       isNavigatable
@@ -533,7 +543,7 @@ const SpaceDataSourceViewItem = ({
               label={
                 expandableNodes.length
                   ? `and ${notExpandableNodes.length} ${notExpandableNodesLabel}`
-                  : `${notExpandableNodes.length} ${notExpandableNodesLabel}`
+                  : `${notExpandableNodes.length}${staticDsPlusIfMoreThanLimit} ${notExpandableNodesLabel}`
               }
               onItemClick={async () => {
                 await setNavigationSelection({ lastSpaceId: space.sId });

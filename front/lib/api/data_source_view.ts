@@ -45,7 +45,8 @@ import {
 } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 
-const DEFAULT_STATIC_DATA_SOURCE_PAGINATION_LIMIT = 10_000;
+// TODO(nodes-core): remove this upon project cleanup
+export const DEFAULT_STATIC_DATA_SOURCE_PAGINATION_LIMIT = 2;
 
 export function filterAndCropContentNodesByView(
   dataSourceView: DataSourceViewResource,
@@ -336,6 +337,7 @@ async function getContentNodesForStaticDataSourceView(
   // Use a high pagination limit since the product UI doesn't support pagination yet,
   // even though static data sources can contain many documents via API ingestion.
   const paginationParams = pagination ?? {
+    // TODO(nodes-core): remove this upon project cleanup
     limit: DEFAULT_STATIC_DATA_SOURCE_PAGINATION_LIMIT,
     offset: 0,
   };
