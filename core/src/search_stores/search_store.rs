@@ -476,6 +476,7 @@ impl ElasticsearchSearchStore {
         Ok(core_content_nodes)
     }
 
+    // Always add node_id as a tie-breaker
     fn build_sort(&self, sort: Option<Vec<SortSpec>>) -> Result<Vec<Sort>> {
         let mut base_sort = match sort {
             Some(sort) => {
