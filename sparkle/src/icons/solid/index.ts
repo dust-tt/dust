@@ -75,7 +75,6 @@ export { default as InformationCircleIcon } from "./InformationCircle";
 export { default as LightbulbIcon } from "./Lightbulb";
 export { default as LinkIcon } from "./Link";
 export { default as LinkedinIcon } from "./Linkedin";
-export { default as Linkedin1Icon } from "./Linkedin1";
 export { default as ListIcon } from "./List";
 export { default as ListAddIcon } from "./ListAdd";
 export { default as ListCheckIcon } from "./ListCheck";
