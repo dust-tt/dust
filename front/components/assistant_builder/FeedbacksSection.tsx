@@ -2,6 +2,7 @@ import {
   Avatar,
   Card,
   CardActionButton,
+  cn,
   ExternalLinkIcon,
   HandThumbDownIcon,
   HandThumbUpIcon,
@@ -229,28 +230,43 @@ function FeedbackCard({ owner, feedback }: FeedbackCardProps) {
           </div>
         </div>
         <div className="flex w-full flex-row gap-3 text-base">
-          <div className="rounded-full bg-primary-300 p-2">
-            <Icon
-              size="xs"
-              className="text-foreground"
-              visual={
+          <div>
+            <div
+              className={cn(
+                "rounded-full bg-primary-300 p-2",
                 feedback.thumbDirection === "up"
-                  ? HandThumbUpIcon
-                  : HandThumbDownIcon
-              }
-            />
+                  ? "bg-success-200"
+                  : "bg-amber-200"
+              )}
+            >
+              <Icon
+                size="xs"
+                className={cn(
+                  "text-foreground",
+                  feedback.thumbDirection === "up"
+                    ? "text-success-800"
+                    : "text-amber-800"
+                )}
+                visual={
+                  feedback.thumbDirection === "up"
+                    ? HandThumbUpIcon
+                    : HandThumbDownIcon
+                }
+              />
+            </div>
           </div>
           <div className="flex flex-col gap-2">
             {feedback.content}
             {conversationUrl ?? (
-              <Hoverable
-                variant="primary"
-                href={conversationUrl ?? ""}
-                tooltip="View conversation"
-                target="_blank"
-              >
-                View conversation
-              </Hoverable>
+              <div>
+                <Hoverable
+                  variant="primary"
+                  href={conversationUrl ?? ""}
+                  target="_blank"
+                >
+                  View conversation
+                </Hoverable>
+              </div>
             )}
           </div>
         </div>
