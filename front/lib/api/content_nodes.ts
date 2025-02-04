@@ -441,6 +441,17 @@ export function computeNodesDiff({
             n.internalId.startsWith(coreNode.internalId)
           )
         )
+    )
+    // The documents upserted for Notion databases are children of the table node and are not returned by connectors.
+    // core's behavior is considered to be an improvement, as it allows selecting the document alone without the table and its children pages.
+    .filter(
+      (coreNode) =>
+        !(
+          provider === "notion" &&
+          coreNode.internalId.startsWith("notion-database-") &&
+          coreNode.parentInternalId?.replace("notion-", "") ===
+            coreNode.internalId.replace("notion-database-", "")
+        )
     );
   if (extraCoreNodes.length > 0) {
     localLogger.info(
