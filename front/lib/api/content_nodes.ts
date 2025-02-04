@@ -12,6 +12,7 @@ import type {
   CursorPaginationParams,
   OffsetPaginationParams,
 } from "@app/lib/api/pagination";
+import { isCursorPaginationParams } from "@app/lib/api/pagination";
 import {
   CHANNEL_MIME_TYPES,
   DATABASE_MIME_TYPES,
@@ -113,7 +114,12 @@ export function computeNodesDiff({
         ) {
           // Connectors return tables even when viewType is documents, core doesn't
           if (!(provider === "snowflake" && viewType === "documents")) {
-            missingNodes.push(connectorsNode);
+            // We expect missing nodes when cursor pagination is enabled
+            // Because core doesn't use the same sort as connectors
+            // See https://github.com/dust-tt/dust/issues/10515
+            if (!(pagination && isCursorPaginationParams(pagination))) {
+              missingNodes.push(connectorsNode);
+            }
           }
         }
       }
