@@ -9,7 +9,7 @@ import {
   MoreIcon,
   PencilSquareIcon,
   StarIcon,
-  StarStrokeIcon,
+  StarStrokeIconIcon as StarStrokeIcon,
   TrashIcon,
 } from "@dust-tt/sparkle";
 import type {
