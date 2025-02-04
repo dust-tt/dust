@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS "agent_reasoning_configurations" (
     "modelId" VARCHAR(255) NOT NULL,
     "temperature" FLOAT,
     "reasoningEffort" VARCHAR(255),
-    "agentConfigurationId" INTEGER NOT NULL REFERENCES "agent_configurations" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    "agentConfigurationId" BIGINT NOT NULL REFERENCES "agent_configurations" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
     "workspaceId" BIGINT NOT NULL REFERENCES "workspaces" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     PRIMARY KEY ("id")
 );
@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS "agent_reasoning_actions" (
     "functionCallId" VARCHAR(255),
     "functionCallName" VARCHAR(255),
     "step" INTEGER NOT NULL,
-    "agentMessageId" INTEGER NOT NULL REFERENCES "agent_messages" ("id") ON DELETE NO ACTION ON UPDATE CASCADE,
+    "agentMessageId" BIGINT NOT NULL REFERENCES "agent_messages" ("id") ON DELETE NO ACTION ON UPDATE CASCADE,
     "workspaceId" BIGINT NOT NULL REFERENCES "workspaces" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     PRIMARY KEY ("id")
 );
