@@ -169,7 +169,7 @@ export const confluence = async ({
       } else {
         await confluenceUpdatePagesParentIdsActivity(
           args.connectorId,
-          args.spaceId,
+          args.spaceId.toString(),
           null
         );
       }
