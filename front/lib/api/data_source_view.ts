@@ -234,13 +234,6 @@ async function getContentNodesForDataSourceViewFromCore(
 ): Promise<Result<GetContentNodesForDataSourceViewResult, Error>> {
   const limit = pagination?.limit ?? 1000;
 
-  // TODO(nodes-core): remove offset pagination upon project cleanup
-  if (pagination && !isCursorPaginationParams(pagination)) {
-    throw new Error(
-      "Offset pagination is not supported for shadow read from core. "
-    );
-  }
-
   // There's an early return possible on !dataSourceView.dataSource.connectorId && internalIds?.length === 0,
   // won't include it for now as we are shadow-reading.
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
@@ -269,7 +262,13 @@ async function getContentNodesForDataSourceViewFromCore(
         ? undefined
         : ROOT_PARENT_ID);
 
-  let nextPageCursor: string | null = pagination?.cursor ?? null;
+  // TODO(nodes-core): remove offset pagination upon project cleanup
+  let nextPageCursor: string | null = pagination
+    ? isCursorPaginationParams(pagination)
+      ? pagination.cursor
+      : null
+    : null;
+
   let resultNodes: CoreAPIContentNode[] = [];
   do {
     const coreRes = await coreAPI.searchNodes({
