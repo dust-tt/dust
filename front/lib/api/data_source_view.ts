@@ -502,6 +502,7 @@ export async function getContentNodesForDataSourceView(
       connectorsContentNodes: contentNodesResult.nodes,
       coreContentNodes: coreContentNodesRes.value.nodes,
       provider: dataSourceView.dataSource.connectorProvider,
+      pagination: params.pagination,
       viewType: params.viewType,
       localLogger,
     });
