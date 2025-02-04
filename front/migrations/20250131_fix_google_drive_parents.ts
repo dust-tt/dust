@@ -34,14 +34,23 @@ async function migrateNode({
   let newParents = coreNode.parents;
   let newParentId: string | null = null;
   try {
+    if (
+      coreNode.table !== null &&
+      !coreNode.node_id.startsWith("google-spreadsheet")
+    ) {
+      logger.warn("Sheet that does not start with google-spreadsheet.");
+    }
     const uniqueIds = [
-      new Set(
-        [coreNode.node_id, ...coreNode.parents].map((x) =>
-          x.replace("gdrive-", "")
+      ...new Set(
+        // Google Drive node IDs can start either with gdrive- (files and folders) or with google-spreadsheet (sheets).
+        [coreNode.node_id, ...coreNode.parents].map((id) =>
+          id.startsWith("google-spreadsheet") ? id : id.replace("gdrive-", "")
         )
       ),
     ];
-    newParents = uniqueIds.map((id) => `gdrive-${id}`);
+    newParents = uniqueIds.map((id) =>
+      id.startsWith("google-spreadsheet") ? id : `gdrive-${id}`
+    );
     newParentId = newParents[1] || null;
   } catch (e) {
     logger.error(
@@ -90,7 +99,15 @@ async function migrateNode({
             parentId: newParentId,
           });
         } else {
-          throw new Error("Unreachable: folder with incorrect parents.");
+          logger.error(
+            {
+              nodeId: coreNode.node_id,
+              fromParents: coreNode.parents,
+              toParents: newParents,
+            },
+            "Folder with incorrect parents."
+          );
+          return;
         }
         if (updateRes.isErr()) {
           logger.error(
