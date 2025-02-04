@@ -34,10 +34,12 @@ export const ConfluenceCommandSchema = t.type({
     t.literal("me"),
     t.literal("upsert-page"),
     t.literal("upsert-pages"),
+    t.literal("update-parents"),
   ]),
   args: t.type({
     connectorId: t.union([t.number, t.undefined]),
     pageId: t.union([t.number, t.undefined]),
+    spaceId: t.union([t.string, t.undefined]),
     file: t.union([t.string, t.undefined]),
     keyInFile: t.union([t.string, t.undefined]),
   }),
