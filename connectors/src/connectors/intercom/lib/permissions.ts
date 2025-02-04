@@ -86,26 +86,26 @@ export async function retrieveSelectedNodes({
       permission: "read",
       lastUpdatedAt: null,
     });
-  }
-
-  const teams = await IntercomTeam.findAll({
-    where: {
-      connectorId: connectorId,
-      permission: "read",
-    },
-  });
-  teams.forEach((team) => {
-    teamsNodes.push({
-      internalId: getTeamInternalId(connectorId, team.teamId),
-      parentInternalId: getTeamsInternalId(connectorId),
-      type: "folder",
-      title: team.name,
-      sourceUrl: null,
-      expandable: false,
-      permission: team.permission,
-      lastUpdatedAt: team.updatedAt.getTime() || null,
+  } else {
+    const teams = await IntercomTeam.findAll({
+      where: {
+        connectorId: connectorId,
+        permission: "read",
+      },
     });
-  });
+    teams.forEach((team) => {
+      teamsNodes.push({
+        internalId: getTeamInternalId(connectorId, team.teamId),
+        parentInternalId: getTeamsInternalId(connectorId),
+        type: "folder",
+        title: team.name,
+        sourceUrl: null,
+        expandable: false,
+        permission: team.permission,
+        lastUpdatedAt: team.updatedAt.getTime() || null,
+      });
+    });
+  }
 
   return [...collectionsNodes, ...teamsNodes];
 }
