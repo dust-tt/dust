@@ -203,6 +203,11 @@ export const connectors = async ({
       return { parents: parents.value };
     }
 
+    case "garbage-collect": {
+      await throwOnError(manager.garbageCollect());
+      return { success: true };
+    }
+
     case "set-permission": {
       const { permissionKey, permissionValue } = args;
       if (!permissionKey) {
