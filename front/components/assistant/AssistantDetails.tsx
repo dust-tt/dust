@@ -139,7 +139,9 @@ function AssistantDetailsPerformance({
       </div>
 
       {isAgentAnayticsLoading ? (
-        <Spinner />
+        <div className="w-full p-6">
+          <Spinner variant="dark" />
+        </div>
       ) : (
         <CardGrid>
           <ValueCard

@@ -79,7 +79,13 @@ export const FeedbacksSection = ({
     isAgentConfigurationFeedbacksLoading ||
     isAgentConfigurationHistoryLoading
   ) {
-    return <Spinner />;
+    return (
+      <>
+        <div className="w-full p-6">
+          <Spinner variant="dark" />
+        </div>
+      </>
+    );
   }
 
   if (
@@ -257,7 +263,7 @@ function FeedbackCard({ owner, feedback }: FeedbackCardProps) {
           </div>
           <div className="flex flex-col gap-2">
             {feedback.content}
-            {conversationUrl ?? (
+            {conversationUrl && (
               <div>
                 <Hoverable
                   variant="primary"
