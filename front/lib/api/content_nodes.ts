@@ -109,7 +109,7 @@ export function computeNodesDiff({
     );
     if (matchingCoreNodes.length === 0) {
       if (
-        // Connector's notion-unknown folder can map to core's syncing OR unknown folder,
+        // Connectors' notion-unknown folder can map to core's syncing OR unknown folder,
         // it is expected that connectors can return `notion-unknown` while core returns `notion-syncing` instead.
         // See https://github.com/dust-tt/dust/issues/10340
         (connectorsNode.internalId !== "notion-unknown" ||
