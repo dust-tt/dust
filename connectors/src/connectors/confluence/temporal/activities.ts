@@ -232,6 +232,9 @@ export async function confluenceUpsertSpaceFolderActivity({
     mimeType: MIME_TYPES.CONFLUENCE.SPACE,
     sourceUrl: spaceInDb?.urlSuffix && `${baseUrl}/wiki${spaceInDb.urlSuffix}`,
   });
+
+  // Update the space name in db.
+  await spaceInDb?.update({ name: spaceName });
 }
 
 export async function markPageHasVisited({
