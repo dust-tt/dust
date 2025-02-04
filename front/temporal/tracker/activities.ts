@@ -12,7 +12,6 @@ import {
   GPT_4O_MODEL_CONFIG,
   Ok,
 } from "@dust-tt/types";
-import { Context } from "@temporalio/activity";
 import _ from "lodash";
 
 import config from "@app/lib/api/config";
@@ -64,11 +63,6 @@ export async function trackersGenerationActivity(
   documentHash: string,
   dataSourceConnectorProvider: ConnectorProvider | null
 ) {
-  if (Context.current().info.attempt > 3) {
-    // TODO(DOC_TRACKER): mechanism to retry "manually"
-    throw new Error("Too many attempts");
-  }
-
   const localLogger = logger.child({
     workspaceId,
     dataSourceId,
@@ -251,13 +245,28 @@ export async function trackersGenerationActivity(
     );
 
     // We retrieve content from the maintained scope based on the diff.
-    const maintainedScopeRetrieval = await callDocTrackerRetrievalAction(auth, {
-      inputText: diffString,
-      targetDocumentTokens: targetMaintainedScopeTokens,
-      topK: maintainedScopeTopK,
-      maintainedScope,
-      parentsInMap,
-    });
+    const maintainedScopeRetrievalRes = await callDocTrackerRetrievalAction(
+      auth,
+      {
+        inputText: diffString,
+        targetDocumentTokens: targetMaintainedScopeTokens,
+        topK: maintainedScopeTopK,
+        maintainedScope,
+        parentsInMap,
+      }
+    );
+
+    if (maintainedScopeRetrievalRes.isErr()) {
+      trackerLogger.error(
+        {
+          error: maintainedScopeRetrievalRes.error,
+        },
+        "Error retrieving content from maintained scope."
+      );
+      throw maintainedScopeRetrievalRes.error;
+    }
+
+    const maintainedScopeRetrieval = maintainedScopeRetrievalRes.value;
 
     if (maintainedScopeRetrieval.length === 0) {
       trackerLogger.info("No content retrieved from maintained scope.");
@@ -345,7 +354,7 @@ export async function trackersGenerationActivity(
     // We find documents for which to run the change suggestion.
     // We do this by asking which documents are most relevant to the diff and using the
     // logprobs as a score.
-    const scoreDocsResult = await callDocTrackerScoreDocsAction(auth, {
+    const scoreDocsRes = await callDocTrackerScoreDocsAction(auth, {
       watchedDocDiff: diffString,
       maintainedDocuments,
       prompt: tracker.prompt,
@@ -353,13 +362,25 @@ export async function trackersGenerationActivity(
       modelId: TRACKER_SCORE_DOCS_MODEL_CONFIG.modelId,
     });
 
+    if (scoreDocsRes.isErr()) {
+      trackerLogger.error(
+        {
+          error: scoreDocsRes.error,
+        },
+        "Error scoring documents."
+      );
+      throw scoreDocsRes.error;
+    }
+
+    const scoreDocsOutput = scoreDocsRes.value;
+
     // The output of the Dust App above is a list of document for which we want to run the change suggestion.
 
     for (const {
       documentId: maintainedDocumentId,
       dataSourceId: maintainedDataSourceId,
       score,
-    } of scoreDocsResult) {
+    } of scoreDocsOutput) {
       logger.info(
         {
           maintainedDocumentId,
@@ -377,18 +398,27 @@ export async function trackersGenerationActivity(
         continue;
       }
 
-      const suggestChangesResult = await callDocTrackerSuggestChangesAction(
-        auth,
-        {
-          watchedDocDiff: diffString,
-          maintainedDocContent: content,
-          prompt: tracker.prompt,
-          providerId: tracker.providerId,
-          modelId: tracker.modelId,
-        }
-      );
+      const suggestChangesRes = await callDocTrackerSuggestChangesAction(auth, {
+        watchedDocDiff: diffString,
+        maintainedDocContent: content,
+        prompt: tracker.prompt,
+        providerId: tracker.providerId,
+        modelId: tracker.modelId,
+      });
 
-      if (!suggestChangesResult.suggestion) {
+      if (suggestChangesRes.isErr()) {
+        trackerLogger.error(
+          {
+            error: suggestChangesRes.error,
+          },
+          "Error suggesting changes."
+        );
+        throw suggestChangesRes.error;
+      }
+
+      const suggestChangesOutput = suggestChangesRes.value;
+
+      if (!suggestChangesOutput.suggestion) {
         trackerLogger.info("No changes suggested.");
         continue;
       }
@@ -404,9 +434,9 @@ export async function trackersGenerationActivity(
         );
       }
 
-      const suggestedChanges = suggestChangesResult.suggestion;
-      const thinking = suggestChangesResult.thinking;
-      const confidenceScore = suggestChangesResult.confidence_score;
+      const suggestedChanges = suggestChangesOutput.suggestion;
+      const thinking = suggestChangesOutput.thinking;
+      const confidenceScore = suggestChangesOutput.confidence_score;
 
       trackerLogger.info(
         {
