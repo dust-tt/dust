@@ -221,49 +221,32 @@ export async function submitAssistantBuilderForm({
         ];
 
       case "REASONING":
-        let { modelId, providerId } = (() => {
-          if (a.configuration.modelId && a.configuration.providerId) {
-            return {
-              modelId: a.configuration.modelId,
-              providerId: a.configuration.providerId,
-            };
-          }
-
-          if (!reasoningModels.length) {
-            throw new Error("No reasoning models found");
-          }
-
-          return {
-            modelId: reasoningModels[0].modelId,
-            providerId: reasoningModels[0].providerId,
-          };
-        })();
-
-        if (
-          reasoningModels.find(
-            (m) => m.modelId === modelId && m.providerId === providerId
-          )
-        ) {
-          // reasoning model is no longer available.
-          if (reasoningModels.length > 0) {
-            // In this case we switch to the first reasoning model available.
-            modelId = reasoningModels[0].modelId;
-            providerId = reasoningModels[0].providerId;
-          } else {
-            // In this case we remove the action from the configuration.
-            return [];
-          }
+        // User doesn't have any reasoning models available.
+        if (!reasoningModels.length) {
+          return [];
         }
+
+        const selectedSupportedReasoningModel = reasoningModels.find(
+          (m) =>
+            m.modelId === a.configuration.modelId &&
+            m.providerId === a.configuration.providerId &&
+            (m.reasoningEffort ?? null) ===
+              (a.configuration.reasoningEffort ?? null)
+        );
+
+        // If the selected model is no longer available, we switch to the first available model.
+        const reasoningModel =
+          selectedSupportedReasoningModel || reasoningModels[0];
 
         return [
           {
             type: "reasoning_configuration",
             name: DEFAULT_REASONING_ACTION_NAME,
             description: DEFAULT_REASONING_ACTION_DESCRIPTION,
-            modelId,
-            providerId,
+            modelId: reasoningModel.modelId,
+            providerId: reasoningModel.providerId,
             temperature: a.configuration.temperature,
-            reasoningEffort: a.configuration.reasoningEffort,
+            reasoningEffort: reasoningModel.reasoningEffort ?? null,
           },
         ];
 

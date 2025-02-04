@@ -218,6 +218,7 @@ const upsertDocumentToDatasource: ProcessingFunction = async ({
   }
   const { title: upsertTitle, ...restArgs } = upsertArgs ?? {};
   const upsertDocumentRes = await upsertDocument({
+    // Beware, most values here are default values that are overrided by the ...restArgs below.
     document_id: documentId,
     source_url: sourceUrl,
     text: content,
@@ -258,7 +259,10 @@ const upsertTableToDatasource: ProcessingFunction = async ({
     tableId = upsertArgs.tableId ?? tableId;
   }
   const { title: upsertTitle, ...restArgs } = upsertArgs ?? {};
+
   const upsertTableRes = await upsertTable({
+    // Beware, most values here are default values that are overrided by the ...restArgs below,
+    // including description.
     tableId,
     name: slugify(file.fileName),
     description: "Table uploaded from file",
@@ -301,17 +305,7 @@ type ProcessingFunction = ({
   file: FileResource;
   content: string;
   dataSource: DataSourceResource;
-  upsertArgs?:
-    | Pick<UpsertDocumentArgs, "document_id" | "title" | "tags">
-    | Pick<
-        UpsertTableArgs,
-        | "name"
-        | "title"
-        | "description"
-        | "tableId"
-        | "tags"
-        | "useAppForHeaderDetection"
-      >;
+  upsertArgs?: UpsertDocumentArgs | UpsertTableArgs;
 }) => Promise<Result<undefined, Error>>;
 
 const getProcessingFunction = ({
@@ -427,17 +421,7 @@ export async function processAndUpsertToDataSource(
   }: {
     file: FileResource;
     optionalContent?: string;
-    upsertArgs?:
-      | Pick<UpsertDocumentArgs, "document_id" | "title" | "tags">
-      | Pick<
-          UpsertTableArgs,
-          | "name"
-          | "title"
-          | "description"
-          | "tableId"
-          | "tags"
-          | "useAppForHeaderDetection"
-        >;
+    upsertArgs?: UpsertDocumentArgs | UpsertTableArgs;
   }
 ): Promise<
   Result<

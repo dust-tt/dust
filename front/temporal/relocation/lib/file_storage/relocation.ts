@@ -1,3 +1,5 @@
+import { isDevelopment } from "@dust-tt/types";
+
 import { getBucketInstance } from "@app/lib/file_storage";
 import config from "@app/temporal/relocation/activities/config";
 
@@ -9,6 +11,7 @@ interface RelocationStorageOptions {
   operation: string;
 }
 
+// In prod, we use pod annotations to set the service account.
 export async function writeToRelocationStorage(
   data: unknown,
   { workspaceId, type, operation }: RelocationStorageOptions
@@ -16,7 +19,9 @@ export async function writeToRelocationStorage(
   const timestamp = Date.now();
   const path = `${RELOCATION_PATH_PREFIX}/${workspaceId}/${type}/${operation}/${timestamp}.json`;
 
-  const relocationBucket = getBucketInstance(config.getGcsRelocationBucket());
+  const relocationBucket = getBucketInstance(config.getGcsRelocationBucket(), {
+    useServiceAccount: isDevelopment(),
+  });
 
   await relocationBucket.uploadRawContentToBucket({
     content: JSON.stringify(data),
@@ -30,7 +35,9 @@ export async function writeToRelocationStorage(
 export async function readFromRelocationStorage<T = unknown>(
   dataPath: string
 ): Promise<T> {
-  const relocationBucket = getBucketInstance(config.getGcsRelocationBucket());
+  const relocationBucket = getBucketInstance(config.getGcsRelocationBucket(), {
+    useServiceAccount: isDevelopment(),
+  });
 
   const content = await relocationBucket.fetchFileContent(dataPath);
 
@@ -38,7 +45,9 @@ export async function readFromRelocationStorage<T = unknown>(
 }
 
 export async function deleteFromRelocationStorage(dataPath: string) {
-  const relocationBucket = getBucketInstance(config.getGcsRelocationBucket());
+  const relocationBucket = getBucketInstance(config.getGcsRelocationBucket(), {
+    useServiceAccount: isDevelopment(),
+  });
 
   await relocationBucket.delete(dataPath, { ignoreNotFound: true });
 }

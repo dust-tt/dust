@@ -4,8 +4,8 @@ import {
   createPublicApiAuthenticationTests,
   createPublicApiMockRequest,
 } from "@app/tests/utils/generic_public_api_tests";
-import { groupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
-import { spaceFactory } from "@app/tests/utils/SpaceFactory";
+import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import {
   expectArrayOfObjectsWithSpecificLength,
   itInTransaction,
@@ -28,21 +28,21 @@ describe("GET /api/v1/w/[wId]/spaces", () => {
     expect(res._getJSONData()).toEqual({ spaces: [] });
   });
 
-  itInTransaction("returns accessible spaces for the workspace", async () => {
+  itInTransaction("returns accessible spaces for the workspace", async (t) => {
     // Setup
     const { req, res, workspace, globalGroup } =
       await createPublicApiMockRequest();
 
     // Create test spaces
-    const globalSpace = await spaceFactory().global(workspace).create();
-    await spaceFactory().system(workspace).create(); // System spaces should not be returned unless your are admin (public api keys are builders)
-    const regularSpace1 = await spaceFactory().regular(workspace).create();
-    const regularSpace2 = await spaceFactory().regular(workspace).create();
-    await spaceFactory().regular(workspace).create(); // Unassociated space
+    const globalSpace = await SpaceFactory.global(workspace, t);
+    await SpaceFactory.system(workspace, t); // System spaces should not be returned unless your are admin (public api keys are builders)
+    const regularSpace1 = await SpaceFactory.regular(workspace, t);
+    const regularSpace2 = await SpaceFactory.regular(workspace, t);
+    await SpaceFactory.regular(workspace, t); // Unassociated space
 
     // Associate spaces with the global group
-    await groupSpaceFactory().associate(regularSpace1, globalGroup);
-    await groupSpaceFactory().associate(regularSpace2, globalGroup);
+    await GroupSpaceFactory.associate(regularSpace1, globalGroup);
+    await GroupSpaceFactory.associate(regularSpace2, globalGroup);
 
     // Execute request
     await handler(req, res);

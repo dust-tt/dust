@@ -82,7 +82,7 @@ export async function retrieveSelectedNodes({
       type: "channel",
       title: "Conversations",
       sourceUrl: null,
-      expandable: false,
+      expandable: true,
       permission: "read",
       lastUpdatedAt: null,
     });

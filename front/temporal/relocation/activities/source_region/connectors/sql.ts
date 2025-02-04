@@ -1,14 +1,15 @@
-import { getConnectorsReplicaDbConnection } from "@app/lib/production_checks/utils";
+import type { ModelId } from "@dust-tt/types";
+import { QueryTypes } from "sequelize";
+
+import { getConnectorsPrimaryDbConnection } from "@app/lib/production_checks/utils";
 import logger from "@app/logger/logger";
-import {
+import type {
   ReadTableChunkParams,
   RelocationBlob,
 } from "@app/temporal/relocation/activities/types";
-import { getTopologicalOrder } from "@app/temporal/relocation/lib/sql/schema/dependencies";
-import { ModelId } from "@dust-tt/types";
-import { QueryTypes } from "sequelize";
 import { writeToRelocationStorage } from "@app/temporal/relocation/lib/file_storage/relocation";
-import { generateInsertStatements } from "@app/temporal/relocation/lib/sql/insert";
+import { generateParameterizedInsertStatements } from "@app/temporal/relocation/lib/sql/insert";
+import { getTopologicalOrder } from "@app/temporal/relocation/lib/sql/schema/dependencies";
 
 export async function getAllConnectorsForWorkspace({
   workspaceId,
@@ -16,9 +17,7 @@ export async function getAllConnectorsForWorkspace({
   workspaceId: string;
 }) {
   // TODO: Use the front databases to get the connectorIds.
-
-  // We can use the replica db because we don't need to write to it.
-  const connectorReplicaDb = getConnectorsReplicaDbConnection();
+  const connectorsDb = getConnectorsPrimaryDbConnection();
 
   const localLogger = logger.child({
     workspaceId,
@@ -26,7 +25,7 @@ export async function getAllConnectorsForWorkspace({
 
   localLogger.info("[SQL] Getting all connectors for workspace");
 
-  const rows = await connectorReplicaDb.query<{ id: ModelId }>(
+  const rows = await connectorsDb.query<{ id: ModelId }>(
     `SELECT * FROM "connectors" WHERE "workspaceId" = :workspaceId`,
     {
       replacements: { workspaceId },
@@ -37,7 +36,7 @@ export async function getAllConnectorsForWorkspace({
 
   const blob: RelocationBlob = {
     statements: {
-      connectors: generateInsertStatements("connectors", rows, {
+      connectors: generateParameterizedInsertStatements("connectors", rows, {
         onConflict: "ignore",
       }),
     },
@@ -63,10 +62,9 @@ export async function getAllConnectorsForWorkspace({
 }
 
 export async function getTablesWithConnectorIdOrder() {
-  // We can use the replica db because we don't need to write to it.
-  const connectorReplicaDb = getConnectorsReplicaDbConnection();
+  const connectorsDb = getConnectorsPrimaryDbConnection();
 
-  return getTopologicalOrder(connectorReplicaDb, {
+  return getTopologicalOrder(connectorsDb, {
     columnName: "connectorId",
   });
 }
@@ -92,11 +90,11 @@ export async function readConnectorsTableChunk({
   localLogger.info("[SQL Table] Reading table chunk");
 
   // We can use the replica db because we don't need to write to it.
-  const connectorReplicaDb = getConnectorsReplicaDbConnection();
+  const connectorsDb = getConnectorsPrimaryDbConnection();
 
   const idClause = lastId ? `AND id > ${lastId}` : "";
 
-  const rows = await connectorReplicaDb.query<{ id: ModelId }>(
+  const rows = await connectorsDb.query<{ id: ModelId }>(
     `SELECT * FROM "${tableName}"
        WHERE "connectorId" = :connectorId ${idClause}
        ORDER BY id
@@ -118,7 +116,7 @@ export async function readConnectorsTableChunk({
 
   const blob: RelocationBlob = {
     statements: {
-      [tableName]: generateInsertStatements(tableName, rows, {
+      [tableName]: generateParameterizedInsertStatements(tableName, rows, {
         onConflict: "ignore",
       }),
     },

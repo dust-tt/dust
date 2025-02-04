@@ -31,6 +31,7 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "gpt-4o-mini"
   | "o1"
   | "o1-mini"
+  | "o3-mini"
   | "claude-3-opus-20240229"
   | "claude-3-5-sonnet-20240620"
   | "claude-3-5-sonnet-20241022"
@@ -780,7 +781,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "disable_run_logs"
   | "show_debug_tools"
   | "labs_github_actions"
-  | "reasoning_tool_feature"
   | "deepseek_r1_global_agent_feature"
   | "bigquery_feature"
 >();

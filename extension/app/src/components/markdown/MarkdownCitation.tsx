@@ -1,4 +1,5 @@
 import {
+  BigQueryLogo,
   ConfluenceLogo,
   DocumentTextIcon,
   DriveLogo,
@@ -24,7 +25,8 @@ export type CitationIconType =
   | "notion"
   | "slack"
   | "image"
-  | "snowflake";
+  | "snowflake"
+  | "bigquery";
 
 export const citationIconMap: Record<
   CitationIconType,
@@ -41,6 +43,7 @@ export const citationIconMap: Record<
   slack: SlackLogo,
   image: ImageIcon,
   snowflake: SnowflakeLogo,
+  bigquery: BigQueryLogo,
 };
 
 export interface MarkdownCitation {

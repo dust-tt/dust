@@ -28,6 +28,7 @@ pub mod databases {
     pub mod table;
     pub mod table_schema;
     pub mod remote_databases {
+        pub mod bigquery;
         pub mod get_remote_database;
         pub mod remote_database;
         pub mod snowflake;

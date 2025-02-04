@@ -1,6 +1,5 @@
 import { Button, Logo } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
-import Link from "next/link";
 
 import { makeEnterpriseConnectionInitiateLoginUrl } from "@app/lib/api/enterprise_connection";
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
@@ -53,9 +52,12 @@ export default function SsoEnforced({
               Access requires Single Sign-On (SSO) authentication. Use your SSO
               provider to sign in.{" "}
             </p>
-            <Link href={initiatedLoginUrl}>
-              <Button variant="primary" label="Connect with SSO" size="md" />
-            </Link>
+            <Button
+              variant="highlight"
+              label="Connect with SSO"
+              size="md"
+              href={initiatedLoginUrl}
+            />
           </div>
         </div>
       </main>

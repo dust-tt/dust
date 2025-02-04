@@ -1,6 +1,6 @@
 -- Migration created on Jan 27, 2025
 CREATE TABLE IF NOT EXISTS "agent_reasoning_configurations" (
-    "id" SERIAL,
+    "id" BIGSERIAL,
     "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL,
     "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL,
     "sId" VARCHAR(255) NOT NULL,
@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS "agent_reasoning_configurations" (
     "modelId" VARCHAR(255) NOT NULL,
     "temperature" FLOAT,
     "reasoningEffort" VARCHAR(255),
-    "agentConfigurationId" INTEGER NOT NULL REFERENCES "agent_configurations" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    "agentConfigurationId" BIGINT NOT NULL REFERENCES "agent_configurations" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
     "workspaceId" BIGINT NOT NULL REFERENCES "workspaces" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     PRIMARY KEY ("id")
 );
@@ -20,7 +20,7 @@ CREATE INDEX CONCURRENTLY "agent_reasoning_configurations_agent_configuration_id
 CREATE INDEX CONCURRENTLY "agent_reasoning_configurations_workspace_id" ON "agent_reasoning_configurations" ("workspaceId");
 
 CREATE TABLE IF NOT EXISTS "agent_reasoning_actions" (
-    "id" SERIAL,
+    "id" BIGSERIAL,
     "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL,
     "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL,
     "runId" VARCHAR(255),
@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS "agent_reasoning_actions" (
     "functionCallId" VARCHAR(255),
     "functionCallName" VARCHAR(255),
     "step" INTEGER NOT NULL,
-    "agentMessageId" INTEGER NOT NULL REFERENCES "agent_messages" ("id") ON DELETE NO ACTION ON UPDATE CASCADE,
+    "agentMessageId" BIGINT NOT NULL REFERENCES "agent_messages" ("id") ON DELETE NO ACTION ON UPDATE CASCADE,
     "workspaceId" BIGINT NOT NULL REFERENCES "workspaces" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     PRIMARY KEY ("id")
 );

@@ -288,7 +288,7 @@ export async function processTranscriptActivity(
     throw error;
   }
 
-  // labs_transcripts_full_storage FF enables storing all Gong transcripts in a single datasource view
+  // FF enables storing all Gong/Modjo transcripts in a single datasource view
   let fullStorageFF = false;
   let fullStorageDataSourceViewId = null;
 
@@ -417,6 +417,11 @@ export async function processTranscriptActivity(
         "[processTranscriptActivity] Error storing transcript to Datasource. Keep going to process."
       );
     }
+
+    await transcriptsConfiguration.setStorageStatusForFileId(
+      fileId,
+      shouldStoreTranscript
+    );
 
     localLogger.info(
       {

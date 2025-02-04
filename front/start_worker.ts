@@ -10,6 +10,7 @@ import { runLabsWorker } from "@app/temporal/labs/worker";
 import { runMentionsCountWorker } from "@app/temporal/mentions_count_queue/worker";
 import { runPermissionsWorker } from "@app/temporal/permissions_queue/worker";
 import { runProductionChecksWorker } from "@app/temporal/production_checks/worker";
+import { runRelocationWorker } from "@app/temporal/relocation/worker";
 import { runScrubWorkspaceQueueWorker } from "@app/temporal/scrub_workspace/worker";
 import {
   runTrackerNotificationWorker,
@@ -18,7 +19,6 @@ import {
 import { runUpsertQueueWorker } from "@app/temporal/upsert_queue/worker";
 import { runUpsertTableQueueWorker } from "@app/temporal/upsert_tables/worker";
 import { runUpdateWorkspaceUsageWorker } from "@app/temporal/usage_queue/worker";
-import { runRelocationWorker } from "@app/temporal/relocation/worker";
 
 setupGlobalErrorHandler(logger);
 

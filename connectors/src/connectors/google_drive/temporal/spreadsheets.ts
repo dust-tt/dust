@@ -23,6 +23,7 @@ import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
   deleteDataSourceFolder,
   deleteDataSourceTable,
+  ignoreTablesError,
   MAX_FILE_SIZE_TO_DOWNLOAD,
   upsertDataSourceFolder,
   upsertDataSourceTableFromCsv,
@@ -59,8 +60,7 @@ async function upsertGdriveTable(
   connector: ConnectorResource,
   sheet: Sheet,
   parents: string[],
-  rows: string[][],
-  loggerArgs: object
+  rows: string[][]
 ) {
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
@@ -77,27 +77,27 @@ async function upsertGdriveTable(
 
   // Upserting is safe: Core truncates any previous table with the same Id before
   // the operation. Note: Renaming a sheet in Google Drive retains its original Id.
-  await upsertDataSourceTableFromCsv({
-    dataSourceConfig,
-    tableId,
-    tableName,
-    tableDescription,
-    tableCsv: csv,
-    loggerArgs: {
-      connectorId: connector.id,
-      sheetId: id,
-      spreadsheetId: spreadsheet.id,
-    },
-    truncate: true,
-    parents: [tableId, ...parents],
-    parentId: parents[0] || null,
-    useAppForHeaderDetection: true,
-    title: `${spreadsheet.title} - ${title}`,
-    mimeType: "application/vnd.google-apps.spreadsheet",
-    sourceUrl: getSourceUrlForGoogleDriveSheet(sheet),
-  });
-
-  logger.info(loggerArgs, "[Spreadsheet] Table upserted.");
+  await ignoreTablesError("Google Drive GSheet", () =>
+    upsertDataSourceTableFromCsv({
+      dataSourceConfig,
+      tableId,
+      tableName,
+      tableDescription,
+      tableCsv: csv,
+      loggerArgs: {
+        connectorId: connector.id,
+        sheetId: id,
+        spreadsheetId: spreadsheet.id,
+      },
+      truncate: true,
+      parents: [tableId, ...parents],
+      parentId: parents[0] || null,
+      useAppForHeaderDetection: true,
+      title: `${spreadsheet.title} - ${title}`,
+      mimeType: "application/vnd.google-apps.spreadsheet",
+      sourceUrl: getSourceUrlForGoogleDriveSheet(sheet),
+    })
+  );
 }
 
 function findDataRangeAndSelectRows(allRows: string[][]): string[][] {
@@ -194,7 +194,7 @@ async function processSheet(
   // Assuming the first line as headers, at least one additional data line is required.
   if (rows.length > 1) {
     try {
-      await upsertGdriveTable(connector, sheet, parents, rows, loggerArgs);
+      await upsertGdriveTable(connector, sheet, parents, rows);
     } catch (err) {
       if (err instanceof TablesError) {
         logger.warn(

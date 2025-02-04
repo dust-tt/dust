@@ -1,5 +1,5 @@
 import type { Result } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import { Err, isDevelopment, Ok } from "@dust-tt/types";
 import { protos } from "@google-cloud/storage-transfer";
 import { StorageTransferServiceClient } from "@google-cloud/storage-transfer";
 import type { google } from "@google-cloud/storage-transfer/build/protos/protos";
@@ -23,7 +23,11 @@ export class StorageTransferService {
   private transferClient: StorageTransferServiceClient;
 
   constructor() {
-    const serviceAccountPath = config.getServiceAccount();
+    // Only use service account in dev. In prod, we use pod annotations to set the
+    // service account.
+    const serviceAccountPath = isDevelopment()
+      ? config.getServiceAccount()
+      : undefined;
 
     this.transferClient = new StorageTransferServiceClient({
       keyFilename: serviceAccountPath,

@@ -1,16 +1,18 @@
 import assert from "assert";
+import { QueryTypes } from "sequelize";
 
+import type { RegionType } from "@app/lib/api/regions/config";
 import { frontSequelize } from "@app/lib/resources/storage";
 import logger from "@app/logger/logger";
 import type {
   CoreEntitiesRelocationBlob,
   RelocationBlob,
 } from "@app/temporal/relocation/activities/types";
+import { isArrayOfPlainObjects } from "@app/temporal/relocation/activities/types";
 import {
   deleteFromRelocationStorage,
   readFromRelocationStorage,
 } from "@app/temporal/relocation/lib/file_storage/relocation";
-import { RegionType } from "@app/lib/api/regions/config";
 
 export async function writeCoreEntitiesToDestinationRegion({
   dataPath,
@@ -36,29 +38,44 @@ export async function writeCoreEntitiesToDestinationRegion({
     await readFromRelocationStorage<CoreEntitiesRelocationBlob>(dataPath);
 
   assert(blob.statements.workspace.length === 1, "Expected one workspace SQL");
-  const [workspaceSQL] = blob.statements.workspace;
+  const [workspaceStatements] = blob.statements.workspace;
 
   // 1) Create workspace.
-  await frontSequelize.query(workspaceSQL);
+  await frontSequelize.query(workspaceStatements.sql, {
+    bind: workspaceStatements.params,
+    type: QueryTypes.INSERT,
+  });
 
   // 2) Create users in transaction.
-  for (const userChunk of blob.statements.users) {
+  for (const { sql, params } of blob.statements.users) {
     await frontSequelize.transaction(async (transaction) => {
-      await frontSequelize.query(userChunk, { transaction });
+      await frontSequelize.query(sql, {
+        bind: params,
+        type: QueryTypes.INSERT,
+        transaction,
+      });
     });
   }
 
   // 3) Create users metadata in transaction.
-  for (const userMetadataChunk of blob.statements.user_metadata) {
+  for (const { sql, params } of blob.statements.user_metadata) {
     await frontSequelize.transaction(async (transaction) => {
-      await frontSequelize.query(userMetadataChunk, { transaction });
+      await frontSequelize.query(sql, {
+        bind: params,
+        type: QueryTypes.INSERT,
+        transaction,
+      });
     });
   }
 
   // 4) Create plans that the workspace uses if not already existing.
-  for (const planChunk of blob.statements.plans) {
+  for (const { sql, params } of blob.statements.plans) {
     await frontSequelize.transaction(async (transaction) => {
-      await frontSequelize.query(planChunk, { transaction });
+      await frontSequelize.query(sql, {
+        bind: params,
+        type: QueryTypes.INSERT,
+        transaction,
+      });
     });
   }
 
@@ -97,9 +114,16 @@ export async function processFrontTableChunk({
       "Executing SQL statements"
     );
 
-    for (const statement of statements) {
+    for (const { sql, params } of statements) {
       await frontSequelize.transaction(async (transaction) =>
-        frontSequelize.query(statement, { transaction })
+        frontSequelize.query(sql, {
+          // TODO(2025-01-31): Remove this once current batch of data is processed.
+          bind: params.map((p) =>
+            isArrayOfPlainObjects(p) ? JSON.stringify(p) : p
+          ),
+          type: QueryTypes.INSERT,
+          transaction,
+        })
       );
     }
   }

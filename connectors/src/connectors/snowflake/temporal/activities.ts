@@ -6,7 +6,6 @@ import {
   fetchTables,
   isConnectionReadonly,
 } from "@connectors/connectors/snowflake/lib/snowflake_api";
-import { getConnectorAndCredentials } from "@connectors/connectors/snowflake/lib/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
   deleteDataSourceFolder,
@@ -20,6 +19,10 @@ import {
   RemoteTableModel,
 } from "@connectors/lib/models/remote_databases";
 import {
+  getConnectorAndCredentials,
+  parseSchemaInternalId,
+} from "@connectors/lib/remote_databases/utils";
+import {
   syncFailed,
   syncStarted,
   syncSucceeded,
@@ -29,6 +32,7 @@ import logger from "@connectors/logger/logger";
 export async function syncSnowflakeConnection(connectorId: ModelId) {
   const getConnectorAndCredentialsRes = await getConnectorAndCredentials({
     connectorId,
+    isTypeGuard: isSnowflakeCredentials,
     logger,
   });
   if (getConnectorAndCredentialsRes.isErr()) {
@@ -38,12 +42,6 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
   await syncStarted(connectorId);
 
   const { credentials, connector } = getConnectorAndCredentialsRes.value;
-
-  if (!isSnowflakeCredentials(credentials)) {
-    throw new Error(
-      "Invalid credentials type - expected snowflake credentials"
-    );
-  }
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
@@ -171,20 +169,11 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
     }
   }
 
-  const parseSchemaInternalId = (
-    schemaInternalId: string
-  ): [string, string] => {
-    const [dbName, schemaName] = schemaInternalId.split(".");
-    if (!dbName || !schemaName) {
-      throw new Error(`Invalid schema internalId: ${schemaInternalId}`);
-    }
-
-    return [dbName, schemaName];
-  };
-
   // upserting data_sources_folders for the schemas
   for (const schema of allSchemas) {
-    const [dbName, schemaName] = parseSchemaInternalId(schema.internalId);
+    const { database_name: dbName, name: schemaName } = parseSchemaInternalId(
+      schema.internalId
+    );
 
     let parents = [schema.internalId];
     let schemaShouldBeSynced = false;

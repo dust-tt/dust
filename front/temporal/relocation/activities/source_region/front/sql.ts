@@ -1,7 +1,8 @@
 import type { ModelId } from "@dust-tt/types";
 import assert from "assert";
-import { Op, QueryTypes, WhereOptions } from "sequelize";
+import { Op, QueryTypes } from "sequelize";
 
+import type { RegionType } from "@app/lib/api/regions/config";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import { Workspace } from "@app/lib/models/workspace";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -11,16 +12,15 @@ import {
   UserModel,
 } from "@app/lib/resources/storage/models/user";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
+import logger from "@app/logger/logger";
 import type {
   CoreEntitiesRelocationBlob,
   ReadTableChunkParams,
   RelocationBlob,
 } from "@app/temporal/relocation/activities/types";
 import { writeToRelocationStorage } from "@app/temporal/relocation/lib/file_storage/relocation";
-import { generateInsertStatements } from "@app/temporal/relocation/lib/sql/insert";
+import { generateParameterizedInsertStatements } from "@app/temporal/relocation/lib/sql/insert";
 import { getTopologicalOrder } from "@app/temporal/relocation/lib/sql/schema/dependencies";
-import logger from "@app/logger/logger";
-import { RegionType } from "@app/lib/api/regions/config";
 
 export async function readCoreEntitiesFromSourceRegion({
   destRegion,
@@ -96,14 +96,26 @@ export async function readCoreEntitiesFromSourceRegion({
 
   const blob: CoreEntitiesRelocationBlob = {
     statements: {
-      plans: generateInsertStatements("plans", plans, { onConflict: "ignore" }),
-      users: generateInsertStatements("users", users, { onConflict: "ignore" }),
-      user_metadata: generateInsertStatements("user_metadata", userMetadata, {
+      plans: generateParameterizedInsertStatements("plans", plans, {
         onConflict: "ignore",
       }),
-      workspace: generateInsertStatements("workspaces", [workspace], {
+      users: generateParameterizedInsertStatements("users", users, {
         onConflict: "ignore",
       }),
+      user_metadata: generateParameterizedInsertStatements(
+        "user_metadata",
+        userMetadata,
+        {
+          onConflict: "ignore",
+        }
+      ),
+      workspace: generateParameterizedInsertStatements(
+        "workspaces",
+        [workspace],
+        {
+          onConflict: "ignore",
+        }
+      ),
     },
   };
 
@@ -168,7 +180,7 @@ export async function readFrontTableChunk({
 
   const blob: RelocationBlob = {
     statements: {
-      [tableName]: generateInsertStatements(tableName, rows, {
+      [tableName]: generateParameterizedInsertStatements(tableName, rows, {
         onConflict: "ignore",
       }),
     },

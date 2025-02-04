@@ -1,14 +1,42 @@
 import type { ConnectionCredentials, ModelId, Result } from "@dust-tt/types";
-import {
-  Err,
-  getConnectionCredentials,
-  isSnowflakeCredentials,
-  Ok,
-} from "@dust-tt/types";
+import { Err, getConnectionCredentials, Ok } from "@dust-tt/types";
+import * as t from "io-ts";
 
 import { apiConfig } from "@connectors/lib/api/config";
 import type { Logger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+
+export const remoteDBDatabaseCodec = t.type({
+  name: t.string,
+});
+export type RemoteDBDatabase = t.TypeOf<typeof remoteDBDatabaseCodec>;
+
+export const remoteDBSchemaCodec = t.type({
+  name: t.string,
+  database_name: t.string,
+});
+export type RemoteDBSchema = t.TypeOf<typeof remoteDBSchemaCodec>;
+
+export const remoteDBTableCodec = t.type({
+  name: t.string,
+  database_name: t.string,
+  schema_name: t.string,
+});
+export type RemoteDBTable = t.TypeOf<typeof remoteDBTableCodec>;
+
+export const parseSchemaInternalId = (
+  schemaInternalId: string
+): RemoteDBSchema => {
+  const [dbName, schemaName] = schemaInternalId.split(".");
+  if (!dbName || !schemaName) {
+    throw new Error(`Invalid schema internalId: ${schemaInternalId}`);
+  }
+
+  return {
+    name: schemaName,
+    database_name: dbName,
+  };
+};
 
 // Helper functions to get connector and credentials
 export const getConnector = async ({
@@ -33,16 +61,18 @@ export const getConnector = async ({
   return new Ok({ connector });
 };
 
-export const getCredentials = async ({
+export const getCredentials = async <T extends ConnectionCredentials>({
   credentialsId,
+  isTypeGuard,
   logger,
 }: {
   credentialsId: string;
+  isTypeGuard: (credentials: ConnectionCredentials) => credentials is T;
   logger: Logger;
 }): Promise<
   Result<
     {
-      credentials: ConnectionCredentials;
+      credentials: T;
     },
     Error
   >
@@ -58,9 +88,9 @@ export const getCredentials = async ({
   }
   // Narrow the type of credentials to just the username/password variant
   const credentials = credentialsRes.value.credential.content;
-  if (!isSnowflakeCredentials(credentials)) {
+  if (!isTypeGuard(credentials)) {
     throw new Error(
-      "Invalid credentials type - expected snowflake credentials"
+      `Invalid credentials types, type guard: ${isTypeGuard.name}`
     );
   }
   return new Ok({
@@ -68,17 +98,21 @@ export const getCredentials = async ({
   });
 };
 
-export const getConnectorAndCredentials = async ({
+export const getConnectorAndCredentials = async <
+  T extends ConnectionCredentials,
+>({
   connectorId,
+  isTypeGuard,
   logger,
 }: {
   connectorId: ModelId;
+  isTypeGuard: (credentials: ConnectionCredentials) => credentials is T;
   logger: Logger;
 }): Promise<
   Result<
     {
       connector: ConnectorResource;
-      credentials: ConnectionCredentials;
+      credentials: T;
     },
     { code: "connector_not_found" | "invalid_credentials"; error: Error }
   >
@@ -106,9 +140,9 @@ export const getConnectorAndCredentials = async ({
   }
   // Narrow the type of credentials to just the username/password variant
   const credentials = credentialsRes.value.credential.content;
-  if (!isSnowflakeCredentials(credentials)) {
+  if (!isTypeGuard(credentials)) {
     throw new Error(
-      "Invalid credentials type - expected snowflake credentials"
+      `Invalid credentials types, type guard: ${isTypeGuard.name}`
     );
   }
   return new Ok({

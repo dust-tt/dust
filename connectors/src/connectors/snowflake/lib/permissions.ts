@@ -7,10 +7,6 @@ import type {
 import { Err, EXCLUDE_DATABASES, EXCLUDE_SCHEMAS, Ok } from "@dust-tt/types";
 
 import {
-  getContentNodeFromInternalId,
-  getContentNodeTypeFromInternalId,
-} from "@connectors/connectors/snowflake/lib/content_nodes";
-import {
   fetchDatabases,
   fetchSchemas,
   fetchTables,
@@ -20,6 +16,10 @@ import {
   RemoteSchemaModel,
   RemoteTableModel,
 } from "@connectors/lib/models/remote_databases";
+import {
+  getContentNodeFromInternalId,
+  getContentNodeTypeFromInternalId,
+} from "@connectors/lib/remote_databases/content_nodes";
 import type { Logger } from "@connectors/logger/logger";
 
 /**

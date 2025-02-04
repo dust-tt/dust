@@ -41,8 +41,8 @@ async function handler(
     return apiError(req, res, {
       status_code: 404,
       api_error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
+        type: "workspace_not_found",
+        message: "The workspace was not found.",
       },
     });
   }
@@ -145,7 +145,7 @@ async function handler(
                 message: upsertRes.error.message,
               },
             });
-          case "invalid_rows":
+          case "invalid_csv":
             return apiError(req, res, {
               status_code: 400,
               api_error: {

@@ -1,4 +1,4 @@
-import type { DropdownMenuItemProps } from "@dust-tt/sparkle";
+import type { DropdownMenuItemProps, MenuItem } from "@dust-tt/sparkle";
 import {
   Button,
   Chip,
@@ -38,7 +38,10 @@ import { AddConnectionMenu } from "@app/components/spaces/AddConnectionMenu";
 import { EditSpaceManagedDataSourcesViews } from "@app/components/spaces/EditSpaceManagedDatasourcesViews";
 import { EditSpaceStaticDatasourcesViews } from "@app/components/spaces/EditSpaceStaticDatasourcesViews";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
-import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
+import {
+  getConnectorProviderLogoWithFallback,
+  isConnectorPermissionsEditable,
+} from "@app/lib/connector_providers";
 import { getDataSourceNameFromView, isManaged } from "@app/lib/data_sources";
 import { useAgentConfigurationSIdLookup } from "@app/lib/swr/assistants";
 import {
@@ -65,18 +68,8 @@ export interface RowData {
   isLoading?: boolean;
   buttonOnClick?: (e: MouseEvent) => void;
   onClick?: () => void;
-  moreMenuItems?: MoreMenuItem[];
+  menuItems?: MenuItem[];
 }
-
-const REDIRECT_TO_EDIT_PERMISSIONS = [
-  "confluence",
-  "google_drive",
-  "microsoft",
-  "slack",
-  "intercom",
-  "snowflake",
-  "zendesk",
-];
 
 type StringColumnDef = ColumnDef<RowData, string>;
 type NumberColumnDef = ColumnDef<RowData, number>;
@@ -216,7 +209,7 @@ function getTableColumns(
       className: "flex justify-end items-center",
     },
     cell: (ctx) => (
-      <DataTable.MoreButton moreMenuItems={ctx.row.original.moreMenuItems} />
+      <DataTable.MoreButton menuItems={ctx.row.original.menuItems} />
     ),
   };
 
@@ -457,8 +450,7 @@ export const SpaceResourcesList = ({
                   if (view) {
                     setSelectedDataSourceView(view);
                     if (
-                      dataSource.connectorProvider &&
-                      REDIRECT_TO_EDIT_PERMISSIONS.includes(
+                      isConnectorPermissionsEditable(
                         dataSource.connectorProvider
                       )
                     ) {

@@ -1,6 +1,6 @@
 import { describe, expect } from "vitest";
 
-import { UserModel } from "@app/lib/resources/storage/models/user";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { itInTransaction } from "@app/tests/utils/utils";
 
@@ -60,7 +60,7 @@ describe("GET /api/user", () => {
       success: true,
     });
 
-    const userAfterUpdate = await UserModel.findByPk(user.id);
+    const userAfterUpdate = await UserResource.fetchById(user.sId);
     expect(userAfterUpdate?.firstName).toBe("John");
     expect(userAfterUpdate?.lastName).toBe("Doe");
   });

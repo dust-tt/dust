@@ -1,12 +1,12 @@
 import type { ConnectorProvider } from "@dust-tt/types";
 import {
-  microsoftGarbageCollectionWorkflowId,
-  microsoftIncrementalSyncWorkflowId,
-} from "@dust-tt/types";
-import {
   getIntercomSyncWorkflowId,
+  getZendeskGarbageCollectionWorkflowId,
+  getZendeskSyncWorkflowId,
   googleDriveIncrementalSyncWorkflowId,
   makeConfluenceSyncWorkflowId,
+  microsoftGarbageCollectionWorkflowId,
+  microsoftIncrementalSyncWorkflowId,
 } from "@dust-tt/types";
 import type { Client, WorkflowHandle } from "@temporalio/client";
 import { QueryTypes } from "sequelize";
@@ -48,6 +48,12 @@ const providersToCheck: Partial<Record<ConnectorProvider, ProviderCheck>> = {
     makeIdsFn: (connector: ConnectorBlob) => [
       microsoftIncrementalSyncWorkflowId(connector.id),
       microsoftGarbageCollectionWorkflowId(connector.id),
+    ],
+  },
+  zendesk: {
+    makeIdsFn: (connector: ConnectorBlob) => [
+      getZendeskSyncWorkflowId(connector.id),
+      getZendeskGarbageCollectionWorkflowId(connector.id),
     ],
   },
 };

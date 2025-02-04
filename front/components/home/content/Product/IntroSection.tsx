@@ -1,6 +1,5 @@
 import { Button, Hover3D, RocketIcon } from "@dust-tt/sparkle";
 import Link from "next/link";
-import React from "react";
 
 import { ValuePropSection } from "@app/components/home/content/Product/ValuePropSection";
 // import { MetricSection } from "@app/components/home/ContentBlocks";
@@ -51,13 +50,13 @@ export function IntroSection() {
         <div className="flex flex-col items-center gap-16 md:flex-row">
           <div className="flex flex-col gap-8">
             <H1 className="text-red-400">
-              Accelerate your entire organization with custom AI agents
+              Accelerate your entire organization with AI
             </H1>
             <div className="w-full md:hidden">
               <MainVisual />
             </div>
             <P size="lg" className="text-slate-50">
-              Secure, connected to your data, accessible anywhere &amp;
+              Build your team of AI agents: secure, connected to your data and
               customizable to your needs.
             </P>
             <div className="flex justify-center gap-4 sm:justify-start">

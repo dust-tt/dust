@@ -13,6 +13,7 @@ import {
   CoreAPIDocumentVersion,
   CoreAPIFolder,
   CoreAPILightDocument,
+  CoreAPITableBlob,
   EmbedderType,
 } from "../../core/data_source";
 import { DustAppSecretType } from "../../front/dust_app_secret";
@@ -181,7 +182,7 @@ export type CoreAPISortSpec = {
 
 export type CoreAPISearchOptions = {
   limit?: number;
-  offset?: number;
+  cursor?: string;
   sort?: CoreAPISortSpec[];
 };
 
@@ -191,7 +192,7 @@ export interface CoreAPISearchCursorRequest {
   cursor?: string;
 }
 
-export interface CoreAPISearchCursorResponse {
+export interface CoreAPISearchResponse {
   nodes: CoreAPIContentNode[];
   next_page_cursor: string | null;
 }
@@ -1470,6 +1471,30 @@ export class CoreAPI {
     return this._resultFromResponse(response);
   }
 
+  async getDataSourceTableBlob({
+    projectId,
+    dataSourceId,
+    tableId,
+  }: {
+    projectId: string;
+    dataSourceId: string;
+    tableId: string;
+  }): Promise<CoreAPIResponse<CoreAPITableBlob>> {
+    const response = await this._fetchWithError(
+      `${this._url}/projects/${projectId}/data_sources/${encodeURIComponent(
+        dataSourceId
+      )}/tables/${encodeURIComponent(tableId)}/blob`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    return this._resultFromResponse(response);
+  }
+
   async deleteTableRow({
     projectId,
     dataSourceId,
@@ -1587,11 +1612,7 @@ export class CoreAPI {
     query?: string;
     filter: CoreAPINodesSearchFilter;
     options?: CoreAPISearchOptions;
-  }): Promise<
-    CoreAPIResponse<{
-      nodes: CoreAPIContentNode[];
-    }>
-  > {
+  }): Promise<CoreAPIResponse<CoreAPISearchResponse>> {
     const response = await this._fetchWithError(`${this._url}/nodes/search`, {
       method: "POST",
       headers: {
@@ -1603,33 +1624,6 @@ export class CoreAPI {
         options,
       }),
     });
-    return this._resultFromResponse(response);
-  }
-
-  async searchNodesWithCursor({
-    query,
-    filter,
-    cursor,
-  }: {
-    query?: string;
-    filter: CoreAPINodesSearchFilter;
-    cursor?: CoreAPISearchCursorRequest;
-  }): Promise<CoreAPIResponse<CoreAPISearchCursorResponse>> {
-    const response = await this._fetchWithError(
-      `${this._url}/nodes/search/cursor`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          query,
-          filter,
-          cursor,
-        }),
-      }
-    );
-
     return this._resultFromResponse(response);
   }
 

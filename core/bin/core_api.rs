@@ -50,8 +50,7 @@ use dust::{
     run,
     search_filter::{Filterable, SearchFilter},
     search_stores::search_store::{
-        ElasticsearchSearchStore, NodesSearchCursorRequest, NodesSearchFilter, NodesSearchOptions,
-        SearchStore, TagsQueryType,
+        ElasticsearchSearchStore, NodesSearchFilter, NodesSearchOptions, SearchStore, TagsQueryType,
     },
     sqlite_workers::client::{self, HEARTBEAT_INTERVAL_MS},
     stores::{
@@ -2513,6 +2512,50 @@ async fn tables_delete(
     }
 }
 
+async fn tables_retrieve_blob(
+    Path((project_id, data_source_id, table_id)): Path<(i64, String, String)>,
+    State(state): State<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+
+    match state
+        .store
+        .load_data_source_table(&project, &data_source_id, &table_id)
+        .await
+    {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to load table",
+            Some(e),
+        ),
+        Ok(None) => error_response(
+            StatusCode::NOT_FOUND,
+            "table_not_found",
+            &format!("No table found for id `{}`", table_id),
+            None,
+        ),
+        Ok(Some(table)) => match table.retrieve_api_blob(state.databases_store.clone()).await {
+            Err(e) => error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "internal_server_error",
+                "Failed to retrieve document blob",
+                Some(e),
+            ),
+            Ok(blob) => {
+                let blob_value = serde_json::to_value(blob).unwrap();
+                (
+                    StatusCode::OK,
+                    Json(APIResponse {
+                        error: None,
+                        response: Some(blob_value),
+                    }),
+                )
+            }
+        },
+    }
+}
+
 async fn tables_update_parents(
     Path((project_id, data_source_id, table_id)): Path<(i64, String, String)>,
     State(state): State<Arc<APIState>>,
@@ -3189,56 +3232,12 @@ async fn nodes_search(
     State(state): State<Arc<APIState>>,
     Json(payload): Json<NodesSearchPayload>,
 ) -> (StatusCode, Json<APIResponse>) {
-    let nodes = match state
+    let (nodes, next_cursor) = match state
         .search_store
         .search_nodes(
             payload.query,
             payload.filter,
             payload.options,
-            state.store.clone(),
-        )
-        .await
-    {
-        Ok(nodes) => nodes,
-        Err(e) => {
-            return error_response(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "internal_server_error",
-                "Failed to search nodes",
-                Some(e),
-            );
-        }
-    };
-
-    (
-        StatusCode::OK,
-        Json(APIResponse {
-            error: None,
-            response: Some(json!({
-                "nodes": nodes,
-            })),
-        }),
-    )
-}
-
-#[derive(serde::Deserialize)]
-#[serde(deny_unknown_fields)]
-struct NodesSearchWithCursorPayload {
-    query: Option<String>,
-    filter: NodesSearchFilter,
-    cursor: Option<NodesSearchCursorRequest>,
-}
-
-async fn nodes_search_with_cursor(
-    State(state): State<Arc<APIState>>,
-    Json(payload): Json<NodesSearchWithCursorPayload>,
-) -> (StatusCode, Json<APIResponse>) {
-    let (nodes, next_cursor) = match state
-        .search_store
-        .search_nodes_with_cursor(
-            payload.query,
-            payload.filter,
-            payload.cursor,
             state.store.clone(),
         )
         .await
@@ -3250,7 +3249,7 @@ async fn nodes_search_with_cursor(
                 "internal_server_error",
                 "Failed to search nodes",
                 Some(e),
-            )
+            );
         }
     };
 
@@ -3762,6 +3761,10 @@ fn main() {
             delete(tables_delete),
         )
         .route(
+            "/projects/:project_id/data_sources/:data_source_id/tables/:table_id/blob",
+            get(tables_retrieve_blob),
+        )
+        .route(
             "/projects/:project_id/data_sources/:data_source_id/tables/:table_id/rows",
             post(tables_rows_upsert),
         )
@@ -3803,7 +3806,6 @@ fn main() {
 
         //Search
         .route("/nodes/search", post(nodes_search))
-        .route("/nodes/search/cursor", post(nodes_search_with_cursor))
         .route("/tags/search", post(tags_search))
 
         // Misc

@@ -1,44 +1,18 @@
-import type { MembershipRoleType } from "@dust-tt/types";
-import type { InferCreationAttributes } from "sequelize";
+import type { MembershipRoleType, WorkspaceType } from "@dust-tt/types";
 
-import type { Workspace } from "@app/lib/models/workspace";
-import { MembershipModel } from "@app/lib/resources/storage/models/membership";
-import type { UserModel } from "@app/lib/resources/storage/models/user";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
+import type { UserResource } from "@app/lib/resources/user_resource";
 
-import { Factory } from "./factories";
-
-class MembershipFactory extends Factory<MembershipModel> {
-  async make(params: InferCreationAttributes<MembershipModel>) {
-    return MembershipModel.create(params);
-  }
-
-  associate(workspace: Workspace, user: UserModel, role: MembershipRoleType) {
-    return this.params({
-      role,
-      startAt: new Date(),
-      endAt: null,
-      userId: user.id,
-      workspaceId: workspace.id,
-    });
-  }
-
-  associateWithCreatedAt(
-    workspace: Workspace,
-    user: UserModel,
-    role: MembershipRoleType,
-    createdAt: Date
+export class MembershipFactory {
+  static async associate(
+    workspace: WorkspaceType,
+    user: UserResource,
+    role: MembershipRoleType
   ) {
-    return this.params({
+    return MembershipResource.createMembership({
+      workspace,
+      user,
       role,
-      startAt: createdAt,
-      createdAt: createdAt,
-      endAt: null,
-      userId: user.id,
-      workspaceId: workspace.id,
     });
   }
 }
-
-export const membershipFactory = () => {
-  return new MembershipFactory();
-};

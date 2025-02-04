@@ -1225,6 +1225,8 @@ export async function createAgentActionConfiguration(
         description: action.description,
         providerId: action.providerId,
         modelId: action.modelId,
+        temperature: action.temperature,
+        reasoningEffort: action.reasoningEffort,
         workspaceId: owner.id,
       });
 
@@ -1302,6 +1304,9 @@ async function _createAgentDataSourcesConfigData(
             processConfigurationId: processConfigurationId,
             dataSourceViewId: dataSourceView.id,
             workspaceId: owner.id,
+            tagsMode: null,
+            tagsIn: null,
+            tagsNotIn: null,
           },
           { transaction: t }
         );

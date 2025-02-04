@@ -94,11 +94,12 @@ export async function syncTicket({
   // if they were never attended in the Agent Workspace their subject is not populated.
   ticket.subject ||= "No subject";
 
+  const ticketUrl = ticket.url.replace("/api/v2/", "/").replace(".json", ""); // converting the API URL into the web URL;
   if (!ticketInDb) {
     ticketInDb = await ZendeskTicketResource.makeNew({
       blob: {
         subject: ticket.subject,
-        url: ticket.url.replace("/api/v2/", "/").replace(".json", ""), // converting the API URL into the web URL
+        url: ticketUrl,
         lastUpsertedTs: new Date(currentSyncDateMs),
         ticketUpdatedAt: updatedAtDate,
         ticketId: ticket.id,
@@ -110,7 +111,7 @@ export async function syncTicket({
   } else {
     await ticketInDb.update({
       subject: ticket.subject,
-      url: ticket.url.replace("/api/v2/", "/").replace(".json", ""), // converting the API URL into the web URL
+      url: ticketUrl,
       lastUpsertedTs: new Date(currentSyncDateMs),
       ticketUpdatedAt: updatedAtDate,
       permission: "read",
@@ -224,7 +225,7 @@ ${comments
       dataSourceConfig,
       documentId,
       documentContent,
-      documentUrl: ticket.url,
+      documentUrl: ticketUrl,
       timestampMs: updatedAtDate.getTime(),
       tags: [
         ...ticket.tags,

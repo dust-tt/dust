@@ -3,6 +3,7 @@ import type {
   DataSourceSearchResponseType,
 } from "@dust-tt/client";
 import type {
+  AdminCommandType,
   ConnectorProvider,
   ConnectorType,
   ConversationWithoutContentType,
@@ -22,6 +23,7 @@ import type {
 } from "@dust-tt/types";
 import {
   assertNever,
+  concurrentExecutor,
   ConnectorsAPI,
   CoreAPI,
   DEFAULT_EMBEDDING_PROVIDER_ID,
@@ -30,7 +32,6 @@ import {
   EMBEDDING_CONFIGS,
   Err,
   isDataSourceNameValid,
-  MANAGED_DS_DELETABLE,
   Ok,
   sectionFullText,
 } from "@dust-tt/types";
@@ -44,6 +45,7 @@ import { rowsFromCsv, upsertTableFromCsv } from "@app/lib/api/tables";
 import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
+import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { DustError } from "@app/lib/error";
 import { Lock } from "@app/lib/lock";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -119,7 +121,7 @@ export async function hardDeleteDataSource(
   const { dustAPIProjectId } = dataSource;
   if (dataSource.connectorId && dataSource.connectorProvider) {
     if (
-      !MANAGED_DS_DELETABLE.includes(dataSource.connectorProvider) &&
+      !CONNECTOR_CONFIGURATIONS[dataSource.connectorProvider].isDeletable &&
       !auth.isAdmin()
     ) {
       return new Err({
@@ -487,6 +489,7 @@ export async function upsertTable({
       )
     );
   }
+
   // parents and parentId must comply to the invariant parents[1] === parentId
   if (
     (tableParents.length >= 2 || tableParentId !== null) &&
@@ -499,7 +502,6 @@ export async function upsertTable({
       )
     );
   }
-
   let standardizedSourceUrl: string | null = null;
   if (sourceUrl) {
     const { valid: isSourceUrlValid, standardized } = validateUrl(sourceUrl);
@@ -673,7 +675,7 @@ export async function handleDataSourceTableCSVUpsert({
       code:
         | "missing_csv"
         | "data_source_error"
-        | "invalid_rows"
+        | "invalid_csv"
         | "resource_not_found"
         | "invalid_parent_id"
         | "internal_error";
@@ -708,7 +710,7 @@ export async function handleDataSourceTableCSVUpsert({
     if (csvRowsRes?.isErr()) {
       return new Err({
         name: "dust_error",
-        code: "invalid_rows",
+        code: "invalid_csv",
         message: "Failed to parse CSV: " + csvRowsRes.error.message,
       });
     }
@@ -783,7 +785,7 @@ export async function handleDataSourceTableCSVUpsert({
       if ("csvParsingError" in tableRes.error) {
         return new Err({
           name: "dust_error",
-          code: "internal_error",
+          code: "invalid_csv",
           message:
             "Failed to parse CSV: " + tableRes.error.csvParsingError.message,
         });
@@ -930,7 +932,6 @@ export async function createDataSourceWithoutProvider(
 
   const dataSourceView =
     await DataSourceViewResource.createDataSourceAndDefaultView(
-      auth,
       {
         name,
         description,
@@ -940,7 +941,8 @@ export async function createDataSourceWithoutProvider(
         assistantDefaultSelected: false,
         conversationId: conversation?.id,
       },
-      space
+      space,
+      auth.user()
     );
 
   try {
@@ -1071,4 +1073,122 @@ export async function getOrCreateConversationDataSourceFromFile(
   }
 
   return getOrCreateConversationDataSource(auth, cRes.value);
+}
+
+async function getAllManagedDataSources(auth: Authenticator) {
+  const dataSources = await DataSourceResource.listByWorkspace(auth);
+
+  return dataSources.filter((ds) => ds.connectorId !== null);
+}
+
+export async function pauseAllManagedDataSources(
+  auth: Authenticator,
+  { markAsError }: { markAsError: boolean }
+) {
+  const dataSources = await getAllManagedDataSources(auth);
+
+  const connectorsAPI = new ConnectorsAPI(
+    config.getConnectorsAPIConfig(),
+    logger
+  );
+
+  const res = await concurrentExecutor(
+    dataSources,
+    async (ds) => {
+      assert(ds.connectorId, "Connector ID is required");
+
+      const { connectorId } = ds;
+
+      if (markAsError) {
+        const setErrorCommand: AdminCommandType = {
+          majorCommand: "connectors",
+          command: "set-error",
+          args: {
+            connectorId,
+            error: "oauth_token_revoked",
+            wId: auth.getNonNullableWorkspace().sId,
+            dsId: ds.sId,
+          },
+        };
+
+        const setErrorRes = await connectorsAPI.admin(setErrorCommand);
+        if (setErrorRes.isErr()) {
+          return new Err(new Error(setErrorRes.error.message));
+        }
+      }
+
+      const pauseRes = await connectorsAPI.pauseConnector(ds.connectorId);
+      if (pauseRes.isErr()) {
+        return new Err(new Error(pauseRes.error.message));
+      }
+
+      logger.info(
+        {
+          connectorId: ds.connectorId,
+          connectorProvider: ds.connectorProvider,
+          dataSourceName: ds.name,
+          workspaceId: auth.getNonNullableWorkspace().sId,
+        },
+        "Paused connector"
+      );
+
+      return new Ok(pauseRes.value);
+    },
+    { concurrency: 5 }
+  );
+
+  const failed = res.filter((r) => r.isErr());
+  if (failed.length > 0) {
+    return new Err(new Error(`Failed to pause ${failed.length} connectors.`));
+  }
+
+  return new Ok(res);
+}
+
+export async function resumeAllManagedDataSources(auth: Authenticator) {
+  const dataSources = await getAllManagedDataSources(auth);
+
+  const connectorsAPI = new ConnectorsAPI(
+    config.getConnectorsAPIConfig(),
+    logger
+  );
+
+  const res = await concurrentExecutor(
+    dataSources,
+    async (ds) => {
+      assert(ds.connectorId, "Connector ID is required");
+
+      const { connectorId } = ds;
+
+      const setErrorCommand: AdminCommandType = {
+        majorCommand: "connectors",
+        command: "clear-error",
+        args: {
+          connectorId,
+          wId: auth.getNonNullableWorkspace().sId,
+          dsId: ds.sId,
+        },
+      };
+
+      const setErrorRes = await connectorsAPI.admin(setErrorCommand);
+      if (setErrorRes.isErr()) {
+        return new Err(new Error(setErrorRes.error.message));
+      }
+
+      const resumeRes = await connectorsAPI.resumeConnector(ds.connectorId);
+      if (resumeRes.isErr()) {
+        return new Err(new Error(resumeRes.error.message));
+      }
+
+      return new Ok(resumeRes.value);
+    },
+    { concurrency: 5 }
+  );
+
+  const failed = res.filter((r) => r.isErr());
+  if (failed.length > 0) {
+    return new Err(new Error(`Failed to resume ${failed.length} connectors.`));
+  }
+
+  return new Ok(res);
 }

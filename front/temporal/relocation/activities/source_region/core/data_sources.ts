@@ -1,12 +1,14 @@
-import config from "@app/lib/api/config";
-import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
-import { Op, QueryTypes } from "sequelize";
-import logger from "@app/logger/logger";
-import { CoreAPI, CoreAPIDataSource, ModelId } from "@dust-tt/types";
-import { WhereOptions } from "sequelize";
-import { DataSourceCoreIds } from "@app/temporal/relocation/activities/types";
-import { getWorkspaceInfos } from "@app/lib/api/workspace";
+import type { CoreAPIDataSource, ModelId } from "@dust-tt/types";
+import { CoreAPI } from "@dust-tt/types";
 import assert from "assert";
+import type { WhereOptions } from "sequelize";
+import { Op, QueryTypes } from "sequelize";
+
+import config from "@app/lib/api/config";
+import { getWorkspaceInfos } from "@app/lib/api/workspace";
+import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
+import logger from "@app/logger/logger";
+import type { DataSourceCoreIds } from "@app/temporal/relocation/activities/types";
 
 const BATCH_SIZE = 100;
 

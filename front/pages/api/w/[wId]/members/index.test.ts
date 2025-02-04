@@ -1,11 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createMocks } from "node-mocks-http";
-import { describe, expect } from "vitest";
+import { describe, expect, vi } from "vitest";
 
 import { parseQueryString } from "@app/lib/utils/router";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
-import { membershipFactory } from "@app/tests/utils/MembershipFactory";
-import { userFactory } from "@app/tests/utils/UserFactory";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import { itInTransaction } from "@app/tests/utils/utils";
 
 import handler, { DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT } from "./index";
@@ -19,15 +19,13 @@ describe("GET /api/w/[wId]/members", () => {
 
     // Create additional members
     const users = await Promise.all([
-      userFactory().basic().create(),
-      userFactory().basic().create(),
-      userFactory().basic().create(),
+      UserFactory.basic(),
+      UserFactory.basic(),
+      UserFactory.basic(),
     ]);
 
     await Promise.all(
-      users.map((user) =>
-        membershipFactory().associate(workspace, user, "user").create()
-      )
+      users.map((user) => MembershipFactory.associate(workspace, user, "user"))
     );
 
     await handler(req, res);
@@ -69,15 +67,15 @@ describe("GET /api/w/[wId]/members", () => {
 
       // Create additional members with different roles
       const users = await Promise.all([
-        userFactory().basic().create(),
-        userFactory().basic().create(),
-        userFactory().basic().create(),
+        UserFactory.basic(),
+        UserFactory.basic(),
+        UserFactory.basic(),
       ]);
 
       await Promise.all([
-        membershipFactory().associate(workspace, users[0], "admin").create(),
-        membershipFactory().associate(workspace, users[1], "admin").create(),
-        membershipFactory().associate(workspace, users[2], "user").create(),
+        MembershipFactory.associate(workspace, users[0], "admin"),
+        MembershipFactory.associate(workspace, users[1], "admin"),
+        MembershipFactory.associate(workspace, users[2], "user"),
       ]);
 
       // Add admin role query parameter
@@ -125,13 +123,11 @@ describe("GET /api/w/[wId]/members", () => {
     const users = await Promise.all(
       Array(DEFAULT_PAGE_LIMIT + 4) // +1 from createPrivateApiMockRequest
         .fill(null)
-        .map(() => userFactory().basic().create())
+        .map(() => UserFactory.basic())
     );
 
     await Promise.all(
-      users.map((user) =>
-        membershipFactory().associate(workspace, user, "user").create()
-      )
+      users.map((user) => MembershipFactory.associate(workspace, user, "user"))
     );
 
     await handler(req, res);
@@ -155,12 +151,12 @@ describe("GET /api/w/[wId]/members", () => {
       const users = await Promise.all(
         Array(MAX_PAGE_LIMIT + 49) // +1 from createPrivateApiMockRequest
           .fill(null)
-          .map(() => userFactory().basic().create())
+          .map(() => UserFactory.basic())
       );
 
       await Promise.all(
         users.map((user) =>
-          membershipFactory().associate(workspace, user, "user").create()
+          MembershipFactory.associate(workspace, user, "user")
         )
       );
 
@@ -188,10 +184,13 @@ describe("GET /api/w/[wId]/members", () => {
 
     for (let i = 0; i < 9; i++) {
       const createdAt = new Date(new Date().getTime() - (i + 1) * 1000);
-      const user = await userFactory().withCreatedAt(createdAt).create();
-      await membershipFactory()
-        .associateWithCreatedAt(workspace, user, "user", createdAt)
-        .create();
+      const user = await UserFactory.withCreatedAt(createdAt);
+
+      vi.useFakeTimers();
+      vi.setSystemTime(createdAt);
+      await MembershipFactory.associate(workspace, user, "user");
+      vi.useRealTimers();
+
       users.push(user);
     }
 
@@ -228,10 +227,11 @@ describe("GET /api/w/[wId]/members", () => {
       // Todo: we have to set the same date to both because pagination is done on membership createdAt
       // but we return users with their createdAt
       const createdAt = new Date(new Date().getTime() - (i + 1) * 1000);
-      const user = await userFactory().withCreatedAt(createdAt).create();
-      await membershipFactory()
-        .associateWithCreatedAt(workspace, user, "user", createdAt)
-        .create();
+      const user = await UserFactory.withCreatedAt(createdAt);
+      vi.useFakeTimers();
+      vi.setSystemTime(createdAt);
+      await MembershipFactory.associate(workspace, user, "user");
+      vi.useRealTimers();
 
       users.push(user);
     }

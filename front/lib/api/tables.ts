@@ -14,7 +14,7 @@ import {
   guessDelimiter,
   Ok,
 } from "@dust-tt/types";
-import { parse } from "csv-parse";
+import { CsvError, parse } from "csv-parse";
 import * as t from "io-ts";
 import { DateTime } from "luxon";
 
@@ -35,6 +35,7 @@ type CsvParsingError = {
     | "invalid_header"
     | "duplicate_header"
     | "invalid_record_length"
+    | "invalid_csv"
     | "empty_csv"
     | "too_many_columns"
     | "invalid_row_id";
@@ -160,15 +161,6 @@ export async function upsertTableFromCsv({
   mimeType: string;
   sourceUrl: string | null;
 }): Promise<Result<{ table: CoreAPITable }, TableOperationError>> {
-  const csvRowsRes = csv
-    ? await rowsFromCsv({
-        auth,
-        csv,
-        useAppForHeaderDetection,
-        detectedHeaders,
-      })
-    : null;
-
   const owner = auth.workspace();
 
   if (!owner) {
@@ -195,6 +187,15 @@ export async function upsertTableFromCsv({
       message: "Invalid request body, parents[1] and parent_id should be equal",
     });
   }
+
+  const csvRowsRes = csv
+    ? await rowsFromCsv({
+        auth,
+        csv,
+        useAppForHeaderDetection,
+        detectedHeaders,
+      })
+    : null;
 
   let csvRows: CoreAPIRow[] | undefined = undefined;
   if (csvRowsRes) {
@@ -375,35 +376,39 @@ export async function rowsFromCsv({
     });
   }
 
-  const headerRes = detectedHeaders
-    ? new Ok(detectedHeaders)
-    : await detectHeaders(auth, csv, delimiter, useAppForHeaderDetection);
-
-  if (headerRes.isErr()) {
-    return headerRes;
-  }
-  const { header, rowIndex } = headerRes.value;
-
-  let i = 0;
-  const parser = parse(csv, { delimiter });
   // this differs with = {} in that it prevent errors when header values clash with object properties such as toString, constructor, ..
   const valuesByCol: Record<string, string[]> = Object.create(null);
-  for await (const anyRecord of parser) {
-    if (i++ >= rowIndex) {
-      for (const [i, h] of header.entries()) {
-        try {
+  let header, rowIndex;
+  try {
+    const headerRes = detectedHeaders
+      ? new Ok(detectedHeaders)
+      : await detectHeaders(auth, csv, delimiter, useAppForHeaderDetection);
+
+    if (headerRes.isErr()) {
+      return headerRes;
+    }
+    ({ header, rowIndex } = headerRes.value);
+
+    const parser = parse(csv, { delimiter });
+    let i = 0;
+    for await (const anyRecord of parser) {
+      if (i++ >= rowIndex) {
+        for (const [i, h] of header.entries()) {
           valuesByCol[h] ??= [];
           valuesByCol[h].push((anyRecord[i] ?? "").toString());
-        } catch (e) {
-          logger.error(
-            // temporary log to fix the valuesByCol[h].push is not a function error
-            { typeOf: typeof valuesByCol[h], columnName: h },
-            "Error parsing record"
-          );
-          throw e;
         }
       }
     }
+  } catch (e) {
+    if (e instanceof CsvError) {
+      logger.warn({ error: e });
+      return new Err({
+        type: "invalid_csv",
+        message: `Invalid CSV format: Please check for properly matched quotes in your data. ${e.message}`,
+      });
+    }
+    logger.error({ error: e }, "Error parsing CSV");
+    throw e;
   }
 
   if (!Object.values(valuesByCol).some((vs) => vs.length > 0)) {

@@ -170,6 +170,7 @@ export class OAuthAPI {
     });
     return this._resultFromResponse(response);
   }
+
   async getCredentials({
     credentialsId,
   }: {

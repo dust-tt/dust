@@ -1,17 +1,17 @@
 import { faker } from "@faker-js/faker";
-import type { InferCreationAttributes } from "sequelize";
 
-import { UserModel } from "@app/lib/resources/storage/models/user";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { UserResource } from "@app/lib/resources/user_resource";
 
-import { Factory } from "./factories";
-
-class UserFactory extends Factory<UserModel> {
-  constructor() {
-    super({
+export class UserFactory {
+  private static defaultParams = (
+    superUser: boolean = false,
+    createdAt: Date = new Date()
+  ) => {
+    return {
       sId: generateRandomModelSId(),
       auth0Sub: faker.string.uuid(),
-      provider: "google",
+      provider: "google" as const,
       providerId: faker.string.uuid(),
 
       username: faker.internet.displayName(),
@@ -20,41 +20,19 @@ class UserFactory extends Factory<UserModel> {
       firstName: faker.person.firstName(),
       lastName: faker.person.lastName(),
 
-      isDustSuperUser: false,
-    });
-  }
-
-  async make(params: InferCreationAttributes<UserModel>) {
-    return UserModel.create(params);
-  }
-
-  basic() {
-    return this.params({});
-  }
-
-  superUser() {
-    return this.params({
-      isDustSuperUser: true,
-    });
-  }
-
-  withCreatedAt(createdAt: Date) {
-    return this.params({
-      sId: generateRandomModelSId(),
-      auth0Sub: faker.string.uuid(),
-      provider: "google",
-      providerId: faker.string.uuid(),
-
-      username: faker.internet.displayName(),
-      email: faker.internet.email(),
-      name: faker.person.fullName(),
-      firstName: faker.person.firstName(),
-      lastName: faker.person.lastName(),
+      isDustSuperUser: superUser,
       createdAt,
-    });
+    };
+  };
+
+  static async basic() {
+    return UserResource.makeNew(this.defaultParams(false));
+  }
+
+  static async superUser() {
+    return UserResource.makeNew(this.defaultParams(true));
+  }
+  static async withCreatedAt(createdAt: Date) {
+    return UserResource.makeNew(this.defaultParams(false, createdAt));
   }
 }
-
-export const userFactory = () => {
-  return new UserFactory();
-};

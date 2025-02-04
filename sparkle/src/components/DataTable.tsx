@@ -22,9 +22,15 @@ import {
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuItemProps,
+  DropdownMenuPortal,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   IconButton,
   Pagination,
+  ScrollArea,
+  ScrollBar,
   Tooltip,
 } from "@sparkle/components";
 import { useCopyToClipboard } from "@sparkle/hooks";
@@ -369,9 +375,33 @@ DataTable.Row = function Row({
   );
 };
 
-interface MoreButtonProps {
+interface BaseMenuItem {
+  kind: "item" | "submenu";
+  label: string;
+}
+
+interface RegularMenuItem
+  extends BaseMenuItem,
+    Omit<DropdownMenuItemProps, "children" | "label"> {
+  kind: "item";
+}
+
+type SubmenuEntry = {
+  id: string;
+  name: string;
+};
+
+interface SubmenuMenuItem extends BaseMenuItem {
+  kind: "submenu";
+  items: SubmenuEntry[];
+  onSelect: (itemId: string) => void;
+}
+
+export type MenuItem = RegularMenuItem | SubmenuMenuItem;
+
+export interface DataTableMoreButtonProps {
   className?: string;
-  moreMenuItems?: DropdownMenuItemProps[];
+  menuItems?: MenuItem[];
   dropdownMenuProps?: Omit<
     React.ComponentPropsWithoutRef<typeof DropdownMenu>,
     "modal"
@@ -380,17 +410,66 @@ interface MoreButtonProps {
 
 DataTable.MoreButton = function MoreButton({
   className,
-  moreMenuItems,
+  menuItems,
   dropdownMenuProps,
-}: MoreButtonProps) {
-  if (!moreMenuItems || moreMenuItems.length === 0) {
+}: DataTableMoreButtonProps) {
+  if (!menuItems?.length) {
     return null;
   }
 
+  const renderSubmenuItem = (item: SubmenuMenuItem, index: number) => (
+    <DropdownMenuSub key={`${item.label}-${index}`}>
+      <DropdownMenuSubTrigger label={item.label} />
+      <DropdownMenuPortal>
+        <DropdownMenuSubContent>
+          <ScrollArea
+            className="s-min-w-24 s-flex s-max-h-72 s-flex-col"
+            hideScrollBar
+          >
+            {item.items.map((subItem) => (
+              <DropdownMenuItem
+                key={subItem.id}
+                label={subItem.name}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  item.onSelect(subItem.id);
+                }}
+              />
+            ))}
+            <ScrollBar className="s-py-0" />
+          </ScrollArea>
+        </DropdownMenuSubContent>
+      </DropdownMenuPortal>
+    </DropdownMenuSub>
+  );
+
+  const renderRegularItem = (item: RegularMenuItem, index: number) => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { kind, ...itemProps } = item;
+    return (
+      <DropdownMenuItem
+        key={`item-${index}`}
+        {...itemProps}
+        onClick={(event) => {
+          event.stopPropagation();
+          itemProps.onClick?.(event);
+        }}
+      />
+    );
+  };
+
+  const renderMenuItem = (item: MenuItem, index: number) => {
+    switch (item.kind) {
+      case "submenu":
+        return renderSubmenuItem(item, index);
+      case "item":
+        return renderRegularItem(item, index);
+    }
+  };
+
   return (
     <DropdownMenu modal={false} {...dropdownMenuProps}>
-      <DropdownMenuTrigger // Necessary to allow clicking the dropdown in a table cell without clicking on the cell
-        // See https://github.com/radix-ui/primitives/issues/1242
+      <DropdownMenuTrigger
         onClick={(event) => {
           event.stopPropagation();
         }}
@@ -405,18 +484,7 @@ DataTable.MoreButton = function MoreButton({
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="end">
-        <DropdownMenuGroup>
-          {moreMenuItems.map((item, index) => (
-            <DropdownMenuItem
-              key={index}
-              {...item}
-              onClick={(event) => {
-                event.stopPropagation();
-                item.onClick?.(event);
-              }}
-            />
-          ))}
-        </DropdownMenuGroup>
+        <DropdownMenuGroup>{menuItems.map(renderMenuItem)}</DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   );

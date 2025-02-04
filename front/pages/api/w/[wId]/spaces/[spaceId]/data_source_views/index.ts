@@ -208,10 +208,10 @@ async function handler(
       }
       const dataSourceView =
         await DataSourceViewResource.createViewInSpaceFromDataSource(
-          auth,
           space,
           dataSource,
-          parentsIn
+          parentsIn,
+          auth.user()
         );
       return res.status(201).json({
         dataSourceView: dataSourceView.toJSON(),

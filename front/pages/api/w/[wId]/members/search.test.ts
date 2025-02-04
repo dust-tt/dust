@@ -2,8 +2,8 @@ import { describe, expect } from "vitest";
 
 import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
-import { membershipFactory } from "@app/tests/utils/MembershipFactory";
-import { userFactory } from "@app/tests/utils/UserFactory";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import { itInTransaction } from "@app/tests/utils/utils";
 
 import handler from "./search";
@@ -54,15 +54,13 @@ describe("GET /api/w/[wId]/members/search", () => {
 
     // Create users with specific names for search
     const users = await Promise.all([
-      userFactory().basic().create(),
-      userFactory().basic().create(),
-      userFactory().basic().create(),
+      UserFactory.basic(),
+      UserFactory.basic(),
+      UserFactory.basic(),
     ]);
 
     await Promise.all(
-      users.map((user) =>
-        membershipFactory().associate(workspace, user, "user").create()
-      )
+      users.map((user) => MembershipFactory.associate(workspace, user, "user"))
     );
 
     req.query.searchTerm = users[0].email;
@@ -83,15 +81,13 @@ describe("GET /api/w/[wId]/members/search", () => {
     });
 
     const users = await Promise.all([
-      userFactory().basic().create(),
-      userFactory().basic().create(),
-      userFactory().basic().create(),
+      UserFactory.basic(),
+      UserFactory.basic(),
+      UserFactory.basic(),
     ]);
 
     await Promise.all(
-      users.map((user) =>
-        membershipFactory().associate(workspace, user, "user").create()
-      )
+      users.map((user) => MembershipFactory.associate(workspace, user, "user"))
     );
 
     req.query.searchEmails = users[0].email + "," + users[1].email;
@@ -141,13 +137,11 @@ describe("GET /api/w/[wId]/members/search", () => {
     const users = await Promise.all(
       Array(29)
         .fill(null)
-        .map(() => userFactory().basic().create())
+        .map(() => UserFactory.basic())
     );
 
     await Promise.all(
-      users.map((user) =>
-        membershipFactory().associate(workspace, user, "user").create()
-      )
+      users.map((user) => MembershipFactory.associate(workspace, user, "user"))
     );
 
     req.query.limit = "20";

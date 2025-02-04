@@ -26,17 +26,17 @@ import {
 import type { TestConnectionError } from "@connectors/connectors/snowflake/lib/snowflake_api";
 import { testConnection } from "@connectors/connectors/snowflake/lib/snowflake_api";
 import {
-  getConnector,
-  getConnectorAndCredentials,
-  getCredentials,
-} from "@connectors/connectors/snowflake/lib/utils";
-import {
   launchSnowflakeSyncWorkflow,
   stopSnowflakeSyncWorkflow,
 } from "@connectors/connectors/snowflake/temporal/client";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { RemoteTableModel } from "@connectors/lib/models/remote_databases";
 import { SnowflakeConfigurationModel } from "@connectors/lib/models/snowflake";
+import {
+  getConnector,
+  getConnectorAndCredentials,
+  getCredentials,
+} from "@connectors/lib/remote_databases/utils";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
@@ -70,18 +70,13 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
   }): Promise<Result<string, ConnectorManagerError<CreateConnectorErrorCode>>> {
     const credentialsRes = await getCredentials({
       credentialsId: connectionId,
+      isTypeGuard: isSnowflakeCredentials,
       logger,
     });
     if (credentialsRes.isErr()) {
       throw credentialsRes.error;
     }
     const credentials = credentialsRes.value.credentials;
-
-    if (!isSnowflakeCredentials(credentials)) {
-      throw new Error(
-        "Invalid credentials type - expected snowflake credentials"
-      );
-    }
 
     // Then we test the connection is successful.
     const connectionRes = await testConnection({ credentials });
@@ -132,6 +127,7 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
 
     const newCredentialsRes = await getCredentials({
       credentialsId: connectionId,
+      isTypeGuard: isSnowflakeCredentials,
       logger,
     });
     if (newCredentialsRes.isErr()) {
@@ -139,15 +135,6 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
     }
 
     const newCredentials = newCredentialsRes.value.credentials;
-
-    if (!isSnowflakeCredentials(newCredentials)) {
-      return new Err(
-        new ConnectorManagerError(
-          "INVALID_CONFIGURATION",
-          "Invalid credentials type - expected snowflake credentials"
-        )
-      );
-    }
 
     const connectionRes = await testConnection({ credentials: newCredentials });
     if (connectionRes.isErr()) {
@@ -265,6 +252,7 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
   > {
     const connectorAndCredentialsRes = await getConnectorAndCredentials({
       connectorId: this.connectorId,
+      isTypeGuard: isSnowflakeCredentials,
       logger,
     });
     if (connectorAndCredentialsRes.isErr()) {
@@ -318,12 +306,6 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
       return fetchRes;
     }
 
-    if (!isSnowflakeCredentials(credentials)) {
-      throw new Error(
-        "Invalid credentials type - expected snowflake credentials"
-      );
-    }
-
     // We display all available nodes with our credentials.
     const fetchRes = await fetchAvailableChildrenInSnowflake({
       connectorId: connector.id,
@@ -343,6 +325,7 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
   }): Promise<Result<void, Error>> {
     const connectorAndCredentialsRes = await getConnectorAndCredentials({
       connectorId: this.connectorId,
+      isTypeGuard: isSnowflakeCredentials,
       logger,
     });
     if (connectorAndCredentialsRes.isErr()) {
@@ -362,12 +345,6 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
     }
 
     const { credentials } = connectorAndCredentialsRes.value;
-
-    if (!isSnowflakeCredentials(credentials)) {
-      throw new Error(
-        "Invalid credentials type - expected snowflake credentials"
-      );
-    }
 
     await saveNodesFromPermissions({
       connectorId: this.connectorId,

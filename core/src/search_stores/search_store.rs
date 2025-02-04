@@ -8,7 +8,10 @@ use elasticsearch::{
     http::transport::{SingleNodeConnectionPool, TransportBuilder},
     DeleteByQueryParts, DeleteParts, Elasticsearch, IndexParts, SearchParts,
 };
-use elasticsearch_dsl::{Aggregation, BoolQuery, Query, Search};
+use elasticsearch_dsl::{
+    Aggregation, BoolQuery, FieldSort, Query, Script, ScriptSort, ScriptSortType, Search, Sort,
+    SortOrder,
+};
 use serde_json::json;
 use tracing::{error, info};
 use url::Url;
@@ -44,7 +47,7 @@ pub struct SortSpec {
 #[derive(serde::Deserialize)]
 pub struct NodesSearchOptions {
     limit: Option<u64>,
-    offset: Option<u64>,
+    cursor: Option<String>,
     // sort example:
     // [{"field": "title.keyword", "direction": "desc"}, {"field": "updated_at", "direction": "asc"}]
     // It will sort by title desc, then by updated_at asc, as per
@@ -66,36 +69,6 @@ pub struct NodesSearchFilter {
     node_types: Option<Vec<NodeType>>,
 }
 
-#[derive(serde::Deserialize)]
-pub struct NodesSearchCursorRequest {
-    cursor: Option<String>,
-    limit: Option<u64>,
-    // sort example:
-    // [{"field": "title.keyword", "direction": "desc"}, {"field": "updated_at", "direction": "asc"}]
-    // It will sort by title desc, then by updated_at asc, as per
-    // elasticsearch's sort syntax (although it's a small subset of it)
-    sort: Option<Vec<SortSpec>>,
-}
-
-impl Default for NodesSearchCursorRequest {
-    fn default() -> Self {
-        NodesSearchCursorRequest {
-            cursor: None,
-            limit: Some(MAX_PAGE_SIZE),
-            sort: Some(vec![SortSpec {
-                field: "title.keyword".to_string(),
-                direction: SortDirection::Asc,
-            }]),
-        }
-    }
-}
-
-#[derive(serde::Serialize)]
-pub struct NodesSearchCursorResponse {
-    nodes: Vec<CoreContentNode>,
-    next_page_cursor: Option<String>,
-}
-
 #[async_trait]
 pub trait SearchStore {
     async fn search_nodes(
@@ -103,14 +76,6 @@ pub trait SearchStore {
         query: Option<String>,
         filter: NodesSearchFilter,
         options: Option<NodesSearchOptions>,
-        store: Box<dyn Store + Sync + Send>,
-    ) -> Result<Vec<CoreContentNode>>;
-
-    async fn search_nodes_with_cursor(
-        &self,
-        query: Option<String>,
-        filter: NodesSearchFilter,
-        cursor: Option<NodesSearchCursorRequest>,
         store: Box<dyn Store + Sync + Send>,
     ) -> Result<(Vec<CoreContentNode>, Option<String>)>;
 
@@ -134,11 +99,8 @@ impl Default for NodesSearchOptions {
     fn default() -> Self {
         NodesSearchOptions {
             limit: Some(MAX_PAGE_SIZE),
-            offset: Some(0),
-            sort: Some(vec![SortSpec {
-                field: "title.keyword".to_string(),
-                direction: SortDirection::Asc,
-            }]),
+            cursor: None,
+            sort: None,
         }
     }
 }
@@ -182,7 +144,7 @@ impl SearchStore for ElasticsearchSearchStore {
         filter: NodesSearchFilter,
         options: Option<NodesSearchOptions>,
         store: Box<dyn Store + Sync + Send>,
-    ) -> Result<Vec<CoreContentNode>> {
+    ) -> Result<(Vec<CoreContentNode>, Option<String>)> {
         let options = options.unwrap_or_default();
 
         // TODO(20250128, nodes-core): remove this & corresponding timing logs
@@ -198,14 +160,19 @@ impl SearchStore for ElasticsearchSearchStore {
         let parent_id_log = filter.parent_id.clone();
         let node_ids_log = filter.node_ids.as_ref().map(|ids| ids.join(", "));
 
-        // check that options.limit is not greater than MAX_PAGE_SIZE
-        if options.limit.unwrap_or(MAX_PAGE_SIZE) > MAX_PAGE_SIZE {
-            return Err(anyhow::anyhow!(
-                "Limit is greater than MAX_PAGE_SIZE: {} (limit is {})",
-                options.limit.unwrap_or(MAX_PAGE_SIZE),
-                MAX_PAGE_SIZE
-            ));
-        }
+        // Validate and build arguments
+        let limit = match options.limit {
+            Some(0) => return Err(anyhow::anyhow!("Limit cannot be zero")),
+            Some(limit) if limit > MAX_PAGE_SIZE => {
+                return Err(anyhow::anyhow!(
+                    "Limit is greater than MAX_PAGE_SIZE: {} (limit is {})",
+                    limit,
+                    MAX_PAGE_SIZE
+                ))
+            }
+            Some(limit) => limit,
+            None => MAX_PAGE_SIZE,
+        };
 
         // sort and query are mutually exclusive
         if options.sort.is_some() && query.is_some() {
@@ -216,27 +183,23 @@ impl SearchStore for ElasticsearchSearchStore {
 
         let bool_query = self.build_search_query(query.clone(), filter)?;
 
-        // Build and run search (sort by title if no query)
-        let search = Search::new()
-            .from(options.offset.unwrap_or(0))
+        let sort = match query {
+            None => self.build_sort(options.sort)?,
+            Some(_) => vec![],
+        };
+
+        // Build and run search
+        let mut search = Search::new()
             .size(options.limit.unwrap_or(MAX_PAGE_SIZE))
             .query(bool_query)
-            .sort(match query {
-                None => options
-                    .sort
-                    .unwrap_or_default()
-                    .into_iter()
-                    .map(|s| {
-                        elasticsearch_dsl::Sort::FieldSort(
-                            elasticsearch_dsl::FieldSort::new(s.field).order(match s.direction {
-                                SortDirection::Asc => elasticsearch_dsl::SortOrder::Asc,
-                                SortDirection::Desc => elasticsearch_dsl::SortOrder::Desc,
-                            }),
-                        )
-                    })
-                    .collect(),
-                Some(_) => vec![],
-            });
+            .sort(sort);
+
+        if let Some(cursor) = options.cursor {
+            let decoded = URL_SAFE.decode(cursor)?;
+            let json_str = String::from_utf8(decoded)?;
+            let search_after: Vec<serde_json::Value> = serde_json::from_str(&json_str)?;
+            search = search.search_after(search_after);
+        }
 
         let search_start = utils::now();
         let response = self
@@ -257,157 +220,38 @@ impl SearchStore for ElasticsearchSearchStore {
         );
 
         // Parse response and return enriched nodes
-        let nodes: Vec<Node> = match response.status_code().is_success() {
-            true => {
-                let response_body = response.json::<serde_json::Value>().await?;
-                response_body["hits"]["hits"]
-                    .as_array()
-                    .unwrap()
-                    .iter()
-                    .map(|h| Node::from(h.get("_source").unwrap().clone()))
-                    .collect()
-            }
-            false => {
-                let error = response.json::<serde_json::Value>().await?;
-                return Err(anyhow::anyhow!("Failed to search nodes: {}", error));
-            }
-        };
+        let (nodes, next_cursor): (Vec<Node>, Option<String>) =
+            match response.status_code().is_success() {
+                true => {
+                    let response_body = response.json::<serde_json::Value>().await?;
+                    let hits = response_body["hits"]["hits"].as_array().unwrap();
+
+                    let next_cursor = if hits.len() == limit as usize {
+                        hits.last()
+                            .and_then(|hit| hit.get("sort"))
+                            .map(|sort_values| {
+                                // Encode the raw JSON sort values.
+                                URL_SAFE
+                                    .encode(serde_json::to_string(sort_values).unwrap().as_bytes())
+                            })
+                    } else {
+                        None
+                    };
+
+                    let nodes = hits
+                        .iter()
+                        .map(|h| Node::from(h.get("_source").unwrap().clone()))
+                        .collect();
+
+                    (nodes, next_cursor)
+                }
+                false => {
+                    let error = response.json::<serde_json::Value>().await?;
+                    return Err(anyhow::anyhow!("Failed to search nodes: {}", error));
+                }
+            };
 
         let compute_node_start = utils::now();
-        let result = self.compute_core_content_nodes(nodes, store).await;
-        info!(
-            duration = utils::now() - compute_node_start,
-            data_source_id = data_source_id,
-            data_source_filter = data_source_filter.as_ref().map(|v| v.join(", ")),
-            parent_id = parent_id_log,
-            node_ids = node_ids_log,
-            "[ElasticsearchSearchStore] Compute core content nodes duration"
-        );
-        result
-    }
-
-    async fn search_nodes_with_cursor(
-        &self,
-        query: Option<String>,
-        filter: NodesSearchFilter,
-        request: Option<NodesSearchCursorRequest>,
-        store: Box<dyn Store + Sync + Send>,
-    ) -> Result<(Vec<CoreContentNode>, Option<String>)> {
-        let params = request.unwrap_or_default();
-        let limit = params.limit.unwrap_or(MAX_PAGE_SIZE);
-
-        // TODO(20250128, nodes-core): remove this & corresponding timing logs
-        let data_source_id = filter
-            .data_source_views
-            .first()
-            .map(|v| v.data_source_id.clone());
-        let data_source_filter = filter
-            .data_source_views
-            .first()
-            .map(|v| v.view_filter.clone());
-
-        let parent_id_log = filter.parent_id.clone();
-        let node_ids_log = filter.node_ids.as_ref().map(|ids| ids.join(", "));
-
-        // Validate limit.
-        if limit == 0 {
-            return Err(anyhow::anyhow!("Limit cannot be zero"));
-        }
-        if limit > MAX_PAGE_SIZE {
-            return Err(anyhow::anyhow!(
-                "Limit is greater than MAX_PAGE_SIZE: {} (limit is {})",
-                limit,
-                MAX_PAGE_SIZE
-            ));
-        }
-
-        // Build the base query.
-        let bool_query = self.build_search_query(query, filter)?;
-
-        // Get user-specified sort or default.
-        let mut sort_spec = params.sort.unwrap_or_default();
-
-        // Always append id as tie-breaker.
-        sort_spec.push(SortSpec {
-            field: "node_id".to_string(),
-            direction: SortDirection::Asc,
-        });
-
-        // Build the search.
-        let mut search = Search::new().size(limit).query(bool_query).sort(
-            sort_spec
-                .into_iter()
-                .map(|s| {
-                    elasticsearch_dsl::Sort::FieldSort(
-                        elasticsearch_dsl::FieldSort::new(s.field).order(match s.direction {
-                            SortDirection::Asc => elasticsearch_dsl::SortOrder::Asc,
-                            SortDirection::Desc => elasticsearch_dsl::SortOrder::Desc,
-                        }),
-                    )
-                })
-                .collect::<Vec<elasticsearch_dsl::Sort>>(),
-        );
-
-        // Add search_after if cursor is provided.
-        if let Some(cursor) = params.cursor {
-            let decoded = URL_SAFE.decode(cursor)?;
-            let json_str = String::from_utf8(decoded)?;
-            let search_after: Vec<serde_json::Value> = serde_json::from_str(&json_str)?;
-            search = search.search_after(search_after);
-        }
-
-        let search_start = utils::now();
-
-        // Execute search.
-        let response = self
-            .client
-            .search(SearchParts::Index(&[NODES_INDEX_NAME]))
-            .body(search)
-            .send()
-            .await?;
-
-        let search_duration = utils::now() - search_start;
-        info!(
-            duration = search_duration,
-            data_source_id = data_source_id,
-            data_source_filter = data_source_filter.as_ref().map(|v| v.join(", ")),
-            parent_id = parent_id_log,
-            node_ids = node_ids_log,
-            "[ElasticsearchSearchStore] Search nodes with cursor duration"
-        );
-
-        // Parse response and handle errors.
-        let (nodes, next_page_cursor) = match response.status_code().is_success() {
-            true => {
-                let response_body = response.json::<serde_json::Value>().await?;
-                let hits = response_body["hits"]["hits"].as_array().unwrap();
-
-                let next_cursor = if hits.len() == limit as usize {
-                    hits.last()
-                        .and_then(|hit| hit.get("sort"))
-                        .map(|sort_values| {
-                            // Encode the raw JSON sort values.
-                            URL_SAFE.encode(serde_json::to_string(sort_values).unwrap().as_bytes())
-                        })
-                } else {
-                    None
-                };
-
-                let nodes = hits
-                    .iter()
-                    .map(|h| Node::from(h.get("_source").unwrap().clone()))
-                    .collect();
-
-                (nodes, next_cursor)
-            }
-            false => {
-                let error = response.json::<serde_json::Value>().await?;
-                return Err(anyhow::anyhow!("Failed to search nodes: {}", error));
-            }
-        };
-
-        let compute_node_start = utils::now();
-        // Compute core content nodes with additional metadata.
         let result = self.compute_core_content_nodes(nodes, store).await?;
         info!(
             duration = utils::now() - compute_node_start,
@@ -417,8 +261,7 @@ impl SearchStore for ElasticsearchSearchStore {
             node_ids = node_ids_log,
             "[ElasticsearchSearchStore] Compute core content nodes duration"
         );
-
-        Ok((result, next_page_cursor))
+        Ok((result, next_cursor))
     }
 
     async fn index_node(&self, node: Node, tags: Option<Vec<String>>) -> Result<()> {
@@ -755,5 +598,44 @@ impl ElasticsearchSearchStore {
             .collect();
 
         Ok(core_content_nodes)
+    }
+
+    // Always add node_id as a tie-breaker
+    fn build_sort(&self, sort: Option<Vec<SortSpec>>) -> Result<Vec<Sort>> {
+        let mut base_sort = match sort {
+            Some(sort) => {
+                if sort.iter().any(|s| s.field == "node_id") {
+                    return Err(anyhow::anyhow!(
+                        "Explicit sort on node_id is not allowed, it is used as a tie-breaker"
+                    ));
+                }
+
+                sort.into_iter()
+                    .map(|s| {
+                        Sort::FieldSort(FieldSort::new(s.field).order(match s.direction {
+                            SortDirection::Asc => SortOrder::Asc,
+                            SortDirection::Desc => SortOrder::Desc,
+                        }))
+                    })
+                    .collect()
+            }
+            // Default to sorting folders first, then both documents and tables
+            // and alphabetically by title
+            None => vec![
+                Sort::ScriptSort(
+                    ScriptSort::ascending(Script::source(
+                        "doc['node_type'].value == 'Folder' ? 0 : 1",
+                    ))
+                    .r#type(ScriptSortType::Number),
+                ),
+                Sort::FieldSort(FieldSort::new("title.keyword").order(SortOrder::Asc)),
+            ],
+        };
+
+        base_sort.push(Sort::FieldSort(
+            FieldSort::new("node_id").order(SortOrder::Asc),
+        ));
+
+        Ok(base_sort)
     }
 }

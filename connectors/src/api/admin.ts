@@ -25,6 +25,10 @@ const whitelistedCommands = [
     majorCommand: "connectors",
     command: "set-error",
   },
+  {
+    majorCommand: "connectors",
+    command: "clear-error",
+  },
 ];
 
 const _adminAPIHandler = async (
