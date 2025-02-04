@@ -261,7 +261,7 @@ function FeedbackCard({ owner, feedback }: FeedbackCardProps) {
               />
             </div>
           </div>
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col">
             {feedback.content}
             {conversationUrl && (
               <div>

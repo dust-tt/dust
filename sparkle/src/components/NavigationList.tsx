@@ -33,17 +33,10 @@ const NavigationList = React.forwardRef<
   React.ElementRef<typeof ScrollAreaPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root>
 >(({ className, children, ...props }, ref) => {
-  const [isScrolled, setIsScrolled] = React.useState(false);
-
   return (
     <ScrollArea
       ref={ref}
-      className={cn(
-        className,
-        "s-transition-all s-duration-300",
-        isScrolled && "s-border-t s-border-border-dark/60"
-      )}
-      onScrollStateChange={setIsScrolled}
+      className={cn(className, "s-transition-all s-duration-300")}
       {...props}
     >
       <div className="s-flex s-flex-col s-gap-0.5">{children}</div>
