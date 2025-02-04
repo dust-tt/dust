@@ -15,7 +15,10 @@ import {
 } from "@dust-tt/types";
 
 import { apiConfig } from "@connectors/lib/api/config";
-import { upsertDataSourceTableFromCsv } from "@connectors/lib/data_sources";
+import {
+  ignoreTablesError,
+  upsertDataSourceTableFromCsv,
+} from "@connectors/lib/data_sources";
 import type { Logger } from "@connectors/logger/logger";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
@@ -65,23 +68,25 @@ export async function handleCsvFile({
 
   try {
     const stringifiedContent = await parseAndStringifyCsv(tableCsv);
-    await upsertDataSourceTableFromCsv({
-      dataSourceConfig,
-      tableId,
-      tableName,
-      tableDescription,
-      tableCsv: stringifiedContent,
-      loggerArgs: {
-        connectorId,
-        fileId: tableId,
-        fileName: tableName,
-      },
-      truncate: true,
-      parents,
-      parentId: parents[1] || null,
-      title: fileName,
-      mimeType: "text/csv",
-    });
+    await ignoreTablesError(`${provider} CSV File`, () =>
+      upsertDataSourceTableFromCsv({
+        dataSourceConfig,
+        tableId,
+        tableName,
+        tableDescription,
+        tableCsv: stringifiedContent,
+        loggerArgs: {
+          connectorId,
+          fileId: tableId,
+          fileName: tableName,
+        },
+        truncate: true,
+        parents,
+        parentId: parents[1] || null,
+        title: fileName,
+        mimeType: "text/csv",
+      })
+    );
   } catch (err) {
     localLogger.warn({ error: err }, "Error while parsing or upserting table");
     return new Err(err as Error);

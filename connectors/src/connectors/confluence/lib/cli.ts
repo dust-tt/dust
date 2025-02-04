@@ -8,6 +8,7 @@ import assert from "assert";
 import fs from "fs/promises";
 
 import {
+  confluenceUpdatePagesParentIdsActivity,
   fetchConfluenceConfigurationActivity,
   getConfluenceClient,
 } from "@connectors/connectors/confluence/temporal/activities";
@@ -16,6 +17,7 @@ import {
   confluenceUpsertPagesWithFullParentsWorkflow,
   confluenceUpsertPageWithFullParentsWorkflow,
 } from "@connectors/connectors/confluence/temporal/workflows";
+import { ConfluenceSpace } from "@connectors/lib/models/confluence";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -142,6 +144,36 @@ export const confluence = async ({
           ? `https://cloud.temporal.io/namespaces/${temporalNamespace}/workflows/${workflowId}`
           : undefined,
       };
+    }
+    case "update-parents": {
+      if (!args.connectorId) {
+        throw new Error("Missing --connectorId argument");
+      }
+      // Not passing a spaceId means that all spaces have to be checked out here.
+      if (!args.spaceId) {
+        const spaces = await ConfluenceSpace.findAll({
+          attributes: ["spaceId"],
+          where: { connectorId: args.connectorId },
+        });
+        for (const space of spaces) {
+          logger.info(
+            { spaceId: space.spaceId },
+            "Updating parents for space."
+          );
+          await confluenceUpdatePagesParentIdsActivity(
+            args.connectorId,
+            space.spaceId,
+            null
+          );
+        }
+      } else {
+        await confluenceUpdatePagesParentIdsActivity(
+          args.connectorId,
+          args.spaceId,
+          null
+        );
+      }
+      return { success: true };
     }
 
     default:

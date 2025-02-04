@@ -675,7 +675,7 @@ export async function handleDataSourceTableCSVUpsert({
       code:
         | "missing_csv"
         | "data_source_error"
-        | "invalid_rows"
+        | "invalid_csv"
         | "resource_not_found"
         | "invalid_parent_id"
         | "internal_error";
@@ -710,7 +710,7 @@ export async function handleDataSourceTableCSVUpsert({
     if (csvRowsRes?.isErr()) {
       return new Err({
         name: "dust_error",
-        code: "invalid_rows",
+        code: "invalid_csv",
         message: "Failed to parse CSV: " + csvRowsRes.error.message,
       });
     }
@@ -785,7 +785,7 @@ export async function handleDataSourceTableCSVUpsert({
       if ("csvParsingError" in tableRes.error) {
         return new Err({
           name: "dust_error",
-          code: "internal_error",
+          code: "invalid_csv",
           message:
             "Failed to parse CSV: " + tableRes.error.csvParsingError.message,
         });
