@@ -89,6 +89,16 @@ export function computeNodesDiff({
   const missingNodes: DataSourceViewContentNode[] = [];
   const mismatchNodes: DataSourceViewContentNode[] = [];
 
+  if (connectorsContentNodes.length !== coreContentNodes.length) {
+    localLogger.info(
+      {
+        connectorsContentNodesLength: connectorsContentNodes.length,
+        coreContentNodesLength: coreContentNodes.length,
+      },
+      "[CoreNodes] Different number of nodes returned by connectors and core"
+    );
+  }
+
   connectorsContentNodes.forEach((connectorsNode) => {
     const coreNodes = coreContentNodes.filter(
       (coreNode) => coreNode.internalId === connectorsNode.internalId
