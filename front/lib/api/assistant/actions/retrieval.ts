@@ -441,10 +441,12 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
         Array.isArray(ds.filter.tags?.in) &&
         Array.isArray(ds.filter.tags?.not)
       ) {
-        config.DATASOURCE.filter.tags = {
-          in_map: {},
-          not_map: {},
-        };
+        if (!config.DATASOURCE.filter.tags) {
+          config.DATASOURCE.filter.tags = {
+            in_map: {},
+            not_map: {},
+          };
+        }
 
         const dsView = dataSourceViewsMap[ds.dataSourceViewId];
         assert(dsView, `Data source view ${ds.dataSourceViewId} not found`);
