@@ -1,5 +1,6 @@
 import type {
   DataSourceConfiguration,
+  DataSourceFilter,
   ModelId,
   RetrievalConfigurationType,
 } from "@dust-tt/types";
@@ -112,6 +113,20 @@ function getDataSource(
 ): DataSourceConfiguration {
   const { dataSourceView } = dataSourceConfig;
 
+  let tags: DataSourceFilter["tags"] = null;
+  if (
+    dataSourceConfig.tagsMode === "custom" &&
+    dataSourceConfig.tagsIn &&
+    dataSourceConfig.tagsNotIn
+  ) {
+    tags = {
+      in: dataSourceConfig.tagsIn,
+      not: dataSourceConfig.tagsNotIn,
+    };
+  } else if (dataSourceConfig.tagsMode === "auto") {
+    tags = "auto";
+  }
+
   return {
     workspaceId: dataSourceView.workspace.sId,
     dataSourceViewId: DataSourceViewResource.modelIdToSId({
@@ -126,6 +141,7 @@ function getDataSource(
               not: dataSourceConfig.parentsNotIn,
             }
           : null,
+      tags,
     },
   };
 }
