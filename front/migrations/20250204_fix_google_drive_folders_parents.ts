@@ -12,6 +12,8 @@ import { makeScript } from "@app/scripts/helpers";
 const QUERY_BATCH_SIZE = 256;
 const NODE_CONCURRENCY = 16;
 
+const GDRIVE_PREFIX = "gdrive-";
+
 interface Node {
   parents: string[];
   node_id: string;
@@ -43,15 +45,19 @@ async function migrateNode({
     logger.warn("Folder that starts with google-spreadsheet.");
     return;
   }
+  if (!coreNode.node_id.startsWith(GDRIVE_PREFIX)) {
+    logger.warn(`Folder that does not start with ${GDRIVE_PREFIX}.`);
+    return;
+  }
   const uniqueIds = [
     ...new Set(
       // Google Drive node IDs can start either with gdrive- (files and folders) or with google-spreadsheet (sheets).
       [coreNode.node_id, ...coreNode.parents].map((id) =>
-        id.replace("gdrive-", "")
+        id.replace(GDRIVE_PREFIX, "")
       )
     ),
   ];
-  newParents = uniqueIds.map((id) => `gdrive-${id}`);
+  newParents = uniqueIds.map((id) => `${GDRIVE_PREFIX}${id}`);
   newParentId = newParents[1] || null;
 
   if (
