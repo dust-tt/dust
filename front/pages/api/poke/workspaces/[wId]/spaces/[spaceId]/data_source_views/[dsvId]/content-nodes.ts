@@ -133,6 +133,8 @@ async function handler(
     });
   }
 
+  const showConnectorsNodes = req.query.connNodes === "true";
+
   const contentNodesRes = await getContentNodesForDataSourceView(
     dataSourceView,
     {
@@ -140,7 +142,8 @@ async function handler(
       parentId,
       pagination: paginationRes.value,
       viewType,
-    }
+    },
+    showConnectorsNodes
   );
 
   if (contentNodesRes.isErr()) {
