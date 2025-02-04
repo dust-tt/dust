@@ -89,7 +89,11 @@ export function computeNodesDiff({
   const missingNodes: DataSourceViewContentNode[] = [];
   const mismatchNodes: DataSourceViewContentNode[] = [];
 
-  if (connectorsContentNodes.length !== coreContentNodes.length) {
+  if (
+    pagination &&
+    isCursorPaginationParams(pagination) &&
+    connectorsContentNodes.length !== coreContentNodes.length
+  ) {
     localLogger.info(
       {
         connectorsContentNodesLength: connectorsContentNodes.length,
@@ -125,12 +129,7 @@ export function computeNodesDiff({
         ) {
           // Connectors return tables even when viewType is documents, core doesn't
           if (!(provider === "snowflake" && viewType === "documents")) {
-            // We expect missing nodes when cursor pagination is enabled
-            // Because core doesn't use the same sort as connectors
-            // See https://github.com/dust-tt/dust/issues/10515
-            if (!(pagination && isCursorPaginationParams(pagination))) {
-              missingNodes.push(connectorsNode);
-            }
+            missingNodes.push(connectorsNode);
           }
         }
       }
