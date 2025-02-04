@@ -1,3 +1,5 @@
+import type { APIError, Result } from "@dust-tt/types";
+import { Ok } from "@dust-tt/types";
 import * as t from "io-ts";
 import _ from "lodash";
 
@@ -21,11 +23,13 @@ export async function callDocTrackerRetrievalAction(
     maintainedScope: TrackerMaintainedScopeType;
     parentsInMap: Record<string, string[] | null>;
   }
-): Promise<t.TypeOf<typeof DocTrackerRetrievalActionValueSchema>> {
+): Promise<
+  Result<t.TypeOf<typeof DocTrackerRetrievalActionValueSchema>, APIError>
+> {
   const ownerWorkspace = auth.getNonNullableWorkspace();
 
   if (!maintainedScope.length) {
-    return [];
+    return new Ok([]);
   }
 
   if (
@@ -55,11 +59,7 @@ export async function callDocTrackerRetrievalAction(
     responseValueSchema: DocTrackerRetrievalActionValueSchema,
   });
 
-  if (res.isErr()) {
-    throw res.error;
-  }
-
-  return res.value;
+  return res;
 }
 
 // Must map CoreAPIDocument
