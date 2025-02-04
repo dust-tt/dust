@@ -323,7 +323,7 @@ impl From<Table> for Node {
             table.provider_visibility,
             table.parents.get(1).cloned(),
             table.parents,
-            table.source_url.clone(),
+            table.source_url,
             table.tags,
         )
     }

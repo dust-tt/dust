@@ -516,11 +516,10 @@ impl DataSource {
                 &None,
             )
             .await?;
+
         match document {
             Some(document) => {
-                search_store
-                    .index_node(Node::from(document.clone()))
-                    .await?;
+                search_store.index_node(Node::from(document)).await?;
             }
             None => (),
         }

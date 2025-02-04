@@ -266,29 +266,13 @@ impl SearchStore for ElasticsearchSearchStore {
 
     async fn index_node(&self, node: Node) -> Result<()> {
         let now = utils::now();
-
-        let doc = json!({
-            "data_source_id": node.data_source_id,
-            "data_source_internal_id": node.data_source_internal_id,
-            "node_id": node.node_id,
-            "node_type": node.node_type,
-            "timestamp": node.timestamp,
-            "title": node.title,
-            "mime_type": node.mime_type,
-            "provider_visibility": node.provider_visibility,
-            "parent_id": node.parent_id,
-            "parents": node.parents,
-            "source_url": node.source_url,
-            "tags": node.tags
-        });
-
         // Note: in elasticsearch, the index API updates the document if it
         // already exists.
         let response = self
             .client
             .index(IndexParts::IndexId(NODES_INDEX_NAME, &node.unique_id()))
             .timeout("200ms")
-            .body(doc)
+            .body(node.clone())
             .send()
             .await?;
 
