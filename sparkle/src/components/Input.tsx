@@ -26,17 +26,30 @@ const INPUT_STATES = ["error", "disabled", "default"];
 type InputStateType = (typeof INPUT_STATES)[number];
 
 const messageVariantStyles: Record<MessageStatus, string> = {
-  info: "s-text-muted-foreground",
-  default: "s-text-muted-foreground",
-  error: "s-text-foreground-warning",
+  info: "s-text-muted-foreground dark:s-text-muted-foreground-night",
+  default: "s-text-muted-foreground dark:s-text-muted-foreground-night",
+  error: "s-text-foreground-warning dark:s-text-foreground-warning-night",
 };
 
 const stateVariantStyles: Record<InputStateType, string> = {
-  default:
-    "s-border-border-dark s-ring-highlight/0 focus-visible:s-border-border-focus focus-visible:s-outline-none focus-visible:s-ring-highlight/10",
-  disabled: "disabled:s-cursor-not-allowed disabled:s-text-muted-foreground",
-  error:
-    "s-border-border-warning/30 s-ring-warning/0 focus-visible:s-border-border-warning focus-visible:s-outline-none focus-visible:s-ring-warning/10",
+  default: cn(
+    "s-border-border-dark dark:s-border-border-dark-night",
+    "s-ring-highlight/0 dark:s-ring-highlight-night/0",
+    "focus-visible:s-border-border-focus dark:focus-visible:s-border-border-focus-night",
+    "focus-visible:s-outline-none",
+    "focus-visible:s-ring-highlight/10 dark:focus-visible:s-ring-highlight-night/10"
+  ),
+  disabled: cn(
+    "disabled:s-cursor-not-allowed",
+    "disabled:s-text-muted-foreground dark:disabled:s-text-muted-foreground-night"
+  ),
+  error: cn(
+    "s-border-border-warning/30 dark:s-border-border-warning-night/30",
+    "s-ring-warning/0 dark:s-ring-warning-night/0",
+    "focus-visible:s-border-border-warning dark:focus-visible:s-border-border-warning-night",
+    "focus-visible:s-outline-none",
+    "focus-visible:s-ring-warning/10 dark:focus-visible:s-ring-warning-night/10"
+  ),
 };
 
 const messageVariant = cva("", {
@@ -50,10 +63,12 @@ const messageVariant = cva("", {
 
 const inputStyleClasses = cva(
   cn(
-    "s-text-sm s-rounded-xl s-bg-muted-background s-flex s-h-9 s-w-full s-px-3 s-py-1.5 ",
+    "dark:s-text-white",
+    "s-text-sm s-rounded-xl s-flex s-h-9 s-w-full s-px-3 s-py-1.5 ",
+    "s-bg-muted-background dark:s-bg-muted-background-night",
     "s-border focus-visible:s-ring",
     "file:s-border-0 file:s-bg-transparent file:s-text-sm file:s-font-medium file:s-text-foreground",
-    "placeholder:s-text-muted-foreground"
+    "placeholder:s-text-muted-foreground dark:placeholder:s-text-muted-foreground-night"
   ),
   {
     variants: {
