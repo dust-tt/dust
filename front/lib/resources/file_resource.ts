@@ -249,9 +249,7 @@ export class FileResource extends BaseResource<FileModel> {
   // Use-case logic
 
   isUpsertUseCase(): boolean {
-    return (
-      this.useCase === "folder_document" || this.useCase === "folder_table"
-    );
+    return ["folder_document", "folder_table"].includes(this.useCase);
   }
 
   getBucketForVersion(version: FileVersion) {
