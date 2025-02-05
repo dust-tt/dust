@@ -120,7 +120,7 @@ import { apiError } from "@app/logger/withlogging";
  *                 description: 'Reserved for internal use, should not be set. ID of the direct parent to associate with the table'
  *               mime_type:
  *                 type: string
- *                 description: Mime type of the table
+ *                 description: INTERNAL: Mime type of the table. Should not be set.
  *     responses:
  *       200:
  *         description: The table
