@@ -42,37 +42,33 @@ async function migrateNode({
   skipIfParentsAreAlreadyCorrect: boolean;
   logger: typeof Logger;
 }) {
-  let newParents = coreNode.parents;
-  let newParentId: string | null = null;
-  try {
-    if (
-      coreNode.table !== null &&
-      !coreNode.node_id.startsWith("google-spreadsheet")
-    ) {
-      logger.warn("Sheet that does not start with google-spreadsheet.");
-    }
-    const uniqueIds = [
-      ...new Set(
-        // Google Drive node IDs can start either with gdrive- (files and folders) or with google-spreadsheet (sheets).
-        [coreNode.node_id, ...coreNode.parents].map((id) =>
-          id.startsWith("google-spreadsheet") ? id : id.replace("gdrive-", "")
-        )
-      ),
-    ];
-    newParents = uniqueIds.map((id) =>
-      id.startsWith("google-spreadsheet") ? id : `gdrive-${id}`
-    );
-    newParentId = newParents[1] || null;
-  } catch (e) {
-    logger.error(
-      {
-        nodeId: coreNode.node_id,
-        parents: coreNode.parents,
-      },
-      `TRANSFORM_ERROR`
-    );
-    throw e;
+  if (
+    coreNode.table !== null &&
+    !coreNode.node_id.startsWith("google-spreadsheet")
+  ) {
+    logger.warn("Sheet that does not start with google-spreadsheet.");
+    return;
   }
+  const uniqueIds = [
+    ...new Set(
+      // Google Drive node IDs can start either with gdrive- (files and folders) or with google-spreadsheet (sheets).
+      [coreNode.node_id, ...coreNode.parents].map((id) =>
+        id.startsWith("google-spreadsheet") ? id : id.replace("gdrive-", "")
+      )
+    ),
+  ];
+  const newParents = uniqueIds.map((id) =>
+    id.startsWith("google-spreadsheet") ? id : `gdrive-${id}`
+  );
+  const newParentId = newParents[1] || null;
+
+  const localLogger = logger.child({
+    dataSource: coreNode.data_source,
+    nodeId: coreNode.node_id,
+    fromParents: coreNode.parents,
+    toParents: newParents,
+    toParentId: newParentId,
+  });
 
   if (
     skipIfParentsAreAlreadyCorrect &&
