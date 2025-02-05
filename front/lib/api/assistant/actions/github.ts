@@ -206,7 +206,7 @@ export class GithubGetPullRequestConfigurationServerRunner extends BaseActionCon
         messageId: agentMessage.sId,
         error: {
           code: "github_configuration_error",
-          message: `Github actions have not been configured for this workspace.`,
+          message: `GitHub actions have not been configured for this workspace.`,
         },
       };
       return;
@@ -227,7 +227,7 @@ export class GithubGetPullRequestConfigurationServerRunner extends BaseActionCon
         messageId: agentMessage.sId,
         error: {
           code: "github_get_pull_request_parameters_generation_error",
-          message: `Error generating parameters for github get pull request action.`,
+          message: `Error generating parameters for GitHub get pull request action.`,
         },
       };
       return;
@@ -288,7 +288,7 @@ export class GithubGetPullRequestConfigurationServerRunner extends BaseActionCon
         messageId: agentMessage.sId,
         error: {
           code: "github_connection_error",
-          message: `Error getting connection token for github: ${tokRes.error.message}`,
+          message: `Error getting connection token for GitHub: ${tokRes.error.message}`,
         },
       };
       return;
@@ -498,7 +498,7 @@ export class GithubGetPullRequestConfigurationServerRunner extends BaseActionCon
         messageId: agentMessage.sId,
         error: {
           code: "github_get_pull_request_error",
-          message: `Error getting pull request`,
+          message: `Error getting pull request from GitHub`,
         },
       };
       return;
@@ -695,7 +695,7 @@ export class GithubCreateIssueConfigurationServerRunner extends BaseActionConfig
         messageId: agentMessage.sId,
         error: {
           code: "github_configuration_error",
-          message: `Github actions have not been configured for this workspace.`,
+          message: `GitHub actions have not been configured for this workspace.`,
         },
       };
       return;
@@ -718,7 +718,7 @@ export class GithubCreateIssueConfigurationServerRunner extends BaseActionConfig
         messageId: agentMessage.sId,
         error: {
           code: "github_create_issue_parameters_generation_error",
-          message: `Error generating parameters for github create issue action.`,
+          message: `Error generating parameters for GitHub create issue action.`,
         },
       };
       return;
@@ -778,7 +778,7 @@ export class GithubCreateIssueConfigurationServerRunner extends BaseActionConfig
         messageId: agentMessage.sId,
         error: {
           code: "github_connection_error",
-          message: `Error getting connection token for github: ${tokRes.error.message}`,
+          message: `Error getting connection token for GitHub: ${tokRes.error.message}`,
         },
       };
       return;
@@ -807,7 +807,7 @@ export class GithubCreateIssueConfigurationServerRunner extends BaseActionConfig
         messageId: agentMessage.sId,
         error: {
           code: "github_create_issue_error",
-          message: `Error creating Github issue`,
+          message: `Error creating GitHub issue`,
         },
       };
       return;

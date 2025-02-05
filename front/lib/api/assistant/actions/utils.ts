@@ -79,14 +79,14 @@ export const ACTION_SPECIFICATIONS: Record<
   },
   GITHUB_GET_PULL_REQUEST: {
     label: "Retrieve pull request",
-    description: "Retrieve a pull request from Github",
+    description: "Retrieve a pull request from GitHub",
     cardIcon: GithubIcon,
     dropDownIcon: GithubIcon,
     flag: null,
   },
   GITHUB_CREATE_ISSUE: {
     label: "Create issue",
-    description: "Create an issue on Github",
+    description: "Create an issue on GitHub",
     cardIcon: GithubIcon,
     dropDownIcon: GithubIcon,
     flag: null,
