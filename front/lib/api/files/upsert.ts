@@ -29,7 +29,10 @@ import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import type { FileResource } from "@app/lib/resources/file_resource";
+import type {
+  FileResource,
+  FileVersion,
+} from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 
 const ENABLE_LLM_SNIPPETS = false;
@@ -395,11 +398,13 @@ async function getFileContent(
   // Create a stream to hold the content of the file
   const writableStream = new MemoryWritable();
 
+  let version: FileVersion = "processed";
+  if (["folder_table", "folder_document"].includes(file.useCase)) {
+    version = "upsert_queue";
+  }
+
   // Read from the processed file
-  await pipeline(
-    file.getReadStream({ auth, version: "processed" }),
-    writableStream
-  );
+  await pipeline(file.getReadStream({ auth, version }), writableStream);
 
   const content = writableStream.getContent();
 

@@ -24,6 +24,7 @@ import type { Authenticator } from "@app/lib/auth";
 import {
   getPrivateUploadBucket,
   getPublicUploadBucket,
+  getUpsertQueueBucket,
 } from "@app/lib/file_storage";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileModel } from "@app/lib/resources/storage/models/files";
@@ -108,16 +109,28 @@ export class FileResource extends BaseResource<FileModel> {
   async delete(auth: Authenticator): Promise<Result<undefined, Error>> {
     try {
       if (this.isReady) {
-        await getPrivateUploadBucket()
+        await (
+          this.isUpsertUseCase()
+            ? getUpsertQueueBucket()
+            : getPrivateUploadBucket()
+        )
           .file(this.getCloudStoragePath(auth, "original"))
           .delete();
 
         // Delete the processed file if it exists.
-        await getPrivateUploadBucket()
+        await (
+          this.isUpsertUseCase()
+            ? getUpsertQueueBucket()
+            : getPrivateUploadBucket()
+        )
           .file(this.getCloudStoragePath(auth, "processed"))
           .delete({ ignoreNotFound: true });
         // Delete the snippet file if it exists.
-        await getPrivateUploadBucket()
+        await (
+          this.isUpsertUseCase()
+            ? getUpsertQueueBucket()
+            : getPrivateUploadBucket()
+        )
           .file(this.getCloudStoragePath(auth, "snippet"))
           .delete({ ignoreNotFound: true });
         // Delete the public file if it exists.
@@ -235,17 +248,22 @@ export class FileResource extends BaseResource<FileModel> {
     auth: Authenticator,
     version: FileVersion
   ): Promise<string> {
-    return getPrivateUploadBucket().getSignedUrl(
-      this.getCloudStoragePath(auth, version),
-      {
-        // Since we redirect, the use is immediate so expiry can be short.
-        expirationDelay: 10 * 1000,
-        promptSaveAs: this.fileName ?? `dust_${this.sId}`,
-      }
-    );
+    return (
+      this.isUpsertUseCase() ? getUpsertQueueBucket() : getPrivateUploadBucket()
+    ).getSignedUrl(this.getCloudStoragePath(auth, version), {
+      // Since we redirect, the use is immediate so expiry can be short.
+      expirationDelay: 10 * 1000,
+      promptSaveAs: this.fileName ?? `dust_${this.sId}`,
+    });
   }
 
   // Stream logic.
+
+  isUpsertUseCase(): boolean {
+    return (
+      this.useCase === "folder_document" || this.useCase === "folder_table"
+    );
+  }
 
   getWriteStream({
     auth,
@@ -264,15 +282,17 @@ export class FileResource extends BaseResource<FileModel> {
           gzip: true,
           contentType: overrideContentType ?? this.contentType,
         });
-    } else {
-      return getPrivateUploadBucket()
-        .file(this.getCloudStoragePath(auth, version))
-        .createWriteStream({
-          resumable: false,
-          gzip: true,
-          contentType: overrideContentType ?? this.contentType,
-        });
     }
+
+    return (
+      this.isUpsertUseCase() ? getUpsertQueueBucket() : getPrivateUploadBucket()
+    )
+      .file(this.getCloudStoragePath(auth, version))
+      .createWriteStream({
+        resumable: false,
+        gzip: true,
+        contentType: overrideContentType ?? this.contentType,
+      });
   }
 
   getReadStream({
@@ -286,11 +306,12 @@ export class FileResource extends BaseResource<FileModel> {
       return getPublicUploadBucket()
         .file(this.getCloudStoragePath(auth, version))
         .createReadStream();
-    } else {
-      return getPrivateUploadBucket()
-        .file(this.getCloudStoragePath(auth, version))
-        .createReadStream();
     }
+    return (
+      this.isUpsertUseCase() ? getUpsertQueueBucket() : getPrivateUploadBucket()
+    )
+      .file(this.getCloudStoragePath(auth, version))
+      .createReadStream();
   }
 
   setUseCaseMetadata(metadata: FileUseCaseMetadata) {
@@ -313,7 +334,7 @@ export class FileResource extends BaseResource<FileModel> {
       useCase: this.useCase,
     };
 
-    if (this.isReady) {
+    if (this.isReady && !this.isUpsertUseCase()) {
       blob.downloadUrl = this.getPrivateUrl(auth);
     }
 
@@ -343,7 +364,7 @@ export class FileResource extends BaseResource<FileModel> {
       useCase: this.useCase,
     };
 
-    if (this.isReady) {
+    if (this.isReady && !this.isUpsertUseCase()) {
       // TODO(thomas): This should be a public URL, need to solve authorization
       blob.downloadUrl = this.getPrivateUrl(auth);
     }
