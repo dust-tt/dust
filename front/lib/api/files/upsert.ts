@@ -398,13 +398,11 @@ async function getFileContent(
   // Create a stream to hold the content of the file
   const writableStream = new MemoryWritable();
 
-  let version: FileVersion = "processed";
-  if (["folder_table", "folder_document"].includes(file.useCase)) {
-    version = "upsert_queue";
-  }
-
   // Read from the processed file
-  await pipeline(file.getReadStream({ auth, version }), writableStream);
+  await pipeline(
+    file.getReadStream({ auth, version: "processed" }),
+    writableStream
+  );
 
   const content = writableStream.getContent();
 
