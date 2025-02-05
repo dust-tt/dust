@@ -240,7 +240,7 @@ module.exports = {
           night: colors.slate[700],
           warning: {
             DEFAULT: colors.red[300],
-            night: colors.red[700],
+            night: colors.red[800],
           },
         },
         background: { DEFAULT: colors.white, night: colors.slate[950] },
