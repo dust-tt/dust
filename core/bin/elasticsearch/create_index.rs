@@ -51,7 +51,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let password =
         std::env::var("ELASTICSEARCH_PASSWORD").expect("ELASTICSEARCH_PASSWORD must be set");
 
-    let region = std::env::var("DUST_REGION").expect("DUST_REGION must be set");
+    let region = match std::env::var("NODE_ENV").unwrap_or_default().as_str() {
+        "development" => "local".to_string(),
+        _ => std::env::var("DUST_REGION").expect("DUST_REGION must be set"),
+    };
 
     // create ES client
     let search_store = ElasticsearchSearchStore::new(&url, &username, &password).await?;
