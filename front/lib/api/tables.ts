@@ -552,33 +552,44 @@ async function staticHeaderDetection(
   return new Ok({ header: header.value, rowIndex: 1 });
 }
 
-async function detectHeaders(
+export async function detectHeaders(
   csv: string,
   delimiter: string
 ): Promise<Result<DetectedHeadersType, CsvParsingError>> {
-  const headParser = parse(csv, { delimiter, skipEmptyLines: true, to: 8 });
-  let firstRecord: string[] | null = null;
-  for await (const anyRecord of headParser) {
-    // Assert that record is string[].
-    if (!Array.isArray(anyRecord)) {
-      throw new Error("Record is not an array.");
-    }
+  const records = await new Promise<string[][]>((resolve, reject) => {
+    parse(
+      csv,
+      {
+        delimiter,
+        skipEmptyLines: true,
+        to: 1,
+      },
+      (error, records) => {
+        if (error) {
+          reject(error);
+        }
+        if (records) {
+          resolve(records);
+        }
+      }
+    );
+  });
 
-    if (anyRecord.some((r) => typeof r !== "string")) {
-      throw new Error("Record contains non-string values.");
-    }
-
-    const record = anyRecord as string[];
-
-    if (record.length > MAX_TABLE_COLUMNS) {
-      return new Err({ type: "too_many_columns", message: "Too many columns" });
-    }
-
-    headParser.destroy();
-    firstRecord = record;
-  }
-  if (!firstRecord) {
+  if (records.length === 0) {
     return new Err({ type: "empty_csv", message: "Empty CSV" });
   }
+
+  const firstRecord = records[0];
+  if (
+    !Array.isArray(firstRecord) ||
+    firstRecord.some((r) => typeof r !== "string")
+  ) {
+    throw new Error("Invalid record format");
+  }
+
+  if (firstRecord.length > MAX_TABLE_COLUMNS) {
+    return new Err({ type: "too_many_columns", message: "Too many columns" });
+  }
+
   return staticHeaderDetection(firstRecord);
 }
