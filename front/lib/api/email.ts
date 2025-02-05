@@ -20,7 +20,7 @@ export function getSgMailClient(): any {
   return sgMail;
 }
 
-export async function sendGithubDeletionEmail(email: string): Promise<void> {
+export async function sendGitHubDeletionEmail(email: string): Promise<void> {
   await sendEmailWithTemplate({
     to: email,
     from: {
