@@ -24,7 +24,9 @@
       "get": {
         "summary": "List assistants",
         "description": "Get the agent configurations for the workspace identified by {wId}.",
-        "tags": ["Assistants"],
+        "tags": [
+          "Assistants"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -61,7 +63,9 @@
               "type": "array",
               "items": {
                 "type": "string",
-                "enum": ["authors"]
+                "enum": [
+                  "authors"
+                ]
               }
             }
           }
@@ -107,7 +111,9 @@
       "get": {
         "summary": "Get agent configuration",
         "description": "Retrieve the agent configuration identified by {sId} in the workspace identified by {wId}.",
-        "tags": ["Assistants"],
+        "tags": [
+          "Assistants"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -169,7 +175,9 @@
       "patch": {
         "summary": "Update agent configuration",
         "description": "Update the agent configuration identified by {sId} in the workspace identified by {wId}.",
-        "tags": ["Assistants"],
+        "tags": [
+          "Assistants"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -248,7 +256,9 @@
       "get": {
         "summary": "Search assistants by name",
         "description": "Search for agent configurations by name in the workspace identified by {wId}.",
-        "tags": ["Assistants"],
+        "tags": [
+          "Assistants"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -313,7 +323,9 @@
     },
     "/api/v1/w/{wId}/assistant/conversations/{cId}/cancel": {
       "post": {
-        "tags": ["Conversations"],
+        "tags": [
+          "Conversations"
+        ],
         "summary": "Cancel message generation in a conversation",
         "parameters": [
           {
@@ -346,7 +358,9 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["messageIds"],
+                "required": [
+                  "messageIds"
+                ],
                 "properties": {
                   "messageIds": {
                     "type": "array",
@@ -390,7 +404,9 @@
       "post": {
         "summary": "Create a content fragment",
         "description": "Create a new content fragment in the workspace identified by {wId}.",
-        "tags": ["Conversations"],
+        "tags": [
+          "Conversations"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -453,7 +469,9 @@
       "get": {
         "summary": "Get the events for a conversation",
         "description": "Get the events for a conversation in the workspace identified by {wId}.",
-        "tags": ["Conversations"],
+        "tags": [
+          "Conversations"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -505,7 +523,9 @@
       "get": {
         "summary": "Get feedbacks for a conversation",
         "description": "Retrieves all feedback entries for a specific conversation.\nRequires authentication and read:conversation scope.\n",
-        "tags": ["Feedbacks"],
+        "tags": [
+          "Feedbacks"
+        ],
         "parameters": [
           {
             "name": "wId",
@@ -558,7 +578,10 @@
                           },
                           "thumbDirection": {
                             "type": "string",
-                            "enum": ["up", "down"],
+                            "enum": [
+                              "up",
+                              "down"
+                            ],
                             "description": "Direction of the thumb feedback"
                           },
                           "content": {
@@ -612,7 +635,9 @@
       "get": {
         "summary": "Get a conversation",
         "description": "Get a conversation in the workspace identified by {wId}.",
-        "tags": ["Conversations"],
+        "tags": [
+          "Conversations"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -669,7 +694,9 @@
     },
     "/api/v1/w/{wId}/assistant/conversations/{cId}/messages/{mId}/edit": {
       "post": {
-        "tags": ["Conversations"],
+        "tags": [
+          "Conversations"
+        ],
         "summary": "Edit an existing message in a conversation",
         "parameters": [
           {
@@ -711,7 +738,10 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["content", "mentions"],
+                "required": [
+                  "content",
+                  "mentions"
+                ],
                 "properties": {
                   "content": {
                     "type": "string",
@@ -722,7 +752,9 @@
                     "description": "List of agent mentions in the message",
                     "items": {
                       "type": "object",
-                      "required": ["configurationId"],
+                      "required": [
+                        "configurationId"
+                      ],
                       "properties": {
                         "configurationId": {
                           "type": "string",
@@ -770,7 +802,9 @@
       "get": {
         "summary": "Get events for a message",
         "description": "Get events for a message in the workspace identified by {wId}.",
-        "tags": ["Conversations"],
+        "tags": [
+          "Conversations"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -864,7 +898,9 @@
       "post": {
         "summary": "Submit feedback for a specific message in a conversation",
         "description": "Submit user feedback (thumbs up/down) for a specific message in a conversation.\nRequires authentication and update:conversation scope.\n",
-        "tags": ["Feedbacks"],
+        "tags": [
+          "Feedbacks"
+        ],
         "parameters": [
           {
             "name": "wId",
@@ -905,11 +941,16 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["thumbDirection"],
+                "required": [
+                  "thumbDirection"
+                ],
                 "properties": {
                   "thumbDirection": {
                     "type": "string",
-                    "enum": ["up", "down"],
+                    "enum": [
+                      "up",
+                      "down"
+                    ],
                     "description": "Direction of the thumb feedback"
                   },
                   "feedbackContent": {
@@ -955,7 +996,9 @@
       "delete": {
         "summary": "Delete feedback for a specific message",
         "description": "Delete user feedback for a specific message in a conversation.\nRequires authentication and update:conversation scope.\n",
-        "tags": ["Feedbacks"],
+        "tags": [
+          "Feedbacks"
+        ],
         "parameters": [
           {
             "name": "wId",
@@ -1022,7 +1065,9 @@
       "post": {
         "summary": "Create a message",
         "description": "Create a message in the workspace identified by {wId} in the conversation identified by {cId}.",
-        "tags": ["Conversations"],
+        "tags": [
+          "Conversations"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -1085,7 +1130,9 @@
       "post": {
         "summary": "Create a new conversation",
         "description": "Create a new conversation in the workspace identified by {wId}.",
-        "tags": ["Conversations"],
+        "tags": [
+          "Conversations"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -1108,7 +1155,9 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["message"],
+                "required": [
+                  "message"
+                ],
                 "properties": {
                   "message": {
                     "$ref": "#/components/schemas/Message"
@@ -1133,7 +1182,10 @@
                   "visibility": {
                     "type": "string",
                     "description": "The visibility of the conversation (The API only accepts `unlisted`)",
-                    "enum": ["workspace", "unlisted"],
+                    "enum": [
+                      "workspace",
+                      "unlisted"
+                    ],
                     "example": "unlisted"
                   }
                 }
@@ -1166,7 +1218,9 @@
     },
     "/api/v1/w/{wId}/files": {
       "post": {
-        "tags": ["Datasources"],
+        "tags": [
+          "Conversations"
+        ],
         "summary": "Create a file upload URL",
         "parameters": [
           {
@@ -1260,7 +1314,9 @@
       "get": {
         "summary": "Get an app run",
         "description": "Retrieve a run for an app in the space identified by {spaceId}.",
-        "tags": ["Apps"],
+        "tags": [
+          "Apps"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -1333,7 +1389,9 @@
       "post": {
         "summary": "Create an app run",
         "description": "Create and execute a run for an app in the space specified by {spaceId}.",
-        "tags": ["Apps"],
+        "tags": [
+          "Apps"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -1374,7 +1432,11 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["specification_hash", "config", "inputs"],
+                "required": [
+                  "specification_hash",
+                  "config",
+                  "inputs"
+                ],
                 "properties": {
                   "specification_hash": {
                     "type": "string",
@@ -1474,7 +1536,9 @@
       "get": {
         "summary": "List apps",
         "description": "Get all apps in the space identified by {spaceId}.",
-        "tags": ["Apps"],
+        "tags": [
+          "Apps"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -1573,7 +1637,9 @@
     },
     "/api/v1/w/{wId}/spaces/{spaceId}/data_source_views/{dsvId}": {
       "get": {
-        "tags": ["DatasourceViews"],
+        "tags": [
+          "DatasourceViews"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -1626,7 +1692,9 @@
         }
       },
       "patch": {
-        "tags": ["DatasourceViews"],
+        "tags": [
+          "DatasourceViews"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -1676,7 +1744,9 @@
                         }
                       }
                     },
-                    "required": ["parentsIn"]
+                    "required": [
+                      "parentsIn"
+                    ]
                   },
                   {
                     "type": "object",
@@ -1729,7 +1799,9 @@
         }
       },
       "delete": {
-        "tags": ["DatasourceViews"],
+        "tags": [
+          "DatasourceViews"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -1785,7 +1857,9 @@
       "get": {
         "summary": "Search the data source view",
         "description": "Search the data source view identified by {dsvId} in the workspace identified by {wId}.",
-        "tags": ["DatasourceViews"],
+        "tags": [
+          "DatasourceViews"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -1982,7 +2056,9 @@
       "get": {
         "summary": "List Data Source Views",
         "description": "Retrieves a list of data source views for the specified space",
-        "tags": ["DatasourceViews"],
+        "tags": [
+          "DatasourceViews"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -2049,7 +2125,9 @@
       "get": {
         "summary": "Retrieve a document from a data source",
         "description": "Retrieve a document from a data source identified by {dsId} in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -2129,7 +2207,9 @@
       "post": {
         "summary": "Upsert a document in a data source",
         "description": "Upsert a document in a data source in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -2284,7 +2364,9 @@
       "delete": {
         "summary": "Delete a document from a data source",
         "description": "Delete a document from a data source in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -2371,7 +2453,9 @@
       "post": {
         "summary": "Update the parents of a document",
         "description": "Update the parents of a document in the data source identified by {dsId} in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -2464,7 +2548,9 @@
       "get": {
         "summary": "Get documents",
         "description": "Get documents in the data source identified by {dsId} in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -2561,7 +2647,9 @@
       "get": {
         "summary": "Search the data source",
         "description": "Search the data source identified by {dsId} in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -2758,7 +2846,9 @@
       "get": {
         "summary": "Get a table",
         "description": "Get a table in the data source identified by {dsId} in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -2824,7 +2914,9 @@
       "delete": {
         "summary": "Delete a table",
         "description": "Delete a table in the data source identified by {dsId} in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -2885,7 +2977,9 @@
       "get": {
         "summary": "Get a row",
         "description": "Get a row in the table identified by {tId} in the data source identified by {dsId} in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -2960,7 +3054,9 @@
       "delete": {
         "summary": "Delete a row",
         "description": "Delete a row in the table identified by {tId} in the data source identified by {dsId} in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -3030,7 +3126,9 @@
       "get": {
         "summary": "List rows",
         "description": "List rows in the table identified by {tId} in the data source identified by {dsId} in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -3112,7 +3210,9 @@
       "post": {
         "summary": "Upsert rows",
         "description": "Upsert rows in the table identified by {tId} in the data source identified by {dsId} in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -3190,7 +3290,9 @@
                                 "properties": {
                                   "type": {
                                     "type": "string",
-                                    "enum": ["datetime"]
+                                    "enum": [
+                                      "datetime"
+                                    ]
                                   },
                                   "epoch": {
                                     "type": "number"
@@ -3245,7 +3347,9 @@
       "get": {
         "summary": "Get tables",
         "description": "Get tables in the data source identified by {dsId} in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -3302,7 +3406,9 @@
       "post": {
         "summary": "Upsert a table",
         "description": "Upsert a table in the data source identified by {dsId} in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -3384,7 +3490,7 @@
                   },
                   "mime_type": {
                     "type": "string",
-                    "description": "Mime type of the table"
+                    "description": "Reserved for internal use, should not be set. Mime type of the table"
                   }
                 }
               }
@@ -3415,7 +3521,9 @@
       "get": {
         "summary": "Get data sources",
         "description": "Get data sources in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -3473,7 +3581,9 @@
       "get": {
         "summary": "List available spaces.",
         "description": "Retrieves a list of accessible spaces for the authenticated workspace.",
-        "tags": ["Spaces"],
+        "tags": [
+          "Spaces"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -3531,7 +3641,9 @@
       "get": {
         "summary": "Get workspace usage data",
         "description": "Get usage data for the workspace identified by {wId} in CSV format.",
-        "tags": ["Workspace"],
+        "tags": [
+          "Workspace"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -3572,7 +3684,10 @@
             "description": "The mode of date range selection ('month' or 'range')",
             "schema": {
               "type": "string",
-              "enum": ["month", "range"]
+              "enum": [
+                "month",
+                "range"
+              ]
             }
           },
           {
@@ -3722,7 +3837,10 @@
               "type": "string",
               "description": "Feature flags enabled for the workspace"
             },
-            "example": ["advanced_analytics", "beta_features"]
+            "example": [
+              "advanced_analytics",
+              "beta_features"
+            ]
           },
           "ssoEnforced": {
             "type": "boolean",
@@ -3734,7 +3852,10 @@
               "type": "string",
               "description": "List of allowed authentication providers"
             },
-            "example": ["google", "github"]
+            "example": [
+              "google",
+              "github"
+            ]
           },
           "defaultEmbeddingProvider": {
             "type": "string",
@@ -3746,7 +3867,10 @@
       },
       "Context": {
         "type": "object",
-        "required": ["username", "timezone"],
+        "required": [
+          "username",
+          "timezone"
+        ],
         "properties": {
           "username": {
             "type": "string",
@@ -4043,7 +4167,10 @@
       },
       "Message": {
         "type": "object",
-        "required": ["content", "mentions"],
+        "required": [
+          "content",
+          "mentions"
+        ],
         "properties": {
           "content": {
             "type": "string",
@@ -4064,7 +4191,9 @@
       },
       "ContentFragment": {
         "type": "object",
-        "required": ["title"],
+        "required": [
+          "title"
+        ],
         "properties": {
           "title": {
             "type": "string",
@@ -4109,7 +4238,12 @@
           },
           "kind": {
             "type": "string",
-            "enum": ["regular", "global", "system", "public"],
+            "enum": [
+              "regular",
+              "global",
+              "system",
+              "public"
+            ],
             "description": "The kind of the space"
           },
           "groupIds": {
@@ -4209,7 +4343,13 @@
                 "value_type": {
                   "type": "string",
                   "description": "Data type of the column",
-                  "enum": ["text", "int", "float", "bool", "date"],
+                  "enum": [
+                    "text",
+                    "int",
+                    "float",
+                    "bool",
+                    "date"
+                  ],
                   "example": "int"
                 },
                 "possible_values": {
@@ -4219,7 +4359,11 @@
                     "type": "string"
                   },
                   "nullable": true,
-                  "example": ["1", "2", "3"]
+                  "example": [
+                    "1",
+                    "2",
+                    "3"
+                  ]
                 }
               }
             }
@@ -4250,7 +4394,9 @@
             "items": {
               "type": "string"
             },
-            "example": ["1234f4567c"]
+            "example": [
+              "1234f4567c"
+            ]
           }
         }
       },
@@ -4259,7 +4405,12 @@
         "properties": {
           "category": {
             "type": "string",
-            "enum": ["managed", "folder", "website", "apps"],
+            "enum": [
+              "managed",
+              "folder",
+              "website",
+              "apps"
+            ],
             "description": "The category of the data source view"
           },
           "createdAt": {
@@ -4289,7 +4440,10 @@
           },
           "kind": {
             "type": "string",
-            "enum": ["default", "custom"],
+            "enum": [
+              "default",
+              "custom"
+            ],
             "description": "The kind of the data source view"
           },
           "parentsIn": {
@@ -4409,7 +4563,10 @@
             "items": {
               "type": "string"
             },
-            "example": ["customer_support", "faq"]
+            "example": [
+              "customer_support",
+              "faq"
+            ]
           },
           "parent_id": {
             "type": "string",
@@ -4424,7 +4581,10 @@
             "items": {
               "type": "string"
             },
-            "example": ["7b9d1f3e5a", "2c4a6e8d0f"]
+            "example": [
+              "7b9d1f3e5a",
+              "2c4a6e8d0f"
+            ]
           },
           "source_url": {
             "type": "string",
@@ -4452,12 +4612,22 @@
               {
                 "chunk_id": "9f1d3b5a7c",
                 "text": "This is the first chunk of the document.",
-                "embedding": [0.1, 0.2, 0.3, 0.4]
+                "embedding": [
+                  0.1,
+                  0.2,
+                  0.3,
+                  0.4
+                ]
               },
               {
                 "chunk_id": "4a2c6e8b0d",
                 "text": "This is the second chunk of the document.",
-                "embedding": [0.5, 0.6, 0.7, 0.8]
+                "embedding": [
+                  0.5,
+                  0.6,
+                  0.7,
+                  0.8
+                ]
               }
             ]
           },

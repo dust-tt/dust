@@ -21,7 +21,7 @@ import { apiError } from "@app/logger/withlogging";
  * /api/v1/w/{wId}/files:
  *   post:
  *     tags:
- *       - Datasources
+ *       - Conversations
  *     summary: Create a file upload URL
  *     parameters:
  *       - name: wId
@@ -101,25 +101,28 @@ async function handler(
         });
       }
 
-      // Agressively rate limit file uploads.
-      const remaining = await rateLimiter({
-        key: `workspace:${owner.id}:file_uploads`,
-        maxPerTimeframe: 40,
-        timeframeSeconds: 60,
-        logger,
-      });
-      if (remaining < 0) {
-        return apiError(req, res, {
-          status_code: 429,
-          api_error: {
-            type: "rate_limit_error",
-            message: "You have reached the rate limit for this workspace.",
-          },
-        });
-      }
-
+      // Only useCase "conversation" is supported for public API.
       const { contentType, fileName, fileSize, useCase, useCaseMetadata } =
         r.data;
+
+      if (!auth.isSystemKey()) {
+        // Agressively rate limit file uploads when not a system key.
+        const remaining = await rateLimiter({
+          key: `workspace:${owner.id}:file_uploads`,
+          maxPerTimeframe: 40,
+          timeframeSeconds: 60,
+          logger,
+        });
+        if (remaining < 0) {
+          return apiError(req, res, {
+            status_code: 429,
+            api_error: {
+              type: "rate_limit_error",
+              message: "You have reached the rate limit for this workspace.",
+            },
+          });
+        }
+      }
 
       if (!isSupportedFileContentType(contentType)) {
         return apiError(req, res, {

@@ -179,6 +179,13 @@ export function isSupportedFileContentType(
   return !!FILE_FORMATS[contentType as SupportedFileContentType];
 }
 
+// UseCases supported on the public API
+export function isPublicySupportedUseCase(
+  useCase: string
+): useCase is FileUseCase {
+  return ["conversation"].includes(useCase);
+}
+
 export function isSupportedImageContentType(
   contentType: string
 ): contentType is SupportedImageContentType {
