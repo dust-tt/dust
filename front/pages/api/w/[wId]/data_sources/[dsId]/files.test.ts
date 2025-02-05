@@ -119,6 +119,44 @@ describe("POST /api/w/[wId]/data_sources/[dsId]/files", () => {
     });
   });
 
+  itInTransaction("returns 400 on unsupported use-cases", async (t) => {
+    const { req, res, workspace, globalGroup, user } =
+      await createPrivateApiMockRequest({
+        method: "POST",
+      });
+    const space = await SpaceFactory.global(workspace, t);
+    await GroupSpaceFactory.associate(space, globalGroup);
+
+    const dataSourceView = await DataSourceViewFactory.folder(
+      workspace,
+      space,
+      t
+    );
+    const file = await FileFactory.csv(workspace, user, {
+      useCase: "conversation",
+    });
+
+    req.query.dsId = dataSourceView.dataSource.sId;
+    req.body = {
+      fileId: file.sId,
+      upsertArgs: {
+        tableId: "test-table",
+        name: "Test Table",
+        title: "Test Title",
+        description: "Test Description",
+        tags: ["test"],
+        useAppForHeaderDetection: true,
+      },
+    };
+
+    // Set specific content for this test
+    mockFileContent.setContent("foo,bar,baz\n1,2,3\n4,5,6");
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(400);
+  });
+
   itInTransaction(
     "successfully upserts file to data source with the right arguments",
     async (t) => {
