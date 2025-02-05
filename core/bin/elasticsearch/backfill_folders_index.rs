@@ -94,6 +94,7 @@ async fn list_data_source_nodes(
                     parents.get(1).cloned(),
                     parents,
                     source_url,
+                    vec![],
                 ),
                 row_id,
                 element_row_id,
