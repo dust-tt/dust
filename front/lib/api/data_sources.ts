@@ -40,7 +40,7 @@ import assert from "assert";
 import type { Transaction } from "sequelize";
 
 import { default as apiConfig, default as config } from "@app/lib/api/config";
-import { sendGithubDeletionEmail } from "@app/lib/api/email";
+import { sendGitHubDeletionEmail } from "@app/lib/api/email";
 import { rowsFromCsv, upsertTableFromCsv } from "@app/lib/api/tables";
 import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
@@ -176,7 +176,7 @@ async function warnPostDeletion(
   auth: Authenticator,
   dataSourceProvider: ConnectorProvider
 ) {
-  // if the datasource is Github, send an email inviting to delete the Github app
+  // if the datasource is GitHub, send an email inviting to delete the GitHub app
   switch (dataSourceProvider) {
     case "github":
       // get admin emails
@@ -187,7 +187,7 @@ async function warnPostDeletion(
       const adminEmails = members.map((u) => u.email);
       // send email to admins
       for (const email of adminEmails) {
-        await sendGithubDeletionEmail(email);
+        await sendGitHubDeletionEmail(email);
       }
       break;
 
