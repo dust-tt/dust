@@ -173,6 +173,13 @@ export async function updateAllParentsFields(
         );
 
         const parents = pageOrDbIds.map((id) => `notion-${id}`);
+        if (parents.length === 1) {
+          const page = await getNotionPageFromConnectorsDb(connectorId, pageId);
+          logger.warn(
+            { parents, parentType: page?.parentType, parentId: page?.parentId },
+            "notionUpdateAllParentsFields: Page has no parent."
+          );
+        }
 
         logger.info(
           {
