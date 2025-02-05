@@ -148,3 +148,6 @@ export const getPrivateUploadBucket = (options?: FileStorageOptions) =>
 
 export const getPublicUploadBucket = (options?: FileStorageOptions) =>
   getBucketInstance(config.getGcsPublicUploadBucket(), options);
+
+export const getUpsertQueueBucket = (options?: FileStorageOptions) =>
+  getBucketInstance(config.getGcsUpsertQueueBucket(), options);
