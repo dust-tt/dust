@@ -623,8 +623,8 @@ async function detectHeaders(
     // Fallback to statuc header detection.
     return staticHeaderDetection(records[0]);
   }
-  const rowIndex = res.value.rowIndex;
-  const header = getSanitizedHeaders(res.value.headers);
+  const rowIndex = res.value.result.rowIndex;
+  const header = getSanitizedHeaders(res.value.result.headers);
 
   if (header.isErr()) {
     return new Err({ type: "invalid_header", message: header.error.message });
