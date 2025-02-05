@@ -201,7 +201,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
         <div className="flex h-0 min-h-full w-full overflow-y-auto">
           <div className="flex w-full flex-col">
             {isMultiSelect ? (
-              <div className="z-50 flex justify-between gap-2 p-2 shadow-tale">
+              <div className="z-50 flex justify-between gap-2 border-b border-border-dark/60 p-2">
                 <Button
                   variant={
                     selectedConversations.length === 0 ? "outline" : "warning"
@@ -217,7 +217,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                 />
               </div>
             ) : (
-              <div className="z-50 flex justify-end gap-2 p-2 shadow-tale">
+              <div className="z-50 flex justify-end gap-2 p-2">
                 <SearchInput
                   name="search"
                   placeholder="Search"
@@ -332,7 +332,7 @@ const RenderConversations = ({
 
   return (
     <>
-      <NavigationListLabel label={dateLabel} />
+      <NavigationListLabel label={dateLabel} isSticky />
       {conversations.map((conversation) => (
         <RenderConversation
           key={conversation.sId}
