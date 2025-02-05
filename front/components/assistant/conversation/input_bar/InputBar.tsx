@@ -281,9 +281,9 @@ export function AssistantInputBar({
             className={classNames(
               "relative flex w-full flex-1 flex-col items-stretch gap-0 self-stretch pl-3 sm:flex-row",
               "rounded-3xl transition-all",
-              "dark:bg-muted-background-night bg-muted-background",
+              "bg-muted-background dark:bg-muted-background-night",
               "border",
-              "dark:border-border-dark-night border-border-dark",
+              "border-border-dark dark:border-border-dark-night",
               "sm:border-border-dark/50 sm:focus-within:border-border-dark",
               "dark:focus-within:border-border-dark-night sm:focus-within:border-border-dark",
               isFloating

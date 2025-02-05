@@ -164,7 +164,7 @@ export default function AppLayout({
               className={classNames(
                 "flex w-full flex-col border-b border-primary-50 pl-12 lg:pl-0",
                 !hideSidebar
-                  ? "dark:border-structure-300-night/30 border-b border-structure-300/30 bg-white/80 backdrop-blur dark:border-structure-300-dark/30 dark:bg-black/80"
+                  ? "dark:border-structure-300-dark/30 border-b border-structure-300/30 bg-white/80 backdrop-blur dark:border-structure-300-night/30 dark:bg-black/80"
                   : "",
                 titleChildren ? "" : "lg:hidden"
               )}

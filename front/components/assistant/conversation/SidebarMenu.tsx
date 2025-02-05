@@ -196,14 +196,14 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
         className={classNames(
           "flex grow flex-col",
           isOnlyUser(owner)
-            ? "dark:border-structure-200-night border-t border-structure-200"
+            ? "border-t border-structure-200 dark:border-structure-200-night"
             : ""
         )}
       >
         <div className="flex h-0 min-h-full w-full overflow-y-auto">
           <div className="flex w-full flex-col">
             {isMultiSelect ? (
-              <div className="dark:shadow-tale-night z-50 flex justify-between gap-2 p-2 shadow-tale">
+              <div className="z-50 flex justify-between gap-2 p-2 shadow-tale dark:shadow-tale-night">
                 <Button
                   variant={
                     selectedConversations.length === 0 ? "outline" : "warning"
@@ -219,7 +219,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                 />
               </div>
             ) : (
-              <div className="dark:shadow-tale-night z-50 flex justify-end gap-2 p-2">
+              <div className="z-50 flex justify-end gap-2 p-2 dark:shadow-tale-night">
                 <SearchInput
                   name="search"
                   placeholder="Search"
@@ -286,7 +286,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
               </div>
             )}
             {isConversationsError && (
-              <Label className="dark:text-muted-foreground-night px-3 py-4 text-xs font-medium text-muted-foreground">
+              <Label className="px-3 py-4 text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
                 Error loading conversations
               </Label>
             )}
@@ -379,7 +379,7 @@ const RenderConversation = ({
           />
           <Label
             htmlFor={`conversation-${conversation.sId}`}
-            className="dark:text-muted-foreground-night ml-2 text-sm font-light text-muted-foreground"
+            className="ml-2 text-sm font-light text-muted-foreground dark:text-muted-foreground-night"
           >
             {conversationLabel}
           </Label>
