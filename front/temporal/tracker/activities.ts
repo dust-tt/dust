@@ -237,12 +237,15 @@ export async function trackersGenerationActivity(
       (x) => x.dustAPIDataSourceId
     );
 
-    const parentsInMap = _.mapValues(
-      _.keyBy(
-        maintainedScope,
-        (x) => maintainedDsCoreIdByDataSourceId[x.dataSourceId]
+    const parentsInMap = _.pickBy(
+      _.mapValues(
+        _.keyBy(
+          maintainedScope,
+          (x) => maintainedDsCoreIdByDataSourceId[x.dataSourceId]
+        ),
+        (x) => x.filter?.parents?.in ?? null
       ),
-      (x) => x.filter?.parents?.in ?? null
+      (x) => x !== null
     );
 
     // We retrieve content from the maintained scope based on the diff.
