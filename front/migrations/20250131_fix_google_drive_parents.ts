@@ -198,8 +198,6 @@ async function migrateDataSource({
       }
     )) as Node[];
 
-    logger.info({ nextId, rowCount: rows.length }, "BATCH");
-
     if (rows.length === 0) {
       break;
     }
