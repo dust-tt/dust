@@ -3,7 +3,6 @@ import { FileUploadUrlRequestSchema } from "@dust-tt/client";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import {
   ensureFileSize,
-  isPublicySupportedUseCase,
   isSupportedFileContentType,
   rateLimiter,
 } from "@dust-tt/types";

@@ -1,8 +1,6 @@
 import type { FileUploadedRequestResponseType } from "@dust-tt/client";
-import {
-  isPublicySupportedUseCase,
-  type WithAPIErrorResponse,
-} from "@dust-tt/types";
+import type { WithAPIErrorResponse } from "@dust-tt/types";
+import { isPublicySupportedUseCase } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
