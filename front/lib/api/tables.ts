@@ -564,13 +564,11 @@ export async function detectHeaders(
         skipEmptyLines: true,
         to: 1,
       },
-      (error, records) => {
-        if (error) {
-          reject(error);
+      (err, records) => {
+        if (err) {
+          reject(err);
         }
-        if (records) {
-          resolve(records);
-        }
+        resolve(records);
       }
     );
   });
