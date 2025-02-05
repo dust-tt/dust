@@ -18,7 +18,9 @@ const checkboxSizeVariant: Record<CheckboxSizeType, string> = {
 
 const checkboxStyles = cva(
   cn(
-    "s-shrink-0 s-peer s-border s-text-foreground s-border-border-darker",
+    "s-shrink-0 s-peer s-border",
+    "s-border-border-darker dark:s-border-border-darker-night",
+    "dark:s-text-foreground-night s-text-foreground",
     "data-[state=checked]:s-text-white data-[state=checked]:s-border-primary",
     "focus-visible:s-ring-ring s-ring-offset-background focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-offset-2",
     "disabled:s-cursor-not-allowed disabled:s-opacity-50"
@@ -26,8 +28,9 @@ const checkboxStyles = cva(
   {
     variants: {
       checked: {
-        true: "data-[state=checked]:s-bg-primary",
-        partial: "data-[state=checked]:s-bg-muted-foreground",
+        true: "data-[state=checked]:s-bg-primary dark:data-[state=checked]:s-bg-primary-night",
+        partial:
+          "data-[state=checked]:s-bg-muted-foreground dark:data-[state=checked]:s-bg-muted-foreground-night",
         false: "",
       },
       size: checkboxSizeVariant,
@@ -101,7 +104,14 @@ function CheckBoxWithTextAndDescription({
         <Label className="s-text-sm s-leading-none peer-disabled:s-cursor-not-allowed peer-disabled:s-opacity-70">
           {text}
         </Label>
-        <p className="s-text-xs s-text-muted-foreground">{description}</p>
+        <p
+          className={cn(
+            "s-text-xs",
+            "dark:s-text-muted-foreground-night s-text-muted-foreground"
+          )}
+        >
+          {description}
+        </p>
       </div>
     </div>
   );

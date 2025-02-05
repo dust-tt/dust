@@ -87,8 +87,8 @@ export function Breadcrumbs({ items }: BreadcrumbProps) {
                   href={item.href || "#"}
                   className={
                     index === items.length - 1
-                      ? "s-text-foreground"
-                      : "s-text-element-700"
+                      ? "dark:s-text-foreground-night s-text-foreground"
+                      : "dark:s-text-element-700-night s-text-element-700"
                   }
                 >
                   {index === items.length - 1
@@ -101,7 +101,7 @@ export function Breadcrumbs({ items }: BreadcrumbProps) {
               </div>
             )}
             {index === itemsShown.length - 1 ? null : (
-              <ChevronRightIcon className="s-text-element-500" />
+              <ChevronRightIcon className="dark:s-text-element-500-night s-text-element-500" />
             )}
           </div>
         );

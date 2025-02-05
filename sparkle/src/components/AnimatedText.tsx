@@ -45,16 +45,16 @@ const animVariants = cva(
 );
 
 const animatedTextVariants: Record<AnimatedTextVariantType, string> = {
-  muted: "s-text-muted-foreground",
-  highlight: "s-text-highlight",
-  emerald: "s-text-emerald-800",
-  amber: "s-text-amber-800",
-  slate: "s-text-muted-foreground",
-  purple: "s-text-purple-800-800",
-  warning: "s-text-warning-800",
-  sky: "s-text-sky-800",
-  pink: "s-text-pink-800",
-  red: "s-text-red-800",
+  muted: "s-text-muted-foreground dark:s-text-muted-foreground-night",
+  highlight: "s-text-highlight dark:s-text-highlight-night",
+  emerald: "s-text-emerald-800 dark:s-text-emerald-800-night",
+  amber: "s-text-amber-800 dark:s-text-amber-800-night",
+  slate: "s-text-muted-foreground dark:s-text-muted-foreground-night",
+  purple: "s-text-purple-800 dark:s-text-purple-800-night",
+  warning: "s-text-warning-800 dark:s-text-warning-800-night",
+  sky: "s-text-sky-800 dark:s-text-sky-800-night",
+  pink: "s-text-pink-800 dark:s-text-pink-800-night",
+  red: "s-text-red-800 dark:s-text-red-800-night",
 };
 
 const textVariants = cva("s-absolute s-inset-0", {

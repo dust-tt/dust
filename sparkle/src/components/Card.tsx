@@ -16,9 +16,12 @@ export const CARD_VARIANTS = ["primary", "secondary", "tertiary"] as const;
 export type CardVariantType = (typeof CARD_VARIANTS)[number];
 
 const variantClasses: Record<CardVariantType, string> = {
-  primary: "s-bg-primary-50 s-border-border-dark/0",
-  secondary: "s-bg-background s-border-border-dark",
-  tertiary: "s-bg-background s-border-border-dark/0",
+  primary:
+    "s-bg-primary-50 s-border-border-dark/0 dark:s-bg-primary-50-night dark:s-border-border-dark-night/0",
+  secondary:
+    "s-bg-background s-border-border-dark dark:s-bg-background-night dark:s-border-border-dark-night",
+  tertiary:
+    "s-bg-background s-border-border-dark/0 dark:s-bg-background-night dark:s-border-border-dark-night/0",
 };
 
 export const CARD_VARIANTS_SIZES = ["sm", "md", "lg"] as const;
@@ -32,7 +35,7 @@ const sizeVariants: Record<CardSizeType, string> = {
 };
 
 const cardVariants = cva(
-  "s-flex s-text-left s-group s-border s-overflow-hidden s-text-foreground",
+  "s-flex s-text-left s-group s-border s-overflow-hidden s-text-foreground dark:s-text-foreground-night",
   {
     variants: {
       variant: variantClasses,
@@ -90,11 +93,20 @@ const InnerCard = React.forwardRef<HTMLDivElement, InnerCardProps>(
     // Determine if the card is interactive based on href or onClick
     const isInteractive = Boolean(href || onClick);
 
+    const interactiveClasses = cn(
+      "s-cursor-pointer",
+      "s-transition s-duration-200",
+      "hover:s-bg-primary-100 dark:hover:s-bg-primary-100-night",
+      "active:s-bg-primary-200 dark:active:s-bg-primary-200-night",
+      "disabled:s-text-primary-muted dark:disabled:s-text-primary-muted-night",
+      "disabled:s-border-structure-100 dark:disabled:s-border-structure-100-night",
+      "disabled:s-pointer-events-none"
+    );
+
     const cardButtonClassNames = cn(
       cardVariants({ variant, size }),
       // Apply interactive styles when either href or onClick is present
-      isInteractive &&
-        "s-cursor-pointer disabled:s-text-primary-muted disabled:s-border-structure-100 disabled:s-pointer-events-none s-transition s-duration-200 hover:s-bg-primary-100 active:s-bg-primary-200",
+      isInteractive ? interactiveClasses : "",
       className
     );
 
