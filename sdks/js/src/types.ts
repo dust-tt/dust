@@ -767,7 +767,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "labs_transcripts_full_storage"
   | "labs_trackers"
   | "document_tracker"
-  | "use_app_for_header_detection"
   | "openai_o1_feature"
   | "openai_o1_mini_feature"
   | "openai_o1_high_reasoning_feature"
@@ -2205,7 +2204,6 @@ export const UpsertTableFromCsvRequestSchema = z.intersection(
       parentId: z.string().nullable().optional(),
       parents: z.array(z.string()).nullable().optional(),
       truncate: z.boolean(),
-      useAppForHeaderDetection: z.boolean().nullable().optional(),
       async: z.boolean().optional(),
       title: z.string(),
       mimeType: z.string(),
@@ -2219,7 +2217,6 @@ export const UpsertTableFromCsvRequestSchema = z.intersection(
       parentId: o.parentId,
       parents: o.parents,
       truncate: o.truncate,
-      useAppForHeaderDetection: o.useAppForHeaderDetection,
       async: o.async,
       title: o.title,
       mimeType: o.mimeType,

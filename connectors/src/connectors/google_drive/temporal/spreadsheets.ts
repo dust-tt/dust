@@ -92,7 +92,6 @@ async function upsertGdriveTable(
       truncate: true,
       parents: [tableId, ...parents],
       parentId: parents[0] || null,
-      useAppForHeaderDetection: true,
       title: `${spreadsheet.title} - ${title}`,
       mimeType: "application/vnd.google-apps.spreadsheet",
       sourceUrl: getSourceUrlForGoogleDriveSheet(sheet),
