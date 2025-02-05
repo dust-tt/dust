@@ -94,8 +94,8 @@ export function computeNodesDiff({
   if (pagination && connectorsContentNodes.length !== coreContentNodes.length) {
     localLogger.info(
       {
-        connectorsContentNodesLength: connectorsContentNodes.length,
-        coreContentNodesLength: coreContentNodes.length,
+        connectorsNodesCount: connectorsContentNodes.length,
+        coreNodesCount: coreContentNodes.length,
         pagination,
       },
       "[CoreNodes] Different number of nodes returned by connectors and core"
@@ -352,6 +352,8 @@ export function computeNodesDiff({
       if (Object.keys(diff).length > 0) {
         localLogger.info(
           {
+            connectorsNodesCount: connectorsContentNodes.length,
+            coreNodesCount: coreContentNodes.length,
             internalId: connectorsNode.internalId,
             diff,
           },
@@ -381,8 +383,9 @@ export function computeNodesDiff({
   ) {
     localLogger.info(
       {
-        missingInternalIds: missingNodes.map((n) => n.internalId),
+        connectorsNodesCount: connectorsContentNodes.length,
         coreNodesCount: coreContentNodes.length,
+        missingInternalIds: missingNodes.map((n) => n.internalId),
         maxPageSizeReached: coreContentNodes.length === 1000, // max value determined by the limit set in getContentNodesForDataSourceViewFromCore
       },
       "[CoreNodes] Missing nodes from core"
