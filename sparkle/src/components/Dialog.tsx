@@ -18,7 +18,8 @@ const DialogOverlay = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Overlay
     className={cn(
-      "s-fixed s-inset-0 s-z-50 s-bg-muted-foreground/75 data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-fade-out-0 data-[state=open]:s-fade-in-0",
+      "s-fixed s-inset-0 s-z-50 data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-fade-out-0 data-[state=open]:s-fade-in-0",
+      "dark:s-bg-muted-foreground-night/75 s-bg-muted-foreground/75",
       className
     )}
     {...props}
@@ -37,7 +38,10 @@ const sizeClasses: Record<DialogSizeType, string> = {
 };
 
 const dialogVariants = cva(
-  "s-fixed s-left-[50%] s-top-[50%] s-z-50 s-grid s-w-full s-overflow-hidden s-rounded-2xl s-border s-border-border s-translate-x-[-50%] s-translate-y-[-50%] s-border s-bg-background s-p-2 s-shadow-lg s-duration-200 data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-fade-out-0 data-[state=open]:s-fade-in-0 data-[state=closed]:s-zoom-out-95 data-[state=open]:s-zoom-in-95 data-[state=closed]:s-slide-out-to-left-1/2 data-[state=closed]:s-slide-out-to-top-[48%] data-[state=open]:s-slide-in-from-left-1/2 data-[state=open]:s-slide-in-from-top-[48%] s-sm:rounded-lg",
+  cn(
+    "s-fixed s-left-[50%] s-top-[50%] s-z-50 s-grid s-w-full s-overflow-hidden s-rounded-2xl s-border s-border-border s-translate-x-[-50%] s-translate-y-[-50%] s-border s-p-2 s-shadow-lg s-duration-200 data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-fade-out-0 data-[state=open]:s-fade-in-0 data-[state=closed]:s-zoom-out-95 data-[state=open]:s-zoom-in-95 data-[state=closed]:s-slide-out-to-left-1/2 data-[state=closed]:s-slide-out-to-top-[48%] data-[state=open]:s-slide-in-from-left-1/2 data-[state=open]:s-slide-in-from-top-[48%] s-sm:rounded-lg",
+    "s-bg-background dark:s-bg-background-night"
+  ),
   {
     variants: {
       size: sizeClasses,
@@ -111,7 +115,12 @@ const DialogContainer = ({
   children,
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <ScrollArea className="s-w-full s-flex-grow">
-    <div className="s-relative s-flex s-flex-col s-gap-2 s-p-5 s-text-left s-text-sm s-text-foreground">
+    <div
+      className={cn(
+        "s-relative s-flex s-flex-col s-gap-2 s-p-5 s-text-left s-text-sm",
+        "dark:s-text-foreground-night s-text-foreground"
+      )}
+    >
       {children}
     </div>
   </ScrollArea>
@@ -166,7 +175,11 @@ const DialogTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Title
     ref={ref}
-    className={cn("s-text-lg s-font-semibold s-text-foreground", className)}
+    className={cn(
+      "s-text-lg s-font-semibold",
+      "dark:s-text-foreground-night s-text-foreground",
+      className
+    )}
     {...props}
   />
 ));
@@ -178,7 +191,11 @@ const DialogDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Description
     ref={ref}
-    className={cn("s-text-sm s-text-muted-foreground", className)}
+    className={cn(
+      "s-text-sm",
+      "dark:s-text-muted-foreground-night s-text-muted-foreground",
+      className
+    )}
     {...props}
   />
 ));
