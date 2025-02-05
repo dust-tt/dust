@@ -50,7 +50,8 @@ use dust::{
     run,
     search_filter::{Filterable, SearchFilter},
     search_stores::search_store::{
-        ElasticsearchSearchStore, NodesSearchFilter, NodesSearchOptions, SearchStore, TagsQueryType,
+        DatasourceViewFilter, ElasticsearchSearchStore, NodesSearchFilter, NodesSearchOptions,
+        SearchStore, TagsQueryType,
     },
     sqlite_workers::client::{self, HEARTBEAT_INTERVAL_MS},
     stores::{
@@ -3270,7 +3271,7 @@ async fn nodes_search(
 struct TagsSearchPayload {
     query: Option<String>,
     query_type: Option<TagsQueryType>,
-    data_sources: Option<Vec<String>>,
+    data_source_views: Option<Vec<DatasourceViewFilter>>,
     node_ids: Option<Vec<String>>,
     limit: Option<u64>,
 }
@@ -3284,7 +3285,7 @@ async fn tags_search(
         .search_tags(
             payload.query,
             payload.query_type,
-            payload.data_sources,
+            payload.data_source_views,
             payload.node_ids,
             payload.limit,
         )

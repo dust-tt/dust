@@ -87,7 +87,7 @@ pub trait SearchStore {
         &self,
         query: Option<String>,
         query_type: Option<TagsQueryType>,
-        data_sources: Option<Vec<String>>,
+        data_source_views: Option<Vec<DatasourceViewFilter>>,
         node_ids: Option<Vec<String>>,
         limit: Option<u64>,
     ) -> Result<(Vec<(String, u64, Vec<(String, u64)>)>, u64)>;
@@ -350,16 +350,33 @@ impl SearchStore for ElasticsearchSearchStore {
         &self,
         query: Option<String>,
         query_type: Option<TagsQueryType>,
-        data_sources: Option<Vec<String>>,
+        data_source_views: Option<Vec<DatasourceViewFilter>>,
         node_ids: Option<Vec<String>>,
         limit: Option<u64>,
     ) -> Result<(Vec<(String, u64, Vec<(String, u64)>)>, u64)> {
         let query_type = query_type.unwrap_or(TagsQueryType::Exact);
         let bool_query = Query::bool();
-        let bool_query = match data_sources {
-            None => bool_query,
-            Some(data_sources) => bool_query.must(Query::terms("data_source_id", data_sources)),
+
+        let filter_conditions = match data_source_views {
+            None => vec![],
+            Some(data_source_views) => data_source_views
+                .into_iter()
+                .map(|f| {
+                    let mut bool_query = Query::bool();
+
+                    bool_query = bool_query.filter(Query::term("data_source_id", f.data_source_id));
+
+                    if !f.view_filter.is_empty() {
+                        bool_query = bool_query.filter(Query::terms("parents", f.view_filter));
+                    }
+
+                    Query::Bool(bool_query)
+                })
+                .collect(),
         };
+
+        let bool_query = bool_query.should(filter_conditions).minimum_should_match(1);
+
         let bool_query = match node_ids {
             None => bool_query,
             Some(node_ids) => bool_query.must(Query::terms("node_id", node_ids)),
