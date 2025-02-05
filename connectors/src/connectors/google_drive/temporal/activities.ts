@@ -9,7 +9,6 @@ import PQueue from "p-queue";
 import { Op } from "sequelize";
 
 import { getSourceUrlForGoogleDriveFiles } from "@connectors/connectors/google_drive";
-import { getLocalParents } from "@connectors/connectors/google_drive/lib";
 import {
   GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID,
   GOOGLE_DRIVE_SHARED_WITH_ME_WEB_URL,
@@ -27,7 +26,6 @@ import {
   driveObjectToDustType,
   getAuthObject,
   getDriveClient,
-  getDriveFileId,
   getInternalId,
   getMyDriveIdCached,
 } from "@connectors/connectors/google_drive/temporal/utils";
