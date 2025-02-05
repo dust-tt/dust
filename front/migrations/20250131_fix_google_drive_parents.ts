@@ -1,5 +1,7 @@
+import type { ProviderVisibility } from "@dust-tt/types";
 import { concurrentExecutor, CoreAPI, Ok } from "@dust-tt/types";
 import assert from "assert";
+import { QueryTypes } from "sequelize";
 
 import apiConfig from "@app/lib/api/config";
 import { getCorePrimaryDbConnection } from "@app/lib/production_checks/utils";
@@ -11,6 +13,19 @@ import { makeScript } from "@app/scripts/helpers";
 const QUERY_BATCH_SIZE = 256;
 const NODE_CONCURRENCY = 16;
 
+interface Node {
+  parents: string[];
+  node_id: string;
+  source_url: string;
+  timestamp: number;
+  title: string;
+  mime_type: string;
+  provider_visibility: ProviderVisibility | null;
+  document: number | null;
+  table: number | null;
+  folder: number | null;
+}
+
 async function migrateNode({
   coreAPI,
   dataSource,
@@ -21,12 +36,7 @@ async function migrateNode({
 }: {
   coreAPI: CoreAPI;
   dataSource: DataSourceModel;
-  coreNode: {
-    parents: string[];
-    node_id: string;
-    document: number | null;
-    table: number | null;
-  };
+  coreNode: Node;
   execute: boolean;
   skipIfParentsAreAlreadyCorrect: boolean;
   logger: typeof Logger;
@@ -65,7 +75,8 @@ async function migrateNode({
 
   if (
     skipIfParentsAreAlreadyCorrect &&
-    newParents.every((x, i) => x === coreNode.parents[i])
+    newParents.every((x, i) => x === coreNode.parents[i]) &&
+    coreNode.parents.every((x, i) => x === newParents[i])
   ) {
     logger.info(
       {
@@ -99,15 +110,18 @@ async function migrateNode({
             parentId: newParentId,
           });
         } else {
-          logger.error(
-            {
-              nodeId: coreNode.node_id,
-              fromParents: coreNode.parents,
-              toParents: newParents,
-            },
-            "Folder with incorrect parents."
-          );
-          return;
+          updateRes = await coreAPI.upsertDataSourceFolder({
+            projectId: dataSource.dustAPIProjectId,
+            dataSourceId: dataSource.dustAPIDataSourceId,
+            folderId: coreNode.node_id,
+            parents: newParents,
+            parentId: newParentId,
+            sourceUrl: coreNode.source_url,
+            providerVisibility: coreNode.provider_visibility,
+            mimeType: coreNode.mime_type,
+            title: coreNode.title,
+            timestamp: coreNode.timestamp,
+          });
         }
         if (updateRes.isErr()) {
           logger.error(
@@ -188,34 +202,28 @@ async function migrateDataSource({
   let nextId = "";
 
   for (;;) {
-    const [rows] = (await (async () => {
-      return corePrimary.query(
-        `SELECT "node_id", "parents", "document", "table"
-         FROM data_sources_nodes
-         WHERE data_source = :coreDataSourceId
-           AND node_id > :nextId
-           AND EXISTS
-         (
-             SELECT 1
-             FROM UNNEST(parents) p
-             WHERE p NOT LIKE 'gdrive-%'
-         )
-         ORDER BY node_id
-         LIMIT :batchSize`,
-        {
-          replacements: {
-            coreDataSourceId,
-            nextId,
-            batchSize: QUERY_BATCH_SIZE,
-          },
-        }
-      );
-    })()) as {
-      parents: string[];
-      node_id: string;
-      document: number | null;
-      table: number | null;
-    }[][];
+    const rows = (await corePrimary.query(
+      `SELECT *
+       FROM data_sources_nodes
+       WHERE data_source = :coreDataSourceId
+         AND node_id > :nextId
+         AND EXISTS
+       (
+           SELECT 1
+           FROM UNNEST(parents) p
+           WHERE p NOT LIKE 'gdrive-%'
+       )
+       ORDER BY node_id
+       LIMIT :batchSize`,
+      {
+        replacements: {
+          coreDataSourceId,
+          nextId,
+          batchSize: QUERY_BATCH_SIZE,
+        },
+        type: QueryTypes.SELECT,
+      }
+    )) as Node[];
 
     logger.info({ nextId, rowCount: rows.length }, "BATCH");
 
