@@ -188,7 +188,7 @@ AgentRetrievalAction.init(
       allowNull: true,
     },
     tagsNot: {
-      type: DataTypes.ARRAY(DataTypes.TEXT),
+      type: DataTypes.ARRAY(DataTypes.STRING),
       allowNull: true,
     },
     topK: {
