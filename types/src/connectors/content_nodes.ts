@@ -10,6 +10,7 @@ import * as t from "io-ts";
 export const ContentNodesViewTypeCodec = t.union([
   t.literal("tables"),
   t.literal("documents"),
+  t.literal("all"),
 ]);
 
 export type ContentNodesViewType = t.TypeOf<typeof ContentNodesViewTypeCodec>;
@@ -17,5 +18,5 @@ export type ContentNodesViewType = t.TypeOf<typeof ContentNodesViewTypeCodec>;
 export function isValidContentNodesViewType(
   value: unknown
 ): value is ContentNodesViewType {
-  return value === "documents" || value === "tables";
+  return value === "documents" || value === "tables" || value === "all";
 }
