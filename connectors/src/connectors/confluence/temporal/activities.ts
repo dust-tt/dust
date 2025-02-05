@@ -234,7 +234,9 @@ export async function confluenceUpsertSpaceFolderActivity({
   });
 
   // Update the space name in db.
-  await spaceInDb?.update({ name: spaceName });
+  if (spaceInDb && spaceInDb.name != spaceName) {
+    await spaceInDb.update({ name: spaceName });
+  }
 }
 
 export async function markPageHasVisited({
