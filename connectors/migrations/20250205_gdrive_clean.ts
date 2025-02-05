@@ -59,7 +59,7 @@ async function checkOrphansForConnector(
     const found = files.map((f) => f.dustFileId);
     const orphans = ids.filter((id) => !found.includes(id));
 
-    logger.info({ count: orphans.length }, "Found orphan nodes");
+    logger.info({ orphans }, "Found orphan nodes");
 
     if (execute) {
       await concurrentExecutor(
