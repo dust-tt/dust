@@ -257,7 +257,7 @@ module.exports = {
           DEFAULT: { DEFAULT: "#F6F8FB", night: colors.slate[900] },
           foreground: {
             DEFAULT: colors.slate[500],
-            night: colors.slate[500],
+            night: colors.slate[400],
           },
           background: {
             DEFAULT: "#F6F8FB",

@@ -35,54 +35,54 @@ const styleVariants: Record<ButtonVariantType, string> = {
   primary: cn(
     "s-bg-primary-800 dark:s-bg-primary-800-night",
     "s-text-primary-50 dark:s-text-primary-50-night",
-    "hover:s-bg-primary-light dark:hover:s-bg-primary-light-night",
-    "active:s-bg-primary-dark dark:active:s-bg-primary-dark-night",
-    "disabled:s-bg-primary-muted dark:disabled:s-bg-primary-muted-night"
+    "hover:s-bg-primary-light dark:hover:s-bg-primary-dark-night",
+    "active:s-bg-primary-dark dark:active:s-bg-primary-light-night",
+    "disabled:s-bg-primary-muted  disabled:s-text-highlight-50/60 dark:disabled:s-bg-primary-muted-night"
   ),
   highlight: cn(
-    "s-bg-highlight dark:s-bg-highlight-night",
-    "s-text-highlight-50 dark:s-text-highlight-50-night",
-    "hover:s-bg-highlight-light dark:hover:s-bg-highlight-light-dark",
-    "active:s-bg-highlight-dark dark:active:s-bg-highlight-dark-night",
-    "disabled:s-bg-highlight-muted dark:disabled:s-bg-highlight-muted-night"
+    "s-bg-highlight",
+    "s-text-highlight-50",
+    "hover:s-bg-highlight-light",
+    "active:s-bg-highlight-dark",
+    "disabled:s-bg-highlight-muted disabled:s-text-highlight-50/60 dark:disabled:s-bg-highlight-muted-night"
   ),
   warning: cn(
-    "s-bg-warning dark:s-bg-warning-night",
-    "s-text-warning-50 dark:s-text-warning-50-night",
-    "hover:s-bg-warning-light dark:hover:s-bg-warning-light-night",
-    "active:s-bg-warning-dark dark:active:s-bg-warning-dark-night",
-    "disabled:s-bg-warning-muted dark:disabled:s-bg-warning-muted-night"
+    "s-bg-warning",
+    "s-text-warning-50",
+    "hover:s-bg-warning-light",
+    "active:s-bg-warning-dark",
+    "disabled:s-bg-warning-muted disabled:s-text-highlight-50/60 dark:disabled:s-bg-warning-muted-night"
   ),
   outline: cn(
     "s-border",
+    "s-border-border-dark dark:s-border-primary-600",
     "s-text-primary-800 dark:s-text-primary-800-night",
     "s-bg-background dark:s-bg-background-night",
-    "s-border-border-dark",
     "hover:s-text-primary dark:hover:s-text-primary-night",
-    "hover:s-bg-primary-150 dark:hover:s-bg-primary-150-night",
-    "hover:s-border-primary-150 dark:hover:s-border-primary-150-night",
-    "active:s-bg-primary-300 dark:active:s-bg-primary-300-night",
-    "disabled:s-text-primary-muted",
-    "disabled:s-border-structure-100 dark:disabled:s-border-structure-100-night"
+    "hover:s-bg-primary-150 dark:hover:s-bg-primary-700",
+    "hover:s-border-primary-150 dark:hover:s-border-primary-500",
+    "active:s-bg-primary-300 dark:active:s-bg-primary-900",
+    "disabled:s-text-primary-muted dark:disabled:s-text-primary-muted-night",
+    "disabled:s-border-primary-100 dark:disabled:s-border-primary-100-night"
   ),
   ghost: cn(
     "s-border",
-    "s-border-primary-200/0",
+    "s-border-border-dark/0  dark:s-border-primary-600/0",
     "s-text-primary-950 dark:s-text-primary-950-night",
-    "hover:s-bg-primary-150 dark:hover:s-bg-primary-150-night",
+    "hover:s-bg-primary-150 dark:hover:s-bg-primary-700",
     "hover:s-text-primary-900 dark:hover:s-text-primary-900-night",
-    "hover:s-border-primary-150 dark:hover:s-border-primary-150-night",
-    "active:s-bg-primary-300 dark:active:s-bg-primary-300-night",
+    "hover:s-border-border-dark dark:hover:s-border-primary-600",
+    "active:s-bg-primary-300 dark:active:s-bg-primary-900",
     "disabled:s-text-primary-400 dark:disabled:s-text-primary-400-night"
   ),
   "ghost-secondary": cn(
     "s-border",
-    "s-border-primary-200/0 dark:s-border-primary-200/0-night",
-    "s-text-muted-foreground",
-    "hover:s-bg-primary-150 dark:hover:s-bg-primary-150-night",
+    "s-border-primary-200/0 dark:s-border-primary-600/0",
+    "s-text-muted-foreground dark:s-text-muted-foreground-night",
+    "hover:s-bg-primary-150 dark:hover:s-bg-primary-700",
     "hover:s-text-primary-900 dark:hover:s-text-primary-900-night",
-    "hover:s-border-primary-150 dark:hover:s-border-primary-150-night",
-    "active:s-bg-primary-300 dark:active:s-bg-primary-300-night",
+    "hover:s-border-border-dark dark:hover:s-border-primary-600",
+    "active:s-bg-primary-300 dark:active:s-bg-primary-900",
     "disabled:s-text-primary-400 dark:disabled:s-text-primary-400-night"
   ),
 };
