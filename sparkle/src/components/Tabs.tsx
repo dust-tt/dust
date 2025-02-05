@@ -15,7 +15,7 @@ const tabsListVariants = cva("s-inline-flex s-h-11 s-gap-2", {
       full: "s-w-full",
     },
     border: {
-      true: "s-border-b s-border-primary-200/60",
+      true: "s-border-b s-border-primary-200/60 dark:s-border-primary-500/60",
     },
   },
   defaultVariants: {
@@ -74,7 +74,7 @@ const TabsTrigger = React.forwardRef<
         ref={ref}
         className={cn(
           "s-h-11",
-          "disabled:s-pointer-events-none data-[state=active]:s-shadow-inner-border",
+          "dark:data-[state=active]:s-shadow-inner-border-night disabled:s-pointer-events-none data-[state=active]:s-shadow-inner-border",
           className
         )}
         disabled={disabled}
