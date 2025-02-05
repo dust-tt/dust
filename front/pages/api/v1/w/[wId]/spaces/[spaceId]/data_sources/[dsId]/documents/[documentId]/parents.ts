@@ -163,6 +163,39 @@ async function handler(
           },
         });
       }
+
+      // Enforce parents consistency: parents[0] === documentId, parents[1] === parentId (or there is no parents[1] and parentId is null).
+      if (req.body.parents.length === 0) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid parents: parents must have at least one element.`,
+          },
+        });
+      }
+      if (req.body.parents[0] !== req.query.documentId) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid parents: parents[0] should be equal to document_id.`,
+          },
+        });
+      }
+      if (
+        (req.body.parents.length >= 2 || req.body.parent_id !== null) &&
+        req.body.parents[1] !== req.body.parent_id
+      ) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid parent id: parents[1] and parent_id should be equal.`,
+          },
+        });
+      }
+
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const updateRes = await coreAPI.updateDataSourceDocumentParents({
         projectId: dataSource.dustAPIProjectId,
