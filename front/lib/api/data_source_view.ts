@@ -356,7 +356,7 @@ async function getContentNodesForStaticDataSourceView(
     });
   }
 
-  if (viewType === "documents") {
+  if (viewType === "documents" || viewType === "all") {
     if (isCursorPaginationParams(paginationParams)) {
       throw new Error(
         "Cursor pagination is not supported for static data sources. Note: this code path should be deleted at the end of the project nodes core (2025-02-03)."
