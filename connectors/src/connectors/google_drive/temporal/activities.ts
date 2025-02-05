@@ -9,6 +9,7 @@ import PQueue from "p-queue";
 import { Op } from "sequelize";
 
 import { getSourceUrlForGoogleDriveFiles } from "@connectors/connectors/google_drive";
+import { getLocalParents } from "@connectors/connectors/google_drive/lib";
 import {
   GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID,
   GOOGLE_DRIVE_SHARED_WITH_ME_WEB_URL,
@@ -712,6 +713,24 @@ export async function garbageCollector(
       });
     })
   );
+
+  const memo = `gc-${lastSeenTs}`;
+  for (const file of files) {
+    if (file.parentId) {
+      const parents = await getLocalParents(
+        connector.id,
+        file.dustFileId,
+        memo
+      );
+      if (parents.length === 1) {
+        logger.info(
+          { fileId: file.driveFileId },
+          "Deleting file with invalid parents"
+        );
+        await deleteFile(file);
+      }
+    }
+  }
 
   return files.length;
 }
