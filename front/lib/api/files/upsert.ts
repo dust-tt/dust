@@ -14,6 +14,7 @@ import {
   Ok,
   removeNulls,
   slugify,
+  TABLE_PREFIX,
 } from "@dust-tt/types";
 import { Writable } from "stream";
 import { pipeline } from "stream/promises";
@@ -267,7 +268,7 @@ const upsertTableToDatasource: ProcessingFunction = async ({
     name: slugify(file.fileName),
     description: "Table uploaded from file",
     truncate: true,
-    csv: content,
+    csv: content.trim(),
     tags: [`title:${file.fileName}`, `fileId:${file.sId}`],
     parents: [tableId],
     async: false,
@@ -291,6 +292,59 @@ const upsertTableToDatasource: ProcessingFunction = async ({
   }
 
   return new Ok(undefined);
+};
+
+const upsertExcelToDatasource: ProcessingFunction = async ({
+  auth,
+  file,
+  content,
+  dataSource,
+  upsertArgs,
+}) => {
+  // Excel files are processed in a special way, we need to extract the content of each worksheet and upsert it as a separate table.
+  let worksheetName: string | undefined;
+  let worksheetContent: string | undefined;
+
+  for (const line of content.split("\n")) {
+    if (line.startsWith(TABLE_PREFIX)) {
+      if (worksheetName && worksheetContent) {
+        await upsertTableToDatasource({
+          auth,
+          file,
+          content: worksheetContent,
+          dataSource,
+          upsertArgs: {
+            ...upsertArgs,
+            title: `${file.fileName} ${worksheetName}`,
+            name: slugify(`${file.fileName} ${worksheetName}`),
+            tableId: `${file.sId}-${worksheetName}`,
+          } as UpsertTableArgs,
+        });
+      }
+      worksheetName = line.slice(TABLE_PREFIX.length);
+      worksheetContent = "";
+    } else {
+      worksheetContent += line + "\n";
+    }
+  }
+
+  if (!worksheetName || !worksheetContent) {
+    return new Err(new Error("Invalid Excel file"));
+  } else {
+    await upsertTableToDatasource({
+      auth,
+      file,
+      content: worksheetContent,
+      dataSource,
+      upsertArgs: {
+        ...upsertArgs,
+        title: `${file.fileName} ${worksheetName}`,
+        name: slugify(`${file.fileName} ${worksheetName}`),
+        tableId: `${file.sId}-${worksheetName}`,
+      } as UpsertTableArgs,
+    });
+    return new Ok(undefined);
+  }
 };
 
 // Processing for datasource upserts.
@@ -318,15 +372,31 @@ const getProcessingFunction = ({
     return undefined;
   }
 
-  // Use isSupportedDelimitedTextContentType() everywhere to have a common source of truth
-  if (isSupportedDelimitedTextContentType(contentType)) {
-    if (["conversation", "tool_output", "upsert_table"].includes(useCase)) {
-      return upsertTableToDatasource;
-    } else if (useCase === "upsert_document") {
-      return upsertDocumentToDatasource;
-    } else {
-      return undefined;
-    }
+  switch (contentType) {
+    case "text/csv":
+    case "text/comma-separated-values":
+    case "text/tsv":
+    case "text/tab-separated-values":
+      if (
+        useCase === "conversation" ||
+        useCase === "tool_output" ||
+        useCase === "upsert_table"
+      ) {
+        return upsertTableToDatasource;
+      } else if (useCase === "upsert_document") {
+        return upsertDocumentToDatasource;
+      } else {
+        return undefined;
+      }
+    case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+    case "application/vnd.ms-excel":
+      if (useCase === "conversation" || useCase === "upsert_table") {
+        return upsertExcelToDatasource;
+      } else if (useCase === "upsert_document") {
+        return upsertDocumentToDatasource;
+      } else {
+        return undefined;
+      }
   }
 
   if (
@@ -336,7 +406,11 @@ const getProcessingFunction = ({
     return upsertDocumentToDatasource;
   }
 
-  return undefined;
+  if (isSupportedPlainTextContentType(contentType)) {
+    return undefined;
+  }
+
+  assertNever(contentType);
 };
 
 export const isUpsertSupported = (arg: {
@@ -479,7 +553,8 @@ export async function processAndUpsertToDataSource(
     return new Err({
       name: "dust_error",
       code: "internal_server_error",
-      message: `Failed to process the file : ${processingRes.error}`,
+      message: `Failed to process the file : ${processingRes.error.message}`,
+      processingError: processingRes.error,
     });
   }
 
@@ -487,7 +562,8 @@ export async function processAndUpsertToDataSource(
     return new Err({
       name: "dust_error",
       code: "internal_server_error",
-      message: `Failed to generate snippet: ${snippetRes.error}`,
+      message: `Failed to generate snippet: ${snippetRes.error.message}`,
+      snippetError: snippetRes.error,
     });
   }
 
