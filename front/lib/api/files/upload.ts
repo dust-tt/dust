@@ -126,7 +126,10 @@ const extractTextFromFileAndUpload: ProcessingFunction = async (
         `Cannot extract text from this file type ${file.contentType}. Action: check than caller filters out unsupported file types.`
       );
     }
-    const readStream = file.getReadStream({ auth, version: "original" });
+    const readStream = file.getReadStream({
+      auth,
+      version: "original",
+    });
     const writeStream = file.getWriteStream({ auth, version: "processed" });
 
     const processedStream = await new TextExtraction(
@@ -303,10 +306,14 @@ const getProcessingFunction = ({
   }
 
   if (isSupportedDelimitedTextContentType(contentType)) {
-    if (useCase === "conversation" || useCase === "folder_table") {
+    if (useCase === "conversation") {
       // TODO(JIT): after JIT enablement, store raw text here too, the snippet is useless
       return extractContentAndSchemaFromDelimitedTextFiles;
-    } else if (useCase === "folder_document" || useCase === "tool_output") {
+    } else if (
+      useCase === "folder_document" ||
+      useCase === "tool_output" ||
+      useCase === "folder_table"
+    ) {
       return storeRawText;
     }
     return undefined;

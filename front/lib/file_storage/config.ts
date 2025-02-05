@@ -10,6 +10,9 @@ const config = {
   getGcsPrivateUploadsBucket: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_PRIVATE_UPLOADS_BUCKET");
   },
+  getGcsUpsertQueueBucket: (): string => {
+    return EnvironmentConfig.getEnvVariable("DUST_UPSERT_QUEUE_BUCKET");
+  },
 };
 
 export default config;
