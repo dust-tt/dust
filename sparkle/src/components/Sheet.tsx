@@ -103,7 +103,7 @@ const SheetHeader = ({
 }: SheetHeaderProps) => (
   <div
     className={cn(
-      "s-z-50 s-flex s-flex-none s-flex-col s-gap-2 s-bg-background s-p-5 s-text-left s-shadow-tale-white",
+      "s-z-50 s-flex s-flex-none s-flex-col s-gap-2 s-bg-background s-p-5 s-text-left",
       className
     )}
     {...props}
@@ -116,13 +116,24 @@ const SheetHeader = ({
 );
 SheetHeader.displayName = "SheetHeader";
 
-const SheetContainer = ({ children }: React.HTMLAttributes<HTMLDivElement>) => (
-  <ScrollArea className="s-w-full s-flex-grow">
-    <div className="s-relative s-flex s-flex-col s-gap-2 s-p-5 s-text-left s-text-sm s-text-foreground">
-      {children}
-    </div>
-  </ScrollArea>
-);
+const SheetContainer = ({ children }: React.HTMLAttributes<HTMLDivElement>) => {
+  const [isScrolled, setIsScrolled] = React.useState(false);
+
+  return (
+    <ScrollArea
+      className={cn(
+        "s-w-full s-flex-grow",
+        "s-transition-all s-duration-300",
+        isScrolled && "s-border-t s-border-border-dark/60"
+      )}
+      onScrollStateChange={setIsScrolled}
+    >
+      <div className="s-relative s-flex s-flex-col s-gap-5 s-p-5 s-text-left s-text-sm s-text-foreground">
+        {children}
+      </div>
+    </ScrollArea>
+  );
+};
 SheetContainer.displayName = "SheetContainer";
 
 interface SheetFooterProps extends React.HTMLAttributes<HTMLDivElement> {
