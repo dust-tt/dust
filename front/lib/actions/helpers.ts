@@ -42,7 +42,15 @@ interface CallActionParams<V extends t.Mixed> {
 export async function callAction<V extends t.Mixed>(
   auth: Authenticator,
   { input, action, config, responseValueSchema }: CallActionParams<V>
-): Promise<Result<t.TypeOf<typeof responseValueSchema>, APIError>> {
+): Promise<
+  Result<
+    {
+      result: t.TypeOf<typeof responseValueSchema>;
+      runId: string | null;
+    },
+    APIError
+  >
+> {
   const app = cloneBaseConfig(action.app);
 
   const prodCredentials = await prodAPICredentialsForOwner(
@@ -79,7 +87,10 @@ export async function callAction<V extends t.Mixed>(
   if (responseChecker(r.value)) {
     // the response is a valid success response for the action
     // return the "value" field of the first result
-    return new Ok(r.value.results[0][0].value);
+    return new Ok({
+      result: r.value.results[0][0].value,
+      runId: r.value.run_id,
+    });
   }
 
   const decodedReponse = responseSchema.decode(r.value);
@@ -88,6 +99,7 @@ export async function callAction<V extends t.Mixed>(
     return new Err({
       type: "action_failed",
       message: `Action failed response: ${pathError}`,
+      runId: r.value.run_id,
     });
   }
 
@@ -96,6 +108,7 @@ export async function callAction<V extends t.Mixed>(
     return new Err({
       type: "action_failed",
       message: `Action failed response: ${JSON.stringify(r.value.status)}`,
+      runId: r.value.run_id,
     });
   }
 
@@ -103,5 +116,12 @@ export async function callAction<V extends t.Mixed>(
   return new Err({
     type: "unexpected_action_response",
     message: "Unexpected action response.",
+    runId: r.value.run_id,
   });
+}
+
+export function isErrorWithRunId<T extends object>(
+  error: T
+): error is T & { runId: string } {
+  return "runId" in error && typeof error.runId === "string";
 }

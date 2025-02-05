@@ -46,16 +46,7 @@ export function makeSId(
     workspaceId: ModelId;
   }
 ): string {
-  const idsToEncode = [
-    // First code the region.
-    REGION,
-    // Then encode the shard key.
-    SHARD_KEY,
-    // Then encode the workspace Id.
-    workspaceId,
-    // Finally encode the resource Id.
-    id,
-  ];
+  const idsToEncode = [REGION, SHARD_KEY, workspaceId, id];
 
   return `${RESOURCES_PREFIX[resourceName]}_${sqids.encode(idsToEncode)}`;
 }

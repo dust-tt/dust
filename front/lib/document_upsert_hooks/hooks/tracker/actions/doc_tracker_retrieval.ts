@@ -24,12 +24,21 @@ export async function callDocTrackerRetrievalAction(
     parentsInMap: Record<string, string[] | null>;
   }
 ): Promise<
-  Result<t.TypeOf<typeof DocTrackerRetrievalActionValueSchema>, APIError>
+  Result<
+    {
+      result: t.TypeOf<typeof DocTrackerRetrievalActionValueSchema>;
+      runId: string | null;
+    },
+    APIError
+  >
 > {
   const ownerWorkspace = auth.getNonNullableWorkspace();
 
   if (!maintainedScope.length) {
-    return new Ok([]);
+    return new Ok({
+      result: [],
+      runId: null,
+    });
   }
 
   if (
