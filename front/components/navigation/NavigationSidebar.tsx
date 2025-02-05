@@ -56,7 +56,7 @@ export const NavigationSidebar = React.forwardRef<
   return (
     <div
       ref={ref}
-      className="flex min-w-0 grow flex-col bg-structure-50 dark:bg-structure-50-dark"
+      className="flex min-w-0 grow flex-col bg-structure-50 dark:bg-structure-50-night"
     >
       <div className="flex flex-col">
         {user && user.workspaces.length > 1 ? (

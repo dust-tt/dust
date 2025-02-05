@@ -140,7 +140,9 @@ export default function AppLayout({
         />
       </Head>
 
-      <div className={`flex h-full flex-row ${isDarkMode ? "dark" : "light"}`}>
+      <div
+        className={`flex h-full flex-row ${isDarkMode ? "s-dark dark" : "light"}`}
+      >
         <Navigation
           hideSidebar={hideSidebar}
           isNavigationBarOpen={isNavigationBarOpen}
@@ -150,7 +152,7 @@ export default function AppLayout({
           navChildren={navChildren}
           subNavigation={subNavigation}
         />
-        <div className="relative h-full w-full flex-1 flex-col overflow-x-hidden overflow-y-hidden dark:bg-black">
+        <div className="relative h-full w-full flex-1 flex-col overflow-x-hidden overflow-y-hidden dark:bg-black dark:text-white">
           <main
             id={CONVERSATION_PARENT_SCROLL_DIV_ID.page}
             className={classNames(
@@ -162,7 +164,7 @@ export default function AppLayout({
               className={classNames(
                 "flex w-full flex-col border-b border-primary-50 pl-12 lg:pl-0",
                 !hideSidebar
-                  ? "border-b border-structure-300/30 bg-white/80 backdrop-blur dark:border-structure-300-dark/30 dark:bg-black/80"
+                  ? "dark:border-structure-300-dark/30 border-b border-structure-300/30 bg-white/80 backdrop-blur dark:border-structure-300-night/30 dark:bg-black/80"
                   : "",
                 titleChildren ? "" : "lg:hidden"
               )}

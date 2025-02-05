@@ -195,13 +195,15 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
       <div
         className={classNames(
           "flex grow flex-col",
-          isOnlyUser(owner) ? "border-t border-structure-200" : ""
+          isOnlyUser(owner)
+            ? "border-t border-structure-200 dark:border-structure-200-night"
+            : ""
         )}
       >
         <div className="flex h-0 min-h-full w-full overflow-y-auto">
           <div className="flex w-full flex-col">
             {isMultiSelect ? (
-              <div className="z-50 flex justify-between gap-2 border-b border-border-dark/60 p-2">
+              <div className="z-50 flex justify-between gap-2 border-b border-border-dark/60 p-2 dark:border-border-dark/60">
                 <Button
                   variant={
                     selectedConversations.length === 0 ? "outline" : "warning"
@@ -284,7 +286,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
               </div>
             )}
             {isConversationsError && (
-              <Label className="px-3 py-4 text-xs font-medium text-muted-foreground">
+              <Label className="px-3 py-4 text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
                 Error loading conversations
               </Label>
             )}
@@ -371,13 +373,13 @@ const RenderConversation = ({
         <div className="flex items-center px-2 py-2">
           <Checkbox
             id={`conversation-${conversation.sId}`}
-            className="bg-white"
+            className="bg-white dark:bg-black"
             checked={selectedConversations.includes(conversation)}
             onCheckedChange={() => toggleConversationSelection(conversation)}
           />
           <Label
             htmlFor={`conversation-${conversation.sId}`}
-            className="ml-2 text-sm font-light text-muted-foreground"
+            className="ml-2 text-sm font-light text-muted-foreground dark:text-muted-foreground-night"
           >
             {conversationLabel}
           </Label>
