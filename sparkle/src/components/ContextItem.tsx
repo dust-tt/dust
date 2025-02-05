@@ -1,6 +1,6 @@
 import React, { ComponentType, ReactNode } from "react";
 
-import { classNames } from "@sparkle/lib/utils";
+import { classNames, cn } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
 
@@ -28,7 +28,9 @@ export function ContextItem({
   return (
     <div
       className={classNames(
-        hasSeparator ? "s-border-b s-border-structure-200" : "",
+        hasSeparator
+          ? "dark:s-border-structure-200-night s-border-b s-border-structure-200"
+          : "",
         "s-flex s-w-full s-flex-col",
         hasSeparatorIfLast ? "" : "last:s-border-none"
       )}
@@ -37,7 +39,11 @@ export function ContextItem({
         className={classNames(
           "s-flex s-w-full s-flex-row s-items-start s-gap-3 s-px-4 s-py-3",
           onClick
-            ? "s-cursor-pointer s-transition s-duration-200 hover:s-bg-structure-50 active:s-bg-structure-100"
+            ? cn(
+                "s-cursor-pointer s-transition s-duration-200",
+                "dark:hover:s-bg-structure-50-night hover:s-bg-structure-50",
+                "dark:active:s-bg-structure-100-night active:s-bg-structure-100"
+              )
             : ""
         )}
         onClick={onClick}
@@ -48,7 +54,7 @@ export function ContextItem({
             <div className="s-min-w-0 s-overflow-hidden s-text-ellipsis s-whitespace-nowrap s-text-base s-font-semibold">
               {title}
             </div>
-            <div className="s-flex s-flex-shrink-0 s-items-center s-gap-3 s-overflow-hidden s-pt-0.5 s-text-sm s-text-element-600">
+            <div className="dark:s-text-element-600-night s-flex s-flex-shrink-0 s-items-center s-gap-3 s-overflow-hidden s-pt-0.5 s-text-sm s-text-element-600">
               {subElement}
             </div>
           </div>
@@ -97,7 +103,9 @@ ContextItem.List = function ({
     <div
       className={classNames(
         className ? className : "",
-        hasBorder ? "s-border-b s-border-t s-border-structure-200" : "",
+        hasBorder
+          ? "dark:s-border-structure-200-night s-border-b s-border-t s-border-structure-200"
+          : "",
         "s-flex s-flex-col"
       )}
     >
@@ -118,7 +126,7 @@ ContextItem.Description = function ({
   return (
     <>
       {description && (
-        <div className="s-text-sm s-font-normal s-text-element-700">
+        <div className="dark:s-text-element-700-night s-text-sm s-font-normal s-text-element-700">
           {description}
         </div>
       )}
@@ -150,14 +158,16 @@ ContextItem.SectionHeader = function ({
     <div
       className={classNames(
         "s-flex s-flex-col s-gap-0 s-pb-3 s-pt-7",
-        hasBorder ? "s-border-b s-border-structure-200" : ""
+        hasBorder
+          ? "dark:s-border-structure-200-night s-border-b s-border-structure-200"
+          : ""
       )}
     >
-      <div className="s-text-xl s-font-medium s-text-foreground dark:s-text-foreground-dark">
+      <div className="dark:s-text-foreground-night s-text-xl s-font-medium s-text-foreground">
         {title}
       </div>
       {description && (
-        <div className="s-text-sm s-font-normal s-text-element-700 dark:s-text-element-700-dark">
+        <div className="dark:s-text-element-700-night s-text-sm s-font-normal s-text-element-700">
           {description}
         </div>
       )}
