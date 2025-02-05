@@ -8,6 +8,7 @@ import {
   IntercomLogo,
   MicrosoftLogo,
   NotionLogo,
+  SalesforceLogo,
   SlackLogo,
   SnowflakeLogo,
   ZendeskLogo,
@@ -298,6 +299,24 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     },
     isDeletable: true,
   },
+  salesforce: {
+    name: "Salesforce",
+    connectorProvider: "salesforce",
+    status: "built",
+    hide: true,
+    description: "Query a Salesforce database.",
+    limitations: null,
+    mismatchError: `You cannot change the Salesforce instance URL. Please add a new Salesforce connection instead.`,
+    logoComponent: SalesforceLogo,
+    isNested: true,
+    isSearchEnabled: false,
+    permissions: {
+      selected: "read",
+      unselected: "none",
+    },
+    isDeletable: true,
+    guideLink: "https://docs.dust.tt/docs/salesforce-connection",
+  },
 };
 
 const WEBHOOK_BASED_CONNECTORS: ConnectorProvider[] = ["slack", "github"];
@@ -353,6 +372,8 @@ export const isConnectorProviderAllowedForPlan = (
       return true;
     case "bigquery":
       return true;
+    case "salesforce":
+      return true;
     default:
       assertNever(provider);
   }
@@ -377,6 +398,8 @@ export const isConnectorProviderAssistantDefaultSelected = (
     case "bigquery":
     case "webcrawler":
       return false;
+    case "salesforce":
+      return false;
     default:
       assertNever(provider);
   }
@@ -396,6 +419,7 @@ export const isConnectionIdRequiredForProvider = (
     case "zendesk":
     case "snowflake":
     case "bigquery":
+    case "salesforce":
       return true;
     case "webcrawler":
       return false;

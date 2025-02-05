@@ -14,6 +14,7 @@ export const CONNECTOR_PROVIDERS = [
   "snowflake",
   "zendesk",
   "bigquery",
+  "salesforce",
 ] as const;
 
 export type ConnectorProvider = (typeof CONNECTOR_PROVIDERS)[number];
