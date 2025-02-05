@@ -91,3 +91,9 @@ export type TagSearchParams = {
   queryType: string;
   dataSources: string[];
 };
+
+export type SelectedTag = {
+  tag: string;
+  dustAPIDataSourceId: string;
+  connectorProvider: ConnectorProvider | null;
+};
