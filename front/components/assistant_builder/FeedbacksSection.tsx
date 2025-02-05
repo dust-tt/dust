@@ -80,11 +80,9 @@ export const FeedbacksSection = ({
     isAgentConfigurationHistoryLoading
   ) {
     return (
-      <>
-        <div className="w-full p-6">
-          <Spinner variant="dark" />
-        </div>
-      </>
+      <div className="w-full p-6">
+        <Spinner variant="dark" />
+      </div>
     );
   }
 
