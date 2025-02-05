@@ -183,6 +183,7 @@ async function migrateDataSource({
            SELECT 1
            FROM UNNEST(parents) p
            WHERE p NOT LIKE 'gdrive-%'
+             AND p NOT LIKE 'google-spreadsheet-%'
        )
        ORDER BY node_id
        LIMIT :batchSize`,
