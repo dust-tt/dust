@@ -3,7 +3,6 @@ import axios from "axios";
 import { Agent } from "https";
 import { z } from "zod";
 import * as fs from "fs";
-import { collectMetricsFromQdrant } from "./qdrant";
 import statsDClient from "hot-shots";
 
 /**
@@ -287,8 +286,6 @@ const main = async () => {
 
     statsD.increment("temporal_metrics.collection.success");
 
-    // Collect Qdrant metrics
-    await collectMetricsFromQdrant();
     await setTimeoutAsync(60 * 1000);
   }
 };
