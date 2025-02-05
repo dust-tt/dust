@@ -322,7 +322,7 @@ export const saveNodesFromPermissions = async ({
           const existingSchema = await RemoteSchemaModel.findOne({
             where: {
               connectorId,
-              internalId,
+              internalId: [database, schema.name].join("."),
             },
           });
           if (!existingSchema) {
