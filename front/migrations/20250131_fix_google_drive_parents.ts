@@ -79,6 +79,11 @@ async function migrateNode({
     return new Ok(undefined);
   }
 
+  if (coreNode.node_id != newParents[0]) {
+    localLogger.error("Invalid node_id");
+    return;
+  }
+
   if (execute) {
     await withRetries(
       async () => {
