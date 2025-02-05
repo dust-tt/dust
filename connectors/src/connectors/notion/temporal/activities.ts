@@ -2005,6 +2005,12 @@ export async function renderAndUpsertPageFromCache({
     );
 
     const parentIds = parentPageOrDbIds.map((id) => `notion-${id}`);
+    if (parentIds.length === 1) {
+      localLogger.warn(
+        { parentIds },
+        "notionRenderAndUpsertPageFromCache: Page has no parent."
+      );
+    }
 
     const content = await renderDocumentTitleAndContent({
       dataSourceConfig: dsConfig,
