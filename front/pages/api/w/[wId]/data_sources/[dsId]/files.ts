@@ -6,7 +6,6 @@ import type {
   UpsertDocumentArgs,
   UpsertTableArgs,
 } from "@app/lib/api/data_sources";
-import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
 import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -56,38 +55,33 @@ async function handler(
     });
   }
 
+  // Only folder document and table upserts are supported on this endpoint.
+  if (!["folder_document", "folder_table"].includes(file.useCase)) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message:
+          "Only document and folder upserts are supported on this endpoint.",
+      },
+    });
+  }
+
   switch (req.method) {
     case "POST": {
       let dataSourceToUse: DataSourceResource | null = null;
-      // JIT data source.
-      if (file.useCase === "conversation") {
-        const jitDataSource = await getOrCreateConversationDataSourceFromFile(
-          auth,
-          file
-        );
-        if (jitDataSource.isErr()) {
-          return apiError(req, res, {
-            status_code: 500,
-            api_error: {
-              type: "internal_server_error",
-              message: "Failed to get or create JIT data source.",
-            },
-          });
-        }
-        dataSourceToUse = jitDataSource.value;
-      } else {
-        const dataSource = await DataSourceResource.fetchById(auth, dsId);
-        if (!dataSource) {
-          return apiError(req, res, {
-            status_code: 404,
-            api_error: {
-              type: "data_source_not_found",
-              message: `Could not find data source with id ${dsId}`,
-            },
-          });
-        }
-        dataSourceToUse = dataSource;
+
+      const dataSource = await DataSourceResource.fetchById(auth, dsId);
+      if (!dataSource) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "data_source_not_found",
+            message: `Could not find data source with id ${dsId}`,
+          },
+        });
       }
+      dataSourceToUse = dataSource;
 
       const rUpsert = await processAndUpsertToDataSource(
         auth,
