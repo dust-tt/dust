@@ -117,16 +117,9 @@ const SheetHeader = ({
 SheetHeader.displayName = "SheetHeader";
 
 const SheetContainer = ({ children }: React.HTMLAttributes<HTMLDivElement>) => {
-  const [isScrolled, setIsScrolled] = React.useState(false);
-
   return (
     <ScrollArea
-      className={cn(
-        "s-w-full s-flex-grow",
-        "s-transition-all s-duration-300",
-        isScrolled && "s-border-t s-border-border-dark/60"
-      )}
-      onScrollStateChange={setIsScrolled}
+      className={cn("s-w-full s-flex-grow", "s-transition-all s-duration-300")}
     >
       <div className="s-relative s-flex s-flex-col s-gap-5 s-p-5 s-text-left s-text-sm s-text-foreground">
         {children}
