@@ -1,7 +1,7 @@
 import { Dialog, Transition } from "@headlessui/react";
 import React, { Fragment } from "react";
 
-import { classNames } from "@sparkle/lib/utils";
+import { classNames, cn } from "@sparkle/lib/utils";
 
 import { BarHeader, BarHeaderButtonBarProps } from "./BarHeader";
 import { Button, ButtonProps } from "./Button";
@@ -28,8 +28,10 @@ const variantSize = {
 const modalStyles = {
   [ModalType.Side]: {
     containerClasses: "s-h-full s-ml-auto",
-    panelClasses:
-      "s-h-full s-max-h-full s-shadow-xl s-border s-border-structure-100 s-w-full s-max-w-full",
+    panelClasses: cn(
+      "s-h-full s-max-h-full s-shadow-xl s-border s-w-full s-max-w-full",
+      "s-border-structure-100 dark:s-border-structure-100-night"
+    ),
     transitionEnterFrom: "s-opacity-0 s-translate-x-16",
     transitionEnterTo: "s-opacity-100 s-translate-x-0",
     transitionLeaveFrom: "s-opacity-100 s-translate-x-0",
@@ -50,8 +52,10 @@ const modalStyles = {
   [ModalType.Dialogue]: {
     containerClasses:
       "s-flex s-items-center s-justify-center s-min-h-full s-p-4",
-    panelClasses:
-      "s-w-full sm:s-w-[448px] overflow-hidden s-shadow-2xl s-rounded-xl s-border s-border-structure-100",
+    panelClasses: cn(
+      "s-w-full sm:s-w-[448px] overflow-hidden s-shadow-2xl s-rounded-xl s-border",
+      "s-border-structure-100 dark:s-border-structure-100-night"
+    ),
     transitionEnterFrom: "s-opacity-0 s-translate-y-4 s-scale-95",
     transitionEnterTo: "s-opacity-100 s-translate-y-0 s-scale-100",
     transitionLeaveFrom: "s-opacity-100 s-translate-y-0 s-scale-100",
@@ -147,7 +151,12 @@ export function Modal({
           leaveFrom="s-opacity-100"
           leaveTo="s-opacity-0"
         >
-          <div className="s-fixed s-inset-0 s-bg-structure-50/80 s-backdrop-blur-sm s-transition-opacity" />
+          <div
+            className={cn(
+              "s-fixed s-inset-0 s-backdrop-blur-sm s-transition-opacity",
+              "dark:s-bg-structure-50-night/80 s-bg-structure-50/80"
+            )}
+          />
         </Transition.Child>
 
         {/* Panel and transition */}
@@ -163,7 +172,8 @@ export function Modal({
           >
             <Dialog.Panel
               className={classNames(
-                "s-absolute s-transform s-bg-structure-0 s-px-3 s-transition-all sm:s-px-4",
+                "s-absolute s-transform s-px-3 s-transition-all sm:s-px-4",
+                "dark:s-bg-structure-0-night s-bg-structure-0",
                 panelClasses,
                 variantSize[variant]
               )}

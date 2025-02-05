@@ -21,7 +21,8 @@ export function Page({ children, variant = "normal" }: PageProps) {
     <main className={mainVariantClasses}>
       <div
         className={classNames(
-          "s-mx-auto s-flex s-h-full s-max-w-4xl s-flex-col s-text-sm s-font-normal s-text-foreground",
+          "s-mx-auto s-flex s-h-full s-max-w-4xl s-flex-col s-text-sm s-font-normal",
+          "dark:s-text-foreground-night s-text-foreground",
           divVariantClassNames
         )}
       >
@@ -40,7 +41,11 @@ interface PageHeaderProps {
 Page.Header = function ({ title, description, icon }: PageHeaderProps) {
   return (
     <Page.Vertical gap="xs">
-      <Icon visual={icon} className="s-text-primary-400" size="lg" />
+      <Icon
+        visual={icon}
+        className="dark:s-text-primary-400-night s-text-primary-400"
+        size="lg"
+      />
       <Page.H variant="h3">{title}</Page.H>
       {description && <Page.P variant="secondary">{description}</Page.P>}
     </Page.Vertical>
@@ -96,8 +101,8 @@ Page.P = function ({ children, variant, size = "sm" }: PagePProps) {
       className={classNames(
         PsizeClasses[size],
         variant === "secondary"
-          ? "s-text-element-700 dark:s-text-element-600-dark"
-          : "s-text-foreground dark:s-text-foreground-dark"
+          ? "dark:s-text-element-600-night s-text-element-700"
+          : "dark:s-text-foreground-night s-text-foreground"
       )}
     >
       {children}
@@ -125,7 +130,7 @@ Page.H = function ({ children, variant = "h3" }: PageHProps) {
   return (
     <Component
       className={classNames(
-        "s-text-foreground dark:s-text-foreground-dark",
+        "dark:s-text-foreground-night s-text-foreground",
         hSizes[variant]
       )}
     >

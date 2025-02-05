@@ -14,11 +14,19 @@ export const HOVERABLE_VARIANTS = [
 export type HoverableVariantType = (typeof HOVERABLE_VARIANTS)[number];
 
 const hoverableVariants: Record<HoverableVariantType, string> = {
-  invisible: "hover:s-text-highlight-light active:s-text-highlight-dark",
-  primary:
-    "s-font-medium s-text-foreground hover:s-text-highlight-light active:s-text-highlight-dark",
-  highlight:
-    "s-font-medium s-text-highlight hover:s-text-highlight-light active:s-text-highlight-dark",
+  invisible: cn("hover:s-text-highlight-light", "active:s-text-highlight-dark"),
+  primary: cn(
+    "s-font-medium",
+    "s-text-foreground dark:s-text-foreground-night",
+    "hover:s-text-highlight-light dark:hover:s-text-highlight-light-night",
+    "active:s-text-highlight-dark dark:active:s-text-highlight-dark-night"
+  ),
+  highlight: cn(
+    "s-font-medium",
+    "s-text-highlight dark:s-text-highlight-night",
+    "hover:s-text-highlight-light dark:hover:s-text-highlight-light-night",
+    "active:s-text-highlight-dark dark:active:s-text-highlight-dark-night"
+  ),
 };
 
 const variantStyle = cva(

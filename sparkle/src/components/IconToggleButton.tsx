@@ -1,6 +1,6 @@
 import React, { ComponentType, MouseEventHandler } from "react";
 
-import { classNames } from "@sparkle/lib/utils";
+import { classNames, cn } from "@sparkle/lib/utils";
 
 import { Icon, IconProps } from "./Icon";
 import { Tooltip } from "./Tooltip";
@@ -23,32 +23,24 @@ const baseClasses =
 
 const iconClasses = {
   secondary: {
-    idle: "s-text-foreground",
-    selected: "s-text-action-500",
-    hover: "hover:s-text-action-400",
-    active: "active:s-text-action-600",
-    disabled: "s-text-element-500",
-    dark: {
-      idle: "dark:s-text-foreground-dark",
-      selected: "dark:s-text-action-500-dark",
-      hover: "dark:hover:s-text-action-500-dark",
-      active: "dark:active:s-text-action-600-dark",
-      disabled: "dark:s-text-element-500-dark",
-    },
+    idle: cn("s-text-foreground", "dark:s-text-foreground-night"),
+    selected: cn("s-text-action-500", "dark:s-text-action-500-night"),
+    hover: cn("hover:s-text-action-400", "dark:hover:s-text-action-400-night"),
+    active: cn(
+      "active:s-text-action-600",
+      "dark:active:s-text-action-600-night"
+    ),
+    disabled: cn("s-text-element-500", "dark:s-text-element-500-night"),
   },
   tertiary: {
-    idle: "s-text-element-600",
-    selected: "s-text-action-500",
-    hover: "hover:s-text-action-400",
-    active: "active:s-text-action-600",
-    disabled: "s-text-element-500",
-    dark: {
-      idle: "dark:s-text-element-600-dark",
-      selected: "dark:s-text-action-500-dark",
-      hover: "dark:hover:s-text-action-500-dark",
-      active: "dark:active:s-text-action-600-dark",
-      disabled: "dark:s-text-element-500-dark",
-    },
+    idle: cn("s-text-element-600", "dark:s-text-element-600-night"),
+    selected: cn("s-text-action-500", "dark:s-text-action-500-night"),
+    hover: cn("hover:s-text-action-400", "dark:hover:s-text-action-400-night"),
+    active: cn(
+      "active:s-text-action-600",
+      "dark:active:s-text-action-600-night"
+    ),
+    disabled: cn("s-text-element-500", "dark:s-text-element-500-night"),
   },
 };
 
@@ -74,15 +66,7 @@ export function IconToggleButton({
         ? iconGroup.selected
         : iconGroup.idle,
     disabled ? "" : selected ? "" : iconGroup.hover,
-    disabled ? "" : iconGroup.active,
-    iconGroup.dark.idle,
-    disabled
-      ? iconGroup.dark.disabled
-      : selected
-        ? iconGroup.dark.selected
-        : "",
-    disabled ? "" : selected ? "" : iconGroup.dark.hover,
-    disabled ? "" : iconGroup.dark.active
+    disabled ? "" : iconGroup.active
   );
 
   const IconButtonToggleContent = (

@@ -17,36 +17,42 @@ type IconButtonProps = {
 };
 
 const styleVariants: Record<ButtonVariantType, string> = {
-  primary:
-    "s-text-action-500 dark:s-text-action-500-dark" +
-    "hover:s-text-action-400 dark:hover:s-text-action-500-dark" +
-    "active:s-text-action-600 dark:active:s-text-action-600-dark" +
-    "s-text-element-500 dark:s-text-element-500-dark",
-  warning:
-    "s-text-warning-500 dark:s-text-warning-500-dark" +
-    "hover:s-text-warning-400 dark:hover:s-text-warning-500-dark" +
-    "active:s-text-warning-600 dark:active:s-text-warning-600-dark" +
-    "s-text-element-500 dark:s-text-element-500-dark",
-  highlight:
-    "s-text-foreground dark:s-text-foreground-dark" +
-    "hover:s-text-action-400 dark:hover:s-text-action-500-dark" +
-    "active:s-text-action-600 dark:active:s-text-action-600-dark" +
-    "s-text-element-500 dark:s-text-element-500-dark",
-  outline:
-    "s-text-element-700 dark:s-text-element-700-dark" +
-    "hover:s-text-action-400 dark:hover:s-text-action-500-dark" +
-    "active:s-text-action-600 dark:active:s-text-action-600-dark" +
-    "s-text-element-500 dark:s-text-element-500-dark",
-  ghost:
-    "s-text-white s-text-white" +
-    "hover:s-text-slate-100 hover:s-text-slate-100" +
-    "active:s-text-slate-200 active:s-text-slate-200" +
-    "s-text-white/50 s-text-white/50",
-  "ghost-secondary":
-    "s-text-white" +
-    "hover:s-text-slate-100 hover:s-text-slate-100" +
-    "active:s-text-slate-200 active:s-text-slate-200" +
-    "s-text-white/50 s-text-white/50",
+  primary: cn(
+    "s-text-action-500 dark:s-text-action-500-night",
+    "hover:s-text-action-400 dark:hover:s-text-action-500-night",
+    "active:s-text-action-600 dark:active:s-text-action-600-night",
+    "s-text-element-500 dark:s-text-element-500-night"
+  ),
+  warning: cn(
+    "s-text-warning-500 dark:s-text-warning-500-night",
+    "hover:s-text-warning-400 dark:hover:s-text-warning-500-night",
+    "active:s-text-warning-600 dark:active:s-text-warning-600-night",
+    "s-text-element-500 dark:s-text-element-500-night"
+  ),
+  highlight: cn(
+    "s-text-foreground dark:s-text-foreground-night",
+    "hover:s-text-action-400 dark:hover:s-text-action-500-night",
+    "active:s-text-action-600 dark:active:s-text-action-600-night",
+    "s-text-element-500 dark:s-text-element-500-night"
+  ),
+  outline: cn(
+    "s-text-element-700 dark:s-text-element-700-night",
+    "hover:s-text-action-400 dark:hover:s-text-action-500-night",
+    "active:s-text-action-600 dark:active:s-text-action-600-night",
+    "s-text-element-500 dark:s-text-element-500-night"
+  ),
+  ghost: cn(
+    "s-text-white dark:s-text-black",
+    "hover:s-text-slate-100 dark:hover:s-text-slate-100-night",
+    "active:s-text-slate-200 dark:active:s-text-slate-200-night",
+    "s-text-white/50 dark:s-text-black/50"
+  ),
+  "ghost-secondary": cn(
+    "s-text-white",
+    "hover:s-text-slate-100 dark:hover:s-text-slate-100-night",
+    "active:s-text-slate-200 dark:active:s-text-slate-200-night",
+    "s-text-white/50 dark:s-text-black/50"
+  ),
 };
 
 const iconButtonVariants = cva(
@@ -55,7 +61,10 @@ const iconButtonVariants = cva(
     variants: {
       variant: styleVariants,
       disabled: {
-        true: "s-text-element-500 s-cursor-default hover:s-scale-100",
+        true: cn(
+          "s-text-element-500 dark:s-text-element-500-night",
+          "s-cursor-default hover:s-scale-100"
+        ),
       },
     },
     defaultVariants: {

@@ -15,19 +15,31 @@ type ItemVariantType = (typeof ITEM_VARIANTS)[number];
 export const menuStyleClasses = {
   inset: "s-pl-8",
   container: cn(
-    "s-rounded-xl s-border s-border-hovering s-bg-white s-p-1 s-text-primary-950",
+    "s-rounded-xl s-border s-border-hovering s-p-1",
+    "s-bg-white dark:s-bg-black",
+    "s-text-primary-950 dark:s-text-primary-950-night",
     "s-z-50 s-min-w-[8rem] s-overflow-hidden",
     "data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-fade-out-0 data-[state=open]:s-fade-in-0 data-[state=closed]:s-zoom-out-95 data-[state=open]:s-zoom-in-95 data-[side=bottom]:s-slide-in-from-top-2 data-[side=left]:s-slide-in-from-right-2 data-[side=right]:s-slide-in-from-left-2 data-[side=top]:s-slide-in-from-bottom-2"
   ),
   item: cva(
-    "s-relative s-flex s-gap-2 s-cursor-pointer s-select-none s-items-center s-outline-none s-rounded-md s-text-sm s-font-medium s-px-2 s-py-2 s-transition-colors s-duration-300 data-[disabled]:s-pointer-events-none data-[disabled]:s-text-primary-400",
+    cn(
+      "s-relative s-flex s-gap-2 s-cursor-pointer s-select-none s-items-center s-outline-none s-rounded-md s-text-sm s-font-medium s-px-2 s-py-2 s-transition-colors s-duration-300 data-[disabled]:s-pointer-events-none",
+      "data-[disabled]:s-text-primary-400 dark:data-[disabled]:s-text-primary-400-night"
+    ),
     {
       variants: {
         variant: {
-          default:
-            "focus:s-text-primary-950 hover:s-bg-primary-150 focus:s-bg-primary-150",
-          warning:
-            "s-text-warning-500 hover:s-bg-warning-50 focus:s-bg-warning-50 active:s-bg-warning-100",
+          default: cn(
+            "focus:s-text-primary-950 dark:focus:s-text-primary-950-night",
+            "hover:s-bg-primary-150 dark:hover:s-bg-primary-150-night",
+            "focus:s-bg-primary-150 dark:focus:s-bg-primary-150-night"
+          ),
+          warning: cn(
+            "s-text-warning-500 dark:s-text-warning-500-night",
+            "hover:s-bg-warning-50 dark:hover:s-bg-warning-50-night",
+            "focus:s-bg-warning-50 dark:focus:s-bg-warning-50-night",
+            "active:s-bg-warning-100 dark:active:s-bg-warning-100-night"
+          ),
         },
       },
       defaultVariants: {
@@ -36,14 +48,28 @@ export const menuStyleClasses = {
     }
   ),
   subTrigger: {
-    default: "s-mr-1 s-ml-auto s-tracking-widest s-text-primary-400",
+    default: cn(
+      "s-mr-1 s-ml-auto s-tracking-widest",
+      "s-text-primary-400 dark:s-text-primary-400-night"
+    ),
     span: "s-absolute s-left-2 s-flex s-h-3.5 s-w-3.5 s-items-center s-justify-center",
   },
-  label: "s-font-semibold s-px-2 s-py-2 s-text-xs s-text-muted-foreground",
-  description:
-    "s-grow s-truncate s-text-xs s-text-muted-foreground s-font-normal",
-  separator: "-s-mx-1 s-my-1 s-h-px s-bg-separator",
-  shortcut: "s-ml-auto s-text-xs s-tracking-widest s-text-primary-400",
+  label: cn(
+    "s-font-semibold s-px-2 s-py-2 s-text-xs",
+    "s-text-muted-foreground dark:s-text-muted-foreground-night"
+  ),
+  description: cn(
+    "s-grow s-truncate s-text-xs s-font-normal",
+    "s-text-muted-foreground dark:s-text-muted-foreground-night"
+  ),
+  separator: cn(
+    "-s-mx-1 s-my-1 s-h-px",
+    "s-bg-separator dark:s-bg-separator-night"
+  ),
+  shortcut: cn(
+    "s-ml-auto s-text-xs s-tracking-widest",
+    "s-text-primary-400 dark:s-text-primary-400-night"
+  ),
 };
 
 const DropdownMenu = DropdownMenuPrimitive.Root;
@@ -398,13 +424,21 @@ const DropdownMenuStaticItem = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "s-flex s-h-9 s-items-center s-gap-2 s-px-2 s-text-sm s-text-foreground",
+      "s-flex s-h-9 s-items-center s-gap-2 s-px-2 s-text-sm",
+      "dark:s-text-foreground-night s-text-foreground",
       className
     )}
   >
     <span className="s-grow s-font-medium">{label}</span>
     {value && (
-      <span className="s-shrink-0 s-text-muted-foreground">{value}</span>
+      <span
+        className={cn(
+          "s-shrink-0",
+          "dark:s-text-muted-foreground-night s-text-muted-foreground"
+        )}
+      >
+        {value}
+      </span>
     )}
     {children && <div className="s-shrink-0">{children}</div>}
   </div>
