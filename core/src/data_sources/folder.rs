@@ -89,7 +89,7 @@ impl From<Folder> for Node {
             folder.parent_id,
             folder.parents,
             folder.source_url,
-            vec![],
+            None,
         )
     }
 }

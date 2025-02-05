@@ -324,7 +324,7 @@ impl From<Table> for Node {
             table.parents.get(1).cloned(),
             table.parents,
             table.source_url,
-            table.tags,
+            Some(table.tags),
         )
     }
 }

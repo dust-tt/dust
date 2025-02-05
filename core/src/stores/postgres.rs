@@ -3560,7 +3560,7 @@ impl Store for PostgresStore {
                         parents.get(1).cloned(),
                         parents,
                         source_url,
-                        tags,
+                        Some(tags),
                     ),
                     row_id,
                 )))
@@ -3624,7 +3624,7 @@ impl Store for PostgresStore {
                         parents.get(1).cloned(),
                         parents,
                         source_url,
-                        tags,
+                        Some(tags),
                     ),
                     row_id,
                     element_row_id,
