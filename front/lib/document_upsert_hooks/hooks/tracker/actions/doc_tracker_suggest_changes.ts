@@ -24,7 +24,12 @@ export async function callDocTrackerSuggestChangesAction(
     providerId: string;
     modelId: string;
   }
-): Promise<Result<DocTrackerSuggestChangesActionResult, APIError>> {
+): Promise<
+  Result<
+    { result: DocTrackerSuggestChangesActionResult; runId: string | null },
+    APIError
+  >
+> {
   const action = getDustProdAction("doc-tracker-suggest-changes");
 
   const config = cloneBaseConfig(action.config);

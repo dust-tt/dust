@@ -9,7 +9,6 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
-  SparklesIcon,
   Spinner,
   TextArea,
   useSendNotification,
@@ -36,7 +35,6 @@ import {
   useUpdateDataSourceViewTable,
 } from "@app/lib/swr/data_source_view_tables";
 import { useUpsertFileAsDatasourceEntry } from "@app/lib/swr/file";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 interface Table {
   name: string;
@@ -77,8 +75,6 @@ export const TableUploadOrEditModal = ({
   const [isUpserting, setIsUpserting] = useState(false);
   const [isBigFile, setIsBigFile] = useState(false);
   const [isValidTable, setIsValidTable] = useState(false);
-  const [useAppForHeaderDetection, setUseAppForHeaderDetection] =
-    useState(false);
   const { table, isTableError, isTableLoading } = useDataSourceViewTable({
     owner: owner,
     dataSourceView: dataSourceView,
@@ -92,7 +88,6 @@ export const TableUploadOrEditModal = ({
     useCase: "folder_table",
   });
   const [fileId, setFileId] = useState<string | null>(null);
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
   const doUpsertFileAsDataSourceEntry = useUpsertFileAsDatasourceEntry(
     owner,
     dataSourceView
@@ -114,7 +109,6 @@ export const TableUploadOrEditModal = ({
             name: table.name,
             description: table.description,
             truncate: true,
-            useAppForHeaderDetection,
             title: table.name,
             mimeType: "text/csv",
             sourceUrl: null,
@@ -134,7 +128,6 @@ export const TableUploadOrEditModal = ({
               tableId: initialId ?? undefined,
               name: table.name,
               description: table.description,
-              useAppForHeaderDetection,
               title: table.name,
             },
           });
@@ -168,7 +161,6 @@ export const TableUploadOrEditModal = ({
       onClose,
       doUpsertFileAsDataSourceEntry,
       fileUploaderService,
-      useAppForHeaderDetection,
       fileId,
       doUpdate,
     ]
@@ -441,29 +433,6 @@ export const TableUploadOrEditModal = ({
                       </div>
                     )}
                   </div>
-                  {featureFlags.includes("use_app_for_header_detection") && (
-                    <div>
-                      <Page.SectionHeader
-                        title="Enable header detection"
-                        description={
-                          "Use the LLM model to detect headers in the CSV file."
-                        }
-                        action={{
-                          label: useAppForHeaderDetection
-                            ? "Disable"
-                            : "Enable",
-                          variant: useAppForHeaderDetection
-                            ? "primary"
-                            : "ghost",
-                          icon: SparklesIcon,
-                          onClick: () =>
-                            setUseAppForHeaderDetection(
-                              !useAppForHeaderDetection
-                            ),
-                        }}
-                      />
-                    </div>
-                  )}
                 </div>
               )}
             </Page.Vertical>

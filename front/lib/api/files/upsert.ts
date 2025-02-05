@@ -273,7 +273,6 @@ const upsertTableToDatasource: ProcessingFunction = async ({
     async: false,
     dataSource,
     auth,
-    useAppForHeaderDetection: true,
     title: upsertTitle ?? file.fileName,
     mimeType: file.contentType,
     sourceUrl: file.getPrivateUrl(auth),

@@ -1,5 +1,5 @@
 import type { ModelId } from "@dust-tt/types";
-import { MIME_TYPES } from "@dust-tt/types";
+import { MIME_TYPES, removeNulls } from "@dust-tt/types";
 import { uuid4 } from "@temporalio/workflow";
 import type { drive_v3 } from "googleapis";
 import type { GaxiosResponse, OAuth2Client } from "googleapis-common";
@@ -712,6 +712,28 @@ export async function garbageCollector(
       });
     })
   );
+
+  const parentFiles = await GoogleDriveFiles.findAll({
+    where: {
+      connectorId,
+      driveFileId: [...new Set(removeNulls(files.map((f) => f.parentId)))],
+    },
+  });
+
+  for (const file of files) {
+    if (file.parentId) {
+      const parentFile = parentFiles.find(
+        (f) => f.driveFileId === file.parentId
+      );
+      if (!parentFile) {
+        logger.info(
+          { fileId: file.driveFileId },
+          "Deleting file with invalid parents"
+        );
+        await deleteFile(file);
+      }
+    }
+  }
 
   return files.length;
 }

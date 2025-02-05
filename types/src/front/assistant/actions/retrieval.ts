@@ -137,6 +137,8 @@ export interface RetrievalActionType extends BaseAction {
     relativeTimeFrame: TimeFrame | null;
     query: string | null;
     topK: number;
+    tagsIn: string[] | null;
+    tagsNot: string[] | null;
   };
   functionCallId: string | null;
   functionCallName: string | null;
