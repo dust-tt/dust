@@ -142,6 +142,9 @@ export class AgentRetrievalAction extends WorkspaceAwareModel<AgentRetrievalActi
   declare relativeTimeFrameUnit: TimeframeUnit | null;
   declare topK: number;
 
+  declare tagsIn: string[] | null;
+  declare tagsNot: string[] | null;
+
   declare functionCallId: string | null;
   declare functionCallName: string | null;
 
@@ -178,6 +181,14 @@ AgentRetrievalAction.init(
     },
     relativeTimeFrameUnit: {
       type: DataTypes.STRING,
+      allowNull: true,
+    },
+    tagsIn: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: true,
+    },
+    tagsNot: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
       allowNull: true,
     },
     topK: {

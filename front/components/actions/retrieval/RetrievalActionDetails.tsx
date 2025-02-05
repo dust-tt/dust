@@ -88,7 +88,7 @@ function RetrievalActionQuery({ action }: { action: RetrievalActionType }) {
 }
 
 function makeQueryDescription(action: RetrievalActionType) {
-  const { query, relativeTimeFrame } = action.params;
+  const { query, relativeTimeFrame, tagsIn, tagsNot } = action.params;
 
   const timeFrameAsString = relativeTimeFrame
     ? "over the last " +
@@ -96,10 +96,13 @@ function makeQueryDescription(action: RetrievalActionType) {
         ? `${relativeTimeFrame.duration} ${relativeTimeFrame.unit}s`
         : `${relativeTimeFrame.unit}`)
     : "across all time periods";
-
+  const tagsInAsString = tagsIn ? `, with tags ${tagsIn?.join(", ")}` : "";
+  const tagsNotAsString = tagsNot
+    ? `, excluding tags ${tagsNot?.join(", ")}`
+    : "";
   if (!query) {
-    return `Searching ${timeFrameAsString}.`;
+    return `Searching ${timeFrameAsString}${tagsInAsString}${tagsNotAsString}.`;
   }
 
-  return `Searching "${query}", ${timeFrameAsString}.`;
+  return `Searching "${query}", ${timeFrameAsString}${tagsInAsString}${tagsNotAsString}`;
 }

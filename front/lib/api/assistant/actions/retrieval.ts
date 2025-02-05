@@ -114,6 +114,8 @@ interface RetrievalActionBlob {
     relativeTimeFrame: TimeFrame | null;
     query: string | null;
     topK: number;
+    tagsIn: string[] | null;
+    tagsNot: string[] | null;
   };
   functionCallId: string | null;
   functionCallName: string | null;
@@ -127,6 +129,8 @@ export class RetrievalAction extends BaseAction {
     relativeTimeFrame: TimeFrame | null;
     query: string | null;
     topK: number;
+    tagsIn: string[] | null;
+    tagsNot: string[] | null;
   };
   readonly functionCallId: string | null;
   readonly functionCallName: string | null;
@@ -153,6 +157,8 @@ export class RetrievalAction extends BaseAction {
         ? `${timeFrame.duration}${timeFrame.unit}`
         : "all",
       topK: this.params.topK,
+      tagsIn: this.params.tagsIn,
+      tagsNot: this.params.tagsNot,
     };
 
     return {
@@ -332,6 +338,23 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
       }
     }
 
+    let globalTagsIn: string[] | null = null;
+    let globalTagsNot: string[] | null = null;
+    if (
+      rawInputs.tagsIn &&
+      Array.isArray(rawInputs.tagsIn) &&
+      rawInputs.tagsIn.every((tag): tag is string => typeof tag === "string")
+    ) {
+      globalTagsIn = rawInputs.tagsIn;
+    }
+    if (
+      rawInputs.tagsNot &&
+      Array.isArray(rawInputs.tagsNot) &&
+      rawInputs.tagsNot.every((tag): tag is string => typeof tag === "string")
+    ) {
+      globalTagsNot = rawInputs.tagsNot;
+    }
+
     const topK = getRetrievalTopK({
       agentConfiguration,
       stepActions,
@@ -355,6 +378,8 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
       retrievalConfigurationId: actionConfiguration.sId,
       functionCallId,
       functionCallName: actionConfiguration.name,
+      tagsIn: globalTagsIn,
+      tagsNot: globalTagsNot,
       agentMessageId: agentMessage.agentMessageId,
       step: step,
       workspaceId: owner.id,
@@ -373,6 +398,8 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
           relativeTimeFrame,
           query,
           topK,
+          tagsIn: globalTagsIn,
+          tagsNot: globalTagsNot,
         },
         functionCallId: action.functionCallId,
         functionCallName: action.functionCallName,
@@ -436,11 +463,7 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
       }
 
       // Handle tags filtering.
-      if (
-        typeof ds.filter.tags === "object" &&
-        Array.isArray(ds.filter.tags?.in) &&
-        Array.isArray(ds.filter.tags?.not)
-      ) {
+      if (ds.filter.tags) {
         if (!config.DATASOURCE.filter.tags) {
           config.DATASOURCE.filter.tags = {
             in_map: {},
@@ -451,12 +474,19 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
         const dsView = dataSourceViewsMap[ds.dataSourceViewId];
         assert(dsView, `Data source view ${ds.dataSourceViewId} not found`);
 
-        config.DATASOURCE.filter.tags.in_map[
-          dsView.dataSource.dustAPIDataSourceId
-        ] = ds.filter.tags.in;
-        config.DATASOURCE.filter.tags.not_map[
-          dsView.dataSource.dustAPIDataSourceId
-        ] = ds.filter.tags.not;
+        const tagsIn =
+          ds.filter.tags === "auto" ? globalTagsIn : ds.filter.tags.in;
+        const tagsNot =
+          ds.filter.tags === "auto" ? globalTagsNot : ds.filter.tags.not;
+
+        if (tagsIn && tagsNot) {
+          config.DATASOURCE.filter.tags.in_map[
+            dsView.dataSource.dustAPIDataSourceId
+          ] = tagsIn;
+          config.DATASOURCE.filter.tags.not_map[
+            dsView.dataSource.dustAPIDataSourceId
+          ] = tagsNot;
+        }
       }
     }
 
@@ -676,6 +706,8 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
           relativeTimeFrame: relativeTimeFrame,
           query: query,
           topK,
+          tagsIn: globalTagsIn,
+          tagsNot: globalTagsNot,
         },
         functionCallId: action.functionCallId,
         functionCallName: action.functionCallName,
@@ -710,6 +742,33 @@ export function retrievalAutoTimeFrameInputSpecification() {
   };
 }
 
+export function retrievalTagsInputSpecification() {
+  return [
+    {
+      name: "tagsIn",
+      description:
+        "The list of tags to restrict the search based on the user request and past conversation context." +
+        "If multiple tags are provided, the search will return documents that have at least one of the tags." +
+        "You can't check that all tags are present, only that at least one is present." +
+        "If no tags are provided, the search will return all documents.",
+      type: "array" as const,
+      items: {
+        type: "string" as const,
+      },
+    },
+    {
+      name: "tagsNot",
+      description:
+        "The list of tags to exclude from the search based on the user request and past conversation context." +
+        "Any document having one of these tags will be excluded from the search.",
+      type: "array" as const,
+      items: {
+        type: "string" as const,
+      },
+    },
+  ];
+}
+
 function retrievalActionSpecification({
   actionConfiguration,
   name,
@@ -726,6 +785,10 @@ function retrievalActionSpecification({
   }
   if (actionConfiguration.relativeTimeFrame === "auto") {
     inputs.push(retrievalAutoTimeFrameInputSpecification());
+  }
+
+  if (actionConfiguration.dataSources.some((ds) => ds.filter.tags === "auto")) {
+    inputs.push(...retrievalTagsInputSpecification());
   }
 
   return {
@@ -816,6 +879,8 @@ export async function retrievalActionTypesFromAgentMessageIds(
           query: action.query,
           relativeTimeFrame,
           topK: action.topK,
+          tagsIn: action.tagsIn,
+          tagsNot: action.tagsNot,
         },
         functionCallId: action.functionCallId,
         functionCallName: action.functionCallName,
