@@ -309,10 +309,14 @@ const getProcessingFunction = ({
   }
 
   if (isSupportedDelimitedTextContentType(contentType)) {
-    if (useCase === "conversation" || useCase === "folder_table") {
+    if (useCase === "conversation") {
       // TODO(JIT): after JIT enablement, store raw text here too, the snippet is useless
       return extractContentAndSchemaFromDelimitedTextFiles;
-    } else if (useCase === "folder_document" || useCase === "tool_output") {
+    } else if (
+      useCase === "folder_document" ||
+      useCase === "tool_output" ||
+      useCase === "folder_table"
+    ) {
       return storeRawText;
     }
     return undefined;
