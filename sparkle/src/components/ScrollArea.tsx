@@ -4,42 +4,92 @@ import { useMemo } from "react";
 
 import { cn } from "@sparkle/lib/utils";
 
-export interface ScrollAreaProps
+interface ScrollAreaProps
   extends React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root> {
   hideScrollBar?: boolean;
+  orientation?: "vertical" | "horizontal";
+  scrollBarClassName?: string;
+  viewportClassName?: string;
+  onScroll?: (event: React.UIEvent<HTMLDivElement>) => void;
+  onScrollStateChange?: (isScrolled: boolean) => void;
 }
 
 const ScrollArea = React.forwardRef<
   React.ElementRef<typeof ScrollAreaPrimitive.Root>,
   ScrollAreaProps
->(({ className, children, hideScrollBar = false, ...props }, ref) => {
-  const hasCustomScrollBar = useMemo(
-    () =>
-      React.Children.toArray(children).some(
-        (child) =>
-          React.isValidElement(child) &&
-          (child.type as typeof ScrollBar).displayName === ScrollBar.displayName
-      ),
-    [children]
-  );
+>(
+  (
+    {
+      className,
+      children,
+      hideScrollBar = false,
+      orientation = "vertical",
+      scrollBarClassName,
+      viewportClassName,
+      onScroll,
+      onScrollStateChange,
+      ...props
+    },
+    ref
+  ) => {
+    const viewportRef = React.useRef<HTMLDivElement>(null);
+    const [isScrolled, setIsScrolled] = React.useState(false);
 
-  const shouldHideDefaultScrollBar = hideScrollBar || hasCustomScrollBar;
+    const hasCustomScrollBar = useMemo(
+      () =>
+        React.Children.toArray(children).some(
+          (child) =>
+            React.isValidElement(child) &&
+            (child.type as typeof ScrollBar).displayName ===
+              ScrollBar.displayName
+        ),
+      [children]
+    );
 
-  return (
-    <ScrollAreaPrimitive.Root
-      ref={ref}
-      className={cn("s-relative s-z-20 s-overflow-hidden", className)}
-      {...props}
-    >
-      <ScrollAreaPrimitive.Viewport className="s-h-full s-w-full s-rounded-[inherit]">
-        {children}
-      </ScrollAreaPrimitive.Viewport>
-      {!shouldHideDefaultScrollBar && <ScrollBar />}
-      <ScrollAreaPrimitive.Corner />
-    </ScrollAreaPrimitive.Root>
-  );
-});
+    const shouldHideDefaultScrollBar = hideScrollBar || hasCustomScrollBar;
 
+    const handleScroll = React.useCallback(
+      (event: React.UIEvent<HTMLDivElement>) => {
+        onScroll?.(event);
+
+        if (viewportRef.current) {
+          const scrollTop = viewportRef.current.scrollTop;
+          const isNowScrolled = scrollTop > 0;
+
+          if (isNowScrolled !== isScrolled) {
+            setIsScrolled(isNowScrolled);
+            onScrollStateChange?.(isNowScrolled);
+          }
+        }
+      },
+      [isScrolled, onScroll, onScrollStateChange]
+    );
+
+    return (
+      <ScrollAreaPrimitive.Root
+        ref={ref}
+        className={cn("s-relative s-z-20 s-overflow-hidden", className)}
+        {...props}
+      >
+        <ScrollAreaPrimitive.Viewport
+          ref={viewportRef}
+          onScroll={handleScroll}
+          className={cn(
+            "s-h-full s-w-full s-rounded-[inherit]",
+            isScrolled && "s-scroll-active",
+            viewportClassName
+          )}
+        >
+          {children}
+        </ScrollAreaPrimitive.Viewport>
+        {!shouldHideDefaultScrollBar && (
+          <ScrollBar orientation={orientation} className={scrollBarClassName} />
+        )}
+        <ScrollAreaPrimitive.Corner />
+      </ScrollAreaPrimitive.Root>
+    );
+  }
+);
 ScrollArea.displayName = ScrollAreaPrimitive.Root.displayName;
 
 const scrollBarSizes = {
