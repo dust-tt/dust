@@ -1,8 +1,0 @@
----
-description: Rules when writing tests
-globs: *.ts,*.tsx,*.js,*.jsx
----
-We use vitest as our testing framework.
-Mock external libraries when appropriate.
-We have factories and helpers to write tests for front in the front/tests/ folder.
-We use the method itInTransaction to wrap each test case in a db transaction and provide total isolation for the test.

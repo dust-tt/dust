@@ -816,7 +816,6 @@ export async function upsertDataSourceTableFromCsv({
   truncate,
   parents,
   parentId,
-  useAppForHeaderDetection,
   title,
   mimeType,
   sourceUrl,
@@ -830,7 +829,6 @@ export async function upsertDataSourceTableFromCsv({
   truncate: boolean;
   parents: string[];
   parentId: string | null;
-  useAppForHeaderDetection?: boolean;
   title: string;
   mimeType: string;
   sourceUrl?: string;
@@ -869,7 +867,6 @@ export async function upsertDataSourceTableFromCsv({
     tableId,
     truncate,
     async: true,
-    useAppForHeaderDetection,
     title,
     mimeType,
     timestamp: null,

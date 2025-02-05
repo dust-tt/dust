@@ -106,7 +106,6 @@ async function upsertMSTable(
       truncate: true,
       parents,
       parentId: parents[1],
-      useAppForHeaderDetection: true,
       title: `${spreadsheet.name} - ${worksheet.name}`,
       mimeType:
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

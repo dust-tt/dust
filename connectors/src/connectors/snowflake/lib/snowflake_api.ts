@@ -219,16 +219,34 @@ export const fetchTables = async ({
  * Fetch the grants available for the Snowflake role,
  * including future grants, then check if the connection is read-only.
  */
-export const isConnectionReadonly = async ({
+
+export async function isConnectionReadonly({
   credentials,
   connection,
 }: {
   credentials: SnowflakeCredentials;
   connection: Connection;
-}): Promise<Result<void, TestConnectionError>> => {
+}): Promise<Result<void, TestConnectionError>> {
+  // Check current role and all inherited roles
+  return _checkRoleGrants(credentials, connection, credentials.role);
+}
+
+async function _checkRoleGrants(
+  credentials: SnowflakeCredentials,
+  connection: Connection,
+  roleName: string,
+  checkedRoles: Set<string> = new Set()
+): Promise<Result<void, TestConnectionError>> {
+  // Prevent infinite recursion with cycles in role hierarchy
+  if (checkedRoles.has(roleName)) {
+    return new Ok(undefined);
+  }
+  checkedRoles.add(roleName);
+
+  // Check current grants
   const currentGrantsRes = await _fetchRows<SnowflakeGrant>({
     credentials,
-    query: `SHOW GRANTS TO ROLE ${credentials.role}`,
+    query: `SHOW GRANTS TO ROLE ${roleName}`,
     codec: snowflakeGrantCodec,
     connection,
   });
@@ -238,9 +256,10 @@ export const isConnectionReadonly = async ({
     );
   }
 
+  // Check future grants
   const futureGrantsRes = await _fetchRows<SnowflakeFutureGrant>({
     credentials,
-    query: `SHOW FUTURE GRANTS TO ROLE ${credentials.role}`,
+    query: `SHOW FUTURE GRANTS TO ROLE ${roleName}`,
     codec: snowflakeFutureGrantCodec,
     connection,
   });
@@ -250,12 +269,11 @@ export const isConnectionReadonly = async ({
     );
   }
 
-  // We go ove each grant to greenlight them.
+  // Validate all grants (current and future)
   for (const g of [...currentGrantsRes.value, ...futureGrantsRes.value]) {
     const grantOn = "granted_on" in g ? g.granted_on : g.grant_on;
 
     if (["TABLE", "VIEW"].includes(grantOn)) {
-      // We only allow SELECT grants on tables.
       if (g.privilege !== "SELECT") {
         return new Err(
           new TestConnectionError(
@@ -265,7 +283,6 @@ export const isConnectionReadonly = async ({
         );
       }
     } else if (["SCHEMA", "DATABASE", "WAREHOUSE"].includes(grantOn)) {
-      // We only allow USAGE grants on schemas / databases / warehouses.
       if (g.privilege !== "USAGE") {
         return new Err(
           new TestConnectionError(
@@ -274,8 +291,28 @@ export const isConnectionReadonly = async ({
           )
         );
       }
+    } else if (grantOn === "ROLE") {
+      // For roles, allow USAGE (role inheritance) but recursively check the parent role
+      if (g.privilege !== "USAGE") {
+        return new Err(
+          new TestConnectionError(
+            "NOT_READONLY",
+            `Non-usage grant found on ${grantOn} "${g.name}": privilege=${g.privilege} (connection must be read-only).`
+          )
+        );
+      }
+      // Recursively check parent role's grants
+      const parentRoleCheck = await _checkRoleGrants(
+        credentials,
+        connection,
+        g.name,
+        checkedRoles
+      );
+      if (parentRoleCheck.isErr()) {
+        return parentRoleCheck;
+      }
     } else {
-      // We don't allow any other grants.
+      // We don't allow any other grants
       return new Err(
         new TestConnectionError(
           "NOT_READONLY",
@@ -286,7 +323,7 @@ export const isConnectionReadonly = async ({
   }
 
   return new Ok(undefined);
-};
+}
 
 // UTILS
 

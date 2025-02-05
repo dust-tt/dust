@@ -24,12 +24,21 @@ export async function callDocTrackerRetrievalAction(
     parentsInMap: Record<string, string[] | null>;
   }
 ): Promise<
-  Result<t.TypeOf<typeof DocTrackerRetrievalActionValueSchema>, APIError>
+  Result<
+    {
+      result: t.TypeOf<typeof DocTrackerRetrievalActionValueSchema>;
+      runId: string | null;
+    },
+    APIError
+  >
 > {
   const ownerWorkspace = auth.getNonNullableWorkspace();
 
   if (!maintainedScope.length) {
-    return new Ok([]);
+    return new Ok({
+      result: [],
+      runId: null,
+    });
   }
 
   if (
@@ -45,9 +54,12 @@ export async function callDocTrackerRetrievalAction(
     workspace_id: ownerWorkspace.sId,
     data_source_id: view.dataSourceViewId,
   }));
-  config.SEMANTIC_SEARCH.filter.parents = {
-    in_map: parentsInMap,
-  };
+
+  if (Object.keys(parentsInMap).length > 0) {
+    config.SEMANTIC_SEARCH.filter.parents = {
+      in_map: parentsInMap,
+    };
+  }
 
   config.SEMANTIC_SEARCH.target_document_tokens = targetDocumentTokens;
   config.SEMANTIC_SEARCH.top_k = topK;
