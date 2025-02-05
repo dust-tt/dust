@@ -26,7 +26,12 @@ export async function callDocTrackerScoreDocsAction(
     providerId: string;
     modelId: string;
   }
-): Promise<Result<DocTrackerScoreDocsActionResult, APIError>> {
+): Promise<
+  Result<
+    { result: DocTrackerScoreDocsActionResult; runId: string | null },
+    APIError
+  >
+> {
   const action = getDustProdAction("doc-tracker-score-docs");
 
   const config = cloneBaseConfig(action.config);
