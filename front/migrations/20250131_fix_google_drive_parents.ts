@@ -15,6 +15,7 @@ const NODE_CONCURRENCY = 16;
 
 interface Node {
   parents: string[];
+  data_source: number;
   node_id: string;
   source_url: string;
   timestamp: number;
@@ -78,14 +79,7 @@ async function migrateNode({
     newParents.every((x, i) => x === coreNode.parents[i]) &&
     coreNode.parents.every((x, i) => x === newParents[i])
   ) {
-    logger.info(
-      {
-        documentId: coreNode.node_id,
-        fromParents: coreNode.parents,
-        toParents: newParents,
-      },
-      `SKIP document (parents are already correct)`
-    );
+    localLogger.info(`SKIP document (parents are already correct)`);
     return new Ok(undefined);
   }
 
@@ -124,38 +118,15 @@ async function migrateNode({
           });
         }
         if (updateRes.isErr()) {
-          logger.error(
-            {
-              nodeId: coreNode.node_id,
-              fromParents: coreNode.parents,
-              toParents: newParents,
-              toParentId: newParentId,
-            },
-            `Error while updating parents`
-          );
+          localLogger.error(`Error while updating parents`);
           throw new Error(updateRes.error.message);
         }
       },
       { retries: 10 }
     )({});
-
-    logger.info(
-      {
-        nodeId: coreNode.node_id,
-        fromParents: coreNode.parents,
-        toParents: newParents,
-      },
-      `LIVE`
-    );
+    localLogger.info(`LIVE`);
   } else {
-    logger.info(
-      {
-        nodeId: coreNode.node_id,
-        fromParents: coreNode.parents,
-        toParents: newParents,
-      },
-      `DRY`
-    );
+    localLogger.info(`DRY`);
   }
 
   return new Ok(undefined);
