@@ -128,6 +128,7 @@ SheetContainer.displayName = "SheetContainer";
 interface SheetFooterProps extends React.HTMLAttributes<HTMLDivElement> {
   leftButtonProps?: React.ComponentProps<typeof Button>;
   rightButtonProps?: React.ComponentProps<typeof Button>;
+  rightEndButtonProps?: React.ComponentProps<typeof Button>;
   sheetCloseClassName?: string;
 }
 
@@ -136,6 +137,7 @@ const SheetFooter = ({
   children,
   leftButtonProps,
   rightButtonProps,
+  rightEndButtonProps,
   sheetCloseClassName,
   ...props
 }: SheetFooterProps) => (
@@ -154,12 +156,21 @@ const SheetFooter = ({
           <Button {...leftButtonProps} />
         </SheetClose>
       ))}
+    <div className="s-flex-grow" />
     {rightButtonProps &&
       (rightButtonProps.disabled ? (
         <Button {...rightButtonProps} />
       ) : (
         <SheetClose className={sheetCloseClassName} asChild>
           <Button {...rightButtonProps} />
+        </SheetClose>
+      ))}
+    {rightEndButtonProps &&
+      (rightEndButtonProps.disabled ? (
+        <Button {...rightEndButtonProps} />
+      ) : (
+        <SheetClose className={sheetCloseClassName} asChild>
+          <Button {...rightEndButtonProps} />
         </SheetClose>
       ))}
     {children}
