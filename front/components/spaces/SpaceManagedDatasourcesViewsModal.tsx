@@ -110,6 +110,7 @@ export default function SpaceManagedDataSourcesViewsModal({
             dataSourceView: config.dataSourceView,
             selectedResources,
             isSelectAll,
+            tagsFilter: null, // No tags filters needed to list data source views
           };
           return acc;
         },

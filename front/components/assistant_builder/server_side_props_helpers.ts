@@ -233,6 +233,7 @@ async function renderDataSourcesConfigurations(
     dataSourceViewId: ds.dataSourceViewId,
     resources: ds.filter.parents?.in ?? null,
     isSelectAll: !ds.filter.parents,
+    tagsFilter: ds.filter.tags || null, // todo(TAF) Remove this when we don't need to support optional tags from builder.
   }));
 
   const dataSourceConfigurationsArray = await Promise.all(
@@ -253,6 +254,7 @@ async function renderDataSourcesConfigurations(
           dataSourceView: serializedDataSourceView,
           selectedResources: [],
           isSelectAll: sr.isSelectAll,
+          tagsFilter: sr.tagsFilter,
         };
       }
 
@@ -285,6 +287,7 @@ async function renderDataSourcesConfigurations(
           dataSourceView: serializedDataSourceView,
           selectedResources: [],
           isSelectAll: sr.isSelectAll,
+          tagsFilter: sr.tagsFilter,
         };
       }
 
@@ -292,6 +295,7 @@ async function renderDataSourcesConfigurations(
         dataSourceView: serializedDataSourceView,
         selectedResources: contentNodesRes.value.nodes,
         isSelectAll: sr.isSelectAll,
+        tagsFilter: sr.tagsFilter,
       };
     })
   );
@@ -312,8 +316,9 @@ async function renderTableDataSourcesConfigurations(
   const selectedResources = action.tables.map((table) => ({
     dataSourceViewId: table.dataSourceViewId,
     resources: [table.tableId],
-    // `isSelectAll` is always false for TablesQueryConfiguration.
+    // `isSelectAll`  & `tagsFilter` are always false for TablesQueryConfiguration.
     isSelectAll: false,
+    tagsFilter: null,
   }));
 
   const dataSourceConfigurationsArray: DataSourceViewSelectionConfiguration[] =
@@ -361,6 +366,7 @@ async function renderTableDataSourcesConfigurations(
             dataSourceView: serializedDataSourceView,
             selectedResources: [],
             isSelectAll: sr.isSelectAll,
+            tagsFilter: sr.tagsFilter,
           };
         }
 
@@ -368,6 +374,7 @@ async function renderTableDataSourcesConfigurations(
           dataSourceView: serializedDataSourceView,
           selectedResources: contentNodesRes.value.nodes,
           isSelectAll: sr.isSelectAll,
+          tagsFilter: sr.tagsFilter,
         };
       })
     );

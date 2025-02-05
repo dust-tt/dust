@@ -462,11 +462,31 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
         config.DATASOURCE.filter.parents.not.push(...ds.filter.parents.not);
       }
 
-      if (globalTagsIn || globalTagsNot) {
-        config.DATASOURCE.filter.tags = {
-          in: globalTagsIn,
-          not: globalTagsNot,
-        };
+      // Handle tags filtering.
+      if (ds.filter.tags) {
+        if (!config.DATASOURCE.filter.tags) {
+          config.DATASOURCE.filter.tags = {
+            in_map: {},
+            not_map: {},
+          };
+        }
+
+        const dsView = dataSourceViewsMap[ds.dataSourceViewId];
+        assert(dsView, `Data source view ${ds.dataSourceViewId} not found`);
+
+        const tagsIn =
+          ds.filter.tags === "auto" ? globalTagsIn : ds.filter.tags.in;
+        const tagsNot =
+          ds.filter.tags === "auto" ? globalTagsNot : ds.filter.tags.not;
+
+        if (tagsIn && tagsNot) {
+          config.DATASOURCE.filter.tags.in_map[
+            dsView.dataSource.dustAPIDataSourceId
+          ] = tagsIn;
+          config.DATASOURCE.filter.tags.not_map[
+            dsView.dataSource.dustAPIDataSourceId
+          ] = tagsNot;
+        }
       }
     }
 
@@ -686,6 +706,8 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
           relativeTimeFrame: relativeTimeFrame,
           query: query,
           topK,
+          tagsIn: globalTagsIn,
+          tagsNot: globalTagsNot,
         },
         functionCallId: action.functionCallId,
         functionCallName: action.functionCallName,
@@ -765,15 +787,9 @@ function retrievalActionSpecification({
     inputs.push(retrievalAutoTimeFrameInputSpecification());
   }
 
-  // if (actionConfiguration.dataSources.some((ds) => ds.tagsMode === "auto")) {
-  // const views = await DataSourceViewResource.fetchByIds(
-  //   auth,
-  //   actionConfiguration.dataSources
-  //     // .filter((ds) => ds.tagsMode === "auto")
-  //     .map((ds) => ds.dataSourceViewId)
-  // );
-  inputs.push(...retrievalTagsInputSpecification());
-  // }
+  if (actionConfiguration.dataSources.some((ds) => ds.filter.tags === "auto")) {
+    inputs.push(...retrievalTagsInputSpecification());
+  }
 
   return {
     name,
@@ -863,6 +879,8 @@ export async function retrievalActionTypesFromAgentMessageIds(
           query: action.query,
           relativeTimeFrame,
           topK: action.topK,
+          tagsIn: action.tagsIn,
+          tagsNot: action.tagsNot,
         },
         functionCallId: action.functionCallId,
         functionCallName: action.functionCallName,

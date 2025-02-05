@@ -58,6 +58,7 @@ export { default as FilterIcon } from "./Filter";
 export { default as FlagIcon } from "./Flag";
 export { default as FolderIcon } from "./Folder";
 export { default as FolderOpenIcon } from "./FolderOpen";
+export { default as FolderTableIcon } from "./FolderTable";
 export { default as FullscreenIcon } from "./Fullscreen";
 export { default as FullscreenExitIcon } from "./FullscreenExit";
 export { default as GithubIcon } from "./Github";

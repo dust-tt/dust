@@ -88,46 +88,61 @@ export function computeNodesDiff({
   const missingNodes: DataSourceViewContentNode[] = [];
   const mismatchNodes: DataSourceViewContentNode[] = [];
 
+  // Core and connectors follow different sorting rules,
+  // so when pagination is enforced, we only want to log the number of nodes we get,
+  // and the other logs are irrelevant since we are not fetching the same nodes.
+  if (pagination && connectorsContentNodes.length !== coreContentNodes.length) {
+    localLogger.info(
+      {
+        connectorsContentNodesLength: connectorsContentNodes.length,
+        coreContentNodesLength: coreContentNodes.length,
+        pagination,
+      },
+      "[CoreNodes] Different number of nodes returned by connectors and core"
+    );
+    return [];
+  }
+
   connectorsContentNodes.forEach((connectorsNode) => {
-    const coreNodes = coreContentNodes.filter(
+    const matchingCoreNodes = coreContentNodes.filter(
       (coreNode) => coreNode.internalId === connectorsNode.internalId
     );
-    if (coreNodes.length === 0) {
-      // Connector's notion unknown folder can map to core's syncing OR unknown folder.
-      // See https://github.com/dust-tt/dust/issues/10340
-      // Ignore slack channels missing in core - see https://github.com/dust-tt/dust/issues/10338
+    if (matchingCoreNodes.length === 0) {
       if (
-        connectorsNode.internalId !== "notion-unknown" &&
-        !connectorsNode.internalId.startsWith("slack-channel-")
-      ) {
-        if (
-          // For snowflake we ignore the missing nodes if we returned a node that is a parent.
-          // This is because connectors returns all children tables when fed with internalIds while core returns only these ids
-          // See https://github.com/dust-tt/dust/issues/10400
-          !(
-            provider === "snowflake" &&
-            coreContentNodes.some((n) =>
-              connectorsNode.internalId.startsWith(n.internalId)
-            )
+        // Connectors' notion-unknown folder can map to core's syncing OR unknown folder,
+        // it is expected that connectors can return `notion-unknown` while core returns `notion-syncing` instead.
+        // See https://github.com/dust-tt/dust/issues/10340
+        (connectorsNode.internalId !== "notion-unknown" ||
+          !coreContentNodes
+            .map((n) => n.internalId)
+            .includes("notion-syncing")) &&
+        // Ignore Slack channels missing in core - see https://github.com/dust-tt/dust/issues/10338
+        !connectorsNode.internalId.startsWith("slack-channel-") &&
+        // For Snowflake we ignore the missing nodes if we returned a node that is a parent.
+        // This is because connectors returns all children tables when fed with internalIds while core returns only these ids
+        // See https://github.com/dust-tt/dust/issues/10400
+        !(
+          provider === "snowflake" &&
+          coreContentNodes.some((n) =>
+            connectorsNode.internalId.startsWith(n.internalId)
           )
-        ) {
-          // Connectors return tables even when viewType is documents, core doesn't
-          if (!(provider === "snowflake" && viewType === "documents")) {
-            missingNodes.push(connectorsNode);
-          }
-        }
+        ) &&
+        // Connectors return tables even when viewType is documents, core doesn't
+        !(provider === "snowflake" && viewType === "documents")
+      ) {
+        missingNodes.push(connectorsNode);
       }
-    } else if (coreNodes.length > 1) {
+    } else if (matchingCoreNodes.length > 1) {
       // this one should never ever happen, it's a real red flag
       localLogger.info(
         {
           internalId: connectorsNode.internalId,
-          coreNodesId: coreNodes.map((n) => n.internalId),
+          coreNodesId: matchingCoreNodes.map((n) => n.internalId),
         },
         "[CoreNodes] Found more than one match"
       );
     } else {
-      const coreNode = coreNodes[0];
+      const matchingCoreNode = matchingCoreNodes[0];
       const diff = Object.fromEntries(
         Object.entries(connectorsNode)
           .filter(([key, value]) => {
@@ -138,13 +153,6 @@ export function computeNodesDiff({
             }
             // Custom exclusion rules. The goal here is to avoid logging irrelevant differences, scoping by connector.
 
-            // Titles: until ES backfill, there is a split issue on : that we fixed and can ignore, see https://github.com/dust-tt/dust/issues/10281
-            if (key === "title") {
-              if (connectorsNode.title.split(":")[0] === coreNode.title) {
-                return false;
-              }
-            }
-
             // For Snowflake and Zendesk we fixed how parents were computed in the core folders but not in connectors.
             // For Intercom we keep the virtual node Help Center in connectors but not in core.
             if (
@@ -154,7 +162,8 @@ export function computeNodesDiff({
             ) {
               return false;
             }
-            const coreValue = coreNode[key as keyof DataSourceViewContentNode];
+            const coreValue =
+              matchingCoreNode[key as keyof DataSourceViewContentNode];
 
             // Special case for folder parents, the ones retrieved using getContentNodesForStaticDataSourceView do not
             // contain any parentInternalIds.
@@ -164,13 +173,13 @@ export function computeNodesDiff({
             // Ignore the type mismatch between core and connectors for mime types that were already identified.
             if (
               key === "type" &&
-              coreNode.mimeType &&
+              matchingCoreNode.mimeType &&
               ((value === "channel" &&
-                CHANNEL_MIME_TYPES.includes(coreNode.mimeType)) ||
+                CHANNEL_MIME_TYPES.includes(matchingCoreNode.mimeType)) ||
                 (value === "database" &&
-                  DATABASE_MIME_TYPES.includes(coreNode.mimeType)) ||
+                  DATABASE_MIME_TYPES.includes(matchingCoreNode.mimeType)) ||
                 (value === "file" &&
-                  FILE_MIME_TYPES.includes(coreNode.mimeType)))
+                  FILE_MIME_TYPES.includes(matchingCoreNode.mimeType)))
             ) {
               return false;
             }
@@ -188,7 +197,9 @@ export function computeNodesDiff({
             if (
               "parentInternalIds" === key &&
               provider === "google_drive" &&
-              coreNode?.parentInternalIds?.includes("gdrive_outside_sync")
+              matchingCoreNode?.parentInternalIds?.includes(
+                "gdrive_outside_sync"
+              )
             ) {
               return false;
             }
@@ -197,7 +208,7 @@ export function computeNodesDiff({
             if (
               ["parentInternalId", "parentInternalIds"].includes(key) &&
               provider === "notion" &&
-              coreNode?.parentInternalIds?.includes("notion-syncing")
+              matchingCoreNode?.parentInternalIds?.includes("notion-syncing")
             ) {
               return false;
             }
@@ -207,7 +218,8 @@ export function computeNodesDiff({
             // The value in core is an improvement over the value in connectors, so we omit the difference.
             if (
               key === "title" &&
-              coreNode.mimeType === "application/vnd.google-apps.spreadsheet"
+              matchingCoreNode.mimeType ===
+                "application/vnd.google-apps.spreadsheet"
             ) {
               return false;
             }
@@ -218,8 +230,8 @@ export function computeNodesDiff({
               key === "type" &&
               provider === "google_drive" &&
               value === "file" &&
-              coreNode.type === "folder" &&
-              coreNode.mimeType === MIME_TYPES.GOOGLE_DRIVE.SPREADSHEET
+              matchingCoreNode.type === "folder" &&
+              matchingCoreNode.mimeType === MIME_TYPES.GOOGLE_DRIVE.SPREADSHEET
             ) {
               return false;
             }
@@ -230,8 +242,8 @@ export function computeNodesDiff({
               key === "type" &&
               provider === "microsoft" &&
               value === "file" &&
-              coreNode.type === "folder" &&
-              coreNode.mimeType === MIME_TYPES.MICROSOFT.SPREADSHEET
+              matchingCoreNode.type === "folder" &&
+              matchingCoreNode.mimeType === MIME_TYPES.MICROSOFT.SPREADSHEET
             ) {
               return false;
             }
@@ -242,8 +254,9 @@ export function computeNodesDiff({
               key === "parentInternalIds" &&
               provider === "google_drive" &&
               !value &&
-              coreNode.parentInternalIds?.length === 1 &&
-              coreNode.parentInternalIds[0] === coreNode.internalId
+              matchingCoreNode.parentInternalIds?.length === 1 &&
+              matchingCoreNode.parentInternalIds[0] ===
+                matchingCoreNode.internalId
             ) {
               return false;
             }
@@ -287,7 +300,7 @@ export function computeNodesDiff({
             if (
               key === "expandable" &&
               provider === "intercom" &&
-              coreNode.internalId.startsWith("intercom-collection") &&
+              matchingCoreNode.internalId.startsWith("intercom-collection") &&
               value === false &&
               coreValue === true
             ) {
@@ -331,7 +344,7 @@ export function computeNodesDiff({
             key,
             {
               connectors: value,
-              core: coreNode[key as keyof DataSourceViewContentNode],
+              core: matchingCoreNode[key as keyof DataSourceViewContentNode],
             },
           ])
       );
@@ -348,7 +361,7 @@ export function computeNodesDiff({
         const mismatchNode = { ...connectorsNode };
         mismatchNode.title = `[MISMATCH - CONNECTOR] ${mismatchNode.title}`;
         mismatchNodes.push(mismatchNode);
-        const mismatchCoreNode = { ...coreNode };
+        const mismatchCoreNode = { ...matchingCoreNode };
         mismatchCoreNode.title = `[MISMATCH - CORE] ${mismatchCoreNode.title}`;
         mismatchNodes.push(mismatchCoreNode);
       }
@@ -375,56 +388,62 @@ export function computeNodesDiff({
       "[CoreNodes] Missing nodes from core"
     );
   }
-  const extraCoreNodes =
-    // useStaticDataSourceViewHasContent sets a limit to 1 -> This limit is not applied to core nodes retrieval
-    // We skip the diff if the limit is 1
-    pagination?.limit === 1
-      ? []
-      : coreContentNodes
-          .filter(
-            (coreNode) =>
-              !connectorsContentNodes.some(
-                (n) => n.internalId === coreNode.internalId
-                // Special case
-                // Notion syncing folder is not in connectors but it's in core.
-                // Connector's notion unknown folder can map to core's syncing OR unknown folder.
-                // See https://github.com/dust-tt/dust/issues/10340
-              ) && coreNode.internalId !== "notion-syncing"
+  const extraCoreNodes = coreContentNodes
+    .filter(
+      (coreNode) =>
+        !connectorsContentNodes.some(
+          (n) => n.internalId === coreNode.internalId
+          // Special case
+          // Notion syncing folder is not in connectors but it's in core.
+          // Connector's notion unknown folder can map to core's syncing OR unknown folder.
+          // See https://github.com/dust-tt/dust/issues/10340
+        ) && coreNode.internalId !== "notion-syncing"
+    )
+    // There is some specific code to Intercom in retrieveIntercomConversationsPermissions that hides the empty team folders + the teams folder if !hasTeamsWithReadPermission
+    // TBD whether this logic will be reproduced for core, ignoring for now.
+    .filter(
+      (coreNode) =>
+        provider !== "intercom" ||
+        !coreNode.internalId.startsWith("intercom-team")
+    )
+    // The endpoints in the Zendesk connector do not return anything as children of a category, core does.
+    // This will be considered as an improvement, if it turns out to be a bad user experience this will be removed, ignoring for now.
+    .filter(
+      (coreNode) =>
+        provider !== "zendesk" ||
+        !coreNode.internalId.startsWith("zendesk-article")
+    )
+    // Slack channels can be removed from the connector's database while not being deleted from core.
+    // https://github.com/dust-tt/dust/issues/10374
+    .filter(
+      (coreNode) =>
+        provider !== "slack" ||
+        !coreNode.internalId.startsWith("slack-channel-")
+    )
+    // Snowflake schemas and dbs are returned from core, while connector only return tables
+    // Detect schemas/dbs for which we have a table in connectors and ignore them.
+    // See https://github.com/orgs/dust-tt/projects/3/views/1?pane=issue&itemId=95859834&issue=dust-tt%7Cdust%7C10400
+    .filter(
+      (coreNode) =>
+        !(
+          provider === "snowflake" &&
+          coreNode.internalId.split(".").length <= 2 &&
+          connectorsContentNodes.some((n) =>
+            n.internalId.startsWith(coreNode.internalId)
           )
-          // There is some specific code to Intercom in retrieveIntercomConversationsPermissions that hides the empty team folders + the teams folder if !hasTeamsWithReadPermission
-          // TBD whether this logic will be reproduced for core, ignoring for now.
-          .filter(
-            (coreNode) =>
-              provider !== "intercom" ||
-              !coreNode.internalId.startsWith("intercom-team")
-          )
-          // The endpoints in the Zendesk connector do not return anything as children of a category, core does.
-          // This will be considered as an improvement, if it turns out to be a bad user experience this will be removed, ignoring for now.
-          .filter(
-            (coreNode) =>
-              provider !== "zendesk" ||
-              !coreNode.internalId.startsWith("zendesk-article")
-          )
-          // Slack channels can be removed from the connector's database while not being deleted from core.
-          // https://github.com/dust-tt/dust/issues/10374
-          .filter(
-            (coreNode) =>
-              provider !== "slack" ||
-              !coreNode.internalId.startsWith("slack-channel-")
-          )
-          // Snowflake schemas and dbs are returned from core, while connector only return tables
-          // Detect schemas/dbs for which we have a table in connectors and ignore them.
-          // See https://github.com/orgs/dust-tt/projects/3/views/1?pane=issue&itemId=95859834&issue=dust-tt%7Cdust%7C10400
-          .filter(
-            (coreNode) =>
-              !(
-                provider === "snowflake" &&
-                coreNode.internalId.split(".").length <= 2 &&
-                connectorsContentNodes.some((n) =>
-                  n.internalId.startsWith(coreNode.internalId)
-                )
-              )
-          );
+        )
+    )
+    // The documents upserted for Notion databases are children of the table node and are not returned by connectors.
+    // core's behavior is considered to be an improvement, as it allows selecting the document alone without the table and its children pages.
+    .filter(
+      (coreNode) =>
+        !(
+          provider === "notion" &&
+          coreNode.internalId.startsWith("notion-database-") &&
+          coreNode.parentInternalId?.replace("notion-", "") ===
+            coreNode.internalId.replace("notion-database-", "")
+        )
+    );
   if (extraCoreNodes.length > 0) {
     localLogger.info(
       {
