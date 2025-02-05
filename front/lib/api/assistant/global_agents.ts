@@ -201,7 +201,7 @@ function _getHelperGlobalAgent({
           {
             dataSourceViewId: config.getDustAppsHelperDatasourceViewId(),
             workspaceId: config.getDustAppsWorkspaceId(),
-            filter: { parents: null },
+            filter: { parents: null, tags: null },
           },
         ],
         name: "search_dust_docs",
@@ -1240,7 +1240,7 @@ function _getDustGlobalAgent(
         dataSourceId: dsView.dataSource.sId,
         dataSourceViewId: dsView.sId,
         workspaceId: preFetchedDataSources.workspaceId,
-        filter: { parents: null },
+        filter: { parents: null, tags: null },
       })),
       name: "search_all_data_sources",
       description: `The user's entire workspace data sources`,
@@ -1273,7 +1273,7 @@ function _getDustGlobalAgent(
           {
             workspaceId: preFetchedDataSources.workspaceId,
             dataSourceViewId: dsView.sId,
-            filter: { parents: null },
+            filter: { parents: null, tags: null },
           },
         ],
         name: "hidden_dust_search_" + dsView.dataSource.name,

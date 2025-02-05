@@ -223,7 +223,10 @@ function getDataSourceConfigurationsForTableAction(
           dsConfigs[table.dataSourceViewId] = {
             workspaceId: table.workspaceId,
             dataSourceViewId: table.dataSourceViewId,
-            filter: { parents: dataSourceView ? { in: [], not: [] } : null },
+            filter: {
+              parents: dataSourceView ? { in: [], not: [] } : null,
+              tags: null, // Tags are not supported for tables query.
+            },
           };
         }
 

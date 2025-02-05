@@ -52,6 +52,30 @@ export const GetAgentConfigurationsLeaderboardQuerySchema = t.type({
   ]),
 });
 
+const DataSourceFilterParentsCodec = t.union([
+  t.type({
+    in: t.array(t.string),
+    not: t.array(t.string),
+  }),
+  t.null,
+]);
+
+const OptionalDataSourceFilterTagsCodec = t.partial({
+  tags: t.union([
+    t.type({
+      in: t.array(t.string),
+      not: t.array(t.string),
+    }),
+    t.literal("auto"),
+    t.null,
+  ]),
+});
+
+const DataSourceFilterCodec = t.intersection([
+  t.type({ parents: DataSourceFilterParentsCodec }),
+  OptionalDataSourceFilterTagsCodec,
+]);
+
 const RetrievalActionConfigurationSchema = t.type({
   type: t.literal("retrieval_configuration"),
   query: t.union([t.literal("auto"), t.literal("none")]),
@@ -68,15 +92,7 @@ const RetrievalActionConfigurationSchema = t.type({
     t.type({
       dataSourceViewId: t.string,
       workspaceId: t.string,
-      filter: t.type({
-        parents: t.union([
-          t.type({
-            in: t.array(t.string),
-            not: t.array(t.string),
-          }),
-          t.null,
-        ]),
-      }),
+      filter: DataSourceFilterCodec,
     })
   ),
 });
@@ -128,15 +144,7 @@ const ProcessActionConfigurationSchema = t.type({
     t.type({
       dataSourceViewId: t.string,
       workspaceId: t.string,
-      filter: t.type({
-        parents: t.union([
-          t.type({
-            in: t.array(t.string),
-            not: t.array(t.string),
-          }),
-          t.null,
-        ]),
-      }),
+      filter: DataSourceFilterCodec,
     })
   ),
   relativeTimeFrame: t.union([
@@ -147,6 +155,7 @@ const ProcessActionConfigurationSchema = t.type({
       unit: TimeframeUnitCodec,
     }),
   ]),
+  // TODO(TAF) Refactor to use the same type as the retrieval action.
   tagsFilter: t.union([
     t.type({
       in: t.array(t.string),

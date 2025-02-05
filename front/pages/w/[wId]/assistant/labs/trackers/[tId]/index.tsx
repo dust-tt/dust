@@ -155,6 +155,7 @@ const renderDataSourcesConfigurations = async (
     dataSourceViewId: ds.dataSourceViewId,
     resources: ds.filter.parents?.in ?? null,
     isSelectAll: !ds.filter.parents,
+    tagsFilter: null, // No tags filters for tracker.
   }));
 
   const dataSourceConfigurationsArray = await Promise.all(
@@ -175,6 +176,7 @@ const renderDataSourcesConfigurations = async (
           dataSourceView: serializedDataSourceView,
           selectedResources: [],
           isSelectAll: sr.isSelectAll,
+          tagsFilter: sr.tagsFilter,
         };
       }
 
@@ -204,6 +206,7 @@ const renderDataSourcesConfigurations = async (
           dataSourceView: serializedDataSourceView,
           selectedResources: [],
           isSelectAll: sr.isSelectAll,
+          tagsFilter: sr.tagsFilter,
         };
       }
 
@@ -211,6 +214,7 @@ const renderDataSourcesConfigurations = async (
         dataSourceView: serializedDataSourceView,
         selectedResources: contentNodesRes.value.nodes,
         isSelectAll: sr.isSelectAll,
+        tagsFilter: sr.tagsFilter,
       };
     })
   );

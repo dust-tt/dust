@@ -40,7 +40,7 @@ export const ConfluenceCommandSchema = t.type({
   args: t.type({
     connectorId: t.union([t.number, t.undefined]),
     pageId: t.union([t.number, t.undefined]),
-    spaceId: t.union([t.string, t.undefined]),
+    spaceId: t.union([t.number, t.undefined]),
     file: t.union([t.string, t.undefined]),
     keyInFile: t.union([t.string, t.undefined]),
   }),
@@ -109,6 +109,7 @@ export const GoogleDriveCommandSchema = t.type({
   command: t.union([
     t.literal("garbage-collect-all"),
     t.literal("check-file"),
+    t.literal("get-google-parents"),
     t.literal("restart-google-webhooks"),
     t.literal("start-incremental-sync"),
     t.literal("restart-all-incremental-sync-workflows"),

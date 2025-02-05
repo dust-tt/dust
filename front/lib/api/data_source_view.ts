@@ -15,7 +15,6 @@ import {
   Err,
   isDevelopment,
   isDustWorkspace,
-  MIME_TYPES,
   Ok,
   removeNulls,
 } from "@dust-tt/types";
@@ -45,6 +44,7 @@ import {
 } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 
+// TODO(nodes-core): remove this upon project cleanup
 const DEFAULT_STATIC_DATA_SOURCE_PAGINATION_LIMIT = 10_000;
 
 export function filterAndCropContentNodesByView(
@@ -189,13 +189,13 @@ function filterNodesByViewType(
       return nodes.filter(
         (node) =>
           node.children_count > 0 ||
-          node.node_type !== "Table" ||
-          // TODO(nodes-core): replace this with either an "all" viewType or a DEFAULT_VIEWTYPE_BY_CONNECTOR_PROVIDER
-          node.mime_type === MIME_TYPES.SNOWFLAKE.TABLE
+          ["Folder", "Document"].includes(node.node_type)
       );
     case "tables":
       return nodes.filter(
-        (node) => node.children_count > 0 || node.node_type === "Table"
+        (node) =>
+          node.children_count > 0 ||
+          ["Folder", "Table"].includes(node.node_type)
       );
     default:
       assertNever(viewType);
@@ -336,6 +336,7 @@ async function getContentNodesForStaticDataSourceView(
   // Use a high pagination limit since the product UI doesn't support pagination yet,
   // even though static data sources can contain many documents via API ingestion.
   const paginationParams = pagination ?? {
+    // TODO(nodes-core): remove this upon project cleanup
     limit: DEFAULT_STATIC_DATA_SOURCE_PAGINATION_LIMIT,
     offset: 0,
   };

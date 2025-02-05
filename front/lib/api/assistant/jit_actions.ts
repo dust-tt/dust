@@ -128,7 +128,7 @@ async function getJITActions(
             {
               workspaceId: conversation.owner.sId,
               dataSourceViewId: dataSourceView.sId,
-              filter: { parents: null },
+              filter: { parents: null, tags: null },
             },
           ],
         };
