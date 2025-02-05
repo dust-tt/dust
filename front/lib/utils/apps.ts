@@ -169,6 +169,7 @@ async function updateAppSpecifications(
     savedConfig: string;
   }
 ): Promise<Result<boolean, CoreAPIError | Error>> {
+  logger.info({ sId: app.sId, name: app.name }, "Updating app specifications");
   // Specification and config have been modified and need to be imported
   if (
     savedSpecification !== app.savedSpecification &&
@@ -276,6 +277,11 @@ async function updateAppSpecifications(
 
       return new Ok(true);
     }
+  } else {
+    logger.info(
+      { sId: app.sId, name: app.name },
+      "No changes to app specifications"
+    );
   }
   return new Ok(false);
 }
@@ -287,6 +293,10 @@ export async function importApp(
 ): Promise<
   Result<{ app: AppResource; updated: boolean }, CoreAPIError | Error>
 > {
+  logger.info(
+    { sId: appToImport.sId, name: appToImport.name },
+    "Importing app"
+  );
   const appRes = await updateOrCreateApp(auth, {
     appToImport,
     space,
@@ -350,6 +360,11 @@ export async function importApp(
     logger.info(
       { sId: app.sId, appName: app.name },
       "App imported successfully"
+    );
+  } else {
+    logger.info(
+      { sId: app.sId, appName: app.name },
+      "App unchanged, no updated needed"
     );
   }
   return new Ok({ app, hash: undefined, updated });
@@ -460,6 +475,11 @@ export async function synchronizeDustApps(
     const e = exportRes.error;
     return new Err(new Error(`Cannot export: ${e.message}`));
   }
+
+  logger.info(
+    { apps: exportRes.value.map((app) => app.sId) },
+    "Got exported apps from master"
+  );
 
   const importRes = await importApps(auth, space, exportRes.value);
   logger.info({ importedApp: importRes }, "Apps imported");
