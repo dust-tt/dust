@@ -1,5 +1,5 @@
 import type { ModelId } from "@dust-tt/types";
-import { MIME_TYPES } from "@dust-tt/types";
+import { MIME_TYPES, removeNulls } from "@dust-tt/types";
 import { uuid4 } from "@temporalio/workflow";
 import type { drive_v3 } from "googleapis";
 import type { GaxiosResponse, OAuth2Client } from "googleapis-common";
@@ -27,6 +27,7 @@ import {
   driveObjectToDustType,
   getAuthObject,
   getDriveClient,
+  getDriveFileId,
   getInternalId,
   getMyDriveIdCached,
 } from "@connectors/connectors/google_drive/temporal/utils";
@@ -714,15 +715,19 @@ export async function garbageCollector(
     })
   );
 
-  const memo = `gc-${lastSeenTs}`;
+  const parentFiles = await GoogleDriveFiles.findAll({
+    where: {
+      connectorId,
+      driveFileId: [...new Set(removeNulls(files.map((f) => f.parentId)))],
+    },
+  });
+
   for (const file of files) {
     if (file.parentId) {
-      const parents = await getLocalParents(
-        connector.id,
-        file.dustFileId,
-        memo
+      const parentFile = parentFiles.find(
+        (f) => f.driveFileId === file.parentId
       );
-      if (parents.length === 1) {
+      if (!parentFile) {
         logger.info(
           { fileId: file.driveFileId },
           "Deleting file with invalid parents"
