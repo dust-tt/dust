@@ -106,51 +106,51 @@ const getColor = (name: string) => {
     hash = name.charCodeAt(i) + ((hash << 5) - hash);
   }
   const colors = [
-    "s-bg-red-300 dark:s-bg-red-300-night",
-    "s-bg-orange-300 dark:s-bg-orange-300-night",
-    "s-bg-amber-300 dark:s-bg-amber-300-night",
-    "s-bg-yellow-300 dark:s-bg-yellow-300-night",
-    "s-bg-lime-300 dark:s-bg-lime-300-night",
-    "s-bg-green-300 dark:s-bg-green-300-night",
-    "s-bg-emerald-300 dark:s-bg-emerald-300-night",
-    "s-bg-teal-300 dark:s-bg-teal-300-night",
-    "s-bg-cyan-300 dark:s-bg-cyan-300-night",
-    "s-bg-sky-300 dark:s-bg-sky-300-night",
-    "s-bg-blue-300 dark:s-bg-blue-300-night",
-    "s-bg-indigo-300 dark:s-bg-indigo-300-night",
-    "s-bg-violet-300 dark:s-bg-violet-300-night",
-    "s-bg-purple-300 dark:s-bg-purple-300-night",
-    "s-bg-fuchsia-300 dark:s-bg-fuchsia-300-night",
-    "s-bg-rose-300 dark:s-bg-rose-300-night",
+    "s-bg-red-300",
+    "s-bg-orange-300",
+    "s-bg-amber-300",
+    "s-bg-yellow-300",
+    "s-bg-lime-300",
+    "s-bg-green-300",
+    "s-bg-emerald-300",
+    "s-bg-teal-300",
+    "s-bg-cyan-300",
+    "s-bg-sky-300",
+    "s-bg-blue-300",
+    "s-bg-indigo-300",
+    "s-bg-violet-300",
+    "s-bg-purple-300",
+    "s-bg-fuchsia-300",
+    "s-bg-rose-300",
   ];
   return colors[Math.abs(hash) % colors.length];
 };
 
 const getTextVariant = (name: string) => {
   if (/\+/.test(name)) {
-    return "s-text-slate-700 dark:s-text-slate-700-night";
+    return "s-text-slate-700";
   }
   let hash = 0;
   for (let i = 0; i < name.length; i++) {
     hash = name.charCodeAt(i) + ((hash << 5) - hash);
   }
   const txtColors = [
-    "s-text-red-700 dark:s-text-red-700-night ",
-    "s-text-orange-700 dark:s-text-orange-700-night",
-    "s-text-amber-700 dark:s-text-amber-700-night",
-    "s-text-yellow-700 dark:s-text-yellow-700-night",
-    "s-text-lime-700 dark:s-text-lime-700-night",
-    "s-text-green-700 dark:s-text-green-700-night",
-    "s-text-emerald-700 dark:s-text-emerald-700-night",
-    "s-text-teal-700 dark:s-text-teal-700-night",
-    "s-text-cyan-700 dark:s-text-cyan-700-night",
-    "s-text-sky-700 dark:s-text-sky-700-night",
-    "s-text-blue-700 dark:s-text-blue-700-night",
-    "s-text-indigo-700 dark:s-text-indigo-700-night",
-    "s-text-violet-700 dark:s-text-violet-700-night",
-    "s-text-purple-700 dark:s-text-purple-700-night",
-    "s-text-fuchsia-700 dark:s-text-fuchsia-700-night",
-    "s-text-rose-700 dark:s-text-rose-700-night",
+    "s-text-red-700",
+    "s-text-orange-700",
+    "s-text-amber-700",
+    "s-text-yellow-700",
+    "s-text-lime-700",
+    "s-text-green-700",
+    "s-text-emerald-700",
+    "s-text-teal-700",
+    "s-text-cyan-700",
+    "s-text-sky-700",
+    "s-text-blue-700",
+    "s-text-indigo-700",
+    "s-text-violet-700",
+    "s-text-purple-700",
+    "s-text-fuchsia-700",
+    "s-text-rose-700",
   ];
   return txtColors[Math.abs(hash) % txtColors.length];
 };
