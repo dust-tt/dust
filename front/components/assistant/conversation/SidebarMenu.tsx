@@ -203,7 +203,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
         <div className="flex h-0 min-h-full w-full overflow-y-auto">
           <div className="flex w-full flex-col">
             {isMultiSelect ? (
-              <div className="z-50 flex justify-between gap-2 p-2 shadow-tale dark:shadow-tale-night">
+              <div className="z-50 flex justify-between gap-2 p-2 shadow-tale">
                 <Button
                   variant={
                     selectedConversations.length === 0 ? "outline" : "warning"
@@ -219,7 +219,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                 />
               </div>
             ) : (
-              <div className="z-50 flex justify-end gap-2 p-2 dark:shadow-tale-night">
+              <div className="z-50 flex justify-end gap-2 p-2">
                 <SearchInput
                   name="search"
                   placeholder="Search"
