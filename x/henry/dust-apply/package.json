@@ -1,0 +1,28 @@
+{
+    "name": "dust-apply",
+    "private": true,
+    "version": "1.0.0",
+    "description": "Internal CLI tool for Dust API",
+    "main": "dist/index.js",
+    "bin": {
+        "dust-apply": "./dist/index.js"
+    },
+    "scripts": {
+        "build": "tsc",
+        "install-global": "npm run build && npm link",
+        "upgrade": "npm install && npm run install-global",
+        "test": "./node_modules/.bin/ts-node src/test.ts"
+    },
+    "dependencies": {
+        "@dust-tt/client": "latest",
+        "diff": "^7.0.0",
+        "lodash": "^4.17.21"
+    },
+    "devDependencies": {
+        "@types/diff": "^7.0.0",
+        "@types/lodash": "^4.17.14",
+        "@types/node": "^20.0.0",
+        "ts-node": "^10.9.2",
+        "typescript": "^5.0.0"
+    }
+}
