@@ -30,6 +30,7 @@ async function checkOrphansForConnector(
 
   let offset = 0;
   let count = 0;
+  let orphanCount = 0;
   do {
     const coreRes = await coreAPI.getDataSourceDocuments(
       {
@@ -60,7 +61,7 @@ async function checkOrphansForConnector(
     const orphans = ids.filter((id) => !found.includes(id));
 
     logger.info({ orphans }, "Found orphan nodes");
-
+    orphanCount += orphans.length;
     if (execute) {
       await concurrentExecutor(
         orphans,
@@ -76,7 +77,7 @@ async function checkOrphansForConnector(
       );
     }
   } while (count === BATCH_SIZE);
-  logger.info({ count }, "DONE");
+  logger.info({ orphanCount }, "DONE");
 }
 
 makeScript(
