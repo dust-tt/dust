@@ -153,15 +153,6 @@ export function computeNodesDiff({
             }
             // Custom exclusion rules. The goal here is to avoid logging irrelevant differences, scoping by connector.
 
-            // Titles: until ES backfill, there is a split issue on ":" that we fixed and can ignore, see https://github.com/dust-tt/dust/issues/10281
-            if (key === "title") {
-              if (
-                connectorsNode.title.split(":")[0] === matchingCoreNode.title
-              ) {
-                return false;
-              }
-            }
-
             // For Snowflake and Zendesk we fixed how parents were computed in the core folders but not in connectors.
             // For Intercom we keep the virtual node Help Center in connectors but not in core.
             if (
