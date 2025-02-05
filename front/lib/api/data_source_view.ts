@@ -200,6 +200,8 @@ function filterNodesByViewType(
           node.children_count > 0 ||
           ["Folder", "Table"].includes(node.node_type)
       );
+    case "all":
+      return nodes;
     default:
       assertNever(viewType);
   }
@@ -525,7 +527,6 @@ export async function getContentNodesForDataSourceView(
       coreContentNodes: coreContentNodesRes.value.nodes,
       provider: dataSourceView.dataSource.connectorProvider,
       pagination: params.pagination,
-      viewType: params.viewType,
       localLogger,
     });
 
