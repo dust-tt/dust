@@ -118,7 +118,7 @@ async function migrateNode({
           throw new Error(updateRes.error.message);
         }
       },
-      { retries: 10 }
+      { retries: 3 }
     )({});
     localLogger.info(`LIVE`);
   } else {
