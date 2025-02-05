@@ -21,7 +21,6 @@ import {
   fetchSyncedChildren,
   getBatchContentNodes,
   getContentNodeParents,
-  saveNodesFromPermissions,
 } from "@connectors/connectors/snowflake/lib/permissions";
 import type { TestConnectionError } from "@connectors/connectors/snowflake/lib/snowflake_api";
 import { testConnection } from "@connectors/connectors/snowflake/lib/snowflake_api";
@@ -36,6 +35,7 @@ import {
   getConnector,
   getConnectorAndCredentials,
   getCredentials,
+  saveNodesFromPermissions,
 } from "@connectors/lib/remote_databases/utils";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -344,13 +344,9 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
       }
     }
 
-    const { credentials } = connectorAndCredentialsRes.value;
-
     await saveNodesFromPermissions({
       connectorId: this.connectorId,
       permissions,
-      credentials,
-      logger,
     });
 
     const launchRes = await launchSnowflakeSyncWorkflow(this.connectorId);

@@ -342,6 +342,7 @@ export const AddConnectionMenu = ({
             case "bigquery":
               return (
                 <CreateOrUpdateConnectionBigQueryModal
+                  key={`bigquery-${isOpen}`}
                   owner={owner}
                   connectorProviderConfiguration={CONNECTOR_CONFIGURATIONS[c]}
                   isOpen={isOpen}
@@ -365,6 +366,7 @@ export const AddConnectionMenu = ({
             case "snowflake":
               return (
                 <CreateOrUpdateConnectionSnowflakeModal
+                  key={`snowflake-${isOpen}`}
                   owner={owner}
                   connectorProviderConfiguration={CONNECTOR_CONFIGURATIONS[c]}
                   isOpen={isOpen}
@@ -396,6 +398,7 @@ export const AddConnectionMenu = ({
             case "webcrawler":
               return (
                 <CreateConnectionConfirmationModal
+                  key={`${c}-${isOpen}`}
                   connectorProviderConfiguration={CONNECTOR_CONFIGURATIONS[c]}
                   isOpen={isOpen}
                   onClose={handleOnClose}

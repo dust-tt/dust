@@ -19,7 +19,6 @@ import {
   fetchSyncedChildren,
   getBatchContentNodes,
   getContentNodeParents,
-  saveNodesFromPermissions,
 } from "@connectors/connectors/bigquery/lib/permissions";
 import {
   launchBigQuerySyncWorkflow,
@@ -41,6 +40,7 @@ import {
   getConnector,
   getConnectorAndCredentials,
   getCredentials,
+  saveNodesFromPermissions,
 } from "@connectors/lib/remote_databases/utils";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -343,13 +343,9 @@ export class BigQueryConnectorManager extends BaseConnectorManager<null> {
       }
     }
 
-    const { credentials } = connectorAndCredentialsRes.value;
-
     await saveNodesFromPermissions({
       connectorId: this.connectorId,
       permissions,
-      credentials,
-      logger,
     });
 
     const launchRes = await launchBigQuerySyncWorkflow(this.connectorId);
