@@ -198,7 +198,8 @@ function cleanBefore(content: string, before: string): string {
   // We get the diff between the before and the content.
   // The potential additions are removed from the before,
   const changes = diffLines(before, content);
-  let newBefore = changes.filter((c) => !c.added).join("");
+  // let newBefore = changes.filter((c) => !c.added).join("");
+  let newBefore = "";
 
   for (const c of changes) {
     if (!c.added) {
@@ -244,10 +245,6 @@ function groupHunkLinesByOperation(lines: string[]): string[][] {
 
   if (cur.length) {
     sections.push(cur);
-  }
-
-  if (curOp !== " ") {
-    sections.push([]);
   }
 
   return sections;
