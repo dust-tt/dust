@@ -19,6 +19,7 @@ import {
   SheetContainer,
   SheetContent,
   SheetHeader,
+  SheetTitle,
   Spinner,
   Tabs,
   TabsList,
@@ -85,8 +86,8 @@ function AssistantDetailsInfo({
       />
 
       {agentConfiguration?.instructions ? (
-        <div className="flex flex-col gap-5">
-          <div className="text-lg font-bold text-foreground">Instructions</div>
+        <div className="flex flex-col gap-2">
+          <div className="text-lg font-bold text-element-800">Instructions</div>
           <ReadOnlyTextArea content={agentConfiguration.instructions} />
         </div>
       ) : (
@@ -139,9 +140,7 @@ function AssistantDetailsPerformance({
       </div>
 
       {isAgentAnayticsLoading ? (
-        <div className="w-full p-6">
-          <Spinner variant="dark" />
-        </div>
+        <Spinner />
       ) : (
         <CardGrid>
           <ValueCard
@@ -151,7 +150,7 @@ function AssistantDetailsPerformance({
                 <div className="flex flex-col gap-1 text-lg font-bold">
                   {agentAnalytics?.users ? (
                     <>
-                      <div className="truncate text-foreground">
+                      <div className="truncate text-element-900">
                         {agentAnalytics.users.length}
                       </div>
 
@@ -193,13 +192,13 @@ function AssistantDetailsPerformance({
                   <>
                     <div className="flex flex-row items-center">
                       <div>
-                        <HandThumbUpIcon className="h-6 w-6 pr-2 text-muted-foreground" />
+                        <HandThumbUpIcon className="h-6 w-6 pr-2 text-element-600" />
                       </div>
                       <div>{agentAnalytics.feedbacks.positiveFeedbacks}</div>
                     </div>
                     <div className="flex flex-row items-center">
                       <div>
-                        <HandThumbDownIcon className="h-6 w-6 pr-2 text-muted-foreground" />
+                        <HandThumbDownIcon className="h-6 w-6 pr-2 text-element-600" />
                       </div>
                       <div>{agentAnalytics.feedbacks.negativeFeedbacks}</div>
                     </div>
@@ -217,7 +216,7 @@ function AssistantDetailsPerformance({
               <div className="flex flex-row gap-2 text-lg font-bold">
                 <div className="flex flex-row items-center">
                   <div>
-                    <ChatBubbleLeftRightIcon className="h-6 w-6 pr-2 text-muted-foreground" />
+                    <ChatBubbleLeftRightIcon className="h-6 w-6 pr-2 text-element-600" />
                   </div>
                   <div>
                     {agentAnalytics?.mentions
@@ -235,7 +234,7 @@ function AssistantDetailsPerformance({
               <div className="flex flex-row gap-2 text-lg font-bold">
                 <div className="flex flex-row items-center">
                   <div>
-                    <ChatBubbleThoughtIcon className="h-6 w-6 pr-2 text-muted-foreground" />
+                    <ChatBubbleThoughtIcon className="h-6 w-6 pr-2 text-element-600" />
                   </div>
                   <div>
                     {agentAnalytics?.mentions
@@ -346,30 +345,31 @@ export function AssistantDetails({
   return (
     <Sheet open={!!assistantId} onOpenChange={onClose}>
       <SheetContent size="lg">
-        <SheetHeader className="flex flex-col gap-5 pb-0 text-sm text-foreground">
-          <DescriptionSection />
-          {isBuilder(owner) && (
-            <Tabs value={selectedTab}>
-              <TabsList border={false}>
-                <TabsTrigger
-                  value="info"
-                  label="Info"
-                  icon={InformationCircleIcon}
-                  onClick={() => setSelectedTab("info")}
-                />
-                <TabsTrigger
-                  value="performance"
-                  label="Performance"
-                  icon={BarChartIcon}
-                  onClick={() => setSelectedTab("performance")}
-                />
-              </TabsList>
-            </Tabs>
-          )}
+        <SheetHeader>
+          <SheetTitle />
         </SheetHeader>
-        <SheetContainer className="flex flex-col gap-5 pt-6 text-sm text-foreground">
+        <SheetContainer>
           {agentConfiguration && (
-            <>
+            <div className="flex flex-col gap-5 pt-6 text-sm text-foreground">
+              <DescriptionSection />
+              {isBuilder(owner) && (
+                <Tabs value={selectedTab}>
+                  <TabsList>
+                    <TabsTrigger
+                      value="info"
+                      label="Info"
+                      icon={InformationCircleIcon}
+                      onClick={() => setSelectedTab("info")}
+                    />
+                    <TabsTrigger
+                      value="performance"
+                      label="Performance"
+                      icon={BarChartIcon}
+                      onClick={() => setSelectedTab("performance")}
+                    />
+                  </TabsList>
+                </Tabs>
+              )}
               {selectedTab === "info" && (
                 <AssistantDetailsInfo
                   agentConfiguration={agentConfiguration}
@@ -382,7 +382,7 @@ export function AssistantDetails({
                   owner={owner}
                 />
               )}
-            </>
+            </div>
           )}
           {isAgentConfigurationError?.error.type ===
             "agent_configuration_not_found" && (
