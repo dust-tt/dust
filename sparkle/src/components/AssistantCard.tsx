@@ -68,13 +68,23 @@ export const AssistantCard = React.forwardRef<
             <h3 className="s-line-clamp-1 s-overflow-hidden s-text-ellipsis s-break-all s-text-base s-font-medium">
               {title}
             </h3>
-            <p className="s-line-clamp-1 s-overflow-hidden s-text-ellipsis s-text-xs s-text-muted-foreground">
+            <p
+              className={cn(
+                "s-line-clamp-1 s-overflow-hidden s-text-ellipsis s-text-xs",
+                "dark:s-text-muted-foreground-night s-text-muted-foreground"
+              )}
+            >
               {subtitle}
             </p>
           </div>
         </div>
         {description && (
-          <p className="s-line-clamp-2 s-overflow-hidden s-text-ellipsis s-pb-1 s-text-sm s-text-muted-foreground">
+          <p
+            className={cn(
+              "s-line-clamp-2 s-overflow-hidden s-text-ellipsis s-pb-1 s-text-sm",
+              "dark:s-text-muted-foreground-night s-text-muted-foreground"
+            )}
+          >
             {description}
           </p>
         )}
@@ -100,9 +110,19 @@ export const LargeAssistantCard = React.forwardRef<
     >
       <div className="s-flex s-gap-3">
         <Avatar visual={pictureUrl} size="lg" />
-        <div className="s-flex s-flex-col s-gap-2 s-text-base s-text-foreground">
+        <div
+          className={cn(
+            "s-flex s-flex-col s-gap-2 s-text-base",
+            "dark:s-text-foreground-night s-text-foreground"
+          )}
+        >
           <h3 className="s-font-medium">{title}</h3>
-          <p className="s-line-clamp-5 s-overflow-hidden s-text-ellipsis s-text-muted-foreground">
+          <p
+            className={cn(
+              "s-line-clamp-5 s-overflow-hidden s-text-ellipsis",
+              "dark:s-text-muted-foreground-night s-text-muted-foreground"
+            )}
+          >
             {description}
           </p>
         </div>
