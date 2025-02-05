@@ -25,10 +25,7 @@ import { analyzeCSVColumns } from "@app/lib/api/csv";
 import { parseUploadRequest } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
-import type {
-  FileResource,
-  FileVersion,
-} from "@app/lib/resources/file_resource";
+import type { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 
 const UPLOAD_DELAY_AFTER_CREATION_MS = 1000 * 60 * 1; // 1 minute.

@@ -29,10 +29,7 @@ import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import type {
-  FileResource,
-  FileVersion,
-} from "@app/lib/resources/file_resource";
+import type { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 
 const ENABLE_LLM_SNIPPETS = false;
