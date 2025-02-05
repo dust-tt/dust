@@ -166,7 +166,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       "Authorize access to your company's GitHub on a repository-by-repository basis. Dust can access Issues, Discussions, and Pull Request threads. Code indexing can be controlled on-demand.",
     limitations:
       "Dust gathers data from issues, discussions, and pull-requests (top-level discussion, but not in-code comments). It synchronizes your code only if enabled.",
-    mismatchError: `You cannot select another Github Organization.\nPlease contact us at support@dust.tt if you initially selected a wrong Organization or if you completely uninstalled the Github app.`,
+    mismatchError: `You cannot select another GitHub Organization.\nPlease contact us at support@dust.tt if you initially selected a wrong Organization or if you completely uninstalled the GitHub app.`,
     guideLink: "https://docs.dust.tt/docs/github-connection",
     selectLabel: "Synchronized content",
     logoComponent: GithubLogo,
