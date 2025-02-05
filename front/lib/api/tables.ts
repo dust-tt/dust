@@ -373,7 +373,7 @@ export async function rowsFromCsv({
   try {
     const headerRes = detectedHeaders
       ? new Ok(detectedHeaders)
-      : await detectHeaders(auth, csv, delimiter);
+      : await detectHeaders(csv, delimiter);
 
     if (headerRes.isErr()) {
       return headerRes;
