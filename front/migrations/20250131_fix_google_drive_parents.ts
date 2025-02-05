@@ -65,7 +65,8 @@ async function migrateNode({
 
   if (
     skipIfParentsAreAlreadyCorrect &&
-    newParents.every((x, i) => x === coreNode.parents[i])
+    newParents.every((x, i) => x === coreNode.parents[i]) &&
+    coreNode.parents.every((x, i) => x === newParents[i])
   ) {
     logger.info(
       {
