@@ -48,7 +48,11 @@ const sizeClasses: Record<SheetSizeType, string> = {
 };
 
 const sheetVariants = cva(
-  "s-fixed s-z-50 s-overflow-hidden s-bg-background s-transition s-ease-in-out data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-duration-300 data-[state=open]:s-duration-500 s-flex s-flex-col s-h-full s-w-full",
+  cn(
+    "s-fixed s-z-50 s-overflow-hidden s-flex s-flex-col s-h-full s-w-full",
+    "s-bg-background dark:s-bg-background-night",
+    "s-transition s-ease-in-out data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-duration-300 data-[state=open]:s-duration-500"
+  ),
   {
     variants: {
       side: {
