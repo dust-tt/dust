@@ -99,8 +99,6 @@ describe("POST /api/w/[wId]/files", () => {
 
       await handler(req, res);
 
-      console.log(res._getJSONData());
-
       expect(res._getStatusCode()).toBe(200);
     }
   );
