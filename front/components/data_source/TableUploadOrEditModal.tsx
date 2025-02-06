@@ -85,7 +85,7 @@ export const TableUploadOrEditModal = ({
   // Get the processed file content from the file API
   const fileUploaderService = useFileUploaderService({
     owner,
-    useCase: "folder_table",
+    useCase: "upsert_table",
   });
   const [fileId, setFileId] = useState<string | null>(null);
   const doUpsertFileAsDataSourceEntry = useUpsertFileAsDatasourceEntry(

@@ -2397,7 +2397,7 @@ const FileTypeStatusSchema = FlexibleEnumSchema<
 >();
 
 const FileTypeUseCaseSchema = FlexibleEnumSchema<
-  "conversation" | "avatar" | "tool_output" | "folder_document" | "folder_table"
+  "conversation" | "avatar" | "tool_output" | "upsert_document" | "upsert_table"
 >();
 
 export const FileTypeSchema = z.object({

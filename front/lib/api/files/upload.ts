@@ -218,8 +218,8 @@ const getProcessingFunction = ({
     if (
       [
         "conversation",
-        "folder_document",
-        "folder_table",
+        "upsert_document",
+        "upsert_table",
         "tool_output",
       ].includes(useCase)
     ) {
@@ -234,7 +234,7 @@ const getProcessingFunction = ({
     case "application/vnd.ms-powerpoint":
     case "application/vnd.openxmlformats-officedocument.presentationml.presentation":
     case "application/pdf":
-      if (useCase === "conversation" || useCase === "folder_document") {
+      if (["conversation", "upsert_document"].includes(useCase)) {
         return extractTextFromFileAndUpload;
       }
       break;
@@ -270,9 +270,7 @@ const getProcessingFunction = ({
     case "text/x-perl":
     case "text/x-perl-script":
       if (
-        useCase === "conversation" ||
-        useCase === "folder_document" ||
-        useCase === "tool_output"
+        ["conversation", "upsert_document", "tool_output"].includes(useCase)
       ) {
         return storeRawText;
       }
