@@ -7,7 +7,7 @@ import { googleDriveIncrementalSyncWorkflowId } from "@dust-tt/types";
 import { Op } from "sequelize";
 
 import { getConnectorManager } from "@connectors/connectors";
-import { fixParents } from "@connectors/connectors/google_drive/lib";
+import { fixParentsConsistency } from "@connectors/connectors/google_drive/lib";
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import { launchGoogleDriveIncrementalSyncWorkflow } from "@connectors/connectors/google_drive/temporal/client";
@@ -154,7 +154,7 @@ export const google_drive = async ({
         if (!connectorResource) {
           throw new Error("Connector not found");
         }
-        await fixParents({
+        await fixParentsConsistency({
           connector: connectorResource,
           files,
           checkFromGoogle: true,

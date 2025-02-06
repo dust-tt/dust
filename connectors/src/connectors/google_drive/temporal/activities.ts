@@ -10,7 +10,7 @@ import { Op } from "sequelize";
 
 import { getSourceUrlForGoogleDriveFiles } from "@connectors/connectors/google_drive";
 import {
-  fixParents,
+  fixParentsConsistency,
   internalDeleteFile,
 } from "@connectors/connectors/google_drive/lib";
 import {
@@ -723,7 +723,7 @@ export async function garbageCollector(
   );
 
   // TODO(nodes-core): Run fixParents in dry run mode to check parentIds validity
-  await fixParents({
+  await fixParentsConsistency({
     connector,
     files,
     checkFromGoogle: false,
