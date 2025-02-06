@@ -335,6 +335,15 @@ export function computeNodesDiff({
             ) {
               return false;
             }
+            // Special case for Notion databases titles: when empty it is filled as "Untitled Notion Database" in core
+            // whereas the connector returns an empty string.
+            if (
+              key === "title" &&
+              value.trim() === "" &&
+              coreValue === "Untitled Notion Database"
+            ) {
+              return false;
+            }
             if (Array.isArray(value) && Array.isArray(coreValue)) {
               return JSON.stringify(value) !== JSON.stringify(coreValue);
             }
