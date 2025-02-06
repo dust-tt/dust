@@ -84,7 +84,6 @@ const STRUCTURED_DATA_SOURCES: ConnectorProvider[] = [
   "google_drive",
   "notion",
   "microsoft",
-  "snowflake",
 ];
 
 export function supportsDocumentsData(ds: DataSource): boolean {
@@ -94,6 +93,7 @@ export function supportsDocumentsData(ds: DataSource): boolean {
 export function supportsStructuredData(ds: DataSource): boolean {
   return Boolean(
     isFolder(ds) ||
+      isRemoteDatabase(ds) ||
       (ds.connectorProvider &&
         STRUCTURED_DATA_SOURCES.includes(ds.connectorProvider))
   );
