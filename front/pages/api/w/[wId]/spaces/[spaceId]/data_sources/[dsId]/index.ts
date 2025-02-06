@@ -9,6 +9,7 @@ import { softDeleteDataSourceAndLaunchScrubWorkflow } from "@app/lib/api/data_so
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import { isRemoteDatabase } from "@app/lib/data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
@@ -107,10 +108,10 @@ async function handler(
     case "DELETE": {
       const isAuthorized =
         space.canWrite(auth) ||
-        // Only allow to delete Snowflake connectors if the user is an admin.
+        // Only allow to remote database connectors if the user is an admin.
         (space.isSystem() &&
           space.canAdministrate(auth) &&
-          dataSource.connectorProvider === "snowflake");
+          isRemoteDatabase(dataSource));
 
       if (!isAuthorized) {
         return apiError(req, res, {

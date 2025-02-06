@@ -95,7 +95,8 @@ export const fetchDatasets = async ({
           // We want to filter out datasets that are not in the same location as the credentials.
           // But, for example, we want to keep dataset in "us-central1" when selected location is "us"
           if (
-            !dataset.location?.toLowerCase().startsWith(credentials.location)
+            dataset.location?.toLowerCase() !==
+            credentials.location.toLowerCase()
           ) {
             return null;
           }
@@ -158,12 +159,6 @@ export const fetchTables = async ({
     return new Ok(
       removeNulls(
         tables.map((table) => {
-          // We want to filter out tables that are not in the same location as the credentials.
-          // But, for example, we want to keep tables in "us-central1" when selected location is "us"
-          if (!table.location?.toLowerCase().startsWith(credentials.location)) {
-            return null;
-          }
-
           if (!table.id) {
             return null;
           }

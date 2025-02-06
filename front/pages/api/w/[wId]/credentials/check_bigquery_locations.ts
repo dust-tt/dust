@@ -91,33 +91,21 @@ async function handler(
     const [datasets] = await bigquery.getDatasets();
 
     // Initialize locations map
-    const allLocations: Record<string, string[]> = {};
+    const locations: Record<string, string[]> = {};
 
     // Process each dataset and its tables
     for (const dataset of datasets) {
-      const [tables] = await dataset.getTables();
-
-      for (const table of tables) {
-        const locationRaw = table.location?.toLowerCase();
-        if (locationRaw) {
-          const locations = locationRaw.includes("-")
-            ? [locationRaw.split("-")[0], locationRaw]
-            : [locationRaw];
-
-          for (const location of locations) {
-            if (!allLocations[location]) {
-              allLocations[location] = [];
-            }
-
-            const tableId = `${dataset.id}.${table.id}`;
-            allLocations[location].push(tableId);
-          }
-        }
+      if (dataset.location) {
+        const [tables] = await dataset.getTables();
+        locations[dataset.location?.toLowerCase()] ??= [];
+        locations[dataset.location?.toLowerCase()].push(
+          ...tables.map((table) => `${dataset.id}.${table.id}`)
+        );
       }
     }
 
     return res.status(200).json({
-      locations: allLocations,
+      locations,
     });
   } catch (err) {
     const error = err as Error;
