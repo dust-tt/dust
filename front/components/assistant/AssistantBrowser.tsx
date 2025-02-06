@@ -26,7 +26,7 @@ import type {
 import { useRouter } from "next/router";
 import React, { useMemo, useState } from "react";
 
-import { subFilter } from "@app/lib/utils";
+import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 import { setQueryParam } from "@app/lib/utils/router";
 
 function isValidTab(tab: string, visibleTabs: TabId[]): tab is TabId {
@@ -86,9 +86,11 @@ export function AssistantBrowser({
             ))
       )
       .sort((a, b) => {
-        return a.name
-          .toLocaleLowerCase()
-          .localeCompare(b.name.toLocaleLowerCase());
+        return compareForFuzzySort(
+          assistantSearch.toLowerCase().trim(),
+          a.name.toLowerCase(),
+          b.name.toLowerCase()
+        );
       });
 
     return {
