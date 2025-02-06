@@ -15,7 +15,7 @@ import type Logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
-const PAGE_SIZE = 1024;
+const PAGE_SIZE = 1000;
 const { FRONT_DATABASE_URI } = process.env;
 
 async function findAllDescendants(
@@ -131,7 +131,9 @@ async function updateParentsFieldForConnector(
   });
 
   const [dataSourceRows] = await frontSequelize.query(
-    `SELECT "dustAPIDataSourceId" FROM data_sources WHERE "connectorId" = :connectorId`,
+    `SELECT "dustAPIDataSourceId"
+     FROM data_sources
+     WHERE "connectorId" = :connectorId`,
     {
       replacements: { connectorId: connector.id.toString() },
     }
