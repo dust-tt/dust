@@ -63,7 +63,10 @@ import {
   CONNECTOR_CONFIGURATIONS,
   isConnectorPermissionsEditable,
 } from "@app/lib/connector_providers";
-import { getDisplayNameForDataSource } from "@app/lib/data_sources";
+import {
+  getDisplayNameForDataSource,
+  isRemoteDatabase,
+} from "@app/lib/data_sources";
 import { useConnectorPermissions } from "@app/lib/swr/connectors";
 import { useSpaceDataSourceViews, useSystemSpace } from "@app/lib/swr/spaces";
 import { useUser } from "@app/lib/swr/user";
@@ -243,10 +246,10 @@ function DataSourceEditionModal({
 
   const connectorConfiguration = CONNECTOR_CONFIGURATIONS[connectorProvider];
 
-  if (dataSource.connectorProvider === "snowflake") {
+  if (isRemoteDatabase(dataSource)) {
     return (
       <DataSourceManagementModal isOpen={isOpen} onClose={onClose}>
-        Edit Snowflake
+        Edit {connectorConfiguration.name}
       </DataSourceManagementModal>
     );
   }
@@ -765,10 +768,10 @@ export function ConnectorPermissionsModal({
                 </SheetTitle>
                 <div className="flex flex-row justify-end gap-2 py-1">
                   {(isOAuthProvider(connector.type) ||
-                    connector.type === "snowflake") && (
+                    isRemoteDatabase(dataSource)) && (
                     <Button
                       label={
-                        connector.type !== "snowflake"
+                        !isRemoteDatabase(dataSource)
                           ? "Edit permissions"
                           : "Edit connection"
                       }
@@ -858,6 +861,7 @@ export function ConnectorPermissionsModal({
           case "snowflake":
             return (
               <CreateOrUpdateConnectionSnowflakeModal
+                key={`snowflake-${modalToShow}`}
                 owner={owner}
                 connectorProviderConfiguration={
                   CONNECTOR_CONFIGURATIONS[c.type]
@@ -873,6 +877,7 @@ export function ConnectorPermissionsModal({
           case "bigquery":
             return (
               <CreateOrUpdateConnectionBigQueryModal
+                key={`bigquery-${modalToShow}`}
                 owner={owner}
                 connectorProviderConfiguration={
                   CONNECTOR_CONFIGURATIONS[c.type]
@@ -896,6 +901,7 @@ export function ConnectorPermissionsModal({
           case "webcrawler":
             return (
               <DataSourceEditionModal
+                key={`${c.type}-${modalToShow}`}
                 isOpen={modalToShow === "edition"}
                 onClose={() => closeModal(false)}
                 dataSource={dataSource}

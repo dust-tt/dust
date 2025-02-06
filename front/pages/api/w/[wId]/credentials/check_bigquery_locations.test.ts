@@ -43,24 +43,14 @@ describe("POST /api/w/[wId]/credentials/check_bigquery_locations", () => {
       const mockDatasets = [
         {
           id: "dataset1",
-          location: "us-central1",
+          location: "uS",
           getTables: vi.fn().mockResolvedValue([
             [
               {
                 id: "table1",
-                location: "US",
               },
               {
                 id: "table2",
-                location: "US-central1",
-              },
-              {
-                id: "table3",
-                location: "US-central2",
-              },
-              {
-                id: "table4",
-                location: "US-central3-a",
               },
             ],
           ]),
@@ -72,7 +62,28 @@ describe("POST /api/w/[wId]/credentials/check_bigquery_locations", () => {
             [
               {
                 id: "table3",
-                location: "EU",
+              },
+            ],
+          ]),
+        },
+        {
+          id: "dataset3",
+          location: "EU-central1",
+          getTables: vi.fn().mockResolvedValue([
+            [
+              {
+                id: "table4",
+              },
+            ],
+          ]),
+        },
+        {
+          id: "dataset4",
+          location: "EU-central1",
+          getTables: vi.fn().mockResolvedValue([
+            [
+              {
+                id: "table5",
               },
             ],
           ]),
@@ -100,16 +111,9 @@ describe("POST /api/w/[wId]/credentials/check_bigquery_locations", () => {
       expect(res._getStatusCode()).toBe(200);
       expect(JSON.parse(res._getData())).toEqual({
         locations: {
-          us: [
-            "dataset1.table1",
-            "dataset1.table2",
-            "dataset1.table3",
-            "dataset1.table4",
-          ],
-          "us-central1": ["dataset1.table2"],
-          "us-central2": ["dataset1.table3"],
-          "us-central3-a": ["dataset1.table4"],
+          us: ["dataset1.table1", "dataset1.table2"],
           eu: ["dataset2.table3"],
+          "eu-central1": ["dataset3.table4", "dataset4.table5"],
         },
       });
     }

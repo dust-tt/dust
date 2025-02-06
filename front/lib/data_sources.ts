@@ -73,8 +73,11 @@ export function isManaged(ds: DataSource): ds is DataSource & WithConnector {
 
 export function isRemoteDatabase(
   ds: DataSource
-): ds is DataSource & WithConnector & { connectorProvider: "snowflake" } {
-  return ds.connectorProvider === "snowflake";
+): ds is DataSource &
+  WithConnector & { connectorProvider: "snowflake" | "bigquery" } {
+  return (
+    ds.connectorProvider === "snowflake" || ds.connectorProvider === "bigquery"
+  );
 }
 
 const STRUCTURED_DATA_SOURCES: ConnectorProvider[] = [

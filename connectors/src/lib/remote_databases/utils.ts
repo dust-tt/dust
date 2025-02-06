@@ -1,8 +1,15 @@
+import { assertNever } from "@dust-tt/client";
 import type { ConnectionCredentials, ModelId, Result } from "@dust-tt/types";
 import { Err, getConnectionCredentials, Ok } from "@dust-tt/types";
 import * as t from "io-ts";
 
 import { apiConfig } from "@connectors/lib/api/config";
+import {
+  RemoteDatabaseModel,
+  RemoteSchemaModel,
+  RemoteTableModel,
+} from "@connectors/lib/models/remote_databases";
+import { getContentNodeTypeFromInternalId } from "@connectors/lib/remote_databases/content_nodes";
 import type { Logger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
@@ -149,4 +156,119 @@ export const getConnectorAndCredentials = async <
     connector,
     credentials,
   });
+};
+
+/**
+   * Saves the nodes that the user has access to in the database.
+   * We save only the nodes that the admin has given us access to.
+   * 
+   * Example of permissions: {
+        "MY_DB.PUBLIC": "read",
+        "MY_DB.SAMPLE_DATA.CATS": "read",
+        "MY_DB.SAMPLE_DATA.DOGS": "none",
+        "MY_OTHER_DB": "node",
+      }
+   */
+export const saveNodesFromPermissions = async ({
+  connectorId,
+  permissions,
+}: {
+  connectorId: ModelId;
+  permissions: Record<string, string>;
+}): Promise<Result<void, Error>> => {
+  const FRONT_PERMISSIONS_ALLOWED = ["read", "none"];
+  for (const [internalId, permission] of Object.entries(permissions)) {
+    if (!FRONT_PERMISSIONS_ALLOWED.includes(permission)) {
+      throw new Error(
+        `Invalid permission: ${permission}. Action: make sure that the front end only sends permissions from the list: ${FRONT_PERMISSIONS_ALLOWED.join(
+          ", "
+        )}.`
+      );
+    }
+
+    const [database, schema, table] = internalId.split(".");
+    const internalType = getContentNodeTypeFromInternalId(internalId);
+    switch (internalType) {
+      case "database":
+        {
+          const existingDb = await RemoteDatabaseModel.findOne({
+            where: { connectorId, internalId },
+          });
+
+          if (permission === "read") {
+            if (!existingDb) {
+              await RemoteDatabaseModel.create({
+                connectorId,
+                internalId,
+                name: database as string,
+                permission: "selected",
+              });
+            } else {
+              await existingDb.update({ permission: "selected" });
+            }
+          } else if (permission === "none" && existingDb) {
+            await existingDb.update({ permission: "unselected" });
+          }
+        }
+        break;
+      case "schema":
+        {
+          const existingSchema = await RemoteSchemaModel.findOne({
+            where: {
+              connectorId,
+              internalId,
+            },
+          });
+
+          if (permission === "read") {
+            if (!existingSchema) {
+              await RemoteSchemaModel.create({
+                connectorId,
+                internalId,
+                name: schema as string,
+                databaseName: database as string,
+                permission: "selected",
+              });
+            } else {
+              await existingSchema.update({ permission: "selected" });
+            }
+          } else if (permission === "none" && existingSchema) {
+            await existingSchema.update({ permission: "unselected" });
+          }
+        }
+        break;
+      case "table":
+        {
+          const existingTable = await RemoteTableModel.findOne({
+            where: {
+              connectorId,
+              internalId,
+            },
+          });
+
+          if (permission === "read") {
+            if (!existingTable) {
+              await RemoteTableModel.create({
+                connectorId,
+                internalId,
+                name: table as string,
+                schemaName: schema as string,
+                databaseName: database as string,
+                permission: "selected",
+              });
+            } else {
+              await existingTable.update({ permission: "selected" });
+            }
+          } else if (permission === "none" && existingTable) {
+            // Do not destoy immediately, let the sync clean it up (and the core dependencies with it).
+            await existingTable.update({ permission: "unselected" });
+          }
+        }
+        break;
+      default:
+        assertNever(internalType);
+    }
+  }
+
+  return new Ok(undefined);
 };
