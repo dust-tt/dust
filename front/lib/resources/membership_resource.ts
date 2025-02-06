@@ -23,7 +23,7 @@ import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { UserResource } from "@app/lib/resources/user_resource";
-import logger from "@app/logger/logger";
+import logger, { auditLog } from "@app/logger/logger";
 
 type GetMembershipsOptions = RequireAtLeastOne<{
   users: UserResource[];
@@ -606,6 +606,12 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       });
     }
 
+    auditLog("Membership role updated", {
+      userId: user.id,
+      workspaceId: workspace.id,
+      previousRole,
+      newRole,
+    });
     return new Ok({ previousRole, newRole });
   }
 
