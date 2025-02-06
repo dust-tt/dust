@@ -135,10 +135,10 @@ export async function getDrivesToSync(
   const drives: Record<string, LightGoogleDrive> = {};
 
   for (const folder of selectedFolders) {
-    const remoteFolder = await getGoogleDriveObject(
+    const remoteFolder = await getGoogleDriveObject({
       authCredentials,
-      folder.folderId
-    );
+      driveObjectId: folder.folderId,
+    });
     if (remoteFolder) {
       if (!remoteFolder.driveId) {
         throw new Error(`Folder ${folder.folderId} does not have a driveId.`);
@@ -196,11 +196,11 @@ export async function syncFiles(
     csvEnabled: config?.csvEnabled || false,
   });
   const authCredentials = await getAuthObject(connector.connectionId);
-  const driveFolder = await getGoogleDriveObject(
+  const driveFolder = await getGoogleDriveObject({
     authCredentials,
-    driveFolderId,
-    { connectorId, ts: startSyncTs }
-  );
+    driveObjectId: driveFolderId,
+    cacheKey: { connectorId, ts: startSyncTs },
+  });
   if (!driveFolder) {
     // We got a 404 on this folder, we skip it.
     logger.info(
@@ -644,10 +644,10 @@ export async function shouldGarbageCollect(connectorId: ModelId) {
 
   const authCredentials = await getAuthObject(connector.connectionId);
   for (const folder of selectedFolder) {
-    const remoteFolder = await getGoogleDriveObject(
+    const remoteFolder = await getGoogleDriveObject({
       authCredentials,
-      folder.folderId
-    );
+      driveObjectId: folder.folderId,
+    });
     if (!remoteFolder) {
       return true;
     }
@@ -693,11 +693,11 @@ export async function garbageCollector(
   await Promise.all(
     files.map(async (file) => {
       return queue.add(async () => {
-        const driveFile = await getGoogleDriveObject(
+        const driveFile = await getGoogleDriveObject({
           authCredentials,
-          file.driveFileId,
-          { connectorId, ts }
-        );
+          driveObjectId: file.driveFileId,
+          cacheKey: { connectorId, ts },
+        });
         if (!driveFile) {
           // Could not find the file on Gdrive, deleting our local reference to it.
           await deleteFile(file);
@@ -827,9 +827,10 @@ export async function markFolderAsVisited(
     throw new Error(`Connector ${connectorId} not found`);
   }
   const authCredentials = await getAuthObject(connector.connectionId);
-  const file = await getGoogleDriveObject(authCredentials, driveFileId, {
-    connectorId,
-    ts: startSyncTs,
+  const file = await getGoogleDriveObject({
+    authCredentials,
+    driveObjectId: driveFileId,
+    cacheKey: { connectorId, ts: startSyncTs },
   });
 
   if (!file) {

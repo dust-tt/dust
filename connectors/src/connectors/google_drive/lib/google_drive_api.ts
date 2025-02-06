@@ -15,10 +15,13 @@ interface CacheKey {
   ts: string | number;
 }
 
-async function _getGoogleDriveObject(
-  authCredentials: OAuth2Client,
-  driveObjectId: string
-): Promise<GoogleDriveObjectType | null> {
+async function _getGoogleDriveObject({
+  authCredentials,
+  driveObjectId,
+}: {
+  authCredentials: OAuth2Client;
+  driveObjectId: string;
+}): Promise<GoogleDriveObjectType | null> {
   const drive = await getDriveClient(authCredentials);
 
   try {
@@ -48,22 +51,36 @@ async function _getGoogleDriveObject(
 
 const cachedGetGoogleDriveObject = cacheWithRedis<
   GoogleDriveObjectType | null,
-  [OAuth2Client, string, CacheKey]
+  [
+    {
+      authCredentials: OAuth2Client;
+      driveObjectId: string;
+      cacheKey: CacheKey;
+    },
+  ]
 >(
   _getGoogleDriveObject,
-  (_, driveObjectId, { connectorId, ts }) => {
-    return `${connectorId}:${driveObjectId}:${ts}`;
+  ({ driveObjectId, cacheKey }) => {
+    return `${cacheKey.connectorId}:${driveObjectId}:${cacheKey.ts}`;
   },
   60 * 10 * 1000
 );
 
-export async function getGoogleDriveObject(
-  authCredentials: OAuth2Client,
-  driveObjectId: string,
-  cacheKey?: CacheKey
-): Promise<GoogleDriveObjectType | null> {
+export async function getGoogleDriveObject({
+  authCredentials,
+  driveObjectId,
+  cacheKey,
+}: {
+  authCredentials: OAuth2Client;
+  driveObjectId: string;
+  cacheKey?: CacheKey;
+}): Promise<GoogleDriveObjectType | null> {
   if (cacheKey) {
-    return cachedGetGoogleDriveObject(authCredentials, driveObjectId, cacheKey);
+    return cachedGetGoogleDriveObject({
+      authCredentials,
+      driveObjectId,
+      cacheKey,
+    });
   }
-  return _getGoogleDriveObject(authCredentials, driveObjectId);
+  return _getGoogleDriveObject({ authCredentials, driveObjectId });
 }

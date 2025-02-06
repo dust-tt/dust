@@ -192,9 +192,13 @@ export async function fixParents({
         await concurrentExecutor(
           files,
           async (file) =>
-            getGoogleDriveObject(authCredentials, file.driveFileId, {
-              connectorId: connector.id,
-              ts: startSyncTs,
+            getGoogleDriveObject({
+              authCredentials,
+              driveObjectId: file.driveFileId,
+              cacheKey: {
+                connectorId: connector.id,
+                ts: startSyncTs,
+              },
             }),
           {
             concurrency: 10,

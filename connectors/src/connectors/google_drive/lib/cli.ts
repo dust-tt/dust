@@ -113,11 +113,11 @@ export const google_drive = async ({
       const fileId = args.fileId;
       const now = Date.now();
       const authCredentials = await getAuthObject(connector.connectionId);
-      const driveObject = await getGoogleDriveObject(
+      const driveObject = await getGoogleDriveObject({
         authCredentials,
-        getDriveFileId(fileId),
-        { connectorId: connector.id, ts: now }
-      );
+        driveObjectId: getDriveFileId(fileId),
+        cacheKey: { connectorId: connector.id, ts: now },
+      });
       if (!driveObject) {
         throw new Error("Can't find google drive object");
       }
