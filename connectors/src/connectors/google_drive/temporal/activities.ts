@@ -525,7 +525,7 @@ export async function incrementalSync(
           driveFileId: file.id,
           name: file.name,
           mimeType: file.mimeType,
-          parentId: file.parent,
+          parentId: parents[1] ? getDriveFileId(parents[1]) : null,
           lastSeenTs: new Date(),
         });
         localLogger.info({ fileId: change.file.id }, "done syncing file");
