@@ -127,13 +127,7 @@ export async function constructPromptMultiActions(
   }
 
   if (agentConfiguration.visualizationEnabled) {
-    additionalInstructions +=
-      `\n` +
-      (await getVisualizationPrompt({
-        auth,
-        conversation,
-      })) +
-      `\n`;
+    additionalInstructions += `\n` + getVisualizationPrompt() + `\n`;
   }
 
   const providerMetaPrompt = model.metaPrompt;
