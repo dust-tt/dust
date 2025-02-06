@@ -7,7 +7,7 @@ import {
   DialogTitle,
   Icon,
   RadioGroup,
-  RadioGroupChoice,
+  RadioGroupCustomItem,
   Separator,
 } from "@dust-tt/sparkle";
 import type { SpaceType } from "@dust-tt/types";
@@ -71,7 +71,7 @@ export function SpaceSelector({
             <React.Fragment key={space.sId}>
               {index > 0 && <Separator />}
               <div key={space.sId} className="py-1">
-                <RadioGroupChoice
+                <RadioGroupCustomItem
                   value={space.sId}
                   disabled={isDisabled}
                   iconPosition="start"
@@ -87,7 +87,7 @@ export function SpaceSelector({
                       setAlertIsDialogOpen(true);
                     }
                   }}
-                  label={
+                  customItem={
                     <div className={"flex items-center gap-1 pl-2"}>
                       <Icon
                         visual={getSpaceIcon(space)}
@@ -116,7 +116,7 @@ export function SpaceSelector({
                       </div>
                     )}
                   </div>
-                </RadioGroupChoice>
+                </RadioGroupCustomItem>
               </div>
             </React.Fragment>
           );

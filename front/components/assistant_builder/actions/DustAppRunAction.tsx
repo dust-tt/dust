@@ -4,7 +4,7 @@ import {
   Icon,
   InformationCircleIcon,
   RadioGroup,
-  RadioGroupChoice,
+  RadioGroupCustomItem,
   Separator,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -161,12 +161,12 @@ export function ActionDustAppRun({
                         !app.description || app.description.length === 0;
                       return (
                         <React.Fragment key={app.sId}>
-                          <RadioGroupChoice
+                          <RadioGroupCustomItem
                             value={app.sId}
                             disabled={disabled}
                             iconPosition="start"
                             className={classNames(index === 0 ? "pt-3" : "")}
-                            label={
+                            customItem={
                               <div className="flex items-center gap-1 pl-2">
                                 <Icon
                                   visual={CommandLineIcon}
@@ -209,7 +209,7 @@ export function ActionDustAppRun({
                                 {app.description}
                               </div>
                             )}
-                          </RadioGroupChoice>
+                          </RadioGroupCustomItem>
                           <Separator />
                         </React.Fragment>
                       );

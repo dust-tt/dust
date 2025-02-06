@@ -6,7 +6,7 @@ import {
   Modal,
   Page,
   RadioGroup,
-  RadioGroupChoice,
+  RadioGroupCustomItem,
   TextArea,
   Tooltip,
 } from "@dust-tt/sparkle";
@@ -336,31 +336,29 @@ export function CreateOrUpdateConnectionBigQueryModal({
                   value={selectedLocation}
                   onValueChange={setSelectedLocation}
                 >
-                  <div className="flex flex-col gap-y-2">
+                  <div className="flex flex-col items-start gap-y-2">
                     {Object.entries(locations).map(([location, tables]) => (
-                      <RadioGroupChoice
+                      <RadioGroupCustomItem
                         key={location}
                         value={location}
-                        label={
-                          <>
-                            <Tooltip
-                              label={
-                                <span>
-                                  This location contains {tables.length} tables
-                                  that can be connected :{" "}
-                                  <span className="text-xs text-gray-500">
-                                    {tables.join(", ")}
-                                  </span>
+                        customItem={
+                          <Tooltip
+                            label={
+                              <span>
+                                This location contains {tables.length} tables
+                                that can be connected :{" "}
+                                <span className="text-xs text-gray-500">
+                                  {tables.join(", ")}
                                 </span>
-                              }
-                              trigger={
-                                <div className="flex items-center gap-1">
-                                  <b>{location}</b> - {tables.length} tables{" "}
-                                  <InformationCircleIcon />
-                                </div>
-                              }
-                            />
-                          </>
+                              </span>
+                            }
+                            trigger={
+                              <div className="flex items-center gap-1">
+                                <b>{location}</b> - {tables.length} tables{" "}
+                                <InformationCircleIcon />
+                              </div>
+                            }
+                          />
                         }
                       />
                     ))}
