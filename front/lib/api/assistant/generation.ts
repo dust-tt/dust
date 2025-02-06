@@ -163,21 +163,24 @@ export async function constructPromptMultiActions(
  * Model conversation rendering
  */
 
-export async function renderConversationForModel({
-  conversation,
-  model,
-  prompt,
-  allowedTokenCount,
-  excludeActions,
-  excludeImages,
-}: {
-  conversation: ConversationType;
-  model: ModelConfigurationType;
-  prompt: string;
-  allowedTokenCount: number;
-  excludeActions?: boolean;
-  excludeImages?: boolean;
-}): Promise<
+export async function renderConversationForModel(
+  _auth: Authenticator,
+  {
+    conversation,
+    model,
+    prompt,
+    allowedTokenCount,
+    excludeActions,
+    excludeImages,
+  }: {
+    conversation: ConversationType;
+    model: ModelConfigurationType;
+    prompt: string;
+    allowedTokenCount: number;
+    excludeActions?: boolean;
+    excludeImages?: boolean;
+  }
+): Promise<
   Result<
     {
       modelConversation: ModelConversationTypeMultiActions;
