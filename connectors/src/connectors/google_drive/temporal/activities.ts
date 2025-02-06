@@ -26,6 +26,7 @@ import {
   driveObjectToDustType,
   getAuthObject,
   getDriveClient,
+  getDriveFileId,
   getInternalId,
   getMyDriveIdCached,
 } from "@connectors/connectors/google_drive/temporal/utils";
@@ -674,6 +675,8 @@ export async function garbageCollector(
     activity: "garbageCollector",
   });
 
+  localLogger.info("Google Drive: Starting garbage collector");
+
   const files = await GoogleDriveFiles.findAll({
     where: {
       connectorId: connectorId,
@@ -849,7 +852,7 @@ export async function markFolderAsVisited(
     driveFileId: file.id,
     name: file.name,
     mimeType: file.mimeType,
-    parentId: file.parent,
+    parentId: parents[1] ? getDriveFileId(parents[1]) : null,
     lastSeenTs: new Date(),
   });
 }
