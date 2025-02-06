@@ -32,9 +32,7 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import type {
-  DataSourceViewSelectionConfiguration,
   ModelConfigurationType,
-  SelectedTag,
   SpaceType,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -47,7 +45,6 @@ import React, {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from "react";
 
@@ -81,7 +78,8 @@ import {
 } from "@app/components/assistant_builder/actions/WebNavigationAction";
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import { isLegacyAssistantBuilderConfiguration } from "@app/components/assistant_builder/legacy_agent";
-import { TagSearch } from "@app/components/assistant_builder/TagSearchInput";
+import { ActionDataSourceTagsFilterSection } from "@app/components/assistant_builder/tags/ActionDataSourceTagsFilterSection";
+import { isActionWithFilters } from "@app/components/assistant_builder/tags/helpers";
 import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderActionConfigurationWithId,
@@ -98,9 +96,7 @@ import {
   isDefaultActionName,
 } from "@app/components/assistant_builder/types";
 import { ACTION_SPECIFICATIONS } from "@app/lib/api/assistant/actions/utils";
-import { useTagSearch } from "@app/lib/swr/data_sources";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import { debounce } from "@app/lib/utils/debounce";
 
 const DATA_SOURCES_ACTION_CATEGORIES = [
   "RETRIEVAL_SEARCH",
@@ -1076,276 +1072,13 @@ function ActionEditor({
         </div>
       )}
 
-      {shouldDisplayTagsFilters && action.type === "RETRIEVAL_SEARCH" && (
-        <RetrievalSearchTagsFilter
+      {shouldDisplayTagsFilters && isActionWithFilters(action) && (
+        <ActionDataSourceTagsFilterSection
           owner={owner}
           action={action}
           updateAction={updateAction}
         />
       )}
-    </div>
-  );
-}
-
-function RetrievalSearchTagsFilter({
-  owner,
-  action,
-  updateAction,
-}: {
-  owner: WorkspaceType;
-  action: AssistantBuilderActionConfigurationWithId;
-  updateAction: (args: {
-    actionName: string;
-    actionDescription: string;
-    getNewActionConfig: (
-      old: AssistantBuilderActionConfiguration["configuration"]
-    ) => AssistantBuilderActionConfiguration["configuration"];
-  }) => void;
-}) {
-  const [searchInputValueIn, setSeachInputValueIn] = useState<string>("");
-  const searchHandleIn = useRef<NodeJS.Timeout>();
-
-  const [searchInputValueNot, setSeachInputValueNot] = useState<string>("");
-  const searchHandleNot = useRef<NodeJS.Timeout>();
-
-  const { searchTags } = useTagSearch({ owner });
-  const [isLoading, setIsLoading] = useState(false);
-  const [availableTagsIn, setAvailableTagsIn] = useState<SelectedTag[]>([]);
-  const [availableTagsNot, setAvailableTagsNot] = useState<SelectedTag[]>([]);
-
-  // Compute list of data sources used in the action.
-  const dustAPIDataSourceIds = useMemo(() => {
-    if ("dataSourceConfigurations" in action.configuration) {
-      return Object.values(action.configuration.dataSourceConfigurations).map(
-        (ds: DataSourceViewSelectionConfiguration) =>
-          ds.dataSourceView.dataSource.dustAPIDataSourceId
-      );
-    }
-    return [];
-  }, [action.configuration]);
-
-  // Compute list of Tags selected in the action.
-  const selectedTagsIn: SelectedTag[] = useMemo(() => {
-    if ("dataSourceConfigurations" in action.configuration) {
-      const dataSourceConfigurations = Object.values(
-        action.configuration.dataSourceConfigurations
-      );
-
-      return dataSourceConfigurations
-        .flatMap((dsc) => {
-          if (!dsc.tagsFilter?.in) {
-            return null;
-          }
-          return dsc.tagsFilter.in.map((t: string) => ({
-            tag: t,
-            dustAPIDataSourceId:
-              dsc.dataSourceView.dataSource.dustAPIDataSourceId,
-            connectorProvider: dsc.dataSourceView.dataSource.connectorProvider,
-          }));
-        })
-        .filter((t) => t !== null);
-    }
-    return [];
-  }, [action.configuration]);
-
-  const selectedTagsNot: SelectedTag[] = useMemo(() => {
-    if ("dataSourceConfigurations" in action.configuration) {
-      const dataSourceConfigurations = Object.values(
-        action.configuration.dataSourceConfigurations
-      );
-
-      return dataSourceConfigurations
-        .flatMap((dsc) => {
-          if (!dsc.tagsFilter?.not) {
-            return null;
-          }
-          return dsc.tagsFilter.not.map((t: string) => ({
-            tag: t,
-            dustAPIDataSourceId:
-              dsc.dataSourceView.dataSource.dustAPIDataSourceId,
-            connectorProvider: dsc.dataSourceView.dataSource.connectorProvider,
-          }));
-        })
-        .filter((t) => t !== null);
-    }
-    return [];
-  }, [action.configuration]);
-
-  // Query to search tags.
-  const searchTagsInCoreAPI = async (query: string, mode: "in" | "not") => {
-    setIsLoading(true);
-    try {
-      const tags = await searchTags({
-        query,
-        queryType: "prefix",
-        dataSources: dustAPIDataSourceIds,
-      });
-      const formattedTags: SelectedTag[] = [];
-      for (const tag of tags) {
-        for (const dataSourceId of tag.data_sources) {
-          formattedTags.push({
-            tag: tag.tag,
-            dustAPIDataSourceId: dataSourceId,
-            connectorProvider: null, // TODO: add connector provider.
-          });
-        }
-      }
-      if (mode === "in") {
-        setAvailableTagsIn(formattedTags);
-      } else {
-        setAvailableTagsNot(formattedTags);
-      }
-    } catch (error) {
-      console.error("Failed to search tags:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Handle input change with immediate state update but debounced search.
-  const handleSearchInputChange = (value: string, mode: "in" | "not") => {
-    if (mode === "in") {
-      setSeachInputValueIn(value);
-    } else {
-      setSeachInputValueNot(value);
-    }
-    if (value.trim()) {
-      debounce(
-        mode === "in" ? searchHandleIn : searchHandleNot,
-        () => searchTagsInCoreAPI(value, mode),
-        500
-      );
-    } else {
-      setAvailableTagsIn([]);
-      setAvailableTagsNot([]);
-    }
-  };
-
-  // Handle tag add. We add the tag to the action configuration directly to
-  const handleTagAdd = (tag: SelectedTag, mode: "in" | "not") => {
-    if (mode === "in") {
-      setSeachInputValueIn("");
-      setAvailableTagsIn([]);
-    } else {
-      setSeachInputValueNot("");
-      setAvailableTagsNot([]);
-    }
-    updateAction({
-      actionName: action.name,
-      actionDescription: action.description,
-      getNewActionConfig: (previousAction) => {
-        if (!("dataSourceConfigurations" in previousAction)) {
-          return previousAction;
-        }
-        const newAction = { ...previousAction };
-        const dsc: DataSourceViewSelectionConfiguration | undefined =
-          Object.values(newAction.dataSourceConfigurations).find(
-            (dataSourceConfiguration) =>
-              dataSourceConfiguration.dataSourceView.dataSource
-                .dustAPIDataSourceId === tag.dustAPIDataSourceId
-          );
-
-        if (dsc) {
-          if (!dsc.tagsFilter || dsc.tagsFilter === "auto") {
-            dsc.tagsFilter = { in: [], not: [] };
-          }
-          if (mode === "in") {
-            dsc.tagsFilter.in.push(tag.tag);
-          } else {
-            dsc.tagsFilter.not.push(tag.tag);
-          }
-          newAction.dataSourceConfigurations = {
-            ...newAction.dataSourceConfigurations,
-            [dsc.dataSourceView.sId]: dsc,
-          };
-        }
-
-        return newAction;
-      },
-    });
-  };
-
-  const handleTagRemove = (tag: SelectedTag, mode: "in" | "not") => {
-    if (mode === "in") {
-      setSeachInputValueIn("");
-      setAvailableTagsIn([]);
-    } else {
-      setSeachInputValueNot("");
-      setAvailableTagsNot([]);
-    }
-    updateAction({
-      actionName: action.name,
-      actionDescription: action.description,
-      getNewActionConfig: (previousAction) => {
-        if (!("dataSourceConfigurations" in previousAction)) {
-          return previousAction;
-        }
-        const newAction = { ...previousAction };
-        const dsc: DataSourceViewSelectionConfiguration | undefined =
-          Object.values(newAction.dataSourceConfigurations).find(
-            (dataSourceConfiguration) =>
-              dataSourceConfiguration.dataSourceView.dataSource
-                .dustAPIDataSourceId === tag.dustAPIDataSourceId
-          );
-
-        if (dsc && dsc.tagsFilter && dsc.tagsFilter !== "auto") {
-          if (mode === "in") {
-            dsc.tagsFilter.in = dsc.tagsFilter.in.filter((t) => t !== tag.tag);
-          } else {
-            dsc.tagsFilter.not = dsc.tagsFilter.not.filter(
-              (t) => t !== tag.tag
-            );
-          }
-          newAction.dataSourceConfigurations = {
-            ...newAction.dataSourceConfigurations,
-            [dsc.dataSourceView.sId]: dsc,
-          };
-        }
-
-        return newAction;
-      },
-    });
-  };
-
-  return (
-    <div className="flex flex-col gap-4 pt-8">
-      <div className="flex flex-col gap-2">
-        <div className="font-semibold text-element-800">Filtering</div>
-        <div className="text-sm text-element-600">
-          Filter documents based on labels from your folder or connected data
-          sources (Notion properties, Google Drive labels, etc.).
-        </div>
-        <div className="flex flex-col gap-2">
-          <div className="font-semibold text-element-800">Include</div>
-          <TagSearch
-            placeholder="Search labels..."
-            searchInputValue={searchInputValueIn}
-            setSearchInputValue={(value) =>
-              handleSearchInputChange(value, "in")
-            }
-            availableTags={availableTagsIn}
-            selectedTags={selectedTagsIn}
-            onTagAdd={(tag) => handleTagAdd(tag, "in")}
-            onTagRemove={(tag) => handleTagRemove(tag, "in")}
-            isLoading={isLoading}
-          />
-        </div>
-        <div className="flex flex-col gap-2">
-          <div className="font-semibold text-element-800">Exclude</div>
-          <TagSearch
-            placeholder="Search labels..."
-            searchInputValue={searchInputValueNot}
-            setSearchInputValue={(value) =>
-              handleSearchInputChange(value, "not")
-            }
-            availableTags={availableTagsNot}
-            selectedTags={selectedTagsNot}
-            onTagAdd={(tag) => handleTagAdd(tag, "not")}
-            onTagRemove={(tag) => handleTagRemove(tag, "not")}
-            isLoading={isLoading}
-          />
-        </div>
-      </div>
     </div>
   );
 }

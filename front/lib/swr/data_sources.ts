@@ -32,7 +32,7 @@ export function useDataSourceUsage({
   };
 }
 
-export function useTagSearch({ owner }: { owner: LightWorkspaceType }) {
+export function useTagSearchEndpoint({ owner }: { owner: LightWorkspaceType }) {
   const searchTags = async (params: TagSearchParams): Promise<TagResult[]> => {
     const res = await fetch(`/api/w/${owner.sId}/data_sources/tags`, {
       method: "POST",
