@@ -28,7 +28,13 @@ interface CardTitleProps {
 }
 
 const Title = ({ className, children }: CardTitleProps) => (
-  <div className={cn("s-text-sm s-font-semibold s-text-foreground", className)}>
+  <div
+    className={cn(
+      "s-text-sm s-font-semibold",
+      "dark:s-text-foreground-night s-text-foreground",
+      className
+    )}
+  >
     {children}
   </div>
 );
@@ -39,7 +45,13 @@ interface CardSubtitleProps {
 }
 
 const Subtitle = ({ className, children }: CardSubtitleProps) => (
-  <div className={cn("s-text-sm s-text-muted-foreground", className)}>
+  <div
+    className={cn(
+      "s-text-sm",
+      "dark:s-text-muted-foreground-night s-text-muted-foreground",
+      className
+    )}
+  >
     {children}
   </div>
 );
@@ -64,7 +76,11 @@ const Content = ({
   }
   return (
     <div
-      className={cn("s-flex s-flex-col s-gap-3 s-text-foreground", className)}
+      className={cn(
+        "s-flex s-flex-col s-gap-3",
+        "dark:s-text-foreground-night s-text-foreground",
+        className
+      )}
     >
       {children}
     </div>

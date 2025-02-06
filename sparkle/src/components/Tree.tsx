@@ -53,7 +53,7 @@ export function Tree({
       className={cn(
         "s-flex s-flex-col s-gap-0.5 s-overflow-hidden",
         isBoxed &&
-          "s-rounded-xl s-border s-border-structure-200 s-bg-structure-50 s-p-4",
+          "dark:s-border-structure-200-night dark:s-bg-structure-50-night s-rounded-xl s-border s-border-structure-200 s-bg-structure-50 s-p-4",
         className
       )}
     >
@@ -66,8 +66,14 @@ const treeItemStyleClasses = {
   base: "s-group/tree s-flex s-cursor-default s-flex-row s-items-center s-gap-2 s-h-9",
   isNavigatableBase:
     "s-rounded-xl s-pl-1 s-pr-3 s-transition-colors s-duration-300 s-ease-out s-cursor-pointer",
-  isNavigatableUnselected: "s-bg-structure-150/0 hover:s-bg-structure-150",
-  isNavigatableSelected: "s-font-medium s-bg-structure-150",
+  isNavigatableUnselected: cn(
+    "s-bg-structure-150/0 dark:s-bg-structure-150-night/0",
+    "hover:s-bg-structure-150 dark:hover:s-bg-structure-150-night"
+  ),
+  isNavigatableSelected: cn(
+    "s-font-medium",
+    "s-bg-structure-150 dark:s-bg-structure-150-night"
+  ),
 };
 
 interface TreeItemProps {
@@ -103,7 +109,7 @@ Tree.Item = function ({
   type = "node",
   className = "",
   labelClassName = "",
-  tailwindIconTextColor = "s-text-element-800",
+  tailwindIconTextColor = "s-text-element-800 dark:s-text-element-800-night",
   visual,
   checkbox,
   onChevronClick,
@@ -175,7 +181,7 @@ Tree.Item = function ({
         {checkbox && <Checkbox {...checkbox} size="xs" />}
         <Icon visual={visual} size="sm" className={tailwindIconTextColor} />
         <div
-          className={`s-font-regular s-truncate s-text-sm s-text-foreground ${labelClassName}`}
+          className={`s-font-regular dark:s-text-foreground-night s-truncate s-text-sm s-text-foreground ${labelClassName}`}
         >
           {label}
         </div>
@@ -208,7 +214,8 @@ Tree.Empty = function ({ label, onItemClick }: TreeEmptyProps) {
   return (
     <div
       className={cn(
-        "s-font-regular s-py-1.5 s-pl-6 s-text-sm s-text-muted-foreground",
+        "s-font-regular s-py-1.5 s-pl-6 s-text-sm",
+        "dark:s-text-muted-foreground-night s-text-muted-foreground",
         onItemClick ? "s-cursor-pointer" : ""
       )}
       onClick={onItemClick}

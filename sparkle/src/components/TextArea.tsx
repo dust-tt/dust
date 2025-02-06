@@ -17,7 +17,14 @@ export interface TextareaProps
 }
 
 const textAreaVariants = cva(
-  "s-flex s-w-full s-px-3 s-py-2 s-text-sm s-text-foreground s-bg-muted-background s-ring-offset-background s-border s-rounded-xl s-transition s-duration-100 focus-visible:s-outline-none focus-visible:s-border-border-dark focus-visible:s-ring",
+  cn(
+    "s-flex s-w-full s-px-3 s-py-2 s-text-sm",
+    "s-text-foreground dark:s-text-foreground-night",
+    "s-bg-muted-background dark:s-bg-muted-background-night",
+    "s-ring-offset-background",
+    "s-border s-rounded-xl s-transition s-duration-100 focus-visible:s-outline-none",
+    "focus-visible:s-border-border-dark focus-visible:s-ring"
+  ),
   {
     variants: {
       resize: {
@@ -27,12 +34,25 @@ const textAreaVariants = cva(
         both: "s-resize",
       },
       error: {
-        true: "s-border-border-warning/30 focus:s-ring-warning/10 focus-visible:s-border-border-warning dark:s-ring-warning-200-dark dark:focus:s-ring-warning-300-dark",
-        false:
-          "s-border-border-dark/50 focus:s-ring-border-focus/10 focus-visible:s-border-border-focus dark:s-ring-structure-300-dark dark:focus:s-ring-highlight-200-dark",
+        true: cn(
+          "s-border-border-warning/30",
+          "focus:s-ring-warning/10",
+          "focus-visible:s-border-border-warning",
+          "dark:s-ring-warning-200-night dark:focus:s-ring-warning-300-night"
+        ),
+        false: cn(
+          "s-border-border-dark/50",
+          "focus:s-ring-border-focus/10",
+          "focus-visible:s-border-border-focus",
+          "dark:s-ring-structure-300-night",
+          "dark:focus:s-ring-highlight-200-night"
+        ),
       },
       disabled: {
-        true: "disabled:s-cursor-not-allowed disabled:s-text-muted-foreground",
+        true: cn(
+          "disabled:s-cursor-not-allowed",
+          "disabled:s-text-muted-foreground dark:disabled:s-text-muted-foreground-night"
+        ),
         false: "",
       },
       isDisplay: {
