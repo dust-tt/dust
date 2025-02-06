@@ -31,7 +31,6 @@ import logger from "@app/logger/logger";
 
 export const CONTENT_OUTDATED_MSG =
   "Content is outdated. Please refer to the latest version of this content.";
-const MAX_BYTE_SIZE_CSV_RENDER_FULL_CONTENT = 500 * 1024; // 500 KB
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -238,10 +237,6 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
     if (this.fileId) {
       const file = await FileResource.fetchByModelId(this.fileId);
       fileSid = file?.sId ?? null;
-
-      // Note: For CSV files outputted by tools, we have a "snippet" version of the output with the
-      // first rows stored in GCP, maybe it's better than our "summary" snippet stored on File.
-      // Need more testing, for now we are using the "summary" snippet.
       snippet = file?.snippet ?? null;
     }
 
@@ -299,25 +294,6 @@ export function fileAttachmentLocation({
   };
 }
 
-async function getContentFragmentText({
-  workspaceId,
-  conversationId,
-  messageId,
-}: {
-  workspaceId: string;
-  conversationId: string;
-  messageId: string;
-}): Promise<string> {
-  const { filePath } = fileAttachmentLocation({
-    workspaceId,
-    conversationId,
-    messageId,
-    contentFormat: "text",
-  });
-
-  return getPrivateUploadBucket().fetchFileContent(filePath);
-}
-
 async function getOriginalFileContent(
   workspace: WorkspaceType,
   fileId: string
@@ -344,19 +320,6 @@ async function getProcessedFileContent(
   return getPrivateUploadBucket().fetchFileContent(fileCloudStoragePath);
 }
 
-async function getSnippetFileContent(
-  workspace: WorkspaceType,
-  fileId: string
-): Promise<string> {
-  const fileCloudStoragePath = FileResource.getCloudStoragePathForId({
-    fileId,
-    workspaceId: workspace.sId,
-    version: "snippet",
-  });
-
-  return getPrivateUploadBucket().fetchFileContent(fileCloudStoragePath);
-}
-
 async function getSignedUrlForProcessedContent(
   workspace: WorkspaceType,
   fileId: string
@@ -376,19 +339,15 @@ export async function renderFromFileId(
     contentType,
     excludeImages,
     fileId,
-    forceFullCSVInclude,
     model,
     title,
-    textBytes,
     contentFragmentVersion,
   }: {
     contentType: SupportedContentFragmentType;
     excludeImages: boolean;
     fileId: string;
-    forceFullCSVInclude: boolean;
     model: ModelConfigurationType;
     title: string;
-    textBytes: number | null;
     contentFragmentVersion: ContentFragmentVersion;
   }
 ): Promise<Result<ContentFragmentMessageTypeModel, Error>> {
@@ -429,17 +388,9 @@ export async function renderFromFileId(
       ],
     });
   } else {
-    const shouldRetrieveSnippetVersion =
-      contentType === "text/csv" &&
-      !forceFullCSVInclude &&
-      textBytes &&
-      textBytes > MAX_BYTE_SIZE_CSV_RENDER_FULL_CONTENT;
+    let content = await getProcessedFileContent(workspace, fileId);
 
-    let content = shouldRetrieveSnippetVersion
-      ? await getSnippetFileContent(workspace, fileId)
-      : await getProcessedFileContent(workspace, fileId);
-
-    if (!shouldRetrieveSnippetVersion && !content) {
+    if (!content) {
       logger.warn(
         {
           fileId,
@@ -448,7 +399,6 @@ export async function renderFromFileId(
         },
         "No content extracted from file processed version, we are retrieving the original file as a fallback."
       );
-
       content = await getOriginalFileContent(workspace, fileId);
     }
 
@@ -542,94 +492,6 @@ export async function renderLightContentFragmentForModel(
       },
     ],
   };
-}
-
-export async function renderContentFragmentForModel(
-  message: ContentFragmentType,
-  conversation: ConversationType,
-  model: ModelConfigurationType,
-  {
-    excludeImages,
-  }: {
-    excludeImages: boolean;
-  }
-): Promise<Result<ContentFragmentMessageTypeModel, Error>> {
-  const { contentType, fileId, sId, title, textBytes, contentFragmentVersion } =
-    message;
-
-  try {
-    // Render content based on fragment type:
-    // - If the fragment is superseded by another content fragment, don't render the content.
-    // - If the fragment is a file, render it from the file. For large CSV files, render a snippet
-    //   version (CSV schema).
-    // - If the fragment is not a file (public API), always render the full content.
-    if (message.contentFragmentVersion === "superseded") {
-      return new Ok({
-        role: "content_fragment",
-        name: `inject_${contentType}`,
-        content: [
-          {
-            type: "text",
-            text: renderContentFragmentXml({
-              fileId,
-              contentType,
-              title,
-              version: contentFragmentVersion,
-              content: CONTENT_OUTDATED_MSG,
-            }),
-          },
-        ],
-      });
-    }
-
-    if (fileId) {
-      return await renderFromFileId(conversation.owner, {
-        contentType,
-        excludeImages,
-        fileId,
-        forceFullCSVInclude: false,
-        model,
-        title,
-        textBytes,
-        contentFragmentVersion,
-      });
-    } else {
-      const content = await getContentFragmentText({
-        workspaceId: conversation.owner.sId,
-        conversationId: conversation.sId,
-        messageId: sId,
-      });
-
-      return new Ok({
-        role: "content_fragment",
-        name: `inject_${contentType}`,
-        content: [
-          {
-            type: "text",
-            text: renderContentFragmentXml({
-              fileId: null,
-              contentType,
-              title,
-              version: contentFragmentVersion,
-              content,
-            }),
-          },
-        ],
-      });
-    }
-  } catch (error) {
-    logger.error(
-      {
-        error,
-        workspaceId: conversation.owner.sId,
-        conversationId: conversation.sId,
-        messageId: sId,
-      },
-      "Failed to retrieve content fragment text"
-    );
-
-    return new Err(new Error("Failed to retrieve content fragment text"));
-  }
 }
 
 function renderContentFragmentXml({

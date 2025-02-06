@@ -1,5 +1,5 @@
 import type { APIErrorType, WithAPIErrorResponse } from "@dust-tt/types";
-import { CheckBigQueryCredentialsSchema } from "@dust-tt/types";
+import { CheckBigQueryCredentialsSchema, removeNulls } from "@dust-tt/types";
 import { BigQuery } from "@google-cloud/bigquery";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -90,34 +90,36 @@ async function handler(
     // Get all datasets
     const [datasets] = await bigquery.getDatasets();
 
+    const allDatasetsLocations = removeNulls(
+      datasets.map((dataset) => dataset.location?.toLocaleLowerCase())
+    );
+
     // Initialize locations map
-    const allLocations: Record<string, string[]> = {};
+    const locations: Record<string, Set<string>> = {};
 
     // Process each dataset and its tables
     for (const dataset of datasets) {
       const [tables] = await dataset.getTables();
-
       for (const table of tables) {
-        const locationRaw = table.location?.toLowerCase();
-        if (locationRaw) {
-          const locations = locationRaw.includes("-")
-            ? [locationRaw.split("-")[0], locationRaw]
-            : [locationRaw];
-
-          for (const location of locations) {
-            if (!allLocations[location]) {
-              allLocations[location] = [];
-            }
-
-            const tableId = `${dataset.id}.${table.id}`;
-            allLocations[location].push(tableId);
+        for (const location of allDatasetsLocations) {
+          if (
+            dataset.location &&
+            location.toLowerCase().startsWith(dataset.location.toLowerCase())
+          ) {
+            locations[location] ??= new Set();
+            locations[location].add(`${dataset.id}.${table.id}`);
           }
         }
       }
     }
 
     return res.status(200).json({
-      locations: allLocations,
+      locations: Object.fromEntries(
+        Object.entries(locations).map(([location, tables]) => [
+          location,
+          Array.from(tables),
+        ])
+      ),
     });
   } catch (err) {
     const error = err as Error;

@@ -56,7 +56,7 @@ async function handler(
   }
 
   // Only folder document and table upserts are supported on this endpoint.
-  if (!["folder_document", "folder_table"].includes(file.useCase)) {
+  if (!["upsert_document", "upsert_table"].includes(file.useCase)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {

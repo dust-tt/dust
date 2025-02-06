@@ -782,6 +782,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "labs_github_actions"
   | "deepseek_r1_global_agent_feature"
   | "bigquery_feature"
+  | "tags_filters"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -2396,7 +2397,7 @@ const FileTypeStatusSchema = FlexibleEnumSchema<
 >();
 
 const FileTypeUseCaseSchema = FlexibleEnumSchema<
-  "conversation" | "avatar" | "tool_output" | "folder_document" | "folder_table"
+  "conversation" | "avatar" | "tool_output" | "upsert_document" | "upsert_table"
 >();
 
 export const FileTypeSchema = z.object({
