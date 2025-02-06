@@ -273,7 +273,19 @@ async function _checkRoleGrants(
   for (const g of [...currentGrantsRes.value, ...futureGrantsRes.value]) {
     const grantOn = "granted_on" in g ? g.granted_on : g.grant_on;
 
-    if (["TABLE", "VIEW"].includes(grantOn)) {
+    if (
+      [
+        "TABLE",
+        "VIEW",
+        "EXTERNAL_TABLE",
+        "DYNAMIC_TABLE",
+        "EVENT_TABLE",
+        "STREAM",
+        "MATERIALIZED_VIEW",
+        "HYBRID_TABLE",
+        "ICEBERG_TABLE",
+      ].includes(grantOn)
+    ) {
       if (g.privilege !== "SELECT") {
         return new Err(
           new TestConnectionError(
