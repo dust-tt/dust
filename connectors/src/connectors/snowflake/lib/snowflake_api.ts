@@ -294,7 +294,9 @@ async function _checkRoleGrants(
           )
         );
       }
-    } else if (["SCHEMA", "DATABASE", "WAREHOUSE"].includes(grantOn)) {
+    } else if (
+      ["SCHEMA", "DATABASE", "WAREHOUSE", "FILE_FORMAT"].includes(grantOn)
+    ) {
       if (g.privilege !== "USAGE") {
         return new Err(
           new TestConnectionError(
