@@ -242,7 +242,7 @@ makeScript(
       logging: false,
     });
 
-    const connectors = await ConnectorResource.fetchByIds("notion", [47]);
+    const connectors = await ConnectorResource.listByType("notion", {});
 
     logger.info(`Found ${connectors.length} Notion connectors`);
 
