@@ -2,6 +2,8 @@ import * as RadioGroupPrimitive from "@radix-ui/react-radio-group";
 import { cva, VariantProps } from "class-variance-authority";
 import * as React from "react";
 
+import { Icon } from "@sparkle/components/Icon";
+import { Label } from "@sparkle/components/Label";
 import { Tooltip } from "@sparkle/components/Tooltip";
 import { cn } from "@sparkle/lib/utils";
 
@@ -59,11 +61,15 @@ const RadioGroup = React.forwardRef<
 RadioGroup.displayName = RadioGroupPrimitive.Root.displayName;
 
 interface RadioGroupItemProps
-  extends React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Item>,
+  extends Omit<
+      React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Item>,
+      "children"
+    >,
     VariantProps<typeof radioStyles> {
   tooltipMessage?: string;
-  tooltipAsChild?: boolean;
-  label?: React.ReactNode;
+  label: string;
+  labelProps?: Omit<React.ComponentPropsWithoutRef<typeof Label>, "children">;
+  icon?: React.ComponentType;
 }
 
 const RadioGroupItem = React.forwardRef<
@@ -71,19 +77,17 @@ const RadioGroupItem = React.forwardRef<
   RadioGroupItemProps
 >(
   (
-    {
-      tooltipMessage,
-      className,
-      size,
-      tooltipAsChild = false,
-      label,
-      ...props
-    },
+    { tooltipMessage, className, icon, size, label, labelProps, id, ...props },
     ref
   ) => {
+    const renderIcon = (visual: React.ComponentType, extraClass = "") => (
+      <Icon visual={visual} size="md" className={extraClass} />
+    );
+
     const item = (
       <RadioGroupPrimitive.Item
         ref={ref}
+        id={id}
         className={cn(radioStyles({ size }), className)}
         {...props}
       >
@@ -96,15 +100,14 @@ const RadioGroupItem = React.forwardRef<
     const wrappedItem = (
       <div className="s-flex s-items-center s-gap-2">
         {tooltipMessage ? (
-          <Tooltip
-            triggerAsChild={tooltipAsChild}
-            trigger={item}
-            label={<span>{tooltipMessage}</span>}
-          />
+          <Tooltip trigger={item} label={tooltipMessage} />
         ) : (
           item
         )}
-        {label}
+        {icon ? renderIcon(icon) : <></>}
+        <Label htmlFor={id} {...labelProps}>
+          {label}
+        </Label>
       </div>
     );
 
@@ -114,26 +117,59 @@ const RadioGroupItem = React.forwardRef<
 
 type IconPosition = "start" | "center" | "end";
 
-interface RadioGroupChoiceProps extends RadioGroupItemProps {
+interface RadioGroupCustomItemProps
+  extends React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Item>,
+    VariantProps<typeof radioStyles> {
   iconPosition?: IconPosition;
+  customItem: React.ReactNode;
+  children?: React.ReactNode;
 }
 
-const RadioGroupChoice = React.forwardRef<
+const RadioGroupCustomItem = React.forwardRef<
   React.ElementRef<typeof RadioGroupPrimitive.Item>,
-  RadioGroupChoiceProps
->(({ className, size, iconPosition = "center", children, ...props }, ref) => {
-  return (
-    <div
-      className={cn("s-flex s-flex-col", className, `s-items-${iconPosition}`)}
-    >
-      <RadioGroupItem
+  RadioGroupCustomItemProps
+>(
+  (
+    {
+      className,
+      size,
+      customItem,
+      iconPosition = "center",
+      children,
+      id,
+      ...props
+    },
+    ref
+  ) => {
+    const item = (
+      <RadioGroupPrimitive.Item
         ref={ref}
-        className={cn(radioStyles({ size }))}
+        id={id}
+        className={cn(radioStyles({ size }), className)}
         {...props}
-      />
-      {children}
-    </div>
-  );
-});
+      >
+        <RadioGroupPrimitive.Indicator
+          className={radioIndicatorStyles({ size })}
+        />
+      </RadioGroupPrimitive.Item>
+    );
 
-export { RadioGroup, RadioGroupChoice, RadioGroupItem };
+    return (
+      <div
+        className={cn(
+          "s-flex s-flex-col",
+          className,
+          `s-items-${iconPosition}`
+        )}
+      >
+        <div className="s-flex s-items-center s-gap-2">
+          {item}
+          {customItem}
+        </div>
+        {children}
+      </div>
+    );
+  }
+);
+
+export { RadioGroup, RadioGroupCustomItem, RadioGroupItem };
