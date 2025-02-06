@@ -1,4 +1,10 @@
-import type { DataSourceType, LightWorkspaceType } from "@dust-tt/types";
+import type {
+  DataSourceType,
+  LightWorkspaceType,
+  TagResult,
+  TagSearchParams,
+  TagSearchResponse,
+} from "@dust-tt/types";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
@@ -24,4 +30,25 @@ export function useDataSourceUsage({
     isUsageError: error,
     mutate,
   };
+}
+
+export function useTagSearch({ owner }: { owner: LightWorkspaceType }) {
+  const searchTags = async (params: TagSearchParams): Promise<TagResult[]> => {
+    const res = await fetch(`/api/w/${owner.sId}/data_sources/tags`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(params),
+    });
+
+    if (!res.ok) {
+      throw new Error("Failed to search tags");
+    }
+
+    const data = (await res.json()) as TagSearchResponse;
+    return data.tags;
+  };
+
+  return { searchTags };
 }

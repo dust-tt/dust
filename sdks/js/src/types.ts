@@ -782,6 +782,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "labs_github_actions"
   | "deepseek_r1_global_agent_feature"
   | "bigquery_feature"
+  | "tags_filters"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
