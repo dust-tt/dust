@@ -11,7 +11,7 @@ import type {
 import { Client, isFullDatabase, isFullPage } from "@notionhq/client";
 import { Op } from "sequelize";
 
-import { deleteDatabase, getNotionAccessToken } from "@connectors/connectors/notion/temporal/activities";
+import { getNotionAccessToken } from "@connectors/connectors/notion/temporal/activities";
 import { stopNotionGarbageCollectorWorkflow } from "@connectors/connectors/notion/temporal/client";
 import { QUEUE_NAME } from "@connectors/connectors/notion/temporal/config";
 import {
@@ -597,25 +597,3 @@ export const notion = async ({
       throw new Error("Unknown notion command: " + command);
   }
 };
-
-async function main() {
-  const urls = [
-    "https://www.notion.so/dust-tt/12345678901234567890123456789012",
-    "https://www.notion.so/dust-tt/12345678901234567890123456789012",
-  ];
-  for (const url of urls) {
-    const r = await findNotionUrl({
-      connectorId: 145,
-      url,
-    });
-    if (r.db) {
-      await deleteDatabase({
-        connectorId: 145,
-        dataSourceConfig: {
-          accessToken: "123",
-        },
-        databaseId: r.db.
-      });
-    }
-  }
-}
