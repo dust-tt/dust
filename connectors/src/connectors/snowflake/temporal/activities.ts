@@ -40,6 +40,8 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
     connection,
   });
 
+  logger.info({ connectorId }, "Starting snowflake sync");
+
   if (readonlyConnectionCheck.isErr()) {
     if (readonlyConnectionCheck.error.code !== "NOT_READONLY") {
       // Any other error here is "unexpected".
@@ -47,6 +49,10 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
     }
     // The connection is not read-only...
 
+    logger.info(
+      { connectorId },
+      "Connection is not read-only, garbage collecting"
+    );
     // We garbage collect everything that was synced as nothing will be marked as used.
     await sync({
       mimeTypes: MIME_TYPES.SNOWFLAKE,
