@@ -118,7 +118,10 @@ async function checkOrphansFoldersForConnector(
       throw new Error(coreRes.error.message);
     }
 
-    const ids = coreRes.value.folders.map((node) => node.folder_id);
+    const ids = coreRes.value.folders
+      .map((node) => node.folder_id)
+      .filter((id) => id !== "gdrive-sharedWithMe");
+
     count = ids.length;
     const files = await GoogleDriveFiles.findAll({
       where: {
