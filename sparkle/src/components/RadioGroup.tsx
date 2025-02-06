@@ -2,6 +2,7 @@ import * as RadioGroupPrimitive from "@radix-ui/react-radio-group";
 import { cva, VariantProps } from "class-variance-authority";
 import * as React from "react";
 
+import { Label } from "@sparkle/components/Label";
 import { Tooltip } from "@sparkle/components/Tooltip";
 import { cn } from "@sparkle/lib/utils";
 
@@ -59,11 +60,14 @@ const RadioGroup = React.forwardRef<
 RadioGroup.displayName = RadioGroupPrimitive.Root.displayName;
 
 interface RadioGroupItemProps
-  extends React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Item>,
+  extends Omit<
+      React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Item>,
+      "children"
+    >,
     VariantProps<typeof radioStyles> {
   tooltipMessage?: string;
-  tooltipAsChild?: boolean;
-  label?: React.ReactNode;
+  label: string;
+  labelProps?: Omit<React.ComponentPropsWithoutRef<typeof Label>, "children">;
 }
 
 const RadioGroupItem = React.forwardRef<
@@ -71,19 +75,13 @@ const RadioGroupItem = React.forwardRef<
   RadioGroupItemProps
 >(
   (
-    {
-      tooltipMessage,
-      className,
-      size,
-      tooltipAsChild = false,
-      label,
-      ...props
-    },
+    { tooltipMessage, className, size, label, labelProps, id, ...props },
     ref
   ) => {
     const item = (
       <RadioGroupPrimitive.Item
         ref={ref}
+        id={id}
         className={cn(radioStyles({ size }), className)}
         {...props}
       >
@@ -97,14 +95,15 @@ const RadioGroupItem = React.forwardRef<
       <div className="s-flex s-items-center s-gap-2">
         {tooltipMessage ? (
           <Tooltip
-            triggerAsChild={tooltipAsChild}
             trigger={item}
-            label={<span>{tooltipMessage}</span>}
+            label={<Label {...labelProps}>{label}</Label>}
           />
         ) : (
           item
         )}
-        {label}
+        <Label htmlFor={id} {...labelProps}>
+          {label}
+        </Label>
       </div>
     );
 
@@ -114,13 +113,14 @@ const RadioGroupItem = React.forwardRef<
 
 type IconPosition = "start" | "center" | "end";
 
-interface RadioGroupChoiceProps extends RadioGroupItemProps {
+interface RadioGroupCustomItemProps extends RadioGroupItemProps {
   iconPosition?: IconPosition;
+  children: React.ReactNode;
 }
 
-const RadioGroupChoice = React.forwardRef<
+const RadioGroupCustomItem = React.forwardRef<
   React.ElementRef<typeof RadioGroupPrimitive.Item>,
-  RadioGroupChoiceProps
+  RadioGroupCustomItemProps
 >(({ className, size, iconPosition = "center", children, ...props }, ref) => {
   return (
     <div
@@ -136,4 +136,4 @@ const RadioGroupChoice = React.forwardRef<
   );
 });
 
-export { RadioGroup, RadioGroupChoice, RadioGroupItem };
+export { RadioGroup, RadioGroupCustomItem, RadioGroupItem };
