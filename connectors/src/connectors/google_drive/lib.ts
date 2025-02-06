@@ -3,6 +3,7 @@ import {
   cacheWithRedis,
   concurrentExecutor,
   getGoogleIdsFromSheetContentNodeInternalId,
+  getGoogleSheetTableId,
   isGoogleSheetContentNodeInternalId,
   MIME_TYPES,
   removeNulls,
@@ -28,6 +29,7 @@ import {
   deleteDataSourceDocument,
   deleteDataSourceFolder,
   updateDataSourceDocumentParents,
+  updateDataSourceTableParents,
   upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
 import {
@@ -229,7 +231,7 @@ export async function fixParents({
             JSON.stringify(localParents)
           ) {
             logger.info(
-              { localParents, parents },
+              { dustFileId: file.dustFileId, localParents, parents },
               "Parents not consistent with gdrive, updating"
             );
             const driveParentId = parents[1];
@@ -241,6 +243,7 @@ export async function fixParents({
                 parentId: driveParentId,
               });
               const dataSourceConfig = dataSourceConfigFromConnector(connector);
+              const dustParentIds = parents.map((p) => getInternalId(p));
               if (
                 isGoogleDriveFolder(googleFile) ||
                 isGoogleDriveSpreadSheetFile(googleFile)
@@ -248,17 +251,35 @@ export async function fixParents({
                 await upsertDataSourceFolder({
                   dataSourceConfig,
                   folderId: file.dustFileId,
-                  parents: parents.map((p) => getInternalId(p)),
+                  parents: dustParentIds,
                   parentId: dustParentId,
                   title: file.name ?? "",
                   mimeType: MIME_TYPES.GOOGLE_DRIVE.FOLDER,
                   sourceUrl: getSourceUrlForGoogleDriveFiles(file),
                 });
+                const sheets = await GoogleDriveSheet.findAll({
+                  where: {
+                    driveFileId: file.driveFileId,
+                    connectorId: connector.id,
+                  },
+                });
+                for (const sheet of sheets) {
+                  const tableId = getGoogleSheetTableId(
+                    sheet.driveFileId,
+                    sheet.driveSheetId
+                  );
+                  await updateDataSourceTableParents({
+                    dataSourceConfig,
+                    tableId,
+                    parents: [tableId, ...dustParentIds],
+                    parentId: file.dustFileId,
+                  });
+                }
               } else {
                 await updateDataSourceDocumentParents({
                   dataSourceConfig,
                   documentId: file.dustFileId,
-                  parents: parents.map((p) => getInternalId(p)),
+                  parents: dustParentIds,
                   parentId: dustParentId,
                 });
               }
