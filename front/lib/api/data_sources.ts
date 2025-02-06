@@ -58,7 +58,6 @@ import { launchScrubDataSourceWorkflow } from "@app/poke/temporal/client";
 
 import type { FileResource } from "../resources/file_resource";
 import { getConversationWithoutContent } from "./assistant/conversation/without_content";
-import { isJITActionsEnabled } from "./assistant/jit_actions";
 
 export async function getDataSources(
   auth: Authenticator,
@@ -950,16 +949,6 @@ async function getOrCreateConversationDataSource(
     }
   >
 > {
-  const jitEnabled = isJITActionsEnabled();
-
-  if (!jitEnabled) {
-    return new Err({
-      name: "dust_error",
-      code: "invalid_request_error",
-      message: "JIT processing is not enabled for this file.",
-    });
-  }
-
   const lockName = "conversationDataSource" + conversation.id;
 
   const res = await Lock.executeWithLock(

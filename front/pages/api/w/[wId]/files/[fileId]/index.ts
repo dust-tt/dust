@@ -23,12 +23,7 @@ export const config = {
 };
 
 // Declared here because endpoint-specific.
-const VALID_VIEW_VERSIONS: FileVersion[] = [
-  "original",
-  "processed",
-  "public",
-  "snippet",
-];
+const VALID_VIEW_VERSIONS: FileVersion[] = ["original", "processed", "public"];
 function isValidViewVersion(
   // Because coming from the URL, it can be a string or an array of strings.
   version: string | string[] | undefined

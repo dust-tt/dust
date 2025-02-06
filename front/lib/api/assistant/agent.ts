@@ -371,7 +371,6 @@ async function* runMultiActionsAgent(
 
   const prompt = await constructPromptMultiActions(auth, {
     userMessage,
-    conversation,
     agentConfiguration,
     fallbackPrompt,
     model,

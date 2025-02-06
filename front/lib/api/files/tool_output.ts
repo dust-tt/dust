@@ -1,4 +1,3 @@
-import { isJITActionsEnabled } from "@app/lib/api/assistant/jit_actions";
 import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
 import { processAndStoreFile } from "@app/lib/api/files/upload";
 import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
@@ -38,7 +37,7 @@ export async function internalCreateToolOutputFile(
   await processAndStoreFile(auth, { file: fileResource, reqOrString: content });
 
   // If the tool returned no content, it makes no sense to upsert it to the data source
-  if (content && isJITActionsEnabled()) {
+  if (content) {
     const jitDataSource = await getOrCreateConversationDataSourceFromFile(
       auth,
       fileResource

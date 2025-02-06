@@ -31,7 +31,7 @@ import { FileModel } from "@app/lib/resources/storage/models/files";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 
-export type FileVersion = "processed" | "original" | "public" | "snippet";
+export type FileVersion = "processed" | "original" | "public";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface FileResource extends ReadonlyAttributesType<FileModel> {}
@@ -116,10 +116,6 @@ export class FileResource extends BaseResource<FileModel> {
         // Delete the processed file if it exists.
         await this.getBucketForVersion("processed")
           .file(this.getCloudStoragePath(auth, "processed"))
-          .delete({ ignoreNotFound: true });
-        // Delete the snippet file if it exists.
-        await this.getBucketForVersion("snippet")
-          .file(this.getCloudStoragePath(auth, "snippet"))
           .delete({ ignoreNotFound: true });
         // Delete the public file if it exists.
         await this.getBucketForVersion("public")
