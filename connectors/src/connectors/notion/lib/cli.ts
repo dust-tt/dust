@@ -23,6 +23,7 @@ import {
   upsertDatabaseWorkflow,
   upsertPageWorkflow,
 } from "@connectors/connectors/notion/temporal/workflows/admins";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { getConnectorOrThrow } from "@connectors/lib/cli";
 import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
 import { getTemporalClient } from "@connectors/lib/temporal";
@@ -31,7 +32,6 @@ import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 import { getParsedDatabase, retrievePage } from "./notion_api";
-import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 
 const logger = mainLogger.child({ provider: "notion" });
 
