@@ -44,14 +44,12 @@ import logger from "@app/logger/logger";
 export async function constructPromptMultiActions(
   auth: Authenticator,
   {
-    conversation,
     userMessage,
     agentConfiguration,
     fallbackPrompt,
     model,
     hasAvailableActions,
   }: {
-    conversation: ConversationType;
     userMessage: UserMessageType;
     agentConfiguration: AgentConfigurationType;
     fallbackPrompt?: string;
