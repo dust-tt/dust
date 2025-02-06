@@ -1,3 +1,4 @@
+import { cacheWithRedis } from "@dust-tt/types";
 import type { OAuth2Client } from "googleapis-common";
 import type { GaxiosError } from "googleapis-common";
 
@@ -9,7 +10,7 @@ import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
 import { FILE_ATTRIBUTES_TO_FETCH } from "@connectors/types/google_drive";
 
-export async function getGoogleDriveObject(
+async function _getGoogleDriveObject(
   authCredentials: OAuth2Client,
   driveObjectId: string
 ): Promise<GoogleDriveObjectType | null> {
@@ -38,4 +39,32 @@ export async function getGoogleDriveObject(
     }
     throw e;
   }
+}
+
+const cachedGetGoogleDriveObject = cacheWithRedis<
+  GoogleDriveObjectType | null,
+  [OAuth2Client, string, number, string | number]
+>(
+  _getGoogleDriveObject,
+  (_, driveObjectId, connectorId, memoizationKey) => {
+    return `${connectorId}:${driveObjectId}:${memoizationKey}`;
+  },
+  60 * 10 * 1000
+);
+
+export async function getGoogleDriveObject(
+  authCredentials: OAuth2Client,
+  driveObjectId: string,
+  connectorId?: number,
+  memoizationKey?: string | number
+): Promise<GoogleDriveObjectType | null> {
+  if (connectorId && memoizationKey) {
+    return cachedGetGoogleDriveObject(
+      authCredentials,
+      driveObjectId,
+      connectorId,
+      memoizationKey
+    );
+  }
+  return _getGoogleDriveObject(authCredentials, driveObjectId);
 }

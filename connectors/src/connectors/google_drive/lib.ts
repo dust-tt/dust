@@ -1,16 +1,25 @@
 import type { ContentNodesViewType, ModelId } from "@dust-tt/types";
 import {
   cacheWithRedis,
+  concurrentExecutor,
   getGoogleIdsFromSheetContentNodeInternalId,
   isGoogleSheetContentNodeInternalId,
+  MIME_TYPES,
   removeNulls,
 } from "@dust-tt/types";
 import type { Logger } from "pino";
 import type { InferAttributes, WhereOptions } from "sequelize";
 
-import { isGoogleDriveSpreadSheetFile } from "@connectors/connectors/google_drive/temporal/mime_types";
+import { getSourceUrlForGoogleDriveFiles } from "@connectors/connectors/google_drive";
+import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
+import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
+import {
+  isGoogleDriveFolder,
+  isGoogleDriveSpreadSheetFile,
+} from "@connectors/connectors/google_drive/temporal/mime_types";
 import { deleteSpreadsheet } from "@connectors/connectors/google_drive/temporal/spreadsheets";
 import {
+  getAuthObject,
   getDriveFileId,
   getInternalId,
 } from "@connectors/connectors/google_drive/temporal/utils";
@@ -18,6 +27,8 @@ import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_c
 import {
   deleteDataSourceDocument,
   deleteDataSourceFolder,
+  updateDataSourceDocumentParents,
+  upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
 import {
   GoogleDriveFiles,
@@ -144,12 +155,21 @@ export async function internalDeleteFile(
   });
 }
 
-export async function fixParents(
-  connector: ConnectorResource,
-  files: GoogleDriveFiles[],
-  logger: Logger,
-  execute: boolean = true
-) {
+export async function fixParents({
+  connector,
+  files,
+  startSyncTs,
+  checkFromGoogle = false,
+  execute = false,
+  logger,
+}: {
+  connector: ConnectorResource;
+  files: GoogleDriveFiles[];
+  startSyncTs: number;
+  checkFromGoogle?: boolean;
+  execute?: boolean;
+  logger: Logger;
+}) {
   const parentFiles = await GoogleDriveFiles.findAll({
     where: {
       connectorId: connector.id,
@@ -163,8 +183,91 @@ export async function fixParents(
     },
   });
 
+  const authCredentials = await getAuthObject(connector.connectionId);
+
+  const googleFiles = checkFromGoogle
+    ? removeNulls(
+        await concurrentExecutor(
+          files,
+          async (file) =>
+            getGoogleDriveObject(
+              authCredentials,
+              file.driveFileId,
+              connector.id,
+              startSyncTs
+            ),
+          {
+            concurrency: 10,
+          }
+        )
+      )
+    : [];
+
   for (const file of files) {
     if (file.parentId) {
+      if (checkFromGoogle) {
+        const googleFile = googleFiles.find((f) => f.id === file.driveFileId);
+        if (!googleFile) {
+          logger.info(
+            { fileId: file.driveFileId },
+            "File does not exist in Google Drive, skipping"
+          );
+          continue;
+        } else {
+          const parents = await getFileParentsMemoized(
+            connector.id,
+            authCredentials,
+            googleFile,
+            startSyncTs
+          );
+          const localParents = await getLocalParents(
+            connector.id,
+            file.dustFileId,
+            `${startSyncTs}`
+          );
+
+          if (
+            JSON.stringify(parents.map((p) => getInternalId(p))) !==
+            JSON.stringify(localParents)
+          ) {
+            logger.info(
+              { localParents, parents },
+              "Parents not consistent with gdrive, updating"
+            );
+            const driveParentId = parents[1];
+            const dustParentId = driveParentId
+              ? getInternalId(driveParentId)
+              : null;
+            if (execute) {
+              await file.update({
+                parentId: driveParentId,
+              });
+              const dataSourceConfig = dataSourceConfigFromConnector(connector);
+              if (
+                isGoogleDriveFolder(googleFile) ||
+                isGoogleDriveSpreadSheetFile(googleFile)
+              ) {
+                await upsertDataSourceFolder({
+                  dataSourceConfig,
+                  folderId: file.dustFileId,
+                  parents: parents.map((p) => getInternalId(p)),
+                  parentId: dustParentId,
+                  title: file.name ?? "",
+                  mimeType: MIME_TYPES.GOOGLE_DRIVE.FOLDER,
+                  sourceUrl: getSourceUrlForGoogleDriveFiles(file),
+                });
+              } else {
+                await updateDataSourceDocumentParents({
+                  dataSourceConfig,
+                  documentId: file.dustFileId,
+                  parents: parents.map((p) => getInternalId(p)),
+                  parentId: dustParentId,
+                });
+              }
+            }
+          }
+        }
+      }
       const parentFile = parentFiles.find(
         (f) => f.driveFileId === file.parentId
       );

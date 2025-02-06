@@ -111,11 +111,13 @@ export const google_drive = async ({
         throw new Error("Missing --fileId argument");
       }
       const fileId = args.fileId;
-
+      const now = Date.now();
       const authCredentials = await getAuthObject(connector.connectionId);
       const driveObject = await getGoogleDriveObject(
         authCredentials,
-        getDriveFileId(fileId)
+        getDriveFileId(fileId),
+        connector.id,
+        now
       );
       if (!driveObject) {
         throw new Error("Can't find google drive object");
@@ -124,7 +126,7 @@ export const google_drive = async ({
         connector.id,
         authCredentials,
         driveObject,
-        Date.now()
+        now
       );
       return { status: 200, content: parents, type: typeof parents };
     }
@@ -136,6 +138,7 @@ export const google_drive = async ({
       const limit = 1000;
       let fromId = 0;
       let files: GoogleDriveFiles[] = [];
+      const now = Date.now();
       do {
         files = await GoogleDriveFiles.findAll({
           where: {
@@ -145,11 +148,21 @@ export const google_drive = async ({
           order: [["id", "ASC"]],
           limit,
         });
-        const connecrtorResource = new ConnectorResource(
-          ConnectorModel,
-          connector
+
+        const connectorResource = await ConnectorResource.fetchById(
+          connector.id
         );
-        await fixParents(connecrtorResource, files, topLogger, execute);
+        if (!connectorResource) {
+          throw new Error("Connector not found");
+        }
+        await fixParents({
+          connector: connectorResource,
+          files,
+          checkFromGoogle: true,
+          execute,
+          startSyncTs: now,
+          logger: topLogger,
+        });
         fromId = files[limit - 1]?.id ?? 0;
       } while (fromId > 0);
       return { success: true };

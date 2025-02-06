@@ -198,7 +198,9 @@ export async function syncFiles(
   const authCredentials = await getAuthObject(connector.connectionId);
   const driveFolder = await getGoogleDriveObject(
     authCredentials,
-    driveFolderId
+    driveFolderId,
+    connectorId,
+    startSyncTs
   );
   if (!driveFolder) {
     // We got a 404 on this folder, we skip it.
@@ -677,6 +679,8 @@ export async function garbageCollector(
 
   localLogger.info("Google Drive: Starting garbage collector");
 
+  const ts = lastSeenTs || Date.now();
+
   const files = await GoogleDriveFiles.findAll({
     where: {
       connectorId: connectorId,
@@ -692,7 +696,9 @@ export async function garbageCollector(
       return queue.add(async () => {
         const driveFile = await getGoogleDriveObject(
           authCredentials,
-          file.driveFileId
+          file.driveFileId,
+          connectorId,
+          ts
         );
         if (!driveFile) {
           // Could not find the file on Gdrive, deleting our local reference to it.
@@ -718,7 +724,14 @@ export async function garbageCollector(
     })
   );
 
-  await fixParents(connector, files, localLogger);
+  await fixParents({
+    connector,
+    files,
+    checkFromGoogle: false,
+    execute: true,
+    startSyncTs: ts,
+    logger: localLogger,
+  });
 
   return files.length;
 }
@@ -815,7 +828,12 @@ export async function markFolderAsVisited(
     throw new Error(`Connector ${connectorId} not found`);
   }
   const authCredentials = await getAuthObject(connector.connectionId);
-  const file = await getGoogleDriveObject(authCredentials, driveFileId);
+  const file = await getGoogleDriveObject(
+    authCredentials,
+    driveFileId,
+    connectorId,
+    startSyncTs
+  );
 
   if (!file) {
     logger.info(

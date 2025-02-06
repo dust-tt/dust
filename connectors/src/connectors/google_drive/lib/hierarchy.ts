@@ -20,7 +20,6 @@ async function getFileParents(
   connectorId: ModelId,
   authCredentials: OAuth2Client,
   driveFile: GoogleDriveObjectType,
-  /* eslint-disable @typescript-eslint/no-unused-vars */
   startSyncTs: number
 ): Promise<string[]> {
   const logger = mainLogger.child({
@@ -33,7 +32,9 @@ async function getFileParents(
   while (currentObject.parent) {
     const parent = await getGoogleDriveObject(
       authCredentials,
-      currentObject.parent
+      currentObject.parent,
+      connectorId,
+      startSyncTs
     );
     if (!parent) {
       // If we got a 404 error we stop the iteration as the parent disappeared.
