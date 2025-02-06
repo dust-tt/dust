@@ -1,5 +1,5 @@
 import type { APIErrorType, WithAPIErrorResponse } from "@dust-tt/types";
-import { CheckBigQueryCredentialsSchema } from "@dust-tt/types";
+import { CheckBigQueryCredentialsSchema, removeNulls } from "@dust-tt/types";
 import { BigQuery } from "@google-cloud/bigquery";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -90,22 +90,36 @@ async function handler(
     // Get all datasets
     const [datasets] = await bigquery.getDatasets();
 
+    const allDatasetsLocations = removeNulls(
+      datasets.map((dataset) => dataset.location?.toLocaleLowerCase())
+    );
+
     // Initialize locations map
-    const locations: Record<string, string[]> = {};
+    const locations: Record<string, Set<string>> = {};
 
     // Process each dataset and its tables
     for (const dataset of datasets) {
-      if (dataset.location) {
-        const [tables] = await dataset.getTables();
-        locations[dataset.location?.toLowerCase()] ??= [];
-        locations[dataset.location?.toLowerCase()].push(
-          ...tables.map((table) => `${dataset.id}.${table.id}`)
-        );
+      const [tables] = await dataset.getTables();
+      for (const table of tables) {
+        for (const location of allDatasetsLocations) {
+          if (
+            dataset.location &&
+            location.toLowerCase().startsWith(dataset.location.toLowerCase())
+          ) {
+            locations[location] ??= new Set();
+            locations[location].add(`${dataset.id}.${table.id}`);
+          }
+        }
       }
     }
 
     return res.status(200).json({
-      locations,
+      locations: Object.fromEntries(
+        Object.entries(locations).map(([location, tables]) => [
+          location,
+          Array.from(tables),
+        ])
+      ),
     });
   } catch (err) {
     const error = err as Error;

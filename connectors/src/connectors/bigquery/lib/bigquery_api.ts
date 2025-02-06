@@ -6,6 +6,7 @@ import type {
   RemoteDBDatabase,
   RemoteDBSchema,
   RemoteDBTable,
+  RemoteDBTree,
 } from "@connectors/lib/remote_databases/utils";
 import { parseSchemaInternalId } from "@connectors/lib/remote_databases/utils";
 
@@ -92,11 +93,12 @@ export const fetchDatasets = async ({
     return new Ok(
       removeNulls(
         datasets.map((dataset) => {
-          // We want to filter out datasets that are not in the same location as the credentials.
-          // But, for example, we want to keep dataset in "us-central1" when selected location is "us"
+          // We want to filter out datasets that are in a different location than the credentials.
+          // But, for example, we want to keep dataset in "us" (multi-region) when selected location is "us-central1" (regional)
           if (
-            dataset.location?.toLowerCase() !==
-            credentials.location.toLowerCase()
+            !credentials.location
+              .toLowerCase()
+              .startsWith(dataset.location?.toLowerCase() ?? "")
           ) {
             return null;
           }
@@ -173,6 +175,51 @@ export const fetchTables = async ({
   } catch (error) {
     return new Err(error instanceof Error ? error : new Error(String(error)));
   }
+};
+
+export const fetchTree = async ({
+  credentials,
+}: {
+  credentials: BigQueryCredentialsWithLocation;
+}): Promise<Result<RemoteDBTree, Error>> => {
+  const databases = await fetchDatabases({ credentials });
+
+  const schemasRes = await fetchDatasets({ credentials });
+  if (schemasRes.isErr()) {
+    return schemasRes;
+  }
+  const schemas = schemasRes.value;
+
+  const tree = {
+    databases: await Promise.all(
+      databases.map(async (db) => {
+        return {
+          ...db,
+          schemas: await Promise.all(
+            schemas
+              .filter((s) => s.database_name === db.name)
+              .map(async (schema) => {
+                const tablesRes = await fetchTables({
+                  credentials,
+                  datasetName: schema.name,
+                });
+                if (tablesRes.isErr()) {
+                  throw tablesRes.error;
+                }
+                const tables = tablesRes.value;
+
+                return {
+                  ...schema,
+                  tables,
+                };
+              })
+          ),
+        };
+      })
+    ),
+  };
+
+  return new Ok(tree);
 };
 
 // BigQuery is read-only as we force the readonly scope when creating the client.
