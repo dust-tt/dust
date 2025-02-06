@@ -75,3 +75,19 @@ export function isDataSourceNameValid(name: string): Result<void, string> {
 
   return new Ok(undefined);
 }
+
+export type TagResult = {
+  tag: string;
+  match_count: number;
+  data_sources: string[];
+};
+
+export type TagSearchResponse = {
+  tags: TagResult[];
+};
+
+export type TagSearchParams = {
+  query: string;
+  queryType: string;
+  dataSources: string[];
+};
