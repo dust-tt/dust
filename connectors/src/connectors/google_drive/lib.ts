@@ -190,12 +190,10 @@ export async function fixParents({
         await concurrentExecutor(
           files,
           async (file) =>
-            getGoogleDriveObject(
-              authCredentials,
-              file.driveFileId,
-              connector.id,
-              startSyncTs
-            ),
+            getGoogleDriveObject(authCredentials, file.driveFileId, {
+              connectorId: connector.id,
+              ts: startSyncTs,
+            }),
           {
             concurrency: 10,
           }

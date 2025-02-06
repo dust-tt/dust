@@ -33,8 +33,7 @@ async function getFileParents(
     const parent = await getGoogleDriveObject(
       authCredentials,
       currentObject.parent,
-      connectorId,
-      startSyncTs
+      { connectorId, ts: startSyncTs }
     );
     if (!parent) {
       // If we got a 404 error we stop the iteration as the parent disappeared.

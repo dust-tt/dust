@@ -199,8 +199,7 @@ export async function syncFiles(
   const driveFolder = await getGoogleDriveObject(
     authCredentials,
     driveFolderId,
-    connectorId,
-    startSyncTs
+    { connectorId, ts: startSyncTs }
   );
   if (!driveFolder) {
     // We got a 404 on this folder, we skip it.
@@ -697,8 +696,7 @@ export async function garbageCollector(
         const driveFile = await getGoogleDriveObject(
           authCredentials,
           file.driveFileId,
-          connectorId,
-          ts
+          { connectorId, ts }
         );
         if (!driveFile) {
           // Could not find the file on Gdrive, deleting our local reference to it.
@@ -828,12 +826,10 @@ export async function markFolderAsVisited(
     throw new Error(`Connector ${connectorId} not found`);
   }
   const authCredentials = await getAuthObject(connector.connectionId);
-  const file = await getGoogleDriveObject(
-    authCredentials,
-    driveFileId,
+  const file = await getGoogleDriveObject(authCredentials, driveFileId, {
     connectorId,
-    startSyncTs
-  );
+    ts: startSyncTs,
+  });
 
   if (!file) {
     logger.info(

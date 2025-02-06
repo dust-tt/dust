@@ -10,6 +10,11 @@ import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
 import { FILE_ATTRIBUTES_TO_FETCH } from "@connectors/types/google_drive";
 
+interface CacheKey {
+  connectorId: number;
+  ts: string | number;
+}
+
 async function _getGoogleDriveObject(
   authCredentials: OAuth2Client,
   driveObjectId: string
@@ -43,11 +48,11 @@ async function _getGoogleDriveObject(
 
 const cachedGetGoogleDriveObject = cacheWithRedis<
   GoogleDriveObjectType | null,
-  [OAuth2Client, string, number, string | number]
+  [OAuth2Client, string, CacheKey]
 >(
   _getGoogleDriveObject,
-  (_, driveObjectId, connectorId, memoizationKey) => {
-    return `${connectorId}:${driveObjectId}:${memoizationKey}`;
+  (_, driveObjectId, { connectorId, ts }) => {
+    return `${connectorId}:${driveObjectId}:${ts}`;
   },
   60 * 10 * 1000
 );
@@ -55,16 +60,10 @@ const cachedGetGoogleDriveObject = cacheWithRedis<
 export async function getGoogleDriveObject(
   authCredentials: OAuth2Client,
   driveObjectId: string,
-  connectorId?: number,
-  memoizationKey?: string | number
+  cacheKey?: CacheKey
 ): Promise<GoogleDriveObjectType | null> {
-  if (connectorId && memoizationKey) {
-    return cachedGetGoogleDriveObject(
-      authCredentials,
-      driveObjectId,
-      connectorId,
-      memoizationKey
-    );
+  if (cacheKey) {
+    return cachedGetGoogleDriveObject(authCredentials, driveObjectId, cacheKey);
   }
   return _getGoogleDriveObject(authCredentials, driveObjectId);
 }
