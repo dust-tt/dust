@@ -4,7 +4,6 @@ import type {
   Result,
 } from "@dust-tt/types";
 import { Ok } from "@dust-tt/types";
-import { hash as blake3 } from "blake3";
 import { zip } from "fp-ts/lib/Array";
 import { v4 as uuidv4 } from "uuid";
 
