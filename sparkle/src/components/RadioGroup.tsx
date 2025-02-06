@@ -113,27 +113,59 @@ const RadioGroupItem = React.forwardRef<
 
 type IconPosition = "start" | "center" | "end";
 
-interface RadioGroupCustomItemProps extends RadioGroupItemProps {
+interface RadioGroupCustomItemProps
+  extends React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Item>,
+    VariantProps<typeof radioStyles> {
   iconPosition?: IconPosition;
+  customItem: React.ReactNode;
   children: React.ReactNode;
 }
 
 const RadioGroupCustomItem = React.forwardRef<
   React.ElementRef<typeof RadioGroupPrimitive.Item>,
   RadioGroupCustomItemProps
->(({ className, size, iconPosition = "center", children, ...props }, ref) => {
-  return (
-    <div
-      className={cn("s-flex s-flex-col", className, `s-items-${iconPosition}`)}
-    >
-      <RadioGroupItem
+>(
+  (
+    {
+      className,
+      size,
+      customItem,
+      iconPosition = "center",
+      children,
+      id,
+      ...props
+    },
+    ref
+  ) => {
+    const item = (
+      <RadioGroupPrimitive.Item
         ref={ref}
-        className={cn(radioStyles({ size }))}
+        id={id}
+        className={cn(radioStyles({ size }), className)}
         {...props}
-      />
-      {children}
-    </div>
-  );
-});
+      >
+        <RadioGroupPrimitive.Indicator
+          className={radioIndicatorStyles({ size })}
+        />
+      </RadioGroupPrimitive.Item>
+    );
+
+    return (
+      <div
+        className={cn(
+          "s-flex s-flex-col",
+          className,
+          `s-items-${iconPosition}`
+        )}
+      >
+        <div className="s-flex s-items-center s-gap-2">
+          {item}
+          {customItem}
+        </div>
+        {children}
+      </div>
+    );
+  }
+);
 
 export { RadioGroup, RadioGroupCustomItem, RadioGroupItem };

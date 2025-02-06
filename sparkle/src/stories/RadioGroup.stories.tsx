@@ -8,7 +8,7 @@ import {
   Label,
   LockIcon,
   RadioGroup,
-  RadioGroupChoice,
+  RadioGroupCustomItem,
   RadioGroupItem,
 } from "@sparkle/index_with_tw_base";
 
@@ -91,10 +91,10 @@ export const RadioGroupWithChildrenExample = () => {
         onValueChange={(value) => setSelectedChoice(value)}
       >
         {choices.map((choice) => (
-          <RadioGroupChoice
+          <RadioGroupCustomItem
             value={choice.id}
             iconPosition="start"
-            label={
+            customItem={
               <div className="s-flex s-items-center s-gap-2">
                 <Icon visual={LockIcon} />
                 <Label>{choice.label}</Label>
@@ -109,7 +109,7 @@ export const RadioGroupWithChildrenExample = () => {
             {choice.id === selectedChoice && (
               <span>{choice.label} is selected</span>
             )}
-          </RadioGroupChoice>
+          </RadioGroupCustomItem>
         ))}
       </RadioGroup>
     </div>
