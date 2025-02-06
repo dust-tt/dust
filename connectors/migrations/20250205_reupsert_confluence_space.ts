@@ -21,16 +21,11 @@ makeScript(
     if (!connector) {
       throw new Error("Connector not found.");
     }
-    const confluenceConfig =
-      await fetchConfluenceConfigurationActivity(connectorId);
-    if (!confluenceConfig) {
-      throw new Error("No configuration found.");
-    }
 
-    const client = await getConfluenceClient({
-      cloudId: confluenceConfig.cloudId,
-      connectorId,
-    });
+    const { cloudId, url: baseUrl } =
+      await fetchConfluenceConfigurationActivity(connectorId);
+
+    const client = await getConfluenceClient({ cloudId, connectorId });
 
     const space = await client.getSpaceById(spaceId);
     const folderId = makeSpaceInternalId(spaceId);
@@ -47,7 +42,7 @@ makeScript(
         parentId: null,
         title: space.name,
         mimeType: MIME_TYPES.CONFLUENCE.SPACE,
-        sourceUrl: `${confluenceConfig.url}/wiki${space._links.webui}`,
+        sourceUrl: `${baseUrl}/wiki${space._links.webui}`,
       });
       await ConfluenceSpace.upsert({
         connectorId,
