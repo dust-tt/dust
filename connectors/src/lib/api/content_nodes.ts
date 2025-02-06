@@ -4,13 +4,12 @@ import type {
   Result,
 } from "@dust-tt/types";
 import { Ok } from "@dust-tt/types";
-import { hash as blake3 } from "blake3";
 import { zip } from "fp-ts/lib/Array";
+import { v4 as uuidv4 } from "uuid";
 
 import { getConnectorManager } from "@connectors/connectors";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
-
 export interface ContentNodeParentIdsBlob {
   internalId: string;
   parentInternalIds: string[];
@@ -28,7 +27,7 @@ export async function getParentIdsForContentNodes(
     connectorId: connector.id,
   });
 
-  const memoizationKey = `content-node-parents-${connector.id}-${blake3(internalIds.join("-"), { length: 256 }).toString()}`;
+  const memoizationKey = uuidv4();
 
   const parentsResults = await concurrentExecutor(
     internalIds,

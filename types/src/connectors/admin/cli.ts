@@ -110,6 +110,7 @@ export const GoogleDriveCommandSchema = t.type({
     t.literal("garbage-collect-all"),
     t.literal("check-file"),
     t.literal("get-google-parents"),
+    t.literal("clean-invalid-parents"),
     t.literal("restart-google-webhooks"),
     t.literal("start-incremental-sync"),
     t.literal("restart-all-incremental-sync-workflows"),

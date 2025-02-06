@@ -12,7 +12,7 @@ const { FRONT_DATABASE_URI } = process.env;
 
 const BATCH_SIZE = 1000;
 
-async function checkOrphansForConnector(
+async function checkOrphansDocumentsForConnector(
   coreAPI: CoreAPI,
   connector: ConnectorResource,
   dustAPIProjectId: string,
@@ -80,6 +80,77 @@ async function checkOrphansForConnector(
   logger.info({ orphanCount }, "DONE");
 }
 
+async function checkOrphansFoldersForConnector(
+  coreAPI: CoreAPI,
+  connector: ConnectorResource,
+  dustAPIProjectId: string,
+  dustAPIDataSourceId: string,
+  execute = false,
+  nodeConcurrency: number,
+  parentLogger: typeof Logger
+) {
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const logger = parentLogger.child({
+    connectorId: connector.id,
+    workspaceId: dataSourceConfig.workspaceId,
+    dataSourceId: dataSourceConfig.dataSourceId,
+  });
+
+  let offset = 0;
+  let count = 0;
+  let orphanCount = 0;
+  do {
+    const coreRes = await coreAPI.getDataSourceFolders(
+      {
+        dataSourceId: dustAPIDataSourceId,
+        projectId: dustAPIProjectId,
+      },
+      {
+        limit: BATCH_SIZE,
+        offset,
+      }
+    );
+    logger.info({ offset, count }, "Fetching documents");
+
+    offset += BATCH_SIZE;
+
+    if (coreRes.isErr()) {
+      throw new Error(coreRes.error.message);
+    }
+
+    const ids = coreRes.value.folders
+      .map((node) => node.folder_id)
+      .filter((id) => id !== "gdrive-sharedWithMe");
+
+    count = ids.length;
+    const files = await GoogleDriveFiles.findAll({
+      where: {
+        dustFileId: ids,
+      },
+    });
+    const found = files.map((f) => f.dustFileId);
+    const orphans = ids.filter((id) => !found.includes(id));
+
+    logger.info({ orphans }, "Found orphan nodes");
+    orphanCount += orphans.length;
+    if (execute) {
+      await concurrentExecutor(
+        orphans,
+        async (orphan) => {
+          logger.info({ id: orphan }, "Removing orphan nodes");
+          await coreAPI.deleteDataSourceFolder({
+            dataSourceId: dustAPIDataSourceId,
+            folderId: orphan,
+            projectId: dustAPIProjectId,
+          });
+        },
+        { concurrency: nodeConcurrency }
+      );
+    }
+  } while (count === BATCH_SIZE);
+  logger.info({ orphanCount }, "DONE");
+}
+
 makeScript(
   {
     connectorConcurrency: {
@@ -134,7 +205,16 @@ makeScript(
         }
 
         logger.info({ connectorId: connector.id }, "MIGRATE");
-        await checkOrphansForConnector(
+        await checkOrphansDocumentsForConnector(
+          coreAPI,
+          connector,
+          dataSource.dustAPIProjectId,
+          dataSource.dustAPIDataSourceId,
+          execute,
+          nodeConcurrency,
+          logger
+        );
+        await checkOrphansFoldersForConnector(
           coreAPI,
           connector,
           dataSource.dustAPIProjectId,

@@ -4,8 +4,10 @@ import type {
   GoogleDriveCommandType,
 } from "@dust-tt/types";
 import { googleDriveIncrementalSyncWorkflowId } from "@dust-tt/types";
+import { Op } from "sequelize";
 
 import { getConnectorManager } from "@connectors/connectors";
+import { fixParents } from "@connectors/connectors/google_drive/lib";
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import { launchGoogleDriveIncrementalSyncWorkflow } from "@connectors/connectors/google_drive/temporal/client";
@@ -20,6 +22,7 @@ import { throwOnError } from "@connectors/lib/cli";
 import { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
 import { terminateWorkflow } from "@connectors/lib/temporal";
 import { default as topLogger } from "@connectors/logger/logger";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 const getConnector = async (args: GoogleDriveCommandType["args"]) => {
@@ -124,6 +127,32 @@ export const google_drive = async ({
         Date.now()
       );
       return { status: 200, content: parents, type: typeof parents };
+    }
+
+    case "clean-invalid-parents": {
+      const execute = !!args.execute;
+
+      const connector = await getConnector(args);
+      const limit = 1000;
+      let fromId = 0;
+      let files: GoogleDriveFiles[] = [];
+      do {
+        files = await GoogleDriveFiles.findAll({
+          where: {
+            connectorId: connector.id,
+            id: { [Op.gt]: fromId },
+          },
+          order: [["id", "ASC"]],
+          limit,
+        });
+        const connecrtorResource = new ConnectorResource(
+          ConnectorModel,
+          connector
+        );
+        await fixParents(connecrtorResource, files, topLogger, execute);
+        fromId = files[limit - 1]?.id ?? 0;
+      } while (fromId > 0);
+      return { success: true };
     }
 
     case "start-incremental-sync": {

@@ -1,5 +1,5 @@
 import type { ModelId } from "@dust-tt/types";
-import { MIME_TYPES, removeNulls } from "@dust-tt/types";
+import { MIME_TYPES } from "@dust-tt/types";
 import { uuid4 } from "@temporalio/workflow";
 import type { drive_v3 } from "googleapis";
 import type { GaxiosResponse, OAuth2Client } from "googleapis-common";
@@ -10,6 +10,10 @@ import { Op } from "sequelize";
 
 import { getSourceUrlForGoogleDriveFiles } from "@connectors/connectors/google_drive";
 import {
+  fixParents,
+  internalDeleteFile,
+} from "@connectors/connectors/google_drive/lib";
+import {
   GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID,
   GOOGLE_DRIVE_SHARED_WITH_ME_WEB_URL,
   GOOGLE_DRIVE_USER_SPACE_VIRTUAL_DRIVE_ID,
@@ -17,11 +21,7 @@ import {
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import { syncOneFile } from "@connectors/connectors/google_drive/temporal/file";
-import {
-  getMimeTypesToSync,
-  isGoogleDriveSpreadSheetFile,
-} from "@connectors/connectors/google_drive/temporal/mime_types";
-import { deleteSpreadsheet } from "@connectors/connectors/google_drive/temporal/spreadsheets";
+import { getMimeTypesToSync } from "@connectors/connectors/google_drive/temporal/mime_types";
 import {
   driveObjectToDustType,
   getAuthObject,
@@ -30,11 +30,7 @@ import {
   getMyDriveIdCached,
 } from "@connectors/connectors/google_drive/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import {
-  deleteDataSourceDocument,
-  deleteDataSourceFolder,
-  upsertDataSourceFolder,
-} from "@connectors/lib/data_sources";
+import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import {
   GoogleDriveConfig,
   GoogleDriveFiles,
@@ -45,7 +41,6 @@ import { redisClient } from "@connectors/lib/redis";
 import { heartbeat } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import { sequelizeConnection } from "@connectors/resources/storage";
 import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
 import { FILE_ATTRIBUTES_TO_FETCH } from "@connectors/types/google_drive";
 
@@ -672,6 +667,13 @@ export async function garbageCollector(
   }
 
   const authCredentials = await getAuthObject(connector.connectionId);
+  const localLogger = logger.child({
+    provider: "google_drive",
+    connectorId: connectorId,
+    lastSeenTs,
+    activity: "garbageCollector",
+  });
+
   const files = await GoogleDriveFiles.findAll({
     where: {
       connectorId: connectorId,
@@ -713,27 +715,7 @@ export async function garbageCollector(
     })
   );
 
-  const parentFiles = await GoogleDriveFiles.findAll({
-    where: {
-      connectorId,
-      driveFileId: [...new Set(removeNulls(files.map((f) => f.parentId)))],
-    },
-  });
-
-  for (const file of files) {
-    if (file.parentId) {
-      const parentFile = parentFiles.find(
-        (f) => f.driveFileId === file.parentId
-      );
-      if (!parentFile) {
-        logger.info(
-          { fileId: file.driveFileId },
-          "Deleting file with invalid parents"
-        );
-        await deleteFile(file);
-      }
-    }
-  }
+  await fixParents(connector, files, localLogger);
 
   return files.length;
 }
@@ -817,36 +799,7 @@ export async function deleteFile(googleDriveFile: GoogleDriveFiles) {
     `Deleting Google Drive file.`
   );
 
-  if (isGoogleDriveSpreadSheetFile(googleDriveFile)) {
-    await deleteSpreadsheet(connector, googleDriveFile);
-  } else if (
-    googleDriveFile.mimeType !== "application/vnd.google-apps.folder"
-  ) {
-    const dataSourceConfig = dataSourceConfigFromConnector(connector);
-    await deleteDataSourceDocument(
-      dataSourceConfig,
-      googleDriveFile.dustFileId
-    );
-  }
-  const folder = await GoogleDriveFolders.findOne({
-    where: {
-      connectorId: connectorId,
-      folderId: googleDriveFile.driveFileId,
-    },
-  });
-
-  await sequelizeConnection.transaction(async (t) => {
-    if (folder) {
-      await folder.destroy({ transaction: t });
-    }
-    await googleDriveFile.destroy({ transaction: t });
-  });
-
-  const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  await deleteDataSourceFolder({
-    dataSourceConfig,
-    folderId: googleDriveFile.dustFileId,
-  });
+  await internalDeleteFile(connector, googleDriveFile);
 }
 
 export async function markFolderAsVisited(

@@ -3,18 +3,29 @@ import {
   cacheWithRedis,
   getGoogleIdsFromSheetContentNodeInternalId,
   isGoogleSheetContentNodeInternalId,
+  removeNulls,
 } from "@dust-tt/types";
+import type { Logger } from "pino";
 import type { InferAttributes, WhereOptions } from "sequelize";
 
 import { isGoogleDriveSpreadSheetFile } from "@connectors/connectors/google_drive/temporal/mime_types";
+import { deleteSpreadsheet } from "@connectors/connectors/google_drive/temporal/spreadsheets";
 import {
   getDriveFileId,
   getInternalId,
 } from "@connectors/connectors/google_drive/temporal/utils";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import {
+  deleteDataSourceDocument,
+  deleteDataSourceFolder,
+} from "@connectors/lib/data_sources";
 import {
   GoogleDriveFiles,
+  GoogleDriveFolders,
   GoogleDriveSheet,
 } from "@connectors/lib/models/google_drive";
+import type { ConnectorResource } from "@connectors/resources/connector_resource";
+import { sequelizeConnection } from "@connectors/resources/storage";
 
 export async function isDriveObjectExpandable({
   objectId,
@@ -96,3 +107,88 @@ export const getLocalParents = cacheWithRedis(
   },
   60 * 10 * 1000
 );
+
+export async function internalDeleteFile(
+  connector: ConnectorResource,
+  googleDriveFile: GoogleDriveFiles
+) {
+  if (isGoogleDriveSpreadSheetFile(googleDriveFile)) {
+    await deleteSpreadsheet(connector, googleDriveFile);
+  } else if (
+    googleDriveFile.mimeType !== "application/vnd.google-apps.folder"
+  ) {
+    const dataSourceConfig = dataSourceConfigFromConnector(connector);
+    await deleteDataSourceDocument(
+      dataSourceConfig,
+      googleDriveFile.dustFileId
+    );
+  }
+  const folder = await GoogleDriveFolders.findOne({
+    where: {
+      connectorId: connector.id,
+      folderId: googleDriveFile.driveFileId,
+    },
+  });
+
+  await sequelizeConnection.transaction(async (t) => {
+    if (folder) {
+      await folder.destroy({ transaction: t });
+    }
+    await googleDriveFile.destroy({ transaction: t });
+  });
+
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  await deleteDataSourceFolder({
+    dataSourceConfig,
+    folderId: googleDriveFile.dustFileId,
+  });
+}
+
+export async function fixParents(
+  connector: ConnectorResource,
+  files: GoogleDriveFiles[],
+  logger: Logger,
+  execute: boolean = true
+) {
+  const parentFiles = await GoogleDriveFiles.findAll({
+    where: {
+      connectorId: connector.id,
+      driveFileId: [...new Set(removeNulls(files.map((f) => f.parentId)))],
+    },
+  });
+
+  const roots = await GoogleDriveFolders.findAll({
+    where: {
+      connectorId: connector.id,
+    },
+  });
+
+  for (const file of files) {
+    if (file.parentId) {
+      const parentFile = parentFiles.find(
+        (f) => f.driveFileId === file.parentId
+      );
+      if (!parentFile) {
+        if (roots.find((r) => r.folderId === file.driveFileId)) {
+          logger.info(
+            { fileId: file.driveFileId },
+            "Invalid parent but root folder, resetting parent in connector to match core"
+          );
+          if (execute) {
+            await file.update({
+              parentId: null,
+            });
+          }
+        } else {
+          logger.info(
+            { fileId: file.driveFileId },
+            "Deleting file with invalid parents"
+          );
+          if (execute) {
+            await internalDeleteFile(connector, file);
+          }
+        }
+      }
+    }
+  }
+}
