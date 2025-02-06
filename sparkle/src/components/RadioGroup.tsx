@@ -122,7 +122,7 @@ interface RadioGroupCustomItemProps
     VariantProps<typeof radioStyles> {
   iconPosition?: IconPosition;
   customItem: React.ReactNode;
-  children: React.ReactNode;
+  children?: React.ReactNode;
 }
 
 const RadioGroupCustomItem = React.forwardRef<
