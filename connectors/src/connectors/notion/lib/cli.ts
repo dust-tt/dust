@@ -3,6 +3,7 @@ import type {
   ModelId,
   NotionCheckUrlResponseType,
   NotionCommandType,
+  NotionDeleteUrlResponseType,
   NotionFindUrlResponseType,
   NotionMeResponseType,
   NotionSearchPagesResponseType,
@@ -11,7 +12,11 @@ import type {
 import { Client, isFullDatabase, isFullPage } from "@notionhq/client";
 import { Op } from "sequelize";
 
-import { getNotionAccessToken } from "@connectors/connectors/notion/temporal/activities";
+import {
+  deleteDatabase,
+  deletePage,
+  getNotionAccessToken,
+} from "@connectors/connectors/notion/temporal/activities";
 import { stopNotionGarbageCollectorWorkflow } from "@connectors/connectors/notion/temporal/client";
 import { QUEUE_NAME } from "@connectors/connectors/notion/temporal/config";
 import {
@@ -26,6 +31,7 @@ import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 import { getParsedDatabase, retrievePage } from "./notion_api";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 
 const logger = mainLogger.child({ provider: "notion" });
 
@@ -141,6 +147,51 @@ export async function findNotionUrl({
   return { page: null, db: null };
 }
 
+export async function deleteNotionUrl({
+  connector,
+  url,
+}: {
+  connector: ConnectorModel;
+  url: string;
+}) {
+  const pageOrDbId = pageOrDbIdFromUrl(url);
+
+  const dataSourceConfig = await dataSourceConfigFromConnector(connector);
+
+  const page = await NotionPage.findOne({
+    where: {
+      notionPageId: pageOrDbId,
+      connectorId: connector.id,
+    },
+  });
+  if (page) {
+    await deletePage({
+      connectorId: connector.id,
+      dataSourceConfig,
+      pageId: page.notionPageId,
+      logger,
+    });
+  }
+
+  const db = await NotionDatabase.findOne({
+    where: {
+      notionDatabaseId: pageOrDbId,
+      connectorId: connector.id,
+    },
+  });
+
+  if (db) {
+    await deleteDatabase({
+      connectorId: connector.id,
+      dataSourceConfig,
+      databaseId: db.notionDatabaseId,
+      logger,
+    });
+  }
+
+  return { deletedPage: !!page, deletedDb: !!db };
+}
+
 export async function checkNotionUrl({
   connectorId,
   connectionId,
@@ -219,6 +270,7 @@ export const notion = async ({
   | NotionUpsertResponseType
   | NotionSearchPagesResponseType
   | NotionCheckUrlResponseType
+  | NotionDeleteUrlResponseType
   | NotionMeResponseType
 > => {
   const logger = topLogger.child({ majorCommand: "notion", command, args });
@@ -545,6 +597,30 @@ export const notion = async ({
 
       const r = await findNotionUrl({
         connectorId: connector.id,
+        url,
+      });
+
+      return r;
+    }
+
+    // WARNING: This is meant to be used on pages deleted from Notion but not
+    // yet from Dust Since garbage collection can be long, we allow manually
+    // deleting pages from Dust before it finishes It is not meant to be used on
+    // pages that are still synced in Notion
+    case "delete-url": {
+      const { url, wId, dsId } = args;
+
+      if (!url) {
+        throw new Error("Missing --url argument");
+      }
+
+      const connector = await getConnectorOrThrow({
+        dataSourceId: dsId,
+        workspaceId: wId,
+      });
+
+      const r = await deleteNotionUrl({
+        connector,
         url,
       });
 
