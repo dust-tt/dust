@@ -33,10 +33,12 @@ makeScript(
     });
 
     const space = await client.getSpaceById(spaceId);
-
-    logger.info({ spaceName: space.name }, "Space name");
-
     const folderId = makeSpaceInternalId(spaceId);
+
+    logger.info(
+      { spaceId, spaceName: space.name, folderId },
+      "Upserting Confluence space."
+    );
     if (execute) {
       await upsertDataSourceFolder({
         dataSourceConfig: dataSourceConfigFromConnector(connector),
