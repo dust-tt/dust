@@ -265,7 +265,8 @@ export interface ConversationParticipantsType {
 
 export type ConversationErrorType =
   | "conversation_not_found"
-  | "conversation_access_restricted";
+  | "conversation_access_restricted"
+  | "conversation_with_unavailable_agent";
 
 export class ConversationError extends Error {
   readonly type: ConversationErrorType;

@@ -111,12 +111,16 @@ async function batchRenderUserMessages(
 async function batchRenderAgentMessages(
   auth: Authenticator,
   messages: Message[]
-): Promise<{ m: AgentMessageType; rank: number; version: number }[]> {
+): Promise<
+  Result<
+    { m: AgentMessageType; rank: number; version: number }[],
+    ConversationError
+  >
+> {
   const agentMessages = messages.filter((m) => !!m.agentMessage);
   const agentMessageIds = removeNulls(
     agentMessages.map((m) => m.agentMessageId || null)
   );
-
   const [
     agentConfigurations,
     agentRetrievalActions,
@@ -141,14 +145,15 @@ async function batchRenderAgentMessages(
         },
         []
       );
-      const agents = (
-        await Promise.all(
-          agentConfigurationIds.map((agentConfigId) => {
-            return getAgentConfiguration(auth, agentConfigId);
-          })
-        )
-      ).filter((a) => a !== null) as LightAgentConfigurationType[];
-      return agents;
+      const agents = await Promise.all(
+        agentConfigurationIds.map((agentConfigId) => {
+          return getAgentConfiguration(auth, agentConfigId);
+        })
+      );
+      if (agents.some((a) => !a)) {
+        return null;
+      }
+      return agents as LightAgentConfigurationType[];
     })(),
     (async () =>
       retrievalActionTypesFromAgentMessageIds(auth, agentMessageIds))(),
@@ -166,98 +171,106 @@ async function batchRenderAgentMessages(
     (async () => reasoningActionTypesFromAgentMessageIds(agentMessageIds))(),
   ]);
 
+  if (!agentConfigurations) {
+    return new Err(
+      new ConversationError("conversation_with_unavailable_agent")
+    );
+  }
+
   // The only async part here is the content parsing, but it's "fake async" as the content parsing is not doing
   // any IO or network. We need it to be async as we want to re-use the async generators for the content parsing.
-  return Promise.all(
-    agentMessages.map(async (message) => {
-      if (!message.agentMessage) {
-        throw new Error(
-          "Unreachable: batchRenderAgentMessages has been filtered on agent message"
+  return new Ok(
+    await Promise.all(
+      agentMessages.map(async (message) => {
+        if (!message.agentMessage) {
+          throw new Error(
+            "Unreachable: batchRenderAgentMessages has been filtered on agent message"
+          );
+        }
+        const agentMessage = message.agentMessage;
+
+        const actions: AgentActionType[] = [
+          agentRetrievalActions,
+          agentDustAppRunActions,
+          agentTablesQueryActions,
+          agentProcessActions,
+          agentWebsearchActions,
+          agentBrowseActions,
+          agentConversationIncludeFileActions,
+          agentGithubGetPullRequestActions,
+          agentGithubCreateIssueActions,
+          agentReasoningActions,
+        ]
+          .flat()
+          .filter((a) => a.agentMessageId === agentMessage.id)
+          .sort((a, b) => a.step - b.step);
+
+        const agentConfiguration = agentConfigurations.find(
+          (a) => a.sId === agentMessage.agentConfigurationId
         );
-      }
-      const agentMessage = message.agentMessage;
+        if (!agentConfiguration) {
+          throw new Error(
+            "Unreachable: agent configuration must be found for agent message"
+          );
+        }
 
-      const actions: AgentActionType[] = [
-        agentRetrievalActions,
-        agentDustAppRunActions,
-        agentTablesQueryActions,
-        agentProcessActions,
-        agentWebsearchActions,
-        agentBrowseActions,
-        agentConversationIncludeFileActions,
-        agentGithubGetPullRequestActions,
-        agentGithubCreateIssueActions,
-        agentReasoningActions,
-      ]
-        .flat()
-        .filter((a) => a.agentMessageId === agentMessage.id)
-        .sort((a, b) => a.step - b.step);
+        let error: {
+          code: string;
+          message: string;
+        } | null = null;
 
-      const agentConfiguration = agentConfigurations.find(
-        (a) => a.sId === agentMessage.agentConfigurationId
-      );
-      if (!agentConfiguration) {
-        throw new Error(
-          "Unreachable: agent configuration must be found for agent message"
+        if (
+          agentMessage.errorCode !== null &&
+          agentMessage.errorMessage !== null
+        ) {
+          error = {
+            code: agentMessage.errorCode,
+            message: agentMessage.errorMessage,
+          };
+        }
+
+        const rawContents =
+          agentMessage.agentMessageContents?.sort((a, b) => a.step - b.step) ??
+          [];
+        const contentParser = new AgentMessageContentParser(
+          agentConfiguration,
+          message.sId,
+          getDelimitersConfiguration({ agentConfiguration })
         );
-      }
+        const parsedContent = await contentParser.parseContents(
+          rawContents.map((r) => r.content)
+        );
 
-      let error: {
-        code: string;
-        message: string;
-      } | null = null;
-
-      if (
-        agentMessage.errorCode !== null &&
-        agentMessage.errorMessage !== null
-      ) {
-        error = {
-          code: agentMessage.errorCode,
-          message: agentMessage.errorMessage,
+        const m = {
+          id: message.id,
+          agentMessageId: agentMessage.id,
+          sId: message.sId,
+          created: message.createdAt.getTime(),
+          type: "agent_message",
+          visibility: message.visibility,
+          version: message.version,
+          parentMessageId:
+            messages.find((m) => m.id === message.parentId)?.sId ?? null,
+          status: agentMessage.status,
+          actions: actions,
+          content: parsedContent.content,
+          chainOfThought: parsedContent.chainOfThought,
+          rawContents:
+            agentMessage.agentMessageContents?.map((rc) => ({
+              step: rc.step,
+              content: rc.content,
+            })) ?? [],
+          error,
+          // TODO(2024-03-21 flav) Dry the agent configuration object for rendering.
+          configuration: agentConfiguration,
+        } satisfies AgentMessageType;
+        return {
+          m,
+          rank: message.rank,
+          version: message.version,
         };
-      }
-
-      const rawContents =
-        agentMessage.agentMessageContents?.sort((a, b) => a.step - b.step) ??
-        [];
-      const contentParser = new AgentMessageContentParser(
-        agentConfiguration,
-        message.sId,
-        getDelimitersConfiguration({ agentConfiguration })
-      );
-      const parsedContent = await contentParser.parseContents(
-        rawContents.map((r) => r.content)
-      );
-
-      const m = {
-        id: message.id,
-        agentMessageId: agentMessage.id,
-        sId: message.sId,
-        created: message.createdAt.getTime(),
-        type: "agent_message",
-        visibility: message.visibility,
-        version: message.version,
-        parentMessageId:
-          messages.find((m) => m.id === message.parentId)?.sId ?? null,
-        status: agentMessage.status,
-        actions: actions,
-        content: parsedContent.content,
-        chainOfThought: parsedContent.chainOfThought,
-        rawContents:
-          agentMessage.agentMessageContents?.map((rc) => ({
-            step: rc.step,
-            content: rc.content,
-          })) ?? [],
-        error,
-        // TODO(2024-03-21 flav) Dry the agent configuration object for rendering.
-        configuration: agentConfiguration,
-      } satisfies AgentMessageType;
-      return {
-        m,
-        rank: message.rank,
-        version: message.version,
-      };
-    })
+      })
+    )
   );
 }
 
@@ -390,11 +403,17 @@ export async function batchRenderMessages(
   conversationId: string,
   messages: Message[]
 ): Promise<Result<MessageWithRankType[], ConversationError>> {
-  const [userMessages, agentMessages, contentFragments] = await Promise.all([
+  const [userMessages, agentMessagesRes, contentFragments] = await Promise.all([
     batchRenderUserMessages(messages),
     batchRenderAgentMessages(auth, messages),
     batchRenderContentFragment(auth, conversationId, messages),
   ]);
+
+  if (agentMessagesRes.isErr()) {
+    return agentMessagesRes;
+  }
+
+  const agentMessages = agentMessagesRes.value;
 
   if (agentMessages.some((m) => !canReadMessage(auth, m.m))) {
     return new Err(new ConversationError("conversation_access_restricted"));
