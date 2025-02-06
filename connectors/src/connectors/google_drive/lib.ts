@@ -1,16 +1,26 @@
 import type { ContentNodesViewType, ModelId } from "@dust-tt/types";
 import {
   cacheWithRedis,
+  concurrentExecutor,
   getGoogleIdsFromSheetContentNodeInternalId,
+  getGoogleSheetTableId,
   isGoogleSheetContentNodeInternalId,
+  MIME_TYPES,
   removeNulls,
 } from "@dust-tt/types";
 import type { Logger } from "pino";
 import type { InferAttributes, WhereOptions } from "sequelize";
 
-import { isGoogleDriveSpreadSheetFile } from "@connectors/connectors/google_drive/temporal/mime_types";
+import { getSourceUrlForGoogleDriveFiles } from "@connectors/connectors/google_drive";
+import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
+import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
+import {
+  isGoogleDriveFolder,
+  isGoogleDriveSpreadSheetFile,
+} from "@connectors/connectors/google_drive/temporal/mime_types";
 import { deleteSpreadsheet } from "@connectors/connectors/google_drive/temporal/spreadsheets";
 import {
+  getAuthObject,
   getDriveFileId,
   getInternalId,
 } from "@connectors/connectors/google_drive/temporal/utils";
@@ -18,6 +28,9 @@ import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_c
 import {
   deleteDataSourceDocument,
   deleteDataSourceFolder,
+  updateDataSourceDocumentParents,
+  updateDataSourceTableParents,
+  upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
 import {
   GoogleDriveFiles,
@@ -144,12 +157,168 @@ export async function internalDeleteFile(
   });
 }
 
-export async function fixParents(
-  connector: ConnectorResource,
-  files: GoogleDriveFiles[],
-  logger: Logger,
-  execute: boolean = true
-) {
+/**
+ * Fixes parent-child relationship consistency for Google Drive files.
+ *
+ * This function performs two main checks:
+ * 1. If checkFromGoogle=true, verifies that local parent relationships match Google Drive
+ * 2. Validates that all parent IDs reference valid files or root folders
+ *
+ * For any inconsistencies found:
+ * - If execute=false, only logs the issues
+ * - If execute=true, fixes the inconsistencies by:
+ *   - Deleting files that don't exist in Google Drive
+ *   - Updating parent relationships to match Google Drive
+ *   - Deleting files with invalid parents
+ *   - Resetting parent to null for root folders
+ *
+ * @param connector - The Google Drive connector resource
+ * @param files - List of GoogleDriveFiles to check
+ * @param startSyncTs - Timestamp for caching/memoization
+ * @param checkFromGoogle - Whether to verify against Google Drive API
+ * @param execute - Whether to fix inconsistencies or just log them
+ * @param logger - Logger instance for recording issues
+ */
+export async function fixParentsConsistency({
+  connector,
+  files,
+  startSyncTs,
+  checkFromGoogle = false,
+  execute = false,
+  logger,
+}: {
+  connector: ConnectorResource;
+  files: GoogleDriveFiles[];
+  startSyncTs: number;
+  checkFromGoogle?: boolean;
+  execute?: boolean;
+  logger: Logger;
+}) {
+  // First check consistency with Google Drive
+  if (checkFromGoogle) {
+    logger.info("Checking consistency with Google Drive");
+    const authCredentials = await getAuthObject(connector.connectionId);
+
+    const googleFiles = removeNulls(
+      await concurrentExecutor(
+        files,
+        async (file) =>
+          getGoogleDriveObject({
+            authCredentials,
+            driveObjectId: file.driveFileId,
+            cacheKey: {
+              connectorId: connector.id,
+              ts: startSyncTs,
+            },
+          }),
+        {
+          concurrency: 10,
+        }
+      )
+    );
+
+    for (const file of files) {
+      const googleFile = googleFiles.find((f) => f.id === file.driveFileId);
+      if (!googleFile) {
+        logger.info(
+          { fileId: file.driveFileId },
+          "File does not exist in Google Drive, deleting"
+        );
+        if (execute) {
+          await internalDeleteFile(connector, file);
+        }
+      } else {
+        const parents = await getFileParentsMemoized(
+          connector.id,
+          authCredentials,
+          googleFile,
+          startSyncTs
+        );
+        const localParents = await getLocalParents(
+          connector.id,
+          file.dustFileId,
+          `${startSyncTs}`
+        );
+        if (parents[parents.length - 1] === "gdrive_outside_sync") {
+          logger.info(
+            { dustFileId: file.dustFileId },
+            "File is outside of sync, deleting"
+          );
+          if (execute) {
+            await internalDeleteFile(connector, file);
+          }
+        } else if (
+          JSON.stringify(parents.map((p) => getInternalId(p))) !==
+          JSON.stringify(localParents)
+        ) {
+          logger.info(
+            { dustFileId: file.dustFileId, localParents, parents },
+            "Parents not consistent with gdrive, updating"
+          );
+          const driveParentId = parents[1];
+          const dustParentId = driveParentId
+            ? getInternalId(driveParentId)
+            : null;
+          if (execute) {
+            await file.update({
+              parentId: driveParentId,
+            });
+            const dataSourceConfig = dataSourceConfigFromConnector(connector);
+            const dustParentIds = parents.map((p) => getInternalId(p));
+            if (
+              isGoogleDriveFolder(googleFile) ||
+              isGoogleDriveSpreadSheetFile(googleFile)
+            ) {
+              await upsertDataSourceFolder({
+                dataSourceConfig,
+                folderId: file.dustFileId,
+                parents: dustParentIds,
+                parentId: dustParentId,
+                title: file.name ?? "",
+                mimeType: MIME_TYPES.GOOGLE_DRIVE.FOLDER,
+                sourceUrl: getSourceUrlForGoogleDriveFiles(file),
+              });
+              const sheets = await GoogleDriveSheet.findAll({
+                where: {
+                  driveFileId: file.driveFileId,
+                  connectorId: connector.id,
+                },
+              });
+              for (const sheet of sheets) {
+                const tableId = getGoogleSheetTableId(
+                  sheet.driveFileId,
+                  sheet.driveSheetId
+                );
+                await updateDataSourceTableParents({
+                  dataSourceConfig,
+                  tableId,
+                  parents: [tableId, ...dustParentIds],
+                  parentId: file.dustFileId,
+                });
+              }
+            } else {
+              await updateDataSourceDocumentParents({
+                dataSourceConfig,
+                documentId: file.dustFileId,
+                parents: dustParentIds,
+                parentId: dustParentId,
+              });
+            }
+          }
+        }
+      }
+    }
+
+    // Re-fetch files to ensure we only process non-deleted ones
+    files = await GoogleDriveFiles.findAll({
+      where: {
+        id: files.map((f) => f.id),
+      },
+    });
+  }
+
+  logger.info("Checking parentIds validity");
+
   const parentFiles = await GoogleDriveFiles.findAll({
     where: {
       connectorId: connector.id,
@@ -164,6 +333,15 @@ export async function fixParents(
   });
 
   for (const file of files) {
+    if (!file.parentId && !roots.find((r) => r.folderId === file.driveFileId)) {
+      logger.info(
+        { fileId: file.driveFileId },
+        "Deleting file with no parent and not a root folder"
+      );
+      if (execute) {
+        await internalDeleteFile(connector, file);
+      }
+    }
     if (file.parentId) {
       const parentFile = parentFiles.find(
         (f) => f.driveFileId === file.parentId

@@ -10,7 +10,7 @@ import { Op } from "sequelize";
 
 import { getSourceUrlForGoogleDriveFiles } from "@connectors/connectors/google_drive";
 import {
-  fixParents,
+  fixParentsConsistency,
   internalDeleteFile,
 } from "@connectors/connectors/google_drive/lib";
 import {
@@ -135,10 +135,10 @@ export async function getDrivesToSync(
   const drives: Record<string, LightGoogleDrive> = {};
 
   for (const folder of selectedFolders) {
-    const remoteFolder = await getGoogleDriveObject(
+    const remoteFolder = await getGoogleDriveObject({
       authCredentials,
-      folder.folderId
-    );
+      driveObjectId: folder.folderId,
+    });
     if (remoteFolder) {
       if (!remoteFolder.driveId) {
         throw new Error(`Folder ${folder.folderId} does not have a driveId.`);
@@ -196,10 +196,11 @@ export async function syncFiles(
     csvEnabled: config?.csvEnabled || false,
   });
   const authCredentials = await getAuthObject(connector.connectionId);
-  const driveFolder = await getGoogleDriveObject(
+  const driveFolder = await getGoogleDriveObject({
     authCredentials,
-    driveFolderId
-  );
+    driveObjectId: driveFolderId,
+    cacheKey: { connectorId, ts: startSyncTs },
+  });
   if (!driveFolder) {
     // We got a 404 on this folder, we skip it.
     logger.info(
@@ -524,7 +525,7 @@ export async function incrementalSync(
           driveFileId: file.id,
           name: file.name,
           mimeType: file.mimeType,
-          parentId: file.parent,
+          parentId: parents[1] ? getDriveFileId(parents[1]) : null,
           lastSeenTs: new Date(),
         });
         localLogger.info({ fileId: change.file.id }, "done syncing file");
@@ -643,10 +644,10 @@ export async function shouldGarbageCollect(connectorId: ModelId) {
 
   const authCredentials = await getAuthObject(connector.connectionId);
   for (const folder of selectedFolder) {
-    const remoteFolder = await getGoogleDriveObject(
+    const remoteFolder = await getGoogleDriveObject({
       authCredentials,
-      folder.folderId
-    );
+      driveObjectId: folder.folderId,
+    });
     if (!remoteFolder) {
       return true;
     }
@@ -677,6 +678,8 @@ export async function garbageCollector(
 
   localLogger.info("Google Drive: Starting garbage collector");
 
+  const ts = lastSeenTs || Date.now();
+
   const files = await GoogleDriveFiles.findAll({
     where: {
       connectorId: connectorId,
@@ -690,10 +693,11 @@ export async function garbageCollector(
   await Promise.all(
     files.map(async (file) => {
       return queue.add(async () => {
-        const driveFile = await getGoogleDriveObject(
+        const driveFile = await getGoogleDriveObject({
           authCredentials,
-          file.driveFileId
-        );
+          driveObjectId: file.driveFileId,
+          cacheKey: { connectorId, ts },
+        });
         if (!driveFile) {
           // Could not find the file on Gdrive, deleting our local reference to it.
           await deleteFile(file);
@@ -718,7 +722,15 @@ export async function garbageCollector(
     })
   );
 
-  await fixParents(connector, files, localLogger);
+  // TODO(nodes-core): Run fixParents in dry run mode to check parentIds validity
+  await fixParentsConsistency({
+    connector,
+    files,
+    checkFromGoogle: false,
+    execute: false,
+    startSyncTs: ts,
+    logger: localLogger,
+  });
 
   return files.length;
 }
@@ -815,7 +827,11 @@ export async function markFolderAsVisited(
     throw new Error(`Connector ${connectorId} not found`);
   }
   const authCredentials = await getAuthObject(connector.connectionId);
-  const file = await getGoogleDriveObject(authCredentials, driveFileId);
+  const file = await getGoogleDriveObject({
+    authCredentials,
+    driveObjectId: driveFileId,
+    cacheKey: { connectorId, ts: startSyncTs },
+  });
 
   if (!file) {
     logger.info(
