@@ -45,7 +45,7 @@ describe("POST /api/w/[wId]/files", () => {
   });
 
   itInTransaction(
-    "refuses non public use-case without system API key",
+    "refuses non public use-case without a system API key",
     async () => {
       const { req, res } = await createPublicApiMockRequest({
         method: "POST",
@@ -61,6 +61,47 @@ describe("POST /api/w/[wId]/files", () => {
       await handler(req, res);
 
       expect(res._getStatusCode()).toBe(400);
+    }
+  );
+
+  itInTransaction("refuses invalid use-cases", async () => {
+    const { req, res } = await createPublicApiMockRequest({
+      method: "POST",
+      systemKey: true,
+    });
+
+    req.body = {
+      contentType: "text/csv",
+      fileName: "test.csv",
+      fileSize: 1024,
+      useCase: "random",
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(400);
+  });
+
+  itInTransaction(
+    "accepts non public use-case with a system API key",
+    async () => {
+      const { req, res } = await createPublicApiMockRequest({
+        method: "POST",
+        systemKey: true,
+      });
+
+      req.body = {
+        contentType: "text/csv",
+        fileName: "test.csv",
+        fileSize: 1024,
+        useCase: "upsert_table",
+      };
+
+      await handler(req, res);
+
+      console.log(res._getJSONData());
+
+      expect(res._getStatusCode()).toBe(200);
     }
   );
 });
