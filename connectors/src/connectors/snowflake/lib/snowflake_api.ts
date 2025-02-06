@@ -295,7 +295,9 @@ async function _checkRoleGrants(
         );
       }
     } else if (
-      ["SCHEMA", "DATABASE", "WAREHOUSE", "FILE_FORMAT"].includes(grantOn)
+      ["SCHEMA", "DATABASE", "WAREHOUSE", "FILE_FORMAT", "FUNCTION"].includes(
+        grantOn
+      )
     ) {
       if (g.privilege !== "USAGE") {
         return new Err(
