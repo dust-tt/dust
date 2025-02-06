@@ -722,11 +722,12 @@ export async function garbageCollector(
     })
   );
 
+  // TODO(nodes-core): Run fixParents in dry run mode to check parentIds validity
   await fixParents({
     connector,
     files,
     checkFromGoogle: false,
-    execute: true,
+    execute: false,
     startSyncTs: ts,
     logger: localLogger,
   });
