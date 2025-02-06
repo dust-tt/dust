@@ -7,6 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
   Icon,
+  Label,
   RadioGroup,
   RadioGroupCustomItem,
   Separator,
@@ -19,7 +20,6 @@ import {
   getSpaceName,
   groupSpacesForDisplay,
 } from "@app/lib/spaces";
-import { classNames } from "@app/lib/utils";
 
 interface SpaceSelectorProps {
   allowedSpaces?: SpaceType[];
@@ -75,6 +75,7 @@ export function SpaceSelector({
                 <RadioGroupCustomItem
                   value={space.sId}
                   disabled={isDisabled}
+                  id={`${index}`}
                   iconPosition="start"
                   className={
                     // needs to be handled manually because of the separator
@@ -89,28 +90,29 @@ export function SpaceSelector({
                     }
                   }}
                   customItem={
-                    <div className={"flex items-center gap-1 pl-2"}>
+                    <div className="flex items-center gap-1 pl-2">
                       <Icon
                         visual={getSpaceIcon(space)}
                         size="md"
-                        className={classNames(
+                        className={cn(
                           "inline-block flex-shrink-0 align-middle",
                           isDisabled ? "text-element-700" : ""
                         )}
                       />
-                      <span
-                        className={classNames(
+                      <Label
+                        htmlFor={`${index}`}
+                        className={cn(
                           "font-bold",
                           "align-middle",
                           isDisabled ? "text-element-700" : "text-foreground"
                         )}
                       >
                         {getSpaceName(space)}
-                      </span>
+                      </Label>
                     </div>
                   }
                 >
-                  <div className="flex w-full flex-col">
+                  <div className="mt-4 flex w-full flex-col">
                     {selectedSpace === space.sId && (
                       <div className="ml-4 mt-1">
                         {renderChildren(selectedSpaceObj)}
@@ -123,7 +125,6 @@ export function SpaceSelector({
           );
         })}
       </RadioGroup>
-      <Separator />
       <Dialog
         open={isAlertDialogOpen}
         onOpenChange={(open) => {

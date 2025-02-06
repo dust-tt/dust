@@ -3,6 +3,7 @@ import {
   Button,
   CloudArrowLeftRightIcon,
   InformationCircleIcon,
+  Label,
   Modal,
   Page,
   RadioGroup,
@@ -24,7 +25,7 @@ import {
 } from "@dust-tt/types";
 import { isRight } from "fp-ts/lib/Either";
 import { formatValidationErrors } from "io-ts-reporters";
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
 import { useBigQueryLocations } from "@app/lib/swr/bigquery";
@@ -340,17 +341,18 @@ export function CreateOrUpdateConnectionBigQueryModal({
                     {Object.entries(locations).map(([location, tables]) => (
                       <RadioGroupCustomItem
                         key={location}
+                        id={location}
                         value={location}
                         customItem={
                           <Tooltip
                             label={
-                              <span>
+                              <Label htmlFor={location}>
                                 This location contains {tables.length} tables
                                 that can be connected :{" "}
                                 <span className="text-xs text-gray-500">
                                   {tables.join(", ")}
                                 </span>
-                              </span>
+                              </Label>
                             }
                             trigger={
                               <div className="flex items-center gap-1">
