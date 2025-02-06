@@ -156,7 +156,7 @@ export async function sync({
       upsertDataSourceRemoteTable({
         dataSourceConfig,
         tableId: tableInternalId,
-        tableName: tableName,
+        tableName: tableInternalId,
         remoteDatabaseTableId: tableInternalId,
         remoteDatabaseSecretId: connector.connectionId,
         tableDescription: "",
