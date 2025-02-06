@@ -3,6 +3,7 @@ import React from "react";
 
 import {
   Button,
+  CloudArrowDownIcon,
   FolderIcon,
   Icon,
   Label,
@@ -40,6 +41,7 @@ export const RadioGroupExample = () => {
             value="option-three"
             id="option-three"
             label="Option Three"
+            icon={CloudArrowDownIcon}
           />
         </div>
       </RadioGroup>

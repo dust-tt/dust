@@ -5,6 +5,7 @@ import * as React from "react";
 import { Label } from "@sparkle/components/Label";
 import { Tooltip } from "@sparkle/components/Tooltip";
 import { cn } from "@sparkle/lib/utils";
+import { Icon } from "@sparkle/components/Icon";
 
 const radioStyles = cva(
   cn(
@@ -68,6 +69,7 @@ interface RadioGroupItemProps
   tooltipMessage?: string;
   label: string;
   labelProps?: Omit<React.ComponentPropsWithoutRef<typeof Label>, "children">;
+  icon?: React.ComponentType;
 }
 
 const RadioGroupItem = React.forwardRef<
@@ -75,9 +77,13 @@ const RadioGroupItem = React.forwardRef<
   RadioGroupItemProps
 >(
   (
-    { tooltipMessage, className, size, label, labelProps, id, ...props },
+    { tooltipMessage, className, icon, size, label, labelProps, id, ...props },
     ref
   ) => {
+    const renderIcon = (visual: React.ComponentType, extraClass = "") => (
+      <Icon visual={visual} size="md" className={extraClass} />
+    );
+
     const item = (
       <RadioGroupPrimitive.Item
         ref={ref}
@@ -94,13 +100,11 @@ const RadioGroupItem = React.forwardRef<
     const wrappedItem = (
       <div className="s-flex s-items-center s-gap-2">
         {tooltipMessage ? (
-          <Tooltip
-            trigger={item}
-            label={<Label {...labelProps}>{label}</Label>}
-          />
+          <Tooltip trigger={item} label={tooltipMessage} />
         ) : (
           item
         )}
+        {icon ? renderIcon(icon) : <></>}
         <Label htmlFor={id} {...labelProps}>
           {label}
         </Label>
