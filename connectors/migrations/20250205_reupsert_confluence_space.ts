@@ -44,12 +44,22 @@ makeScript(
         mimeType: MIME_TYPES.CONFLUENCE.SPACE,
         sourceUrl: `${baseUrl}/wiki${space._links.webui}`,
       });
-      await ConfluenceSpace.upsert({
-        connectorId,
-        name: space.name,
-        spaceId: spaceId.toString(),
-        urlSuffix: space._links.webui,
+      const spaceInDb = await ConfluenceSpace.findOne({
+        where: {
+          connectorId,
+          spaceId,
+        },
       });
+      if (!spaceInDb) {
+        await ConfluenceSpace.create({
+          connectorId,
+          name: space.name,
+          spaceId: spaceId,
+          urlSuffix: space._links.webui,
+        });
+      } else if (spaceInDb.name !== space.name) {
+        await spaceInDb.update({ name: space.name });
+      }
     }
   }
 );
