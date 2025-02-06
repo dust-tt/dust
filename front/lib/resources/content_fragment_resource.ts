@@ -346,7 +346,6 @@ export async function renderFromFileId(
     contentType: SupportedContentFragmentType;
     excludeImages: boolean;
     fileId: string;
-    forceFullCSVInclude: boolean;
     model: ModelConfigurationType;
     title: string;
     contentFragmentVersion: ContentFragmentVersion;
