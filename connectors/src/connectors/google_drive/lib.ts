@@ -239,8 +239,15 @@ export async function fixParentsConsistency({
           file.dustFileId,
           `${startSyncTs}`
         );
-
-        if (
+        if (parents[parents.length - 1] === "gdrive_outside_sync") {
+          logger.info(
+            { dustFileId: file.dustFileId },
+            "File is outside of sync, deleting"
+          );
+          if (execute) {
+            await internalDeleteFile(connector, file);
+          }
+        } else if (
           JSON.stringify(parents.map((p) => getInternalId(p))) !==
           JSON.stringify(localParents)
         ) {
@@ -301,6 +308,13 @@ export async function fixParentsConsistency({
         }
       }
     }
+
+    // Re-fetch files to ensure we only process non-deleted ones
+    files = await GoogleDriveFiles.findAll({
+      where: {
+        id: files.map((f) => f.id),
+      },
+    });
   }
 
   logger.info("Checking parentIds validity");
