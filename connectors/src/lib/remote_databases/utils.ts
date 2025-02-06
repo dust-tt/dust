@@ -31,6 +31,14 @@ export const remoteDBTableCodec = t.type({
 });
 export type RemoteDBTable = t.TypeOf<typeof remoteDBTableCodec>;
 
+export type RemoteDBTree = {
+  databases: (RemoteDBDatabase & {
+    schemas: (RemoteDBSchema & {
+      tables: RemoteDBTable[];
+    })[];
+  })[];
+};
+
 export const parseSchemaInternalId = (
   schemaInternalId: string
 ): RemoteDBSchema => {
@@ -43,6 +51,17 @@ export const parseSchemaInternalId = (
     name: schemaName,
     database_name: dbName,
   };
+};
+
+export const parseTableInternalId = (
+  tableInternalId: string
+): RemoteDBTable => {
+  const [dbName, schemaName, tableName] = tableInternalId.split(".");
+  if (!dbName || !schemaName || !tableName) {
+    throw new Error(`Invalid table internalId: ${tableInternalId}`);
+  }
+
+  return { name: tableName, database_name: dbName, schema_name: schemaName };
 };
 
 // Helper functions to get connector and credentials

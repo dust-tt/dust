@@ -3,7 +3,7 @@ import { isSnowflakeCredentials, MIME_TYPES } from "@dust-tt/types";
 
 import {
   connectToSnowflake,
-  fetchTables,
+  fetchTree,
   isConnectionReadonly,
 } from "@connectors/connectors/snowflake/lib/snowflake_api";
 import { sync } from "@connectors/lib/remote_databases/activities";
@@ -49,7 +49,6 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
 
     // We garbage collect everything that was synced as nothing will be marked as used.
     await sync({
-      liveTables: [],
       mimeTypes: MIME_TYPES.SNOWFLAKE,
       connector,
     });
@@ -57,14 +56,14 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
     // ... and we mark the connector as errored.
     await syncFailed(connectorId, "remote_database_connection_not_readonly");
   } else {
-    const tablesOnSnowflakeRes = await fetchTables({ credentials, connection });
-    if (tablesOnSnowflakeRes.isErr()) {
-      throw tablesOnSnowflakeRes.error;
+    const treeRes = await fetchTree({ credentials, connection });
+    if (treeRes.isErr()) {
+      throw treeRes.error;
     }
-    const tablesOnSnowflake = tablesOnSnowflakeRes.value;
+    const tree = treeRes.value;
 
     await sync({
-      liveTables: tablesOnSnowflake,
+      remoteDBTree: tree,
       mimeTypes: MIME_TYPES.SNOWFLAKE,
       connector,
     });

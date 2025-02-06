@@ -12,23 +12,243 @@ import {
   RemoteSchemaModel,
   RemoteTableModel,
 } from "@connectors/lib/models/remote_databases";
-import type { RemoteDBTable } from "@connectors/lib/remote_databases/utils";
+import type { RemoteDBTree } from "@connectors/lib/remote_databases/utils";
+import {
+  parseSchemaInternalId,
+  parseTableInternalId,
+} from "@connectors/lib/remote_databases/utils";
+import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
-export async function sync({
-  liveTables,
+const isDatabaseReadGranted = ({
+  readGrantedInternalIds,
+  internalId,
+}: {
+  readGrantedInternalIds: Set<string>;
+  internalId: string;
+}) => {
+  return readGrantedInternalIds.has(internalId);
+};
+
+const createDatabase = async ({
+  databaseInternalId,
+  usedInternalIds,
+  allDatabases,
   connector,
   mimeTypes,
 }: {
-  liveTables: RemoteDBTable[];
+  databaseInternalId: string;
+  usedInternalIds: Set<string>;
+  allDatabases: RemoteDatabaseModel[];
+  connector: ConnectorResource;
+  mimeTypes: typeof MIME_TYPES.BIGQUERY | typeof MIME_TYPES.SNOWFLAKE;
+}) => {
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  // Mark as used
+  usedInternalIds.add(databaseInternalId);
+
+  // Check if the database exists
+  const existingDb = allDatabases.find(
+    (d) => d.internalId === databaseInternalId
+  );
+
+  if (!existingDb) {
+    // Create and add the database to the list of all databases.
+    allDatabases.push(
+      await RemoteDatabaseModel.create({
+        connectorId: connector.id,
+        internalId: databaseInternalId,
+        name: databaseInternalId,
+        permission: "inherited",
+      })
+    );
+  }
+
+  await upsertDataSourceFolder({
+    dataSourceConfig,
+    folderId: databaseInternalId,
+    title: databaseInternalId,
+    parents: [databaseInternalId],
+    parentId: null,
+    mimeType: mimeTypes.DATABASE,
+  });
+};
+
+const isSchemaReadGranted = ({
+  readGrantedInternalIds,
+  internalId,
+}: {
+  readGrantedInternalIds: Set<string>;
+  internalId: string;
+}) => {
+  const { database_name } = parseSchemaInternalId(internalId);
+
+  return (
+    readGrantedInternalIds.has(database_name) ||
+    readGrantedInternalIds.has(internalId)
+  );
+};
+
+const createSchemaAndHierarchy = async ({
+  schemaInternalId,
+  usedInternalIds,
+  allDatabases,
+  allSchemas,
+  connector,
+  mimeTypes,
+}: {
+  schemaInternalId: string;
+  usedInternalIds: Set<string>;
+  allDatabases: RemoteDatabaseModel[];
+  allSchemas: RemoteSchemaModel[];
+  connector: ConnectorResource;
+  mimeTypes: typeof MIME_TYPES.BIGQUERY | typeof MIME_TYPES.SNOWFLAKE;
+}) => {
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const { database_name, name } = parseSchemaInternalId(schemaInternalId);
+
+  await createDatabase({
+    databaseInternalId: database_name,
+    usedInternalIds,
+    allDatabases,
+    connector,
+    mimeTypes,
+  });
+
+  // Mark as used
+  usedInternalIds.add(schemaInternalId);
+
+  // Check if the schema exists
+  const existingSchema = allSchemas.find(
+    (s) => s.internalId === schemaInternalId
+  );
+  if (!existingSchema) {
+    // Create and add the schema to the list of all schemas.
+    allSchemas.push(
+      await RemoteSchemaModel.create({
+        connectorId: connector.id,
+        internalId: schemaInternalId,
+        name: name,
+        databaseName: database_name,
+        permission: "inherited",
+      })
+    );
+  }
+
+  // ...upsert the schema in core
+  await upsertDataSourceFolder({
+    dataSourceConfig,
+    folderId: schemaInternalId,
+    title: name,
+    parents: [schemaInternalId, database_name],
+    parentId: database_name,
+    mimeType: mimeTypes.SCHEMA,
+  });
+};
+
+const isTableReadGranted = ({
+  readGrantedInternalIds,
+  internalId,
+}: {
+  readGrantedInternalIds: Set<string>;
+  internalId: string;
+}) => {
+  const { database_name, schema_name } = parseTableInternalId(internalId);
+  const schemaInternalId = [database_name, schema_name].join(".");
+
+  return (
+    readGrantedInternalIds.has(database_name) ||
+    readGrantedInternalIds.has(schemaInternalId) ||
+    readGrantedInternalIds.has(internalId)
+  );
+};
+
+const createTableAndHierarchy = async ({
+  tableInternalId,
+  usedInternalIds,
+  allTables,
+  allSchemas,
+  allDatabases,
+  connector,
+  mimeTypes,
+}: {
+  tableInternalId: string;
+  usedInternalIds: Set<string>;
+  allTables: RemoteTableModel[];
+  allSchemas: RemoteSchemaModel[];
+  allDatabases: RemoteDatabaseModel[];
+  connector: ConnectorResource;
+  mimeTypes: typeof MIME_TYPES.BIGQUERY | typeof MIME_TYPES.SNOWFLAKE;
+}) => {
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  const {
+    database_name: dbName,
+    schema_name: schemaName,
+    name: tableName,
+  } = parseTableInternalId(tableInternalId);
+
+  const schemaInternalId = [dbName, schemaName].join(".");
+
+  await createSchemaAndHierarchy({
+    schemaInternalId,
+    usedInternalIds,
+    allDatabases,
+    allSchemas,
+    connector,
+    mimeTypes,
+  });
+
+  // Mark as used
+  usedInternalIds.add(tableInternalId);
+
+  // Check it table already exists
+  const existingTable = allTables.find((t) => t.internalId === tableInternalId);
+  if (!existingTable) {
+    // Create and add the table to the list of all tables.
+    allTables.push(
+      await RemoteTableModel.create({
+        connectorId: connector.id,
+        internalId: tableInternalId,
+        name: tableName,
+        schemaName,
+        databaseName: dbName,
+        permission: "inherited",
+        lastUpsertedAt: new Date(),
+      })
+    );
+  } else {
+    await existingTable.update({
+      lastUpsertedAt: new Date(),
+    });
+  }
+
+  // ...upsert the table in core
+  await upsertDataSourceRemoteTable({
+    dataSourceConfig,
+    tableId: tableInternalId,
+    tableName: tableInternalId,
+    remoteDatabaseTableId: tableInternalId,
+    remoteDatabaseSecretId: connector.connectionId,
+    tableDescription: "",
+    parents: [tableInternalId, schemaInternalId, dbName],
+    parentId: schemaInternalId,
+    title: tableName,
+    mimeType: mimeTypes.TABLE,
+  });
+};
+
+export async function sync({
+  remoteDBTree,
+  connector,
+  mimeTypes,
+}: {
+  remoteDBTree?: RemoteDBTree;
   connector: ConnectorResource;
   mimeTypes: typeof MIME_TYPES.BIGQUERY | typeof MIME_TYPES.SNOWFLAKE;
 }) {
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-
-  const liveTablesInternalIds = new Set(
-    liveTables.map((t) => `${t.database_name}.${t.schema_name}.${t.name}`)
-  );
 
   const [allDatabases, allSchemas, allTables] = await Promise.all([
     RemoteDatabaseModel.findAll({
@@ -60,180 +280,124 @@ export async function sync({
       .map((t) => t.internalId),
   ]);
 
-  const dbLeadingToAReadableTableInternalIds = new Set<string>();
-  const schemaLeadingToAReadableTableInternalIds = new Set<string>();
-  const readableTableInternalIds = new Set<string>();
+  const usedInternalIds = new Set<string>();
 
-  const parseTableInternalId = (
-    tableInternalId: string
-  ): [string, string, string] => {
-    const [dbName, schemaName, tableName] = tableInternalId.split(".");
-    if (!dbName || !schemaName || !tableName) {
-      throw new Error(`Invalid table internalId: ${tableInternalId}`);
-    }
-
-    return [dbName, schemaName, tableName];
-  };
-
-  const isTableReadGranted = (tableInternalId: string) => {
-    const [dbName, schemaName] = parseTableInternalId(tableInternalId);
-
-    const schemaInternalId = [dbName, schemaName].join(".");
-
-    return (
-      readGrantedInternalIds.has(dbName) ||
-      readGrantedInternalIds.has(schemaInternalId) ||
-      readGrantedInternalIds.has(tableInternalId)
-    );
-  };
-
-  const createTableAndHierarchy = async (tableInternalId: string) => {
-    const [dbName, schemaName, tableName] =
-      parseTableInternalId(tableInternalId);
-    const schemaInternalId = [dbName, schemaName].join(".");
-
-    // Mark everything as leading to a readable table
-    dbLeadingToAReadableTableInternalIds.add(dbName);
-    schemaLeadingToAReadableTableInternalIds.add(schemaInternalId);
-    readableTableInternalIds.add(tableInternalId);
-
-    // Check it table already exists
-    const existingTable = allTables.find(
-      (t) => t.internalId === tableInternalId
-    );
-    if (!existingTable) {
-      // Create and add the table to the list of all tables.
-      allTables.push(
-        await RemoteTableModel.create({
-          connectorId: connector.id,
-          internalId: tableInternalId,
-          name: tableName,
-          schemaName,
-          databaseName: dbName,
-          permission: "inherited",
-          lastUpsertedAt: new Date(),
-        })
-      );
-    } else {
-      await existingTable.update({
-        lastUpsertedAt: new Date(),
+  // Loop through the databases and create them if they are read granted
+  for (const db of remoteDBTree?.databases ?? []) {
+    if (
+      isDatabaseReadGranted({
+        readGrantedInternalIds,
+        internalId: db.name,
+      })
+    ) {
+      await createDatabase({
+        databaseInternalId: db.name,
+        usedInternalIds,
+        allDatabases,
+        connector,
+        mimeTypes,
       });
     }
 
-    // Check if the schema exists
-    const existingSchema = allSchemas.find(
-      (s) => s.internalId === schemaInternalId
-    );
-    if (!existingSchema) {
-      // Create and add the schema to the list of all schemas.
-      allSchemas.push(
-        await RemoteSchemaModel.create({
-          connectorId: connector.id,
+    // Loop through the schemas and create them if they are read granted
+    for (const schema of db.schemas) {
+      const schemaInternalId = `${db.name}.${schema.name}`;
+      if (
+        isSchemaReadGranted({
+          readGrantedInternalIds,
           internalId: schemaInternalId,
-          name: schemaName,
-          databaseName: dbName,
-          permission: "inherited",
         })
-      );
-    }
+      ) {
+        await createSchemaAndHierarchy({
+          schemaInternalId,
+          usedInternalIds,
+          allDatabases,
+          allSchemas,
+          connector,
+          mimeTypes,
+        });
+      }
 
-    // Check if the database exists
-    const existingDb = allDatabases.find((d) => d.internalId === dbName);
-    if (!existingDb) {
-      // Create and add the database to the list of all databases.
-      allDatabases.push(
-        await RemoteDatabaseModel.create({
+      // Loop through the tables and create them if they are read granted
+      for (const table of schema.tables) {
+        const tableInternalId = `${table.database_name}.${table.schema_name}.${table.name}`;
+        if (
+          isTableReadGranted({
+            readGrantedInternalIds,
+            internalId: tableInternalId,
+          })
+        ) {
+          await createTableAndHierarchy({
+            tableInternalId,
+            usedInternalIds,
+            allTables,
+            allSchemas,
+            allDatabases,
+            connector,
+            mimeTypes,
+          });
+        }
+      }
+    }
+  }
+
+  for (const unusedDb of allDatabases.filter(
+    (db) => !usedInternalIds.has(db.internalId)
+  )) {
+    await deleteDataSourceFolder({
+      dataSourceConfig,
+      folderId: unusedDb.internalId,
+    });
+    await unusedDb.destroy();
+
+    if (unusedDb.permission === "selected") {
+      logger.error(
+        {
           connectorId: connector.id,
-          internalId: dbName,
-          name: dbName,
-          permission: "inherited",
-        })
+          databaseInternalId: unusedDb.internalId,
+        },
+        "Database is selected but not used, it should never happen and surface a flaw in the logic above."
       );
     }
+  }
 
-    await Promise.all([
-      // ...upsert the table in core
-      upsertDataSourceRemoteTable({
-        dataSourceConfig,
-        tableId: tableInternalId,
-        tableName: tableInternalId,
-        remoteDatabaseTableId: tableInternalId,
-        remoteDatabaseSecretId: connector.connectionId,
-        tableDescription: "",
-        parents: [tableInternalId, schemaInternalId, dbName],
-        parentId: schemaInternalId,
-        title: tableName,
-        mimeType: mimeTypes.TABLE,
-      }),
+  for (const unusedSchema of allSchemas.filter(
+    (schema) => !usedInternalIds.has(schema.internalId)
+  )) {
+    await deleteDataSourceFolder({
+      dataSourceConfig,
+      folderId: unusedSchema.internalId,
+    });
+    await unusedSchema.destroy();
 
-      // ...upsert the schema in core
-      upsertDataSourceFolder({
-        dataSourceConfig,
-        folderId: schemaInternalId,
-        title: schemaName,
-        parents: [schemaInternalId, dbName],
-        parentId: dbName,
-        mimeType: mimeTypes.SCHEMA,
-      }),
-
-      // ...upsert the database in core
-      upsertDataSourceFolder({
-        dataSourceConfig,
-        folderId: dbName,
-        title: dbName,
-        parents: [dbName],
-        parentId: null,
-        mimeType: mimeTypes.DATABASE,
-      }),
-    ]);
-  };
-
-  for (const internalId of liveTablesInternalIds) {
-    if (isTableReadGranted(internalId)) {
-      await createTableAndHierarchy(internalId);
+    if (unusedSchema.permission === "selected") {
+      logger.error(
+        {
+          connectorId: connector.id,
+          schemaInternalId: unusedSchema.internalId,
+        },
+        "Schema is selected but not used, it should never happen and surface a flaw in the logic above."
+      );
     }
   }
 
-  // Removing the unused databases, schemas and tables to keep only a tree that lead to tables
-  for (const db of allDatabases) {
-    if (!dbLeadingToAReadableTableInternalIds.has(db.internalId)) {
-      // Remove in core so that we don't show a tree leading to nowhere in the UI.
-      await deleteDataSourceFolder({
-        dataSourceConfig,
-        folderId: db.internalId,
-      });
-      // Keep "selected" databases so we can rediscover tables under them in future syncs, even if none was found this time.
-      if (db.permission !== "selected") {
-        await db.destroy();
-      }
-    }
-  }
+  for (const unusedTable of allTables.filter(
+    (table) => !usedInternalIds.has(table.internalId)
+  )) {
+    await deleteDataSourceTable({
+      dataSourceConfig,
+      tableId: unusedTable.internalId,
+    });
+    await unusedTable.destroy();
 
-  for (const schema of allSchemas) {
-    if (!schemaLeadingToAReadableTableInternalIds.has(schema.internalId)) {
-      // Remove in core so that we don't show a tree leading to nowhere in the UI.
-      await deleteDataSourceFolder({
-        dataSourceConfig,
-        folderId: schema.internalId,
-      });
-      // Keep "selected" schemas so we can rediscover tables under them in future syncs, even if none was found this time.
-      if (schema.permission !== "selected") {
-        await schema.destroy();
-      }
-    }
-  }
-
-  for (const table of allTables) {
-    if (!readableTableInternalIds.has(table.internalId)) {
-      // Remove in core so that we don't show a tree leading to nowhere in the UI.
-      await deleteDataSourceTable({
-        dataSourceConfig,
-        tableId: table.internalId,
-      });
-      // Keep "selected" tables so we can rediscover them in future syncs, even if none was found this time.
-      if (table.permission !== "selected") {
-        await table.destroy();
-      }
+    if (unusedTable.permission === "selected") {
+      logger.error(
+        {
+          connectorId: connector.id,
+          tableInternalId: unusedTable.internalId,
+        },
+        "Table is selected but not used, it should never happen and surface a flaw in the logic above."
+      );
     }
   }
 }
