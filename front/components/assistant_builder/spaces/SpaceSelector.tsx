@@ -1,4 +1,5 @@
 import {
+  cn,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -77,9 +78,9 @@ export function SpaceSelector({
                   iconPosition="start"
                   className={
                     // needs to be handled manually because of the separator
-                    classNames(
-                      index === 0 ? "pt-2" : "",
-                      index === sortedSpaces.length - 1 ? "pb-2" : ""
+                    cn(
+                      index === 0 ? "mt-1" : "",
+                      index === sortedSpaces.length - 1 ? "mb-0" : ""
                     )
                   }
                   onClick={() => {
