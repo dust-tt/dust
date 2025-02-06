@@ -282,6 +282,10 @@ export async function sync({
 
   const usedInternalIds = new Set<string>();
 
+  logger.info(
+    { connectorId: connector.id, databases: remoteDBTree?.databases },
+    "Creating databases"
+  );
   // Loop through the databases and create them if they are read granted
   for (const db of remoteDBTree?.databases ?? []) {
     if (
@@ -340,6 +344,13 @@ export async function sync({
       }
     }
   }
+
+  logger.info(
+    {
+      connectorId: connector.id,
+    },
+    "Removing unused databases, schemas and tables"
+  );
 
   for (const unusedDb of allDatabases.filter(
     (db) => !usedInternalIds.has(db.internalId)
@@ -400,4 +411,6 @@ export async function sync({
       );
     }
   }
+
+  logger.info({ connectorId: connector.id }, "Sync completed");
 }
