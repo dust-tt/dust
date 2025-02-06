@@ -9,8 +9,8 @@ export type FileUseCase =
   | "conversation"
   | "avatar"
   | "tool_output"
-  | "folder_document"
-  | "folder_table";
+  | "upsert_document"
+  | "upsert_table";
 
 export type FileUseCaseMetadata = {
   conversationId: string;
