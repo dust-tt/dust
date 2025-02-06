@@ -81,7 +81,10 @@ async function main() {
       continue;
     }
 
-    const file = await getGoogleDriveObject(authCredentials, folderId);
+    const file = await getGoogleDriveObject({
+      authCredentials,
+      driveObjectId: folderId,
+    });
 
     if (!file) {
       logger.info(

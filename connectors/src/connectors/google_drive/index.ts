@@ -378,10 +378,10 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
 
           const nodes: ContentNode[] = await Promise.all(
             drives.map(async (d): Promise<ContentNode> => {
-              const driveObject = await getGoogleDriveObject(
+              const driveObject = await getGoogleDriveObject({
                 authCredentials,
-                d.id
-              );
+                driveObjectId: d.id,
+              });
               if (!driveObject) {
                 throw new Error(
                   `Drive ${d.id} unexpectedly not found (got 404).`
@@ -957,7 +957,10 @@ async function getFoldersAsContentNodes({
   return concurrentExecutor(
     folders,
     async (f): Promise<ContentNode | null> => {
-      const fd = await getGoogleDriveObject(authCredentials, f.folderId);
+      const fd = await getGoogleDriveObject({
+        authCredentials,
+        driveObjectId: f.folderId,
+      });
       if (!fd) {
         return null;
       }

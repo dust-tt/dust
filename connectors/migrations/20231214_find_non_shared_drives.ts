@@ -50,10 +50,10 @@ async function main() {
           });
 
           for (const f of selectedFolders) {
-            const gDriveObject = await getGoogleDriveObject(
+            const gDriveObject = await getGoogleDriveObject({
               authCredentials,
-              f.folderId
-            );
+              driveObjectId: f.folderId,
+            });
             if (!gDriveObject) {
               console.log(`Folder not found: folderId=${f.folderId}`);
               continue;
