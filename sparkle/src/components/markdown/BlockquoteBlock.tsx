@@ -26,8 +26,10 @@ export function BlockquoteBlock({ children }: BlockquoteBlockProps) {
     <ContentBlockWrapper content={clipboardContent} className="s-my-2">
       <blockquote
         className={cn(
-          "s-w-full s-text-base s-italic s-text-foreground",
-          "s-rounded-2xl s-bg-muted-background s-py-3 s-pl-5 s-pr-12"
+          "s-w-full s-text-base s-italic",
+          "s-rounded-2xl s-py-3 s-pl-5 s-pr-12",
+          "dark:s-text-foreground-night s-text-foreground",
+          "dark:s-bg-muted-background-night s-bg-muted-background"
         )}
       >
         {children}
