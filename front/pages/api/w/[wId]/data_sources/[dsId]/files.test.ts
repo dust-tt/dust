@@ -168,7 +168,7 @@ describe("POST /api/w/[wId]/data_sources/[dsId]/files", () => {
         t
       );
       const file = await FileFactory.csv(workspace, user, {
-        useCase: "folder_table",
+        useCase: "upsert_table",
       });
 
       req.query.dsId = dataSourceView.dataSource.sId;

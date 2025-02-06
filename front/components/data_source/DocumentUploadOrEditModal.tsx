@@ -87,7 +87,7 @@ export const DocumentUploadOrEditModal = ({
   });
   const fileUploaderService = useFileUploaderService({
     owner,
-    useCase: "folder_document",
+    useCase: "upsert_document",
   });
 
   const [editionStatus, setEditionStatus] = useState({
