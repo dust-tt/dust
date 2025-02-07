@@ -90,7 +90,7 @@ pub trait SearchStore {
         data_source_views: Option<Vec<DatasourceViewFilter>>,
         node_ids: Option<Vec<String>>,
         limit: Option<u64>,
-    ) -> Result<(Vec<(String, u64, Vec<(String, u64)>)>, u64)>;
+    ) -> Result<Vec<(String, u64, Vec<(String, u64)>)>>;
 
     fn clone_box(&self) -> Box<dyn SearchStore + Sync + Send>;
 }
@@ -353,29 +353,35 @@ impl SearchStore for ElasticsearchSearchStore {
         data_source_views: Option<Vec<DatasourceViewFilter>>,
         node_ids: Option<Vec<String>>,
         limit: Option<u64>,
-    ) -> Result<(Vec<(String, u64, Vec<(String, u64)>)>, u64)> {
+    ) -> Result<Vec<(String, u64, Vec<(String, u64)>)>> {
         let query_type = query_type.unwrap_or(TagsQueryType::Exact);
         let bool_query = Query::bool();
 
-        let filter_conditions = match data_source_views {
-            None => vec![],
-            Some(data_source_views) => data_source_views
-                .into_iter()
-                .map(|f| {
-                    let mut bool_query = Query::bool();
+        let bool_query = match data_source_views {
+            None => bool_query,
+            Some(data_source_views) => bool_query.must(
+                Query::bool()
+                    .should(
+                        data_source_views
+                            .into_iter()
+                            .map(|f| {
+                                let mut bool_query = Query::bool();
 
-                    bool_query = bool_query.filter(Query::term("data_source_id", f.data_source_id));
+                                bool_query = bool_query
+                                    .filter(Query::term("data_source_id", f.data_source_id));
 
-                    if !f.view_filter.is_empty() {
-                        bool_query = bool_query.filter(Query::terms("parents", f.view_filter));
-                    }
+                                if !f.view_filter.is_empty() {
+                                    bool_query =
+                                        bool_query.filter(Query::terms("parents", f.view_filter));
+                                }
 
-                    Query::Bool(bool_query)
-                })
-                .collect(),
+                                Query::Bool(bool_query)
+                            })
+                            .collect::<Vec<_>>(),
+                    )
+                    .minimum_should_match(1),
+            ),
         };
-
-        let bool_query = bool_query.should(filter_conditions).minimum_should_match(1);
 
         let bool_query = match node_ids {
             None => bool_query,
@@ -385,7 +391,7 @@ impl SearchStore for ElasticsearchSearchStore {
             None => bool_query,
             Some(p) => match query_type {
                 TagsQueryType::Exact => bool_query.must(Query::term("tags.keyword", p)),
-                TagsQueryType::Prefix => bool_query.must(Query::prefix("tags.edge", p)),
+                TagsQueryType::Prefix => bool_query.must(Query::match_phrase("tags.edge", p)),
             },
         };
         let aggregate = Aggregation::terms("tags.keyword");
@@ -393,7 +399,8 @@ impl SearchStore for ElasticsearchSearchStore {
             None => aggregate,
             Some(p) => match query_type {
                 TagsQueryType::Exact => aggregate.include(p),
-                TagsQueryType::Prefix => aggregate.include(format!("{}.*", p).as_str()),
+                // Prefix will be filtered in the code, as it needs to be filtered case insensitive
+                TagsQueryType::Prefix => aggregate,
             },
         };
         let aggregate =
@@ -402,6 +409,8 @@ impl SearchStore for ElasticsearchSearchStore {
             .size(0)
             .query(bool_query)
             .aggregate("unique_tags", aggregate.size(limit.unwrap_or(100)));
+
+        println!("search: {}", serde_json::to_string_pretty(&search).unwrap());
 
         let response = self
             .client
@@ -414,14 +423,28 @@ impl SearchStore for ElasticsearchSearchStore {
         match response.status_code().is_success() {
             true => {
                 let response_body = response.json::<serde_json::Value>().await?;
-                Ok((
-                    response_body["aggregations"]["unique_tags"]["buckets"]
-                        .as_array()
-                        .unwrap_or(&vec![])
-                        .iter()
-                        .filter_map(|bucket| {
-                            bucket["key"].as_str().map(|key| {
-                                (
+                Ok(response_body["aggregations"]["unique_tags"]["buckets"]
+                    .as_array()
+                    .unwrap_or(&vec![])
+                    .iter()
+                    .filter_map(|bucket| {
+                        bucket["key"]
+                            .as_str()
+                            .map(|key| {
+                                match query_type {
+                                    // For prefix query - only include if key matches query (case insensitive)
+                                    TagsQueryType::Prefix => {
+                                        if let Some(q) = query.as_ref() {
+                                            if !key.to_lowercase().starts_with(&q.to_lowercase()) {
+                                                return None;
+                                            }
+                                        }
+                                    }
+                                    // Exact query is already filtered in the aggregation
+                                    TagsQueryType::Exact => {}
+                                }
+
+                                Some((
                                     key.to_string(),
                                     bucket["doc_count"].as_u64().unwrap_or(0),
                                     bucket["tags_in_datasource"]["buckets"]
@@ -437,14 +460,11 @@ impl SearchStore for ElasticsearchSearchStore {
                                             })
                                         })
                                         .collect::<Vec<(String, u64)>>(),
-                                )
+                                ))
                             })
-                        })
-                        .collect(),
-                    response_body["hits"]["total"]["value"]
-                        .as_u64()
-                        .unwrap_or(0),
-                ))
+                            .flatten()
+                    })
+                    .collect())
             }
             false => {
                 let error = response.json::<serde_json::Value>().await?;

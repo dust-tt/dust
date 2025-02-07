@@ -3291,7 +3291,7 @@ async fn tags_search(
         )
         .await
     {
-        Ok((tags, total)) => (
+        Ok(tags) => (
             StatusCode::OK,
             Json(APIResponse {
                 error: None,
@@ -3305,8 +3305,7 @@ async fn tags_search(
                                 .map(|(k, _v)| k)
                                 .collect::<Vec<_>>()
                         }))
-                        .collect::<Vec<serde_json::Value>>(),
-                    "total_nodes": total,
+                        .collect::<Vec<serde_json::Value>>()
                 })),
             }),
         ),
