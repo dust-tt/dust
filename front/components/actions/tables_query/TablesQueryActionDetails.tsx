@@ -30,7 +30,7 @@ export function TablesQueryActionDetails({
       defaultOpen={defaultOpen}
       visual={TableIcon}
     >
-      <div className="flex flex-col gap-1 gap-4 pl-6 pt-4">
+      <div className="flex flex-col gap-4 pl-6 pt-4">
         <QueryThinking action={action} />
         <TablesQuery action={action} />
         <QueryTablesResults action={action} owner={owner} />
@@ -49,8 +49,10 @@ function TablesQuery({ action }: { action: TablesQueryActionType }) {
 
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-sm font-semibold text-foreground">Query</span>
-      <div className="text-sm font-normal text-muted-foreground">
+      <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+        Query
+      </span>
+      <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
         <ContentBlockWrapper content={query}>
           <CodeBlock
             className="language-sql max-h-60 overflow-y-auto"
@@ -74,8 +76,10 @@ function QueryThinking({ action }: { action: TablesQueryActionType }) {
 
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-sm font-semibold text-foreground">Reasoning</span>
-      <div className="text-sm font-normal text-muted-foreground">
+      <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+        Reasoning
+      </span>
+      <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
         <ContentMessage
           title="Reasoning"
           variant="slate"
@@ -134,7 +138,7 @@ function QueryTablesResults({
     if (typeof output?.error === "string") {
       return (
         <div>
-          <span className="pb-2 text-sm font-semibold text-foreground">
+          <span className="pb-2 text-sm font-semibold text-foreground dark:text-foreground-night">
             Error
           </span>
           <div className="text-sm">{output.error}</div>
@@ -146,7 +150,9 @@ function QueryTablesResults({
 
   return (
     <div className="flex flex-col">
-      <span className="text-sm font-semibold text-foreground">Results</span>
+      <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+        Results
+      </span>
       <div>
         <Citation
           className="w-48 min-w-48 max-w-48"
@@ -163,7 +169,7 @@ function QueryTablesResults({
 
       <Collapsible defaultOpen={false}>
         <Collapsible.Button>
-          <span className="text-sm font-semibold text-muted-foreground">
+          <span className="text-sm font-semibold text-muted-foreground dark:text-muted-foreground-night">
             Preview
           </span>
         </Collapsible.Button>
