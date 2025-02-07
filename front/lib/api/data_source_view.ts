@@ -297,8 +297,11 @@ async function getContentNodesForDataSourceViewFromCore(
   const expandable = (node: CoreAPIContentNode) =>
     !NON_EXPANDABLE_NODES_MIME_TYPES.includes(node.mime_type) &&
     node.children_count > 0 &&
-    // if we aren't in tables view, spreadsheets are not expandable
-    !(viewType !== "tables" && SPREADSHEET_MIME_TYPES.includes(node.mime_type));
+    // if we aren't in tables/all view, spreadsheets are not expandable
+    !(
+      !["tables", "all"].includes(viewType) &&
+      SPREADSHEET_MIME_TYPES.includes(node.mime_type)
+    );
 
   return new Ok({
     nodes: resultNodes.map((node) => {
