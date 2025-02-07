@@ -69,6 +69,8 @@ const createDatabase = async ({
       );
     } else if (!existingDb.lastUpsertedAt) {
       await existingDb.update({
+        permission:
+          existingDb.permission === "selected" ? "selected" : "inherited",
         lastUpsertedAt: new Date(),
       });
     }
@@ -150,6 +152,8 @@ const createSchemaAndHierarchy = async ({
       );
     } else if (!existingSchema.lastUpsertedAt) {
       await existingSchema.update({
+        permission:
+          existingSchema.permission === "selected" ? "selected" : "inherited",
         lastUpsertedAt: new Date(),
       });
     }
@@ -244,6 +248,8 @@ const createTableAndHierarchy = async ({
       );
     } else if (!existingTable.lastUpsertedAt) {
       await existingTable.update({
+        permission:
+          existingTable.permission === "selected" ? "selected" : "inherited",
         lastUpsertedAt: new Date(),
       });
     }
