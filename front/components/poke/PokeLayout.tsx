@@ -3,6 +3,7 @@ import React from "react";
 import RootLayout from "@app/components/app/RootLayout";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import type { RegionType } from "@app/lib/api/regions/config";
+import { usePokeRegion } from "@app/lib/swr/poke";
 
 export interface PokeLayoutProps {
   currentRegion: RegionType;
@@ -10,10 +11,8 @@ export interface PokeLayoutProps {
 
 export default function PokeLayout({
   children,
-  // pageProps,
 }: {
   children: React.ReactNode;
-  // pageProps: PokeLayoutProps;
 }) {
   return (
     <RootLayout>
@@ -27,9 +26,11 @@ interface PokeLayoutContentProps {
 }
 
 const PokeLayoutContent = ({ children }: PokeLayoutContentProps) => {
+  const { region } = usePokeRegion();
+
   return (
     <div className="min-h-screen bg-structure-50">
-      <PokeNavbar />
+      <PokeNavbar currentRegion={region} />
       <div className="flex flex-col p-6">{children}</div>;
     </div>
   );

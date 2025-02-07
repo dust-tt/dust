@@ -6,6 +6,7 @@ import type {
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
+import type { RegionType } from "@app/lib/api/regions/config";
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetPokePlansResponseBody } from "@app/pages/api/poke/plans";
 import type { GetRegionResponseType } from "@app/pages/api/poke/region";
@@ -19,7 +20,10 @@ export function usePokeRegion() {
   const { data, error } = useSWRWithDefaults("/api/poke/region", regionFetcher);
 
   return {
-    region: useMemo(() => data?.region, [data]),
+    region: useMemo(
+      () => (data?.region ? (data.region as RegionType) : undefined),
+      [data]
+    ),
     isRegionLoading: !error && !data,
     isRegionError: error,
   };

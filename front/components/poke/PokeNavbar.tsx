@@ -3,6 +3,7 @@ import { isDevelopment } from "@dust-tt/types";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { PokeRegion } from "@app/components/poke/PokeRegion";
 import { PokeButton } from "@app/components/poke/shadcn/ui/button";
 import {
   PokeCommandDialog,
@@ -10,30 +11,40 @@ import {
   PokeCommandItem,
   PokeCommandList,
 } from "@app/components/poke/shadcn/ui/command";
+import type { RegionType } from "@app/lib/api/regions/config";
 import { classNames } from "@app/lib/utils";
 import { usePokeSearch } from "@app/poke/swr/search";
 
-export const PokeNavbar: React.FC = () => (
-  <nav
-    className={classNames(
-      "flex items-center justify-between px-4 py-6 pr-8",
-      isDevelopment() ? "bg-brand" : "bg-red-500"
-    )}
-  >
-    <div className="flex items-center">
-      <Link href="/poke">
-        <Logo type="colored-grey" className="-mr-5 h-4 w-32 p-0" />
-      </Link>
-      <div className="flex flex-row gap-4">
-        <Button href="/poke/plans" variant="ghost" label="Plans" />
-        <Button href="/poke/templates" variant="ghost" label="Templates" />
-        <Button href="/poke/plugins" variant="ghost" label="Plugins" />
-        <Button href="/poke/kill" variant="ghost" label="Kill Switches" />
+interface PokeNavbarProps {
+  currentRegion?: RegionType;
+}
+
+function PokeNavbar({ currentRegion }: PokeNavbarProps) {
+  return (
+    <nav
+      className={classNames(
+        "flex items-center justify-between px-4 py-6 pr-8",
+        isDevelopment() ? "bg-brand" : "bg-red-500"
+      )}
+    >
+      <div className="flex items-center">
+        <Link href="/poke">
+          <Logo type="colored-grey" className="-mr-5 h-4 w-32 p-0" />
+        </Link>
+        <div className="flex flex-row gap-4">
+          <Button href="/poke/plans" variant="ghost" label="Plans" />
+          <Button href="/poke/templates" variant="ghost" label="Templates" />
+          <Button href="/poke/plugins" variant="ghost" label="Plugins" />
+          <Button href="/poke/kill" variant="ghost" label="Kill Switches" />
+        </div>
       </div>
-    </div>
-    <PokeSearchCommand />
-  </nav>
-);
+      <div className="items-right flex gap-6">
+        {currentRegion && <PokeRegion currentRegion={currentRegion} />}
+        <PokeSearchCommand />
+      </div>
+    </nav>
+  );
+}
 
 export default PokeNavbar;
 
