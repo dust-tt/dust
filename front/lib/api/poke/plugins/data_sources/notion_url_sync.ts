@@ -72,7 +72,7 @@ export const notionUrlSyncPlugin = createPlugin(
         async (url) => {
           const findUrlRes = await connectorsAPI.admin({
             majorCommand: "notion",
-            command: "find-url",
+            command: "check-url",
             args: {
               wId: auth.getNonNullableWorkspace().sId,
               dsId: dataSource.sId,
@@ -92,7 +92,7 @@ export const notionUrlSyncPlugin = createPlugin(
           }
 
           const { page, db } = decoded.right;
-
+          console.log({ page, db });
           if (page) {
             const upsertPageRes = await connectorsAPI.admin({
               majorCommand: "notion",
@@ -100,7 +100,7 @@ export const notionUrlSyncPlugin = createPlugin(
               args: {
                 wId: auth.getNonNullableWorkspace().sId,
                 dsId: dataSource.sId,
-                pageId: page.notionPageId as string,
+                pageId: page.id as string,
               },
             });
 
@@ -108,7 +108,7 @@ export const notionUrlSyncPlugin = createPlugin(
               return new Err(new Error(upsertPageRes.error.message));
             }
 
-            return new Ok(`Upserted page ${page.notionPageId} for url ${url}`);
+            return new Ok(`Upserted page ${page.id} for url ${url}`);
           } else if (db) {
             const upsertDbRes = await connectorsAPI.admin({
               majorCommand: "notion",
@@ -116,7 +116,7 @@ export const notionUrlSyncPlugin = createPlugin(
               args: {
                 wId: auth.getNonNullableWorkspace().sId,
                 dsId: dataSource.sId,
-                databaseId: db.notionDatabaseId as string,
+                databaseId: db.id as string,
               },
             });
 
@@ -124,9 +124,7 @@ export const notionUrlSyncPlugin = createPlugin(
               return new Err(new Error(upsertDbRes.error.message));
             }
 
-            return new Ok(
-              `Upserted database ${db.notionDatabaseId} for url ${url}`
-            );
+            return new Ok(`Upserted database ${db.id} for url ${url}`);
           } else {
             return new Err(
               new Error(`No page or database found for url ${url}`)
