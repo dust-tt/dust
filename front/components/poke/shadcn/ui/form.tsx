@@ -161,6 +161,23 @@ FormMessage.displayName = "FormMessage";
 
 // Override the default input component to add border and background styles.
 const FormInput = React.forwardRef<
+  HTMLInputElement,
+  Omit<React.InputHTMLAttributes<HTMLInputElement>, "value"> & {
+    value?: React.ComponentProps<typeof Input>["value"];
+  }
+>(({ className, value, ...props }, ref) => {
+  return (
+    <Input
+      ref={ref}
+      className={cn("border-2 border-border-dark bg-white", className)}
+      value={value}
+      {...props}
+    />
+  );
+});
+FormInput.displayName = "FormInput";
+
+const FormTextArea = React.forwardRef<
   HTMLTextAreaElement,
   Omit<React.TextareaHTMLAttributes<HTMLTextAreaElement>, "value"> & {
     value?: React.ComponentProps<typeof TextArea>["value"];
@@ -177,7 +194,7 @@ const FormInput = React.forwardRef<
     </div>
   );
 });
-FormInput.displayName = "FormInput";
+FormTextArea.displayName = "FormTextArea";
 
 export {
   Form as PokeForm,
@@ -188,4 +205,5 @@ export {
   FormItem as PokeFormItem,
   FormLabel as PokeFormLabel,
   FormMessage as PokeFormMessage,
+  FormTextArea as PokeFormTextArea,
 };
