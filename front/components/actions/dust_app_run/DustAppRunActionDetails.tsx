@@ -48,15 +48,17 @@ export function DustAppRunActionDetails({
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">
         <div className="flex flex-col gap-1 text-sm">
-          <span className="font-semibold text-foreground">Parameters</span>
-          <div className="text-muted-foreground">
+          <span className="font-semibold text-foreground dark:text-foreground-night">
+            Parameters
+          </span>
+          <div className="text-muted-foreground dark:text-muted-foreground-night">
             <DustAppRunParamsDetails action={action} />
           </div>
         </div>
         <div>
           <Collapsible defaultOpen={defaultOpen}>
             <Collapsible.Button>
-              <span className="text-sm font-semibold text-foreground">
+              <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
                 Results
               </span>
             </Collapsible.Button>
@@ -136,7 +138,7 @@ function DustAppRunOutputDetails({ action }: { action: DustAppRunActionType }) {
 
             <Collapsible defaultOpen={false}>
               <Collapsible.Button>
-                <span className="text-sm font-semibold text-muted-foreground">
+                <span className="text-sm font-semibold text-muted-foreground dark:text-muted-foreground-night">
                   Preview
                 </span>
               </Collapsible.Button>

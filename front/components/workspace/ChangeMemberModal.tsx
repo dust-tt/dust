@@ -76,7 +76,7 @@ export function ChangeMemberModal({
           <div className="flex items-center gap-4">
             <Avatar size="lg" visual={member.image} name={member.fullName} />
             <div className="flex grow flex-col">
-              <div className="font-semibold text-foreground">
+              <div className="font-semibold text-foreground dark:text-foreground-night">
                 {member.fullName}
               </div>
               <div className="font-normal">{member.email}</div>
@@ -84,7 +84,9 @@ export function ChangeMemberModal({
           </div>
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2">
-              <div className="font-bold text-foreground">Role:</div>
+              <div className="font-bold text-foreground dark:text-foreground-night">
+                Role:
+              </div>
               <RoleDropDown
                 selectedRole={selectedRole || role}
                 onChange={setSelectedRole}

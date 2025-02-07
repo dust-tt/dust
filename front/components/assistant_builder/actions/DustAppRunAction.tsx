@@ -174,7 +174,9 @@ export function ActionDustAppRun({
                                   size="md"
                                   className={classNames(
                                     "inline-block flex-shrink-0 align-middle",
-                                    disabled ? "text-element-700" : ""
+                                    disabled
+                                      ? "text-element-700 dark:text-element-700-night"
+                                      : ""
                                   )}
                                 />
                                 <Label
@@ -182,8 +184,8 @@ export function ActionDustAppRun({
                                     "font-bold",
                                     "align-middle",
                                     disabled
-                                      ? "text-element-700"
-                                      : "text-foreground"
+                                      ? "text-element-700 dark:text-element-700-night"
+                                      : "text-foreground dark:text-foreground-night"
                                   )}
                                   htmlFor={app.sId}
                                 >
@@ -207,7 +209,7 @@ export function ActionDustAppRun({
                             }}
                           >
                             {app.description && (
-                              <div className="ml-10 mt-1 text-sm text-element-700">
+                              <div className="ml-10 mt-1 text-sm text-element-700 dark:text-element-700-night">
                                 {app.description}
                               </div>
                             )}

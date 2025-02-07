@@ -21,13 +21,15 @@ export function ProcessActionDetails({
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">
         <div className="flex flex-col gap-1">
-          <span className="text-sm font-semibold text-foreground">Query</span>
+          <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+            Query
+          </span>
           <ProcessActionQuery action={action} />
         </div>
         <div>
           <Collapsible defaultOpen={defaultOpen}>
             <Collapsible.Button>
-              <span className="text-sm font-semibold text-foreground">
+              <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
                 Results
               </span>
             </Collapsible.Button>
@@ -57,7 +59,7 @@ function ProcessActionQuery({ action }: { action: ProcessActionType }) {
 
   return (
     <div className="flex flex-col gap-1">
-      <p className="text-sm font-normal text-muted-foreground">
+      <p className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
         {makeQueryDescription(action)}
       </p>
       {overflow && (

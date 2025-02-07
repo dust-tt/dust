@@ -65,13 +65,15 @@ export function EditInvitationModal({
             {new Date(invitation.createdAt).toLocaleDateString()}
           </div>
           <div className="flex items-center gap-2">
-            <div className="font-semibold text-foreground">Role:</div>
+            <div className="font-semibold text-foreground dark:text-foreground-night">
+              Role:
+            </div>
             <RoleDropDown
               selectedRole={selectedRole}
               onChange={setSelectedRole}
             />
           </div>
-          <div className="grow font-normal text-element-700">
+          <div className="grow font-normal text-element-700 dark:text-element-700-night">
             The role defines the rights of a member fo the workspace.{" "}
             {ROLES_DATA[invitation.initialRole].description}
           </div>

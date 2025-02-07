@@ -700,8 +700,12 @@ function ActionCard({
       }
     >
       <div className="flex w-full flex-col gap-2 text-sm">
-        <div className="flex w-full gap-1 font-medium text-foreground">
-          <Icon visual={spec.cardIcon} size="sm" className="text-foreground" />
+        <div className="flex w-full gap-1 font-medium text-foreground dark:text-foreground-night">
+          <Icon
+            visual={spec.cardIcon}
+            size="sm"
+            className="text-foreground dark:text-foreground-night"
+          />
           <div className="w-full truncate">{actionDisplayName(action)}</div>
         </div>
         {isLegacyConfig ? (
@@ -714,7 +718,7 @@ function ActionCard({
             />
           </div>
         ) : (
-          <div className="w-full truncate text-muted-foreground">
+          <div className="w-full truncate text-muted-foreground dark:text-muted-foreground-night">
             {actionError ? (
               <span className="text-warning-500">{actionError}</span>
             ) : (
@@ -940,7 +944,7 @@ function ActionEditor({
               content={
                 <div className="flex flex-col gap-4">
                   <div className="flex flex-col items-end gap-2">
-                    <div className="w-full grow text-sm font-bold text-element-800">
+                    <div className="w-full grow text-sm font-bold text-element-800 dark:text-element-800-night">
                       Name of the tool
                     </div>
                   </div>
@@ -998,7 +1002,7 @@ function ActionEditor({
         <div className="flex flex-col gap-4 pt-8">
           {isDataSourceAction ? (
             <div className="flex flex-col gap-2">
-              <div className="font-semibold text-element-800">
+              <div className="font-semibold text-element-800 dark:text-element-800-night">
                 What's the data?
               </div>
               <div className="text-sm text-element-600">
@@ -1008,7 +1012,7 @@ function ActionEditor({
               </div>
             </div>
           ) : (
-            <div className="font-semibold text-element-800">
+            <div className="font-semibold text-element-800 dark:text-element-800-night">
               What is this tool about?
             </div>
           )}
@@ -1077,10 +1081,10 @@ function AdvancedSettings({
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             <div className="flex flex-col items-start justify-start">
-              <div className="w-full grow text-sm font-bold text-element-800">
+              <div className="w-full grow text-sm font-bold text-element-800 dark:text-element-800-night">
                 Max steps per run
               </div>
-              <div className="w-full grow text-sm text-element-600">
+              <div className="w-full grow text-sm text-element-600 dark:text-element-600-night">
                 up to {MAX_STEPS_USE_PER_RUN_LIMIT}
               </div>
             </div>
@@ -1105,7 +1109,7 @@ function AdvancedSettings({
             />
             {(reasoningModels?.length ?? 0) > 1 && setReasoningModel && (
               <div className="flex flex-col gap-2">
-                <div className="font-semibold text-element-800">
+                <div className="font-semibold text-element-800 dark:text-element-800-night">
                   Reasoning model
                 </div>
                 <DropdownMenu>
@@ -1235,7 +1239,7 @@ function Capabilities({
           onCheckedChange={enabled ? onDisable : onEnable}
         />
         <div>
-          <div className="flex text-sm font-semibold text-foreground">
+          <div className="flex text-sm font-semibold text-foreground dark:text-foreground-night">
             {name}
           </div>
           <div className="text-sm text-element-700">{description}</div>

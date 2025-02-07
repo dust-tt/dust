@@ -23,7 +23,7 @@ export function QuickStartGuide() {
           <SheetTitle>🚀 Getting started with Dust</SheetTitle>
         </SheetHeader>
         <SheetContainer>
-          <div className="grid grid-cols-6 gap-x-6 gap-y-8 text-sm text-foreground">
+          <div className="grid grid-cols-6 gap-x-6 gap-y-8 text-sm text-foreground dark:text-foreground-night">
             <div className="relative col-span-6 aspect-video">
               <iframe
                 src="https://fast.wistia.net/embed/iframe/v90n8beuh9?seo=true&videoFoam=false"

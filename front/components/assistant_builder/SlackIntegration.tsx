@@ -171,7 +171,7 @@ export function SlackAssistantDefaultManager({
         <div className="pt-8">
           <Page.Vertical gap="lg" align="stretch">
             <div className="flex flex-col gap-y-2">
-              <div className="text-sm font-normal text-foreground">
+              <div className="text-sm font-normal text-foreground dark:text-foreground-night">
                 Set this assistant as the default assistant on one or several of
                 your Slack channels. It will answer by default when the{" "}
                 <span className="font-bold">{assistantHandle}</span> Slack bot
