@@ -370,9 +370,11 @@ export const isConnectorProviderAssistantDefaultSelected = (
     case "intercom":
     case "microsoft":
     case "zendesk":
+      return true;
+    // As of today (07/02/2025), the default selected provider are going to be used for semantic search
+    // Remote database connectors are not available for semantic search so it makes no sense to select them by default
     case "snowflake":
     case "bigquery":
-      return true;
     case "webcrawler":
       return false;
     default:
