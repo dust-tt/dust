@@ -88,6 +88,7 @@ export function computeNodesDiff({
   const missingNodes: DataSourceViewContentNode[] = [];
   const mismatchNodes: DataSourceViewContentNode[] = [];
   const matchingNodes: DataSourceViewContentNode[] = [];
+  const matchingNodeIds: Set<string> = new Set();
 
   // Core and connectors follow different sorting rules,
   // so when pagination is enforced, we only want to log the number of nodes we get,
@@ -349,7 +350,11 @@ export function computeNodesDiff({
         Object.entries(connectorsNode)
           .filter(([key, value]) => {
             const includeEntryInDiff = entryIsInDiff([key, value]);
-            if (!includeEntryInDiff) {
+            if (
+              !includeEntryInDiff &&
+              !matchingNodeIds.has(matchingCoreNode.internalId)
+            ) {
+              matchingNodeIds.add(matchingCoreNode.internalId);
               matchingNodes.push(matchingCoreNode);
             }
             return includeEntryInDiff;
