@@ -2,8 +2,7 @@ import type {
   AdminSuccessResponseType,
   SlackCommandType,
 } from "@dust-tt/types";
-import { isSlackbotWhitelistType } from "@dust-tt/types";
-import { MIME_TYPES } from "@dust-tt/types/src";
+import { isSlackbotWhitelistType, MIME_TYPES } from "@dust-tt/types";
 
 import { updateSlackChannelInConnectorsDb } from "@connectors/connectors/slack/lib/channels";
 import {
