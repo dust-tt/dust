@@ -50,7 +50,7 @@ export default function DropzoneOverlay({
       className={cn(
         "s-absolute s-inset-0 s-z-50 s-flex s-h-full s-w-full s-flex-col s-items-center s-justify-center s-gap-0",
         "s-bg-white/80 dark:s-bg-black/80",
-        "dark:s-text-element-800-night s-text-element-800"
+        "s-text-element-800 dark:s-text-element-800-night"
       )}
       onMouseLeave={() => {
         lottieRef.current?.setDirection(-1);

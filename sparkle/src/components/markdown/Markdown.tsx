@@ -189,14 +189,14 @@ export function Markdown({
         </h6>
       ),
       strong: ({ children }) => (
-        <strong className="dark:s-text-foreground-night s-font-semibold s-text-foreground">
+        <strong className="s-font-semibold s-text-foreground dark:s-text-foreground-night">
           {children}
         </strong>
       ),
       input: Input,
       blockquote: BlockquoteBlock,
       hr: () => (
-        <div className="dark:s-border-structure-200-night s-my-6 s-border-b s-border-structure-200" />
+        <div className="s-my-6 s-border-b s-border-structure-200 dark:s-border-structure-200-night" />
       ),
       code: CodeBlockWithExtendedSupport,
       ...additionalMarkdownComponents,
@@ -253,8 +253,8 @@ function LinkBlock({
       className={cn(
         "s-break-all s-font-semibold s-transition-all s-duration-200 s-ease-in-out hover:s-underline",
         "dark:s-text-highlight-night s-text-highlight",
-        "dark:hover:s-text-action-400-night hover:s-text-action-400",
-        "dark:active:s-text-highlight-dark-night active:s-text-highlight-dark"
+        "hover:s-text-action-400 dark:hover:s-text-action-400-night",
+        "active:s-text-highlight-dark dark:active:s-text-highlight-dark-night"
       )}
     >
       {children}
@@ -280,8 +280,8 @@ function PreBlock({ children }: { children: React.ReactNode }) {
     <pre
       className={cn(
         "s-my-2 s-w-full s-break-all s-rounded-2xl s-border",
-        "dark:s-border-border-dark-night s-border-border-dark",
-        "dark:s-bg-muted-background-night s-bg-muted-background"
+        "s-border-border-dark dark:s-border-border-dark-night",
+        "s-bg-muted-background dark:s-bg-muted-background-night"
       )}
     >
       {validChildrenContent ? children : fallbackData || children}

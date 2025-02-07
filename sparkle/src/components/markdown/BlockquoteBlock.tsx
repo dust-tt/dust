@@ -28,8 +28,8 @@ export function BlockquoteBlock({ children }: BlockquoteBlockProps) {
         className={cn(
           "s-w-full s-text-base s-italic",
           "s-rounded-2xl s-py-3 s-pl-5 s-pr-12",
-          "dark:s-text-foreground-night s-text-foreground",
-          "dark:s-bg-muted-background-night s-bg-muted-background"
+          "s-text-foreground dark:s-text-foreground-night",
+          "s-bg-muted-background dark:s-bg-muted-background-night"
         )}
       >
         {children}

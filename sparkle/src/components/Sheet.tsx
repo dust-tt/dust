@@ -22,7 +22,7 @@ const SheetOverlay = React.forwardRef<
   <SheetPrimitive.Overlay
     className={cn(
       "s-fixed s-inset-0 s-z-50",
-      "dark:s-bg-muted-foreground-night/75 s-bg-muted-foreground/75",
+      "s-bg-muted-foreground/75 dark:s-bg-muted-foreground-night/75",
       "data-[state=open]:s-animate-in data-[state=closed]:s-animate-out",
       "data-[state=closed]:s-fade-out-0 data-[state=open]:s-fade-in-0",
       className
@@ -111,7 +111,7 @@ const SheetHeader = ({
   <div
     className={cn(
       "s-z-50 s-flex s-flex-none s-flex-col s-gap-2 s-p-5 s-text-left",
-      "dark:s-bg-background-night s-bg-background",
+      "s-bg-background dark:s-bg-background-night",
       className
     )}
     {...props}
@@ -125,24 +125,14 @@ const SheetHeader = ({
 SheetHeader.displayName = "SheetHeader";
 
 const SheetContainer = ({ children }: React.HTMLAttributes<HTMLDivElement>) => {
-  const [isScrolled, setIsScrolled] = React.useState(false);
-
   return (
     <ScrollArea
       className={cn(
         "s-w-full s-flex-grow",
-        "s-transition-all s-duration-300",
-        isScrolled &&
-          "dark:s-border-border-dark-night/60 s-border-t s-border-border-dark/60"
+        "s-border-t s-border-border-dark/60 s-transition-all s-duration-300 dark:s-border-border-dark-night/60"
       )}
-      onScrollStateChange={setIsScrolled}
     >
-      <div
-        className={cn(
-          "s-relative s-flex s-flex-col s-gap-5 s-p-5 s-text-left s-text-sm",
-          "dark:s-text-foreground-night s-text-foreground"
-        )}
-      >
+      <div className="s-relative s-flex s-flex-col s-gap-5 s-p-5 s-text-left s-text-sm s-text-foreground dark:s-text-foreground-night">
         {children}
       </div>
     </ScrollArea>
@@ -212,7 +202,7 @@ const SheetTitle = React.forwardRef<
     ref={ref}
     className={cn(
       "s-text-lg s-font-semibold",
-      "dark:s-text-foreground-night s-text-foreground",
+      "s-text-foreground dark:s-text-foreground-night",
       className
     )}
     {...props}
@@ -228,7 +218,7 @@ const SheetDescription = React.forwardRef<
     ref={ref}
     className={cn(
       "s-text-sm",
-      "dark:s-text-muted-foreground-night s-text-muted-foreground",
+      "s-text-muted-foreground dark:s-text-muted-foreground-night",
       className
     )}
     {...props}

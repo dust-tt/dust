@@ -19,7 +19,7 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     className={cn(
       "s-fixed s-inset-0 s-z-50 data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-fade-out-0 data-[state=open]:s-fade-in-0",
-      "dark:s-bg-muted-foreground-night/75 s-bg-muted-foreground/75",
+      "s-bg-muted-foreground/75 dark:s-bg-muted-foreground-night/75",
       className
     )}
     {...props}
@@ -118,7 +118,7 @@ const DialogContainer = ({
     <div
       className={cn(
         "s-relative s-flex s-flex-col s-gap-2 s-p-5 s-text-left s-text-sm",
-        "dark:s-text-foreground-night s-text-foreground"
+        "s-text-foreground dark:s-text-foreground-night"
       )}
     >
       {children}
@@ -177,7 +177,7 @@ const DialogTitle = React.forwardRef<
     ref={ref}
     className={cn(
       "s-text-lg s-font-semibold",
-      "dark:s-text-foreground-night s-text-foreground",
+      "s-text-foreground dark:s-text-foreground-night",
       className
     )}
     {...props}
@@ -193,7 +193,7 @@ const DialogDescription = React.forwardRef<
     ref={ref}
     className={cn(
       "s-text-sm",
-      "dark:s-text-muted-foreground-night s-text-muted-foreground",
+      "s-text-muted-foreground dark:s-text-muted-foreground-night",
       className
     )}
     {...props}

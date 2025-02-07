@@ -101,16 +101,11 @@ export const ScrollAreaHorizontalDemo: Story = {
 
 export const ScrollWithActiveState: Story = {
   render: () => {
-    const [isScrolled, setIsScrolled] = React.useState(false);
     return (
       <div className="s-flex s-flex-col s-gap-4">
-        <div>Scroll state: {isScrolled ? "Scrolled" : "At top"}</div>
         <ScrollArea
-          className={cn(
-            "s-h-[200px] s-w-[350px] s-rounded-xl s-border s-transition-all s-duration-300",
-            isScrolled && "s-border-highlight-200 s-shadow-md"
-          )}
-          onScrollStateChange={setIsScrolled}
+          className={cn("s-h-[200px] s-w-[350px] s-rounded-xl s-border")}
+          appearance="default"
         >
           <div>
             {Array.from({ length: 20 }).map((_, i) => (
@@ -119,6 +114,7 @@ export const ScrollWithActiveState: Story = {
               </div>
             ))}
           </div>
+          <ScrollBar orientation="vertical" />
         </ScrollArea>
       </div>
     );

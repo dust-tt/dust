@@ -123,7 +123,7 @@ export const ConversationMessageContent = React.forwardRef<
       <div
         className={cn(
           "s-px-2 s-text-sm @sm:s-text-base @md:s-px-4",
-          "dark:s-text-foreground-night s-text-foreground"
+          "s-text-foreground dark:s-text-foreground-night"
         )}
       >
         {children}
@@ -176,7 +176,7 @@ export const ConversationMessageHeader = React.forwardRef<
         <div
           className={cn(
             "s-text-sm s-font-medium @sm:s-pb-1 @sm:s-text-base",
-            "dark:s-text-foreground-night s-text-foreground"
+            "s-text-foreground dark:s-text-foreground-night"
           )}
         >
           {renderName(name)}

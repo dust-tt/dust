@@ -22,7 +22,7 @@ export function Page({ children, variant = "normal" }: PageProps) {
       <div
         className={classNames(
           "s-mx-auto s-flex s-h-full s-max-w-4xl s-flex-col s-text-sm s-font-normal",
-          "dark:s-text-foreground-night s-text-foreground",
+          "s-text-foreground dark:s-text-foreground-night",
           divVariantClassNames
         )}
       >
@@ -43,7 +43,7 @@ Page.Header = function ({ title, description, icon }: PageHeaderProps) {
     <Page.Vertical gap="xs">
       <Icon
         visual={icon}
-        className="dark:s-text-primary-400-night s-text-primary-400"
+        className="s-text-primary-400 dark:s-text-primary-400-night"
         size="lg"
       />
       <Page.H variant="h3">{title}</Page.H>
@@ -101,8 +101,8 @@ Page.P = function ({ children, variant, size = "sm" }: PagePProps) {
       className={classNames(
         PsizeClasses[size],
         variant === "secondary"
-          ? "dark:s-text-element-600-night s-text-element-700"
-          : "dark:s-text-foreground-night s-text-foreground"
+          ? "s-text-element-700 dark:s-text-element-600-night"
+          : "s-text-foreground dark:s-text-foreground-night"
       )}
     >
       {children}
@@ -130,7 +130,7 @@ Page.H = function ({ children, variant = "h3" }: PageHProps) {
   return (
     <Component
       className={classNames(
-        "dark:s-text-foreground-night s-text-foreground",
+        "s-text-foreground dark:s-text-foreground-night",
         hSizes[variant]
       )}
     >

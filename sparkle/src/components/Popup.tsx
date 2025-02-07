@@ -59,7 +59,7 @@ export function Popup({
             </div>
           )}
         </div>
-        <div className="dark:s-text-foreground-night s-text-sm s-font-normal s-text-foreground">
+        <div className="s-text-sm s-font-normal s-text-foreground dark:s-text-foreground-night">
           {description}
         </div>
         <div className="s-self-center">
