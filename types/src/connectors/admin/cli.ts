@@ -92,6 +92,7 @@ export const NotionCommandSchema = t.type({
     t.literal("search-pages"),
     t.literal("check-url"),
     t.literal("find-url"),
+    t.literal("delete-url"),
     t.literal("me"),
     t.literal("stop-all-garbage-collectors"),
     t.literal("update-parents-fields"),
@@ -420,6 +421,15 @@ export type NotionCheckUrlResponseType = t.TypeOf<
   typeof NotionCheckUrlResponseSchema
 >;
 
+export const NotionDeleteUrlResponseSchema = t.type({
+  deletedPage: t.boolean,
+  deletedDb: t.boolean,
+});
+
+export type NotionDeleteUrlResponseType = t.TypeOf<
+  typeof NotionDeleteUrlResponseSchema
+>;
+
 export const NotionFindUrlResponseSchema = t.type({
   page: t.union([t.UnknownRecord, t.null]), // notion type, can't be iots'd
   db: t.union([t.UnknownRecord, t.null]), // notion type, can't be iots'd
@@ -465,6 +475,7 @@ export const AdminResponseSchema = t.union([
   IntercomCheckTeamsResponseSchema,
   IntercomFetchConversationResponseSchema,
   NotionCheckUrlResponseSchema,
+  NotionDeleteUrlResponseSchema,
   NotionMeResponseSchema,
   NotionSearchPagesResponseSchema,
   NotionUpsertResponseSchema,
