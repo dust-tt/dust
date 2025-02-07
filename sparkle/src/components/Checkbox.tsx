@@ -58,9 +58,7 @@ interface CheckboxProps
 const Checkbox = React.forwardRef<
   React.ElementRef<typeof CheckboxPrimitive.Root>,
   CheckboxProps
->(({ className, size, checked, ...props }, ref) => {
-  const id = React.useId();
-
+>(({ className, size, checked, id, ...props }, ref) => {
   const checkbox = (
     <CheckboxPrimitive.Root
       ref={ref}
@@ -89,9 +87,12 @@ interface CheckboxWithTextProps extends CheckboxProps {
   text: string;
 }
 
-function CheckboxWithText({ text, tooltip, ...props }: CheckboxWithTextProps) {
-  const id = React.useId();
-
+function CheckboxWithText({
+  text,
+  tooltip,
+  id,
+  ...props
+}: CheckboxWithTextProps) {
   const content = (
     <div className="s-items-top s-flex s-items-center s-space-x-2">
       <Checkbox id={id} {...props} />
@@ -115,10 +116,9 @@ function CheckBoxWithTextAndDescription({
   text,
   description,
   tooltip,
+  id,
   ...props
 }: CheckboxWithTextAndDescriptionProps) {
-  const id = React.useId();
-
   const content = (
     <div className="s-items-top s-flex s-space-x-2">
       <Checkbox id={id} {...props} />

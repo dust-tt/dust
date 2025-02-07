@@ -23,7 +23,6 @@ type ExtendedCheckboxProps = CheckboxProps & {
 
 const meta = {
   title: "Primitives/Checkbox",
-  // We need to cast here as the component expects stricter props
   component: Checkbox as React.ComponentType<ExtendedCheckboxProps>,
   parameters: {
     layout: "centered",
@@ -90,6 +89,7 @@ export const Default: Story = {
   },
   render: function Render({ text, description, ...args }) {
     const [checked, setChecked] = React.useState(args.checked ?? false);
+    const id = React.useId();
 
     React.useEffect(() => {
       setChecked(args.checked ?? false);
@@ -97,6 +97,7 @@ export const Default: Story = {
 
     const props = {
       ...args,
+      id,
       checked,
       onCheckedChange: (state: boolean | "indeterminate") =>
         setChecked(state === true),
