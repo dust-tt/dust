@@ -26,6 +26,7 @@ const {
   markFolderAsVisited,
   shouldGarbageCollect,
   upsertSharedWithMeFolder,
+  fixParentsConsistencyActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "20 minutes",
 });
@@ -266,4 +267,26 @@ export async function googleDriveGarbageCollectorWorkflow(
 
 export function googleDriveGarbageCollectorWorkflowId(connectorId: ModelId) {
   return `googleDrive-garbageCollector-${connectorId}`;
+}
+
+export function googleDriveFixParentsConsistencyWorkflowId(
+  connectorId: ModelId
+) {
+  return `googleDrive-fixParentsConsistency-${connectorId}`;
+}
+
+export async function googleDriveFixParentsConsistencyWorkflow(
+  connectorId: ModelId,
+  execute: boolean
+) {
+  let fromId = 0;
+  const startTs = new Date().getTime();
+  do {
+    fromId = await fixParentsConsistencyActivity({
+      connectorId,
+      fromId,
+      execute,
+      startTs,
+    });
+  } while (fromId > 0);
 }
