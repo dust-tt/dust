@@ -31,7 +31,7 @@ export const notionUrlSyncPlugin = createPlugin(
         values: NOTION_OPERATIONS,
       },
       urls: {
-        type: "string",
+        type: "text",
         label: "URLs",
         description:
           "List of URLs to sync or delete, separated by a comma (,) or newline",
