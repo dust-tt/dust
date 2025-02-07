@@ -931,3 +931,51 @@ async function markAsSeenAndIgnored({
   });
   return;
 }
+
+export async function fixParentsConsistencyActivity({
+  connectorId,
+  fromId,
+  execute,
+  startTs,
+}: {
+  connectorId: ModelId;
+  fromId: number;
+  execute: boolean;
+  startTs: number;
+}) {
+  const localLogger = logger.child({
+    provider: "google_drive",
+    connectorId: connectorId,
+    activity: "fixParentsConsistencyActivity",
+  });
+
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+  const limit = 1000;
+  const files = await GoogleDriveFiles.findAll({
+    where: {
+      connectorId: connector.id,
+      id: { [Op.gt]: fromId },
+    },
+    order: [["id", "ASC"]],
+    limit,
+  });
+
+  const connectorResource = await ConnectorResource.fetchById(connector.id);
+  if (!connectorResource) {
+    throw new Error("Connector not found");
+  }
+  await fixParentsConsistency({
+    connector: connectorResource,
+    files,
+    checkFromGoogle: true,
+    execute,
+    startSyncTs: startTs,
+    logger: localLogger,
+  });
+  fromId = files[limit - 1]?.id ?? 0;
+
+  return fromId;
+}

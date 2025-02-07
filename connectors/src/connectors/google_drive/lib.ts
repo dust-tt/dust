@@ -198,6 +198,7 @@ export async function fixParentsConsistency({
   if (checkFromGoogle) {
     logger.info("Checking consistency with Google Drive");
     const authCredentials = await getAuthObject(connector.connectionId);
+    const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
     const googleFiles = removeNulls(
       await concurrentExecutor(
@@ -212,7 +213,7 @@ export async function fixParentsConsistency({
             },
           }),
         {
-          concurrency: 10,
+          concurrency: 100,
         }
       )
     );
@@ -221,7 +222,7 @@ export async function fixParentsConsistency({
       const googleFile = googleFiles.find((f) => f.id === file.driveFileId);
       if (!googleFile) {
         logger.info(
-          { fileId: file.driveFileId },
+          { dustFileId: file.dustFileId },
           "File does not exist in Google Drive, deleting"
         );
         if (execute) {
@@ -234,6 +235,7 @@ export async function fixParentsConsistency({
           googleFile,
           startSyncTs
         );
+        const googleParents = parents.map((p) => getInternalId(p));
         const localParents = await getLocalParents(
           connector.id,
           file.dustFileId,
@@ -248,13 +250,69 @@ export async function fixParentsConsistency({
             await internalDeleteFile(connector, file);
           }
         } else if (
-          JSON.stringify(parents.map((p) => getInternalId(p))) !==
-          JSON.stringify(localParents)
+          JSON.stringify(googleParents) !== JSON.stringify(localParents)
         ) {
           logger.info(
-            { dustFileId: file.dustFileId, localParents, parents },
+            {
+              localParents,
+              googleParents,
+              dustFileId: file.dustFileId,
+            },
             "Parents not consistent with gdrive, updating"
           );
+
+          // Get all parents to check existence
+          const existingParents = await GoogleDriveFiles.findAll({
+            where: {
+              connectorId: connector.id,
+              dustFileId: googleParents,
+            },
+          });
+          const missing = googleParents.filter(
+            (id) => !existingParents.find((f) => f.dustFileId === id)
+          );
+
+          logger.info({ missing: missing }, "Missing folders, restoring");
+          if (execute) {
+            for (const missingFolderId of missing) {
+              const missingFolder = await getGoogleDriveObject({
+                authCredentials,
+                driveObjectId: getDriveFileId(missingFolderId),
+              });
+
+              if (missingFolder) {
+                const missingFolderParents = (
+                  await getFileParentsMemoized(
+                    connector.id,
+                    authCredentials,
+                    missingFolder,
+                    startSyncTs
+                  )
+                ).map((p) => getInternalId(p));
+                await upsertDataSourceFolder({
+                  dataSourceConfig,
+                  folderId: missingFolderId,
+                  parents: missingFolderParents,
+                  parentId: missingFolderParents[1] || null,
+                  title: missingFolder.name ?? "",
+                  mimeType: MIME_TYPES.GOOGLE_DRIVE.FOLDER,
+                  sourceUrl: getSourceUrlForGoogleDriveFiles(missingFolder),
+                });
+
+                await GoogleDriveFiles.upsert({
+                  connectorId: connector.id,
+                  dustFileId: missingFolderId,
+                  driveFileId: getDriveFileId(missingFolderId),
+                  name: missingFolder.name,
+                  mimeType: missingFolder.mimeType,
+                  parentId: missingFolderParents[1]
+                    ? getDriveFileId(missingFolderParents[1])
+                    : null,
+                  lastSeenTs: new Date(),
+                });
+              }
+            }
+          }
           const driveParentId = parents[1];
           const dustParentId = driveParentId
             ? getInternalId(driveParentId)
@@ -263,8 +321,6 @@ export async function fixParentsConsistency({
             await file.update({
               parentId: driveParentId,
             });
-            const dataSourceConfig = dataSourceConfigFromConnector(connector);
-            const dustParentIds = parents.map((p) => getInternalId(p));
             if (
               isGoogleDriveFolder(googleFile) ||
               isGoogleDriveSpreadSheetFile(googleFile)
@@ -272,7 +328,7 @@ export async function fixParentsConsistency({
               await upsertDataSourceFolder({
                 dataSourceConfig,
                 folderId: file.dustFileId,
-                parents: dustParentIds,
+                parents: googleParents,
                 parentId: dustParentId,
                 title: file.name ?? "",
                 mimeType: MIME_TYPES.GOOGLE_DRIVE.FOLDER,
@@ -292,7 +348,7 @@ export async function fixParentsConsistency({
                 await updateDataSourceTableParents({
                   dataSourceConfig,
                   tableId,
-                  parents: [tableId, ...dustParentIds],
+                  parents: [tableId, ...googleParents],
                   parentId: file.dustFileId,
                 });
               }
@@ -300,7 +356,7 @@ export async function fixParentsConsistency({
               await updateDataSourceDocumentParents({
                 dataSourceConfig,
                 documentId: file.dustFileId,
-                parents: dustParentIds,
+                parents: googleParents,
                 parentId: dustParentId,
               });
             }
