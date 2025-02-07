@@ -7,6 +7,7 @@ import { cn } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
 import { Label } from "./Label";
+import { Tooltip } from "./Tooltip";
 
 export const CHECKBOX_SIZES = ["xs", "sm"] as const;
 type CheckboxSizeType = (typeof CHECKBOX_SIZES)[number];
@@ -51,25 +52,33 @@ interface CheckboxProps
     >,
     VariantProps<typeof checkboxStyles> {
   checked?: CheckBoxStateType;
+  tooltip?: string;
 }
 
 const Checkbox = React.forwardRef<
   React.ElementRef<typeof CheckboxPrimitive.Root>,
   CheckboxProps
->(({ className, size, checked, ...props }, ref) => (
-  <CheckboxPrimitive.Root
-    ref={ref}
-    className={cn(checkboxStyles({ checked, size }), className)}
-    checked={checked === "partial" ? "indeterminate" : checked}
-    {...props}
-  >
-    <CheckboxPrimitive.Indicator className="s-flex s-items-center s-justify-center s-text-current">
-      <span className={cn(size === "xs" ? "-s-mt-px" : "")}>
-        <Icon size="xs" visual={checked === "partial" ? DashIcon : CheckIcon} />
-      </span>
-    </CheckboxPrimitive.Indicator>
-  </CheckboxPrimitive.Root>
-));
+>(({ className, size, checked, tooltip, ...props }, ref) => {
+  const checkbox = (
+    <CheckboxPrimitive.Root
+      ref={ref}
+      className={cn(checkboxStyles({ checked, size }), className)}
+      checked={checked === "partial" ? "indeterminate" : checked}
+      {...props}
+    >
+      <CheckboxPrimitive.Indicator className="s-flex s-items-center s-justify-center s-text-current">
+        <span className={cn(size === "xs" ? "-s-mt-px" : "")}>
+          <Icon
+            size="xs"
+            visual={checked === "partial" ? DashIcon : CheckIcon}
+          />
+        </span>
+      </CheckboxPrimitive.Indicator>
+    </CheckboxPrimitive.Root>
+  );
+
+  return tooltip ? <Tooltip label={tooltip} trigger={checkbox} /> : checkbox;
+});
 
 Checkbox.displayName = CheckboxPrimitive.Root.displayName;
 
@@ -107,7 +116,7 @@ function CheckBoxWithTextAndDescription({
         <p
           className={cn(
             "s-text-xs",
-            "dark:s-text-muted-foreground-night s-text-muted-foreground"
+            "s-text-muted-foreground dark:s-text-muted-foreground-night"
           )}
         >
           {description}

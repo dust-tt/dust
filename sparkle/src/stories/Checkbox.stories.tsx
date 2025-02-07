@@ -23,7 +23,6 @@ type ExtendedCheckboxProps = CheckboxProps & {
 
 const meta = {
   title: "Primitives/Checkbox",
-  // We need to cast here as the component expects stricter props
   component: Checkbox as React.ComponentType<ExtendedCheckboxProps>,
   parameters: {
     layout: "centered",
@@ -53,6 +52,10 @@ const meta = {
       table: {
         defaultValue: { summary: false },
       },
+    },
+    tooltip: {
+      description: "Optional tooltip shown on hover",
+      control: "text",
     },
     className: {
       description: "Additional CSS classes to apply",
