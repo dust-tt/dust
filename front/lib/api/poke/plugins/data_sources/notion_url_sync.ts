@@ -169,7 +169,7 @@ export const notionUrlSyncPlugin = createPlugin(
             db: { [key: string]: unknown } | null;
           };
 
-          if (page || db) {
+          if ((page && !page.in_trash) || (db && !db.in_trash)) {
             return new Err(
               new Error(
                 `URL ${url} still available on Notion, should not be deleted.`
