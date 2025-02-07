@@ -1,4 +1,4 @@
-export const WORKFLOW_VERSION = 10;
+const WORKFLOW_VERSION = 10;
 export const QUEUE_NAME = `zendesk-queue-v${WORKFLOW_VERSION}`;
 
 // Batch size used when fetching from Zendesk API or from the database
