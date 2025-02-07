@@ -64,7 +64,7 @@ export function transformStreamToCSV(
 
       onclosetag(name) {
         const lastTag = state.tags.pop();
-        if (name != lastTag) {
+        if (name !== lastTag) {
           throw new Error("Invalid tag order");
         } else {
           if (lastTag === "tr") {
