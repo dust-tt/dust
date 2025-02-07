@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { PokeRegion } from "@app/components/poke/PokeRegion";
-import { PokeButton } from "@app/components/poke/shadcn/ui/button";
 import {
   PokeCommandDialog,
   PokeCommandInput,
@@ -72,9 +71,12 @@ export function PokeSearchCommand() {
 
   return (
     <>
-      <PokeButton variant="outline" size="sm" onClick={() => setOpen(true)}>
-        Search (⌘K)
-      </PokeButton>
+      <Button
+        variant="outline"
+        size="sm"
+        label="Search (⌘K)"
+        onClick={() => setOpen(true)}
+      />
       <PokeCommandDialog
         open={open}
         onOpenChange={setOpen}

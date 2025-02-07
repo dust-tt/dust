@@ -1,4 +1,5 @@
-import { PokeButton } from "@app/components/poke/shadcn/ui/button";
+import { Button } from "@dust-tt/sparkle";
+
 import type { RegionType } from "@app/lib/api/regions/config";
 import { getRegionDisplay } from "@app/lib/poke/regions";
 
@@ -8,8 +9,11 @@ interface PokeRegionProps {
 
 export function PokeRegion({ currentRegion }: PokeRegionProps) {
   return (
-    <PokeButton variant="outline" size="sm" disabled>
-      {getRegionDisplay(currentRegion)}
-    </PokeButton>
+    <Button
+      variant="outline"
+      size="sm"
+      label={getRegionDisplay(currentRegion)}
+      disabled
+    />
   );
 }
