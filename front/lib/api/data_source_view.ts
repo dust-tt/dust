@@ -15,7 +15,6 @@ import {
   Err,
   isDevelopment,
   isDustWorkspace,
-  MIME_TYPES,
   Ok,
   removeNulls,
 } from "@dust-tt/types";
@@ -190,9 +189,7 @@ function filterNodesByViewType(
       return nodes.filter(
         (node) =>
           node.children_count > 0 ||
-          ["Folder", "Document"].includes(node.node_type) ||
-          node.mime_type === MIME_TYPES.BIGQUERY.TABLE ||
-          node.mime_type === MIME_TYPES.SNOWFLAKE.TABLE
+          ["Folder", "Document"].includes(node.node_type)
       );
     case "tables":
       return nodes.filter(
