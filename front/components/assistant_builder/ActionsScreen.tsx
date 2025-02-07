@@ -17,6 +17,7 @@ import {
   Icon,
   InformationCircleIcon,
   Input,
+  Label,
   Modal,
   MoreIcon,
   Page,
@@ -1233,16 +1234,28 @@ function Capabilities({
     onDisable: () => void;
   }) => {
     return (
-      <div className="flex flex-row gap-2">
-        <Checkbox
-          checked={enabled}
-          onCheckedChange={enabled ? onDisable : onEnable}
-        />
-        <div>
-          <div className="flex text-sm font-semibold text-foreground dark:text-foreground-night">
-            {name}
+      <div className="flex flex-col gap-2">
+        <div className="items-top itemcenter flex space-x-2">
+          <Checkbox
+            checked={enabled}
+            onCheckedChange={(checked) => {
+              if (checked) {
+                onEnable();
+              } else {
+                onDisable();
+              }
+            }}
+            id={`capability-${name.toLowerCase().replace(/\s+/g, "-")}`}
+          />
+          <div className="grid gap-1.5 leading-none">
+            <Label
+              htmlFor={`capability-${name.toLowerCase().replace(/\s+/g, "-")}`}
+              className="cursor-pointer text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            >
+              {name}
+            </Label>
+            <p className="text-sm text-element-700">{description}</p>
           </div>
-          <div className="text-sm text-element-700">{description}</div>
         </div>
       </div>
     );
