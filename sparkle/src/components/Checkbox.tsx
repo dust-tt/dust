@@ -58,7 +58,7 @@ interface CheckboxProps
 const Checkbox = React.forwardRef<
   React.ElementRef<typeof CheckboxPrimitive.Root>,
   CheckboxProps
->(({ className, size, checked, tooltip, ...props }, ref) => {
+>(({ className, size, checked, ...props }, ref) => {
   const id = React.useId();
 
   const checkbox = (
