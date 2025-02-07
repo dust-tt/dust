@@ -410,8 +410,6 @@ impl SearchStore for ElasticsearchSearchStore {
             .query(bool_query)
             .aggregate("unique_tags", aggregate.size(limit.unwrap_or(100)));
 
-        println!("search: {}", serde_json::to_string_pretty(&search).unwrap());
-
         let response = self
             .client
             .search(SearchParts::Index(&[NODES_INDEX_NAME]))
