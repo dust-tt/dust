@@ -21,7 +21,10 @@ const SheetOverlay = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SheetPrimitive.Overlay
     className={cn(
-      "s-fixed s-inset-0 s-z-50 s-bg-muted-foreground/75 data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-fade-out-0 data-[state=open]:s-fade-in-0",
+      "s-fixed s-inset-0 s-z-50",
+      "dark:s-bg-muted-foreground-night/75 s-bg-muted-foreground/75",
+      "data-[state=open]:s-animate-in data-[state=closed]:s-animate-out",
+      "data-[state=closed]:s-fade-out-0 data-[state=open]:s-fade-in-0",
       className
     )}
     {...props}
@@ -45,7 +48,11 @@ const sizeClasses: Record<SheetSizeType, string> = {
 };
 
 const sheetVariants = cva(
-  "s-fixed s-z-50 s-overflow-hidden s-bg-background s-transition s-ease-in-out data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-duration-300 data-[state=open]:s-duration-500 s-flex s-flex-col s-h-full s-w-full",
+  cn(
+    "s-fixed s-z-50 s-overflow-hidden s-flex s-flex-col s-h-full s-w-full",
+    "s-bg-background dark:s-bg-background-night",
+    "s-transition s-ease-in-out data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-duration-300 data-[state=open]:s-duration-500"
+  ),
   {
     variants: {
       side: {
@@ -103,7 +110,8 @@ const SheetHeader = ({
 }: SheetHeaderProps) => (
   <div
     className={cn(
-      "s-z-50 s-flex s-flex-none s-flex-col s-gap-2 s-bg-background s-p-5 s-text-left",
+      "s-z-50 s-flex s-flex-none s-flex-col s-gap-2 s-p-5 s-text-left",
+      "dark:s-bg-background-night s-bg-background",
       className
     )}
     {...props}
@@ -119,9 +127,9 @@ SheetHeader.displayName = "SheetHeader";
 const SheetContainer = ({ children }: React.HTMLAttributes<HTMLDivElement>) => {
   return (
     <ScrollArea
-      className={cn("s-w-full s-flex-grow", "s-transition-all s-duration-300")}
+      className={cn("s-w-full s-flex-grow", "s-transition-all s-duration-300 dark:s-border-border-dark-night/60 s-border-t s-border-border-dark/60")}
     >
-      <div className="s-relative s-flex s-flex-col s-gap-5 s-p-5 s-text-left s-text-sm s-text-foreground">
+      <div className="s-relative s-flex s-flex-col s-gap-5 s-p-5 s-text-left s-text-sm s-text-foreground dark:s-text-foreground-night s-text-foreground">
         {children}
       </div>
     </ScrollArea>
@@ -132,6 +140,7 @@ SheetContainer.displayName = "SheetContainer";
 interface SheetFooterProps extends React.HTMLAttributes<HTMLDivElement> {
   leftButtonProps?: React.ComponentProps<typeof Button>;
   rightButtonProps?: React.ComponentProps<typeof Button>;
+  rightEndButtonProps?: React.ComponentProps<typeof Button>;
   sheetCloseClassName?: string;
 }
 
@@ -140,12 +149,14 @@ const SheetFooter = ({
   children,
   leftButtonProps,
   rightButtonProps,
+  rightEndButtonProps,
   sheetCloseClassName,
   ...props
 }: SheetFooterProps) => (
   <div
     className={cn(
-      "s-flex s-flex-none s-flex-row s-gap-2 s-border-t s-border-border s-px-3 s-py-3",
+      "s-flex s-flex-none s-flex-row s-gap-2 s-border-t s-px-3 s-py-3",
+      "dark:s-border-border-night s-border-border",
       className
     )}
     {...props}
@@ -158,12 +169,21 @@ const SheetFooter = ({
           <Button {...leftButtonProps} />
         </SheetClose>
       ))}
+    <div className="s-flex-grow" />
     {rightButtonProps &&
       (rightButtonProps.disabled ? (
         <Button {...rightButtonProps} />
       ) : (
         <SheetClose className={sheetCloseClassName} asChild>
           <Button {...rightButtonProps} />
+        </SheetClose>
+      ))}
+    {rightEndButtonProps &&
+      (rightEndButtonProps.disabled ? (
+        <Button {...rightEndButtonProps} />
+      ) : (
+        <SheetClose className={sheetCloseClassName} asChild>
+          <Button {...rightEndButtonProps} />
         </SheetClose>
       ))}
     {children}
@@ -177,7 +197,11 @@ const SheetTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SheetPrimitive.Title
     ref={ref}
-    className={cn("s-text-lg s-font-semibold s-text-foreground", className)}
+    className={cn(
+      "s-text-lg s-font-semibold",
+      "dark:s-text-foreground-night s-text-foreground",
+      className
+    )}
     {...props}
   />
 ));
@@ -189,7 +213,11 @@ const SheetDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SheetPrimitive.Description
     ref={ref}
-    className={cn("s-text-sm s-text-muted-foreground", className)}
+    className={cn(
+      "s-text-sm",
+      "dark:s-text-muted-foreground-night s-text-muted-foreground",
+      className
+    )}
     {...props}
   />
 ));

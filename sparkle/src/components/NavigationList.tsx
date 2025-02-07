@@ -2,25 +2,32 @@ import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 
-import {
-  Icon,
-  LinkWrapper,
-  LinkWrapperProps,
-  ScrollArea,
-  ScrollBar,
-} from "@sparkle/components/";
+import { Icon, LinkWrapper, LinkWrapperProps, ScrollArea, ScrollBar } from "@sparkle/components/";
 import { Button } from "@sparkle/components/Button";
 import { MoreIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 
 const NavigationListItemStyles = cva(
-  "s-box-border s-flex s-items-center s-w-full s-gap-1.5 s-cursor-pointer s-select-none s-items-center s-outline-none s-rounded-xl s-text-sm s-px-3 s-py-2 s-transition-colors s-duration-300 data-[disabled]:s-pointer-events-none data-[disabled]:s-text-muted-foreground hover:s-text-foreground hover:s-bg-structure-150",
+  cn(
+    "s-box-border s-flex s-items-center s-w-full s-gap-1.5 s-cursor-pointer s-select-none",
+    "s-items-center s-outline-none s-rounded-xl s-text-sm s-px-3 s-py-2 s-transition-colors s-duration-300",
+    "data-[disabled]:s-pointer-events-none",
+    "data-[disabled]:s-text-muted-foreground dark:data-[disabled]:s-text-muted-foreground-night",
+    "hover:s-text-foreground dark:hover:s-text-foreground-night",
+    "hover:s-bg-structure-150 dark:hover:s-bg-structure-150-night"
+  ),
   {
     variants: {
       state: {
-        active: "active:s-bg-structure-200",
-        selected: "s-text-foreground s-font-medium s-bg-structure-150",
-        unselected: "s-text-muted-foreground",
+        active:
+          "active:s-bg-structure-200 dark:active:s-bg-structure-200-night",
+        selected: cn(
+          "s-text-foreground dark:s-text-foreground-night",
+          "s-font-medium",
+          "s-bg-structure-150 dark:s-bg-structure-150-night"
+        ),
+        unselected:
+          "s-text-muted-foreground dark:s-text-muted-foreground-night",
       },
     },
     defaultVariants: {
@@ -159,8 +166,8 @@ NavigationListItemAction.displayName = "NavigationListItemAction";
 const variantStyles = cva("", {
   variants: {
     variant: {
-      primary: "s-text-foreground",
-      secondary: "s-text-muted-foreground",
+      primary: "s-text-foreground dark:s-text-foreground-night",
+      secondary: "s-text-muted-foreground dark:s-text-muted-foreground-night",
     },
     isSticky: {
       true: "s-sticky s-top-0 s-z-10 s-border-b s-border-border-dark/60 s-bg-muted/90 s-backdrop-blur-sm",

@@ -23,7 +23,10 @@ async function main() {
   for (const connector of connectors) {
     try {
       const auth = await getAuthObject(connector.connectionId);
-      const gDriveObject = await getGoogleDriveObject(auth, "root");
+      const gDriveObject = await getGoogleDriveObject({
+        authCredentials: auth,
+        driveObjectId: "root",
+      });
       logger.info(
         {
           connectorId: connector.id,

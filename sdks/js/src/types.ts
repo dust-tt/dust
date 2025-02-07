@@ -767,7 +767,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "labs_transcripts_full_storage"
   | "labs_trackers"
   | "document_tracker"
-  | "use_app_for_header_detection"
   | "openai_o1_feature"
   | "openai_o1_mini_feature"
   | "openai_o1_high_reasoning_feature"
@@ -783,6 +782,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "labs_github_actions"
   | "deepseek_r1_global_agent_feature"
   | "bigquery_feature"
+  | "tags_filters"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -2205,7 +2205,6 @@ export const UpsertTableFromCsvRequestSchema = z.intersection(
       parentId: z.string().nullable().optional(),
       parents: z.array(z.string()).nullable().optional(),
       truncate: z.boolean(),
-      useAppForHeaderDetection: z.boolean().nullable().optional(),
       async: z.boolean().optional(),
       title: z.string(),
       mimeType: z.string(),
@@ -2219,7 +2218,6 @@ export const UpsertTableFromCsvRequestSchema = z.intersection(
       parentId: o.parentId,
       parents: o.parents,
       truncate: o.truncate,
-      useAppForHeaderDetection: o.useAppForHeaderDetection,
       async: o.async,
       title: o.title,
       mimeType: o.mimeType,
@@ -2278,7 +2276,7 @@ export const UpsertDatabaseTableRequestSchema = z.object({
   remote_database_table_id: z.string().nullable().optional(),
   remote_database_secret_id: z.string().nullable().optional(),
   title: z.string(),
-  mime_type: z.string(),
+  mime_type: z.string().nullable().optional(),
   source_url: z.string().nullable().optional(),
 });
 
@@ -2383,7 +2381,7 @@ export const FileUploadUrlRequestSchema = z.object({
   contentType: SupportedFileContentFragmentTypeSchema,
   fileName: z.string().max(256, "File name must be less than 256 characters"),
   fileSize: z.number(),
-  useCase: z.union([z.literal("conversation"), z.literal("avatar")]),
+  useCase: z.literal("conversation"),
   useCaseMetadata: z
     .object({
       conversationId: z.string(),
@@ -2399,7 +2397,7 @@ const FileTypeStatusSchema = FlexibleEnumSchema<
 >();
 
 const FileTypeUseCaseSchema = FlexibleEnumSchema<
-  "conversation" | "avatar" | "tool_output" | "folder_document" | "folder_table"
+  "conversation" | "avatar" | "tool_output" | "upsert_document" | "upsert_table"
 >();
 
 export const FileTypeSchema = z.object({

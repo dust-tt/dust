@@ -4,7 +4,7 @@ import { DataTypes } from "sequelize";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 
-type RemoteTablePermission = "selected" | "inherited"; // todo Daph move in next PR
+type AllowedPermissions = "selected" | "unselected" | "inherited";
 
 export class RemoteDatabaseModel extends ConnectorBaseModel<RemoteDatabaseModel> {
   declare createdAt: CreationOptional<Date>;
@@ -12,7 +12,7 @@ export class RemoteDatabaseModel extends ConnectorBaseModel<RemoteDatabaseModel>
 
   declare internalId: string;
   declare name: string;
-  declare permission: "selected" | "unselected";
+  declare permission: AllowedPermissions;
 }
 RemoteDatabaseModel.init(
   {
@@ -52,7 +52,7 @@ export class RemoteSchemaModel extends ConnectorBaseModel<RemoteSchemaModel> {
 
   declare internalId: string;
   declare name: string;
-  declare permission: "selected" | "unselected" | "inherited";
+  declare permission: AllowedPermissions;
 
   declare databaseName: string;
 }
@@ -102,7 +102,7 @@ export class RemoteTableModel extends ConnectorBaseModel<RemoteTableModel> {
 
   declare schemaName: string;
   declare databaseName: string;
-  declare permission: RemoteTablePermission;
+  declare permission: AllowedPermissions;
 }
 RemoteTableModel.init(
   {

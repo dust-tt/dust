@@ -192,9 +192,20 @@ export interface CoreAPISearchCursorRequest {
   cursor?: string;
 }
 
-export interface CoreAPISearchResponse {
+export interface CoreAPISearchNodesResponse {
   nodes: CoreAPIContentNode[];
   next_page_cursor: string | null;
+}
+
+export interface CoreAPISearchTagsResponse {
+  error: string | null;
+  response: {
+    tags: {
+      tag: string;
+      match_count: number;
+      data_sources: string[];
+    }[];
+  };
 }
 
 export type CoreAPIDatasourceViewFilter = {
@@ -1612,7 +1623,7 @@ export class CoreAPI {
     query?: string;
     filter: CoreAPINodesSearchFilter;
     options?: CoreAPISearchOptions;
-  }): Promise<CoreAPIResponse<CoreAPISearchResponse>> {
+  }): Promise<CoreAPIResponse<CoreAPISearchNodesResponse>> {
     const response = await this._fetchWithError(`${this._url}/nodes/search`, {
       method: "POST",
       headers: {
@@ -1622,6 +1633,29 @@ export class CoreAPI {
         query,
         filter,
         options,
+      }),
+    });
+    return this._resultFromResponse(response);
+  }
+
+  async searchTags({
+    query,
+    queryType,
+    dataSources,
+  }: {
+    query: string;
+    queryType: string;
+    dataSources: string[];
+  }): Promise<CoreAPIResponse<CoreAPISearchTagsResponse>> {
+    const response = await this._fetchWithError(`${this._url}/tags/search`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        query,
+        query_type: queryType,
+        data_sources: dataSources,
       }),
     });
     return this._resultFromResponse(response);

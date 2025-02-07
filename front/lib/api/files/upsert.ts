@@ -273,7 +273,6 @@ const upsertTableToDatasource: ProcessingFunction = async ({
     async: false,
     dataSource,
     auth,
-    useAppForHeaderDetection: true,
     title: upsertTitle ?? file.fileName,
     mimeType: file.contentType,
     sourceUrl: file.getPrivateUrl(auth),
@@ -321,13 +320,9 @@ const getProcessingFunction = ({
 
   // Use isSupportedDelimitedTextContentType() everywhere to have a common source of truth
   if (isSupportedDelimitedTextContentType(contentType)) {
-    if (
-      useCase === "conversation" ||
-      useCase === "tool_output" ||
-      useCase === "folder_table"
-    ) {
+    if (["conversation", "tool_output", "upsert_table"].includes(useCase)) {
       return upsertTableToDatasource;
-    } else if (useCase === "folder_document") {
+    } else if (useCase === "upsert_document") {
       return upsertDocumentToDatasource;
     } else {
       return undefined;
@@ -336,9 +331,7 @@ const getProcessingFunction = ({
 
   if (
     isSupportedPlainTextContentType(contentType) &&
-    (useCase === "conversation" ||
-      useCase === "tool_output" ||
-      useCase === "folder_document")
+    ["conversation", "tool_output", "upsert_document"].includes(useCase)
   ) {
     return upsertDocumentToDatasource;
   }

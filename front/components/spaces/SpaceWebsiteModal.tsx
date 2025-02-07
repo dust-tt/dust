@@ -13,7 +13,7 @@ import {
   Label,
   Page,
   RadioGroup,
-  RadioGroupChoice,
+  RadioGroupItem,
   Separator,
   Sheet,
   SheetContainer,
@@ -449,25 +449,19 @@ export default function SpaceWebsiteModal({
                           }}
                           className="flex flex-col gap-1"
                         >
-                          <RadioGroupChoice
+                          <RadioGroupItem
                             value="child"
                             className="gap-2"
-                            label={
-                              <Label className="text-sm font-light">
-                                Only child pages of the provided URL
-                              </Label>
-                            }
-                          ></RadioGroupChoice>
-                          <RadioGroupChoice
+                            label="Only child pages of the provided URL"
+                            id="child-pages"
+                          />
+                          <RadioGroupItem
                             value="website"
                             iconPosition="center"
                             className="gap-2 text-sm"
-                            label={
-                              <Label className="text-sm font-light">
-                                Follow all the links within the domain
-                              </Label>
-                            }
-                          ></RadioGroupChoice>
+                            label="Follow all the links within the domain"
+                            id="all-pages"
+                          />
                         </RadioGroup>
                       </Page.Layout>
                       <Page.Layout direction="vertical" sizing="grow">

@@ -94,8 +94,8 @@ export function computeNodesDiff({
   if (pagination && connectorsContentNodes.length !== coreContentNodes.length) {
     localLogger.info(
       {
-        connectorsContentNodesLength: connectorsContentNodes.length,
-        coreContentNodesLength: coreContentNodes.length,
+        connectorsNodesCount: connectorsContentNodes.length,
+        coreNodesCount: coreContentNodes.length,
         pagination,
       },
       "[CoreNodes] Different number of nodes returned by connectors and core"
@@ -152,15 +152,6 @@ export function computeNodesDiff({
               return false;
             }
             // Custom exclusion rules. The goal here is to avoid logging irrelevant differences, scoping by connector.
-
-            // Titles: until ES backfill, there is a split issue on ":" that we fixed and can ignore, see https://github.com/dust-tt/dust/issues/10281
-            if (key === "title") {
-              if (
-                connectorsNode.title.split(":")[0] === matchingCoreNode.title
-              ) {
-                return false;
-              }
-            }
 
             // For Snowflake and Zendesk we fixed how parents were computed in the core folders but not in connectors.
             // For Intercom we keep the virtual node Help Center in connectors but not in core.
@@ -344,6 +335,15 @@ export function computeNodesDiff({
             ) {
               return false;
             }
+            // Special case for Notion databases titles: when empty it is filled as "Untitled Notion Database" in core
+            // whereas the connector returns an empty string.
+            if (
+              key === "title" &&
+              value.trim() === "" &&
+              coreValue === "Untitled Notion Database"
+            ) {
+              return false;
+            }
             if (Array.isArray(value) && Array.isArray(coreValue)) {
               return JSON.stringify(value) !== JSON.stringify(coreValue);
             }
@@ -361,6 +361,8 @@ export function computeNodesDiff({
       if (Object.keys(diff).length > 0) {
         localLogger.info(
           {
+            connectorsNodesCount: connectorsContentNodes.length,
+            coreNodesCount: coreContentNodes.length,
             internalId: connectorsNode.internalId,
             diff,
           },
@@ -390,8 +392,9 @@ export function computeNodesDiff({
   ) {
     localLogger.info(
       {
-        missingInternalIds: missingNodes.map((n) => n.internalId),
+        connectorsNodesCount: connectorsContentNodes.length,
         coreNodesCount: coreContentNodes.length,
+        missingInternalIds: missingNodes.map((n) => n.internalId),
         maxPageSizeReached: coreContentNodes.length === 1000, // max value determined by the limit set in getContentNodesForDataSourceViewFromCore
       },
       "[CoreNodes] Missing nodes from core"

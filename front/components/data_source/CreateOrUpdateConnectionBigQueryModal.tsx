@@ -3,10 +3,11 @@ import {
   Button,
   CloudArrowLeftRightIcon,
   InformationCircleIcon,
+  Label,
   Modal,
   Page,
   RadioGroup,
-  RadioGroupChoice,
+  RadioGroupCustomItem,
   TextArea,
   Tooltip,
 } from "@dust-tt/sparkle";
@@ -24,7 +25,7 @@ import {
 } from "@dust-tt/types";
 import { isRight } from "fp-ts/lib/Either";
 import { formatValidationErrors } from "io-ts-reporters";
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
 import { useBigQueryLocations } from "@app/lib/swr/bigquery";
@@ -336,31 +337,30 @@ export function CreateOrUpdateConnectionBigQueryModal({
                   value={selectedLocation}
                   onValueChange={setSelectedLocation}
                 >
-                  <div className="flex flex-col gap-y-2">
+                  <div className="flex flex-col items-start gap-y-2">
                     {Object.entries(locations).map(([location, tables]) => (
-                      <RadioGroupChoice
+                      <RadioGroupCustomItem
                         key={location}
+                        id={location}
                         value={location}
-                        label={
-                          <>
-                            <Tooltip
-                              label={
-                                <span>
-                                  This location contains {tables.length} tables
-                                  that can be connected :{" "}
-                                  <span className="text-xs text-gray-500">
-                                    {tables.join(", ")}
-                                  </span>
+                        customItem={
+                          <Tooltip
+                            label={
+                              <Label htmlFor={location}>
+                                This location contains {tables.length} tables
+                                that can be connected :{" "}
+                                <span className="text-xs text-gray-500">
+                                  {tables.join(", ")}
                                 </span>
-                              }
-                              trigger={
-                                <div className="flex items-center gap-1">
-                                  <b>{location}</b> - {tables.length} tables{" "}
-                                  <InformationCircleIcon />
-                                </div>
-                              }
-                            />
-                          </>
+                              </Label>
+                            }
+                            trigger={
+                              <div className="flex items-center gap-1">
+                                <b>{location}</b> - {tables.length} tables{" "}
+                                <InformationCircleIcon />
+                              </div>
+                            }
+                          />
                         }
                       />
                     ))}

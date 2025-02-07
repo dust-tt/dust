@@ -24,16 +24,13 @@ function filterAndSortSuggestions(
 ) {
   return suggestions
     .filter((item) => subFilter(lowerCaseQuery, item.label.toLowerCase()))
-    .sort((a, b) => compareForFuzzySort(lowerCaseQuery, a.label, b.label))
-    .sort((a, b) => {
-      if (a.userFavorite && !b.userFavorite) {
-        return -1;
-      } else if (!a.userFavorite && b.userFavorite) {
-        return 1;
-      } else {
-        return 0;
-      }
-    });
+    .sort((a, b) =>
+      compareForFuzzySort(
+        lowerCaseQuery,
+        a.label.toLocaleLowerCase(),
+        b.label.toLocaleLowerCase()
+      )
+    );
 }
 
 export function makeGetAssistantSuggestions() {

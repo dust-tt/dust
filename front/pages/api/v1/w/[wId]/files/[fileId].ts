@@ -1,5 +1,6 @@
 import type { FileUploadedRequestResponseType } from "@dust-tt/client";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
+import { isPublicySupportedUseCase } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
@@ -46,6 +47,16 @@ async function handler(
       api_error: {
         type: "file_not_found",
         message: "File not found.",
+      },
+    });
+  }
+
+  if (!isPublicySupportedUseCase(file.useCase)) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "The file use case is not supported by the API.",
       },
     });
   }

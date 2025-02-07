@@ -37,7 +37,7 @@ const ScrollArea = React.forwardRef<
           (child) =>
             React.isValidElement(child) &&
             (child.type as typeof ScrollBar).displayName ===
-              ScrollBar.displayName
+            ScrollBar.displayName
         ),
       [children]
     );
