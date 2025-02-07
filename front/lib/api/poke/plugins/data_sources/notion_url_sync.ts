@@ -59,7 +59,21 @@ export const notionUrlSyncPlugin = createPlugin(
 
     const { operation, urls } = args;
 
-    const urlsArray = urls.split(/[\n,]/).map((url) => url.trim());
+    const urlsArray = urls
+      .split(/[\n,]/g)
+      .map((url) => url.trim())
+      .filter((url) => url.length > 0);
+
+    // check urls are valid
+    if (urlsArray.some((url) => !URL.canParse(url))) {
+      return new Err(
+        new Error(
+          `Invalid URLs: ${urlsArray
+            .filter((url) => !URL.canParse(url))
+            .join(", ")}`
+        )
+      );
+    }
 
     const connectorsAPI = new ConnectorsAPI(
       config.getConnectorsAPIConfig(),
