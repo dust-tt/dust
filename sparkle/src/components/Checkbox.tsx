@@ -107,7 +107,7 @@ function CheckBoxWithTextAndDescription({
         <p
           className={cn(
             "s-text-xs",
-            "dark:s-text-muted-foreground-night s-text-muted-foreground"
+            "s-text-muted-foreground dark:s-text-muted-foreground-night"
           )}
         >
           {description}

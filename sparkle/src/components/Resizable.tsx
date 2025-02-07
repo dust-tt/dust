@@ -32,7 +32,7 @@ const ResizableHandle = ({
       "s-relative s-flex s-w-px s-items-center s-justify-center",
       "after:s-absolute after:s-inset-y-0 after:s-left-1/2 after:s-w-1 after:s--translate-x-1/2",
       "focus-visible:s-outline-none focus-visible:s-ring-1",
-      "dark:focus-visible:s-ring-ring-night focus-visible:s-ring-ring",
+      "focus-visible:s-ring-ring dark:focus-visible:s-ring-ring-night",
       "focus-visible:s-ring-offset-1 data-[panel-group-direction=vertical]:s-h-px",
       "data-[panel-group-direction=vertical]:s-w-full",
       "data-[panel-group-direction=vertical]:after:s-left-0",

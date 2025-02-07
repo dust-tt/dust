@@ -425,7 +425,7 @@ const DropdownMenuStaticItem = React.forwardRef<
     ref={ref}
     className={cn(
       "s-flex s-h-9 s-items-center s-gap-2 s-px-2 s-text-sm",
-      "dark:s-text-foreground-night s-text-foreground",
+      "s-text-foreground dark:s-text-foreground-night",
       className
     )}
   >
@@ -434,7 +434,7 @@ const DropdownMenuStaticItem = React.forwardRef<
       <span
         className={cn(
           "s-shrink-0",
-          "dark:s-text-muted-foreground-night s-text-muted-foreground"
+          "s-text-muted-foreground dark:s-text-muted-foreground-night"
         )}
       >
         {value}

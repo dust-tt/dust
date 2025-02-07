@@ -120,7 +120,7 @@ export function PriceTable({
         }}
         className={classNames(
           "s-flex s-h-full s-flex-col s-overflow-hidden s-shadow-md",
-          "s-bg-white dark:s-bg-structure-50-dark"
+          "dark:s-bg-structure-50-dark s-bg-white"
         )}
       >
         {childrenWithProps}
@@ -176,7 +176,7 @@ PriceTable.Item = function ({
       <div
         className={classNames(
           variant === "xmark"
-            ? "s-text-element-600 dark:s-text-element-600-dark"
+            ? "dark:s-text-element-600-dark s-text-element-600"
             : "",
           "s-overflow-hidden"
         )}
@@ -206,7 +206,7 @@ PriceTable.ActionContainer = function ({
           "s-flex s-w-full s-justify-center s-px-2",
           size === "xs" ? "s-py-2" : "s-py-4",
           position === "top"
-            ? "s-border-b s-border-structure-100 dark:s-border-structure-200-dark/50"
+            ? "dark:s-border-structure-200-dark/50 s-border-b s-border-structure-100"
             : ""
         )}
       >

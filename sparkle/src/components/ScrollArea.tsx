@@ -62,7 +62,12 @@ const ScrollArea = React.forwardRef<
               "s-opacity-0 group-hover:s-opacity-100"
             )}
           >
-            <ScrollAreaPrimitive.ScrollAreaThumb className="s-relative s-flex-1 s-rounded-full s-bg-muted-foreground/40 hover:s-bg-muted-foreground/70" />
+            <ScrollAreaPrimitive.ScrollAreaThumb
+              className={cn(
+                "s-relative s-flex-1 s-rounded-full s-bg-muted-foreground/40 hover:s-bg-muted-foreground/70",
+                "dark:s-bg-muted-foreground-night/40 dark:hover:s-bg-muted-foreground-night/70"
+              )}
+            />
           </ScrollAreaPrimitive.ScrollAreaScrollbar>
         )}
         <ScrollAreaPrimitive.Corner />
@@ -86,7 +91,7 @@ const scrollBarSizes = {
     thumb: cn(
       "s-bg-muted-foreground/40 dark:s-bg-muted-foreground-night/40",
       "hover:s-bg-muted-foreground/70 dark:hover:s-bg-muted-foreground-night/70"
-    )
+    ),
   },
   classic: {
     bar: {
@@ -100,7 +105,7 @@ const scrollBarSizes = {
     thumb: cn(
       "s-bg-muted-foreground/70 dark:s-bg-muted-foreground-night/70",
       "hover:s-bg-muted-foreground/80 dark:hover:s-bg-muted-foreground-night/80"
-    )
+    ),
   },
 } as const;
 

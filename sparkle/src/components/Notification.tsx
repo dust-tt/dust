@@ -37,8 +37,8 @@ export function Notification({
     <div
       className={cn(
         "s-pointer-events-auto s-flex s-max-w-[400px] s-flex-row s-items-center s-gap-2 s-rounded-xl s-border",
-        "dark:s-border-structure-100-night s-border-structure-100",
-        "dark:s-bg-structure-0-night s-bg-structure-0",
+        "s-border-structure-100 dark:s-border-structure-100-night",
+        "s-bg-structure-0 dark:s-bg-structure-0-night",
         "s-p-4",
         "s-shadow-xl",
         className
@@ -49,13 +49,13 @@ export function Notification({
         <Icon
           size="lg"
           visual={CheckCircleIcon}
-          className="dark:s-text-success-500-night s-pt-0.5 s-text-success-500"
+          className="s-pt-0.5 s-text-success-500 dark:s-text-success-500-night"
         />
       ) : (
         <Icon
           size="lg"
           visual={XCircleIcon}
-          className="dark:s-text-warning-500-night s-pt-0.5 s-text-warning-500"
+          className="s-pt-0.5 s-text-warning-500 dark:s-text-warning-500-night"
         />
       )}
 
@@ -65,8 +65,8 @@ export function Notification({
             className={cn(
               "s-text-md s-line-clamp-1 s-h-6 s-grow s-font-semibold",
               variant === "success"
-                ? "dark:s-text-success-500-night s-text-success-500"
-                : "dark:s-text-warning-500-night s-text-warning-500"
+                ? "s-text-success-500 dark:s-text-success-500-night"
+                : "s-text-warning-500 dark:s-text-warning-500-night"
             )}
           >
             {title || variant}
@@ -75,7 +75,7 @@ export function Notification({
         {description && (
           <div
             className={cn(
-              "dark:s-text-element-700-night s-text-element-700",
+              "s-text-element-700 dark:s-text-element-700-night",
               "s-line-clamp-3 s-pr-2 s-text-sm s-font-normal"
             )}
           >
