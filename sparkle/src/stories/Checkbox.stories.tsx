@@ -6,16 +6,14 @@ import { CHECKBOX_SIZES } from "@sparkle/components/Checkbox";
 import { Checkbox } from "../index_with_tw_base";
 
 const CHECKED_STATES = {
-  Unchecked: false,
-  Checked: true,
-  Partial: "partial",
+  unchecked: false,
+  checked: true,
+  partial: "partial",
 } as const;
 
-type CheckedState = boolean | "indeterminate";
 const meta = {
   title: "Primitives/Checkbox",
   component: Checkbox,
-  tags: ["autodocs"],
   parameters: {
     layout: "centered",
   },
@@ -57,20 +55,20 @@ const meta = {
       description: "Optional tooltip shown on hover",
       control: "text",
     },
-    labelProps: {
-      description: "Props for the label component",
-      control: "object",
-    },
   },
-} as Meta<typeof Checkbox>;
+} satisfies Meta<typeof Checkbox>;
 
 export default meta;
-export const Default: StoryObj<typeof Checkbox> = {
+type Story = StoryObj<typeof Checkbox>;
+
+export const Default: Story = {
   args: {
     label: "Click me or my label",
     size: "sm",
+    checked: false,
+    disabled: false,
   },
-  render: (args) => {
+  render: function Render(args) {
     const [checked, setChecked] = React.useState(args.checked ?? false);
 
     React.useEffect(() => {
@@ -81,7 +79,7 @@ export const Default: StoryObj<typeof Checkbox> = {
       <Checkbox
         {...args}
         checked={checked}
-        onCheckedChange={(state: CheckedState) => setChecked(state === true)}
+        onCheckedChange={(checked) => setChecked(checked === true)}
       />
     );
   },

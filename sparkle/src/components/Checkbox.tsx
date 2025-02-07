@@ -84,7 +84,7 @@ const Checkbox = React.forwardRef<
         <Label
           htmlFor={id}
           className={cn(
-            "s-cursor-pointer",
+            "s-cursor-pointer s-text-xs",
             props.disabled && "s-cursor-not-allowed s-opacity-50"
           )}
         >
