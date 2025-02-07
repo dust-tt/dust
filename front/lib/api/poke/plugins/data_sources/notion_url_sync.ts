@@ -106,7 +106,6 @@ export const notionUrlSyncPlugin = createPlugin(
           }
 
           const { page, db } = decoded.right;
-          console.log({ page, db });
           if (page) {
             const upsertPageRes = await connectorsAPI.admin({
               majorCommand: "notion",

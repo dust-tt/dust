@@ -79,6 +79,7 @@ import { heartbeat } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import { nodeIdFromNotionId } from "@connectors/connectors/notion";
 
 const logger = mainLogger.child({ provider: "notion" });
 
@@ -2703,19 +2704,19 @@ export async function updateSingleDocumentParents({
     "Parents for document"
   );
 
-  const parents = parentsNotionIds.map((id) => `notion-${id}`);
+  const parents = parentsNotionIds.map((id) => nodeIdFromNotionId(id));
 
   if (documentType === "page") {
     await updateDataSourceDocumentParents({
       dataSourceConfig,
-      documentId: `notion-${notionDocumentId}`,
+      documentId: nodeIdFromNotionId(notionDocumentId),
       parents,
       parentId: parents[1] || null,
     });
   } else if (documentType === "database") {
     await updateDataSourceTableParents({
       dataSourceConfig,
-      tableId: `notion-${notionDocumentId}`,
+      tableId: nodeIdFromNotionId(notionDocumentId),
       parents,
       parentId: parents[1] || null,
     });
