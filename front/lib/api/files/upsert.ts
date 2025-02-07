@@ -291,6 +291,16 @@ const upsertTableToDatasource: ProcessingFunction = async ({
     });
   }
 
+  if (file.useCaseMetadata) {
+    await file.setUseCaseMetadata({
+      ...file.useCaseMetadata,
+      generatedTables: [
+        ...(file.useCaseMetadata.generatedTables ?? []),
+        tableId,
+      ],
+    });
+  }
+
   return new Ok(undefined);
 };
 

@@ -16,6 +16,7 @@ export type FileUseCase =
 
 export type FileUseCaseMetadata = {
   conversationId: string;
+  generatedTables?: string[];
 };
 
 export interface FileType {
