@@ -4,10 +4,8 @@ import type {
   GoogleDriveCommandType,
 } from "@dust-tt/types";
 import { googleDriveIncrementalSyncWorkflowId } from "@dust-tt/types";
-import { Op } from "sequelize";
 
 import { getConnectorManager } from "@connectors/connectors";
-import { fixParentsConsistency } from "@connectors/connectors/google_drive/lib";
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import {
@@ -25,7 +23,6 @@ import { throwOnError } from "@connectors/lib/cli";
 import { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
 import { terminateWorkflow } from "@connectors/lib/temporal";
 import { default as topLogger } from "@connectors/logger/logger";
-import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 const getConnector = async (args: GoogleDriveCommandType["args"]) => {
