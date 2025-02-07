@@ -52,7 +52,6 @@ export default function AppLayout({
   hasTopPadding?: boolean;
 }) {
   const [loaded, setLoaded] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(false);
   const { user } = useUser();
   const { isNavigationBarOpen, setIsNavigationBarOpen } =
     useAppKeyboardShortcuts(owner);
@@ -63,7 +62,11 @@ export default function AppLayout({
 
   useEffect(() => {
     const theme = localStorage.getItem("theme");
-    setIsDarkMode(theme === "dark");
+    if (theme === "dark") {
+      document.body.classList.add("dark", "s-dark");
+    } else {
+      document.body.classList.remove("dark", "s-dark");
+    }
   }, []);
 
   useEffect(() => {
@@ -140,9 +143,7 @@ export default function AppLayout({
         />
       </Head>
 
-      <div
-        className={`flex h-full flex-row ${isDarkMode ? "s-dark dark" : "light"}`}
-      >
+      <div className="flex h-full flex-row">
         <Navigation
           hideSidebar={hideSidebar}
           isNavigationBarOpen={isNavigationBarOpen}
@@ -164,7 +165,7 @@ export default function AppLayout({
               className={classNames(
                 "flex w-full flex-col border-b border-primary-50 pl-12 lg:pl-0",
                 !hideSidebar
-                  ? "dark:border-structure-300-dark/30 border-b border-structure-300/30 bg-white/80 backdrop-blur dark:border-structure-300-night/30 dark:bg-black/80"
+                  ? "border-b border-structure-300/30 bg-white/80 backdrop-blur dark:border-structure-300-night/30 dark:bg-black/80"
                   : "",
                 titleChildren ? "" : "lg:hidden"
               )}
