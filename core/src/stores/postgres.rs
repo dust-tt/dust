@@ -3539,7 +3539,6 @@ impl Store for PostgresStore {
                 let document_row_id = row[0].get::<_, Option<i64>>(6);
                 let table_row_id = row[0].get::<_, Option<i64>>(7);
                 let folder_row_id = row[0].get::<_, Option<i64>>(8);
-                let tags: Vec<String> = row[0].get::<_, Vec<String>>(9);
                 let (node_type, row_id) = match (document_row_id, table_row_id, folder_row_id) {
                     (Some(id), None, None) => (NodeType::Document, id),
                     (None, Some(id), None) => (NodeType::Table, id),
@@ -3547,6 +3546,7 @@ impl Store for PostgresStore {
                     _ => unreachable!(),
                 };
                 let source_url: Option<String> = row[0].get::<_, Option<String>>(9);
+                let tags: Option<Vec<String>> = row[0].get::<_, Option<Vec<String>>>(10);
                 Ok(Some((
                     Node::new(
                         &data_source_id,
@@ -3560,7 +3560,7 @@ impl Store for PostgresStore {
                         parents.get(1).cloned(),
                         parents,
                         source_url,
-                        Some(tags),
+                        tags,
                     ),
                     row_id,
                 )))
@@ -3579,7 +3579,7 @@ impl Store for PostgresStore {
 
         let stmt = c
             .prepare(
-                "SELECT dsn.timestamp, dsn.title, dsn.mime_type, dsn.provider_visibility, dsn.parents, dsn.node_id, dsn.document, dsn.\"table\", dsn.folder, ds.data_source_id, ds.internal_id, dsn.source_url, dsn.id, dsn.tags_array \
+                "SELECT dsn.timestamp, dsn.title, dsn.mime_type, dsn.provider_visibility, dsn.parents, dsn.node_id, dsn.document, dsn.\"table\", dsn.folder, ds.data_source_id, ds.internal_id, dsn.source_url, dsn.tags_array, dsn.id \
                    FROM data_sources_nodes dsn JOIN data_sources ds ON dsn.data_source = ds.id \
                    WHERE dsn.id > $1 ORDER BY dsn.id ASC LIMIT $2",
             )
@@ -3601,7 +3601,6 @@ impl Store for PostgresStore {
                 let folder_row_id = row.get::<_, Option<i64>>(8);
                 let data_source_id: String = row.get::<_, String>(9);
                 let data_source_internal_id: String = row.get::<_, String>(10);
-                let tags: Vec<String> = row.get::<_, Vec<String>>(11);
                 let (node_type, element_row_id) =
                     match (document_row_id, table_row_id, folder_row_id) {
                         (Some(id), None, None) => (NodeType::Document, id),
@@ -3610,7 +3609,8 @@ impl Store for PostgresStore {
                         _ => unreachable!(),
                     };
                 let source_url: Option<String> = row.get::<_, Option<String>>(11);
-                let row_id = row.get::<_, i64>(12);
+                let tags: Option<Vec<String>> = row.get::<_, Option<Vec<String>>>(12);
+                let row_id = row.get::<_, i64>(13);
                 (
                     Node::new(
                         &data_source_id,
@@ -3624,7 +3624,7 @@ impl Store for PostgresStore {
                         parents.get(1).cloned(),
                         parents,
                         source_url,
-                        Some(tags),
+                        tags,
                     ),
                     row_id,
                     element_row_id,
