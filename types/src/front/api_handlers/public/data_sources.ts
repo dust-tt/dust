@@ -80,24 +80,3 @@ export const PatchDataSourceTableRequestBodySchema = t.type({
 export type PatchDataSourceTableRequestBody = t.TypeOf<
   typeof PatchDataSourceTableRequestBodySchema
 >;
-
-const UpsertTableFromCsvRequestSchema = z.object({
-  name: z.string(),
-  description: z.string(),
-  timestamp: z.number().nullable().optional(),
-  tags: z.array(z.string()).nullable().optional(),
-  parentId: z.string().nullable().optional(),
-  parents: z.array(z.string()).nullable().optional(),
-  truncate: z.boolean(),
-  async: z.boolean().optional(),
-  title: z.string(),
-  mimeType: z.string(),
-  sourceUrl: z.string().nullable().optional(),
-  tableId: z.string(),
-  csv: z.string().optional(),
-});
-
-export type UpsertTableFromCsvRequestType = z.infer<
-  typeof UpsertTableFromCsvRequestSchema
->;
-
