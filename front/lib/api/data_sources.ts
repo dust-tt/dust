@@ -55,7 +55,6 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { enqueueUpsertTable } from "@app/lib/upsert_queue";
 import logger from "@app/logger/logger";
-import type { UpsertTableFromCsvRequestType } from "@app/pages/api/v1/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/tables/csv";
 import { launchScrubDataSourceWorkflow } from "@app/poke/temporal/client";
 
 export async function getDataSources(
@@ -642,7 +641,21 @@ export async function handleDataSourceTableCSVUpsert({
   dataSource,
 }: {
   auth: Authenticator;
-  params: UpsertTableFromCsvRequestType;
+  params: {
+    tableId: string;
+    name: string;
+    description: string;
+    truncate: boolean;
+    async?: boolean;
+    title: string;
+    mimeType: string;
+    csv?: string;
+    sourceUrl?: string | null;
+    timestamp?: number | null;
+    tags?: string[] | null;
+    parentId?: string | null;
+    parents?: string[] | null;
+  };
   dataSource: DataSourceResource;
 }): Promise<
   Result<
