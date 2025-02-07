@@ -181,38 +181,40 @@ const createTableAndHierarchy = async ({
 
   // Check it table already exists
   const existingTable = allTables.find((t) => t.internalId === tableInternalId);
-  if (!existingTable) {
-    // Create and add the table to the list of all tables.
-    allTables.push(
-      await RemoteTableModel.create({
-        connectorId: connector.id,
-        internalId: tableInternalId,
-        name: tableName,
-        schemaName,
-        databaseName: dbName,
-        permission: "inherited",
+
+  if (!existingTable || !existingTable.lastUpsertedAt) {
+    if (!existingTable) {
+      // Create and add the table to the list of all tables.
+      allTables.push(
+        await RemoteTableModel.create({
+          connectorId: connector.id,
+          internalId: tableInternalId,
+          name: tableName,
+          schemaName,
+          databaseName: dbName,
+          permission: "inherited",
+          lastUpsertedAt: new Date(),
+        })
+      );
+    } else if (!existingTable.lastUpsertedAt) {
+      await existingTable.update({
         lastUpsertedAt: new Date(),
-      })
-    );
-  } else {
-    await existingTable.update({
-      lastUpsertedAt: new Date(),
+      });
+    }
+    // ...upsert the table in core
+    await upsertDataSourceRemoteTable({
+      dataSourceConfig,
+      tableId: tableInternalId,
+      tableName: tableInternalId,
+      remoteDatabaseTableId: tableInternalId,
+      remoteDatabaseSecretId: connector.connectionId,
+      tableDescription: "",
+      parents: [tableInternalId, schemaInternalId, dbName],
+      parentId: schemaInternalId,
+      title: tableName,
+      mimeType: mimeTypes.TABLE,
     });
   }
-
-  // ...upsert the table in core
-  await upsertDataSourceRemoteTable({
-    dataSourceConfig,
-    tableId: tableInternalId,
-    tableName: tableInternalId,
-    remoteDatabaseTableId: tableInternalId,
-    remoteDatabaseSecretId: connector.connectionId,
-    tableDescription: "",
-    parents: [tableInternalId, schemaInternalId, dbName],
-    parentId: schemaInternalId,
-    title: tableName,
-    mimeType: mimeTypes.TABLE,
-  });
 };
 
 export async function sync({

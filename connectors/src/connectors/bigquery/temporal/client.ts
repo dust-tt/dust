@@ -45,8 +45,8 @@ export async function launchBigQuerySyncWorkflow(
       memo: {
         connectorId,
       },
-      // Every 10 minutes.
-      cronSchedule: "*/10 * * * *",
+      // Every hour.
+      cronSchedule: `${connector.id % 60} * * * *`,
     });
   } catch (err) {
     return new Err(err as Error);
