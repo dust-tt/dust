@@ -6,10 +6,7 @@ import {
   getActionTags,
 } from "@app/components/assistant_builder/tags/helpers";
 import { TagSearchInput } from "@app/components/assistant_builder/tags/TagSearchInput";
-import type {
-  AssistantBuilderActionConfiguration,
-  AssistantBuilderActionConfigurationWithId,
-} from "@app/components/assistant_builder/types";
+import type { AssistantBuilderRetrievalConfiguration } from "@app/components/assistant_builder/types";
 import { useTagSearchEndpoint } from "@app/lib/swr/data_sources";
 import { debounce } from "@app/lib/utils/debounce";
 
@@ -121,61 +118,54 @@ function useTagSearch() {
  * Handle the addition and removal of tags from the action configuration.
  */
 function useUpdateTagOperations({
-  action,
   updateAction,
+  setEdited,
 }: {
-  action: AssistantBuilderActionConfigurationWithId;
-  updateAction: (args: {
-    actionName: string;
-    actionDescription: string;
-    getNewActionConfig: (
-      old: AssistantBuilderActionConfiguration["configuration"]
-    ) => AssistantBuilderActionConfiguration["configuration"];
-  }) => void;
+  updateAction: (
+    setNewAction: (
+      previousAction: AssistantBuilderRetrievalConfiguration
+    ) => AssistantBuilderRetrievalConfiguration
+  ) => void;
+  setEdited: (edited: boolean) => void;
 }) {
   const handleTagOperation = (
     tag: DataSourceTag,
     mode: "in" | "not",
     operation: "add" | "remove"
   ) => {
-    updateAction({
-      actionName: action.name,
-      actionDescription: action.description,
-      getNewActionConfig: (previousAction) => {
-        if (!("dataSourceConfigurations" in previousAction)) {
-          return previousAction;
-        }
+    setEdited(true);
+    updateAction((previousAction) => {
+      const dsc = Object.values(previousAction.dataSourceConfigurations).find(
+        (dataSourceConfiguration) =>
+          dataSourceConfiguration.dataSourceView.dataSource
+            .dustAPIDataSourceId === tag.dustAPIDataSourceId
+      );
 
-        const newAction = { ...previousAction };
-        const dsc = Object.values(newAction.dataSourceConfigurations).find(
-          (dataSourceConfiguration) =>
-            dataSourceConfiguration.dataSourceView.dataSource
-              .dustAPIDataSourceId === tag.dustAPIDataSourceId
+      if (!dsc) {
+        return { ...previousAction };
+      }
+
+      if (!dsc.tagsFilter || dsc.tagsFilter === "auto") {
+        dsc.tagsFilter = { in: [], not: [] };
+      }
+
+      if (operation === "add") {
+        dsc.tagsFilter[mode].push(tag.tag);
+      } else {
+        dsc.tagsFilter[mode] = dsc.tagsFilter[mode].filter(
+          (t: string) => t !== tag.tag
         );
+      }
 
-        if (!dsc) {
-          return newAction;
-        }
+      const dataSourceConfigurations = {
+        ...previousAction.dataSourceConfigurations,
+        [dsc.dataSourceView.sId]: dsc,
+      };
 
-        if (!dsc.tagsFilter || dsc.tagsFilter === "auto") {
-          dsc.tagsFilter = { in: [], not: [] };
-        }
-
-        if (operation === "add") {
-          dsc.tagsFilter[mode].push(tag.tag);
-        } else {
-          dsc.tagsFilter[mode] = dsc.tagsFilter[mode].filter(
-            (t: string) => t !== tag.tag
-          );
-        }
-
-        newAction.dataSourceConfigurations = {
-          ...newAction.dataSourceConfigurations,
-          [dsc.dataSourceView.sId]: dsc,
-        };
-
-        return newAction;
-      },
+      return {
+        ...previousAction,
+        dataSourceConfigurations,
+      };
     });
   };
 
@@ -195,25 +185,31 @@ function useUpdateTagOperations({
  */
 export function ActionDataSourceTagsFilterSection({
   owner,
-  action,
+  actionConfig,
   updateAction,
+  setEdited,
 }: {
   owner: WorkspaceType;
-  action: AssistantBuilderActionConfigurationWithId;
-  updateAction: (args: {
-    actionName: string;
-    actionDescription: string;
-    getNewActionConfig: (
-      old: AssistantBuilderActionConfiguration["configuration"]
-    ) => AssistantBuilderActionConfiguration["configuration"];
-  }) => void;
+  actionConfig: AssistantBuilderRetrievalConfiguration;
+  updateAction: (
+    setNewAction: (
+      previousAction: AssistantBuilderRetrievalConfiguration
+    ) => AssistantBuilderRetrievalConfiguration
+  ) => void;
+  setEdited: (edited: boolean) => void;
 }) {
   const dustAPIDataSourceIds = useMemo(
-    () => getActionDustAPIDataSourceIds(action),
-    [action]
+    () => getActionDustAPIDataSourceIds(actionConfig),
+    [actionConfig]
   );
-  const selectedTagsIn = useMemo(() => getActionTags(action, "in"), [action]);
-  const selectedTagsNot = useMemo(() => getActionTags(action, "not"), [action]);
+  const selectedTagsIn = useMemo(
+    () => getActionTags(actionConfig, "in"),
+    [actionConfig]
+  );
+  const selectedTagsNot = useMemo(
+    () => getActionTags(actionConfig, "not"),
+    [actionConfig]
+  );
 
   const { isLoading, searchTagsInCoreAPI } = useGetAvailableTags({
     owner,
@@ -231,8 +227,8 @@ export function ActionDataSourceTagsFilterSection({
   } = useTagSearch();
 
   const { handleTagAdd, handleTagRemove } = useUpdateTagOperations({
-    action,
     updateAction,
+    setEdited,
   });
 
   return (

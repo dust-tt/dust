@@ -4,40 +4,21 @@ import type {
 } from "@dust-tt/types";
 
 import type {
-  AssistantBuilderActionConfigurationWithId,
   AssistantBuilderProcessConfiguration,
   AssistantBuilderRetrievalConfiguration,
   AssistantBuilderRetrievalExhaustiveConfiguration,
 } from "@app/components/assistant_builder/types";
 
 /**
- * Check if the action has a filter configuration.
- */
-export function isActionWithFilters(
-  action: AssistantBuilderActionConfigurationWithId
-): action is AssistantBuilderActionConfigurationWithId & {
-  configuration:
-    | AssistantBuilderRetrievalConfiguration
-    | AssistantBuilderRetrievalExhaustiveConfiguration
-    | AssistantBuilderProcessConfiguration;
-} {
-  return (
-    action.type === "RETRIEVAL_SEARCH" ||
-    action.type === "RETRIEVAL_EXHAUSTIVE" ||
-    action.type === "PROCESS"
-  );
-}
-
-/**
  * Get the list of dustAPI data source ids used in the action.
  */
 export function getActionDustAPIDataSourceIds(
-  action: AssistantBuilderActionConfigurationWithId
+  actionConfig:
+    | AssistantBuilderRetrievalConfiguration
+    | AssistantBuilderRetrievalExhaustiveConfiguration
+    | AssistantBuilderProcessConfiguration
 ): string[] {
-  if (!isActionWithFilters(action)) {
-    return [];
-  }
-  return Object.values(action.configuration.dataSourceConfigurations).map(
+  return Object.values(actionConfig.dataSourceConfigurations).map(
     (ds: DataSourceViewSelectionConfiguration) =>
       ds.dataSourceView.dataSource.dustAPIDataSourceId
   );
@@ -47,13 +28,13 @@ export function getActionDustAPIDataSourceIds(
  * Get the list of tags selected in the action.
  */
 export function getActionTags(
-  action: AssistantBuilderActionConfigurationWithId,
+  actionConfig:
+    | AssistantBuilderRetrievalConfiguration
+    | AssistantBuilderRetrievalExhaustiveConfiguration
+    | AssistantBuilderProcessConfiguration,
   mode: "in" | "not"
 ): DataSourceTag[] {
-  if (!isActionWithFilters(action)) {
-    return [];
-  }
-  return Object.values(action.configuration.dataSourceConfigurations)
+  return Object.values(actionConfig.dataSourceConfigurations)
     .flatMap((dsc) => {
       if (!dsc.tagsFilter || dsc.tagsFilter === "auto") {
         return [];

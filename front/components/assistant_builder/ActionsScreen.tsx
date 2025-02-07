@@ -78,8 +78,6 @@ import {
 } from "@app/components/assistant_builder/actions/WebNavigationAction";
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import { isLegacyAssistantBuilderConfiguration } from "@app/components/assistant_builder/legacy_agent";
-import { ActionDataSourceTagsFilterSection } from "@app/components/assistant_builder/tags/ActionDataSourceTagsFilterSection";
-import { isActionWithFilters } from "@app/components/assistant_builder/tags/helpers";
 import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderActionConfigurationWithId,
@@ -96,7 +94,6 @@ import {
   isDefaultActionName,
 } from "@app/components/assistant_builder/types";
 import { ACTION_SPECIFICATIONS } from "@app/lib/api/assistant/actions/utils";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 const DATA_SOURCES_ACTION_CATEGORIES = [
   "RETRIEVAL_SEARCH",
@@ -961,9 +958,6 @@ function ActionEditor({
     action.type
   );
 
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
-  const shouldDisplayTagsFilters = featureFlags.includes("tags_filters");
-
   return (
     <div className="px-1">
       <ActionModeSection show={true}>
@@ -1070,14 +1064,6 @@ function ActionEditor({
             showErrorLabel
           />
         </div>
-      )}
-
-      {shouldDisplayTagsFilters && isActionWithFilters(action) && (
-        <ActionDataSourceTagsFilterSection
-          owner={owner}
-          action={action}
-          updateAction={updateAction}
-        />
       )}
     </div>
   );
