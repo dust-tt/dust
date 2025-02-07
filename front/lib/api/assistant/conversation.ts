@@ -299,26 +299,36 @@ async function createOrUpdateParticipation({
   conversation: ConversationType;
 }) {
   if (user) {
-    const participant = await ConversationParticipant.findOne({
-      where: {
-        conversationId: conversation.id,
-        userId: user.id,
-      },
+    await frontSequelize.transaction(async (t) => {
+      const participant = await ConversationParticipant.findOne({
+        where: {
+          conversationId: conversation.id,
+          userId: user.id,
+        },
+        transaction: t,
+      });
+
+      if (participant) {
+        participant.changed("updatedAt", true);
+        await participant.update(
+          {
+            action: "posted",
+            updatedAt: new Date(),
+          },
+          { transaction: t }
+        );
+      } else {
+        await ConversationParticipant.create(
+          {
+            conversationId: conversation.id,
+            action: "posted",
+            userId: user.id,
+            workspaceId: conversation.owner.id,
+          },
+          { transaction: t }
+        );
+      }
     });
-    if (participant) {
-      participant.changed("updatedAt", true);
-      await participant.update({
-        action: "posted",
-        updatedAt: new Date(),
-      });
-    } else {
-      await ConversationParticipant.create({
-        conversationId: conversation.id,
-        action: "posted",
-        userId: user.id,
-        workspaceId: conversation.owner.id,
-      });
-    }
   }
 }
 
