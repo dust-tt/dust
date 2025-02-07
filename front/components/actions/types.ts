@@ -12,6 +12,8 @@ import { RetrievalActionDetails } from "@app/components/actions/retrieval/Retrie
 import { TablesQueryActionDetails } from "@app/components/actions/tables_query/TablesQueryActionDetails";
 import { WebsearchActionDetails } from "@app/components/actions/websearch/WebsearchActionDetails";
 
+import { ActionGithubCreatePullRequestReview } from "../assistant_builder/actions/GithubAction";
+
 export interface ActionDetailsComponentBaseProps<
   T extends AgentActionType = AgentActionType,
 > {
@@ -71,6 +73,11 @@ const actionsSpecification: ActionSpecifications = {
   github_create_issue_action: {
     detailsComponent: GithubCreateIssueActionDetails,
     runningLabel: ACTION_RUNNING_LABELS.github_create_issue_action,
+  },
+  github_create_pull_request_review_action: {
+    detailsComponent: ActionGithubCreatePullRequestReview,
+    runningLabel:
+      ACTION_RUNNING_LABELS.github_create_pull_request_review_action,
   },
   reasoning_action: {
     detailsComponent: ReasoningActionDetails,

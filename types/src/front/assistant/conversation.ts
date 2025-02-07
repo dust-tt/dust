@@ -4,6 +4,7 @@ import { ConversationListFilesActionType } from "../../front/assistant/actions/c
 import { DustAppRunActionType } from "../../front/assistant/actions/dust_app_run";
 import {
   GithubCreateIssueActionType,
+  GithubCreatePullRequestReviewActionType,
   GithubGetPullRequestActionType,
 } from "../../front/assistant/actions/github";
 import { ProcessActionType } from "../../front/assistant/actions/process";
@@ -125,7 +126,8 @@ export type ConversationAgentActionType =
 
 export type GithubAgentActionType =
   | GithubGetPullRequestActionType
-  | GithubCreateIssueActionType;
+  | GithubCreateIssueActionType
+  | GithubCreatePullRequestReviewActionType;
 
 export type AgentActionType =
   | ConfigurableAgentActionType
@@ -149,6 +151,7 @@ export const ACTION_RUNNING_LABELS: Record<AgentActionType["type"], string> = {
   conversation_include_file_action: "Reading file",
   github_get_pull_request_action: "Retrieving pull request",
   github_create_issue_action: "Creating issue",
+  github_create_pull_request_review_action: "Creating pull request review",
   reasoning_action: "Reasoning",
 };
 

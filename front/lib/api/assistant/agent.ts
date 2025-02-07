@@ -25,6 +25,7 @@ import {
   isConversationIncludeFileConfiguration,
   isDustAppRunConfiguration,
   isGithubCreateIssueConfiguration,
+  isGithubCreatePullRequestReviewConfigurationType,
   isGithubGetPullRequestConfiguration,
   isProcessConfiguration,
   isReasoningConfiguration,
@@ -1285,6 +1286,55 @@ async function* runAction(
           };
           return;
         case "github_create_issue_success":
+          yield {
+            type: "agent_action_success",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            action: event.action,
+          };
+
+          // We stitch the action into the agent message. The conversation is expected to include
+          // the agentMessage object, updating this object will update the conversation as well.
+          agentMessage.actions.push(event.action);
+          break;
+
+        default:
+          assertNever(event);
+      }
+    }
+  } else if (
+    isGithubCreatePullRequestReviewConfigurationType(actionConfiguration)
+  ) {
+    const eventStream = getRunnerForActionConfiguration(
+      actionConfiguration
+    ).run(auth, {
+      agentConfiguration: configuration,
+      conversation,
+      agentMessage,
+      rawInputs: inputs,
+      functionCallId,
+      step,
+    });
+
+    for await (const event of eventStream) {
+      switch (event.type) {
+        case "github_create_pull_request_params":
+          yield event;
+          break;
+        case "github_create_pull_request_review_error":
+          yield {
+            type: "agent_error",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            error: {
+              code: event.error.code,
+              message: event.error.message,
+            },
+          };
+          return;
+        case "github_create_pull_request_review_success":
           yield {
             type: "agent_action_success",
             created: event.created,

@@ -6,6 +6,10 @@ import type {
   GithubCreateIssueErrorEvent,
   GithubCreateIssueParamsEvent,
   GithubCreateIssueSuccessEvent,
+  GithubCreatePullRequestParamsEvent,
+  GithubCreatePullRequestReviewConfigurationType,
+  GithubCreatePullRequestReviewErrorEvent,
+  GithubCreatePullRequestReviewSuccessEvent,
   GithubGetPullRequestCommentType,
   GithubGetPullRequestCommitType,
   GithubGetPullRequestConfigurationType,
@@ -22,6 +26,7 @@ import { Octokit } from "octokit";
 import {
   DEFAULT_GITHUB_CREATE_ISSUE_ACTION_DESCRIPTION,
   DEFAULT_GITHUB_CREATE_ISSUE_ACTION_NAME,
+  DEFAULT_GITHUB_CREATE_PULL_REQUEST_REVIEW_ACTION_DESCRIPTION,
   DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_DESCRIPTION,
   DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME,
 } from "@app/lib/api/assistant/actions/constants";
@@ -861,4 +866,390 @@ export async function githubCreateIssueActionTypesFromAgentMessageIds(
       step: action.step,
     });
   });
+}
+
+interface GithubCreatePullRequestReviewActionBlob {
+  id: ModelId;
+  agentMessageId: ModelId;
+  params: {
+    owner: string;
+    repo: string;
+    pullNumber: number;
+    path: string;
+    body: string;
+  };
+  pullBody: string | null;
+  pullCommits: GithubGetPullRequestCommitType[] | null;
+  pullComments: GithubGetPullRequestCommentType[] | null;
+  pullReviews: GithubGetPullRequestReviewType[] | null;
+  pullDiff: string | null;
+  functionCallId: string | null;
+  functionCallName: string | null;
+  step: number;
+}
+
+export class GithubCreatePullRequestReviewAction extends BaseAction {
+  readonly agentMessageId: ModelId;
+  readonly params: {
+    owner: string;
+    repo: string;
+    pullNumber: number;
+    path: string;
+    body: string;
+  };
+  readonly pullBody: string | null;
+  readonly pullCommits: GithubGetPullRequestCommitType[] | null;
+  readonly pullComments: GithubGetPullRequestCommentType[] | null;
+  readonly pullReviews: GithubGetPullRequestReviewType[] | null;
+  readonly pullDiff: string | null;
+  readonly functionCallId: string | null;
+  readonly functionCallName: string | null;
+  readonly step: number = -1;
+  readonly type = "github_create_pull_request_review_action";
+
+  constructor(blob: GithubCreatePullRequestReviewActionBlob) {
+    super(blob.id, "github_create_pull_request_review_action");
+    this.agentMessageId = blob.agentMessageId;
+    this.params = blob.params;
+    this.pullBody = blob.pullBody;
+    this.pullCommits = blob.pullCommits;
+    this.pullComments = blob.pullComments;
+    this.pullReviews = blob.pullReviews;
+    this.pullDiff = blob.pullDiff;
+    this.functionCallId = blob.functionCallId;
+    this.functionCallName = blob.functionCallName;
+    this.step = blob.step;
+  }
+
+  renderForFunctionCall(): FunctionCallType {
+    return {
+      id: this.functionCallId ?? `call_${this.id.toString()}`,
+      name:
+        this.functionCallName ?? DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME,
+      arguments: JSON.stringify(this.params),
+    };
+  }
+
+  async renderForMultiActionsModel(): Promise<FunctionMessageTypeModel> {
+    // TODO(spolu): add PR author and date
+    const content =
+      `${this.pullBody}\n\n` +
+      `COMMITS:\n` +
+      `${(this.pullCommits || [])
+        .map((c) => `${c.sha} ${c.author}: ${c.message}`)
+        .join("\n")}\n\n` +
+      `DIFF:\n` +
+      `${this.pullDiff}\n\n` +
+      `COMMENTS:\n` +
+      `${(this.pullComments || [])
+        .map((c) => {
+          return `${c.author} [${new Date(c.createdAt).toISOString()}]:\n${c.body}`;
+        })
+        .join("\n")}\n\n` +
+      `REVIEWS:\n` +
+      `${(this.pullReviews || [])
+        .map(
+          (r) =>
+            `${r.author} [${new Date(r.createdAt).toISOString()}]:\n(${r.state})\n${r.body}\n${(
+              r.comments || []
+            )
+              .map((c) => ` - ${c.path}:${c.line}:\n${c.body}`)
+              .join("\n")}`
+        )
+        .join("\n")}`;
+
+    return {
+      role: "function" as const,
+      name:
+        this.functionCallName ?? DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME,
+      function_call_id: this.functionCallId ?? `call_${this.id.toString()}`,
+      content,
+    };
+  }
+}
+
+export class GithubCreatePullRequestReviewConfigurationServerRunner extends BaseActionConfigurationServerRunner<GithubCreatePullRequestReviewConfigurationType> {
+  async buildSpecification(
+    _auth: Authenticator,
+    { name, description }: { name: string; description: string | null }
+  ): Promise<Result<AgentActionSpecification, Error>> {
+    return new Ok({
+      name,
+      description:
+        description ??
+        DEFAULT_GITHUB_CREATE_PULL_REQUEST_REVIEW_ACTION_DESCRIPTION,
+      inputs: [
+        {
+          name: "owner",
+          description:
+            "The owner of the repository to get the pull request from (account or organization name)",
+          type: "string",
+        },
+        {
+          name: "repo",
+          description:
+            "The name of the repository to get the pull request from",
+          type: "string",
+        },
+        {
+          name: "pullNumber",
+          description: "The number of the pull request to get",
+          type: "number",
+        },
+        {
+          name: "path",
+          description: "The path of the file to add the comment to",
+          type: "string",
+        },
+        {
+          name: "body",
+          description: "The body of the comment",
+          type: "string",
+        },
+        {
+          name: "startLine",
+          description: "The line number to start the comment at",
+          type: "number",
+        },
+        {
+          name: "endLine",
+          description: "The line number to end the comment at",
+          type: "number",
+        },
+      ],
+    });
+  }
+
+  async *run(
+    auth: Authenticator,
+    {
+      agentConfiguration,
+      agentMessage,
+      rawInputs,
+      functionCallId,
+      step,
+    }: BaseActionRunParams
+  ): AsyncGenerator<
+    | GithubCreatePullRequestParamsEvent
+    | GithubCreatePullRequestReviewSuccessEvent
+    | GithubCreatePullRequestReviewErrorEvent,
+    void
+  > {
+    const { actionConfiguration } = this;
+
+    const platformActionsConfiguration =
+      await PlatformActionsConfigurationResource.findByWorkspaceAndProvider(
+        auth,
+        {
+          provider: "github",
+        }
+      );
+
+    if (!platformActionsConfiguration) {
+      yield {
+        type: "github_create_pull_request_review_error",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "github_configuration_error",
+          message: `Github actions have not been configured for this workspace.`,
+        },
+      };
+      return;
+    }
+
+    if (
+      !rawInputs.owner ||
+      !rawInputs.repo ||
+      !rawInputs.pullNumber ||
+      !rawInputs.path ||
+      !rawInputs.body ||
+      !rawInputs.startLine ||
+      !rawInputs.endLine ||
+      typeof rawInputs.owner !== "string" ||
+      typeof rawInputs.repo !== "string" ||
+      typeof rawInputs.pullNumber !== "number" ||
+      typeof rawInputs.path !== "string" ||
+      typeof rawInputs.body !== "string" ||
+      typeof rawInputs.startLine !== "number" ||
+      typeof rawInputs.endLine !== "number"
+    ) {
+      yield {
+        type: "github_create_pull_request_review_error",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "github_create_pull_request_review_parameters_generation_error",
+          message: `Error generating parameters for github create pull request review action.`,
+        },
+      };
+      return;
+    }
+    console.log("RAW_INPUTS", rawInputs);
+
+    const owner = rawInputs.owner as string;
+    const repo = rawInputs.repo as string;
+    const pullNumber = rawInputs.pullNumber as number;
+    const path = rawInputs.path as string;
+    const body = rawInputs.body as string;
+    const startLine = rawInputs.startLine as number;
+    const endLine = rawInputs.endLine as number;
+
+    // Create the action in database and yield an event
+    // INFO: not need for now
+    const action = await AgentGithubGetPullRequestAction.create({
+      owner,
+      repo,
+      pullNumber,
+      functionCallId,
+      functionCallName: actionConfiguration.name,
+      agentMessageId: agentMessage.agentMessageId,
+      step,
+      workspaceId: auth.getNonNullableWorkspace().id,
+    });
+
+    yield {
+      type: "github_create_pull_request_params",
+      created: Date.now(),
+      configurationId: agentConfiguration.sId,
+      messageId: agentMessage.sId,
+      action: new GithubCreatePullRequestReviewAction({
+        id: action.id,
+        params: {
+          owner,
+          repo,
+          pullNumber,
+          path,
+          body,
+        },
+        pullBody: null,
+        pullCommits: null,
+        pullDiff: null,
+        pullComments: null,
+        pullReviews: null,
+        functionCallId,
+        functionCallName: actionConfiguration.name,
+        agentMessageId: agentMessage.agentMessageId,
+        step,
+      }),
+    };
+
+    const tokRes = await getOAuthConnectionAccessToken({
+      config: apiConfig.getOAuthAPIConfig(),
+      logger,
+      provider: "github",
+      connectionId: platformActionsConfiguration.connectionId,
+    });
+
+    if (tokRes.isErr()) {
+      yield {
+        type: "github_create_pull_request_review_error",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "github_connection_error",
+          message: `Error getting connection token for github: ${tokRes.error.message}`,
+        },
+      };
+      return;
+    }
+
+    const octokit = new Octokit({ auth: tokRes.value.access_token });
+
+    let commitId: string | null = null;
+
+    // Get the latest commit_id for later use
+    try {
+      const { data: commits } = await octokit.rest.pulls.listCommits({
+        owner,
+        repo,
+        pull_number: pullNumber,
+        per_path: 1,
+      });
+      console.log("LATEST COMMITS", commits);
+      commitId = commits[0].sha;
+    } catch (e) {
+      console.error("ERROR GETTING COMMIT ID", e);
+      yield {
+        type: "github_create_pull_request_review_error",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "github_create_pull_request_review_error",
+          message: `Error getting Github pull request review`,
+        },
+      };
+    }
+
+    if (commitId == null) {
+      yield {
+        type: "github_create_pull_request_review_error",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "github_create_pull_request_review_error",
+          message: `Error getting Github pull request latest commit`,
+        },
+      };
+      return;
+    }
+
+    try {
+      const { data: comment } = await octokit.rest.pulls.createReviewComment({
+        owner,
+        repo,
+        commit_id: commitId,
+        pull_number: pullNumber,
+        start_line: startLine === endLine ? undefined : startLine,
+        line: endLine,
+        path,
+        body,
+      });
+      console.log("COMMENT CREATED", comment);
+    } catch (err) {
+      console.error("ERROR CREATING COMMENT", err);
+      yield {
+        type: "github_create_pull_request_review_error",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "github_create_pull_request_review_error",
+          message: `Error creating Github pull request review comment`,
+        },
+      };
+      return;
+    }
+
+    yield {
+      type: "github_create_pull_request_review_success",
+      created: Date.now(),
+      configurationId: agentConfiguration.sId,
+      messageId: agentMessage.sId,
+      action: new GithubCreatePullRequestReviewAction({
+        id: action.id,
+        params: {
+          owner,
+          repo,
+          pullNumber,
+          path,
+          body,
+        },
+        pullBody: action.pullBody,
+        pullCommits: action.pullCommits,
+        pullDiff: action.pullDiff,
+        pullComments: action.pullComments,
+        pullReviews: action.pullReviews,
+        functionCallId,
+        functionCallName: actionConfiguration.name,
+        agentMessageId: agentMessage.agentMessageId,
+        step: action.step,
+      }),
+    };
+  }
 }

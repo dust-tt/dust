@@ -130,6 +130,10 @@ const GithubCreateIssueActionConfigurationSchema = t.type({
   type: t.literal("github_create_issue_configuration"),
 });
 
+const GithubCreatePullRequestActionConfigurationSchema = t.type({
+  type: t.literal("github_create_pull_request_review_configuration"),
+});
+
 const ReasoningActionConfigurationSchema = t.type({
   type: t.literal("reasoning_configuration"),
   modelId: ModelIdCodec,
@@ -195,6 +199,7 @@ const ActionConfigurationSchema = t.intersection([
     BrowseActionConfigurationSchema,
     GithubGetPullRequestActionConfigurationSchema,
     GithubCreateIssueActionConfigurationSchema,
+    GithubCreatePullRequestActionConfigurationSchema,
     ReasoningActionConfigurationSchema,
   ]),
   requiredMultiActionsCommonFields,

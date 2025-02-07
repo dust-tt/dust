@@ -25,6 +25,8 @@ import type React from "react";
 import {
   DEFAULT_GITHUB_CREATE_ISSUE_ACTION_DESCRIPTION,
   DEFAULT_GITHUB_CREATE_ISSUE_ACTION_NAME,
+  DEFAULT_GITHUB_CREATE_PULL_REQUEST_REVIEW_ACTION_DESCRIPTION,
+  DEFAULT_GITHUB_CREATE_PULL_REQUEST_REVIEW_ACTION_NAME,
   DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_DESCRIPTION,
   DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME,
   DEFAULT_PROCESS_ACTION_NAME,
@@ -158,6 +160,10 @@ export type AssistantBuilderActionConfiguration = (
     }
   | {
       type: "GITHUB_CREATE_ISSUE";
+      configuration: AssistantBuilderGithubConfiguration;
+    }
+  | {
+      type: "GITHUB_CREATE_PULL_REQUEST_REVIEW";
       configuration: AssistantBuilderGithubConfiguration;
     }
   | {
@@ -361,6 +367,16 @@ export function getDefaultGithubCreateIssueActionConfiguration(): AssistantBuild
   };
 }
 
+export function getDefaultGithubCreatePullRequestReviewActionConfiguration(): AssistantBuilderActionConfiguration {
+  return {
+    type: "GITHUB_CREATE_PULL_REQUEST_REVIEW",
+    configuration: {},
+    name: DEFAULT_GITHUB_CREATE_PULL_REQUEST_REVIEW_ACTION_NAME,
+    description: DEFAULT_GITHUB_CREATE_PULL_REQUEST_REVIEW_ACTION_DESCRIPTION,
+    noConfigurationRequired: true,
+  };
+}
+
 export function getDefaultReasoningActionConfiguration(): AssistantBuilderActionConfiguration {
   return {
     type: "REASONING",
@@ -399,6 +415,8 @@ export function getDefaultActionConfiguration(
         return getDefaultGithubGetPullRequestActionConfiguration();
       case "GITHUB_CREATE_ISSUE":
         return getDefaultGithubCreateIssueActionConfiguration();
+      case "GITHUB_CREATE_PULL_REQUEST_REVIEW":
+        return getDefaultGithubCreatePullRequestReviewActionConfiguration();
       case "REASONING":
         return getDefaultReasoningActionConfiguration();
       default:

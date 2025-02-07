@@ -760,6 +760,36 @@ const GithubCreateIssueActionSchema = BaseActionSchema.extend({
   type: z.literal("github_create_issue_action"),
 });
 
+const GithubCreatePullRequestReviewParamsSchema = z.object({
+  owner: z.string(),
+  repo: z.string(),
+  pullNumber: z.number(),
+  path: z.string(),
+  body: z.string(),
+});
+
+const GithubCreatePullRequestReviewActionSchema = BaseActionSchema.extend({
+  params: GithubCreatePullRequestReviewParamsSchema,
+  pullBody: z.string().nullable(),
+  pullDiff: z.string().nullable(),
+  pullCommits: GithubPullCommitSchema.array().nullable(),
+  pullComments: GithubPullCommentSchema.array().nullable(),
+  pullReviews: GithubPullReviewSchema.array().nullable(),
+  functionCallId: z.string().nullable(),
+  functionCallName: z.string().nullable(),
+  agentMessageId: ModelIdSchema,
+  step: z.number(),
+  type: z.literal("github_create_pull_request_review_action"),
+});
+
+const GithubCreatePullRequestReviewParamsEventSchema = z.object({
+  type: z.literal("github_create_pull_request_params"),
+  created: z.number(),
+  configurationId: z.string(),
+  messageId: z.string(),
+  action: GithubCreatePullRequestReviewActionSchema,
+});
+
 const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "usage_data_api"
   | "okta_enterprise_connection"
@@ -1015,6 +1045,7 @@ const AgentActionTypeSchema = z.union([
   ConversationIncludeFileActionTypeSchema,
   GithubGetPullRequestActionSchema,
   GithubCreateIssueActionSchema,
+  GithubCreatePullRequestReviewActionSchema,
   ReasoningActionTypeSchema,
 ]);
 export type AgentActionPublicType = z.infer<typeof AgentActionTypeSchema>;
@@ -1270,6 +1301,7 @@ const AgentActionSpecificEventSchema = z.union([
   ConversationIncludeFileParamsEventSchema,
   GithubGetPullRequestParamsEventSchema,
   GithubCreateIssueParamsEventSchema,
+  GithubCreatePullRequestReviewParamsEventSchema,
   ReasoningStartedEventSchema,
   ReasoningThinkingEventSchema,
   ReasoningTokensEventSchema,

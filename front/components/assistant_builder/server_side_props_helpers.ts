@@ -15,6 +15,7 @@ import {
   isBrowseConfiguration,
   isDustAppRunConfiguration,
   isGithubCreateIssueConfiguration,
+  isGithubCreatePullRequestReviewConfigurationType,
   isGithubGetPullRequestConfiguration,
   isProcessConfiguration,
   isReasoningConfiguration,
@@ -28,6 +29,7 @@ import type { AssistantBuilderActionConfiguration } from "@app/components/assist
 import {
   getDefaultDustAppRunActionConfiguration,
   getDefaultGithubCreateIssueActionConfiguration,
+  getDefaultGithubCreatePullRequestReviewActionConfiguration,
   getDefaultGithubGetPullRequestActionConfiguration,
   getDefaultProcessActionConfiguration,
   getDefaultReasoningActionConfiguration,
@@ -117,6 +119,8 @@ async function initializeBuilderAction(
     return getDefaultGithubGetPullRequestActionConfiguration();
   } else if (isGithubCreateIssueConfiguration(action)) {
     return getDefaultGithubCreateIssueActionConfiguration();
+  } else if (isGithubCreatePullRequestReviewConfigurationType(action)) {
+    return getDefaultGithubCreatePullRequestReviewActionConfiguration();
   } else if (isReasoningConfiguration(action)) {
     return getReasoningActionConfiguration(action);
   } else {
@@ -208,7 +212,7 @@ async function getReasoningActionConfiguration(
     throw new Error("Reasoning action configuration is not valid");
   }
 
-  const supportedReasoningModel = await REASONING_MODEL_CONFIGS.find(
+  const supportedReasoningModel = REASONING_MODEL_CONFIGS.find(
     (m) =>
       m.modelId === action.modelId &&
       m.providerId === action.providerId &&
