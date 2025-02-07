@@ -133,7 +133,7 @@ Collapsible.Panel = ({ children }: CollapsiblePanelProps) => (
     leaveTo="s-transform s-scale-95 s-opacity-0"
   >
     <Disclosure.Panel>
-      <div className="dark:s-text-primary-500-night s-text-primary-500">
+      <div className="s-text-primary-500 dark:s-text-primary-500-night">
         {children}
       </div>
     </Disclosure.Panel>

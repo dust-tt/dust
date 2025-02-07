@@ -104,7 +104,7 @@ export function Pagination({
       <span
         className={classNames(
           "s-text-xs",
-          "dark:s-text-muted-foreground-night s-text-muted-foreground",
+          "s-text-muted-foreground dark:s-text-muted-foreground-night",
           showDetails ? "s-visible" : "s-collapse"
         )}
       >
@@ -128,8 +128,8 @@ function renderPageNumber(
       className={classNames(
         "s-font-medium s-transition-colors s-duration-200",
         currentPage === pageNumber
-          ? "dark:s-text-foreground-night s-text-foreground"
-          : "dark:s-text-primary-400-night s-text-primary-400",
+          ? "s-text-foreground dark:s-text-foreground-night"
+          : "s-text-primary-400 dark:s-text-primary-400-night",
         size === "xs" ? "s-text-xs" : "s-text-sm"
       )}
       onClick={() => onPageClick(pageNumber)}
@@ -144,7 +144,7 @@ function renderEllipses(size: "sm" | "xs") {
     <span
       className={classNames(
         "s-text-sm s-font-medium",
-        "dark:s-text-muted-foreground-night s-text-muted-foreground",
+        "s-text-muted-foreground dark:s-text-muted-foreground-night",
         size === "xs" ? "s-text-xs" : "s-text-sm"
       )}
     >

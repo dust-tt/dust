@@ -70,7 +70,7 @@ export function SliderToggle({
         className={classNames(
           "s-transform s-rounded-full s-drop-shadow s-transition-transform s-duration-300 s-ease-out",
           disabled
-            ? "dark:s-bg-structure-100-night s-bg-structure-100"
+            ? "s-bg-structure-100 dark:s-bg-structure-100-night"
             : "s-bg-white dark:s-bg-black",
           size ? cusrsorSizeClasses[size] : "",
           selected ? cusrsorTranslateSizeClasses[size] : "s-translate-x-[2px]"

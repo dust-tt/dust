@@ -53,7 +53,7 @@ export function Tree({
       className={cn(
         "s-flex s-flex-col s-gap-0.5 s-overflow-hidden",
         isBoxed &&
-          "dark:s-border-structure-200-night dark:s-bg-structure-50-night s-rounded-xl s-border s-border-structure-200 s-bg-structure-50 s-p-4",
+          "s-rounded-xl s-border s-border-structure-200 s-bg-structure-50 s-p-4 dark:s-border-structure-200-night dark:s-bg-structure-50-night",
         className
       )}
     >
@@ -181,7 +181,7 @@ Tree.Item = function ({
         {checkbox && <Checkbox {...checkbox} size="xs" />}
         <Icon visual={visual} size="sm" className={tailwindIconTextColor} />
         <div
-          className={`s-font-regular dark:s-text-foreground-night s-truncate s-text-sm s-text-foreground ${labelClassName}`}
+          className={`s-font-regular s-truncate s-text-sm s-text-foreground dark:s-text-foreground-night ${labelClassName}`}
         >
           {label}
         </div>
@@ -215,7 +215,7 @@ Tree.Empty = function ({ label, onItemClick }: TreeEmptyProps) {
     <div
       className={cn(
         "s-font-regular s-py-1.5 s-pl-6 s-text-sm",
-        "dark:s-text-muted-foreground-night s-text-muted-foreground",
+        "s-text-muted-foreground dark:s-text-muted-foreground-night",
         onItemClick ? "s-cursor-pointer" : ""
       )}
       onClick={onItemClick}
