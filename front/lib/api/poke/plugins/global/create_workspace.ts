@@ -2,15 +2,17 @@ import { Err, Ok } from "@dust-tt/types";
 
 import { handleMembershipInvitations } from "@app/lib/api/invitation";
 import { createPlugin } from "@app/lib/api/poke/types";
+import { config } from "@app/lib/api/regions/config";
 import { Authenticator } from "@app/lib/auth";
 import { createWorkspaceInternal } from "@app/lib/iam/workspaces";
+import { getRegionDisplay } from "@app/lib/poke/regions";
 import { isEmailValid } from "@app/lib/utils";
 
 export const createWorkspacePlugin = createPlugin(
   {
     id: "create-workspace",
     name: "Create Workspace",
-    description: "Create a new workspace",
+    description: `Create a new workspace in ${getRegionDisplay(config.getCurrentRegion())}.`,
     resourceTypes: ["global"],
     args: {
       name: {
