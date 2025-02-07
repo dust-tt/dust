@@ -4,6 +4,7 @@ use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use futures::future::try_join_all;
 use gcp_bigquery_client::{
+    error::{BQError, NestedResponseError, ResponseError},
     model::{
         field_type::FieldType, get_query_results_parameters::GetQueryResultsParameters, job::Job,
         job_configuration::JobConfiguration, job_configuration_query::JobConfigurationQuery,
@@ -256,7 +257,15 @@ impl BigQueryRemoteDatabase {
             .job()
             .insert(&self.project_id, job)
             .await
-            .map_err(|e| QueryDatabaseError::GenericError(anyhow!("Error inserting job: {}", e)))?;
+            .map_err(|e| match e {
+                BQError::ResponseError {
+                    error:
+                        ResponseError {
+                            error: NestedResponseError { message, code, .. },
+                        },
+                } => QueryDatabaseError::ExecutionError(format!("{} (code={})", message, code)),
+                _ => QueryDatabaseError::GenericError(anyhow!("Error inserting job: {}", e)),
+            })?;
 
         let query_stats = match job_result.statistics {
             Some(stats) => match stats.query {
