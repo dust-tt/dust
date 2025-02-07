@@ -213,7 +213,7 @@ export async function fixParentsConsistency({
             },
           }),
         {
-          concurrency: 10,
+          concurrency: 100,
         }
       )
     );
