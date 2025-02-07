@@ -15,6 +15,8 @@ import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 import {
+  googleDriveFixParentsConsistencyWorkflow,
+  googleDriveFixParentsConsistencyWorkflowId,
   googleDriveFullSync,
   googleDriveFullSyncWorkflowId,
   googleDriveGarbageCollectorWorkflow,
@@ -167,6 +169,58 @@ export async function launchGoogleGarbageCollector(
     }
     await client.workflow.start(googleDriveGarbageCollectorWorkflow, {
       args: [connector.id, new Date().getTime()],
+      taskQueue: GDRIVE_INCREMENTAL_SYNC_QUEUE_NAME,
+      workflowId: workflowId,
+      searchAttributes: {
+        connectorId: [connectorId],
+      },
+      memo: {
+        connectorId: connectorId,
+      },
+    });
+    logger.info(
+      {
+        workflowId,
+      },
+      `Started workflow.`
+    );
+    return new Ok(workflowId);
+  } catch (e) {
+    logger.error(
+      {
+        workflowId,
+        error: e,
+      },
+      `Failed starting workflow.`
+    );
+    return new Err(e as Error);
+  }
+}
+
+export async function launchGoogleFixParentsConsistencyWorkflow(
+  connectorId: ModelId,
+  execute: boolean
+): Promise<Result<string, Error>> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    return new Err(new Error(`Connector ${connectorId} not found`));
+  }
+
+  const client = await getTemporalClient();
+  const workflowId = googleDriveFixParentsConsistencyWorkflowId(connectorId);
+  try {
+    const handle: WorkflowHandle<
+      typeof googleDriveFixParentsConsistencyWorkflow
+    > = client.workflow.getHandle(workflowId);
+    try {
+      await handle.terminate();
+    } catch (e) {
+      if (!(e instanceof WorkflowNotFoundError)) {
+        throw e;
+      }
+    }
+    await client.workflow.start(googleDriveFixParentsConsistencyWorkflow, {
+      args: [connector.id, execute],
       taskQueue: GDRIVE_INCREMENTAL_SYNC_QUEUE_NAME,
       workflowId: workflowId,
       searchAttributes: {

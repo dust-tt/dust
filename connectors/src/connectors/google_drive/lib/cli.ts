@@ -4,13 +4,14 @@ import type {
   GoogleDriveCommandType,
 } from "@dust-tt/types";
 import { googleDriveIncrementalSyncWorkflowId } from "@dust-tt/types";
-import { Op } from "sequelize";
 
 import { getConnectorManager } from "@connectors/connectors";
-import { fixParentsConsistency } from "@connectors/connectors/google_drive/lib";
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
-import { launchGoogleDriveIncrementalSyncWorkflow } from "@connectors/connectors/google_drive/temporal/client";
+import {
+  launchGoogleDriveIncrementalSyncWorkflow,
+  launchGoogleFixParentsConsistencyWorkflow,
+} from "@connectors/connectors/google_drive/temporal/client";
 import { MIME_TYPES_TO_EXPORT } from "@connectors/connectors/google_drive/temporal/mime_types";
 import {
   getAuthObject,
@@ -22,7 +23,6 @@ import { throwOnError } from "@connectors/lib/cli";
 import { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
 import { terminateWorkflow } from "@connectors/lib/temporal";
 import { default as topLogger } from "@connectors/logger/logger";
-import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 const getConnector = async (args: GoogleDriveCommandType["args"]) => {
@@ -132,38 +132,8 @@ export const google_drive = async ({
 
     case "clean-invalid-parents": {
       const execute = !!args.execute;
-
       const connector = await getConnector(args);
-      const limit = 1000;
-      let fromId = 0;
-      let files: GoogleDriveFiles[] = [];
-      const now = Date.now();
-      do {
-        files = await GoogleDriveFiles.findAll({
-          where: {
-            connectorId: connector.id,
-            id: { [Op.gt]: fromId },
-          },
-          order: [["id", "ASC"]],
-          limit,
-        });
-
-        const connectorResource = await ConnectorResource.fetchById(
-          connector.id
-        );
-        if (!connectorResource) {
-          throw new Error("Connector not found");
-        }
-        await fixParentsConsistency({
-          connector: connectorResource,
-          files,
-          checkFromGoogle: true,
-          execute,
-          startSyncTs: now,
-          logger: topLogger,
-        });
-        fromId = files[limit - 1]?.id ?? 0;
-      } while (fromId > 0);
+      await launchGoogleFixParentsConsistencyWorkflow(connector.id, execute);
       return { success: true };
     }
 
