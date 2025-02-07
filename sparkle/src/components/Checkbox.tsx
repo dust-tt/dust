@@ -53,55 +53,96 @@ interface CheckboxProps
     VariantProps<typeof checkboxStyles> {
   checked?: CheckBoxStateType;
   tooltip?: string;
-  label?: string;
 }
 
 const Checkbox = React.forwardRef<
   React.ElementRef<typeof CheckboxPrimitive.Root>,
   CheckboxProps
->(({ className, size, checked, tooltip, label, ...props }, ref) => {
+>(({ className, size, checked, tooltip, ...props }, ref) => {
   const id = React.useId();
 
-  const checkboxComponent = (
-    <div className="s-flex s-items-center s-gap-2">
-      <CheckboxPrimitive.Root
-        ref={ref}
-        id={id}
-        className={cn(checkboxStyles({ checked, size }), className)}
-        checked={checked === "partial" ? "indeterminate" : checked}
-        {...props}
-      >
-        <CheckboxPrimitive.Indicator className="s-flex s-items-center s-justify-center s-text-current">
-          <span className={cn(size === "xs" ? "-s-mt-px" : "")}>
-            <Icon
-              size="xs"
-              visual={checked === "partial" ? DashIcon : CheckIcon}
-            />
-          </span>
-        </CheckboxPrimitive.Indicator>
-      </CheckboxPrimitive.Root>
-      {label && (
-        <Label
-          htmlFor={id}
-          className={cn(
-            "s-cursor-pointer s-text-xs",
-            props.disabled && "s-cursor-not-allowed s-opacity-50"
-          )}
-        >
-          {label}
-        </Label>
-      )}
-    </div>
+  const checkbox = (
+    <CheckboxPrimitive.Root
+      ref={ref}
+      id={id}
+      className={cn(checkboxStyles({ checked, size }), className)}
+      checked={checked === "partial" ? "indeterminate" : checked}
+      {...props}
+    >
+      <CheckboxPrimitive.Indicator className="s-flex s-items-center s-justify-center s-text-current">
+        <span className={cn(size === "xs" ? "-s-mt-px" : "")}>
+          <Icon
+            size="xs"
+            visual={checked === "partial" ? DashIcon : CheckIcon}
+          />
+        </span>
+      </CheckboxPrimitive.Indicator>
+    </CheckboxPrimitive.Root>
   );
 
-  return tooltip ? (
-    <Tooltip label={tooltip} trigger={checkboxComponent} />
-  ) : (
-    checkboxComponent
-  );
+  return checkbox;
 });
 
 Checkbox.displayName = CheckboxPrimitive.Root.displayName;
 
-export { Checkbox };
+interface CheckboxWithTextProps extends CheckboxProps {
+  text: string;
+}
+
+function CheckboxWithText({ text, tooltip, ...props }: CheckboxWithTextProps) {
+  const id = React.useId();
+
+  const content = (
+    <div className="s-items-top s-flex s-items-center s-space-x-2">
+      <Checkbox id={id} {...props} />
+      <Label
+        htmlFor={id}
+        className="s-cursor-pointer s-text-sm s-leading-none peer-disabled:s-cursor-not-allowed peer-disabled:s-opacity-70"
+      >
+        {text}
+      </Label>
+    </div>
+  );
+
+  return tooltip ? <Tooltip label={tooltip} trigger={content} /> : content;
+}
+
+interface CheckboxWithTextAndDescriptionProps extends CheckboxWithTextProps {
+  description: string;
+}
+
+function CheckBoxWithTextAndDescription({
+  text,
+  description,
+  tooltip,
+  ...props
+}: CheckboxWithTextAndDescriptionProps) {
+  const id = React.useId();
+
+  const content = (
+    <div className="s-items-top s-flex s-space-x-2">
+      <Checkbox id={id} {...props} />
+      <div className="s-grid s-gap-1.5 s-leading-none">
+        <Label
+          htmlFor={id}
+          className="s-cursor-pointer s-text-sm s-leading-none peer-disabled:s-cursor-not-allowed peer-disabled:s-opacity-70"
+        >
+          {text}
+        </Label>
+        <p
+          className={cn(
+            "s-text-xs",
+            "s-text-muted-foreground dark:s-text-muted-foreground-night"
+          )}
+        >
+          {description}
+        </p>
+      </div>
+    </div>
+  );
+
+  return tooltip ? <Tooltip label={tooltip} trigger={content} /> : content;
+}
+
+export { Checkbox, CheckboxWithText, CheckBoxWithTextAndDescription };
 export type { CheckboxProps };

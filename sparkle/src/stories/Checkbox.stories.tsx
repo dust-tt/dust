@@ -3,7 +3,12 @@ import React from "react";
 
 import { CHECKBOX_SIZES } from "@sparkle/components/Checkbox";
 
-import { Checkbox } from "../index_with_tw_base";
+import {
+  Checkbox,
+  type CheckboxProps,
+  CheckboxWithText,
+  CheckBoxWithTextAndDescription,
+} from "../index_with_tw_base";
 
 const CHECKED_STATES = {
   unchecked: false,
@@ -11,9 +16,15 @@ const CHECKED_STATES = {
   partial: "partial",
 } as const;
 
+type ExtendedCheckboxProps = CheckboxProps & {
+  text?: string;
+  description?: string;
+};
+
 const meta = {
   title: "Primitives/Checkbox",
-  component: Checkbox,
+  // We need to cast here as the component expects stricter props
+  component: Checkbox as React.ComponentType<ExtendedCheckboxProps>,
   parameters: {
     layout: "centered",
   },
@@ -47,40 +58,62 @@ const meta = {
       description: "Additional CSS classes to apply",
       control: "text",
     },
-    label: {
-      description: "Text label to display next to the checkbox",
+    text: {
+      description: "Optional text label to display next to the checkbox",
       control: "text",
+    },
+    description: {
+      description:
+        "Optional description text (only shown when text is provided)",
+      control: "text",
+      if: { arg: "text" },
     },
     tooltip: {
       description: "Optional tooltip shown on hover",
       control: "text",
     },
+    onChange: {
+      description: "Callback when checkbox state changes",
+      action: "changed",
+    },
   },
-} satisfies Meta<typeof Checkbox>;
+} satisfies Meta<ExtendedCheckboxProps>;
 
 export default meta;
-type Story = StoryObj<typeof Checkbox>;
+type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   args: {
-    label: "Click me or my label",
     size: "sm",
     checked: false,
     disabled: false,
   },
-  render: function Render(args) {
+  render: function Render({ text, description, ...args }) {
     const [checked, setChecked] = React.useState(args.checked ?? false);
 
     React.useEffect(() => {
       setChecked(args.checked ?? false);
     }, [args.checked]);
 
-    return (
-      <Checkbox
-        {...args}
-        checked={checked}
-        onCheckedChange={(checked) => setChecked(checked === true)}
-      />
-    );
+    const props = {
+      ...args,
+      checked,
+      onCheckedChange: (state: boolean | "indeterminate") =>
+        setChecked(state === true),
+    };
+
+    if (text && description) {
+      return (
+        <CheckBoxWithTextAndDescription
+          text={text}
+          description={description}
+          {...props}
+        />
+      );
+    }
+    if (text) {
+      return <CheckboxWithText text={text} {...props} />;
+    }
+    return <Checkbox {...props} />;
   },
 };
