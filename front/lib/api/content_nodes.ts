@@ -469,6 +469,7 @@ export function computeNodesDiff({
       (coreNode) =>
         !(
           provider === "notion" &&
+          coreNode.parentInternalId &&
           coreNode.internalId.startsWith("notion-database-") &&
           coreNode.parentInternalId?.replace("notion-", "") ===
             coreNode.internalId.replace("notion-database-", "")
