@@ -23,13 +23,13 @@ export function BrowseActionDetails({
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">
         <div className="flex flex-col gap-1">
-          <div className="text-sm font-normal text-muted-foreground">
+          <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
             {action.output?.results.map((r, idx) => (
               <div
                 className="flex max-h-60 flex-col gap-2 overflow-y-auto overflow-x-hidden py-1"
                 key={idx}
               >
-                <span className="text-sm font-bold text-foreground">
+                <span className="text-sm font-bold text-foreground dark:text-foreground-night">
                   Requested url : {r.requestedUrl}
                 </span>
 

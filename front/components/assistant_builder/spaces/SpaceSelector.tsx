@@ -96,7 +96,9 @@ export function SpaceSelector({
                         size="md"
                         className={cn(
                           "inline-block flex-shrink-0 align-middle",
-                          isDisabled ? "text-element-700" : ""
+                          isDisabled
+                            ? "text-element-700 dark:text-element-700-night"
+                            : ""
                         )}
                       />
                       <Label
@@ -104,7 +106,9 @@ export function SpaceSelector({
                         className={cn(
                           "font-bold",
                           "align-middle",
-                          isDisabled ? "text-element-700" : "text-foreground"
+                          isDisabled
+                            ? "text-element-700 dark:text-element-700-night"
+                            : "text-foreground dark:text-foreground-night"
                         )}
                       >
                         {getSpaceName(space)}

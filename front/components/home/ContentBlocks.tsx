@@ -112,8 +112,13 @@ export const BlogBlock: React.FC<BlogBlockProps> = ({
       ) : null}
       <div className="flex flex-col p-6">
         <div className="flex flex-col gap-2">
-          <H5 className="line-clamp-2 text-foreground">{title}</H5>
-          <P size="xs" className="line-clamp-3 text-foreground">
+          <H5 className="line-clamp-2 text-foreground dark:text-foreground-night">
+            {title}
+          </H5>
+          <P
+            size="xs"
+            className="line-clamp-3 text-foreground dark:text-foreground-night"
+          >
             {content}
           </P>
         </div>
@@ -151,7 +156,10 @@ export const HeaderContentBlock = ({
       )}
     >
       {uptitle && (
-        <P size="lg" className="text-muted-foreground">
+        <P
+          size="lg"
+          className="text-muted-foreground dark:text-muted-foreground-night"
+        >
           {uptitle}
         </P>
       )}
@@ -159,7 +167,7 @@ export const HeaderContentBlock = ({
         {title}
       </H1>
       {subtitle && (
-        <P size="lg" className="text-white">
+        <P size="lg" className="text-white dark:text-black">
           {subtitle}
         </P>
       )}
@@ -215,7 +223,7 @@ export const MetricSection = ({ metrics, from, to }: MetricComponentProps) => (
         </H1>
 
         <div className="flex flex-col items-center">
-          <P size="lg" className="max-w-[400px] text-white">
+          <P size="lg" className="max-w-[400px] text-black dark:text-white">
             {metric.description}
           </P>
         </div>

@@ -47,7 +47,7 @@ export function AgentMessageActionsDrawer({
                   className="flex flex-col gap-4 pb-4 duration-1000 animate-in fade-in"
                   key={step}
                 >
-                  <p className="text-xl font-bold text-foreground">
+                  <p className="text-xl font-bold text-foreground dark:text-foreground-night">
                     Step {step}
                   </p>
                   {actions.map((action, idx) => {
