@@ -312,6 +312,7 @@ export const batch = async ({
         "google_drive",
         "snowflake",
         "zendesk",
+        "bigquery",
       ];
       if (!PROVIDERS_ALLOWING_RESTART.includes(args.provider)) {
         throw new Error(
