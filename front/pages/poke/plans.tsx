@@ -10,6 +10,7 @@ import {
 import { useSendNotification } from "@dust-tt/sparkle";
 import type { PlanType } from "@dust-tt/types";
 import type * as t from "io-ts";
+import type { ReactElement } from "react";
 import React from "react";
 import { useSWRConfig } from "swr";
 
@@ -21,7 +22,7 @@ import {
   toPlanType,
   useEditingPlan,
 } from "@app/components/poke/plans/form";
-import PokeNavbar from "@app/components/poke/PokeNavbar";
+import PokeLayout from "@app/components/poke/PokeLayout";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { usePokePlans } from "@app/lib/swr/poke";
 import type { PlanTypeSchema } from "@app/pages/api/poke/plans";
@@ -118,8 +119,7 @@ const PlansPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-structure-50">
-      <PokeNavbar />
+    <>
       {isPlansLoading ? (
         <Spinner />
       ) : (
@@ -206,8 +206,12 @@ const PlansPage = () => {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
+};
+
+PlansPage.getLayout = (page: ReactElement) => {
+  return <PokeLayout>{page}</PokeLayout>;
 };
 
 export default PlansPage;

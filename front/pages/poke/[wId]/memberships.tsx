@@ -4,11 +4,12 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
+import type { ReactElement } from "react";
 import React from "react";
 
 import { InvitationsDataTable } from "@app/components/poke/invitations/table";
 import { MembersDataTable } from "@app/components/poke/members/table";
-import PokeNavbar from "@app/components/poke/PokeNavbar";
+import PokeLayout from "@app/components/poke/PokeLayout";
 import { getPendingInvitations } from "@app/lib/api/invitation";
 import { getMembers } from "@app/lib/api/workspace";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
@@ -47,22 +48,20 @@ const MembershipsPage = ({
   owner,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
   return (
-    <div className="min-h-screen bg-structure-50">
-      <PokeNavbar />
-      <div className="flex-grow p-6">
-        <h1 className="mb-8 text-2xl font-bold">{owner.name}</h1>
-        <div className="flex justify-center">
-          <MembersDataTable members={members} owner={owner} />
-        </div>
-        <div className="flex justify-center">
-          <InvitationsDataTable
-            invitations={pendingInvitations}
-            owner={owner}
-          />
-        </div>
+    <div className="flex-grow p-6">
+      <h1 className="mb-8 text-2xl font-bold">{owner.name}</h1>
+      <div className="flex justify-center">
+        <MembersDataTable members={members} owner={owner} />
+      </div>
+      <div className="flex justify-center">
+        <InvitationsDataTable invitations={pendingInvitations} owner={owner} />
       </div>
     </div>
   );
+};
+
+MembershipsPage.getLayout = (page: ReactElement) => {
+  return <PokeLayout>{page}</PokeLayout>;
 };
 
 export default MembershipsPage;

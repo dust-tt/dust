@@ -8,10 +8,10 @@ import { useState } from "react";
 import { DataSourceViewSelector } from "@app/components/data_source_view/DataSourceViewSelector";
 import { ViewDataSourceViewTable } from "@app/components/poke/data_source_views/view";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
+import PokeLayout from "@app/components/poke/PokeLayout";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { dataSourceViewToPokeJSON } from "@app/lib/poke/utils";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import PokeLayout from "@app/pages/poke/PokeLayout";
 import type { DataSourceViewContentNodesProps } from "@app/poke/swr/data_source_views";
 import { usePokeDataSourceViewContentNodes } from "@app/poke/swr/data_source_views";
 
