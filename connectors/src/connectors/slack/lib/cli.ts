@@ -2,13 +2,21 @@ import type {
   AdminSuccessResponseType,
   SlackCommandType,
 } from "@dust-tt/types";
-import { isSlackbotWhitelistType } from "@dust-tt/types";
+import { isSlackbotWhitelistType, MIME_TYPES } from "@dust-tt/types";
 
+import { updateSlackChannelInConnectorsDb } from "@connectors/connectors/slack/lib/channels";
+import {
+  getSlackChannelSourceUrl,
+  slackChannelInternalIdFromSlackChannelId,
+} from "@connectors/connectors/slack/lib/utils";
+import { getChannel } from "@connectors/connectors/slack/temporal/activities";
 import {
   launchSlackSyncOneThreadWorkflow,
   launchSlackSyncWorkflow,
 } from "@connectors/connectors/slack/temporal/client";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { throwOnError } from "@connectors/lib/cli";
+import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import { SlackChannel } from "@connectors/lib/models/slack";
 import { default as topLogger } from "@connectors/logger/logger";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
@@ -212,6 +220,67 @@ export const slack = async ({
         await slackConfig.whitelistBot(botName, [groupId], whitelistType);
       }
 
+      return { success: true };
+    }
+
+    case "sync-channel-metadata": {
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+      if (!args.channelId) {
+        throw new Error("Missing --channelId argument");
+      }
+      const connector = await ConnectorModel.findOne({
+        where: { workspaceId: `${args.wId}`, type: "slack" },
+      });
+      if (!connector) {
+        throw new Error(`Could not find connector for workspace ${args.wId}`);
+      }
+
+      const remoteChannel = await getChannel(connector.id, args.channelId);
+      if (!remoteChannel.name) {
+        throw new Error(
+          `Could not find channel name for channel ${args.channelId}`
+        );
+      }
+      const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+      const channel = await updateSlackChannelInConnectorsDb({
+        slackChannelId: args.channelId,
+        slackChannelName: remoteChannel.name,
+        connectorId: connector.id,
+      });
+
+      const slackConfiguration =
+        await SlackConfigurationResource.fetchByConnectorId(connector.id);
+      if (!slackConfiguration) {
+        throw new Error(
+          `Could not find Slack configuration for connector ${connector.id}`
+        );
+      }
+
+      if (!["read", "read_write"].includes(channel.permission)) {
+        logger.info(
+          {
+            connectorId: connector.id,
+            channelId: args.channelId,
+            channelName: remoteChannel.name,
+          },
+          "Channel is not indexed, skipping"
+        );
+        return { success: true };
+      }
+
+      await upsertDataSourceFolder({
+        dataSourceConfig,
+        folderId: slackChannelInternalIdFromSlackChannelId(args.channelId),
+        title: `#${channel.name}`,
+        parentId: null,
+        parents: [slackChannelInternalIdFromSlackChannelId(args.channelId)],
+        mimeType: MIME_TYPES.SLACK.CHANNEL,
+        sourceUrl: getSlackChannelSourceUrl(args.channelId, slackConfiguration),
+        providerVisibility: channel.private ? "private" : "public",
+      });
       return { success: true };
     }
 
