@@ -52,76 +52,50 @@ Collapsible.Button = function ({
 
   const labelClasses = {
     primary: {
-      base: "s-text-action-500 s-inline-flex s-transition-colors s-ease-out s-duration-400 s-box-border s-gap-x-2 s-select-none",
-      hover: "group-hover/col:s-text-action-400",
-      active: "active:s-text-action-600",
-      dark: {
-        base: "dark:s-text-action-500-dark",
-        hover: "dark:group-hover/col:s-text-action-400-dark",
-        active: "dark:active:s-text-action-600-dark",
-        disabled: "dark:s-element-500-dark",
-      },
-      disabled: "s-element-500",
+      base: "s-text-action-500 dark:s-text-action-500-night s-inline-flex s-transition-colors s-ease-out s-duration-400 s-box-border s-gap-x-2 s-select-none",
+      hover:
+        "group-hover/col:s-text-action-400 dark:group-hover/col:s-text-action-400-night",
+      active: "active:s-text-action-600 dark:active:s-text-action-600-night",
+      disabled: "s-element-500 dark:s-element-500-night",
     },
 
     secondary: {
-      base: "s-text-foreground s-inline-flex s-transition-colors s-ease-out s-duration-400 s-box-border s-gap-x-2 s-select-none",
-      hover: "group-hover/col:s-text-action-500",
-      active: "active:s-text-action-600",
-      dark: {
-        base: "dark:s-text-foreground-dark",
-        hover: "dark:group-hover/col:s-text-action-400-dark",
-        active: "dark:active:s-text-action-600-dark",
-        disabled: "dark:s-element-500-dark",
-      },
-      disabled: "s-element-500",
+      base: "s-text-foreground dark:s-text-foreground-night s-inline-flex s-transition-colors s-ease-out s-duration-400 s-box-border s-gap-x-2 s-select-none",
+      hover:
+        "group-hover/col:s-text-action-500 dark:group-hover/col:s-text-action-500-night",
+      active: "active:s-text-action-600 dark:active:s-text-action-600-night",
+      disabled: "s-element-500 dark:s-element-500-night",
     },
   };
 
   const chevronClasses = {
     primary: {
-      base: "s-text-element-600",
-      hover: "group-hover/col:s-text-action-400",
-      active: "active:s-text-action-700",
-      disabled: "s-element-500",
-      dark: {
-        base: "dark:s-text-element-600-dark",
-        hover: "dark:group-hover/col:s-text-action-500-dark",
-        active: "dark:active:s-text-action-700-dark",
-        disabled: "dark:s-element-500-dark",
-      },
+      base: "s-text-element-600 dark:s-text-element-600-night",
+      hover:
+        "group-hover/col:s-text-action-400 dark:group-hover/col:s-text-action-400-night",
+      active: "active:s-text-action-700 dark:active:s-text-action-700-night",
+      disabled: "s-element-500 dark:s-element-500-night",
     },
     secondary: {
-      base: "s-text-element-600",
-      hover: "group-hover/col:s-text-action-400",
-      active: "active:s-text-action-700",
-      disabled: "s-element-500",
-      dark: {
-        base: "dark:s-text-element-600-dark",
-        hover: "dark:group-hover/col:s-text-action-500-dark",
-        active: "dark:active:s-text-action-700-dark",
-        disabled: "dark:s-element-500-dark",
-      },
+      base: "s-text-element-600 dark:s-text-element-600-night",
+      hover:
+        "group-hover/col:s-text-action-400 dark:group-hover/col:s-text-action-400-night",
+      active: "active:s-text-action-700 dark:active:s-text-action-700-night",
+      disabled: "s-element-500 dark:s-element-500-night",
     },
   };
 
   const finalLabelClasses = classNames(
     labelClasses[variant].base,
-    labelClasses[variant].dark.base,
     !disabled ? labelClasses[variant].active : "",
-    !disabled ? labelClasses[variant].dark.active : "",
     !disabled ? labelClasses[variant].hover : "",
-    !disabled ? labelClasses[variant].dark.hover : "",
     disabled ? labelClasses[variant].disabled : ""
   );
 
   const finalChevronClasses = classNames(
     chevronClasses[variant].base,
-    chevronClasses[variant].dark.base,
     !disabled ? chevronClasses[variant].active : "",
-    !disabled ? chevronClasses[variant].dark.active : "",
     !disabled ? chevronClasses[variant].hover : "",
-    !disabled ? chevronClasses[variant].dark.hover : "",
     disabled ? chevronClasses[variant].disabled : ""
   );
 
@@ -159,7 +133,9 @@ Collapsible.Panel = ({ children }: CollapsiblePanelProps) => (
     leaveTo="s-transform s-scale-95 s-opacity-0"
   >
     <Disclosure.Panel>
-      <div className="s-text-gray-500">{children}</div>
+      <div className="dark:s-text-primary-500-night s-text-primary-500">
+        {children}
+      </div>
     </Disclosure.Panel>
   </Transition>
 );

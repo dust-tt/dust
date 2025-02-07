@@ -406,3 +406,38 @@ const QIG: React.FC = () => (
     </Page.Vertical>
   </div>
 );
+
+export function SheetWithThreeButtons() {
+  return (
+    <div>
+      <Sheet>
+        <SheetTrigger asChild>
+          <Button variant="outline" label="Three Button Demo" />
+        </SheetTrigger>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>Sheet with Three Buttons</SheetTitle>
+            <SheetDescription>
+              Example of SheetFooter with three buttons
+            </SheetDescription>
+          </SheetHeader>
+          <SheetContainer>
+            <div className="s-flex s-flex-col s-gap-6">
+              <Input label="Example Input" placeholder="Type something..." />
+            </div>
+          </SheetContainer>
+          <SheetFooter
+            sheetCloseClassName="s-flex s-gap-2"
+            leftButtonProps={{ label: "Cancel", variant: "warning" }}
+            rightButtonProps={{ label: "Save", variant: "primary" }}
+            rightEndButtonProps={{
+              label: "Delete",
+              variant: "warning",
+              icon: TrashIcon,
+            }}
+          />
+        </SheetContent>
+      </Sheet>
+    </div>
+  );
+}

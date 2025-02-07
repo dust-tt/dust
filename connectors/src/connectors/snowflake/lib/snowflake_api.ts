@@ -11,6 +11,7 @@ import type {
   RemoteDBDatabase,
   RemoteDBSchema,
   RemoteDBTable,
+  RemoteDBTree,
 } from "@connectors/lib/remote_databases/utils";
 import {
   remoteDBDatabaseCodec,
@@ -215,6 +216,50 @@ export const fetchTables = async ({
   });
 };
 
+export const fetchTree = async ({
+  credentials,
+  connection,
+}: {
+  credentials: SnowflakeCredentials;
+  connection: Connection;
+}): Promise<Result<RemoteDBTree, Error>> => {
+  const databasesRes = await fetchDatabases({ credentials, connection });
+  if (databasesRes.isErr()) {
+    return databasesRes;
+  }
+  const databases = databasesRes.value.filter(
+    (db) => !EXCLUDE_DATABASES.includes(db.name)
+  );
+
+  const schemasRes = await fetchSchemas({ credentials, connection });
+  if (schemasRes.isErr()) {
+    return schemasRes;
+  }
+  const schemas = schemasRes.value.filter(
+    (s) => !EXCLUDE_SCHEMAS.includes(s.name)
+  );
+
+  const tablesRes = await fetchTables({ credentials, connection });
+  if (tablesRes.isErr()) {
+    return tablesRes;
+  }
+  const tables = tablesRes.value;
+
+  const tree = {
+    databases: databases.map((db) => ({
+      ...db,
+      schemas: schemas
+        .filter((s) => s.database_name === db.name)
+        .map((schema) => ({
+          ...schema,
+          tables: tables.filter((t) => t.schema_name === schema.name),
+        })),
+    })),
+  };
+
+  return new Ok(tree);
+};
+
 /**
  * Fetch the grants available for the Snowflake role,
  * including future grants, then check if the connection is read-only.
@@ -273,7 +318,19 @@ async function _checkRoleGrants(
   for (const g of [...currentGrantsRes.value, ...futureGrantsRes.value]) {
     const grantOn = "granted_on" in g ? g.granted_on : g.grant_on;
 
-    if (["TABLE", "VIEW"].includes(grantOn)) {
+    if (
+      [
+        "TABLE",
+        "VIEW",
+        "EXTERNAL_TABLE",
+        "DYNAMIC_TABLE",
+        "EVENT_TABLE",
+        "STREAM",
+        "MATERIALIZED_VIEW",
+        "HYBRID_TABLE",
+        "ICEBERG_TABLE",
+      ].includes(grantOn)
+    ) {
       if (g.privilege !== "SELECT") {
         return new Err(
           new TestConnectionError(
@@ -282,7 +339,11 @@ async function _checkRoleGrants(
           )
         );
       }
-    } else if (["SCHEMA", "DATABASE", "WAREHOUSE"].includes(grantOn)) {
+    } else if (
+      ["SCHEMA", "DATABASE", "WAREHOUSE", "FILE_FORMAT", "FUNCTION"].includes(
+        grantOn
+      )
+    ) {
       if (g.privilege !== "USAGE") {
         return new Err(
           new TestConnectionError(

@@ -28,7 +28,17 @@ const meta = {
       description: "Content of the message",
     },
     variant: {
-      options: ["default", "slate", "emerald", "pink", "purple"],
+      options: [
+        "amber",
+        "slate",
+        "emerald",
+        "pink",
+        "purple",
+        "warning",
+        "sky",
+        "action",
+        "red",
+      ],
       control: { type: "select" },
       description: "Visual style variant",
     },

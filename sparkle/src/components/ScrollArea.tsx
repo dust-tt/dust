@@ -4,42 +4,92 @@ import { useMemo } from "react";
 
 import { cn } from "@sparkle/lib/utils";
 
-export interface ScrollAreaProps
+interface ScrollAreaProps
   extends React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root> {
   hideScrollBar?: boolean;
+  orientation?: "vertical" | "horizontal";
+  scrollBarClassName?: string;
+  viewportClassName?: string;
+  onScroll?: (event: React.UIEvent<HTMLDivElement>) => void;
+  onScrollStateChange?: (isScrolled: boolean) => void;
 }
 
 const ScrollArea = React.forwardRef<
   React.ElementRef<typeof ScrollAreaPrimitive.Root>,
   ScrollAreaProps
->(({ className, children, hideScrollBar = false, ...props }, ref) => {
-  const hasCustomScrollBar = useMemo(
-    () =>
-      React.Children.toArray(children).some(
-        (child) =>
-          React.isValidElement(child) &&
-          (child.type as typeof ScrollBar).displayName === ScrollBar.displayName
-      ),
-    [children]
-  );
+>(
+  (
+    {
+      className,
+      children,
+      hideScrollBar = false,
+      orientation = "vertical",
+      scrollBarClassName,
+      viewportClassName,
+      onScroll,
+      onScrollStateChange,
+      ...props
+    },
+    ref
+  ) => {
+    const viewportRef = React.useRef<HTMLDivElement>(null);
+    const [isScrolled, setIsScrolled] = React.useState(false);
 
-  const shouldHideDefaultScrollBar = hideScrollBar || hasCustomScrollBar;
+    const hasCustomScrollBar = useMemo(
+      () =>
+        React.Children.toArray(children).some(
+          (child) =>
+            React.isValidElement(child) &&
+            (child.type as typeof ScrollBar).displayName ===
+              ScrollBar.displayName
+        ),
+      [children]
+    );
 
-  return (
-    <ScrollAreaPrimitive.Root
-      ref={ref}
-      className={cn("s-relative s-z-20 s-overflow-hidden", className)}
-      {...props}
-    >
-      <ScrollAreaPrimitive.Viewport className="s-h-full s-w-full s-rounded-[inherit]">
-        {children}
-      </ScrollAreaPrimitive.Viewport>
-      {!shouldHideDefaultScrollBar && <ScrollBar />}
-      <ScrollAreaPrimitive.Corner />
-    </ScrollAreaPrimitive.Root>
-  );
-});
+    const shouldHideDefaultScrollBar = hideScrollBar || hasCustomScrollBar;
 
+    const handleScroll = React.useCallback(
+      (event: React.UIEvent<HTMLDivElement>) => {
+        onScroll?.(event);
+
+        if (viewportRef.current) {
+          const scrollTop = viewportRef.current.scrollTop;
+          const isNowScrolled = scrollTop > 0;
+
+          if (isNowScrolled !== isScrolled) {
+            setIsScrolled(isNowScrolled);
+            onScrollStateChange?.(isNowScrolled);
+          }
+        }
+      },
+      [isScrolled, onScroll, onScrollStateChange]
+    );
+
+    return (
+      <ScrollAreaPrimitive.Root
+        ref={ref}
+        className={cn("s-relative s-z-20 s-overflow-hidden", className)}
+        {...props}
+      >
+        <ScrollAreaPrimitive.Viewport
+          ref={viewportRef}
+          onScroll={handleScroll}
+          className={cn(
+            "s-h-full s-w-full s-rounded-[inherit]",
+            isScrolled && "s-scroll-active",
+            viewportClassName
+          )}
+        >
+          {children}
+        </ScrollAreaPrimitive.Viewport>
+        {!shouldHideDefaultScrollBar && (
+          <ScrollBar orientation={orientation} className={scrollBarClassName} />
+        )}
+        <ScrollAreaPrimitive.Corner />
+      </ScrollAreaPrimitive.Root>
+    );
+  }
+);
 ScrollArea.displayName = ScrollAreaPrimitive.Root.displayName;
 
 const scrollBarSizes = {
@@ -52,7 +102,10 @@ const scrollBarSizes = {
       vertical: "s-pr-1 s-pl-2.5 s-py-2 hover:s-pl-2",
       horizontal: "s-pb-1 s-pt-2.5 s-px-2",
     },
-    thumb: "s-bg-muted-foreground/40 hover:s-bg-muted-foreground/70",
+    thumb: cn(
+      "s-bg-muted-foreground/40 dark:s-bg-muted-foreground-night/40",
+      "hover:s-bg-muted-foreground/70 dark:hover:s-bg-muted-foreground-night/70"
+    ),
   },
   classic: {
     bar: {
@@ -63,7 +116,10 @@ const scrollBarSizes = {
       vertical: "s-pl-2 s-pr-1 s-py-1",
       horizontal: "s-py-0.5 s-px-1",
     },
-    thumb: "s-bg-muted-foreground/70 hover:s-bg-muted-foreground/80",
+    thumb: cn(
+      "s-bg-muted-foreground/70 dark:s-bg-muted-foreground-night/70",
+      "hover:s-bg-muted-foreground/80 dark:hover:s-bg-muted-foreground-night/80"
+    ),
   },
 } as const;
 

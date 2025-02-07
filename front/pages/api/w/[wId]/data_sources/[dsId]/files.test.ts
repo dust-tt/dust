@@ -79,12 +79,7 @@ const mockFileContent = {
 
 // Mock file storage with parameterizable content
 vi.mock("@app/lib/file_storage", () => ({
-  getPrivateUploadBucket: vi.fn(() => ({
-    file: () => ({
-      createReadStream: () => Readable.from([mockFileContent.content]),
-    }),
-  })),
-  getPublicUploadBucket: vi.fn(() => ({
+  getUpsertQueueBucket: vi.fn(() => ({
     file: () => ({
       createReadStream: () => Readable.from([mockFileContent.content]),
     }),
@@ -173,7 +168,7 @@ describe("POST /api/w/[wId]/data_sources/[dsId]/files", () => {
         t
       );
       const file = await FileFactory.csv(workspace, user, {
-        useCase: "folder_table",
+        useCase: "upsert_table",
       });
 
       req.query.dsId = dataSourceView.dataSource.sId;

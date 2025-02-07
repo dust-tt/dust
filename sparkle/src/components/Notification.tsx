@@ -3,7 +3,7 @@ import React, { useEffect } from "react";
 import { createPortal } from "react-dom";
 
 import { CheckCircleIcon, XCircleIcon } from "@sparkle/icons";
-import { classNames } from "@sparkle/lib/utils";
+import { cn } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
 
@@ -35,8 +35,12 @@ export function Notification({
 }: NotificationProps) {
   return (
     <div
-      className={classNames(
-        "s-pointer-events-auto s-flex s-max-w-[400px] s-flex-row s-items-center s-gap-2 s-rounded-xl s-border s-border-structure-100 s-bg-structure-0 s-p-4 s-shadow-xl",
+      className={cn(
+        "s-pointer-events-auto s-flex s-max-w-[400px] s-flex-row s-items-center s-gap-2 s-rounded-xl s-border",
+        "dark:s-border-structure-100-night s-border-structure-100",
+        "dark:s-bg-structure-0-night s-bg-structure-0",
+        "s-p-4",
+        "s-shadow-xl",
         className
       )}
       onClick={onClick}
@@ -45,31 +49,36 @@ export function Notification({
         <Icon
           size="lg"
           visual={CheckCircleIcon}
-          className="s-pt-0.5 s-text-success-500"
+          className="dark:s-text-success-500-night s-pt-0.5 s-text-success-500"
         />
       ) : (
         <Icon
           size="lg"
           visual={XCircleIcon}
-          className="s-pt-0.5 s-text-warning-500"
+          className="dark:s-text-warning-500-night s-pt-0.5 s-text-warning-500"
         />
       )}
 
       <div className="s-flex s-flex-col">
         <div className="s-flex s-grow s-flex-row s-gap-6">
           <div
-            className={classNames(
+            className={cn(
               "s-text-md s-line-clamp-1 s-h-6 s-grow s-font-semibold",
               variant === "success"
-                ? "s-text-success-500"
-                : "s-text-warning-500"
+                ? "dark:s-text-success-500-night s-text-success-500"
+                : "dark:s-text-warning-500-night s-text-warning-500"
             )}
           >
             {title || variant}
           </div>
         </div>
         {description && (
-          <div className="s-line-clamp-3 s-pr-2 s-text-sm s-font-normal s-text-element-700">
+          <div
+            className={cn(
+              "dark:s-text-element-700-night s-text-element-700",
+              "s-line-clamp-3 s-pr-2 s-text-sm s-font-normal"
+            )}
+          >
             {description}
           </div>
         )}

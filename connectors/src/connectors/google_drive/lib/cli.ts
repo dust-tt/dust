@@ -8,7 +8,10 @@ import { googleDriveIncrementalSyncWorkflowId } from "@dust-tt/types";
 import { getConnectorManager } from "@connectors/connectors";
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
-import { launchGoogleDriveIncrementalSyncWorkflow } from "@connectors/connectors/google_drive/temporal/client";
+import {
+  launchGoogleDriveIncrementalSyncWorkflow,
+  launchGoogleFixParentsConsistencyWorkflow,
+} from "@connectors/connectors/google_drive/temporal/client";
 import { MIME_TYPES_TO_EXPORT } from "@connectors/connectors/google_drive/temporal/mime_types";
 import {
   getAuthObject,
@@ -108,12 +111,13 @@ export const google_drive = async ({
         throw new Error("Missing --fileId argument");
       }
       const fileId = args.fileId;
-
+      const now = Date.now();
       const authCredentials = await getAuthObject(connector.connectionId);
-      const driveObject = await getGoogleDriveObject(
+      const driveObject = await getGoogleDriveObject({
         authCredentials,
-        getDriveFileId(fileId)
-      );
+        driveObjectId: getDriveFileId(fileId),
+        cacheKey: { connectorId: connector.id, ts: now },
+      });
       if (!driveObject) {
         throw new Error("Can't find google drive object");
       }
@@ -121,9 +125,16 @@ export const google_drive = async ({
         connector.id,
         authCredentials,
         driveObject,
-        Date.now()
+        now
       );
       return { status: 200, content: parents, type: typeof parents };
+    }
+
+    case "clean-invalid-parents": {
+      const execute = !!args.execute;
+      const connector = await getConnector(args);
+      await launchGoogleFixParentsConsistencyWorkflow(connector.id, execute);
+      return { success: true };
     }
 
     case "start-incremental-sync": {

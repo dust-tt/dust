@@ -1,6 +1,8 @@
 import React, { Suspense } from "react";
 import { amber, emerald, pink, sky, slate, violet } from "tailwindcss/colors";
 
+import { cn } from "@sparkle/lib";
+
 const SyntaxHighlighter = React.lazy(
   () => import("react-syntax-highlighter/dist/esm/default-highlight")
 );
@@ -34,7 +36,7 @@ export function CodeBlock({
       display: "block",
       overflowX: "auto",
       padding: "1em",
-      color: slate[900], // Base text color
+      color: "var(--s-foreground)",
       backgroundColor: "transparent",
       fontSize: "0.875rem",
     },
@@ -107,7 +109,7 @@ export function CodeBlock({
     },
     "hljs-params": {
       // Function parameters
-      color: slate[900],
+      color: "var(--s-foreground)",
     },
     // Typography styles
     "hljs-emphasis": {
@@ -120,18 +122,27 @@ export function CodeBlock({
 
   return !inline && language ? (
     <Suspense fallback={<div />}>
-      <SyntaxHighlighter
-        wrapLongLines={wrapLongLines}
-        style={codeStyle}
-        language={languageToUse}
-        PreTag="div"
-        className="s-cursor-text"
-      >
-        {String(children).replace(/\n$/, "")}
-      </SyntaxHighlighter>
+      <div className="s-text-slate-900 dark:s-text-blue-200">
+        <SyntaxHighlighter
+          wrapLongLines={wrapLongLines}
+          style={codeStyle}
+          language={languageToUse}
+          PreTag="div"
+          className="s-cursor-text"
+        >
+          {String(children).replace(/\n$/, "")}
+        </SyntaxHighlighter>
+      </div>
     </Suspense>
   ) : (
-    <code className="s-mx-0.5 s-cursor-text s-rounded-lg s-border s-border-border-dark s-bg-muted s-px-1.5 s-py-1 s-text-amber-600">
+    <code
+      className={cn(
+        "s-mx-0.5 s-cursor-text s-rounded-lg s-border s-px-1.5 s-py-1",
+        "dark:s-border-border-dark-night s-border-border-dark",
+        "dark:s-bg-muted-night s-bg-muted",
+        "dark:s-text-amber-600-night s-text-amber-600"
+      )}
+    >
       {children}
     </code>
   );

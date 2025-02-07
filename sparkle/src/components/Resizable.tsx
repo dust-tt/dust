@@ -29,13 +29,30 @@ const ResizableHandle = ({
 }) => (
   <ResizablePrimitive.PanelResizeHandle
     className={cn(
-      "s-relative s-flex s-w-px s-items-center s-justify-center s-bg-border after:s-absolute after:s-inset-y-0 after:s-left-1/2 after:s-w-1 after:s--translate-x-1/2 focus-visible:s-outline-none focus-visible:s-ring-1 focus-visible:s-ring-ring focus-visible:s-ring-offset-1 data-[panel-group-direction=vertical]:s-h-px data-[panel-group-direction=vertical]:s-w-full data-[panel-group-direction=vertical]:after:s-left-0 data-[panel-group-direction=vertical]:after:s-h-1 data-[panel-group-direction=vertical]:after:s-w-full data-[panel-group-direction=vertical]:after:s--translate-y-1/2 data-[panel-group-direction=vertical]:after:s-translate-x-0 [&[data-panel-group-direction=vertical]>div]:s-rotate-90",
+      "s-relative s-flex s-w-px s-items-center s-justify-center",
+      "after:s-absolute after:s-inset-y-0 after:s-left-1/2 after:s-w-1 after:s--translate-x-1/2",
+      "focus-visible:s-outline-none focus-visible:s-ring-1",
+      "dark:focus-visible:s-ring-ring-night focus-visible:s-ring-ring",
+      "focus-visible:s-ring-offset-1 data-[panel-group-direction=vertical]:s-h-px",
+      "data-[panel-group-direction=vertical]:s-w-full",
+      "data-[panel-group-direction=vertical]:after:s-left-0",
+      "data-[panel-group-direction=vertical]:after:s-h-1",
+      "data-[panel-group-direction=vertical]:after:s-w-full",
+      "data-[panel-group-direction=vertical]:after:s--translate-y-1/2",
+      "data-[panel-group-direction=vertical]:after:s-translate-x-0",
+      "[&[data-panel-group-direction=vertical]>div]:s-rotate-90",
+      "dark:s-bg-border-night s-bg-border",
       className
     )}
     {...props}
   >
     {withHandle && (
-      <div className="s-z-10 s-flex s-h-4 s-w-3 s-items-center s-justify-center s-rounded-sm s-border s-bg-border">
+      <div
+        className={cn(
+          "s-z-10 s-flex s-h-4 s-w-3 s-items-center s-justify-center s-rounded-sm s-border",
+          "dark:s-bg-border-night s-bg-border"
+        )}
+      >
         <Icon visual={GrabIcon} size="xs" />
       </div>
     )}

@@ -15,6 +15,7 @@ const NODE_CONCURRENCY = 16;
 
 interface Node {
   parents: string[];
+  data_source: number;
   node_id: string;
   source_url: string;
   timestamp: number;
@@ -41,52 +42,46 @@ async function migrateNode({
   skipIfParentsAreAlreadyCorrect: boolean;
   logger: typeof Logger;
 }) {
-  let newParents = coreNode.parents;
-  let newParentId: string | null = null;
-  try {
-    if (
-      coreNode.table !== null &&
-      !coreNode.node_id.startsWith("google-spreadsheet")
-    ) {
-      logger.warn("Sheet that does not start with google-spreadsheet.");
-    }
-    const uniqueIds = [
-      ...new Set(
-        // Google Drive node IDs can start either with gdrive- (files and folders) or with google-spreadsheet (sheets).
-        [coreNode.node_id, ...coreNode.parents].map((id) =>
-          id.startsWith("google-spreadsheet") ? id : id.replace("gdrive-", "")
-        )
-      ),
-    ];
-    newParents = uniqueIds.map((id) =>
-      id.startsWith("google-spreadsheet") ? id : `gdrive-${id}`
-    );
-    newParentId = newParents[1] || null;
-  } catch (e) {
-    logger.error(
-      {
-        nodeId: coreNode.node_id,
-        parents: coreNode.parents,
-      },
-      `TRANSFORM_ERROR`
-    );
-    throw e;
+  if (
+    coreNode.table !== null &&
+    !coreNode.node_id.startsWith("google-spreadsheet")
+  ) {
+    logger.warn("Sheet that does not start with google-spreadsheet.");
+    return;
   }
+  const uniqueIds = [
+    ...new Set(
+      // Google Drive node IDs can start either with gdrive- (files and folders) or with google-spreadsheet (sheets).
+      [coreNode.node_id, ...coreNode.parents].map((id) =>
+        id.startsWith("google-spreadsheet") ? id : id.replace("gdrive-", "")
+      )
+    ),
+  ];
+  const newParents = uniqueIds.map((id) =>
+    id.startsWith("google-spreadsheet") ? id : `gdrive-${id}`
+  );
+  const newParentId = newParents[1] || null;
+
+  const localLogger = logger.child({
+    dataSource: coreNode.data_source,
+    nodeId: coreNode.node_id,
+    fromParents: coreNode.parents,
+    toParents: newParents,
+    toParentId: newParentId,
+  });
 
   if (
     skipIfParentsAreAlreadyCorrect &&
     newParents.every((x, i) => x === coreNode.parents[i]) &&
     coreNode.parents.every((x, i) => x === newParents[i])
   ) {
-    logger.info(
-      {
-        documentId: coreNode.node_id,
-        fromParents: coreNode.parents,
-        toParents: newParents,
-      },
-      `SKIP document (parents are already correct)`
-    );
+    localLogger.info(`SKIP document (parents are already correct)`);
     return new Ok(undefined);
+  }
+
+  if (coreNode.node_id != newParents[0]) {
+    localLogger.error("Invalid node_id");
+    return;
   }
 
   if (execute) {
@@ -124,38 +119,15 @@ async function migrateNode({
           });
         }
         if (updateRes.isErr()) {
-          logger.error(
-            {
-              nodeId: coreNode.node_id,
-              fromParents: coreNode.parents,
-              toParents: newParents,
-              toParentId: newParentId,
-            },
-            `Error while updating parents`
-          );
+          localLogger.error(`Error while updating parents`);
           throw new Error(updateRes.error.message);
         }
       },
-      { retries: 10 }
+      { retries: 3 }
     )({});
-
-    logger.info(
-      {
-        nodeId: coreNode.node_id,
-        fromParents: coreNode.parents,
-        toParents: newParents,
-      },
-      `LIVE`
-    );
+    localLogger.info(`LIVE`);
   } else {
-    logger.info(
-      {
-        nodeId: coreNode.node_id,
-        fromParents: coreNode.parents,
-        toParents: newParents,
-      },
-      `DRY`
-    );
+    localLogger.info(`DRY`);
   }
 
   return new Ok(undefined);
@@ -212,6 +184,7 @@ async function migrateDataSource({
            SELECT 1
            FROM UNNEST(parents) p
            WHERE p NOT LIKE 'gdrive-%'
+             AND p NOT LIKE 'google-spreadsheet-%'
        )
        ORDER BY node_id
        LIMIT :batchSize`,
@@ -224,8 +197,6 @@ async function migrateDataSource({
         type: QueryTypes.SELECT,
       }
     )) as Node[];
-
-    logger.info({ nextId, rowCount: rows.length }, "BATCH");
 
     if (rows.length === 0) {
       break;

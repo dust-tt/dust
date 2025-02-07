@@ -25,13 +25,17 @@ export function useBigQueryLocations({
   const { data, error, mutate } = useSWRWithDefaults<
     string,
     PostCheckBigQueryLocationsResponseBody
-  >(fetchKey, async () => {
-    if (!url) {
-      return undefined;
-    }
+  >(
+    fetchKey,
+    async () => {
+      if (!url) {
+        return undefined;
+      }
 
-    return fetcherWithBody([url, { credentials }, "POST"]);
-  });
+      return fetcherWithBody([url, { credentials }, "POST"]);
+    },
+    { disabled: !credentials }
+  );
 
   return {
     locations: useMemo(() => (data ? data.locations : []), [data]),
