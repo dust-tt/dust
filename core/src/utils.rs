@@ -184,16 +184,23 @@ impl<B> MakeSpan<B> for CoreRequestMakeSpan {
 }
 
 // sqids
-// Aligned with front. Main difference is that we don't have workspace ids in our core ids.
+
+// Minimum length requirement for resource string IDs to ensure sufficient encoding space.
+// This value is synchronized with the frontend implementation.
 const RESOURCE_S_ID_MIN_LENGTH: u8 = 10;
-const SHARD_KEY: u64 = 1;
-const REGION: u64 = 1;
+
+// WARNING: These legacy bits are part of the ID encoding scheme and must be preserved to maintain
+// backwards compatibility with existing string IDs stored in the database.
+// They were originally used for sharding and region information but are no longer functionally
+// needed after migration to cross-region architecture.
+const LEGACY_SHARD_BIT: u64 = 1;
+const LEGACY_REGION_BIT: u64 = 1; // Previously indicated US region.
 
 pub fn make_id(prefix: &str, id: u64) -> Result<String> {
     let sqids = Sqids::builder()
         .min_length(RESOURCE_S_ID_MIN_LENGTH)
         .build()?;
-    let id = sqids.encode(&[REGION, SHARD_KEY, id])?;
+    let id = sqids.encode(&[LEGACY_REGION_BIT, LEGACY_SHARD_BIT, id])?;
     Ok(format!("{}_{}", prefix, id))
 }
 

@@ -12,8 +12,8 @@ const sqids = new Sqids({
   minLength: RESOURCE_S_ID_MIN_LENGTH,
 });
 
-// /!\ These legacy bits are part of the ID encoding scheme and must be preserved to maintain
-// backwards compatibility with existing string IDs in the database.
+// WARNING: These legacy bits are part of the ID encoding scheme and must be preserved to maintain
+// backwards compatibility with existing string IDs.
 // They were originally used for sharding and region information but are no longer functionally
 // needed after migration to cross-region architecture.
 const LEGACY_SHARD_BIT = 1;
