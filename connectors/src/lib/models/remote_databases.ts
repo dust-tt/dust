@@ -9,6 +9,7 @@ type AllowedPermissions = "selected" | "unselected" | "inherited";
 export class RemoteDatabaseModel extends ConnectorBaseModel<RemoteDatabaseModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
+  declare lastUpsertedAt: CreationOptional<Date> | null;
 
   declare internalId: string;
   declare name: string;
@@ -49,6 +50,7 @@ RemoteDatabaseModel.init(
 export class RemoteSchemaModel extends ConnectorBaseModel<RemoteSchemaModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
+  declare lastUpsertedAt: CreationOptional<Date> | null;
 
   declare internalId: string;
   declare name: string;
