@@ -330,7 +330,7 @@ export function computeNodesDiff({
             // the title in connectors, ignoring these occurrences.
             if (
               key === "title" &&
-              provider === "snowflake" &&
+              ["snowflake", "bigquery"].includes(provider) &&
               value.endsWith(coreValue) // value = database.schema.table, coreValue = table
             ) {
               return false;
