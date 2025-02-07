@@ -46,6 +46,7 @@ export const EnqueueUpsertTable = t.type({
   tableParentId: t.union([t.string, t.undefined, t.null]),
   tableParents: t.union([t.array(t.string), t.undefined, t.null]),
   csv: t.union([t.string, t.null]),
+  fileId: t.union([t.string, t.null]),
   truncate: t.boolean,
   detectedHeaders: t.union([DetectedHeaders, t.undefined]),
   title: t.string,

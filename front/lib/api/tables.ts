@@ -17,10 +17,11 @@ import { CsvError, parse } from "csv-parse";
 import { DateTime } from "luxon";
 
 import config from "@app/lib/api/config";
+import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
+import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
-
-import type { DataSourceResource } from "../resources/data_source_resource";
 
 const MAX_TABLE_COLUMNS = 512;
 const MAX_COLUMN_NAME_LENGTH = 1024;
@@ -44,7 +45,7 @@ type InputValidationError = {
 };
 
 type NotFoundError = {
-  type: "table_not_found";
+  type: "table_not_found" | "file_not_found";
   message: string;
 };
 
@@ -133,6 +134,7 @@ export async function upsertTableFromCsv({
   tableParentId,
   tableParents,
   csv,
+  fileId,
   truncate,
   detectedHeaders,
   title,
@@ -149,37 +151,51 @@ export async function upsertTableFromCsv({
   tableParentId: string | null;
   tableParents: string[];
   csv: string | null;
+  fileId: string | null;
   truncate: boolean;
   detectedHeaders?: DetectedHeadersType;
   title: string;
   mimeType: string;
   sourceUrl: string | null;
 }): Promise<Result<{ table: CoreAPITable }, TableOperationError>> {
-  const owner = auth.workspace();
-
-  if (!owner) {
-    logger.error(
-      {
-        type: "internal_server_error",
-        message: "Failed to get workspace.",
-      },
-      "Failed to get workspace."
-    );
-    return new Err({
-      type: "internal_server_error",
-      coreAPIError: {
-        code: "workspace_not_found",
-        message: "Failed to get workspace.",
-      },
-      message: "Failed to get workspace.",
-    });
-  }
+  const owner = auth.getNonNullableWorkspace();
 
   if (tableParentId && tableParents && tableParents[1] !== tableParentId) {
     return new Err({
       type: "invalid_request_error",
       message: "Invalid request body, parents[1] and parent_id should be equal",
     });
+  }
+
+  // TODO(spolu): [CSV-FILE] add ability to core to take a GCS file path directly
+  if (fileId) {
+    const file = await FileResource.fetchById(auth, fileId);
+    if (!file) {
+      return new Err({
+        type: "not_found_error",
+        notFoundError: {
+          type: "file_not_found",
+          message:
+            "The file associated with the fileId you provided was not found",
+        },
+      });
+    }
+    if (file.status !== "ready") {
+      return new Err({
+        type: "invalid_request_error",
+        message: "The file provided is not ready",
+      });
+    }
+
+    const content = await getFileContent(auth, file);
+    if (!content) {
+      return new Err({
+        type: "invalid_request_error",
+        message: "The file provided is empty",
+      });
+    }
+
+    csv = content;
   }
 
   const csvRowsRes = csv
