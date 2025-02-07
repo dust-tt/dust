@@ -2,10 +2,10 @@ import type {
   PostTableCSVAsyncResponseType,
   PostTableCSVResponseType,
 } from "@dust-tt/client";
-import { UpsertTableFromCsvRequestSchema } from "@dust-tt/client";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
@@ -22,6 +22,26 @@ export const config = {
     },
   },
 };
+
+const UpsertTableFromCsvRequestSchema = z.object({
+  name: z.string(),
+  description: z.string(),
+  timestamp: z.number().nullable().optional(),
+  tags: z.array(z.string()).nullable().optional(),
+  parentId: z.string().nullable().optional(),
+  parents: z.array(z.string()).nullable().optional(),
+  truncate: z.boolean(),
+  async: z.boolean().optional(),
+  title: z.string(),
+  mimeType: z.string(),
+  sourceUrl: z.string().nullable().optional(),
+  tableId: z.string(),
+  csv: z.string().optional(),
+});
+
+export type UpsertTableFromCsvRequestType = z.infer<
+  typeof UpsertTableFromCsvRequestSchema
+>;
 
 /**
  * @ignoreswagger

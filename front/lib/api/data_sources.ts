@@ -1,7 +1,6 @@
 import type {
   DataSourceSearchQuery,
   DataSourceSearchResponseType,
-  UpsertTableFromCsvRequestType,
 } from "@dust-tt/client";
 import type {
   AdminCommandType,
@@ -56,6 +55,7 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { enqueueUpsertTable } from "@app/lib/upsert_queue";
 import logger from "@app/logger/logger";
+import type { UpsertTableFromCsvRequestType } from "@app/pages/api/v1/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/tables/csv";
 import { launchScrubDataSourceWorkflow } from "@app/poke/temporal/client";
 
 export async function getDataSources(
