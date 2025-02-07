@@ -2,10 +2,10 @@ import { BookOpenIcon, Icon, Spinner } from "@dust-tt/sparkle";
 import { UsersIcon } from "lucide-react";
 import moment from "moment";
 import Link from "next/link";
-import type { ChangeEvent } from "react";
+import type { ChangeEvent, ReactElement } from "react";
 import React, { useState } from "react";
 
-import PokeNavbar from "@app/components/poke/PokeNavbar";
+import PokeLayout from "@app/components/poke/PokeLayout";
 import {
   PokeTable,
   PokeTableBody,
@@ -131,38 +131,37 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-structure-50">
-      <PokeNavbar />
-      <div className="flex-grow p-6">
-        <>
-          <h1 className="mb-4 text-2xl font-bold">Search in Workspaces</h1>
-          <input
-            className="w-full rounded-lg border border-gray-300 p-2 focus:outline-none focus:ring-2 focus:ring-blue-600"
-            type="text"
-            placeholder="Search"
-            value={searchTerm}
-            onChange={handleSearchChange}
-          />
-          {isSearchResultsError && (
-            <p>An error occurred while fetching search results.</p>
-          )}
-          {!isSearchResultsLoading &&
-            !isSearchResultsError &&
-            renderWorkspaces("Search Results", searchResults)}
-          {isSearchResultsLoading && !searchDisabled && (
-            <Spinner size="lg" variant="color" />
-          )}
-          {!isUpgradedWorkspacesLoading &&
-            !isUpgradedWorkspacesError &&
-            renderWorkspaces(
-              `Last ${limit} Upgraded Workspaces`,
-              upgradedWorkspaces
-            )}
-          {isUpgradedWorkspacesLoading && <Spinner size="lg" variant="color" />}
-        </>
-      </div>
-    </div>
+    <>
+      <h1 className="mb-4 text-2xl font-bold">Search in Workspaces</h1>
+      <input
+        className="w-full rounded-lg border border-gray-300 p-2 focus:outline-none focus:ring-2 focus:ring-blue-600"
+        type="text"
+        placeholder="Search"
+        value={searchTerm}
+        onChange={handleSearchChange}
+      />
+      {isSearchResultsError && (
+        <p>An error occurred while fetching search results.</p>
+      )}
+      {!isSearchResultsLoading &&
+        !isSearchResultsError &&
+        renderWorkspaces("Search Results", searchResults)}
+      {isSearchResultsLoading && !searchDisabled && (
+        <Spinner size="lg" variant="color" />
+      )}
+      {!isUpgradedWorkspacesLoading &&
+        !isUpgradedWorkspacesError &&
+        renderWorkspaces(
+          `Last ${limit} Upgraded Workspaces`,
+          upgradedWorkspaces
+        )}
+      {isUpgradedWorkspacesLoading && <Spinner size="lg" variant="color" />}
+    </>
   );
+};
+
+Dashboard.getLayout = (page: ReactElement) => {
+  return <PokeLayout>{page}</PokeLayout>;
 };
 
 export default Dashboard;
