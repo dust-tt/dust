@@ -22,6 +22,7 @@ export const config = {
     },
   },
 };
+
 /**
  * @ignoreswagger
  * System API key only endpoint. Undocumented.
