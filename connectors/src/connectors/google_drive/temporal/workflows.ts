@@ -209,13 +209,43 @@ export async function googleDriveIncrementalSync(
     }
 
     do {
-      nextPageToken = await incrementalSync(
+      const syncRes = await incrementalSync(
         connectorId,
         googleDrive.id,
         googleDrive.isShared,
         startSyncTs,
         nextPageToken
       );
+
+      let foldersToBrowse: string[] = [];
+
+      if (syncRes) {
+        foldersToBrowse = syncRes.newFolders;
+        nextPageToken = syncRes.nextPageToken;
+      }
+
+      // Temp to clean up the running workflows state
+
+      while (foldersToBrowse.length > 0) {
+        const folder = foldersToBrowse.pop();
+        if (!folder) {
+          throw new Error("folderId should be defined");
+        }
+        do {
+          const res = await syncFiles(
+            connectorId,
+            folder,
+            startSyncTs,
+            nextPageToken
+          );
+          nextPageToken = res.nextPageToken ? res.nextPageToken : undefined;
+          foldersToBrowse = foldersToBrowse.concat(res.subfolders);
+        } while (nextPageToken);
+        await markFolderAsVisited(connectorId, folder, startSyncTs);
+
+        // Temp to clean up the running workflows state
+        foldersToBrowse = uniq(foldersToBrowse);
+      }
 
       // Will restart exactly where it was.
       if (workflowInfo().historyLength > 4000) {

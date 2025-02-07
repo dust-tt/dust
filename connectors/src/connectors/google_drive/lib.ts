@@ -127,15 +127,20 @@ export async function internalDeleteFile(
 ) {
   if (isGoogleDriveSpreadSheetFile(googleDriveFile)) {
     await deleteSpreadsheet(connector, googleDriveFile);
-  } else if (
-    googleDriveFile.mimeType !== "application/vnd.google-apps.folder"
-  ) {
+  } else if (isGoogleDriveFolder(googleDriveFile)) {
+    const dataSourceConfig = dataSourceConfigFromConnector(connector);
+    await deleteDataSourceFolder({
+      dataSourceConfig,
+      folderId: googleDriveFile.dustFileId,
+    });
+  } else {
     const dataSourceConfig = dataSourceConfigFromConnector(connector);
     await deleteDataSourceDocument(
       dataSourceConfig,
       googleDriveFile.dustFileId
     );
   }
+
   const folder = await GoogleDriveFolders.findOne({
     where: {
       connectorId: connector.id,
@@ -149,12 +154,57 @@ export async function internalDeleteFile(
     }
     await googleDriveFile.destroy({ transaction: t });
   });
+}
 
-  const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  await deleteDataSourceFolder({
-    dataSourceConfig,
-    folderId: googleDriveFile.dustFileId,
+export async function updateParentsFields(
+  connector: ConnectorResource,
+  file: GoogleDriveFiles,
+  parentIds: string[],
+  logger: Logger
+) {
+  await file.update({
+    parentId: parentIds[1] ? getDriveFileId(parentIds[1]) : null,
   });
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  logger.info({ file: file.dustFileId, parentIds }, "Updating parents");
+
+  if (isGoogleDriveFolder(file) || isGoogleDriveSpreadSheetFile(file)) {
+    await upsertDataSourceFolder({
+      dataSourceConfig,
+      folderId: file.dustFileId,
+      parents: parentIds,
+      parentId: parentIds[1] ?? null,
+      title: file.name ?? "",
+      mimeType: MIME_TYPES.GOOGLE_DRIVE.FOLDER,
+      sourceUrl: getSourceUrlForGoogleDriveFiles(file),
+    });
+    const sheets = await GoogleDriveSheet.findAll({
+      where: {
+        driveFileId: file.driveFileId,
+        connectorId: connector.id,
+      },
+    });
+    for (const sheet of sheets) {
+      const tableId = getGoogleSheetTableId(
+        sheet.driveFileId,
+        sheet.driveSheetId
+      );
+      await updateDataSourceTableParents({
+        dataSourceConfig,
+        tableId,
+        parents: [tableId, ...parentIds],
+        parentId: file.dustFileId,
+      });
+    }
+  } else {
+    await updateDataSourceDocumentParents({
+      dataSourceConfig,
+      documentId: file.dustFileId,
+      parents: parentIds,
+      parentId: parentIds[1] ?? null,
+    });
+  }
 }
 
 /**
@@ -313,53 +363,8 @@ export async function fixParentsConsistency({
               }
             }
           }
-          const driveParentId = parents[1];
-          const dustParentId = driveParentId
-            ? getInternalId(driveParentId)
-            : null;
           if (execute) {
-            await file.update({
-              parentId: driveParentId,
-            });
-            if (
-              isGoogleDriveFolder(googleFile) ||
-              isGoogleDriveSpreadSheetFile(googleFile)
-            ) {
-              await upsertDataSourceFolder({
-                dataSourceConfig,
-                folderId: file.dustFileId,
-                parents: googleParents,
-                parentId: dustParentId,
-                title: file.name ?? "",
-                mimeType: MIME_TYPES.GOOGLE_DRIVE.FOLDER,
-                sourceUrl: getSourceUrlForGoogleDriveFiles(file),
-              });
-              const sheets = await GoogleDriveSheet.findAll({
-                where: {
-                  driveFileId: file.driveFileId,
-                  connectorId: connector.id,
-                },
-              });
-              for (const sheet of sheets) {
-                const tableId = getGoogleSheetTableId(
-                  sheet.driveFileId,
-                  sheet.driveSheetId
-                );
-                await updateDataSourceTableParents({
-                  dataSourceConfig,
-                  tableId,
-                  parents: [tableId, ...googleParents],
-                  parentId: file.dustFileId,
-                });
-              }
-            } else {
-              await updateDataSourceDocumentParents({
-                dataSourceConfig,
-                documentId: file.dustFileId,
-                parents: googleParents,
-                parentId: dustParentId,
-              });
-            }
+            await updateParentsFields(connector, file, googleParents, logger);
           }
         }
       }
