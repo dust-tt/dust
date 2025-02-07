@@ -31,7 +31,7 @@ import {
   getTextContentFromMessage,
   getTextRepresentationFromMessages,
 } from "@app/lib/api/assistant/utils";
-import { getVisualizationPrompt } from "@app/lib/api/assistant/visualization";
+import { visualizationSystemPrompt } from "@app/lib/api/assistant/visualization";
 import type { Authenticator } from "@app/lib/auth";
 import { renderLightContentFragmentForModel } from "@app/lib/resources/content_fragment_resource";
 import { tokenCountForTexts } from "@app/lib/tokenization";
@@ -125,7 +125,7 @@ export async function constructPromptMultiActions(
   }
 
   if (agentConfiguration.visualizationEnabled) {
-    additionalInstructions += `\n` + getVisualizationPrompt() + `\n`;
+    additionalInstructions += `\n` + visualizationSystemPrompt() + `\n`;
   }
 
   const providerMetaPrompt = model.metaPrompt;

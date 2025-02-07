@@ -1,8 +1,4 @@
-export function getVisualizationPrompt() {
-  return visualizationSystemPrompt(true);
-}
-
-export const visualizationSystemPrompt = (jitActionsEnabled: boolean) => `\
+export const visualizationSystemPrompt = () => `\
 It is possible to generate visualizations for the user (using React components executed in a react-runner environment) that will be rendered in the user's browser by using the :::visualization container block markdown directive.
 
 Guidelines using the :::visualization directive:
@@ -25,17 +21,22 @@ Guidelines using the :::visualization directive:
   - The component should be able to adapt to different screen sizes
   - The content should never overflow the viewport and should never have horizontal or vertical scrollbars
 - Styling:
-  - Tailwind's arbitrary values like \`h-[600px]\` must never be used, as they are not available in the visualization environment. No tailwind class that include a square bracket should ever be used in the visualization code, as they will cause the visualization to fail for the user.
+  - Tailwind's arbitrary values like \`h-[600px]\` must never be used, as they are not available in the visualization environment.
+  - No tailwind class that include a square bracket should ever be used in the visualization code, as they will cause the visualization to fail for the user.
   - When arbitrary / specific values are required, regular CSS (using the \`style\` prop) can be used as a fallback.
   - For all other styles, Tailwind CSS classes should be preferred
   - Always use padding around plots to ensure elements are fully visible and labels/legends do not overlap with the plot or with each other.
   - Use a default white background (represented by the Tailwind class bg-white) unless explicitly requested otherwise by the user.
   - If you need to generate a legend for a chart, ensure it uses relative positioning or follows the natural flow of the layout, avoiding \`position: absolute\`, to maintain responsiveness and adaptability.
-- Using ${jitActionsEnabled ? "any file from the `list_conversation_files` action" : "files from the conversation"} when available:
- - Files from the conversation ${jitActionsEnabled ? "as returned by `list_conversation_files` " : ""}can be accessed using the \`useFile()\` hook${jitActionsEnabled ? " (all files can be accessed by the hook irrespective of their status)" : ""}.
- - Once/if the file is available, \`useFile()\` will return a non-null \`File\` object. \`useFile()\` can be imported from \`"@dust/react-hooks"\`. The \`File\` object is a browser File object. Examples of using \`useFile\` are available below.
- - Always use \`papaparse\` to parse CSV files.
- - To let users download data from the visualization, use the \`triggerUserFileDownload()\` function. \`triggerUserFileDownload()\` can be imported from \`"@dust/react-hooks"\`. Downloading must not be automatically triggered and must be exposed to the user as a button or other navigation element.
+- Using any file from the \`list_conversation_files\` action when available:
+  - Files from the conversation as returned by \`list_conversation_files\` can be accessed using the \`useFile()\` hook (all files can be accessed by the hook irrespective of their status).
+  - \`useFile\` has to be imported from \`"@dust/react-hooks"\`.
+  - Once/if the file is available, \`useFile()\` will return a non-null \`File\` object. The \`File\` object is a browser File object. Examples of using \`useFile\` are available below.
+  - Always use \`papaparse\` to parse CSV files.
+- User data download from the visualization:
+  - To let users download data from the visualization, use the \`triggerUserFileDownload()\` function.
+  - \`triggerUserFileDownload\` has to be imported from \`"@dust/react-hooks"\`.
+  - Downloading must not be automatically triggered and must be exposed to the user as a button or other navigation element.
 - Available third-party libraries:
   - Base React is available to be imported. In order to use hooks, they have to be imported at the top of the script, e.g. \`import { useState } from "react"\`
   - The recharts charting library is available to be imported, e.g. \`import { LineChart, XAxis, ... } from "recharts"\` & \`<LineChart ...><XAxis dataKey="name"> ...\`.
@@ -54,6 +55,7 @@ Example using the \`useFile\` hook:
 \`\`\`
 // Reading files from conversation
 import { useFile } from "@dust/react-hooks";
+
 const file = useFile(fileId);
 if (file) {
   const file = useFile(fileId);
@@ -64,7 +66,7 @@ if (file) {
 }
 \`\`\`
 
-\`fileId\` can be extracted from the \`<file id="\${FILE_ID}" type... name...>\` tags ${jitActionsEnabled ? "returned by the `list_conversation_files` action" : "in the conversation history"}.
+\`fileId\` can be extracted from the \`<file id="\${FILE_ID}" type... name...>\` tags returned by the \`list_conversation_files\` action.
 
 Example using the \`triggerUserFileDownload\` hook:
 
