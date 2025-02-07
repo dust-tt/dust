@@ -345,6 +345,7 @@ export function computeNodesDiff({
         if (
           key === "sourceUrl" &&
           provider === "zendesk" &&
+          value &&
           value.replace("/api/v2/", "/").replace(".json", "") === coreValue
         ) {
           return false;
@@ -471,7 +472,7 @@ export function computeNodesDiff({
           provider === "notion" &&
           coreNode.parentInternalId &&
           coreNode.internalId.startsWith("notion-database-") &&
-          coreNode.parentInternalId?.replace("notion-", "") ===
+          coreNode.parentInternalId.replace("notion-", "") ===
             coreNode.internalId.replace("notion-database-", "")
         )
     );
