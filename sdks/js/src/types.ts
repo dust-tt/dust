@@ -2195,50 +2195,21 @@ export type PostTableParentsResponseType = z.infer<
   typeof PostTableParentsResponseSchema
 >;
 
-export const UpsertTableFromCsvRequestSchema = z.intersection(
-  z
-    .object({
-      name: z.string(),
-      description: z.string(),
-      timestamp: z.number().nullable().optional(),
-      tags: z.array(z.string()).nullable().optional(),
-      parentId: z.string().nullable().optional(),
-      parents: z.array(z.string()).nullable().optional(),
-      truncate: z.boolean(),
-      async: z.boolean().optional(),
-      title: z.string(),
-      mimeType: z.string(),
-      sourceUrl: z.string().nullable().optional(),
-    })
-    .transform((o) => ({
-      name: o.name,
-      description: o.description,
-      timestamp: o.timestamp,
-      tags: o.tags,
-      parentId: o.parentId,
-      parents: o.parents,
-      truncate: o.truncate,
-      async: o.async,
-      title: o.title,
-      mimeType: o.mimeType,
-      sourceUrl: o.sourceUrl,
-    })),
-  z.union([
-    z.object({ csv: z.string(), tableId: z.undefined() }).transform((o) => ({
-      csv: o.csv,
-      tableId: o.tableId,
-    })),
-    z
-      .object({
-        csv: z.string().optional(),
-        tableId: z.string(),
-      })
-      .transform((o) => ({
-        csv: o.csv,
-        tableId: o.tableId,
-      })),
-  ])
-);
+export const UpsertTableFromCsvRequestSchema = z.object({
+  name: z.string(),
+  description: z.string(),
+  timestamp: z.number().nullable().optional(),
+  tags: z.array(z.string()).nullable().optional(),
+  parentId: z.string().nullable().optional(),
+  parents: z.array(z.string()).nullable().optional(),
+  truncate: z.boolean(),
+  async: z.boolean().optional(),
+  title: z.string(),
+  mimeType: z.string(),
+  sourceUrl: z.string().nullable().optional(),
+  tableId: z.string(),
+  csv: z.string().optional(),
+});
 
 export type UpsertTableFromCsvRequestType = z.infer<
   typeof UpsertTableFromCsvRequestSchema
