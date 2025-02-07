@@ -31,7 +31,8 @@ export const notionUrlSyncPlugin = createPlugin(
       urls: {
         type: "string",
         label: "URLs",
-        description: "List of URLs to sync or delete, separated by a comma (,)",
+        description:
+          "List of URLs to sync or delete, separated by a comma (,) or newline",
       },
     },
   },
@@ -56,7 +57,7 @@ export const notionUrlSyncPlugin = createPlugin(
 
     const { operation, urls } = args;
 
-    const urlsArray = urls.split(",").map((url) => url.trim());
+    const urlsArray = urls.split(/[\n,]/).map((url) => url.trim());
 
     const connectorsAPI = new ConnectorsAPI(
       config.getConnectorsAPIConfig(),

@@ -1,4 +1,4 @@
-import { Input, Label } from "@dust-tt/sparkle";
+import { Input, Label, TextArea } from "@dust-tt/sparkle";
 import type * as LabelPrimitive from "@radix-ui/react-label";
 import { Slot } from "@radix-ui/react-slot";
 import * as React from "react";
@@ -161,18 +161,20 @@ FormMessage.displayName = "FormMessage";
 
 // Override the default input component to add border and background styles.
 const FormInput = React.forwardRef<
-  HTMLInputElement,
-  Omit<React.InputHTMLAttributes<HTMLInputElement>, "value"> & {
-    value?: React.ComponentProps<typeof Input>["value"];
+  HTMLTextAreaElement,
+  Omit<React.TextareaHTMLAttributes<HTMLTextAreaElement>, "value"> & {
+    value?: React.ComponentProps<typeof TextArea>["value"];
   }
 >(({ className, value, ...props }, ref) => {
   return (
-    <Input
-      ref={ref}
-      className={cn("border-2 border-border-dark bg-white", className)}
-      value={value}
-      {...props}
-    />
+    <div ref={ref as React.RefObject<HTMLDivElement>}>
+      <TextArea
+        className={cn("border-2 border-border-dark bg-white", className)}
+        value={value ?? undefined}
+        minRows={2}
+        {...props}
+      />
+    </div>
   );
 });
 FormInput.displayName = "FormInput";
