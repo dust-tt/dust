@@ -442,6 +442,7 @@ export interface UpsertTableArgs {
   description: string;
   truncate: boolean;
   csv?: string | null;
+  fileId?: string | null;
   tags?: string[] | null;
   parentId?: string | null;
   parents?: string[] | null;
@@ -466,6 +467,7 @@ export async function upsertTable({
   description,
   truncate,
   csv,
+  fileId,
   tags,
   parentId,
   parents,
@@ -540,6 +542,7 @@ export async function upsertTable({
         tableParentId,
         tableParents,
         csv: csv ?? null,
+        fileId: null,
         truncate,
         detectedHeaders,
         title,
@@ -565,6 +568,7 @@ export async function upsertTable({
     tableParentId,
     tableParents,
     csv: csv ?? null,
+    fileId: fileId ?? null,
     truncate,
     title,
     mimeType,
@@ -656,6 +660,7 @@ export async function handleDataSourceTableCSVUpsert({
     title: string;
     mimeType: string;
     csv?: string;
+    fileId?: string;
     sourceUrl?: string | null;
     timestamp?: number | null;
     tags?: string[] | null;
@@ -675,10 +680,12 @@ export async function handleDataSourceTableCSVUpsert({
       },
     Omit<DustError, "code"> & {
       code:
+        | "invalid_csv_and_file"
         | "missing_csv"
         | "data_source_error"
         | "invalid_csv"
-        | "resource_not_found"
+        | "table_not_found"
+        | "file_not_found"
         | "invalid_parent_id"
         | "internal_error";
     }
@@ -686,8 +693,8 @@ export async function handleDataSourceTableCSVUpsert({
 > {
   const owner = auth.getNonNullableWorkspace();
 
-  const { name, description, csv, truncate, async } = params;
-  if (!csv && truncate) {
+  const { name, description, csv, fileId, truncate, async } = params;
+  if (!csv && !fileId && truncate) {
     return new Err({
       name: "dust_error",
       code: "missing_csv",
@@ -695,8 +702,18 @@ export async function handleDataSourceTableCSVUpsert({
     });
   }
 
+  if (csv && fileId) {
+    return new Err({
+      name: "dust_error",
+      code: "invalid_csv_and_file",
+      message: "Cannot provide both a `csv` and a `fileId`.",
+    });
+  }
+
   const tableId = params.tableId ?? generateRandomModelSId();
   const tableParents: string[] = params.parents ?? [tableId];
+
+  // TODO(spolu): [CSV-FILE] add a check with core based on fileId when provided
 
   if (async) {
     // Ensure the CSV is valid before enqueuing the upsert.
@@ -725,6 +742,7 @@ export async function handleDataSourceTableCSVUpsert({
         tableParentId: params.parentId ?? null,
         tableParents,
         csv: csv ?? null,
+        fileId: fileId ?? null,
         truncate,
         detectedHeaders,
         title: params.title,
@@ -758,6 +776,7 @@ export async function handleDataSourceTableCSVUpsert({
     tableParentId: params.parentId ?? null,
     tableParents,
     csv: csv ?? null,
+    fileId: fileId ?? null,
     truncate,
     title: params.title,
     mimeType: params.mimeType,
@@ -802,7 +821,7 @@ export async function handleDataSourceTableCSVUpsert({
     if (tableRes.error.type === "not_found_error") {
       return new Err({
         name: "dust_error",
-        code: "resource_not_found",
+        code: tableRes.error.notFoundError.type,
         message: tableRes.error.notFoundError.message,
       });
     }

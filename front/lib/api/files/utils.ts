@@ -1,16 +1,14 @@
-import type { ConversationType, Result } from "@dust-tt/types";
-import { contentTypeForExtension, Err, Ok, removeNulls } from "@dust-tt/types";
+import type { Result } from "@dust-tt/types";
+import { contentTypeForExtension, Err, Ok } from "@dust-tt/types";
 import type { File } from "formidable";
 import { IncomingForm } from "formidable";
 import type { IncomingMessage } from "http";
-import type { Writable } from "stream";
+import { Writable } from "stream";
+import { pipeline } from "stream/promises";
 
-import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
-import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
-import { FileResource } from "@app/lib/resources/file_resource";
-import logger from "@app/logger/logger";
+import type { FileResource } from "@app/lib/resources/file_resource";
 
 export const parseUploadRequest = async (
   file: FileResource,
@@ -99,70 +97,46 @@ export const parseUploadRequest = async (
   }
 };
 
-// When we send the attachments at the conversation creation, we are missing the useCaseMetadata
-// Therefore, we couldn't upsert them to the conversation datasource.
-// We now update the useCaseMetadata and upsert them to the conversation datasource.
-export async function maybeUpsertFileAttachment(
-  auth: Authenticator,
-  {
-    contentFragments,
-    conversation,
-  }: {
-    contentFragments: (
-      | {
-          fileId: string;
-        }
-      | object
-    )[];
-    conversation: ConversationType;
+class MemoryWritable extends Writable {
+  private chunks: string[];
+
+  constructor() {
+    super();
+    this.chunks = [];
   }
-) {
-  const filesIds = removeNulls(
-    contentFragments.map((cf) => {
-      if ("fileId" in cf) {
-        return cf.fileId;
-      }
-    })
+
+  _write(
+    chunk: any,
+    encoding: BufferEncoding,
+    callback: (error?: Error | null) => void
+  ) {
+    this.chunks.push(chunk.toString());
+    callback();
+  }
+
+  getContent() {
+    return this.chunks.join("");
+  }
+}
+
+export async function getFileContent(
+  auth: Authenticator,
+  file: FileResource
+): Promise<string | null> {
+  // Create a stream to hold the content of the file
+  const writableStream = new MemoryWritable();
+
+  // Read from the processed file
+  await pipeline(
+    file.getReadStream({ auth, version: "processed" }),
+    writableStream
   );
 
-  if (filesIds.length > 0) {
-    const fileResources = await FileResource.fetchByIds(auth, filesIds);
-    await Promise.all([
-      ...fileResources.map(async (fileResource) => {
-        if (
-          fileResource.useCase === "conversation" &&
-          !fileResource.useCaseMetadata
-        ) {
-          await fileResource.setUseCaseMetadata({
-            conversationId: conversation.sId,
-          });
-          const jitDataSource = await getOrCreateConversationDataSourceFromFile(
-            auth,
-            fileResource
-          );
-          if (!jitDataSource.isErr()) {
-            const r = await processAndUpsertToDataSource(
-              auth,
-              jitDataSource.value,
-              {
-                file: fileResource,
-              }
-            );
-            if (r.isErr()) {
-              // For now, silently log the error
-              logger.warn({
-                fileModelId: fileResource.id,
-                workspaceId: conversation.owner.sId,
-                contentType: fileResource.contentType,
-                useCase: fileResource.useCase,
-                useCaseMetadata: fileResource.useCaseMetadata,
-                message: "Failed to upsert the file.",
-                error: r.error,
-              });
-            }
-          }
-        }
-      }),
-    ]);
+  const content = writableStream.getContent();
+
+  if (!content) {
+    return null;
   }
+
+  return content;
 }
