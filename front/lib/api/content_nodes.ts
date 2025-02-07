@@ -340,6 +340,15 @@ export function computeNodesDiff({
         ) {
           return false;
         }
+        // Special case for Zendesk tickets sourceUrls: the sourceUrl was fixed in https://github.com/dust-tt/dust/pull/10435
+        // but not backfilled as this is a relatively low priority. It will be resynced on demand.
+        if (
+          key === "sourceUrl" &&
+          provider === "zendesk" &&
+          value.replace("/api/v2/", "/").replace(".json", "") === coreValue
+        ) {
+          return false;
+        }
         if (Array.isArray(value) && Array.isArray(coreValue)) {
           return JSON.stringify(value) !== JSON.stringify(coreValue);
         }
