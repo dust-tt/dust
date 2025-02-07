@@ -20,6 +20,7 @@ export type ContentFragmentType = {
   sId: string;
   fileId: string | null;
   snippet: string | null;
+  generatedTables: string[] | null;
   created: number;
   type: "content_fragment";
   visibility: MessageVisibility;

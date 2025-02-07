@@ -291,6 +291,7 @@ const upsertTableToDatasource: ProcessingFunction = async ({
     });
   }
 
+  // Note from seb : it would be better to merge useCase and useCaseMetadata to be able to specify what each use case is able to do / requires via typing.
   if (file.useCaseMetadata) {
     await file.setUseCaseMetadata({
       ...file.useCaseMetadata,
