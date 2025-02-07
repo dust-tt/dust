@@ -23,7 +23,6 @@ type ExtendedCheckboxProps = CheckboxProps & {
 
 const meta = {
   title: "Primitives/Checkbox",
-  // We need to cast here as the component expects stricter props
   component: Checkbox as React.ComponentType<ExtendedCheckboxProps>,
   parameters: {
     layout: "centered",
@@ -68,6 +67,10 @@ const meta = {
       control: "text",
       if: { arg: "text" },
     },
+    tooltip: {
+      description: "Optional tooltip shown on hover",
+      control: "text",
+    },
     onChange: {
       description: "Callback when checkbox state changes",
       action: "changed",
@@ -84,19 +87,34 @@ export const Default: Story = {
     checked: false,
     disabled: false,
   },
-  render: ({ text, description, ...args }) => {
+  render: function Render({ text, description, ...args }) {
+    const [checked, setChecked] = React.useState(args.checked ?? false);
+    const id = React.useId();
+
+    React.useEffect(() => {
+      setChecked(args.checked ?? false);
+    }, [args.checked]);
+
+    const props = {
+      ...args,
+      id,
+      checked,
+      onCheckedChange: (state: boolean | "indeterminate") =>
+        setChecked(state === true),
+    };
+
     if (text && description) {
       return (
         <CheckBoxWithTextAndDescription
           text={text}
           description={description}
-          {...args}
+          {...props}
         />
       );
     }
     if (text) {
-      return <CheckboxWithText text={text} {...args} />;
+      return <CheckboxWithText text={text} {...props} />;
     }
-    return <Checkbox {...args} />;
+    return <Checkbox {...props} />;
   },
 };

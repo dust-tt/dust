@@ -7,6 +7,7 @@ import { cn } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
 import { Label } from "./Label";
+import { Tooltip } from "./Tooltip";
 
 export const CHECKBOX_SIZES = ["xs", "sm"] as const;
 type CheckboxSizeType = (typeof CHECKBOX_SIZES)[number];
@@ -51,25 +52,34 @@ interface CheckboxProps
     >,
     VariantProps<typeof checkboxStyles> {
   checked?: CheckBoxStateType;
+  tooltip?: string;
 }
 
 const Checkbox = React.forwardRef<
   React.ElementRef<typeof CheckboxPrimitive.Root>,
   CheckboxProps
->(({ className, size, checked, ...props }, ref) => (
-  <CheckboxPrimitive.Root
-    ref={ref}
-    className={cn(checkboxStyles({ checked, size }), className)}
-    checked={checked === "partial" ? "indeterminate" : checked}
-    {...props}
-  >
-    <CheckboxPrimitive.Indicator className="s-flex s-items-center s-justify-center s-text-current">
-      <span className={cn(size === "xs" ? "-s-mt-px" : "")}>
-        <Icon size="xs" visual={checked === "partial" ? DashIcon : CheckIcon} />
-      </span>
-    </CheckboxPrimitive.Indicator>
-  </CheckboxPrimitive.Root>
-));
+>(({ className, size, checked, id, ...props }, ref) => {
+  const checkbox = (
+    <CheckboxPrimitive.Root
+      ref={ref}
+      id={id}
+      className={cn(checkboxStyles({ checked, size }), className)}
+      checked={checked === "partial" ? "indeterminate" : checked}
+      {...props}
+    >
+      <CheckboxPrimitive.Indicator className="s-flex s-items-center s-justify-center s-text-current">
+        <span className={cn(size === "xs" ? "-s-mt-px" : "")}>
+          <Icon
+            size="xs"
+            visual={checked === "partial" ? DashIcon : CheckIcon}
+          />
+        </span>
+      </CheckboxPrimitive.Indicator>
+    </CheckboxPrimitive.Root>
+  );
+
+  return checkbox;
+});
 
 Checkbox.displayName = CheckboxPrimitive.Root.displayName;
 
@@ -77,15 +87,25 @@ interface CheckboxWithTextProps extends CheckboxProps {
   text: string;
 }
 
-function CheckboxWithText({ text, ...props }: CheckboxWithTextProps) {
-  return (
+function CheckboxWithText({
+  text,
+  tooltip,
+  id,
+  ...props
+}: CheckboxWithTextProps) {
+  const content = (
     <div className="s-items-top s-flex s-items-center s-space-x-2">
-      <Checkbox {...props} />
-      <Label className="s-text-sm s-leading-none peer-disabled:s-cursor-not-allowed peer-disabled:s-opacity-70">
+      <Checkbox id={id} {...props} />
+      <Label
+        htmlFor={id}
+        className="s-cursor-pointer s-text-sm s-leading-none peer-disabled:s-cursor-not-allowed peer-disabled:s-opacity-70"
+      >
         {text}
       </Label>
     </div>
   );
+
+  return tooltip ? <Tooltip label={tooltip} trigger={content} /> : content;
 }
 
 interface CheckboxWithTextAndDescriptionProps extends CheckboxWithTextProps {
@@ -95,13 +115,18 @@ interface CheckboxWithTextAndDescriptionProps extends CheckboxWithTextProps {
 function CheckBoxWithTextAndDescription({
   text,
   description,
+  tooltip,
+  id,
   ...props
 }: CheckboxWithTextAndDescriptionProps) {
-  return (
+  const content = (
     <div className="s-items-top s-flex s-space-x-2">
-      <Checkbox {...props} />
+      <Checkbox id={id} {...props} />
       <div className="s-grid s-gap-1.5 s-leading-none">
-        <Label className="s-text-sm s-leading-none peer-disabled:s-cursor-not-allowed peer-disabled:s-opacity-70">
+        <Label
+          htmlFor={id}
+          className="s-cursor-pointer s-text-sm s-leading-none peer-disabled:s-cursor-not-allowed peer-disabled:s-opacity-70"
+        >
           {text}
         </Label>
         <p
@@ -115,6 +140,8 @@ function CheckBoxWithTextAndDescription({
       </div>
     </div>
   );
+
+  return tooltip ? <Tooltip label={tooltip} trigger={content} /> : content;
 }
 
 export { Checkbox, CheckboxWithText, CheckBoxWithTextAndDescription };
