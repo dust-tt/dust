@@ -121,6 +121,14 @@ async function handler(
 
       if (upsertRes.isErr()) {
         switch (upsertRes.error.code) {
+          case "invalid_csv_and_file":
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: upsertRes.error.message,
+              },
+            });
           case "missing_csv":
             return apiError(req, res, {
               status_code: 400,
@@ -153,11 +161,19 @@ async function handler(
                 message: upsertRes.error.message,
               },
             });
-          case "resource_not_found":
+          case "table_not_found":
             return apiError(req, res, {
               status_code: 404,
               api_error: {
                 type: "table_not_found",
+                message: upsertRes.error.message,
+              },
+            });
+          case "file_not_found":
+            return apiError(req, res, {
+              status_code: 404,
+              api_error: {
+                type: "file_not_found",
                 message: upsertRes.error.message,
               },
             });

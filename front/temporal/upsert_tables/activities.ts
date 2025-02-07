@@ -87,6 +87,7 @@ export async function upsertTableActivity(
     tableParentId: upsertQueueItem.tableParentId || null,
     tableParents: upsertQueueItem.tableParents || [],
     csv: upsertQueueItem.csv,
+    fileId: upsertQueueItem.fileId,
     truncate: upsertQueueItem.truncate,
     detectedHeaders: upsertQueueItem.detectedHeaders,
     title: upsertQueueItem.title,

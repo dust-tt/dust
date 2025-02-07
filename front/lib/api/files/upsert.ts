@@ -16,8 +16,6 @@ import {
   slugify,
   TABLE_PREFIX,
 } from "@dust-tt/types";
-import { Writable } from "stream";
-import { pipeline } from "stream/promises";
 
 import { runAction } from "@app/lib/actions/server";
 import config from "@app/lib/api/config";
@@ -25,11 +23,9 @@ import type {
   UpsertDocumentArgs,
   UpsertTableArgs,
 } from "@app/lib/api/data_sources";
-import {
-  isUpsertTableArgs,
-  upsertDocument,
-  upsertTable,
-} from "@app/lib/api/data_sources";
+import { isUpsertTableArgs } from "@app/lib/api/data_sources";
+import { upsertDocument, upsertTable } from "@app/lib/api/data_sources";
+import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
@@ -38,28 +34,6 @@ import type { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 
 const ENABLE_LLM_SNIPPETS = false;
-
-class MemoryWritable extends Writable {
-  private chunks: string[];
-
-  constructor() {
-    super();
-    this.chunks = [];
-  }
-
-  _write(
-    chunk: any,
-    encoding: BufferEncoding,
-    callback: (error?: Error | null) => void
-  ) {
-    this.chunks.push(chunk.toString());
-    callback();
-  }
-
-  getContent() {
-    return this.chunks.join("");
-  }
-}
 
 async function generateSnippet(
   auth: Authenticator,
@@ -464,28 +438,6 @@ const maybeApplyProcessing: ProcessingFunction = async (
 
   return new Ok(undefined);
 };
-
-async function getFileContent(
-  auth: Authenticator,
-  file: FileResource
-): Promise<string | null> {
-  // Create a stream to hold the content of the file
-  const writableStream = new MemoryWritable();
-
-  // Read from the processed file
-  await pipeline(
-    file.getReadStream({ auth, version: "processed" }),
-    writableStream
-  );
-
-  const content = writableStream.getContent();
-
-  if (!content) {
-    return null;
-  }
-
-  return content;
-}
 
 export async function processAndUpsertToDataSource(
   auth: Authenticator,

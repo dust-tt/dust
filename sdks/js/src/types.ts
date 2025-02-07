@@ -2219,6 +2219,7 @@ export const UpsertTableFromCsvRequestSchema = z.object({
   sourceUrl: z.string().nullable().optional(),
   tableId: z.string(),
   csv: z.string().optional(),
+  fileId: z.string().optional(),
 });
 
 export type UpsertTableFromCsvRequestType = z.infer<
