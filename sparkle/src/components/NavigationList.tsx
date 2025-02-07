@@ -2,7 +2,13 @@ import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 
-import { Icon, LinkWrapper, LinkWrapperProps, ScrollArea, ScrollBar } from "@sparkle/components/";
+import {
+  Icon,
+  LinkWrapper,
+  LinkWrapperProps,
+  ScrollArea,
+  ScrollBar,
+} from "@sparkle/components/";
 import { Button } from "@sparkle/components/Button";
 import { MoreIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
