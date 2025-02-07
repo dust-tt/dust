@@ -3,27 +3,19 @@ import React from "react";
 
 import { CHECKBOX_SIZES } from "@sparkle/components/Checkbox";
 
-import {
-  Checkbox,
-  type CheckboxProps,
-  CheckboxWithText,
-  CheckBoxWithTextAndDescription,
-} from "../index_with_tw_base";
+import { Checkbox } from "../index_with_tw_base";
 
 const CHECKED_STATES = {
-  unchecked: false,
-  checked: true,
-  partial: "partial",
+  Unchecked: false,
+  Checked: true,
+  Partial: "partial",
 } as const;
 
-type ExtendedCheckboxProps = CheckboxProps & {
-  text?: string;
-  description?: string;
-};
-
+type CheckedState = boolean | "indeterminate";
 const meta = {
   title: "Primitives/Checkbox",
-  component: Checkbox as React.ComponentType<ExtendedCheckboxProps>,
+  component: Checkbox,
+  tags: ["autodocs"],
   parameters: {
     layout: "centered",
   },
@@ -53,53 +45,44 @@ const meta = {
         defaultValue: { summary: false },
       },
     },
-    tooltip: {
-      description: "Optional tooltip shown on hover",
-      control: "text",
-    },
     className: {
       description: "Additional CSS classes to apply",
       control: "text",
     },
-    text: {
-      description: "Optional text label to display next to the checkbox",
+    label: {
+      description: "Text label to display next to the checkbox",
       control: "text",
     },
-    description: {
-      description:
-        "Optional description text (only shown when text is provided)",
+    tooltip: {
+      description: "Optional tooltip shown on hover",
       control: "text",
-      if: { arg: "text" },
     },
-    onChange: {
-      description: "Callback when checkbox state changes",
-      action: "changed",
+    labelProps: {
+      description: "Props for the label component",
+      control: "object",
     },
   },
-} satisfies Meta<ExtendedCheckboxProps>;
+} as Meta<typeof Checkbox>;
 
 export default meta;
-type Story = StoryObj<typeof meta>;
-
-export const Default: Story = {
+export const Default: StoryObj<typeof Checkbox> = {
   args: {
+    label: "Click me or my label",
     size: "sm",
-    checked: false,
-    disabled: false,
   },
-  render: ({ text, description, ...args }) => {
-    if (text && description) {
-      return (
-        <CheckBoxWithTextAndDescription
-          text={text}
-          description={description}
-          {...args}
-        />
-      );
-    }
-    if (text) {
-      return <CheckboxWithText text={text} {...args} />;
-    }
-    return <Checkbox {...args} />;
+  render: (args) => {
+    const [checked, setChecked] = React.useState(args.checked ?? false);
+
+    React.useEffect(() => {
+      setChecked(args.checked ?? false);
+    }, [args.checked]);
+
+    return (
+      <Checkbox
+        {...args}
+        checked={checked}
+        onCheckedChange={(state: CheckedState) => setChecked(state === true)}
+      />
+    );
   },
 };
