@@ -3,8 +3,9 @@ import {
   ContentMessage,
   Icon,
   InformationCircleIcon,
+  Label,
   RadioGroup,
-  RadioGroupChoice,
+  RadioGroupCustomItem,
   Separator,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -156,17 +157,17 @@ export function ActionDustAppRun({
                       appsInSpace,
                       (a) => !a.description || a.description.length === 0,
                       "name"
-                    ).map((app, index) => {
+                    ).map((app) => {
                       const disabled =
                         !app.description || app.description.length === 0;
                       return (
                         <React.Fragment key={app.sId}>
-                          <RadioGroupChoice
+                          <RadioGroupCustomItem
                             value={app.sId}
+                            id={app.sId}
                             disabled={disabled}
                             iconPosition="start"
-                            className={classNames(index === 0 ? "pt-3" : "")}
-                            label={
+                            customItem={
                               <div className="flex items-center gap-1 pl-2">
                                 <Icon
                                   visual={CommandLineIcon}
@@ -176,7 +177,7 @@ export function ActionDustAppRun({
                                     disabled ? "text-element-700" : ""
                                   )}
                                 />
-                                <span
+                                <Label
                                   className={classNames(
                                     "font-bold",
                                     "align-middle",
@@ -184,10 +185,11 @@ export function ActionDustAppRun({
                                       ? "text-element-700"
                                       : "text-foreground"
                                   )}
+                                  htmlFor={app.sId}
                                 >
                                   {app.name +
                                     (disabled ? " (No description)" : "")}
-                                </span>
+                                </Label>
                               </div>
                             }
                             onClick={() => {
@@ -209,7 +211,7 @@ export function ActionDustAppRun({
                                 {app.description}
                               </div>
                             )}
-                          </RadioGroupChoice>
+                          </RadioGroupCustomItem>
                           <Separator />
                         </React.Fragment>
                       );

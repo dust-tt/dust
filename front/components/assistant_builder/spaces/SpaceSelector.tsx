@@ -1,4 +1,5 @@
 import {
+  cn,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -6,8 +7,9 @@ import {
   DialogHeader,
   DialogTitle,
   Icon,
+  Label,
   RadioGroup,
-  RadioGroupChoice,
+  RadioGroupCustomItem,
   Separator,
 } from "@dust-tt/sparkle";
 import type { SpaceType } from "@dust-tt/types";
@@ -18,7 +20,6 @@ import {
   getSpaceName,
   groupSpacesForDisplay,
 } from "@app/lib/spaces";
-import { classNames } from "@app/lib/utils";
 
 interface SpaceSelectorProps {
   allowedSpaces?: SpaceType[];
@@ -71,15 +72,16 @@ export function SpaceSelector({
             <React.Fragment key={space.sId}>
               {index > 0 && <Separator />}
               <div key={space.sId} className="py-1">
-                <RadioGroupChoice
+                <RadioGroupCustomItem
                   value={space.sId}
                   disabled={isDisabled}
+                  id={`${index}`}
                   iconPosition="start"
                   className={
                     // needs to be handled manually because of the separator
-                    classNames(
-                      index === 0 ? "pt-2" : "",
-                      index === sortedSpaces.length - 1 ? "pb-2" : ""
+                    cn(
+                      index === 0 ? "mt-1" : "",
+                      index === sortedSpaces.length - 1 ? "mb-0" : ""
                     )
                   }
                   onClick={() => {
@@ -87,42 +89,42 @@ export function SpaceSelector({
                       setAlertIsDialogOpen(true);
                     }
                   }}
-                  label={
-                    <div className={"flex items-center gap-1 pl-2"}>
+                  customItem={
+                    <div className="flex items-center gap-1 pl-2">
                       <Icon
                         visual={getSpaceIcon(space)}
                         size="md"
-                        className={classNames(
+                        className={cn(
                           "inline-block flex-shrink-0 align-middle",
                           isDisabled ? "text-element-700" : ""
                         )}
                       />
-                      <span
-                        className={classNames(
+                      <Label
+                        htmlFor={`${index}`}
+                        className={cn(
                           "font-bold",
                           "align-middle",
                           isDisabled ? "text-element-700" : "text-foreground"
                         )}
                       >
                         {getSpaceName(space)}
-                      </span>
+                      </Label>
                     </div>
                   }
                 >
-                  <div className="flex w-full flex-col">
+                  <div className="mt-4 flex w-full flex-col">
                     {selectedSpace === space.sId && (
                       <div className="ml-4 mt-1">
                         {renderChildren(selectedSpaceObj)}
                       </div>
                     )}
                   </div>
-                </RadioGroupChoice>
+                </RadioGroupCustomItem>
               </div>
             </React.Fragment>
           );
         })}
       </RadioGroup>
-      <Separator />
       <Dialog
         open={isAlertDialogOpen}
         onOpenChange={(open) => {

@@ -10,12 +10,11 @@ import {
   Icon,
   IconButton,
   Input,
-  Label,
   LockIcon,
   Page,
   Popup,
   RadioGroup,
-  RadioGroupChoice,
+  RadioGroupItem,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -753,24 +752,16 @@ function CreateEnterpriseConnectionModal({
                   }}
                   className="flex-col gap-2"
                 >
-                  <RadioGroupChoice
+                  <RadioGroupItem
                     value="samlp"
-                    label={
-                      <Label className="pl-1">
-                        SAML{" "}
-                        <span className="text-sm text-gray-600">
-                          (preferred)
-                        </span>
-                      </Label>
-                    }
+                    id="samlp"
+                    label="SAML (preferred)"
                   />
-                  <RadioGroupChoice
-                    value="okta"
-                    label={<Label className="pl-1">Okta SSO</Label>}
-                  />
-                  <RadioGroupChoice
+                  <RadioGroupItem value="okta" id="okta" label="Okta SSO" />
+                  <RadioGroupItem
                     value="waad"
-                    label={<Label className="pl-1">Microsoft Entra Id</Label>}
+                    id="waad"
+                    label="Microsoft Entra Id"
                   />
                 </RadioGroup>
               </div>
