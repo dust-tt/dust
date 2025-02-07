@@ -1,4 +1,5 @@
 import type { MIME_TYPES } from "@dust-tt/types";
+import { heartbeat } from "@temporalio/activity";
 
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
@@ -35,16 +36,12 @@ const createDatabase = async ({
   usedInternalIds,
   allDatabases,
   connector,
-  mimeTypes,
 }: {
   databaseInternalId: string;
   usedInternalIds: Set<string>;
   allDatabases: RemoteDatabaseModel[];
   connector: ConnectorResource;
-  mimeTypes: typeof MIME_TYPES.BIGQUERY | typeof MIME_TYPES.SNOWFLAKE;
 }) => {
-  const dataSourceConfig = dataSourceConfigFromConnector(connector);
-
   // Mark as used
   usedInternalIds.add(databaseInternalId);
 
@@ -65,14 +62,7 @@ const createDatabase = async ({
     );
   }
 
-  await upsertDataSourceFolder({
-    dataSourceConfig,
-    folderId: databaseInternalId,
-    title: databaseInternalId,
-    parents: [databaseInternalId],
-    parentId: null,
-    mimeType: mimeTypes.DATABASE,
-  });
+  // As we cannot know what is already in core, we'll create all databases in core after traversing the whole tree
 };
 
 const isSchemaReadGranted = ({
@@ -96,16 +86,13 @@ const createSchemaAndHierarchy = async ({
   allDatabases,
   allSchemas,
   connector,
-  mimeTypes,
 }: {
   schemaInternalId: string;
   usedInternalIds: Set<string>;
   allDatabases: RemoteDatabaseModel[];
   allSchemas: RemoteSchemaModel[];
   connector: ConnectorResource;
-  mimeTypes: typeof MIME_TYPES.BIGQUERY | typeof MIME_TYPES.SNOWFLAKE;
 }) => {
-  const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const { database_name, name } = parseSchemaInternalId(schemaInternalId);
 
   await createDatabase({
@@ -113,7 +100,6 @@ const createSchemaAndHierarchy = async ({
     usedInternalIds,
     allDatabases,
     connector,
-    mimeTypes,
   });
 
   // Mark as used
@@ -135,16 +121,7 @@ const createSchemaAndHierarchy = async ({
       })
     );
   }
-
-  // ...upsert the schema in core
-  await upsertDataSourceFolder({
-    dataSourceConfig,
-    folderId: schemaInternalId,
-    title: name,
-    parents: [schemaInternalId, database_name],
-    parentId: database_name,
-    mimeType: mimeTypes.SCHEMA,
-  });
+  // As we cannot know what is already in core, we'll create all schemas in core after traversing the whole tree
 };
 
 const isTableReadGranted = ({
@@ -197,7 +174,6 @@ const createTableAndHierarchy = async ({
     allDatabases,
     allSchemas,
     connector,
-    mimeTypes,
   });
 
   // Mark as used
@@ -299,7 +275,6 @@ export async function sync({
         usedInternalIds,
         allDatabases,
         connector,
-        mimeTypes,
       });
     }
 
@@ -318,10 +293,10 @@ export async function sync({
           allDatabases,
           allSchemas,
           connector,
-          mimeTypes,
         });
       }
 
+      let i = 0;
       // Loop through the tables and create them if they are read granted
       for (const table of schema.tables) {
         const tableInternalId = `${table.database_name}.${table.schema_name}.${table.name}`;
@@ -341,6 +316,11 @@ export async function sync({
             mimeTypes,
           });
         }
+
+        i++;
+        if (i % 25 === 0) {
+          await heartbeat();
+        }
       }
     }
   }
@@ -348,47 +328,81 @@ export async function sync({
   logger.info(
     {
       connectorId: connector.id,
+      databasesToKeep: allDatabases.filter((db) =>
+        usedInternalIds.has(db.internalId)
+      ).length,
+      schemasToKeep: allSchemas.filter((s) => usedInternalIds.has(s.internalId))
+        .length,
+      tablesToKeep: allTables.filter((t) => usedInternalIds.has(t.internalId))
+        .length,
+      databasesToRemove: allDatabases.filter(
+        (db) => !usedInternalIds.has(db.internalId)
+      ).length,
+      schemasToRemove: allSchemas.filter(
+        (s) => !usedInternalIds.has(s.internalId)
+      ).length,
+      tablesToRemove: allTables.filter(
+        (t) => !usedInternalIds.has(t.internalId)
+      ).length,
     },
-    "Removing unused databases, schemas and tables"
+    "Upserting databases, schemas and tables in core and removing unused ones"
   );
 
-  for (const unusedDb of allDatabases.filter(
-    (db) => !usedInternalIds.has(db.internalId)
-  )) {
-    await deleteDataSourceFolder({
-      dataSourceConfig,
-      folderId: unusedDb.internalId,
-    });
-    await unusedDb.destroy();
+  for (const db of allDatabases) {
+    if (usedInternalIds.has(db.internalId)) {
+      await upsertDataSourceFolder({
+        dataSourceConfig,
+        folderId: db.internalId,
+        title: db.name,
+        parents: [db.internalId],
+        parentId: null,
+        mimeType: mimeTypes.DATABASE,
+      });
+    } else {
+      await deleteDataSourceFolder({
+        dataSourceConfig,
+        folderId: db.internalId,
+      });
+      await db.destroy();
 
-    if (unusedDb.permission === "selected") {
-      logger.error(
-        {
-          connectorId: connector.id,
-          databaseInternalId: unusedDb.internalId,
-        },
-        "Database is selected but not used, it should never happen and surface a flaw in the logic above."
-      );
+      if (db.permission === "selected") {
+        logger.error(
+          {
+            connectorId: connector.id,
+            databaseInternalId: db.internalId,
+          },
+          "Database is selected but not used, it should never happen and surface a flaw in the logic above."
+        );
+      }
     }
   }
 
-  for (const unusedSchema of allSchemas.filter(
-    (schema) => !usedInternalIds.has(schema.internalId)
-  )) {
-    await deleteDataSourceFolder({
-      dataSourceConfig,
-      folderId: unusedSchema.internalId,
-    });
-    await unusedSchema.destroy();
+  for (const schema of allSchemas) {
+    if (usedInternalIds.has(schema.internalId)) {
+      await upsertDataSourceFolder({
+        dataSourceConfig,
+        folderId: schema.internalId,
+        title: schema.name,
+        parents: [schema.internalId, schema.databaseName],
+        parentId: schema.databaseName,
+        mimeType: mimeTypes.SCHEMA,
+      });
+    } else {
+      await deleteDataSourceFolder({
+        dataSourceConfig,
+        folderId: schema.internalId,
+      });
+      await schema.destroy();
 
-    if (unusedSchema.permission === "selected") {
-      logger.error(
-        {
-          connectorId: connector.id,
-          schemaInternalId: unusedSchema.internalId,
-        },
-        "Schema is selected but not used, it should never happen and surface a flaw in the logic above."
-      );
+      if (schema.permission === "selected") {
+        logger.error(
+          {
+            connectorId: connector.id,
+            schemaInternalId: schema.internalId,
+          },
+          "Schema is selected but not used, it should never happen and surface a flaw in the logic above."
+        );
+      }
     }
   }
 

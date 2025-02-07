@@ -5,7 +5,7 @@ import type * as activities from "@connectors/connectors/snowflake/temporal/acti
 import { resyncSignal } from "@connectors/connectors/snowflake/temporal/signals";
 
 const { syncSnowflakeConnection } = proxyActivities<typeof activities>({
-  startToCloseTimeout: "30 minutes",
+  startToCloseTimeout: "10 minutes",
 });
 
 export async function snowflakeSyncWorkflow({
