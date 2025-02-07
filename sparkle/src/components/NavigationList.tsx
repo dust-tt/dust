@@ -170,7 +170,10 @@ const variantStyles = cva("", {
       secondary: "s-text-muted-foreground dark:s-text-muted-foreground-night",
     },
     isSticky: {
-      true: "s-sticky s-top-0 s-z-10 s-border-b s-border-border-dark/60 s-bg-muted/90 s-backdrop-blur-sm",
+      true: cn(
+        "s-sticky s-top-0 s-z-10 s-border-b s-backdrop-blur-sm",
+        "s-border-border-dark/60 dark:s-border-border-dark-night/60"
+      ),
     },
   },
   defaultVariants: {
