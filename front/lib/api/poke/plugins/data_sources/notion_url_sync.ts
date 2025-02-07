@@ -6,12 +6,12 @@ import {
   NotionFindUrlResponseSchema,
   Ok,
 } from "@dust-tt/types";
+import { isLeft } from "fp-ts/lib/Either";
 
 import config from "@app/lib/api/config";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
-import { isLeft } from "fp-ts/lib/Either";
 
 const NOTION_OPERATIONS = ["Sync urls", "Delete urls"] as const;
 
@@ -21,6 +21,9 @@ export const notionUrlSyncPlugin = createPlugin(
     name: "Notion URLs sync/delete",
     description: "Sync or delete a Notion URL to Dust",
     resourceTypes: ["data_sources"],
+    warning:
+      "Sync URLs: Use if a page or database is available on Notion, but not on Dust, to force the sync.\n" +
+      "Delete URLs: Use if a page or database is removed from Notion, but still visible on Dust.",
     args: {
       operation: {
         type: "enum",
@@ -65,22 +68,15 @@ export const notionUrlSyncPlugin = createPlugin(
     );
 
     if (operation === "Sync urls") {
-      const notionCommand: AdminCommandType = {
-        majorCommand: "notion",
-        command: "find-url",
-        args: {
-          wId: auth.getNonNullableWorkspace().sId,
-          dsId: dataSource.sId,
-        },
-      };
-
       const res = await concurrentExecutor(
         urlsArray,
         async (url) => {
           const findUrlRes = await connectorsAPI.admin({
-            ...notionCommand,
+            majorCommand: "notion",
+            command: "find-url",
             args: {
-              ...notionCommand.args,
+              wId: auth.getNonNullableWorkspace().sId,
+              dsId: dataSource.sId,
               url,
             },
           });
@@ -91,7 +87,9 @@ export const notionUrlSyncPlugin = createPlugin(
 
           const decoded = NotionFindUrlResponseSchema.decode(findUrlRes.value);
           if (isLeft(decoded)) {
-            return new Err(new Error("Invalid response from Notion"));
+            return new Err(
+              new Error("Unreachable: Invalid response from dust API")
+            );
           }
 
           const { page, db } = decoded.right;
@@ -152,29 +150,51 @@ export const notionUrlSyncPlugin = createPlugin(
         value: `Synced ${urlsArray.length} URLs from Notion.`,
       });
     } else if (operation === "Delete urls") {
-      const notionCommand: AdminCommandType = {
-        majorCommand: "notion",
-        command: "delete-url",
-        args: {
-          wId: auth.getNonNullableWorkspace().sId,
-          dsId: dataSource.sId,
-        },
-      };
-
       const res = await concurrentExecutor(
         urlsArray,
         async (url) => {
-          const res = await connectorsAPI.admin({
-            ...notionCommand,
+          const checkUrlRes = await connectorsAPI.admin({
+            majorCommand: "notion",
+            command: "check-url",
             args: {
-              ...notionCommand.args,
+              wId: auth.getNonNullableWorkspace().sId,
+              dsId: dataSource.sId,
               url,
             },
           });
 
-          if (res.isErr()) {
+          if (checkUrlRes.isErr()) {
+            return new Err(new Error(checkUrlRes.error.message));
+          }
+
+          const { page, db } = checkUrlRes.value as {
+            page: { [key: string]: unknown } | null;
+            db: { [key: string]: unknown } | null;
+          };
+
+          if (page || db) {
             return new Err(
-              new Error(`Could not delete url ${url}: ${res.error.message}`)
+              new Error(
+                `URL ${url} still available on Notion, should not be deleted.`
+              )
+            );
+          }
+
+          const deleteUrlRes = await connectorsAPI.admin({
+            majorCommand: "notion",
+            command: "delete-url",
+            args: {
+              wId: auth.getNonNullableWorkspace().sId,
+              dsId: dataSource.sId,
+              url,
+            },
+          });
+
+          if (deleteUrlRes.isErr()) {
+            return new Err(
+              new Error(
+                `Could not delete url ${url}: ${deleteUrlRes.error.message}`
+              )
             );
           }
 
