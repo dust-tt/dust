@@ -1,6 +1,7 @@
 import type {
   DataSourceSearchQuery,
   DataSourceSearchResponseType,
+  UpsertTableFromCsvRequestType,
 } from "@dust-tt/client";
 import type {
   AdminCommandType,
@@ -17,7 +18,6 @@ import type {
   FrontDataSourceDocumentSectionType,
   PlanType,
   Result,
-  UpsertTableFromCsvRequestType,
   WithConnector,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -39,6 +39,7 @@ import { validateUrl } from "@dust-tt/types/src/shared/utils/url_utils";
 import assert from "assert";
 import type { Transaction } from "sequelize";
 
+import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation/without_content";
 import { default as apiConfig, default as config } from "@app/lib/api/config";
 import { sendGithubDeletionEmail } from "@app/lib/api/email";
 import { rowsFromCsv, upsertTableFromCsv } from "@app/lib/api/tables";
@@ -49,15 +50,13 @@ import { DustError } from "@app/lib/error";
 import { Lock } from "@app/lib/lock";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import type { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { enqueueUpsertTable } from "@app/lib/upsert_queue";
 import logger from "@app/logger/logger";
 import { launchScrubDataSourceWorkflow } from "@app/poke/temporal/client";
-
-import type { FileResource } from "../resources/file_resource";
-import { getConversationWithoutContent } from "./assistant/conversation/without_content";
 
 export async function getDataSources(
   auth: Authenticator,
