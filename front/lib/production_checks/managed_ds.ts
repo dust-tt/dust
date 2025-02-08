@@ -53,17 +53,39 @@ export async function getCoreDocuments(
       new Error(`Core data source not found for front datasource  ${ds.id}`)
     );
   }
-  const coreDocumentsData = await coreReplica.query(
-    `SELECT id, document_id FROM data_sources_documents WHERE "data_source" = :coreDsId AND status = 'latest'`,
-    {
-      replacements: {
-        coreDsId: coreDs[0].id,
-      },
-      type: QueryTypes.SELECT,
-    }
-  );
 
-  const coreDocuments = coreDocumentsData as CoreDSDocument[];
+  let lastDocumentId = "";
+  const batchSize = 10000;
+  const coreDocuments: CoreDSDocument[] = [];
+  let batchDocuments: CoreDSDocument[] = [];
+
+  do {
+    const batch = await coreReplica.query(
+      `SELECT id, document_id
+       FROM data_sources_documents
+       WHERE "data_source" = :coreDsId
+       AND document_id > :lastDocumentId
+       AND status = 'latest'
+       ORDER BY document_id ASC
+       LIMIT :limit`,
+      {
+        replacements: {
+          coreDsId: coreDs[0].id,
+          lastDocumentId,
+          limit: batchSize,
+        },
+        type: QueryTypes.SELECT,
+      }
+    );
+
+    batchDocuments = batch as CoreDSDocument[];
+    if (batchDocuments.length === 0) {
+      break;
+    }
+
+    coreDocuments.push(...batchDocuments);
+    lastDocumentId = batchDocuments[batchDocuments.length - 1].document_id;
+  } while (batchDocuments.length === batchSize);
 
   return new Ok(coreDocuments);
 }
