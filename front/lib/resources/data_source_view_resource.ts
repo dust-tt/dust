@@ -520,7 +520,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
 
     if (this.kind === "default") {
       return new Err(
-        new Error("Cannot update parents for default data source view")
+        new Error("`parentsIn` cannot be set for default data source view")
       );
     }
 
@@ -540,6 +540,12 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
   async setParents(
     parentsIn: string[] | null
   ): Promise<Result<undefined, Error>> {
+    if (this.kind === "default") {
+      return new Err(
+        new Error("`parentsIn` cannot be set for default data source view")
+      );
+    }
+
     await this.update({ parentsIn });
     return new Ok(undefined);
   }
