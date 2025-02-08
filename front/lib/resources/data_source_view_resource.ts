@@ -9,7 +9,7 @@ import type {
   Result,
   UserType,
 } from "@dust-tt/types";
-import { formatUserFullName, Ok, removeNulls } from "@dust-tt/types";
+import { Err, formatUserFullName, Ok, removeNulls } from "@dust-tt/types";
 import assert from "assert";
 import type {
   Attributes,
@@ -517,6 +517,12 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     parentsToRemove: string[] = []
   ): Promise<Result<undefined, Error>> {
     const currentParents = this.parentsIn || [];
+
+    if (this.kind === "default") {
+      return new Err(
+        new Error("Cannot update parents for default data source view")
+      );
+    }
 
     // add new parents
     const newParents = [...new Set(currentParents), ...new Set(parentsToAdd)];
