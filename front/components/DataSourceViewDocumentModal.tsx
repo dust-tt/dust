@@ -1,5 +1,4 @@
 import {
-  Label,
   Sheet,
   SheetContainer,
   SheetContent,
