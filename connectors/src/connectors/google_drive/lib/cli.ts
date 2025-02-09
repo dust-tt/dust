@@ -6,6 +6,10 @@ import type {
 import { googleDriveIncrementalSyncWorkflowId } from "@dust-tt/types";
 
 import { getConnectorManager } from "@connectors/connectors";
+import {
+  getLocalParents,
+  updateParentsField,
+} from "@connectors/connectors/google_drive/lib";
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import {
@@ -134,6 +138,30 @@ export const google_drive = async ({
       const execute = !!args.execute;
       const connector = await getConnector(args);
       await launchGoogleFixParentsConsistencyWorkflow(connector.id, execute);
+      return { success: true };
+    }
+
+    case "update-core-parents": {
+      const connector = await getConnector(args);
+      if (!args.fileId) {
+        throw new Error("Missing --fileId argument");
+      }
+      const file = await GoogleDriveFiles.findOne({
+        where: {
+          connectorId: connector.id,
+          dustFileId: args.fileId,
+        },
+      });
+      if (!file) {
+        throw new Error(`File ${args.fileId} not found`);
+      }
+      const now = new Date().getTime();
+      const localParents = await getLocalParents(
+        connector.id,
+        file.dustFileId,
+        `${now}`
+      );
+      await updateParentsField(connector, file, localParents, logger);
       return { success: true };
     }
 
