@@ -32,18 +32,59 @@ export const BUTTON_SIZES = ["mini", "xs", "sm", "md"] as const;
 export type ButtonSizeType = (typeof BUTTON_SIZES)[number];
 
 const styleVariants: Record<ButtonVariantType, string> = {
-  primary:
-    "s-bg-primary s-text-white hover:s-bg-primary-light active:s-bg-primary-dark disabled:s-bg-primary-muted",
-  highlight:
-    "s-bg-highlight s-text-white hover:s-bg-highlight-light active:s-bg-highlight-dark disabled:s-bg-highlight-muted",
-  warning:
-    "s-bg-warning s-text-white hover:s-bg-warning-light active:s-bg-warning-dark disabled:s-bg-warning-muted",
-  outline:
-    "s-border s-text-primary-dark s-bg-background s-border-border-dark hover:s-text-primary hover:s-bg-primary-150 hover:s-border-primary-150 active:s-bg-primary-300 disabled:s-text-primary-muted disabled:s-border-structure-100",
-  ghost:
-    "s-border s-border-primary-200/0 s-text-primary-950 hover:s-bg-primary-150 hover:s-text-primary-900 hover:s-border-primary-150 active:s-bg-primary-300 disabled:s-text-primary-400",
-  "ghost-secondary":
-    "s-border s-border-primary-200/0 s-text-muted-foreground hover:s-bg-primary-150 hover:s-text-primary-900 hover:s-border-primary-150 active:s-bg-primary-300 disabled:s-text-primary-400",
+  primary: cn(
+    "s-bg-primary-800 dark:s-bg-primary-800-night",
+    "s-text-primary-50 dark:s-text-primary-50-night",
+    "hover:s-bg-primary-light dark:hover:s-bg-primary-dark-night",
+    "active:s-bg-primary-dark dark:active:s-bg-primary-light-night",
+    "disabled:s-bg-primary-muted  disabled:s-text-highlight-50/60 dark:disabled:s-bg-primary-muted-night"
+  ),
+  highlight: cn(
+    "s-bg-highlight",
+    "s-text-highlight-50",
+    "hover:s-bg-highlight-light",
+    "active:s-bg-highlight-dark",
+    "disabled:s-bg-highlight-muted disabled:s-text-highlight-50/60 dark:disabled:s-bg-highlight-muted-night"
+  ),
+  warning: cn(
+    "s-bg-warning",
+    "s-text-warning-50",
+    "hover:s-bg-warning-light",
+    "active:s-bg-warning-dark",
+    "disabled:s-bg-warning-muted disabled:s-text-highlight-50/60 dark:disabled:s-bg-warning-muted-night"
+  ),
+  outline: cn(
+    "s-border",
+    "s-border-border-dark dark:s-border-primary-600",
+    "s-text-primary-800 dark:s-text-primary-800-night",
+    "s-bg-background dark:s-bg-background-night",
+    "hover:s-text-primary dark:hover:s-text-primary-night",
+    "hover:s-bg-primary-150 dark:hover:s-bg-primary-700",
+    "hover:s-border-primary-150 dark:hover:s-border-primary-500",
+    "active:s-bg-primary-300 dark:active:s-bg-primary-900",
+    "disabled:s-text-primary-muted dark:disabled:s-text-primary-muted-night",
+    "disabled:s-border-primary-100 dark:disabled:s-border-primary-100-night"
+  ),
+  ghost: cn(
+    "s-border",
+    "s-border-border-dark/0  dark:s-border-primary-600/0",
+    "s-text-primary-950 dark:s-text-primary-950-night",
+    "hover:s-bg-primary-150 dark:hover:s-bg-primary-700",
+    "hover:s-text-primary-900 dark:hover:s-text-primary-900-night",
+    "hover:s-border-border-dark dark:hover:s-border-primary-600",
+    "active:s-bg-primary-300 dark:active:s-bg-primary-900",
+    "disabled:s-text-primary-400 dark:disabled:s-text-primary-400-night"
+  ),
+  "ghost-secondary": cn(
+    "s-border",
+    "s-border-primary-200/0 dark:s-border-primary-600/0",
+    "s-text-muted-foreground dark:s-text-muted-foreground-night",
+    "hover:s-bg-primary-150 dark:hover:s-bg-primary-700",
+    "hover:s-text-primary-900 dark:hover:s-text-primary-900-night",
+    "hover:s-border-border-dark dark:hover:s-border-primary-600",
+    "active:s-bg-primary-300 dark:active:s-bg-primary-900",
+    "disabled:s-text-primary-400 dark:disabled:s-text-primary-400-night"
+  ),
 };
 
 const sizeVariants: Record<ButtonSizeType, string> = {

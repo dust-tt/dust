@@ -104,10 +104,8 @@ export class ConversationIncludeFileAction extends BaseAction {
           contentType: f.contentType,
           excludeImages: true,
           fileId: f.fileId,
-          forceFullCSVInclude: true, // We are using JIT so if we are rendering a CSV file we want to include it in full
           model,
           title: f.title,
-          textBytes: null,
           contentFragmentVersion: f.contentFragmentVersion,
         });
 

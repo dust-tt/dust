@@ -102,6 +102,38 @@ async function handler(
 
       const { parents, parent_id: parentId } = r.data;
 
+      // Enforce parents consistency: parents[0] === documentId, parents[1] === parentId (or there is no parents[1] and parentId is null).
+      if (parents.length === 0) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid parents: parents must have at least one element.`,
+          },
+        });
+      }
+      if (parents[0] !== tId) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid parents: parents[0] should be equal to table_id.`,
+          },
+        });
+      }
+      if (
+        (parents.length >= 2 || parentId !== null) &&
+        parents[1] !== parentId
+      ) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid parent id: parents[1] and parent_id should be equal.`,
+          },
+        });
+      }
+
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const updateRes = await coreAPI.updateTableParents({
         projectId: dataSource.dustAPIProjectId,

@@ -28,17 +28,19 @@ export function RetrievalActionDetails({
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">
         <div className="flex flex-col gap-1">
-          <span className="text-sm font-bold text-foreground">
+          <span className="text-sm font-bold text-foreground dark:text-foreground-night">
             {isIncludeAction ? "Timeframe" : "Query"}
           </span>
-          <div className="text-sm font-normal text-muted-foreground">
+          <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
             <RetrievalActionQuery action={action} />
           </div>
         </div>
         <div>
           <Collapsible defaultOpen={defaultOpen}>
             <Collapsible.Button>
-              <span className="text-sm font-bold text-foreground">Results</span>
+              <span className="text-sm font-bold text-foreground dark:text-foreground-night">
+                Results
+              </span>
             </Collapsible.Button>
             <Collapsible.Panel>
               <PaginatedCitationsGrid items={documentCitations} />
@@ -69,7 +71,7 @@ function RetrievalActionQuery({ action }: { action: RetrievalActionType }) {
 
   return (
     <div className="flex flex-col gap-1">
-      <p className="text-sm font-normal text-muted-foreground">
+      <p className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
         {makeQueryDescription(action)}
       </p>
       {tooManyChunks && (
@@ -88,7 +90,7 @@ function RetrievalActionQuery({ action }: { action: RetrievalActionType }) {
 }
 
 function makeQueryDescription(action: RetrievalActionType) {
-  const { query, relativeTimeFrame } = action.params;
+  const { query, relativeTimeFrame, tagsIn, tagsNot } = action.params;
 
   const timeFrameAsString = relativeTimeFrame
     ? "over the last " +
@@ -96,10 +98,13 @@ function makeQueryDescription(action: RetrievalActionType) {
         ? `${relativeTimeFrame.duration} ${relativeTimeFrame.unit}s`
         : `${relativeTimeFrame.unit}`)
     : "across all time periods";
-
+  const tagsInAsString = tagsIn ? `, with tags ${tagsIn?.join(", ")}` : "";
+  const tagsNotAsString = tagsNot
+    ? `, excluding tags ${tagsNot?.join(", ")}`
+    : "";
   if (!query) {
-    return `Searching ${timeFrameAsString}.`;
+    return `Searching ${timeFrameAsString}${tagsInAsString}${tagsNotAsString}.`;
   }
 
-  return `Searching "${query}", ${timeFrameAsString}.`;
+  return `Searching "${query}", ${timeFrameAsString}${tagsInAsString}${tagsNotAsString}`;
 }

@@ -120,7 +120,7 @@ import { apiError } from "@app/logger/withlogging";
  *                 description: 'Reserved for internal use, should not be set. ID of the direct parent to associate with the table'
  *               mime_type:
  *                 type: string
- *                 description: Mime type of the table
+ *                 description: 'Reserved for internal use, should not be set. Mime type of the table'
  *     responses:
  *       200:
  *         description: The table
@@ -342,7 +342,7 @@ async function handler(
         } else {
           const titleTag = tags?.find((t) => t.startsWith("title:"));
           if (titleTag) {
-            title = titleTag.split(":")[1];
+            title = titleTag.split(":").slice(1).join(":");
           } else {
             title = name;
           }

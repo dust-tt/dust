@@ -182,7 +182,7 @@ export type CoreAPISortSpec = {
 
 export type CoreAPISearchOptions = {
   limit?: number;
-  offset?: number;
+  cursor?: string;
   sort?: CoreAPISortSpec[];
 };
 
@@ -192,9 +192,20 @@ export interface CoreAPISearchCursorRequest {
   cursor?: string;
 }
 
-export interface CoreAPISearchCursorResponse {
+export interface CoreAPISearchNodesResponse {
   nodes: CoreAPIContentNode[];
   next_page_cursor: string | null;
+}
+
+export interface CoreAPISearchTagsResponse {
+  error: string | null;
+  response: {
+    tags: {
+      tag: string;
+      match_count: number;
+      data_sources: string[];
+    }[];
+  };
 }
 
 export type CoreAPIDatasourceViewFilter = {
@@ -1612,11 +1623,7 @@ export class CoreAPI {
     query?: string;
     filter: CoreAPINodesSearchFilter;
     options?: CoreAPISearchOptions;
-  }): Promise<
-    CoreAPIResponse<{
-      nodes: CoreAPIContentNode[];
-    }>
-  > {
+  }): Promise<CoreAPIResponse<CoreAPISearchNodesResponse>> {
     const response = await this._fetchWithError(`${this._url}/nodes/search`, {
       method: "POST",
       headers: {
@@ -1631,30 +1638,26 @@ export class CoreAPI {
     return this._resultFromResponse(response);
   }
 
-  async searchNodesWithCursor({
+  async searchTags({
     query,
-    filter,
-    cursor,
+    queryType,
+    dataSources,
   }: {
-    query?: string;
-    filter: CoreAPINodesSearchFilter;
-    cursor?: CoreAPISearchCursorRequest;
-  }): Promise<CoreAPIResponse<CoreAPISearchCursorResponse>> {
-    const response = await this._fetchWithError(
-      `${this._url}/nodes/search/cursor`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          query,
-          filter,
-          cursor,
-        }),
-      }
-    );
-
+    query: string;
+    queryType: string;
+    dataSources: string[];
+  }): Promise<CoreAPIResponse<CoreAPISearchTagsResponse>> {
+    const response = await this._fetchWithError(`${this._url}/tags/search`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        query,
+        query_type: queryType,
+        data_sources: dataSources,
+      }),
+    });
     return this._resultFromResponse(response);
   }
 

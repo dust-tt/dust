@@ -1,10 +1,8 @@
 import type {
   ContentNodesViewType,
   CoreAPIContentNode,
-  CoreAPIContentNodeType,
   CoreAPIDatasourceViewFilter,
   CoreAPIError,
-  CoreAPISortSpec,
   DataSourceViewContentNode,
   DataSourceViewType,
   PatchDataSourceViewType,
@@ -32,7 +30,11 @@ import {
   getContentNodeType,
   NON_EXPANDABLE_NODES_MIME_TYPES,
 } from "@app/lib/api/content_nodes";
-import type { OffsetPaginationParams } from "@app/lib/api/pagination";
+import type {
+  CursorPaginationParams,
+  OffsetPaginationParams,
+} from "@app/lib/api/pagination";
+import { isCursorPaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import { SPREADSHEET_MIME_TYPES } from "@app/lib/content_nodes";
 import type { DustError } from "@app/lib/error";
@@ -43,6 +45,7 @@ import {
 } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 
+// TODO(nodes-core): remove this upon project cleanup
 const DEFAULT_STATIC_DATA_SOURCE_PAGINATION_LIMIT = 10_000;
 
 export function filterAndCropContentNodesByView(
@@ -91,7 +94,8 @@ export function filterAndCropContentNodesByView(
 interface GetContentNodesForDataSourceViewParams {
   internalIds?: string[];
   parentId?: string;
-  pagination?: OffsetPaginationParams;
+  // TODO(nodes-core): remove offset pagination upon project cleanup
+  pagination?: CursorPaginationParams | OffsetPaginationParams;
   viewType: ContentNodesViewType;
   // If onlyCoreAPI is true, the function will only use the Core API to fetch the content nodes.
   onlyCoreAPI?: boolean;
@@ -186,13 +190,15 @@ function filterNodesByViewType(
       return nodes.filter(
         (node) =>
           node.children_count > 0 ||
-          node.node_type !== "Table" ||
-          // TODO(nodes-core): replace this with either an "all" viewType or a DEFAULT_VIEWTYPE_BY_CONNECTOR_PROVIDER
+          ["Folder", "Document"].includes(node.node_type) ||
+          node.mime_type === MIME_TYPES.BIGQUERY.TABLE ||
           node.mime_type === MIME_TYPES.SNOWFLAKE.TABLE
       );
     case "tables":
       return nodes.filter(
-        (node) => node.children_count > 0 || node.node_type === "Table"
+        (node) =>
+          node.children_count > 0 ||
+          ["Folder", "Table"].includes(node.node_type)
       );
     default:
       assertNever(viewType);
@@ -222,8 +228,15 @@ const ROOT_PARENT_ID = "root";
 
 async function getContentNodesForDataSourceViewFromCore(
   dataSourceView: DataSourceViewResource | DataSourceViewType,
-  { internalIds, parentId, viewType }: GetContentNodesForDataSourceViewParams
+  {
+    internalIds,
+    parentId,
+    viewType,
+    pagination,
+  }: GetContentNodesForDataSourceViewParams
 ): Promise<Result<GetContentNodesForDataSourceViewResult, Error>> {
+  const limit = pagination?.limit ?? 1000;
+
   // There's an early return possible on !dataSourceView.dataSource.connectorId && internalIds?.length === 0,
   // won't include it for now as we are shadow-reading.
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
@@ -252,38 +265,35 @@ async function getContentNodesForDataSourceViewFromCore(
         ? undefined
         : ROOT_PARENT_ID);
 
-  const nodeTypesForViewType: CoreAPIContentNodeType[] =
-    viewType === "documents" ? ["Document", "Folder"] : ["Table", "Folder"];
+  // TODO(nodes-core): remove offset pagination upon project cleanup
+  let nextPageCursor: string | null = pagination
+    ? isCursorPaginationParams(pagination)
+      ? pagination.cursor
+      : null
+    : null;
 
-  // Always sort folders first, then sort by title.
-  const sortForViewType: CoreAPISortSpec[] =
-    viewType === "documents"
-      ? [
-          { field: "node_type", direction: "desc" },
-          { field: "title.keyword", direction: "asc" },
-        ]
-      : [
-          { field: "node_type", direction: "asc" },
-          { field: "title.keyword", direction: "asc" },
-        ];
+  let resultNodes: CoreAPIContentNode[] = [];
+  do {
+    const coreRes = await coreAPI.searchNodes({
+      filter: {
+        data_source_views: [makeCoreDataSourceViewFilter(dataSourceView)],
+        node_ids,
+        parent_id,
+      },
+      options: { limit, cursor: nextPageCursor ?? undefined },
+    });
 
-  const coreRes = await coreAPI.searchNodes({
-    filter: {
-      data_source_views: [makeCoreDataSourceViewFilter(dataSourceView)],
-      node_ids,
-      parent_id,
-      node_types: nodeTypesForViewType,
-    },
-    options: { limit: 1000, sort: sortForViewType },
-  });
+    if (coreRes.isErr()) {
+      return new Err(new Error(coreRes.error.message));
+    }
 
-  if (coreRes.isErr()) {
-    return new Err(new Error(coreRes.error.message));
-  }
+    const filteredNodes = removeCatchAllFoldersIfEmpty(
+      filterNodesByViewType(coreRes.value.nodes, viewType)
+    );
 
-  const filteredNodes = removeCatchAllFoldersIfEmpty(
-    filterNodesByViewType(coreRes.value.nodes, viewType)
-  );
+    resultNodes = [...resultNodes, ...filteredNodes].slice(0, limit);
+    nextPageCursor = coreRes.value.next_page_cursor;
+  } while (nextPageCursor && resultNodes.length < limit);
 
   const expandable = (node: CoreAPIContentNode) =>
     !NON_EXPANDABLE_NODES_MIME_TYPES.includes(node.mime_type) &&
@@ -292,7 +302,7 @@ async function getContentNodesForDataSourceViewFromCore(
     !(viewType !== "tables" && SPREADSHEET_MIME_TYPES.includes(node.mime_type));
 
   return new Ok({
-    nodes: filteredNodes.map((node) => {
+    nodes: resultNodes.map((node) => {
       return {
         internalId: node.node_id,
         parentInternalId: node.parent_id ?? null,
@@ -311,7 +321,8 @@ async function getContentNodesForDataSourceViewFromCore(
         ),
       };
     }),
-    total: coreRes.value.nodes.length,
+    total: resultNodes.length,
+    nextPageCursor: nextPageCursor,
   });
 }
 
@@ -328,6 +339,7 @@ async function getContentNodesForStaticDataSourceView(
   // Use a high pagination limit since the product UI doesn't support pagination yet,
   // even though static data sources can contain many documents via API ingestion.
   const paginationParams = pagination ?? {
+    // TODO(nodes-core): remove this upon project cleanup
     limit: DEFAULT_STATIC_DATA_SOURCE_PAGINATION_LIMIT,
     offset: 0,
   };
@@ -343,6 +355,11 @@ async function getContentNodesForStaticDataSourceView(
   }
 
   if (viewType === "documents") {
+    if (isCursorPaginationParams(paginationParams)) {
+      throw new Error(
+        "Cursor pagination is not supported for static data sources. Note: this code path should be deleted at the end of the project nodes core (2025-02-03)."
+      );
+    }
     const documentsRes = await coreAPI.getDataSourceDocuments(
       {
         dataSourceId: dataSource.dustAPIDataSourceId,
@@ -385,6 +402,11 @@ async function getContentNodesForStaticDataSourceView(
       total: documentsRes.value.total,
     });
   } else {
+    if (isCursorPaginationParams(paginationParams)) {
+      throw new Error(
+        "Cursor pagination is not supported for static data sources. Note: this code path should be deleted at the end of the project nodes core (2025-02-03)."
+      );
+    }
     const tablesRes = await coreAPI.getTables(
       {
         dataSourceId: dataSource.dustAPIDataSourceId,
@@ -502,6 +524,7 @@ export async function getContentNodesForDataSourceView(
       connectorsContentNodes: contentNodesResult.nodes,
       coreContentNodes: coreContentNodesRes.value.nodes,
       provider: dataSourceView.dataSource.connectorProvider,
+      pagination: params.pagination,
       viewType: params.viewType,
       localLogger,
     });

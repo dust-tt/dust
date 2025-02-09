@@ -76,6 +76,7 @@ type MoreMenuItem = {
   icon: React.ComponentType;
   onClick: (e: React.MouseEvent) => void;
   variant?: "warning" | "default";
+  kind: "item";
 };
 
 type RowData = {
@@ -108,10 +109,10 @@ const getTableColumns = () => {
               <Avatar visual={info.row.original.pictureUrl} size="sm" />
             </div>
             <div className="flex min-w-0 grow flex-col">
-              <div className="overflow-hidden truncate text-sm font-semibold text-foreground">
+              <div className="overflow-hidden truncate text-sm font-semibold text-foreground dark:text-foreground-night">
                 {`@${info.getValue()}`}
               </div>
-              <div className="overflow-hidden truncate text-sm text-muted-foreground">
+              <div className="overflow-hidden truncate text-sm text-muted-foreground dark:text-muted-foreground-night">
                 {info.row.original.description}
               </div>
             </div>
@@ -168,13 +169,13 @@ const getTableColumns = () => {
               <Tooltip
                 label={feedbacksCount}
                 trigger={
-                  <div className="flex flex-row items-center gap-2 text-sm text-muted-foreground">
+                  <div className="flex flex-row items-center gap-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
                     <div className="flex flex-row items-center gap-1.5">
                       {f.up}
                       <Icon
                         visual={HandThumbUpIcon}
                         size="xs"
-                        className="text-primary-400"
+                        className="text-primary-400 dark:text-primary-400-night"
                       />
                     </div>
                     <div className="flex flex-row items-center gap-1.5">
@@ -182,7 +183,7 @@ const getTableColumns = () => {
                       <Icon
                         visual={HandThumbDownIcon}
                         size="xs"
-                        className="text-primary-400"
+                        className="text-primary-400 dark:text-primary-400-night"
                       />
                     </div>
                   </div>
@@ -225,9 +226,7 @@ const getTableColumns = () => {
           );
         }
         return (
-          <DataTable.MoreButton
-            moreMenuItems={info.row.original.moreMenuItems}
-          />
+          <DataTable.MoreButton menuItems={info.row.original.moreMenuItems} />
         );
       },
       meta: {
@@ -315,6 +314,7 @@ export function AssistantsTable({
                         }`
                       );
                     },
+                    kind: "item",
                   },
                   {
                     label: "Copy assistant ID",
@@ -327,6 +327,7 @@ export function AssistantsTable({
                         agentConfiguration.sId
                       );
                     },
+                    kind: "item",
                   },
                   {
                     label: "Duplicate (New)",
@@ -339,6 +340,7 @@ export function AssistantsTable({
                         `/w/${owner.sId}/builder/assistants/new?flow=personal_assistants&duplicate=${agentConfiguration.sId}`
                       );
                     },
+                    kind: "item",
                   },
                   {
                     label: "Delete",
@@ -350,6 +352,7 @@ export function AssistantsTable({
                       e.stopPropagation();
                       setShowDeleteDialog({ open: true, agentConfiguration });
                     },
+                    kind: "item",
                   },
                 ]
               : [],

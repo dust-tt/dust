@@ -9,8 +9,8 @@ export type FileUseCase =
   | "conversation"
   | "avatar"
   | "tool_output"
-  | "folder_document"
-  | "folder_table";
+  | "upsert_document"
+  | "upsert_table";
 
 export type FileUseCaseMetadata = {
   conversationId: string;
@@ -177,6 +177,13 @@ export function isSupportedFileContentType(
   contentType: string
 ): contentType is SupportedFileContentType {
   return !!FILE_FORMATS[contentType as SupportedFileContentType];
+}
+
+// UseCases supported on the public API
+export function isPublicySupportedUseCase(
+  useCase: string
+): useCase is FileUseCase {
+  return ["conversation"].includes(useCase);
 }
 
 export function isSupportedImageContentType(

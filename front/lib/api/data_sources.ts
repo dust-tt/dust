@@ -17,7 +17,6 @@ import type {
   FrontDataSourceDocumentSectionType,
   PlanType,
   Result,
-  UpsertTableFromCsvRequestType,
   WithConnector,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -39,27 +38,24 @@ import { validateUrl } from "@dust-tt/types/src/shared/utils/url_utils";
 import assert from "assert";
 import type { Transaction } from "sequelize";
 
+import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation/without_content";
 import { default as apiConfig, default as config } from "@app/lib/api/config";
 import { sendGithubDeletionEmail } from "@app/lib/api/email";
 import { rowsFromCsv, upsertTableFromCsv } from "@app/lib/api/tables";
 import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { DustError } from "@app/lib/error";
 import { Lock } from "@app/lib/lock";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import type { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { enqueueUpsertTable } from "@app/lib/upsert_queue";
 import logger from "@app/logger/logger";
 import { launchScrubDataSourceWorkflow } from "@app/poke/temporal/client";
-
-import type { FileResource } from "../resources/file_resource";
-import { getConversationWithoutContent } from "./assistant/conversation/without_content";
-import { isJITActionsEnabled } from "./assistant/jit_actions";
 
 export async function getDataSources(
   auth: Authenticator,
@@ -453,7 +449,6 @@ export interface UpsertTableArgs {
   async: boolean;
   dataSource: DataSourceResource;
   auth: Authenticator;
-  useAppForHeaderDetection?: boolean;
   title: string;
   mimeType: string;
   sourceUrl?: string | null;
@@ -472,7 +467,6 @@ export async function upsertTable({
   async,
   dataSource,
   auth,
-  useAppForHeaderDetection,
   title,
   mimeType,
   sourceUrl,
@@ -489,6 +483,7 @@ export async function upsertTable({
       )
     );
   }
+
   // parents and parentId must comply to the invariant parents[1] === parentId
   if (
     (tableParents.length >= 2 || tableParentId !== null) &&
@@ -501,7 +496,6 @@ export async function upsertTable({
       )
     );
   }
-
   let standardizedSourceUrl: string | null = null;
   if (sourceUrl) {
     const { valid: isSourceUrlValid, standardized } = validateUrl(sourceUrl);
@@ -517,19 +511,9 @@ export async function upsertTable({
     standardizedSourceUrl = standardized;
   }
 
-  const flags = await getFeatureFlags(auth.getNonNullableWorkspace());
-
-  const useAppForHeaderDetectionFlag = flags.includes(
-    "use_app_for_header_detection"
-  );
-
-  const useApp = !!useAppForHeaderDetection && useAppForHeaderDetectionFlag;
-
   if (async) {
     // Ensure the CSV is valid before enqueuing the upsert.
-    const csvRowsRes = csv
-      ? await rowsFromCsv({ auth, csv, useAppForHeaderDetection: useApp })
-      : null;
+    const csvRowsRes = csv ? await rowsFromCsv({ auth, csv }) : null;
     if (csvRowsRes?.isErr()) {
       return csvRowsRes;
     }
@@ -551,7 +535,6 @@ export async function upsertTable({
         tableParents,
         csv: csv ?? null,
         truncate,
-        useAppForHeaderDetection: useApp,
         detectedHeaders,
         title,
         mimeType,
@@ -577,7 +560,6 @@ export async function upsertTable({
     tableParents,
     csv: csv ?? null,
     truncate,
-    useAppForHeaderDetection: useApp,
     title,
     mimeType,
     sourceUrl: standardizedSourceUrl,
@@ -659,7 +641,21 @@ export async function handleDataSourceTableCSVUpsert({
   dataSource,
 }: {
   auth: Authenticator;
-  params: UpsertTableFromCsvRequestType;
+  params: {
+    tableId: string;
+    name: string;
+    description: string;
+    truncate: boolean;
+    async?: boolean;
+    title: string;
+    mimeType: string;
+    csv?: string;
+    sourceUrl?: string | null;
+    timestamp?: number | null;
+    tags?: string[] | null;
+    parentId?: string | null;
+    parents?: string[] | null;
+  };
   dataSource: DataSourceResource;
 }): Promise<
   Result<
@@ -675,7 +671,7 @@ export async function handleDataSourceTableCSVUpsert({
       code:
         | "missing_csv"
         | "data_source_error"
-        | "invalid_rows"
+        | "invalid_csv"
         | "resource_not_found"
         | "invalid_parent_id"
         | "internal_error";
@@ -696,21 +692,13 @@ export async function handleDataSourceTableCSVUpsert({
   const tableId = params.tableId ?? generateRandomModelSId();
   const tableParents: string[] = params.parents ?? [tableId];
 
-  const flags = await getFeatureFlags(owner);
-
-  const useAppForHeaderDetection =
-    !!params.useAppForHeaderDetection &&
-    flags.includes("use_app_for_header_detection");
-
   if (async) {
     // Ensure the CSV is valid before enqueuing the upsert.
-    const csvRowsRes = csv
-      ? await rowsFromCsv({ auth, csv, useAppForHeaderDetection })
-      : null;
+    const csvRowsRes = csv ? await rowsFromCsv({ auth, csv }) : null;
     if (csvRowsRes?.isErr()) {
       return new Err({
         name: "dust_error",
-        code: "invalid_rows",
+        code: "invalid_csv",
         message: "Failed to parse CSV: " + csvRowsRes.error.message,
       });
     }
@@ -732,7 +720,6 @@ export async function handleDataSourceTableCSVUpsert({
         tableParents,
         csv: csv ?? null,
         truncate,
-        useAppForHeaderDetection,
         detectedHeaders,
         title: params.title,
         mimeType: params.mimeType,
@@ -766,7 +753,6 @@ export async function handleDataSourceTableCSVUpsert({
     tableParents,
     csv: csv ?? null,
     truncate,
-    useAppForHeaderDetection,
     title: params.title,
     mimeType: params.mimeType,
     sourceUrl: params.sourceUrl ?? null,
@@ -785,7 +771,7 @@ export async function handleDataSourceTableCSVUpsert({
       if ("csvParsingError" in tableRes.error) {
         return new Err({
           name: "dust_error",
-          code: "internal_error",
+          code: "invalid_csv",
           message:
             "Failed to parse CSV: " + tableRes.error.csvParsingError.message,
         });
@@ -975,16 +961,6 @@ async function getOrCreateConversationDataSource(
     }
   >
 > {
-  const jitEnabled = isJITActionsEnabled();
-
-  if (!jitEnabled) {
-    return new Err({
-      name: "dust_error",
-      code: "invalid_request_error",
-      message: "JIT processing is not enabled for this file.",
-    });
-  }
-
   const lockName = "conversationDataSource" + conversation.id;
 
   const res = await Lock.executeWithLock(
@@ -1140,6 +1116,54 @@ export async function pauseAllManagedDataSources(
   const failed = res.filter((r) => r.isErr());
   if (failed.length > 0) {
     return new Err(new Error(`Failed to pause ${failed.length} connectors.`));
+  }
+
+  return new Ok(res);
+}
+
+export async function resumeAllManagedDataSources(auth: Authenticator) {
+  const dataSources = await getAllManagedDataSources(auth);
+
+  const connectorsAPI = new ConnectorsAPI(
+    config.getConnectorsAPIConfig(),
+    logger
+  );
+
+  const res = await concurrentExecutor(
+    dataSources,
+    async (ds) => {
+      assert(ds.connectorId, "Connector ID is required");
+
+      const { connectorId } = ds;
+
+      const setErrorCommand: AdminCommandType = {
+        majorCommand: "connectors",
+        command: "clear-error",
+        args: {
+          connectorId,
+          wId: auth.getNonNullableWorkspace().sId,
+          dsId: ds.sId,
+        },
+      };
+
+      const setErrorRes = await connectorsAPI.admin(setErrorCommand);
+      if (setErrorRes.isErr()) {
+        return new Err(new Error(setErrorRes.error.message));
+      }
+
+      const resumeRes = await connectorsAPI.resumeConnector(ds.connectorId);
+      if (resumeRes.isErr()) {
+        return new Err(new Error(resumeRes.error.message));
+      }
+
+      return new Ok(resumeRes.value);
+    },
+    { concurrency: 5 }
+  );
+
+  const failed = res.filter((r) => r.isErr());
+  if (failed.length > 0) {
+    return new Err(new Error(`Failed to resume ${failed.length} connectors.`));
   }
 
   return new Ok(res);

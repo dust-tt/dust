@@ -3,12 +3,13 @@ import React from "react";
 
 import {
   Button,
+  CloudArrowDownIcon,
   FolderIcon,
   Icon,
   Label,
   LockIcon,
   RadioGroup,
-  RadioGroupChoice,
+  RadioGroupCustomItem,
   RadioGroupItem,
 } from "@sparkle/index_with_tw_base";
 
@@ -25,49 +26,50 @@ export const RadioGroupExample = () => {
           <RadioGroupItem
             value="option-one"
             id="option-one"
-            label={<Label htmlFor="option-one">Option One</Label>}
+            label="Option One"
           />
         </div>
         <div className="s-flex s-items-center s-space-x-2">
           <RadioGroupItem
             value="option-two"
             id="option-two"
-            label={<Label htmlFor="option-two">Option Two</Label>}
+            label="Option Two"
           />
         </div>
         <div className="s-flex s-items-center s-space-x-2">
           <RadioGroupItem
             value="option-three"
             id="option-three"
-            label={<Label htmlFor="option-two">Option Three</Label>}
+            label="Option Three"
+            icon={CloudArrowDownIcon}
           />
         </div>
       </RadioGroup>
       <RadioGroup defaultValue="option-one">
         <div className="s-flex s-items-center s-space-x-2">
           <RadioGroupItem
-            value="option-one"
+            value="option-four"
             id="option-four"
             size="sm"
             tooltipMessage="This is a nice tooltip message"
-            label={<Label htmlFor="option-one">Option One</Label>}
+            label="Option Four"
           />
         </div>
         <div className="s-flex s-items-center s-space-x-2">
           <RadioGroupItem
-            value="option-two"
+            value="option-five"
             id="option-five"
             size="sm"
             disabled
-            label={<Label htmlFor="option-two">Option Two</Label>}
+            label="Option Five"
           />
         </div>
         <div className="s-flex s-items-center s-space-x-2">
           <RadioGroupItem
             value="option-six"
-            id="option-three"
+            id="option-six"
             size="sm"
-            label={<Label htmlFor="option-three">Option Three</Label>}
+            label="Option Six"
           />
         </div>
       </RadioGroup>
@@ -91,10 +93,10 @@ export const RadioGroupWithChildrenExample = () => {
         onValueChange={(value) => setSelectedChoice(value)}
       >
         {choices.map((choice) => (
-          <RadioGroupChoice
+          <RadioGroupCustomItem
             value={choice.id}
             iconPosition="start"
-            label={
+            customItem={
               <div className="s-flex s-items-center s-gap-2">
                 <Icon visual={LockIcon} />
                 <Label>{choice.label}</Label>
@@ -109,7 +111,7 @@ export const RadioGroupWithChildrenExample = () => {
             {choice.id === selectedChoice && (
               <span>{choice.label} is selected</span>
             )}
-          </RadioGroupChoice>
+          </RadioGroupCustomItem>
         ))}
       </RadioGroup>
     </div>

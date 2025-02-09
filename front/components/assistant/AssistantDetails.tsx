@@ -19,7 +19,6 @@ import {
   SheetContainer,
   SheetContent,
   SheetHeader,
-  SheetTitle,
   Spinner,
   Tabs,
   TabsList,
@@ -69,7 +68,7 @@ function AssistantDetailsInfo({
 }) {
   return (
     <>
-      <div className="text-sm text-foreground">
+      <div className="text-sm text-foreground dark:text-foreground-night">
         {agentConfiguration?.description}
       </div>
       {agentConfiguration && (
@@ -86,8 +85,10 @@ function AssistantDetailsInfo({
       />
 
       {agentConfiguration?.instructions ? (
-        <div className="flex flex-col gap-2">
-          <div className="text-lg font-bold text-element-800">Instructions</div>
+        <div className="flex flex-col gap-5">
+          <div className="text-lg font-bold text-foreground dark:text-foreground-night">
+            Instructions
+          </div>
           <ReadOnlyTextArea content={agentConfiguration.instructions} />
         </div>
       ) : (
@@ -140,17 +141,19 @@ function AssistantDetailsPerformance({
       </div>
 
       {isAgentAnayticsLoading ? (
-        <Spinner />
+        <div className="w-full p-6">
+          <Spinner variant="dark" />
+        </div>
       ) : (
         <CardGrid>
           <ValueCard
             title="Active Users"
             content={
-              <div className="text-lg font-semibold text-foreground">
+              <div className="text-lg font-semibold text-foreground dark:text-foreground-night">
                 <div className="flex flex-col gap-1 text-lg font-bold">
                   {agentAnalytics?.users ? (
                     <>
-                      <div className="truncate text-element-900">
+                      <div className="truncate text-foreground dark:text-foreground-night">
                         {agentAnalytics.users.length}
                       </div>
 
@@ -192,13 +195,13 @@ function AssistantDetailsPerformance({
                   <>
                     <div className="flex flex-row items-center">
                       <div>
-                        <HandThumbUpIcon className="h-6 w-6 pr-2 text-element-600" />
+                        <HandThumbUpIcon className="h-6 w-6 pr-2 text-muted-foreground dark:text-muted-foreground-night" />
                       </div>
                       <div>{agentAnalytics.feedbacks.positiveFeedbacks}</div>
                     </div>
                     <div className="flex flex-row items-center">
                       <div>
-                        <HandThumbDownIcon className="h-6 w-6 pr-2 text-element-600" />
+                        <HandThumbDownIcon className="h-6 w-6 pr-2 text-muted-foreground dark:text-muted-foreground-night" />
                       </div>
                       <div>{agentAnalytics.feedbacks.negativeFeedbacks}</div>
                     </div>
@@ -216,7 +219,7 @@ function AssistantDetailsPerformance({
               <div className="flex flex-row gap-2 text-lg font-bold">
                 <div className="flex flex-row items-center">
                   <div>
-                    <ChatBubbleLeftRightIcon className="h-6 w-6 pr-2 text-element-600" />
+                    <ChatBubbleLeftRightIcon className="h-6 w-6 pr-2 text-muted-foreground dark:text-muted-foreground-night" />
                   </div>
                   <div>
                     {agentAnalytics?.mentions
@@ -234,7 +237,7 @@ function AssistantDetailsPerformance({
               <div className="flex flex-row gap-2 text-lg font-bold">
                 <div className="flex flex-row items-center">
                   <div>
-                    <ChatBubbleThoughtIcon className="h-6 w-6 pr-2 text-element-600" />
+                    <ChatBubbleThoughtIcon className="h-6 w-6 pr-2 text-muted-foreground dark:text-muted-foreground-night" />
                   </div>
                   <div>
                     {agentAnalytics?.mentions
@@ -302,7 +305,7 @@ export function AssistantDetails({
         <div className="flex grow flex-col gap-1">
           <div
             className={classNames(
-              "font-bold text-foreground",
+              "font-bold text-foreground dark:text-foreground-night",
               agentConfiguration?.name && agentConfiguration.name.length > 20
                 ? "text-md"
                 : "text-lg"
@@ -345,31 +348,30 @@ export function AssistantDetails({
   return (
     <Sheet open={!!assistantId} onOpenChange={onClose}>
       <SheetContent size="lg">
-        <SheetHeader>
-          <SheetTitle />
+        <SheetHeader className="flex flex-col gap-5 pb-0 text-sm text-foreground dark:text-foreground-night">
+          <DescriptionSection />
+          {isBuilder(owner) && (
+            <Tabs value={selectedTab}>
+              <TabsList border={false}>
+                <TabsTrigger
+                  value="info"
+                  label="Info"
+                  icon={InformationCircleIcon}
+                  onClick={() => setSelectedTab("info")}
+                />
+                <TabsTrigger
+                  value="performance"
+                  label="Performance"
+                  icon={BarChartIcon}
+                  onClick={() => setSelectedTab("performance")}
+                />
+              </TabsList>
+            </Tabs>
+          )}
         </SheetHeader>
-        <SheetContainer>
+        <SheetContainer className="flex flex-col gap-5 pt-6 text-sm text-foreground dark:text-foreground-night">
           {agentConfiguration && (
-            <div className="flex flex-col gap-5 pt-6 text-sm text-foreground">
-              <DescriptionSection />
-              {isBuilder(owner) && (
-                <Tabs value={selectedTab}>
-                  <TabsList>
-                    <TabsTrigger
-                      value="info"
-                      label="Info"
-                      icon={InformationCircleIcon}
-                      onClick={() => setSelectedTab("info")}
-                    />
-                    <TabsTrigger
-                      value="performance"
-                      label="Performance"
-                      icon={BarChartIcon}
-                      onClick={() => setSelectedTab("performance")}
-                    />
-                  </TabsList>
-                </Tabs>
-              )}
+            <>
               {selectedTab === "info" && (
                 <AssistantDetailsInfo
                   agentConfiguration={agentConfiguration}
@@ -382,7 +384,7 @@ export function AssistantDetails({
                   owner={owner}
                 />
               )}
-            </div>
+            </>
           )}
           {isAgentConfigurationError?.error.type ===
             "agent_configuration_not_found" && (

@@ -4,7 +4,6 @@ export const WHITELISTABLE_FEATURES = [
   "labs_transcripts",
   "labs_transcripts_full_storage",
   "document_tracker",
-  "use_app_for_header_detection",
   "openai_o1_feature",
   "openai_o1_mini_feature",
   "openai_o1_high_reasoning_feature",
@@ -18,9 +17,9 @@ export const WHITELISTABLE_FEATURES = [
   "labs_trackers",
   "show_debug_tools",
   "labs_github_actions",
-  "reasoning_tool_feature",
   "deepseek_r1_global_agent_feature",
   "bigquery_feature",
+  "tags_filters",
 ] as const;
 export type WhitelistableFeature = (typeof WHITELISTABLE_FEATURES)[number];
 export function isWhitelistableFeature(

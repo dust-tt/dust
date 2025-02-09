@@ -34,6 +34,7 @@ import {
   O1_HIGH_REASONING_MODEL_CONFIG,
   O1_MINI_MODEL_CONFIG,
   O1_MODEL_CONFIG,
+  O3_MINI_HIGH_REASONING_MODEL_CONFIG,
 } from "@dust-tt/types";
 
 import {
@@ -200,7 +201,7 @@ function _getHelperGlobalAgent({
           {
             dataSourceViewId: config.getDustAppsHelperDatasourceViewId(),
             workspaceId: config.getDustAppsWorkspaceId(),
-            filter: { parents: null },
+            filter: { parents: null, tags: null },
           },
         ],
         name: "search_dust_docs",
@@ -299,6 +300,48 @@ function _getGPT4GlobalAgent({
     visualizationEnabled: true,
     templateId: null,
     // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
+    groupIds: [],
+    requestedGroupIds: [],
+  };
+}
+function _getO3MiniGlobalAgent({
+  auth,
+  settings,
+}: {
+  auth: Authenticator;
+  settings: GlobalAgentSettings | null;
+}): AgentConfigurationType {
+  let status: AgentConfigurationStatus = "active";
+
+  if (settings) {
+    status = settings.status;
+  }
+  if (!auth.isUpgraded()) {
+    status = "disabled_free_workspace";
+  }
+
+  return {
+    id: -1,
+    sId: GLOBAL_AGENTS_SID.O3_MINI,
+    version: 0,
+    versionCreatedAt: null,
+    versionAuthorId: null,
+    name: "o3-mini",
+    description: O3_MINI_HIGH_REASONING_MODEL_CONFIG.description,
+    instructions: null,
+    pictureUrl: "https://dust.tt/static/systemavatar/o1_avatar_full.png",
+    status,
+    scope: "global",
+    userFavorite: false,
+    model: {
+      providerId: O3_MINI_HIGH_REASONING_MODEL_CONFIG.providerId,
+      modelId: O3_MINI_HIGH_REASONING_MODEL_CONFIG.modelId,
+      temperature: 0.7,
+    },
+    actions: [],
+    maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
+    visualizationEnabled: true,
+    templateId: null,
     groupIds: [],
     requestedGroupIds: [],
   };
@@ -1197,7 +1240,7 @@ function _getDustGlobalAgent(
         dataSourceId: dsView.dataSource.sId,
         dataSourceViewId: dsView.sId,
         workspaceId: preFetchedDataSources.workspaceId,
-        filter: { parents: null },
+        filter: { parents: null, tags: null },
       })),
       name: "search_all_data_sources",
       description: `The user's entire workspace data sources`,
@@ -1230,7 +1273,7 @@ function _getDustGlobalAgent(
           {
             workspaceId: preFetchedDataSources.workspaceId,
             dataSourceViewId: dsView.sId,
-            filter: { parents: null },
+            filter: { parents: null, tags: null },
           },
         ],
         name: "hidden_dust_search_" + dsView.dataSource.name,
@@ -1315,6 +1358,9 @@ function getGlobalAgent(
       break;
     case GLOBAL_AGENTS_SID.O1_HIGH_REASONING:
       agentConfiguration = _getO1HighReasoningGlobalAgent({ auth, settings });
+      break;
+    case GLOBAL_AGENTS_SID.O3_MINI:
+      agentConfiguration = _getO3MiniGlobalAgent({ auth, settings });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_INSTANT:
       agentConfiguration = _getClaudeInstantGlobalAgent({ settings });

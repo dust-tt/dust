@@ -20,7 +20,6 @@ async function getFileParents(
   connectorId: ModelId,
   authCredentials: OAuth2Client,
   driveFile: GoogleDriveObjectType,
-  /* eslint-disable @typescript-eslint/no-unused-vars */
   startSyncTs: number
 ): Promise<string[]> {
   const logger = mainLogger.child({
@@ -31,10 +30,11 @@ async function getFileParents(
   const parents: string[] = [driveFile.id];
   let currentObject = driveFile;
   while (currentObject.parent) {
-    const parent = await getGoogleDriveObject(
+    const parent = await getGoogleDriveObject({
       authCredentials,
-      currentObject.parent
-    );
+      driveObjectId: currentObject.parent,
+      cacheKey: { connectorId, ts: startSyncTs },
+    });
     if (!parent) {
       // If we got a 404 error we stop the iteration as the parent disappeared.
       logger.info("Parent not found in `getFileParents`", {

@@ -3,7 +3,7 @@ import { EnvironmentConfig, isDevelopment } from "@dust-tt/types";
 export const SUPPORTED_REGIONS = ["europe-west1", "us-central1"] as const;
 export type RegionType = (typeof SUPPORTED_REGIONS)[number];
 
-interface RegionInfo {
+export interface RegionInfo {
   name: RegionType;
   url: string;
 }
@@ -35,7 +35,10 @@ export const config = {
     };
   },
   getDustRegionSyncEnabled: (): boolean => {
-    return EnvironmentConfig.getEnvVariable("DUST_REGION") !== "us-central1";
+    return (
+      EnvironmentConfig.getEnvVariable("DUST_REGION") !== "us-central1" ||
+      isDevelopment()
+    );
   },
   getDustRegionSyncMasterUrl: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_US_URL");

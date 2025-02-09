@@ -223,7 +223,10 @@ function getDataSourceConfigurationsForTableAction(
           dsConfigs[table.dataSourceViewId] = {
             workspaceId: table.workspaceId,
             dataSourceViewId: table.dataSourceViewId,
-            filter: { parents: dataSourceView ? { in: [], not: [] } : null },
+            filter: {
+              parents: dataSourceView ? { in: [], not: [] } : null,
+              tags: null, // Tags are not supported for tables query.
+            },
           };
         }
 
@@ -321,7 +324,7 @@ interface ActionSectionProps {
 function ActionSection({ title, children }: ActionSectionProps) {
   return (
     <div>
-      <div className="text-text-foreground pb-2 text-lg font-medium">
+      <div className="text-text-foreground dark:text-text-foreground-night pb-2 text-lg font-medium">
         {title}
       </div>
       {children}

@@ -31,6 +31,7 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "gpt-4o-mini"
   | "o1"
   | "o1-mini"
+  | "o3-mini"
   | "claude-3-opus-20240229"
   | "claude-3-5-sonnet-20240620"
   | "claude-3-5-sonnet-20241022"
@@ -766,7 +767,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "labs_transcripts_full_storage"
   | "labs_trackers"
   | "document_tracker"
-  | "use_app_for_header_detection"
   | "openai_o1_feature"
   | "openai_o1_mini_feature"
   | "openai_o1_high_reasoning_feature"
@@ -780,9 +780,9 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "disable_run_logs"
   | "show_debug_tools"
   | "labs_github_actions"
-  | "reasoning_tool_feature"
   | "deepseek_r1_global_agent_feature"
   | "bigquery_feature"
+  | "tags_filters"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -2195,52 +2195,21 @@ export type PostTableParentsResponseType = z.infer<
   typeof PostTableParentsResponseSchema
 >;
 
-export const UpsertTableFromCsvRequestSchema = z.intersection(
-  z
-    .object({
-      name: z.string(),
-      description: z.string(),
-      timestamp: z.number().nullable().optional(),
-      tags: z.array(z.string()).nullable().optional(),
-      parentId: z.string().nullable().optional(),
-      parents: z.array(z.string()).nullable().optional(),
-      truncate: z.boolean(),
-      useAppForHeaderDetection: z.boolean().nullable().optional(),
-      async: z.boolean().optional(),
-      title: z.string(),
-      mimeType: z.string(),
-      sourceUrl: z.string().nullable().optional(),
-    })
-    .transform((o) => ({
-      name: o.name,
-      description: o.description,
-      timestamp: o.timestamp,
-      tags: o.tags,
-      parentId: o.parentId,
-      parents: o.parents,
-      truncate: o.truncate,
-      useAppForHeaderDetection: o.useAppForHeaderDetection,
-      async: o.async,
-      title: o.title,
-      mimeType: o.mimeType,
-      sourceUrl: o.sourceUrl,
-    })),
-  z.union([
-    z.object({ csv: z.string(), tableId: z.undefined() }).transform((o) => ({
-      csv: o.csv,
-      tableId: o.tableId,
-    })),
-    z
-      .object({
-        csv: z.string().optional(),
-        tableId: z.string(),
-      })
-      .transform((o) => ({
-        csv: o.csv,
-        tableId: o.tableId,
-      })),
-  ])
-);
+export const UpsertTableFromCsvRequestSchema = z.object({
+  name: z.string(),
+  description: z.string(),
+  timestamp: z.number().nullable().optional(),
+  tags: z.array(z.string()).nullable().optional(),
+  parentId: z.string().nullable().optional(),
+  parents: z.array(z.string()).nullable().optional(),
+  truncate: z.boolean(),
+  async: z.boolean().optional(),
+  title: z.string(),
+  mimeType: z.string(),
+  sourceUrl: z.string().nullable().optional(),
+  tableId: z.string(),
+  csv: z.string().optional(),
+});
 
 export type UpsertTableFromCsvRequestType = z.infer<
   typeof UpsertTableFromCsvRequestSchema
@@ -2278,7 +2247,7 @@ export const UpsertDatabaseTableRequestSchema = z.object({
   remote_database_table_id: z.string().nullable().optional(),
   remote_database_secret_id: z.string().nullable().optional(),
   title: z.string(),
-  mime_type: z.string(),
+  mime_type: z.string().nullable().optional(),
   source_url: z.string().nullable().optional(),
 });
 
@@ -2383,7 +2352,7 @@ export const FileUploadUrlRequestSchema = z.object({
   contentType: SupportedFileContentFragmentTypeSchema,
   fileName: z.string().max(256, "File name must be less than 256 characters"),
   fileSize: z.number(),
-  useCase: z.union([z.literal("conversation"), z.literal("avatar")]),
+  useCase: z.literal("conversation"),
   useCaseMetadata: z
     .object({
       conversationId: z.string(),
@@ -2399,7 +2368,7 @@ const FileTypeStatusSchema = FlexibleEnumSchema<
 >();
 
 const FileTypeUseCaseSchema = FlexibleEnumSchema<
-  "conversation" | "avatar" | "tool_output" | "folder_document" | "folder_table"
+  "conversation" | "avatar" | "tool_output" | "upsert_document" | "upsert_table"
 >();
 
 export const FileTypeSchema = z.object({

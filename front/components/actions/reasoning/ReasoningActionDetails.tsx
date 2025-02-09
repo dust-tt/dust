@@ -18,7 +18,7 @@ export function ReasoningActionDetails({
       <div className="flex flex-col gap-1 gap-4 py-4 pl-6">
         {action.thinking && <ReasoningThinking action={action} />}
         {action.output && (
-          <div className="text-sm font-normal text-muted-foreground">
+          <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
             <Markdown
               content={action.output}
               textColor="text-muted-foreground"
@@ -41,7 +41,7 @@ function ReasoningThinking({ action }: { action: ReasoningActionType }) {
 
   return (
     <div className="flex flex-col gap-1">
-      <div className="text-sm font-normal text-muted-foreground">
+      <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
         <ContentMessage variant="slate" size="lg">
           <Markdown
             content={thinking}

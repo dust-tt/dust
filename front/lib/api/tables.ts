@@ -10,18 +10,14 @@ import {
   CoreAPI,
   Err,
   getSanitizedHeaders,
-  getSmallWhitelistedModel,
   guessDelimiter,
   Ok,
 } from "@dust-tt/types";
-import { parse } from "csv-parse";
-import * as t from "io-ts";
+import { CsvError, parse } from "csv-parse";
 import { DateTime } from "luxon";
 
-import { callAction } from "@app/lib/actions/helpers";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import logger from "@app/logger/logger";
 
 import type { DataSourceResource } from "../resources/data_source_resource";
@@ -35,7 +31,7 @@ type CsvParsingError = {
     | "invalid_header"
     | "duplicate_header"
     | "invalid_record_length"
-    | "invalid_quotes"
+    | "invalid_csv"
     | "empty_csv"
     | "too_many_columns"
     | "invalid_row_id";
@@ -138,7 +134,6 @@ export async function upsertTableFromCsv({
   tableParents,
   csv,
   truncate,
-  useAppForHeaderDetection,
   detectedHeaders,
   title,
   mimeType,
@@ -155,21 +150,11 @@ export async function upsertTableFromCsv({
   tableParents: string[];
   csv: string | null;
   truncate: boolean;
-  useAppForHeaderDetection: boolean;
   detectedHeaders?: DetectedHeadersType;
   title: string;
   mimeType: string;
   sourceUrl: string | null;
 }): Promise<Result<{ table: CoreAPITable }, TableOperationError>> {
-  const csvRowsRes = csv
-    ? await rowsFromCsv({
-        auth,
-        csv,
-        useAppForHeaderDetection,
-        detectedHeaders,
-      })
-    : null;
-
   const owner = auth.workspace();
 
   if (!owner) {
@@ -196,6 +181,14 @@ export async function upsertTableFromCsv({
       message: "Invalid request body, parents[1] and parent_id should be equal",
     });
   }
+
+  const csvRowsRes = csv
+    ? await rowsFromCsv({
+        auth,
+        csv,
+        detectedHeaders,
+      })
+    : null;
 
   let csvRows: CoreAPIRow[] | undefined = undefined;
   if (csvRowsRes) {
@@ -354,12 +347,10 @@ export async function upsertTableFromCsv({
 export async function rowsFromCsv({
   auth,
   csv,
-  useAppForHeaderDetection,
   detectedHeaders,
 }: {
   auth: Authenticator;
   csv: string;
-  useAppForHeaderDetection: boolean;
   detectedHeaders?: DetectedHeadersType;
 }): Promise<
   Result<
@@ -376,20 +367,21 @@ export async function rowsFromCsv({
     });
   }
 
-  const headerRes = detectedHeaders
-    ? new Ok(detectedHeaders)
-    : await detectHeaders(auth, csv, delimiter, useAppForHeaderDetection);
-
-  if (headerRes.isErr()) {
-    return headerRes;
-  }
-  const { header, rowIndex } = headerRes.value;
-
-  let i = 0;
-  const parser = parse(csv, { delimiter });
   // this differs with = {} in that it prevent errors when header values clash with object properties such as toString, constructor, ..
   const valuesByCol: Record<string, string[]> = Object.create(null);
+  let header, rowIndex;
   try {
+    const headerRes = detectedHeaders
+      ? new Ok(detectedHeaders)
+      : await detectHeaders(csv, delimiter);
+
+    if (headerRes.isErr()) {
+      return headerRes;
+    }
+    ({ header, rowIndex } = headerRes.value);
+
+    const parser = parse(csv, { delimiter });
+    let i = 0;
     for await (const anyRecord of parser) {
       if (i++ >= rowIndex) {
         for (const [i, h] of header.entries()) {
@@ -399,10 +391,10 @@ export async function rowsFromCsv({
       }
     }
   } catch (e) {
-    if (e instanceof Error && e.message.includes("Invalid Closing Quote")) {
-      logger.error({ error: e }, "Invalid CSV format invalid quotes in data.");
+    if (e instanceof CsvError) {
+      logger.warn({ error: e });
       return new Err({
-        type: "invalid_quotes",
+        type: "invalid_csv",
         message: `Invalid CSV format: Please check for properly matched quotes in your data. ${e.message}`,
       });
     }
@@ -560,74 +552,42 @@ async function staticHeaderDetection(
   return new Ok({ header: header.value, rowIndex: 1 });
 }
 
-async function detectHeaders(
-  auth: Authenticator,
+export async function detectHeaders(
   csv: string,
-  delimiter: string,
-  useAppForHeaderDetection: boolean
+  delimiter: string
 ): Promise<Result<DetectedHeadersType, CsvParsingError>> {
-  const headParser = parse(csv, { delimiter });
-  const records = [];
-  for await (const anyRecord of headParser) {
-    // Assert that record is string[].
-    if (!Array.isArray(anyRecord)) {
-      throw new Error("Record is not an array.");
-    }
-
-    if (anyRecord.some((r) => typeof r !== "string")) {
-      throw new Error("Record contains non-string values.");
-    }
-
-    const record = anyRecord as string[];
-
-    if (record.length > MAX_TABLE_COLUMNS) {
-      return new Err({ type: "too_many_columns", message: "Too many columns" });
-    }
-
-    if (!useAppForHeaderDetection) {
-      return staticHeaderDetection(record);
-    }
-
-    records.push(record);
-
-    if (records.length === 10) {
-      break;
-    }
-  }
-  headParser.destroy();
-
-  const action = getDustProdAction("table-header-detection");
-
-  const model = getSmallWhitelistedModel(auth.getNonNullableWorkspace());
-  if (!model) {
-    throw new Error("Could not find a whitelisted model for the workspace.");
-  }
-
-  const config = cloneBaseConfig(action.config);
-  config.MODEL.provider_id = model.providerId;
-  config.MODEL.model_id = model.modelId;
-
-  const res = await callAction(auth, {
-    action,
-    config,
-    input: { tableData: records },
-    responseValueSchema: t.type({
-      headers: t.array(t.string),
-      rowIndex: t.Integer,
-    }),
+  const records = await new Promise<string[][]>((resolve, reject) => {
+    parse(
+      csv,
+      {
+        delimiter,
+        skipEmptyLines: true,
+        to: 1,
+      },
+      (err, records) => {
+        if (err) {
+          reject(err);
+        }
+        resolve(records);
+      }
+    );
   });
 
-  if (res.isErr()) {
-    logger.warn("Error when running app for detecting header", res.error);
-    // Fallback to statuc header detection.
-    return staticHeaderDetection(records[0]);
-  }
-  const rowIndex = res.value.rowIndex;
-  const header = getSanitizedHeaders(res.value.headers);
-
-  if (header.isErr()) {
-    return new Err({ type: "invalid_header", message: header.error.message });
+  if (records.length === 0) {
+    return new Err({ type: "empty_csv", message: "Empty CSV" });
   }
 
-  return new Ok({ header: header.value, rowIndex });
+  const firstRecord = records[0];
+  if (
+    !Array.isArray(firstRecord) ||
+    firstRecord.some((r) => typeof r !== "string")
+  ) {
+    throw new Error("Invalid record format");
+  }
+
+  if (firstRecord.length > MAX_TABLE_COLUMNS) {
+    return new Err({ type: "too_many_columns", message: "Too many columns" });
+  }
+
+  return staticHeaderDetection(firstRecord);
 }

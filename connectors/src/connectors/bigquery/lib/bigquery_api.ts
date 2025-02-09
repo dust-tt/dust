@@ -1,4 +1,4 @@
-import type { BigQueryCredentials, Result } from "@dust-tt/types";
+import type { BigQueryCredentialsWithLocation, Result } from "@dust-tt/types";
 import { Err, Ok, removeNulls } from "@dust-tt/types";
 import { BigQuery } from "@google-cloud/bigquery";
 
@@ -6,6 +6,7 @@ import type {
   RemoteDBDatabase,
   RemoteDBSchema,
   RemoteDBTable,
+  RemoteDBTree,
 } from "@connectors/lib/remote_databases/utils";
 import { parseSchemaInternalId } from "@connectors/lib/remote_databases/utils";
 
@@ -34,7 +35,7 @@ export function isTestConnectionError(
 export const testConnection = async ({
   credentials,
 }: {
-  credentials: BigQueryCredentials;
+  credentials: BigQueryCredentialsWithLocation;
 }): Promise<Result<string, TestConnectionError>> => {
   // Connect to bigquery, do a simple query.
   const bigQuery = connectToBigQuery(credentials);
@@ -53,17 +54,20 @@ export const testConnection = async ({
   }
 };
 
-export function connectToBigQuery(credentials: BigQueryCredentials): BigQuery {
+export function connectToBigQuery(
+  credentials: BigQueryCredentialsWithLocation
+): BigQuery {
   return new BigQuery({
     credentials,
     scopes: ["https://www.googleapis.com/auth/bigquery.readonly"],
+    location: credentials.location,
   });
 }
 
 export const fetchDatabases = ({
   credentials,
 }: {
-  credentials: BigQueryCredentials;
+  credentials: BigQueryCredentialsWithLocation;
 }): RemoteDBDatabase[] => {
   // BigQuery do not have a concept of databases per say, the most similar concept is a project.
   // Since credentials are always scoped to a project, we directly return a single database with the project name.
@@ -79,7 +83,7 @@ export const fetchDatasets = async ({
   credentials,
   connection,
 }: {
-  credentials: BigQueryCredentials;
+  credentials: BigQueryCredentialsWithLocation;
   connection?: BigQuery;
 }): Promise<Result<Array<RemoteDBSchema>, Error>> => {
   const conn = connection ?? connectToBigQuery(credentials);
@@ -89,6 +93,16 @@ export const fetchDatasets = async ({
     return new Ok(
       removeNulls(
         datasets.map((dataset) => {
+          // We want to filter out datasets that are in a different location than the credentials.
+          // But, for example, we want to keep dataset in "us" (multi-region) when selected location is "us-central1" (regional)
+          if (
+            !credentials.location
+              .toLowerCase()
+              .startsWith(dataset.location?.toLowerCase() ?? "")
+          ) {
+            return null;
+          }
+
           if (!dataset.id) {
             return null;
           }
@@ -113,7 +127,7 @@ export const fetchTables = async ({
   internalDatasetId,
   connection,
 }: {
-  credentials: BigQueryCredentials;
+  credentials: BigQueryCredentialsWithLocation;
   datasetName?: string;
   internalDatasetId?: string;
   connection?: BigQuery;
@@ -161,6 +175,51 @@ export const fetchTables = async ({
   } catch (error) {
     return new Err(error instanceof Error ? error : new Error(String(error)));
   }
+};
+
+export const fetchTree = async ({
+  credentials,
+}: {
+  credentials: BigQueryCredentialsWithLocation;
+}): Promise<Result<RemoteDBTree, Error>> => {
+  const databases = await fetchDatabases({ credentials });
+
+  const schemasRes = await fetchDatasets({ credentials });
+  if (schemasRes.isErr()) {
+    return schemasRes;
+  }
+  const schemas = schemasRes.value;
+
+  const tree = {
+    databases: await Promise.all(
+      databases.map(async (db) => {
+        return {
+          ...db,
+          schemas: await Promise.all(
+            schemas
+              .filter((s) => s.database_name === db.name)
+              .map(async (schema) => {
+                const tablesRes = await fetchTables({
+                  credentials,
+                  datasetName: schema.name,
+                });
+                if (tablesRes.isErr()) {
+                  throw tablesRes.error;
+                }
+                const tables = tablesRes.value;
+
+                return {
+                  ...schema,
+                  tables,
+                };
+              })
+          ),
+        };
+      })
+    ),
+  };
+
+  return new Ok(tree);
 };
 
 // BigQuery is read-only as we force the readonly scope when creating the client.

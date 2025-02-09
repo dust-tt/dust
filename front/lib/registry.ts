@@ -247,20 +247,6 @@ export const BaseDustProdActionRegistry = {
       },
     },
   },
-  "table-header-detection": {
-    app: {
-      appId: "Hllp6rDlNo",
-      appHash:
-        "50441165e07ce247227b95e55a3dd82cbc373e16455addb472adeee43f9f62d3",
-    },
-    config: {
-      MODEL: {
-        // `provider_id` and `model_id` must be set by caller.
-        use_cache: false,
-        use_stream: true,
-      },
-    },
-  },
   "conversation-file-summarizer": {
     app: {
       appId: "iy1pjLCMzZ",
@@ -279,7 +265,7 @@ export const BaseDustProdActionRegistry = {
     app: {
       appId: "hUJvIB2KDb",
       appHash:
-        "1dd9a42a42330b890128b37da5d5c0752b7ef3a26666596155c9a9c77f1870f5",
+        "f12559382a92cdd5924f207c5f6cf7e6f74e0a4552a97929958ffc99154fa149",
     },
     config: {
       MODEL: {

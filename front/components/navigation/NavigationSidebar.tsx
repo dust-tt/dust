@@ -56,7 +56,7 @@ export const NavigationSidebar = React.forwardRef<
   return (
     <div
       ref={ref}
-      className="flex min-w-0 grow flex-col bg-structure-50 dark:bg-structure-50-dark"
+      className="flex min-w-0 grow flex-col bg-structure-50 dark:bg-structure-50-night"
     >
       <div className="flex flex-col">
         {user && user.workspaces.length > 1 ? (
@@ -152,7 +152,7 @@ export const NavigationSidebar = React.forwardRef<
       </div>
       <div className="flex grow flex-col">{children}</div>
       {user && (
-        <div className="flex items-center gap-2 border-t border-border-dark p-2">
+        <div className="flex items-center gap-2 border-t border-border-dark/60 p-2">
           <UserMenu user={user} owner={owner} />
           <div className="flex-grow" />
           <HelpDropdown owner={owner} user={user} />

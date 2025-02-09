@@ -1,2 +1,2 @@
-export const WORKFLOW_VERSION = 1;
-export const QUEUE_NAME = `biquery-v${WORKFLOW_VERSION}`;
+const WORKFLOW_VERSION = 2;
+export const QUEUE_NAME = `bigquery-v${WORKFLOW_VERSION}`;

@@ -1,3 +1,4 @@
+import type { APIError, Result } from "@dust-tt/types";
 import * as t from "io-ts";
 
 import { callAction } from "@app/lib/actions/helpers";
@@ -25,7 +26,12 @@ export async function callDocTrackerScoreDocsAction(
     providerId: string;
     modelId: string;
   }
-): Promise<DocTrackerScoreDocsActionResult> {
+): Promise<
+  Result<
+    { result: DocTrackerScoreDocsActionResult; runId: string | null },
+    APIError
+  >
+> {
   const action = getDustProdAction("doc-tracker-score-docs");
 
   const config = cloneBaseConfig(action.config);
@@ -43,11 +49,7 @@ export async function callDocTrackerScoreDocsAction(
     responseValueSchema: DocTrackerScoreDocsActionResultSchema,
   });
 
-  if (res.isErr()) {
-    throw res.error;
-  }
-
-  return res.value;
+  return res;
 }
 
 const DocTrackerScoreDocsActionResultSchema = t.array(

@@ -119,6 +119,8 @@ function getDataSource(
               not: dataSourceConfig.parentsNotIn,
             }
           : null,
+      // TODO(TAF) Add tags filter (if we refactor https://github.com/dust-tt/dust/pull/4994).
+      tags: null,
     },
   };
 }

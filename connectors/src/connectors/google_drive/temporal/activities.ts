@@ -10,6 +10,10 @@ import { Op } from "sequelize";
 
 import { getSourceUrlForGoogleDriveFiles } from "@connectors/connectors/google_drive";
 import {
+  fixParentsConsistency,
+  internalDeleteFile,
+} from "@connectors/connectors/google_drive/lib";
+import {
   GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID,
   GOOGLE_DRIVE_SHARED_WITH_ME_WEB_URL,
   GOOGLE_DRIVE_USER_SPACE_VIRTUAL_DRIVE_ID,
@@ -17,24 +21,17 @@ import {
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import { syncOneFile } from "@connectors/connectors/google_drive/temporal/file";
-import {
-  getMimeTypesToSync,
-  isGoogleDriveSpreadSheetFile,
-} from "@connectors/connectors/google_drive/temporal/mime_types";
-import { deleteSpreadsheet } from "@connectors/connectors/google_drive/temporal/spreadsheets";
+import { getMimeTypesToSync } from "@connectors/connectors/google_drive/temporal/mime_types";
 import {
   driveObjectToDustType,
   getAuthObject,
   getDriveClient,
+  getDriveFileId,
   getInternalId,
   getMyDriveIdCached,
 } from "@connectors/connectors/google_drive/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import {
-  deleteDataSourceDocument,
-  deleteDataSourceFolder,
-  upsertDataSourceFolder,
-} from "@connectors/lib/data_sources";
+import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import {
   GoogleDriveConfig,
   GoogleDriveFiles,
@@ -45,7 +42,6 @@ import { redisClient } from "@connectors/lib/redis";
 import { heartbeat } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import { sequelizeConnection } from "@connectors/resources/storage";
 import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
 import { FILE_ATTRIBUTES_TO_FETCH } from "@connectors/types/google_drive";
 
@@ -139,10 +135,10 @@ export async function getDrivesToSync(
   const drives: Record<string, LightGoogleDrive> = {};
 
   for (const folder of selectedFolders) {
-    const remoteFolder = await getGoogleDriveObject(
+    const remoteFolder = await getGoogleDriveObject({
       authCredentials,
-      folder.folderId
-    );
+      driveObjectId: folder.folderId,
+    });
     if (remoteFolder) {
       if (!remoteFolder.driveId) {
         throw new Error(`Folder ${folder.folderId} does not have a driveId.`);
@@ -200,10 +196,11 @@ export async function syncFiles(
     csvEnabled: config?.csvEnabled || false,
   });
   const authCredentials = await getAuthObject(connector.connectionId);
-  const driveFolder = await getGoogleDriveObject(
+  const driveFolder = await getGoogleDriveObject({
     authCredentials,
-    driveFolderId
-  );
+    driveObjectId: driveFolderId,
+    cacheKey: { connectorId, ts: startSyncTs },
+  });
   if (!driveFolder) {
     // We got a 404 on this folder, we skip it.
     logger.info(
@@ -528,7 +525,7 @@ export async function incrementalSync(
           driveFileId: file.id,
           name: file.name,
           mimeType: file.mimeType,
-          parentId: file.parent,
+          parentId: parents[1] ? getDriveFileId(parents[1]) : null,
           lastSeenTs: new Date(),
         });
         localLogger.info({ fileId: change.file.id }, "done syncing file");
@@ -647,10 +644,10 @@ export async function shouldGarbageCollect(connectorId: ModelId) {
 
   const authCredentials = await getAuthObject(connector.connectionId);
   for (const folder of selectedFolder) {
-    const remoteFolder = await getGoogleDriveObject(
+    const remoteFolder = await getGoogleDriveObject({
       authCredentials,
-      folder.folderId
-    );
+      driveObjectId: folder.folderId,
+    });
     if (!remoteFolder) {
       return true;
     }
@@ -672,6 +669,17 @@ export async function garbageCollector(
   }
 
   const authCredentials = await getAuthObject(connector.connectionId);
+  const localLogger = logger.child({
+    provider: "google_drive",
+    connectorId: connectorId,
+    lastSeenTs,
+    activity: "garbageCollector",
+  });
+
+  localLogger.info("Google Drive: Starting garbage collector");
+
+  const ts = lastSeenTs || Date.now();
+
   const files = await GoogleDriveFiles.findAll({
     where: {
       connectorId: connectorId,
@@ -685,10 +693,11 @@ export async function garbageCollector(
   await Promise.all(
     files.map(async (file) => {
       return queue.add(async () => {
-        const driveFile = await getGoogleDriveObject(
+        const driveFile = await getGoogleDriveObject({
           authCredentials,
-          file.driveFileId
-        );
+          driveObjectId: file.driveFileId,
+          cacheKey: { connectorId, ts },
+        });
         if (!driveFile) {
           // Could not find the file on Gdrive, deleting our local reference to it.
           await deleteFile(file);
@@ -712,6 +721,16 @@ export async function garbageCollector(
       });
     })
   );
+
+  // TODO(nodes-core): Run fixParents in dry run mode to check parentIds validity
+  await fixParentsConsistency({
+    connector,
+    files,
+    checkFromGoogle: false,
+    execute: false,
+    startSyncTs: ts,
+    logger: localLogger,
+  });
 
   return files.length;
 }
@@ -795,36 +814,7 @@ export async function deleteFile(googleDriveFile: GoogleDriveFiles) {
     `Deleting Google Drive file.`
   );
 
-  if (isGoogleDriveSpreadSheetFile(googleDriveFile)) {
-    await deleteSpreadsheet(connector, googleDriveFile);
-  } else if (
-    googleDriveFile.mimeType !== "application/vnd.google-apps.folder"
-  ) {
-    const dataSourceConfig = dataSourceConfigFromConnector(connector);
-    await deleteDataSourceDocument(
-      dataSourceConfig,
-      googleDriveFile.dustFileId
-    );
-  }
-  const folder = await GoogleDriveFolders.findOne({
-    where: {
-      connectorId: connectorId,
-      folderId: googleDriveFile.driveFileId,
-    },
-  });
-
-  await sequelizeConnection.transaction(async (t) => {
-    if (folder) {
-      await folder.destroy({ transaction: t });
-    }
-    await googleDriveFile.destroy({ transaction: t });
-  });
-
-  const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  await deleteDataSourceFolder({
-    dataSourceConfig,
-    folderId: googleDriveFile.dustFileId,
-  });
+  await internalDeleteFile(connector, googleDriveFile);
 }
 
 export async function markFolderAsVisited(
@@ -837,7 +827,11 @@ export async function markFolderAsVisited(
     throw new Error(`Connector ${connectorId} not found`);
   }
   const authCredentials = await getAuthObject(connector.connectionId);
-  const file = await getGoogleDriveObject(authCredentials, driveFileId);
+  const file = await getGoogleDriveObject({
+    authCredentials,
+    driveObjectId: driveFileId,
+    cacheKey: { connectorId, ts: startSyncTs },
+  });
 
   if (!file) {
     logger.info(
@@ -874,7 +868,7 @@ export async function markFolderAsVisited(
     driveFileId: file.id,
     name: file.name,
     mimeType: file.mimeType,
-    parentId: file.parent,
+    parentId: parents[1] ? getDriveFileId(parents[1]) : null,
     lastSeenTs: new Date(),
   });
 }
@@ -936,4 +930,52 @@ async function markAsSeenAndIgnored({
     PX: 1000 * 60 * 60 * 24, // 1 day
   });
   return;
+}
+
+export async function fixParentsConsistencyActivity({
+  connectorId,
+  fromId,
+  execute,
+  startTs,
+}: {
+  connectorId: ModelId;
+  fromId: number;
+  execute: boolean;
+  startTs: number;
+}) {
+  const localLogger = logger.child({
+    provider: "google_drive",
+    connectorId: connectorId,
+    activity: "fixParentsConsistencyActivity",
+  });
+
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+  const limit = 1000;
+  const files = await GoogleDriveFiles.findAll({
+    where: {
+      connectorId: connector.id,
+      id: { [Op.gt]: fromId },
+    },
+    order: [["id", "ASC"]],
+    limit,
+  });
+
+  const connectorResource = await ConnectorResource.fetchById(connector.id);
+  if (!connectorResource) {
+    throw new Error("Connector not found");
+  }
+  await fixParentsConsistency({
+    connector: connectorResource,
+    files,
+    checkFromGoogle: true,
+    execute,
+    startSyncTs: startTs,
+    logger: localLogger,
+  });
+  fromId = files[limit - 1]?.id ?? 0;
+
+  return fromId;
 }

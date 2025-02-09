@@ -225,7 +225,7 @@ export function APIKeys({
             window.open("https://docs.dust.tt/reference", "_blank");
           }}
         />
-        <Dialog>
+        <Dialog modal={false}>
           <DialogTrigger asChild>
             <Button
               label="Create API Key"

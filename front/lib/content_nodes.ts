@@ -3,9 +3,9 @@ import {
   DocumentIcon,
   DocumentPileIcon,
   FolderIcon,
+  FolderTableIcon,
   LockIcon,
   Square3Stack3DIcon,
-  TableIcon,
 } from "@dust-tt/sparkle";
 import type { ContentNode } from "@dust-tt/types";
 import { assertNever, MIME_TYPES } from "@dust-tt/types";
@@ -95,7 +95,7 @@ function getVisualForContentNodeBasedOnMimeType(node: ContentNode) {
     return getVisualForFileContentNode(node as ContentNode & { type: "file" });
   }
   if (SPREADSHEET_MIME_TYPES.includes(node.mimeType)) {
-    return TableIcon;
+    return FolderTableIcon;
   }
   switch (node.type) {
     case "database":

@@ -218,6 +218,7 @@ const upsertDocumentToDatasource: ProcessingFunction = async ({
   }
   const { title: upsertTitle, ...restArgs } = upsertArgs ?? {};
   const upsertDocumentRes = await upsertDocument({
+    // Beware, most values here are default values that are overrided by the ...restArgs below.
     document_id: documentId,
     source_url: sourceUrl,
     text: content,
@@ -258,7 +259,10 @@ const upsertTableToDatasource: ProcessingFunction = async ({
     tableId = upsertArgs.tableId ?? tableId;
   }
   const { title: upsertTitle, ...restArgs } = upsertArgs ?? {};
+
   const upsertTableRes = await upsertTable({
+    // Beware, most values here are default values that are overrided by the ...restArgs below,
+    // including description.
     tableId,
     name: slugify(file.fileName),
     description: "Table uploaded from file",
@@ -269,7 +273,6 @@ const upsertTableToDatasource: ProcessingFunction = async ({
     async: false,
     dataSource,
     auth,
-    useAppForHeaderDetection: true,
     title: upsertTitle ?? file.fileName,
     mimeType: file.contentType,
     sourceUrl: file.getPrivateUrl(auth),
@@ -301,17 +304,7 @@ type ProcessingFunction = ({
   file: FileResource;
   content: string;
   dataSource: DataSourceResource;
-  upsertArgs?:
-    | Pick<UpsertDocumentArgs, "document_id" | "title" | "tags">
-    | Pick<
-        UpsertTableArgs,
-        | "name"
-        | "title"
-        | "description"
-        | "tableId"
-        | "tags"
-        | "useAppForHeaderDetection"
-      >;
+  upsertArgs?: UpsertDocumentArgs | UpsertTableArgs;
 }) => Promise<Result<undefined, Error>>;
 
 const getProcessingFunction = ({
@@ -327,13 +320,9 @@ const getProcessingFunction = ({
 
   // Use isSupportedDelimitedTextContentType() everywhere to have a common source of truth
   if (isSupportedDelimitedTextContentType(contentType)) {
-    if (
-      useCase === "conversation" ||
-      useCase === "tool_output" ||
-      useCase === "folder_table"
-    ) {
+    if (["conversation", "tool_output", "upsert_table"].includes(useCase)) {
       return upsertTableToDatasource;
-    } else if (useCase === "folder_document") {
+    } else if (useCase === "upsert_document") {
       return upsertDocumentToDatasource;
     } else {
       return undefined;
@@ -342,9 +331,7 @@ const getProcessingFunction = ({
 
   if (
     isSupportedPlainTextContentType(contentType) &&
-    (useCase === "conversation" ||
-      useCase === "tool_output" ||
-      useCase === "folder_document")
+    ["conversation", "tool_output", "upsert_document"].includes(useCase)
   ) {
     return upsertDocumentToDatasource;
   }
@@ -427,17 +414,7 @@ export async function processAndUpsertToDataSource(
   }: {
     file: FileResource;
     optionalContent?: string;
-    upsertArgs?:
-      | Pick<UpsertDocumentArgs, "document_id" | "title" | "tags">
-      | Pick<
-          UpsertTableArgs,
-          | "name"
-          | "title"
-          | "description"
-          | "tableId"
-          | "tags"
-          | "useAppForHeaderDetection"
-        >;
+    upsertArgs?: UpsertDocumentArgs | UpsertTableArgs;
   }
 ): Promise<
   Result<

@@ -219,7 +219,6 @@ export async function confluenceUpsertSpaceFolderActivity({
   const connector = await fetchConfluenceConnector(connectorId);
 
   const spaceInDb = await ConfluenceSpace.findOne({
-    attributes: ["urlSuffix"],
     where: { connectorId, spaceId },
   });
 
@@ -232,6 +231,11 @@ export async function confluenceUpsertSpaceFolderActivity({
     mimeType: MIME_TYPES.CONFLUENCE.SPACE,
     sourceUrl: spaceInDb?.urlSuffix && `${baseUrl}/wiki${spaceInDb.urlSuffix}`,
   });
+
+  // Update the space name in db.
+  if (spaceInDb && spaceInDb.name != spaceName) {
+    await spaceInDb.update({ name: spaceName });
+  }
 }
 
 export async function markPageHasVisited({
@@ -763,7 +767,7 @@ export async function confluenceGetTopLevelPageIdsActivity({
 export async function confluenceUpdatePagesParentIdsActivity(
   connectorId: ModelId,
   spaceId: string,
-  visitedAtMs: number
+  visitedAtMs: number | null
 ) {
   const connector = await fetchConfluenceConnector(connectorId);
 
@@ -772,7 +776,7 @@ export async function confluenceUpdatePagesParentIdsActivity(
     where: {
       connectorId,
       spaceId,
-      lastVisitedAt: visitedAtMs,
+      ...(visitedAtMs ? { lastVisitedAt: visitedAtMs } : {}),
     },
   });
 

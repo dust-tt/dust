@@ -4,7 +4,12 @@ import type {
   ContentNodesViewType,
   Result,
 } from "@dust-tt/types";
-import { assertNever, Err, isBigQueryCredentials, Ok } from "@dust-tt/types";
+import {
+  assertNever,
+  Err,
+  isBigQueryWithLocationCredentials,
+  Ok,
+} from "@dust-tt/types";
 
 import type { TestConnectionError } from "@connectors/connectors/bigquery/lib/bigquery_api";
 import { testConnection } from "@connectors/connectors/bigquery/lib/bigquery_api";
@@ -14,7 +19,6 @@ import {
   fetchSyncedChildren,
   getBatchContentNodes,
   getContentNodeParents,
-  saveNodesFromPermissions,
 } from "@connectors/connectors/bigquery/lib/permissions";
 import {
   launchBigQuerySyncWorkflow,
@@ -36,6 +40,7 @@ import {
   getConnector,
   getConnectorAndCredentials,
   getCredentials,
+  saveNodesFromPermissions,
 } from "@connectors/lib/remote_databases/utils";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -68,7 +73,7 @@ export class BigQueryConnectorManager extends BaseConnectorManager<null> {
   }): Promise<Result<string, ConnectorManagerError<CreateConnectorErrorCode>>> {
     const credentialsRes = await getCredentials({
       credentialsId: connectionId,
-      isTypeGuard: isBigQueryCredentials,
+      isTypeGuard: isBigQueryWithLocationCredentials,
       logger,
     });
     if (credentialsRes.isErr()) {
@@ -125,7 +130,7 @@ export class BigQueryConnectorManager extends BaseConnectorManager<null> {
 
     const newCredentialsRes = await getCredentials({
       credentialsId: connectionId,
-      isTypeGuard: isBigQueryCredentials,
+      isTypeGuard: isBigQueryWithLocationCredentials,
       logger,
     });
     if (newCredentialsRes.isErr()) {
@@ -250,7 +255,7 @@ export class BigQueryConnectorManager extends BaseConnectorManager<null> {
   > {
     const connectorAndCredentialsRes = await getConnectorAndCredentials({
       connectorId: this.connectorId,
-      isTypeGuard: isBigQueryCredentials,
+      isTypeGuard: isBigQueryWithLocationCredentials,
       logger,
     });
     if (connectorAndCredentialsRes.isErr()) {
@@ -319,7 +324,7 @@ export class BigQueryConnectorManager extends BaseConnectorManager<null> {
   }): Promise<Result<void, Error>> {
     const connectorAndCredentialsRes = await getConnectorAndCredentials({
       connectorId: this.connectorId,
-      isTypeGuard: isBigQueryCredentials,
+      isTypeGuard: isBigQueryWithLocationCredentials,
       logger,
     });
     if (connectorAndCredentialsRes.isErr()) {
@@ -338,13 +343,9 @@ export class BigQueryConnectorManager extends BaseConnectorManager<null> {
       }
     }
 
-    const { credentials } = connectorAndCredentialsRes.value;
-
     await saveNodesFromPermissions({
       connectorId: this.connectorId,
       permissions,
-      credentials,
-      logger,
     });
 
     const launchRes = await launchBigQuerySyncWorkflow(this.connectorId);

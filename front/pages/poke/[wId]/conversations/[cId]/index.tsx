@@ -6,8 +6,9 @@ import type {
 } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
+import type { ReactElement } from "react";
 
-import PokeNavbar from "@app/components/poke/PokeNavbar";
+import PokeLayout from "@app/components/poke/PokeLayout";
 import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation/without_content";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import type { Action } from "@app/lib/registry";
@@ -175,9 +176,9 @@ const ConversationPage = ({
   multiActionsApp,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
   const { conversation } = usePokeConversation({ workspaceId, conversationId });
+
   return (
-    <div className="min-h-screen bg-structure-50">
-      <PokeNavbar />
+    <>
       {conversation && (
         <div className="mx-auto max-w-4xl pt-8">
           <Page.Vertical align="stretch">
@@ -238,8 +239,12 @@ const ConversationPage = ({
           </Page.Vertical>
         </div>
       )}
-    </div>
+    </>
   );
+};
+
+ConversationPage.getLayout = (page: ReactElement) => {
+  return <PokeLayout>{page}</PokeLayout>;
 };
 
 export default ConversationPage;

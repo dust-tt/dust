@@ -12,9 +12,9 @@ import {
   GPT_4O_MODEL_CONFIG,
   Ok,
 } from "@dust-tt/types";
-import { Context } from "@temporalio/activity";
 import _ from "lodash";
 
+import { isErrorWithRunId } from "@app/lib/actions/helpers";
 import config from "@app/lib/api/config";
 import { processTrackerNotification } from "@app/lib/api/tracker";
 import { Authenticator } from "@app/lib/auth";
@@ -64,11 +64,6 @@ export async function trackersGenerationActivity(
   documentHash: string,
   dataSourceConnectorProvider: ConnectorProvider | null
 ) {
-  if (Context.current().info.attempt > 3) {
-    // TODO(DOC_TRACKER): mechanism to retry "manually"
-    throw new Error("Too many attempts");
-  }
-
   const localLogger = logger.child({
     workspaceId,
     dataSourceId,
@@ -223,7 +218,7 @@ export async function trackersGenerationActivity(
 
   // We run each tracker.
   for (const tracker of trackers) {
-    const trackerLogger = localLogger.child({
+    let trackerLogger = localLogger.child({
       trackerId: tracker.sId,
     });
 
@@ -242,27 +237,60 @@ export async function trackersGenerationActivity(
       (x) => x.dustAPIDataSourceId
     );
 
-    const parentsInMap = _.mapValues(
-      _.keyBy(
-        maintainedScope,
-        (x) => maintainedDsCoreIdByDataSourceId[x.dataSourceId]
+    const parentsInMap = _.pickBy(
+      _.mapValues(
+        _.keyBy(
+          maintainedScope,
+          (x) => maintainedDsCoreIdByDataSourceId[x.dataSourceId]
+        ),
+        (x) => x.filter?.parents?.in ?? null
       ),
-      (x) => x.filter?.parents?.in ?? null
+      (x) => x !== null
     );
 
     // We retrieve content from the maintained scope based on the diff.
-    const maintainedScopeRetrieval = await callDocTrackerRetrievalAction(auth, {
-      inputText: diffString,
-      targetDocumentTokens: targetMaintainedScopeTokens,
-      topK: maintainedScopeTopK,
-      maintainedScope,
-      parentsInMap,
+    const maintainedScopeRetrievalRes = await callDocTrackerRetrievalAction(
+      auth,
+      {
+        inputText: diffString,
+        targetDocumentTokens: targetMaintainedScopeTokens,
+        topK: maintainedScopeTopK,
+        maintainedScope,
+        parentsInMap,
+      }
+    );
+
+    if (maintainedScopeRetrievalRes.isErr()) {
+      const runId = isErrorWithRunId(maintainedScopeRetrievalRes.error)
+        ? maintainedScopeRetrievalRes.error.runId
+        : null;
+
+      trackerLogger.error(
+        {
+          error: maintainedScopeRetrievalRes.error,
+          runId,
+        },
+        "Error retrieving content from maintained scope."
+      );
+      throw maintainedScopeRetrievalRes.error;
+    }
+
+    const maintainedScopeRetrieval = maintainedScopeRetrievalRes.value.result;
+    trackerLogger = trackerLogger.child({
+      retrievalRunId: maintainedScopeRetrievalRes.value.runId,
     });
 
     if (maintainedScopeRetrieval.length === 0) {
       trackerLogger.info("No content retrieved from maintained scope.");
       continue;
     }
+
+    trackerLogger.info(
+      {
+        retrievedCount: maintainedScopeRetrieval.length,
+      },
+      "Content retrieved from maintained scope."
+    );
 
     const maintainedDocuments: {
       content: string;
@@ -345,7 +373,8 @@ export async function trackersGenerationActivity(
     // We find documents for which to run the change suggestion.
     // We do this by asking which documents are most relevant to the diff and using the
     // logprobs as a score.
-    const scoreDocsResult = await callDocTrackerScoreDocsAction(auth, {
+    trackerLogger.info("Scoring documents.");
+    const scoreDocsRes = await callDocTrackerScoreDocsAction(auth, {
       watchedDocDiff: diffString,
       maintainedDocuments,
       prompt: tracker.prompt,
@@ -353,14 +382,41 @@ export async function trackersGenerationActivity(
       modelId: TRACKER_SCORE_DOCS_MODEL_CONFIG.modelId,
     });
 
+    if (scoreDocsRes.isErr()) {
+      const runId = isErrorWithRunId(scoreDocsRes.error)
+        ? scoreDocsRes.error.runId
+        : null;
+
+      trackerLogger.error(
+        {
+          runId,
+          error: scoreDocsRes.error,
+        },
+        "Error scoring documents."
+      );
+      throw scoreDocsRes.error;
+    }
+
+    const scoreDocsOutput = scoreDocsRes.value.result;
+    trackerLogger = trackerLogger.child({
+      scoreDocsRunId: scoreDocsRes.value.runId,
+    });
+
+    trackerLogger.info(
+      {
+        scoredDocumentsCount: scoreDocsOutput.length,
+      },
+      "Documents scored."
+    );
+
     // The output of the Dust App above is a list of document for which we want to run the change suggestion.
 
     for (const {
       documentId: maintainedDocumentId,
       dataSourceId: maintainedDataSourceId,
       score,
-    } of scoreDocsResult) {
-      logger.info(
+    } of scoreDocsOutput) {
+      trackerLogger.info(
         {
           maintainedDocumentId,
           maintainedDataSourceId,
@@ -377,18 +433,35 @@ export async function trackersGenerationActivity(
         continue;
       }
 
-      const suggestChangesResult = await callDocTrackerSuggestChangesAction(
-        auth,
-        {
-          watchedDocDiff: diffString,
-          maintainedDocContent: content,
-          prompt: tracker.prompt,
-          providerId: tracker.providerId,
-          modelId: tracker.modelId,
-        }
-      );
+      const suggestChangesRes = await callDocTrackerSuggestChangesAction(auth, {
+        watchedDocDiff: diffString,
+        maintainedDocContent: content,
+        prompt: tracker.prompt,
+        providerId: tracker.providerId,
+        modelId: tracker.modelId,
+      });
 
-      if (!suggestChangesResult.suggestion) {
+      if (suggestChangesRes.isErr()) {
+        const runId = isErrorWithRunId(suggestChangesRes.error)
+          ? suggestChangesRes.error.runId
+          : null;
+
+        trackerLogger.error(
+          {
+            runId,
+            error: suggestChangesRes.error,
+          },
+          "Error suggesting changes."
+        );
+        throw suggestChangesRes.error;
+      }
+
+      const suggestChangesOutput = suggestChangesRes.value.result;
+      trackerLogger = trackerLogger.child({
+        suggestChangesRunId: suggestChangesRes.value.runId,
+      });
+
+      if (!suggestChangesOutput.suggestion) {
         trackerLogger.info("No changes suggested.");
         continue;
       }
@@ -404,9 +477,9 @@ export async function trackersGenerationActivity(
         );
       }
 
-      const suggestedChanges = suggestChangesResult.suggestion;
-      const thinking = suggestChangesResult.thinking;
-      const confidenceScore = suggestChangesResult.confidence_score;
+      const suggestedChanges = suggestChangesOutput.suggestion;
+      const thinking = suggestChangesOutput.thinking;
+      const confidenceScore = suggestChangesOutput.confidence_score;
 
       trackerLogger.info(
         {

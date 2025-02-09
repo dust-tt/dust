@@ -49,7 +49,7 @@ function showUnsupportedDirective() {
 export function Markdown({
   content,
   isStreaming = false,
-  textColor = "s-text-foreground",
+  textColor = "s-text-foreground dark:s-text-foreground-night",
   forcedTextSize,
   isLastMessage = false,
   additionalMarkdownComponents,
@@ -189,13 +189,15 @@ export function Markdown({
         </h6>
       ),
       strong: ({ children }) => (
-        <strong className="s-font-semibold s-text-foreground">
+        <strong className="s-font-semibold s-text-foreground dark:s-text-foreground-night">
           {children}
         </strong>
       ),
       input: Input,
       blockquote: BlockquoteBlock,
-      hr: () => <div className="s-my-6 s-border-b s-border-structure-200" />,
+      hr: () => (
+        <div className="s-my-6 s-border-b s-border-structure-200 dark:s-border-structure-200-night" />
+      ),
       code: CodeBlockWithExtendedSupport,
       ...additionalMarkdownComponents,
     };
@@ -248,7 +250,12 @@ function LinkBlock({
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="s-break-all s-font-semibold s-text-highlight s-transition-all s-duration-200 s-ease-in-out hover:s-text-action-400 hover:s-underline active:s-text-highlight-dark"
+      className={cn(
+        "s-break-all s-font-semibold s-transition-all s-duration-200 s-ease-in-out hover:s-underline",
+        "dark:s-text-highlight-night s-text-highlight",
+        "hover:s-text-action-400 dark:hover:s-text-action-400-night",
+        "active:s-text-highlight-dark dark:active:s-text-highlight-dark-night"
+      )}
     >
       {children}
     </a>
@@ -272,7 +279,9 @@ function PreBlock({ children }: { children: React.ReactNode }) {
   return (
     <pre
       className={cn(
-        "s-my-2 s-w-full s-break-all s-rounded-2xl s-border s-border-border-dark s-bg-muted-background"
+        "s-my-2 s-w-full s-break-all s-rounded-2xl s-border",
+        "s-border-border-dark dark:s-border-border-dark-night",
+        "s-bg-muted-background dark:s-bg-muted-background-night"
       )}
     >
       {validChildrenContent ? children : fallbackData || children}

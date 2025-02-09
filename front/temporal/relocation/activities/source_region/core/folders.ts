@@ -43,18 +43,18 @@ export async function getDataSourceFolders({
     node_types: ["Folder"],
   };
 
-  const cursorRequest: CoreAPISearchCursorRequest = {
+  const options: CoreAPISearchCursorRequest = {
     limit: CORE_API_LIST_NODES_BATCH_SIZE,
   };
 
   if (pageCursor) {
-    cursorRequest.cursor = pageCursor;
+    options.cursor = pageCursor;
   }
 
   // 1) List folders for the data source.
-  const searchResults = await coreAPI.searchNodesWithCursor({
+  const searchResults = await coreAPI.searchNodes({
     filter,
-    cursor: cursorRequest,
+    options,
   });
 
   if (searchResults.isErr()) {

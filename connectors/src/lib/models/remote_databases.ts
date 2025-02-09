@@ -4,15 +4,16 @@ import { DataTypes } from "sequelize";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 
-type RemoteTablePermission = "selected" | "inherited"; // todo Daph move in next PR
+type AllowedPermissions = "selected" | "unselected" | "inherited";
 
 export class RemoteDatabaseModel extends ConnectorBaseModel<RemoteDatabaseModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
+  declare lastUpsertedAt: CreationOptional<Date> | null;
 
   declare internalId: string;
   declare name: string;
-  declare permission: "selected" | "unselected";
+  declare permission: AllowedPermissions;
 }
 RemoteDatabaseModel.init(
   {
@@ -38,6 +39,10 @@ RemoteDatabaseModel.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    lastUpsertedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
   },
   {
     sequelize: sequelizeConnection,
@@ -49,10 +54,11 @@ RemoteDatabaseModel.init(
 export class RemoteSchemaModel extends ConnectorBaseModel<RemoteSchemaModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
+  declare lastUpsertedAt: CreationOptional<Date> | null;
 
   declare internalId: string;
   declare name: string;
-  declare permission: "selected" | "unselected" | "inherited";
+  declare permission: AllowedPermissions;
 
   declare databaseName: string;
 }
@@ -84,6 +90,10 @@ RemoteSchemaModel.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
+    lastUpsertedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
   },
   {
     sequelize: sequelizeConnection,
@@ -102,7 +112,7 @@ export class RemoteTableModel extends ConnectorBaseModel<RemoteTableModel> {
 
   declare schemaName: string;
   declare databaseName: string;
-  declare permission: RemoteTablePermission;
+  declare permission: AllowedPermissions;
 }
 RemoteTableModel.init(
   {
