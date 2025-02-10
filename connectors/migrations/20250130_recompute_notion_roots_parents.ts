@@ -114,7 +114,7 @@ async function updateNodeParents({
       });
     } else {
       logger.info(
-        { parents: [documentId, ...documentId], nodeId: documentId },
+        { parents: [documentId, ...parents], nodeId: documentId },
         "DRY"
       );
     }
