@@ -220,16 +220,33 @@ makeScript(
       type: "number",
       demandOption: false,
       default: 5,
-      description: "Number of connectors to process concurrently",
+      description: "Number of connectors to process concurrently.",
     },
     nodeConcurrency: {
       type: "number",
       demandOption: false,
       default: 8,
-      description: "Number of nodes to process concurrently per connector",
+      description: "Number of nodes to process concurrently per connector.",
+    },
+    extra: {
+      boolean: true,
+      description: "Recompute parents for extra nodes from core.",
+    },
+    missing: {
+      boolean: true,
+      description: "Recompute parents for missing nodes from core.",
     },
   },
-  async ({ execute, connectorConcurrency, nodeConcurrency }, logger) => {
+  async (
+    { execute, connectorConcurrency, nodeConcurrency, extra, missing },
+    logger
+  ) => {
+    if (!extra && !missing) {
+      logger.info(
+        "Nothing to compute (neither extra nor missing nodes), exiting."
+      );
+      return;
+    }
     const coreAPI = new CoreAPI(
       {
         url: EnvironmentConfig.getEnvVariable("CORE_API"),
