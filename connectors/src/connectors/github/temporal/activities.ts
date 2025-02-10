@@ -152,6 +152,7 @@ async function renderIssue(
     title: `Issue #${issue.number} [${repoName}]: ${issue.title}`,
     createdAt: issue.createdAt || issue.updatedAt,
     updatedAt: issue.updatedAt,
+    author: renderGithubUser(issue.creator),
     content: await renderMarkdownSection(dataSourceConfig, issue.body ?? "", {
       flavor: "gfm",
     }),
@@ -291,11 +292,8 @@ export async function githubUpsertIssueActivity(
     tags.push(`author:${issueAuthor}`);
   }
 
-  const prefixTags = [
-    issueAuthor ? `$author: ${issueAuthor}\n` : null,
-    `$isPullRequest: ${issue.isPullRequest}\n`,
-  ].filter(Boolean).join("");
-  renderedIssue.prefix = (renderedIssue.prefix ?? "") + prefixTags;
+  renderedIssue.prefix =
+    (renderedIssue.prefix ?? "") + `$isPullRequest: ${issue.isPullRequest}\n`;
 
   const parents: [string, string, string] = [
     documentId,
