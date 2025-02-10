@@ -253,6 +253,7 @@ export function AgentMessage({
       case "websearch_params":
       case "browse_params":
       case "github_get_pull_request_params":
+      case "github_create_issue_params":
       case "reasoning_started":
       case "reasoning_thinking":
       case "reasoning_tokens":
