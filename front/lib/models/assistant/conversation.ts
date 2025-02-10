@@ -6,7 +6,7 @@ import type {
   UserMessageOrigin,
 } from "@dust-tt/types";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes, Sequelize } from "sequelize";
+import { DataTypes, Op, Sequelize } from "sequelize";
 
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
@@ -433,7 +433,7 @@ Message.init(
       allowNull: false,
     },
     threadVersions: {
-      type: DataTypes.ARRAY(DataTypes.BIGINT),
+      type: DataTypes.ARRAY(DataTypes.INTEGER),
       allowNull: true,
       defaultValue: [0],
     },
@@ -447,8 +447,8 @@ Message.init(
         fields: ["sId"],
       },
       {
-        unique: true,
-        fields: ["conversationId", "rank", "version", "threadVersions[1]"],
+        fields: ["conversationId", "rank", "version"],
+        using: "btree",
       },
       {
         fields: ["agentMessageId"],
@@ -468,7 +468,7 @@ Message.init(
       },
     ],
     hooks: {
-      beforeValidate: (message) => {
+      beforeValidate: async (message) => {
         if (
           Number(!!message.userMessageId) +
             Number(!!message.agentMessageId) +
@@ -477,6 +477,23 @@ Message.init(
         ) {
           throw new Error(
             "Exactly one of userMessageId, agentMessageId, contentFragmentId must be non-null"
+          );
+        }
+
+        const existingMessage = await Message.findOne({
+          where: {
+            conversationId: message.conversationId,
+            rank: message.rank,
+            version: message.version,
+            threadVersions: {
+              [Op.overlap]: message.threadVersions,
+            },
+          },
+        });
+
+        if (existingMessage) {
+          throw new Error(
+            "Message already exists with same conversationId, rank, version and overlapping threadVersions"
           );
         }
       },
