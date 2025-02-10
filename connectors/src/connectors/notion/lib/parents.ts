@@ -9,6 +9,7 @@ import {
   getNotionPageFromConnectorsDb,
   getPageChildrenOf,
 } from "@connectors/connectors/notion/lib/connectors_db_helpers";
+import { UPDATE_PARENTS_FIELDS_TIMEOUT_MINUTES } from "@connectors/connectors/notion/temporal/workflows";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { updateDataSourceDocumentParents } from "@connectors/lib/data_sources";
 import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
@@ -124,7 +125,7 @@ export const getParents = cacheWithRedis(
   (connectorId, pageOrDbId, seen, syncing, memoizationKey, onProgress) => {
     return `${connectorId}:${pageOrDbId}:${memoizationKey}`;
   },
-  60 * 10 * 1000
+  UPDATE_PARENTS_FIELDS_TIMEOUT_MINUTES * 60 * 1000
 );
 
 export async function updateAllParentsFields(
