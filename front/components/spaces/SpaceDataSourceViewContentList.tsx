@@ -501,7 +501,10 @@ export const SpaceDataSourceViewContentList = ({
           className={classNames(
             "flex w-full gap-2",
             isEmpty
-              ? "h-36 items-center justify-center rounded-xl bg-muted-background"
+              ? classNames(
+                  "h-36 items-center justify-center rounded-xl",
+                  "bg-muted-background dark:bg-muted-background-night"
+                )
               : "pb-2"
           )}
         >

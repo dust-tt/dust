@@ -6,6 +6,7 @@ import {
   CardGrid,
   Checkbox,
   Chip,
+  classNames,
   ContentMessage,
   DropdownMenu,
   DropdownMenuContent,
@@ -463,9 +464,10 @@ export default function ActionsScreen({
         <div className="flex h-full min-h-40 flex-col gap-4">
           {configurableActions.length === 0 && (
             <div
-              className={
-                "flex h-36 w-full items-center justify-center rounded-xl bg-muted-background"
-              }
+              className={classNames(
+                "flex h-36 w-full items-center justify-center rounded-xl",
+                "bg-muted-background dark:bg-muted-background-night"
+              )}
             >
               <AddAction
                 onAddAction={(action) => {
