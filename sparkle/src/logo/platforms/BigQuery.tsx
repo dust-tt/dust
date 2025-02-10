@@ -9,65 +9,24 @@ const SvgBigQuery = (props: SVGProps<SVGSVGElement>) => (
     viewBox="0 0 24 24"
     {...props}
   >
-    <rect
-      width={1.597}
-      height={8.267}
-      x={15.961}
-      y={17.265}
-      fill="#4584ED"
-      rx={0.798}
-      transform="rotate(-44.9 15.96 17.265)"
-    />
-    <rect
-      width={1.597}
-      height={10.585}
-      x={6.145}
-      y={8.806}
-      fill="#3BA256"
-      rx={0.798}
-    />
-    <rect
-      width={1.597}
-      height={13.009}
-      x={9.811}
-      y={6.263}
-      fill="#3BA256"
-      rx={0.798}
-    />
-    <rect
-      width={1.597}
-      height={7.569}
-      x={13.595}
-      y={11.23}
-      fill="#3BA256"
-      rx={0.798}
-    />
-    <mask id="BigQuery_svg__a" fill="#fff">
-      <path d="M17.454 3.823A9.639 9.639 0 0 0 1 10.64h1.745A7.893 7.893 0 0 1 16.22 5.057z" />
-    </mask>
+    <path fill="#3BA256" d="M11 9h2v10h-2zM8 12h2v6H8zM14 14h2v4h-2z" />
     <path
-      stroke="#EC4131"
-      strokeWidth={3.548}
-      d="M17.454 3.823A9.639 9.639 0 0 0 1 10.64h1.745A7.893 7.893 0 0 1 16.22 5.057z"
-      mask="url(#BigQuery_svg__a)"
+      fill="#FBBC05"
+      fillRule="evenodd"
+      d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm0-3a6 6 0 1 0 0-12 6 6 0 0 0 0 12Z"
+      clipRule="evenodd"
     />
-    <mask id="BigQuery_svg__b" fill="#fff">
-      <path d="M1 10.639a9.639 9.639 0 0 0 15.826 7.39l-1.12-1.338a7.893 7.893 0 0 1-12.96-6.052z" />
-    </mask>
     <path
-      stroke="#FFBE07"
-      strokeWidth={3.548}
-      d="M1 10.639a9.639 9.639 0 0 0 15.826 7.39l-1.12-1.338a7.893 7.893 0 0 1-12.96-6.052z"
-      mask="url(#BigQuery_svg__b)"
+      fill="#4285F4"
+      fillRule="evenodd"
+      d="m17.215 19.336 3.284 3.285 2.122-2.122-3.285-3.284A8.959 8.959 0 0 0 21 12a8.972 8.972 0 0 0-2.67-6.397l-2.094 2.148A5.981 5.981 0 0 1 18 12a5.997 5.997 0 0 1-2.952 5.17l2.167 2.166Z"
+      clipRule="evenodd"
     />
-    <mask id="BigQuery_svg__c" fill="#fff">
-      <path d="M16.736 18.103a9.64 9.64 0 0 0 .675-14.323l-1.226 1.242a7.893 7.893 0 0 1-.553 11.73z" />
-    </mask>
     <path
-      stroke="#4584ED"
-      strokeWidth={3.548}
-      d="M16.736 18.103a9.64 9.64 0 0 0 .675-14.323l-1.226 1.242a7.893 7.893 0 0 1-.553 11.73z"
-      mask="url(#BigQuery_svg__c)"
+      fill="#EA4335"
+      fillRule="evenodd"
+      d="M16.243 7.757A6 6 0 0 0 6 12H3a9 9 0 0 1 15.364-6.364l-2.121 2.121Z"
+      clipRule="evenodd"
     />
   </svg>
 );

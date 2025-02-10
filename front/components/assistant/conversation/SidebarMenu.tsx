@@ -334,7 +334,11 @@ const RenderConversations = ({
 
   return (
     <>
-      <NavigationListLabel label={dateLabel} isSticky />
+      <NavigationListLabel
+        label={dateLabel}
+        isSticky
+        className="bg-structure-50 dark:bg-structure-50-night"
+      />
       {conversations.map((conversation) => (
         <RenderConversation
           key={conversation.sId}

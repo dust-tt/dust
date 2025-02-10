@@ -92,6 +92,7 @@ export const NotionCommandSchema = t.type({
     t.literal("search-pages"),
     t.literal("check-url"),
     t.literal("find-url"),
+    t.literal("delete-url"),
     t.literal("me"),
     t.literal("stop-all-garbage-collectors"),
     t.literal("update-parents-fields"),
@@ -111,6 +112,7 @@ export const GoogleDriveCommandSchema = t.type({
     t.literal("check-file"),
     t.literal("get-google-parents"),
     t.literal("clean-invalid-parents"),
+    t.literal("update-core-parents"),
     t.literal("restart-google-webhooks"),
     t.literal("start-incremental-sync"),
     t.literal("restart-all-incremental-sync-workflows"),
@@ -135,6 +137,7 @@ export const SlackCommandSchema = t.type({
     t.literal("uninstall-for-unknown-team-ids"),
     t.literal("whitelist-domains"),
     t.literal("whitelist-bot"),
+    t.literal("sync-channel-metadata"),
   ]),
   args: t.record(
     t.string,
@@ -420,6 +423,15 @@ export type NotionCheckUrlResponseType = t.TypeOf<
   typeof NotionCheckUrlResponseSchema
 >;
 
+export const NotionDeleteUrlResponseSchema = t.type({
+  deletedPage: t.boolean,
+  deletedDb: t.boolean,
+});
+
+export type NotionDeleteUrlResponseType = t.TypeOf<
+  typeof NotionDeleteUrlResponseSchema
+>;
+
 export const NotionFindUrlResponseSchema = t.type({
   page: t.union([t.UnknownRecord, t.null]), // notion type, can't be iots'd
   db: t.union([t.UnknownRecord, t.null]), // notion type, can't be iots'd
@@ -465,6 +477,7 @@ export const AdminResponseSchema = t.union([
   IntercomCheckTeamsResponseSchema,
   IntercomFetchConversationResponseSchema,
   NotionCheckUrlResponseSchema,
+  NotionDeleteUrlResponseSchema,
   NotionMeResponseSchema,
   NotionSearchPagesResponseSchema,
   NotionUpsertResponseSchema,

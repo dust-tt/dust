@@ -12,11 +12,12 @@ const sqids = new Sqids({
   minLength: RESOURCE_S_ID_MIN_LENGTH,
 });
 
-// Static shard key until we implement sharding.
-const SHARD_KEY = 1;
-
-// Static region for now.
-const REGION = 1; // US.
+// WARNING: These legacy bits are part of the ID encoding scheme and must be preserved to maintain
+// backwards compatibility with existing string IDs.
+// They were originally used for sharding and region information but are no longer functionally
+// needed after migration to cross-region architecture.
+const LEGACY_SHARD_BIT = 1;
+const LEGACY_REGION_BIT = 1; // Previously indicated US region.
 
 const RESOURCES_PREFIX = {
   file: "fil",
@@ -46,15 +47,13 @@ export function makeSId(
     workspaceId: ModelId;
   }
 ): string {
-  const idsToEncode = [REGION, SHARD_KEY, workspaceId, id];
+  const idsToEncode = [LEGACY_REGION_BIT, LEGACY_SHARD_BIT, workspaceId, id];
 
   return `${RESOURCES_PREFIX[resourceName]}_${sqids.encode(idsToEncode)}`;
 }
 
 function getIdsFromSId(sId: string): Result<
   {
-    region: number;
-    shardKey: number;
     workspaceId: ModelId;
     resourceId: ModelId;
   },
@@ -77,9 +76,9 @@ function getIdsFromSId(sId: string): Result<
       return new Err(new Error("Invalid decoded string Id length"));
     }
 
-    const [region, shardKey, workspaceId, resourceId] = ids;
+    const [, , workspaceId, resourceId] = ids;
 
-    return new Ok({ region, shardKey, workspaceId, resourceId });
+    return new Ok({ workspaceId, resourceId });
   } catch (error) {
     return new Err(
       error instanceof Error ? error : new Error("Failed to decode string Id")

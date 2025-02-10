@@ -1,17 +1,26 @@
 import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
+import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
-import { useMemo } from "react";
 
 import { cn } from "@sparkle/lib/utils";
 
-interface ScrollAreaProps
-  extends React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root> {
+const scrollAreaVariants = cva("s-group s-relative s-z-20 s-overflow-hidden", {
+  variants: {
+    appearance: {
+      default:
+        "s-rounded-xl s-border s-transition-all s-duration-300 hover:s-border-highlight-200 hover:s-shadow-md",
+      unstyled: "",
+    },
+  },
+  defaultVariants: {
+    appearance: "unstyled",
+  },
+});
+
+export interface ScrollAreaProps
+  extends React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root>,
+    VariantProps<typeof scrollAreaVariants> {
   hideScrollBar?: boolean;
-  orientation?: "vertical" | "horizontal";
-  scrollBarClassName?: string;
-  viewportClassName?: string;
-  onScroll?: (event: React.UIEvent<HTMLDivElement>) => void;
-  onScrollStateChange?: (isScrolled: boolean) => void;
 }
 
 const ScrollArea = React.forwardRef<
@@ -19,23 +28,10 @@ const ScrollArea = React.forwardRef<
   ScrollAreaProps
 >(
   (
-    {
-      className,
-      children,
-      hideScrollBar = false,
-      orientation = "vertical",
-      scrollBarClassName,
-      viewportClassName,
-      onScroll,
-      onScrollStateChange,
-      ...props
-    },
+    { className, children, hideScrollBar = false, appearance, ...props },
     ref
   ) => {
-    const viewportRef = React.useRef<HTMLDivElement>(null);
-    const [isScrolled, setIsScrolled] = React.useState(false);
-
-    const hasCustomScrollBar = useMemo(
+    const hasCustomScrollBar = React.useMemo(
       () =>
         React.Children.toArray(children).some(
           (child) =>
@@ -48,48 +44,38 @@ const ScrollArea = React.forwardRef<
 
     const shouldHideDefaultScrollBar = hideScrollBar || hasCustomScrollBar;
 
-    const handleScroll = React.useCallback(
-      (event: React.UIEvent<HTMLDivElement>) => {
-        onScroll?.(event);
-
-        if (viewportRef.current) {
-          const scrollTop = viewportRef.current.scrollTop;
-          const isNowScrolled = scrollTop > 0;
-
-          if (isNowScrolled !== isScrolled) {
-            setIsScrolled(isNowScrolled);
-            onScrollStateChange?.(isNowScrolled);
-          }
-        }
-      },
-      [isScrolled, onScroll, onScrollStateChange]
-    );
-
     return (
       <ScrollAreaPrimitive.Root
         ref={ref}
-        className={cn("s-relative s-z-20 s-overflow-hidden", className)}
+        className={cn(scrollAreaVariants({ appearance, className }))}
         {...props}
       >
-        <ScrollAreaPrimitive.Viewport
-          ref={viewportRef}
-          onScroll={handleScroll}
-          className={cn(
-            "s-h-full s-w-full s-rounded-[inherit]",
-            isScrolled && "s-scroll-active",
-            viewportClassName
-          )}
-        >
+        <ScrollAreaPrimitive.Viewport className="s-h-full s-w-full s-rounded-[inherit]">
           {children}
         </ScrollAreaPrimitive.Viewport>
+
         {!shouldHideDefaultScrollBar && (
-          <ScrollBar orientation={orientation} className={scrollBarClassName} />
+          <ScrollAreaPrimitive.ScrollAreaScrollbar
+            orientation="vertical"
+            className={cn(
+              "s-flex s-touch-none s-select-none s-transition-opacity s-duration-200",
+              "s-opacity-0 group-hover:s-opacity-100"
+            )}
+          >
+            <ScrollAreaPrimitive.ScrollAreaThumb
+              className={cn(
+                "s-relative s-flex-1 s-rounded-full s-bg-muted-foreground/40 hover:s-bg-muted-foreground/70",
+                "dark:s-bg-muted-foreground-night/40 dark:hover:s-bg-muted-foreground-night/70"
+              )}
+            />
+          </ScrollAreaPrimitive.ScrollAreaScrollbar>
         )}
         <ScrollAreaPrimitive.Corner />
       </ScrollAreaPrimitive.Root>
     );
   }
 );
+
 ScrollArea.displayName = ScrollAreaPrimitive.Root.displayName;
 
 const scrollBarSizes = {
@@ -147,7 +133,7 @@ const ScrollBar = React.forwardRef<
         ref={ref}
         orientation={orientation}
         className={cn(
-          "s-flex s-touch-none s-select-none hover:s-cursor-pointer",
+          "s-flex s-touch-none s-select-none s-transition-all s-duration-200",
           orientation === "vertical" && [
             "s-h-full s-border-l s-border-l-transparent",
             sizeConfig.bar.vertical,
@@ -158,6 +144,7 @@ const ScrollBar = React.forwardRef<
             sizeConfig.bar.horizontal,
             sizeConfig.padding.horizontal,
           ],
+          "s-opacity-0 group-hover:s-opacity-100",
           className
         )}
         {...props}

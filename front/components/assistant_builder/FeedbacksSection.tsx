@@ -91,13 +91,15 @@ export const FeedbacksSection = ({
     (!agentConfigurationFeedbacks || agentConfigurationFeedbacks.length === 0)
   ) {
     return (
-      <div className="mt-3 text-sm text-muted-foreground">No feedback yet.</div>
+      <div className="mt-3 text-sm text-muted-foreground dark:text-muted-foreground-night">
+        No feedback yet.
+      </div>
     );
   }
 
   if (!agentConfigurationHistory) {
     return (
-      <div className="mt-3 text-sm text-foreground">
+      <div className="mt-3 text-sm text-foreground dark:text-foreground-night">
         Error loading the previous agent versions.
       </div>
     );
@@ -217,7 +219,7 @@ function FeedbackCard({ owner, feedback }: FeedbackCardProps) {
         )
       }
     >
-      <div className="flex w-full flex-col gap-3 text-sm font-normal text-foreground">
+      <div className="flex w-full flex-col gap-3 text-sm font-normal text-foreground dark:text-foreground-night">
         <div className="flex w-full flex-row gap-3">
           {feedback.userImageUrl ? (
             <Avatar
@@ -230,7 +232,9 @@ function FeedbackCard({ owner, feedback }: FeedbackCardProps) {
           )}
           <div className="flex flex-col">
             <div className="font-semibold">{feedback.userName}</div>
-            <div className="text-muted-foreground">{timeSinceFeedback} ago</div>
+            <div className="text-muted-foreground dark:text-muted-foreground-night">
+              {timeSinceFeedback} ago
+            </div>
           </div>
         </div>
         <div className="flex w-full flex-row gap-3 text-base">
@@ -246,10 +250,10 @@ function FeedbackCard({ owner, feedback }: FeedbackCardProps) {
               <Icon
                 size="xs"
                 className={cn(
-                  "text-foreground",
+                  "text-foreground dark:text-foreground-night",
                   feedback.thumbDirection === "up"
-                    ? "text-success-800"
-                    : "text-amber-800"
+                    ? "text-success-800 dark:text-success-800-night"
+                    : "dark:text-amber-800-night text-amber-800"
                 )}
                 visual={
                   feedback.thumbDirection === "up"

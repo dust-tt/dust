@@ -14,7 +14,7 @@ const EmptyCTA = React.forwardRef<HTMLDivElement, EmptyCTAProps>(
       ref={ref}
       className={cn(
         "s-flex s-w-full s-flex-col s-items-center s-justify-center s-gap-2 s-rounded-xl s-p-12",
-        "dark:s-bg-structure-100-night s-bg-structure-100",
+        "s-bg-structure-100 dark:s-bg-structure-100-night",
         className
       )}
       {...props}
@@ -22,7 +22,7 @@ const EmptyCTA = React.forwardRef<HTMLDivElement, EmptyCTAProps>(
       <div
         className={cn(
           "s-text-center s-text-sm",
-          "dark:s-text-muted-foreground-night s-text-muted-foreground"
+          "s-text-muted-foreground dark:s-text-muted-foreground-night"
         )}
       >
         {message}

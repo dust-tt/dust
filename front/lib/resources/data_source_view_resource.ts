@@ -9,7 +9,7 @@ import type {
   Result,
   UserType,
 } from "@dust-tt/types";
-import { formatUserFullName, Ok, removeNulls } from "@dust-tt/types";
+import { Err, formatUserFullName, Ok, removeNulls } from "@dust-tt/types";
 import assert from "assert";
 import type {
   Attributes,
@@ -518,6 +518,12 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
   ): Promise<Result<undefined, Error>> {
     const currentParents = this.parentsIn || [];
 
+    if (this.kind === "default") {
+      return new Err(
+        new Error("`parentsIn` cannot be set for default data source view")
+      );
+    }
+
     // add new parents
     const newParents = [...new Set(currentParents), ...new Set(parentsToAdd)];
 
@@ -534,6 +540,12 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
   async setParents(
     parentsIn: string[] | null
   ): Promise<Result<undefined, Error>> {
+    if (this.kind === "default") {
+      return new Err(
+        new Error("`parentsIn` cannot be set for default data source view")
+      );
+    }
+
     await this.update({ parentsIn });
     return new Ok(undefined);
   }

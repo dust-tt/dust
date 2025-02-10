@@ -1,4 +1,5 @@
 import type { MIME_TYPES } from "@dust-tt/types";
+import { heartbeat } from "@temporalio/activity";
 
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
@@ -19,6 +20,7 @@ import {
 } from "@connectors/lib/remote_databases/utils";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
+import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const isDatabaseReadGranted = ({
   readGrantedInternalIds,
@@ -31,20 +33,20 @@ const isDatabaseReadGranted = ({
 };
 
 const createDatabase = async ({
+  dataSourceConfig,
   databaseInternalId,
   usedInternalIds,
   allDatabases,
   connector,
   mimeTypes,
 }: {
+  dataSourceConfig: DataSourceConfig;
   databaseInternalId: string;
   usedInternalIds: Set<string>;
   allDatabases: RemoteDatabaseModel[];
   connector: ConnectorResource;
   mimeTypes: typeof MIME_TYPES.BIGQUERY | typeof MIME_TYPES.SNOWFLAKE;
 }) => {
-  const dataSourceConfig = dataSourceConfigFromConnector(connector);
-
   // Mark as used
   usedInternalIds.add(databaseInternalId);
 
@@ -53,26 +55,36 @@ const createDatabase = async ({
     (d) => d.internalId === databaseInternalId
   );
 
-  if (!existingDb) {
-    // Create and add the database to the list of all databases.
-    allDatabases.push(
-      await RemoteDatabaseModel.create({
-        connectorId: connector.id,
-        internalId: databaseInternalId,
-        name: databaseInternalId,
-        permission: "inherited",
-      })
-    );
-  }
+  if (!existingDb || !existingDb.lastUpsertedAt) {
+    if (!existingDb) {
+      // Create and add the database to the list of all databases.
+      allDatabases.push(
+        await RemoteDatabaseModel.create({
+          connectorId: connector.id,
+          internalId: databaseInternalId,
+          name: databaseInternalId,
+          permission: "inherited",
+          lastUpsertedAt: new Date(),
+        })
+      );
+    } else if (!existingDb.lastUpsertedAt) {
+      await existingDb.update({
+        permission:
+          existingDb.permission === "selected" ? "selected" : "inherited",
+        lastUpsertedAt: new Date(),
+      });
+    }
 
-  await upsertDataSourceFolder({
-    dataSourceConfig,
-    folderId: databaseInternalId,
-    title: databaseInternalId,
-    parents: [databaseInternalId],
-    parentId: null,
-    mimeType: mimeTypes.DATABASE,
-  });
+    // ...upsert the database in core
+    await upsertDataSourceFolder({
+      dataSourceConfig,
+      folderId: databaseInternalId,
+      title: databaseInternalId,
+      parents: [databaseInternalId],
+      parentId: null,
+      mimeType: mimeTypes.DATABASE,
+    });
+  }
 };
 
 const isSchemaReadGranted = ({
@@ -91,6 +103,7 @@ const isSchemaReadGranted = ({
 };
 
 const createSchemaAndHierarchy = async ({
+  dataSourceConfig,
   schemaInternalId,
   usedInternalIds,
   allDatabases,
@@ -98,6 +111,7 @@ const createSchemaAndHierarchy = async ({
   connector,
   mimeTypes,
 }: {
+  dataSourceConfig: DataSourceConfig;
   schemaInternalId: string;
   usedInternalIds: Set<string>;
   allDatabases: RemoteDatabaseModel[];
@@ -105,10 +119,10 @@ const createSchemaAndHierarchy = async ({
   connector: ConnectorResource;
   mimeTypes: typeof MIME_TYPES.BIGQUERY | typeof MIME_TYPES.SNOWFLAKE;
 }) => {
-  const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const { database_name, name } = parseSchemaInternalId(schemaInternalId);
 
   await createDatabase({
+    dataSourceConfig,
     databaseInternalId: database_name,
     usedInternalIds,
     allDatabases,
@@ -123,28 +137,39 @@ const createSchemaAndHierarchy = async ({
   const existingSchema = allSchemas.find(
     (s) => s.internalId === schemaInternalId
   );
-  if (!existingSchema) {
-    // Create and add the schema to the list of all schemas.
-    allSchemas.push(
-      await RemoteSchemaModel.create({
-        connectorId: connector.id,
-        internalId: schemaInternalId,
-        name: name,
-        databaseName: database_name,
-        permission: "inherited",
-      })
-    );
+  if (!existingSchema || !existingSchema.lastUpsertedAt) {
+    if (!existingSchema) {
+      // Create and add the schema to the list of all schemas.
+      allSchemas.push(
+        await RemoteSchemaModel.create({
+          connectorId: connector.id,
+          internalId: schemaInternalId,
+          name: name,
+          databaseName: database_name,
+          permission: "inherited",
+          lastUpsertedAt: new Date(),
+        })
+      );
+    } else if (!existingSchema.lastUpsertedAt) {
+      await existingSchema.update({
+        permission:
+          existingSchema.permission === "selected" ? "selected" : "inherited",
+        lastUpsertedAt: new Date(),
+      });
+    }
+
+    // ...upsert the schema in core
+    await upsertDataSourceFolder({
+      dataSourceConfig,
+      folderId: schemaInternalId,
+      title: name,
+      parents: [schemaInternalId, database_name],
+      parentId: database_name,
+      mimeType: mimeTypes.SCHEMA,
+    });
   }
 
-  // ...upsert the schema in core
-  await upsertDataSourceFolder({
-    dataSourceConfig,
-    folderId: schemaInternalId,
-    title: name,
-    parents: [schemaInternalId, database_name],
-    parentId: database_name,
-    mimeType: mimeTypes.SCHEMA,
-  });
+  // As we cannot know what is already in core, we'll create all schemas in core after traversing the whole tree
 };
 
 const isTableReadGranted = ({
@@ -192,6 +217,7 @@ const createTableAndHierarchy = async ({
   const schemaInternalId = [dbName, schemaName].join(".");
 
   await createSchemaAndHierarchy({
+    dataSourceConfig,
     schemaInternalId,
     usedInternalIds,
     allDatabases,
@@ -205,38 +231,42 @@ const createTableAndHierarchy = async ({
 
   // Check it table already exists
   const existingTable = allTables.find((t) => t.internalId === tableInternalId);
-  if (!existingTable) {
-    // Create and add the table to the list of all tables.
-    allTables.push(
-      await RemoteTableModel.create({
-        connectorId: connector.id,
-        internalId: tableInternalId,
-        name: tableName,
-        schemaName,
-        databaseName: dbName,
-        permission: "inherited",
+
+  if (!existingTable || !existingTable.lastUpsertedAt) {
+    if (!existingTable) {
+      // Create and add the table to the list of all tables.
+      allTables.push(
+        await RemoteTableModel.create({
+          connectorId: connector.id,
+          internalId: tableInternalId,
+          name: tableName,
+          schemaName,
+          databaseName: dbName,
+          permission: "inherited",
+          lastUpsertedAt: new Date(),
+        })
+      );
+    } else if (!existingTable.lastUpsertedAt) {
+      await existingTable.update({
+        permission:
+          existingTable.permission === "selected" ? "selected" : "inherited",
         lastUpsertedAt: new Date(),
-      })
-    );
-  } else {
-    await existingTable.update({
-      lastUpsertedAt: new Date(),
+      });
+    }
+    // ...upsert the table in core
+    await upsertDataSourceRemoteTable({
+      dataSourceConfig,
+      tableId: tableInternalId,
+      tableName: tableInternalId,
+      remoteDatabaseTableId: tableInternalId,
+      remoteDatabaseSecretId: connector.connectionId,
+      tableDescription: "",
+      parents: [tableInternalId, schemaInternalId, dbName],
+      parentId: schemaInternalId,
+      title: tableName,
+      mimeType: mimeTypes.TABLE,
     });
   }
-
-  // ...upsert the table in core
-  await upsertDataSourceRemoteTable({
-    dataSourceConfig,
-    tableId: tableInternalId,
-    tableName: tableInternalId,
-    remoteDatabaseTableId: tableInternalId,
-    remoteDatabaseSecretId: connector.connectionId,
-    tableDescription: "",
-    parents: [tableInternalId, schemaInternalId, dbName],
-    parentId: schemaInternalId,
-    title: tableName,
-    mimeType: mimeTypes.TABLE,
-  });
 };
 
 export async function sync({
@@ -295,6 +325,7 @@ export async function sync({
       })
     ) {
       await createDatabase({
+        dataSourceConfig,
         databaseInternalId: db.name,
         usedInternalIds,
         allDatabases,
@@ -313,6 +344,7 @@ export async function sync({
         })
       ) {
         await createSchemaAndHierarchy({
+          dataSourceConfig,
           schemaInternalId,
           usedInternalIds,
           allDatabases,
@@ -322,6 +354,7 @@ export async function sync({
         });
       }
 
+      let i = 0;
       // Loop through the tables and create them if they are read granted
       for (const table of schema.tables) {
         const tableInternalId = `${table.database_name}.${table.schema_name}.${table.name}`;
@@ -341,6 +374,11 @@ export async function sync({
             mimeTypes,
           });
         }
+
+        i++;
+        if (i % 25 === 0) {
+          await heartbeat();
+        }
       }
     }
   }
@@ -348,6 +386,22 @@ export async function sync({
   logger.info(
     {
       connectorId: connector.id,
+      databasesToKeep: allDatabases.filter((db) =>
+        usedInternalIds.has(db.internalId)
+      ).length,
+      schemasToKeep: allSchemas.filter((s) => usedInternalIds.has(s.internalId))
+        .length,
+      tablesToKeep: allTables.filter((t) => usedInternalIds.has(t.internalId))
+        .length,
+      databasesToRemove: allDatabases.filter(
+        (db) => !usedInternalIds.has(db.internalId)
+      ).length,
+      schemasToRemove: allSchemas.filter(
+        (s) => !usedInternalIds.has(s.internalId)
+      ).length,
+      tablesToRemove: allTables.filter(
+        (t) => !usedInternalIds.has(t.internalId)
+      ).length,
     },
     "Removing unused databases, schemas and tables"
   );

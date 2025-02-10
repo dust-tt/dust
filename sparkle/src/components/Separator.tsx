@@ -17,7 +17,7 @@ const Separator = React.forwardRef<
       orientation={orientation}
       className={classNames(
         "s-shrink-0",
-        "dark:s-bg-separator-night s-bg-separator",
+        "s-bg-separator dark:s-bg-separator-night",
         orientation === "horizontal"
           ? "s-h-[1px] s-min-w-full"
           : "s-min-h-full s-w-[1px]",

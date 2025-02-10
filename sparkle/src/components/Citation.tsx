@@ -82,8 +82,8 @@ const CitationIndex = React.forwardRef<
       className={cn(
         "s-z-10",
         "s-flex s-h-4 s-w-4 s-items-center s-justify-center s-rounded-full s-text-xs s-font-medium",
-        "dark:s-text-primary-200-night s-text-primary-200",
-        "dark:s-bg-primary-600-night s-bg-primary-600",
+        "s-text-primary-200 dark:s-text-primary-200-night",
+        "s-bg-primary-600 dark:s-bg-primary-600-night",
         className
       )}
       {...props}
@@ -161,11 +161,11 @@ const CitationImage = React.forwardRef<HTMLDivElement, CitationImageProps>(
           className={cn(
             "s-absolute s-inset-0",
             "s-z-0 s-h-full s-w-full",
-            "dark:s-bg-primary-100-night/80 s-bg-primary-100/80",
+            "s-bg-primary-100/80 dark:s-bg-primary-100-night/80",
             "s-backdrop-blur-sm",
             "s-transition s-duration-200",
-            "dark:group-hover:s-bg-primary-200-night/70 group-hover:s-bg-primary-200/70 group-hover:s-backdrop-blur-none",
-            "dark:group-active:s-bg-primary-100-night/60 group-active:s-bg-primary-100/60"
+            "group-hover:s-bg-primary-200/70 group-hover:s-backdrop-blur-none dark:group-hover:s-bg-primary-200-night/70",
+            "group-active:s-bg-primary-100/60 dark:group-active:s-bg-primary-100-night/60"
           )}
         />
       </div>
@@ -200,7 +200,7 @@ const CitationLoading = React.forwardRef<
       ref={ref}
       className={cn(
         "s-absolute s-inset-0 s-z-20 s-flex s-h-full s-w-full s-items-center s-justify-center s-rounded-xl s-backdrop-blur-sm",
-        "dark:s-bg-primary-100-night/80 s-bg-primary-100/80",
+        "s-bg-primary-100/80 dark:s-bg-primary-100-night/80",
         className
       )}
       {...props}
@@ -224,7 +224,7 @@ const CitationTitle = React.forwardRef<HTMLDivElement, CitationTitleProps>(
           "s-z-10",
           "s-line-clamp-1 s-overflow-hidden s-text-ellipsis s-break-all",
           "s-text-sm s-font-medium",
-          "dark:s-text-foreground-night s-text-foreground",
+          "s-text-foreground dark:s-text-foreground-night",
           className
         )}
         {...props}
@@ -252,7 +252,7 @@ const CitationDescription = React.forwardRef<
         "s-z-10",
         "s-line-clamp-1 s-overflow-hidden s-text-ellipsis",
         "s-text-xs s-font-normal",
-        "dark:s-text-muted-foreground-night s-text-muted-foreground",
+        "s-text-muted-foreground dark:s-text-muted-foreground-night",
         className
       )}
       {...props}

@@ -9,6 +9,7 @@ type AllowedPermissions = "selected" | "unselected" | "inherited";
 export class RemoteDatabaseModel extends ConnectorBaseModel<RemoteDatabaseModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
+  declare lastUpsertedAt: CreationOptional<Date> | null;
 
   declare internalId: string;
   declare name: string;
@@ -38,6 +39,10 @@ RemoteDatabaseModel.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    lastUpsertedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
   },
   {
     sequelize: sequelizeConnection,
@@ -49,6 +54,7 @@ RemoteDatabaseModel.init(
 export class RemoteSchemaModel extends ConnectorBaseModel<RemoteSchemaModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
+  declare lastUpsertedAt: CreationOptional<Date> | null;
 
   declare internalId: string;
   declare name: string;
@@ -83,6 +89,10 @@ RemoteSchemaModel.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    lastUpsertedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
     },
   },
   {

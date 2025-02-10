@@ -320,7 +320,7 @@ DataTable.Head = function Head({
     <th
       className={cn(
         "s-py-2 s-pl-2 s-pr-3 s-text-left s-text-xs s-font-medium s-capitalize",
-        "dark:s-text-foreground-night s-text-foreground",
+        "s-text-foreground dark:s-text-foreground-night",
         column.columnDef.meta?.className,
         className
       )}
@@ -364,7 +364,7 @@ DataTable.Row = function Row({
     <tr
       className={cn(
         "s-group/dt s-border-b s-transition-colors s-duration-300 s-ease-out",
-        "dark:s-border-separator-night s-border-separator",
+        "s-border-separator dark:s-border-separator-night",
         onClick
           ? "dark:hover:s-bg-muted-night s-cursor-pointer hover:s-bg-muted"
           : "",
@@ -569,7 +569,7 @@ DataTable.CellContent = function CellContent({
           visual={icon}
           size="sm"
           className={cn(
-            "dark:s-text-foreground-night s-mr-2 s-text-foreground",
+            "s-mr-2 s-text-foreground dark:s-text-foreground-night",
             iconClassName
           )}
         />
@@ -578,7 +578,7 @@ DataTable.CellContent = function CellContent({
         <span
           className={cn(
             "s-truncate s-text-sm",
-            "dark:s-text-foreground-night s-text-foreground"
+            "s-text-foreground dark:s-text-foreground-night"
           )}
         >
           {children}
@@ -587,7 +587,7 @@ DataTable.CellContent = function CellContent({
           <span
             className={cn(
               "s-pl-2 s-text-sm",
-              "dark:s-text-muted-foreground-night s-text-muted-foreground"
+              "s-text-muted-foreground dark:s-text-muted-foreground-night"
             )}
           >
             {description}
@@ -634,7 +634,7 @@ DataTable.BasicCellContent = function BasicCellContent({
               className={cn(
                 cellHeight,
                 "s-group s-flex s-items-center s-gap-2 s-text-sm",
-                "dark:s-text-muted-foreground-night s-text-muted-foreground",
+                "s-text-muted-foreground dark:s-text-muted-foreground-night",
                 className
               )}
               {...props}
@@ -661,7 +661,7 @@ DataTable.BasicCellContent = function BasicCellContent({
           className={cn(
             cellHeight,
             "s-group s-flex s-items-center s-gap-2 s-text-sm",
-            "dark:s-text-muted-foreground-night s-text-muted-foreground",
+            "s-text-muted-foreground dark:s-text-muted-foreground-night",
             className
           )}
           {...props}
