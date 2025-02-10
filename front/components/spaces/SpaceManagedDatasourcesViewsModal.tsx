@@ -148,7 +148,7 @@ export default function SpaceManagedDataSourcesViewsModal({
             owner={owner}
             selectionConfigurations={selectionConfigurations}
             setSelectionConfigurations={setSelectionConfigurationsCallback}
-            viewType="documents"
+            viewType="all"
             isRootSelectable={true}
           />
         </div>

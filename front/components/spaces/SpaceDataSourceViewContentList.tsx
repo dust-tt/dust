@@ -62,6 +62,8 @@ import {
 import { useSpaces } from "@app/lib/swr/spaces";
 import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
 
+const DEFAULT_VIEW_TYPE = "all";
+
 type RowData = DataSourceViewContentNode & {
   icon: React.ComponentType;
   onClick?: () => void;
@@ -225,7 +227,7 @@ export const SpaceDataSourceViewContentList = ({
     urlPrefix: "table",
     initialPageSize: 25,
   });
-  const [viewType, setViewType] = useHashParam("viewType", "documents");
+  const [viewType, setViewType] = useHashParam("viewType", DEFAULT_VIEW_TYPE);
   const router = useRouter();
   const showSpaceUsage =
     dataSourceView.kind === "default" && isManaged(dataSourceView.dataSource);
@@ -268,7 +270,9 @@ export const SpaceDataSourceViewContentList = ({
     owner,
     parentId,
     pagination: isServerPagination ? pagination : undefined,
-    viewType: isValidContentNodesViewType(viewType) ? viewType : "documents",
+    viewType: isValidContentNodesViewType(viewType)
+      ? viewType
+      : DEFAULT_VIEW_TYPE,
     // TODO(20250126, nodes-core): Remove this after project end
     showConnectorsNodes,
   });
@@ -362,10 +366,6 @@ export const SpaceDataSourceViewContentList = ({
 
   useEffect(() => {
     if (!isTablesValidating && !isDocumentsValidating) {
-      if (isDataSourceManaged) {
-        handleViewTypeChange("documents");
-        return;
-      }
       // If the view only has content in one of the two views, we switch to that view.
       // if both view have content, or neither views have content, we default to documents.
       if (hasTables && !hasDocuments) {
@@ -373,7 +373,7 @@ export const SpaceDataSourceViewContentList = ({
       } else if (!hasTables && hasDocuments) {
         handleViewTypeChange("documents");
       } else if (!viewType) {
-        handleViewTypeChange("documents");
+        handleViewTypeChange(DEFAULT_VIEW_TYPE);
       }
     }
   }, [
