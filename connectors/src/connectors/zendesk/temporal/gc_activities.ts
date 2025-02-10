@@ -202,12 +202,17 @@ export async function removeForbiddenCategoriesActivity(
     dataSourceId: dataSourceConfig.dataSourceId,
   };
 
+  const brandsWithHelpCenterUnselected =
+    await ZendeskBrandResource.fetchHelpCenterReadForbiddenBrandIds(
+      connectorId
+    );
   const batchSize = 2; // we process categories 2 by 2 since each of them typically contains ~50 articles
-  const categoryIdsWithBrand =
+  const categoryIdsWithBrand = (
     await ZendeskCategoryResource.fetchReadForbiddenCategoryIds({
       connectorId,
       batchSize,
-    });
+    })
+  ).filter(({ brandId }) => brandsWithHelpCenterUnselected.includes(brandId));
   logger.info(
     { ...loggerArgs, categoryCount: categoryIdsWithBrand.length },
     "[Zendesk] Removing categories with no permission."
