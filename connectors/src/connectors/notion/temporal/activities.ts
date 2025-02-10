@@ -17,6 +17,7 @@ import { chunk } from "lodash";
 import type { Logger } from "pino";
 import { Op } from "sequelize";
 
+import { nodeIdFromNotionId } from "@connectors/connectors/notion";
 import {
   getNotionDatabaseFromConnectorsDb,
   getNotionPageFromConnectorsDb,
@@ -79,7 +80,6 @@ import { heartbeat } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
-import { nodeIdFromNotionId } from "@connectors/connectors/notion";
 
 const logger = mainLogger.child({ provider: "notion" });
 
