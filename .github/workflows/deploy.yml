@@ -12,8 +12,8 @@ on:
           - "us-central1"
           - "europe-west1"
           - "all"
-      service:
-        description: "Name of the descrive to deploy"
+      component:
+        description: "Name of the component to deploy"
         required: true
         type: choice
         options:
@@ -36,7 +36,7 @@ on:
           - "force (dangerous)"
 
 concurrency:
-  group: "deploy_${{ inputs.service }}"
+  group: "deploy_${{ inputs.component }}"
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
@@ -60,12 +60,12 @@ jobs:
 
       - name: Notify Build And Deploy Start
         id: build_message
-        if: ${{ inputs.service != 'front-qa'}}
+        if: ${{ inputs.component != 'front-qa'}}
         uses: ./.github/actions/slack-notify
         with:
           step: "start"
           channel: ${{ secrets.SLACK_CHANNEL_ID }}
-          component: ${{ inputs.service }}
+          component: ${{ inputs.component }}
           image_tag: ${{ needs.prepare.outputs.short_sha }}
           region: ${{ inputs.regions }}
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
@@ -120,7 +120,7 @@ jobs:
         with:
           project_id: ${{ steps.project.outputs.PROJECT_ID }}
           region: ${{ inputs.regions }}
-          component: ${{ inputs.service }}
+          component: ${{ inputs.component }}
           workload_identity_provider: "projects/357744735673/locations/global/workloadIdentityPools/github-pool-apps/providers/github-provider-apps"
 
       - name: Notify Failure
