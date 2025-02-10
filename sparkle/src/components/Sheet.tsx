@@ -56,12 +56,22 @@ const sheetVariants = cva(
   {
     variants: {
       side: {
-        top: "s-inset-x-0 s-top-0 s-border-b data-[state=closed]:s-slide-out-to-top data-[state=open]:s-slide-in-from-top",
-        bottom:
-          "s-inset-x-0 s-bottom-0 s-border-t data-[state=closed]:s-slide-out-to-bottom data-[state=open]:s-slide-in-from-bottom",
-        left: "s-inset-y-0 s-left-0 s-border-r data-[state=closed]:s-slide-out-to-left data-[state=open]:s-slide-in-from-left",
-        right:
-          "s-inset-y-0 s-right-0 s-border-l data-[state=closed]:s-slide-out-to-right data-[state=open]:s-slide-in-from-right",
+        top: cn(
+          "s-inset-x-0 s-top-0 data-[state=closed]:s-slide-out-to-top data-[state=open]:s-slide-in-from-top",
+          "s-border-b dark:s-border-border-night s-border-border"
+        ),
+        bottom: cn(
+          "s-inset-x-0 s-bottom-0 data-[state=closed]:s-slide-out-to-bottom data-[state=open]:s-slide-in-from-bottom",
+          "s-border-t dark:s-border-border-night s-border-border"
+        ),
+        left: cn(
+          "s-inset-y-0 s-left-0 data-[state=closed]:s-slide-out-to-left data-[state=open]:s-slide-in-from-left",
+          "s-border-r dark:s-border-border-night s-border-border"
+        ),
+        right: cn(
+          "s-inset-y-0 s-right-0 data-[state=closed]:s-slide-out-to-right data-[state=open]:s-slide-in-from-right",
+          "s-border-l dark:s-border-border-night s-border-border"
+        ),
       },
       size: sizeClasses,
     },
@@ -159,7 +169,7 @@ const SheetFooter = ({
   <div
     className={cn(
       "s-flex s-flex-none s-flex-row s-gap-2 s-border-t s-px-3 s-py-3",
-      "dark:s-border-border-night s-border-border",
+      "s-border-border dark:s-border-border-night",
       className
     )}
     {...props}
