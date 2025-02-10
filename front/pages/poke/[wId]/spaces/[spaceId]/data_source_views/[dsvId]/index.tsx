@@ -91,7 +91,7 @@ export default function DataSourceViewPage({
             )}
             setSelectionConfigurations={() => {}}
             useContentNodes={useContentNodes}
-            viewType="documents"
+            viewType="all"
             isRootSelectable={true}
           />
         </div>

@@ -85,7 +85,7 @@ export default function SpaceManagedDataSourcesViewsModal({
   const initialConfigurations = useMultipleDataSourceViewsContentNodes({
     dataSourceViewsAndInternalIds,
     owner,
-    viewType: "documents",
+    viewType: "all",
   });
   const [selectionConfigurations, setSelectionConfigurations] =
     useState<DataSourceViewSelectionConfigurations>({});

@@ -27,7 +27,7 @@ const getUseResourceHook =
       filterPermission: "write",
       owner,
       parentId,
-      viewType: "documents",
+      viewType: "all",
     });
 
 interface SlackIntegrationProps {

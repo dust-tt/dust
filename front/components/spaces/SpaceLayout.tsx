@@ -169,14 +169,14 @@ function SpaceBreadCrumbs({
     owner,
     dataSourceView: parentId ? dataSourceView : undefined,
     internalIds: parentId ? [parentId] : [],
-    viewType: "documents",
+    viewType: "all",
   });
 
   const { nodes: folders } = useDataSourceViewContentNodes({
     dataSourceView: currentFolder ? dataSourceView : undefined,
     internalIds: currentFolder?.parentInternalIds ?? [],
     owner,
-    viewType: "documents",
+    viewType: "all",
   });
 
   const items = useMemo(() => {

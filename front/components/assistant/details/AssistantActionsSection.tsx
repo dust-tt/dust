@@ -494,7 +494,7 @@ function DataSourceViewSelectedNodes({
               setDataSourceViewToDisplay(dataSourceView);
               setDocumentToDisplay(documentId);
             }}
-            viewType="documents"
+            viewType="all"
           />
         </Tree.Item>
       ))}

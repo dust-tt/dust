@@ -455,7 +455,7 @@ const SpaceDataSourceViewItem = ({
     dataSourceView: item,
     owner,
     parentId: node?.internalId,
-    viewType: "documents",
+    viewType: "all",
     disabled: !isExpanded,
     swrOptions: {
       revalidateOnFocus: false,
@@ -471,7 +471,7 @@ const SpaceDataSourceViewItem = ({
     dataSourceView: item,
     owner,
     internalIds: [router.query.parentId as string],
-    viewType: "documents",
+    viewType: "all",
     disabled: !router.asPath.startsWith(basePath) || !router.query.parentId,
   });
 

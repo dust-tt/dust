@@ -15,6 +15,7 @@ import type {
   SpaceType,
   WorkspaceType,
 } from "@dust-tt/types";
+import { assertNever } from "@dust-tt/types";
 import type { SetStateAction } from "react";
 import { useCallback, useMemo, useState } from "react";
 
@@ -55,15 +56,22 @@ export default function TrackerBuilderDataSourceModal({
     [setSelectionConfigurations]
   );
 
-  const supportedDataSourceViewsForViewType = useMemo(
-    () =>
-      viewType === "documents"
-        ? dataSourceViews.filter((dsv) => supportsDocumentsData(dsv.dataSource))
-        : dataSourceViews.filter((dsv) =>
-            supportsStructuredData(dsv.dataSource)
-          ),
-    [dataSourceViews, viewType]
-  );
+  const supportedDataSourceViewsForViewType = useMemo(() => {
+    switch (viewType) {
+      case "all":
+        return dataSourceViews;
+      case "tables":
+        return dataSourceViews.filter((dsv) =>
+          supportsStructuredData(dsv.dataSource)
+        );
+      case "documents":
+        return dataSourceViews.filter((dsv) =>
+          supportsDocumentsData(dsv.dataSource)
+        );
+      default:
+        assertNever(viewType);
+    }
+  }, [dataSourceViews, viewType]);
 
   return (
     <Sheet>

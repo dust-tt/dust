@@ -86,8 +86,10 @@ export function DataSourceViewPermissionTree({
       emptyComponent={
         viewType === "tables" ? (
           <Tree.Empty label="No tables" />
-        ) : (
+        ) : viewType === "documents" ? (
           <Tree.Empty label="No documents" />
+        ) : (
+          <Tree.Empty label="No data" />
         )
       }
     />

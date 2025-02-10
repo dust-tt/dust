@@ -20,7 +20,11 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 const GetContentNodesRequestBodySchema = t.type({
   includeParents: t.union([t.boolean, t.undefined]),
   internalIds: t.array(t.string),
-  viewType: t.union([t.literal("tables"), t.literal("documents")]),
+  viewType: t.union([
+    t.literal("tables"),
+    t.literal("documents"),
+    t.literal("all"),
+  ]),
 });
 type GetContentNodesRequestBody = t.TypeOf<
   typeof GetContentNodesRequestBodySchema

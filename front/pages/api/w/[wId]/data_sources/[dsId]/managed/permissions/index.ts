@@ -5,7 +5,11 @@ import type {
   DataSourceType,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
-import { assertNever, ConnectorsAPI } from "@dust-tt/types";
+import {
+  assertNever,
+  ConnectorsAPI,
+  isValidContentNodesViewType,
+} from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -249,13 +253,13 @@ export async function getManagedDataSourcePermissionsHandler(
   if (
     !viewType ||
     typeof viewType !== "string" ||
-    (viewType !== "tables" && viewType !== "documents")
+    !isValidContentNodesViewType(viewType)
   ) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Invalid viewType. Required: tables | documents",
+        message: "Invalid viewType. Required: tables | documents | all",
       },
     });
   }
