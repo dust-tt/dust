@@ -90,14 +90,17 @@ export function computeNodesDiff({
   // Core and connectors follow different sorting rules,
   // so when pagination is enforced, we only want to log the number of nodes we get,
   // and the other logs are irrelevant since we are not fetching the same nodes.
-  if (pagination && connectorsContentNodes.length !== coreContentNodes.length) {
+  if (pagination) {
     localLogger.info(
       {
         connectorsNodesCount: connectorsContentNodes.length,
         coreNodesCount: coreContentNodes.length,
         pagination,
       },
-      "[CoreNodes] Different number of nodes returned by connectors and core"
+      connectorsContentNodes.length !== pagination.limit ||
+        coreContentNodes.length !== pagination.limit
+        ? "[CoreNodes] Different number of nodes returned by connectors and core"
+        : "[CoreNodes] Different nodes were fetched due to pagination"
     );
     return [];
   }
