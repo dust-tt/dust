@@ -356,6 +356,10 @@ impl SearchStore for ElasticsearchSearchStore {
     ) -> Result<Vec<(String, u64, Vec<(String, u64)>)>> {
         let query_type = query_type.unwrap_or(TagsQueryType::Exact);
 
+        if data_source_views.is_empty() {
+            return Err(anyhow::anyhow!("No data source views provided"));
+        }
+
         let bool_query = Query::bool().must(
             Query::bool()
                 .should(
