@@ -15,6 +15,7 @@ import { updateDataSourceDocumentParents } from "@connectors/lib/data_sources";
 import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { nodeIdFromNotionId } from "@connectors/connectors/notion";
 
 /** Compute the parents field for a notion pageOrDb See the [Design
  * Doc](https://www.notion.so/dust-tt/Engineering-e0f834b5be5a43569baaf76e9c41adf2?p=3d26536a4e0a464eae0c3f8f27a7af97&pm=s)
@@ -173,7 +174,7 @@ export async function updateAllParentsFields(
           onProgress
         );
 
-        const parents = pageOrDbIds.map((id) => `notion-${id}`);
+        const parents = pageOrDbIds.map((id) => nodeIdFromNotionId(id));
         if (parents.length === 1) {
           const page = await getNotionPageFromConnectorsDb(connectorId, pageId);
           logger.warn(
@@ -191,7 +192,7 @@ export async function updateAllParentsFields(
         );
         await updateDataSourceDocumentParents({
           dataSourceConfig: dataSourceConfigFromConnector(connector),
-          documentId: `notion-${pageId}`,
+          documentId: nodeIdFromNotionId(pageId),
           parents,
           parentId: parents[1] || null,
         });

@@ -20,6 +20,7 @@ const {
   getDiscoveredResourcesFromCache,
   upsertDatabaseInConnectorsDb,
   deletePageOrDatabaseIfArchived,
+  updateSingleDocumentParents,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minute",
 });
@@ -100,6 +101,12 @@ export async function upsertPageWorkflow({
     objectId: pageId,
     objectType: "page",
     loggerArgs,
+  });
+
+  await updateSingleDocumentParents({
+    connectorId,
+    notionDocumentId: pageId,
+    documentType: "page",
   });
 
   return { skipped };
@@ -184,5 +191,11 @@ export async function upsertDatabaseWorkflow({
     objectId: databaseId,
     objectType: "database",
     loggerArgs,
+  });
+
+  await updateSingleDocumentParents({
+    connectorId,
+    notionDocumentId: databaseId,
+    documentType: "database",
   });
 }
