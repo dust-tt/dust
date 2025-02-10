@@ -219,7 +219,7 @@ async function updateParentsFieldForConnector({
   });
 
   const dustAPIDataSourceId = await getDataSourceId(connector, frontSequelize);
-  logger.info({ dustAPIDataSourceId }, "DataSourceId retrieved.");
+  logger.info({ dustAPIDataSourceId }, "MIGRATE");
 
   let nodeCount = 0;
   let nextPageCursor: string | null = null;
@@ -351,7 +351,6 @@ makeScript(
     await concurrentExecutor(
       connectors,
       async (connector) => {
-        logger.info({ connectorId: connector.id }, "MIGRATE");
         await updateParentsFieldForConnector({
           coreAPI,
           frontSequelize,
