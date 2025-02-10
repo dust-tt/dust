@@ -291,6 +291,12 @@ export async function githubUpsertIssueActivity(
     tags.push(`author:${issueAuthor}`);
   }
 
+  const prefixTags = [
+    issueAuthor ? `$author: ${issueAuthor}\n` : null,
+    `$isPullRequest: ${issue.isPullRequest}\n`,
+  ].filter(Boolean).join("");
+  renderedIssue.prefix = (renderedIssue.prefix ?? "") + prefixTags;
+
   const parents: [string, string, string] = [
     documentId,
     getIssuesInternalId(repoId),
