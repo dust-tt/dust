@@ -177,7 +177,7 @@ impl PostgresStore {
                     mime_type = EXCLUDED.mime_type, parents = EXCLUDED.parents, \
                     document = EXCLUDED.document, \"table\" = EXCLUDED.\"table\", \
                     folder = EXCLUDED.folder, source_url = EXCLUDED.source_url, \
-                    provider_visibility = EXCLUDED.provider_visibility \
+                    tags_array = EXCLUDED.tags_array, provider_visibility = EXCLUDED.provider_visibility \
                   RETURNING id",
             )
             .await?;
@@ -1570,6 +1570,12 @@ impl Store for PostgresStore {
         tx.execute(
             "UPDATE data_sources_documents SET tags_array = $1 \
             WHERE data_source = $2 AND document_id = $3 AND status = 'latest'",
+            &[&updated_tags_vec, &data_source_row_id, &document_id],
+        )
+        .await?;
+        tx.execute(
+            "UPDATE data_sources_nodes SET tags_array = $1 \
+                WHERE data_source = $2 AND node_id = $3",
             &[&updated_tags_vec, &data_source_row_id, &document_id],
         )
         .await?;
