@@ -216,6 +216,7 @@ export function computeNodesDiff({
         }
 
         // Special case for Notion titles where we sometimes get a snake_case version of the title one way or another.
+        // For instance "User test - Notes" is turned into "user_test_notes".
         if (
           key === "title" &&
           provider === "notion" &&
