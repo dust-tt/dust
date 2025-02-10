@@ -22,7 +22,6 @@ on:
           - front
           - front-edge
           - prodbox
-          - metabase
           - oauth
           - viz
           - alerting-temporal
