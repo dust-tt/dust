@@ -6,7 +6,6 @@ import Link from "next/link";
 import React, { useState } from "react";
 
 import { PokeButton } from "@app/components/poke/shadcn/ui/button";
-import { config } from "@app/lib/api/regions/config";
 import { usePokeAssistantTemplates, usePokePullTemplates } from "@app/poke/swr";
 
 export interface TemplatesDisplayType {
@@ -85,7 +84,11 @@ export function makeColumnsForTemplates() {
   ];
 }
 
-export function TemplatesDataTable() {
+export function TemplatesDataTable({
+  dustRegionSyncEnabled,
+}: {
+  dustRegionSyncEnabled: boolean;
+}) {
   const { assistantTemplates, isAssistantTemplatesLoading } =
     usePokeAssistantTemplates();
   const { doPull, isPulling } = usePokePullTemplates();
@@ -98,7 +101,7 @@ export function TemplatesDataTable() {
     <div className="border-material-200 my-4 flex w-full flex-col gap-2 rounded-lg border p-4">
       <div className="flex w-full items-center justify-between gap-3">
         <h2 className="text-md flex-grow pb-4 font-bold">Templates:</h2>
-        {config.getDustRegionSyncEnabled() && (
+        {dustRegionSyncEnabled && (
           <PokeButton
             aria-label="Pull templates"
             variant="outline"
