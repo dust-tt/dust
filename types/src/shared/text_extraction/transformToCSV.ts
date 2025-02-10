@@ -71,7 +71,8 @@ export function transformStreamToCSV(
           throw new Error("Invalid tag order");
         } else {
           if (lastTag === HTML_TAGS.ROW) {
-            htmlParsingTransform.push(stringify(state.currentRow));
+            const csv = stringify([state.currentRow]);
+            htmlParsingTransform.push(csv);
             state.currentRow = [];
           }
         }
