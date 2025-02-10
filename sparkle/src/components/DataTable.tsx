@@ -366,7 +366,7 @@ DataTable.Row = function Row({
         "s-group/dt s-border-b s-transition-colors s-duration-300 s-ease-out",
         "s-border-separator dark:s-border-separator-night",
         onClick
-          ? "dark:hover:s-bg-muted-night s-cursor-pointer hover:s-bg-muted"
+          ? "s-cursor-pointer hover:s-bg-muted dark:hover:s-bg-muted-night"
           : "",
         widthClassName,
         className
