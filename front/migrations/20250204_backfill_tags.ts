@@ -86,7 +86,10 @@ async function backfillSpreadsheets(
     }
     // reconstructing the URLs and node IDs
     const tableIds = rows.map((row) => row.id);
-    const tags = rows.map((row) => `{"${row.tags_array.join('","')}"}`);
+    const tags = rows.map(
+      (row) =>
+        `{${row.tags_array.map((tag) => `"${tag.replace(/"/g, '\\"')}"`).join(",")}}`
+    );
 
     if (execute) {
       // updating on core on the nodeIds
@@ -152,7 +155,10 @@ async function backfillDocuments(
 
     // reconstructing the URLs and node IDs
     const documentIds = rows.map((row) => row.id);
-    const tags = rows.map((row) => `{"${row.tags_array.join('","')}"}`);
+    const tags = rows.map(
+      (row) =>
+        `{${row.tags_array.map((tag) => `"${tag.replace(/"/g, '\\"')}"`).join(",")}}`
+    );
 
     if (execute) {
       // updating on core on the nodeIds
