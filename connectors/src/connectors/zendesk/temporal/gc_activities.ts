@@ -9,7 +9,6 @@ import {
   getTicketsInternalId,
 } from "@connectors/connectors/zendesk/lib/id_conversions";
 import { deleteArticle } from "@connectors/connectors/zendesk/lib/sync_article";
-import { deleteCategory } from "@connectors/connectors/zendesk/lib/sync_category";
 import { deleteTicket } from "@connectors/connectors/zendesk/lib/sync_ticket";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
@@ -181,47 +180,6 @@ export async function removeMissingArticleBatchActivity({
     { concurrency: 10 }
   );
   return nextCursor;
-}
-
-/**
- * This activity is responsible for removing the categories that have no read permissions.
- */
-export async function removeForbiddenCategoriesActivity(
-  connectorId: number
-): Promise<{ hasMore: boolean }> {
-  const connector = await ConnectorResource.fetchById(connectorId);
-  if (!connector) {
-    throw new Error("[Zendesk] Connector not found.");
-  }
-  const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const loggerArgs = {
-    workspaceId: dataSourceConfig.workspaceId,
-    connectorId,
-    provider: "zendesk",
-    workflowId: getZendeskGarbageCollectionWorkflowId(connectorId),
-    dataSourceId: dataSourceConfig.dataSourceId,
-  };
-
-  const brandsWithHelpCenterUnselected =
-    await ZendeskBrandResource.fetchHelpCenterReadForbiddenBrandIds(
-      connectorId
-    );
-  const batchSize = 2; // we process categories 2 by 2 since each of them typically contains ~50 articles
-  const brandAndCategoryIds = (
-    await ZendeskCategoryResource.fetchReadForbiddenCategoryIds({
-      connectorId,
-      batchSize,
-    })
-  ).filter(({ brandId }) => brandsWithHelpCenterUnselected.includes(brandId));
-  logger.info(
-    { ...loggerArgs, categoryCount: brandAndCategoryIds.length },
-    "[Zendesk] Removing categories with no permission."
-  );
-
-  for (const ids of brandAndCategoryIds) {
-    await deleteCategory({ connectorId, ...ids, dataSourceConfig });
-  }
-  return { hasMore: brandAndCategoryIds.length === batchSize };
 }
 
 /**
