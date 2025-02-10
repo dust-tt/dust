@@ -133,13 +133,17 @@ export class TextExtraction {
 
     if (config) {
       const { transformer, selector } = config;
-      if (transformer === "document") {
-        const prefix = pagePrefixesPerMimeType[contentType];
-        return transformStream(responseStream, prefix, selector);
-      } else if (transformer === "csv") {
-        return transformStreamToCSV(responseStream, selector);
+      switch (transformer) {
+        case "document": {
+          const prefix = pagePrefixesPerMimeType[contentType];
+          return transformStream(responseStream, prefix, selector);
+        }
+        case "csv": {
+          return transformStreamToCSV(responseStream, selector);
+        }
+        default:
+          assertNever(transformer);
       }
-      assertNever(transformer);
     }
 
     return responseStream;

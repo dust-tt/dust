@@ -78,7 +78,11 @@ export function listFiles(
           snippet: m.snippet,
           // Backward compatibility: we fallback to the fileId if no generated tables are mentionned but the file is queryable.
           generatedTables:
-            m.generatedTables ?? (isQueryable ? [m.fileId] : null),
+            m.generatedTables.length > 0
+              ? m.generatedTables
+              : isQueryable
+                ? [m.fileId]
+                : [],
           contentFragmentVersion: m.contentFragmentVersion,
           isIncludable,
           isQueryable,
@@ -102,7 +106,7 @@ export function listFiles(
           title: f.title,
           snippet: f.snippet,
           // For simplicity later, we always set the generatedTables to the fileId if the file is queryable for agent generated files.
-          generatedTables: isQueryable ? [f.fileId] : null,
+          generatedTables: isQueryable ? [f.fileId] : [],
           contentFragmentVersion: "latest",
           isIncludable,
           isQueryable,

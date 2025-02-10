@@ -204,13 +204,10 @@ async function generateSnippet(
 }
 
 // Upload to dataSource
-const upsertDocumentToDatasource: ProcessingFunction = async ({
+const upsertDocumentToDatasource: ProcessingFunction = async (
   auth,
-  file,
-  content,
-  dataSource,
-  upsertArgs,
-}) => {
+  { file, content, dataSource, upsertArgs }
+) => {
   // Use the file id as the document id to make it easy to track the document back to the file.
   const sourceUrl = file.getPrivateUrl(auth);
   let documentId = file.sId;
@@ -247,13 +244,10 @@ const upsertDocumentToDatasource: ProcessingFunction = async ({
   return new Ok(undefined);
 };
 
-const upsertTableToDatasource: ProcessingFunction = async ({
+const upsertTableToDatasource: ProcessingFunction = async (
   auth,
-  file,
-  content,
-  dataSource,
-  upsertArgs,
-}) => {
+  { file, content, dataSource, upsertArgs }
+) => {
   // Use the file sId as the table id to make it easy to track the table back to the file.
   let tableId = file.sId;
   if (upsertArgs && "tableId" in upsertArgs) {
@@ -305,13 +299,10 @@ const upsertTableToDatasource: ProcessingFunction = async ({
   return new Ok(undefined);
 };
 
-const upsertExcelToDatasource: ProcessingFunction = async ({
+const upsertExcelToDatasource: ProcessingFunction = async (
   auth,
-  file,
-  content,
-  dataSource,
-  upsertArgs,
-}) => {
+  { file, content, dataSource, upsertArgs }
+) => {
   // Excel files are processed in a special way, we need to extract the content of each worksheet and upsert it as a separate table.
   let worksheetName: string | undefined;
   let worksheetContent: string | undefined;
@@ -319,8 +310,7 @@ const upsertExcelToDatasource: ProcessingFunction = async ({
   for (const line of content.split("\n")) {
     if (line.startsWith(TABLE_PREFIX)) {
       if (worksheetName && worksheetContent) {
-        await upsertTableToDatasource({
-          auth,
+        await upsertTableToDatasource(auth, {
           file,
           content: worksheetContent,
           dataSource,
@@ -342,8 +332,7 @@ const upsertExcelToDatasource: ProcessingFunction = async ({
   if (!worksheetName || !worksheetContent) {
     return new Err(new Error("Invalid Excel file"));
   } else {
-    await upsertTableToDatasource({
-      auth,
+    await upsertTableToDatasource(auth, {
       file,
       content: worksheetContent,
       dataSource,
@@ -359,18 +348,19 @@ const upsertExcelToDatasource: ProcessingFunction = async ({
 };
 
 // Processing for datasource upserts.
-type ProcessingFunction = ({
-  auth,
-  file,
-  content,
-  dataSource,
-}: {
-  auth: Authenticator;
-  file: FileResource;
-  content: string;
-  dataSource: DataSourceResource;
-  upsertArgs?: UpsertDocumentArgs | UpsertTableArgs;
-}) => Promise<Result<undefined, Error>>;
+type ProcessingFunction = (
+  auth: Authenticator,
+  {
+    file,
+    content,
+    dataSource,
+  }: {
+    file: FileResource;
+    content: string;
+    dataSource: DataSourceResource;
+    upsertArgs?: UpsertDocumentArgs | UpsertTableArgs;
+  }
+) => Promise<Result<undefined, Error>>;
 
 const getProcessingFunction = ({
   contentType,
@@ -432,19 +422,15 @@ export const isUpsertSupported = (arg: {
   return !!processing;
 };
 
-const maybeApplyProcessing: ProcessingFunction = async ({
+const maybeApplyProcessing: ProcessingFunction = async (
   auth,
-  content,
-  file,
-  dataSource,
-  upsertArgs,
-}) => {
+  { content, file, dataSource, upsertArgs }
+) => {
   const processing = getProcessingFunction(file);
 
   if (processing) {
     const startTime = Date.now();
-    const res = await processing({
-      auth,
+    const res = await processing(auth, {
       file,
       content,
       dataSource,
@@ -550,8 +536,7 @@ export async function processAndUpsertToDataSource(
   }
 
   const [processingRes, snippetRes] = await Promise.all([
-    maybeApplyProcessing({
-      auth,
+    maybeApplyProcessing(auth, {
       file,
       content,
       dataSource,

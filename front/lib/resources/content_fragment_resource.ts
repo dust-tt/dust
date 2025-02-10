@@ -233,14 +233,14 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
 
     let fileSid: string | null = null;
     let snippet: string | null = null;
-    let generatedTables: string[] | null = null;
+    let generatedTables: string[] = [];
 
     if (this.fileId) {
       const file = await FileResource.fetchByModelId(this.fileId);
       if (file) {
         fileSid = file.sId;
         snippet = file.snippet;
-        generatedTables = file.useCaseMetadata?.generatedTables ?? null;
+        generatedTables = file.useCaseMetadata?.generatedTables ?? [];
       }
     }
 

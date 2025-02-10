@@ -11,7 +11,7 @@ export type ConversationFileType = {
   contentType: SupportedContentFragmentType;
   contentFragmentVersion: ContentFragmentVersion;
   snippet: string | null;
-  generatedTables: string[] | null;
+  generatedTables: string[];
   isIncludable: boolean;
   isSearchable: boolean;
   isQueryable: boolean;

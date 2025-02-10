@@ -7,8 +7,12 @@ import { TABLE_PREFIX } from "../../front/files";
 interface ParserState {
   tags: string[];
   currentRow: string[];
-  currentTable: string[][];
 }
+
+const HTML_TAGS = {
+  ROW: "tr",
+  CELL: "td",
+} as const;
 
 /**
  * A Transform stream that processes HTML data from a Readable stream, extracts text from tables
@@ -42,7 +46,6 @@ export function transformStreamToCSV(
   const state: ParserState = {
     tags: [],
     currentRow: [],
-    currentTable: [],
   };
 
   // Create a single parser instance for the entire stream.
@@ -57,7 +60,7 @@ export function transformStreamToCSV(
 
         if (currentTag === selector) {
           htmlParsingTransform.push(`${TABLE_PREFIX}${text}\n`);
-        } else if (currentTag === "td") {
+        } else if (currentTag === HTML_TAGS.CELL) {
           state.currentRow.push(text);
         }
       },
@@ -67,13 +70,9 @@ export function transformStreamToCSV(
         if (name !== lastTag) {
           throw new Error("Invalid tag order");
         } else {
-          if (lastTag === "tr") {
+          if (lastTag === HTML_TAGS.ROW) {
+            htmlParsingTransform.push(stringify(state.currentRow));
             state.currentRow = [];
-            state.currentTable.push(state.currentRow);
-          }
-          if (lastTag === "table") {
-            htmlParsingTransform.push(stringify(state.currentTable));
-            state.currentTable = [];
           }
         }
       },
