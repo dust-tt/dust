@@ -356,6 +356,9 @@ impl SearchStore for ElasticsearchSearchStore {
     ) -> Result<Vec<(String, u64, Vec<(String, u64)>)>> {
         let query_type = query_type.unwrap_or(TagsQueryType::Exact);
 
+        // check there is at least one data source view filter
+        // !! do not remove; without data source view filter this endpoint is
+        // dangerous as any data from any workspace can be retrieved
         if data_source_views.is_empty() {
             return Err(anyhow::anyhow!("No data source views provided"));
         }
