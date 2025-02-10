@@ -8,17 +8,22 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
-import type { BillingPeriod, PlanType } from "@dust-tt/types";
+import type { BillingPeriod, PlanType, WorkspaceType } from "@dust-tt/types";
 import type { ReactNode } from "react";
 import React, { useState } from "react";
 
 import { FairUsageModal } from "@app/components/FairUsageModal";
 import {
+  BUSINESS_PLAN_COST_MONTHLY,
   getPriceWithCurrency,
   PRO_PLAN_COST_MONTHLY,
   PRO_PLAN_COST_YEARLY,
 } from "@app/lib/client/subscription";
-import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
+import {
+  PRO_PLAN_LARGE_FILES_CODE,
+  PRO_PLAN_SEAT_29_CODE,
+  PRO_PLAN_SEAT_39_CODE,
+} from "@app/lib/plans/plan_codes";
 import { classNames } from "@app/lib/utils";
 
 export type PriceTableDisplay = "landing" | "subscribe";
@@ -88,6 +93,7 @@ const ENTERPRISE_PLAN_ITEMS: PriceTableItem[] = [
 ];
 
 export function ProPriceTable({
+  owner,
   size,
   plan,
   onClick,
@@ -95,6 +101,7 @@ export function ProPriceTable({
   display,
   billingPeriod = "monthly",
 }: {
+  owner?: WorkspaceType;
   size: "sm" | "xs";
   plan?: PlanType;
   onClick?: () => void;
@@ -175,10 +182,20 @@ export function ProPriceTable({
 
   const biggerButtonSize = size === "xs" ? "sm" : "md";
 
-  const price =
+  let price =
     billingPeriod === "monthly"
       ? getPriceWithCurrency(PRO_PLAN_COST_MONTHLY)
       : getPriceWithCurrency(PRO_PLAN_COST_YEARLY);
+
+  const isBusiness = owner?.metadata?.isBusiness ?? false;
+  if (isBusiness) {
+    price = getPriceWithCurrency(BUSINESS_PLAN_COST_MONTHLY);
+  }
+
+  const isProPlanCode =
+    plan?.code === PRO_PLAN_SEAT_29_CODE ||
+    plan?.code === PRO_PLAN_LARGE_FILES_CODE ||
+    plan?.code === PRO_PLAN_SEAT_39_CODE;
 
   return (
     <>
@@ -194,7 +211,7 @@ export function ProPriceTable({
         size={size}
         magnified={false}
       >
-        {onClick && (!plan || plan.code !== PRO_PLAN_SEAT_29_CODE) && (
+        {onClick && (!plan || !isProPlanCode) && (
           <PriceTable.ActionContainer position="top">
             <Button
               variant="highlight"
