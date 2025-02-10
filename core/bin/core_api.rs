@@ -3271,7 +3271,7 @@ async fn nodes_search(
 struct TagsSearchPayload {
     query: Option<String>,
     query_type: Option<TagsQueryType>,
-    data_source_views: Option<Vec<DatasourceViewFilter>>,
+    data_source_views: Vec<DatasourceViewFilter>,
     node_ids: Option<Vec<String>>,
     limit: Option<u64>,
 }

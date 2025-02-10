@@ -87,7 +87,7 @@ pub trait SearchStore {
         &self,
         query: Option<String>,
         query_type: Option<TagsQueryType>,
-        data_source_views: Option<Vec<DatasourceViewFilter>>,
+        data_source_views: Vec<DatasourceViewFilter>,
         node_ids: Option<Vec<String>>,
         limit: Option<u64>,
     ) -> Result<Vec<(String, u64, Vec<(String, u64)>)>>;
@@ -350,38 +350,34 @@ impl SearchStore for ElasticsearchSearchStore {
         &self,
         query: Option<String>,
         query_type: Option<TagsQueryType>,
-        data_source_views: Option<Vec<DatasourceViewFilter>>,
+        data_source_views: Vec<DatasourceViewFilter>,
         node_ids: Option<Vec<String>>,
         limit: Option<u64>,
     ) -> Result<Vec<(String, u64, Vec<(String, u64)>)>> {
         let query_type = query_type.unwrap_or(TagsQueryType::Exact);
-        let bool_query = Query::bool();
 
-        let bool_query = match data_source_views {
-            None => bool_query,
-            Some(data_source_views) => bool_query.must(
-                Query::bool()
-                    .should(
-                        data_source_views
-                            .into_iter()
-                            .map(|f| {
-                                let mut bool_query = Query::bool();
+        let bool_query = Query::bool().must(
+            Query::bool()
+                .should(
+                    data_source_views
+                        .into_iter()
+                        .map(|f| {
+                            let mut bool_query = Query::bool();
 
-                                bool_query = bool_query
-                                    .filter(Query::term("data_source_id", f.data_source_id));
+                            bool_query =
+                                bool_query.filter(Query::term("data_source_id", f.data_source_id));
 
-                                if !f.view_filter.is_empty() {
-                                    bool_query =
-                                        bool_query.filter(Query::terms("parents", f.view_filter));
-                                }
+                            if !f.view_filter.is_empty() {
+                                bool_query =
+                                    bool_query.filter(Query::terms("parents", f.view_filter));
+                            }
 
-                                Query::Bool(bool_query)
-                            })
-                            .collect::<Vec<_>>(),
-                    )
-                    .minimum_should_match(1),
-            ),
-        };
+                            Query::Bool(bool_query)
+                        })
+                        .collect::<Vec<_>>(),
+                )
+                .minimum_should_match(1),
+        );
 
         let bool_query = match node_ids {
             None => bool_query,
