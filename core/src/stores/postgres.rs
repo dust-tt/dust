@@ -1575,7 +1575,7 @@ impl Store for PostgresStore {
         .await?;
         tx.execute(
             "UPDATE data_sources_nodes SET tags_array = $1 \
-                WHERE data_source = $2 AND document = $3",
+                WHERE data_source = $2 AND node_id = $3",
             &[&updated_tags_vec, &data_source_row_id, &document_id],
         )
         .await?;
