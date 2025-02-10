@@ -644,7 +644,7 @@ export async function processTranscriptActivity(
     // Usage
     const markDownAnswer =
       agentMessage && agentMessage[0].content
-        ? convertCitationsToLinks(agentMessage[0].content, conversationData)
+        ? convertCitationsToLinks(agentMessage[0].content, conversation)
         : "";
 
     const htmlAnswer = sanitizeHtml(await marked.parse(markDownAnswer), {
