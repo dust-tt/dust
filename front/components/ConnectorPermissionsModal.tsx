@@ -84,7 +84,7 @@ const getUseResourceHook =
       filterPermission: null,
       owner,
       parentId,
-      viewType: "documents",
+      viewType: "all",
     });
 
 export async function handleUpdatePermissions(
@@ -601,7 +601,7 @@ export function ConnectorPermissionsModal({
       filterPermission: "read",
       owner,
       parentId: null,
-      viewType: "documents",
+      viewType: "all",
       includeParents: true,
       disabled: !canUpdatePermissions,
     });

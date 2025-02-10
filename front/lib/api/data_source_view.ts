@@ -15,7 +15,6 @@ import {
   Err,
   isDevelopment,
   isDustWorkspace,
-  MIME_TYPES,
   Ok,
   removeNulls,
 } from "@dust-tt/types";
@@ -190,9 +189,7 @@ function filterNodesByViewType(
       return nodes.filter(
         (node) =>
           node.children_count > 0 ||
-          ["Folder", "Document"].includes(node.node_type) ||
-          node.mime_type === MIME_TYPES.BIGQUERY.TABLE ||
-          node.mime_type === MIME_TYPES.SNOWFLAKE.TABLE
+          ["Folder", "Document"].includes(node.node_type)
       );
     case "tables":
       return nodes.filter(
@@ -200,6 +197,8 @@ function filterNodesByViewType(
           node.children_count > 0 ||
           ["Folder", "Table"].includes(node.node_type)
       );
+    case "all":
+      return nodes;
     default:
       assertNever(viewType);
   }
@@ -298,8 +297,11 @@ async function getContentNodesForDataSourceViewFromCore(
   const expandable = (node: CoreAPIContentNode) =>
     !NON_EXPANDABLE_NODES_MIME_TYPES.includes(node.mime_type) &&
     node.children_count > 0 &&
-    // if we aren't in tables view, spreadsheets are not expandable
-    !(viewType !== "tables" && SPREADSHEET_MIME_TYPES.includes(node.mime_type));
+    // if we aren't in tables/all view, spreadsheets are not expandable
+    !(
+      !["tables", "all"].includes(viewType) &&
+      SPREADSHEET_MIME_TYPES.includes(node.mime_type)
+    );
 
   return new Ok({
     nodes: resultNodes.map((node) => {
@@ -354,7 +356,7 @@ async function getContentNodesForStaticDataSourceView(
     });
   }
 
-  if (viewType === "documents") {
+  if (viewType === "documents" || viewType === "all") {
     if (isCursorPaginationParams(paginationParams)) {
       throw new Error(
         "Cursor pagination is not supported for static data sources. Note: this code path should be deleted at the end of the project nodes core (2025-02-03)."
@@ -525,7 +527,6 @@ export async function getContentNodesForDataSourceView(
       coreContentNodes: coreContentNodesRes.value.nodes,
       provider: dataSourceView.dataSource.connectorProvider,
       pagination: params.pagination,
-      viewType: params.viewType,
       localLogger,
     });
 

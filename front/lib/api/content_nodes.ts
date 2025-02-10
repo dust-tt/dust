@@ -1,6 +1,5 @@
 import type {
   ConnectorProvider,
-  ContentNodesViewType,
   ContentNodeType,
   CoreAPIContentNode,
   DataSourceViewContentNode,
@@ -75,14 +74,12 @@ export function computeNodesDiff({
   coreContentNodes,
   pagination,
   provider,
-  viewType,
   localLogger,
 }: {
   connectorsContentNodes: DataSourceViewContentNode[];
   coreContentNodes: DataSourceViewContentNode[];
   provider: ConnectorProvider | null;
   pagination: OffsetPaginationParams | CursorPaginationParams | undefined;
-  viewType: ContentNodesViewType;
   localLogger: typeof logger;
 }) {
   const missingNodes: DataSourceViewContentNode[] = [];
@@ -128,9 +125,7 @@ export function computeNodesDiff({
           coreContentNodes.some((n) =>
             connectorsNode.internalId.startsWith(n.internalId)
           )
-        ) &&
-        // Connectors return tables even when viewType is documents, core doesn't
-        !(provider === "snowflake" && viewType === "documents")
+        )
       ) {
         missingNodes.push(connectorsNode);
       }
