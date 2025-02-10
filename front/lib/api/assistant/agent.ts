@@ -16,9 +16,7 @@ import type {
   GenerationSuccessEvent,
   GenerationTokensEvent,
   LightAgentConfigurationType,
-  ModelMessageTypeMultiActions,
   UserMessageType,
-  UserMessageTypeModel,
   WorkspaceType,
 } from "@dust-tt/types";
 import {
