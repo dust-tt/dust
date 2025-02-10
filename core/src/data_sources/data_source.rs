@@ -236,6 +236,7 @@ impl From<Document> for Node {
             document.parent_id,
             document.parents.clone(),
             document.source_url,
+            Some(document.tags),
         )
     }
 }

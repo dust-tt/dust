@@ -66,6 +66,10 @@ path = "bin/migrations/20241204_create_nodes.rs"
 name = "fix_created_dsdocs"
 path = "bin/migrations/20241203_fix_created_dsdocs.rs"
 
+[[bin]]
+name = "elasticsearch_backfill_document_tags_index"
+path = "bin/migrations/20250205_backfill_document_tags_index.rs"
+
 [[test]]
 name = "oauth_connections_test"
 path = "src/oauth/tests/functional_connections.rs"
