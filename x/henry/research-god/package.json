@@ -3,12 +3,14 @@
   "module": "src/index.ts",
   "type": "module",
   "version": "1.0.0",
-  "description": "",
+  "description": "MicroPython WASM interpreter",
   "main": "dist/index.js",
   "scripts": {
-    "start": "bun src/index.ts",
-    "cli": "bun run src/cli.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "setup:wasm": "chmod +x scripts/build-micropython-wasm.sh && ./scripts/build-micropython-wasm.sh",
+    "dev": "bun run --watch src/index.ts",
+    "start": "bun run src/index.ts",
+    "test": "bun test",
+    "test:interpreter": "bun run src/test-interpreter.ts"
   },
   "keywords": [],
   "author": "",
@@ -21,7 +23,9 @@
     "google-search-results-nodejs": "^2.1.0",
     "openai": "^4.83.0",
     "ora": "^5.4.1",
-    "tiktoken": "^1.0.20"
+    "tiktoken": "^1.0.20",
+    "@types/node": "^20.8.2",
+    "typescript": "^5.2.2"
   },
   "devDependencies": {
     "bun-types": "latest"
