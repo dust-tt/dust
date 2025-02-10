@@ -63,6 +63,13 @@ const afterCallback: AfterCallbackPageRoute = async (
 
   // Safety check for target region bogus value and avoid a redirect loop.
   if (targetRegion && !SUPPORTED_REGIONS.includes(targetRegion)) {
+    logger.error(
+      {
+        targetRegion,
+        currentRegion,
+      },
+      "Invalid target region during auth0 callback, it should never happen in production."
+    );
     targetRegion = multiRegionsConfig.getCurrentRegion();
     await setRegionForUser(session, targetRegion);
   }
