@@ -294,9 +294,22 @@ makeScript(
       boolean: true,
       description: "Recompute parents for missing nodes from core.",
     },
+    connectorId: {
+      type: "number",
+      demandOption: false,
+      description:
+        "ID of the connector to process, leave empty to process all Notion connectors.",
+    },
   },
   async (
-    { execute, connectorConcurrency, nodeConcurrency, extra, missing },
+    {
+      execute,
+      connectorConcurrency,
+      nodeConcurrency,
+      extra,
+      missing,
+      connectorId,
+    },
     logger
   ) => {
     if (!extra && !missing) {
@@ -317,20 +330,26 @@ makeScript(
       logging: false,
     });
 
-    const connectors = await ConnectorResource.listByType("notion", {});
+    let connectors;
+    if (connectorId) {
+      const connector = await ConnectorResource.fetchById(connectorId);
+      if (!connector || connector.errorType) {
+        throw new Error("Connector not found or is errored.");
+      }
+      connectors = [connector];
+    } else {
+      const allConnectors = await ConnectorResource.listByType("notion", {});
+      logger.info(`Found ${allConnectors.length} Notion connectors`);
 
-    logger.info(`Found ${connectors.length} Notion connectors`);
-
-    const validConnectors = connectors.filter(
-      (connector) => !connector.errorType
-    );
-    logger.info(
-      { connectorConcurrency, nodeConcurrency },
-      `Processing ${validConnectors.length} valid connectors.`
-    );
+      connectors = allConnectors.filter((c) => !c.errorType);
+      logger.info(
+        { connectorConcurrency, nodeConcurrency },
+        `Processing ${connectors.length} valid connectors.`
+      );
+    }
 
     await concurrentExecutor(
-      validConnectors,
+      connectors,
       async (connector) => {
         logger.info({ connectorId: connector.id }, "MIGRATE");
         await updateParentsFieldForConnector({
