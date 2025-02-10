@@ -1,7 +1,7 @@
 import type { ModelId } from "@dust-tt/types";
 import { CoreAPI, EnvironmentConfig } from "@dust-tt/types";
 import { makeScript } from "scripts/helpers";
-import { Op, Sequelize } from "sequelize";
+import { Op, QueryTypes, Sequelize } from "sequelize";
 
 import { getParents } from "@connectors/connectors/notion/lib/parents";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
@@ -171,6 +171,27 @@ async function getMissingNodes(
   return [...pages, ...databases];
 }
 
+async function getDataSourceId(
+  connector: ConnectorResource,
+  frontSequelize: Sequelize
+) {
+  const dataSourceRows = await frontSequelize.query(
+    `SELECT "dustAPIDataSourceId"
+     FROM data_sources
+     WHERE "connectorId" = :connectorId`,
+    {
+      replacements: { connectorId: connector.id.toString() },
+      type: QueryTypes.SELECT,
+    }
+  );
+
+  if (dataSourceRows.length === 0) {
+    throw new Error(`No data source found for connector ${connector.id}`);
+  }
+  const dataSource = dataSourceRows[0] as { dustAPIDataSourceId: string };
+  return dataSource.dustAPIDataSourceId;
+}
+
 async function updateParentsFieldForConnector({
   coreAPI,
   frontSequelize,
@@ -197,21 +218,7 @@ async function updateParentsFieldForConnector({
     dataSourceId: dataSourceConfig.dataSourceId,
   });
 
-  const [dataSourceRows] = await frontSequelize.query(
-    `SELECT "dustAPIDataSourceId"
-     FROM data_sources
-     WHERE "connectorId" = :connectorId`,
-    {
-      replacements: { connectorId: connector.id.toString() },
-    }
-  );
-
-  if (dataSourceRows.length === 0) {
-    throw new Error(`No data source found for connector ${connector.id}`);
-  }
-  const dataSource = dataSourceRows[0] as { dustAPIDataSourceId: string };
-  const dustAPIDataSourceId = dataSource.dustAPIDataSourceId;
-
+  const dustAPIDataSourceId = await getDataSourceId(connector, frontSequelize);
   logger.info({ dustAPIDataSourceId }, "DataSourceId retrieved.");
 
   let nodeCount = 0;
@@ -221,10 +228,7 @@ async function updateParentsFieldForConnector({
     const coreRes = await coreAPI.searchNodes({
       filter: {
         data_source_views: [
-          {
-            data_source_id: dustAPIDataSourceId,
-            view_filter: [],
-          },
+          { data_source_id: dustAPIDataSourceId, view_filter: [] },
         ],
         parent_id: "root",
       },
