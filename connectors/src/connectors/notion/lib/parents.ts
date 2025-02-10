@@ -14,6 +14,7 @@ import { updateDataSourceDocumentParents } from "@connectors/lib/data_sources";
 import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { UPDATE_PARENTS_FIELDS_TIMEOUT_MINUTES } from "@connectors/connectors/notion/temporal/workflows";
 
 /** Compute the parents field for a notion pageOrDb See the [Design
  * Doc](https://www.notion.so/dust-tt/Engineering-e0f834b5be5a43569baaf76e9c41adf2?p=3d26536a4e0a464eae0c3f8f27a7af97&pm=s)
@@ -124,7 +125,7 @@ export const getParents = cacheWithRedis(
   (connectorId, pageOrDbId, seen, syncing, memoizationKey, onProgress) => {
     return `${connectorId}:${pageOrDbId}:${memoizationKey}`;
   },
-  60 * 10 * 1000
+  UPDATE_PARENTS_FIELDS_TIMEOUT_MINUTES * 60 * 1000
 );
 
 export async function updateAllParentsFields(
