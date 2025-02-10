@@ -52,13 +52,19 @@ async function findAllDescendants(
   return descendants;
 }
 
-async function updateNodeParents(
-  node: NotionPage | NotionDatabase,
-  connector: ConnectorResource,
-  dataSourceConfig: DataSourceConfig,
-  execute: boolean,
-  logger: typeof Logger
-) {
+async function updateNodeParents({
+  node,
+  connector,
+  dataSourceConfig,
+  execute,
+  logger,
+}: {
+  node: NotionPage | NotionDatabase;
+  connector: ConnectorResource;
+  dataSourceConfig: DataSourceConfig;
+  execute: boolean;
+  logger: typeof Logger;
+}) {
   const parentNotionIds = await getParents(
     connector.id,
     "notionPageId" in node ? node.notionPageId : node.notionDatabaseId,
@@ -115,14 +121,75 @@ async function updateNodeParents(
   }
 }
 
-async function updateParentsFieldForConnector(
-  coreAPI: CoreAPI,
-  frontSequelize: Sequelize,
-  connector: ConnectorResource,
-  execute = false,
-  nodeConcurrency: number,
-  parentLogger: typeof Logger
-) {
+/**
+ * Computes the extra nodes given the IDs returned by core.
+ */
+async function getExtraNodes(
+  coreNotionIds: string[],
+  connector: ConnectorResource
+): Promise<(NotionPage | NotionDatabase)[]> {
+  const pages = await NotionPage.findAll({
+    where: {
+      connectorId: connector.id,
+      notionPageId: coreNotionIds,
+      parentType: { [Op.ne]: "workspace" },
+    },
+  });
+  const databases = await NotionDatabase.findAll({
+    where: {
+      connectorId: connector.id,
+      notionDatabaseId: coreNotionIds,
+      parentType: { [Op.ne]: "workspace" },
+    },
+  });
+
+  return [...pages, ...databases];
+}
+
+/**
+ * Computes the missing nodes given the IDs returned by core.
+ */
+async function getMissingNodes(
+  notionIds: string[],
+  connector: ConnectorResource
+): Promise<(NotionPage | NotionDatabase)[]> {
+  const pages = await NotionPage.findAll({
+    where: {
+      connectorId: connector.id,
+      notionPageId: { [Op.notIn]: notionIds },
+      parentType: "workspace",
+    },
+  });
+  const databases = await NotionDatabase.findAll({
+    where: {
+      connectorId: connector.id,
+      notionDatabaseId: { [Op.notIn]: notionIds },
+      parentType: "workspace",
+    },
+  });
+
+  return [...pages, ...databases];
+}
+
+async function updateParentsFieldForConnector({
+  coreAPI,
+  frontSequelize,
+  connector,
+  handleExtraNodes,
+  handleMissingNodes,
+  execute,
+  nodeConcurrency,
+  parentLogger,
+}: {
+  coreAPI: CoreAPI;
+  frontSequelize: Sequelize;
+  connector: ConnectorResource;
+  handleExtraNodes: boolean;
+  handleMissingNodes: boolean;
+  execute: boolean;
+  nodeConcurrency: number;
+  parentLogger: typeof Logger;
+}) {
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const logger = parentLogger.child({
     connectorId: connector.id,
@@ -173,38 +240,25 @@ async function updateParentsFieldForConnector(
       node.node_id.replace("notion-", "")
     );
 
-    let nodes: (NotionPage | NotionDatabase)[] = [];
-    const pages = await NotionPage.findAll({
-      where: {
-        connectorId: connector.id,
-        notionPageId: notionIds,
-        parentType: { [Op.ne]: "workspace" },
-      },
-    });
-    const databases = await NotionDatabase.findAll({
-      where: {
-        connectorId: connector.id,
-        notionDatabaseId: notionIds,
-        parentType: { [Op.ne]: "workspace" },
-      },
-    });
-
-    nodes = [...pages, ...databases];
-
+    let nodes: (NotionPage | NotionDatabase)[] = [
+      ...(handleExtraNodes ? await getExtraNodes(notionIds, connector) : []),
+      ...(handleMissingNodes
+        ? await getMissingNodes(notionIds, connector)
+        : []),
+    ];
     const descendants = await findAllDescendants(nodes, connector.id);
-
     nodes = [...nodes, ...descendants];
 
     const res = await concurrentExecutor(
       nodes,
       async (node) => {
-        await updateNodeParents(
+        await updateNodeParents({
           node,
           connector,
           dataSourceConfig,
           execute,
-          logger
-        );
+          logger,
+        });
       },
       { concurrency: nodeConcurrency }
     );
@@ -275,14 +329,16 @@ makeScript(
       validConnectors,
       async (connector) => {
         logger.info({ connectorId: connector.id }, "MIGRATE");
-        await updateParentsFieldForConnector(
+        await updateParentsFieldForConnector({
           coreAPI,
           frontSequelize,
           connector,
+          handleExtraNodes: extra,
+          handleMissingNodes: missing,
           execute,
           nodeConcurrency,
-          logger
-        );
+          parentLogger: logger,
+        });
       },
       { concurrency: connectorConcurrency }
     );
