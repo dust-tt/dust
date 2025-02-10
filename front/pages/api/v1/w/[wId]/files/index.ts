@@ -3,6 +3,7 @@ import { FileUploadUrlRequestSchema } from "@dust-tt/client";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import {
   ensureFileSize,
+  isPublicySupportedUseCase,
   isSupportedFileContentType,
   rateLimiter,
 } from "@dust-tt/types";
@@ -119,6 +120,17 @@ async function handler(
             api_error: {
               type: "rate_limit_error",
               message: "You have reached the rate limit for this workspace.",
+            },
+          });
+        }
+
+        // Limit use-case if not a system key.
+        if (!isPublicySupportedUseCase(useCase)) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "The file use case is not supported by the API.",
             },
           });
         }

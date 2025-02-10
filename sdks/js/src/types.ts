@@ -2355,7 +2355,7 @@ export const FileUploadUrlRequestSchema = z.object({
   contentType: SupportedFileContentFragmentTypeSchema,
   fileName: z.string().max(256, "File name must be less than 256 characters"),
   fileSize: z.number(),
-  useCase: z.literal("conversation"),
+  useCase: z.union([z.literal("conversation"), z.literal("upsert_table")]),
   useCaseMetadata: z
     .object({
       conversationId: z.string(),

@@ -51,14 +51,17 @@ async function handler(
     });
   }
 
-  if (!isPublicySupportedUseCase(file.useCase)) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "The file use case is not supported by the API.",
-      },
-    });
+  if (!auth.isSystemKey()) {
+    // Limit use-case if not a system key.
+    if (!isPublicySupportedUseCase(file.useCase)) {
+      return apiError(req, res, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "The file use case is not supported by the API.",
+        },
+      });
+    }
   }
 
   switch (req.method) {
