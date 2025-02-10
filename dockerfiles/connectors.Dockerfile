@@ -5,7 +5,7 @@ FROM node:20.13.0 AS build
 RUN apt-get update && apt-get install -y vim redis-tools postgresql-client htop
 
 WORKDIR /tmp/
-COPY ./connectors/admin/docker_build/install_poppler_tools.sh ./
+COPY /connectors/admin/docker_build/install_poppler_tools.sh ./
 RUN chmod +x ./install_poppler_tools.sh
 RUN ./install_poppler_tools.sh
 # end installing poppler tools
@@ -30,9 +30,9 @@ RUN npm run build
 
 WORKDIR /app
 
-COPY ./connectors/package*.json ./
+COPY /connectors/package*.json ./
 RUN npm ci
-COPY ./connectors/ .
+COPY /connectors/ .
 RUN npm run build
 
 

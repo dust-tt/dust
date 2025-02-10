@@ -4,7 +4,7 @@ RUN apt-get update && apt-get install -y vim redis-tools postgresql-client htop 
 
 WORKDIR /app
 
-COPY . .
+COPY /core/ .
 
 RUN cargo build --release --bin oauth
 

@@ -9,7 +9,7 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Install Poppler tools
 WORKDIR /tmp/
-COPY ./connectors/admin/docker_build/install_poppler_tools.sh ./
+COPY /connectors/admin/docker_build/install_poppler_tools.sh ./
 RUN chmod +x ./install_poppler_tools.sh && \
     ./install_poppler_tools.sh && \
     ldconfig
