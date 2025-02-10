@@ -1,4 +1,12 @@
-import { Dialog, Page } from "@dust-tt/sparkle";
+import {
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@dust-tt/sparkle";
 
 export function ReachedLimitPopup({
   isOpened,
@@ -13,22 +21,42 @@ export function ReachedLimitPopup({
   if (isTrialing) {
     return (
       <Dialog
-        title="Fair usage limit reached"
-        isOpen={isOpened}
-        onValidate={onClose}
-        onCancel={onClose}
-        validateLabel="Ok"
+        open={isOpened}
+        onOpenChange={(open) => {
+          if (!open) {
+            onClose();
+          }
+        }}
       >
-        <Page.P>
-          We limit usage of Dust during the trial. You've reached your limit for
-          today.
-        </Page.P>
-        <p className="text-sm font-normal text-element-800">
-          Come back tomorrow for a fresh start or{" "}
-          <span className="font-bold">
-            end your trial and start paying now (using our website).
-          </span>
-        </p>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Fair usage limit reached</DialogTitle>
+            <DialogDescription>
+              We limit usage of Dust during the trial. You've reached your limit
+              for today.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogContainer>
+            <p className="text-sm font-normal text-element-800">
+              Come back tomorrow for a fresh start or{" "}
+              <span className="font-bold">
+                end your trial and start paying now (using our website).
+              </span>
+            </p>
+          </DialogContainer>
+          <DialogFooter
+            leftButtonProps={{
+              label: "Cancel",
+              variant: "outline",
+              onClick: onClose,
+            }}
+            rightButtonProps={{
+              label: "Ok",
+              variant: "outline",
+              onClick: onClose,
+            }}
+          />
+        </DialogContent>
       </Dialog>
     );
   }
@@ -36,19 +64,39 @@ export function ReachedLimitPopup({
   // TODO(ext): put a link to fair use policy (modal).
   return (
     <Dialog
-      title="Message quota exceeded"
-      isOpen={isOpened}
-      onValidate={onClose}
-      onCancel={onClose}
-      validateLabel="Ok"
+      open={isOpened}
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose();
+        }
+      }}
     >
-      <p className="text-sm font-normal text-element-800">
-        We've paused messaging for your workspace due to our fair usage policy.
-        Your workspace has reached its shared limit of 100 messages per user for
-        the past 24 hours. This total limit is collectively shared by all users
-        in the workspace. Check our Fair Use policy on our website to learn
-        more.
-      </p>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Message quota exceeded</DialogTitle>
+        </DialogHeader>
+        <DialogContainer>
+          <p className="text-sm font-normal text-element-800">
+            We've paused messaging for your workspace due to our fair usage
+            policy. Your workspace has reached its shared limit of 100 messages
+            per user for the past 24 hours. This total limit is collectively
+            shared by all users in the workspace. Check our Fair Use policy on
+            our website to learn more.
+          </p>
+        </DialogContainer>
+        <DialogFooter
+          leftButtonProps={{
+            label: "Cancel",
+            variant: "outline",
+            onClick: onClose,
+          }}
+          rightButtonProps={{
+            label: "Ok",
+            variant: "outline",
+            onClick: onClose,
+          }}
+        />
+      </DialogContent>
     </Dialog>
   );
 }
