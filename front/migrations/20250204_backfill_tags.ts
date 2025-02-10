@@ -9,6 +9,9 @@ import { makeScript } from "@app/scripts/helpers";
 
 const BATCH_SIZE = 128;
 
+const encodeTags = (tags: string[]) =>
+  `{${tags.map((tag) => `"${tag.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`).join(",")}}`;
+
 async function backfillDataSource(
   frontDataSource: DataSourceModel,
   coreSequelize: Sequelize,
@@ -86,7 +89,7 @@ async function backfillSpreadsheets(
     }
     // reconstructing the URLs and node IDs
     const tableIds = rows.map((row) => row.id);
-    const tags = rows.map((row) => `{"${row.tags_array.join('","')}"}`);
+    const tags = rows.map((row) => encodeTags(row.tags_array));
 
     if (execute) {
       // updating on core on the nodeIds
@@ -152,7 +155,7 @@ async function backfillDocuments(
 
     // reconstructing the URLs and node IDs
     const documentIds = rows.map((row) => row.id);
-    const tags = rows.map((row) => `{"${row.tags_array.join('","')}"}`);
+    const tags = rows.map((row) => encodeTags(row.tags_array));
 
     if (execute) {
       // updating on core on the nodeIds
