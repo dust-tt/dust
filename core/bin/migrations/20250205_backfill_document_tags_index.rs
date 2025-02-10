@@ -2,7 +2,6 @@ use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
 use clap::Parser;
 use dust::{
-    data_sources::node::{Node, NodeType, ProviderVisibility},
     search_stores::search_store::ElasticsearchSearchStore,
     stores::{postgres::PostgresStore, store::Store},
 };
@@ -10,6 +9,12 @@ use elasticsearch::{http::request::JsonBody, indices::IndicesExistsParts, BulkPa
 use http::StatusCode;
 use serde_json::json;
 use tokio_postgres::NoTls;
+
+#[derive(Clone, Copy, Debug, clap::ValueEnum)]
+enum NodeType {
+    Document,
+    Table,
+}
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -25,13 +30,16 @@ struct Args {
 
     #[arg(long, help = "The batch size", default_value = "100")]
     batch_size: usize,
+
+    #[arg(long, help = "The type of query to run", default_value = "document")]
+    query_type: NodeType,
 }
 
 /*
- * Backfills nodes index in Elasticsearch for core using the postgres table `data_sources_nodes`
+ * Backfills tags for documents in Elasticsearch using the postgres table `data_sources_documents` and `tables`
  *
  * Usage:
- * cargo run --bin elasticsearch_backfill_index -- --index-version <version> [--skip-confirmation] [--start-cursor <cursor>] [--batch-size <batch_size>]
+ * cargo run --bin elasticsearch_backfill_document_tags_index -- --index-version <version> [--skip-confirmation] [--start-cursor <cursor>] [--batch-size <batch_size>]
  *
  */
 #[tokio::main]
@@ -42,63 +50,39 @@ async fn main() {
     }
 }
 
-async fn list_data_source_nodes(
+async fn list_data_source_documents(
     pool: &Pool<PostgresConnectionManager<NoTls>>,
     id_cursor: i64,
     batch_size: i64,
-) -> Result<Vec<(Node, i64, i64)>, Box<dyn std::error::Error>> {
+    query_type: NodeType,
+) -> Result<Vec<(i64, String, Vec<String>, String, String)>, Box<dyn std::error::Error>> {
     let c = pool.get().await?;
 
-    let stmt = c
-        .prepare(
-            "SELECT dsn.timestamp, dsn.title, dsn.mime_type, dsn.provider_visibility, dsn.parents, dsn.node_id, dsn.document, dsn.\"table\", dsn.folder, ds.data_source_id, ds.internal_id, dsn.source_url, dsn.id \
-               FROM data_sources_nodes dsn JOIN data_sources ds ON dsn.data_source = ds.id \
-               WHERE dsn.id > $1 AND folder IS NOT NULL ORDER BY dsn.id ASC LIMIT $2",
-        )
-        .await?;
+    let q = match query_type {
+        NodeType::Document => {
+            "SELECT dsd.id,dsd.document_id, dsd.tags_array, ds.data_source_id, ds.internal_id \
+            FROM data_sources_documents dsd JOIN data_sources ds ON dsd.data_source = ds.id \
+            WHERE dsd.id > $1 ORDER BY dsd.id ASC LIMIT $2"
+        }
+        NodeType::Table => {
+            "SELECT t.id,t.table_id, t.tags_array, ds.data_source_id, ds.internal_id \
+            FROM tables t JOIN data_sources ds ON t.data_source = ds.id \
+            WHERE t.id > $1 ORDER BY t.id ASC LIMIT $2"
+        }
+    };
+
+    let stmt = c.prepare(q).await?;
     let rows = c.query(&stmt, &[&id_cursor, &batch_size]).await?;
 
-    let nodes: Vec<(Node, i64, i64)> = rows
+    let nodes: Vec<(i64, String, Vec<String>, String, String)> = rows
         .iter()
         .map(|row| {
-            let timestamp: i64 = row.get::<_, i64>(0);
-            let title: String = row.get::<_, String>(1);
-            let mime_type: String = row.get::<_, String>(2);
-            let provider_visibility: Option<ProviderVisibility> =
-                row.get::<_, Option<ProviderVisibility>>(3);
-            let parents: Vec<String> = row.get::<_, Vec<String>>(4);
-            let node_id: String = row.get::<_, String>(5);
-            let document_row_id = row.get::<_, Option<i64>>(6);
-            let table_row_id = row.get::<_, Option<i64>>(7);
-            let folder_row_id = row.get::<_, Option<i64>>(8);
-            let data_source_id: String = row.get::<_, String>(9);
-            let data_source_internal_id: String = row.get::<_, String>(10);
-            let (node_type, element_row_id) = match (document_row_id, table_row_id, folder_row_id) {
-                (Some(id), None, None) => (NodeType::Document, id),
-                (None, Some(id), None) => (NodeType::Table, id),
-                (None, None, Some(id)) => (NodeType::Folder, id),
-                _ => unreachable!(),
-            };
-            let source_url: Option<String> = row.get::<_, Option<String>>(11);
-            let row_id = row.get::<_, i64>(12);
-            (
-                Node::new(
-                    &data_source_id,
-                    &data_source_internal_id,
-                    &node_id,
-                    node_type,
-                    timestamp as u64,
-                    &title,
-                    &mime_type,
-                    provider_visibility,
-                    parents.get(1).cloned(),
-                    parents,
-                    source_url,
-                    None,
-                ),
-                row_id,
-                element_row_id,
-            )
+            let id: i64 = row.get::<_, i64>(0);
+            let document_id: String = row.get::<_, String>(1);
+            let tags: Vec<String> = row.get::<_, Vec<String>>(2);
+            let ds_id: String = row.get::<_, String>(3);
+            let ds_internal_id: String = row.get::<_, String>(4);
+            (id, document_id, tags, ds_id, ds_internal_id)
         })
         .collect::<Vec<_>>();
     Ok(nodes)
@@ -111,6 +95,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let index_version = args.index_version;
     let batch_size = args.batch_size;
     let start_cursor = args.start_cursor;
+    let query_type = args.query_type;
 
     let url = std::env::var("ELASTICSEARCH_URL").expect("ELASTICSEARCH_URL must be set");
     let username =
@@ -160,16 +145,17 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let pool = store.raw_pool();
     let c = pool.get().await?;
     let last_id = c
-        .query_one("SELECT MAX(id) FROM data_sources_nodes", &[])
+        .query_one("SELECT MAX(id) FROM data_sources_documents", &[])
         .await?;
     let last_id: i64 = last_id.get(0);
     println!("Last id in data_sources_nodes: {}", last_id);
     while next_cursor <= last_id {
-        print!(
+        println!(
             "Processing {} nodes, starting at id {}. ",
             batch_size, next_cursor
         );
-        let (nodes, next_id_cursor) = get_node_batch(pool, next_cursor, batch_size).await?;
+        let (nodes, next_id_cursor) =
+            get_node_batch(pool, next_cursor, batch_size, query_type).await?;
 
         next_cursor = match next_id_cursor {
             Some(cursor) => cursor,
@@ -181,17 +167,20 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
                 break;
             }
         };
-        //
-        let nodes_body: Vec<JsonBody<_>> = nodes
+
+        let nodes_values: Vec<_> = nodes
             .into_iter()
-            .filter(|node| node.source_url.is_some())
+            .filter(|node| node.2.len() > 0)
             .flat_map(|node| {
                 [
-                    json!({"index": {"_id": node.unique_id()}}).into(),
-                    json!(node).into(),
+                    json!({"update": {"_id": format!("{}__{}", node.4, node.1) }}),
+                    json!({"doc": {"tags": node.2}}),
                 ]
             })
             .collect();
+
+        let nodes_body: Vec<JsonBody<_>> = nodes_values.into_iter().map(|v| v.into()).collect();
+
         search_store
             .client
             .bulk(BulkParts::Index(index_fullname.as_str()))
@@ -215,13 +204,23 @@ async fn get_node_batch(
     pool: &Pool<PostgresConnectionManager<NoTls>>,
     next_cursor: i64,
     batch_size: usize,
-) -> Result<(Vec<Node>, Option<i64>), Box<dyn std::error::Error>> {
-    let nodes = list_data_source_nodes(&pool, next_cursor, batch_size.try_into().unwrap()).await?;
+    query_type: NodeType,
+) -> Result<
+    (Vec<(i64, String, Vec<String>, String, String)>, Option<i64>),
+    Box<dyn std::error::Error>,
+> {
+    let nodes = list_data_source_documents(
+        &pool,
+        next_cursor,
+        batch_size.try_into().unwrap(),
+        query_type,
+    )
+    .await?;
     let last_node = nodes.last().cloned();
     let nodes_length = nodes.len();
     match last_node {
-        Some((_, last_row_id, _)) => Ok((
-            nodes.into_iter().map(|(node, _, _)| node).collect(),
+        Some((last_row_id, _, _, _, _)) => Ok((
+            nodes,
             match nodes_length == batch_size {
                 true => Some(last_row_id),
                 false => None,

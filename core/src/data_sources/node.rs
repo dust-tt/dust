@@ -89,6 +89,7 @@ pub struct Node {
     pub parent_id: Option<String>,
     pub parents: Vec<String>,
     pub source_url: Option<String>,
+    pub tags: Option<Vec<String>>,
 }
 
 impl Node {
@@ -104,6 +105,7 @@ impl Node {
         parent_id: Option<String>,
         parents: Vec<String>,
         source_url: Option<String>,
+        tags: Option<Vec<String>>,
     ) -> Self {
         Node {
             data_source_id: data_source_id.to_string(),
@@ -117,6 +119,7 @@ impl Node {
             parent_id: parent_id.clone(),
             parents,
             source_url,
+            tags,
         }
     }
 
