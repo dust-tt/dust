@@ -218,6 +218,21 @@ export function computeNodesDiff({
           return false;
         }
 
+        // Special case for Notion titles where we sometimes get a snake_case version of the title one way or another.
+        // For instance "User test - Notes" is turned into "user_test_notes".
+        if (
+          key === "title" &&
+          provider === "notion" &&
+          (value.toLowerCase().replace("-", "").replaceAll(/\s+/g, "_") ==
+            matchingCoreNode.title ||
+            matchingCoreNode.title
+              .toLowerCase()
+              .replace("-", "")
+              .replaceAll(/\s+/g, "_") == value)
+        ) {
+          return false;
+        }
+
         // Special case for Google Drive spreadsheet folders: connectors
         // return a type "file" while core returns a type "folder".
         if (
