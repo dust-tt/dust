@@ -162,7 +162,7 @@ export function APIKeys({
               <div className="mt-4">
                 <Page.H variant="h5">Domain</Page.H>
                 <Page.Horizontal align="center">
-                  <pre className="font-mono flex-grow overflow-x-auto rounded bg-slate-50 p-2">
+                  <pre className="font-mono flex-grow overflow-x-auto rounded bg-slate-50 p-2 dark:bg-slate-950">
                     {process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}
                   </pre>
                   <IconButton
@@ -179,7 +179,7 @@ export function APIKeys({
               <div className="mt-4">
                 <Page.H variant="h5">Workspace ID</Page.H>
                 <Page.Horizontal align="center">
-                  <pre className="font-mono flex-grow overflow-x-auto rounded bg-slate-50 p-2">
+                  <pre className="font-mono flex-grow overflow-x-auto rounded bg-slate-50 p-2 dark:bg-slate-950">
                     {owner.sId}
                   </pre>
                   <IconButton
@@ -196,7 +196,7 @@ export function APIKeys({
               <div className="mt-4">
                 <Page.H variant="h5">API Key</Page.H>
                 <Page.Horizontal align="center">
-                  <pre className="font-mono flex-grow overflow-x-auto rounded bg-slate-50 p-2">
+                  <pre className="font-mono flex-grow overflow-x-auto rounded bg-slate-50 p-2 dark:bg-slate-950">
                     {keys[0]?.secret}
                   </pre>
                   <IconButton
@@ -245,7 +245,7 @@ export function APIKeys({
                 onChange={(e) => setNewApiKeyName(e.target.value)}
               />
               <div className="align-center flex flex-row items-center gap-2 p-2">
-                <span className="mr-1 flex flex-initial py-2 text-sm font-medium leading-8 text-gray-700">
+                <span className="dark:text-gray-700-night mr-1 flex flex-initial py-2 text-sm font-medium leading-8 text-gray-700">
                   Assign permissions to space:{" "}
                 </span>
                 <DropdownMenu>
