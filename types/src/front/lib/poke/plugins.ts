@@ -24,6 +24,11 @@ interface NumberArgDefinition extends BaseArgDefinition {
   values?: never;
 }
 
+interface TextArgDefinition extends BaseArgDefinition {
+  type: "text";
+  values?: never;
+}
+
 interface BooleanArgDefinition extends BaseArgDefinition {
   type: "boolean";
   values?: never;
@@ -32,6 +37,7 @@ interface BooleanArgDefinition extends BaseArgDefinition {
 export type PluginArgDefinition =
   | EnumArgDefinition
   | StringArgDefinition
+  | TextArgDefinition
   | NumberArgDefinition
   | BooleanArgDefinition;
 
@@ -63,6 +69,9 @@ export function createIoTsCodecFromArgs(
 
   for (const [key, arg] of Object.entries(args)) {
     switch (arg.type) {
+      case "text":
+        codecProps[key] = t.string;
+        break;
       case "string":
         codecProps[key] = t.string;
         break;

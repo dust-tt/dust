@@ -13,13 +13,15 @@ type InferArgType<
   V = never,
 > = T extends "string"
   ? string
-  : T extends "number"
-    ? number
-    : T extends "boolean"
-      ? boolean
-      : T extends "enum"
-        ? V
-        : never;
+  : T extends "text"
+    ? string
+    : T extends "number"
+      ? number
+      : T extends "boolean"
+        ? boolean
+        : T extends "enum"
+          ? V
+          : never;
 
 type InferPluginArgs<T extends PluginArgs> = {
   [K in keyof T]: InferArgType<

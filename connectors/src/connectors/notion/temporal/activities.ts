@@ -59,6 +59,8 @@ import {
   renderDocumentTitleAndContent,
   renderPrefixSection,
   sectionLength,
+  updateDataSourceDocumentParents,
+  updateDataSourceTableParents,
   upsertDataSourceDocument,
   upsertDataSourceTableFromCsv,
 } from "@connectors/lib/data_sources";
@@ -77,6 +79,7 @@ import { heartbeat } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import { nodeIdFromNotionId } from "@connectors/connectors/notion";
 
 const logger = mainLogger.child({ provider: "notion" });
 
@@ -2670,4 +2673,52 @@ function getTableInfoFromDatabase(database: NotionDatabase): {
     tableName,
     tableDescription,
   };
+}
+
+export async function updateSingleDocumentParents({
+  connectorId,
+  notionDocumentId,
+  documentType,
+}: {
+  connectorId: ModelId;
+  notionDocumentId: string;
+  documentType: "page" | "database";
+}): Promise<void> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error("Could not find connector");
+  }
+
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const parentsNotionIds = await getParents(
+    connectorId,
+    notionDocumentId,
+    [],
+    false,
+    undefined,
+    undefined
+  );
+
+  logger.info(
+    { parents: parentsNotionIds, documentId: notionDocumentId, documentType },
+    "Parents for document"
+  );
+
+  const parents = parentsNotionIds.map((id) => nodeIdFromNotionId(id));
+
+  if (documentType === "page") {
+    await updateDataSourceDocumentParents({
+      dataSourceConfig,
+      documentId: nodeIdFromNotionId(notionDocumentId),
+      parents,
+      parentId: parents[1] || null,
+    });
+  } else if (documentType === "database") {
+    await updateDataSourceTableParents({
+      dataSourceConfig,
+      tableId: nodeIdFromNotionId(notionDocumentId),
+      parents,
+      parentId: parents[1] || null,
+    });
+  }
 }
