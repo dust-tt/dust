@@ -88,7 +88,7 @@ const AgentMessageView = ({
       <div className="font-bold">
         [assistant] @{message.configuration.name} {"(sId="}
         <a
-          href={`../assistants/${message.configuration.sId}`}
+          href={`/poke/${multiActionsApp.app.workspaceId}/assistants/${message.configuration.sId}`}
           target="_blank"
           className="text-action-500"
         >
