@@ -38,18 +38,19 @@ RUN npm ci && \
 FROM node:20.13.0-slim
 WORKDIR /app
 
+COPY /front/package*.json ./
+
 # Install production dependencies and required tools in a single layer
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-    redis-tools=6:6.0.16-1+deb11u3 \
-    postgresql-client=13+226 && \
+    redis-tools=5:7.0.15-1~deb12u2 \
+    postgresql-client-15=15.10-0+deb12u1 && \
     rm -rf /var/lib/apt/lists/* && \
-    npm ci --only=production
+    npm ci --include=prod
 
 # Copy built assets
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/next.config.js ./
-COPY /front/package*.json ./
 
 CMD ["npm", "--silent", "run", "start"]
