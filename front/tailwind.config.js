@@ -27,14 +27,14 @@ const safeColorsArray = [
 
 const safeColorlist = safeColorsArray.flatMap((color) => [
   // Whitelist all bg colors from shade 100 t0 800.
-  ...Array.from({ length: 8 }, (_, i) => `s-bg-${color}-${(i + 1) * 100}`),
-  `s-border-${color}-100`,
-  `s-border-${color}-200`,
-  `s-border-${color}-300`,
-  `s-text-${color}-500`,
-  `s-text-${color}-800`,
-  `s-text-${color}-900`,
-  `s-text-${color}-950`,
+  ...Array.from({ length: 8 }, (_, i) => `bg-${color}-${(i + 1) * 100}`),
+  `border-${color}-100`,
+  `border-${color}-200`,
+  `border-${color}-300`,
+  `text-${color}-500`,
+  `text-${color}-800`,
+  `text-${color}-900`,
+  `text-${color}-950`,
 ]);
 
 module.exports = {
