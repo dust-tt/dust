@@ -81,6 +81,12 @@ export function isContentFragmentMessageTypeModel(
   return contentFragment.role === "content_fragment";
 }
 
+export function isUserMessageTypeModel(
+  userMessage: ModelMessageTypeMultiActions
+): userMessage is UserMessageTypeModel {
+  return userMessage.role === "user";
+}
+
 export type ModelConversationTypeMultiActions = {
   messages: ModelMessageTypeMultiActions[];
 };

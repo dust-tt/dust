@@ -16,7 +16,9 @@ import type {
   GenerationSuccessEvent,
   GenerationTokensEvent,
   LightAgentConfigurationType,
+  ModelMessageTypeMultiActions,
   UserMessageType,
+  UserMessageTypeModel,
   WorkspaceType,
 } from "@dust-tt/types";
 import {
@@ -31,6 +33,7 @@ import {
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
   isTextContent,
+  isUserMessageTypeModel,
   isWebsearchConfiguration,
   SUPPORTED_MODEL_CONFIGS,
 } from "@dust-tt/types";
@@ -504,15 +507,15 @@ async function* runMultiActionsAgent(
   const renderedConversation = modelConversationRes.value.modelConversation;
   // Anthropic does not accept empty user message.
   if (model.providerId === "anthropic") {
-    renderedConversation.messages
-      .filter((m) => m.role === "user")
-      .forEach((m) => {
+    renderedConversation.messages.forEach((m) => {
+      if (isUserMessageTypeModel(m)) {
         m.content.forEach((c) => {
           if (isTextContent(c) && c.text.length === 0) {
             c.text = "Answer according to provided context and instructions.";
           }
         });
-      });
+      }
+    });
   }
 
   const res = await runActionStreamed(
