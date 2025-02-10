@@ -302,7 +302,8 @@ export const CONNECTOR_CONFIGURATIONS: Record<
   salesforce: {
     name: "Salesforce",
     connectorProvider: "salesforce",
-    status: "built",
+    status: "preview",
+    rollingOutFlag: "salesforce_feature",
     hide: true,
     description: "Query a Salesforce database.",
     limitations: null,

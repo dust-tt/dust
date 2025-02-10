@@ -395,6 +395,7 @@ export const AddConnectionMenu = ({
             case "slack":
             case "microsoft":
             case "zendesk":
+            case "salesforce":
             case "webcrawler":
               return (
                 <CreateConnectionConfirmationModal

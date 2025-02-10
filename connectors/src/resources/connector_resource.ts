@@ -51,7 +51,10 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
     this.configuration = configurations[this.id] ?? null;
   }
 
-  get strategy(): ConnectorProviderStrategy<ConnectorProvider> {
+  get strategy(): ConnectorProviderStrategy<
+    // TODO(salesforce): implement this
+    Exclude<ConnectorProvider, "salesforce">
+  > {
     return getConnectorProviderStrategy(this.type);
   }
 
@@ -84,7 +87,8 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
   }
 
   static async listByType(
-    type: ConnectorProvider,
+    // TODO(salesforce): implement this
+    type: Exclude<ConnectorProvider, "salesforce">,
     { connectionId }: { connectionId?: string }
   ) {
     const where: WhereOptions<ConnectorModel> = {
@@ -136,7 +140,11 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
     return c;
   }
 
-  static async fetchByIds(type: ConnectorProvider, ids: (ModelId | string)[]) {
+  static async fetchByIds(
+    // TODO(salesforce): implement this
+    type: Exclude<ConnectorProvider, "salesforce">,
+    ids: (ModelId | string)[]
+  ) {
     const parsedIds = ids
       .map((id) => {
         const parsed = typeof id === "string" ? parseInt(id, 10) : id;

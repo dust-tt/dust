@@ -895,6 +895,7 @@ export function ConnectorPermissionsModal({
                 }}
               />
             );
+          case "salesforce":
           case "github":
           case "confluence":
           case "google_drive":
