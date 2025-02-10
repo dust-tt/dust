@@ -494,7 +494,7 @@ impl DataSource {
         parents: Vec<String>,
     ) -> Result<()> {
         store
-            .update_data_source_document_parents(
+            .update_data_source_node_parents(
                 &self.project,
                 &self.data_source_id(),
                 &document_id.to_string(),

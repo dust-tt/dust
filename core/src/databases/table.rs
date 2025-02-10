@@ -262,7 +262,7 @@ impl Table {
         parents: Vec<String>,
     ) -> Result<()> {
         store
-            .update_data_source_table_parents(
+            .update_data_source_node_parents(
                 &self.project,
                 &self.data_source_id,
                 &&self.table_id,

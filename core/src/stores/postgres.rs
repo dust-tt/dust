@@ -1431,14 +1431,14 @@ impl Store for PostgresStore {
         }
     }
 
-    async fn update_data_source_document_parents(
+    async fn update_data_source_node_parents(
         &self,
         project: &Project,
         data_source_id: &str,
-        document_id: &str,
+        node_id: &str,
         parents: &Vec<String>,
     ) -> Result<()> {
-        let document_id = document_id.to_string();
+        let node_id = node_id.to_string();
         let pool = self.pool.clone();
         let mut c = pool.get().await?;
 
@@ -1464,7 +1464,7 @@ impl Store for PostgresStore {
         tx.execute(
             "UPDATE data_sources_nodes SET parents = $1 \
             WHERE data_source = $2 AND node_id = $3",
-            &[&parents, &data_source_row_id, &document_id],
+            &[&parents, &data_source_row_id, &node_id],
         )
         .await?;
 
@@ -2762,50 +2762,6 @@ impl Store for PostgresStore {
             ],
         )
         .await?;
-
-        Ok(())
-    }
-
-    async fn update_data_source_table_parents(
-        &self,
-        project: &Project,
-        data_source_id: &str,
-        table_id: &str,
-        parents: &Vec<String>,
-    ) -> Result<()> {
-        let project_id = project.project_id();
-        let data_source_id = data_source_id.to_string();
-        let table_id = table_id.to_string();
-
-        let pool = self.pool.clone();
-        let mut c = pool.get().await?;
-
-        // Get the data source row id.
-        let stmt = c
-            .prepare(
-                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
-            )
-            .await?;
-        let r = c.query(&stmt, &[&project_id, &data_source_id]).await?;
-        let data_source_row_id: i64 = match r.len() {
-            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
-            1 => r[0].get(0),
-            _ => unreachable!(),
-        };
-
-        let tx = c.transaction().await?;
-
-        // Update parents on nodes table.
-        let stmt = tx
-            .prepare(
-                "UPDATE data_sources_nodes SET parents = $1 \
-                   WHERE data_source = $2 AND node_id = $3",
-            )
-            .await?;
-        tx.query(&stmt, &[&parents, &data_source_row_id, &table_id])
-            .await?;
-
-        tx.commit().await?;
 
         Ok(())
     }

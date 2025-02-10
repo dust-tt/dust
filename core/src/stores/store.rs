@@ -206,13 +206,6 @@ pub trait Store {
         add_tags: &Vec<String>,
         remove_tags: &Vec<String>,
     ) -> Result<Vec<String>>;
-    async fn update_data_source_document_parents(
-        &self,
-        project: &Project,
-        data_source_id: &str,
-        document_id: &str,
-        parents: &Vec<String>,
-    ) -> Result<()>;
     async fn update_data_source_document_chunk_count(
         &self,
         project: &Project,
@@ -287,13 +280,6 @@ pub trait Store {
         table_id: &str,
         schema: &TableSchema,
     ) -> Result<()>;
-    async fn update_data_source_table_parents(
-        &self,
-        project: &Project,
-        data_source_id: &str,
-        table_id: &str,
-        parents: &Vec<String>,
-    ) -> Result<()>;
     async fn invalidate_data_source_table_schema(
         &self,
         project: &Project,
@@ -360,6 +346,13 @@ pub trait Store {
         id_cursor: i64,
         batch_size: i64,
     ) -> Result<Vec<(Node, i64, i64)>>;
+    async fn update_data_source_node_parents(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        document_id: &str,
+        parents: &Vec<String>,
+    ) -> Result<()>;
 
     async fn count_nodes_children(&self, nodes: &Vec<Node>) -> Result<HashMap<String, u64>>;
 
