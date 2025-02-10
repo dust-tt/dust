@@ -4,6 +4,7 @@ import type {
   LightWorkspaceType,
   PlanType,
   SubscriptionType,
+  WorkspaceType,
 } from "@dust-tt/types";
 import { sendUserOperationMessage } from "@dust-tt/types";
 import * as _ from "lodash";
@@ -19,6 +20,7 @@ import {
   isEntreprisePlan,
   isProPlan,
   PRO_PLAN_SEAT_29_CODE,
+  PRO_PLAN_SEAT_39_CODE,
 } from "@app/lib/plans/plan_codes";
 import {
   renderPlanFromModel,
@@ -369,8 +371,10 @@ export const pokeUpgradeWorkspaceToPlan = async (
       );
     }
 
-    const isAlreadyOnProPlan =
-      await isSubscriptionOnProPlan(activeSubscription);
+    const isAlreadyOnProPlan = await isSubscriptionOnProPlan(
+      owner,
+      activeSubscription
+    );
 
     if (!isAlreadyOnProPlan) {
       throw new Error(
@@ -410,24 +414,28 @@ export const getCheckoutUrlForUpgrade = async (
     );
   }
 
+  const planCode = owner.metadata?.isBusiness
+    ? PRO_PLAN_SEAT_39_CODE
+    : PRO_PLAN_SEAT_29_CODE;
+
   const proPlan = await Plan.findOne({
     where: { code: PRO_PLAN_SEAT_29_CODE },
   });
   if (!proPlan) {
-    throw new Error(
-      `Cannot subscribe to plan ${PRO_PLAN_SEAT_29_CODE}: not found.`
-    );
+    throw new Error(`Cannot subscribe to plan ${planCode}: not found.`);
   }
 
   const existingSubscription = auth.subscription();
 
   // We verify that the workspace is not already subscribed to the Pro plan product.
   if (existingSubscription) {
-    const isAlreadyOnProPlan =
-      await isSubscriptionOnProPlan(existingSubscription);
+    const isAlreadyOnProPlan = await isSubscriptionOnProPlan(
+      owner,
+      existingSubscription
+    );
     if (isAlreadyOnProPlan) {
       throw new Error(
-        `Cannot subscribe to plan ${PRO_PLAN_SEAT_29_CODE}: already subscribed to a Pro plan.`
+        `Cannot subscribe to plan ${planCode}: already subscribed to a Pro plan.`
       );
     }
   }
@@ -436,11 +444,12 @@ export const getCheckoutUrlForUpgrade = async (
   const checkoutUrl = await createProPlanCheckoutSession({
     auth,
     billingPeriod,
+    planCode,
   });
 
   if (!checkoutUrl) {
     throw new Error(
-      `Cannot subscribe to plan ${PRO_PLAN_SEAT_29_CODE}: error while creating Stripe Checkout session (URL is null).`
+      `Cannot subscribe to plan ${planCode}: error while creating Stripe Checkout session (URL is null).`
     );
   }
 
@@ -451,10 +460,11 @@ export const getCheckoutUrlForUpgrade = async (
 };
 
 async function isStripeSubscriptionOnProPlan(
+  owner: WorkspaceType,
   stripeSubscription: Stripe.Subscription
 ): Promise<boolean> {
   const { data: subscriptionItems } = stripeSubscription.items;
-  const proPlanStripeProductId = getProPlanStripeProductId();
+  const proPlanStripeProductId = getProPlanStripeProductId(owner);
 
   return subscriptionItems.some(
     (item) => item.plan.product === proPlanStripeProductId
@@ -462,6 +472,7 @@ async function isStripeSubscriptionOnProPlan(
 }
 
 export async function isSubscriptionOnProPlan(
+  owner: WorkspaceType,
   subscription: SubscriptionType
 ): Promise<boolean> {
   if (!subscription.stripeSubscriptionId) {
@@ -474,7 +485,7 @@ export async function isSubscriptionOnProPlan(
     return false;
   }
 
-  return isStripeSubscriptionOnProPlan(stripeSubscription);
+  return isStripeSubscriptionOnProPlan(owner, stripeSubscription);
 }
 
 export async function getPerSeatSubscriptionPricing(

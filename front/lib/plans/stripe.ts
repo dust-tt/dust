@@ -11,10 +11,7 @@ import { Stripe } from "stripe";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { Plan, Subscription } from "@app/lib/models/plan";
-import {
-  isOldFreePlan,
-  PRO_PLAN_SEAT_29_CODE,
-} from "@app/lib/plans/plan_codes";
+import { isOldFreePlan } from "@app/lib/plans/plan_codes";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import {
   isEnterpriseReportUsage,
@@ -23,8 +20,22 @@ import {
   SUPPORTED_REPORT_USAGE,
 } from "@app/lib/plans/usage/types";
 
-export function getProPlanStripeProductId() {
-  return isDevelopment() ? "prod_OwKvN4XrUwFw5a" : "prod_OwALjyfxfi2mln";
+export function getProPlanStripeProductId(owner: WorkspaceType) {
+  const isBusiness = owner.metadata?.isBusiness;
+
+  const devProPlanProductId = "prod_OwKvN4XrUwFw5a";
+  const devBusinessProPlanProductId = "prod_RkNr4qbHJD3oUp";
+
+  const prodProPlanProductId = "prod_OwALjyfxfi2mln";
+  const prodBusinessProPlanProductId = "prod_RkPFpfBzLo79gd";
+
+  return isDevelopment()
+    ? isBusiness
+      ? devBusinessProPlanProductId
+      : devProPlanProductId
+    : isBusiness
+      ? prodBusinessProPlanProductId
+      : prodProPlanProductId;
 }
 
 export const getStripeClient = () => {
@@ -68,9 +79,11 @@ async function getDefautPriceFromMetadata(
 export const createProPlanCheckoutSession = async ({
   auth,
   billingPeriod,
+  planCode,
 }: {
   auth: Authenticator;
   billingPeriod: BillingPeriod;
+  planCode: string;
 }): Promise<string | null> => {
   const stripe = getStripeClient();
 
@@ -83,14 +96,14 @@ export const createProPlanCheckoutSession = async ({
     throw new Error("No user found");
   }
 
-  const plan = await Plan.findOne({ where: { code: PRO_PLAN_SEAT_29_CODE } });
+  const plan = await Plan.findOne({ where: { code: planCode } });
   if (!plan) {
     throw new Error(
-      `Cannot create checkout session for plan ${PRO_PLAN_SEAT_29_CODE}: plan not found.`
+      `Cannot create checkout session for plan ${planCode}: plan not found.`
     );
   }
 
-  const stripeProductId = getProPlanStripeProductId();
+  const stripeProductId = getProPlanStripeProductId(owner);
   let priceId: string | null = null;
 
   if (billingPeriod === "yearly") {
@@ -107,7 +120,7 @@ export const createProPlanCheckoutSession = async ({
 
   if (!priceId) {
     throw new Error(
-      `Cannot subscribe to plan ${PRO_PLAN_SEAT_29_CODE}: price not found for product ${stripeProductId}.`
+      `Cannot subscribe to plan ${planCode}: price not found for product ${stripeProductId}.`
     );
   }
 
@@ -130,7 +143,7 @@ export const createProPlanCheckoutSession = async ({
     payment_method_types: ["card"],
     subscription_data: {
       metadata: {
-        planCode: PRO_PLAN_SEAT_29_CODE,
+        planCode: planCode,
         workspaceId: owner.sId,
       },
       // If trialPeriodDays is 0, we send "undefined" to Stripe.
@@ -138,7 +151,7 @@ export const createProPlanCheckoutSession = async ({
         trialAllowed && plan.trialPeriodDays ? plan.trialPeriodDays : undefined,
     },
     metadata: {
-      planCode: PRO_PLAN_SEAT_29_CODE,
+      planCode: planCode,
       userId: `${user.id}`,
     },
     line_items: [
@@ -155,7 +168,7 @@ export const createProPlanCheckoutSession = async ({
     tax_id_collection: {
       enabled: true,
     },
-    success_url: `${config.getClientFacingUrl()}/w/${owner.sId}/subscription/payment_processing?type=succeeded&session_id={CHECKOUT_SESSION_ID}&plan_code=${PRO_PLAN_SEAT_29_CODE}`,
+    success_url: `${config.getClientFacingUrl()}/w/${owner.sId}/subscription/payment_processing?type=succeeded&session_id={CHECKOUT_SESSION_ID}&plan_code=${planCode}`,
     cancel_url: `${config.getClientFacingUrl()}/w/${owner.sId}/subscription?type=cancelled`,
     consent_collection: {
       terms_of_service: "required",

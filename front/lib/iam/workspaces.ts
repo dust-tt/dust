@@ -15,6 +15,7 @@ export async function createWorkspace(session: SessionWithUser) {
     email: externalUser.email,
     name: externalUser.nickname,
     isVerified: externalUser.email_verified,
+    isBusiness: false,
   });
 }
 
@@ -22,10 +23,12 @@ export async function createWorkspaceInternal({
   email,
   name,
   isVerified,
+  isBusiness,
 }: {
   email: string;
   name: string;
   isVerified: boolean;
+  isBusiness: boolean;
 }) {
   const [, emailDomain] = email.split("@");
 
@@ -36,6 +39,9 @@ export async function createWorkspaceInternal({
   const workspace = await Workspace.create({
     sId: generateRandomModelSId(),
     name,
+    metadata: {
+      isBusiness,
+    },
   });
 
   const lightWorkspace = renderLightWorkspaceType({ workspace });

@@ -30,6 +30,11 @@ export const createWorkspacePlugin = createPlugin(
         label: "Enable Auto Join",
         description: "Enable auto join for the domain",
       },
+      isBusiness: {
+        type: "boolean",
+        label: "Is Business",
+        description: "Is the workspace a business workspace (Pro plan 39€)",
+      },
     },
   },
   async (auth, _, args) => {
@@ -49,6 +54,7 @@ export const createWorkspacePlugin = createPlugin(
       email,
       name,
       isVerified: enableAutoJoin,
+      isBusiness: args.isBusiness,
     });
 
     const newWorkspaceAuth = await Authenticator.internalAdminForWorkspace(

@@ -60,6 +60,7 @@ async function createTestWorkspaces(
       email: user.email,
       name: name,
       isVerified: true,
+      isBusiness: false,
     });
 
     logger.info(`Workspace ${name} created.`);

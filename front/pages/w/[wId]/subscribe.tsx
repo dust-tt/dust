@@ -209,10 +209,11 @@ export default function Subscribe({
               </Page.Vertical>
               <Page.Horizontal sizing="grow">
                 <ProPlansTable
+                  owner={owner}
                   size="xs"
                   display="subscribe"
                   setBillingPeriod={setBillingPeriod}
-                ></ProPlansTable>
+                />
               </Page.Horizontal>
             </Page.Horizontal>
           ) : (
@@ -231,10 +232,11 @@ export default function Subscribe({
               </Page.Vertical>
               <Page.Vertical sizing="grow">
                 <ProPlansTable
+                  owner={owner}
                   size="xs"
                   display="subscribe"
                   setBillingPeriod={setBillingPeriod}
-                ></ProPlansTable>
+                />
               </Page.Vertical>
             </Page.Horizontal>
           )}
