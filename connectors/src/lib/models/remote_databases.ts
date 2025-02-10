@@ -39,6 +39,10 @@ RemoteDatabaseModel.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    lastUpsertedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
   },
   {
     sequelize: sequelizeConnection,
@@ -85,6 +89,10 @@ RemoteSchemaModel.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    lastUpsertedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
     },
   },
   {

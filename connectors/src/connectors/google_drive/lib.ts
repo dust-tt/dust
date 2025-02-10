@@ -39,6 +39,7 @@ import {
 } from "@connectors/lib/models/google_drive";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import { sequelizeConnection } from "@connectors/resources/storage";
+import type { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 export async function isDriveObjectExpandable({
   objectId,
@@ -156,8 +157,8 @@ export async function internalDeleteFile(
   });
 }
 
-export async function updateParentsFields(
-  connector: ConnectorResource,
+export async function updateParentsField(
+  connector: ConnectorResource | ConnectorModel,
   file: GoogleDriveFiles,
   parentIds: string[],
   logger: Logger
@@ -364,7 +365,7 @@ export async function fixParentsConsistency({
             }
           }
           if (execute) {
-            await updateParentsFields(connector, file, googleParents, logger);
+            await updateParentsField(connector, file, googleParents, logger);
           }
         }
       }

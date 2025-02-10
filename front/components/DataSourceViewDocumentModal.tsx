@@ -1,5 +1,4 @@
 import {
-  Label,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -72,12 +71,21 @@ export default function DataSourceViewDocumentModal({
               )}
               {!isDocumentLoading && isDocumentError && (
                 <div className="flex flex-col gap-2 py-8">
-                  <Label className="text-warning-500">
-                    Unable to retrieve document.
-                  </Label>
                   <span className="text-sm text-element-700">
-                    We were not able to synchronize this document. Please
-                    contact support@dust.tt for assistance.
+                    This document has no raw content available
+                    <ul className="list-disc pl-4">
+                      <li>
+                        if the document is a spreadsheet, this is expected.
+                        Spreasheets do not expose raw contents. They are made
+                        available in Dust via the `Table Query` action in
+                        assistants.
+                      </li>
+                      <li>
+                        Otherwise, this is unexpected. Please contact
+                        support@dust.tt for assistance on synchronizing the
+                        document.
+                      </li>
+                    </ul>
                   </span>
                 </div>
               )}
