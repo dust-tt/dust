@@ -1,6 +1,42 @@
 /** @type {import('tailwindcss').Config} */
 const colors = require("tailwindcss/colors"); // eslint-disable-line @typescript-eslint/no-var-requires
 
+const safeColorsArray = [
+  "action",
+  "amber",
+  "blue",
+  "cyan",
+  "emerald",
+  "fuchsia",
+  "gray",
+  "green",
+  "indigo",
+  "lime",
+  "orange",
+  "pink",
+  "purple",
+  "red",
+  "rose",
+  "sky",
+  "slate",
+  "teal",
+  "violet",
+  "warning",
+  "yellow",
+];
+
+const safeColorlist = safeColorsArray.flatMap((color) => [
+  // Whitelist all bg colors from shade 100 t0 800.
+  ...Array.from({ length: 8 }, (_, i) => `bg-${color}-${(i + 1) * 100}`),
+  `border-${color}-100`,
+  `border-${color}-200`,
+  `border-${color}-300`,
+  `text-${color}-500`,
+  `text-${color}-800`,
+  `text-${color}-900`,
+  `text-${color}-950`,
+]);
+
 module.exports = {
   theme: {
     screens: {
@@ -344,7 +380,11 @@ module.exports = {
       pattern: /^bg-/,
     },
     {
+      pattern: /^text-/,
+    },
+    {
       pattern: /^grid-rows-/,
     },
+    ...safeColorlist,
   ],
 };
