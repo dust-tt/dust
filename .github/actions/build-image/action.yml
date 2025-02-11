@@ -33,7 +33,7 @@ runs:
       shell: bash
       run: |
         chmod +x ./.github/actions/build-image/cloud-build.sh
-        ./k8s/cloud-build.sh \
+        ./.github/actions/build-image/cloud-build.sh \
           --image-name=${{ inputs.component }} \
           --region=${{ inputs.region }} \
           --project-id=${{ inputs.project_id }}
