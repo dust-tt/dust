@@ -169,9 +169,13 @@ export function DataSourceTagsFilterDropdown({
     mode: "in" | "not",
     operation: "add" | "remove"
   ) => {
+    // We need a Deep copy otherwise we will mutate the original object
+    // And we will not be able to cancel the changes if we cancel the modal.
     const newDsc = { ...currentDataSourceConfiguration };
     if (!newDsc.tagsFilter || newDsc.tagsFilter === "auto") {
       newDsc.tagsFilter = { in: [], not: [] };
+    } else {
+      newDsc.tagsFilter = { ...newDsc.tagsFilter };
     }
 
     if (operation === "add") {

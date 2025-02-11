@@ -88,7 +88,7 @@ export const TagSearchInput = ({
                     />
                   ))
                 ) : (
-                  <div className="dark:text-muted-foreground-night px-2 py-1.5 text-sm text-muted-foreground">
+                  <div className="px-2 py-1.5 text-sm text-muted-foreground dark:text-muted-foreground-night">
                     {isLoading ? "Loading labels..." : "No labels found"}
                   </div>
                 )}
