@@ -26,7 +26,7 @@ export default function Custom404() {
             Looks like this page took an unscheduled coffee break.
           </p>
           {currentURL && (
-            <p className="dark:text-slate-400-night mt-2 text-xs text-slate-400">
+            <p className="mt-2 text-xs text-slate-400 dark:text-slate-400-night">
               Attempted URL: {currentURL}
             </p>
           )}

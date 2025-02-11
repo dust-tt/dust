@@ -191,7 +191,7 @@ export function ActionRetrievalExhaustive({
           className={classNames(
             "text-sm font-semibold",
             timeFrameDisabled
-              ? "dark:text-slate-400-night text-slate-400"
+              ? "text-slate-400 dark:text-slate-400-night"
               : "text-foreground dark:text-foreground-night"
           )}
         >
@@ -205,7 +205,7 @@ export function ActionRetrievalExhaustive({
               ? "focus:border-action-500 focus:ring-action-500"
               : "border-red-500 focus:border-red-500 focus:ring-red-500",
             "bg-structure-50 stroke-structure-50 dark:bg-structure-50-night dark:stroke-structure-50-night",
-            timeFrameDisabled ? "dark:text-slate-400-night text-slate-400" : ""
+            timeFrameDisabled ? "text-slate-400 dark:text-slate-400-night" : ""
           )}
           value={timeFrame.value || ""}
           onChange={(e) => {
