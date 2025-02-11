@@ -1024,10 +1024,11 @@ export async function deletePageOrDatabaseIfArchived({
   }
 }
 
-type GCResource = {
+// Type definition for garbage collection resources
+interface GCResource {
   id: string;
   type: "page" | "database";
-};
+}
 
 // Compute resources to check for garbage collection that weren't seen in the notion search api results
 export async function createResourcesNotSeenInGarbageCollectionRunBatches({
@@ -1298,13 +1299,12 @@ export async function cachePage({
 
   const parent = getPageOrBlockParent(notionPage);
 
+  const notionProperties = notionPage?.properties ?? {};
   await NotionConnectorPageCacheEntry.upsert({
     notionPageId: pageId,
     connectorId: connector.id,
     pageProperties: {},
-    pagePropertiesText: ((p: PageObjectProperties) => JSON.stringify(p))(
-      notionPage.properties
-    ),
+    pagePropertiesText: JSON.stringify(notionProperties),
     parentType: parent.type,
     parentId: parent.id,
     createdById: notionPage.created_by.id,
@@ -1540,9 +1540,7 @@ async function cacheDatabaseChildPages({
         notionPageId: page.id,
         connectorId: connector.id,
         pageProperties: {},
-        pagePropertiesText: ((p: PageObjectProperties) => JSON.stringify(p))(
-          page.properties
-        ),
+        pagePropertiesText: JSON.stringify(page.properties),
         parentId: databaseId,
         parentType: "database",
         createdById: page.created_by.id,
