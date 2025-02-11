@@ -555,7 +555,7 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     return categories.map((category) => new this(this.model, category.get()));
   }
 
-  static async fetchByBrandIdReadOnly({
+  static async fetchSelectedCategoriesInBrand({
     connectorId,
     brandId,
   }: {
@@ -568,7 +568,7 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     return categories.map((category) => new this(this.model, category.get()));
   }
 
-  static async fetchBrandUnselectedCategories({
+  static async fetchUnselectedCategoriesInBrand({
     connectorId,
     brandId,
   }: {

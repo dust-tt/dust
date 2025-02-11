@@ -156,7 +156,7 @@ export async function syncZendeskBrandActivity({
 
     // updating the parents for the already selected categories to add the Help Center
     const selectedCategories =
-      await ZendeskCategoryResource.fetchByBrandIdReadOnly({
+      await ZendeskCategoryResource.fetchSelectedCategoriesInBrand({
         connectorId,
         brandId,
       });
@@ -182,7 +182,7 @@ export async function syncZendeskBrandActivity({
 
     // deleting categories that were only synced because the Help Center was selected but were not explicitely selected by the user in the UI
     const categoriesNotSelected =
-      await ZendeskCategoryResource.fetchBrandUnselectedCategories({
+      await ZendeskCategoryResource.fetchUnselectedCategoriesInBrand({
         connectorId,
         brandId,
       });
