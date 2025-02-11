@@ -157,7 +157,7 @@ export async function updateAllParentsFields(
   // can be desired or not depending on the use case
   const q = new PQueue({ concurrency: 16 });
   const promises: Promise<void>[] = [];
-  for (const pageId of pageIdsToUpdate) {
+  [...pageIdsToUpdate].forEach((pageId, index) => {
     promises.push(
       q.add(async () => {
         const pageOrDbIds = await getParents(
@@ -182,12 +182,13 @@ export async function updateAllParentsFields(
           parents,
           parentId: parents[1] || null,
         });
-        if (onProgress) {
+        // Call onProgress every 100 pages
+        if (onProgress && index % 100 === 0) {
           await onProgress();
         }
       })
     );
-  }
+  });
 
   await Promise.all(promises);
   return pageIdsToUpdate.size;
