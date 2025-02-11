@@ -15,7 +15,7 @@ export const REGISTERED_CHECKS: Check[] = [
   {
     name: "managed_data_source_gdrive_gc",
     check: managedDataSourceGCGdriveCheck,
-    everyHour: 1,
+    everyHour: 4,
   },
   {
     name: "check_notion_active_workflows",
