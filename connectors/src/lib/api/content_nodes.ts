@@ -10,6 +10,7 @@ import { v4 as uuidv4 } from "uuid";
 import { getConnectorManager } from "@connectors/connectors";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
+import _ from "lodash";
 export interface ContentNodeParentIdsBlob {
   internalId: string;
   parentInternalIds: string[];
@@ -70,9 +71,10 @@ export async function augmentContentNodesWithParentIds(
   }
 
   const nodesWithParentIds: ContentNodeWithParentIds[] = [];
+  const contentNodesMap = _.keyBy(contentNodes, "internalId");
 
   for (const { internalId, parentInternalIds } of parentsRes.value) {
-    const node = contentNodes.find((n) => n.internalId === internalId);
+    const node = contentNodesMap[internalId];
 
     if (node) {
       nodesWithParentIds.push({
