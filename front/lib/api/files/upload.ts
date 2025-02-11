@@ -220,7 +220,7 @@ const getProcessingFunction = ({
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
       contentType === "application/vnd.ms-excel"
     ) {
-      // We use tika to extract from excel files, it will turn into a htlml table
+      // We use tika to extract from excel files, it will turn into a html table
       // We will upsert from the html table later
       return extractTextFromFileAndUpload;
     } else if (

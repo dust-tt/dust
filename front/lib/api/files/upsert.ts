@@ -25,7 +25,11 @@ import type {
   UpsertDocumentArgs,
   UpsertTableArgs,
 } from "@app/lib/api/data_sources";
-import { upsertDocument, upsertTable } from "@app/lib/api/data_sources";
+import {
+  isUpsertTableArgs,
+  upsertDocument,
+  upsertTable,
+} from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
@@ -307,19 +311,25 @@ const upsertExcelToDatasource: ProcessingFunction = async (
   let worksheetName: string | undefined;
   let worksheetContent: string | undefined;
 
+  if (!isUpsertTableArgs(upsertArgs)) {
+    return new Err(new Error("Invalid upsert args"));
+  }
+
   for (const line of content.split("\n")) {
     if (line.startsWith(TABLE_PREFIX)) {
       if (worksheetName && worksheetContent) {
+        const upsertTableArgs: UpsertTableArgs = {
+          ...upsertArgs,
+          title: `${file.fileName} ${worksheetName}`,
+          name: slugify(`${file.fileName} ${worksheetName}`),
+          tableId: `${file.sId}-${worksheetName}`,
+        };
+
         await upsertTableToDatasource(auth, {
           file,
           content: worksheetContent,
           dataSource,
-          upsertArgs: {
-            ...upsertArgs,
-            title: `${file.fileName} ${worksheetName}`,
-            name: slugify(`${file.fileName} ${worksheetName}`),
-            tableId: `${file.sId}-${worksheetName}`,
-          } as UpsertTableArgs,
+          upsertArgs: upsertTableArgs,
         });
       }
       worksheetName = line.slice(TABLE_PREFIX.length);
@@ -332,16 +342,18 @@ const upsertExcelToDatasource: ProcessingFunction = async (
   if (!worksheetName || !worksheetContent) {
     return new Err(new Error("Invalid Excel file"));
   } else {
+    const upsertTableArgs: UpsertTableArgs = {
+      ...upsertArgs,
+      title: `${file.fileName} ${worksheetName}`,
+      name: slugify(`${file.fileName} ${worksheetName}`),
+      tableId: `${file.sId}-${worksheetName}`,
+    };
+
     await upsertTableToDatasource(auth, {
       file,
       content: worksheetContent,
       dataSource,
-      upsertArgs: {
-        ...upsertArgs,
-        title: `${file.fileName} ${worksheetName}`,
-        name: slugify(`${file.fileName} ${worksheetName}`),
-        tableId: `${file.sId}-${worksheetName}`,
-      } as UpsertTableArgs,
+      upsertArgs: upsertTableArgs,
     });
     return new Ok(undefined);
   }
