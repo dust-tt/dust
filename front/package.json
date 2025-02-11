@@ -170,7 +170,7 @@
     "tsx": "^4.10.2",
     "typescript": "^5.4.5",
     "vite-tsconfig-paths": "^5.1.4",
-    "vitest": "^2.1.8",
+    "vitest": "^2.1.9",
     "vitest-canvas-mock": "^0.3.3"
   },
   "browser": {
