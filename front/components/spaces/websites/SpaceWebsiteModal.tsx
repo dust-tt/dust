@@ -121,20 +121,20 @@ function buildWebCrawlerConfig(
 
 export type WebsiteFormAction =
   | {
-  type: "SET_FIELD";
-  field: keyof Omit<WebsiteFormState, "errors">;
-  value: any;
-}
+      type: "SET_FIELD";
+      field: keyof Omit<WebsiteFormState, "errors">;
+      value: any;
+    }
   | {
-  type: "SET_ERROR";
-  field: keyof WebsiteFormState["errors"];
-  value: string | undefined;
-}
+      type: "SET_ERROR";
+      field: keyof WebsiteFormState["errors"];
+      value: string | undefined;
+    }
   | {
-  type: "RESET";
-  config?: WebCrawlerConfigurationType | null;
-  name?: string;
-}
+      type: "RESET";
+      config?: WebCrawlerConfigurationType | null;
+      name?: string;
+    }
   | { type: "VALIDATE" };
 
 export interface SpaceWebsiteModalProps {
@@ -147,13 +147,13 @@ export interface SpaceWebsiteModalProps {
 }
 
 export default function SpaceWebsiteModal({
-                                            dataSourceView,
-                                            isOpen,
-                                            onClose,
-                                            owner,
-                                            space,
-                                            canWriteInSpace,
-                                          }: SpaceWebsiteModalProps) {
+  dataSourceView,
+  isOpen,
+  onClose,
+  owner,
+  space,
+  canWriteInSpace,
+}: SpaceWebsiteModalProps) {
   const router = useRouter();
   const sendNotification = useSendNotification();
   const [isSaving, setIsSaving] = useState(false);
@@ -385,12 +385,12 @@ type DeleteSectionProps = {
 };
 
 function DeleteSection({
-                         isOpen,
-                         onOpenChange,
-                         onDelete,
-                         owner,
-                         dataSource,
-                       }: DeleteSectionProps) {
+  isOpen,
+  onOpenChange,
+  onDelete,
+  owner,
+  dataSource,
+}: DeleteSectionProps) {
   return (
     <div className="flex justify-end">
       <Button
