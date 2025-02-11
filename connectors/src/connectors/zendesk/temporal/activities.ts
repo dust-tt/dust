@@ -156,7 +156,7 @@ export async function syncZendeskBrandActivity({
 
     // updating the parents for the already selected categories to add the Help Center
     const selectedCategories =
-      await ZendeskCategoryResource.fetchByBrandIdReadOnly({
+      await ZendeskCategoryResource.fetchSelectedCategoriesInBrand({
         connectorId,
         brandId,
       });
@@ -180,9 +180,9 @@ export async function syncZendeskBrandActivity({
       folderId: helpCenterNode.internalId,
     });
 
-    // deleting categories that were only synced because the Help Center was selected but were not explicitely selected by the user in the UI
+    // Delete categories that were only synced because the Help Center was selected but were not explicitly selected by the user in the UI.
     const categoriesNotSelected =
-      await ZendeskCategoryResource.fetchBrandUnselectedCategories({
+      await ZendeskCategoryResource.fetchUnselectedCategoriesInBrand({
         connectorId,
         brandId,
       });
@@ -194,6 +194,30 @@ export async function syncZendeskBrandActivity({
           brandId,
           categoryId: category.categoryId,
         }),
+      });
+    }
+
+    // Update the parents for the categories that were selected to turn them into roots.
+    const selectedCategories =
+      await ZendeskCategoryResource.fetchSelectedCategoriesInBrand({
+        connectorId,
+        brandId,
+      });
+    for (const category of selectedCategories) {
+      const folderId = getCategoryInternalId({
+        connectorId,
+        brandId,
+        categoryId: category.categoryId,
+      });
+      await upsertDataSourceFolder({
+        dataSourceConfig,
+        folderId,
+        parents: [folderId],
+        parentId: null,
+        title: category.name,
+        mimeType: MIME_TYPES.ZENDESK.CATEGORY,
+        sourceUrl: category.url,
+        timestampMs: currentSyncDateMs,
       });
     }
   }
