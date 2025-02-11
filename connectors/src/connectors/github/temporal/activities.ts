@@ -154,6 +154,7 @@ async function renderIssue(
     updatedAt: issue.updatedAt,
     author: renderGithubUser(issue.creator),
     additionalPrefixes: {
+      labels: issue.labels.join(", "),
       isPullRequest: issue.isPullRequest.toString(),
     },
     content: await renderMarkdownSection(dataSourceConfig, issue.body ?? "", {
