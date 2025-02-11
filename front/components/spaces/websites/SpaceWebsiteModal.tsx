@@ -15,6 +15,7 @@ import type {
   DepthOption,
   SpaceType,
   WebCrawlerConfigurationType,
+  WebsiteFormAction,
   WebsiteFormState,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -118,24 +119,6 @@ function buildWebCrawlerConfig(
     ),
   };
 }
-
-export type WebsiteFormAction =
-  | {
-      type: "SET_FIELD";
-      field: keyof Omit<WebsiteFormState, "errors">;
-      value: any;
-    }
-  | {
-      type: "SET_ERROR";
-      field: keyof WebsiteFormState["errors"];
-      value: string | undefined;
-    }
-  | {
-      type: "RESET";
-      config?: WebCrawlerConfigurationType | null;
-      name?: string;
-    }
-  | { type: "VALIDATE" };
 
 export interface SpaceWebsiteModalProps {
   dataSourceView: DataSourceViewType | null;
