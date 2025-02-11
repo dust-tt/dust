@@ -233,6 +233,12 @@ export default function About() {
                 serioulsy.
               </P>
             </div>
+            <div className="flex flex-col">
+              <P>
+                These principles guide our decisions and actions. If they
+                reasonate with you, we'd love to hear from you.
+              </P>
+            </div>
 
             <div className="pt-4">
               <Link href="/jobs" shallow={true}>
