@@ -4,7 +4,6 @@ import {
   GithubIcon,
   Icon,
   LinkedinIcon,
-  RocketIcon,
   Separator,
 } from "@dust-tt/sparkle";
 import Link from "next/link";
@@ -246,7 +245,7 @@ export default function About() {
                   variant="highlight"
                   size="md"
                   label="We're hiring"
-                  icon={RocketIcon}
+                  icon={ArrowRightIcon}
                 />
               </Link>
             </div>
