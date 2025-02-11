@@ -562,6 +562,7 @@ export async function renderDocumentTitleAndContent({
   updatedAt,
   author,
   lastEditor,
+  additionalPrefixes,
   content,
 }: {
   dataSourceConfig: DataSourceConfig;
@@ -570,6 +571,7 @@ export async function renderDocumentTitleAndContent({
   updatedAt?: Date;
   author?: string;
   lastEditor?: string;
+  additionalPrefixes?: Record<string, string>;
   content: CoreAPIDataSourceDocumentSection | null;
 }): Promise<CoreAPIDataSourceDocumentSection> {
   author = author
@@ -599,6 +601,11 @@ export async function renderDocumentTitleAndContent({
     }
     if (lastEditor) {
       metaPrefix += `$lastEditor: ${safeSubstring(lastEditor, 0)}\n`;
+    }
+  }
+  if (additionalPrefixes) {
+    for (const [key, value] of Object.entries(additionalPrefixes)) {
+      metaPrefix += `$${key}: ${value}\n`;
     }
   }
   if (metaPrefix) {

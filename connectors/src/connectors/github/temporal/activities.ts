@@ -149,9 +149,13 @@ async function renderIssue(
 
   const content = await renderDocumentTitleAndContent({
     dataSourceConfig,
-    title: `Issue #${issue.number} [${repoName}]: ${issue.title}`,
+    title: `${issue.isPullRequest ? "Pull Request" : "Issue"} #${issue.number} [${repoName}]: ${issue.title}`,
     createdAt: issue.createdAt || issue.updatedAt,
     updatedAt: issue.updatedAt,
+    author: renderGithubUser(issue.creator),
+    additionalPrefixes: {
+      isPullRequest: issue.isPullRequest.toString(),
+    },
     content: await renderMarkdownSection(dataSourceConfig, issue.body ?? "", {
       flavor: "gfm",
     }),
