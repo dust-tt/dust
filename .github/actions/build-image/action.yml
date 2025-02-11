@@ -1,0 +1,39 @@
+name: "Build Docker Image"
+description: "Builds a Docker image using Cloud Build"
+
+inputs:
+  project_id:
+    description: "Google Cloud project ID"
+    required: true
+  region:
+    description: "Region to build in"
+    required: true
+  component:
+    description: "Component name"
+    required: true
+  workload_identity_provider:
+    description: "Workload Identity Provider"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - id: "auth"
+      name: "Authenticate to Google Cloud"
+      uses: "google-github-actions/auth@v2"
+      with:
+        create_credentials_file: true
+        workload_identity_provider: ${{ inputs.workload_identity_provider }}
+        service_account: "github-build-invoker@${{ inputs.project_id }}.iam.gserviceaccount.com"
+
+    - name: "Set up Cloud SDK"
+      uses: "google-github-actions/setup-gcloud@v2"
+
+    - name: Build image
+      shell: bash
+      run: |
+        chmod +x ./.github/actions/build-image/cloud-build.sh
+        ./k8s/cloud-build.sh \
+          --image-name=${{ inputs.component }} \
+          --region=${{ inputs.region }} \
+          --project-id=${{ inputs.project_id }}
