@@ -7,9 +7,13 @@ import * as t from "io-ts";
 import { ModelId } from "../shared/model_id";
 
 // notion SDK types
+import type { SelectPropertyResponse } from "@notionhq/client/build/src/api-endpoints";
 export type PageObjectProperties = PageObjectResponse["properties"];
 export type PropertyKeys = keyof PageObjectProperties;
 export type PropertyTypes = PageObjectProperties[PropertyKeys]["type"];
+
+// For backwards compatibility with select property types
+export type CompatibleSelectPropertyResponse = Omit<SelectPropertyResponse, "description"> & { description?: string | null };
 
 export function getNotionWorkflowId(
   connectorId: ModelId,

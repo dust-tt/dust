@@ -246,7 +246,7 @@ export class NotionConnectorPageCacheEntry extends ConnectorBaseModel<NotionConn
   declare updatedAt: CreationOptional<Date>;
 
   declare notionPageId: string;
-  declare pageProperties: PageObjectProperties; // JSON -- typed but not guaranteed
+  pageProperties: PageObjectProperties; // raw notion properties
   declare pagePropertiesText: string;
   declare parentId: string;
   declare parentType: "database" | "page" | "workspace" | "block" | "unknown";

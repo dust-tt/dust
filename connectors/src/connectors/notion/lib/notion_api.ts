@@ -849,7 +849,7 @@ export function parsePropertyValue(
     case "url":
       return property.url || null;
     case "select":
-      return property.select?.name || null;
+      return (property.select as { name: string | null } | null)?.name || null;
     case "multi_select":
       return parseMultiSelectProp(property.multi_select);
     case "status":

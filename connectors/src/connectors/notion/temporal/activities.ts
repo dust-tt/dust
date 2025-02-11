@@ -1301,9 +1301,9 @@ export async function cachePage({
   await NotionConnectorPageCacheEntry.upsert({
     notionPageId: pageId,
     connectorId: connector.id,
-    pageProperties: {},
+    pageProperties: JSON.parse(JSON.stringify(notionPage.properties)),
     pagePropertiesText: ((p: PageObjectProperties) => JSON.stringify(p))(
-      notionPage.properties
+      notionPage.properties as unknown as PageObjectProperties
     ),
     parentType: parent.type,
     parentId: parent.id,
@@ -1536,10 +1536,10 @@ async function cacheDatabaseChildPages({
   await concurrentExecutor(
     pages,
     async (page) =>
-      NotionConnectorPageCacheEntry.upsert({
+      await NotionConnectorPageCacheEntry.upsert({
         notionPageId: page.id,
         connectorId: connector.id,
-        pageProperties: {},
+        pageProperties: page.properties as unknown as PageObjectProperties,
         pagePropertiesText: ((p: PageObjectProperties) => JSON.stringify(p))(
           page.properties
         ),
@@ -1841,7 +1841,7 @@ export async function renderAndUpsertPageFromCache({
     },
   });
 
-  const blocksByParentId: Record<string, NotionConnectorBlockCacheEntry[]> = {};
+  const blocksByParentId: Record<string, NotionConnectorBlockCacheEntry[]> = {}; // keyed by parentBlockId
   for (const blockCacheEntry of blockCacheEntries) {
     blocksByParentId[blockCacheEntry.parentBlockId || "root"] = [
       ...(blocksByParentId[blockCacheEntry.parentBlockId || "root"] ?? []),
