@@ -1,5 +1,6 @@
 import {
   Button,
+  Chip,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuPortal,
@@ -8,7 +9,7 @@ import {
   SearchInput,
 } from "@dust-tt/sparkle";
 import type { DataSourceTag } from "@dust-tt/types";
-import { useEffect, useRef, useState } from "react";
+import { useRef } from "react";
 
 export interface TagSearchProps {
   searchInputValue: string;
@@ -17,7 +18,7 @@ export interface TagSearchProps {
   selectedTags: DataSourceTag[];
   onTagAdd: (tag: DataSourceTag) => void;
   onTagRemove: (tag: DataSourceTag) => void;
-  placeholder?: string;
+  tagChipColor?: "slate" | "red";
   isLoading: boolean;
 }
 
@@ -28,21 +29,11 @@ export const TagSearchInput = ({
   selectedTags,
   onTagAdd,
   onTagRemove,
+  tagChipColor = "slate",
   isLoading,
-  placeholder = "Search tags...",
 }: TagSearchProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [showDropdown, setShowDropdown] = useState(false);
-
-  // Show dropdown when there are available tags.
-  useEffect(() => {
-    if (availableTags.length > 0) {
-      setShowDropdown(true);
-    } else {
-      setShowDropdown(false);
-    }
-  }, [availableTags]);
 
   return (
     <div className="flex flex-col gap-3">
@@ -58,19 +49,23 @@ export const TagSearchInput = ({
               e.key === "Escape"
             ) {
               e.preventDefault();
-              setShowDropdown(false);
+              inputRef.current?.focus();
             }
           }}
-          placeholder={placeholder}
+          placeholder="Search labels..."
           className="w-full"
+          isLoading={isLoading}
         />
 
         <DropdownMenu
-          open={showDropdown}
-          onOpenChange={setShowDropdown}
-          modal={false}
+          open={
+            availableTags.length > 0 ||
+            (searchInputValue.length > 0 && !isLoading)
+          }
         >
-          <DropdownMenuTrigger className="absolute h-0 w-0 opacity-0" />
+          <DropdownMenuTrigger asChild>
+            <div className="absolute h-0 w-0 p-0" />
+          </DropdownMenuTrigger>
           <DropdownMenuPortal>
             <DropdownMenuContent align="start">
               <ScrollArea className="max-h-[250px]">
@@ -83,13 +78,17 @@ export const TagSearchInput = ({
                       onClick={() => {
                         onTagAdd(tag);
                         setSearchInputValue("");
+                        inputRef.current?.focus();
                       }}
                       className="w-full justify-start"
                     />
                   ))
                 ) : (
                   <div className="px-2 py-1.5 text-sm text-muted-foreground dark:text-muted-foreground-night">
-                    {isLoading ? "Loading labels..." : "No labels found"}
+                    {!isLoading &&
+                      availableTags.length === 0 &&
+                      searchInputValue.length > 0 &&
+                      "No labels found"}
                   </div>
                 )}
               </ScrollArea>
@@ -100,12 +99,11 @@ export const TagSearchInput = ({
 
       <div className="flex flex-wrap gap-2">
         {selectedTags.map((tag, i) => (
-          <Button
+          <Chip
             key={`${tag.tag}-${i}`}
             label={tag.tag}
-            tooltip="Click to remove tag"
-            onClick={() => onTagRemove(tag)}
-            variant="outline"
+            onRemove={() => onTagRemove(tag)}
+            color={tagChipColor}
             size="xs"
           />
         ))}

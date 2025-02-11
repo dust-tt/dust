@@ -15,7 +15,7 @@ import type {
 import { useContext, useState } from "react";
 
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
-import { DataSourceTagsFilterDropdown } from "@app/components/assistant_builder/tags/ActionDataSourceTagsFilterSection";
+import { DataSourceTagsFilterDropdown } from "@app/components/assistant_builder/tags/DataSourceTagsFilterDropdown";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { DataSourceViewPermissionTree } from "@app/components/DataSourceViewPermissionTree";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
@@ -32,7 +32,7 @@ import { classNames } from "@app/lib/utils";
 interface DataSourceSelectionSectionProps {
   dataSourceConfigurations: DataSourceViewSelectionConfigurations;
   openDataSourceModal: () => void;
-  onSave: (dsConfigs: DataSourceViewSelectionConfigurations) => void;
+  onSave?: (dsConfigs: DataSourceViewSelectionConfigurations) => void;
   owner: LightWorkspaceType;
   viewType: ContentNodesViewType;
 }
@@ -113,7 +113,8 @@ export default function DataSourceSelectionSection({
                   visual={LogoComponent}
                   className="whitespace-nowrap"
                   actions={
-                    shouldDisplayTagsFilters && (
+                    shouldDisplayTagsFilters &&
+                    onSave && (
                       <DataSourceTagsFilterDropdown
                         owner={owner}
                         dataSourceConfigurations={dataSourceConfigurations}
