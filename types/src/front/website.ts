@@ -20,10 +20,12 @@ export type WebsiteFormState = {
 
 export type WebsiteFormAction =
   | {
-      type: "SET_FIELD";
-      field: keyof Omit<WebsiteFormState, "errors">;
-      value: any;
-    }
+      [K in keyof Omit<WebsiteFormState, "errors">]: {
+        type: "SET_FIELD";
+        field: K;
+        value: WebsiteFormState[K];
+      };
+    }[keyof Omit<WebsiteFormState, "errors">]
   | {
       type: "SET_ERROR";
       field: keyof WebsiteFormState["errors"];
