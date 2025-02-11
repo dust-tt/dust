@@ -8,10 +8,11 @@
   "devDependencies": {
     "@tsconfig/node20": "^20.1.4",
     "@types/node": "^20.12.12",
-    "ts-node": "^10.9.2"
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.3"
   },
   "dependencies": {
-    "axios": "^1.5.1",
+    "axios": "^1.7.9",
     "dd-trace": "^5.1.0",
     "hot-shots": "^10.2.1",
     "zod": "^3.22.4"
