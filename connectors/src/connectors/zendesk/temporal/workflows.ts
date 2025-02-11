@@ -392,9 +392,7 @@ export async function zendeskCategorySyncWorkflow({
  * This workflow is responsible for deleting the following (in this order):
  * - Outdated tickets.
  * - Articles that cannot be found anymore in the Zendesk API.
- * - Categories that have no article anymore.
- * - Permissions of the Help Centers that have no category anymore (allows a cleanup at the next step).
- * - Articles of the brands that have no permission on their Help Center anymore.
+ * - Articles and categories (only those that are not selected) of the brands that have an unselected Help Center.
  * - Tickets of the brands that have no permission on tickets anymore.
  * - Brands that have no permission on tickets and Help Center anymore.
  */
