@@ -119,6 +119,7 @@ export const GoogleDriveCommandSchema = t.type({
     t.literal("skip-file"),
     t.literal("register-webhook"),
     t.literal("register-all-webhooks"),
+    t.literal("list-labels"),
   ]),
   args: t.record(
     t.string,
