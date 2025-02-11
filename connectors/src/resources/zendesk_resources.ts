@@ -310,20 +310,6 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     return brands.map((brand) => brand.get().brandId);
   }
 
-  static async deleteBrandsWithNoPermission(
-    connectorId: number,
-    transaction?: Transaction
-  ): Promise<number> {
-    return ZendeskBrand.destroy({
-      where: {
-        connectorId,
-        helpCenterPermission: "none",
-        ticketsPermission: "none",
-      },
-      transaction,
-    });
-  }
-
   static async deleteByConnectorId(
     connectorId: number,
     transaction?: Transaction

@@ -40,7 +40,6 @@ const {
   removeMissingArticleBatchActivity,
   getZendeskBrandsWithHelpCenterToDeleteActivity,
   getZendeskBrandsWithTicketsToDeleteActivity,
-  deleteBrandsWithNoPermissionActivity,
   deleteCategoryBatchActivity,
   deleteTicketBatchActivity,
 } = proxyActivities<typeof gc_activities>({
@@ -447,9 +446,6 @@ export async function zendeskGarbageCollectionWorkflow({
       hasMoreTickets = hasMore;
     }
   }
-
-  // deleting the brands that have no permissions anymore
-  await deleteBrandsWithNoPermissionActivity(connectorId);
 }
 
 /**

@@ -4,9 +4,7 @@ import { getZendeskGarbageCollectionWorkflowId } from "@dust-tt/types";
 import {
   getArticleInternalId,
   getCategoryInternalId,
-  getHelpCenterInternalId,
   getTicketInternalId,
-  getTicketsInternalId,
 } from "@connectors/connectors/zendesk/lib/id_conversions";
 import { deleteArticle } from "@connectors/connectors/zendesk/lib/sync_article";
 import { deleteTicket } from "@connectors/connectors/zendesk/lib/sync_ticket";
@@ -180,54 +178,6 @@ export async function removeMissingArticleBatchActivity({
     { concurrency: 10 }
   );
   return nextCursor;
-}
-
-/**
- * This activity is responsible for cleaning up Brands that have no permission anymore.
- */
-export async function deleteBrandsWithNoPermissionActivity(
-  connectorId: ModelId
-): Promise<void> {
-  const connector = await ConnectorResource.fetchById(connectorId);
-  if (!connector) {
-    throw new Error("[Zendesk] Connector not found.");
-  }
-  const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const loggerArgs = {
-    workspaceId: dataSourceConfig.workspaceId,
-    connectorId,
-    provider: "zendesk",
-    workflowId: getZendeskGarbageCollectionWorkflowId(connectorId),
-    dataSourceId: dataSourceConfig.dataSourceId,
-  };
-
-  // deleting from data_sources_folders (core)
-  const brands =
-    await ZendeskBrandResource.fetchBrandsWithNoPermission(connectorId);
-
-  await concurrentExecutor(
-    brands,
-    async (brandId) => {
-      await deleteDataSourceFolder({
-        dataSourceConfig,
-        folderId: getHelpCenterInternalId({ connectorId, brandId }),
-      });
-      await deleteDataSourceFolder({
-        dataSourceConfig,
-        folderId: getTicketsInternalId({ connectorId, brandId }),
-      });
-    },
-    { concurrency: 10 }
-  );
-
-  // deleting from zendesk_brands (connectors)
-  const deletedCount =
-    await ZendeskBrandResource.deleteBrandsWithNoPermission(connectorId);
-
-  logger.info(
-    { ...loggerArgs, deletedCount },
-    "[Zendesk] Deleting brands with no permission."
-  );
 }
 
 /**
