@@ -10,9 +10,7 @@ import {
   useSendNotification,
 } from "@dust-tt/sparkle";
 import type {
-  CrawlingFrequency,
   DataSourceViewType,
-  DepthOption,
   SpaceType,
   WebCrawlerConfigurationType,
   WebsiteFormAction,
@@ -288,22 +286,6 @@ export default function SpaceWebsiteModal({
     }
   };
 
-  const frequencyDisplayText: Record<CrawlingFrequency, string> = {
-    never: "Never",
-    daily: "Every day",
-    weekly: "Every week",
-    monthly: "Every month",
-  };
-
-  const depthDisplayText: Record<DepthOption, string> = {
-    0: "0 level",
-    1: "1 level",
-    2: "2 levels",
-    3: "3 levels",
-    4: "4 levels",
-    5: "5 levels",
-  };
-
   return (
     <Sheet
       open={isOpen}
@@ -326,8 +308,6 @@ export default function SpaceWebsiteModal({
             state={formState}
             dispatch={dispatch}
             isConfigurationLoading={isConfigurationLoading}
-            frequencyDisplayText={frequencyDisplayText}
-            depthDisplayText={depthDisplayText}
             webCrawlerConfiguration={webCrawlerConfiguration}
           />
           {webCrawlerConfiguration && dataSourceView && (

@@ -1,13 +1,14 @@
 import { Button, Collapsible, Input, Label, XMarkIcon } from "@dust-tt/sparkle";
-import type { WebsiteFormState } from "@dust-tt/types";
+import type { WebsiteFormAction, WebsiteFormState } from "@dust-tt/types";
 import { WebCrawlerHeaderRedactedValue } from "@dust-tt/types";
+import type { Dispatch } from "react";
 
 export function AdvancedSettingsSection({
   state,
   dispatch,
 }: {
   state: WebsiteFormState;
-  dispatch: any;
+  dispatch: Dispatch<WebsiteFormAction>;
 }) {
   return (
     <Collapsible>

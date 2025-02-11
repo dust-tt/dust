@@ -16,15 +16,15 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type {
-  CrawlingFrequency,
-  DepthOption,
   WebCrawlerConfigurationType,
   WebsiteFormAction,
   WebsiteFormState,
 } from "@dust-tt/types";
 import {
   CrawlingFrequencies,
+  DEPTH_DISPLAY_TEXT,
   DepthOptions,
+  FREQUENCY_DISPLAY_TEXT,
   WEBCRAWLER_MAX_PAGES,
 } from "@dust-tt/types";
 
@@ -34,8 +34,6 @@ type SpaceWebsiteFormProps = {
   state: WebsiteFormState;
   dispatch: React.Dispatch<WebsiteFormAction>;
   isConfigurationLoading: boolean;
-  frequencyDisplayText: Record<CrawlingFrequency, string>;
-  depthDisplayText: Record<DepthOption, string>;
   webCrawlerConfiguration: WebCrawlerConfigurationType | null;
 };
 
@@ -43,8 +41,6 @@ export function SpaceWebsiteForm({
   state,
   dispatch,
   isConfigurationLoading,
-  frequencyDisplayText,
-  depthDisplayText,
   webCrawlerConfiguration,
 }: SpaceWebsiteFormProps) {
   return isConfigurationLoading ? (
@@ -121,7 +117,7 @@ export function SpaceWebsiteForm({
             <DropdownMenuTrigger asChild>
               <Button
                 variant="outline"
-                label={frequencyDisplayText[state.crawlFrequency]}
+                label={FREQUENCY_DISPLAY_TEXT[state.crawlFrequency]}
                 isSelect
               />
             </DropdownMenuTrigger>
@@ -131,7 +127,7 @@ export function SpaceWebsiteForm({
                   <DropdownMenuRadioItem
                     key={frequency}
                     value={frequency}
-                    label={frequencyDisplayText[frequency]}
+                    label={FREQUENCY_DISPLAY_TEXT[frequency]}
                     onClick={() =>
                       dispatch({
                         type: "SET_FIELD",
@@ -154,7 +150,7 @@ export function SpaceWebsiteForm({
             <DropdownMenuTrigger asChild>
               <Button
                 variant="outline"
-                label={depthDisplayText[state.depth]}
+                label={DEPTH_DISPLAY_TEXT[state.depth]}
                 isSelect
               />
             </DropdownMenuTrigger>
@@ -164,7 +160,7 @@ export function SpaceWebsiteForm({
                   <DropdownMenuRadioItem
                     key={depthOption}
                     value={depthOption.toString()}
-                    label={depthDisplayText[depthOption]}
+                    label={DEPTH_DISPLAY_TEXT[depthOption]}
                     onClick={() =>
                       dispatch({
                         type: "SET_FIELD",

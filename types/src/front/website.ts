@@ -37,3 +37,19 @@ export type WebsiteFormAction =
       name?: string;
     }
   | { type: "VALIDATE" };
+
+export const FREQUENCY_DISPLAY_TEXT: Record<CrawlingFrequency, string> = {
+  never: "Never",
+  daily: "Every day",
+  weekly: "Every week",
+  monthly: "Every month",
+};
+
+export const DEPTH_DISPLAY_TEXT: Record<DepthOption, string> = {
+  0: "0 level",
+  1: "1 level",
+  2: "2 levels",
+  3: "3 levels",
+  4: "4 levels",
+  5: "5 levels",
+};
