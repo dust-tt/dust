@@ -300,7 +300,11 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     connectorId: number
   ): Promise<number[]> {
     const brands = await ZendeskBrand.findAll({
-      where: { connectorId, ticketsPermission: "none" },
+      where: {
+        connectorId,
+        ticketsPermission: "none",
+        helpCenterPermission: "none",
+      },
       attributes: ["brandId"],
     });
     return brands.map((brand) => brand.get().brandId);
