@@ -246,6 +246,7 @@ export default function SpaceWebsiteModal({
       });
       void mutateSpaceDataSourceViews();
       onClose();
+      dispatch({ type: "RESET", config: null });
     } catch (err) {
       sendNotification({
         title: `Error ${dataSourceView ? "updating" : "creating"} website`,
