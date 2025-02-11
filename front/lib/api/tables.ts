@@ -136,7 +136,6 @@ export async function upsertTableFromCsv({
   csv,
   fileId,
   truncate,
-  detectedHeaders,
   title,
   mimeType,
   sourceUrl,
@@ -153,7 +152,6 @@ export async function upsertTableFromCsv({
   csv: string | null;
   fileId: string | null;
   truncate: boolean;
-  detectedHeaders?: DetectedHeadersType;
   title: string;
   mimeType: string;
   sourceUrl: string | null;
@@ -202,7 +200,6 @@ export async function upsertTableFromCsv({
     ? await rowsFromCsv({
         auth,
         csv,
-        detectedHeaders,
       })
     : null;
 
@@ -363,17 +360,10 @@ export async function upsertTableFromCsv({
 export async function rowsFromCsv({
   auth,
   csv,
-  detectedHeaders,
 }: {
   auth: Authenticator;
   csv: string;
-  detectedHeaders?: DetectedHeadersType;
-}): Promise<
-  Result<
-    { detectedHeaders: DetectedHeadersType; rows: CoreAPIRow[] },
-    CsvParsingError
-  >
-> {
+}): Promise<Result<{ rows: CoreAPIRow[] }, CsvParsingError>> {
   const now = performance.now();
   const delimiter = await guessDelimiter(csv);
   if (!delimiter) {
@@ -387,9 +377,7 @@ export async function rowsFromCsv({
   const valuesByCol: Record<string, string[]> = Object.create(null);
   let header, rowIndex;
   try {
-    const headerRes = detectedHeaders
-      ? new Ok(detectedHeaders)
-      : await detectHeaders(csv, delimiter);
+    const headerRes = await detectHeaders(csv, delimiter);
 
     if (headerRes.isErr()) {
       return headerRes;

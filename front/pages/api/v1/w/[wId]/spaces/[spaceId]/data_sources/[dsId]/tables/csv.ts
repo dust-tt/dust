@@ -9,7 +9,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
-import { handleDataSourceTableCSVUpsert } from "@app/lib/api/data_sources";
+import { upsertTable } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -113,7 +113,7 @@ async function handler(
           },
         });
       }
-      const upsertRes = await handleDataSourceTableCSVUpsert({
+      const upsertRes = await upsertTable({
         auth,
         params: r.data,
         dataSource,
@@ -122,13 +122,9 @@ async function handler(
       if (upsertRes.isErr()) {
         switch (upsertRes.error.code) {
           case "invalid_csv_and_file":
-            return apiError(req, res, {
-              status_code: 400,
-              api_error: {
-                type: "invalid_request_error",
-                message: upsertRes.error.message,
-              },
-            });
+          case "invalid_parents":
+          case "invalid_parent_id":
+          case "invalid_url":
           case "missing_csv":
             return apiError(req, res, {
               status_code: 400,
@@ -142,14 +138,6 @@ async function handler(
               status_code: 500,
               api_error: {
                 type: "data_source_error",
-                message: upsertRes.error.message,
-              },
-            });
-          case "invalid_parent_id":
-            return apiError(req, res, {
-              status_code: 400,
-              api_error: {
-                type: "invalid_request_error",
                 message: upsertRes.error.message,
               },
             });
