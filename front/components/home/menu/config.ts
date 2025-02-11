@@ -19,13 +19,18 @@ const CareersMenuConfig: MenuConfig = {
   title: "Careers",
   items: [
     {
-      title: "Why Dust?",
-      href: "https://blog.dust.tt/why-dust/",
-      isExternal: true,
+      title: "About Us",
+      href: "/home/about",
+      isExternal: false,
     },
     {
       title: "Jobs",
       href: "/jobs",
+      isExternal: true,
+    },
+    {
+      title: "Why Dust?",
+      href: "https://blog.dust.tt/why-dust/",
       isExternal: true,
     },
   ],
