@@ -1,6 +1,5 @@
-import { removeNulls } from "@dust-tt/types";
 import type { Sequelize } from "sequelize";
-import { QueryTypes } from "sequelize";
+import { Op, QueryTypes } from "sequelize";
 
 import { getCorePrimaryDbConnection } from "@app/lib/production_checks/utils";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
@@ -61,23 +60,25 @@ async function backfillSpreadsheets(
 
   // processing the spreadsheets chunk by chunk
   let lastId = 0;
-  let rows: { id: number; tags_array: string[] }[] = [];
+  let lastCreated = 0;
+  let rows: { id: number; tags_array: string[]; created: number }[] = [];
 
   do {
     // querying connectors for the next batch of spreadsheets
 
     rows = await coreSequelize.query(
-      `SELECT id, "tags_array"
+      `SELECT id, "tags_array", "created"
        FROM "tables"
-       WHERE id > :lastId
-         AND "data_source" = :data_source
+       WHERE "data_source" = :data_source
          AND "tags_array" IS NOT NULL
-         ORDER BY id
+         AND (created, id) > (:lastCreated, :lastId)
+         ORDER BY created, id
        LIMIT :batchSize;`,
       {
         replacements: {
           batchSize: BATCH_SIZE,
           lastId,
+          lastCreated,
           data_source: dataSourceId,
         },
         type: QueryTypes.SELECT,
@@ -111,6 +112,7 @@ async function backfillSpreadsheets(
     }
 
     lastId = rows[rows.length - 1].id;
+    lastCreated = rows[rows.length - 1].created;
   } while (rows.length === BATCH_SIZE);
 }
 
@@ -124,24 +126,27 @@ async function backfillDocuments(
 
   // processing the folders chunk by chunk
   let lastId = 0;
+  let lastCreated = 0;
   let rows: {
     id: number;
     tags_array: string[];
+    created: number;
   }[] = [];
 
   do {
     rows = await coreSequelize.query(
-      `SELECT id, "tags_array"
+      `SELECT id, tags_array, created
        FROM data_sources_documents
-       WHERE id > :lastId
-         AND "data_source" = :data_source
-         AND "tags_array" IS NOT NULL
-         AND "status" = 'latest'
-       ORDER BY id
-       LIMIT :batchSize;`,
+       WHERE data_source = :data_source
+         AND status = 'latest'
+         AND tags_array IS NOT NULL
+         AND (created, id) > (:lastCreated, :lastId)
+       ORDER BY created, id
+         LIMIT :batchSize;`,
       {
         replacements: {
           batchSize: BATCH_SIZE,
+          lastCreated,
           lastId,
           data_source: dataSourceId,
         },
@@ -177,24 +182,31 @@ async function backfillDocuments(
     }
 
     lastId = rows[rows.length - 1].id;
+    lastCreated = rows[rows.length - 1].created;
   } while (rows.length === BATCH_SIZE);
 }
 
-makeScript({}, async ({ execute }, logger) => {
-  const coreSequelize = getCorePrimaryDbConnection();
-  const frontDataSources = await DataSourceModel.findAll();
-  logger.info(`Found ${frontDataSources.length} Google Drive data sources`);
+makeScript(
+  { fromDs: { type: "number", default: 0 } },
+  async ({ execute, fromDs }, logger) => {
+    const coreSequelize = getCorePrimaryDbConnection();
+    const frontDataSources = await DataSourceModel.findAll({
+      where: { id: { [Op.gt]: fromDs } },
+      order: [["id", "ASC"]],
+    });
+    logger.info(`Found ${frontDataSources.length} Google Drive data sources`);
 
-  for (const frontDataSource of frontDataSources) {
-    await backfillDataSource(
-      frontDataSource,
-      coreSequelize,
-      execute,
-      logger.child({
-        dataSourceId: frontDataSource.id,
-        connectorId: frontDataSource.connectorId,
-        name: frontDataSource.name,
-      })
-    );
+    for (const frontDataSource of frontDataSources) {
+      await backfillDataSource(
+        frontDataSource,
+        coreSequelize,
+        execute,
+        logger.child({
+          dataSourceId: frontDataSource.id,
+          connectorId: frontDataSource.connectorId,
+          name: frontDataSource.name,
+        })
+      );
+    }
   }
-});
+);
