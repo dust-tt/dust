@@ -73,6 +73,7 @@ export type UserMessageOrigin =
   | "email"
   | "gsheet"
   | "zapier"
+  | "n8n"
   | "make"
   | "zendesk"
   | "raycast"
