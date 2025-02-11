@@ -131,7 +131,12 @@ export async function processTranscriptActivity(
     conversationData: any
   ): string {
     if (typeof markdown !== "string") {
-      console.error("Invalid markdown input:", markdown);
+      localLogger.error(
+        {
+          markdown,
+        },
+        "Invalid markdown input."
+      );
       return "";
     }
 
@@ -148,7 +153,7 @@ export async function processTranscriptActivity(
 
     const getSourceUrlFromReference = (reference: string): string => {
       if (!conversationData) {
-        console.warn("No conversation data available");
+        localLogger.warn("No conversation data available");
         return "#";
       }
 
@@ -159,7 +164,12 @@ export async function processTranscriptActivity(
           );
         return document ? document.sourceUrl : "#";
       } catch (error) {
-        console.error("Error finding source URL for reference:", error);
+        localLogger.error(
+          {
+            error,
+          },
+          "Error finding source URL for reference."
+        );
         return "#";
       }
     };
