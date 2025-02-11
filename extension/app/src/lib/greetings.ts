@@ -30,7 +30,7 @@ const GREETINGS = [
   "Happy to chat, [Name]! 💬",
   "What's happening, [Name]? 🎈",
   "How's life treating you, [Name]? 🎠",
-  "Missed you, [Name]! 💔",
+  "Missed you, [Name]! 💛",
   "Glad you're here, [Name]! 📍",
   "Smile, [Name]! 😄",
   "Lookin' good, [Name]! 👍",
