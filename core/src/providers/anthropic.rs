@@ -411,6 +411,7 @@ pub enum AnthropicToolChoiceType {
     Auto,
     Any,
     Tool,
+    None,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -433,9 +434,10 @@ impl FromStr for AnthropicToolChoice {
                 r#type: AnthropicToolChoiceType::Any,
                 name: None,
             }),
-            "none" => Err(ParseError::with_message(
-                "function_call option `none` is not supported by Antrhopic",
-            )),
+            "none" => Ok(AnthropicToolChoice {
+                r#type: AnthropicToolChoiceType::None,
+                name: None,
+            }),
             _ => Ok(AnthropicToolChoice {
                 r#type: AnthropicToolChoiceType::Tool,
                 name: Some(s.to_string()),
@@ -755,6 +757,7 @@ impl AnthropicLLM {
         top_p: f32,
         stop_sequences: &Vec<String>,
         max_tokens: i32,
+        beta_flags: &Vec<&str>,
     ) -> Result<(ChatResponse, Option<String>)> {
         assert!(self.api_key.is_some());
 
@@ -786,12 +789,19 @@ impl AnthropicLLM {
                 body["tool_choice"] = json!(tool_choice);
             }
         } else {
-            if messages.iter().any(|m| {
-                m.content
-                    .iter()
-                    .any(|c| c.tool_use.is_some() || c.tool_result.is_some())
-            }) {
-                // Add only if we have tool_use or tool_result in the messages
+            let has_tool_choice_none_flag = beta_flags
+                .iter()
+                .any(|flag| flag.starts_with("tool-choice-none"));
+
+            if !has_tool_choice_none_flag
+                && messages.iter().any(|m| {
+                    m.content
+                        .iter()
+                        .any(|c| c.tool_use.is_some() || c.tool_result.is_some())
+                })
+            {
+                // Add only if we have tool_use or tool_result in the messages and we are
+                // not using the tool-choice-none beta flag
                 body["tools"] = json!(vec![self.placehodler_tool()]);
             }
         }
@@ -801,8 +811,8 @@ impl AnthropicLLM {
         headers.insert("X-API-Key", self.api_key.clone().unwrap().parse()?);
         headers.insert("anthropic-version", "2023-06-01".parse()?);
 
-        if !tools.is_empty() {
-            headers.insert("anthropic-beta", "tools-2024-05-16".parse()?);
+        for flag in beta_flags {
+            headers.insert("anthropic-beta", flag.parse()?);
         }
 
         let res = reqwest::Client::new()
@@ -861,6 +871,7 @@ impl AnthropicLLM {
         top_p: f32,
         stop_sequences: &Vec<String>,
         max_tokens: i32,
+        beta_flags: &Vec<&str>,
         event_sender: UnboundedSender<Value>,
     ) -> Result<(ChatResponse, Option<String>)> {
         assert!(self.api_key.is_some());
@@ -894,12 +905,19 @@ impl AnthropicLLM {
                 body["tool_choice"] = json!(tool_choice);
             }
         } else {
-            if messages.iter().any(|m| {
-                m.content
-                    .iter()
-                    .any(|c| c.tool_use.is_some() || c.tool_result.is_some())
-            }) {
-                // Add only if we have tool_use or tool_result in the messages
+            let has_tool_choice_none_flag = beta_flags
+                .iter()
+                .any(|flag| flag.starts_with("tool-choice-none"));
+
+            if !has_tool_choice_none_flag
+                && messages.iter().any(|m| {
+                    m.content
+                        .iter()
+                        .any(|c| c.tool_use.is_some() || c.tool_result.is_some())
+                })
+            {
+                // Add only if we have tool_use or tool_result in the messages and we are
+                //not using the tool-choice-none beta flag
                 body["tools"] = json!(vec![self.placehodler_tool()]);
             }
         }
@@ -929,10 +947,13 @@ impl AnthropicLLM {
             Ok(builder) => builder,
             Err(e) => return Err(anyhow!("Error setting header: {:?}", e)),
         };
-        builder = match builder.header("anthropic-beta", "tools-2024-05-16") {
-            Ok(builder) => builder,
-            Err(e) => return Err(anyhow!("Error setting header: {:?}", e)),
-        };
+
+        for flag in beta_flags {
+            builder = match builder.header("anthropic-beta", flag) {
+                Ok(builder) => builder,
+                Err(e) => return Err(anyhow!("Error setting header: {:?}", e)),
+            }
+        }
 
         let client = builder
             .body(body.to_string())
@@ -1677,7 +1698,7 @@ impl LLM for AnthropicLLM {
         _frequency_penalty: Option<f32>,
         _logprobs: Option<bool>,
         _top_logprobs: Option<i32>,
-        _extras: Option<Value>,
+        extras: Option<Value>,
         event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMChatGeneration> {
         assert!(self.api_key.is_some());
@@ -1746,6 +1767,39 @@ impl LLM for AnthropicLLM {
             None => None,
         };
 
+        let beta_flags = match &extras {
+            None => vec![],
+            Some(v) => match v.get("anthropic_beta_flags") {
+                Some(Value::Array(a)) => a
+                    .iter()
+                    .map(|v| match v {
+                        Value::String(s) => Ok(s.as_str()),
+                        _ => Err(anyhow!(
+                            "Invalid `anthropic_beta_flags`in extras: expecting an array of strings",
+                        ))?,
+                    })
+                    .collect::<Result<Vec<&str>>>()?,
+                _ => vec![],
+            },
+        };
+
+        // Error if toolchoice is of type AnthropicToolChoiceType::None and we aren't using the tool-choice-none beta flag
+        if let Some(AnthropicToolChoice {
+            r#type: AnthropicToolChoiceType::None,
+            name: _,
+        }) = tool_choice
+        {
+            match beta_flags
+                .iter()
+                .any(|flag| flag.starts_with("tool-choice-none"))
+            {
+                true => (),
+                false => Err(anyhow!(
+                    "tool-choice-none beta flag is required when using tool-choice: none"
+                ))?,
+            }
+        }
+
         let (c, request_id) = match event_sender {
             Some(es) => {
                 self.streamed_chat_completion(
@@ -1763,6 +1817,7 @@ impl LLM for AnthropicLLM {
                         Some(m) => m,
                         None => get_max_tokens(self.id.as_str()) as i32,
                     },
+                    &beta_flags,
                     es,
                 )
                 .await?
@@ -1783,6 +1838,7 @@ impl LLM for AnthropicLLM {
                         Some(m) => m,
                         None => get_max_tokens(self.id.as_str()) as i32,
                     },
+                    &beta_flags,
                 )
                 .await?
             }
