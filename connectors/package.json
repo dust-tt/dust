@@ -74,7 +74,7 @@
     "@types/fast-levenshtein": "^0.0.2",
     "@types/lodash": "^4.17.7",
     "@types/morgan": "^1.9.9",
-    "@types/node": "^20.12.12",
+    "@types/node": "^20.17.17",
     "@types/tar": "^6.1.10",
     "@types/turndown": "^5.0.4",
     "@types/yargs": "^17.0.32",
