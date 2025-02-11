@@ -82,7 +82,7 @@ function ErrorDisplay({ icon, message, title }: ErrorDisplayProps) {
       <p className="text-center text-xl font-bold leading-7 text-foreground dark:text-foreground-night">
         {title}
       </p>
-      <p className="dark:text-slate-700-night text-center text-sm font-normal leading-tight text-slate-700">
+      <p className="text-center text-sm font-normal leading-tight text-slate-700 dark:text-slate-700-night">
         {Array.isArray(message) ? (
           message.map((line, index) => <p key={index}>{line}</p>)
         ) : (

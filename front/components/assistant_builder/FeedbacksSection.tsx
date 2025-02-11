@@ -253,7 +253,7 @@ function FeedbackCard({ owner, feedback }: FeedbackCardProps) {
                   "text-foreground dark:text-foreground-night",
                   feedback.thumbDirection === "up"
                     ? "text-success-800 dark:text-success-800-night"
-                    : "dark:text-amber-800-night text-amber-800"
+                    : "text-amber-800 dark:text-amber-800-night"
                 )}
                 visual={
                   feedback.thumbDirection === "up"
