@@ -848,6 +848,7 @@ export async function* postUserMessage(
         content,
         context,
         rank: m.rank,
+        threadVersions: m.threadVersions,
       };
 
       const results: ({ row: AgentMessage; m: AgentMessageType } | null)[] =
@@ -1292,7 +1293,9 @@ export async function* editUserMessage(
             {
               where: {
                 conversationId: conversation.id,
-                threadVersions: { [Op.contains]: [newThreadVersion] },
+                threadVersions: {
+                  [Op.contains]: [conversation.currentThreadVersion],
+                },
                 rank: { [Op.lt]: messageRow.rank },
               },
               transaction: t,
@@ -1368,6 +1371,7 @@ export async function* editUserMessage(
         content,
         context: message.context,
         rank: m.rank,
+        threadVersions: m.threadVersions,
       };
 
       // For now agent messages are appended at the end of conversation
@@ -1407,7 +1411,6 @@ export async function* editUserMessage(
               },
               { transaction: t }
             );
-            console.log("==================1");
             const agentMessageRow = await AgentMessage.create(
               {
                 status: "created",

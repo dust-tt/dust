@@ -57,6 +57,7 @@ export function createPlaceholderUserMessage({
     sId: `placeholder-${createdAt.toString()}`,
     version: 0,
     rank: lastMessageRank + 1,
+    threadVersions: [0],
     context: {
       email,
       fullName,

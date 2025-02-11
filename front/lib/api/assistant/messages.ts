@@ -103,6 +103,7 @@ async function batchRenderUserMessages(
         profilePictureUrl: userMessage.userContextProfilePictureUrl,
         origin: userMessage.userContextOrigin,
       },
+      threadVersions: message.threadVersions,
     } satisfies UserMessageType;
     return { m, rank: message.rank, version: message.version };
   });

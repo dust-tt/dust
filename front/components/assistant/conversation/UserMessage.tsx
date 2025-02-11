@@ -21,6 +21,7 @@ import {
   MentionBlock,
   mentionDirective,
 } from "@app/components/markdown/MentionBlock";
+import { useConversation } from "@app/lib/swr/conversations";
 
 interface UserMessageProps {
   citations?: React.ReactElement[];
@@ -45,23 +46,53 @@ export function UserMessage({
     []
   );
   const { setEditMessage, setAnimate } = useContext(InputBarContext);
+  const { conversation } = useConversation({
+    conversationId,
+    workspaceId: owner.sId,
+  });
 
-  async function first() {
-    await fetch(
-      `/api/w/${owner.sId}/assistant/conversations/${conversationId}`,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          currentThreadVersion: 0,
-        }),
-      }
-    );
+  async function previous() {
+    if (conversation) {
+      await fetch(
+        `/api/w/${owner.sId}/assistant/conversations/${conversationId}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            title: conversation.title,
+            visibility: conversation.visibility,
+            currentThreadVersion: 0,
+          }),
+        }
+      );
+    }
+  }
+
+  async function next() {
+    if (conversation) {
+      await fetch(
+        `/api/w/${owner.sId}/assistant/conversations/${conversationId}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            title: conversation.title,
+            visibility: conversation.visibility,
+            currentThreadVersion: 0,
+          }),
+        }
+      );
+    }
   }
   const buttons = [];
-  if (message.version > 0) {
+  if (
+    conversation?.currentThreadVersion &&
+    message.threadVersions.indexOf(conversation?.currentThreadVersion) > 0
+  ) {
     buttons.push(
       <Button
         key="previous-msg-button"
@@ -69,7 +100,7 @@ export function UserMessage({
         variant="ghost"
         size="xs"
         onClick={async () => {
-          await first();
+          await previous();
         }}
         icon={ArrowLeftIcon}
         className="text-muted-foreground"
@@ -77,19 +108,25 @@ export function UserMessage({
     );
   }
 
-  buttons.push(
-    <Button
-      key="next-msg-button"
-      tooltip="Next"
-      variant="ghost"
-      size="xs"
-      onClick={async () => {
-        await first();
-      }}
-      icon={ArrowRightIcon}
-      className="text-muted-foreground"
-    />
-  );
+  if (
+    conversation?.currentThreadVersion &&
+    message.threadVersions.indexOf(conversation?.currentThreadVersion) <
+      message.threadVersions.length - 1
+  ) {
+    buttons.push(
+      <Button
+        key="next-msg-button"
+        tooltip="Next"
+        variant="ghost"
+        size="xs"
+        onClick={async () => {
+          await next();
+        }}
+        icon={ArrowRightIcon}
+        className="text-muted-foreground"
+      />
+    );
+  }
 
   buttons.push(
     <Button
