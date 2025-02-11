@@ -340,9 +340,17 @@ async function _checkRoleGrants(
         );
       }
     } else if (
-      ["SCHEMA", "DATABASE", "WAREHOUSE", "FILE_FORMAT", "FUNCTION"].includes(
-        grantOn
-      )
+      [
+        "SCHEMA",
+        "DATABASE",
+        "WAREHOUSE",
+        "FILE_FORMAT",
+        "FUNCTION",
+        "PROCEDURE",
+        "STAGE",
+        "SEQUENCE",
+        "MODEL",
+      ].includes(grantOn)
     ) {
       if (g.privilege !== "USAGE") {
         return new Err(
