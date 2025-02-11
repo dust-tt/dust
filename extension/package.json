@@ -50,7 +50,7 @@
   },
   "dependencies": {
     "@dust-tt/client": "^1.0.26",
-    "@dust-tt/sparkle": "^0.2.390",
+    "@dust-tt/sparkle": "^0.2.391",
     "@tailwindcss/forms": "^0.5.9",
     "@tiptap/extension-character-count": "^2.9.1",
     "@tiptap/extension-mention": "^2.9.1",
