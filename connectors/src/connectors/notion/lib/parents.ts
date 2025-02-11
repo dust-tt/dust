@@ -32,8 +32,7 @@ async function _getParents(
   seen: string[],
   syncing: boolean = false,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for memoization
-  memoizationKey?: string,
-  onProgress?: () => Promise<void>
+  memoizationKey?: string
 ): Promise<string[]> {
   const parents: string[] = [pageOrDbId];
   const pageOrDb =
@@ -97,9 +96,6 @@ async function _getParents(
         );
         return parents.concat(seen);
       }
-      if (onProgress) {
-        await onProgress();
-      }
       return parents.concat(
         // parentId cannot be undefined if parentType is page or database as per
         // Notion API
@@ -110,8 +106,7 @@ async function _getParents(
           pageOrDb.parentId,
           seen,
           syncing,
-          memoizationKey,
-          onProgress
+          memoizationKey
         )
       );
     }
@@ -123,7 +118,7 @@ async function _getParents(
 export const getParents = cacheWithRedis(
   _getParents,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for memoization
-  (connectorId, pageOrDbId, seen, syncing, memoizationKey, onProgress) => {
+  (connectorId, pageOrDbId, seen, syncing, memoizationKey) => {
     return `${connectorId}:${pageOrDbId}:${memoizationKey}`;
   },
   UPDATE_PARENTS_FIELDS_TIMEOUT_MINUTES * 60 * 1000
@@ -170,8 +165,7 @@ export async function updateAllParentsFields(
           pageId,
           [],
           false,
-          memoizationKey,
-          onProgress
+          memoizationKey
         );
 
         const parents = pageOrDbIds.map((id) => nodeIdFromNotionId(id));
@@ -182,14 +176,6 @@ export async function updateAllParentsFields(
             "notionUpdateAllParentsFields: Page has no parent."
           );
         }
-
-        logger.info(
-          {
-            connectorId,
-            pageId,
-          },
-          "Updating parents field for page"
-        );
         await updateDataSourceDocumentParents({
           dataSourceConfig: dataSourceConfigFromConnector(connector),
           documentId: nodeIdFromNotionId(pageId),

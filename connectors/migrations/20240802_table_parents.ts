@@ -177,8 +177,7 @@ export async function notionTables(
       notionDatabaseId as string,
       [],
       false,
-      memo,
-      undefined
+      memo
     );
 
     await updateParents({
