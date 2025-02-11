@@ -1,3 +1,9 @@
+import tracer from "dd-trace";
+tracer.init({
+  service: "temporal-promql-to-dd",
+  logLevel: "debug"
+});
+
 import assert from "assert";
 import axios from "axios";
 import { Agent } from "https";
