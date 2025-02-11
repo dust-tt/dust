@@ -98,7 +98,7 @@ export default function ConnectorSyncingChip({
               "The website synchronization reached the maximum page limit."
             }
             className="max-w-md"
-            trigger={<Chip color="warning">Limit reached</Chip>}
+            trigger={<Chip color="amber">Limit reached</Chip>}
           />
         );
       case "webcrawling_error":
