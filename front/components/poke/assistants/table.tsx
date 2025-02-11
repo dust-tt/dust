@@ -1,4 +1,11 @@
-import { Modal, Spinner } from "@dust-tt/sparkle";
+import {
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  Spinner,
+} from "@dust-tt/sparkle";
 import type {
   LightAgentConfigurationType,
   LightWorkspaceType,
@@ -133,21 +140,27 @@ function RestoreAssistantModal({
   const router = useRouter();
 
   return (
-    <Modal
-      isOpen={show}
-      onClose={onClose}
-      hasChanged={false}
-      title="Restore an assistant"
-      variant="full-screen"
+    <Sheet
+      open={show}
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose();
+        }
+      }}
     >
-      <div className="mx-auto mt-4 max-w-4xl">
-        {!!archivedAssistants?.length && (
-          <PokeDataTable
-            columns={makeColumnsForAssistants(owner, router.reload)}
-            data={prepareAgentConfigurationForDisplay(archivedAssistants)}
-          />
-        )}
-      </div>
-    </Modal>
+      <SheetContent size="xl">
+        <SheetHeader>
+          <SheetTitle>Restore an assistant</SheetTitle>
+        </SheetHeader>
+        <SheetContainer>
+          {!!archivedAssistants?.length && (
+            <PokeDataTable
+              columns={makeColumnsForAssistants(owner, router.reload)}
+              data={prepareAgentConfigurationForDisplay(archivedAssistants)}
+            />
+          )}
+        </SheetContainer>
+      </SheetContent>
+    </Sheet>
   );
 }

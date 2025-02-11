@@ -33,6 +33,7 @@
     "@radix-ui/react-scroll-area": "^1.0.5",
     "@radix-ui/react-select": "^2.0.0",
     "@radix-ui/react-slot": "^1.0.2",
+    "@radix-ui/react-visually-hidden": "^1.1.2",
     "@sendgrid/mail": "^8.0.0",
     "@tailwindcss/forms": "^0.5.3",
     "@tanstack/react-table": "^8.13.0",
