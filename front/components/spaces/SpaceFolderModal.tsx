@@ -1,8 +1,13 @@
 import {
   Button,
   Input,
-  Modal,
   Page,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
   Spinner,
   TextArea,
 } from "@dust-tt/sparkle";
@@ -123,22 +128,27 @@ export default function SpaceFolderModal({
     : description !== dataSourceView.dataSource.description;
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      onSave={onSave}
-      hasChanged={hasChanged}
-      variant="side-sm"
-      title={!dataSourceView ? "Create Folder" : "Edit Folder"}
+    <Sheet
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose();
+        }
+      }}
     >
-      <Page variant="modal">
-        <div className="w-full">
+      <SheetContent size="lg">
+        <SheetHeader>
+          <SheetTitle>
+            {!dataSourceView ? "Create Folder" : "Edit Folder"}
+          </SheetTitle>
+        </SheetHeader>
+        <SheetContainer>
           {isDataSourceViewLoading ? (
             <Spinner />
           ) : (
-            <Page.Vertical sizing="grow">
-              <Page.SectionHeader title="Name" />
-              <div className="w-full">
+            <div className="flex flex-col gap-4">
+              <div>
+                <Page.SectionHeader title="Name" />
                 <Input
                   placeholder="folder_name"
                   name="name"
@@ -148,13 +158,13 @@ export default function SpaceFolderModal({
                   }}
                   message={error ?? "Folder name must be unique"}
                   messageStatus={error ? "error" : "info"}
-                  disabled={!!dataSourceView} // We cannot change the name of a datasource
+                  disabled={!!dataSourceView}
                 />
               </div>
 
               <Page.Separator />
-              <Page.SectionHeader title="Description" />
-              <div className="w-full">
+              <div>
+                <Page.SectionHeader title="Description" />
                 <TextArea
                   placeholder="Folder description"
                   value={description ?? ""}
@@ -184,10 +194,24 @@ export default function SpaceFolderModal({
                   />
                 </>
               )}
-            </Page.Vertical>
+            </div>
           )}
-        </div>
-      </Page>
-    </Modal>
+        </SheetContainer>
+        <SheetFooter
+          leftButtonProps={{
+            label: "Cancel",
+            variant: "outline",
+          }}
+          rightButtonProps={{
+            label: "Save",
+            onClick: async (event: Event) => {
+              event.preventDefault();
+              await onSave();
+            },
+            disabled: !hasChanged,
+          }}
+        />
+      </SheetContent>
+    </Sheet>
   );
 }
