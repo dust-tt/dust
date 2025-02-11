@@ -1,13 +1,9 @@
 import { Button, PlusIcon, Tooltip } from "@dust-tt/sparkle";
-import type {
-  DataSourceViewType,
-  SpaceType,
-  WorkspaceType,
-} from "@dust-tt/types";
+import type { DataSourceViewType, SpaceType, WorkspaceType } from "@dust-tt/types";
 
 import SpaceFolderModal from "@app/components/spaces/SpaceFolderModal";
-import SpaceWebsiteModal from "@app/components/spaces/SpaceWebsiteModal";
 import { useKillSwitches } from "@app/lib/swr/kill";
+import SpaceWebsiteModal from "@app/components/spaces/websites/SpaceWebsiteModal";
 
 interface EditSpaceStaticDatasourcesViewsProps {
   canWriteInSpace: boolean;
