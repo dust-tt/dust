@@ -21,7 +21,7 @@
     "@mistralai/mistralai": "^0.0.7",
     "@types/node": "^20.5.3",
     "@types/seedrandom": "^3.0.7",
-    "axios": "^1.6.2",
+    "axios": "^1.7.9",
     "blake3": "^2.1.7",
     "install": "^0.13.0",
     "mathjs": "^11.10.0",
