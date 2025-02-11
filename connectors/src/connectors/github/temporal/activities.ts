@@ -294,6 +294,9 @@ export async function githubUpsertIssueActivity(
   if (issueAuthor) {
     tags.push(`author:${issueAuthor}`);
   }
+  if (issue.labels.length > 0) {
+    tags.push(`labels:${issue.labels.join(",")}`);
+  }
 
   const parents: [string, string, string] = [
     documentId,
