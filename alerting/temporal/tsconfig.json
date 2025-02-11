@@ -1,0 +1,10 @@
+{
+  "extends": "@tsconfig/node20/tsconfig.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "outDir": "dist"
+  },
+  "include": ["src/**/*", "test.ts", "test.mts"],
+  "exclude": ["node_modules"]
+}
