@@ -918,6 +918,7 @@ export function parsePropertyValue(
       return property.relation.map((r) => `notion-${r.id}`).join(",");
     case "rollup":
     case "verification":
+    case "button":
       return null;
     default:
       // `property` here is `never`

@@ -28,7 +28,7 @@
     "eslint-plugin-simple-import-sort": "^12.1.0"
   },
   "dependencies": {
-    "@notionhq/client": "^2.2.4",
+    "@notionhq/client": "^2.2.15",
     "csv-parse": "^5.5.6",
     "csv-stringify": "^6.5.0",
     "eventsource-parser": "^1.1.1",
