@@ -25,6 +25,7 @@ export const PatchConversationsRequestBodySchema = t.type({
     t.literal("deleted"),
     t.literal("test"),
   ]),
+  currentThreadVersion: t.union([t.number, t.null]),
 });
 
 export type GetConversationsResponseBody = {
@@ -93,11 +94,12 @@ async function handler(
         });
       }
 
-      const { title, visibility } = bodyValidation.right;
+      const { title, visibility, currentThreadVersion } = bodyValidation.right;
 
       const result = await updateConversation(auth, conversation.sId, {
         title,
         visibility,
+        currentThreadVersion: currentThreadVersion ?? undefined,
       });
 
       if (result.isErr()) {

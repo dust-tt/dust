@@ -101,6 +101,7 @@ export type UserMessageType = {
   mentions: MentionType[];
   content: string;
   context: UserMessageContext;
+  threadVersions: number[];
 };
 export type UserMessageWithRankType = WithRank<UserMessageType>;
 
