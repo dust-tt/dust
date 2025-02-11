@@ -216,6 +216,7 @@ const UserMessageOriginSchema = FlexibleEnumSchema<
   | "api"
   | "gsheet"
   | "zapier"
+  | "n8n"
   | "make"
   | "zendesk"
   | "raycast"
