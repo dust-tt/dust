@@ -3,12 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "start": "ts-node src/index.ts"
+    "start": "ts-node src/index.ts",
+    "test": "tsc --noEmit src/index.ts"
   },
   "devDependencies": {
     "@tsconfig/node20": "^20.1.4",
-    "@types/node": "^20.12.12",
-    "ts-node": "^10.9.2"
+    "@types/node": "^20.17.17",
+    "ts-node": "^10.9.2",
+    "ts-node-test": "^0.4.4"
   },
   "dependencies": {
     "axios": "^1.5.1",

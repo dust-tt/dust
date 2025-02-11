@@ -21,7 +21,7 @@
     "devDependencies": {
         "@types/diff": "^7.0.0",
         "@types/lodash": "^4.17.14",
-        "@types/node": "^20.0.0",
+        "@types/node": "^20.17.17",
         "ts-node": "^10.9.2",
         "typescript": "^5.0.0"
     }

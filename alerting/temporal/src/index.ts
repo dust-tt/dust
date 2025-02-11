@@ -1,4 +1,4 @@
-import assert from "assert";
+import * as assert from "assert";
 import axios from "axios";
 import { Agent } from "https";
 import { z } from "zod";
