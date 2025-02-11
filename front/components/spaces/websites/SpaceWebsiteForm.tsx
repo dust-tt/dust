@@ -29,6 +29,7 @@ import {
 } from "@dust-tt/types";
 
 import { AdvancedSettingsSection } from "@app/components/spaces/websites/AdvancedSettingsSection";
+import { useCallback } from "react";
 
 type SpaceWebsiteFormProps = {
   state: WebsiteFormState;
@@ -43,6 +44,17 @@ export function SpaceWebsiteForm({
   isConfigurationLoading,
   webCrawlerConfiguration,
 }: SpaceWebsiteFormProps) {
+  const handleHeadersChange = useCallback(
+    (newHeaders: WebsiteFormState["headers"]) => {
+      dispatch({
+        type: "SET_FIELD",
+        field: "headers",
+        value: newHeaders,
+      });
+    },
+    [dispatch]
+  );
+
   return isConfigurationLoading ? (
     <Spinner />
   ) : (
@@ -231,7 +243,10 @@ export function SpaceWebsiteForm({
           disabled={webCrawlerConfiguration !== null}
         />
       </Page.Layout>
-      <AdvancedSettingsSection state={state} dispatch={dispatch} />
+      <AdvancedSettingsSection
+        headers={state.headers}
+        onHeadersChange={handleHeadersChange}
+      />
     </Page.Layout>
   );
 }
