@@ -100,11 +100,13 @@ async function handler(
       }
 
       const upsertRes = await upsertTable({
-        ...bodyValidation.right,
-        tableId,
-        async: bodyValidation.right.async ?? false,
-        dataSource,
         auth,
+        params: {
+          ...bodyValidation.right,
+          tableId,
+          async: bodyValidation.right.async ?? false,
+        },
+        dataSource,
       });
 
       if (upsertRes.isErr()) {
