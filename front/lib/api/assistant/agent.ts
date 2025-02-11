@@ -50,6 +50,7 @@ import {
   renderConversationForModel,
 } from "@app/lib/api/assistant/generation";
 import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
+import config from "@app/lib/api/config";
 import { getRedisClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
@@ -486,20 +487,24 @@ async function* runMultiActionsAgent(
     seen.add(spec.name);
   }
 
-  const config = cloneBaseConfig(
+  const runConfig = cloneBaseConfig(
     getDustProdAction("assistant-v2-multi-actions-agent").config
   );
   if (isLegacyAgent) {
-    config.MODEL.function_call =
+    runConfig.MODEL.function_call =
       specifications.length === 1 ? specifications[0].name : null;
   } else {
-    config.MODEL.function_call = specifications.length === 0 ? null : "auto";
+    runConfig.MODEL.function_call = specifications.length === 0 ? null : "auto";
   }
-  config.MODEL.provider_id = model.providerId;
-  config.MODEL.model_id = model.modelId;
-  config.MODEL.temperature = agentConfiguration.model.temperature;
+  runConfig.MODEL.provider_id = model.providerId;
+  runConfig.MODEL.model_id = model.modelId;
+  runConfig.MODEL.temperature = agentConfiguration.model.temperature;
   if (agentConfiguration.model.reasoningEffort) {
-    config.MODEL.reasoning_effort = agentConfiguration.model.reasoningEffort;
+    runConfig.MODEL.reasoning_effort = agentConfiguration.model.reasoningEffort;
+  }
+  const anthropicBetaFlags = config.getMultiActionsAgentAnthropicBetaFlags();
+  if (anthropicBetaFlags) {
+    runConfig.MODEL.anthropic_beta_flags = anthropicBetaFlags;
   }
 
   const renderedConversation = modelConversationRes.value.modelConversation;
@@ -519,7 +524,7 @@ async function* runMultiActionsAgent(
   const res = await runActionStreamed(
     auth,
     "assistant-v2-multi-actions-agent",
-    config,
+    runConfig,
     [
       {
         conversation: renderedConversation,

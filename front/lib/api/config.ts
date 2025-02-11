@@ -170,6 +170,11 @@ const config = {
   getStatusPageApiToken: (): string => {
     return EnvironmentConfig.getEnvVariable("STATUS_PAGE_API_TOKEN");
   },
+  getMultiActionsAgentAnthropicBetaFlags: (): string[] | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable(
+      "MULTI_ACTIONS_AGENT_ANTHROPIC_BETA_FLAGS"
+    )?.split(",");
+  },
 };
 
 export default config;

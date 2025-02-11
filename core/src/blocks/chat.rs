@@ -319,6 +319,18 @@ impl Block for Chat {
                 if let Some(Value::String(s)) = v.get("reasoning_effort") {
                     extras["reasoning_effort"] = json!(s.clone());
                 }
+                if let Some(Value::Array(a)) = v.get("anthropic_beta_flags") {
+                    extras["anthropic_beta_flags"] = json!(a
+                        .iter()
+                        .map(|v| match v {
+                            Value::String(s) => Ok(s.clone()),
+                            _ => Err(anyhow!("Invalid `anthropic_beta_flags` in configuration for chat block `{}`: \
+                             expecting an array of strings",
+                                name
+                            ))?,
+                        })
+                        .collect::<Result<Vec<String>>>()?);
+                }
 
                 match extras.as_object().unwrap().keys().len() {
                     0 => None,
