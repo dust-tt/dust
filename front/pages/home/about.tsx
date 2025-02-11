@@ -64,12 +64,19 @@ const PEOPLE: Record<
     linkedIn: "https://www.linkedin.com/in/hfontanier/",
     github: "https://github.com/fontanierh",
   },
-  PopDaph: {
+  popdaph: {
     name: "Daphné Popin",
     title: "Software Engineer",
     image: "https://avatars.githubusercontent.com/u/3803406",
     linkedIn: "https://www.linkedin.com/in/popdaph/",
     github: "https://www.linkedin.com/in/popdaph/",
+  },
+  yutcam: {
+    name: "Pauline Pham",
+    title: "Operations",
+    image: "https://avatars.githubusercontent.com/u/33726902",
+    linkedIn: "https://www.linkedin.com/in/pauline-pham1",
+    github: "https://github.com/Yutcam",
   },
   flvndvd: {
     name: "Flavien David",
@@ -92,7 +99,14 @@ const PEOPLE: Record<
     linkedIn: "https://www.linkedin.com/in/nicolaschinot/",
     github: "https://github.com/nchinot",
   },
-  "aubin-tchoi": {
+  adugre: {
+    name: "Adèle Dugré",
+    title: "EMEA Customer Success",
+    image: "https://avatars.githubusercontent.com/u/180963192",
+    linkedIn: "https://www.linkedin.com/in/ad%C3%A8le-dugr%C3%A9-7484a120/",
+    github: "https://github.com/Adugre",
+  },
+  atchoi: {
     name: "Aubin Tchoi",
     title: "Software Engineer",
     image: "https://avatars.githubusercontent.com/u/60398825",
