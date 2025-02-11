@@ -32,10 +32,13 @@
   },
   "devDependencies": {
     "@tsconfig/recommended": "^1.0.3",
+    "@types/jest": "^29.5.14",
     "@types/node": "^22.7.5",
     "@types/uuid": "^9.0.7",
     "dts-cli": "^2.0.5",
     "eslint-plugin-simple-import-sort": "^12.1.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.2.5",
     "tslib": "^2.6.2",
     "typescript": "^5.4.5"
   },
@@ -43,7 +46,7 @@
     "axios": "^1.7.9",
     "eventsource-parser": "^1.1.1",
     "moment-timezone": "^0.5.46",
-    "zod": "^3.23.8"
+    "zod": "^3.24.1"
   },
   "browser": {
     "tls": false,
