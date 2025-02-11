@@ -47,12 +47,18 @@ impl Provider for SalesforceConnectionProvider {
         redirect_uri: &str,
     ) -> Result<FinalizeResult, ProviderError> {
         let instance_url = Self::get_instance_url(connection)?;
+
+        let code_verifier = connection.metadata()["code_verifier"]
+            .as_str()
+            .ok_or_else(|| anyhow!("Missing `code_verifier` in Salesforce connection"))?;
+
         let body = json!({
             "grant_type": "authorization_code",
             "client_id": *OAUTH_SALESFORCE_CLIENT_ID,
             "client_secret": *OAUTH_SALESFORCE_CLIENT_SECRET,
             "code": code,
             "redirect_uri": redirect_uri,
+            "code_verifier": code_verifier,
         });
 
         let req = reqwest::Client::new()
@@ -68,30 +74,16 @@ impl Provider for SalesforceConnectionProvider {
             .as_str()
             .ok_or_else(|| anyhow!("Missing `access_token` in response from Salesforce"))?;
 
-        let expires_in = raw_json["expires_in"]
-            .as_u64()
-            .ok_or_else(|| anyhow!("Missing `expires_in` in response from Salesforce"))?;
-
         let refresh_token = raw_json["refresh_token"]
             .as_str()
             .ok_or_else(|| anyhow!("Missing `refresh_token` in response from Salesforce"))?;
-        // Store the instance URL from the token response if it differs from what we have
-        let mut final_raw_json = raw_json.clone();
-        if let Some(new_instance_url) = raw_json["instance_url"].as_str() {
-            if new_instance_url != instance_url {
-                if let Some(obj) = final_raw_json.as_object_mut() {
-                    obj.insert("instance_url".to_string(), json!(new_instance_url));
-                }
-            }
-        }
 
         Ok(FinalizeResult {
             redirect_uri: redirect_uri.to_string(),
             code: code.to_string(),
             access_token: access_token.to_string(),
-            access_token_expiry: Some(
-                utils::now() + (expires_in - PROVIDER_TIMEOUT_SECONDS) * 1000,
-            ),
+            // We don't know the expiry time, so we use 15 minutes as a default
+            access_token_expiry: Some(utils::now() + 15 * 60 * 1000),
             refresh_token: Some(refresh_token.to_string()),
             raw_json,
         })

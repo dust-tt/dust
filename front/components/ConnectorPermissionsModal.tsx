@@ -895,7 +895,6 @@ export function ConnectorPermissionsModal({
                 }}
               />
             );
-          case "salesforce":
           case "github":
           case "confluence":
           case "google_drive":
@@ -905,6 +904,7 @@ export function ConnectorPermissionsModal({
           case "microsoft":
           case "zendesk":
           case "webcrawler":
+          case "salesforce":
             return (
               <DataSourceEditionModal
                 key={`${c.type}-${modalToShow}`}
