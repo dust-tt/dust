@@ -78,12 +78,26 @@ const PEOPLE: Record<
     linkedIn: "https://www.linkedin.com/in/flavien-david/",
     github: "https://github.com/flvndvd",
   },
+  tdraier: {
+    name: "Thomas Draier",
+    title: "Software Engineer",
+    image: "https://avatars.githubusercontent.com/u/729255",
+    linkedIn: "https://www.linkedin.com/in/tdraier/",
+    github: "https://github.com/tdraier",
+  },
   nchinot: {
     name: "Nicolas Chinot",
     title: "US GM",
     image: "https://avatars.githubusercontent.com/u/13472346",
     linkedIn: "https://www.linkedin.com/in/nicolaschinot/",
     github: "https://github.com/nchinot",
+  },
+  "aubin-tchoi": {
+    name: "Aubin Tchoi",
+    title: "Software Engineer",
+    image: "https://avatars.githubusercontent.com/u/60398825",
+    github: "https://github.com/aubin-tchoi",
+    linkedIn: "https://www.linkedin.com/in/aubin-tchoi",
   },
 };
 
