@@ -1298,22 +1298,46 @@ export async function cachePage({
 
   const parent = getPageOrBlockParent(notionPage);
 
-  await NotionConnectorPageCacheEntry.upsert({
+  const props = {
     notionPageId: pageId,
     connectorId: connector.id,
     pageProperties: {},
-    pagePropertiesText: ((p: PageObjectProperties) => JSON.stringify(p))(
-      notionPage.properties
-    ),
+    pagePropertiesText: JSON.stringify(notionPage.properties),
     parentType: parent.type,
     parentId: parent.id,
+    url: notionPage.url,
     createdById: notionPage.created_by.id,
     lastEditedById: notionPage.last_edited_by.id,
-    createdTime: notionPage.created_time,
     lastEditedTime: notionPage.last_edited_time,
-    url: notionPage.url,
-    workflowId: topLevelWorkflowId,
+    createdTime: notionPage.created_time,
+    workflowId: Context.current().info.activityId,
+  };
+  const [entry] = await NotionConnectorPageCacheEntry.findOrCreate({
+    where: {
+      connectorId: props.connectorId,
+      notionPageId: props.notionPageId,
+      workflowId: topLevelWorkflowId,
+    },
+    defaults: {
+      ...props,
+      lastEditedById: notionPage.last_edited_by.id,
+      createdById: notionPage.created_by.id,
+      createdTime: notionPage.created_time,
+      lastEditedTime: notionPage.last_edited_time,
+      url: notionPage.url,
+      workflowId: topLevelWorkflowId,
+    },
   });
+
+  if (entry) {
+    await entry.update({
+      lastEditedById: notionPage.last_edited_by.id,
+      createdById: notionPage.created_by.id,
+      createdTime: notionPage.created_time,
+      lastEditedTime: notionPage.last_edited_time,
+      url: notionPage.url,
+    });
+  }
 
   return {
     skipped: false,
@@ -1540,15 +1564,13 @@ async function cacheDatabaseChildPages({
         notionPageId: page.id,
         connectorId: connector.id,
         pageProperties: {},
-        pagePropertiesText: ((p: PageObjectProperties) => JSON.stringify(p))(
-          page.properties
-        ),
+        pagePropertiesText: JSON.stringify(page.properties),
         parentId: databaseId,
         parentType: "database",
         createdById: page.created_by.id,
         lastEditedById: page.last_edited_by.id,
-        createdTime: page.created_time,
         lastEditedTime: page.last_edited_time,
+        createdTime: page.created_time,
         url: page.url,
         workflowId: topLevelWorkflowId,
       }),
