@@ -32,8 +32,7 @@ steps:
         --cache-to type=gha,mode=max,scope=${_IMAGE_NAME} \
         --build-context platform=linux/amd64 \
         --progress=plain \
-        -t ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/dust-images/${_IMAGE_NAME}:${SHORT_SHA} \
-        -t ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/dust-images/${_IMAGE_NAME}:latest \
+        -t ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/dust-images/${_IMAGE_NAME}:${SHORT_SHA}-test \
         -f ${_DOCKERFILE_PATH} \
         --build-arg COMMIT_HASH=${SHORT_SHA} \
         ${build_args[@]} \
