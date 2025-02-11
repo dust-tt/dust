@@ -1302,9 +1302,69 @@ export async function cachePage({
     notionPageId: pageId,
     connectorId: connector.id,
     pageProperties: {},
-    pagePropertiesText: ((p: PageObjectProperties) => JSON.stringify(p))(
-      notionPage.properties
-    ),
+    pagePropertiesText: (() => {
+      type SelectOption = {
+        id: string;
+        name: string;
+        color: string | null;
+        description: string | null;
+      };
+
+      type BaseProperty = {
+        id: string;
+        type: string;
+      };
+
+      type SelectProperty = BaseProperty & {
+        type: "select";
+        select: SelectOption | null;
+      };
+
+      type MultiSelectProperty = BaseProperty & {
+        type: "multi_select";
+        multi_select: SelectOption[];
+      };
+
+      type Property =
+        | SelectProperty
+        | MultiSelectProperty
+        | (BaseProperty & { type: string });
+
+      const transformed = JSON.parse(
+        JSON.stringify(notionPage.properties)
+      ) as Record<string, Property>;
+      for (const key in transformed) {
+        const prop = transformed[key];
+        if (!prop?.type) {
+          continue;
+        }
+
+        if (prop.type === "select" && "select" in prop) {
+          const typedProp = prop as SelectProperty;
+          if (typedProp.select?.id && typedProp.select?.name) {
+            typedProp.select = {
+              id: typedProp.select.id,
+              name: typedProp.select.name,
+              color: typedProp.select.color || "default",
+              description: null,
+            };
+          }
+        } else if (prop.type === "multi_select" && "multi_select" in prop) {
+          const typedProp = prop as MultiSelectProperty;
+          if (typedProp.multi_select) {
+            typedProp.multi_select = typedProp.multi_select
+              .filter((s) => s?.id && s?.name)
+              .map((s) => ({
+                id: s.id,
+                name: s.name,
+                color: s.color || "default",
+                description: null,
+              }));
+          }
+        }
+      }
+      return JSON.stringify(transformed);
+    })(),
     parentType: parent.type,
     parentId: parent.id,
     createdById: notionPage.created_by.id,
@@ -1540,9 +1600,69 @@ async function cacheDatabaseChildPages({
         notionPageId: page.id,
         connectorId: connector.id,
         pageProperties: {},
-        pagePropertiesText: ((p: PageObjectProperties) => JSON.stringify(p))(
-          page.properties
-        ),
+        pagePropertiesText: (() => {
+          type SelectOption = {
+            id: string;
+            name: string;
+            color: string | null;
+            description: string | null;
+          };
+
+          type BaseProperty = {
+            id: string;
+            type: string;
+          };
+
+          type SelectProperty = BaseProperty & {
+            type: "select";
+            select: SelectOption | null;
+          };
+
+          type MultiSelectProperty = BaseProperty & {
+            type: "multi_select";
+            multi_select: SelectOption[];
+          };
+
+          type Property =
+            | SelectProperty
+            | MultiSelectProperty
+            | (BaseProperty & { type: string });
+
+          const transformed = JSON.parse(
+            JSON.stringify(page.properties)
+          ) as Record<string, Property>;
+          for (const key in transformed) {
+            const prop = transformed[key];
+            if (!prop?.type) {
+              continue;
+            }
+
+            if (prop.type === "select" && "select" in prop) {
+              const typedProp = prop as SelectProperty;
+              if (typedProp.select?.id && typedProp.select?.name) {
+                typedProp.select = {
+                  id: typedProp.select.id,
+                  name: typedProp.select.name,
+                  color: typedProp.select.color || "default",
+                  description: null,
+                };
+              }
+            } else if (prop.type === "multi_select" && "multi_select" in prop) {
+              const typedProp = prop as MultiSelectProperty;
+              if (typedProp.multi_select) {
+                typedProp.multi_select = typedProp.multi_select
+                  .filter((s) => s?.id && s?.name)
+                  .map((s) => ({
+                    id: s.id,
+                    name: s.name,
+                    color: s.color || "default",
+                    description: null,
+                  }));
+              }
+            }
+          }
+          return JSON.stringify(transformed);
+        })(),
         parentId: databaseId,
         parentType: "database",
         createdById: page.created_by.id,
