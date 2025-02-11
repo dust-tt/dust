@@ -51,6 +51,7 @@ const {
   saveStartSync,
   isFullSyncPendingOrOngoing,
   logMaxSearchPageIndexReached,
+  markParentsAsUpdated,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "1 minute",
 });
@@ -233,16 +234,21 @@ export async function notionUpdateAllParentsFieldsWorkflow({
 }: {
   connectorId: ModelId;
 }) {
-  let cursors: {
-    pageCursor: string | null;
-    databaseCursor: string | null;
-  } = {
-    pageCursor: "",
-    databaseCursor: "",
-  };
+  const runTimestamp = Date.now();
+  let cursors:
+    | {
+        pageCursor: string | null;
+        databaseCursor: string | null;
+      }
+    | undefined;
   do {
-    cursors = await updateParentsFields(connectorId, cursors);
-  } while (cursors.pageCursor || cursors.databaseCursor);
+    cursors = await updateParentsFields({
+      connectorId,
+      cursors,
+      runTimestamp,
+    });
+  } while (cursors?.pageCursor || cursors?.databaseCursor);
+  await markParentsAsUpdated({ connectorId, runTimestamp });
 }
 
 // This is the garbage collector workflow that continuously runs for each notion connector.

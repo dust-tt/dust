@@ -1133,15 +1133,20 @@ async function getResourcesNotSeenInGarbageCollectionRunBatch(
   return JSON.parse(batch) as GCResource[];
 }
 
-const PARENTS_UPDATE_BATCH_SIZE = 10000;
+const PARENTS_UPDATE_BATCH_SIZE = 10;
 
-export async function updateParentsFields(
-  connectorId: ModelId,
-  cursors: {
+export async function updateParentsFields({
+  connectorId,
+  cursors,
+  runTimestamp,
+}: {
+  connectorId: ModelId;
+  cursors?: {
     pageCursor: string | null;
     databaseCursor: string | null;
-  }
-): Promise<{
+  };
+  runTimestamp: number;
+}): Promise<{
   pageCursor: string | null;
   databaseCursor: string | null;
 }> {
@@ -1160,52 +1165,64 @@ export async function updateParentsFields(
 
   const parentsLastUpdatedAt =
     notionConnectorState.parentsLastUpdatedAt?.getTime() || 0;
-  const newParentsLastUpdatedAt = new Date();
 
   const localLogger = logger.child({
     workspaceId: connector.workspaceId,
     dataSourceId: connector.dataSourceId,
   });
 
-  // pageCursor = null indicates we have finished
-  const notionPageIds = cursors.pageCursor
-    ? (
-        await NotionPage.findAll({
-          where: {
-            connectorId: connector.id,
-            notionPageId: {
-              [Op.gt]: cursors.pageCursor,
-            },
-            lastCreatedOrMovedRunTs: {
-              [Op.gt]: new Date(parentsLastUpdatedAt),
-            },
-          },
-          order: [["notionPageId", "ASC"]],
-          limit: PARENTS_UPDATE_BATCH_SIZE,
-          attributes: ["notionPageId"],
-        })
-      ).map((page) => page.notionPageId)
-    : [];
+  const baseWhereClause = {
+    connectorId: connector.id,
+    lastCreatedOrMovedRunTs: {
+      [Op.gt]: new Date(parentsLastUpdatedAt),
+    },
+  };
 
-  // databaseCursor = null indicates we have finished
-  const notionDatabaseIds = cursors.databaseCursor
-    ? (
-        await NotionDatabase.findAll({
-          where: {
-            connectorId: connector.id,
-            notionDatabaseId: {
-              [Op.gt]: cursors.databaseCursor,
-            },
-            lastCreatedOrMovedRunTs: {
-              [Op.gt]: new Date(parentsLastUpdatedAt),
-            },
-          },
-          order: [["notionDatabaseId", "ASC"]],
-          limit: PARENTS_UPDATE_BATCH_SIZE,
-          attributes: ["notionDatabaseId"],
-        })
-      ).map((db) => db.notionDatabaseId)
-    : [];
+  // cursors = undefined indicates we are in the first run
+  // in which case we scroll from the beginning
+  const pageWhereClause = cursors?.pageCursor
+    ? {
+        ...baseWhereClause,
+        notionPageId: {
+          [Op.gt]: cursors.pageCursor,
+        },
+      }
+    : baseWhereClause;
+
+  const databaseWhereClause = cursors?.databaseCursor
+    ? {
+        ...baseWhereClause,
+        notionDatabaseId: {
+          [Op.gt]: cursors.databaseCursor,
+        },
+      }
+    : baseWhereClause;
+
+  // pageCursor = null indicates we have finished scrolling through pages
+  const notionPageIds =
+    cursors?.pageCursor !== null
+      ? (
+          await NotionPage.findAll({
+            where: pageWhereClause,
+            order: [["notionPageId", "ASC"]],
+            limit: PARENTS_UPDATE_BATCH_SIZE,
+            attributes: ["notionPageId"],
+          })
+        ).map((page) => page.notionPageId)
+      : [];
+
+  // databaseCursor = null indicates we have finished scrolling through databases
+  const notionDatabaseIds =
+    cursors?.databaseCursor !== null
+      ? (
+          await NotionDatabase.findAll({
+            where: databaseWhereClause,
+            order: [["notionDatabaseId", "ASC"]],
+            limit: PARENTS_UPDATE_BATCH_SIZE,
+            attributes: ["notionDatabaseId"],
+          })
+        ).map((db) => db.notionDatabaseId)
+      : [];
 
   const nextCursors: {
     pageCursor: string | null;
@@ -1228,15 +1245,36 @@ export async function updateParentsFields(
     connectorId,
     notionPageIds,
     notionDatabaseIds,
-    newParentsLastUpdatedAt.getTime().toString(),
+    runTimestamp.toString(),
     async () => heartbeat()
   );
 
-  await notionConnectorState.update({
-    parentsLastUpdatedAt: newParentsLastUpdatedAt,
-  });
   localLogger.info({ nbUpdated, nextCursors }, "Updated parents fields.");
   return nextCursors;
+}
+
+export async function markParentsAsUpdated({
+  connectorId,
+  runTimestamp,
+}: {
+  connectorId: ModelId;
+  runTimestamp: number;
+}) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error("Could not find connector");
+  }
+  const notionConnectorState = await NotionConnectorState.findOne({
+    where: {
+      connectorId: connector.id,
+    },
+  });
+  if (!notionConnectorState) {
+    throw new Error("Could not find notionConnectorState");
+  }
+  await notionConnectorState.update({
+    parentsLastUpdatedAt: new Date(runTimestamp),
+  });
 }
 
 export async function cachePage({
