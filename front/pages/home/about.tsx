@@ -1,9 +1,7 @@
 import {
   ArrowRightIcon,
   Button,
-  Div3D,
   GithubIcon,
-  Hover3D,
   Icon,
   LinkedinIcon,
   RocketIcon,
@@ -16,7 +14,6 @@ import {
   Grid,
   H1,
   H2,
-  H3,
   P,
   Strong,
 } from "@app/components/home/ContentComponents";
@@ -96,6 +93,30 @@ const Person = ({ handle }: { handle: string }) => {
   );
 };
 
+const INVESTORS: { name: string; title: string }[] = [
+  { name: "Konstantine Buhler", title: "Partner, Sequoia Capital" },
+  { name: "Nat Friedman", title: "AI Grant" },
+  { name: "Ross Fubini", title: "Partner, XYZ Ventures" },
+  { name: "Pietro Biezza", title: "Partner, Connect Ventures" },
+  { name: "Olivier Pomel", title: "CEO, Datadog" },
+  { name: "Charles Gorintin", title: "CTO, Alan" },
+  { name: "Matthieu Rouif", title: "CEO, Photoroom" },
+  { name: "Eléonore Crespo", title: "CEO, Pigment" },
+  { name: "Mathilde Colin", title: "CEO, Front" },
+  { name: "Howie Liu", title: "CEO, Airtable" },
+  { name: "Julien Chaumond", title: "CTO, HuggingFace" },
+  { name: "Igor Babushckin", title: "AI researcher" },
+];
+
+const Investor = ({ name, title }: { name: string; title: string }) => {
+  return (
+    <div className="flex flex-col gap-0">
+      <div className="font-bold text-white">{name}</div>
+      <div className="text-sm text-muted-foreground">{title}</div>
+    </div>
+  );
+};
+
 const VideoPlayer = () => {
   return (
     <div className="relative w-full pt-[56.25%]">
@@ -129,7 +150,7 @@ export default function About() {
               Our mission is to transform how work gets done
             </H1>
           </div>
-          <div className="flex flex-row justify-center">
+          <div className="flex flex-row justify-center pt-4">
             <div className="max-w-4xl">
               <img src="/static/landing/about/about_visual.png" />
             </div>
@@ -238,18 +259,59 @@ export default function About() {
         </Grid>
 
         <Grid>
-          {Object.keys(PEOPLE).map((handle, i) => (
+          <div className="col-span-10 col-start-2 grid grid-cols-10 gap-x-2 gap-y-8">
+            {Object.keys(PEOPLE).map((handle) => (
+              <div
+                key={handle}
+                className={classNames("col-span-5 md:col-span-3 xl:col-span-2")}
+              >
+                <Person handle={handle} />
+              </div>
+            ))}
+          </div>
+        </Grid>
+
+        <Grid>
+          <Separator className="col-span-10 col-start-2 bg-slate-700" />
+        </Grid>
+
+        <div className="flex flex-col gap-8">
+          <Grid>
             <div
-              key={handle}
               className={classNames(
-                "col-span-2",
-                i % 5 === 0 ? "col-start-2" : ""
+                "flex flex-col items-start gap-6",
+                "col-span-10 col-start-2"
               )}
             >
-              <Person handle={handle} />
+              <H2 className="text-white">
+                Built for enterprise, backed by experts
+              </H2>
+              <div className="flex flex-col gap-2">
+                <P>
+                  We're backed by investors who've built and scaled enterprise
+                  infrastructure. Our investors include leading venture firms
+                  and founders who understand what it takes to transform how
+                  companies operate.
+                </P>
+              </div>
             </div>
-          ))}
-        </Grid>
+          </Grid>
+
+          <Grid>
+            <div className="col-span-10 col-start-2 grid grid-cols-10 gap-x-2 gap-y-8">
+              {INVESTORS.map((investor) => (
+                <div
+                  key={investor.name}
+                  className={classNames(
+                    "col-span-5 md:col-span-3 xl:col-span-2"
+                  )}
+                >
+                  <Investor name={investor.name} title={investor.title} />
+                </div>
+              ))}
+            </div>
+          </Grid>
+        </div>
       </div>
     </>
   );
