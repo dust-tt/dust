@@ -234,24 +234,26 @@ const upsertTableToDatasource: ProcessingFunction = async (
   const { title: upsertTitle, ...restArgs } = upsertArgs ?? {};
 
   const upsertTableRes = await upsertTable({
-    // Beware, most values here are default values that are overrided by the ...restArgs below,
-    // including description.
-    tableId,
-    name: slugify(file.fileName),
-    description: "Table uploaded from file",
-    truncate: true,
-    csv: content.trim(),
-    tags: [`title:${file.fileName}`, `fileId:${file.sId}`],
-    parents: [tableId],
-    async: false,
-    dataSource,
     auth,
-    title: upsertTitle ?? file.fileName,
-    mimeType: file.contentType,
-    sourceUrl: file.getPrivateUrl(auth),
+    params: {
+      // Beware, most values here are default values that are overrided by the ...restArgs below,
+      // including description.
+      tableId,
+      name: slugify(file.fileName),
+      description: "Table uploaded from file",
+      truncate: true,
+      csv: content.trim(),
+      tags: [`title:${file.fileName}`, `fileId:${file.sId}`],
+      parents: [tableId],
+      async: false,
+      title: upsertTitle ?? file.fileName,
+      mimeType: file.contentType,
+      sourceUrl: file.getPrivateUrl(auth),
 
-    // Used to override defaults, for manual file uploads where some fields are user-defined.
-    ...restArgs,
+      // Used to override defaults, for manual file uploads where some fields are user-defined.
+      ...restArgs,
+    },
+    dataSource,
   });
 
   if (upsertTableRes.isErr()) {
