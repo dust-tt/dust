@@ -1,3 +1,6 @@
+import tracer from 'dd-trace';
+tracer.init();
+
 import assert from "assert";
 import axios from "axios";
 import { Agent } from "https";
