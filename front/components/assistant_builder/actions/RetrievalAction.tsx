@@ -5,14 +5,12 @@ import { useEffect, useState } from "react";
 import { TimeUnitDropdown } from "@app/components/assistant_builder/actions/TimeDropdown";
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
 import DataSourceSelectionSection from "@app/components/assistant_builder/DataSourceSelectionSection";
-import { ActionDataSourceTagsFilterSection } from "@app/components/assistant_builder/tags/ActionDataSourceTagsFilterSection";
 import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderRetrievalConfiguration,
   AssistantBuilderRetrievalExhaustiveConfiguration,
   AssistantBuilderTimeFrame,
 } from "@app/components/assistant_builder/types";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames } from "@app/lib/utils";
 
 export function hasErrorActionRetrievalSearch(
@@ -47,9 +45,6 @@ export function ActionRetrievalSearch({
 }: ActionRetrievalSearchProps) {
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
 
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
-  const shouldDisplayTagsFilters = featureFlags.includes("tags_filters");
-
   if (!actionConfiguration) {
     return null;
   }
@@ -82,16 +77,15 @@ export function ActionRetrievalSearch({
         openDataSourceModal={() => {
           setShowDataSourcesModal(true);
         }}
+        onSave={(dsConfigs) => {
+          setEdited(true);
+          updateAction((previousAction) => ({
+            ...previousAction,
+            dataSourceConfigurations: dsConfigs,
+          }));
+        }}
         viewType={"documents"}
       />
-      {shouldDisplayTagsFilters && (
-        <ActionDataSourceTagsFilterSection
-          owner={owner}
-          actionConfig={actionConfiguration}
-          updateAction={updateAction}
-          setEdited={setEdited}
-        />
-      )}
     </>
   );
 }
@@ -186,6 +180,13 @@ export function ActionRetrievalExhaustive({
         dataSourceConfigurations={actionConfiguration.dataSourceConfigurations}
         openDataSourceModal={() => {
           setShowDataSourcesModal(true);
+        }}
+        onSave={(dsConfigs) => {
+          setEdited(true);
+          updateAction((previousAction) => ({
+            ...previousAction,
+            dataSourceConfigurations: dsConfigs,
+          }));
         }}
         viewType={"documents"}
       />
