@@ -27,9 +27,9 @@ import {
   FREQUENCY_DISPLAY_TEXT,
   WEBCRAWLER_MAX_PAGES,
 } from "@dust-tt/types";
+import { useCallback } from "react";
 
 import { AdvancedSettingsSection } from "@app/components/spaces/websites/AdvancedSettingsSection";
-import { useCallback } from "react";
 
 type SpaceWebsiteFormProps = {
   state: WebsiteFormState;
