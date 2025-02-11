@@ -2,6 +2,7 @@ import type { ModelId } from "@dust-tt/types";
 import {
   continueAsNew,
   defineQuery,
+  executeChild,
   proxyActivities,
   sleep,
   workflowInfo,
@@ -209,8 +210,11 @@ export async function notionSyncWorkflow({
     } while (discoveredResources && PROCESS_ALL_DISCOVERED_RESOURCES);
   }
 
-  // Compute parents after all documents are added/updated.
-  await updateParentsFields(connectorId);
+  // Compute parents after all documents are added/updated
+  await executeChild(notionUpdateAllParentsFieldsWorkflow, {
+    workflowId: `${topLevelWorkflowId}-update-parents-fields`,
+    args: [{ connectorId }],
+  });
 
   await saveSuccessSync(connectorId);
   lastSyncedPeriodTs = preProcessTimestampForNotion(runTimestamp);
@@ -222,6 +226,23 @@ export async function notionSyncWorkflow({
     startFromTs: lastSyncedPeriodTs,
     forceResync: false,
   });
+}
+
+export async function notionUpdateAllParentsFieldsWorkflow({
+  connectorId,
+}: {
+  connectorId: ModelId;
+}) {
+  let cursors: {
+    pageCursor: string | null;
+    databaseCursor: string | null;
+  } = {
+    pageCursor: "",
+    databaseCursor: "",
+  };
+  do {
+    cursors = await updateParentsFields(connectorId, cursors);
+  } while (cursors.pageCursor || cursors.databaseCursor);
 }
 
 // This is the garbage collector workflow that continuously runs for each notion connector.
