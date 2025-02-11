@@ -1795,11 +1795,9 @@ export async function renderAndUpsertPageFromCache({
           parentDb.notionDatabaseId,
           [],
           true,
-          runTimestamp.toString(),
-          async () => {
-            await heartbeat();
-          }
+          runTimestamp.toString()
         );
+        await heartbeat();
 
         const parents = parentPageOrDbIds.map((id) => `notion-${id}`);
 
@@ -2001,11 +1999,9 @@ export async function renderAndUpsertPageFromCache({
       pageId,
       [],
       true,
-      runTimestamp.toString(),
-      async () => {
-        await heartbeat();
-      }
+      runTimestamp.toString()
     );
+    await heartbeat();
 
     const parentIds = parentPageOrDbIds.map((id) => `notion-${id}`);
     if (parentIds.length === 1) {
@@ -2527,9 +2523,9 @@ export async function upsertDatabaseStructuredDataFromCache({
     databaseId,
     [],
     true,
-    runTimestamp.toString(),
-    async () => heartbeat()
+    runTimestamp.toString()
   );
+  await heartbeat();
 
   const parentIds = parentPageOrDbIds.map((id) => `notion-${id}`);
 
@@ -2695,7 +2691,6 @@ export async function updateSingleDocumentParents({
     notionDocumentId,
     [],
     false,
-    undefined,
     undefined
   );
 
