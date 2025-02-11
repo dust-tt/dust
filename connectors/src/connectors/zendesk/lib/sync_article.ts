@@ -124,7 +124,9 @@ export async function syncArticle({
         `SECTION: ${section.name} ${section?.description ? ` - ${section.description}` : ""}`,
       user && `USER: ${user.name} ${user?.email ? ` - ${user.email}` : ""}`,
       `SUM OF VOTES: ${article.vote_sum}`,
-      article.label_names.length ? `LABELS: ${article.label_names.join()}` : "",
+      article.label_names?.length
+        ? `LABELS: ${article.label_names.join()}`
+        : "",
     ]
       .filter(Boolean)
       .join("\n");
