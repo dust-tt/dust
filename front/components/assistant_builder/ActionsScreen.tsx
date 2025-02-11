@@ -18,11 +18,16 @@ import {
   Icon,
   InformationCircleIcon,
   Input,
-  Modal,
   MoreIcon,
   Page,
   PlusIcon,
   Popover,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
   TextArea,
   XMarkIcon,
 } from "@dust-tt/sparkle";
@@ -32,6 +37,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { assertNever, MAX_STEPS_USE_PER_RUN_LIMIT } from "@dust-tt/types";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import assert from "assert";
 import type { ReactNode } from "react";
 import React, {
@@ -601,71 +607,92 @@ function NewActionModal({
     }, 500);
   };
 
+  const onModalSave = () => {
+    if (
+      newAction &&
+      !titleError &&
+      descriptionValid &&
+      !hasActionError(newAction)
+    ) {
+      newAction.name = newAction.name.trim();
+      newAction.description = newAction.description.trim();
+      onSave(newAction);
+      onCloseLocal();
+    } else {
+      if (titleError) {
+        setShowInvalidActionNameError(titleError);
+      }
+      if (!descriptionValid) {
+        setShowInvalidActionDescError("Description cannot be empty.");
+      }
+      if (newAction) {
+        setShowInvalidActionError(hasActionError(newAction));
+      }
+    }
+  };
+
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onCloseLocal}
-      hasChanged={true}
-      variant="side-md"
-      title=" "
-      onSave={() => {
-        if (
-          newAction &&
-          !titleError &&
-          descriptionValid &&
-          !hasActionError(newAction)
-        ) {
-          newAction.name = newAction.name.trim();
-          newAction.description = newAction.description.trim();
-          onSave(newAction);
+    <Sheet
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
           onCloseLocal();
-        } else {
-          if (titleError) {
-            setShowInvalidActionNameError(titleError);
-          }
-          if (!descriptionValid) {
-            setShowInvalidActionDescError("Description cannot be empty.");
-          }
-          if (newAction) {
-            setShowInvalidActionError(hasActionError(newAction));
-          }
         }
       }}
     >
-      <div className="w-full pt-8">
-        <div className="flex flex-col gap-4">
-          {newAction && (
-            <ActionEditor
-              action={newAction}
-              spacesUsedInActions={spacesUsedInActions}
-              updateAction={({
-                actionName,
-                actionDescription,
-                getNewActionConfig,
-              }) => {
-                setNewAction({
-                  ...newAction,
-                  configuration: getNewActionConfig(
-                    newAction.configuration
-                  ) as any,
-                  description: actionDescription,
-                  name: actionName,
-                });
-                setShowInvalidActionError(null);
-              }}
-              owner={owner}
-              setEdited={setEdited}
-              builderState={builderState}
-              showInvalidActionNameError={showInvalidActionNameError}
-              showInvalidActionDescError={showInvalidActionDescError}
-              showInvalidActionError={showInvalidActionError}
-              setShowInvalidActionNameError={setShowInvalidActionNameError}
-              setShowInvalidActionDescError={setShowInvalidActionDescError}
-            />
-          )}
-        </div>
-      </div>
-    </Modal>
+      <SheetContent size="xl">
+        <VisuallyHidden>
+          <SheetHeader>
+            <SheetTitle></SheetTitle>
+          </SheetHeader>
+        </VisuallyHidden>
+
+        <SheetContainer>
+          <div className="w-full pt-8">
+            {newAction && (
+              <ActionEditor
+                action={newAction}
+                spacesUsedInActions={spacesUsedInActions}
+                updateAction={({
+                  actionName,
+                  actionDescription,
+                  getNewActionConfig,
+                }) => {
+                  setNewAction({
+                    ...newAction,
+                    configuration: getNewActionConfig(
+                      newAction.configuration
+                    ) as any,
+                    description: actionDescription,
+                    name: actionName,
+                  });
+                  setShowInvalidActionError(null);
+                }}
+                owner={owner}
+                setEdited={setEdited}
+                builderState={builderState}
+                showInvalidActionNameError={showInvalidActionNameError}
+                showInvalidActionDescError={showInvalidActionDescError}
+                showInvalidActionError={showInvalidActionError}
+                setShowInvalidActionNameError={setShowInvalidActionNameError}
+                setShowInvalidActionDescError={setShowInvalidActionDescError}
+              />
+            )}
+          </div>
+        </SheetContainer>
+        <SheetFooter
+          leftButtonProps={{
+            label: "Cancel",
+            variant: "outline",
+            onClick: onCloseLocal,
+          }}
+          rightButtonProps={{
+            label: "Send",
+            onClick: onModalSave,
+          }}
+        />
+      </SheetContent>
+    </Sheet>
   );
 }
 
@@ -1146,7 +1173,7 @@ interface AddActionProps {
 
 function AddAction({ onAddAction }: AddActionProps) {
   return (
-    <DropdownMenu>
+    <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
         <Button
           variant="primary"

@@ -3,15 +3,20 @@ import {
   Avatar,
   EmotionLaughIcon,
   ImageIcon,
-  Modal,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
-import { useMemo, useRef, useState } from "react";
-import React from "react";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
+import React, { useMemo, useRef, useState } from "react";
 
 import AssistantBuilderCustomUpload from "@app/components/assistant_builder/avatar_picker/AssistantBuilderCustomUpload";
 import AssistantBuilderEmojiPicker from "@app/components/assistant_builder/avatar_picker/AssistantBuilderEmojiPicker";
@@ -158,42 +163,60 @@ export function AvatarPicker({
   };
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title=""
-      variant="side-md"
-      hasChanged={isStale}
-      onSave={async () => handleSave(parentRef)}
-      isSaving={isSaving}
+    <Sheet
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose();
+        }
+      }}
     >
-      <div className="h-full w-full overflow-visible pt-3">
-        <Tabs
-          value={currentTab}
-          onValueChange={(tab) => {
-            setCurrentTab(tab as TabId);
-            setIsStale(false);
+      <SheetContent size="lg">
+        <VisuallyHidden>
+          <SheetHeader>
+            <SheetTitle></SheetTitle>
+          </SheetHeader>
+        </VisuallyHidden>
+        <SheetContainer>
+          <Tabs
+            value={currentTab}
+            onValueChange={(tab) => {
+              setCurrentTab(tab as TabId);
+              setIsStale(false);
+            }}
+          >
+            <TabsList className="flex h-10 flex-grow items-center gap-2">
+              {tabs.map((tab) => (
+                <TabsTrigger
+                  key={tab.id}
+                  value={tab.id}
+                  label={tab.label}
+                  icon={tab.icon}
+                />
+              ))}
+            </TabsList>
+            <div className="h-full w-full overflow-y-auto">
+              {tabs.map((tab) => (
+                <TabsContent key={tab.id} value={tab.id}>
+                  {renderTabContent(tab.id)}
+                </TabsContent>
+              ))}
+            </div>
+          </Tabs>
+        </SheetContainer>
+        <SheetFooter
+          leftButtonProps={{
+            label: "Cancel",
+            variant: "outline",
+            onClick: onClose,
           }}
-        >
-          <TabsList className="flex h-10 flex-grow items-center gap-2">
-            {tabs.map((tab) => (
-              <TabsTrigger
-                key={tab.id}
-                value={tab.id}
-                label={tab.label}
-                icon={tab.icon}
-              />
-            ))}
-          </TabsList>
-          <div className="h-full w-full overflow-y-auto">
-            {tabs.map((tab) => (
-              <TabsContent key={tab.id} value={tab.id}>
-                {renderTabContent(tab.id)}
-              </TabsContent>
-            ))}
-          </div>
-        </Tabs>
-      </div>
-    </Modal>
+          rightButtonProps={{
+            label: isSaving ? "Saving..." : "Save",
+            onClick: () => handleSave(parentRef),
+            disabled: !isStale || isSaving,
+          }}
+        />
+      </SheetContent>
+    </Sheet>
   );
 }

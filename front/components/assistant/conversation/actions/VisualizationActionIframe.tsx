@@ -3,8 +3,11 @@ import {
   CodeBlock,
   Markdown,
   MarkdownContentContext,
-  Modal,
-  Page,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
   Spinner,
 } from "@dust-tt/sparkle";
 import type {
@@ -188,17 +191,23 @@ export function CodeDrawer({
   code: string;
 }) {
   return (
-    <Modal
-      isOpen={isOpened}
-      onClose={onClose}
-      title="Code for this visualization"
-      variant="side-md"
-      hasChanged={false}
+    <Sheet
+      open={isOpened}
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose();
+        }
+      }}
     >
-      <Page variant="modal">
-        <CodeBlock className="language-jsx">{code}</CodeBlock>
-      </Page>
-    </Modal>
+      <SheetContent size="lg">
+        <SheetHeader>
+          <SheetTitle>Code for this visualization</SheetTitle>
+        </SheetHeader>
+        <SheetContainer>
+          <CodeBlock className="language-jsx">{code}</CodeBlock>
+        </SheetContainer>
+      </SheetContent>
+    </Sheet>
   );
 }
 
