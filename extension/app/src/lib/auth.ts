@@ -3,6 +3,8 @@ import { Err, Ok } from "@dust-tt/client";
 import {
   AUTH0_CLAIM_NAMESPACE,
   DEFAULT_DUST_API_DOMAIN,
+  DUST_EU_URL,
+  DUST_US_URL,
 } from "@extension/lib/config";
 import {
   sendAuthMessage,
@@ -33,8 +35,8 @@ const CONNECTION_STRATEGY_CLAIM = `${AUTH0_CLAIM_NAMESPACE}connection.strategy`;
 const WORKSPACE_ID_CLAIM = `${AUTH0_CLAIM_NAMESPACE}workspaceId`;
 
 const DOMAIN_FOR_REGION: Record<RegionType, string> = {
-  "us-central1": "https://dust.tt",
-  "europe-west1": "https://eu.dust.tt",
+  "us-central1": DUST_US_URL,
+  "europe-west1": DUST_EU_URL,
 };
 
 export const SUPPORTED_ENTERPRISE_CONNECTIONS_STRATEGIES = [
