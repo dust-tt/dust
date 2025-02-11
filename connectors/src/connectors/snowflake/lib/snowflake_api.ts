@@ -118,7 +118,6 @@ export async function connectToSnowflake(
   credentials: SnowflakeCredentials
 ): Promise<Result<Connection, Error>> {
   snowflake.configure({
-    // @ts-expect-error OFF is not in the types but it's a valid value.
     logLevel: "OFF",
   });
   try {
