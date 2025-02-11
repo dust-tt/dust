@@ -183,12 +183,11 @@ export const zendesk = async ({
           connector.id
         );
 
-      const allCategoryIds =
-        await ZendeskCategoryResource.fetchByConnector(connector);
-      const categoryIds = allCategoryIds
+      const selectedCategoryIds =
+        await ZendeskCategoryResource.fetchAllReadOnly(connector.id);
+      const categoryIds = selectedCategoryIds
         .filter(
-          (c) =>
-            c.permission === "read" && !helpCenterBrandIds.includes(c.brandId) // skipping categories that will be synced through the Help Center
+          (c) => !helpCenterBrandIds.includes(c.brandId) // skipping categories that will be synced through the Help Center
         )
         .map((c) => {
           const { categoryId, brandId } = c;
