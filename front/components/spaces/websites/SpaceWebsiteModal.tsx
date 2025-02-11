@@ -274,7 +274,7 @@ export default function SpaceWebsiteModal({
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = async (): Promise<void> => {
     if (!dataSourceView) {
       return;
     }
@@ -379,7 +379,7 @@ export default function SpaceWebsiteModal({
 type DeleteSectionProps = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onDelete: () => void;
+  onDelete: () => Promise<void>;
   owner: WorkspaceType;
   dataSource: DataSourceViewType["dataSource"];
 };
