@@ -1302,9 +1302,7 @@ export async function cachePage({
     notionPageId: pageId,
     connectorId: connector.id,
     pageProperties: {},
-    pagePropertiesText: ((p: PageObjectProperties) => JSON.stringify(p))(
-      notionPage.properties
-    ),
+    pagePropertiesText: JSON.stringify(notionPage.properties),
     parentType: parent.type,
     parentId: parent.id,
     createdById: notionPage.created_by.id,
@@ -1540,9 +1538,7 @@ async function cacheDatabaseChildPages({
         notionPageId: page.id,
         connectorId: connector.id,
         pageProperties: {},
-        pagePropertiesText: ((p: PageObjectProperties) => JSON.stringify(p))(
-          page.properties
-        ),
+        pagePropertiesText: JSON.stringify(page.properties),
         parentId: databaseId,
         parentType: "database",
         createdById: page.created_by.id,
@@ -1863,7 +1859,7 @@ export async function renderAndUpsertPageFromCache({
   // We skip the title as it is added separately as prefix to the top-level document section.
   let propertiesContentLength = 0;
   const parsedProperties = parsePageProperties(
-    JSON.parse(pageCacheEntry.pagePropertiesText) as PageObjectProperties
+    JSON.parse(pageCacheEntry.pagePropertiesText)
   );
   for (const p of parsedProperties.filter((p) => p.key !== "title")) {
     if (!p.value) {
@@ -2497,9 +2493,7 @@ export async function upsertDatabaseStructuredDataFromCache({
     }
 
     pagesProperties = pagesProperties.concat(
-      pageCacheEntries.map(
-        (p) => JSON.parse(p.pagePropertiesText) as PageObjectProperties
-      )
+      pageCacheEntries.map((p) => JSON.parse(p.pagePropertiesText))
     );
 
     dustIdColumn = dustIdColumn.concat(
