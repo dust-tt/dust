@@ -1298,12 +1298,16 @@ export async function cachePage({
 
   const parent = getPageOrBlockParent(notionPage);
 
+  const notionPageProperties =
+    notionPage.properties as PageObjectResponse["properties"] &
+      PageObjectProperties;
+
   await NotionConnectorPageCacheEntry.upsert({
     notionPageId: pageId,
     connectorId: connector.id,
     pageProperties: {},
     pagePropertiesText: ((p: PageObjectProperties) => JSON.stringify(p))(
-      notionPage.properties
+      notionPageProperties
     ),
     parentType: parent.type,
     parentId: parent.id,
@@ -1469,7 +1473,7 @@ export async function cacheBlockChildren({
   };
 }
 
-async function cacheDatabaseChildPages({
+export async function cacheDatabaseChildPages({
   connectorId,
   topLevelWorkflowId,
   loggerArgs,
@@ -1535,13 +1539,16 @@ async function cacheDatabaseChildPages({
 
   await concurrentExecutor(
     pages,
-    async (page) =>
-      NotionConnectorPageCacheEntry.upsert({
+    async (page) => {
+      const pageProperties =
+        page.properties as PageObjectResponse["properties"] &
+          PageObjectProperties;
+      await NotionConnectorPageCacheEntry.upsert({
         notionPageId: page.id,
         connectorId: connector.id,
         pageProperties: {},
         pagePropertiesText: ((p: PageObjectProperties) => JSON.stringify(p))(
-          page.properties
+          pageProperties
         ),
         parentId: databaseId,
         parentType: "database",
@@ -1551,7 +1558,8 @@ async function cacheDatabaseChildPages({
         lastEditedTime: page.last_edited_time,
         url: page.url,
         workflowId: topLevelWorkflowId,
-      }),
+      });
+    },
     { concurrency: 5 }
   );
 }
