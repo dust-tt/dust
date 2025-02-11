@@ -57,6 +57,34 @@ const PEOPLE: Record<
     linkedIn: "https://linkedin.com/in/gabhubert",
     github: "https://github.com/gabhubert",
   },
+  fontanierh: {
+    name: "Henry Fontanier",
+    title: "Software Engineer",
+    image: "https://avatars.githubusercontent.com/u/14199823",
+    linkedIn: "https://www.linkedin.com/in/hfontanier/",
+    github: "https://github.com/fontanierh",
+  },
+  PopDaph: {
+    name: "Daphné Popin",
+    title: "Software Engineer",
+    image: "https://avatars.githubusercontent.com/u/3803406",
+    linkedIn: "https://www.linkedin.com/in/popdaph/",
+    github: "https://www.linkedin.com/in/popdaph/",
+  },
+  flvndvd: {
+    name: "Flavien David",
+    title: "Software Engineer",
+    image: "https://avatars.githubusercontent.com/u/7428970",
+    linkedIn: "https://www.linkedin.com/in/flavien-david/",
+    github: "https://github.com/flvndvd",
+  },
+  nchinot: {
+    name: "Nicolas Chinot",
+    title: "US GM",
+    image: "https://avatars.githubusercontent.com/u/13472346",
+    linkedIn: "https://www.linkedin.com/in/nicolaschinot/",
+    github: "https://github.com/nchinot",
+  },
 };
 
 const Person = ({ handle }: { handle: string }) => {
