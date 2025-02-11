@@ -31,12 +31,22 @@ import {
   TextArea,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type { ModelConfigurationType, SpaceType, WorkspaceType } from "@dust-tt/types";
+import type {
+  ModelConfigurationType,
+  SpaceType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import { assertNever, MAX_STEPS_USE_PER_RUN_LIMIT } from "@dust-tt/types";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import assert from "assert";
 import type { ReactNode } from "react";
-import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import {
   ActionDustAppRun,
@@ -47,7 +57,10 @@ import {
   ActionGithubGetPullRequest,
   hasErrorActionGithub,
 } from "@app/components/assistant_builder/actions/GithubAction";
-import { ActionProcess, hasErrorActionProcess } from "@app/components/assistant_builder/actions/ProcessAction";
+import {
+  ActionProcess,
+  hasErrorActionProcess,
+} from "@app/components/assistant_builder/actions/ProcessAction";
 import { ActionReasoning } from "@app/components/assistant_builder/actions/ReasoningAction";
 import {
   ActionRetrievalExhaustive,
@@ -76,7 +89,10 @@ import type {
   AssistantBuilderState,
   AssistantBuilderTableConfiguration,
 } from "@app/components/assistant_builder/types";
-import { getDefaultActionConfiguration, isDefaultActionName } from "@app/components/assistant_builder/types";
+import {
+  getDefaultActionConfiguration,
+  isDefaultActionName,
+} from "@app/components/assistant_builder/types";
 import { ACTION_SPECIFICATIONS } from "@app/lib/api/assistant/actions/utils";
 
 const DATA_SOURCES_ACTION_CATEGORIES = [

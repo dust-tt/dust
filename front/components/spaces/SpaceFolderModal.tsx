@@ -147,34 +147,30 @@ export default function SpaceFolderModal({
             <Spinner />
           ) : (
             <div className="flex flex-col gap-4">
-              <div>
-                <Page.SectionHeader title="Name" />
-                <Input
-                  placeholder="folder_name"
-                  name="name"
-                  value={name}
-                  onChange={(e) => {
-                    setName(e.target.value);
-                  }}
-                  message={error ?? "Folder name must be unique"}
-                  messageStatus={error ? "error" : "info"}
-                  disabled={!!dataSourceView}
-                />
-              </div>
+              <Page.SectionHeader title="Name" />
+              <Input
+                placeholder="folder_name"
+                name="name"
+                value={name}
+                onChange={(e) => {
+                  setName(e.target.value);
+                }}
+                message={error ?? "Folder name must be unique"}
+                messageStatus={error ? "error" : "info"}
+                disabled={!!dataSourceView}
+              />
 
               <Page.Separator />
-              <div>
-                <Page.SectionHeader title="Description" />
-                <TextArea
-                  placeholder="Folder description"
-                  value={description ?? ""}
-                  onChange={(e) => {
-                    setDescription(e.target.value);
-                  }}
-                  showErrorLabel
-                  minRows={2}
-                />
-              </div>
+              <Page.SectionHeader title="Description" />
+              <TextArea
+                placeholder="Folder description"
+                value={description ?? ""}
+                onChange={(e) => {
+                  setDescription(e.target.value);
+                }}
+                showErrorLabel
+                minRows={2}
+              />
 
               {dataSourceView && (
                 <>
