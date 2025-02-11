@@ -19,7 +19,7 @@
     "@google-cloud/bigquery": "^7.9.1",
     "@microsoft/microsoft-graph-client": "^3.0.7",
     "@microsoft/microsoft-graph-types": "^2.40.0",
-    "@notionhq/client": "^2.2.4",
+    "@notionhq/client": "^2.2.15",
     "@slack/web-api": "^6.8.1",
     "@temporalio/activity": "^1.9.3",
     "@temporalio/client": "^1.9.3",
