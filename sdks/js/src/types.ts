@@ -47,6 +47,9 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "gemini-1.5-flash-latest"
   | "gemini-2.0-flash-exp"
   | "gemini-2.0-flash-thinking-exp-01-21"
+  | "gemini-2.0-flash"
+  | "gemini-2.0-flash-lite-preview-02-05"
+  | "gemini-2.0-pro-exp-02-05"
   | "meta-llama/Llama-3.3-70B-Instruct-Turbo" // togetherai
   | "Qwen/Qwen2.5-Coder-32B-Instruct" // togetherai
   | "Qwen/QwQ-32B-Preview" // togetherai
@@ -213,6 +216,7 @@ const UserMessageOriginSchema = FlexibleEnumSchema<
   | "api"
   | "gsheet"
   | "zapier"
+  | "n8n"
   | "make"
   | "zendesk"
   | "raycast"
@@ -2352,7 +2356,7 @@ export const FileUploadUrlRequestSchema = z.object({
   contentType: SupportedFileContentFragmentTypeSchema,
   fileName: z.string().max(256, "File name must be less than 256 characters"),
   fileSize: z.number(),
-  useCase: z.literal("conversation"),
+  useCase: z.union([z.literal("conversation"), z.literal("upsert_table")]),
   useCaseMetadata: z
     .object({
       conversationId: z.string(),

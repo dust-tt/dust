@@ -95,8 +95,11 @@ const sizeVariants: Record<ButtonSizeType, string> = {
 };
 
 const buttonVariants = cva(
-  "s-inline-flex s-items-center s-justify-center s-whitespace-nowrap s-font-medium s-ring-offset-background s-transition-colors " +
+  cn(
+    "s-inline-flex s-items-center s-justify-center s-whitespace-nowrap s-font-medium s-ring-offset-background s-transition-colors",
     "focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring focus-visible:s-ring-offset-2",
+    "dark:focus-visible:s-ring-0 dark:focus-visible:s-ring-offset-1"
+  ),
   {
     variants: {
       variant: styleVariants,

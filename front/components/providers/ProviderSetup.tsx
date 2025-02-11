@@ -6,6 +6,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  Input,
 } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { MouseEvent } from "react";
@@ -349,9 +350,8 @@ export function ProviderSetup({
             {field.label}
           </label>
         )}
-        <input
+        <Input
           type={field.type || "text"}
-          className="block w-full rounded-md border-gray-300 shadow-sm focus:border-action-500 focus:ring-action-500 sm:text-sm"
           placeholder={field.placeholder}
           value={values[field.name]}
           onChange={(e) => {

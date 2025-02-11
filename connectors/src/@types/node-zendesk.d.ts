@@ -80,7 +80,7 @@ export interface ZendeskFetchedArticle {
   user_segment_id: number;
   permission_group_id: number;
   content_tag_ids: number[];
-  label_names: string[];
+  label_names?: string[];
   body: string | null;
   user_segment_ids: number[];
 }

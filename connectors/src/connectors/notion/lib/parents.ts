@@ -3,12 +3,14 @@ import { cacheWithRedis } from "@dust-tt/types";
 import PQueue from "p-queue";
 import { Sequelize } from "sequelize";
 
+import { nodeIdFromNotionId } from "@connectors/connectors/notion";
 import {
   getDatabaseChildrenOf,
   getNotionDatabaseFromConnectorsDb,
   getNotionPageFromConnectorsDb,
   getPageChildrenOf,
 } from "@connectors/connectors/notion/lib/connectors_db_helpers";
+import { UPDATE_PARENTS_FIELDS_TIMEOUT_MINUTES } from "@connectors/connectors/notion/temporal/workflows";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { updateDataSourceDocumentParents } from "@connectors/lib/data_sources";
 import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
@@ -124,7 +126,7 @@ export const getParents = cacheWithRedis(
   (connectorId, pageOrDbId, seen, syncing, memoizationKey, onProgress) => {
     return `${connectorId}:${pageOrDbId}:${memoizationKey}`;
   },
-  60 * 10 * 1000
+  UPDATE_PARENTS_FIELDS_TIMEOUT_MINUTES * 60 * 1000
 );
 
 export async function updateAllParentsFields(
@@ -172,7 +174,7 @@ export async function updateAllParentsFields(
           onProgress
         );
 
-        const parents = pageOrDbIds.map((id) => `notion-${id}`);
+        const parents = pageOrDbIds.map((id) => nodeIdFromNotionId(id));
         if (parents.length === 1) {
           const page = await getNotionPageFromConnectorsDb(connectorId, pageId);
           logger.warn(
@@ -190,7 +192,7 @@ export async function updateAllParentsFields(
         );
         await updateDataSourceDocumentParents({
           dataSourceConfig: dataSourceConfigFromConnector(connector),
-          documentId: `notion-${pageId}`,
+          documentId: nodeIdFromNotionId(pageId),
           parents,
           parentId: parents[1] || null,
         });

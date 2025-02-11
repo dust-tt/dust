@@ -1,6 +1,5 @@
 import type {
   ConnectorProvider,
-  ContentNodesViewType,
   ContentNodeType,
   CoreAPIContentNode,
   DataSourceViewContentNode,
@@ -75,14 +74,12 @@ export function computeNodesDiff({
   coreContentNodes,
   pagination,
   provider,
-  viewType,
   localLogger,
 }: {
   connectorsContentNodes: DataSourceViewContentNode[];
   coreContentNodes: DataSourceViewContentNode[];
   provider: ConnectorProvider | null;
   pagination: OffsetPaginationParams | CursorPaginationParams | undefined;
-  viewType: ContentNodesViewType;
   localLogger: typeof logger;
 }) {
   const missingNodes: DataSourceViewContentNode[] = [];
@@ -93,14 +90,16 @@ export function computeNodesDiff({
   // Core and connectors follow different sorting rules,
   // so when pagination is enforced, we only want to log the number of nodes we get,
   // and the other logs are irrelevant since we are not fetching the same nodes.
-  if (pagination && connectorsContentNodes.length !== coreContentNodes.length) {
+  if (pagination) {
     localLogger.info(
       {
         connectorsNodesCount: connectorsContentNodes.length,
         coreNodesCount: coreContentNodes.length,
         pagination,
       },
-      "[CoreNodes] Different number of nodes returned by connectors and core"
+      connectorsContentNodes.length !== coreContentNodes.length
+        ? "[CoreNodes] Different number of nodes returned by connectors and core"
+        : "[CoreNodes] Different nodes were fetched due to pagination"
     );
     return [];
   }
@@ -128,9 +127,7 @@ export function computeNodesDiff({
           coreContentNodes.some((n) =>
             connectorsNode.internalId.startsWith(n.internalId)
           )
-        ) &&
-        // Connectors return tables even when viewType is documents, core doesn't
-        !(provider === "snowflake" && viewType === "documents")
+        )
       ) {
         missingNodes.push(connectorsNode);
       }
@@ -220,6 +217,21 @@ export function computeNodesDiff({
           return false;
         }
 
+        // Special case for Notion titles where we sometimes get a snake_case version of the title one way or another.
+        // For instance "User test - Notes" is turned into "user_test_notes".
+        if (
+          key === "title" &&
+          provider === "notion" &&
+          (value.toLowerCase().replace("-", "").replaceAll(/\s+/g, "_") ==
+            matchingCoreNode.title ||
+            matchingCoreNode.title
+              .toLowerCase()
+              .replace("-", "")
+              .replaceAll(/\s+/g, "_") == value)
+        ) {
+          return false;
+        }
+
         // Special case for Google Drive spreadsheet folders: connectors
         // return a type "file" while core returns a type "folder".
         if (
@@ -281,6 +293,11 @@ export function computeNodesDiff({
           provider === "webcrawler" &&
           coreValue === `${value}/`
         ) {
+          return false;
+        }
+
+        // Ignore diff in the sourceUrl due to URI encoding.
+        if (key === "sourceUrl" && coreValue === encodeURI(value)) {
           return false;
         }
         // Special case for expandable: if the core node is not expandable and the connectors one is, it means

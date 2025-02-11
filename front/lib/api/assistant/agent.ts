@@ -30,6 +30,8 @@ import {
   isReasoningConfiguration,
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
+  isTextContent,
+  isUserMessageTypeModel,
   isWebsearchConfiguration,
   SUPPORTED_MODEL_CONFIGS,
 } from "@dust-tt/types";
@@ -500,13 +502,27 @@ async function* runMultiActionsAgent(
     config.MODEL.reasoning_effort = agentConfiguration.model.reasoningEffort;
   }
 
+  const renderedConversation = modelConversationRes.value.modelConversation;
+  // Anthropic does not accept empty user message.
+  if (model.providerId === "anthropic") {
+    renderedConversation.messages.forEach((m) => {
+      if (isUserMessageTypeModel(m)) {
+        m.content.forEach((c) => {
+          if (isTextContent(c) && c.text.length === 0) {
+            c.text = "Answer according to provided context and instructions.";
+          }
+        });
+      }
+    });
+  }
+
   const res = await runActionStreamed(
     auth,
     "assistant-v2-multi-actions-agent",
     config,
     [
       {
-        conversation: modelConversationRes.value.modelConversation,
+        conversation: renderedConversation,
         specifications,
         prompt,
       },

@@ -31,7 +31,8 @@ export function EmptyCallToAction({
   return (
     <div
       className={classNames(
-        "flex h-36 w-full items-center justify-center rounded-xl bg-muted-background"
+        "flex h-36 w-full items-center justify-center rounded-xl",
+        "bg-muted-background dark:bg-muted-background-night"
       )}
     >
       {href ? <Link href={href}>{button}</Link> : button}

@@ -1,9 +1,9 @@
-import type { ContentNode } from "@dust-tt/types";
 import type {
   ConnectorPermission,
+  ContentNode,
   WithConnectorsAPIErrorReponse,
 } from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
+import { assertNever, isValidContentNodesViewType } from "@dust-tt/types";
 import type { Request, Response } from "express";
 
 import { getConnectorManager } from "@connectors/connectors";
@@ -54,13 +54,13 @@ const _getConnectorPermissions = async (
   if (
     !viewType ||
     typeof viewType !== "string" ||
-    (viewType !== "tables" && viewType !== "documents")
+    !isValidContentNodesViewType(viewType)
   ) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Invalid viewType. Required: tables | documents",
+        message: "Invalid viewType. Required: tables | documents | all",
       },
     });
   }

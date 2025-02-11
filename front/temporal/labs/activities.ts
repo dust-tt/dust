@@ -126,6 +126,60 @@ export async function processTranscriptActivity(
   transcriptsConfigurationId: ModelId,
   fileId: string
 ) {
+  function convertCitationsToLinks(
+    markdown: string,
+    conversationData: any
+  ): string {
+    if (typeof markdown !== "string") {
+      localLogger.error(
+        {
+          markdown,
+        },
+        "Invalid markdown input."
+      );
+      return "";
+    }
+
+    let citationCount = 0;
+    const citations: { [key: string]: number } = {};
+
+    markdown.replace(/:cite\[([^\]]+)\]/g, (match, reference) => {
+      if (!citations[reference]) {
+        citationCount++;
+        citations[reference] = citationCount;
+      }
+      return match;
+    });
+
+    const getSourceUrlFromReference = (reference: string): string => {
+      if (!conversationData) {
+        localLogger.warn("No conversation data available");
+        return "#";
+      }
+
+      try {
+        const document =
+          conversationData.content[1][0].actions[0].documents.find(
+            (doc: any) => doc.reference === reference
+          );
+        return document ? document.sourceUrl : "#";
+      } catch (error) {
+        localLogger.error(
+          {
+            error,
+          },
+          "Error finding source URL for reference."
+        );
+        return "#";
+      }
+    };
+
+    return markdown.replace(/:cite\[([^\]]+)\]/g, (match, reference) => {
+      const sourceUrl = getSourceUrlFromReference(reference);
+      return `<a href="${sourceUrl}">[${citations[reference]}]</a>`;
+    });
+  }
+
   const transcriptsConfiguration =
     await LabsTranscriptsConfigurationResource.fetchByModelId(
       transcriptsConfigurationId
@@ -596,8 +650,13 @@ export async function processTranscriptActivity(
         return innerArray.find((item) => item.type === "agent_message");
       }
     );
+
+    // Usage
     const markDownAnswer =
-      agentMessage && agentMessage[0].content ? agentMessage[0].content : "";
+      agentMessage && agentMessage[0].content
+        ? convertCitationsToLinks(agentMessage[0].content, conversation)
+        : "";
+
     const htmlAnswer = sanitizeHtml(await marked.parse(markDownAnswer), {
       allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img"]), // Allow images on top of all defaults from https://www.npmjs.com/package/sanitize-html
     });
@@ -613,9 +672,9 @@ export async function processTranscriptActivity(
         name: "Dust team",
         email: "support@dust.help",
       },
-      subject: `[DUST] Meeting summary - ${transcriptTitle}`,
+      subject: `[DUST] Transcripts - ${transcriptTitle.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")}`,
       body: `${htmlAnswer}<div style="text-align: center; margin-top: 20px;">
-    <a href="https://dust.tt/w/${owner.sId}/assistant/${conversation.sId}"
+    <a href="${apiConfig.getDustAPIConfig().url}/w/${owner.sId}/assistant/${conversation.sId}"
       style="display: inline-block;
               padding: 10px 20px;
               background-color: #000000;

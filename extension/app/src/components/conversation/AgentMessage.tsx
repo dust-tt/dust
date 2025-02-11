@@ -252,11 +252,12 @@ export function AgentMessage({
       case "process_params":
       case "websearch_params":
       case "browse_params":
+      case "conversation_include_file_params":
       case "github_get_pull_request_params":
+      case "github_create_issue_params":
       case "reasoning_started":
       case "reasoning_thinking":
       case "reasoning_tokens":
-      case "conversation_include_file_params":
         setStreamedAgentMessage((m) => {
           return updateMessageWithAction(m, event.action);
         });
