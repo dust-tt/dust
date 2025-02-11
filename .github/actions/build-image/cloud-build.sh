@@ -31,7 +31,7 @@ if [ -z "$IMAGE_NAME" ] || [ -z "$REGION" ] || [ -z "$PROJECT_ID" ]; then
     exit 1
 fi
 
-DOCKERFILE_PATH="dockerfiles/${IMAGE_NAME}.Dockerfile"
+DOCKERFILE_PATH="./dockerfiles/${IMAGE_NAME}.Dockerfile"
 
 if [ ! -f "$DOCKERFILE_PATH" ]; then
     echo "Error: Dockerfile $DOCKERFILE_PATH does not exist"
