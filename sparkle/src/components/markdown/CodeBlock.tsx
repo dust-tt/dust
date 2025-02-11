@@ -140,7 +140,7 @@ export function CodeBlock({
         "s-mx-0.5 s-cursor-text s-rounded-lg s-border s-px-1.5 s-py-1",
         "s-border-border-dark dark:s-border-border-dark-night",
         "s-bg-muted dark:s-bg-muted-night",
-        "dark:s-text-amber-600-night s-text-amber-600"
+        "s-text-amber-600 dark:s-text-amber-600-night"
       )}
     >
       {children}

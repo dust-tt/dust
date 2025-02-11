@@ -15,7 +15,8 @@ type ItemVariantType = (typeof ITEM_VARIANTS)[number];
 export const menuStyleClasses = {
   inset: "s-pl-8",
   container: cn(
-    "s-rounded-xl s-border s-border-hovering s-p-1",
+    "s-rounded-xl s-border-hovering s-p-1",
+    "s-border dark:s-border-primary-600",
     "s-bg-white dark:s-bg-black",
     "s-text-primary-950 dark:s-text-primary-950-night",
     "s-z-50 s-min-w-[8rem] s-overflow-hidden",
