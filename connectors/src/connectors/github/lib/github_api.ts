@@ -34,6 +34,7 @@ import {
   getCodeFileInternalId,
   getDirectoryUrl,
   getFileUrl,
+  getIssueLabels,
 } from "@connectors/connectors/github/lib/utils";
 import { apiConfig } from "@connectors/lib/api/config";
 import {
@@ -76,6 +77,7 @@ export type GithubIssue = {
   createdAt: Date;
   updatedAt: Date;
   body?: string | null;
+  labels: string[];
   isPullRequest: boolean;
 };
 
@@ -211,6 +213,7 @@ export async function getRepoIssuesPage(
       createdAt: new Date(i.created_at),
       updatedAt: new Date(i.updated_at),
       body: i.body,
+      labels: getIssueLabels(i.labels),
       isPullRequest: !!i.pull_request,
     }));
   } catch (err) {
@@ -265,6 +268,7 @@ export async function getIssue(
       createdAt: new Date(issue.created_at),
       updatedAt: new Date(issue.updated_at),
       body: issue.body,
+      labels: getIssueLabels(issue.labels),
       isPullRequest: !!issue.pull_request,
     };
   } catch (err) {

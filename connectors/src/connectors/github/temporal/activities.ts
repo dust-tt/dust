@@ -154,6 +154,7 @@ async function renderIssue(
     updatedAt: issue.updatedAt,
     author: renderGithubUser(issue.creator),
     additionalPrefixes: {
+      labels: issue.labels.join(", "),
       isPullRequest: issue.isPullRequest.toString(),
     },
     content: await renderMarkdownSection(dataSourceConfig, issue.body ?? "", {
@@ -290,10 +291,9 @@ export async function githubUpsertIssueActivity(
     `isPullRequest:${issue.isPullRequest}`,
     `createdAt:${issue.createdAt.getTime()}`,
     `updatedAt:${issue.updatedAt.getTime()}`,
+    ...(issueAuthor ? [`author:${issueAuthor}`] : []),
+    ...issue.labels,
   ];
-  if (issueAuthor) {
-    tags.push(`author:${issueAuthor}`);
-  }
 
   const parents: [string, string, string] = [
     documentId,
