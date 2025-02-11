@@ -1,5 +1,5 @@
 import type { Sequelize } from "sequelize";
-import { QueryTypes } from "sequelize";
+import { Op, QueryTypes } from "sequelize";
 
 import { getCorePrimaryDbConnection } from "@app/lib/production_checks/utils";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
@@ -186,21 +186,27 @@ async function backfillDocuments(
   } while (rows.length === BATCH_SIZE);
 }
 
-makeScript({}, async ({ execute }, logger) => {
-  const coreSequelize = getCorePrimaryDbConnection();
-  const frontDataSources = await DataSourceModel.findAll();
-  logger.info(`Found ${frontDataSources.length} Google Drive data sources`);
+makeScript(
+  { fromDs: { type: "number", default: 0 } },
+  async ({ execute, fromDs }, logger) => {
+    const coreSequelize = getCorePrimaryDbConnection();
+    const frontDataSources = await DataSourceModel.findAll({
+      where: { id: { [Op.gt]: fromDs } },
+      order: [["id", "ASC"]],
+    });
+    logger.info(`Found ${frontDataSources.length} Google Drive data sources`);
 
-  for (const frontDataSource of frontDataSources) {
-    await backfillDataSource(
-      frontDataSource,
-      coreSequelize,
-      execute,
-      logger.child({
-        dataSourceId: frontDataSource.id,
-        connectorId: frontDataSource.connectorId,
-        name: frontDataSource.name,
-      })
-    );
+    for (const frontDataSource of frontDataSources) {
+      await backfillDataSource(
+        frontDataSource,
+        coreSequelize,
+        execute,
+        logger.child({
+          dataSourceId: frontDataSource.id,
+          connectorId: frontDataSource.connectorId,
+          name: frontDataSource.name,
+        })
+      );
+    }
   }
-});
+);
