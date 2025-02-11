@@ -1,28 +1,6 @@
-# Build stage for types
-FROM node:20.13.0-slim AS types
-WORKDIR /types
-COPY /types/package*.json ./
-RUN npm ci
-COPY /types/ .
-RUN npm run build
+FROM node:20.13.0 AS front
 
-# Build stage for SDK
-FROM node:20.13.0-slim AS sdk
-WORKDIR /sdks/js
-COPY /sdks/js/package*.json ./
-RUN npm ci
-COPY --from=types /types/dist /app/node_modules/@dust-tt/types
-COPY /sdks/js/ .
-RUN npm run build
-
-# Build stage for front
-FROM node:20.13.0-slim AS builder
-WORKDIR /app
-COPY /front/package*.json ./
-RUN npm ci
-COPY --from=types /types/dist /app/node_modules/@dust-tt/types
-COPY --from=sdk /sdks/js/dist /app/node_modules/@dust-tt/client
-COPY /front .
+RUN apt-get update && apt-get install -y vim redis-tools postgresql-client htop
 
 ARG COMMIT_HASH
 ARG NEXT_PUBLIC_VIZ_URL
@@ -34,23 +12,27 @@ ENV NEXT_PUBLIC_VIZ_URL=$NEXT_PUBLIC_VIZ_URL
 ENV NEXT_PUBLIC_DUST_CLIENT_FACING_URL=$NEXT_PUBLIC_DUST_CLIENT_FACING_URL
 ENV NEXT_PUBLIC_GTM_TRACKING_ID=$NEXT_PUBLIC_GTM_TRACKING_ID
 
-RUN NODE_ENV=production FRONT_DATABASE_URI="sqlite:foo.sqlite" npm run build
+WORKDIR /types
+COPY /types/package*.json ./
+COPY /types/ .
+RUN npm ci --omit=dev
+RUN npm run build
 
-# Production stage
-FROM node:20.13.0-slim
+WORKDIR /sdks/js
+COPY /sdks/js/package*.json ./
+COPY /sdks/js/ .
+RUN npm ci --omit=dev
+RUN npm run build
+
 WORKDIR /app
 
 COPY /front/package*.json ./
-RUN npm ci --only=production --ignore-scripts && \
-    apt-get update && \
-    apt-get install -y --no-install-recommends \
-    redis-tools=5:7.0.15-1~deb12u2 \
-    postgresql-client-15=15.10-0+deb12u1 && \
-    rm -rf /var/lib/apt/lists/*
+RUN npm ci --omit=dev
 
-# Copy built assets
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/next.config.js ./
+COPY /front .
+
+# fake database URIs are needed because Sequelize will throw if the `url` parameter
+# is undefined, and `next build` imports the `models.ts` file while "Collecting page data"
+RUN FRONT_DATABASE_URI="sqlite:foo.sqlite" npm run build
 
 CMD ["npm", "--silent", "run", "start"]
