@@ -454,6 +454,12 @@ export interface UpsertTableArgs {
   sourceUrl?: string | null;
 }
 
+export function isUpsertTableArgs(
+  args: UpsertTableArgs | UpsertDocumentArgs | undefined
+): args is UpsertTableArgs {
+  return args !== undefined && "tableId" in args;
+}
+
 export async function upsertTable({
   tableId,
   name,

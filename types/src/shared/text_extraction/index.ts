@@ -7,11 +7,13 @@ import * as reporter from "io-ts-reporters";
 import { Readable } from "stream";
 
 import { Err, Ok, Result } from "../result";
+import { assertNever } from "../utils/assert_never";
 import {
   readableStreamToReadable,
   RequestInitWithDuplex,
 } from "../utils/streams";
 import { transformStream } from "./transform";
+import { transformStreamToCSV } from "./transformToCSV";
 
 // Define the codec for the response.
 const TikaResponseCodec = t.type({
@@ -41,6 +43,8 @@ const supportedContentTypes = [
   "application/vnd.ms-powerpoint",
   "application/vnd.openxmlformats-officedocument.presentationml.presentation",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-excel",
 ] as const;
 
 type SupportedContentTypes = (typeof supportedContentTypes)[number];
@@ -48,19 +52,36 @@ type SupportedContentTypes = (typeof supportedContentTypes)[number];
 type ContentTypeConfig = {
   [key in SupportedContentTypes]?: {
     handler: "html" | "text";
-    pageSelector?: string;
+    transformer: "document" | "csv";
+    selector: string;
   };
 };
 
 const contentTypeConfig: ContentTypeConfig = {
-  "application/pdf": { handler: "html", pageSelector: "page" },
+  "application/pdf": {
+    handler: "html",
+    selector: "page",
+    transformer: "document",
+  },
   "application/vnd.ms-powerpoint": {
     handler: "html",
-    pageSelector: "slide-content",
+    selector: "slide-content",
+    transformer: "document",
   },
   "application/vnd.openxmlformats-officedocument.presentationml.presentation": {
     handler: "html",
-    pageSelector: "slide-content",
+    selector: "slide-content",
+    transformer: "document",
+  },
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+    handler: "html",
+    selector: "h1",
+    transformer: "csv",
+  },
+  "application/vnd.ms-excel": {
+    handler: "html",
+    selector: "h1",
+    transformer: "csv",
   },
 };
 
@@ -108,14 +129,24 @@ export class TextExtraction {
 
     const responseStream = readableStreamToReadable(response.body);
 
-    const pageSelector = contentTypeConfig[contentType]?.pageSelector;
-    if (pageSelector) {
-      // If we have a page selector, we need to parse the stream and return another stream.
-      const prefix = pagePrefixesPerMimeType[contentType];
-      return transformStream(responseStream, prefix, pageSelector);
-    } else {
-      return responseStream;
+    const config = contentTypeConfig[contentType];
+
+    if (config) {
+      const { transformer, selector } = config;
+      switch (transformer) {
+        case "document": {
+          const prefix = pagePrefixesPerMimeType[contentType];
+          return transformStream(responseStream, prefix, selector);
+        }
+        case "csv": {
+          return transformStreamToCSV(responseStream, selector);
+        }
+        default:
+          assertNever(transformer);
+      }
     }
+
+    return responseStream;
   }
 
   // Query the Tika server and return the response data.
@@ -166,7 +197,7 @@ export class TextExtraction {
     const contentType = response["Content-Type"];
 
     const pageSelector =
-      contentTypeConfig[contentType as SupportedContentTypes]?.pageSelector;
+      contentTypeConfig[contentType as SupportedContentTypes]?.selector;
     if (pageSelector) {
       return this.processContentBySelector(response, pageSelector);
     }

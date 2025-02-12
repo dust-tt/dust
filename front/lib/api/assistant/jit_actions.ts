@@ -77,11 +77,13 @@ async function getJITActions(
           id: -1,
           name: DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
           sId: generateRandomModelSId(),
-          tables: filesUsableAsTableQuery.map((f) => ({
-            workspaceId: auth.getNonNullableWorkspace().sId,
-            dataSourceViewId: dataSourceView.sId,
-            tableId: f.fileId,
-          })),
+          tables: filesUsableAsTableQuery.flatMap((f) =>
+            f.generatedTables.map((tableId) => ({
+              workspaceId: auth.getNonNullableWorkspace().sId,
+              dataSourceViewId: dataSourceView.sId,
+              tableId: tableId,
+            }))
+          ),
         };
         actions.push(action);
       }
