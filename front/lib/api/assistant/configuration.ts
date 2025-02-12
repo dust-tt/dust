@@ -978,7 +978,6 @@ export async function createAgentActionConfiguration(
     | {
         type: "process_configuration";
         relativeTimeFrame: RetrievalTimeframe;
-        tagsFilter: ProcessTagsFilter | null;
         dataSources: DataSourceConfiguration[];
         schema: ProcessSchemaPropertyType[];
       }
