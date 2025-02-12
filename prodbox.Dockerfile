@@ -1,4 +1,4 @@
-FROM node:20.13.0 as base
+FROM node:20.13.0 AS base
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y vim redis-tools postgresql-client htop curl libpq-dev build-essential
@@ -48,7 +48,7 @@ WORKDIR /dust
 
 # Wraning and prompt
 RUN echo "echo -e \"\033[0;31mWARNING: This is a PRODUCTION system!\033[0m\"" >> /root/.bashrc
-RUN echo "export PS1='\[\e[0;31m\]prodbox-($DUST_REGION)\[\e[0m\]:\w\$ '" >> /root/.bashrc
+RUN echo "export PS1='\[\e[0;31m\]prodbox-(\$DUST_REGION)\[\e[0m\]:\w\$ '" >> /root/.bashrc
 
 ENV GIT_SSH_COMMAND="ssh -i ~/.ssh/github-deploykey-deploybox"
 
