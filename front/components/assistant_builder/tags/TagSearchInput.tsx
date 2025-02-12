@@ -1,8 +1,8 @@
 import {
-  Button,
   Chip,
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuPortal,
   DropdownMenuTrigger,
   ScrollArea,
@@ -71,16 +71,14 @@ export const TagSearchInput = ({
               <ScrollArea className="max-h-64">
                 {availableTags.length > 0 ? (
                   availableTags.map((tag, i) => (
-                    <Button
+                    <DropdownMenuItem
                       key={`${tag.tag}-${i}`}
-                      variant="ghost"
                       label={tag.tag}
                       onClick={() => {
                         onTagAdd(tag);
                         setSearchInputValue("");
                         inputRef.current?.focus();
                       }}
-                      className="w-full justify-start"
                     />
                   ))
                 ) : (
