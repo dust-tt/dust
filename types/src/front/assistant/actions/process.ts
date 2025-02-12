@@ -84,6 +84,8 @@ export interface ProcessActionType extends BaseAction {
 
   params: {
     relativeTimeFrame: TimeFrame | null;
+    tagsIn: string[] | null;
+    tagsNot: string[] | null;
   };
   schema: ProcessSchemaPropertyType[];
   outputs: ProcessActionOutputsType | null;
