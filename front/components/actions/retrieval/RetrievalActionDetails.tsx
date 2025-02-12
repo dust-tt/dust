@@ -28,17 +28,17 @@ export function RetrievalActionDetails({
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">
         <div className="flex flex-col gap-1">
-          <span className="dark:text-foreground-night text-sm font-bold text-foreground">
+          <span className="text-sm font-bold text-foreground dark:text-foreground-night">
             {isIncludeAction ? "Timeframe" : "Query"}
           </span>
-          <div className="dark:text-muted-foreground-night text-sm font-normal text-muted-foreground">
+          <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
             <RetrievalActionQuery action={action} />
           </div>
         </div>
         <div>
           <Collapsible defaultOpen={defaultOpen}>
             <Collapsible.Button>
-              <span className="dark:text-foreground-night text-sm font-bold text-foreground">
+              <span className="text-sm font-bold text-foreground dark:text-foreground-night">
                 Results
               </span>
             </Collapsible.Button>
@@ -71,7 +71,7 @@ function RetrievalActionQuery({ action }: { action: RetrievalActionType }) {
 
   return (
     <div className="flex flex-col gap-1">
-      <p className="dark:text-muted-foreground-night text-sm font-normal text-muted-foreground">
+      <p className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
         {makeQueryDescription(action)}
       </p>
       {tooManyChunks && (
