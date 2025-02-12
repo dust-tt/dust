@@ -116,7 +116,7 @@ const PEOPLE: Record<
     title: "Product Designer",
     image: "https://avatars.githubusercontent.com/u/32997243?v=4",
     github: "https://github.com/pinotalexandre",
-    linkedIn: "https://www.linkedin.com/in/pinotalexandre/,
+    linkedIn: "https://www.linkedin.com/in/pinotalexandre/",
   }
 };
 
