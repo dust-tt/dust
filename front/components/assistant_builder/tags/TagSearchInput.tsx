@@ -9,6 +9,7 @@ import {
   SearchInput,
 } from "@dust-tt/sparkle";
 import type { DataSourceTag } from "@dust-tt/types";
+import React from "react";
 import { useRef } from "react";
 
 export interface TagSearchProps {
@@ -35,6 +36,23 @@ export const TagSearchInput = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  React.useEffect(() => {
+    const input = inputRef.current;
+    if (!input) {
+      return;
+    }
+
+    const preventSelection = () => {
+      const len = input.value.length;
+      requestAnimationFrame(() => {
+        input.setSelectionRange(len, len);
+      });
+    };
+
+    input.addEventListener("focus", preventSelection);
+    return () => input.removeEventListener("focus", preventSelection);
+  }, []);
+
   return (
     <div className="flex flex-col gap-3">
       <div className="relative w-full" ref={containerRef}>
@@ -56,7 +74,6 @@ export const TagSearchInput = ({
           className="w-full"
           isLoading={isLoading}
         />
-
         <DropdownMenu
           open={
             availableTags.length > 0 ||
@@ -68,7 +85,7 @@ export const TagSearchInput = ({
           </DropdownMenuTrigger>
           <DropdownMenuPortal>
             <DropdownMenuContent align="start">
-              <ScrollArea className="max-h-64">
+              <ScrollArea>
                 {availableTags.length > 0 ? (
                   availableTags.map((tag, i) => (
                     <DropdownMenuItem
@@ -82,12 +99,7 @@ export const TagSearchInput = ({
                     />
                   ))
                 ) : (
-                  <div className="px-2 py-1.5 text-sm text-muted-foreground dark:text-muted-foreground-night">
-                    {!isLoading &&
-                      availableTags.length === 0 &&
-                      searchInputValue.length > 0 &&
-                      "No labels found"}
-                  </div>
+                  <DropdownMenuItem label="No results" disabled />
                 )}
               </ScrollArea>
             </DropdownMenuContent>
