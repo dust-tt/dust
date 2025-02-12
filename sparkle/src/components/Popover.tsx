@@ -7,6 +7,8 @@ const PopoverRoot = PopoverPrimitive.Root;
 
 const PopoverTrigger = PopoverPrimitive.Trigger;
 
+const PopoverPortal = PopoverPrimitive.Portal;
+
 interface PopoverContentProps
   extends React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content> {
   fullWidth?: boolean;
@@ -72,4 +74,4 @@ function Popover({
 
 PopoverContent.displayName = PopoverPrimitive.Content.displayName;
 
-export { Popover, PopoverContent, PopoverRoot, PopoverTrigger };
+export { Popover, PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger };
