@@ -141,6 +141,13 @@ const PEOPLE: Record<
     github: "https://github.com/albandum",
     linkedIn: "https://www.linkedin.com/in/albandumouilla",
   },
+  ahammour: {
+    name: "Abboud Hammour",
+    title: "Customer Success",
+    image: "https://avatars.githubusercontent.com/u/170936020?v=4",
+    github: "https://github.com/ahammour",
+    linkedIn: "https://www.linkedin.com/in/abboud-hammour/",
+  },
   clementb: {
     name: "Clément Bruneau",
     title: "Sales",
