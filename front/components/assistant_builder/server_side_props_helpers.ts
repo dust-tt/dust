@@ -192,8 +192,6 @@ async function getProcessActionConfiguration(
     };
   }
 
-  //TODO(TAF): Remove this once tag filtering is rolled out
-  processConfiguration.configuration.tagsFilter = action.tagsFilter;
   processConfiguration.configuration.dataSourceConfigurations =
     await renderDataSourcesConfigurations(action, dataSourceViews);
   processConfiguration.configuration.schema = action.schema;
