@@ -110,6 +110,13 @@ const PEOPLE: Record<
     image: "https://avatars.githubusercontent.com/u/32683010",
     github: "https://github.com/JulesBelveze",
     linkedIn: "https://www.linkedin.com/in/jules-belveze",
+  },
+    apinot: {
+    name: "Alexandre Pinot",
+    title: "Product Designer",
+    image: "https://avatars.githubusercontent.com/u/32997243?v=4",
+    github: "https://github.com/pinotalexandre",
+    linkedIn: "https://www.linkedin.com/in/pinotalexandre/,
   }
 };
 
