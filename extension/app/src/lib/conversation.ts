@@ -15,11 +15,11 @@ import type {
   UserType,
 } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
-import { getAccessToken } from "@extension/lib/auth";
 import type { GetActiveTabOptions } from "@extension/lib/messages";
 import { sendGetActiveTabMessage } from "@extension/lib/messages";
 import { getStoredUser } from "@extension/lib/storage";
 import type { UploadedFileWithSupersededContentFragmentId } from "@extension/lib/types";
+import { usePlatform } from "@extension/shared/context/platform";
 
 type SubmitMessageError = {
   type:
@@ -296,7 +296,8 @@ export async function retryMessage({
   conversationId: string;
   messageId: string;
 }): Promise<Result<{ message: UserMessageWithRankType }, SubmitMessageError>> {
-  const token = await getAccessToken();
+  const platform = usePlatform();
+  const token = await platform.auth.getAccessToken();
   const user = await getStoredUser();
 
   if (!user) {

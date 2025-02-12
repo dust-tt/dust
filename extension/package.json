@@ -5,6 +5,7 @@
   "scripts": {
     "clean": "rm -rf build/*",
     "dev": "npm run clean && tsx run/watch.ts --mode=development",
+    "dev-front": "webpack serve --config config/webpack.front.js",
     "package:production": "tsx run/build.ts",
     "package:release": "tsx run/build.ts --release",
     "analyze": "tsx run/build.ts --analyze",
@@ -49,6 +50,7 @@
     "zip-webpack-plugin": "^4.0.1"
   },
   "dependencies": {
+    "@auth0/auth0-spa-js": "^2.1.3",
     "@dust-tt/client": "^1.0.26",
     "@dust-tt/sparkle": "^0.2.391",
     "@tailwindcss/forms": "^0.5.9",

@@ -1,7 +1,7 @@
 import type { ExtensionWorkspaceType, WorkspaceType } from "@dust-tt/client";
 import { useAuthHook } from "@extension/components/auth/useAuth";
-import type { AuthError } from "@extension/lib/auth";
 import type { StoredUser } from "@extension/lib/storage";
+import type { AuthError, AuthService } from "@extension/shared/services/auth";
 import type { ReactNode } from "react";
 import React, { createContext, useContext } from "react";
 
@@ -22,7 +22,13 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
+export const AuthProvider = ({
+  authService,
+  children,
+}: {
+  authService: AuthService;
+  children: ReactNode;
+}) => {
   const {
     token,
     isAuthenticated,
@@ -36,7 +42,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     handleLogin,
     handleLogout,
     handleSelectWorkspace,
-  } = useAuthHook();
+  } = useAuthHook(authService);
 
   return (
     <AuthContext.Provider

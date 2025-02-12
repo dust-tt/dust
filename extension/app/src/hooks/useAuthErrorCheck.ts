@@ -1,8 +1,10 @@
 import { useAuth } from "@extension/components/auth/AuthProvider";
-import { logout, refreshToken } from "@extension/lib/auth";
+import { usePlatform } from "@extension/shared/context/platform";
 import { useEffect } from "react";
 
 export const useAuthErrorCheck = (error: any, mutate: () => any) => {
+  const platform = usePlatform();
+
   const { setAuthError, redirectToSSOLogin, workspace } = useAuth();
   useEffect(() => {
     const handleError = async () => {
@@ -13,19 +15,19 @@ export const useAuthErrorCheck = (error: any, mutate: () => any) => {
               return redirectToSSOLogin(workspace);
             }
             setAuthError(error);
-            void logout();
+            void platform.auth.logout();
             break;
           case "not_authenticated":
           case "invalid_oauth_token_error":
             setAuthError(error);
-            void logout();
+            void platform.auth.logout();
             break;
           case "expired_oauth_token_error":
-            const res = await refreshToken();
+            const res = await platform.auth.refreshToken();
             if (res.isOk()) {
               mutate();
             } else {
-              void logout();
+              void platform.auth.logout();
             }
             break;
           case "user_not_found":

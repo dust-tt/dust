@@ -1,12 +1,4 @@
 import type { WorkspaceType } from "@dust-tt/client";
-import {
-  AuthError,
-  isValidEnterpriseConnectionName as isValidEnterpriseConnection,
-  login,
-  logout,
-  makeEnterpriseConnectionName,
-  refreshToken,
-} from "@extension/lib/auth";
 import type { StoredTokens, StoredUser } from "@extension/lib/storage";
 import {
   clearStoredData,
@@ -14,11 +6,17 @@ import {
   getStoredUser,
   saveSelectedWorkspace,
 } from "@extension/lib/storage";
+import type { AuthService } from "@extension/shared/services/auth";
+import {
+  AuthError,
+  isValidEnterpriseConnectionName,
+  makeEnterpriseConnectionName,
+} from "@extension/shared/services/auth";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const log = console.error;
 
-export const useAuthHook = () => {
+export const useAuthHook = (authService: AuthService) => {
   const [tokens, setTokens] = useState<StoredTokens | null>(null);
   const [user, setUser] = useState<StoredUser | null>(null);
   const [authError, setAuthError] = useState<AuthError | null>(null);
@@ -42,7 +40,7 @@ export const useAuthHook = () => {
 
   const handleLogout = useCallback(async () => {
     setIsLoading(true);
-    const success = await logout();
+    const success = await authService.logout();
     if (!success) {
       // TODO(EXT): User facing error message if logout failed.
       setIsLoading(false);
@@ -58,7 +56,7 @@ export const useAuthHook = () => {
   }, []);
 
   const handleRefreshToken = useCallback(async () => {
-    const savedTokens = await refreshToken();
+    const savedTokens = await authService.refreshToken();
     if (savedTokens.isErr()) {
       setAuthError(savedTokens.error);
       log("Refresh token: No access token received.");
@@ -144,14 +142,14 @@ export const useAuthHook = () => {
         )
       );
       setForcedConnection(makeEnterpriseConnectionName(workspace.sId));
-      await logout();
+      await authService.logout();
     },
     [setAuthError, setForcedConnection]
   );
 
   const handleSelectWorkspace = async (workspace: WorkspaceType) => {
     const updatedUser = await saveSelectedWorkspace(workspace.sId);
-    if (!isValidEnterpriseConnection(updatedUser, workspace)) {
+    if (!isValidEnterpriseConnectionName(updatedUser, workspace)) {
       await redirectToSSOLogin(workspace);
       return;
     }
@@ -161,7 +159,7 @@ export const useAuthHook = () => {
   const handleLogin = useCallback(
     async (isForceLogin?: boolean) => {
       setIsLoading(true);
-      const response = await login(isForceLogin, forcedConnection);
+      const response = await authService.login(isForceLogin, forcedConnection);
       if (response.isErr()) {
         setAuthError(response.error);
         setIsLoading(false);
@@ -177,7 +175,7 @@ export const useAuthHook = () => {
         );
         if (
           selectedWorkspace &&
-          !isValidEnterpriseConnection(user, selectedWorkspace)
+          !isValidEnterpriseConnectionName(user, selectedWorkspace)
         ) {
           await redirectToSSOLogin(selectedWorkspace);
           setIsLoading(false);
