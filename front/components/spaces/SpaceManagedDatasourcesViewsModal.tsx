@@ -1,4 +1,11 @@
-import { Modal } from "@dust-tt/sparkle";
+import {
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@dust-tt/sparkle";
 import type {
   DataSourceViewSelectionConfigurations,
   DataSourceViewType,
@@ -129,30 +136,47 @@ export default function SpaceManagedDataSourcesViewsModal({
   );
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      onSave={() => {
-        onSave(selectionConfigurations);
-        onClose();
+    <Sheet
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose();
+        }
       }}
-      hasChanged={hasChanged}
-      variant="side-md"
-      title={`Add connected data to space "${space.name}"`}
     >
-      <div className="w-full pt-12">
-        <div className="overflow-x-auto">
-          <DataSourceViewsSelector
-            useCase="spaceDatasourceManagement"
-            dataSourceViews={systemSpaceDataSourceViews}
-            owner={owner}
-            selectionConfigurations={selectionConfigurations}
-            setSelectionConfigurations={setSelectionConfigurationsCallback}
-            viewType="all"
-            isRootSelectable={true}
-          />
-        </div>
-      </div>
-    </Modal>
+      <SheetContent size="lg">
+        <SheetHeader>
+          <SheetTitle>Add connected data to space "{space.name}"</SheetTitle>
+        </SheetHeader>
+        <SheetContainer>
+          <div className="overflow-x-auto">
+            <DataSourceViewsSelector
+              useCase="spaceDatasourceManagement"
+              dataSourceViews={systemSpaceDataSourceViews}
+              owner={owner}
+              selectionConfigurations={selectionConfigurations}
+              setSelectionConfigurations={setSelectionConfigurationsCallback}
+              viewType="all"
+              isRootSelectable={true}
+            />
+          </div>
+        </SheetContainer>
+        <SheetFooter
+          leftButtonProps={{
+            label: "Cancel",
+            variant: "outline",
+            onClick: onClose,
+          }}
+          rightButtonProps={{
+            label: "Save",
+            onClick: () => {
+              onSave(selectionConfigurations);
+              onClose();
+            },
+            disabled: !hasChanged,
+          }}
+        />
+      </SheetContent>
+    </Sheet>
   );
 }
