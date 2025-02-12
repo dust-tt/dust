@@ -38,6 +38,7 @@ export class MicrosoftCastKnownErrorsInterceptor
       return await next(input);
     } catch (err: unknown) {
       // See https://learn.microsoft.com/en-us/answers/questions/1339560/sign-in-error-code-50173
+      // TODO(2025-02-12): add an error type for Microsoft client errors and catch them at strategic locations (e.g. API call to instantiate a client)
       if (isMicrosoftSignInError(err)) {
         throw new ExternalOAuthTokenError(err);
       }
