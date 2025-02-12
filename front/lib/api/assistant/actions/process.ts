@@ -294,7 +294,6 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
       })
     );
 
-    console.log("************", actionConfiguration?.tagsFilter?.in);
     // TODO(TAF): Remove this once tag filtering is rolled out
     // This is overriden by a map if filters are provided in the data source configuration
     if (
