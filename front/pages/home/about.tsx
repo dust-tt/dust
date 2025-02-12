@@ -139,7 +139,14 @@ const PEOPLE: Record<
     title: "Acceleration Engineer",
     image: "https://avatars.githubusercontent.com/u/1189312?v=4",
     github: "https://github.com/albandum",
-    linkedIn: "https://www.linkedin.com/in/albandumouilla/",
+    linkedIn: "https://www.linkedin.com/in/albandumouilla",
+  },
+  clementb: {
+    name: "Clément Bruneau",
+    title: "Sales",
+    image: "https://avatars.githubusercontent.com/u/120678252?v=4",
+    github: "https://github.com/clmrn",
+    linkedIn: "https://www.linkedin.com/in/bruneauclement",
   },
 };
 
