@@ -3,6 +3,8 @@ import { removeNulls } from "../shared/utils/general";
 
 const uniq = <T>(arr: T[]): T[] => Array.from(new Set(arr));
 
+export const TABLE_PREFIX = "TABLE:";
+
 export type FileStatus = "created" | "failed" | "ready";
 
 export type FileUseCase =
@@ -14,6 +16,7 @@ export type FileUseCase =
 
 export type FileUseCaseMetadata = {
   conversationId: string;
+  generatedTables?: string[];
 };
 
 export interface FileType {
@@ -90,6 +93,11 @@ const FILE_FORMATS = {
   "text/comma-separated-values": { cat: "delimited", exts: [".csv"] },
   "text/tsv": { cat: "delimited", exts: [".tsv"] },
   "text/tab-separated-values": { cat: "delimited", exts: [".tsv"] },
+  "application/vnd.ms-excel": { cat: "delimited", exts: [".xls"] },
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+    cat: "delimited",
+    exts: [".xlsx"],
+  },
 
   // Data
   "text/plain": { cat: "data", exts: [".txt", ".log", ".cfg", ".conf"] },
