@@ -28,6 +28,7 @@ import { DEFAULT_PROCESS_ACTION_NAME } from "@app/lib/api/assistant/actions/cons
 import {
   parseTimeFrame,
   retrievalAutoTimeFrameInputSpecification,
+  retrievalTagsInputSpecification,
   timeFrameFromNow,
 } from "@app/lib/api/assistant/actions/retrieval";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
@@ -45,6 +46,8 @@ interface ProcessActionBlob {
   agentMessageId: ModelId;
   params: {
     relativeTimeFrame: TimeFrame | null;
+    tagsIn: string[] | null;
+    tagsNot: string[] | null;
   };
   schema: ProcessSchemaPropertyType[];
   outputs: ProcessActionOutputsType | null;
@@ -57,6 +60,8 @@ export class ProcessAction extends BaseAction {
   readonly agentMessageId: ModelId;
   readonly params: {
     relativeTimeFrame: TimeFrame | null;
+    tagsIn: string[] | null;
+    tagsNot: string[] | null;
   };
   readonly schema: ProcessSchemaPropertyType[];
   readonly outputs: ProcessActionOutputsType | null;
@@ -186,6 +191,23 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
       }
     }
 
+    let globalTagsIn: string[] | null = null;
+    let globalTagsNot: string[] | null = null;
+    if (
+      rawInputs.tagsIn &&
+      Array.isArray(rawInputs.tagsIn) &&
+      rawInputs.tagsIn.every((tag): tag is string => typeof tag === "string")
+    ) {
+      globalTagsIn = rawInputs.tagsIn;
+    }
+    if (
+      rawInputs.tagsNot &&
+      Array.isArray(rawInputs.tagsNot) &&
+      rawInputs.tagsNot.every((tag): tag is string => typeof tag === "string")
+    ) {
+      globalTagsNot = rawInputs.tagsNot;
+    }
+
     const objective =
       typeof rawInputs.objective === "string" ? rawInputs.objective : "n/a";
 
@@ -205,6 +227,8 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
       schema: actionConfiguration.schema,
       functionCallId,
       functionCallName: actionConfiguration.name,
+      tagsIn: globalTagsIn,
+      tagsNot: globalTagsNot,
       agentMessageId: agentMessage.agentMessageId,
       step,
       workspaceId: owner.id,
@@ -223,6 +247,8 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
         agentMessageId: agentMessage.agentMessageId,
         params: {
           relativeTimeFrame,
+          tagsIn: globalTagsIn,
+          tagsNot: globalTagsNot,
         },
         schema: action.schema,
         outputs: null,
@@ -268,6 +294,9 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
       })
     );
 
+    console.log("************", actionConfiguration?.tagsFilter?.in);
+    // TODO(TAF): Remove this once tag filtering is rolled out
+    // This is overriden by a map if filters are provided in the data source configuration
     if (
       actionConfiguration.tagsFilter &&
       actionConfiguration.tagsFilter.in &&
@@ -280,6 +309,7 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
       }
       config.DATASOURCE.filter.tags.in = actionConfiguration.tagsFilter.in;
     }
+    // END-TODO(TAF)
 
     for (const ds of actionConfiguration.dataSources) {
       if (!config.DATASOURCE.filter.parents) {
@@ -307,6 +337,33 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
         }
         config.DATASOURCE.filter.parents.not.push(...ds.filter.parents.not);
       }
+
+      // Handle tags filtering.
+      if (ds.filter.tags) {
+        if (!config.DATASOURCE.filter.tags?.in_map) {
+          config.DATASOURCE.filter.tags = {
+            in_map: {},
+            not_map: {},
+          };
+        }
+
+        const dsView = dataSourceViewsMap[ds.dataSourceViewId];
+        assert(dsView, `Data source view ${ds.dataSourceViewId} not found`);
+
+        const tagsIn =
+          ds.filter.tags === "auto" ? globalTagsIn : ds.filter.tags.in;
+        const tagsNot =
+          ds.filter.tags === "auto" ? globalTagsNot : ds.filter.tags.not;
+
+        if (tagsIn && tagsNot) {
+          config.DATASOURCE.filter.tags.in_map[
+            dsView.dataSource.dustAPIDataSourceId
+          ] = tagsIn;
+          config.DATASOURCE.filter.tags.not_map[
+            dsView.dataSource.dustAPIDataSourceId
+          ] = tagsNot;
+        }
+      }
     }
 
     // Handle timestamp filtering.
@@ -317,6 +374,7 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
     }
 
     config.DATASOURCE.top_k = PROCESS_ACTION_TOP_K;
+    console.log("************", JSON.stringify(config.DATASOURCE));
 
     const res = await runActionStreamed(
       auth,
@@ -442,6 +500,8 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
         agentMessageId: agentMessage.agentMessageId,
         params: {
           relativeTimeFrame,
+          tagsIn: globalTagsIn,
+          tagsNot: globalTagsNot,
         },
         schema: action.schema,
         outputs,
@@ -474,6 +534,10 @@ async function processActionSpecification({
 
   if (actionConfiguration.relativeTimeFrame === "auto") {
     inputs.push(retrievalAutoTimeFrameInputSpecification());
+  }
+
+  if (actionConfiguration.dataSources.some((ds) => ds.filter.tags === "auto")) {
+    inputs.push(...retrievalTagsInputSpecification());
   }
 
   return {
@@ -513,6 +577,8 @@ export async function processActionTypesFromAgentMessageIds(
       agentMessageId: action.agentMessageId,
       params: {
         relativeTimeFrame,
+        tagsIn: action.tagsIn,
+        tagsNot: action.tagsNot,
       },
       schema: action.schema,
       outputs: action.outputs,

@@ -21,7 +21,7 @@ export function ProcessActionDetails({
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">
         <div className="flex flex-col gap-1">
-          <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+          <span className="dark:text-foreground-night text-sm font-semibold text-foreground">
             Query
           </span>
           <ProcessActionQuery action={action} />
@@ -29,7 +29,7 @@ export function ProcessActionDetails({
         <div>
           <Collapsible defaultOpen={defaultOpen}>
             <Collapsible.Button>
-              <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+              <span className="dark:text-foreground-night text-sm font-semibold text-foreground">
                 Results
               </span>
             </Collapsible.Button>
@@ -59,7 +59,7 @@ function ProcessActionQuery({ action }: { action: ProcessActionType }) {
 
   return (
     <div className="flex flex-col gap-1">
-      <p className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+      <p className="dark:text-muted-foreground-night text-sm font-normal text-muted-foreground">
         {makeQueryDescription(action)}
       </p>
       {overflow && (
@@ -80,7 +80,13 @@ function ProcessActionQuery({ action }: { action: ProcessActionType }) {
 }
 
 function makeQueryDescription(action: ProcessActionType) {
-  const { relativeTimeFrame } = action.params;
+  const { relativeTimeFrame, tagsIn, tagsNot } = action.params;
+
+  const tagsInAsString = tagsIn ? `, with tags ${tagsIn?.join(", ")}` : "";
+  const tagsNotAsString =
+    tagsNot && tagsNot.length > 0
+      ? `, excluding tags ${tagsNot?.join(", ")}`
+      : "";
 
   const timeFrameAsString = relativeTimeFrame
     ? "the last " +
@@ -90,9 +96,9 @@ function makeQueryDescription(action: ProcessActionType) {
     : "all time";
 
   if (action.outputs?.total_documents) {
-    return `Extracted from ${action.outputs?.total_documents} documents over ${timeFrameAsString}.`;
+    return `Extracted from ${action.outputs?.total_documents} documents over ${timeFrameAsString}${tagsInAsString}${tagsNotAsString}.`;
   } else {
-    return `Extracted from documents over ${timeFrameAsString}.`;
+    return `Extracted from documents over ${timeFrameAsString}${tagsInAsString}${tagsNotAsString}.`;
   }
 }
 

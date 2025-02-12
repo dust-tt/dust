@@ -394,7 +394,6 @@ export function ActionProcess({
         allowedSpaces={allowedSpaces}
         viewType="documents"
       />
-
       <div className="text-sm text-element-700">
         This tool scans selected data sources within the specified time frame,
         extracting information based on a predefined schema. It can process the
@@ -410,21 +409,28 @@ export function ActionProcess({
         </Hoverable>
         .
       </div>
-
       <DataSourceSelectionSection
         owner={owner}
         dataSourceConfigurations={actionConfiguration.dataSourceConfigurations}
         openDataSourceModal={() => {
           setShowDataSourcesModal(true);
         }}
+        onSave={(dsConfigs) => {
+          setEdited(true);
+          updateAction((previousAction) => ({
+            ...previousAction,
+            dataSourceConfigurations: dsConfigs,
+          }));
+        }}
         viewType="documents"
       />
 
+      {/* TODO(TAF): Remove this once tag filtering is rolled out */}
       {(foldersOnly ||
         (actionConfiguration.tagsFilter?.in || []).length > 0) && (
         <div className="flex flex-col">
           <div className="flex flex-row items-center gap-4 pb-4">
-            <div className="text-sm font-semibold text-foreground dark:text-foreground-night">
+            <div className="dark:text-foreground-night text-sm font-semibold text-foreground">
               Folder tags filtering
             </div>
             <div>
@@ -517,7 +523,6 @@ export function ActionProcess({
           })}
         </div>
       )}
-
       {onDescriptionChange && (
         <div className="flex flex-col gap-4 pt-8">
           <div className="font-semibold text-element-800">Tool description</div>
@@ -537,9 +542,8 @@ export function ActionProcess({
           />
         </div>
       )}
-
       <div className={"flex flex-row items-center gap-4 pb-4"}>
-        <div className="text-sm font-semibold text-foreground dark:text-foreground-night">
+        <div className="dark:text-foreground-night text-sm font-semibold text-foreground">
           Process data from the last
         </div>
         <input
@@ -549,7 +553,7 @@ export function ActionProcess({
             !timeFrameError
               ? "focus:border-action-500 focus:ring-action-500"
               : "border-red-500 focus:border-red-500 focus:ring-red-500",
-            "bg-structure-50 stroke-structure-50 dark:bg-structure-50-night dark:stroke-structure-50-night"
+            "dark:bg-structure-50-night dark:stroke-structure-50-night bg-structure-50 stroke-structure-50"
           )}
           value={actionConfiguration.timeFrame.value || ""}
           onChange={(e) => {
@@ -572,10 +576,9 @@ export function ActionProcess({
           onEdit={() => setEdited(true)}
         />
       </div>
-
       <div className="flex flex-col">
         <div className="flex flex-row items-start">
-          <div className="flex-grow pb-2 text-sm font-semibold text-foreground dark:text-foreground-night">
+          <div className="dark:text-foreground-night flex-grow pb-2 text-sm font-semibold text-foreground">
             Schema
           </div>
           {actionConfiguration.schema.length > 0 && !isGeneratingSchema && (
