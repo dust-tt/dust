@@ -687,7 +687,7 @@ function NewActionModal({
             onClick: onCloseLocal,
           }}
           rightButtonProps={{
-            label: "Send",
+            label: "Save",
             onClick: onModalSave,
           }}
         />
