@@ -91,7 +91,8 @@ async function handler(
       },
     });
   }
-  return res.status(200).json(result.value.response);
+
+  return res.status(200).json(result.value);
 }
 
 export default withSessionAuthenticationForWorkspace(handler);

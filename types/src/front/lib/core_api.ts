@@ -1643,8 +1643,8 @@ export class CoreAPI {
     queryType,
     dataSources,
   }: {
-    query: string;
-    queryType: string;
+    query?: string;
+    queryType?: string;
     dataSources: string[];
   }): Promise<CoreAPIResponse<CoreAPISearchTagsResponse>> {
     const response = await this._fetchWithError(`${this._url}/tags/search`, {
@@ -1653,11 +1653,15 @@ export class CoreAPI {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
+        data_source_views: dataSources.map((dataSource) => ({
+          data_source_id: dataSource,
+          view_filter: [],
+        })),
         query,
         query_type: queryType,
-        data_sources: dataSources,
       }),
     });
+
     return this._resultFromResponse(response);
   }
 

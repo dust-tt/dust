@@ -1302,7 +1302,11 @@ async function _createAgentDataSourcesConfigData(
 
         if (tagsFilter === "auto") {
           tagsMode = "auto";
-        } else if (tagsFilter?.in && tagsFilter?.not) {
+        } else if (
+          tagsFilter?.in &&
+          tagsFilter?.not &&
+          (tagsFilter.in.length > 0 || tagsFilter.not.length > 0)
+        ) {
           tagsMode = "custom";
           tagsIn = tagsFilter.in;
           tagsNotIn = tagsFilter.not;

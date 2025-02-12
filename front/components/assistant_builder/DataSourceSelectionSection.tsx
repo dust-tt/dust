@@ -15,6 +15,7 @@ import type {
 import { useContext, useState } from "react";
 
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
+import { DataSourceTagsFilterDropdown } from "@app/components/assistant_builder/tags/DataSourceTagsFilterDropdown";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { DataSourceViewPermissionTree } from "@app/components/DataSourceViewPermissionTree";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
@@ -25,11 +26,13 @@ import {
   canBeExpanded,
   getDisplayNameForDataSource,
 } from "@app/lib/data_sources";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames } from "@app/lib/utils";
 
 interface DataSourceSelectionSectionProps {
   dataSourceConfigurations: DataSourceViewSelectionConfigurations;
   openDataSourceModal: () => void;
+  onSave?: (dsConfigs: DataSourceViewSelectionConfigurations) => void;
   owner: LightWorkspaceType;
   viewType: ContentNodesViewType;
 }
@@ -37,6 +40,7 @@ interface DataSourceSelectionSectionProps {
 export default function DataSourceSelectionSection({
   dataSourceConfigurations,
   openDataSourceModal,
+  onSave,
   owner,
   viewType,
 }: DataSourceSelectionSectionProps) {
@@ -48,6 +52,9 @@ export default function DataSourceSelectionSection({
     useState<DataSourceViewType | null>(null);
 
   const canAddDataSource = dataSourceViews.length > 0;
+
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+  const shouldDisplayTagsFilters = featureFlags.includes("tags_filters");
 
   return (
     <>
@@ -105,6 +112,17 @@ export default function DataSourceSelectionSection({
                   )}
                   visual={LogoComponent}
                   className="whitespace-nowrap"
+                  actions={
+                    shouldDisplayTagsFilters &&
+                    onSave && (
+                      <DataSourceTagsFilterDropdown
+                        owner={owner}
+                        dataSourceConfigurations={dataSourceConfigurations}
+                        currentDataSourceConfiguration={dsConfig}
+                        onSave={onSave}
+                      />
+                    )
+                  }
                 >
                   {dsConfig.isSelectAll && (
                     <DataSourceViewPermissionTree
