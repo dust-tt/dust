@@ -1,8 +1,13 @@
 import {
   ExclamationCircleIcon,
   Input,
-  Modal,
   Page,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
   TextArea,
   useSendNotification,
 } from "@dust-tt/sparkle";
@@ -106,21 +111,22 @@ export const SpaceCreateAppModal = ({
   };
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={() => {
-        setIsOpen(false);
+    <Sheet
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          setIsOpen(false);
+        }
       }}
-      onSave={onSave}
-      hasChanged={name !== null || description !== null}
-      title="Create a new App"
-      variant="side-sm"
     >
-      <Page variant="modal">
-        <div className="w-full">
-          <Page.Vertical sizing="grow">
-            <Page.SectionHeader title="Name" />
-            <div className="w-full">
+      <SheetContent size="lg">
+        <SheetHeader>
+          <SheetTitle>Create a new App</SheetTitle>
+        </SheetHeader>
+        <SheetContainer>
+          <div className="flex flex-col gap-4">
+            <div>
+              <Page.SectionHeader title="Name" />
               <Input
                 placeholder="app_name"
                 name="name"
@@ -139,10 +145,9 @@ export const SpaceCreateAppModal = ({
                 alphanumeric, - or _ characters.
               </p>
             </div>
-
             <Page.Separator />
-            <Page.SectionHeader title="Description" />
-            <div className="w-full">
+            <div>
+              <Page.SectionHeader title="Description" />
               <TextArea
                 placeholder="This description guides assistants in understanding how to use
                 your app effectively and determines its relevance in responding to user inquiries."
@@ -157,9 +162,20 @@ export const SpaceCreateAppModal = ({
                 showErrorLabel
               />
             </div>
-          </Page.Vertical>
-        </div>
-      </Page>
-    </Modal>
+          </div>
+        </SheetContainer>
+        <SheetFooter
+          leftButtonProps={{
+            label: "Cancel",
+            variant: "outline",
+          }}
+          rightButtonProps={{
+            label: "Save",
+            onClick: onSave,
+            disabled: !(name !== null || description !== null),
+          }}
+        />
+      </SheetContent>
+    </Sheet>
   );
 };
