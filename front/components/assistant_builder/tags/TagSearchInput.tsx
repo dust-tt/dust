@@ -68,7 +68,7 @@ export const TagSearchInput = ({
           </DropdownMenuTrigger>
           <DropdownMenuPortal>
             <DropdownMenuContent align="start">
-              <ScrollArea className="max-h-[250px]">
+              <ScrollArea className="max-h-64">
                 {availableTags.length > 0 ? (
                   availableTags.map((tag, i) => (
                     <Button

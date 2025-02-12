@@ -3,6 +3,7 @@ import {
   FilterIcon,
   FolderIcon,
   Icon,
+  Label,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
@@ -95,12 +96,7 @@ export function DataSourceTagsFilterDropdown({
       <PopoverTrigger asChild>
         <Button variant="ghost" size="sm" icon={FilterIcon} />
       </PopoverTrigger>
-      <PopoverContent
-        style={{
-          width: "500px",
-          maxWidth: "500px",
-        }}
-      >
+      <PopoverContent className="w-[500px] max-w-[500px]">
         <div className="flex flex-col gap-4 p-2">
           <div className="flex flex-row gap-2">
             <div className="flex items-center gap-1 text-element-600 dark:text-element-600-night">
@@ -119,9 +115,7 @@ export function DataSourceTagsFilterDropdown({
           </div>
 
           <div className="flex flex-col gap-2">
-            <div className="font-semibold text-element-800 dark:text-element-800-night">
-              Required labels
-            </div>
+            <Label>Required labels</Label>
             <TagSearchInput
               searchInputValue={searchInputValueIn}
               setSearchInputValue={(value) =>
@@ -135,9 +129,7 @@ export function DataSourceTagsFilterDropdown({
             />
           </div>
           <div className="flex flex-col gap-2">
-            <div className="font-semibold text-element-800 dark:text-element-800-night">
-              Exclude labels
-            </div>
+            <Label>Exclude labels</Label>
             <TagSearchInput
               searchInputValue={searchInputValueNot}
               setSearchInputValue={(value) =>
