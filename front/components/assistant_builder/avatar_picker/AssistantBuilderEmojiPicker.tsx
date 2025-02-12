@@ -9,13 +9,9 @@ import {
   Popover,
 } from "@dust-tt/sparkle";
 import { generateTailwindBackgroundColors } from "@dust-tt/types";
-import React, { useEffect } from "react";
-import { useImperativeHandle, useRef, useState } from "react";
+import React, { useEffect, useImperativeHandle, useRef, useState } from "react";
 
-import type {
-  AvatarPickerTabElement,
-  SelectedEmojiType,
-} from "@app/components/assistant_builder/avatar_picker/types";
+import type { AvatarPickerTabElement, SelectedEmojiType } from "@app/components/assistant_builder/avatar_picker/types";
 import { makeUrlForEmojiAndBackgroud } from "@app/components/assistant_builder/avatar_picker/utils";
 
 const DEFAULT_BACKGROUND_COLOR: avatarUtils.AvatarBackgroundColorType =
