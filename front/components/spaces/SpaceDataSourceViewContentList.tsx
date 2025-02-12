@@ -24,11 +24,7 @@ import type {
   SpaceType,
   WorkspaceType,
 } from "@dust-tt/types";
-import {
-  isDevelopment,
-  isDustWorkspace,
-  isValidContentNodesViewType,
-} from "@dust-tt/types";
+import { isValidContentNodesViewType } from "@dust-tt/types";
 import type {
   CellContext,
   ColumnDef,
@@ -390,10 +386,7 @@ export const SpaceDataSourceViewContentList = ({
     () =>
       nodes?.map((contentNode) => ({
         ...contentNode,
-        icon: getVisualForContentNode(
-          contentNode,
-          isDevelopment() || isDustWorkspace(owner)
-        ),
+        icon: getVisualForContentNode(contentNode),
         spaces: spaces.filter((space) =>
           dataSourceViews
             .filter(
