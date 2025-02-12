@@ -146,14 +146,14 @@ async function handler(
         if (fragment.content) {
           if (
             fragment.content.length === 0 ||
-            fragment.content.length > 128 * 1024
+            fragment.content.length > 512 * 1024
           ) {
             return apiError(req, res, {
               status_code: 400,
               api_error: {
                 type: "invalid_request_error",
                 message:
-                  "The content must be a non-empty string of less than 128kb.",
+                  "The content must be a non-empty string of less than 512kB.",
               },
             });
           }
