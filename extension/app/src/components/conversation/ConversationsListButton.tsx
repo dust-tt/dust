@@ -2,6 +2,7 @@ import type { ConversationWithoutContentPublicType } from "@dust-tt/client";
 import {
   Button,
   ChatBubbleLeftRightIcon,
+  classNames,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -88,17 +89,19 @@ const Content = () => {
       {Object.keys(conversationsByDate).map((dateLabel) => (
         <React.Fragment key={dateLabel}>
           {conversationsByDate[dateLabel as GroupLabel].length > 0 && (
-            <DropdownMenuLabel label={dateLabel} />
+            <DropdownMenuLabel
+              label={dateLabel}
+              className={classNames("text-foreground")}
+            />
           )}
           {conversationsByDate[dateLabel as GroupLabel].map((conversation) => (
             <DropdownMenuItem
               key={conversation.sId}
               label={conversation.title || "Untitled Conversation"}
-              className={
-                conversationId === conversation.sId
-                  ? "bg-primary-50"
-                  : undefined
-              }
+              className={classNames(
+                "text-sm text-muted-foreground font-normal",
+                conversationId === conversation.sId ? "bg-primary-50" : ""
+              )}
               onClick={() => {
                 navigate(`/conversations/${conversation.sId}`);
               }}
