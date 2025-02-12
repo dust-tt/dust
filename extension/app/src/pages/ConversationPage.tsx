@@ -69,7 +69,7 @@ export const ConversationPage = ({
             </div>
           }
         />
-        <div className="h-full w-full pt-4 mt-12">
+        <div className="h-full w-full pt-3 mt-16">
           <InputBarProvider>
             <ConversationContainer
               owner={workspace}

@@ -147,7 +147,7 @@ export function ConversationViewer({
   return (
     <div
       className={classNames(
-        "flex w-full max-w-4xl flex-1 flex-grow flex-col justify-start gap-2 pb-4"
+        "flex w-full flex-1 flex-grow flex-col justify-start gap-2 pb-4"
       )}
     >
       {/* Invisible span to detect when the user has scrolled to the top of the list. */}
