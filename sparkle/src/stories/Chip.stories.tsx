@@ -58,19 +58,25 @@ export const Basic: Story = {
     size: "sm",
     color: "slate",
     isBusy: true,
+    onRemove: undefined,
   },
 };
 
 export const ThinkingChip = () => (
-  <div className="s-flex s-h-80 s-w-full s-flex-col s-items-center s-justify-center s-gap-4">
-    <Chip
-      size="sm"
-      color="slate"
-      label="
+  <Chip
+    size="sm"
+    color="slate"
+    label="
       Thinking, Searching"
-      isBusy
-    >
-      {/* <Spinner variant="dark" size="xs" /> */}
-    </Chip>
-  </div>
+    isBusy
+  />
+);
+
+export const RemovableChip = () => (
+  <Chip
+    size="sm"
+    color="slate"
+    label="Remove me"
+    onRemove={() => alert("Removed")}
+  />
 );

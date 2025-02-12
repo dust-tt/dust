@@ -2,6 +2,7 @@ import { cva } from "class-variance-authority";
 import React, { ComponentType, ReactNode } from "react";
 
 import { AnimatedText } from "@sparkle/components/";
+import { XMarkIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 
 import { Icon, IconProps } from "./Icon";
@@ -31,6 +32,7 @@ type ChipProps = {
   className?: string;
   isBusy?: boolean;
   icon?: ComponentType;
+  onRemove?: () => void;
 };
 
 const sizeVariants: Record<ChipSizeType, string> = {
@@ -104,21 +106,37 @@ const chipVariants = cva("s-inline-flex s-box-border s-items-center", {
 
 const Chip = React.forwardRef<HTMLDivElement, ChipProps>(
   (
-    { size, color, label, children, className, isBusy, icon }: ChipProps,
+    {
+      size,
+      color,
+      label,
+      children,
+      className,
+      isBusy,
+      icon,
+      onRemove,
+    }: ChipProps,
     ref
   ) => (
     <div
       className={cn(
         chipVariants({ size, background: color, text: color }),
-        className
+        className,
+        onRemove && "s-cursor-pointer"
       )}
       aria-label={label}
       ref={ref}
+      onClick={onRemove ? () => onRemove() : undefined}
     >
       {children}
       {icon && <Icon visual={icon} size={size as IconProps["size"]} />}
       {label && (
-        <span className={cn("s-pointer s-grow s-cursor-default s-truncate")}>
+        <span
+          className={cn(
+            "s-pointer s-grow s-truncate",
+            onRemove ? "s-cursor-pointer" : "s-cursor-default"
+          )}
+        >
           {isBusy ? (
             <AnimatedText variant={color}>{label}</AnimatedText>
           ) : (
@@ -126,6 +144,7 @@ const Chip = React.forwardRef<HTMLDivElement, ChipProps>(
           )}
         </span>
       )}
+      {onRemove && <Icon visual={XMarkIcon} size={size as IconProps["size"]} />}
     </div>
   )
 );

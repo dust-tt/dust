@@ -1,6 +1,6 @@
 import React, { forwardRef } from "react";
 
-import { Button, Icon, Input } from "@sparkle/components";
+import { Button, Icon, Input, Spinner } from "@sparkle/components";
 import { MagnifyingGlassIcon, XMarkIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 
@@ -9,8 +9,10 @@ export interface SearchInputProps {
   value: string | null;
   onChange: (value: string) => void;
   onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+  onFocus?: () => void;
   name: string;
   disabled?: boolean;
+  isLoading?: boolean;
   className?: string;
 }
 
@@ -21,8 +23,10 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
       value,
       onChange,
       onKeyDown,
+      onFocus,
       name,
       disabled = false,
+      isLoading = false,
       className,
     },
     ref
@@ -41,12 +45,17 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
           onChange={(e) => {
             onChange(e.target.value);
           }}
+          onFocus={onFocus}
           onKeyDown={onKeyDown}
           disabled={disabled}
           ref={ref}
         />
         <div className="s-absolute s-inset-y-0 s-right-0 s-flex s-items-center s-pr-1">
-          {value ? (
+          {isLoading ? (
+            <div className="s-px-1">
+              <Spinner size="xs" />
+            </div>
+          ) : value ? (
             <Button
               icon={XMarkIcon}
               variant="ghost"
