@@ -1037,7 +1037,7 @@ function ActionEditor({
               <div className="text-sm text-element-600">
                 Provide a brief description (maximum 800 characters) of the data
                 content and context to help the assistant determine when to
-                utilize it effectively
+                utilize it effectively.
               </div>
             </div>
           ) : (
