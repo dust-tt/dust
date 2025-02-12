@@ -8,7 +8,11 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
-import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
+import type {
+  SubscriptionType,
+  UserTypeWithWorkspaces,
+  WorkspaceType,
+} from "@dust-tt/types";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -17,9 +21,7 @@ import type { SidebarNavigation } from "@app/components/navigation/config";
 import { getTopNavigationTabs } from "@app/components/navigation/config";
 import { HelpDropdown } from "@app/components/navigation/HelpDropdown";
 import { UserMenu } from "@app/components/UserMenu";
-import WorkspacePicker from "@app/components/WorkspacePicker";
 import { useAppStatus } from "@app/lib/swr/useAppStatus";
-import { useUser } from "@app/lib/swr/user";
 
 interface NavigationSidebarProps {
   children: React.ReactNode;
@@ -27,17 +29,23 @@ interface NavigationSidebarProps {
   subNavigation?: SidebarNavigation[] | null;
   // TODO(2024-06-19 flav) Move subscription to a hook.
   subscription: SubscriptionType;
+  user: UserTypeWithWorkspaces | null;
 }
 
 export const NavigationSidebar = React.forwardRef<
   HTMLDivElement,
   NavigationSidebarProps
 >(function NavigationSidebar(
-  { owner, subscription, subNavigation, children }: NavigationSidebarProps,
+  {
+    owner,
+    subscription,
+    subNavigation,
+    children,
+    user,
+  }: NavigationSidebarProps,
   ref
 ) {
   const router = useRouter();
-  const { user } = useUser();
   const [activePath, setActivePath] = useState("");
 
   useEffect(() => {
@@ -59,19 +67,6 @@ export const NavigationSidebar = React.forwardRef<
       className="flex min-w-0 grow flex-col bg-structure-50 dark:bg-structure-50-night"
     >
       <div className="flex flex-col">
-        {user && user.workspaces.length > 1 ? (
-          <WorkspacePicker
-            user={user}
-            workspace={owner}
-            onWorkspaceUpdate={async (workspace) => {
-              const assistantRoute = `/w/${workspace.sId}/assistant/new`;
-              if (workspace.id !== owner.id) {
-                await router.push(assistantRoute).then(() => router.reload());
-              }
-            }}
-          />
-        ) : null}
-
         <AppStatusBanner />
         {subscription.endDate && (
           <SubscriptionEndBanner endDate={subscription.endDate} />
