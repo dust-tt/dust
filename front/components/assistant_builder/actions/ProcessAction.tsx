@@ -438,7 +438,7 @@ export function ActionProcess({
         </div>
       )}
       <div className={"flex flex-row items-center gap-4 pb-4"}>
-        <div className="dark:text-foreground-night text-sm font-semibold text-foreground">
+        <div className="text-sm font-semibold text-foreground dark:text-foreground-night">
           Process data from the last
         </div>
         <input
@@ -448,7 +448,7 @@ export function ActionProcess({
             !timeFrameError
               ? "focus:border-action-500 focus:ring-action-500"
               : "border-red-500 focus:border-red-500 focus:ring-red-500",
-            "dark:bg-structure-50-night dark:stroke-structure-50-night bg-structure-50 stroke-structure-50"
+            "bg-structure-50 stroke-structure-50 dark:bg-structure-50-night dark:stroke-structure-50-night"
           )}
           value={actionConfiguration.timeFrame.value || ""}
           onChange={(e) => {
@@ -473,7 +473,7 @@ export function ActionProcess({
       </div>
       <div className="flex flex-col">
         <div className="flex flex-row items-start">
-          <div className="dark:text-foreground-night flex-grow pb-2 text-sm font-semibold text-foreground">
+          <div className="flex-grow pb-2 text-sm font-semibold text-foreground dark:text-foreground-night">
             Schema
           </div>
           {actionConfiguration.schema.length > 0 && !isGeneratingSchema && (
