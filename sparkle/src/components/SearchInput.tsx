@@ -9,7 +9,8 @@ export interface SearchInputProps {
   value: string | null;
   onChange: (value: string) => void;
   onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
-  onFocus?: () => void;
+  onFocus?: (e: React.FocusEvent<HTMLInputElement>) => void;
+  onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void;
   name: string;
   disabled?: boolean;
   isLoading?: boolean;
@@ -24,6 +25,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
       onChange,
       onKeyDown,
       onFocus,
+      onBlur,
       name,
       disabled = false,
       isLoading = false,
@@ -47,6 +49,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
           }}
           onFocus={onFocus}
           onKeyDown={onKeyDown}
+          onBlur={onBlur}
           disabled={disabled}
           ref={ref}
         />
