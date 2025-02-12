@@ -30,7 +30,7 @@ const { garbageCollectBatch } = proxyActivities<typeof activities>({
   heartbeatTimeout: "5 minute",
 });
 
-export const UPDATE_PARENTS_FIELDS_TIMEOUT_MINUTES = 120;
+export const UPDATE_PARENTS_FIELDS_TIMEOUT_MINUTES = 400;
 const { updateParentsFields } = proxyActivities<typeof activities>({
   startToCloseTimeout: `${UPDATE_PARENTS_FIELDS_TIMEOUT_MINUTES} minutes`,
   heartbeatTimeout: "10 minute",

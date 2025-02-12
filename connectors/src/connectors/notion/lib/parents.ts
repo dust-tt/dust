@@ -141,7 +141,8 @@ export async function updateAllParentsFields(
   const pageIdsToUpdate = await getPagesToUpdate(
     createdOrMovedNotionPageIds,
     createdOrMovedNotionDatabaseIds,
-    connectorId
+    connectorId,
+    onProgress
   );
 
   logger.info(
@@ -158,6 +159,7 @@ export async function updateAllParentsFields(
   const q = new PQueue({ concurrency: 16 });
   const promises: Promise<void>[] = [];
   for (const pageId of pageIdsToUpdate) {
+    logger.info({ pageId }, "Updating parents field for page");
     promises.push(
       q.add(async () => {
         const pageOrDbIds = await getParents(
@@ -203,7 +205,8 @@ export async function updateAllParentsFields(
 async function getPagesToUpdate(
   createdOrMovedNotionPageIds: string[],
   createdOrMovedNotionDatabaseIds: string[],
-  connectorId: ModelId
+  connectorId: ModelId,
+  onProgress?: () => Promise<void>
 ): Promise<Set<string>> {
   const pageIdsToUpdate: Set<string> = new Set([
     ...createdOrMovedNotionPageIds,
@@ -225,6 +228,9 @@ async function getPagesToUpdate(
   const visited = new Set<string>();
 
   while (toProcess.size > 0) {
+    if (onProgress) {
+      await onProgress();
+    }
     const pageOrDbIdToProcess = shift() as string; // guaranteed to be defined as toUpdate.size > 0
     visited.add(pageOrDbIdToProcess);
 
