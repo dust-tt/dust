@@ -1,27 +1,11 @@
-import {
-  ArrowRightIcon,
-  Button,
-  GithubIcon,
-  Icon,
-  LinkedinIcon,
-  Separator,
-} from "@dust-tt/sparkle";
+import { ArrowRightIcon, Button, GithubIcon, Icon, LinkedinIcon, Separator } from "@dust-tt/sparkle";
 import Link from "next/link";
 import type { ReactElement } from "react";
 
-import {
-  Grid,
-  H1,
-  H2,
-  P,
-  Strong,
-} from "@app/components/home/ContentComponents";
+import { Grid, H1, H2, P, Strong } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
-import {
-  getParticleShapeIndexByName,
-  shapeNames,
-} from "@app/components/home/Particles";
+import { getParticleShapeIndexByName, shapeNames } from "@app/components/home/Particles";
 import { classNames } from "@app/lib/utils";
 
 export async function getServerSideProps() {
@@ -120,6 +104,13 @@ const PEOPLE: Record<
     github: "https://github.com/aubin-tchoi",
     linkedIn: "https://www.linkedin.com/in/aubin-tchoi",
   },
+  jbelveze: {
+    name: "Jules Belveze",
+    title: "Software Engineer",
+    image: "https://avatars.githubusercontent.com/u/32683010",
+    github: "https://github.com/JulesBelveze",
+    linkedIn: "https://www.linkedin.com/in/jules-belveze",
+  }
 };
 
 const Person = ({ handle }: { handle: string }) => {
