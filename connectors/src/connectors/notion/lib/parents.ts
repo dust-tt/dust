@@ -159,7 +159,6 @@ export async function updateAllParentsFields(
   const q = new PQueue({ concurrency: 16 });
   const promises: Promise<void>[] = [];
   for (const pageId of pageIdsToUpdate) {
-    logger.info({ pageId }, "Updating parents field for page");
     promises.push(
       q.add(async () => {
         const pageOrDbIds = await getParents(
