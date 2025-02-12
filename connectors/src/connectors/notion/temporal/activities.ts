@@ -1133,7 +1133,7 @@ async function getResourcesNotSeenInGarbageCollectionRunBatch(
   return JSON.parse(batch) as GCResource[];
 }
 
-const PARENTS_UPDATE_BATCH_SIZE = 10;
+const PARENTS_UPDATE_BATCH_SIZE = 250;
 
 export async function updateParentsFields({
   connectorId,
