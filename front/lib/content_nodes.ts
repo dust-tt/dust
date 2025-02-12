@@ -42,10 +42,7 @@ function getVisualForFileContentNode(node: ContentNode & { type: "file" }) {
   return DocumentIcon;
 }
 
-export function getVisualForContentNode(
-  node: ContentNode,
-  useMimeType = false
-) {
+export function getVisualForContentNode(node: ContentNode, useMimeType = true) {
   if (useMimeType) {
     return getVisualForContentNodeBasedOnMimeType(node);
   } else {
