@@ -64,6 +64,13 @@ const PEOPLE: Record<
     linkedIn: "https://www.linkedin.com/in/hfontanier/",
     github: "https://github.com/fontanierh",
   },
+  pr: {
+    name: "Philippe Rolet",
+    title: "Software Engineer",
+    image: "https://avatars.githubusercontent.com/u/5437393",
+    linkedIn: "https://www.linkedin.com/in/philipperolet/",
+    github: "https://github.com/philipperolet",
+  },
   popdaph: {
     name: "Daphné Popin",
     title: "Software Engineer",
