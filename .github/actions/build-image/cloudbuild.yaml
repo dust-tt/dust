@@ -27,10 +27,6 @@ steps:
       depot build \
         --project 3vz0lnf16v \
         --provenance=false \
-        --platform linux/amd64 \
-        --cache-from type=gha,scope=${_IMAGE_NAME} \
-        --cache-to type=gha,mode=max,scope=${_IMAGE_NAME} \
-        --build-context platform=linux/amd64 \
         --progress=plain \
         -t ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/dust-images/${_IMAGE_NAME}:${SHORT_SHA}-test \
         -f ${_DOCKERFILE_PATH} \
