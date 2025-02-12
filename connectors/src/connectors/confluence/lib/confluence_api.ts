@@ -17,6 +17,7 @@ export async function getConfluenceCloudInformation(accessToken: string) {
   try {
     return await client.getCloudInformation();
   } catch (err) {
+    logger.error({ err }, "Error getting Confluence cloud information");
     return null;
   }
 }
