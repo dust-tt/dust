@@ -71,6 +71,13 @@ const PEOPLE: Record<
     linkedIn: "https://www.linkedin.com/in/philipperolet/",
     github: "https://github.com/philipperolet",
   },
+  ed: {
+    name: "Edouard Wautier",
+    title: "Principal Designer",
+    image: "https://avatars.githubusercontent.com/u/4435185",
+    linkedIn: "https://www.linkedin.com/in/edouardwautier/",
+    github: "https://github.com/Duncid",
+  },
   popdaph: {
     name: "Daphné Popin",
     title: "Software Engineer",
