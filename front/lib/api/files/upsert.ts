@@ -446,11 +446,9 @@ export async function processAndUpsertToDataSource(
   dataSource: DataSourceResource,
   {
     file,
-    optionalContent,
     upsertArgs,
   }: {
     file: FileResource;
-    optionalContent?: string;
     upsertArgs?: UpsertDocumentArgs | UpsertTableArgs;
   }
 ): Promise<
@@ -483,16 +481,13 @@ export async function processAndUpsertToDataSource(
 
   // TODO(spolu): [CSV-FILE] move content extraction to the processing function so that we don't
   // extract content for tables and instead submit with fileId
-  const content = optionalContent
-    ? optionalContent
-    : await getFileContent(auth, file);
+  const content = await getFileContent(auth, file);
 
   if (!content) {
     logger.error(
       {
         fileId: file.sId,
         workspaceId: auth.workspace()?.sId,
-        contentSupplied: !!optionalContent,
       },
       "No content extracted from file."
     );
