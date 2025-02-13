@@ -7,7 +7,7 @@
   },
   "devDependencies": {
     "@tsconfig/node20": "^20.1.4",
-    "@types/node": "^20.12.12",
+    "@types/node": "^20.17.18",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.3"
   },
