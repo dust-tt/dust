@@ -99,9 +99,10 @@ function makeQueryDescription(action: RetrievalActionType) {
         : `${relativeTimeFrame.unit}`)
     : "across all time periods";
   const tagsInAsString = tagsIn ? `, with tags ${tagsIn?.join(", ")}` : "";
-  const tagsNotAsString = tagsNot
-    ? `, excluding tags ${tagsNot?.join(", ")}`
-    : "";
+  const tagsNotAsString =
+    tagsNot && tagsNot.length > 0
+      ? `, excluding tags ${tagsNot?.join(", ")}`
+      : "";
   if (!query) {
     return `Searching ${timeFrameAsString}${tagsInAsString}${tagsNotAsString}.`;
   }

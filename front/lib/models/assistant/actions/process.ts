@@ -23,6 +23,7 @@ export class AgentProcessConfiguration extends WorkspaceAwareModel<AgentProcessC
   declare relativeTimeFrameDuration: number | null;
   declare relativeTimeFrameUnit: TimeframeUnit | null;
 
+  // TODO(TAF): Remove this once tag filtering is rolled out
   declare tagsIn: string[] | null;
 
   declare schema: ProcessSchemaPropertyType[];
@@ -60,6 +61,7 @@ AgentProcessConfiguration.init(
       type: DataTypes.STRING,
       allowNull: true,
     },
+    // TODO(TAF): Remove this once tag filtering is rolled out
     tagsIn: {
       type: DataTypes.ARRAY(DataTypes.STRING),
       allowNull: true,
@@ -126,6 +128,9 @@ export class AgentProcessAction extends WorkspaceAwareModel<AgentProcessAction> 
   declare relativeTimeFrameDuration: number | null;
   declare relativeTimeFrameUnit: TimeframeUnit | null;
 
+  declare tagsIn: string[] | null;
+  declare tagsNot: string[] | null;
+
   declare schema: ProcessSchemaPropertyType[];
   declare outputs: ProcessActionOutputsType | null;
   declare functionCallId: string | null;
@@ -161,6 +166,14 @@ AgentProcessAction.init(
     },
     relativeTimeFrameUnit: {
       type: DataTypes.STRING,
+      allowNull: true,
+    },
+    tagsIn: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: true,
+    },
+    tagsNot: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
       allowNull: true,
     },
     schema: {
