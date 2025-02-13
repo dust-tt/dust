@@ -12,7 +12,7 @@ import { getSourceUrlForGoogleDriveFiles } from "@connectors/connectors/google_d
 import {
   fixParentsConsistency,
   internalDeleteFile,
-  updateParentsFields,
+  updateParentsField,
 } from "@connectors/connectors/google_drive/lib";
 import {
   GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID,
@@ -616,7 +616,7 @@ async function recurseUpdateParents(
     { concurrency: 10 }
   );
 
-  await updateParentsFields(connector, file, parentIds, logger);
+  await updateParentsField(connector, file, parentIds, logger);
 }
 
 export async function getSyncPageToken(
