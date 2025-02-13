@@ -38,10 +38,16 @@ import { EditSpaceManagedDataSourcesViews } from "@app/components/spaces/EditSpa
 import { EditSpaceStaticDatasourcesViews } from "@app/components/spaces/EditSpaceStaticDatasourcesViews";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
 import { ViewFolderAPIModal } from "@app/components/ViewFolderAPIModal";
-import { getConnectorProviderLogoWithFallback, isConnectorPermissionsEditable } from "@app/lib/connector_providers";
+import {
+  getConnectorProviderLogoWithFallback,
+  isConnectorPermissionsEditable,
+} from "@app/lib/connector_providers";
 import { getDataSourceNameFromView, isManaged } from "@app/lib/data_sources";
 import { useAgentConfigurationSIdLookup } from "@app/lib/swr/assistants";
-import { useDeleteFolderOrWebsite, useSpaceDataSourceViewsWithDetails } from "@app/lib/swr/spaces";
+import {
+  useDeleteFolderOrWebsite,
+  useSpaceDataSourceViewsWithDetails,
+} from "@app/lib/swr/spaces";
 import { classNames } from "@app/lib/utils";
 
 export interface RowData {
