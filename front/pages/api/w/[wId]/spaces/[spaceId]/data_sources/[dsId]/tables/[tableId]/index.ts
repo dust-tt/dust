@@ -1,4 +1,4 @@
-import type { CoreAPITable, WithAPIErrorResponse } from "@dust-tt/types";
+import type { WithAPIErrorResponse } from "@dust-tt/types";
 import {
   assertNever,
   PatchDataSourceTableRequestBodySchema,
@@ -25,7 +25,7 @@ export const config = {
 };
 
 export type PatchTableResponseBody = {
-  table?: CoreAPITable;
+  table?: { table_id: string };
 };
 
 async function handler(
