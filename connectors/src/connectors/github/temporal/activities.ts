@@ -61,6 +61,7 @@ import type { Logger } from "@connectors/logger/logger";
 import { getActivityLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import { safeSubstring } from "@dust-tt/types/src";
 
 export async function githubGetReposResultPageActivity(
   connectorId: ModelId,
@@ -154,7 +155,7 @@ async function renderIssue(
     updatedAt: issue.updatedAt,
     author: renderGithubUser(issue.creator),
     additionalPrefixes: {
-      labels: issue.labels.join(", "),
+      labels: safeSubstring(issue.labels.join(", "), 0, 128), // We truncate the labels to avoid having a prefix too large.
       isPullRequest: issue.isPullRequest.toString(),
     },
     content: await renderMarkdownSection(dataSourceConfig, issue.body ?? "", {
