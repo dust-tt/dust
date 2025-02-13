@@ -14,7 +14,7 @@ export class FileFactory {
   // injected by mocking the GCS client.
   static async create(
     workspace: WorkspaceType,
-    user: UserResource,
+    user: UserResource | null,
     {
       contentType,
       fileName,
@@ -35,7 +35,7 @@ export class FileFactory {
   ) {
     const file = await FileResource.makeNew({
       workspaceId: workspace.id,
-      userId: user.id,
+      userId: user?.id || null,
       contentType,
       fileName,
       fileSize,
@@ -55,7 +55,7 @@ export class FileFactory {
 
   static csv(
     workspace: WorkspaceType,
-    user: UserResource,
+    user: UserResource | null,
     {
       useCase,
       useCaseMetadata,

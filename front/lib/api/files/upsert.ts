@@ -481,6 +481,8 @@ export async function processAndUpsertToDataSource(
     });
   }
 
+  // TODO(spolu): [CSV-FILE] move content extraction to the processing function so that we don't
+  // extract content for tables and instead submit with fileId
   const content = optionalContent
     ? optionalContent
     : await getFileContent(auth, file);
