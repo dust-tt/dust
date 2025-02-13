@@ -849,6 +849,8 @@ export async function* postUserMessage(
         context,
         rank: m.rank,
         threadVersions: m.threadVersions,
+        previousVersionMessageId: m.previousVersionMessageId,
+        nextVersionMessageId: m.nextVersionMessageId,
       };
 
       const results: ({ row: AgentMessage; m: AgentMessageType } | null)[] =
@@ -1158,35 +1160,6 @@ export async function* editUserMessage(
     };
     return;
   }
-  // if (message.mentions.filter((m) => isAgentMention(m)).length > 0) {
-  //   yield {
-  //     type: "user_message_error",
-  //     created: Date.now(),
-  //     error: {
-  //       code: "not_allowed",
-  //       message:
-  //         "Editing a message that already has agent mentions is not yet supported",
-  //     },
-  //   };
-  //   return;
-  // }
-  // if (
-  //   !conversation.content[conversation.content.length - 1].some(
-  //     (m) => m.sId === message.sId
-  //   ) &&
-  //   mentions.filter((m) => isAgentMention(m)).length > 0
-  // ) {
-  //   yield {
-  //     type: "user_message_error",
-  //     created: Date.now(),
-  //     error: {
-  //       code: "edition_unsupported",
-  //       message:
-  //         "Adding agent mentions when editing is only supported for the last message of the conversation",
-  //     },
-  //   };
-  //   return;
-  // }
 
   // local error class to differentiate from other errors
   class UserMessageError extends Error {}
@@ -1251,6 +1224,7 @@ export async function* editUserMessage(
           "Unexpected: Message or UserMessage to edit not found in DB"
         );
       }
+      //TODO==> correctly get last version of the message
       const newestMessage = await Message.findOne({
         where: {
           rank: messageRow.rank,
@@ -1315,12 +1289,13 @@ export async function* editUserMessage(
           conversation.currentThreadVersion = newThreadVersion;
         }
 
-        return Message.create(
+        const newMessage = await Message.create(
           {
             sId: generateRandomModelSId(),
             rank: messageRow.rank,
             conversationId: conversation.id,
             parentId: messageRow.parentId,
+            previousVersionMessageId: messageRow.id,
             version: lastVersion + 1,
             threadVersions: [
               newThreadVersion ?? conversation.currentThreadVersion,
@@ -1355,6 +1330,21 @@ export async function* editUserMessage(
             transaction: t,
           }
         );
+        await Message.update(
+          {
+            nextVersionMessageId: newMessage.id,
+          },
+          {
+            where: {
+              conversationId: conversation.id,
+              id: messageRow.id,
+            },
+            transaction: t,
+            hooks: false,
+            silent: true,
+          }
+        );
+        return newMessage;
       }
 
       const m = await createMessageAndUserMessage(owner, messageRow);
@@ -1372,6 +1362,8 @@ export async function* editUserMessage(
         context: message.context,
         rank: m.rank,
         threadVersions: m.threadVersions,
+        previousVersionMessageId: m.previousVersionMessageId,
+        nextVersionMessageId: m.nextVersionMessageId,
       };
 
       // For now agent messages are appended at the end of conversation

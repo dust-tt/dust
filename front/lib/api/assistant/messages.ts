@@ -104,6 +104,8 @@ async function batchRenderUserMessages(
         origin: userMessage.userContextOrigin,
       },
       threadVersions: message.threadVersions,
+      previousVersionMessageId: message.previousVersionMessageId,
+      nextVersionMessageId: message.nextVersionMessageId,
     } satisfies UserMessageType;
     return { m, rank: message.rank, version: message.version };
   });

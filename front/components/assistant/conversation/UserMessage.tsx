@@ -21,7 +21,10 @@ import {
   MentionBlock,
   mentionDirective,
 } from "@app/components/markdown/MentionBlock";
-import { useConversation } from "@app/lib/swr/conversations";
+import {
+  useConversation,
+  useConversationMessages,
+} from "@app/lib/swr/conversations";
 
 interface UserMessageProps {
   citations?: React.ReactElement[];
@@ -51,48 +54,37 @@ export function UserMessage({
     workspaceId: owner.sId,
   });
 
+  const { mutateMessages } = useConversationMessages({
+    conversationId,
+    workspaceId: owner.sId,
+    limit: 50,
+  });
+
   async function previous() {
     if (conversation) {
       await fetch(
-        `/api/w/${owner.sId}/assistant/conversations/${conversationId}`,
+        `/api/w/${owner.sId}/assistant/conversations/${conversationId}/change_thread?id=${message.sId}&direction=previous`,
         {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            title: conversation.title,
-            visibility: conversation.visibility,
-            currentThreadVersion: 0,
-          }),
+          method: "POST",
         }
       );
+      void mutateMessages();
     }
   }
 
   async function next() {
     if (conversation) {
       await fetch(
-        `/api/w/${owner.sId}/assistant/conversations/${conversationId}`,
+        `/api/w/${owner.sId}/assistant/conversations/${conversationId}/change_thread?id=${message.sId}&direction=next`,
         {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            title: conversation.title,
-            visibility: conversation.visibility,
-            currentThreadVersion: 0,
-          }),
+          method: "POST",
         }
       );
+      void mutateMessages();
     }
   }
   const buttons = [];
-  if (
-    conversation?.currentThreadVersion &&
-    message.threadVersions.indexOf(conversation?.currentThreadVersion) > 0
-  ) {
+  if (message.previousVersionMessageId) {
     buttons.push(
       <Button
         key="previous-msg-button"
@@ -108,11 +100,7 @@ export function UserMessage({
     );
   }
 
-  if (
-    conversation?.currentThreadVersion &&
-    message.threadVersions.indexOf(conversation?.currentThreadVersion) <
-      message.threadVersions.length - 1
-  ) {
+  if (message.nextVersionMessageId) {
     buttons.push(
       <Button
         key="next-msg-button"

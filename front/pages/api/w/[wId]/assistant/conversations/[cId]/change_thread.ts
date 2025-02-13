@@ -6,6 +6,7 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { Op } from "sequelize";
 
 import {
   deleteConversation,
@@ -15,6 +16,7 @@ import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/hel
 import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation/without_content";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { Conversation, Message } from "@app/lib/models/assistant/conversation";
 import { apiError } from "@app/logger/withlogging";
 
 export const PatchConversationsRequestBodySchema = t.type({
@@ -33,9 +35,7 @@ export type GetConversationsResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<
-    WithAPIErrorResponse<GetConversationsResponseBody | void>
-  >,
+  res: NextApiResponse<WithAPIErrorResponse<{ success: boolean }>>,
   auth: Authenticator
 ): Promise<void> {
   if (!(typeof req.query.cId === "string")) {
@@ -60,52 +60,50 @@ async function handler(
   const conversation = conversationRes.value;
 
   switch (req.method) {
-    case "GET":
-      res.status(200).json({ conversation });
-      return;
-
-    case "DELETE": {
-      const result = await deleteConversation(auth, {
-        conversationId: conversation.sId,
+    case "POST": {
+      const { id, direction } = req.query;
+      const message = await Message.findOne({
+        where: {
+          sId: id,
+          conversationId: conversation.id,
+        },
       });
-      if (result.isErr()) {
-        return apiErrorForConversation(req, res, result.error);
-      }
 
-      res.status(200).end();
-      return;
-    }
-
-    case "PATCH": {
-      const bodyValidation = PatchConversationsRequestBodySchema.decode(
-        req.body
-      );
-
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
-
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: `Invalid request body: ${pathError}`,
-          },
+      if (message && message.nextVersionMessageId && direction === "next") {
+        const next = await Message.findOne({
+          where: { id: message.nextVersionMessageId },
         });
+        if (next) {
+          await Conversation.update(
+            {
+              currentThreadVersion: next.threadVersions[0],
+            },
+            {
+              where: { id: conversation.id },
+            }
+          );
+        }
       }
-
-      const { title, visibility } = bodyValidation.right;
-
-      const result = await updateConversation(auth, conversation.sId, {
-        title,
-        visibility,
-      });
-
-      if (result.isErr()) {
-        return apiErrorForConversation(req, res, result.error);
+      if (
+        message &&
+        message.previousVersionMessageId &&
+        direction === "previous"
+      ) {
+        const previous = await Message.findOne({
+          where: { id: message.previousVersionMessageId },
+        });
+        if (previous) {
+          await Conversation.update(
+            {
+              currentThreadVersion: previous.threadVersions[0],
+            },
+            {
+              where: { id: conversation.id },
+            }
+          );
+        }
       }
-
-      res.status(200).json({ conversation: result.value });
-      return;
+      return res.status(200).json({ success: true });
     }
 
     default:

@@ -58,6 +58,8 @@ export function createPlaceholderUserMessage({
     version: 0,
     rank: lastMessageRank + 1,
     threadVersions: [0],
+    previousVersionMessageId: null,
+    nextVersionMessageId: null,
     context: {
       email,
       fullName,

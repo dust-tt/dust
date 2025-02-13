@@ -102,6 +102,8 @@ export type UserMessageType = {
   content: string;
   context: UserMessageContext;
   threadVersions: number[];
+  previousVersionMessageId: ModelId | null;
+  nextVersionMessageId: ModelId | null;
 };
 export type UserMessageWithRankType = WithRank<UserMessageType>;
 

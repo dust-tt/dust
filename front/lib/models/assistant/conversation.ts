@@ -385,6 +385,8 @@ export class Message extends WorkspaceAwareModel<Message> {
   declare version: CreationOptional<number>;
   declare rank: number;
   declare threadVersions: CreationOptional<number[]>;
+  declare previousVersionMessageId: ForeignKey<Message["id"]> | null;
+  declare nextVersionMessageId: ForeignKey<Message["id"]> | null;
   declare visibility: CreationOptional<MessageVisibility>;
 
   declare conversationId: ForeignKey<Conversation["id"]>;
@@ -432,8 +434,16 @@ Message.init(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
+    nextVersionMessageId: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+    },
+    previousVersionMessageId: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+    },
     threadVersions: {
-      type: DataTypes.ARRAY(DataTypes.INTEGER),
+      type: DataTypes.ARRAY(DataTypes.BIGINT),
       allowNull: true,
       defaultValue: [0],
     },
