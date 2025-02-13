@@ -198,7 +198,7 @@ pub trait Store {
         data_source_id: String,
         create_params: DocumentCreateParams,
     ) -> Result<Document>;
-    async fn update_data_source_document_tags(
+    async fn update_data_source_node_tags(
         &self,
         project: &Project,
         data_source_id: &str,
