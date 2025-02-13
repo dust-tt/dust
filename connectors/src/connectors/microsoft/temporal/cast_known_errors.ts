@@ -6,24 +6,16 @@ import type {
 
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 
-interface MicrosoftAuthError extends Error {
-  error: string;
-  error_description: string;
-}
-
 // The SDK does not expose an error class that is rich enough for our use.
 // We'll use this function as a temporary solution for identifying an identified type of error.
-export function isMicrosoftSignInError(
-  err: unknown
-): err is MicrosoftAuthError {
+export function isMicrosoftSignInError(err: unknown): err is Error {
   return (
-    typeof err === "object" &&
-    err !== null &&
-    "error" in err &&
-    err.error === "invalid_grant" &&
-    "error_description" in err &&
-    typeof err.error_description === "string" &&
-    err.error_description.startsWith("AADSTS50173")
+    err instanceof Error &&
+    err.message.startsWith(
+      "Error retrieving access token from microsoft: code=provider_access_token_refresh_error"
+    ) &&
+    err.message.includes("invalid_grant") &&
+    err.message.includes("AADSTS50173")
   );
 }
 
