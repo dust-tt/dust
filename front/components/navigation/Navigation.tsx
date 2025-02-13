@@ -107,7 +107,7 @@ export function Navigation({
           isNavigationBarOpen ? "w-80" : "w-0"
         )}
       >
-        <div className="hidden flex-1 bg-muted-background lg:inset-y-0 lg:z-0 lg:flex lg:w-80 lg:flex-col">
+        <div className="hidden flex-1 bg-muted-background dark:bg-muted-background-night lg:inset-y-0 lg:z-0 lg:flex lg:w-80 lg:flex-col">
           {workspacePicker}
           <NavigationSidebar
             owner={owner}
