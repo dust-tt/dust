@@ -95,7 +95,8 @@ export const InputBarContainer = ({
     isLoading: isSubmitting,
   };
   const SendWithContentAction = {
-    label: "Add page text + Send",
+    // TODO: This extra CTA should be driver by the platform.
+    label: "Include conversation + Send",
     onClick,
     isLoading: isSubmitting,
   };

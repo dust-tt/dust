@@ -2,6 +2,7 @@ import type { ExtensionWorkspaceType } from "@dust-tt/client";
 import type { FileUploaderService } from "@extension/hooks/useFileUploaderService";
 import type { StorageService } from "@extension/shared/interfaces/storage";
 import type { AuthService } from "@extension/shared/services/auth";
+import type { CaptureService } from "@extension/shared/services/capture";
 
 export interface AttachButtonProps {
   isLoading: boolean;
@@ -16,7 +17,8 @@ export interface PlatformComponents {
 
 export interface PlatformService {
   auth: AuthService;
+  capture: CaptureService;
+  components: PlatformComponents;
   platform: "chrome" | "front";
   storage: StorageService;
-  components: PlatformComponents;
 }

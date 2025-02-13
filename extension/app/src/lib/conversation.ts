@@ -36,7 +36,7 @@ type SubmitMessageError = {
 export type MessageWithContentFragmentsType =
   | AgentMessagePublicType
   | (UserMessageType & {
-      contenFragments?: ContentFragmentType[];
+      contentFragments?: ContentFragmentType[];
     });
 
 export function createPlaceholderUserMessage({

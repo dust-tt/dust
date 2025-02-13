@@ -10,13 +10,13 @@ import {
   Ok,
 } from "@dust-tt/client";
 import { useSendNotification } from "@dust-tt/sparkle";
-import { getIncludeCurrentTab } from "@extension/lib/conversation";
 import { useDustAPI } from "@extension/lib/dust_api";
 import type { GetActiveTabOptions } from "@extension/lib/messages";
 import type { UploadedFileKind } from "@extension/lib/types";
+import { usePlatform } from "@extension/shared/context/platform";
 import { useState } from "react";
 
-interface FileBlob {
+export interface FileBlob {
   contentType: SupportedFileContentType;
   kind: UploadedFileKind;
   file: File;
@@ -56,6 +56,7 @@ export function useFileUploaderService(conversationId?: string) {
   const [isProcessingFiles, setIsProcessingFiles] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
   const sendNotification = useSendNotification();
+  const { capture } = usePlatform();
   const dustAPI = useDustAPI();
 
   const findAvailableTitle = (
@@ -283,40 +284,36 @@ export function useFileUploaderService(conversationId?: string) {
 
   const uploadContentTab = async ({
     conversation,
-    updateBlobs,
-    includeContent,
-    includeSelectionOnly,
-    includeCapture,
-    onUpload,
+    ...options
   }: {
     conversation?: ConversationPublicType;
     updateBlobs?: boolean;
     onUpload?: () => void;
   } & GetActiveTabOptions) => {
-    setIsCapturing(includeCapture);
+    setIsCapturing(options.includeCapture);
     try {
-      const tabContentRes = await getIncludeCurrentTab({
-        includeContent,
-        includeSelectionOnly,
-        includeCapture,
-      });
+      // platform-specific content retrieval
+      const contentRes = await capture.handleOperation(
+        "capture-page-content",
+        options
+      );
+
       setIsCapturing(false);
 
-      if (tabContentRes && tabContentRes.isErr()) {
+      if (contentRes && contentRes.isErr()) {
         sendNotification({
           title: "Cannot get page content",
-          description: tabContentRes.error.message,
+          description: contentRes.error.message,
           type: "error",
         });
         return;
       }
 
-      const tabContent =
-        tabContentRes && tabContentRes.isOk() ? tabContentRes.value : null;
+      const { value: tabContent } = contentRes;
 
       const existingTitles = fileBlobs.map((f) => f.filename);
 
-      if (includeContent) {
+      if (options.includeContent) {
         if (!tabContent?.content) {
           sendNotification({
             title: "Cannot get page content",
@@ -327,7 +324,7 @@ export function useFileUploaderService(conversationId?: string) {
         }
 
         const title = findAvailableTitle(
-          includeSelectionOnly
+          options.includeSelectionOnly
             ? `[selection] ${tabContent.title}`
             : `[text] ${tabContent.title}`,
           "txt",
@@ -349,18 +346,18 @@ export function useFileUploaderService(conversationId?: string) {
             type: "text/plain",
           });
 
-          if (onUpload) {
-            onUpload();
+          if (options.onUpload) {
+            options.onUpload();
           }
 
           const fragments = await handleFilesUpload({
             files: [file],
-            updateBlobs,
-            kind: includeSelectionOnly ? "selection" : "tab_content",
+            updateBlobs: options.updateBlobs,
+            kind: options.includeSelectionOnly ? "selection" : "tab_content",
           });
           if (fragments) {
             fragments.forEach((f) => {
-              f.publicUrl = tabContent.url;
+              f.publicUrl = tabContent.url ?? f.publicUrl;
             });
           }
 
@@ -368,7 +365,7 @@ export function useFileUploaderService(conversationId?: string) {
         }
       }
 
-      if (includeCapture) {
+      if (options.includeCapture) {
         if (!tabContent?.captures) {
           sendNotification({
             title: "Cannot get page content",
@@ -400,13 +397,13 @@ export function useFileUploaderService(conversationId?: string) {
             )
         );
 
-        if (onUpload) {
-          onUpload();
+        if (options.onUpload) {
+          options.onUpload();
         }
 
         return await handleFilesUpload({
           files,
-          updateBlobs,
+          updateBlobs: options.updateBlobs,
           // TODO(EXT): supersede the screenshot
           kind: "attachment",
         });

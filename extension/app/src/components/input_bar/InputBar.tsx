@@ -14,8 +14,6 @@ import { InputBarContainer } from "@extension/components/input_bar/InputBarConta
 import { InputBarContext } from "@extension/components/input_bar/InputBarContext";
 import { useFileUploaderService } from "@extension/hooks/useFileUploaderService";
 import { useDustAPI } from "@extension/lib/dust_api";
-import type { AttachSelectionMessage } from "@extension/lib/messages";
-import { sendInputBarStatus } from "@extension/lib/messages";
 import type { UploadedFileWithKind } from "@extension/lib/types";
 import { classNames, compareAgentsForSort } from "@extension/lib/utils";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
@@ -65,6 +63,7 @@ export function AssistantInputBar({
     resetUpload,
   } = fileUploaderService;
 
+  // TODO: Move this to the platform.
   // useEffect(() => {
   //   void sendInputBarStatus(true);
   //   const listener = async (message: AttachSelectionMessage) => {

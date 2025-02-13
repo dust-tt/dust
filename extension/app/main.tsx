@@ -8,7 +8,6 @@ import "./src/css/components.css";
 import "./src/css/custom.css";
 
 import { Notification } from "@dust-tt/sparkle";
-import { ChromeAuth } from "@extension/chrome/services/auth";
 import { AuthProvider } from "@extension/components/auth/AuthProvider";
 import { PortProvider } from "@extension/components/PortContext";
 import { routes } from "@extension/pages/routes";
@@ -18,11 +17,9 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 const router = createBrowserRouter(routes);
 
 const App = () => {
-  const authService = new ChromeAuth();
-
   return (
     <PortProvider>
-      <AuthProvider authService={authService}>
+      <AuthProvider>
         <Notification.Area>
           <RouterProvider router={router} />
         </Notification.Area>

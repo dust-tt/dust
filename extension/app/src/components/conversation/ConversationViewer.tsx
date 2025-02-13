@@ -203,7 +203,7 @@ const groupMessagesByType = (
         // Attach collected content fragments to the user message.
         messageWithContentFragments = {
           ...message,
-          contenFragments: tempContentFragments,
+          contentFragments: tempContentFragments,
         };
         tempContentFragments = []; // Reset the collected content fragments.
 

@@ -9,29 +9,25 @@ import "../css/custom.css";
 
 import { Notification } from "@dust-tt/sparkle";
 import { AuthProvider } from "@extension/components/auth/AuthProvider";
-import { frontPlatform } from "@extension/front/platform";
+import { FrontPlatformInitializer } from "@extension/front/components/FrontPlatformInitializer";
 import { FrontContextProvider } from "@extension/front/providers/FrontProvider";
-import { FrontAuth } from "@extension/front/services/auth";
 import { routes } from "@extension/pages/routes";
-import { PlatformContext } from "@extension/shared/context/platform";
 import ReactDOM from "react-dom/client";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 
 const router = createBrowserRouter(routes);
 
 const App = () => {
-  const authService = new FrontAuth();
-
   return (
-    <PlatformContext.Provider value={frontPlatform}>
-      <AuthProvider authService={authService}>
-        <FrontContextProvider>
+    <FrontContextProvider>
+      <FrontPlatformInitializer>
+        <AuthProvider>
           <Notification.Area>
             <RouterProvider router={router} />
           </Notification.Area>
-        </FrontContextProvider>
-      </AuthProvider>
-    </PlatformContext.Provider>
+        </AuthProvider>
+      </FrontPlatformInitializer>
+    </FrontContextProvider>
   );
 };
 const rootElement = document.getElementById("root");

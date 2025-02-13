@@ -98,8 +98,8 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
 
     switch (type) {
       case "user_message":
-        const citations = message.contenFragments
-          ? message.contenFragments.map((contentFragment) => {
+        const citations = message.contentFragments
+          ? message.contentFragments.map((contentFragment) => {
               const citationType = ["dust-application/slack"].includes(
                 contentFragment.contentType
               )
