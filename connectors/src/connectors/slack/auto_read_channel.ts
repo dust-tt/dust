@@ -14,11 +14,6 @@ import {
 import type { Logger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
-const { DUST_FRONT_API } = process.env;
-if (!DUST_FRONT_API) {
-  throw new Error("FRONT_API not set");
-}
-
 function findMatchingChannelPatterns(
   remoteChannelName: string,
   autoReadChannelPatterns: SlackAutoReadPattern[]
@@ -105,7 +100,7 @@ export async function autoReadChannel(
         apiKey: connector.workspaceAPIKey,
       },
       logger,
-      DUST_FRONT_API
+      apiConfig.getDustFrontAPIUrl()
     );
 
     // Loop through all the matching patterns. Swallow errors and continue.
