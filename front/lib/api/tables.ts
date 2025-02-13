@@ -185,6 +185,14 @@ export async function upsertTableFromCsv({
       });
     }
 
+    if (file.useCase !== "upsert_table") {
+      return new Err({
+        type: "invalid_request_error",
+        message:
+          "The file provided has not the expected `upsert_table` use-case",
+      });
+    }
+
     const content = await getFileContent(auth, file);
     if (!content) {
       return new Err({
