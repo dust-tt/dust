@@ -5,6 +5,7 @@ export function applyUnifiedDiff(
   original: string,
   unifiedDiff: string
 ): string {
+  console.log(`Applying unified diff:\n\n\`\`\`\n${unifiedDiff}\n\n\`\`\``);
   // Normalize line endings and split
   const diffText = unifiedDiff.replace(/\r\n/g, "\n");
   const lines = diffText.split("\n");
@@ -15,7 +16,7 @@ export function applyUnifiedDiff(
   let inHunk = false;
 
   for (const line of lines) {
-    if (line.startsWith("@@ ")) {
+    if (line.startsWith("@@")) {
       inHunk = true;
 
       if (currentHunkLines.length) {
@@ -28,12 +29,7 @@ export function applyUnifiedDiff(
       // Ignore file headers
       continue;
     } else if (inHunk) {
-      if (
-        line === "" ||
-        line[0] === " " ||
-        line[0] === "+" ||
-        line[0] === "-"
-      ) {
+      if (!line || line[0] === " " || line[0] === "+" || line[0] === "-") {
         currentHunkLines.push(line);
       } else {
         console.warn(`Ignoring unexpected line in hunk: ${line}`);
@@ -64,8 +60,10 @@ export function applyUnifiedDiff(
     if (seen.has(normalizedHunk)) continue;
     seen.add(normalizedHunk);
 
-    uniqueHunks.push(normalizedHunk);
+    uniqueHunks.push(h);
   }
+
+  console.log(`Found ${uniqueHunks.length} unique hunks to apply`);
 
   let newContent = original;
   if (newContent === null) {
@@ -73,20 +71,26 @@ export function applyUnifiedDiff(
   }
 
   // Attempt to apply each hunk
+  let appliedHunks = 0;
+  let failedHunks = 0;
   for (const hunk of uniqueHunks) {
     let maybeNewContent = applyHunk(newContent, hunk);
     if (!maybeNewContent) {
-      console.error(`Failed to apply hunk:\n${hunk}`);
+      failedHunks++;
       continue;
     }
 
+    appliedHunks++;
     newContent = maybeNewContent;
   }
+
+  console.log(`Applied ${appliedHunks} hunks, failed ${failedHunks} hunks`);
 
   return newContent;
 }
 
 function applyHunk(content: string, hunk: string): string | null {
+  console.log(`Applying hunk:\n\n\`\`\`\n${hunk}\n\n\`\`\``);
   let { before, after } = hunkToBeforeAfter(hunk);
   let newContent = content;
 
@@ -98,9 +102,13 @@ function applyHunk(content: string, hunk: string): string | null {
   // Otherwise, we try 2 different approaches.
 
   // 1) If there's only one occurrence of "before", we can simply replace it with "after"
+  console.log("Attempting simple replacement...");
   if (countOccurrences(newContent, before) === 1) {
+    console.log("Simple replacement successful");
     return newContent.replace(before, after);
   }
+
+  console.log("Simple replacement failed, attempting fuzzy approach...");
 
   // 2) Fuzzy approach
 
@@ -130,10 +138,12 @@ function applyHunk(content: string, hunk: string): string | null {
 
     if (!result) {
       // We cannot apply the hunk, so we skip it.
+      console.log("Fuzzy approach failed. Could not apply hunk.");
       return null;
     }
 
     newContent = result;
+    console.log("Fuzzy approach successful. Hunk applied.");
   }
 
   return newContent;
