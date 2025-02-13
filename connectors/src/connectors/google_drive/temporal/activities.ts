@@ -1,5 +1,5 @@
 import type { ModelId } from "@dust-tt/types";
-import { concurrentExecutor, MIME_TYPES } from "@dust-tt/types";
+import { MIME_TYPES } from "@dust-tt/types";
 import { uuid4 } from "@temporalio/workflow";
 import type { drive_v3 } from "googleapis";
 import type { GaxiosResponse, OAuth2Client } from "googleapis-common";
