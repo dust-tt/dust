@@ -260,6 +260,7 @@ export async function processTranscriptActivity(
   let transcriptTitle = "";
   let transcriptContent = "";
   let userParticipated = true;
+  let fileContentIsAccessible = true;
 
   localLogger.info(
     {},
@@ -276,6 +277,7 @@ export async function processTranscriptActivity(
       );
       transcriptTitle = googleResult.transcriptTitle;
       transcriptContent = googleResult.transcriptContent;
+      fileContentIsAccessible = googleResult.fileContentIsAccessible;
       break;
 
     case "gong":
@@ -322,6 +324,14 @@ export async function processTranscriptActivity(
 
     default:
       assertNever(transcriptsConfiguration.provider);
+  }
+
+  if (!fileContentIsAccessible) {
+    localLogger.info(
+      {},
+      "[processTranscriptActivity] File content is not accessible. Stopping."
+    );
+    return;
   }
 
   try {

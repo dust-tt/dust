@@ -100,7 +100,11 @@ export async function retrieveGoogleTranscriptContent(
   transcriptsConfiguration: LabsTranscriptsConfigurationResource,
   fileId: string,
   localLogger: Logger
-): Promise<{ transcriptTitle: string; transcriptContent: string }> {
+): Promise<{
+  transcriptTitle: string;
+  transcriptContent: string;
+  fileContentIsAccessible: boolean;
+}> {
   const googleAuth = await getTranscriptsGoogleAuth(
     auth,
     transcriptsConfiguration.userId
@@ -133,15 +137,20 @@ export async function retrieveGoogleTranscriptContent(
         `Error exporting Google document. status_code: ${contentRes.status}. status_text: ${contentRes.statusText}`
       );
     }
+    const fileContentIsAccessible = true;
     const transcriptTitle = metadataRes.data.name || "Untitled";
     const transcriptContent = <string>contentRes.data;
 
-    return { transcriptTitle, transcriptContent };
+    return { transcriptTitle, transcriptContent, fileContentIsAccessible };
   } catch (error) {
     localLogger.error(
       { fileId, error },
       "Error exporting Google document. Skipping."
     );
-    return { transcriptTitle: "", transcriptContent: "" };
+    return {
+      transcriptTitle: "",
+      transcriptContent: "",
+      fileContentIsAccessible: false,
+    };
   }
 }
