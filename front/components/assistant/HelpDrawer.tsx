@@ -3,8 +3,10 @@ import {
   ChatBubbleBottomCenterTextIcon,
   FolderIcon,
   LightbulbIcon,
-  Modal,
   Page,
+  Sheet,
+  SheetContainer,
+  SheetContent,
   UserGroupIcon,
   useSendNotification,
 } from "@dust-tt/sparkle";
@@ -172,66 +174,70 @@ export function HelpDrawer({
   );
 
   return (
-    <Modal isOpen={show} variant="side-sm" hasChanged={false} onClose={onClose}>
-      <div className="flex flex-col gap-5 pt-5">
-        <Page.SectionHeader title="Learn about Dust" />
-        <LinksList
-          linksList={[
-            {
-              title: "Quickstart Guide",
-              description: "Learn the basics of Dust in 3 minutes",
-              onClick: () => setShowQuickGuide(true),
-              icon: LightbulbIcon,
-            },
-            {
-              title: "Guides & Documentation",
-              href: "https://docs.dust.tt",
-              description: "Explore the full documentation",
-              icon: FolderIcon,
-            },
-            {
-              title: "Join the Slack community",
-              href: "https://join.slack.com/t/dustcommunity/shared_invite/zt-2tu2obwzo-ZyT1dUR6~qwSncVpIy7yTA",
-              description: "Stuck? Ask your questions to the community",
-              icon: UserGroupIcon,
-            },
-          ]}
-        />
+    <Sheet open={show} onOpenChange={onClose}>
+      <SheetContent>
+        <SheetContainer>
+          <div className="flex flex-col gap-5">
+            <Page.SectionHeader title="Learn about Dust" />
+            <LinksList
+              linksList={[
+                {
+                  title: "Quickstart Guide",
+                  description: "Learn the basics of Dust in 3 minutes",
+                  onClick: () => setShowQuickGuide(true),
+                  icon: LightbulbIcon,
+                },
+                {
+                  title: "Guides & Documentation",
+                  href: "https://docs.dust.tt",
+                  description: "Explore the full documentation",
+                  icon: FolderIcon,
+                },
+                {
+                  title: "Join the Slack community",
+                  href: "https://join.slack.com/t/dustcommunity/shared_invite/zt-2tu2obwzo-ZyT1dUR6~qwSncVpIy7yTA",
+                  description: "Stuck? Ask your questions to the community",
+                  icon: UserGroupIcon,
+                },
+              ]}
+            />
 
-        <div className="flex flex-col gap-4 [&>*]:pl-px">
-          <Page.SectionHeader title="Ask questions to @help" />
-          <div className="flex gap-2">
-            <div className="flex flex-col gap-8">
-              <div className="flex flex-wrap gap-2">
-                {userContent[owner.role].helpIceBreakers.map(
-                  (iceBreaker, index) => (
-                    <Button
-                      variant="ghost"
-                      icon={ChatBubbleBottomCenterTextIcon}
-                      label={iceBreaker}
-                      size="sm"
-                      onClick={() => {
-                        void handleHelpSubmit(`@help ${iceBreaker}`, [
-                          { configurationId: GLOBAL_AGENTS_SID.HELPER },
-                        ]);
-                      }}
-                      key={index}
-                    />
-                  )
-                )}
+            <div className="flex flex-col gap-4 [&>*]:pl-px">
+              <Page.SectionHeader title="Ask questions to @help" />
+              <div className="flex gap-2">
+                <div className="flex flex-col gap-8">
+                  <div className="flex flex-wrap gap-2">
+                    {userContent[owner.role].helpIceBreakers.map(
+                      (iceBreaker, index) => (
+                        <Button
+                          variant="ghost"
+                          icon={ChatBubbleBottomCenterTextIcon}
+                          label={iceBreaker}
+                          size="sm"
+                          onClick={() => {
+                            void handleHelpSubmit(`@help ${iceBreaker}`, [
+                              { configurationId: GLOBAL_AGENTS_SID.HELPER },
+                            ]);
+                          }}
+                          key={index}
+                        />
+                      )
+                    )}
+                  </div>
+                </div>
               </div>
+              <AssistantInputBar
+                owner={owner}
+                onSubmit={handleHelpSubmit}
+                conversationId={null}
+                actions={[]}
+                disableAutoFocus={true}
+                isFloatingWithoutMargin={true}
+              />
             </div>
           </div>
-          <AssistantInputBar
-            owner={owner}
-            onSubmit={handleHelpSubmit}
-            conversationId={null}
-            actions={[]}
-            disableAutoFocus={true}
-            isFloatingWithoutMargin={true}
-          />
-        </div>
-      </div>
-    </Modal>
+        </SheetContainer>
+      </SheetContent>
+    </Sheet>
   );
 }
