@@ -152,18 +152,20 @@ export default function NewBlock({
           >
             <div className="grid max-w-md grid-cols-12 items-center">
               <div className="col-span-4 sm:col-span-3">
-                <div className="flex text-base font-medium text-gray-900">
+                <div className="dark:text-gray-900-night flex text-base font-medium text-gray-900">
                   <div
                     className={cn(
                       "mr-1 rounded-md px-1 py-0.5 text-sm font-bold",
-                      block.type === "input" ? "bg-orange-200" : "bg-gray-200"
+                      block.type === "input"
+                        ? "dark:bg-orange-200-night bg-orange-200"
+                        : "dark:bg-gray-200-night bg-gray-200"
                     )}
                   >
                     {block.type}
                   </div>
                 </div>
               </div>
-              <div className="col-span-8 pr-2 text-sm text-gray-700 sm:col-span-9 sm:pl-6">
+              <div className="dark:text-gray-700-night col-span-8 pr-2 text-sm text-gray-700 sm:col-span-9 sm:pl-6">
                 <strong>{block.name}</strong>
                 <br />
                 <p className="text-sm">{block.description}</p>
