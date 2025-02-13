@@ -20,6 +20,7 @@ export const WHITELISTABLE_FEATURES = [
   "deepseek_r1_global_agent_feature",
   "bigquery_feature",
   "tags_filters",
+  "salesforce_feature",
 ] as const;
 export type WhitelistableFeature = (typeof WHITELISTABLE_FEATURES)[number];
 export function isWhitelistableFeature(

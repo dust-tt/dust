@@ -50,6 +50,7 @@ export interface ConnectorProviderModelM {
   snowflake: SnowflakeConfigurationModel;
   zendesk: ZendeskConfiguration;
   bigquery: BigQueryConfigurationModel;
+  // TODO(salesforce): implement this
 }
 
 export type ConnectorProviderModelMapping = {
@@ -94,7 +95,10 @@ export type ConnectorProviderConfigurationTypeMapping = {
 export type ConnectorProviderConfigurationType =
   ConnectorProviderConfigurationTypeMapping[keyof ConnectorProviderConfigurationTypeMapping];
 
-export interface ConnectorProviderStrategy<T extends ConnectorProvider> {
+export interface ConnectorProviderStrategy<
+  // TODO(salesforce): implement this
+  T extends Exclude<ConnectorProvider, "salesforce">,
+> {
   delete(connector: ConnectorResource, transaction: Transaction): Promise<void>;
 
   makeNew(
@@ -114,7 +118,8 @@ export interface ConnectorProviderStrategy<T extends ConnectorProvider> {
 
 export function getConnectorProviderStrategy(
   type: ConnectorProvider
-): ConnectorProviderStrategy<ConnectorProvider> {
+  // TODO(salesforce): implement this
+): ConnectorProviderStrategy<Exclude<ConnectorProvider, "salesforce">> {
   switch (type) {
     case "confluence":
       return new ConfluenceConnectorStrategy();
@@ -148,6 +153,10 @@ export function getConnectorProviderStrategy(
 
     case "bigquery":
       return new BigQueryConnectorStrategy();
+
+    // TODO(salesforce): implement this
+    case "salesforce":
+      throw new Error("Connector type salesforce NOT IMPLEMENTED YET");
 
     default:
       assertNever(type);

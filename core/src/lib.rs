@@ -118,6 +118,7 @@ pub mod oauth {
         pub mod microsoft;
         pub mod mock;
         pub mod notion;
+        pub mod salesforce;
         pub mod slack;
         pub mod utils;
         pub mod zendesk;

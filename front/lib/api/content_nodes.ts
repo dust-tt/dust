@@ -52,6 +52,7 @@ export function getContentNodeInternalIdFromTableId(
     case "google_drive":
     case "notion":
     case "bigquery":
+    case "salesforce":
       return tableId;
 
     case "intercom":

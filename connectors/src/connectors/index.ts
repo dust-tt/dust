@@ -65,6 +65,9 @@ export function getConnectorManager({
       return new ZendeskConnectorManager(connectorId);
     case "bigquery":
       return new BigQueryConnectorManager(connectorId);
+    // TODO(salesforce): implement this
+    case "salesforce":
+      throw new Error("Connector type salesforce NOT IMPLEMENTED YET");
     default:
       assertNever(connectorProvider);
   }
@@ -123,6 +126,9 @@ export function createConnector({
       return ZendeskConnectorManager.create(params);
     case "bigquery":
       return BigQueryConnectorManager.create(params);
+    // TODO(salesforce): implement this
+    case "salesforce":
+      throw new Error("Connector type salesforce NOT IMPLEMENTED YET");
     default:
       assertNever(connectorProvider);
   }
