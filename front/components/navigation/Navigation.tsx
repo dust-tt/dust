@@ -9,7 +9,9 @@ import {
   SheetTrigger,
 } from "@dust-tt/sparkle";
 import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
-import React, { useContext } from "react";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
+import { useRouter } from "next/router";
+import React, { useContext, useMemo } from "react";
 
 import type { SidebarNavigation } from "@app/components/navigation/config";
 import {
@@ -17,6 +19,8 @@ import {
   ToggleNavigationSidebarButton,
 } from "@app/components/navigation/NavigationSidebar";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
+import WorkspacePicker from "@app/components/WorkspacePicker";
+import { useUser } from "@app/lib/swr/user";
 import { classNames } from "@app/lib/utils";
 
 interface NavigationProps {
@@ -40,6 +44,27 @@ export function Navigation({
 }: NavigationProps) {
   const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
 
+  const router = useRouter();
+  const { user } = useUser();
+
+  const workspacePicker = useMemo(() => {
+    if (user && user.workspaces.length > 1) {
+      return (
+        <WorkspacePicker
+          user={user}
+          workspace={owner}
+          onWorkspaceUpdate={async (workspace) => {
+            const assistantRoute = `/w/${workspace.sId}/assistant/new`;
+            if (workspace.id !== owner.id) {
+              await router.push(assistantRoute).then(() => router.reload());
+            }
+          }}
+        />
+      );
+    }
+    return null;
+  }, [owner, router, user]);
+
   if (hideSidebar) {
     return null;
   }
@@ -57,14 +82,18 @@ export function Navigation({
             />
           </SheetTrigger>
         </div>
-        <SheetContent side="left" className="flex w-full max-w-xs flex-1 p-0">
-          <SheetHeader>
-            <SheetTitle className="hidden" />
+        <SheetContent side="left" className="flex w-full max-w-xs flex-1">
+          <SheetHeader className="bg-muted-background p-0">
+            <VisuallyHidden>
+              <SheetTitle className="hidden" />
+            </VisuallyHidden>
+            {workspacePicker}
           </SheetHeader>
           <NavigationSidebar
             subscription={subscription}
             owner={owner}
             subNavigation={subNavigation}
+            user={user}
           >
             {navChildren && navChildren}
           </NavigationSidebar>
@@ -78,11 +107,13 @@ export function Navigation({
           isNavigationBarOpen ? "w-80" : "w-0"
         )}
       >
-        <div className="hidden flex-1 lg:inset-y-0 lg:z-0 lg:flex lg:w-80 lg:flex-col">
+        <div className="hidden flex-1 bg-muted-background lg:inset-y-0 lg:z-0 lg:flex lg:w-80 lg:flex-col">
+          {workspacePicker}
           <NavigationSidebar
             owner={owner}
             subscription={subscription}
             subNavigation={subNavigation}
+            user={user}
           >
             {navChildren && navChildren}
           </NavigationSidebar>
