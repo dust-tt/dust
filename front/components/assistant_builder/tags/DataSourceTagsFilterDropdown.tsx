@@ -1,25 +1,23 @@
 import {
   Button,
-  FilterIcon,
-  FolderIcon,
-  Icon,
   Label,
+  Page,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
+  SliderToggle,
 } from "@dust-tt/sparkle";
 import type {
   DataSourceTag,
   DataSourceViewSelectionConfiguration,
   DataSourceViewSelectionConfigurations,
+  TagsFilter,
   WorkspaceType,
 } from "@dust-tt/types";
 import { useRef, useState } from "react";
 
 import { getActionTags } from "@app/components/assistant_builder/tags/helpers";
 import { TagSearchInput } from "@app/components/assistant_builder/tags/TagSearchInput";
-import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { useTagSearchEndpoint } from "@app/lib/swr/data_sources";
 import { debounce } from "@app/lib/utils/debounce";
 
@@ -40,6 +38,12 @@ export function DataSourceTagsFilterDropdown({
   const selectedTagsIn = getActionTags(currentDataSourceConfiguration, "in");
   const selectedTagsNot = getActionTags(currentDataSourceConfiguration, "not");
   const dustAPIDataSourceIds = [dataSource.dustAPIDataSourceId];
+
+  // State to save the tags filter before the dynamic filtering is enabled.
+  // This is used to restore the tags filter when the dynamic filtering is disabled right after it was enabled.
+  const [backUpTagsFilter, setBackUpTagsFilter] = useState<TagsFilter | null>(
+    null
+  );
 
   const {
     searchInputValueIn,
@@ -83,6 +87,33 @@ export function DataSourceTagsFilterDropdown({
     });
   };
 
+  const handleAutoFilter = (isChecked: boolean) => {
+    const newDsc = { ...currentDataSourceConfiguration };
+
+    if (isChecked) {
+      if (newDsc.tagsFilter && newDsc.tagsFilter !== "auto") {
+        setBackUpTagsFilter({ ...newDsc.tagsFilter });
+      }
+      newDsc.tagsFilter = "auto";
+    } else if (backUpTagsFilter) {
+      newDsc.tagsFilter = backUpTagsFilter;
+      setBackUpTagsFilter(null);
+    }
+
+    onSave({
+      ...dataSourceConfigurations,
+      [newDsc.dataSourceView.sId]: newDsc,
+    });
+  };
+
+  const tagsFilter = currentDataSourceConfiguration.tagsFilter;
+  let tagsLabels = "Filters";
+  if (tagsFilter === "auto") {
+    tagsLabels = "Filters (auto)";
+  } else if (tagsFilter) {
+    tagsLabels = `Filters (${tagsFilter.in.length + tagsFilter.not.length})`;
+  }
+
   return (
     <PopoverRoot
       onOpenChange={(open) => {
@@ -94,28 +125,18 @@ export function DataSourceTagsFilterDropdown({
       modal={true}
     >
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="sm" icon={FilterIcon} />
+        <Button variant="outline" size="sm" label={tagsLabels} isSelect />
       </PopoverTrigger>
-      <PopoverContent className="w-[500px] max-w-[500px]">
-        <div className="flex flex-col gap-4 p-2">
-          <div className="flex flex-row gap-2">
-            <div className="flex items-center gap-1 text-element-600 dark:text-element-600-night">
-              Filter documents using labels from
-              <Icon
-                visual={
-                  dataSource.connectorProvider
-                    ? CONNECTOR_CONFIGURATIONS[dataSource.connectorProvider]
-                        .logoComponent
-                    : FolderIcon
-                }
-                className="text-element-800 dark:text-element-800-night"
-              />
-              {getDisplayNameForDataSource(dataSource)}
-            </div>
-          </div>
-
+      <PopoverContent className="w-[600px] max-w-[600px]">
+        <div className="flex flex-col gap-8 p-2">
           <div className="flex flex-col gap-2">
-            <Label>Required labels</Label>
+            <Page.SectionHeader
+              title="Manual fitering"
+              description="Match content that has any of the must have labels, ignore anything that has any of the must not have labels."
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label>Must have labels</Label>
             <TagSearchInput
               searchInputValue={searchInputValueIn}
               setSearchInputValue={(value) =>
@@ -126,10 +147,11 @@ export function DataSourceTagsFilterDropdown({
               onTagAdd={(tag) => handleTagOperation(tag, "in", "add")}
               onTagRemove={(tag) => handleTagOperation(tag, "in", "remove")}
               isLoading={isLoadingIn}
+              disabled={tagsFilter === "auto"}
             />
           </div>
           <div className="flex flex-col gap-2">
-            <Label>Exclude labels</Label>
+            <Label>Must not have labels</Label>
             <TagSearchInput
               searchInputValue={searchInputValueNot}
               setSearchInputValue={(value) =>
@@ -141,7 +163,24 @@ export function DataSourceTagsFilterDropdown({
               onTagRemove={(tag) => handleTagOperation(tag, "not", "remove")}
               tagChipColor="red"
               isLoading={isLoadingNot}
+              disabled={tagsFilter === "auto"}
             />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Page.SectionHeader
+              title="Dynamic filtering"
+              description="Allow the assistant to automatically determine relevant labels to include or exclude based on conversation context, overriding manual label filters."
+            />
+          </div>
+          <div className="flex flex-row items-center gap-2">
+            <SliderToggle
+              selected={tagsFilter === "auto"}
+              onClick={() => {
+                handleAutoFilter(tagsFilter !== "auto");
+              }}
+              size="xs"
+            />
+            <Label>Enable dynamic filtering</Label>
           </div>
         </div>
       </PopoverContent>
