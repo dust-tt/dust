@@ -1,5 +1,5 @@
 import type { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
-import { assertNever, MIME_TYPES, safeSubstring } from "@dust-tt/types";
+import { assertNever, MIME_TYPES } from "@dust-tt/types";
 import { Context } from "@temporalio/activity";
 import { hash as blake3 } from "blake3";
 import { promises as fs } from "fs";
@@ -154,7 +154,7 @@ async function renderIssue(
     updatedAt: issue.updatedAt,
     author: renderGithubUser(issue.creator),
     additionalPrefixes: {
-      labels: safeSubstring(issue.labels.join(", "), 0, 128), // We truncate the labels to avoid having a prefix too large.
+      labels: issue.labels.join(", "),
       isPullRequest: issue.isPullRequest.toString(),
     },
     content: await renderMarkdownSection(dataSourceConfig, issue.body ?? "", {

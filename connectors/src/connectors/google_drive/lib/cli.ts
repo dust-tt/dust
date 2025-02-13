@@ -18,6 +18,7 @@ import {
 } from "@connectors/connectors/google_drive/temporal/client";
 import { MIME_TYPES_TO_EXPORT } from "@connectors/connectors/google_drive/temporal/mime_types";
 import {
+  _getLabels,
   getAuthObject,
   getDriveClient,
   getDriveFileId,
@@ -82,6 +83,12 @@ export const google_drive = async ({
         );
       }
       return { success: true };
+    }
+    case "list-labels": {
+      const connector = await getConnector(args);
+      const authCredentials = await getAuthObject(connector.connectionId);
+      const labels = await _getLabels(authCredentials);
+      return { status: 200, content: labels, type: typeof labels };
     }
     case "check-file": {
       const connector = await getConnector(args);
