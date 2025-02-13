@@ -244,7 +244,7 @@ export function applyDataSourceFilters(
 
     // Handle tags filtering.
     if (ds.filter.tags) {
-      if (!config.DATASOURCE.filter.tags) {
+      if (!config.DATASOURCE.filter.tags?.in_map) {
         config.DATASOURCE.filter.tags = {
           in_map: {},
           not_map: {},
