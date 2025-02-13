@@ -6,7 +6,9 @@ import {
   EmojiPicker,
   EmotionLaughIcon,
   PaintIcon,
-  Popover,
+  PopoverContent,
+  PopoverRoot,
+  PopoverTrigger,
 } from "@dust-tt/sparkle";
 import { generateTailwindBackgroundColors } from "@dust-tt/types";
 import React, { useEffect, useImperativeHandle, useRef, useState } from "react";
@@ -78,17 +80,15 @@ const AssistantBuilderEmojiPicker = React.forwardRef<
         size="xxl"
       />
       <div className="flex flex-row gap-2">
-        <Popover
-          popoverTriggerAsChild
-          fullWidth
-          trigger={
+        <PopoverRoot>
+          <PopoverTrigger asChild>
             <Button
               variant="outline"
               icon={EmotionLaughIcon}
               label="Pick an Emoji"
             />
-          }
-          content={
+          </PopoverTrigger>
+          <PopoverContent mountPortal={false} className="p-4" fullWidth>
             <EmojiPicker
               theme="light"
               previewPosition="none"
@@ -102,17 +102,14 @@ const AssistantBuilderEmojiPicker = React.forwardRef<
                 emojiButtonRef.current?.click();
               }}
             />
-          }
-        />
-        <Popover
-          fullWidth
-          popoverTriggerAsChild
-          trigger={
-            <div ref={colorButtonRef}>
-              <Button variant="outline" icon={PaintIcon} label="Pick a color" />
-            </div>
-          }
-          content={
+          </PopoverContent>
+        </PopoverRoot>
+
+        <PopoverRoot>
+          <PopoverTrigger asChild>
+            <Button variant="outline" icon={PaintIcon} label="Pick a color" />
+          </PopoverTrigger>
+          <PopoverContent mountPortal={false} className="p-4" fullWidth>
             <ColorPicker
               colors={
                 generateTailwindBackgroundColors() as avatarUtils.AvatarBackgroundColorType[]
@@ -126,8 +123,8 @@ const AssistantBuilderEmojiPicker = React.forwardRef<
                 colorButtonRef.current?.click();
               }}
             />
-          }
-        />
+          </PopoverContent>
+        </PopoverRoot>
       </div>
     </div>
   );

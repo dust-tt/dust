@@ -4,7 +4,7 @@ import type {
   RoleType,
   UserTypeWithWorkspaces,
 } from "@dust-tt/types";
-import { useCallback, useContext } from "react";
+import { useCallback } from "react";
 
 import { useMembers, useSearchMembers } from "@app/lib/swr/memberships";
 

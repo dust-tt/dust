@@ -1,13 +1,17 @@
 import {
   Button,
   DataTable,
-  ExclamationCircleIcon,
-  Icon,
   Input,
-  Modal,
+  Label,
   Page,
   ScrollArea,
   SearchInput,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
   SliderToggle,
   useSendNotification,
   XMarkIcon,
@@ -208,112 +212,128 @@ export function CreateOrEditSpaceModal({
   }, [doDelete, handleClose, owner.sId, router, space]);
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={handleClose}
-      title={space ? `Edit ${space.name}` : "Create a Space"}
-      saveLabel={space ? "Save" : "Create"}
-      variant="side-md"
-      hasChanged={
-        !!spaceName &&
-        (!isRestricted || (isRestricted && deduplicatedMembers.length > 0))
-      }
-      isSaving={isSaving}
-      className="flex overflow-visible" // overflow-visible is needed to avoid clipping the delete button
-      onSave={onSave}
-    >
-      <Page.Vertical gap="md" sizing="grow">
-        <div className="flex w-full flex-col gap-y-4 overflow-y-hidden px-1">
-          <div className="mb-4 flex w-full flex-col gap-y-2 pt-2">
-            <Page.SectionHeader title="Name" />
-            <Input
-              placeholder="Space's name"
-              value={spaceName}
-              name="spaceName"
-              onChange={(e) => setSpaceName(e.target.value)}
-            />
-            {!space && (
-              <div className="flex gap-1 text-xs text-element-700">
-                <Icon visual={ExclamationCircleIcon} size="xs" />
-                <span>Space name must be unique</span>
-              </div>
-            )}
-          </div>
-          <div className="flex w-full flex-col gap-y-2 border-t pt-2">
-            <div className="flex w-full items-center justify-between overflow-visible">
-              <Page.SectionHeader title="Restricted Access" />
-              <SliderToggle
-                selected={isRestricted}
-                onClick={() => setIsRestricted(!isRestricted)}
-              />
-            </div>
-            <div className="text-sm font-normal text-element-700">
-              {isRestricted ? (
-                <p>Restricted access is active.</p>
+    <Sheet open={isOpen} onOpenChange={handleClose}>
+      <SheetContent trapFocusScope={false} size="lg">
+        <SheetHeader>
+          <SheetTitle>
+            {space ? `Edit ${space.name}` : "Create a Space"}
+          </SheetTitle>
+        </SheetHeader>
+        <SheetContainer>
+          <div className="flex w-full flex-col gap-y-4">
+            <div className="mb-4 flex w-full flex-col gap-y-2">
+              <Page.SectionHeader title="Name" />
+              {!space ? (
+                <Input
+                  placeholder="Space's name"
+                  value={spaceName}
+                  name="spaceName"
+                  message="Space name must be unique"
+                  messageStatus="info"
+                  onChange={(e) => setSpaceName(e.target.value)}
+                />
               ) : (
-                <p>
-                  Restricted access is disabled. The space is accessible to
-                  everyone in the workspace.
-                </p>
+                <Input
+                  placeholder="Space's name"
+                  value={spaceName}
+                  name="spaceName"
+                  onChange={(e) => setSpaceName(e.target.value)}
+                />
               )}
             </div>
-          </div>
-          {isRestricted && (
-            <>
-              <div className="flex flex-row justify-end gap-2">
-                <SearchMembersPopover
-                  owner={owner}
-                  selectedMembers={deduplicatedMembers}
-                  onMembersUpdated={setSelectedMembers}
+
+            <div className="flex w-full flex-col gap-y-2 border-t pt-2">
+              <div className="flex w-full items-center justify-between overflow-visible">
+                <Page.SectionHeader title="Restricted Access" />
+                <SliderToggle
+                  selected={isRestricted}
+                  onClick={() => setIsRestricted(!isRestricted)}
                 />
-                {membersCount >= MIN_MEMBERS_FOR_BATCH_OPTION && (
-                  <BatchAddMembersPopover
+              </div>
+              {isRestricted ? (
+                <Label>Restricted access is active.</Label>
+              ) : (
+                <Label>
+                  Restricted access is disabled. The space is accessible to
+                  everyone in the workspace.
+                </Label>
+              )}
+            </div>
+
+            {isRestricted && (
+              <>
+                <div className="flex flex-row justify-end gap-2">
+                  <SearchMembersPopover
                     owner={owner}
                     selectedMembers={deduplicatedMembers}
                     onMembersUpdated={setSelectedMembers}
                   />
-                )}
-              </div>
-              <SearchInput
-                name="search"
-                placeholder="Search (email)"
-                value={searchSelectedMembers}
-                onChange={(s) => {
-                  setSearchSelectedMembers(s);
-                }}
-              />
-              <ScrollArea className="h-full">
-                <MembersTable
-                  onMembersUpdated={setSelectedMembers}
-                  selectedMembers={deduplicatedMembers}
-                  searchSelectedMembers={searchSelectedMembers}
+                  {membersCount >= MIN_MEMBERS_FOR_BATCH_OPTION && (
+                    <BatchAddMembersPopover
+                      owner={owner}
+                      selectedMembers={deduplicatedMembers}
+                      onMembersUpdated={setSelectedMembers}
+                    />
+                  )}
+                </div>
+                <SearchInput
+                  name="search"
+                  placeholder="Search (email)"
+                  value={searchSelectedMembers}
+                  onChange={(s) => {
+                    setSearchSelectedMembers(s);
+                  }}
                 />
-              </ScrollArea>
-            </>
-          )}
-          {isAdmin && space && space.kind === "regular" && (
-            <>
-              <ConfirmDeleteSpaceDialog
-                space={space}
-                handleDelete={onDelete}
-                isOpen={showDeleteConfirmDialog}
-                isDeleting={isDeleting}
-                onClose={() => setShowDeleteConfirmDialog(false)}
-              />
-              <div className="flex w-full justify-end">
-                <Button
-                  size="sm"
-                  label="Delete Space"
-                  variant="warning"
-                  className="mr-2"
-                  onClick={() => setShowDeleteConfirmDialog(true)}
+                <ScrollArea className="h-full">
+                  <MembersTable
+                    onMembersUpdated={setSelectedMembers}
+                    selectedMembers={deduplicatedMembers}
+                    searchSelectedMembers={searchSelectedMembers}
+                  />
+                </ScrollArea>
+              </>
+            )}
+
+            {isAdmin && space && space.kind === "regular" && (
+              <>
+                <ConfirmDeleteSpaceDialog
+                  space={space}
+                  handleDelete={onDelete}
+                  isOpen={showDeleteConfirmDialog}
+                  isDeleting={isDeleting}
+                  onClose={() => setShowDeleteConfirmDialog(false)}
                 />
-              </div>
-            </>
-          )}
-        </div>
-      </Page.Vertical>
-    </Modal>
+                <div className="flex w-full justify-end">
+                  <Button
+                    size="sm"
+                    label="Delete Space"
+                    variant="warning"
+                    onClick={() => setShowDeleteConfirmDialog(true)}
+                  />
+                </div>
+              </>
+            )}
+          </div>
+        </SheetContainer>
+        <SheetFooter
+          leftButtonProps={{
+            label: "Cancel",
+            variant: "outline",
+            onClick: onClose,
+          }}
+          rightButtonProps={{
+            label: isSaving ? "Saving..." : space ? "Save" : "Create",
+            onClick: onSave,
+            disabled:
+              !(
+                !!spaceName &&
+                (!isRestricted ||
+                  (isRestricted && deduplicatedMembers.length > 0))
+              ) || isSaving,
+          }}
+        />
+      </SheetContent>
+    </Sheet>
   );
 }
 
