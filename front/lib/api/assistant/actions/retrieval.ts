@@ -259,7 +259,7 @@ export function applyDataSourceFilters(
       const tagsNot =
         ds.filter.tags === "auto" ? globalTagsNot : ds.filter.tags.not;
 
-      if (tagsIn && tagsNot) {
+      if (tagsIn && tagsNot && (tagsIn.length > 0 || tagsNot.length > 0)) {
         config.DATASOURCE.filter.tags.in_map[
           dsView.dataSource.dustAPIDataSourceId
         ] = tagsIn;
