@@ -59,62 +59,7 @@ export async function upsertPageWorkflow({
   });
 
   if (upsertParents) {
-    const parentResult = await getParentPageOrDb({
-      connectorId,
-      pageOrDbId: pageId,
-    });
-    if (!parentResult) {
-      return { skipped: true };
-    }
-
-    const { parentId, parentType } = parentResult;
-
-    // In case of infinite parents loop, the workflow execution will fail at
-    // first loop since they will have the same workflowId ("workflow execution
-    // already started"). It's acceptable behaviour: it's very rare, it may not
-    // even happen since contrarily to getParents, here we query notion directly
-    // VS our connectors DB.
-    switch (parentType) {
-      case "page":
-        await executeChild(upsertPageWorkflow, {
-          workflowId: getUpsertPageWorkflowId(parentId, connectorId),
-          searchAttributes: {
-            connectorId: [connectorId],
-          },
-          args: [
-            {
-              connectorId,
-              pageId: parentId,
-              upsertParents: true,
-            },
-          ],
-          parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
-          memo: workflowInfo().memo,
-        });
-        break;
-      case "database":
-        await executeChild(upsertDatabaseWorkflow, {
-          workflowId: getUpsertDatabaseWorkflowId(parentId, connectorId),
-          searchAttributes: {
-            connectorId: [connectorId],
-          },
-          args: [
-            {
-              connectorId,
-              databaseId: parentId,
-              forceResync: false,
-            },
-          ],
-          parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
-          memo: workflowInfo().memo,
-        });
-        break;
-      case "workspace":
-      case "unknown":
-        break;
-      default:
-        assertNever(parentType);
-    }
+    await upsertParent({ connectorId, pageOrDbId: pageId });
   }
 
   await clearWorkflowCache({ connectorId, topLevelWorkflowId });
@@ -194,12 +139,18 @@ export async function upsertDatabaseWorkflow({
   connectorId,
   databaseId,
   forceResync = false,
+  upsertParents = false,
 }: {
   connectorId: ModelId;
   databaseId: string;
   forceResync?: boolean;
+  upsertParents?: boolean;
 }) {
   const topLevelWorkflowId = workflowInfo().workflowId;
+
+  if (upsertParents) {
+    await upsertParent({ connectorId, pageOrDbId: databaseId });
+  }
 
   const queue = new PQueue({
     concurrency: MAX_CONCURRENT_CHILD_WORKFLOWS,
@@ -275,4 +226,69 @@ export async function upsertDatabaseWorkflow({
     notionDocumentId: databaseId,
     documentType: "database",
   });
+}
+
+async function upsertParent({
+  connectorId,
+  pageOrDbId,
+}: {
+  connectorId: ModelId;
+  pageOrDbId: string;
+}) {
+  const parentResult = await getParentPageOrDb({
+    connectorId,
+    pageOrDbId,
+  });
+  if (!parentResult) {
+    return { skipped: true };
+  }
+
+  const { parentId, parentType } = parentResult;
+
+  // In case of infinite parents loop, the workflow execution will fail at
+  // first loop since they will have the same workflowId ("workflow execution
+  // already started"). It's acceptable behaviour: it's very rare, it may not
+  // even happen since contrarily to getParents, here we query notion directly
+  // VS our connectors DB.
+  switch (parentType) {
+    case "page":
+      await executeChild(upsertPageWorkflow, {
+        workflowId: getUpsertPageWorkflowId(parentId, connectorId),
+        searchAttributes: {
+          connectorId: [connectorId],
+        },
+        args: [
+          {
+            connectorId,
+            pageId: parentId,
+            upsertParents: true,
+          },
+        ],
+        parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
+        memo: workflowInfo().memo,
+      });
+      break;
+    case "database":
+      await executeChild(upsertDatabaseWorkflow, {
+        workflowId: getUpsertDatabaseWorkflowId(parentId, connectorId),
+        searchAttributes: {
+          connectorId: [connectorId],
+        },
+        args: [
+          {
+            connectorId,
+            databaseId: parentId,
+            forceResync: false,
+          },
+        ],
+        parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
+        memo: workflowInfo().memo,
+      });
+      break;
+    case "workspace":
+    case "unknown":
+      break;
+    default:
+      assertNever(parentType);
+  }
 }

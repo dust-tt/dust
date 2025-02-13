@@ -453,6 +453,7 @@ export const notion = async ({
           {
             connectorId,
             pageId,
+            upsertParents: true,
           },
         ],
         taskQueue: QUEUE_NAME,
@@ -514,6 +515,7 @@ export const notion = async ({
             connectorId,
             databaseId,
             forceResync: !!args.forceResync,
+            upsertParents: true,
           },
         ],
         taskQueue: QUEUE_NAME,
