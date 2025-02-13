@@ -892,7 +892,6 @@ export async function getSession(
 export async function getBearerToken(
   req: NextApiRequest
 ): Promise<Result<string, APIErrorWithStatusCode>> {
-  console.log("getBearerToken", req.headers);
   if (!req.headers.authorization) {
     console.log("No authorization header");
     return new Err({

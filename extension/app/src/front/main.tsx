@@ -10,6 +10,7 @@ import "../css/custom.css";
 import { Notification } from "@dust-tt/sparkle";
 import { AuthProvider } from "@extension/components/auth/AuthProvider";
 import { frontPlatform } from "@extension/front/platform";
+import { FrontContextProvider } from "@extension/front/providers/FrontProvider";
 import { FrontAuth } from "@extension/front/services/auth";
 import { routes } from "@extension/pages/routes";
 import { PlatformContext } from "@extension/shared/context/platform";
@@ -24,9 +25,11 @@ const App = () => {
   return (
     <PlatformContext.Provider value={frontPlatform}>
       <AuthProvider authService={authService}>
-        <Notification.Area>
-          <RouterProvider router={router} />
-        </Notification.Area>
+        <FrontContextProvider>
+          <Notification.Area>
+            <RouterProvider router={router} />
+          </Notification.Area>
+        </FrontContextProvider>
       </AuthProvider>
     </PlatformContext.Provider>
   );
