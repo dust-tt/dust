@@ -2798,22 +2798,17 @@ type NotionParentType = "workspace" | "database" | "page" | "unknown";
 export async function getParentPageOrDb({
   connectorId,
   pageOrDbId,
-  connectionId,
-  notionAccessToken,
 }: {
   connectorId: ModelId;
   pageOrDbId: string;
-  connectionId?: string;
-  notionAccessToken?: string;
 }): Promise<{ parentId: string; parentType: NotionParentType } | null> {
-  if (!connectionId) {
-    const connector = await ConnectorResource.fetchById(connectorId);
-    if (!connector) {
-      throw new Error("Could not find connector");
-    }
-    connectionId = connector.connectionId;
-    notionAccessToken = await getNotionAccessToken(connectionId);
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error("Could not find connector");
   }
+
+  const connectionId = connector.connectionId;
+  const notionAccessToken = await getNotionAccessToken(connectionId);
 
   if (!notionAccessToken) {
     throw new Error("Unreachable: connection id without access token");
@@ -2834,12 +2829,12 @@ export async function getParentPageOrDb({
         return { parentId: "workspace", parentType: "workspace" };
       case "block_id":
         return (
-          (await getParentPageOrDb({
-            connectorId,
-            pageOrDbId: page.parent.block_id,
-            connectionId,
+          (await getBlockParentMemoized(
             notionAccessToken,
-          })) ?? { parentId: "unknown", parentType: "unknown" }
+            page.parent.block_id,
+            logger,
+            () => heartbeat()
+          )) ?? { parentId: "unknown", parentType: "unknown" }
         );
       default:
         ((pageParent: never) => {
@@ -2857,12 +2852,12 @@ export async function getParentPageOrDb({
   if (db) {
     if (db.parentType === "block") {
       return (
-        (await getParentPageOrDb({
-          connectorId,
-          pageOrDbId: db.parentId,
-          connectionId,
+        (await getBlockParentMemoized(
           notionAccessToken,
-        })) ?? { parentId: "unknown", parentType: "unknown" }
+          db.parentId,
+          logger,
+          () => heartbeat()
+        )) ?? { parentId: "unknown", parentType: "unknown" }
       );
     }
     return { parentId: db.parentId, parentType: db.parentType };
