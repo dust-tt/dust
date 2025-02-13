@@ -1,7 +1,9 @@
 import {
   ArrowRightIcon,
   Button,
+  Div3D,
   GithubIcon,
+  Hover3D,
   Icon,
   LinkedinIcon,
   Separator,
@@ -263,7 +265,17 @@ export default function About() {
           </div>
           <div className="flex flex-row justify-center pt-4">
             <div className="max-w-4xl">
-              <img src="/static/landing/about/about_visual.png" />
+              <Hover3D depth={-20} perspective={1000} className="relative">
+                <Div3D depth={-10} className="absolute top-0">
+                  <img src="/static/landing/about/2.png" />
+                </Div3D>
+                <Div3D depth={40}>
+                  <img src="/static/landing/about/1.png" />
+                </Div3D>
+                <Div3D depth={70} className="absolute top-0">
+                  <img src="/static/landing/about/3.png" />
+                </Div3D>
+              </Hover3D>
             </div>
           </div>
         </div>
