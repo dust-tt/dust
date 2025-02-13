@@ -1,8 +1,6 @@
 import {
   Button,
   DataTable,
-  ExclamationCircleIcon,
-  Icon,
   Input,
   Page,
   ScrollArea,
@@ -224,17 +222,22 @@ export function CreateOrEditSpaceModal({
           <div className="flex w-full flex-col gap-y-4">
             <div className="mb-4 flex w-full flex-col gap-y-2">
               <Page.SectionHeader title="Name" />
-              <Input
-                placeholder="Space's name"
-                value={spaceName}
-                name="spaceName"
-                onChange={(e) => setSpaceName(e.target.value)}
-              />
-              {!space && (
-                <div className="flex gap-1 text-xs text-element-700">
-                  <Icon visual={ExclamationCircleIcon} size="xs" />
-                  <span>Space name must be unique</span>
-                </div>
+              {!space ? (
+                <Input
+                  placeholder="Space's name"
+                  value={spaceName}
+                  name="spaceName"
+                  message="Space name must be unique"
+                  messageStatus="info"
+                  onChange={(e) => setSpaceName(e.target.value)}
+                />
+              ) : (
+                <Input
+                  placeholder="Space's name"
+                  value={spaceName}
+                  name="spaceName"
+                  onChange={(e) => setSpaceName(e.target.value)}
+                />
               )}
             </div>
 
