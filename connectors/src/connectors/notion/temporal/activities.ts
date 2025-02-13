@@ -2792,3 +2792,79 @@ export async function updateSingleDocumentParents({
     });
   }
 }
+
+type NotionParentType = "workspace" | "database" | "page" | "unknown";
+
+export async function getParentPageOrDb({
+  connectorId,
+  pageOrDbId,
+}: {
+  connectorId: ModelId;
+  pageOrDbId: string;
+}): Promise<{ parentId: string; parentType: NotionParentType } | null> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error("Could not find connector");
+  }
+
+  const connectionId = connector.connectionId;
+  const notionAccessToken = await getNotionAccessToken(connectionId);
+
+  if (!notionAccessToken) {
+    throw new Error("Unreachable: connection id without access token");
+  }
+
+  const page = await retrievePage({
+    accessToken: notionAccessToken,
+    pageId: pageOrDbId,
+    loggerArgs: { connectorId, connectionId },
+  });
+  if (page) {
+    switch (page.parent.type) {
+      case "database_id":
+        return { parentId: page.parent.database_id, parentType: "database" };
+      case "page_id":
+        return { parentId: page.parent.page_id, parentType: "page" };
+      case "workspace":
+        return { parentId: "workspace", parentType: "workspace" };
+      case "block_id":
+        return (
+          (await getBlockParentMemoized(
+            notionAccessToken,
+            page.parent.block_id,
+            logger,
+            () => heartbeat()
+          )) ?? { parentId: "unknown", parentType: "unknown" }
+        );
+      default:
+        ((pageParent: never) => {
+          logger.warn({ pageParent }, "Unknown page parent type.");
+        })(page.parent);
+        return { parentId: "unknown", parentType: "unknown" };
+    }
+  }
+
+  const db = await getParsedDatabase(notionAccessToken, pageOrDbId, {
+    connectorId,
+    connectionId,
+  });
+
+  if (db) {
+    if (db.parentType === "block") {
+      return (
+        (await getBlockParentMemoized(
+          notionAccessToken,
+          db.parentId,
+          logger,
+          () => heartbeat()
+        )) ?? { parentId: "unknown", parentType: "unknown" }
+      );
+    }
+    return { parentId: db.parentId, parentType: db.parentType };
+  }
+  logger.warn(
+    { connectorId, pageOrDbId },
+    "Could not find page or database in Notion."
+  );
+  return null;
+}
