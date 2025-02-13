@@ -1,4 +1,6 @@
 import { Command } from "commander";
+import { authenticate } from "./auth.js";
+import { isAuthenticated } from "./config.js";
 
 const program = new Command();
 
@@ -9,10 +11,19 @@ program
   .description("Authenticate with Dust")
   .action(async () => {
     try {
+      // const alreadyAuthenticated = await isAuthenticated();
+      // if (alreadyAuthenticated) {
+      //   console.log("You are already authenticated.");
+      //   return;
+      // }
+
       console.log("Authenticating with Dust...");
-      // TODO(kyllian): Implement authentication
+      await authenticate();
+      console.log(
+        "Authentication successful! Your credentials have been saved."
+      );
     } catch (error) {
-      console.error(error);
+      console.error("Authentication failed:", error);
       process.exit(1);
     }
   });
