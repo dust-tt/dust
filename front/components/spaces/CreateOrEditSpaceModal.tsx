@@ -2,6 +2,7 @@ import {
   Button,
   DataTable,
   Input,
+  Label,
   Page,
   ScrollArea,
   SearchInput,
@@ -249,16 +250,14 @@ export function CreateOrEditSpaceModal({
                   onClick={() => setIsRestricted(!isRestricted)}
                 />
               </div>
-              <div className="text-sm font-normal text-element-700">
-                {isRestricted ? (
-                  <p>Restricted access is active.</p>
-                ) : (
-                  <p>
-                    Restricted access is disabled. The space is accessible to
-                    everyone in the workspace.
-                  </p>
-                )}
-              </div>
+              {isRestricted ? (
+                <Label>Restricted access is active.</Label>
+              ) : (
+                <Label>
+                  Restricted access is disabled. The space is accessible to
+                  everyone in the workspace.
+                </Label>
+              )}
             </div>
 
             {isRestricted && (
