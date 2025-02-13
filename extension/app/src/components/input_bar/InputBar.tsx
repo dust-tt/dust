@@ -65,21 +65,21 @@ export function AssistantInputBar({
     resetUpload,
   } = fileUploaderService;
 
-  useEffect(() => {
-    void sendInputBarStatus(true);
-    const listener = async (message: AttachSelectionMessage) => {
-      const { type } = message;
-      if (type === "EXT_ATTACH_TAB") {
-        // Handle message
-        void uploadContentTab(message);
-      }
-    };
-    chrome.runtime.onMessage.addListener(listener);
-    return () => {
-      void sendInputBarStatus(false);
-      chrome.runtime.onMessage.removeListener(listener);
-    };
-  }, []);
+  // useEffect(() => {
+  //   void sendInputBarStatus(true);
+  //   const listener = async (message: AttachSelectionMessage) => {
+  //     const { type } = message;
+  //     if (type === "EXT_ATTACH_TAB") {
+  //       // Handle message
+  //       void uploadContentTab(message);
+  //     }
+  //   };
+  //   chrome.runtime.onMessage.addListener(listener);
+  //   return () => {
+  //     void sendInputBarStatus(false);
+  //     chrome.runtime.onMessage.removeListener(listener);
+  //   };
+  // }, []);
 
   const { droppedFiles, setDroppedFiles } = useFileDrop();
 

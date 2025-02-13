@@ -46,7 +46,10 @@ export const Auth0JwtPayloadSchema = t.intersection([
     scope: t.string,
     sub: t.string,
   }),
-  t.record(t.string, t.union([t.string, t.number, t.undefined])),
+  t.record(
+    t.string,
+    t.union([t.string, t.number, t.undefined, t.array(t.string)])
+  ),
 ]);
 
 export type Auth0JwtPayload = t.TypeOf<typeof Auth0JwtPayloadSchema> &
@@ -191,7 +194,7 @@ export async function verifyAuth0Token(
 
         const payloadValidation = Auth0JwtPayloadSchema.decode(decoded);
         if (isLeft(payloadValidation)) {
-          logger.error("Invalid token payload.");
+          logger.error({ payloadValidation }, "Invalid token payload.");
           return resolve(new Err(Error("Invalid token payload.")));
         }
 

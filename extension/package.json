@@ -33,6 +33,7 @@
     "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-react": "^7.37.1",
     "eslint-plugin-simple-import-sort": "^12.1.1",
+    "html-webpack-plugin": "^5.6.3",
     "postcss": "^8.4.47",
     "postcss-loader": "^8.1.1",
     "prettier": "^3.3.3",
@@ -45,6 +46,7 @@
     "typescript": "^5.6.2",
     "webpack-bundle-analyzer": "^4.10.2",
     "webpack-cli": "^5.1.4",
+    "webpack-dev-server": "^5.2.0",
     "webpack-ext-reloader": "^1.1.13",
     "webpackbar": "^6.0.1",
     "zip-webpack-plugin": "^4.0.1"

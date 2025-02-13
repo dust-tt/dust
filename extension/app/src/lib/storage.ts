@@ -5,6 +5,7 @@ import type {
 } from "@dust-tt/client";
 import type { Auth0AuthorizeResponse } from "@extension/lib/messages";
 import type { UploadedFileWithKind } from "@extension/lib/types";
+import type { StorageService } from "@extension/shared/interfaces/storage";
 
 export type UserTypeWithExtensionWorkspaces = UserType & {
   workspaces: ExtensionWorkspaceType[];
@@ -29,6 +30,7 @@ export type StoredUser = UserTypeWithExtensionWorkspaces & {
  */
 
 export const saveTokens = async (
+  storage: StorageService,
   rawTokens: Auth0AuthorizeResponse
 ): Promise<StoredTokens> => {
   const tokens: StoredTokens = {
@@ -36,18 +38,18 @@ export const saveTokens = async (
     refreshToken: rawTokens.refreshToken,
     expiresAt: Date.now() + rawTokens.expiresIn * 1000,
   };
-  await chrome.storage.local.set(tokens);
+
+  await storage.set("tokens", tokens);
+
   return tokens;
 };
 
-export const getStoredTokens = async (): Promise<StoredTokens | null> => {
-  const result = await chrome.storage.local.get([
-    "accessToken",
-    "refreshToken",
-    "expiresAt",
-  ]);
+export const getStoredTokens = async (
+  storage: StorageService
+): Promise<StoredTokens | null> => {
+  const result = await storage.get<StoredTokens>("tokens");
 
-  if (result.accessToken && result.expiresAt) {
+  if (result && result.accessToken && result.expiresAt) {
     return {
       accessToken: result.accessToken,
       refreshToken: result.refreshToken,
@@ -62,21 +64,26 @@ type ConversationContext = {
 };
 
 export const getConversationContext = async (
+  storage: StorageService,
   conversationId: string
 ): Promise<ConversationContext> => {
-  const { conversationContext = {} } = await chrome.storage.local.get([
-    "conversationContext",
-  ]);
-  return conversationContext[conversationId] ?? { includeCurrentPage: false };
+  const conversationContext = await storage.get<
+    Record<string, ConversationContext>
+  >(["conversationContext"]);
+
+  return conversationContext?.[conversationId] ?? { includeCurrentPage: false };
 };
 
 export const setConversationsContext = async (
+  storage: StorageService,
   conversationsWithContext: Record<string, ConversationContext>
 ) => {
-  const result = await chrome.storage.local.get(["conversationContext"]);
-  const v = result.conversationContext ?? {};
+  const result = await storage.get<Record<string, ConversationContext>>([
+    "conversationContext",
+  ]);
+  const v = result ?? {};
   Object.assign(v, conversationsWithContext);
-  await chrome.storage.local.set({ conversationContext: v });
+  await storage.set("conversationContext", v);
 };
 
 /**
@@ -84,26 +91,34 @@ export const setConversationsContext = async (
  * We store the basic user information with list of workspaces and currently selected workspace in Chrome storage.
  */
 
-export const saveUser = async (user: StoredUser): Promise<StoredUser> => {
-  await chrome.storage.local.set({ user });
+export const saveUser = async (
+  storage: StorageService,
+  user: StoredUser
+): Promise<StoredUser> => {
+  await storage.set("user", user);
+
   return user;
 };
 
 export const saveSelectedWorkspace = async (
+  storage: StorageService,
   workspaceId: string
 ): Promise<StoredUser> => {
-  const storedUser = await getStoredUser();
+  const storedUser = await getStoredUser(storage);
   if (!storedUser) {
     throw new Error("No user found.");
   }
   storedUser.selectedWorkspace = workspaceId;
-  await chrome.storage.local.set({ user: storedUser });
+  await storage.set("user", storedUser);
   return storedUser;
 };
 
-export const getStoredUser = async (): Promise<StoredUser | null> => {
-  const result = await chrome.storage.local.get(["user"]);
-  return result.user ?? null;
+export const getStoredUser = async (
+  storage: StorageService
+): Promise<StoredUser | null> => {
+  const result = await storage.get<StoredUser>("user");
+
+  return result ?? null;
 };
 
 /**
@@ -115,14 +130,17 @@ export type PendingUpdate = {
   detectedAt: number;
 };
 export const savePendingUpdate = async (
+  storage: StorageService,
   pendingUpdate: PendingUpdate
 ): Promise<PendingUpdate> => {
-  await chrome.storage.local.set({ pendingUpdate });
+  await storage.set("pendingUpdate", pendingUpdate);
   return pendingUpdate;
 };
-export const getPendingUpdate = async (): Promise<PendingUpdate | null> => {
-  const result = await chrome.storage.local.get(["pendingUpdate"]);
-  return result.pendingUpdate ?? null;
+export const getPendingUpdate = async (
+  storage: StorageService
+): Promise<PendingUpdate | null> => {
+  const result = await storage.get<PendingUpdate>(["pendingUpdate"]);
+  return result ?? null;
 };
 
 /**
@@ -130,17 +148,18 @@ export const getPendingUpdate = async (): Promise<PendingUpdate | null> => {
  */
 
 export const clearStoredData = async (): Promise<void> => {
-  return new Promise((resolve, reject) => {
-    chrome.storage.local.remove(
-      ["accessToken", "refreshToken", "expiresAt", "user"],
-      () => {
-        if (chrome.runtime.lastError) {
-          return reject(chrome.runtime.lastError);
-        }
-        return resolve();
-      }
-    );
-  });
+  // TODO:
+  // return new Promise((resolve, reject) => {
+  //   chrome.storage.local.remove(
+  //     ["accessToken", "refreshToken", "expiresAt", "user"],
+  //     () => {
+  //       if (chrome.runtime.lastError) {
+  //         return reject(chrome.runtime.lastError);
+  //       }
+  //       return resolve();
+  //     }
+  //   );
+  // });
 };
 
 function getTabContentKey(
@@ -162,15 +181,18 @@ function getTabContentKey(
  * This mapping is then used such that we supersede existing tab content content fragments
  * with the newly created ones if it's for the same URL / conversation.
  */
-export const saveFilesContentFragmentIds = async ({
-  conversationId,
-  uploadedFiles,
-  createdContentFragments,
-}: {
-  conversationId: string;
-  uploadedFiles: UploadedFileWithKind[];
-  createdContentFragments: ContentFragmentType[];
-}) => {
+export const saveFilesContentFragmentIds = async (
+  storage: StorageService,
+  {
+    conversationId,
+    uploadedFiles,
+    createdContentFragments,
+  }: {
+    conversationId: string;
+    uploadedFiles: UploadedFileWithKind[];
+    createdContentFragments: ContentFragmentType[];
+  }
+) => {
   const tabContentFileIds = new Set(
     uploadedFiles.filter((f) => f.kind === "tab_content").map((f) => f.fileId)
   );
@@ -190,9 +212,7 @@ export const saveFilesContentFragmentIds = async ({
       continue;
     }
     const key = getTabContentKey(conversationId, cf.sourceUrl, cf.title);
-    await chrome.storage.local.set({
-      [key]: cf.contentFragmentId,
-    });
+    await storage.set(key, cf.contentFragmentId);
   }
 };
 
@@ -201,6 +221,7 @@ export const saveFilesContentFragmentIds = async ({
  * Always returns null if the file is not a tab content.
  */
 export const getFileContentFragmentId = async (
+  storage: StorageService,
   conversationId: string,
   file: UploadedFileWithKind
 ): Promise<string | null> => {
@@ -208,6 +229,6 @@ export const getFileContentFragmentId = async (
     return null;
   }
   const key = getTabContentKey(conversationId, file.url, file.title);
-  const result = await chrome.storage.local.get([key]);
-  return result[key] ?? null;
+  const result = await storage.get<string>([key]);
+  return result ?? null;
 };

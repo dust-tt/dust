@@ -6,6 +6,7 @@ import {
   getStoredUser,
   saveSelectedWorkspace,
 } from "@extension/lib/storage";
+import { usePlatform } from "@extension/shared/context/platform";
 import type { AuthService } from "@extension/shared/services/auth";
 import {
   AuthError,
@@ -23,6 +24,7 @@ export const useAuthHook = (authService: AuthService) => {
   const [forcedConnection, setForcedConnection] = useState<
     string | undefined
   >();
+  const platform = usePlatform();
 
   const isAuthenticated = useMemo(
     () =>
@@ -62,6 +64,7 @@ export const useAuthHook = (authService: AuthService) => {
       log("Refresh token: No access token received.");
       return;
     }
+
     setTokens(savedTokens.value);
     setAuthError(null);
     scheduleTokenRefresh(savedTokens.value.expiresAt);
@@ -79,28 +82,28 @@ export const useAuthHook = (authService: AuthService) => {
   );
 
   // Listen for changes in storage to make sure we always have the latest user and tokens.
-  useEffect(() => {
-    const handleStorageChange = (changes: {
-      [key: string]: chrome.storage.StorageChange;
-    }) => {
-      if (changes.accessToken && !changes.accessToken.newValue) {
-        log("Access token removed from storage.");
-        setTokens(null);
-        setUser(null);
-      }
-    };
-    chrome.storage.local.onChanged.addListener(handleStorageChange);
-    return () =>
-      chrome.storage.local.onChanged.removeListener(handleStorageChange);
-  }, []);
+  // useEffect(() => {
+  //   const handleStorageChange = (changes: {
+  //     [key: string]: chrome.storage.StorageChange;
+  //   }) => {
+  //     if (changes.accessToken && !changes.accessToken.newValue) {
+  //       log("Access token removed from storage.");
+  //       setTokens(null);
+  //       setUser(null);
+  //     }
+  //   };
+  //   chrome.storage.local.onChanged.addListener(handleStorageChange);
+  //   return () =>
+  //     chrome.storage.local.onChanged.removeListener(handleStorageChange);
+  // }, []);
 
   useEffect(() => {
     void (async () => {
       setIsLoading(true);
 
       // Fetch tokens & user from storage.
-      const storedTokens = await getStoredTokens();
-      const savedUser = await getStoredUser();
+      const storedTokens = await getStoredTokens(platform.storage);
+      const savedUser = await getStoredUser(platform.storage);
 
       if (!storedTokens || !savedUser) {
         // TODO(EXT): User facing error message if no tokens found.
@@ -148,7 +151,10 @@ export const useAuthHook = (authService: AuthService) => {
   );
 
   const handleSelectWorkspace = async (workspace: WorkspaceType) => {
-    const updatedUser = await saveSelectedWorkspace(workspace.sId);
+    const updatedUser = await saveSelectedWorkspace(
+      platform.storage,
+      workspace.sId
+    );
     if (!isValidEnterpriseConnectionName(updatedUser, workspace)) {
       await redirectToSSOLogin(workspace);
       return;

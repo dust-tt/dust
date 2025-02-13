@@ -2,6 +2,7 @@ import { Spinner } from "@dust-tt/sparkle";
 import { useFileUploaderService } from "@extension/hooks/useFileUploaderService";
 import { postConversation } from "@extension/lib/conversation";
 import { useDustAPI } from "@extension/lib/dust_api";
+import { usePlatform } from "@extension/shared/context/platform";
 import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router";
 
@@ -11,6 +12,7 @@ export const RunPage = () => {
   const dustAPI = useDustAPI();
 
   const fileUploaderService = useFileUploaderService();
+  const platform = usePlatform();
 
   useEffect(() => {
     const run = async () => {
@@ -28,7 +30,7 @@ export const RunPage = () => {
         updateBlobs: false,
       });
 
-      const conversationRes = await postConversation({
+      const conversationRes = await postConversation(platform, {
         dustAPI,
         messageData: {
           input: params.text,

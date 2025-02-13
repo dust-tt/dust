@@ -20,6 +20,7 @@ import { sendGetActiveTabMessage } from "@extension/lib/messages";
 import { getStoredUser } from "@extension/lib/storage";
 import type { UploadedFileWithSupersededContentFragmentId } from "@extension/lib/types";
 import { usePlatform } from "@extension/shared/context/platform";
+import type { PlatformService } from "@extension/shared/services/platform";
 
 type SubmitMessageError = {
   type:
@@ -120,22 +121,25 @@ export function updateConversationWithOptimisticData(
   return conversation;
 }
 
-export async function postConversation({
-  dustAPI,
-  messageData,
-  visibility = "unlisted",
-  contentFragments,
-}: {
-  dustAPI: DustAPI;
-  messageData: {
-    input: string;
-    mentions: AgentMentionType[];
-  };
-  visibility?: ConversationVisibility;
-  contentFragments: UploadedContentFragmentType[];
-}): Promise<Result<ConversationPublicType, SubmitMessageError>> {
+export async function postConversation(
+  platform: PlatformService,
+  {
+    dustAPI,
+    messageData,
+    visibility = "unlisted",
+    contentFragments,
+  }: {
+    dustAPI: DustAPI;
+    messageData: {
+      input: string;
+      mentions: AgentMentionType[];
+    };
+    visibility?: ConversationVisibility;
+    contentFragments: UploadedContentFragmentType[];
+  }
+): Promise<Result<ConversationPublicType, SubmitMessageError>> {
   const { input, mentions } = messageData;
-  const user = await getStoredUser();
+  const user = await getStoredUser(platform.storage);
 
   if (!user) {
     // This should never happen.
@@ -192,27 +196,30 @@ export async function postConversation({
   return new Ok(conversationData.conversation);
 }
 
-export async function postMessage({
-  dustAPI,
-  conversationId,
-  messageData,
-  files,
-}: {
-  dustAPI: DustAPI;
-  conversationId: string;
-  messageData: {
-    input: string;
-    mentions: AgentMentionType[];
-  };
-  files: UploadedFileWithSupersededContentFragmentId[];
-}): Promise<
+export async function postMessage(
+  platform: PlatformService,
+  {
+    dustAPI,
+    conversationId,
+    messageData,
+    files,
+  }: {
+    dustAPI: DustAPI;
+    conversationId: string;
+    messageData: {
+      input: string;
+      mentions: AgentMentionType[];
+    };
+    files: UploadedFileWithSupersededContentFragmentId[];
+  }
+): Promise<
   Result<
     { message: UserMessageType; contentFragments: ContentFragmentType[] },
     SubmitMessageError
   >
 > {
   const { input, mentions } = messageData;
-  const user = await getStoredUser();
+  const user = await getStoredUser(platform.storage);
 
   if (!user) {
     // This should never happen.
@@ -298,7 +305,7 @@ export async function retryMessage({
 }): Promise<Result<{ message: UserMessageWithRankType }, SubmitMessageError>> {
   const platform = usePlatform();
   const token = await platform.auth.getAccessToken();
-  const user = await getStoredUser();
+  const user = await getStoredUser(platform.storage);
 
   if (!user) {
     // This should never happen.

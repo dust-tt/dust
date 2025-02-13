@@ -892,7 +892,9 @@ export async function getSession(
 export async function getBearerToken(
   req: NextApiRequest
 ): Promise<Result<string, APIErrorWithStatusCode>> {
+  console.log("getBearerToken", req.headers);
   if (!req.headers.authorization) {
+    console.log("No authorization header");
     return new Err({
       status_code: 401,
       api_error: {
@@ -906,6 +908,7 @@ export async function getBearerToken(
     /^Bearer\s+([A-Za-z0-9-._~+/]+=*)$/i
   );
   if (!parse || !parse[1]) {
+    console.log("No parse");
     return new Err({
       status_code: 401,
       api_error: {

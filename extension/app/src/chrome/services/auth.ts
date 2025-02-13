@@ -1,5 +1,6 @@
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
+import { ChromeStorageService } from "@extension/chrome/storage";
 import {
   AUTH0_CLAIM_NAMESPACE,
   DEFAULT_DUST_API_DOMAIN,
@@ -57,7 +58,7 @@ export class ChromeAuth implements AuthService {
       if (!response.accessToken) {
         throw new Error("No access token received.");
       }
-      const tokens = await saveTokens(response);
+      const tokens = await saveTokens(new ChromeStorageService(), response);
 
       const claims = jwtDecode<Record<string, string>>(tokens.accessToken);
 
@@ -69,7 +70,7 @@ export class ChromeAuth implements AuthService {
         return res;
       }
       const workspaces = res.value.user.workspaces;
-      const user = await saveUser({
+      const user = await saveUser(new ChromeStorageService(), {
         ...res.value.user,
         ...connectionDetails,
         dustDomain,
@@ -105,17 +106,20 @@ export class ChromeAuth implements AuthService {
     tokens?: StoredTokens | null
   ): Promise<Result<StoredTokens, AuthError>> {
     try {
-      tokens = tokens ?? (await getStoredTokens());
+      tokens = tokens ?? (await getStoredTokens(new ChromeStorageService()));
       if (!tokens) {
         return new Err(new AuthError("not_authenticated", "No tokens found."));
       }
-      const response = await sendRefreshTokenMessage(tokens.refreshToken);
+      const response = await sendRefreshTokenMessage(
+        new ChromeStorageService(),
+        tokens.refreshToken
+      );
       if (!response?.accessToken) {
         return new Err(
           new AuthError("not_authenticated", "No access token received")
         );
       }
-      return new Ok(await saveTokens(response));
+      return new Ok(await saveTokens(new ChromeStorageService(), response));
     } catch (error) {
       log("Refresh token: unknown error.", error);
       return new Err(new AuthError("not_authenticated", error?.toString()));
@@ -123,7 +127,7 @@ export class ChromeAuth implements AuthService {
   }
 
   async getAccessToken(): Promise<string | null> {
-    let tokens = await getStoredTokens();
+    let tokens = await getStoredTokens(new ChromeStorageService());
     if (!tokens || !tokens.accessToken || tokens.expiresAt < Date.now()) {
       const refreshRes = await this.refreshToken(tokens);
       if (refreshRes.isOk()) {

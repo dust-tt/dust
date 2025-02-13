@@ -30,6 +30,7 @@ import type {
   UploadedFileWithKind,
   UploadedFileWithSupersededContentFragmentId,
 } from "@extension/lib/types";
+import { usePlatform } from "@extension/shared/context/platform";
 import { useCallback, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -45,6 +46,7 @@ export function ConversationContainer({
   user,
 }: ConversationContainerProps) {
   const navigate = useNavigate();
+  const platform = usePlatform();
 
   const [includeContent, setIncludeContent] = useState<boolean | undefined>();
 
@@ -52,7 +54,7 @@ export function ConversationContainer({
     if (includeContent === undefined) {
       return;
     }
-    void setConversationsContext({
+    void setConversationsContext(platform.storage, {
       [conversationId ?? "new"]: {
         includeCurrentPage: includeContent,
       },
@@ -61,7 +63,10 @@ export function ConversationContainer({
 
   useEffect(() => {
     const doAsync = async () => {
-      const context = await getConversationContext(conversationId ?? "new");
+      const context = await getConversationContext(
+        platform.storage,
+        conversationId ?? "new"
+      );
       setIncludeContent(context.includeCurrentPage);
     };
     void doAsync();
@@ -103,8 +108,11 @@ export function ConversationContainer({
             // Get the content fragment ID to supersede for a given file.
             // Only for tab contents, we re-use the content fragment ID based on the URL and conversation ID.
             const supersededContentFragmentId: string | undefined =
-              (await getFileContentFragmentId(conversationId, file)) ??
-              undefined;
+              (await getFileContentFragmentId(
+                platform.storage,
+                conversationId,
+                file
+              )) ?? undefined;
 
             contentFragmentFiles.push({
               fileId: file.fileId,
@@ -114,7 +122,7 @@ export function ConversationContainer({
             });
           }
 
-          const result = await postMessage({
+          const result = await postMessage(platform, {
             dustAPI,
             conversationId,
             messageData,
@@ -125,7 +133,7 @@ export function ConversationContainer({
             const { message, contentFragments } = result.value;
 
             // Save content fragment IDs for tab contents to the local storage.
-            await saveFilesContentFragmentIds({
+            await saveFilesContentFragmentIds(platform.storage, {
               conversationId,
               uploadedFiles: files,
               createdContentFragments: contentFragments,
@@ -181,7 +189,7 @@ export function ConversationContainer({
         mentions: AgentMentionType[],
         files: UploadedFileWithKind[]
       ) => {
-        const conversationRes = await postConversation({
+        const conversationRes = await postConversation(platform, {
           dustAPI,
           messageData: {
             input,
@@ -213,13 +221,13 @@ export function ConversationContainer({
             }
           }
           // Save the content fragment IDs for tab contents to the local storage.
-          await saveFilesContentFragmentIds({
+          await saveFilesContentFragmentIds(platform.storage, {
             conversationId: conversationRes.value.sId,
             uploadedFiles: files,
             createdContentFragments: contentFragments,
           });
 
-          await setConversationsContext({
+          await setConversationsContext(platform.storage, {
             [conversationRes.value.sId]: {
               includeCurrentPage: !!includeContent,
             },

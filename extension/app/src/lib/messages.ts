@@ -1,4 +1,5 @@
 import { saveTokens } from "@extension/lib/storage";
+import type { StorageService } from "@extension/shared/interfaces/storage";
 
 export type Auth0AuthorizeResponse = {
   accessToken: string;
@@ -124,6 +125,7 @@ export const sendAuthMessage = (
 };
 
 export const sendRefreshTokenMessage = (
+  storage: StorageService,
   refreshToken: string
 ): Promise<Auth0AuthorizeResponse> => {
   return new Promise((resolve, reject) => {
@@ -147,7 +149,7 @@ export const sendRefreshTokenMessage = (
         ) {
           return reject(new Error("Invalid response received."));
         }
-        void saveTokens(response);
+        void saveTokens(storage, response);
         return resolve(response);
       }
     );

@@ -210,8 +210,7 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
           status_code: 401,
           api_error: {
             type: "not_authenticated",
-            message:
-              "The request does not have valid authentication credentials.",
+            message: `The request does not have valid authentication credentials. ${bearerTokenRes.error}`,
           },
         });
       }
@@ -243,7 +242,7 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
             api_error: {
               type: "invalid_oauth_token_error",
               message:
-                "The request does not have valid authentication credentials.",
+                "The request does not have valid authentication credentials. 1",
             },
           });
         }
@@ -418,7 +417,7 @@ export function withAuth0TokenAuthentication<T>(
           api_error: {
             type: "not_authenticated",
             message:
-              "The request does not have valid authentication credentials.",
+              "The request does not have valid authentication credentials. 2",
           },
         });
       }
@@ -431,7 +430,7 @@ export function withAuth0TokenAuthentication<T>(
           api_error: {
             type: "not_authenticated",
             message:
-              "The request does not have valid authentication credentials.",
+              "The request does not have valid authentication credentials. 3",
           },
         });
       }
@@ -458,7 +457,7 @@ export function withAuth0TokenAuthentication<T>(
           api_error: {
             type: "invalid_oauth_token_error",
             message:
-              "The request does not have valid authentication credentials.",
+              "The request does not have valid authentication credentials. 4",
           },
         });
       }

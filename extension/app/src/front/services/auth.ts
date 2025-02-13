@@ -1,9 +1,13 @@
 import { Auth0Client } from "@auth0/auth0-spa-js";
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
+import { FrontStorageService } from "@extension/front/storage";
 import {
   AUTH0_CLAIM_NAMESPACE,
+  AUTH0_CLIENT_DOMAIN,
+  AUTH0_CLIENT_ID,
   DEFAULT_DUST_API_DOMAIN,
+  DUST_API_AUDIENCE,
   DUST_EU_URL,
   DUST_US_URL,
 } from "@extension/lib/config";
@@ -11,6 +15,7 @@ import type {
   StoredTokens,
   UserTypeWithExtensionWorkspaces,
 } from "@extension/lib/storage";
+import { getStoredTokens, saveTokens, saveUser } from "@extension/lib/storage";
 import { jwtDecode } from "jwt-decode";
 
 import type { AuthService } from "../../shared/services/auth";
@@ -26,24 +31,55 @@ export class FrontAuth implements AuthService {
 
   constructor() {
     this.auth0 = new Auth0Client({
-      domain: "your-domain",
-      clientId: "your-client-id",
+      domain: AUTH0_CLIENT_DOMAIN,
+      clientId: AUTH0_CLIENT_ID,
     });
   }
 
   async getAccessToken(): Promise<string | null> {
-    throw new Error("Method not implemented.");
+    let tokens = await getStoredTokens(new FrontStorageService());
+    // TODO: Refresh token logic should be abstracted to platform.
+
+    // Here, we use spa which means we don't need to bother with refresh tokens and
+    // can simply call getTokenSilently.
+    if (!tokens || !tokens.accessToken || tokens.expiresAt < Date.now()) {
+      const refreshRes = await this.refreshToken(tokens);
+      if (refreshRes.isOk()) {
+        tokens = refreshRes.value;
+      }
+    }
+
+    return tokens?.accessToken ?? null;
   }
 
   async login(isForceLogin?: boolean, forcedConnection?: string) {
     // TODO: Implement force login.
     try {
-      await this.auth0.loginWithPopup();
+      await this.auth0.loginWithPopup({
+        authorizationParams: {
+          scope:
+            "offline_access read:user_profile read:conversation create:conversation update:conversation read:agent read:file create:file delete:file",
+          audience: DUST_API_AUDIENCE,
+          prompt: isForceLogin ? "login" : "none",
+          connection: forcedConnection ?? "",
+        },
+      });
     } catch (error) {
       return new Err(new AuthError("not_authenticated", error?.toString()));
     }
 
-    const token = await this.auth0.getTokenSilently();
+    const authResponse = await this.auth0.getTokenSilently({
+      authorizationParams: {
+        audience: DUST_API_AUDIENCE,
+        scope:
+          "offline_access read:user_profile read:conversation create:conversation update:conversation read:agent read:file create:file delete:file",
+      },
+      detailedResponse: true,
+      cacheMode: "off",
+    });
+
+    const { access_token: token } = authResponse;
+
     const claims = jwtDecode<Record<string, string>>(token);
     const dustDomain = getDustDomain(claims);
     const connectionDetails = getConnectionDetails(claims);
@@ -53,27 +89,35 @@ export class FrontAuth implements AuthService {
       return res;
     }
 
-    // TODO:
+    const tokens = await saveTokens(new FrontStorageService(), {
+      accessToken: token,
+      refreshToken: "",
+      expiresIn: Number.parseInt(claims.exp, 10) * 1000,
+    });
+
+    const user = await saveUser(new FrontStorageService(), {
+      ...res.value.user,
+      ...connectionDetails,
+      dustDomain,
+      selectedWorkspace:
+        res.value.user.workspaces.length === 1
+          ? res.value.user.workspaces[0].sId
+          : null,
+    });
+
     return new Ok({
-      tokens: {
-        accessToken: token,
-        refreshToken: "refreshToken",
-        expiresAt: Date.now() + 1000 * 60 * 60 * 24,
-      },
-      user: {
-        ...res.value.user,
-        ...connectionDetails,
-        dustDomain,
-        selectedWorkspace:
-          res.value.user.workspaces.length === 1
-            ? res.value.user.workspaces[0].sId
-            : null,
-      },
+      tokens,
+      user,
     });
   }
 
-  logout(): Promise<boolean> {
-    throw new Error("Method not implemented.");
+  async logout(): Promise<boolean> {
+    await this.auth0.logout();
+
+    // await new FrontStorageService().remove("accessToken");
+    // await new FrontStorageService().remove("user");
+
+    return true;
   }
 
   async refreshToken(
@@ -122,6 +166,7 @@ const fetchMe = async (
   accessToken: string,
   dustDomain: string
 ): Promise<Result<{ user: UserTypeWithExtensionWorkspaces }, AuthError>> => {
+  console.log("fetchMe", accessToken, dustDomain);
   const response = await fetch(`${dustDomain}/api/v1/me`, {
     headers: {
       Authorization: `Bearer ${accessToken}`,

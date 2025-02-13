@@ -1,17 +1,18 @@
 // Tailwind base globals
-import "./src/css/global.css";
+import "../css/global.css";
 // Use sparkle styles, override local globals
 import "@dust-tt/sparkle/dist/sparkle.css";
 // Local tailwind components override sparkle styles
-import "./src/css/components.css";
+import "../css/components.css";
 // Local custom styles
 import "../css/custom.css";
 
 import { Notification } from "@dust-tt/sparkle";
 import { AuthProvider } from "@extension/components/auth/AuthProvider";
-import { PortProvider } from "@extension/components/PortContext";
+import { frontPlatform } from "@extension/front/platform";
 import { FrontAuth } from "@extension/front/services/auth";
 import { routes } from "@extension/pages/routes";
+import { PlatformContext } from "@extension/shared/context/platform";
 import ReactDOM from "react-dom/client";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 
@@ -21,13 +22,13 @@ const App = () => {
   const authService = new FrontAuth();
 
   return (
-    <PortProvider>
+    <PlatformContext.Provider value={frontPlatform}>
       <AuthProvider authService={authService}>
         <Notification.Area>
           <RouterProvider router={router} />
         </Notification.Area>
       </AuthProvider>
-    </PortProvider>
+    </PlatformContext.Provider>
   );
 };
 const rootElement = document.getElementById("root");

@@ -1,3 +1,4 @@
+import { ChromeStorageService } from "@extension/chrome/storage";
 import type { PendingUpdate } from "@extension/lib/storage";
 import { getStoredUser, savePendingUpdate } from "@extension/lib/storage";
 
@@ -41,7 +42,7 @@ chrome.runtime.onUpdateAvailable.addListener(async (details) => {
     version: details.version,
     detectedAt: Date.now(),
   };
-  await savePendingUpdate(pendingUpdate);
+  await savePendingUpdate(new ChromeStorageService(), pendingUpdate);
 });
 
 /**
@@ -78,7 +79,7 @@ const shouldDisableContextMenuForDomain = async (
     return true;
   }
 
-  const user = await getStoredUser();
+  const user = await getStoredUser(new ChromeStorageService());
   if (!user || !user.selectedWorkspace) {
     return false;
   }
@@ -620,6 +621,7 @@ const exchangeCodeForTokens = async (
  * Logout the user from Auth0.
  */
 const logout = (sendResponse: (response: AuthBackgroundResponse) => void) => {
+  console.log("logout");
   const redirectUri = chrome.identity.getRedirectURL();
   const logoutUrl = `https://${AUTH0_CLIENT_DOMAIN}/v2/logout?client_id=${AUTH0_CLIENT_ID}&returnTo=${encodeURIComponent(redirectUri)}`;
 
