@@ -1,5 +1,6 @@
 import type { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
 import { assertNever, MIME_TYPES } from "@dust-tt/types";
+import { safeSubstring } from "@dust-tt/types/src";
 import { Context } from "@temporalio/activity";
 import { hash as blake3 } from "blake3";
 import { promises as fs } from "fs";
@@ -61,7 +62,6 @@ import type { Logger } from "@connectors/logger/logger";
 import { getActivityLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
-import { safeSubstring } from "@dust-tt/types/src";
 
 export async function githubGetReposResultPageActivity(
   connectorId: ModelId,
