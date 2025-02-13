@@ -80,6 +80,7 @@ import { heartbeat } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import { getConnectorOrThrow } from "@connectors/lib/cli";
 
 const logger = mainLogger.child({ provider: "notion" });
 
@@ -2791,4 +2792,85 @@ export async function updateSingleDocumentParents({
       parentId: parents[1] || null,
     });
   }
+}
+
+type NotionParentType = "workspace" | "database" | "page" | "unknown";
+
+export async function getParentPageOrDb({
+  connectorId,
+  pageOrDbId,
+  connectionId,
+  notionAccessToken,
+}: {
+  connectorId: ModelId;
+  pageOrDbId: string;
+  connectionId?: string;
+  notionAccessToken?: string;
+}): Promise<{ parentId: string; parentType: NotionParentType } | null> {
+  if (!connectionId) {
+    const connector = await ConnectorResource.fetchById(connectorId);
+    if (!connector) {
+      throw new Error("Could not find connector");
+    }
+    connectionId = connector.connectionId;
+    notionAccessToken = await getNotionAccessToken(connectionId);
+  }
+
+  if (!notionAccessToken) {
+    throw new Error("Unreachable: connection id without access token");
+  }
+
+  const page = await retrievePage({
+    accessToken: notionAccessToken,
+    pageId: pageOrDbId,
+    loggerArgs: { connectorId, connectionId },
+  });
+  if (page) {
+    switch (page.parent.type) {
+      case "database_id":
+        return { parentId: page.parent.database_id, parentType: "database" };
+      case "page_id":
+        return { parentId: page.parent.page_id, parentType: "page" };
+      case "workspace":
+        return { parentId: "workspace", parentType: "workspace" };
+      case "block_id":
+        return (
+          (await getParentPageOrDb({
+            connectorId,
+            pageOrDbId: page.parent.block_id,
+            connectionId,
+            notionAccessToken,
+          })) ?? { parentId: "unknown", parentType: "unknown" }
+        );
+      default:
+        ((pageParent: never) => {
+          logger.warn({ pageParent }, "Unknown page parent type.");
+        })(page.parent);
+        return { parentId: "unknown", parentType: "unknown" };
+    }
+  }
+
+  const db = await getParsedDatabase(notionAccessToken, pageOrDbId, {
+    connectorId,
+    connectionId,
+  });
+
+  if (db) {
+    if (db.parentType === "block") {
+      return (
+        (await getParentPageOrDb({
+          connectorId,
+          pageOrDbId: db.parentId,
+          connectionId,
+          notionAccessToken,
+        })) ?? { parentId: "unknown", parentType: "unknown" }
+      );
+    }
+    return { parentId: db.parentId, parentType: db.parentType };
+  }
+  logger.warn(
+    { connectorId, pageOrDbId },
+    "Could not find page or database in Notion."
+  );
+  return null;
 }
