@@ -1,4 +1,4 @@
-import type { DropdownMenuItemProps, MenuItem } from "@dust-tt/sparkle";
+import type { MenuItem } from "@dust-tt/sparkle";
 import {
   Button,
   Chip,
@@ -26,7 +26,6 @@ import type {
 import { isWebsiteOrFolderCategory } from "@dust-tt/types";
 import type { ColumnDef, SortingState } from "@tanstack/react-table";
 import { useRouter } from "next/router";
-import type { MouseEventHandler } from "react";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
@@ -50,13 +49,6 @@ import {
 } from "@app/lib/swr/spaces";
 import { classNames } from "@app/lib/utils";
 import { ViewFolderAPIModal } from "@app/components/ViewFolderAPIModal";
-
-type MoreMenuItem = Omit<DropdownMenuItemProps, "children" | "onClick"> & {
-  label: string;
-  variant?: "default" | "warning";
-  onClick?: MouseEventHandler<HTMLDivElement>;
-  children?: undefined;
-};
 
 export interface RowData {
   dataSourceView: DataSourceViewsWithDetails;
