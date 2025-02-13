@@ -20,6 +20,8 @@ import {
 import { stopNotionGarbageCollectorWorkflow } from "@connectors/connectors/notion/temporal/client";
 import { QUEUE_NAME } from "@connectors/connectors/notion/temporal/config";
 import {
+  getUpsertDatabaseWorkflowId,
+  getUpsertPageWorkflowId,
   upsertDatabaseWorkflow,
   upsertPageWorkflow,
 } from "@connectors/connectors/notion/temporal/workflows/admins";
@@ -451,10 +453,11 @@ export const notion = async ({
           {
             connectorId,
             pageId,
+            upsertParents: true,
           },
         ],
         taskQueue: QUEUE_NAME,
-        workflowId: `notion-force-sync-upsert-page-${pageId}-connector-${connectorId}`,
+        workflowId: getUpsertPageWorkflowId(pageId, connectorId),
         searchAttributes: {
           connectorId: [connectorId],
         },
@@ -512,10 +515,11 @@ export const notion = async ({
             connectorId,
             databaseId,
             forceResync: !!args.forceResync,
+            upsertParents: true,
           },
         ],
         taskQueue: QUEUE_NAME,
-        workflowId: `notion-force-sync-upsert-database-${databaseId}-connector-${connectorId}`,
+        workflowId: getUpsertDatabaseWorkflowId(databaseId, connectorId),
         searchAttributes: {
           connectorId: [connectorId],
         },
