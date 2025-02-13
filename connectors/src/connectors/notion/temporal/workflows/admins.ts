@@ -279,6 +279,7 @@ async function upsertParent({
             connectorId,
             databaseId: parentId,
             forceResync: false,
+            upsertParents: true,
           },
         ],
         parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
