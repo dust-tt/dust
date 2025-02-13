@@ -80,7 +80,6 @@ import { heartbeat } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
-import { getConnectorOrThrow } from "@connectors/lib/cli";
 
 const logger = mainLogger.child({ provider: "notion" });
 

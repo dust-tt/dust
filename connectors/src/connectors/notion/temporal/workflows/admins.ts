@@ -1,4 +1,5 @@
-import { assertNever, type ModelId } from "@dust-tt/types";
+import type { ModelId } from "@dust-tt/types";
+import { assertNever } from "@dust-tt/types";
 import {
   executeChild,
   ParentClosePolicy,
