@@ -14,6 +14,7 @@ export const CONNECTOR_PROVIDERS = [
   "snowflake",
   "zendesk",
   "bigquery",
+  "salesforce",
 ] as const;
 
 export type ConnectorProvider = (typeof CONNECTOR_PROVIDERS)[number];
@@ -76,18 +77,24 @@ export function isDataSourceNameValid(name: string): Result<void, string> {
   return new Ok(undefined);
 }
 
-export type TagResult = {
+export type TagSearchResult = {
   tag: string;
   match_count: number;
   data_sources: string[];
 };
 
 export type TagSearchResponse = {
-  tags: TagResult[];
+  tags: TagSearchResult[];
 };
 
 export type TagSearchParams = {
   query: string;
   queryType: string;
   dataSources: string[];
+};
+
+export type DataSourceTag = {
+  tag: string;
+  dustAPIDataSourceId: string;
+  connectorProvider: ConnectorProvider | null;
 };

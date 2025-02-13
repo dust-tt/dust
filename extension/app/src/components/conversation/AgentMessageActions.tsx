@@ -20,6 +20,9 @@ const ACTION_RUNNING_LABELS: Record<AgentActionPublicType["type"], string> = {
   browse_action: "Browsing page",
   conversation_list_files_action: "Listing files",
   conversation_include_file_action: "Including file ",
+  github_get_pull_request_action: "Retrieving pull request",
+  github_create_issue_action: "Creating issue",
+  reasoning_action: "Reasoning",
 };
 
 export function AgentMessageActions({

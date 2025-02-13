@@ -107,6 +107,10 @@ export const supportedOtherFileFormats = {
     ".ppt",
     ".pptx",
   ],
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [
+    ".xlsx",
+  ],
+  "application/vnd.ms-excel": [".xls"],
   "application/pdf": [".pdf"],
   "text/comma-separated-values": [".csv"],
   "text/csv": [".csv"],
@@ -216,6 +220,7 @@ const UserMessageOriginSchema = FlexibleEnumSchema<
   | "api"
   | "gsheet"
   | "zapier"
+  | "n8n"
   | "make"
   | "zendesk"
   | "raycast"
@@ -275,6 +280,7 @@ const ConnectorProvidersSchema = FlexibleEnumSchema<
   | "snowflake"
   | "zendesk"
   | "bigquery"
+  | "salesforce"
 >();
 export type ConnectorProvider = z.infer<typeof ConnectorProvidersSchema>;
 
@@ -786,6 +792,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "deepseek_r1_global_agent_feature"
   | "bigquery_feature"
   | "tags_filters"
+  | "salesforce_feature"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -2355,7 +2362,7 @@ export const FileUploadUrlRequestSchema = z.object({
   contentType: SupportedFileContentFragmentTypeSchema,
   fileName: z.string().max(256, "File name must be less than 256 characters"),
   fileSize: z.number(),
-  useCase: z.literal("conversation"),
+  useCase: z.union([z.literal("conversation"), z.literal("upsert_table")]),
   useCaseMetadata: z
     .object({
       conversationId: z.string(),

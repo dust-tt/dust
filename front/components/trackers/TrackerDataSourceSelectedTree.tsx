@@ -76,7 +76,7 @@ export const TrackerDataSourceSelectedTree = ({
                     setDataSourceViewToDisplay(dsConfig.dataSourceView);
                     setDocumentToDisplay(documentId);
                   }}
-                  viewType={"documents"}
+                  viewType={"all"}
                 />
               )}
               {dsConfig.selectedResources.map((node) => {
@@ -135,7 +135,7 @@ export const TrackerDataSourceSelectedTree = ({
                         setDataSourceViewToDisplay(dsConfig.dataSourceView);
                         setDocumentToDisplay(documentId);
                       }}
-                      viewType={"documents"}
+                      viewType={"all"}
                     />
                   </Tree.Item>
                 );

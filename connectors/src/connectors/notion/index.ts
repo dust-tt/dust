@@ -38,7 +38,7 @@ import { getOrphanedCount, getParents, hasChildren } from "./lib/parents";
 
 const logger = mainLogger.child({ provider: "notion" });
 
-function nodeIdFromNotionId(notionId: string) {
+export function nodeIdFromNotionId(notionId: string) {
   return `notion-${notionId}`;
 }
 
@@ -633,8 +633,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
         notionId,
         [],
         false,
-        memo,
-        undefined
+        memo
       );
 
       return new Ok(parents.map((p) => nodeIdFromNotionId(p)));

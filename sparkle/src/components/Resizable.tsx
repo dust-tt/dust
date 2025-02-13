@@ -41,7 +41,7 @@ const ResizableHandle = ({
       "data-[panel-group-direction=vertical]:after:s--translate-y-1/2",
       "data-[panel-group-direction=vertical]:after:s-translate-x-0",
       "[&[data-panel-group-direction=vertical]>div]:s-rotate-90",
-      "dark:s-bg-border-night s-bg-border",
+      "s-bg-border dark:s-bg-border-night",
       className
     )}
     {...props}
@@ -50,7 +50,7 @@ const ResizableHandle = ({
       <div
         className={cn(
           "s-z-10 s-flex s-h-4 s-w-3 s-items-center s-justify-center s-rounded-sm s-border",
-          "dark:s-bg-border-night s-bg-border"
+          "s-bg-border dark:s-bg-border-night"
         )}
       >
         <Icon visual={GrabIcon} size="xs" />

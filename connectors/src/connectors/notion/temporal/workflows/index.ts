@@ -2,6 +2,7 @@ import type { ModelId } from "@dust-tt/types";
 import {
   continueAsNew,
   defineQuery,
+  executeChild,
   proxyActivities,
   sleep,
   workflowInfo,
@@ -29,10 +30,10 @@ const { garbageCollectBatch } = proxyActivities<typeof activities>({
   heartbeatTimeout: "5 minute",
 });
 
-export const UPDATE_PARENTS_FIELDS_TIMEOUT_MINUTES = 60;
+export const UPDATE_PARENTS_FIELDS_TIMEOUT_MINUTES = 400;
 const { updateParentsFields } = proxyActivities<typeof activities>({
   startToCloseTimeout: `${UPDATE_PARENTS_FIELDS_TIMEOUT_MINUTES} minutes`,
-  heartbeatTimeout: "5 minute",
+  heartbeatTimeout: "10 minute",
 });
 
 const {
@@ -50,6 +51,7 @@ const {
   saveStartSync,
   isFullSyncPendingOrOngoing,
   logMaxSearchPageIndexReached,
+  markParentsAsUpdated,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "1 minute",
 });
@@ -209,8 +211,11 @@ export async function notionSyncWorkflow({
     } while (discoveredResources && PROCESS_ALL_DISCOVERED_RESOURCES);
   }
 
-  // Compute parents after all documents are added/updated.
-  await updateParentsFields(connectorId);
+  // Compute parents after all documents are added/updated
+  await executeChild(notionUpdateAllParentsFieldsWorkflow, {
+    workflowId: `${topLevelWorkflowId}-update-parents-fields`,
+    args: [{ connectorId }],
+  });
 
   await saveSuccessSync(connectorId);
   lastSyncedPeriodTs = preProcessTimestampForNotion(runTimestamp);
@@ -222,6 +227,28 @@ export async function notionSyncWorkflow({
     startFromTs: lastSyncedPeriodTs,
     forceResync: false,
   });
+}
+
+export async function notionUpdateAllParentsFieldsWorkflow({
+  connectorId,
+}: {
+  connectorId: ModelId;
+}) {
+  const runTimestamp = Date.now();
+  let cursors:
+    | {
+        pageCursor: string | null;
+        databaseCursor: string | null;
+      }
+    | undefined;
+  do {
+    cursors = await updateParentsFields({
+      connectorId,
+      cursors,
+      runTimestamp,
+    });
+  } while (cursors?.pageCursor || cursors?.databaseCursor);
+  await markParentsAsUpdated({ connectorId, runTimestamp });
 }
 
 // This is the garbage collector workflow that continuously runs for each notion connector.

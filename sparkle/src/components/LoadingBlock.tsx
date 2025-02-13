@@ -10,7 +10,7 @@ function LoadingBlock({
     <div
       className={cn(
         "s-animate-opacity-pulse s-rounded-md",
-        "dark:s-bg-muted-night s-bg-muted",
+        "s-bg-muted dark:s-bg-muted-night",
         className
       )}
       {...props}

@@ -1,10 +1,18 @@
-import { Modal } from "@dust-tt/sparkle";
+import {
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@dust-tt/sparkle";
 import type {
   ContentNodesViewType,
   DataSourceViewSelectionConfigurations,
   SpaceType,
   WorkspaceType,
 } from "@dust-tt/types";
+import { assertNever } from "@dust-tt/types";
 import type { SetStateAction } from "react";
 import { useCallback, useContext, useMemo, useState } from "react";
 
@@ -58,47 +66,69 @@ export default function AssistantBuilderDataSourceModal({
     [setSelectionConfigurations]
   );
 
-  const supportedDataSourceViewsForViewType = useMemo(
-    () =>
-      viewType === "documents"
-        ? dataSourceViews.filter((dsv) => supportsDocumentsData(dsv.dataSource))
-        : dataSourceViews.filter((dsv) =>
-            supportsStructuredData(dsv.dataSource)
-          ),
-    [dataSourceViews, viewType]
-  );
+  const supportedDataSourceViewsForViewType = useMemo(() => {
+    switch (viewType) {
+      case "all":
+        return dataSourceViews;
+      case "tables":
+        return dataSourceViews.filter((dsv) =>
+          supportsStructuredData(dsv.dataSource)
+        );
+      case "documents":
+        return dataSourceViews.filter((dsv) =>
+          supportsDocumentsData(dsv.dataSource)
+        );
+      default:
+        assertNever(viewType);
+    }
+  }, [dataSourceViews, viewType]);
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={() => {
-        setSelectionConfigurations(initialDataSourceConfigurations);
-        setOpen(false);
+    <Sheet
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          setSelectionConfigurations(initialDataSourceConfigurations);
+          setOpen(false);
+        }
       }}
-      onSave={() => {
-        onSave(selectionConfigurations);
-        setOpen(false);
-      }}
-      hasChanged={hasChanged}
-      variant="side-md"
-      title="Manage data sources selection"
-      className="flex flex-col overflow-hidden"
     >
-      <div
-        id="dataSourceViewsSelector"
-        className="overflow-y-auto scrollbar-hide"
-      >
-        <DataSourceViewsSelector
-          useCase="assistantBuilder"
-          dataSourceViews={supportedDataSourceViewsForViewType}
-          allowedSpaces={allowedSpaces}
-          owner={owner}
-          selectionConfigurations={selectionConfigurations}
-          setSelectionConfigurations={setSelectionConfigurationsCallback}
-          viewType={viewType}
-          isRootSelectable={true}
+      <SheetContent size="xl">
+        <SheetHeader>
+          <SheetTitle>Manage data sources selection</SheetTitle>
+        </SheetHeader>
+        <SheetContainer>
+          <div
+            id="dataSourceViewsSelector"
+            className="overflow-y-auto scrollbar-hide"
+          >
+            <DataSourceViewsSelector
+              useCase="assistantBuilder"
+              dataSourceViews={supportedDataSourceViewsForViewType}
+              allowedSpaces={allowedSpaces}
+              owner={owner}
+              selectionConfigurations={selectionConfigurations}
+              setSelectionConfigurations={setSelectionConfigurationsCallback}
+              viewType={viewType}
+              isRootSelectable={true}
+            />
+          </div>
+        </SheetContainer>
+        <SheetFooter
+          leftButtonProps={{
+            label: "Cancel",
+            variant: "outline",
+          }}
+          rightButtonProps={{
+            label: "Save",
+            onClick: () => {
+              onSave(selectionConfigurations);
+              setOpen(false);
+            },
+            disabled: !hasChanged,
+          }}
         />
-      </div>
-    </Modal>
+      </SheetContent>
+    </Sheet>
   );
 }

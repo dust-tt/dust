@@ -15,7 +15,8 @@ type ItemVariantType = (typeof ITEM_VARIANTS)[number];
 export const menuStyleClasses = {
   inset: "s-pl-8",
   container: cn(
-    "s-rounded-xl s-border s-border-hovering s-p-1",
+    "s-rounded-xl s-border-hovering s-p-1",
+    "s-border dark:s-border-primary-600",
     "s-bg-white dark:s-bg-black",
     "s-text-primary-950 dark:s-text-primary-950-night",
     "s-z-50 s-min-w-[8rem] s-overflow-hidden",
@@ -184,19 +185,29 @@ const DropdownMenuSubContent = React.forwardRef<
 DropdownMenuSubContent.displayName =
   DropdownMenuPrimitive.SubContent.displayName;
 
+interface DropdownMenuContentProps
+  extends React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content> {
+  mountPortal?: boolean;
+}
+
 const DropdownMenuContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
->(({ className, sideOffset = 4, ...props }, ref) => (
-  <DropdownMenuPrimitive.Portal>
+  DropdownMenuContentProps
+>(({ className, sideOffset = 4, mountPortal = true, ...props }, ref) => {
+  const content = (
     <DropdownMenuPrimitive.Content
       ref={ref}
       sideOffset={sideOffset}
       className={cn(menuStyleClasses.container, "s-shadow-md", className)}
       {...props}
     />
-  </DropdownMenuPrimitive.Portal>
-));
+  );
+  return mountPortal ? (
+    <DropdownMenuPrimitive.Portal>{content}</DropdownMenuPrimitive.Portal>
+  ) : (
+    content
+  );
+});
 DropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName;
 
 export type DropdownMenuItemProps = MutuallyExclusiveProps<

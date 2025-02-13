@@ -8,6 +8,7 @@ import {
   ConnectorCreateRequestBodySchema,
   ioTsParsePayload,
   isConnectorProvider,
+  normalizeError,
   SlackConfigurationTypeSchema,
   WebCrawlerConfigurationTypeSchema,
 } from "@dust-tt/types";
@@ -148,6 +149,14 @@ const _createConnectorAPIHandler = async (
         });
         break;
       }
+
+      // TODO(salesforce): implement this
+      case "salesforce": {
+        throw new Error(
+          `Connector type ${req.params.connector_provider} NOT IMPLEMENTED YET`
+        );
+      }
+
       default:
         assertNever(req.params.connector_provider);
     }
@@ -184,24 +193,21 @@ const _createConnectorAPIHandler = async (
     return res.status(200).json(connector.toJSON());
   } catch (e) {
     logger.error(errorFromAny(e), "Error in createConnectorAPIHandler");
-    let errorMessage = `An unexpected error occured while creating the ${req.params.connector_provider} connector`;
-    const maybeInnerErrorMessage = (
-      e as {
-        message?: string;
-      }
-    ).message;
-    if (maybeInnerErrorMessage) {
-      errorMessage += `: ${maybeInnerErrorMessage}`;
-    } else {
-      errorMessage += ".";
-    }
-    return apiError(req, res, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message: errorMessage,
+
+    const errorMessage = `An unexpected error occured while creating the ${req.params.connector_provider} connector`;
+
+    return apiError(
+      req,
+      res,
+      {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: errorMessage,
+        },
       },
-    });
+      normalizeError(e)
+    );
   }
 };
 

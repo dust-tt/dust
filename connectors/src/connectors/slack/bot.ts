@@ -775,10 +775,6 @@ async function makeContentFragments(
       continue;
     }
     if (shouldTake) {
-      if (slackBotMessages.find((sbm) => sbm.messageTs === reply.ts)) {
-        // If this message is a mention to the bot, we don't send it as a content fragment.
-        continue;
-      }
       allMessages.push(reply);
     }
   }
@@ -858,9 +854,17 @@ async function makeContentFragments(
   }
 
   const botUserId = await getBotUserIdMemoized(connector.id);
-  allMessages = allMessages.filter((m) => m.user !== botUserId);
+  allMessages = allMessages.filter(
+    (m) =>
+      // If this message is from the bot, we don't send it as a content fragment.
+      m.user !== botUserId &&
+      // If this message is a mention to the bot, we don't send it as a content fragment.
+      !slackBotMessages.find((sbm) => sbm.messageTs === m.ts)
+  );
+
+  // Skip the rest of the function if there are no messages to send.
   if (allMessages.length === 0) {
-    return new Ok(null);
+    return new Ok(allContentFragments);
   }
 
   const channel = await slackClient.conversations.info({

@@ -71,7 +71,7 @@ export const InputBarContainer = ({
 
   const contentEditableClasses = classNames(
     "inline-block w-full pt-2",
-    "border-0 pr-1 pl-2 sm:pl-0 outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0",
+    "border-0 pr-1 pl-2 outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0",
     "whitespace-pre-wrap font-normal"
   );
 

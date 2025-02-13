@@ -13,7 +13,10 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { getRegionForUserSession, setRegionForUser } from "@app/lib/api/auth0";
 import config from "@app/lib/api/config";
 import type { RegionType } from "@app/lib/api/regions/config";
-import { config as multiRegionsConfig } from "@app/lib/api/regions/config";
+import {
+  config as multiRegionsConfig,
+  SUPPORTED_REGIONS,
+} from "@app/lib/api/regions/config";
 import { checkUserRegionAffinity } from "@app/lib/api/regions/lookup";
 import { isEmailValid } from "@app/lib/utils";
 import logger from "@app/logger/logger";
@@ -58,8 +61,28 @@ const afterCallback: AfterCallbackPageRoute = async (
     // TODO: Consider updating current session with new metadata.
   }
 
+  // Safety check for target region bogus value and avoid a redirect loop.
+  if (targetRegion && !SUPPORTED_REGIONS.includes(targetRegion)) {
+    logger.error(
+      {
+        targetRegion,
+        currentRegion,
+      },
+      "Invalid target region during auth0 callback, it should never happen in production."
+    );
+    targetRegion = multiRegionsConfig.getCurrentRegion();
+    await setRegionForUser(session, targetRegion);
+  }
+
   // If wrong region, redirect to login with prompt=none on correct domain.
   if (targetRegion !== currentRegion) {
+    logger.info(
+      {
+        targetRegion,
+        currentRegion,
+      },
+      "Redirecting to correct region"
+    );
     const targetRegionInfo = multiRegionsConfig.getOtherRegionInfo();
 
     const params = new URLSearchParams();

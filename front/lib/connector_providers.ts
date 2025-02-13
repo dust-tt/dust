@@ -8,6 +8,7 @@ import {
   IntercomLogo,
   MicrosoftLogo,
   NotionLogo,
+  SalesforceLogo,
   SlackLogo,
   SnowflakeLogo,
   ZendeskLogo,
@@ -225,7 +226,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     name: "Web Crawler",
     connectorProvider: "webcrawler",
     status: "built",
-    hide: true,
+    hide: false,
     description: "Crawl a website.",
     limitations: null,
     mismatchError: `You cannot change the URL. Please add a new Public URL instead.`,
@@ -243,7 +244,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     name: "Snowflake",
     connectorProvider: "snowflake",
     status: "built",
-    hide: true,
+    hide: false,
     description: "Query a Snowflake database.",
     limitations: null,
     mismatchError: `You cannot change the Snowflake account. Please add a new Snowflake connection instead.`,
@@ -283,7 +284,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     connectorProvider: "bigquery",
     status: "rolling_out",
     rollingOutFlag: "bigquery_feature",
-    hide: true,
+    hide: false,
     description: "Query a BigQuery database.",
     limitations: null,
     mismatchError: `You cannot change the BigQuery project. Please add a new BigQuery connection instead.`,
@@ -297,6 +298,26 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       unselected: "none",
     },
     isDeletable: true,
+  },
+  salesforce: {
+    name: "Salesforce",
+    connectorProvider: "salesforce",
+    status: "rolling_out",
+    rollingOutFlag: "salesforce_feature",
+    hide: true,
+    description:
+      "Authorize access to your Salesforce organization, in order to query your Salesforce data from Dust.",
+    limitations: null,
+    mismatchError: `You cannot change the Salesforce instance URL. Please add a new Salesforce connection instead.`,
+    logoComponent: SalesforceLogo,
+    isNested: true,
+    isSearchEnabled: false,
+    permissions: {
+      selected: "read",
+      unselected: "none",
+    },
+    isDeletable: true,
+    guideLink: "https://docs.dust.tt/docs/salesforce-connection",
   },
 };
 
@@ -353,6 +374,8 @@ export const isConnectorProviderAllowedForPlan = (
       return true;
     case "bigquery":
       return true;
+    case "salesforce":
+      return true;
     default:
       assertNever(provider);
   }
@@ -377,6 +400,8 @@ export const isConnectorProviderAssistantDefaultSelected = (
     case "bigquery":
     case "webcrawler":
       return false;
+    case "salesforce":
+      return false;
     default:
       assertNever(provider);
   }
@@ -396,6 +421,7 @@ export const isConnectionIdRequiredForProvider = (
     case "zendesk":
     case "snowflake":
     case "bigquery":
+    case "salesforce":
       return true;
     case "webcrawler":
       return false;

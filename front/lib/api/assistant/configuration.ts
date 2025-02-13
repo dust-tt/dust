@@ -1119,6 +1119,7 @@ export async function createAgentActionConfiguration(
             relativeTimeFrameUnit: isTimeFrame(action.relativeTimeFrame)
               ? action.relativeTimeFrame.unit
               : null,
+            // TODO(TAF): Remove this once tag filtering is rolled out
             tagsIn: action.tagsFilter?.in ?? null,
             agentConfigurationId: agentConfiguration.id,
             schema: action.schema,
@@ -1139,6 +1140,8 @@ export async function createAgentActionConfiguration(
           sId: processConfig.sId,
           type: "process_configuration",
           relativeTimeFrame: action.relativeTimeFrame,
+
+          // TODO(TAF): Remove this once tag filtering is rolled out
           tagsFilter: action.tagsFilter,
           schema: action.schema,
           dataSources: action.dataSources,
@@ -1302,7 +1305,11 @@ async function _createAgentDataSourcesConfigData(
 
         if (tagsFilter === "auto") {
           tagsMode = "auto";
-        } else if (tagsFilter?.in && tagsFilter?.not) {
+        } else if (
+          tagsFilter?.in &&
+          tagsFilter?.not &&
+          (tagsFilter.in.length > 0 || tagsFilter.not.length > 0)
+        ) {
           tagsMode = "custom";
           tagsIn = tagsFilter.in;
           tagsNotIn = tagsFilter.not;

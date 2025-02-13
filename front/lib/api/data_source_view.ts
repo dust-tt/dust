@@ -13,9 +13,6 @@ import {
   ConnectorsAPI,
   CoreAPI,
   Err,
-  isDevelopment,
-  isDustWorkspace,
-  MIME_TYPES,
   Ok,
   removeNulls,
 } from "@dust-tt/types";
@@ -39,10 +36,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { SPREADSHEET_MIME_TYPES } from "@app/lib/content_nodes";
 import type { DustError } from "@app/lib/error";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import {
-  getWorkspaceByModelId,
-  renderLightWorkspaceType,
-} from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 
 // TODO(nodes-core): remove this upon project cleanup
@@ -190,9 +183,7 @@ function filterNodesByViewType(
       return nodes.filter(
         (node) =>
           node.children_count > 0 ||
-          ["Folder", "Document"].includes(node.node_type) ||
-          node.mime_type === MIME_TYPES.BIGQUERY.TABLE ||
-          node.mime_type === MIME_TYPES.SNOWFLAKE.TABLE
+          ["Folder", "Document"].includes(node.node_type)
       );
     case "tables":
       return nodes.filter(
@@ -200,6 +191,8 @@ function filterNodesByViewType(
           node.children_count > 0 ||
           ["Folder", "Table"].includes(node.node_type)
       );
+    case "all":
+      return nodes;
     default:
       assertNever(viewType);
   }
@@ -298,8 +291,11 @@ async function getContentNodesForDataSourceViewFromCore(
   const expandable = (node: CoreAPIContentNode) =>
     !NON_EXPANDABLE_NODES_MIME_TYPES.includes(node.mime_type) &&
     node.children_count > 0 &&
-    // if we aren't in tables view, spreadsheets are not expandable
-    !(viewType !== "tables" && SPREADSHEET_MIME_TYPES.includes(node.mime_type));
+    // if we aren't in tables/all view, spreadsheets are not expandable
+    !(
+      !["tables", "all"].includes(viewType) &&
+      SPREADSHEET_MIME_TYPES.includes(node.mime_type)
+    );
 
   return new Ok({
     nodes: resultNodes.map((node) => {
@@ -354,7 +350,7 @@ async function getContentNodesForStaticDataSourceView(
     });
   }
 
-  if (viewType === "documents") {
+  if (viewType === "documents" || viewType === "all") {
     if (isCursorPaginationParams(paginationParams)) {
       throw new Error(
         "Cursor pagination is not supported for static data sources. Note: this code path should be deleted at the end of the project nodes core (2025-02-03)."
@@ -454,7 +450,7 @@ export async function getContentNodesForDataSourceView(
 > {
   const { onlyCoreAPI = false } = params;
 
-  let contentNodesResult: GetContentNodesForDataSourceViewResult;
+  let connectorsContentNodesResult: GetContentNodesForDataSourceViewResult;
 
   const connectorsStart = new Date();
   if (dataSourceView.dataSource.connectorId && !onlyCoreAPI) {
@@ -467,7 +463,7 @@ export async function getContentNodesForDataSourceView(
       return contentNodesRes;
     }
 
-    contentNodesResult = contentNodesRes.value;
+    connectorsContentNodesResult = contentNodesRes.value;
   } else {
     const contentNodesRes = await getContentNodesForStaticDataSourceView(
       dataSourceView,
@@ -478,7 +474,7 @@ export async function getContentNodesForDataSourceView(
       return contentNodesRes;
     }
 
-    contentNodesResult = contentNodesRes.value;
+    connectorsContentNodesResult = contentNodesRes.value;
   }
 
   const connectorsLatency = new Date().getTime() - connectorsStart.getTime();
@@ -497,7 +493,6 @@ export async function getContentNodesForDataSourceView(
   });
 
   const coreStart = new Date();
-  // shadow read from core
   const coreContentNodesRes = await getContentNodesForDataSourceViewFromCore(
     dataSourceView,
     params
@@ -519,69 +514,46 @@ export async function getContentNodesForDataSourceView(
       { error: coreContentNodesRes.error, panic: true },
       "[CoreNodes] Could not fetch content nodes from core"
     );
-  } else if (coreContentNodesRes.isOk()) {
-    const diff = computeNodesDiff({
-      connectorsContentNodes: contentNodesResult.nodes,
-      coreContentNodes: coreContentNodesRes.value.nodes,
-      provider: dataSourceView.dataSource.connectorProvider,
-      pagination: params.pagination,
-      viewType: params.viewType,
-      localLogger,
-    });
+    return coreContentNodesRes;
+  }
 
-    if (showConnectorsNodes) {
-      if (diff.length == 0) {
-        diff.push({
-          internalId: "missing-connectors-nodes",
-          parentInternalId: null,
-          title: "ALL IS FINE",
-          type: "folder",
-          permission: "read",
-          lastUpdatedAt: new Date().getTime(),
-          parentInternalIds: [],
-          sourceUrl: null,
-          expandable: false,
-          preventSelection: false,
-        });
-      }
-      return new Ok({
-        nodes: filterAndCropContentNodesByView(dataSourceView, diff),
-        total: diff.length,
+  const diff = computeNodesDiff({
+    connectorsContentNodes: connectorsContentNodesResult.nodes,
+    coreContentNodes: coreContentNodesRes.value.nodes,
+    provider: dataSourceView.dataSource.connectorProvider,
+    pagination: params.pagination,
+    localLogger,
+  });
+
+  if (showConnectorsNodes) {
+    if (diff.length == 0) {
+      diff.push({
+        internalId: "missing-connectors-nodes",
+        parentInternalId: null,
+        title: "ALL IS FINE",
+        type: "folder",
+        permission: "read",
+        lastUpdatedAt: new Date().getTime(),
+        parentInternalIds: [],
+        sourceUrl: null,
+        expandable: false,
+        preventSelection: false,
       });
     }
-
-    // if development or dust workspace
-    const workspaceModel = await getWorkspaceByModelId(
-      dataSourceView.space.workspaceId
-    );
-    if (!workspaceModel) {
-      logger.error(
-        { dataSourceView, panic: true },
-        "No workspace for data source view"
-      );
-    } else {
-      const workspace = renderLightWorkspaceType({ workspace: workspaceModel });
-      if (isDevelopment() || isDustWorkspace(workspace)) {
-        const contentNodesInView = filterAndCropContentNodesByView(
-          dataSourceView,
-          coreContentNodesRes.value.nodes
-        );
-        return new Ok({
-          nodes: contentNodesInView,
-          total: coreContentNodesRes.value.nodes.length,
-        });
-      }
-    }
+    return new Ok({
+      nodes: filterAndCropContentNodesByView(dataSourceView, diff),
+      total: diff.length,
+    });
   }
 
   const contentNodesInView = filterAndCropContentNodesByView(
     dataSourceView,
-    contentNodesResult.nodes
+    coreContentNodesRes.value.nodes
   );
 
   return new Ok({
     nodes: contentNodesInView,
-    total: contentNodesResult.total,
+    total: coreContentNodesRes.value.total,
   });
 }
 

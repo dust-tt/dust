@@ -3,13 +3,13 @@ import { cacheWithRedis } from "@dust-tt/types";
 import PQueue from "p-queue";
 import { Sequelize } from "sequelize";
 
+import { nodeIdFromNotionId } from "@connectors/connectors/notion";
 import {
   getDatabaseChildrenOf,
   getNotionDatabaseFromConnectorsDb,
   getNotionPageFromConnectorsDb,
   getPageChildrenOf,
 } from "@connectors/connectors/notion/lib/connectors_db_helpers";
-import { UPDATE_PARENTS_FIELDS_TIMEOUT_MINUTES } from "@connectors/connectors/notion/temporal/workflows";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { updateDataSourceDocumentParents } from "@connectors/lib/data_sources";
 import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
@@ -31,8 +31,7 @@ async function _getParents(
   seen: string[],
   syncing: boolean = false,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for memoization
-  memoizationKey?: string,
-  onProgress?: () => Promise<void>
+  memoizationKey?: string
 ): Promise<string[]> {
   const parents: string[] = [pageOrDbId];
   const pageOrDb =
@@ -96,9 +95,6 @@ async function _getParents(
         );
         return parents.concat(seen);
       }
-      if (onProgress) {
-        await onProgress();
-      }
       return parents.concat(
         // parentId cannot be undefined if parentType is page or database as per
         // Notion API
@@ -109,8 +105,7 @@ async function _getParents(
           pageOrDb.parentId,
           seen,
           syncing,
-          memoizationKey,
-          onProgress
+          memoizationKey
         )
       );
     }
@@ -122,10 +117,11 @@ async function _getParents(
 export const getParents = cacheWithRedis(
   _getParents,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for memoization
-  (connectorId, pageOrDbId, seen, syncing, memoizationKey, onProgress) => {
+  (connectorId, pageOrDbId, seen, syncing, memoizationKey) => {
     return `${connectorId}:${pageOrDbId}:${memoizationKey}`;
   },
-  UPDATE_PARENTS_FIELDS_TIMEOUT_MINUTES * 60 * 1000
+  // parents should be stable over the maximum time if memoized (almost a day).
+  23 * 60 * 60 * 1000
 );
 
 export async function updateAllParentsFields(
@@ -145,7 +141,8 @@ export async function updateAllParentsFields(
   const pageIdsToUpdate = await getPagesToUpdate(
     createdOrMovedNotionPageIds,
     createdOrMovedNotionDatabaseIds,
-    connectorId
+    connectorId,
+    onProgress
   );
 
   logger.info(
@@ -169,11 +166,10 @@ export async function updateAllParentsFields(
           pageId,
           [],
           false,
-          memoizationKey,
-          onProgress
+          memoizationKey
         );
 
-        const parents = pageOrDbIds.map((id) => `notion-${id}`);
+        const parents = pageOrDbIds.map((id) => nodeIdFromNotionId(id));
         if (parents.length === 1) {
           const page = await getNotionPageFromConnectorsDb(connectorId, pageId);
           logger.warn(
@@ -181,17 +177,9 @@ export async function updateAllParentsFields(
             "notionUpdateAllParentsFields: Page has no parent."
           );
         }
-
-        logger.info(
-          {
-            connectorId,
-            pageId,
-          },
-          "Updating parents field for page"
-        );
         await updateDataSourceDocumentParents({
           dataSourceConfig: dataSourceConfigFromConnector(connector),
-          documentId: `notion-${pageId}`,
+          documentId: nodeIdFromNotionId(pageId),
           parents,
           parentId: parents[1] || null,
         });
@@ -216,7 +204,8 @@ export async function updateAllParentsFields(
 async function getPagesToUpdate(
   createdOrMovedNotionPageIds: string[],
   createdOrMovedNotionDatabaseIds: string[],
-  connectorId: ModelId
+  connectorId: ModelId,
+  onProgress?: () => Promise<void>
 ): Promise<Set<string>> {
   const pageIdsToUpdate: Set<string> = new Set([
     ...createdOrMovedNotionPageIds,
@@ -238,6 +227,9 @@ async function getPagesToUpdate(
   const visited = new Set<string>();
 
   while (toProcess.size > 0) {
+    if (onProgress) {
+      await onProgress();
+    }
     const pageOrDbIdToProcess = shift() as string; // guaranteed to be defined as toUpdate.size > 0
     visited.add(pageOrDbIdToProcess);
 

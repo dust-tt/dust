@@ -32,6 +32,7 @@ import type {
   AssistantBuilderProcessConfiguration,
 } from "@app/components/assistant_builder/types";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames } from "@app/lib/utils";
 
 export function hasErrorActionProcess(
@@ -303,6 +304,9 @@ export function ActionProcess({
   const [isGeneratingSchema, setIsGeneratingSchema] = useState(false);
   const sendNotification = useSendNotification();
 
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+  const shouldDisplayTagsFilters = featureFlags.includes("tags_filters");
+
   useEffect(() => {
     if (actionConfiguration) {
       if (!actionConfiguration.timeFrame.value) {
@@ -323,6 +327,10 @@ export function ActionProcess({
         actionConfiguration.dataSourceConfigurations[k].dataSourceView
           .dataSource.connectorProvider === null
     ) && Object.keys(actionConfiguration.dataSourceConfigurations).length > 0;
+
+  const showLegacyTag =
+    (foldersOnly || (actionConfiguration.tagsFilter?.in || []).length > 0) &&
+    !shouldDisplayTagsFilters;
 
   const generateSchemaFromInstructions = async () => {
     setEdited(true);
@@ -394,7 +402,6 @@ export function ActionProcess({
         allowedSpaces={allowedSpaces}
         viewType="documents"
       />
-
       <div className="text-sm text-element-700">
         This tool scans selected data sources within the specified time frame,
         extracting information based on a predefined schema. It can process the
@@ -410,18 +417,24 @@ export function ActionProcess({
         </Hoverable>
         .
       </div>
-
       <DataSourceSelectionSection
         owner={owner}
         dataSourceConfigurations={actionConfiguration.dataSourceConfigurations}
         openDataSourceModal={() => {
           setShowDataSourcesModal(true);
         }}
+        onSave={(dsConfigs) => {
+          setEdited(true);
+          updateAction((previousAction) => ({
+            ...previousAction,
+            dataSourceConfigurations: dsConfigs,
+          }));
+        }}
         viewType="documents"
       />
 
-      {(foldersOnly ||
-        (actionConfiguration.tagsFilter?.in || []).length > 0) && (
+      {/* TODO(TAF): Remove this once tag filtering is rolled out */}
+      {showLegacyTag && (
         <div className="flex flex-col">
           <div className="flex flex-row items-center gap-4 pb-4">
             <div className="text-sm font-semibold text-foreground dark:text-foreground-night">
@@ -517,7 +530,6 @@ export function ActionProcess({
           })}
         </div>
       )}
-
       {onDescriptionChange && (
         <div className="flex flex-col gap-4 pt-8">
           <div className="font-semibold text-element-800">Tool description</div>
@@ -537,7 +549,6 @@ export function ActionProcess({
           />
         </div>
       )}
-
       <div className={"flex flex-row items-center gap-4 pb-4"}>
         <div className="text-sm font-semibold text-foreground dark:text-foreground-night">
           Process data from the last
@@ -572,7 +583,6 @@ export function ActionProcess({
           onEdit={() => setEdited(true)}
         />
       </div>
-
       <div className="flex flex-col">
         <div className="flex flex-row items-start">
           <div className="flex-grow pb-2 text-sm font-semibold text-foreground dark:text-foreground-night">

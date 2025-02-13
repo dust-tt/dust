@@ -26,6 +26,7 @@ import { getMimeTypesToSync } from "@connectors/connectors/google_drive/temporal
 import {
   driveObjectToDustType,
   getAuthObject,
+  getCachedLabels,
   getDriveClient,
   getDriveFileId,
   getInternalId,
@@ -235,6 +236,8 @@ export async function syncFiles(
     }
   }
 
+  const labels = await getCachedLabels(authCredentials);
+
   const drive = await getDriveClient(authCredentials);
   const mimeTypesSearchString = mimeTypesToSync
     .filter(
@@ -249,6 +252,7 @@ export async function syncFiles(
     pageSize: 200,
     includeItemsFromAllDrives: true,
     supportsAllDrives: true,
+    includeLabels: labels.map((l) => l.id).join(","),
     fields: `nextPageToken, files(${FILE_ATTRIBUTES_TO_FETCH.join(",")})`,
     q: `'${driveFolder.id}' in parents and (${mimeTypesSearchString}) and trashed=false`,
     pageToken: nextPageToken,
@@ -396,6 +400,7 @@ export async function incrementalSync(
     const selectedFoldersIds = await getFoldersToSync(connectorId);
 
     const authCredentials = await getAuthObject(connector.connectionId);
+    const labels = await getCachedLabels(authCredentials);
     const driveClient = await getDriveClient(authCredentials);
 
     let opts: drive_v3.Params$Resource$Changes$List = {
@@ -404,13 +409,12 @@ export async function incrementalSync(
       fields: "*",
       includeItemsFromAllDrives: true,
       supportsAllDrives: true,
+      includeLabels: labels.map((l) => l.id).join(","),
     };
     if (isSharedDrive) {
       opts = {
         ...opts,
         driveId: driveId,
-        includeItemsFromAllDrives: true,
-        supportsAllDrives: true,
       };
     }
     const changesRes: GaxiosResponse<drive_v3.Schema$ChangeList> =

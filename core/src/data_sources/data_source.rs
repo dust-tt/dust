@@ -236,6 +236,7 @@ impl From<Document> for Node {
             document.parent_id,
             document.parents.clone(),
             document.source_url,
+            Some(document.tags),
         )
     }
 }
@@ -534,7 +535,7 @@ impl DataSource {
         remove_tags: Vec<String>,
     ) -> Result<Vec<String>> {
         let new_tags = store
-            .update_data_source_document_tags(
+            .update_data_source_node_tags(
                 &self.project,
                 &self.data_source_id(),
                 &document_id.to_string(),
@@ -948,8 +949,17 @@ impl DataSource {
             .collect::<Vec<_>>();
 
         // Chunk splits into a vectors of 128 chunks (Vec<Vec<String>>)
+
+        // if provider is mistral, we can only go to 32-size chunked splits
+        // because mistral does not accept more than 16k tokens per batch request
+        // (with 512 tokens per split)
+        let chunk_size = match embedder_config.provider_id {
+            ProviderID::Mistral => 32,
+            _ => 128,
+        };
+
         let chunked_splits = splits_to_embbed
-            .chunks(128)
+            .chunks(chunk_size)
             .map(|chunk| chunk.to_vec())
             .collect::<Vec<_>>();
 

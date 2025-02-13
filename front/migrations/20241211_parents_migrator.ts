@@ -416,6 +416,7 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
     },
   },
   intercom: null,
+  salesforce: null,
 };
 
 const coreAPI = new CoreAPI(apiConfig.getCoreAPIConfig(), logger);

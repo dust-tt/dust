@@ -1,0 +1,182 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      regions:
+        description: "Regions to deploy to"
+        required: true
+        default: "all"
+        type: choice
+        options:
+          - "us-central1"
+          - "europe-west1"
+          - "all"
+      component:
+        description: "Name of the component to deploy"
+        required: true
+        type: choice
+        options:
+          - connectors
+          - core
+          - front
+          - front-edge
+          - prodbox
+          - oauth
+          - viz
+          - alerting-temporal
+      check_deployment_blocked:
+        description: "Check #deployment locks or force deploy"
+        required: true
+        default: "check"
+        type: choice
+        options:
+          - "check"
+          - "force (dangerous)"
+
+concurrency:
+  group: "deploy_${{ inputs.component }}"
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      short_sha: ${{ steps.short_sha.outputs.short_sha }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Get short sha
+        id: short_sha
+        run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+  notify-start:
+    needs: [prepare]
+    runs-on: ubuntu-latest
+    outputs:
+      thread_ts: ${{ steps.build_message.outputs.thread_ts }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Notify Build And Deploy Start
+        id: build_message
+        if: ${{ inputs.component != 'front-qa'}}
+        uses: ./.github/actions/slack-notify
+        with:
+          step: "start"
+          channel: ${{ secrets.SLACK_CHANNEL_ID }}
+          component: ${{ inputs.component }}
+          image_tag: ${{ needs.prepare.outputs.short_sha }}
+          region: ${{ inputs.regions }}
+          slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
+
+      - name: Slack Check Deployment Blocked
+        if: ${{ inputs.check_deployment_blocked }}
+        id: check_deployment_blocked
+        uses: ./.github/actions/slack-check-deployment-blocked
+        with:
+          component: ${{ inputs.component }}
+          channel: ${{ secrets.SLACK_CHANNEL_ID }}
+          slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
+
+  create-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - id: set-matrix
+        run: |
+          if [ "${{ inputs.regions }}" = "all" ]; then
+            echo "matrix=[\"us-central1\",\"europe-west1\"]" >> $GITHUB_OUTPUT
+          else
+            echo "matrix=[\"${{ inputs.regions }}\"]" >> $GITHUB_OUTPUT
+          fi
+
+  build:
+    permissions:
+      contents: read
+      id-token: write
+    needs: [prepare, notify-start, create-matrix]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        region: ${{ fromJson(needs.create-matrix.outputs.matrix) }}
+      fail-fast: true
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set project ID
+        id: project
+        run: |
+          if [ "${{ matrix.region }}" = "us-central1" ]; then
+            echo "PROJECT_ID=${{ secrets.GCLOUD_US_PROJECT_ID }}" >> $GITHUB_OUTPUT
+          else
+            echo "PROJECT_ID=${{ secrets.GCLOUD_EU_PROJECT_ID }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build Image
+        uses: ./.github/actions/build-image
+        with:
+          project_id: ${{ steps.project.outputs.PROJECT_ID }}
+          region: ${{ inputs.regions }}
+          component: ${{ inputs.component }}
+          workload_identity_provider: "projects/357744735673/locations/global/workloadIdentityPools/github-pool-apps/providers/github-provider-apps"
+
+      - name: Notify Failure
+        if: failure()
+        uses: ./.github/actions/slack-notify
+        with:
+          step: "failure"
+          channel: ${{ secrets.SLACK_CHANNEL_ID }}
+          component: ${{ inputs.component }}
+          image_tag: ${{ needs.prepare.outputs.short_sha }}
+          region: ${{ inputs.regions }}
+          slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          thread_ts: "${{ needs.notify-start.outputs.thread_ts }}"
+
+  deploy:
+    needs: [prepare, notify-start, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Generate token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.INFRA_DISPATCH_APP_ID }}
+          private-key: ${{ secrets.INFRA_DISPATCH_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: dust-infra
+
+      - name: Trigger dust-infra workflow
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ steps.generate-token.outputs.token }}
+          script: |
+            await github.rest.repos.createDispatchEvent({
+              owner: '${{ github.repository_owner }}',
+              repo: 'dust-infra',
+              event_type: 'trigger-component-deploy',
+              client_payload: {
+                regions: '${{ inputs.regions }}',
+                component: '${{ inputs.component }}',
+                image_tag: '${{ needs.prepare.outputs.short_sha }}',
+                slack_thread_ts: "${{ needs.notify-start.outputs.thread_ts }}",
+                slack_channel: '${{ secrets.SLACK_CHANNEL_ID }}',
+                run_playwright: ${{ inputs.run_playwright_tests }},
+                playwright_sha: '${{ github.sha }}'
+              }
+            })
+
+      - name: Notify Failure
+        if: failure()
+        uses: ./.github/actions/slack-notify
+        with:
+          step: "failure"
+          channel: ${{ secrets.SLACK_CHANNEL_ID }}
+          component: ${{ inputs.component }}
+          image_tag: ${{ needs.prepare.outputs.short_sha }}
+          region: ${{ inputs.regions }}
+          slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          thread_ts: "${{ needs.notify-start.outputs.thread_ts }}"
