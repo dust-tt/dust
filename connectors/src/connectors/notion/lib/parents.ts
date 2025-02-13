@@ -141,7 +141,8 @@ export async function updateAllParentsFields(
   const pageIdsToUpdate = await getPagesToUpdate(
     createdOrMovedNotionPageIds,
     createdOrMovedNotionDatabaseIds,
-    connectorId
+    connectorId,
+    onProgress
   );
 
   logger.info(
@@ -203,7 +204,8 @@ export async function updateAllParentsFields(
 async function getPagesToUpdate(
   createdOrMovedNotionPageIds: string[],
   createdOrMovedNotionDatabaseIds: string[],
-  connectorId: ModelId
+  connectorId: ModelId,
+  onProgress?: () => Promise<void>
 ): Promise<Set<string>> {
   const pageIdsToUpdate: Set<string> = new Set([
     ...createdOrMovedNotionPageIds,
@@ -225,6 +227,9 @@ async function getPagesToUpdate(
   const visited = new Set<string>();
 
   while (toProcess.size > 0) {
+    if (onProgress) {
+      await onProgress();
+    }
     const pageOrDbIdToProcess = shift() as string; // guaranteed to be defined as toUpdate.size > 0
     visited.add(pageOrDbIdToProcess);
 
