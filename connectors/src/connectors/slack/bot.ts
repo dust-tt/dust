@@ -63,8 +63,6 @@ import {
   getUserName,
 } from "./temporal/activities";
 
-const { DUST_FRONT_API } = process.env;
-
 const MAX_FILE_SIZE_TO_UPLOAD = 10 * 1024 * 1024; // 10 MB
 
 type BotAnswerParams = {
@@ -350,10 +348,6 @@ async function answerMessage(
     userType: slackUserInfo.is_bot ? "bot" : "user",
   });
 
-  if (!DUST_FRONT_API) {
-    throw new Error("DUST_FRONT_API environment variable is not defined");
-  }
-
   if (slackUserInfo.is_bot) {
     const botName = slackUserInfo.real_name;
     requestedGroups = await slackConfig.getBotGroupIds(botName);
@@ -375,7 +369,7 @@ async function answerMessage(
       },
     },
     logger,
-    DUST_FRONT_API
+    apiConfig.getDustFrontAPIUrl()
   );
 
   // Do not await this promise, we want to continue the execution of the function in parallel.

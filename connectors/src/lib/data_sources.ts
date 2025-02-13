@@ -857,12 +857,34 @@ export async function upsertDataSourceTableFromCsv({
   );
 
   const now = new Date();
+  const blob = new Blob([tableCsv]);
 
-  if (new Blob([tableCsv]).size > MAX_CSV_SIZE) {
+  if (blob.size > MAX_CSV_SIZE) {
     throw new TablesError(
       "file_too_large",
       "The file is too large to be processed."
     );
+  }
+
+  const dustAPI = new DustAPI(
+    apiConfig.getDustAPIConfig(),
+    {
+      workspaceId: dataSourceConfig.workspaceId,
+      apiKey: dataSourceConfig.workspaceAPIKey,
+    },
+    logger,
+    apiConfig.getDustFrontAPIUrl()
+  );
+
+  const fileRes = await dustAPI.uploadFile({
+    contentType: "text/csv",
+    fileName: `${tableId}.csv`,
+    fileSize: blob.size,
+    useCase: "upsert_table",
+    fileObject: new File([blob], `${tableId}.csv`, { type: "text/csv" }),
+  });
+  if (fileRes.isErr()) {
+    throw fileRes.error;
   }
 
   const endpoint =
@@ -873,7 +895,7 @@ export async function upsertDataSourceTableFromCsv({
     parentId,
     parents,
     description: tableDescription,
-    csv: tableCsv,
+    fileId: fileRes.value.id,
     tableId,
     truncate,
     async: true,
