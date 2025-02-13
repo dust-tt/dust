@@ -5,7 +5,7 @@ use crate::oauth::{
         gong::GongConnectionProvider, google_drive::GoogleDriveConnectionProvider,
         intercom::IntercomConnectionProvider, microsoft::MicrosoftConnectionProvider,
         mock::MockConnectionProvider, notion::NotionConnectionProvider,
-        slack::SlackConnectionProvider, utils::ProviderHttpRequestError,
+        salesforce::SalesforceConnectionProvider, slack::SlackConnectionProvider,
         zendesk::ZendeskConnectionProvider,
     },
     store::OAuthStore,
@@ -21,6 +21,8 @@ use std::str::FromStr;
 use std::time::Duration;
 use std::{env, fmt};
 use tracing::{error, info};
+
+use super::providers::utils::ProviderHttpRequestError;
 
 // We hold the lock for at most 15s. In case of panic preventing the lock from being released, this
 // is the maximum time the lock will be held.
@@ -91,6 +93,7 @@ pub enum ConnectionProvider {
     Slack,
     Mock,
     Zendesk,
+    Salesforce,
 }
 
 impl fmt::Display for ConnectionProvider {
@@ -179,6 +182,7 @@ pub fn provider(t: ConnectionProvider) -> Box<dyn Provider + Sync + Send> {
         ConnectionProvider::Slack => Box::new(SlackConnectionProvider::new()),
         ConnectionProvider::Mock => Box::new(MockConnectionProvider::new()),
         ConnectionProvider::Zendesk => Box::new(ZendeskConnectionProvider::new()),
+        ConnectionProvider::Salesforce => Box::new(SalesforceConnectionProvider::new()),
     }
 }
 

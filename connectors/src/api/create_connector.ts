@@ -149,6 +149,14 @@ const _createConnectorAPIHandler = async (
         });
         break;
       }
+
+      // TODO(salesforce): implement this
+      case "salesforce": {
+        throw new Error(
+          `Connector type ${req.params.connector_provider} NOT IMPLEMENTED YET`
+        );
+      }
+
       default:
         assertNever(req.params.connector_provider);
     }
