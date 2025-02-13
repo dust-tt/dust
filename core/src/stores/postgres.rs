@@ -96,7 +96,7 @@ impl PostgresStore {
 
     fn where_clauses_and_params_for_filter<'a>(
         filter: &'a Option<SearchFilter>,
-        tags_column: Option<&str>,
+        tags_column: &str,
         parents_column: &str,
         timestamp_column: &str,
         from_idx: usize,
@@ -106,18 +106,16 @@ impl PostgresStore {
         let mut p_idx: usize = from_idx;
 
         if let Some(filter) = filter {
-            if let Some(tags_column) = tags_column {
-                if let Some(tags_filter) = &filter.tags {
-                    if let Some(tags) = &tags_filter.is_in {
-                        where_clauses.push(format!("{} && ${}", tags_column, p_idx));
-                        params.push(tags as &(dyn ToSql + Sync));
-                        p_idx += 1;
-                    }
-                    if let Some(tags) = &tags_filter.is_not {
-                        where_clauses.push(format!("NOT {} && ${}", tags_column, p_idx));
-                        params.push(tags as &(dyn ToSql + Sync));
-                        p_idx += 1;
-                    }
+            if let Some(tags_filter) = &filter.tags {
+                if let Some(tags) = &tags_filter.is_in {
+                    where_clauses.push(format!("{} && ${}", tags_column, p_idx));
+                    params.push(tags as &(dyn ToSql + Sync));
+                    p_idx += 1;
+                }
+                if let Some(tags) = &tags_filter.is_not {
+                    where_clauses.push(format!("NOT {} && ${}", tags_column, p_idx));
+                    params.push(tags as &(dyn ToSql + Sync));
+                    p_idx += 1;
                 }
             }
 
@@ -1338,7 +1336,7 @@ impl Store for PostgresStore {
         let r = match version_hash {
             None => {
                 c.query(
-                    "SELECT dsd.id, dsd.created, dsd.timestamp, dsd.tags_array, dsn.parents, \
+                    "SELECT dsd.id, dsd.created, dsd.timestamp, dsn.tags_array, dsn.parents, \
                        dsn.source_url, dsd.hash, dsd.text_size, dsd.chunk_count, dsn.title, \
                        dsn.mime_type, dsn.provider_visibility \
                        FROM data_sources_documents dsd \
@@ -1351,7 +1349,7 @@ impl Store for PostgresStore {
             }
             Some(version_hash) => {
                 c.query(
-                    "SELECT dsd.id, dsd.created, dsd.timestamp, dsd.tags_array, dsn.parents, \
+                    "SELECT dsd.id, dsd.created, dsd.timestamp, dsn.tags_array, dsn.parents, \
                        dsn.source_url, dsd.hash, dsd.text_size, dsd.chunk_count, dsn.title, \
                        dsn.mime_type, dsn.provider_visibility \
                        FROM data_sources_documents dsd \
@@ -1513,15 +1511,15 @@ impl Store for PostgresStore {
         Ok(())
     }
 
-    async fn update_data_source_document_tags(
+    async fn update_data_source_node_tags(
         &self,
         project: &Project,
         data_source_id: &str,
-        document_id: &str,
+        node_id: &str,
         add_tags: &Vec<String>,
         remove_tags: &Vec<String>,
     ) -> Result<Vec<String>> {
-        let document_id = document_id.to_string();
+        let node_id = node_id.to_string();
         let pool = self.pool.clone();
         let mut c = pool.get().await?;
         let project_id = project.project_id();
@@ -1545,13 +1543,13 @@ impl Store for PostgresStore {
         // Get current tags and put them into a set.
         let current_tags_result = tx
             .query(
-                "SELECT tags_array FROM data_sources_documents WHERE data_source = $1 \
-                   AND document_id = $2 AND status = 'latest' FOR UPDATE",
-                &[&data_source_row_id, &document_id],
+                "SELECT tags_array FROM data_sources_nodes WHERE data_source = $1 \
+                   AND node_id = $2 FOR UPDATE",
+                &[&data_source_row_id, &node_id],
             )
             .await?;
         let mut current_tags: HashSet<String> = match current_tags_result.len() {
-            0 => Err(anyhow!("Unknown Document: {}", document_id))?,
+            0 => Err(anyhow!("Unknown Node: {}", node_id))?,
             _ => {
                 let tags_vec: Vec<String> = current_tags_result[0].get(0);
                 tags_vec.into_iter().collect()
@@ -1568,15 +1566,9 @@ impl Store for PostgresStore {
 
         let updated_tags_vec: Vec<String> = current_tags.into_iter().collect();
         tx.execute(
-            "UPDATE data_sources_documents SET tags_array = $1 \
-            WHERE data_source = $2 AND document_id = $3 AND status = 'latest'",
-            &[&updated_tags_vec, &data_source_row_id, &document_id],
-        )
-        .await?;
-        tx.execute(
             "UPDATE data_sources_nodes SET tags_array = $1 \
                 WHERE data_source = $2 AND node_id = $3",
-            &[&updated_tags_vec, &data_source_row_id, &document_id],
+            &[&updated_tags_vec, &data_source_row_id, &node_id],
         )
         .await?;
 
@@ -1667,7 +1659,7 @@ impl Store for PostgresStore {
 
         let (filter_clauses, filter_params, p_idx) = Self::where_clauses_and_params_for_filter(
             view_filter,
-            Some("dsd.tags_array"),
+            "dsn.tags_array",
             "dsn.parents",
             "dsd.timestamp",
             params.len() + 1,
@@ -1776,7 +1768,7 @@ impl Store for PostgresStore {
 
         let (filter_clauses, filter_params, p_idx) = Self::where_clauses_and_params_for_filter(
             filter,
-            Some("dsd.tags_array"),
+            "dsn.tags_array",
             "dsn.parents",
             "dsd.timestamp",
             params.len() + 1,
@@ -1788,7 +1780,7 @@ impl Store for PostgresStore {
         let (view_filter_clauses, view_filter_params, p_idx) =
             Self::where_clauses_and_params_for_filter(
                 view_filter,
-                Some("dsd.tags_array"),
+                "dsn.tags_array",
                 "dsn.parents",
                 "dsd.timestamp",
                 p_idx,
@@ -1875,9 +1867,9 @@ impl Store for PostgresStore {
         let stmt = tx
             .prepare(
                 "INSERT INTO data_sources_documents \
-                   (id, data_source, created, document_id, timestamp, tags_array, \
+                   (id, data_source, created, document_id, timestamp, \
                     hash, text_size, chunk_count, status) \
-                   VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9) \
+                   VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8) \
                    RETURNING id, created",
             )
             .await?;
@@ -1890,7 +1882,6 @@ impl Store for PostgresStore {
                     &(create_params.created as i64),
                     &create_params.document_id,
                     &(create_params.timestamp as i64),
-                    &create_params.tags,
                     &create_params.hash,
                     &(create_params.text_size as i64),
                     &(create_params.chunk_count as i64),
@@ -1989,7 +1980,7 @@ impl Store for PostgresStore {
 
         let (filter_clauses, filter_params, mut p_idx) = Self::where_clauses_and_params_for_filter(
             view_filter,
-            Some("dsd.tags_array"),
+            "dsn.tags_array",
             "dsn.parents",
             "dsd.timestamp",
             params.len() + 1,
@@ -2017,7 +2008,7 @@ impl Store for PostgresStore {
         }
 
         let sql = format!(
-            "SELECT dsd.id, dsd.created, dsd.document_id, dsd.timestamp, dsd.tags_array, \
+            "SELECT dsd.id, dsd.created, dsd.document_id, dsd.timestamp, dsn.tags_array, \
                dsn.parents, dsn.source_url, dsd.hash, dsd.text_size, dsd.chunk_count, \
                dsn.title, dsn.mime_type, dsn.provider_visibility \
                FROM data_sources_documents dsd \
@@ -2640,11 +2631,11 @@ impl Store for PostgresStore {
             .prepare(
                 "INSERT INTO tables \
                    (id, data_source, created, table_id, name, description, timestamp, \
-                    tags_array, remote_database_table_id, remote_database_secret_id) \
-                   VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9) \
+                   remote_database_table_id, remote_database_secret_id) \
+                   VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8) \
                    ON CONFLICT (table_id, data_source) DO UPDATE \
                    SET name = EXCLUDED.name, description = EXCLUDED.description, \
-                   timestamp = EXCLUDED.timestamp, tags_array = EXCLUDED.tags_array, \
+                   timestamp = EXCLUDED.timestamp, \
                      remote_database_table_id = EXCLUDED.remote_database_table_id, \
                      remote_database_secret_id = EXCLUDED.remote_database_secret_id \
                    RETURNING id, created, schema, schema_stale_at",
@@ -2661,7 +2652,6 @@ impl Store for PostgresStore {
                     &upsert_params.name,
                     &upsert_params.description,
                     &(upsert_params.timestamp as i64),
-                    &upsert_params.tags,
                     &upsert_params.remote_database_table_id,
                     &upsert_params.remote_database_secret_id,
                 ],
@@ -2846,7 +2836,7 @@ impl Store for PostgresStore {
         let stmt = c
             .prepare(
                 "SELECT t.created, t.table_id, t.name, t.description, \
-                        t.timestamp, t.tags_array, dsn.parents, dsn.source_url, \
+                        t.timestamp, dsn.tags_array, dsn.parents, dsn.source_url, \
                         t.schema, t.schema_stale_at, \
                         t.remote_database_table_id, t.remote_database_secret_id, \
                         dsn.title, dsn.mime_type, dsn.provider_visibility \
@@ -2985,7 +2975,7 @@ impl Store for PostgresStore {
 
         let (filter_clauses, filter_params, mut p_idx) = Self::where_clauses_and_params_for_filter(
             view_filter,
-            Some("t.tags_array"),
+            "dsn.tags_array",
             "dsn.parents",
             "t.timestamp",
             params.len() + 1,
@@ -3011,7 +3001,7 @@ impl Store for PostgresStore {
 
         let sql = format!(
             "SELECT t.created, t.table_id, t.name, t.description, \
-                    t.timestamp, t.tags_array, dsn.parents, \
+                    t.timestamp, dsn.tags_array, dsn.parents, \
                     t.schema, t.schema_stale_at, \
                     t.remote_database_table_id, t.remote_database_secret_id, \
                     dsn.title, dsn.mime_type, dsn.source_url, dsn.provider_visibility \
@@ -3321,7 +3311,7 @@ impl Store for PostgresStore {
 
         let (filter_clauses, filter_params, mut p_idx) = Self::where_clauses_and_params_for_filter(
             &view_filter,
-            None,
+            "dsn.tags_array",
             "dsn.parents",
             "dsn.timestamp",
             params.len() + 1,

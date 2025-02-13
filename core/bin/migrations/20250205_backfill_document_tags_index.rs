@@ -54,22 +54,12 @@ async fn list_data_source_documents(
     pool: &Pool<PostgresConnectionManager<NoTls>>,
     id_cursor: i64,
     batch_size: i64,
-    query_type: NodeType,
 ) -> Result<Vec<(i64, String, Vec<String>, String, String)>, Box<dyn std::error::Error>> {
     let c = pool.get().await?;
 
-    let q = match query_type {
-        NodeType::Document => {
-            "SELECT dsd.id,dsd.document_id, dsd.tags_array, ds.data_source_id, ds.internal_id \
-            FROM data_sources_documents dsd JOIN data_sources ds ON dsd.data_source = ds.id \
-            WHERE dsd.id > $1 ORDER BY dsd.id ASC LIMIT $2"
-        }
-        NodeType::Table => {
-            "SELECT t.id,t.table_id, t.tags_array, ds.data_source_id, ds.internal_id \
-            FROM tables t JOIN data_sources ds ON t.data_source = ds.id \
-            WHERE t.id > $1 ORDER BY t.id ASC LIMIT $2"
-        }
-    };
+    let q = "SELECT dsn.id, dsn.node_id, dsn.tags_array, ds.data_source_id, ds.internal_id \
+            FROM data_sources_nodes dsn JOIN data_sources ds ON dsn.data_source = ds.id \
+            WHERE dsn.id > $1 ORDER BY dsn.id ASC LIMIT $2";
 
     let stmt = c.prepare(q).await?;
     let rows = c.query(&stmt, &[&id_cursor, &batch_size]).await?;
@@ -78,11 +68,11 @@ async fn list_data_source_documents(
         .iter()
         .map(|row| {
             let id: i64 = row.get::<_, i64>(0);
-            let document_id: String = row.get::<_, String>(1);
+            let node_id: String = row.get::<_, String>(1);
             let tags: Vec<String> = row.get::<_, Vec<String>>(2);
             let ds_id: String = row.get::<_, String>(3);
             let ds_internal_id: String = row.get::<_, String>(4);
-            (id, document_id, tags, ds_id, ds_internal_id)
+            (id, node_id, tags, ds_id, ds_internal_id)
         })
         .collect::<Vec<_>>();
     Ok(nodes)
@@ -95,7 +85,6 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let index_version = args.index_version;
     let batch_size = args.batch_size;
     let start_cursor = args.start_cursor;
-    let query_type = args.query_type;
 
     let url = std::env::var("ELASTICSEARCH_URL").expect("ELASTICSEARCH_URL must be set");
     let username =
@@ -154,8 +143,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
             "Processing {} nodes, starting at id {}. ",
             batch_size, next_cursor
         );
-        let (nodes, next_id_cursor) =
-            get_node_batch(pool, next_cursor, batch_size, query_type).await?;
+        let (nodes, next_id_cursor) = get_node_batch(pool, next_cursor, batch_size).await?;
 
         next_cursor = match next_id_cursor {
             Some(cursor) => cursor,
@@ -204,18 +192,12 @@ async fn get_node_batch(
     pool: &Pool<PostgresConnectionManager<NoTls>>,
     next_cursor: i64,
     batch_size: usize,
-    query_type: NodeType,
 ) -> Result<
     (Vec<(i64, String, Vec<String>, String, String)>, Option<i64>),
     Box<dyn std::error::Error>,
 > {
-    let nodes = list_data_source_documents(
-        &pool,
-        next_cursor,
-        batch_size.try_into().unwrap(),
-        query_type,
-    )
-    .await?;
+    let nodes =
+        list_data_source_documents(&pool, next_cursor, batch_size.try_into().unwrap()).await?;
     let last_node = nodes.last().cloned();
     let nodes_length = nodes.len();
     match last_node {
