@@ -536,10 +536,12 @@ export async function incrementalSync(
             "Folder moved"
           );
 
+          const queue = new PQueue({ concurrency: 10 });
           await recurseUpdateParents(
             connector,
             localFile,
             parents,
+            queue,
             localLogger
           );
         }
@@ -598,6 +600,7 @@ async function recurseUpdateParents(
   connector: ConnectorResource,
   file: GoogleDriveFiles,
   parentIds: string[],
+  queue: PQueue,
   logger: Logger
 ) {
   const children = await GoogleDriveFiles.findAll({
@@ -607,17 +610,19 @@ async function recurseUpdateParents(
     },
   });
 
-  await concurrentExecutor(
-    children,
-    async (child) => {
-      await recurseUpdateParents(
-        connector,
-        child,
-        [child.dustFileId, ...parentIds],
-        logger
-      );
-    },
-    { concurrency: 10 }
+  // Use the queue for all child operations
+  await Promise.all(
+    children.map((child) =>
+      queue.add(() =>
+        recurseUpdateParents(
+          connector,
+          child,
+          [child.dustFileId, ...parentIds],
+          queue,
+          logger
+        )
+      )
+    )
   );
 
   await updateParentsField(connector, file, parentIds, logger);
