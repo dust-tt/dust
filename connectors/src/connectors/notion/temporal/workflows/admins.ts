@@ -1,5 +1,5 @@
 import type { ModelId } from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
+
 import {
   executeChild,
   ParentClosePolicy,
@@ -289,6 +289,6 @@ async function upsertParent({
     case "unknown":
       break;
     default:
-      assertNever(parentType);
+      throw new Error(`Unknown parent type: ${parentType}`);
   }
 }
