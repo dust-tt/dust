@@ -17,6 +17,14 @@ import { SpinnerProps } from "@sparkle/components/Spinner";
 import { ChevronDownIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 
+const formatCounterValue = (value: string | number): string => {
+  const numValue = typeof value === "string" ? parseInt(value, 10) : value;
+  if (!isNaN(numValue) && numValue >= 100) {
+    return "99+";
+  }
+  return value.toString();
+};
+
 export const BUTTON_VARIANTS = [
   "primary",
   "highlight",
@@ -37,7 +45,7 @@ const styleVariants: Record<ButtonVariantType, string> = {
     "s-text-primary-50 dark:s-text-primary-50-night",
     "hover:s-bg-primary-light dark:hover:s-bg-primary-dark-night",
     "active:s-bg-primary-dark dark:active:s-bg-primary-light-night",
-    "disabled:s-bg-primary-muted  disabled:s-text-highlight-50/60 dark:disabled:s-bg-primary-muted-night"
+    "disabled:s-bg-primary-muted disabled:s-text-highlight-50/60 dark:disabled:s-bg-primary-muted-night"
   ),
   highlight: cn(
     "s-bg-highlight",
@@ -67,7 +75,7 @@ const styleVariants: Record<ButtonVariantType, string> = {
   ),
   ghost: cn(
     "s-border",
-    "s-border-border-dark/0  dark:s-border-primary-600/0",
+    "s-border-border-dark/0 dark:s-border-primary-600/0",
     "s-text-primary-950 dark:s-text-primary-950-night",
     "hover:s-bg-primary-150 dark:hover:s-bg-primary-700",
     "hover:s-text-primary-900 dark:hover:s-text-primary-900-night",
@@ -92,6 +100,25 @@ const sizeVariants: Record<ButtonSizeType, string> = {
   xs: "s-h-7 s-px-2.5 s-rounded-lg s-text-xs s-gap-1.5",
   sm: "s-h-9 s-px-3 s-rounded-xl s-text-sm s-gap-2",
   md: "s-h-12 s-px-4 s-py-2 s-rounded-2xl s-text-base s-gap-2.5",
+};
+
+const counterSizeVariants: Record<ButtonSizeType, string> = {
+  mini: "s-h-4 s-min-w-[1rem] s-text-xs",
+  xs: "s-h-5 s-min-w-[1.25rem] s-text-xs",
+  sm: "s-h-6 s-min-w-[1.5rem] s-text-sm",
+  md: "s-h-7 s-min-w-[1.75rem] s-text-base",
+};
+
+const counterVariants: Record<ButtonVariantType, string> = {
+  primary: "s-bg-primary-700 s-text-white",
+  highlight: "s-bg-highlight-700 s-text-white",
+  warning: "s-bg-warning-700 s-text-white",
+  outline:
+    "s-bg-slate-100 dark:s-bg-slate-700 s-text-foreground dark:s-text-foreground-night",
+  ghost:
+    "s-bg-slate-100 dark:s-bg-slate-700 s-text-foreground dark:s-text-foreground-night",
+  "ghost-secondary":
+    "s-bg-slate-100 dark:s-bg-slate-700 s-text-foreground dark:s-text-foreground-night",
 };
 
 const buttonVariants = cva(
@@ -154,6 +181,8 @@ type CommonButtonProps = Omit<MetaButtonProps, "children"> &
     isLoading?: boolean;
     isPulsing?: boolean;
     tooltip?: string;
+    isCounter?: boolean;
+    counterValue?: number | string;
   };
 
 export type MiniButtonProps = CommonButtonProps & {
@@ -181,6 +210,8 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       tooltip,
       isSelect = false,
       isPulsing = false,
+      isCounter = false,
+      counterValue,
       size = "sm",
       href,
       target,
@@ -211,7 +242,22 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         ) : (
           icon && renderIcon(icon, "-s-mx-0.5")
         )}
-        {label}
+        <div className="s-flex s-items-center">
+          {label}
+          {isCounter && counterValue != null && (
+            <div
+              className={cn(
+                "s-ml-1.5 s-flex s-items-center s-justify-center s-rounded-full s-px-1",
+                counterSizeVariants[size],
+                variant && counterVariants[variant]
+              )}
+            >
+              <div className="s-font-medium s-leading-none">
+                {formatCounterValue(counterValue)}
+              </div>
+            </div>
+          )}
+        </div>
         {isSelect && renderIcon(ChevronDownIcon, isLoading ? "" : "-s-mr-1")}
       </>
     );

@@ -55,6 +55,15 @@ const meta = {
       description: "Whether the button should display a dropdown chevron",
       control: "boolean",
     },
+    isCounter: {
+      description: "Whether the button should display a counter badge",
+      control: "boolean",
+    },
+    counterValue: {
+      description: "Value to display in the counter badge",
+      control: "text",
+      if: { arg: "isCounter", eq: true },
+    },
     tooltip: {
       description: "Optional tooltip text to display on hover",
       control: "text",
@@ -79,6 +88,8 @@ export const ExampleButton: Story = {
     isLoading: false,
     isPulsing: false,
     isSelect: false,
+    isCounter: false,
+    counterValue: "4",
     disabled: false,
   },
 };
