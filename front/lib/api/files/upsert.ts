@@ -194,7 +194,7 @@ const upsertDocumentToDatasource: ProcessingFunction = async (
   }
   const { title: upsertTitle, ...restArgs } = upsertArgs ?? {};
   const upsertDocumentRes = await upsertDocument({
-    // Beware, most values here are default values that are overrided by the ...restArgs below.
+    // Beware, most values here are default values that are overridden by the ...restArgs below.
     document_id: documentId,
     source_url: sourceUrl,
     text: content,
@@ -236,7 +236,7 @@ const upsertTableToDatasource: ProcessingFunction = async (
   const upsertTableRes = await upsertTable({
     auth,
     params: {
-      // Beware, most values here are default values that are overrided by the ...restArgs below,
+      // Beware, most values here are default values that are overridden by the ...restArgs below,
       // including description.
       tableId,
       name: slugify(file.fileName),
