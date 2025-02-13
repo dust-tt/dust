@@ -1,6 +1,5 @@
 import type { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
-import { assertNever, MIME_TYPES } from "@dust-tt/types";
-import { safeSubstring } from "@dust-tt/types/src";
+import { assertNever, MIME_TYPES, safeSubstring } from "@dust-tt/types";
 import { Context } from "@temporalio/activity";
 import { hash as blake3 } from "blake3";
 import { promises as fs } from "fs";
