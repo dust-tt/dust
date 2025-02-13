@@ -17,11 +17,10 @@ import {
   RobotIcon,
   SearchInput,
   TrashIcon,
+  useSendNotification,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import { useSendNotification } from "@dust-tt/sparkle";
-import type { ConversationWithoutContentType } from "@dust-tt/types";
-import type { WorkspaceType } from "@dust-tt/types";
+import type { ConversationWithoutContentType, WorkspaceType } from "@dust-tt/types";
 import { isBuilder, isOnlyUser } from "@dust-tt/types";
 import moment from "moment";
 import type { NextRouter } from "next/router";
@@ -32,10 +31,7 @@ import { useConversationsNavigation } from "@app/components/assistant/conversati
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
-import {
-  useConversations,
-  useDeleteConversation,
-} from "@app/lib/swr/conversations";
+import { useConversations, useDeleteConversation } from "@app/lib/swr/conversations";
 import { classNames, removeDiacritics, subFilter } from "@app/lib/utils";
 
 type AssistantSidebarMenuProps = {
@@ -246,11 +242,11 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                     }
                   }}
                 />
-                <DropdownMenu modal={false}>
+                <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button size="sm" icon={MoreIcon} variant="outline" />
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent>
+                  <DropdownMenuContent mountPortal={false}>
                     <DropdownMenuLabel>Assistants</DropdownMenuLabel>
                     <DropdownMenuItem
                       href={`/w/${owner.sId}/builder/assistants/create`}

@@ -425,7 +425,6 @@ export const SpaceDataSourceViewContentList = ({
       })) || [],
     [
       nodes,
-      owner,
       spaces,
       canReadInSpace,
       canWriteInSpace,
