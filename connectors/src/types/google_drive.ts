@@ -16,6 +16,7 @@ export type GoogleDriveObjectType = {
   webViewLink?: string;
   driveId: string;
   isInSharedDrive: boolean;
+  labels: string[];
 };
 
 export type GoogleDriveFolderType = {
@@ -42,4 +43,5 @@ export const FILE_ATTRIBUTES_TO_FETCH = [
   "size",
   "trashed",
   "webViewLink",
+  "labelInfo",
 ] as const;

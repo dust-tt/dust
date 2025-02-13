@@ -81,6 +81,7 @@ const PROVIDER_STRATEGIES: Record<
           : [
               "https://www.googleapis.com/auth/drive.metadata.readonly",
               "https://www.googleapis.com/auth/drive.readonly",
+              "https://www.googleapis.com/auth/drive.labels.readonly",
             ];
       const qs = querystring.stringify({
         response_type: "code",
