@@ -171,6 +171,13 @@ const PEOPLE: Record<
     github: "https://github.com/ahammour",
     linkedIn: "https://www.linkedin.com/in/abboud-hammour/",
   },
+  adeltombe: {
+    name: "Amelie Deltombe",
+    title: "Marketing",
+    image: "https://avatars.githubusercontent.com/u/183381801?v=4",
+    github: "https://github.com/ameliedrhub",
+    linkedIn: "https://www.linkedin.com/in/ameliedeltombe/",
+  },
 };
 
 const Person = ({ handle }: { handle: string }) => {
