@@ -3,7 +3,7 @@ import { assertNever, ConnectorsAPI, Err, Ok } from "@dust-tt/types";
 import config from "@app/lib/api/config";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import logger from "@app/logger/logger";
+import logger, { auditLog } from "@app/logger/logger";
 
 const OPERATIONS = ["STOP", "PAUSE", "UNPAUSE", "RESUME", "SYNC"] as const;
 
@@ -63,7 +63,14 @@ export const connectorOperationsPlugin = createPlugin(
 
     const { op } = args;
 
-    logger.info(`Executing ${op} on connectorId=${connectorId}.`);
+    auditLog(
+      {
+        connectorId,
+        op,
+        who: auth.user(),
+      },
+      "Executing operation on connector"
+    );
     const res = await doOperation(op, connectorId.toString());
     if (res.isErr()) {
       return new Err(new Error(res.error.message));

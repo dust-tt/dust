@@ -606,12 +606,15 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       });
     }
 
-    auditLog("Membership role updated", {
-      userId: user.id,
-      workspaceId: workspace.id,
-      previousRole,
-      newRole,
-    });
+    auditLog(
+      {
+        userId: user.id,
+        workspaceId: workspace.id,
+        previousRole,
+        newRole,
+      },
+      "Membership role updated"
+    );
     return new Ok({ previousRole, newRole });
   }
 
