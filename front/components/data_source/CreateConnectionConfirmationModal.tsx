@@ -15,6 +15,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
+import { WrenchScrewdriverIcon } from "@heroicons/react/20/solid";
 
 type CreateConnectionConfirmationModalProps = {
   connectorProviderConfiguration: ConnectorProviderConfiguration;
@@ -152,18 +153,28 @@ export function CreateConnectionConfirmationModal({
                   <Button
                     variant="highlight"
                     size="md"
-                    icon={CloudArrowLeftRightIcon}
+                    icon={
+                      connectorProviderConfiguration.connectorProvider ===
+                      "google_drive"
+                        ? WrenchScrewdriverIcon
+                        : CloudArrowLeftRightIcon
+                    }
                     onClick={() => {
                       setIsLoading(true);
                       onConfirm(extraConfig);
                     }}
-                    disabled={!isExtraConfigValid(extraConfig) || isLoading}
+                    disabled={
+                      !isExtraConfigValid(extraConfig) ||
+                      isLoading ||
+                      connectorProviderConfiguration.connectorProvider ===
+                        "google_drive"
+                    }
                     label={
                       isLoading
                         ? "Connecting..."
                         : connectorProviderConfiguration.connectorProvider ===
                             "google_drive"
-                          ? "Acknowledge and Connect"
+                          ? "Temporarily unavailable"
                           : "Connect"
                     }
                   />
