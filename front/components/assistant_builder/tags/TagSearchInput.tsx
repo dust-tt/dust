@@ -21,6 +21,7 @@ export interface TagSearchProps {
   onTagRemove: (tag: DataSourceTag) => void;
   tagChipColor?: "slate" | "red";
   isLoading: boolean;
+  disabled?: boolean;
 }
 
 export const TagSearchInput = ({
@@ -32,6 +33,7 @@ export const TagSearchInput = ({
   onTagRemove,
   tagChipColor = "slate",
   isLoading,
+  disabled = false,
 }: TagSearchProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -73,6 +75,7 @@ export const TagSearchInput = ({
           placeholder="Search labels..."
           className="w-full"
           isLoading={isLoading}
+          disabled={disabled}
         />
         <DropdownMenu
           open={
