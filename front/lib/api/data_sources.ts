@@ -647,8 +647,6 @@ export async function upsertTable({
         csv: csv ?? null,
         fileId: fileId ?? null,
         truncate,
-        // TODO(spolu): remove from upsert queue
-        detectedHeaders: undefined,
         title: params.title,
         mimeType: params.mimeType,
         sourceUrl: standardizedSourceUrl,
