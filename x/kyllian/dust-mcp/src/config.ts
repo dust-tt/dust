@@ -8,8 +8,14 @@ export interface TokenData {
   expires_at: number; // timestamp in milliseconds
 }
 
+export interface DustConfig {
+  workspace_id: string;
+  agent_id: string;
+}
+
 const CONFIG_DIR = join(homedir(), ".config", "dust-mcp");
 const TOKEN_FILE = join(CONFIG_DIR, "auth.json");
+const CONFIG_FILE = join(CONFIG_DIR, "config.json");
 
 export async function ensureConfigDir(): Promise<void> {
   try {
@@ -47,4 +53,21 @@ export async function isAuthenticated(): Promise<boolean> {
   // Check if token is expired (with 5 minute buffer)
   const now = Date.now();
   return tokens.expires_at > now + 5 * 60 * 1000;
+}
+
+export async function saveDustConfig(config: DustConfig): Promise<void> {
+  await ensureConfigDir();
+  await writeFile(CONFIG_FILE, JSON.stringify(config, null, 2), "utf-8");
+}
+
+export async function loadDustConfig(): Promise<DustConfig | null> {
+  try {
+    const data = await readFile(CONFIG_FILE, "utf-8");
+    return JSON.parse(data) as DustConfig;
+  } catch (error) {
+    if ((error as { code?: string }).code === "ENOENT") {
+      return null;
+    }
+    throw error;
+  }
 }
