@@ -11,11 +11,11 @@ import {
   SheetTitle,
 } from "@dust-tt/sparkle";
 import { isValidZendeskSubdomain } from "@dust-tt/types";
+import { WrenchScrewdriverIcon } from "@heroicons/react/20/solid";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
-import { WrenchScrewdriverIcon } from "@heroicons/react/20/solid";
 
 type CreateConnectionConfirmationModalProps = {
   connectorProviderConfiguration: ConnectorProviderConfiguration;
