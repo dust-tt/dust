@@ -185,19 +185,29 @@ const DropdownMenuSubContent = React.forwardRef<
 DropdownMenuSubContent.displayName =
   DropdownMenuPrimitive.SubContent.displayName;
 
+interface DropdownMenuContentProps
+  extends React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content> {
+  mountPortal?: boolean;
+}
+
 const DropdownMenuContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
->(({ className, sideOffset = 4, ...props }, ref) => (
-  <DropdownMenuPrimitive.Portal>
+  DropdownMenuContentProps
+>(({ className, sideOffset = 4, mountPortal = true, ...props }, ref) => {
+  const content = (
     <DropdownMenuPrimitive.Content
       ref={ref}
       sideOffset={sideOffset}
       className={cn(menuStyleClasses.container, "s-shadow-md", className)}
       {...props}
     />
-  </DropdownMenuPrimitive.Portal>
-));
+  );
+  return mountPortal ? (
+    <DropdownMenuPrimitive.Portal>{content}</DropdownMenuPrimitive.Portal>
+  ) : (
+    content
+  );
+});
 DropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName;
 
 export type DropdownMenuItemProps = MutuallyExclusiveProps<
