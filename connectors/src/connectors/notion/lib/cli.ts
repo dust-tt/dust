@@ -27,8 +27,7 @@ import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_c
 import { getConnectorOrThrow } from "@connectors/lib/cli";
 import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
 import { getTemporalClient } from "@connectors/lib/temporal";
-import mainLogger from "@connectors/logger/logger";
-import { default as topLogger } from "@connectors/logger/logger";
+import mainLogger, { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 import { getParsedDatabase, retrievePage } from "./notion_api";
@@ -88,22 +87,18 @@ function pageOrDbIdFromUrl(url: string) {
     throw new Error(`Unhandled URL (could not get "last"): ${url}`);
   }
   const id = last.split("-").pop();
-  if (!id || id.length !== 32) {
-    throw new Error(`Unhandled URL (could not get 32 char ID): ${url}`);
+
+  // Case where we have the uuid all stuck together: https://www.notion.so/Page-Title-0123456789abcdef0123456789abcdef
+  if (id && id.length === 32) {
+    return `${id.slice(0, 8)}-${id.slice(8, 12)}-${id.slice(12, 16)}-${id.slice(16, 20)}-${id.slice(20)}`;
   }
 
-  const pageOrDbId =
-    id.slice(0, 8) +
-    "-" +
-    id.slice(8, 12) +
-    "-" +
-    id.slice(12, 16) +
-    "-" +
-    id.slice(16, 20) +
-    "-" +
-    id.slice(20);
+  // Case where we already have the uuid well formatted: https://www.notion.so/01234567-89ab-cdef-0123-456789abcdef
+  if (last.match(/^[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$/)) {
+    return last;
+  }
 
-  return pageOrDbId;
+  throw new Error(`Unhandled URL (could not get 32 char ID): ${url}`);
 }
 
 export async function findNotionUrl({
