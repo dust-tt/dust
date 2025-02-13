@@ -66,6 +66,10 @@ const LegalMenuConfig: MenuConfig = {
       href: "/home/security",
     },
     {
+      title: "Vulnerability Disclosure",
+      href: "/home/vulnerability",
+    },
+    {
       title: "Terms & Policies",
       href: "https://dust-tt.notion.site/17bb854ffc674e1ba729d1a10837e50d?v=de92d1770a344beeafe9f701e78ad8f3",
       isExternal: true,
