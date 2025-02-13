@@ -3,7 +3,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 
-const DUST_API_URL = "http://localhost:3000/api";
+const DUST_API_URL = "http://localhost:3000";
 // TODO(kyllian): Get the following variables from config
 const DUST_ACCESS_TOKEN = "";
 const DUST_WORKSPACE_ID = "";
