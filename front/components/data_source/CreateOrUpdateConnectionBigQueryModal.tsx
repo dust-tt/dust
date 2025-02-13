@@ -392,7 +392,6 @@ export function CreateOrUpdateConnectionBigQueryModal({
               isLocationsLoading ||
               !credentialsState.valid ||
               !selectedLocation,
-            variant: "highlight",
             size: "md",
           }}
         />
