@@ -32,6 +32,7 @@ import type {
   AssistantBuilderProcessConfiguration,
 } from "@app/components/assistant_builder/types";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames } from "@app/lib/utils";
 
 export function hasErrorActionProcess(
@@ -303,6 +304,9 @@ export function ActionProcess({
   const [isGeneratingSchema, setIsGeneratingSchema] = useState(false);
   const sendNotification = useSendNotification();
 
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+  const shouldDisplayTagsFilters = featureFlags.includes("tags_filters");
+
   useEffect(() => {
     if (actionConfiguration) {
       if (!actionConfiguration.timeFrame.value) {
@@ -323,6 +327,10 @@ export function ActionProcess({
         actionConfiguration.dataSourceConfigurations[k].dataSourceView
           .dataSource.connectorProvider === null
     ) && Object.keys(actionConfiguration.dataSourceConfigurations).length > 0;
+
+  const showLegacyTag =
+    (foldersOnly || (actionConfiguration.tagsFilter?.in || []).length > 0) &&
+    !shouldDisplayTagsFilters;
 
   const generateSchemaFromInstructions = async () => {
     setEdited(true);
@@ -426,11 +434,10 @@ export function ActionProcess({
       />
 
       {/* TODO(TAF): Remove this once tag filtering is rolled out */}
-      {(foldersOnly ||
-        (actionConfiguration.tagsFilter?.in || []).length > 0) && (
+      {showLegacyTag && (
         <div className="flex flex-col">
           <div className="flex flex-row items-center gap-4 pb-4">
-            <div className="text-sm font-semibold text-foreground dark:text-foreground-night">
+            <div className="dark:text-foreground-night text-sm font-semibold text-foreground">
               Folder tags filtering
             </div>
             <div>
@@ -543,7 +550,7 @@ export function ActionProcess({
         </div>
       )}
       <div className={"flex flex-row items-center gap-4 pb-4"}>
-        <div className="text-sm font-semibold text-foreground dark:text-foreground-night">
+        <div className="dark:text-foreground-night text-sm font-semibold text-foreground">
           Process data from the last
         </div>
         <input
@@ -553,7 +560,7 @@ export function ActionProcess({
             !timeFrameError
               ? "focus:border-action-500 focus:ring-action-500"
               : "border-red-500 focus:border-red-500 focus:ring-red-500",
-            "bg-structure-50 stroke-structure-50 dark:bg-structure-50-night dark:stroke-structure-50-night"
+            "dark:bg-structure-50-night dark:stroke-structure-50-night bg-structure-50 stroke-structure-50"
           )}
           value={actionConfiguration.timeFrame.value || ""}
           onChange={(e) => {
@@ -578,7 +585,7 @@ export function ActionProcess({
       </div>
       <div className="flex flex-col">
         <div className="flex flex-row items-start">
-          <div className="flex-grow pb-2 text-sm font-semibold text-foreground dark:text-foreground-night">
+          <div className="dark:text-foreground-night flex-grow pb-2 text-sm font-semibold text-foreground">
             Schema
           </div>
           {actionConfiguration.schema.length > 0 && !isGeneratingSchema && (

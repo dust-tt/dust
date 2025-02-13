@@ -20,12 +20,12 @@ import {
   PROCESS_ACTION_TOP_K,
   renderSchemaPropertiesAsJSONSchema,
 } from "@dust-tt/types";
-import assert from "assert";
 import _ from "lodash";
 
 import { runActionStreamed } from "@app/lib/actions/server";
 import { DEFAULT_PROCESS_ACTION_NAME } from "@app/lib/api/assistant/actions/constants";
 import {
+  applyDataSourceFilters,
   parseTimeFrame,
   retrievalAutoTimeFrameInputSpecification,
   retrievalTagsInputSpecification,
@@ -310,60 +310,13 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
     }
     // END-TODO(TAF)
 
-    for (const ds of actionConfiguration.dataSources) {
-      if (!config.DATASOURCE.filter.parents) {
-        config.DATASOURCE.filter.parents = {};
-      }
-      if (ds.filter.parents?.in) {
-        if (!config.DATASOURCE.filter.parents.in_map) {
-          config.DATASOURCE.filter.parents.in_map = {};
-        }
-
-        const dsView = dataSourceViewsMap[ds.dataSourceViewId];
-        // This should never happen since dataSourceViews are stored by id in the
-        // agent_data_source_configurations table.
-        assert(dsView, `Data source view ${ds.dataSourceViewId} not found`);
-
-        // Note: We use dataSourceId here because after the registry lookup,
-        // it returns either the data source itself or the data source associated with the data source view.
-        config.DATASOURCE.filter.parents.in_map[
-          dsView.dataSource.dustAPIDataSourceId
-        ] = ds.filter.parents.in;
-      }
-      if (ds.filter.parents?.not) {
-        if (!config.DATASOURCE.filter.parents.not) {
-          config.DATASOURCE.filter.parents.not = [];
-        }
-        config.DATASOURCE.filter.parents.not.push(...ds.filter.parents.not);
-      }
-
-      // Handle tags filtering.
-      if (ds.filter.tags) {
-        if (!config.DATASOURCE.filter.tags?.in_map) {
-          config.DATASOURCE.filter.tags = {
-            in_map: {},
-            not_map: {},
-          };
-        }
-
-        const dsView = dataSourceViewsMap[ds.dataSourceViewId];
-        assert(dsView, `Data source view ${ds.dataSourceViewId} not found`);
-
-        const tagsIn =
-          ds.filter.tags === "auto" ? globalTagsIn : ds.filter.tags.in;
-        const tagsNot =
-          ds.filter.tags === "auto" ? globalTagsNot : ds.filter.tags.not;
-
-        if (tagsIn && tagsNot) {
-          config.DATASOURCE.filter.tags.in_map[
-            dsView.dataSource.dustAPIDataSourceId
-          ] = tagsIn;
-          config.DATASOURCE.filter.tags.not_map[
-            dsView.dataSource.dustAPIDataSourceId
-          ] = tagsNot;
-        }
-      }
-    }
+    applyDataSourceFilters(
+      config,
+      actionConfiguration.dataSources,
+      dataSourceViewsMap,
+      globalTagsIn,
+      globalTagsNot
+    );
 
     // Handle timestamp filtering.
     if (relativeTimeFrame) {
@@ -373,7 +326,6 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
     }
 
     config.DATASOURCE.top_k = PROCESS_ACTION_TOP_K;
-    console.log("************", JSON.stringify(config.DATASOURCE));
 
     const res = await runActionStreamed(
       auth,
