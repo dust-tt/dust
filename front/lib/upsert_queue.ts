@@ -41,8 +41,7 @@ export const EnqueueUpsertTable = t.type({
   tableParentId: t.union([t.string, t.undefined, t.null]),
   tableParents: t.union([t.array(t.string), t.undefined, t.null]),
   csv: t.union([t.string, t.null]),
-  // TODO(spolu): [CSV-FILE] Remove undefined once deployed
-  fileId: t.union([t.string, t.null, t.undefined]),
+  fileId: t.union([t.string, t.null]),
   truncate: t.boolean,
   title: t.string,
   mimeType: t.string,

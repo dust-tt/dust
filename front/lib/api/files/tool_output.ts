@@ -22,7 +22,7 @@ export async function internalCreateToolOutputFile(
   const workspace = auth.getNonNullableWorkspace();
   const user = auth.user();
 
-  const fileResource = await FileResource.makeNew({
+  const file = await FileResource.makeNew({
     workspaceId: workspace.id,
     userId: user?.id ?? null,
     contentType,
@@ -34,13 +34,13 @@ export async function internalCreateToolOutputFile(
     },
   });
 
-  await processAndStoreFile(auth, { file: fileResource, reqOrString: content });
+  await processAndStoreFile(auth, { file, reqOrString: content });
 
   // If the tool returned no content, it makes no sense to upsert it to the data source
   if (content) {
     const jitDataSource = await getOrCreateConversationDataSourceFromFile(
       auth,
-      fileResource
+      file
     );
     if (jitDataSource.isErr()) {
       logger.error(
@@ -52,8 +52,7 @@ export async function internalCreateToolOutputFile(
       );
     } else {
       const r = await processAndUpsertToDataSource(auth, jitDataSource.value, {
-        file: fileResource,
-        optionalContent: content,
+        file,
       });
       if (r.isErr()) {
         logger.error(
@@ -67,5 +66,5 @@ export async function internalCreateToolOutputFile(
     }
   }
 
-  return fileResource;
+  return file;
 }
