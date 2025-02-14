@@ -487,7 +487,7 @@ export async function updateExtensionConfiguration(
 export async function updateWorkspaceToBusinessPlan(
   auth: Authenticator,
   workspace: LightWorkspaceType
-): Promise<Result<LightWorkspaceType, Error>> {
+): Promise<Result<void, Error>> {
   if (!auth.isDustSuperUser()) {
     throw new Error("Cannot upgrade workspace to plan: not allowed.");
   }
@@ -538,5 +538,5 @@ export async function updateWorkspaceToBusinessPlan(
     await subscription.update({ planId: newPlan.id });
   }
 
-  return new Ok(renderLightWorkspaceType({ workspace }));
+  return new Ok(undefined);
 }
