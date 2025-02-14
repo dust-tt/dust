@@ -204,6 +204,10 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const renderIcon = (visual: React.ComponentType, extraClass = "") => (
       <Icon visual={visual} size={iconsSize} className={extraClass} />
     );
+
+    const showCounter = isCounter && counterValue != null;
+    const showContainer = label || showCounter;
+
     const content = (
       <>
         {isLoading ? (
@@ -213,10 +217,11 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         ) : (
           icon && renderIcon(icon, "-s-mx-0.5")
         )}
-        {(label || (isCounter && counterValue != null)) && (
+
+        {showContainer && (
           <div className="s-flex s-items-center s-gap-2">
             {label}
-            {isCounter && counterValue != null && (
+            {showCounter && (
               <Counter
                 value={Number(counterValue)}
                 variant={variant || "primary"}
