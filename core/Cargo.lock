@@ -1318,7 +1318,6 @@ dependencies = [
  "serde",
  "serde_json",
  "shellexpand",
- "slug",
  "snowflake-connector-rs",
  "sqids",
  "tera",
