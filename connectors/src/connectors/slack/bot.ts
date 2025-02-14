@@ -846,7 +846,7 @@ async function makeContentFragments(
         allContentFragments.push({
           title: fileName,
           url: fileRes.value.publicUrl,
-          fileId: fileRes.value.id,
+          fileId: fileRes.value.sId,
           context: null,
         });
       }
@@ -926,7 +926,7 @@ async function makeContentFragments(
   allContentFragments.push({
     title: `Thread content from #${channel.channel.name}`,
     url: url,
-    fileId: fileRes.value.id,
+    fileId: fileRes.value.sId,
     context: null,
   });
 
