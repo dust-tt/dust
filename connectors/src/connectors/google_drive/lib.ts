@@ -128,15 +128,20 @@ export async function internalDeleteFile(
 ) {
   if (isGoogleDriveSpreadSheetFile(googleDriveFile)) {
     await deleteSpreadsheet(connector, googleDriveFile);
-  } else if (
-    googleDriveFile.mimeType !== "application/vnd.google-apps.folder"
-  ) {
+  } else if (isGoogleDriveFolder(googleDriveFile)) {
+    const dataSourceConfig = dataSourceConfigFromConnector(connector);
+    await deleteDataSourceFolder({
+      dataSourceConfig,
+      folderId: googleDriveFile.dustFileId,
+    });
+  } else {
     const dataSourceConfig = dataSourceConfigFromConnector(connector);
     await deleteDataSourceDocument(
       dataSourceConfig,
       googleDriveFile.dustFileId
     );
   }
+
   const folder = await GoogleDriveFolders.findOne({
     where: {
       connectorId: connector.id,
@@ -149,12 +154,6 @@ export async function internalDeleteFile(
       await folder.destroy({ transaction: t });
     }
     await googleDriveFile.destroy({ transaction: t });
-  });
-
-  const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  await deleteDataSourceFolder({
-    dataSourceConfig,
-    folderId: googleDriveFile.dustFileId,
   });
 }
 
