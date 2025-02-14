@@ -496,7 +496,7 @@ export async function upgradeWorkspaceToBusinessPlan(
     include: ["plan"],
   });
   if (subscription) {
-    throw new Error(`Workspace already has an active subscription.`);
+    return new Err(new Error("Workspace already has an active subscription."));
   }
 
   // Check if already fully on business plan with both metadata and subscription correct.
