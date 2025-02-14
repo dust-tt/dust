@@ -5,9 +5,9 @@ import { updateWorkspaceToBusinessPlan } from "@app/lib/api/workspace";
 
 export const updateBusinessPlan = createPlugin(
   {
-    id: "update-business-plan",
-    name: "Update Business Plan",
-    description: "Update workspace to business plan (Pro plan 39€).",
+    id: "upgrade-to-business-plan",
+    name: "Upgrade to Business Plan",
+    description: "Upgrade workspace to business plan (Pro plan 39€).",
     resourceTypes: ["workspaces"],
     args: {
       confirm: {
