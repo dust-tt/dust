@@ -482,3 +482,39 @@ export async function updateExtensionConfiguration(
 
   return new Ok(undefined);
 }
+
+export async function upgradeWorkspaceToBusinessPlan(
+  auth: Authenticator,
+  workspace: LightWorkspaceType
+): Promise<Result<void, Error>> {
+  if (!auth.isDustSuperUser()) {
+    throw new Error("Cannot upgrade workspace to plan: not allowed.");
+  }
+
+  const subscription = await Subscription.findOne({
+    where: { workspaceId: workspace.id, status: "active" },
+    include: ["plan"],
+  });
+  if (subscription) {
+    throw new Error(`Workspace already has an active subscription.`);
+  }
+
+  // Check if already fully on business plan with both metadata and subscription correct.
+  if (workspace.metadata?.isBusiness === true) {
+    return new Err(new Error("Workspace is already on business plan."));
+  }
+
+  await Workspace.update(
+    {
+      metadata: {
+        ...workspace.metadata,
+        isBusiness: true,
+      },
+    },
+    {
+      where: { sId: workspace.sId },
+    }
+  );
+
+  return new Ok(undefined);
+}

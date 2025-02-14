@@ -6,4 +6,5 @@ export * from "./extension_blacklist_domains";
 export * from "./invite_user";
 export * from "./rename_workspace";
 export * from "./reset_message_rate_limit";
+export * from "./upgrade_to_business_plan";
 export * from "./user_identity_merge";
