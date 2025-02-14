@@ -72,6 +72,8 @@ import { apiError } from "@app/logger/withlogging";
  *                 file:
  *                   type: object
  *                   properties:
+ *                     sId:
+ *                       type: string
  *                     uploadUrl:
  *                       type: string
  *       400:
