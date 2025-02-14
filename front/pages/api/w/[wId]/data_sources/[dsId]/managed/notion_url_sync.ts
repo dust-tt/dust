@@ -9,6 +9,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { apiError } from "@app/logger/withlogging";
+
 type PostNotionSyncResponseBody = { success: true } | { error: string };
 
 // zod type for payload
@@ -72,6 +73,8 @@ async function handler(
   }
 
   switch (req.method) {
+    case "GET":
+      return res.status(200).json({ success: true });
     case "POST":
       const bodyValidation = PostNotionSyncPayload.safeParse(req.body);
 
@@ -103,6 +106,18 @@ async function handler(
         });
       }
 
+      // Store synced URLs with timestamp as score
+      const redisKey = `workspace:${owner.sId}:synced_urls`;
+      const now = Date.now();
+
+      await redis.zAdd(
+        redisKey,
+        urls.map((url) => ({
+          score: now,
+          value: url,
+        }))
+      );
+
       res.status(200).json({ success: true });
       return;
 
@@ -111,7 +126,8 @@ async function handler(
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, POST is expected.",
+          message:
+            "The method passed is not supported, GET or POST is expected.",
         },
       });
   }
