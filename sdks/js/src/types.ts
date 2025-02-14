@@ -785,12 +785,10 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "google_ai_studio_experimental_models_feature"
   | "snowflake_connector_feature"
   | "index_private_slack_channel"
-  | "conversations_jit_actions"
   | "disable_run_logs"
   | "show_debug_tools"
   | "labs_github_actions"
   | "deepseek_r1_global_agent_feature"
-  | "bigquery_feature"
   | "tags_filters"
   | "salesforce_feature"
 >();
