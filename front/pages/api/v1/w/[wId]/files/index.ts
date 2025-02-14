@@ -74,8 +74,10 @@ import { apiError } from "@app/logger/withlogging";
  *                   properties:
  *                     sId:
  *                       type: string
+ *                       description: Unique string identifier for the file
  *                     uploadUrl:
  *                       type: string
+ *                       description: Upload URL for the file
  *       400:
  *         description: Invalid request or unsupported file type
  *       401:
