@@ -205,7 +205,8 @@ async function processSheet({
 
     const tags = await getColumnsFromListItem(
       spreadsheet,
-      await getClient(connector.connectionId)
+      await getClient(connector.connectionId),
+      localLogger
     );
 
     try {

@@ -1,3 +1,4 @@
+import type { LoggerInterface } from "@dust-tt/client";
 import { cacheWithRedis } from "@dust-tt/types";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import type {
@@ -96,11 +97,15 @@ export const getListNameFromWebUrl = (webUrl: string) => {
   const pathParts = url.pathname.split("/");
   const sitesIndex = pathParts.findIndex((part) => part === "sites");
   if (sitesIndex === -1) {
-    throw new Error("Invalid webUrl format: missing sites segment");
+    throw new Error(
+      "Invalid webUrl format: missing sites segment, webUrl: " + webUrl
+    );
   }
   const listNameEncoded = pathParts[sitesIndex + 2];
   if (!listNameEncoded) {
-    throw new Error("Invalid webUrl format: missing list name");
+    throw new Error(
+      "Invalid webUrl format: missing list name, webUrl: " + webUrl
+    );
   }
   return decodeURIComponent(listNameEncoded);
 };
@@ -160,7 +165,8 @@ export async function _getListColumns({
 // Turn the labels into a string array of formatted string such as column.displayName:value
 export const getColumnsFromListItem = async (
   file: DriveItem,
-  client: Client
+  client: Client,
+  logger: LoggerInterface
 ) => {
   const listItem = file.listItem;
   if (
@@ -171,21 +177,26 @@ export const getColumnsFromListItem = async (
   ) {
     return [];
   }
-  const listName = getListNameFromWebUrl(listItem.webUrl);
-  const columns = await getCachedListColumns({
-    client,
-    listName,
-    siteId: listItem.parentReference.siteId,
-  });
+  try {
+    const listName = getListNameFromWebUrl(listItem.webUrl);
+    const columns = await getCachedListColumns({
+      client,
+      listName,
+      siteId: listItem.parentReference.siteId,
+    });
 
-  const columnsList: string[] = [];
+    const columnsList: string[] = [];
 
-  const fields = listItem.fields as Record<string, unknown>;
-  for (const [k, v] of Object.entries(fields)) {
-    const column = columns.find((column) => column.name === k);
-    if (column) {
-      columnsList.push(`${column.displayName}:${v}`);
+    const fields = listItem.fields as Record<string, unknown>;
+    for (const [k, v] of Object.entries(fields)) {
+      const column = columns.find((column) => column.name === k);
+      if (column) {
+        columnsList.push(`${column.displayName}:${v}`);
+      }
     }
+    return columnsList;
+  } catch (e) {
+    logger.error({ error: e }, "Error while getting columns from list item.");
+    return [];
   }
-  return columnsList;
 };

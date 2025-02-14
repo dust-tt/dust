@@ -159,7 +159,8 @@ export async function syncOneFile({
   // Handle custom columns (metadata) potentially set on the file
   const columns = await getColumnsFromListItem(
     file,
-    await getClient(connector.connectionId)
+    await getClient(connector.connectionId),
+    localLogger
   );
 
   let result: Result<CoreAPIDataSourceDocumentSection | null, Error>;
