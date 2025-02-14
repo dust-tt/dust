@@ -89,7 +89,7 @@ const styleVariants: Record<ButtonVariantType, string> = {
 };
 
 const sizeVariants: Record<ButtonSizeType, string> = {
-  mini: "s-h-7 s-min-w-7 s-p-1.5 s-rounded-lg s-text-sm",
+  mini: "s-h-7 s-p-1.5 s-rounded-lg s-text-sm s-gap-1.5",
   xs: "s-h-7 s-px-2.5 s-rounded-lg s-text-xs s-gap-1.5",
   sm: "s-h-9 s-px-3 s-rounded-xl s-text-sm s-gap-2",
   md: "s-h-12 s-px-4 s-py-2 s-rounded-2xl s-text-base s-gap-2.5",
@@ -213,17 +213,19 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         ) : (
           icon && renderIcon(icon, "-s-mx-0.5")
         )}
-        <div className="s-flex s-items-center s-gap-2">
-          {label}
-          {isCounter && counterValue != null && (
-            <Counter
-              value={Number(counterValue)}
-              variant={variant || "primary"}
-              size={size === "mini" ? "xs" : size}
-              isInButton={true}
-            />
-          )}
-        </div>
+        {(label || (isCounter && counterValue != null)) && (
+          <div className="s-flex s-items-center s-gap-2">
+            {label}
+            {isCounter && counterValue != null && (
+              <Counter
+                value={Number(counterValue)}
+                variant={variant || "primary"}
+                size={size === "mini" ? "xs" : size}
+                isInButton={true}
+              />
+            )}
+          </div>
+        )}
         {isSelect && renderIcon(ChevronDownIcon, isLoading ? "" : "-s-mr-1")}
       </>
     );
