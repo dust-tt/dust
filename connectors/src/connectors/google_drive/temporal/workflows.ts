@@ -224,27 +224,24 @@ export async function googleDriveIncrementalSync(
         nextPageToken = syncRes.nextPageToken;
       }
 
-      // Temp to clean up the running workflows state
-
-      while (foldersToBrowse.length > 0) {
-        const folder = foldersToBrowse.pop();
-        if (!folder) {
-          throw new Error("folderId should be defined");
-        }
-        do {
-          const res = await syncFiles(
-            connectorId,
-            folder,
-            startSyncTs,
-            nextPageToken
-          );
-          nextPageToken = res.nextPageToken ? res.nextPageToken : undefined;
-          foldersToBrowse = foldersToBrowse.concat(res.subfolders);
-        } while (nextPageToken);
-        await markFolderAsVisited(connectorId, folder, startSyncTs);
-
-        // Temp to clean up the running workflows state
-        foldersToBrowse = uniq(foldersToBrowse);
+      if (foldersToBrowse.length > 0) {
+        await executeChild(googleDriveFullSync, {
+          workflowId: `googleDrive-newFolderSync-${startSyncTs}-${connectorId}`,
+          searchAttributes: {
+            connectorId: [connectorId],
+          },
+          args: [
+            {
+              connectorId: connectorId,
+              garbageCollect: false,
+              foldersToBrowse,
+              totalCount: 0,
+              startSyncTs: startSyncTs,
+              mimeTypeFilter: undefined,
+            },
+          ],
+          memo: workflowInfo().memo,
+        });
       }
 
       // Will restart exactly where it was.
