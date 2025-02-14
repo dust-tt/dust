@@ -237,7 +237,7 @@ export default function DataSource({
             <div className="flex flex-initial font-normal">
               <Checkbox
                 checked={block.spec.full_text || false}
-                onChange={(checked) => handleFullTextChange(!!checked)}
+                onCheckedChange={(checked) => handleFullTextChange(!!checked)}
                 disabled={readOnly}
               />
             </div>
