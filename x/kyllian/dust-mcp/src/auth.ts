@@ -94,9 +94,9 @@ export async function authenticate(): Promise<TokenData> {
         });
 
         const tokens: TokenData = {
-          access_token: tokenSet.data.access_token,
-          refresh_token: tokenSet.data.refresh_token,
-          expires_at: Date.now() + tokenSet.data.expires_in * 1000,
+          accessToken: tokenSet.data.access_token,
+          refreshToken: tokenSet.data.refresh_token,
+          expiresAt: Date.now() + tokenSet.data.expires_in * 1000,
         };
 
         await saveTokens(tokens);
