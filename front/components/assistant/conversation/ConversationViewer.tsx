@@ -326,26 +326,7 @@ const ConversationViewer = React.forwardRef<
     [messages]
   );
 
-  // Filter messages up to the edited message if there is one
-  const { editMessage } = useContext(InputBarContext);
-  const filteredTypedGroupedMessages = useMemo(() => {
-    if (!editMessage) {
-      return typedGroupedMessages;
-    }
-
-    const editIndex = typedGroupedMessages.findIndex((group) =>
-      group.some(
-        (message) =>
-          isUserMessageType(message) && message.sId === editMessage.sId
-      )
-    );
-
-    return editIndex >= 0
-      ? typedGroupedMessages.slice(0, editIndex)
-      : typedGroupedMessages;
-  }, [typedGroupedMessages, editMessage]);
-
-  useLastMessageGroupObserver(filteredTypedGroupedMessages);
+  useLastMessageGroupObserver(typedGroupedMessages);
 
   return (
     <div
@@ -370,8 +351,8 @@ const ConversationViewer = React.forwardRef<
         </div>
       )}
       {conversation &&
-        filteredTypedGroupedMessages.map((typedGroup, index) => {
-          const isLastGroup = index === filteredTypedGroupedMessages.length - 1;
+        typedGroupedMessages.map((typedGroup, index) => {
+          const isLastGroup = index === typedGroupedMessages.length - 1;
           return (
             <MessageGroup
               key={`typed-group-${index}`}

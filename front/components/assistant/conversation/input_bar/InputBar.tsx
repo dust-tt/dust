@@ -36,12 +36,6 @@ const DEFAULT_INPUT_BAR_ACTIONS: InputBarAction[] = [
   "fullscreen",
 ];
 
-const DEFAULT_EDIT_MESSAGE_INPUT_BAR_ACTIONS: InputBarAction[] = [
-  "assistants-list",
-  "assistants-list-with-actions",
-  "fullscreen",
-  "cancel-edit-message",
-] as const;
 /**
  *
  * @param additionalAgentConfiguration when trying an assistant in a modal or drawer we
@@ -139,10 +133,9 @@ export function AssistantInputBar({
   }, [baseAgentConfigurations, additionalAgentConfiguration]);
 
   const [isAnimating, setIsAnimating] = useState<boolean>(false);
-  const { animate, selectedAssistant, editMessage, setEditMessage } =
-    useContext(InputBarContext);
+  const { animate, selectedAssistant } = useContext(InputBarContext);
   const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const sendNotification = useSendNotification();
+
   useEffect(() => {
     if (animate && !isAnimating) {
       setIsAnimating(true);
@@ -211,35 +204,6 @@ export function AssistantInputBar({
         resetEditorText();
         fileUploaderService.resetUpload();
       }
-    } else if (editMessage) {
-      const body = {
-        content: text,
-        mentions,
-      };
-
-      const mRes = await fetch(
-        `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${editMessage.sId}/edit`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(body),
-        }
-      );
-
-      if (!mRes.ok) {
-        const data = await mRes.json();
-        sendNotification({
-          type: "error",
-          title: "Edit message",
-          description: `Error editing message: ${data.error.message}`,
-        });
-      }
-
-      resetEditorText();
-      fileUploaderService.resetUpload();
-      setEditMessage(null);
     } else {
       void onSubmit(
         text,
@@ -350,9 +314,7 @@ export function AssistantInputBar({
             <div className="relative flex w-full flex-1 flex-col">
               <InputBarCitations fileUploaderService={fileUploaderService} />
               <InputBarContainer
-                actions={
-                  editMessage ? DEFAULT_EDIT_MESSAGE_INPUT_BAR_ACTIONS : actions
-                }
+                actions={actions}
                 disableAutoFocus={disableAutoFocus}
                 allAssistants={activeAgents}
                 agentConfigurations={agentConfigurations}

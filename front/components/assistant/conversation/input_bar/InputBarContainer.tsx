@@ -2,6 +2,7 @@ import {
   ArrowUpIcon,
   AttachmentIcon,
   Button,
+  cn,
   FullscreenExitIcon,
   FullscreenIcon,
   XMarkIcon,
@@ -9,20 +10,23 @@ import {
 import type {
   AgentMention,
   LightAgentConfigurationType,
+  UserMessageType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { getSupportedFileExtensions } from "@dust-tt/types";
 import { EditorContent } from "@tiptap/react";
-import React, { useContext, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
 import useAssistantSuggestions from "@app/components/assistant/conversation/input_bar/editor/useAssistantSuggestions";
-import type { CustomEditorProps } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
+import type {
+  CustomEditorProps,
+  EditorService,
+} from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import useCustomEditor, {
   getJSONFromText,
 } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import useHandleMentions from "@app/components/assistant/conversation/input_bar/editor/useHandleMentions";
-import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { classNames } from "@app/lib/utils";
 
@@ -31,7 +35,6 @@ export const INPUT_BAR_ACTIONS = [
   "assistants-list",
   "assistants-list-with-actions",
   "fullscreen",
-  "cancel-edit-message",
 ] as const;
 
 export type InputBarAction = (typeof INPUT_BAR_ACTIONS)[number];
@@ -46,7 +49,11 @@ export interface InputBarContainerProps {
   actions: InputBarAction[];
   disableAutoFocus: boolean;
   disableSendButton: boolean;
-  fileUploaderService: FileUploaderService;
+  hideSendButton?: boolean;
+  fileUploaderService?: FileUploaderService;
+  editMessage?: UserMessageType;
+  editorServiceRef?: React.MutableRefObject<EditorService | null>;
+  className?: string;
 }
 
 const InputBarContainer = ({
@@ -59,7 +66,11 @@ const InputBarContainer = ({
   actions,
   disableAutoFocus,
   disableSendButton,
+  hideSendButton,
   fileUploaderService,
+  editMessage,
+  editorServiceRef,
+  className,
 }: InputBarContainerProps) => {
   const suggestions = useAssistantSuggestions(agentConfigurations, owner);
 
@@ -81,14 +92,9 @@ const InputBarContainer = ({
     disableAutoFocus,
   });
 
-  // When input bar animation is requested it means the new button was clicked (removing focus from
-  // the input bar), we grab it back.
-  const { animate, editMessage, setEditMessage } = useContext(InputBarContext);
-  useEffect(() => {
-    if (animate) {
-      editorService.focusEnd();
-    }
-  }, [animate, editorService]);
+  if (editorServiceRef) {
+    editorServiceRef.current = editorService;
+  }
 
   useHandleMentions(
     editorService,
@@ -105,17 +111,17 @@ const InputBarContainer = ({
         agentConfigurations
       );
       editorService.setJSONContent(jsonContent);
-      fileUploaderService.resetUpload();
     }
   }, [editMessage, agentConfigurations, editorService]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const contentEditableClasses = classNames(
+  const contentEditableClasses = cn(
     "inline-block w-full",
     "border-0 px-2 outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0",
     "whitespace-pre-wrap font-normal",
-    "pb-6 pt-4 sm:py-3.5" // Increased padding on mobile
+    "pb-6 pt-4 sm:py-3.5", // Increased padding on mobile,
+    className
   );
 
   return (
@@ -137,7 +143,7 @@ const InputBarContainer = ({
 
       <div className="flex flex-row items-end justify-between gap-2 self-stretch pb-3 pr-3 sm:flex-col sm:border-0">
         <div className="flex items-center py-0 sm:py-3.5">
-          {actions.includes("attachment") && (
+          {fileUploaderService && actions.includes("attachment") && (
             <>
               <input
                 accept={getSupportedFileExtensions().join(",")}
@@ -188,36 +194,28 @@ const InputBarContainer = ({
               />
             </div>
           )}
-          {actions.includes("cancel-edit-message") && (
-            <div className="hidden sm:flex">
-              <Button
-                variant="ghost-secondary"
-                icon={XMarkIcon}
-                size="xs"
-                onClick={() => setEditMessage(null)}
-              />
-            </div>
-          )}
         </div>
-        <Button
-          size="sm"
-          isLoading={disableSendButton}
-          icon={ArrowUpIcon}
-          variant="highlight"
-          disabled={editorService.isEmpty() || disableSendButton}
-          onClick={async () => {
-            const jsonContent = editorService.getTextAndMentions();
-            onEnterKeyDown(
-              editorService.isEmpty(),
-              jsonContent,
-              () => {
-                editorService.clearEditor();
-                resetEditorContainerSize();
-              },
-              editorService.setLoading
-            );
-          }}
-        />
+        {!hideSendButton && (
+          <Button
+            size="sm"
+            isLoading={disableSendButton}
+            icon={ArrowUpIcon}
+            variant="highlight"
+            disabled={editorService.isEmpty() || disableSendButton}
+            onClick={async () => {
+              const jsonContent = editorService.getTextAndMentions();
+              onEnterKeyDown(
+                editorService.isEmpty(),
+                jsonContent,
+                () => {
+                  editorService.clearEditor();
+                  resetEditorContainerSize();
+                },
+                editorService.setLoading
+              );
+            }}
+          />
+        )}
       </div>
     </div>
   );
