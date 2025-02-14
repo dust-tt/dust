@@ -7,9 +7,12 @@ const PopoverRoot = PopoverPrimitive.Root;
 
 const PopoverTrigger = PopoverPrimitive.Trigger;
 
+const PopoverPortal = PopoverPrimitive.Portal;
+
 interface PopoverContentProps
   extends React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content> {
   fullWidth?: boolean;
+  mountPortal?: boolean;
 }
 
 const PopoverContent = React.forwardRef<
@@ -21,12 +24,13 @@ const PopoverContent = React.forwardRef<
       className,
       align = "center",
       sideOffset = 4,
+      mountPortal = true,
       fullWidth = false,
       ...props
     },
     ref
-  ) => (
-    <PopoverPrimitive.Portal>
+  ) => {
+    const content = (
       <PopoverPrimitive.Content
         ref={ref}
         align={align}
@@ -46,8 +50,14 @@ const PopoverContent = React.forwardRef<
         )}
         {...props}
       />
-    </PopoverPrimitive.Portal>
-  )
+    );
+
+    return mountPortal ? (
+      <PopoverPrimitive.Portal>{content}</PopoverPrimitive.Portal>
+    ) : (
+      content
+    );
+  }
 );
 
 interface PopoverProps extends Omit<PopoverContentProps, "content"> {
@@ -72,4 +82,4 @@ function Popover({
 
 PopoverContent.displayName = PopoverPrimitive.Content.displayName;
 
-export { Popover, PopoverContent, PopoverRoot, PopoverTrigger };
+export { Popover, PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger };

@@ -107,6 +107,17 @@ const _getConnectors = async (
     });
   }
 
+  // TODO(salesforce): implement this
+  if (req.query.provider === "salesforce") {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: `Salesforce is not supported in this endpoint`,
+      },
+    });
+  }
+
   const connectors = await ConnectorResource.fetchByIds(
     req.query.provider,
     req.query.connector_id as string[]

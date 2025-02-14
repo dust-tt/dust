@@ -70,7 +70,6 @@ async function updateNodeParents({
     "notionPageId" in node ? node.notionPageId : node.notionDatabaseId,
     [],
     false,
-    undefined,
     undefined
   );
   const parents = parentNotionIds.map((id) => `notion-${id}`);

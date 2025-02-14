@@ -633,8 +633,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
         notionId,
         [],
         false,
-        memo,
-        undefined
+        memo
       );
 
       return new Ok(parents.map((p) => nodeIdFromNotionId(p)));

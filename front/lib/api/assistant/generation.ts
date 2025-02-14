@@ -141,7 +141,9 @@ export async function constructPromptMultiActions(
   }
 
   additionalInstructions +=
-    "\nWhen generating latex formulas, solely rely on the $$ escape sequence, single $ latex sequences are not supported.\n";
+    "\nWhen generating latex formulas, ALWAYS rely on the $$ escape sequence, single $ latex sequences are not supported." +
+    "\nEvery latex formula should be inside double dollars $$ blocks." +
+    "\nParentheses cannot be used to enclose mathematical formulas: BAD: \\( \\Delta \\), GOOD: $$ \\Delta $$.\n";
 
   let prompt = `${context}\n${instructions}`;
   if (additionalInstructions) {

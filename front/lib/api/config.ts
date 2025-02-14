@@ -156,6 +156,9 @@ const config = {
   getOAuthZendeskClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_ZENDESK_CLIENT_ID");
   },
+  getOAuthSalesforceClientId: (): string => {
+    return EnvironmentConfig.getEnvVariable("OAUTH_SALESFORCE_CLIENT_ID");
+  },
   // Text extraction.
   getTextExtractionUrl: (): string => {
     return EnvironmentConfig.getEnvVariable("TEXT_EXTRACTION_URL");
@@ -169,6 +172,11 @@ const config = {
   },
   getStatusPageApiToken: (): string => {
     return EnvironmentConfig.getEnvVariable("STATUS_PAGE_API_TOKEN");
+  },
+  getMultiActionsAgentAnthropicBetaFlags: (): string[] | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable(
+      "MULTI_ACTIONS_AGENT_ANTHROPIC_BETA_FLAGS"
+    )?.split(",");
   },
 };
 

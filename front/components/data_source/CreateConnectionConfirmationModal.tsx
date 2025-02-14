@@ -11,6 +11,7 @@ import {
   SheetTitle,
 } from "@dust-tt/sparkle";
 import { isValidZendeskSubdomain } from "@dust-tt/types";
+import { WrenchScrewdriverIcon } from "@heroicons/react/20/solid";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
@@ -71,17 +72,14 @@ export function CreateConnectionConfirmationModal({
                 title={`Connecting ${connectorProviderConfiguration.name}`}
                 icon={connectorProviderConfiguration.logoComponent}
               />
-              <a
+              <Button
+                label="Read our guide"
+                size="xs"
+                variant="outline"
                 href={connectorProviderConfiguration.guideLink ?? ""}
                 target="_blank"
-              >
-                <Button
-                  label="Read our guide"
-                  size="xs"
-                  variant="outline"
-                  icon={BookOpenIcon}
-                />
-              </a>
+                icon={BookOpenIcon}
+              />
               {connectorProviderConfiguration.connectorProvider ===
                 "google_drive" && (
                 <>
@@ -152,18 +150,28 @@ export function CreateConnectionConfirmationModal({
                   <Button
                     variant="highlight"
                     size="md"
-                    icon={CloudArrowLeftRightIcon}
+                    icon={
+                      connectorProviderConfiguration.connectorProvider ===
+                      "google_drive"
+                        ? WrenchScrewdriverIcon
+                        : CloudArrowLeftRightIcon
+                    }
                     onClick={() => {
                       setIsLoading(true);
                       onConfirm(extraConfig);
                     }}
-                    disabled={!isExtraConfigValid(extraConfig) || isLoading}
+                    disabled={
+                      !isExtraConfigValid(extraConfig) ||
+                      isLoading ||
+                      connectorProviderConfiguration.connectorProvider ===
+                        "google_drive"
+                    }
                     label={
                       isLoading
                         ? "Connecting..."
                         : connectorProviderConfiguration.connectorProvider ===
                             "google_drive"
-                          ? "Acknowledge and Connect"
+                          ? "Temporarily unavailable"
                           : "Connect"
                     }
                   />

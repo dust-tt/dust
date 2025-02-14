@@ -77,6 +77,13 @@ export function ActionRetrievalSearch({
         openDataSourceModal={() => {
           setShowDataSourcesModal(true);
         }}
+        onSave={(dsConfigs) => {
+          setEdited(true);
+          updateAction((previousAction) => ({
+            ...previousAction,
+            dataSourceConfigurations: dsConfigs,
+          }));
+        }}
         viewType={"documents"}
       />
     </>
@@ -173,6 +180,13 @@ export function ActionRetrievalExhaustive({
         dataSourceConfigurations={actionConfiguration.dataSourceConfigurations}
         openDataSourceModal={() => {
           setShowDataSourcesModal(true);
+        }}
+        onSave={(dsConfigs) => {
+          setEdited(true);
+          updateAction((previousAction) => ({
+            ...previousAction,
+            dataSourceConfigurations: dsConfigs,
+          }));
         }}
         viewType={"documents"}
       />

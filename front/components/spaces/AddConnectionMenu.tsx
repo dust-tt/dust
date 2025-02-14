@@ -154,11 +154,19 @@ export const AddConnectionMenu = ({
     [owner, systemSpace]
   );
 
-  const availableIntegrations = integrations.filter(
-    (i) =>
+  const availableIntegrations = integrations.filter((i) => {
+    const hide = CONNECTOR_CONFIGURATIONS[i.connectorProvider].hide;
+    const rolloutFlag =
+      CONNECTOR_CONFIGURATIONS[i.connectorProvider].rollingOutFlag;
+    const hasFlag = rolloutFlag && featureFlags.includes(rolloutFlag);
+
+    return (
       isConnectorProviderAllowedForPlan(plan, i.connectorProvider) &&
-      isConnectionIdRequiredForProvider(i.connectorProvider)
-  );
+      isConnectionIdRequiredForProvider(i.connectorProvider) &&
+      // If the connector is hidden, it should only be shown if the feature flag is enabled.
+      (!hide || hasFlag)
+    );
+  });
 
   const postDataSource = async ({
     owner,
@@ -260,11 +268,15 @@ export const AddConnectionMenu = ({
     const configuration =
       CONNECTOR_CONFIGURATIONS[integration.connectorProvider];
 
-    const isBuilt =
-      configuration.status === "built" ||
-      (configuration.status === "rolling_out" &&
-        !!configuration.rollingOutFlag &&
-        featureFlags.includes(configuration.rollingOutFlag));
+    let isBuilt = configuration.status === "built";
+
+    if (
+      configuration.status === "rolling_out" &&
+      !!configuration.rollingOutFlag
+    ) {
+      isBuilt = featureFlags.includes(configuration.rollingOutFlag);
+    }
+
     const isProviderAllowed = isConnectorProviderAllowedForPlan(
       plan,
       configuration.connectorProvider
@@ -395,6 +407,7 @@ export const AddConnectionMenu = ({
             case "slack":
             case "microsoft":
             case "zendesk":
+            case "salesforce":
             case "webcrawler":
               return (
                 <CreateConnectionConfirmationModal

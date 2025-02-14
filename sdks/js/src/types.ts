@@ -107,6 +107,10 @@ export const supportedOtherFileFormats = {
     ".ppt",
     ".pptx",
   ],
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [
+    ".xlsx",
+  ],
+  "application/vnd.ms-excel": [".xls"],
   "application/pdf": [".pdf"],
   "text/comma-separated-values": [".csv"],
   "text/csv": [".csv"],
@@ -276,6 +280,7 @@ const ConnectorProvidersSchema = FlexibleEnumSchema<
   | "snowflake"
   | "zendesk"
   | "bigquery"
+  | "salesforce"
 >();
 export type ConnectorProvider = z.infer<typeof ConnectorProvidersSchema>;
 
@@ -787,6 +792,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "deepseek_r1_global_agent_feature"
   | "bigquery_feature"
   | "tags_filters"
+  | "salesforce_feature"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -2213,6 +2219,7 @@ export const UpsertTableFromCsvRequestSchema = z.object({
   sourceUrl: z.string().nullable().optional(),
   tableId: z.string(),
   csv: z.string().optional(),
+  fileId: z.string().optional(),
 });
 
 export type UpsertTableFromCsvRequestType = z.infer<

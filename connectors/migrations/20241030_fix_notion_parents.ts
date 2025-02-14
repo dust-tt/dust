@@ -125,7 +125,6 @@ async function updateParentsFieldForConnector(
             "notionPageId" in node ? node.notionPageId : node.notionDatabaseId,
             [],
             false,
-            undefined,
             undefined
           );
         } catch (e) {

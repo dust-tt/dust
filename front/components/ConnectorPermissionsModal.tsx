@@ -15,7 +15,6 @@ import {
   Icon,
   Input,
   LockIcon,
-  Modal,
   Page,
   Sheet,
   SheetContainer,
@@ -189,15 +188,21 @@ function DataSourceManagementModal({
   onClose,
 }: DataSourceManagementModalProps) {
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title="Manage Connection"
-      variant="side-sm"
-      hasChanged={false}
+    <Sheet
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose();
+        }
+      }}
     >
-      <Page variant="modal">{children}</Page>
-    </Modal>
+      <SheetContent>
+        <SheetHeader>
+          <SheetTitle>Manage Connection</SheetTitle>
+        </SheetHeader>
+        <SheetContainer>{children}</SheetContainer>
+      </SheetContent>
+    </Sheet>
   );
 }
 
@@ -899,6 +904,7 @@ export function ConnectorPermissionsModal({
           case "microsoft":
           case "zendesk":
           case "webcrawler":
+          case "salesforce":
             return (
               <DataSourceEditionModal
                 key={`${c.type}-${modalToShow}`}

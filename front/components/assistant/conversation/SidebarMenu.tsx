@@ -17,11 +17,13 @@ import {
   RobotIcon,
   SearchInput,
   TrashIcon,
+  useSendNotification,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import { useSendNotification } from "@dust-tt/sparkle";
-import type { ConversationWithoutContentType } from "@dust-tt/types";
-import type { WorkspaceType } from "@dust-tt/types";
+import type {
+  ConversationWithoutContentType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import { isBuilder, isOnlyUser } from "@dust-tt/types";
 import moment from "moment";
 import type { NextRouter } from "next/router";
@@ -246,11 +248,11 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                     }
                   }}
                 />
-                <DropdownMenu modal={false}>
+                <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button size="sm" icon={MoreIcon} variant="outline" />
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent>
+                  <DropdownMenuContent mountPortal={false}>
                     <DropdownMenuLabel>Assistants</DropdownMenuLabel>
                     <DropdownMenuItem
                       href={`/w/${owner.sId}/builder/assistants/create`}

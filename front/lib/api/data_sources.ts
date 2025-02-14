@@ -436,138 +436,6 @@ export async function upsertDocument({
   return new Ok(upsertRes.value);
 }
 
-export interface UpsertTableArgs {
-  tableId: string;
-  name: string;
-  description: string;
-  truncate: boolean;
-  csv?: string | null;
-  tags?: string[] | null;
-  parentId?: string | null;
-  parents?: string[] | null;
-  timestamp?: number | null;
-  async: boolean;
-  dataSource: DataSourceResource;
-  auth: Authenticator;
-  title: string;
-  mimeType: string;
-  sourceUrl?: string | null;
-}
-
-export async function upsertTable({
-  tableId,
-  name,
-  description,
-  truncate,
-  csv,
-  tags,
-  parentId,
-  parents,
-  timestamp,
-  async,
-  dataSource,
-  auth,
-  title,
-  mimeType,
-  sourceUrl,
-}: UpsertTableArgs) {
-  const tableParents = parents ?? [tableId];
-  const tableParentId = parentId ?? null;
-
-  // parents must comply to the invariant parents[0] === document_id
-  if (tableParents[0] !== tableId) {
-    return new Err(
-      new DustError(
-        "invalid_parents",
-        "Invalid request body, parents[0] and table_id should be equal"
-      )
-    );
-  }
-
-  // parents and parentId must comply to the invariant parents[1] === parentId
-  if (
-    (tableParents.length >= 2 || tableParentId !== null) &&
-    tableParents[1] !== tableParentId
-  ) {
-    return new Err(
-      new DustError(
-        "invalid_parent_id",
-        "Invalid request body, parents[1] and parent_id should be equal"
-      )
-    );
-  }
-  let standardizedSourceUrl: string | null = null;
-  if (sourceUrl) {
-    const { valid: isSourceUrlValid, standardized } = validateUrl(sourceUrl);
-
-    if (!isSourceUrlValid) {
-      return new Err(
-        new DustError(
-          "invalid_url",
-          "Invalid request body, `source_url` if provided must be a valid URL."
-        )
-      );
-    }
-    standardizedSourceUrl = standardized;
-  }
-
-  if (async) {
-    // Ensure the CSV is valid before enqueuing the upsert.
-    const csvRowsRes = csv ? await rowsFromCsv({ auth, csv }) : null;
-    if (csvRowsRes?.isErr()) {
-      return csvRowsRes;
-    }
-
-    const detectedHeaders = csvRowsRes?.isOk()
-      ? csvRowsRes.value.detectedHeaders
-      : undefined;
-
-    const enqueueRes = await enqueueUpsertTable({
-      upsertTable: {
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        dataSourceId: dataSource.sId,
-        tableId,
-        tableName: name,
-        tableDescription: description,
-        tableTimestamp: timestamp ?? null,
-        tableTags: tags ?? [],
-        tableParentId,
-        tableParents,
-        csv: csv ?? null,
-        truncate,
-        detectedHeaders,
-        title,
-        mimeType,
-        sourceUrl: standardizedSourceUrl,
-      },
-    });
-    if (enqueueRes.isErr()) {
-      return enqueueRes;
-    }
-
-    return new Ok(undefined);
-  }
-
-  const tableRes = await upsertTableFromCsv({
-    auth,
-    dataSource: dataSource,
-    tableId,
-    tableName: name,
-    tableDescription: description,
-    tableTimestamp: timestamp ?? null,
-    tableTags: tags || [],
-    tableParentId,
-    tableParents,
-    csv: csv ?? null,
-    truncate,
-    title,
-    mimeType,
-    sourceUrl: standardizedSourceUrl,
-  });
-
-  return tableRes;
-}
-
 export async function handleDataSourceSearch({
   searchQuery,
   dataSource,
@@ -635,27 +503,36 @@ export async function handleDataSourceSearch({
   });
 }
 
-export async function handleDataSourceTableCSVUpsert({
+export interface UpsertTableArgs {
+  tableId: string;
+  name: string;
+  description: string;
+  truncate: boolean;
+  async?: boolean;
+  title: string;
+  mimeType: string;
+  csv?: string;
+  fileId?: string;
+  sourceUrl?: string | null;
+  timestamp?: number | null;
+  tags?: string[] | null;
+  parentId?: string | null;
+  parents?: string[] | null;
+}
+
+export function isUpsertTableArgs(
+  args: UpsertTableArgs | UpsertDocumentArgs | undefined
+): args is UpsertTableArgs {
+  return args !== undefined && "tableId" in args;
+}
+
+export async function upsertTable({
   auth,
   params,
   dataSource,
 }: {
   auth: Authenticator;
-  params: {
-    tableId: string;
-    name: string;
-    description: string;
-    truncate: boolean;
-    async?: boolean;
-    title: string;
-    mimeType: string;
-    csv?: string;
-    sourceUrl?: string | null;
-    timestamp?: number | null;
-    tags?: string[] | null;
-    parentId?: string | null;
-    parents?: string[] | null;
-  };
+  params: UpsertTableArgs;
   dataSource: DataSourceResource;
 }): Promise<
   Result<
@@ -669,19 +546,23 @@ export async function handleDataSourceTableCSVUpsert({
       },
     Omit<DustError, "code"> & {
       code:
+        | "invalid_csv_and_file"
         | "missing_csv"
         | "data_source_error"
         | "invalid_csv"
-        | "resource_not_found"
+        | "invalid_url"
+        | "table_not_found"
+        | "file_not_found"
         | "invalid_parent_id"
+        | "invalid_parents"
         | "internal_error";
     }
   >
 > {
   const owner = auth.getNonNullableWorkspace();
 
-  const { name, description, csv, truncate, async } = params;
-  if (!csv && truncate) {
+  const { name, description, csv, fileId, truncate, async } = params;
+  if (!csv && !fileId && truncate) {
     return new Err({
       name: "dust_error",
       code: "missing_csv",
@@ -689,8 +570,57 @@ export async function handleDataSourceTableCSVUpsert({
     });
   }
 
-  const tableId = params.tableId ?? generateRandomModelSId();
+  if (csv && fileId) {
+    return new Err({
+      name: "dust_error",
+      code: "invalid_csv_and_file",
+      message: "Cannot provide both a `csv` and a `fileId`.",
+    });
+  }
+
+  const tableId = params.tableId;
   const tableParents: string[] = params.parents ?? [tableId];
+  const tableParentId = params.parentId ?? null;
+
+  // parents must comply to the invariant parents[0] === document_id
+  if (tableParents[0] !== tableId) {
+    return new Err({
+      name: "dust_error",
+      code: "invalid_parents",
+      message: "Invalid parents: parents[0] and table_id should be equal",
+    });
+  }
+
+  // parents and parentId must comply to the invariant parents[1] === parentId
+  if (
+    (tableParents.length >= 2 || tableParentId !== null) &&
+    tableParents[1] !== tableParentId
+  ) {
+    return new Err({
+      name: "dust_error",
+      code: "invalid_parent_id",
+      message: "Invalid parents: parents[1] and parent_id should be equal",
+    });
+  }
+
+  let standardizedSourceUrl: string | null = null;
+  if (params.sourceUrl) {
+    const { valid: isSourceUrlValid, standardized } = validateUrl(
+      params.sourceUrl
+    );
+
+    if (!isSourceUrlValid) {
+      return new Err({
+        name: "dust_error",
+        code: "invalid_url",
+        message:
+          "Invalid request: `source_url` if provided must be a valid URL",
+      });
+    }
+    standardizedSourceUrl = standardized;
+  }
+
+  // TODO(spolu): [CSV-FILE] add a check with core based on fileId when provided
 
   if (async) {
     // Ensure the CSV is valid before enqueuing the upsert.
@@ -703,10 +633,6 @@ export async function handleDataSourceTableCSVUpsert({
       });
     }
 
-    const detectedHeaders = csvRowsRes?.isOk()
-      ? csvRowsRes.value.detectedHeaders
-      : undefined;
-
     const enqueueRes = await enqueueUpsertTable({
       upsertTable: {
         workspaceId: owner.sId,
@@ -716,14 +642,14 @@ export async function handleDataSourceTableCSVUpsert({
         tableDescription: description,
         tableTimestamp: params.timestamp ?? null,
         tableTags: params.tags ?? [],
-        tableParentId: params.parentId ?? null,
+        tableParentId,
         tableParents,
         csv: csv ?? null,
+        fileId: fileId ?? null,
         truncate,
-        detectedHeaders,
         title: params.title,
         mimeType: params.mimeType,
-        sourceUrl: params.sourceUrl ?? null,
+        sourceUrl: standardizedSourceUrl,
       },
     });
     if (enqueueRes.isErr()) {
@@ -749,13 +675,14 @@ export async function handleDataSourceTableCSVUpsert({
     tableDescription: description,
     tableTimestamp: params.timestamp ?? null,
     tableTags: params.tags || [],
-    tableParentId: params.parentId ?? null,
+    tableParentId,
     tableParents,
     csv: csv ?? null,
+    fileId: fileId ?? null,
     truncate,
     title: params.title,
     mimeType: params.mimeType,
-    sourceUrl: params.sourceUrl ?? null,
+    sourceUrl: standardizedSourceUrl,
   });
 
   if (tableRes.isErr()) {
@@ -796,7 +723,7 @@ export async function handleDataSourceTableCSVUpsert({
     if (tableRes.error.type === "not_found_error") {
       return new Err({
         name: "dust_error",
-        code: "resource_not_found",
+        code: tableRes.error.notFoundError.type,
         message: tableRes.error.notFoundError.message,
       });
     }

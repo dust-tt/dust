@@ -98,6 +98,7 @@ export { Pagination } from "./Pagination";
 export {
   Popover,
   PopoverContent,
+  PopoverPortal,
   PopoverRoot,
   PopoverTrigger,
 } from "./Popover";

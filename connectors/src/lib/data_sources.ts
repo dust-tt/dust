@@ -550,6 +550,7 @@ export async function renderMarkdownSection(
 }
 
 const MAX_AUTHOR_CHAR_LENGTH = 48;
+const MAX_ADDITIONAL_PREFIXES_LENGTH = 128;
 // Will render the document based on title, optional createdAt and updatedAt and a structured
 // content. The title, createdAt and updatedAt will be presented in a standardized way across
 // connectors. The title should not include any `\n`.
@@ -605,7 +606,7 @@ export async function renderDocumentTitleAndContent({
   }
   if (additionalPrefixes) {
     for (const [key, value] of Object.entries(additionalPrefixes)) {
-      metaPrefix += `$${key}: ${value}\n`;
+      metaPrefix += `$${key}: ${safeSubstring(value, 0, MAX_ADDITIONAL_PREFIXES_LENGTH)}\n`;
     }
   }
   if (metaPrefix) {
@@ -826,6 +827,7 @@ export async function upsertDataSourceTableFromCsv({
   title,
   mimeType,
   sourceUrl,
+  tags,
 }: {
   dataSourceConfig: DataSourceConfig;
   tableId: string;
@@ -839,6 +841,7 @@ export async function upsertDataSourceTableFromCsv({
   title: string;
   mimeType: string;
   sourceUrl?: string;
+  tags?: string[];
 }) {
   const localLogger = logger.child({ ...loggerArgs, tableId, tableName });
   const statsDTags = [
@@ -877,7 +880,7 @@ export async function upsertDataSourceTableFromCsv({
     title,
     mimeType,
     timestamp: null,
-    tags: null,
+    tags: tags ?? null,
     sourceUrl: sourceUrl ?? null,
   };
   const dustRequestConfig: AxiosRequestConfig = {

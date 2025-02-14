@@ -19,13 +19,18 @@ const CareersMenuConfig: MenuConfig = {
   title: "Careers",
   items: [
     {
-      title: "Why Dust?",
-      href: "https://blog.dust.tt/why-dust/",
-      isExternal: true,
+      title: "About Us",
+      href: "/home/about",
+      isExternal: false,
     },
     {
       title: "Jobs",
       href: "/jobs",
+      isExternal: true,
+    },
+    {
+      title: "Why Dust?",
+      href: "https://blog.dust.tt/why-dust/",
       isExternal: true,
     },
   ],
@@ -61,8 +66,12 @@ const LegalMenuConfig: MenuConfig = {
       href: "/home/security",
     },
     {
+      title: "Vulnerability Disclosure",
+      href: "/home/vulnerability",
+    },
+    {
       title: "Terms & Policies",
-      href: "https://dust-tt.notion.site/17bb854ffc674e1ba729d1a10837e50d?v=de92d1770a344beeafe9f701e78ad8f3",
+      href: "/terms",
       isExternal: true,
     },
     {
@@ -72,7 +81,12 @@ const LegalMenuConfig: MenuConfig = {
     },
     {
       title: "Privacy Policy",
-      href: "https://dust-tt.notion.site/Website-Privacy-Policy-a118bb3472f945a1be8e11fbfb733084?pvs=74",
+      href: "/platform-privacy",
+      isExternal: true,
+    },
+    {
+      title: "Website Privacy Policy",
+      href: "/website-privacy",
       isExternal: true,
     },
   ],

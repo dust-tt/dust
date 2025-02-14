@@ -476,6 +476,9 @@ async function upsertGdriveDocument(
     createdAt: file.createdAtMs ? new Date(file.createdAtMs) : undefined,
     lastEditor: file.lastEditor ? file.lastEditor.displayName : undefined,
     content: documentContent,
+    additionalPrefixes: {
+      labels: file.labels.join(", "),
+    },
   });
 
   if (documentContent === undefined) {
@@ -490,10 +493,12 @@ async function upsertGdriveDocument(
   if (file.createdAtMs) {
     tags.push(`createdAt:${file.createdAtMs}`);
   }
-  if (file.lastEditor) {
+  if (file.lastEditor?.displayName) {
     tags.push(`lastEditor:${file.lastEditor.displayName}`);
   }
   tags.push(`mimeType:${file.mimeType}`);
+
+  tags.push(...file.labels);
 
   const documentLen = documentContent ? sectionLength(documentContent) : 0;
 
