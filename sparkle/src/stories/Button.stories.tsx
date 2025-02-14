@@ -1,4 +1,3 @@
-// Button.stories.tsx
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
@@ -91,7 +90,7 @@ export const ExampleButton: Story = {
     isSelect: false,
     disabled: false,
     isCounter: false,
-    counterValue: "4",
+    counterValue: "1",
   },
 };
 
