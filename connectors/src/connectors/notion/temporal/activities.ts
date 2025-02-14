@@ -2109,6 +2109,7 @@ export async function renderAndUpsertPageFromCache({
         createdTime: createdAt.getTime(),
         updatedTime: updatedAt.getTime(),
         parsedProperties,
+        logger: localLogger,
       }),
       parents: parentIds,
       parentId: parentIds[1] || null,
