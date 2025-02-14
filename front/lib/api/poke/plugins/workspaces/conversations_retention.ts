@@ -3,7 +3,7 @@ import { Err, Ok } from "@dust-tt/types";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { updateWorkspaceConversationsRetention } from "@app/lib/api/workspace";
 
-export const conversationsRetention = createPlugin(
+export const conversationsRetentionPlugin = createPlugin(
   {
     id: "conversations-retention",
     name: "Change Conversations Retention",
