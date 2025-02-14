@@ -49,7 +49,7 @@
     "zip-webpack-plugin": "^4.0.1"
   },
   "dependencies": {
-    "@dust-tt/client": "^1.0.26",
+    "@dust-tt/client": "^1.0.27",
     "@dust-tt/sparkle": "^0.2.391",
     "@tailwindcss/forms": "^0.5.9",
     "@tiptap/extension-character-count": "^2.9.1",
