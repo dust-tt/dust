@@ -103,7 +103,7 @@ async fn delete_orphaned_points_for_data_source(
 #[tokio::main]
 async fn main() -> Result<()> {
     let args: Vec<String> = env::args().collect();
-    if args.len() <= 2 {
+    if args.len() < 2 {
         return Err(anyhow!("Usage: {} <csv_file>", args[0]));
     }
     let col_offset = if args.len() >= 3 && args[3] == "--skip-date-column" {
