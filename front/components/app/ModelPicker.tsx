@@ -117,6 +117,7 @@ export default function ModelPicker({
                   ? `${model.provider_id}${model.model_id ? ` / ${model.model_id}` : ""}`
                   : "Select provider"
               }
+              size="xs"
             />
           </DropdownMenuTrigger>
 

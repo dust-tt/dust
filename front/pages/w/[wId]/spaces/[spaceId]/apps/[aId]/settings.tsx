@@ -1,10 +1,16 @@
-import { Button, Input, Tabs, TabsList, TabsTrigger } from "@dust-tt/sparkle";
+import {
+  Button,
+  Input,
+  Label,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+} from "@dust-tt/sparkle";
 import type { AppType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import type { APIError } from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";
 import { APP_NAME_REGEXP } from "@dust-tt/types";
-import { ChevronRightIcon } from "@heroicons/react/24/outline";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useContext, useState } from "react";
@@ -17,7 +23,7 @@ import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitl
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { dustAppsListUrl } from "@app/lib/spaces";
-import { classNames, MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
+import { MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -73,7 +79,7 @@ export default function SettingsView({
   const [disable, setDisabled] = useState(true);
 
   const [appName, setAppName] = useState(app.name);
-  const [appNameError, setAppNameError] = useState("");
+  const [appNameError, setAppNameError] = useState<boolean>(false);
 
   const [appDescription, setAppDescription] = useState(app.description || "");
 
@@ -83,16 +89,14 @@ export default function SettingsView({
 
   const formValidation = () => {
     if (appName.length == 0) {
-      setAppNameError("");
+      setAppNameError(false);
       return false;
       // eslint-disable-next-line no-useless-escape
     } else if (!appName.match(APP_NAME_REGEXP)) {
-      setAppNameError(
-        "Name must be only contain letters, numbers, and the characters `_-` and be less than 64 characters."
-      );
+      setAppNameError(true);
       return false;
     } else {
-      setAppNameError("");
+      setAppNameError(false);
       return true;
     }
   };
@@ -177,7 +181,7 @@ export default function SettingsView({
         />
       }
     >
-      <div className="flex w-full flex-col">
+      <div className="flex flex-col">
         <Tabs value="settings" className="mt-2">
           <TabsList>
             {subNavigationApp({ owner, app, current: "settings" }).map(
@@ -198,97 +202,46 @@ export default function SettingsView({
           </TabsList>
         </Tabs>
         <div className="mt-8 flex flex-1">
-          <div className="space-y-8 divide-y divide-gray-200">
-            <div className="space-y-4 divide-y divide-gray-200">
-              <div>
-                <div className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-6">
-                  <div className="sm:col-span-3">
-                    <label
-                      htmlFor="appName"
-                      className="block text-sm font-medium text-gray-700"
-                    >
-                      App Name
-                    </label>
-                    <div className="mt-1 flex rounded-md shadow-sm">
-                      <span className="inline-flex items-center rounded-l-md border border-r-0 border-gray-300 bg-gray-50 pl-3 pr-1 text-sm text-gray-500">
-                        {owner.name}
-                        <ChevronRightIcon
-                          className="h-5 w-5 flex-shrink-0 pt-0.5 text-gray-400"
-                          aria-hidden="true"
-                        />
-                      </span>
-                      <Input
-                        type="text"
-                        name="name"
-                        id="appName"
-                        className={classNames(
-                          "block w-full min-w-0 flex-1 rounded-none rounded-r-md text-sm",
-                          appNameError
-                            ? "border-red-500 focus:border-red-500 focus:ring-red-500"
-                            : "border-gray-300 focus:border-action-500 focus:ring-action-500"
-                        )}
-                        value={appName}
-                        onChange={(e) => setAppName(e.target.value)}
-                        message={appNameError}
-                        messageStatus="error"
-                      />
-                    </div>
-                    <div>
-                      <p className="mt-1 flex items-center gap-1 text-sm text-gray-500">
-                        Must be unique and only use alphanumeric, - or _
-                        characters.
-                      </p>
-                    </div>
-                  </div>
+          <div className="flex flex-col">
+            <div className="flex flex-col gap-6">
+              <div className="flex w-64 flex-col gap-2">
+                <Label>App Name</Label>
+                <Input
+                  type="text"
+                  name="name"
+                  id="appName"
+                  value={appName}
+                  onChange={(e) => setAppName(e.target.value)}
+                  message="Use only a-z, 0-9, - or _. Must be unique."
+                  messageStatus={appNameError ? "error" : "default"}
+                />
+              </div>
 
-                  <div className="sm:col-span-6">
-                    <div className="flex justify-between">
-                      <label
-                        htmlFor="appDescription"
-                        className="block text-sm font-medium text-gray-700"
-                      >
-                        Description
-                      </label>
-                      <div className="text-sm font-normal text-gray-400">
-                        optional but highly recommended
-                      </div>
-                    </div>
-                    <div className="mt-1 flex rounded-md shadow-sm">
-                      <input
-                        type="text"
-                        name="description"
-                        id="appDescription"
-                        className="block w-full min-w-0 flex-1 rounded-md border-gray-300 text-sm focus:border-action-500 focus:ring-action-500"
-                        value={appDescription}
-                        onChange={(e) => setAppDescription(e.target.value)}
-                      />
-                    </div>
-                    <p className="mt-1 flex items-center gap-1 text-sm text-gray-500">
-                      This description guides assistants in understanding how to
-                      use your app effectively and determines its relevance in
-                      responding to user inquiries. If you don't provide a
-                      description, members won't be able to select this app in
-                      the Assistant Builder.
-                    </p>
-                  </div>
-                </div>
+              <div className="flex flex-col gap-2">
+                <Label>Description</Label>
+                <Input
+                  type="text"
+                  name="description"
+                  id="appDescription"
+                  value={appDescription}
+                  onChange={(e) => setAppDescription(e.target.value)}
+                  message="Description needed to use in Assistant Builder - helps assistants understand when to use your app."
+                  messageStatus="default"
+                />
               </div>
             </div>
-            <div className="flex py-6">
+            <div className="flex justify-between py-6">
               <Button
                 disabled={disable || isUpdating || isDeleting}
                 onClick={handleUpdate}
                 label={isUpdating ? "Updating..." : "Update"}
               />
-              <div className="flex-1"></div>
-              <div className="ml-2 flex">
-                <Button
-                  variant="warning"
-                  onClick={handleDelete}
-                  disabled={isDeleting || isUpdating}
-                  label={isDeleting ? "Deleting..." : "Delete"}
-                />
-              </div>
+              <Button
+                variant="warning"
+                onClick={handleDelete}
+                disabled={isDeleting || isUpdating}
+                label={isDeleting ? "Deleting..." : "Delete"}
+              />
             </div>
           </div>
         </div>
