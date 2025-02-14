@@ -52,6 +52,21 @@ const messageVariants = cva(
     },
   }
 );
+
+const buttonsVariants = cva(
+  "s-invisible s-flex s-justify-start s-gap-2 s-pt-2 group-hover/message:s-visible",
+  {
+    variants: {
+      type: {
+        user: "s-justify-end",
+        agent: "s-justify-start px-4",
+      },
+    },
+    defaultVariants: {
+      type: "agent",
+    },
+  }
+);
 /**
  * Parent component for both UserMessage and AgentMessage, to ensure avatar,
  * side buttons and spacing are consistent between the two
@@ -90,7 +105,7 @@ export const ConversationMessage = React.forwardRef<
           </ConversationMessageContent>
         </div>
         {buttons && (
-          <div className="s-invisible s-flex s-justify-start s-gap-2 s-pt-2 group-hover/message:s-visible">
+          <div className={cn(buttonsVariants({ type, className }))}>
             {buttons}
           </div>
         )}
