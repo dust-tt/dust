@@ -24,6 +24,8 @@ export interface FileType {
   downloadUrl?: string;
   fileName: string;
   fileSize: number;
+  sId: string;
+  // TODO(spolu): move this to being the ModelId
   id: string;
   status: FileStatus;
   uploadUrl?: string;

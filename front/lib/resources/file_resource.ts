@@ -301,10 +301,12 @@ export class FileResource extends BaseResource<FileModel> {
 
   toJSON(auth: Authenticator): FileType {
     const blob: FileType = {
+      // TODO(spolu): move this to ModelId
+      id: this.sId,
+      sId: this.sId,
       contentType: this.contentType,
       fileName: this.fileName,
       fileSize: this.fileSize,
-      id: this.sId,
       status: this.status,
       useCase: this.useCase,
     };
@@ -331,10 +333,12 @@ export class FileResource extends BaseResource<FileModel> {
 
   toPublicJSON(auth: Authenticator): FileType {
     const blob: FileType = {
+      // TODO(spolu): move this to ModelId
+      id: this.sId,
+      sId: this.sId,
       contentType: this.contentType,
       fileName: this.fileName,
       fileSize: this.fileSize,
-      id: this.sId,
       status: this.status,
       useCase: this.useCase,
     };

@@ -254,7 +254,7 @@ export function useFileUploaderService({
 
         return new Ok({
           ...fileBlob,
-          fileId: file.id,
+          fileId: file.sId,
           isUploading: false,
           preview: isSupportedImageContentType(fileBlob.contentType)
             ? `${fileUploaded.downloadUrl}?action=view`

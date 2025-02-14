@@ -2383,11 +2383,13 @@ const FileTypeUseCaseSchema = FlexibleEnumSchema<
 >();
 
 export const FileTypeSchema = z.object({
+  // TODO(spolu): move this to ModelIdSchema
+  id: z.string(),
+  sId: z.string(),
   contentType: z.string(),
   downloadUrl: z.string().optional(),
   fileName: z.string(),
   fileSize: z.number(),
-  id: z.string(),
   status: FileTypeStatusSchema,
   uploadUrl: z.string().optional(),
   publicUrl: z.string().optional(),
