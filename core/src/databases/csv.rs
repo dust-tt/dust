@@ -35,13 +35,18 @@ impl UpsertQueueCSVContent {
         let content = Object::download(&bucket, path).await?;
         let rdr = std::io::Cursor::new(content);
 
-        let (delimiter, rdr) = Self::find_delimiter(rdr).await?;
+        // We buffer the reader to make sure we yield the thread while processing.
+        const CHUNK_SIZE: usize = 64 * 1024; // 64KB chunks
+        let buffered = tokio::io::BufReader::with_capacity(CHUNK_SIZE, rdr);
+
+        let (delimiter, rdr) = Self::find_delimiter(buffered).await?;
         Self::csv_to_rows(rdr, delimiter).await
     }
 
     fn slugify(text: &str) -> String {
         lazy_static! {
             static ref DIACRITICS: Regex = Regex::new(r"[\u{0300}-\u{036f}]").unwrap();
+            static ref UNDERSCORES: Regex = Regex::new(r"_+").unwrap();
         }
 
         let s = text
@@ -61,7 +66,7 @@ impl UpsertQueueCSVContent {
             with_separators.push(c);
         }
 
-        with_separators
+        let s = with_separators
             .to_lowercase()
             .trim()
             .split_whitespace()
@@ -69,8 +74,9 @@ impl UpsertQueueCSVContent {
             .join("_") // Replace spaces with _
             .chars()
             .map(|c| if c.is_alphanumeric() { c } else { '_' }) // Replace non-word chars
-            .collect::<String>()
-            .replace("__", "_") // Replace multiple _ with single _
+            .collect::<String>();
+
+        UNDERSCORES.replace_all(&s, "_").to_string()
     }
 
     pub fn sanitize_headers(headers: Vec<&str>) -> Result<Vec<String>> {
@@ -225,8 +231,10 @@ mod tests {
         let headers = vec![
             "helloWorld",
             "b,.,2Fkls",
-            "Æúű--cool?",
+            "Æúű---cool?",
+            "___",
             "a",
+            "c_____d__",
             "___",
             "__dust_id",
             "a",
@@ -238,13 +246,15 @@ mod tests {
             sanitized,
             vec![
                 "hello_world",
-                "b__2fkls",
+                "b_2fkls",
                 "æuu_cool_",
+                "_",
                 "a",
-                "__",
+                "c_d_",
+                "_2",
                 "__dust_id",
                 "a_2",
-                "col_7",
+                "col_9",
                 "a_3"
             ]
         );
