@@ -1,3 +1,4 @@
+// Button.stories.tsx
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
@@ -55,21 +56,24 @@ const meta = {
       description: "Whether the button should display a dropdown chevron",
       control: "boolean",
     },
+    isCounter: {
+      description: "Whether the button should display a counter",
+      control: "boolean",
+    },
+    counterValue: {
+      description: "Value to display in the counter (if isCounter is true)",
+      control: "text",
+      if: { arg: "isCounter", eq: true },
+    },
     tooltip: {
       description: "Optional tooltip text to display on hover",
       control: "text",
     },
   },
-  render: (args) => {
-    if (args.size === "mini" && !args.icon) {
-      args.icon = ICONS.PlusIcon;
-    }
-    return <Button {...args} />;
-  },
 } satisfies Meta<typeof Button>;
 
 export default meta;
-type Story = StoryObj<typeof meta>;
+type Story = StoryObj<typeof Button>;
 
 export const ExampleButton: Story = {
   args: {
@@ -80,8 +84,61 @@ export const ExampleButton: Story = {
     isPulsing: false,
     isSelect: false,
     disabled: false,
+    isCounter: false,
+    counterValue: "4",
   },
 };
+
+export const WithCounter: Story = {
+  args: {
+    variant: "primary",
+    label: "Notifications",
+    size: "sm",
+    isCounter: true,
+    counterValue: "4",
+  },
+};
+
+export const WithLargeCounter: Story = {
+  args: {
+    variant: "primary",
+    label: "Messages",
+    size: "sm",
+    isCounter: true,
+    counterValue: "150", // Will display as "99+"
+  },
+};
+
+export const CounterVariants = () => (
+  <div className="s-flex s-flex-col s-gap-4">
+    <div className="s-flex s-gap-4">
+      <Button variant="primary" label="Primary" isCounter counterValue="4" />
+      <Button
+        variant="highlight"
+        label="Highlight"
+        isCounter
+        counterValue="4"
+      />
+      <Button variant="warning" label="Warning" isCounter counterValue="4" />
+      <Button variant="outline" label="Outline" isCounter counterValue="4" />
+      <Button variant="ghost" label="Ghost" isCounter counterValue="4" />
+      <Button
+        variant="ghost-secondary"
+        label="Ghost Secondary"
+        isCounter
+        counterValue="4"
+      />
+    </div>
+  </div>
+);
+
+export const CounterSizes = () => (
+  <div className="s-flex s-gap-4">
+    <Button size="xs" label="Extra Small" isCounter counterValue="4" />
+    <Button size="sm" label="Small" isCounter counterValue="4" />
+    <Button size="md" label="Medium" isCounter counterValue="4" />
+  </div>
+);
 
 export const MiniButton: Story = {
   render: () => <Button size="mini" icon={PlusIcon} />,
@@ -90,7 +147,6 @@ export const MiniButton: Story = {
 const ButtonBySize = ({
   size,
 }: {
-  // Exclude 'mini' from the possible sizes since it requires special handling
   size: Exclude<React.ComponentProps<typeof Button>["size"], "mini">;
 }) => (
   <>
