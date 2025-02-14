@@ -68,6 +68,17 @@ export class DatasetResource extends BaseResource<Dataset> {
     return new Ok(undefined);
   }
 
+  static async listForApp(auth: Authenticator, app: AppResource) {
+    const datasets = await Dataset.findAll({
+      where: {
+        appId: app.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+
+    return datasets.map((dataset) => new this(Dataset, dataset.get()));
+  }
+
   // Serialization.
 
   toJSON(): DatasetType {
