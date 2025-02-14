@@ -205,6 +205,11 @@ export async function syncTicket({
       ticketId: ticket.id,
     });
 
+    const metadataAsTags = [];
+    for (const [key, value] of Object.entries(metadata)) {
+      metadataAsTags.push(`${key}:${value}`);
+    }
+
     const parents = ticketInDb.getParentInternalIds(connectorId);
     await upsertDataSourceDocument({
       dataSourceConfig,
@@ -216,7 +221,11 @@ export async function syncTicket({
         `title:${ticket.subject}`,
         `updatedAt:${updatedAtDate.getTime()}`,
         `createdAt:${createdAtDate.getTime()}`,
-        ...filterCustomTags(ticket.tags, logger),
+        ...metadataAsTags,
+        ...filterCustomTags(
+          [...ticket.tags, ...ticket.custom_fields.map(({ value }) => value)],
+          logger
+        ),
       ],
       parents,
       parentId: parents[1],
