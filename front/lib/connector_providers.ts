@@ -282,8 +282,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
   bigquery: {
     name: "BigQuery",
     connectorProvider: "bigquery",
-    status: "rolling_out",
-    rollingOutFlag: "bigquery_feature",
+    status: "built",
     hide: false,
     description: "Query a BigQuery database.",
     limitations: null,
@@ -291,7 +290,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     logoComponent: BigQueryLogo,
     isNested: true,
     isSearchEnabled: false,
-    guideLink: "https://docs.dust.tt/docs/bigquery-connection",
+    guideLink: "https://docs.dust.tt/docs/bigquery",
     selectLabel: "Select tables",
     permissions: {
       selected: "read",
