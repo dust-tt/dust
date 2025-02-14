@@ -8,6 +8,7 @@ import { DustAPI, isSupportedFileContentType } from "@dust-tt/client";
 import type {
   AgentMessageSuccessEvent,
   APIError,
+  CoreAPIDataSourceDocumentSection,
   LightAgentConfigurationType,
   ModelId,
   Result,
@@ -862,11 +863,6 @@ async function makeContentFragments(
       !slackBotMessages.find((sbm) => sbm.messageTs === m.ts)
   );
 
-  // Skip the rest of the function if there are no messages to send.
-  if (allMessages.length === 0) {
-    return new Ok(allContentFragments);
-  }
-
   const channel = await slackClient.conversations.info({
     channel: channelId,
   });
@@ -880,29 +876,43 @@ async function makeContentFragments(
     return new Err(new Error("Could not retrieve channel name"));
   }
 
-  const content = await formatMessagesForUpsert({
-    dataSourceConfig: dataSourceConfigFromConnector(connector),
-    channelName: channel.channel.name,
-    messages: allMessages,
-    isThread: true,
-    connectorId: connector.id,
-    slackClient,
-  });
-
+  let document: CoreAPIDataSourceDocumentSection | null = null;
   let url: string | null = null;
-  if (allMessages[0]?.ts) {
+  if (allMessages.length === 0) {
     const permalinkRes = await slackClient.chat.getPermalink({
       channel: channelId,
-      message_ts: allMessages[0].ts,
+      message_ts: threadTs,
     });
     if (!permalinkRes.ok || !permalinkRes.permalink) {
       return new Err(new Error(permalinkRes.error));
     }
     url = permalinkRes.permalink;
+  } else {
+    document = await formatMessagesForUpsert({
+      dataSourceConfig: dataSourceConfigFromConnector(connector),
+      channelName: channel.channel.name,
+      messages: allMessages,
+      isThread: true,
+      connectorId: connector.id,
+      slackClient,
+    });
+
+    if (allMessages[0]?.ts) {
+      const permalinkRes = await slackClient.chat.getPermalink({
+        channel: channelId,
+        message_ts: allMessages[0].ts,
+      });
+      if (!permalinkRes.ok || !permalinkRes.permalink) {
+        return new Err(new Error(permalinkRes.error));
+      }
+      url = permalinkRes.permalink;
+    }
   }
 
   // Prepend $url to the content to make it available to the model.
-  const section = `$url: ${url}\n${sectionFullText(content)}`;
+  const section = document
+    ? `$url: ${url}\n${sectionFullText(document)}`
+    : `$url: ${url}\nNo messages previously sent in this thread.`;
 
   const contentType = "text/vnd.dust.attachment.slack.thread";
   const fileName = `slack_thread-${channel.channel.name}-${threadTs}.txt`;
