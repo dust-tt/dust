@@ -8,7 +8,12 @@ import type {
   UserMessageType,
 } from "@dust-tt/client";
 import { DustAPI, Err, Ok } from "@dust-tt/client";
-import { DustConfig, loadDustConfig, loadTokens } from "./config.js";
+import {
+  createAPILogger,
+  DustConfig,
+  loadDustConfig,
+  loadTokens,
+} from "./config.js";
 
 type SubmitMessageError = {
   type:
@@ -43,6 +48,8 @@ export async function getDustAPI(): Promise<{
     throw new Error("No Dust config found");
   }
 
+  const apiLogger = createAPILogger();
+
   return {
     dustAPI: new DustAPI(
       {
@@ -52,7 +59,7 @@ export async function getDustAPI(): Promise<{
         apiKey: () => tokens.accessToken,
         workspaceId: dustConfig.workspaceId,
       },
-      console
+      apiLogger
     ),
     dustConfig,
   };

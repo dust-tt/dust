@@ -78,7 +78,6 @@ export async function logToFile(message: string): Promise<void> {
   const timestamp = new Date().toISOString();
   const logMessage = `[${timestamp}] ${message}\n`;
   await appendFile(LOG_FILE, logMessage);
-  console.log(logMessage.trim()); // Also log to console
 }
 
 export async function logJson(prefix: string, data: any): Promise<void> {
@@ -91,4 +90,13 @@ export async function logError(error: string): Promise<void> {
 
 export async function logFatalError(error: unknown): Promise<void> {
   await logToFile(`FATAL ERROR: ${error}`);
+}
+
+export function createAPILogger() {
+  return {
+    error: async (_args: Record<string, unknown>, _message: string) => {},
+    info: async (_args: Record<string, unknown>, _message: string) => {},
+    trace: async (_args: Record<string, unknown>, _message: string) => {},
+    warn: async (_args: Record<string, unknown>, _message: string) => {},
+  };
 }

@@ -155,7 +155,7 @@ server.tool(
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.log("Dust MCP Server running on stdio");
+  console.error("Dust MCP Server running on stdio");
 }
 
 main().catch((error) => {
