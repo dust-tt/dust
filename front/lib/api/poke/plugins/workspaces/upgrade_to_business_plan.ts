@@ -1,9 +1,9 @@
 import { Err, Ok } from "@dust-tt/types";
 
 import { createPlugin } from "@app/lib/api/poke/types";
-import { updateWorkspaceToBusinessPlan } from "@app/lib/api/workspace";
+import { upgradeWorkspaceToBusinessPlan } from "@app/lib/api/workspace";
 
-export const updateBusinessPlan = createPlugin(
+export const upgradeToBusinessPlan = createPlugin(
   {
     id: "upgrade-to-business-plan",
     name: "Upgrade to Business Plan",
@@ -19,18 +19,18 @@ export const updateBusinessPlan = createPlugin(
   },
   async (auth, resourceId, args) => {
     if (!args.confirm) {
-      return new Err(new Error("Please confirm the update to business plan."));
+      return new Err(new Error("Please confirm the upgrade to business plan."));
     }
 
     const workspace = auth.getNonNullableWorkspace();
-    const res = await updateWorkspaceToBusinessPlan(auth, workspace);
+    const res = await upgradeWorkspaceToBusinessPlan(auth, workspace);
     if (res.isErr()) {
       return res;
     }
 
     return new Ok({
       display: "text",
-      value: `Workspace ${workspace.name} updated to business plan.`,
+      value: `Workspace ${workspace.name} upgrade to business plan.`,
     });
   }
 );

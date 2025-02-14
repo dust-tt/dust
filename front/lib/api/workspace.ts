@@ -483,7 +483,7 @@ export async function updateExtensionConfiguration(
   return new Ok(undefined);
 }
 
-export async function updateWorkspaceToBusinessPlan(
+export async function upgradeWorkspaceToBusinessPlan(
   auth: Authenticator,
   workspace: LightWorkspaceType
 ): Promise<Result<void, Error>> {
