@@ -1,17 +1,22 @@
 import {
   Button,
-  ElementModal,
   MovingMailIcon,
   Page,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  useSendNotification,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   ActiveRoleType,
   MembershipInvitationType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { useContext, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 
 import { ConfirmContext } from "@app/components/Confirm";
 import { ROLES_DATA } from "@app/components/members/Roles";
@@ -24,93 +29,118 @@ export function EditInvitationModal({
   onClose,
 }: {
   owner: WorkspaceType;
-  invitation: MembershipInvitationType;
+  invitation: MembershipInvitationType | null;
   onClose: () => void;
 }) {
-  const [selectedRole, setSelectedRole] = useState<ActiveRoleType>(
-    invitation.initialRole
+  const [selectedRole, setSelectedRole] = useState<ActiveRoleType | undefined>(
+    invitation?.initialRole
   );
+
   const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
 
+  useEffect(() => {
+    if (invitation) {
+      setSelectedRole(invitation.initialRole);
+    }
+  }, [invitation]);
+
+  const handleSave = async () => {
+    if (invitation && selectedRole) {
+      await updateInvitation({
+        owner,
+        invitation,
+        newRole: selectedRole,
+        sendNotification,
+        confirm,
+      });
+    }
+
+    onClose();
+  };
+
   return (
-    <ElementModal
-      title="Edit invitation"
-      openOnElement={invitation}
-      onClose={() => {
-        onClose();
-        setSelectedRole(invitation.initialRole);
+    <Sheet
+      open={!!invitation}
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose();
+          setSelectedRole(invitation?.initialRole);
+        }
       }}
-      hasChanged={selectedRole !== invitation.initialRole}
-      variant="side-sm"
-      onSave={async (closeModalFn) => {
-        await updateInvitation({
-          owner,
-          invitation,
-          newRole: selectedRole,
-          sendNotification,
-          confirm,
-        });
-        closeModalFn();
-      }}
-      saveLabel="Update role"
     >
-      <Page variant="modal">
-        <Page.Layout direction="vertical">
-          <Page.Layout direction="horizontal" sizing="grow" gap="sm">
-            <Page.H variant="h6">{invitation.inviteEmail}</Page.H>
-          </Page.Layout>
-          <div className="grow font-normal text-element-700">
-            Invitation sent on{" "}
-            {new Date(invitation.createdAt).toLocaleDateString()}
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="font-semibold text-foreground dark:text-foreground-night">
-              Role:
+      <SheetContent>
+        <SheetHeader>
+          <SheetTitle>Edit invitation</SheetTitle>
+        </SheetHeader>
+        <SheetContainer>
+          {invitation && selectedRole && (
+            <div className="flex flex-col gap-6">
+              <div className="flex flex-col gap-2">
+                <Page.H variant="h6">{invitation.inviteEmail}</Page.H>
+                <div className="text-element-700">
+                  Invitation sent on{" "}
+                  {new Date(invitation.createdAt).toLocaleDateString()}
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="font-semibold text-foreground dark:text-foreground-night">
+                    Role:
+                  </div>
+                  <RoleDropDown
+                    selectedRole={selectedRole}
+                    onChange={setSelectedRole}
+                  />
+                </div>
+                <div className="text-element-700 dark:text-element-700-night">
+                  The role defines the rights of a member fo the workspace.{" "}
+                  {ROLES_DATA[invitation.initialRole].description}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="primary"
+                  label="Send invitation again"
+                  icon={MovingMailIcon}
+                  onClick={async () => {
+                    await sendInvitations({
+                      owner,
+                      emails: [invitation.inviteEmail],
+                      invitationRole: selectedRole,
+                      sendNotification,
+                      isNewInvitation: false,
+                    });
+                  }}
+                />
+                <Button
+                  variant="warning"
+                  label="Revoke invitation"
+                  icon={XMarkIcon}
+                  disabled={owner.ssoEnforced}
+                  onClick={async () => {
+                    await updateInvitation({
+                      invitation,
+                      owner,
+                      sendNotification,
+                      confirm,
+                    });
+                  }}
+                />
+              </div>
             </div>
-            <RoleDropDown
-              selectedRole={selectedRole}
-              onChange={setSelectedRole}
-            />
-          </div>
-          <div className="grow font-normal text-element-700 dark:text-element-700-night">
-            The role defines the rights of a member fo the workspace.{" "}
-            {ROLES_DATA[invitation.initialRole].description}
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              className="mt-4"
-              variant="primary"
-              label="Send invitation again"
-              icon={MovingMailIcon}
-              onClick={async () => {
-                await sendInvitations({
-                  owner,
-                  emails: [invitation.inviteEmail],
-                  invitationRole: selectedRole,
-                  sendNotification,
-                  isNewInvitation: false,
-                });
-              }}
-            />
-            <Button
-              className="mt-4"
-              variant="warning"
-              label="Revoke invitation"
-              icon={XMarkIcon}
-              disabled={owner.ssoEnforced}
-              onClick={async () => {
-                await updateInvitation({
-                  invitation,
-                  owner,
-                  sendNotification,
-                  confirm,
-                });
-              }}
-            />
-          </div>
-        </Page.Layout>
-      </Page>
-    </ElementModal>
+          )}
+        </SheetContainer>
+        <SheetFooter
+          rightButtonProps={{
+            label: "Update role",
+            onClick: handleSave,
+            disabled: selectedRole === invitation?.initialRole,
+          }}
+        />
+      </SheetContent>
+    </Sheet>
   );
 }
