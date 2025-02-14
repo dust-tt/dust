@@ -122,7 +122,7 @@ export class AppResource extends ResourceWithSpace<AppModel> {
     // Only dust super users can clone apps. Authenticator has no write permissions
     // on the target workspace.
     if (!auth.isDustSuperUser()) {
-      return new Err(new Error("Only dust super users can clone apps"));
+      throw new Error("Only dust super users can clone apps");
     }
 
     if (targetWorkspace.id !== targetSpace.workspaceId) {

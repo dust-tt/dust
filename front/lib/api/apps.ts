@@ -49,13 +49,13 @@ export async function cloneAppToWorkspace(
   // Only dust super users can clone apps. Authenticator has no write permissions
   // on the target workspace.
   if (!auth.isDustSuperUser()) {
-    return new Err(new Error("Only dust super users can clone apps"));
+    throw new Error("Only dust super users can clone apps");
   }
   if (targetWorkspace.id !== targetSpace.workspaceId) {
     return new Err(new Error("Target space must belong to target workspace"));
   }
 
-  // Handle CoreAPI project cloning
+  // Handle CoreAPI project cloning.
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const cloneRes = await coreAPI.cloneProject({
     projectId: app.dustAPIProjectId,
@@ -64,7 +64,7 @@ export async function cloneAppToWorkspace(
     return new Err(new Error(cloneRes.error.message));
   }
 
-  // Use the resource to handle the clone operation
+  // Use the resource to handle the clone operation.
   return app.clone(auth, targetWorkspace, targetSpace, {
     dustAPIProjectId: cloneRes.value.project.project_id.toString(),
   });
