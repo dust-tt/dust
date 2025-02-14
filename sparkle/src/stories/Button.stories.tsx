@@ -55,6 +55,15 @@ const meta = {
       description: "Whether the button should display a dropdown chevron",
       control: "boolean",
     },
+    isCounter: {
+      description: "Whether the button should display a counter",
+      control: "boolean",
+    },
+    counterValue: {
+      description: "Value to display in the counter (if isCounter is true)",
+      control: "text",
+      if: { arg: "isCounter", eq: true },
+    },
     tooltip: {
       description: "Optional tooltip text to display on hover",
       control: "text",
@@ -80,6 +89,8 @@ export const ExampleButton: Story = {
     isPulsing: false,
     isSelect: false,
     disabled: false,
+    isCounter: false,
+    counterValue: "1",
   },
 };
 
@@ -90,7 +101,6 @@ export const MiniButton: Story = {
 const ButtonBySize = ({
   size,
 }: {
-  // Exclude 'mini' from the possible sizes since it requires special handling
   size: Exclude<React.ComponentProps<typeof Button>["size"], "mini">;
 }) => (
   <>
