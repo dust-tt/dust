@@ -12,6 +12,7 @@ import { getSourceUrlForGoogleDriveFiles } from "@connectors/connectors/google_d
 import {
   fixParentsConsistency,
   internalDeleteFile,
+  updateParentsField,
 } from "@connectors/connectors/google_drive/lib";
 import {
   GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID,
@@ -41,6 +42,7 @@ import {
 } from "@connectors/lib/models/google_drive";
 import { redisClient } from "@connectors/lib/redis";
 import { heartbeat } from "@connectors/lib/temporal";
+import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
@@ -359,7 +361,9 @@ export async function incrementalSync(
   isSharedDrive: boolean,
   startSyncTs: number,
   nextPageToken?: string
-): Promise<string | undefined> {
+): Promise<
+  { nextPageToken: string | undefined; newFolders: string[] } | undefined
+> {
   const localLogger = logger.child({
     provider: "google_drive",
     connectorId: connectorId,
@@ -370,7 +374,7 @@ export async function incrementalSync(
   const redisCli = await redisClient({
     origin: "google_drive_incremental_sync",
   });
-
+  const newFolders = [];
   try {
     const connector = await ConnectorResource.fetchById(connectorId);
     if (!connector) {
@@ -426,12 +430,15 @@ export async function incrementalSync(
       throw new Error(`changes list is undefined`);
     }
 
-    localLogger.info(
-      {
-        nbChanges: changesRes.data.changes.length,
-      },
-      `Got changes.`
-    );
+    if (changesRes.data.changes.length > 0) {
+      localLogger.info(
+        {
+          nbChanges: changesRes.data.changes.length,
+        },
+        `Got changes.`
+      );
+    }
+
     for (const change of changesRes.data.changes) {
       await heartbeat();
 
@@ -510,40 +517,55 @@ export async function incrementalSync(
           driveFile,
           startSyncTs
         );
+        const localFolder = await GoogleDriveFiles.findOne({
+          where: {
+            connectorId: connectorId,
+            driveFileId: change.file.id,
+          },
+        });
 
         const parents = parentGoogleIds.map((parent) => getInternalId(parent));
 
-        await upsertDataSourceFolder({
-          dataSourceConfig,
-          folderId: getInternalId(driveFile.id),
-          parents,
-          parentId: parents[1] || null,
-          title: driveFile.name ?? "",
-          mimeType: MIME_TYPES.GOOGLE_DRIVE.FOLDER,
-          sourceUrl: getSourceUrlForGoogleDriveFiles(driveFile),
-        });
+        if (localFolder && localFolder.parentId !== parentGoogleIds[1]) {
+          logger.info(
+            {
+              fileId: change.file.id,
+              localParentId: localFolder.parentId,
+              parentId: parentGoogleIds[1],
+            },
+            "Folder moved"
+          );
 
-        await GoogleDriveFiles.upsert({
-          connectorId: connectorId,
-          dustFileId: getInternalId(driveFile.id),
-          driveFileId: file.id,
-          name: file.name,
-          mimeType: file.mimeType,
-          parentId: parents[1] ? getDriveFileId(parents[1]) : null,
-          lastSeenTs: new Date(),
-        });
+          const queue = new PQueue({ concurrency: 10 });
+          await recurseUpdateParents(
+            connector,
+            localFolder,
+            parents,
+            queue,
+            localLogger
+          );
+        }
+
+        if (!localFolder) {
+          localLogger.info(
+            { folderId: driveFile.id },
+            "Adding new folder to sync"
+          );
+          newFolders.push(driveFile.id);
+        }
+
         localLogger.info({ fileId: change.file.id }, "done syncing file");
 
         continue;
+      } else {
+        await syncOneFile(
+          connectorId,
+          authCredentials,
+          dataSourceConfig,
+          driveFile,
+          startSyncTs
+        );
       }
-
-      await syncOneFile(
-        connectorId,
-        authCredentials,
-        dataSourceConfig,
-        driveFile,
-        startSyncTs
-      );
       localLogger.info({ fileId: change.file.id }, "done syncing file");
     }
 
@@ -558,7 +580,7 @@ export async function incrementalSync(
       });
     }
 
-    return nextPageToken;
+    return { nextPageToken, newFolders };
   } catch (e) {
     if (e instanceof GaxiosError && e.response?.status === 403) {
       localLogger.error(
@@ -572,6 +594,38 @@ export async function incrementalSync(
       throw e;
     }
   }
+}
+
+async function recurseUpdateParents(
+  connector: ConnectorResource,
+  file: GoogleDriveFiles,
+  parentIds: string[],
+  queue: PQueue,
+  logger: Logger
+) {
+  const children = await GoogleDriveFiles.findAll({
+    where: {
+      connectorId: connector.id,
+      parentId: file.driveFileId,
+    },
+  });
+
+  // Use the queue for all child operations
+  await Promise.all(
+    children.map((child) =>
+      queue.add(() =>
+        recurseUpdateParents(
+          connector,
+          child,
+          [child.dustFileId, ...parentIds],
+          queue,
+          logger
+        )
+      )
+    )
+  );
+
+  await updateParentsField(connector, file, parentIds, logger);
 }
 
 export async function getSyncPageToken(
