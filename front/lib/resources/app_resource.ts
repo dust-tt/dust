@@ -1,5 +1,5 @@
 import type { AppType, LightWorkspaceType, Result } from "@dust-tt/types";
-import { CoreAPI, Err, Ok } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
 import assert from "assert";
 import type { Attributes, CreationAttributes, ModelStatic } from "sequelize";
 import { Op } from "sequelize";
@@ -10,11 +10,7 @@ import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
 import { RunResource } from "@app/lib/resources/run_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
-import {
-  AppModel,
-  Clone,
-  Dataset,
-} from "@app/lib/resources/storage/models/apps";
+import { AppModel, Clone } from "@app/lib/resources/storage/models/apps";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
