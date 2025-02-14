@@ -85,13 +85,11 @@ export function InvitationsList({
 
   return (
     <>
-      {selectedInvite && (
-        <EditInvitationModal
-          invitation={selectedInvite}
-          owner={owner}
-          onClose={() => setSelectedInvite(null)}
-        />
-      )}
+      <EditInvitationModal
+        invitation={selectedInvite}
+        owner={owner}
+        onClose={() => setSelectedInvite(null)}
+      />
       <div className="flex flex-col gap-2">
         {filteredInvitations.length > 0 && (
           <Page.H variant="h5">Invitations</Page.H>
