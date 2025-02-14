@@ -4,5 +4,6 @@ ALTER TABLE "public"."messages" ADD COLUMN "nextVersionMessageId" BIGINT;
 ALTER TABLE "public"."messages" ADD COLUMN "previousVersionMessageId" BIGINT;
 ALTER TABLE "public"."messages" ADD COLUMN "threadVersions" BIGINT[] DEFAULT ARRAY[0]::BIGINT[];
 CREATE UNIQUE INDEX CONCURRENTLY "messages_conversation_id_rank_version_parent_id" ON "messages" ("conversationId", "rank", "version", "parentId");
+CREATE UNIQUE INDEX CONCURRENTLY "messages_conversation_id_rank_version_thread_version" ON "messages" ("conversationId", "rank", "version", ("threadVersions"[1]));
 DROP INDEX IF EXISTS "messages_conversation_id_rank_version";
 
