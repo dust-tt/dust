@@ -169,6 +169,23 @@ async function handler(
         }
       }
 
+      let isDefaultWorkspaceConfiguration = false;
+
+      if (isCredentialProvider(provider)) {
+        const currentDefaultConfiguration =
+          await LabsTranscriptsConfigurationResource.findByWorkspaceAndProvider(
+            {
+              auth,
+              provider,
+              isDefaultWorkspaceConfiguration: true,
+            }
+          );
+
+        isDefaultWorkspaceConfiguration =
+          currentDefaultConfiguration === null ||
+          currentDefaultConfiguration === undefined;
+      }
+
       const transcriptsConfigurationPostResource =
         await LabsTranscriptsConfigurationResource.makeNew({
           userId: user.id,
@@ -176,6 +193,7 @@ async function handler(
           provider,
           connectionId: connectionId ?? null,
           credentialId: credentialId ?? null,
+          isDefaultWorkspaceConfiguration,
         });
 
       return res
