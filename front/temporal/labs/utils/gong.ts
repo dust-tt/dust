@@ -151,7 +151,7 @@ export async function retrieveGongTranscriptContent(
         fileId,
         transcriptsConfigurationId: transcriptsConfiguration.id,
       },
-      "[processTranscriptActivity] No connectionId found. Skipping."
+      "[retrieveGongTranscripts] No connectionId found. Skipping."
     );
     throw new Error(
       "No connectionId for transcriptsConfiguration found. Skipping."
@@ -169,7 +169,7 @@ export async function retrieveGongTranscriptContent(
     if (!user) {
       localLogger.error(
         {},
-        "[processTranscriptActivity] User not found. Skipping."
+        "[retrieveGongTranscripts] User not found. Skipping."
       );
       return null;
     }
@@ -237,7 +237,7 @@ export async function retrieveGongTranscriptContent(
         fileId,
         transcriptsConfigurationId: transcriptsConfiguration.id,
       },
-      "[processTranscriptActivity] Error fetching call from Gong. Skipping."
+      "[retrieveGongTranscripts] Error fetching call from Gong. Skipping."
     );
     throw new Error("Error fetching call from Gong. Skipping.");
   }
@@ -257,7 +257,7 @@ export async function retrieveGongTranscriptContent(
         fileId,
         transcriptsConfigurationId: transcriptsConfiguration.id,
       },
-      "[processTranscriptActivity] Call data not found from Gong. Skipping."
+      "[retrieveGongTranscripts] Call data not found from Gong. Skipping."
     );
     return null;
   }
@@ -275,6 +275,17 @@ export async function retrieveGongTranscriptContent(
   const gongUser = await findGongUser();
   const userParticipated =
     gongUser && participantsUsers[gongUser.id] ? true : false;
+
+  localLogger.info(
+    {
+      fileId,
+      gongUser,
+      participantsUsers,
+      participantsSpeakers,
+      userParticipated,
+    },
+    "[retrieveGongTranscripts] User participated in the call?"
+  );
 
   const transcript = await fetch(`https://api.gong.io/v2/calls/transcript`, {
     method: "POST",
@@ -294,7 +305,7 @@ export async function retrieveGongTranscriptContent(
       {
         fileId,
       },
-      "[processTranscriptActivity] Error fetching transcript from Gong. Skipping."
+      "[retrieveGongTranscripts] Error fetching transcript from Gong. Skipping."
     );
     throw new Error("Error fetching transcript from Gong. Skipping.");
   }
@@ -313,7 +324,7 @@ export async function retrieveGongTranscriptContent(
   if (!transcriptParagraph || transcriptParagraph.length === 0) {
     localLogger.info(
       {},
-      "[processTranscriptActivity] No transcript content found from Gong."
+      "[retrieveGongTranscripts] No transcript content found from Gong."
     );
     return null;
   }

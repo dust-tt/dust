@@ -186,8 +186,11 @@ export async function retrieveModjoTranscripts(
 
       if (!response.ok) {
         localLogger.error(
-          { status: response.status },
-          "[retrieveNewTranscripts] Error fetching new transcripts from Modjo. Stopping."
+          {
+            status: response.status,
+            body: await response.text(),
+          },
+          "[retrieveModjoTranscripts] Error fetching new transcripts from Modjo. Stopping."
         );
         return fileIdsToProcess;
       }
@@ -198,7 +201,7 @@ export async function retrieveModjoTranscripts(
       if (either.isLeft(validatedDataResult)) {
         localLogger.error(
           { error: validatedDataResult.left },
-          "[retrieveNewTranscripts] Invalid response data from Modjo"
+          "[retrieveModjoTranscripts] Invalid response data from Modjo"
         );
         return fileIdsToProcess;
       }
@@ -207,8 +210,11 @@ export async function retrieveModjoTranscripts(
 
       if (!validatedData.values || validatedData.values.length === 0) {
         localLogger.info(
-          {},
-          "[retrieveNewTranscripts] No new transcripts found from Modjo."
+          {
+            page,
+            totalProcessed: fileIdsToProcess.length,
+          },
+          "[retrieveModjoTranscripts] No new transcripts found from Modjo."
         );
         break;
       }
@@ -218,8 +224,11 @@ export async function retrieveModjoTranscripts(
         const fileId = call.callId?.toString();
         if (!fileId) {
           localLogger.info(
-            {},
-            "[retrieveNewTranscripts] call has no ID. Skipping."
+            {
+              page,
+              totalProcessed: fileIdsToProcess.length,
+            },
+            "[retrieveModjoTranscripts] call has no ID. Skipping."
           );
           continue;
         }
@@ -229,7 +238,7 @@ export async function retrieveModjoTranscripts(
         if (history) {
           localLogger.info(
             { fileId },
-            "[retrieveNewTranscripts] call already processed. Skipping."
+            "[retrieveModjoTranscripts] call already processed. Skipping."
           );
           continue;
         }
@@ -239,7 +248,7 @@ export async function retrieveModjoTranscripts(
 
       localLogger.info(
         { page, totalProcessed: fileIdsToProcess.length },
-        "[retrieveNewTranscripts] Processed page of Modjo transcripts"
+        "[retrieveModjoTranscripts] Processed page of Modjo transcripts"
       );
 
       if (
@@ -253,7 +262,7 @@ export async function retrieveModjoTranscripts(
     } catch (error) {
       localLogger.error(
         { error },
-        "[retrieveNewTranscripts] Error processing Modjo transcripts page"
+        "[retrieveModjoTranscripts] Error processing Modjo transcripts page"
       );
       break;
     }
@@ -274,7 +283,7 @@ export async function retrieveModjoTranscriptContent(
 } | null> {
   if (!transcriptsConfiguration || !transcriptsConfiguration.credentialId) {
     throw new Error(
-      "[processTranscriptActivity]No credentialId for modjo transcriptsConfiguration found. Skipping."
+      "[retrieveModjoTranscripts]No credentialId for modjo transcriptsConfiguration found. Skipping."
     );
   }
 
@@ -286,13 +295,13 @@ export async function retrieveModjoTranscriptContent(
 
   if (modjoApiKeyRes.isErr()) {
     throw new Error(
-      "[processTranscriptActivity] Error fetching API key from Modjo. Skipping."
+      "[retrieveModjoTranscripts] Error fetching API key from Modjo. Skipping."
     );
   }
 
   if (!isModjoCredentials(modjoApiKeyRes.value.credential.content)) {
     throw new Error(
-      "[processTranscriptActivity] Invalid credentials type - expected modjo credentials"
+      "[retrieveModjoTranscripts] Invalid credentials type - expected modjo credentials"
     );
   }
 
@@ -303,7 +312,7 @@ export async function retrieveModjoTranscriptContent(
     if (!user) {
       localLogger.error(
         {},
-        "[processTranscriptActivity] User not found. Skipping."
+        "[retrieveModjoTranscripts] User not found. Skipping."
       );
       return null;
     }
@@ -371,6 +380,15 @@ export async function retrieveModjoTranscriptContent(
     callData.relations?.speakers?.some(
       (speaker) => speaker.email === user?.email
     ) ?? false;
+
+  localLogger.info(
+    {
+      userParticipated,
+      user,
+      speakers: callData.relations?.speakers,
+    },
+    "[retrieveModjoTranscripts] User participated in the call?"
+  );
 
   const duration = callData.duration ?? 0;
   const hours = Math.floor(duration / 3600);
