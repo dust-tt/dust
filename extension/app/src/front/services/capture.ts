@@ -46,10 +46,10 @@ function formatContent(
   if ("type" in content && content.type === "html") {
     // Basic HTML to text conversion
     // You might want to use a proper HTML-to-text converter in production
-    return content.body.replace(/<[^>]*>/g, "");
+    return content.body.replace(/<[^>]*>/g, "").trim();
   }
 
-  return content.body;
+  return content.body.trim();
 }
 
 function createTimelineFromMessagesAndComments(

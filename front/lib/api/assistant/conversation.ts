@@ -1879,7 +1879,7 @@ async function* streamRunAgentEvents(
 
         logger.error(
           {
-            error: event.error,
+            error: JSON.stringify(event.error),
             workspaceId: auth.workspace()?.sId,
             agentMessageId: agentMessage.sId,
           },
