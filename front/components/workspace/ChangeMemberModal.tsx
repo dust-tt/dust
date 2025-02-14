@@ -8,8 +8,13 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  ElementModal,
   Page,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
   Spinner,
   useSendNotification,
 } from "@dust-tt/sparkle";
@@ -40,120 +45,141 @@ export function ChangeMemberModal({
   );
   const [isSaving, setIsSaving] = useState(false);
 
-  if (!member || !role || !isActiveRoleType(role)) {
-    return null;
-  }
+  const handleSave = async () => {
+    if (!selectedRole) {
+      return;
+    }
+    setIsSaving(true);
+    await handleMembersRoleChange({
+      members: member ? [member] : [],
+      role: selectedRole,
+      sendNotification,
+    });
+    await mutateMembers();
+    onClose();
+  };
 
   return (
-    <ElementModal
-      openOnElement={member}
-      onClose={() => {
-        onClose();
-        setSelectedRole(null);
-        setIsSaving(false);
-      }}
-      isSaving={isSaving}
-      hasChanged={selectedRole !== member.workspaces[0].role}
-      title={member.fullName || "Unreachable"}
-      variant="side-sm"
-      onSave={async (closeModalFn: () => void) => {
-        if (!selectedRole) {
-          return;
+    <Sheet
+      open={!!member}
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose();
+          setSelectedRole(null);
+          setIsSaving(false);
         }
-        setIsSaving(true);
-        await handleMembersRoleChange({
-          members: [member],
-          role: selectedRole,
-          sendNotification,
-        });
-        await mutateMembers();
-        closeModalFn();
       }}
-      saveLabel="Update role"
     >
-      <Page variant="modal">
-        <div className="mt-6 flex flex-col gap-9 text-sm text-element-700">
-          <div className="flex items-center gap-4">
-            <Avatar size="lg" visual={member.image} name={member.fullName} />
-            <div className="flex grow flex-col">
-              <div className="font-semibold text-foreground dark:text-foreground-night">
-                {member.fullName}
-              </div>
-              <div className="font-normal">{member.email}</div>
-            </div>
-          </div>
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-2">
-              <div className="font-bold text-foreground dark:text-foreground-night">
-                Role:
-              </div>
-              <RoleDropDown
-                selectedRole={selectedRole || role}
-                onChange={setSelectedRole}
-              />
-            </div>
-            <Page.P>
-              The role defines the rights of a member of the workspace.{" "}
-              {ROLES_DATA[role]["description"]}
-            </Page.P>
-          </div>
-          <div className="flex flex-none flex-col gap-2">
-            <div className="flex-none">
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button
-                    variant="warning"
-                    label="Revoke member access"
-                    size="sm"
+      <SheetContent>
+        {member && role && isActiveRoleType(role) ? (
+          <>
+            <SheetHeader>
+              <SheetTitle>{member.fullName || "Unreachable"}</SheetTitle>
+            </SheetHeader>
+            <SheetContainer>
+              <div className="flex flex-col gap-9 text-sm text-element-700">
+                <div className="flex items-center gap-4">
+                  <Avatar
+                    size="lg"
+                    visual={member.image}
+                    name={member.fullName}
                   />
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Confirm deletion</DialogTitle>
-                  </DialogHeader>
-                  {isSaving ? (
-                    <div className="flex justify-center py-8">
-                      <Spinner variant="dark" size="md" />
+                  <div className="flex grow flex-col">
+                    <div className="font-semibold text-foreground dark:text-foreground-night">
+                      {member.fullName}
                     </div>
-                  ) : (
-                    <>
-                      <DialogContainer>
-                        <div>
-                          Revoke access for user{" "}
-                          <span className="font-bold">{member.fullName}</span>?
-                        </div>
-                      </DialogContainer>
-                      <DialogFooter
-                        leftButtonProps={{
-                          label: "Cancel",
-                          variant: "outline",
-                        }}
-                        rightButtonProps={{
-                          label: "Yes, revoke",
-                          variant: "warning",
-                          onClick: async () => {
-                            await handleMembersRoleChange({
-                              members: [member],
-                              role: "none",
-                              sendNotification,
-                            });
-                            await mutateMembers();
-                            onClose();
-                          },
-                        }}
-                      />
-                    </>
-                  )}
-                </DialogContent>
-              </Dialog>
-            </div>
-            <Page.P>
-              Deleting a member will remove them from the workspace. They will
-              be able to rejoin if they have an invitation link.
-            </Page.P>
-          </div>
-        </div>
-      </Page>
-    </ElementModal>
+                    <div className="font-normal">{member.email}</div>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className="font-bold text-foreground dark:text-foreground-night">
+                      Role:
+                    </div>
+                    <RoleDropDown
+                      selectedRole={selectedRole || role}
+                      onChange={setSelectedRole}
+                    />
+                  </div>
+                  <Page.P>
+                    The role defines the rights of a member of the workspace.{" "}
+                    {ROLES_DATA[role]["description"]}
+                  </Page.P>
+                </div>
+
+                <div className="flex flex-none flex-col gap-2">
+                  <div className="flex-none">
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button
+                          variant="warning"
+                          label="Revoke member access"
+                          size="sm"
+                        />
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Confirm deletion</DialogTitle>
+                        </DialogHeader>
+                        {isSaving ? (
+                          <div className="flex justify-center py-8">
+                            <Spinner variant="dark" size="md" />
+                          </div>
+                        ) : (
+                          <>
+                            <DialogContainer>
+                              <div>
+                                Revoke access for user{" "}
+                                <span className="font-bold">
+                                  {member.fullName}
+                                </span>
+                                ?
+                              </div>
+                            </DialogContainer>
+                            <DialogFooter
+                              leftButtonProps={{
+                                label: "Cancel",
+                                variant: "outline",
+                              }}
+                              rightButtonProps={{
+                                label: "Yes, revoke",
+                                variant: "warning",
+                                onClick: async () => {
+                                  await handleMembersRoleChange({
+                                    members: [member],
+                                    role: "none",
+                                    sendNotification,
+                                  });
+                                  await mutateMembers();
+                                  onClose();
+                                },
+                              }}
+                            />
+                          </>
+                        )}
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                  <Page.P>
+                    Deleting a member will remove them from the workspace. They
+                    will be able to rejoin if they have an invitation link.
+                  </Page.P>
+                </div>
+              </div>
+            </SheetContainer>
+            <SheetFooter
+              rightButtonProps={{
+                label: "Update role",
+                onClick: handleSave,
+                disabled:
+                  selectedRole === member.workspaces[0].role || isSaving,
+                loading: isSaving,
+              }}
+            />
+          </>
+        ) : null}
+      </SheetContent>
+    </Sheet>
   );
 }
