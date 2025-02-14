@@ -204,6 +204,10 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const renderIcon = (visual: React.ComponentType, extraClass = "") => (
       <Icon visual={visual} size={iconsSize} className={extraClass} />
     );
+
+    const showCounter = isCounter && counterValue != null;
+    const showContainer = label || showCounter;
+
     const content = (
       <>
         {isLoading ? (
@@ -213,17 +217,20 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         ) : (
           icon && renderIcon(icon, "-s-mx-0.5")
         )}
-        <div className="s-flex s-items-center s-gap-2">
-          {label}
-          {isCounter && counterValue != null && (
-            <Counter
-              value={Number(counterValue)}
-              variant={variant || "primary"}
-              size={size === "mini" ? "xs" : size}
-              isInButton={true}
-            />
-          )}
-        </div>
+
+        {showContainer && (
+          <div className="s-flex s-items-center s-gap-2">
+            {label}
+            {showCounter && (
+              <Counter
+                value={Number(counterValue)}
+                variant={variant || "primary"}
+                size={size === "mini" ? "xs" : size}
+                isInButton={true}
+              />
+            )}
+          </div>
+        )}
         {isSelect && renderIcon(ChevronDownIcon, isLoading ? "" : "-s-mr-1")}
       </>
     );
