@@ -34,7 +34,14 @@ export function AssistantTemplateModal({
     useAssistantTemplate({ templateId });
 
   return (
-    <Sheet open={!!templateId} onOpenChange={onClose}>
+    <Sheet
+      open={!!templateId}
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose();
+        }
+      }}
+    >
       <SheetContent size="lg">
         {isAssistantTemplateLoading || !assistantTemplate ? (
           <div className="flex h-full items-center justify-center">
