@@ -204,6 +204,7 @@ async function handleFileExport(
       provider: "google_drive",
       connectorId,
       parents,
+      tags: file.labels,
     });
   } else if (file.mimeType === "text/markdown") {
     const textContent = handleTextFile(res.data, maxDocumentLen);

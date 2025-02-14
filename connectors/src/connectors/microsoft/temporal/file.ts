@@ -11,7 +11,10 @@ import {
   getDriveItemInternalId,
   getFileDownloadURL,
 } from "@connectors/connectors/microsoft/lib/graph_api";
-import { typeAndPathFromInternalId } from "@connectors/connectors/microsoft/lib/utils";
+import {
+  getColumnsFromListItem,
+  typeAndPathFromInternalId,
+} from "@connectors/connectors/microsoft/lib/utils";
 import { getMimeTypesToSync } from "@connectors/connectors/microsoft/temporal/mime_types";
 import {
   deleteAllSheets,
@@ -153,6 +156,12 @@ export async function syncOneFile({
     );
   }
 
+  // Handle custom columns (metadata) potentially set on the file
+  const columns = await getColumnsFromListItem(
+    file,
+    await getClient(connector.connectionId)
+  );
+
   let result: Result<CoreAPIDataSourceDocumentSection | null, Error>;
 
   const resourceBlob: WithCreationAttributes<MicrosoftNodeModel> = {
@@ -188,6 +197,7 @@ export async function syncOneFile({
       provider: "microsoft",
       connectorId,
       parents,
+      tags: columns,
     });
 
     if (result.isErr()) {
@@ -261,6 +271,8 @@ export async function syncOneFile({
 
     tags.push(`mimeType:${file.file.mimeType}`);
 
+    tags.push(...columns);
+
     if (result.isErr()) {
       if (fileResource) {
         await fileResource.delete();
@@ -284,6 +296,9 @@ export async function syncOneFile({
             ? file.lastModifiedBy.user.displayName ?? undefined
             : undefined,
           content: documentSection,
+          additionalPrefixes: {
+            columns: columns.join(", "),
+          },
         });
 
         const upsertTimestampMs = updatedAt ? updatedAt.getTime() : undefined;
