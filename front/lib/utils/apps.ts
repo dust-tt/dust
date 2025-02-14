@@ -1,6 +1,11 @@
 import type { ApiAppType } from "@dust-tt/client";
 import { DustAPI } from "@dust-tt/client";
-import type { CoreAPIError, Result, TraceType } from "@dust-tt/types";
+import type {
+  CoreAPIError,
+  LightWorkspaceType,
+  Result,
+  TraceType,
+} from "@dust-tt/types";
 import {
   concurrentExecutor,
   CoreAPI,
@@ -9,6 +14,7 @@ import {
   Ok,
   removeNulls,
 } from "@dust-tt/types";
+import assert from "assert";
 import { createParser } from "eventsource-parser";
 import _ from "lodash";
 

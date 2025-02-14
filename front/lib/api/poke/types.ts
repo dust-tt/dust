@@ -34,23 +34,23 @@ export type PluginResponse =
   | { display: "text"; value: string }
   | { display: "json"; value: Record<string, unknown> };
 
-export interface Plugin<T extends PluginArgs> {
-  manifest: PluginManifest<T>;
+export interface Plugin<T extends PluginArgs, V extends string> {
+  manifest: PluginManifest<T, V>;
   execute: (
     auth: Authenticator,
-    resourceId: string | undefined,
+    resourceId: V extends "global" ? undefined : string,
     args: InferPluginArgs<T>
   ) => Promise<Result<PluginResponse, Error>>;
 }
 
-export function createPlugin<T extends PluginArgs>(
-  manifest: PluginManifest<T>,
-  execute: Plugin<T>["execute"]
-): Plugin<T> {
+export function createPlugin<T extends PluginArgs, V extends string>(
+  manifest: PluginManifest<T, V>,
+  execute: Plugin<T, V>["execute"]
+): Plugin<T, V> {
   return { manifest, execute };
 }
 
 export type PluginListItem = Pick<
-  PluginManifest<PluginArgs>,
+  PluginManifest<PluginArgs, string>,
   "id" | "name" | "description"
 >;

@@ -1,5 +1,5 @@
-import type { AppType, Result } from "@dust-tt/types";
-import { Ok } from "@dust-tt/types";
+import type { AppType, LightWorkspaceType, Result } from "@dust-tt/types";
+import { CoreAPI, Err, Ok } from "@dust-tt/types";
 import assert from "assert";
 import type { Attributes, CreationAttributes, ModelStatic } from "sequelize";
 import { Op } from "sequelize";
@@ -10,8 +10,13 @@ import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
 import { RunResource } from "@app/lib/resources/run_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { AppModel, Clone } from "@app/lib/resources/storage/models/apps";
+import {
+  AppModel,
+  Clone,
+  Dataset,
+} from "@app/lib/resources/storage/models/apps";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -100,6 +105,68 @@ export class AppResource extends ResourceWithSpace<AppModel> {
       },
       includeDeleted,
     });
+  }
+
+  // Clone.
+
+  async clone(
+    auth: Authenticator,
+    targetWorkspace: LightWorkspaceType,
+    targetSpace: SpaceResource,
+    {
+      dustAPIProjectId,
+    }: {
+      dustAPIProjectId: string;
+    }
+  ): Promise<Result<AppResource, Error>> {
+    // Only dust super users can clone apps. Authenticator has no write permissions
+    // on the target workspace.
+    if (!auth.isDustSuperUser()) {
+      return new Err(new Error("Only dust super users can clone apps"));
+    }
+
+    if (targetWorkspace.id !== targetSpace.workspaceId) {
+      return new Err(new Error("Target space must belong to target workspace"));
+    }
+
+    // Create new app in target workspace.
+    const newApp = await AppResource.makeNew(
+      {
+        description: this.description,
+        dustAPIProjectId,
+        name: this.name,
+        savedConfig: this.savedConfig,
+        savedSpecification: this.savedSpecification,
+        sId: generateRandomModelSId(),
+        visibility: "private",
+        workspaceId: targetWorkspace.id,
+      },
+      targetSpace
+    );
+
+    // Copy datasets.
+    const datasets = await DatasetResource.listForApp(auth, this);
+
+    for (const dataset of datasets) {
+      await DatasetResource.makeNew(
+        {
+          description: dataset.description,
+          name: dataset.name,
+          schema: dataset.schema,
+          workspaceId: newApp.workspaceId,
+        },
+        newApp
+      );
+    }
+
+    // Create clone relationship.
+    await Clone.create({
+      fromId: this.id,
+      toId: newApp.id,
+      workspaceId: newApp.workspaceId,
+    });
+
+    return new Ok(newApp);
   }
 
   // Mutation.

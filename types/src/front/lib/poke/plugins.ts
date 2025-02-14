@@ -47,13 +47,13 @@ export type StrictPluginArgs = {
 
 export type PluginArgs = Record<string, PluginArgDefinition>;
 
-export interface PluginManifest<T extends PluginArgs> {
+export interface PluginManifest<T extends PluginArgs, V extends string> {
   args: T;
   description: string;
   explanation?: string;
   id: string;
   name: string;
-  resourceTypes: string[];
+  resourceTypes: V[];
   warning?: string;
 }
 
