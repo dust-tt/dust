@@ -338,7 +338,9 @@ export default function Chat({
                     <Label>logprobs</Label>
                     <Checkbox
                       checked={block.spec.logprobs}
-                      onChange={(checked) => handleLogprobsChange(!!checked)}
+                      onCheckedChange={(checked) =>
+                        handleLogprobsChange(!!checked)
+                      }
                     />
                   </div>
                 </div>

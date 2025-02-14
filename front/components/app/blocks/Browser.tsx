@@ -184,7 +184,9 @@ export default function Browser({
                 <Label className="whitespace-nowrap">Error as output</Label>
                 <Checkbox
                   checked={block.config.error_as_output}
-                  onChange={(checked) => handleErrorAsOutputChange(!!checked)}
+                  onCheckedChange={(checked) =>
+                    handleErrorAsOutputChange(!!checked)
+                  }
                   disabled={readOnly}
                 />
               </div>
