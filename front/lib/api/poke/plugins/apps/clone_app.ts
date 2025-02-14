@@ -1,4 +1,5 @@
 import { Err, Ok } from "@dust-tt/types";
+import assert from "assert";
 
 import { cloneAppToWorkspace } from "@app/lib/api/apps";
 import { createPlugin } from "@app/lib/api/poke/types";
@@ -26,6 +27,8 @@ export const cloneAppPlugin = createPlugin(
     },
   },
   async (auth, appId, args) => {
+    assert(appId, "appId is required");
+
     const { targetSpaceId, targetWorkspaceId } = args;
 
     const app = await AppResource.fetchById(auth, appId);
