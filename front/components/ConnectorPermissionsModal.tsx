@@ -57,6 +57,7 @@ import { CreateOrUpdateConnectionBigQueryModal } from "@app/components/data_sour
 import { CreateOrUpdateConnectionSnowflakeModal } from "@app/components/data_source/CreateOrUpdateConnectionSnowflakeModal";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import { setupConnection } from "@app/components/spaces/AddConnectionMenu";
+import { AdvancedNotionManagement } from "@app/components/spaces/AdvancedNotionManagement";
 import { ConnectorDataUpdatedModal } from "@app/components/spaces/ConnectorDataUpdatedModal";
 import {
   CONNECTOR_CONFIGURATIONS,
@@ -69,7 +70,10 @@ import {
 import { useConnectorPermissions } from "@app/lib/swr/connectors";
 import { useSpaceDataSourceViews, useSystemSpace } from "@app/lib/swr/spaces";
 import { useUser } from "@app/lib/swr/user";
-import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
+import {
+  useFeatureFlags,
+  useWorkspaceActiveSubscription,
+} from "@app/lib/swr/workspaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 
 import type { ContentNodeTreeItemStatus } from "./ContentNodeTree";
@@ -610,6 +614,10 @@ export function ConnectorPermissionsModal({
       includeParents: true,
       disabled: !canUpdatePermissions,
     });
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+  const advancedNotionManagement =
+    dataSource.connectorProvider === "notion" &&
+    featureFlags.includes("advanced_notion_management");
 
   const initialTreeSelectionModel = useMemo(
     () =>
@@ -839,7 +847,6 @@ export function ConnectorPermissionsModal({
                       CONNECTOR_CONFIGURATIONS[connector.type]?.isNested
                     }
                   />
-
                   <div className="flex justify-end gap-2 border-t pt-4">
                     <Button
                       label="Cancel"
@@ -853,6 +860,13 @@ export function ConnectorPermissionsModal({
                       onClick={save}
                     />
                   </div>
+                  {advancedNotionManagement && (
+                    <AdvancedNotionManagement
+                      owner={owner}
+                      dataSource={dataSource}
+                      sendNotification={sendNotification}
+                    />
+                  )}
                 </div>
               </SheetContainer>
             </>
