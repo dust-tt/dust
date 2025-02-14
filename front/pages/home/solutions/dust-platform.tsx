@@ -36,14 +36,14 @@ export default function DustPlatform() {
             Build custom actions and&nbsp;application orchestration to&nbsp;fit
             your team's exact&nbsp;needs.
             <br />
-            <a href="https://docs.dust.tt" target="_blank">
-              <Button
-                variant="primary"
-                label="Go to Documentation"
-                size="md"
-                className="mt-8"
-              />
-            </a>
+            <Button
+              variant="primary"
+              label="Go to Documentation"
+              size="md"
+              className="mt-8"
+              href="https://docs.dust.tt"
+              target="_blank"
+            />
           </>
         }
       />

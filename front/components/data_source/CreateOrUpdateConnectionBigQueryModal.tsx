@@ -292,18 +292,15 @@ export function CreateOrUpdateConnectionBigQueryModal({
         <SheetContainer>
           <div className="flex flex-col gap-6">
             <div className="flex flex-col gap-4">
-              <a
+              <Button
+                label="Read our guide"
+                size="sm"
                 href={connectorProviderConfiguration.guideLink ?? ""}
+                variant="outline"
                 target="_blank"
                 rel="noopener noreferrer"
-              >
-                <Button
-                  label="Read our guide"
-                  size="sm"
-                  variant="outline"
-                  icon={BookOpenIcon}
-                />
-              </a>
+                icon={BookOpenIcon}
+              />
 
               {connectorProviderConfiguration.limitations && (
                 <ContentMessage
