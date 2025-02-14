@@ -46,7 +46,7 @@ impl Dataset {
                 hasher.update(serde_json::to_string(&d)?.as_bytes());
                 Ok(())
             })
-            .collect::<Result<_>>()?;
+            .collect::<Result<()>>()?;
 
         let recomputed_hash = format!("{}", hasher.finalize().to_hex());
         assert!(recomputed_hash == hash);
