@@ -15,82 +15,11 @@ interface MenuConfig {
   items: NavItemWithChildren[];
 }
 
-const CareersMenuConfig: MenuConfig = {
-  title: "Careers",
-  items: [
-    {
-      title: "About Us",
-      href: "/home/about",
-      isExternal: false,
-    },
-    {
-      title: "Jobs",
-      href: "/jobs",
-      isExternal: true,
-    },
-    {
-      title: "Why Dust?",
-      href: "https://blog.dust.tt/why-dust/",
-      isExternal: true,
-    },
-  ],
-};
-
-const SocialMenuConfig: MenuConfig = {
-  title: "Social",
-  items: [
-    {
-      title: "X",
-      href: "https://x.com/dust4ai",
-      isExternal: true,
-    },
-    {
-      title: "LinkedIn",
-      href: "https://www.linkedin.com/company/dust-tt/",
-      isExternal: true,
-    },
-    {
-      title: "YouTube",
-      href: "https://www.youtube.com/@dust-tt",
-      isExternal: true,
-    },
-  ],
-};
-
-// If you change this, make sure to update the links in the extension as well.
-const LegalMenuConfig: MenuConfig = {
-  title: "Legal & Security",
-  items: [
-    {
-      title: "Security",
-      href: "/home/security",
-    },
-    {
-      title: "Vulnerability Disclosure",
-      href: "/home/vulnerability",
-    },
-    {
-      title: "Terms & Policies",
-      href: "/terms",
-      isExternal: true,
-    },
-    {
-      title: "Trust Center",
-      href: "https://app.vanta.com/dust.tt/trust/f3ytzxpay31bwsiyuqjto",
-      isExternal: true,
-    },
-    {
-      title: "Privacy Policy",
-      href: "/platform-privacy",
-      isExternal: true,
-    },
-    {
-      title: "Website Privacy Policy",
-      href: "/website-privacy",
-      isExternal: true,
-    },
-  ],
-};
+interface DocsConfig {
+  mainNav: NavItemWithChildren[];
+  mobileNav: NavItemWithChildren[];
+  footerNav: NavItemWithChildren[];
+}
 
 const SolutionsMenuConfig: MenuConfig = {
   title: "Solutions",
@@ -154,7 +83,7 @@ const BuildMenuConfig: MenuConfig = {
   title: "Build",
   items: [
     {
-      title: "Get Started ",
+      title: "Get Started",
       href: "https://docs.dust.tt/docs/intro",
       isExternal: true,
     },
@@ -200,7 +129,6 @@ const ConnectMenuConfig: MenuConfig = {
       href: "https://bit.ly/dust-slack",
       isExternal: true,
     },
-
     {
       title: "Contact Support",
       href: "mailto:support@dust.tt",
@@ -214,23 +142,98 @@ const ConnectMenuConfig: MenuConfig = {
   ],
 };
 
-const CompanyMenuConfig: MenuConfig = {
-  title: "Company",
+const CareersMenuConfig: MenuConfig = {
+  title: "Careers",
   items: [
     {
-      title: CareersMenuConfig.title,
+      title: "About Us",
+      href: "/home/about",
+      isExternal: false,
     },
-    CareersMenuConfig.items[0],
-    CareersMenuConfig.items[1],
     {
-      title: SocialMenuConfig.title,
+      title: "Jobs",
+      href: "/jobs",
+      isExternal: true,
     },
-    SocialMenuConfig.items[0],
-    SocialMenuConfig.items[1],
     {
-      title: "Legal",
+      title: "Why Dust?",
+      href: "https://blog.dust.tt/why-dust/",
+      isExternal: true,
     },
-    LegalMenuConfig.items[1],
+  ],
+};
+
+const SocialMenuConfig: MenuConfig = {
+  title: "Social",
+  items: [
+    {
+      title: "X",
+      href: "https://x.com/dust4ai",
+      isExternal: true,
+    },
+    {
+      title: "LinkedIn",
+      href: "https://www.linkedin.com/company/dust-tt/",
+      isExternal: true,
+    },
+    {
+      title: "YouTube",
+      href: "https://www.youtube.com/@dust-tt",
+      isExternal: true,
+    },
+  ],
+};
+
+const SecurityMenuConfig: MenuConfig = {
+  title: "Security",
+  items: [
+    {
+      title: "Security Overview",
+      href: "/home/security",
+    },
+    {
+      title: "Vulnerability Disclosure",
+      href: "/home/vulnerability",
+    },
+    {
+      title: "Trust Center",
+      href: "https://app.vanta.com/dust.tt/trust/f3ytzxpay31bwsiyuqjto",
+      isExternal: true,
+    },
+  ],
+};
+
+const LegalMenuConfig: MenuConfig = {
+  title: "Legal & Security",
+  items: [
+    {
+      title: "Security",
+      href: "/home/security",
+    },
+    {
+      title: "Vulnerability Disclosure",
+      href: "/home/vulnerability",
+    },
+    {
+      title: "Terms & Policies",
+      href: "/terms",
+      isExternal: true,
+    },
+    {
+      title: "Trust Center",
+      href: "https://app.vanta.com/dust.tt/trust/f3ytzxpay31bwsiyuqjto",
+      isExternal: true,
+    },
+    {
+      title: "Privacy Policy",
+      href: "/platform-privacy",
+      isExternal: true,
+    },
+    {
+      title: "Website Privacy Policy",
+      href: "/website-privacy",
+      isExternal: true,
+    },
   ],
 };
 
@@ -264,11 +267,25 @@ const ResourcesMenuConfig: MenuConfig = {
   ],
 };
 
-interface DocsConfig {
-  mainNav: NavItemWithChildren[];
-  mobileNav: NavItemWithChildren[];
-  footerNav: NavItemWithChildren[];
-}
+const CompanyMenuConfig: MenuConfig = {
+  title: "Company",
+  items: [
+    {
+      title: CareersMenuConfig.title,
+    },
+    CareersMenuConfig.items[0],
+    CareersMenuConfig.items[1],
+    {
+      title: SocialMenuConfig.title,
+    },
+    SocialMenuConfig.items[0],
+    SocialMenuConfig.items[1],
+    {
+      title: "Legal",
+    },
+    LegalMenuConfig.items[1],
+  ],
+};
 
 export const menuConfig: DocsConfig = {
   mainNav: [
@@ -301,8 +318,10 @@ export const menuConfig: DocsConfig = {
       items: CompanyMenuConfig.items,
     },
     {
-      title: "Security",
-      href: "/home/security",
+      title: SecurityMenuConfig.title,
+      label: "Security & Trust",
+      rows: 1,
+      items: SecurityMenuConfig.items,
     },
     {
       title: "Pricing",
