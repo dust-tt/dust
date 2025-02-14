@@ -20,7 +20,6 @@ import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSuggestion";
 import type { EditorService } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
-import type { InputBarContainerProps } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import InputBarContainer from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import {
   CiteBlock,

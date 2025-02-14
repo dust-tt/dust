@@ -5,7 +5,6 @@ import {
   cn,
   FullscreenExitIcon,
   FullscreenIcon,
-  XMarkIcon,
 } from "@dust-tt/sparkle";
 import type {
   AgentMention,
