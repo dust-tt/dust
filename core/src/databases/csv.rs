@@ -284,6 +284,17 @@ mod tests {
         assert_eq!(date["epoch"], 1739545834000i64);
         assert_eq!(date["string_value"], "Fri, 14 Feb 2025 15:10:34 GMT");
 
+        let csv = "__dust_id,super-fast,c/foo,DATE\n\
+                   MYID1,2.23,3,2025-02-14T15:06:52.380Z\n\
+                   MYID2,hello world,6,\"Fri, 14 Feb 2025 15:10:34 GMT\"";
+        let (delimiter, rdr) =
+            UpsertQueueCSVContent::find_delimiter(std::io::Cursor::new(csv)).await?;
+        let rows = UpsertQueueCSVContent::csv_to_rows(rdr, delimiter).await?;
+
+        assert_eq!(rows.len(), 2);
+        assert_eq!(rows[0].row_id, "MYID1");
+        assert_eq!(rows[1].row_id, "MYID2");
+
         Ok(())
     }
 
