@@ -3,14 +3,14 @@ import { mkdir, readFile, writeFile } from "fs/promises";
 import { join } from "path";
 
 export interface TokenData {
-  access_token: string;
-  refresh_token: string | undefined;
-  expires_at: number; // timestamp in milliseconds
+  accessToken: string;
+  refreshToken: string | undefined;
+  expiresAt: number; // timestamp in milliseconds
 }
 
 export interface DustConfig {
-  workspace_id: string;
-  agent_id: string;
+  workspaceId: string;
+  agentId: string;
 }
 
 const CONFIG_DIR = join(homedir(), ".config", "dust-mcp");
@@ -52,7 +52,7 @@ export async function isAuthenticated(): Promise<boolean> {
 
   // Check if token is expired (with 5 minute buffer)
   const now = Date.now();
-  return tokens.expires_at > now + 5 * 60 * 1000;
+  return tokens.expiresAt > now + 5 * 60 * 1000;
 }
 
 export async function saveDustConfig(config: DustConfig): Promise<void> {
