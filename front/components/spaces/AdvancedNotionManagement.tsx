@@ -1,7 +1,20 @@
-import type { NotificationType } from "@dust-tt/sparkle";
-import { Button, TextArea } from "@dust-tt/sparkle";
+import type {
+  DropdownMenu,
+  DropdownMenuItemProps,
+  NotificationType,
+} from "@dust-tt/sparkle";
+import { Button, DataTable, TextArea } from "@dust-tt/sparkle";
 import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
-import { useState } from "react";
+import { CellContext } from "@tanstack/react-table";
+import { useMemo, useState } from "react";
+
+interface TableData {
+  url: string;
+  timestamp: number;
+  onClick?: () => void;
+  moreMenuItems?: DropdownMenuItemProps[];
+  dropdownMenuProps?: React.ComponentPropsWithoutRef<typeof DropdownMenu>;
+}
 
 export function AdvancedNotionManagement({
   owner,
@@ -38,6 +51,32 @@ export function AdvancedNotionManagement({
     setError(undefined);
     return true;
   };
+
+  const {
+    lastSyncedUrls,
+    isLoading,
+  }: { lastSyncedUrls: TableData[]; isLoading: boolean } =
+    useNotionLastSyncedUrls();
+
+  const columns = [
+    {
+      header: "Time",
+      accessorKey: "timestamp",
+      cell: (info: CellContext<TableData, string>) => (
+        <DataTable.CellContent>
+          <div>
+            {new Date(info.row.original.timestamp).toLocaleTimeString("en-US", {
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: false,
+            })}
+          </div>
+        </DataTable.CellContent>
+      ),
+    },
+    { header: "URL", accessorKey: "url" },
+  ];
+
   async function syncURLs() {
     setSyncing(true);
     // Remove empty strings and duplicates
@@ -104,6 +143,23 @@ export function AdvancedNotionManagement({
           disabled={syncing}
         />
       </div>
+      {/* List of the last 50 synced URLs */}
+      {lastSyncedUrls.length > 0 && (
+        <>
+          <div className="p-1">Recently synced URLs</div>
+          <DataTable columns={columns} data={lastSyncedUrls} />
+        </>
+      )}
     </>
   );
+}
+function useNotionLastSyncedUrls(): { lastSyncedUrls: any; isLoading: any } {
+  return {
+    lastSyncedUrls: [
+      { url: "TODO", timestamp: new Date() },
+      { url: "https://www.notion.so/...", timestamp: new Date() },
+      { url: "https://www.notion.so/...", timestamp: new Date() },
+    ],
+    isLoading: false,
+  };
 }
