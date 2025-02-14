@@ -2,12 +2,19 @@ import {
   BookOpenIcon,
   Button,
   CloudArrowLeftRightIcon,
+  ContentMessage,
+  Icon,
   InformationCircleIcon,
   Label,
-  Modal,
   Page,
   RadioGroup,
   RadioGroupCustomItem,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
   TextArea,
   Tooltip,
 } from "@dust-tt/sparkle";
@@ -272,136 +279,120 @@ export function CreateOrUpdateConnectionBigQueryModal({
   };
 
   return (
-    <Modal
-      isOpen={isOpen}
-      title="Connection Setup"
-      onClose={onClose}
-      hasChanged={false}
-      variant="side-sm"
-    >
-      <Page variant="modal">
-        <div className="w-full">
-          <Page.Vertical sizing="grow">
-            <Page.Header
-              title={`Connecting ${connectorProviderConfiguration.name}`}
-              icon={connectorProviderConfiguration.logoComponent}
-            />
-            <a
-              href={connectorProviderConfiguration.guideLink ?? ""}
-              target="_blank"
-            >
+    <Sheet open={isOpen} onOpenChange={onClose}>
+      <SheetContent size="lg">
+        <SheetHeader>
+          <SheetTitle className="flex items-center gap-2">
+            <span className="[&>svg]:h-6 [&>svg]:w-6">
+              <Icon visual={connectorProviderConfiguration.logoComponent} />
+            </span>
+            Connecting {connectorProviderConfiguration.name}
+          </SheetTitle>
+        </SheetHeader>
+        <SheetContainer>
+          <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-4">
               <Button
                 label="Read our guide"
-                size="xs"
+                size="sm"
+                href={connectorProviderConfiguration.guideLink ?? ""}
                 variant="outline"
+                target="_blank"
+                rel="noopener noreferrer"
                 icon={BookOpenIcon}
               />
-            </a>
-            {connectorProviderConfiguration.limitations && (
-              <div className="flex flex-col gap-y-2">
-                <div className="grow text-sm font-medium text-element-800">
-                  Limitations
-                </div>
-                <div className="text-sm font-normal text-element-700">
+
+              {connectorProviderConfiguration.limitations && (
+                <ContentMessage
+                  variant="slate"
+                  title="Limitations"
+                  className="border-none"
+                >
                   {connectorProviderConfiguration.limitations}
-                </div>
-              </div>
+                </ContentMessage>
+              )}
+            </div>
+
+            {error && (
+              <ContentMessage variant="red" title="Connection Error">
+                {error}
+              </ContentMessage>
             )}
 
             <Page.SectionHeader title="BigQuery Credentials" />
-
-            {error && (
-              <div className="w-full rounded-md bg-red-100 p-4 text-red-800">
-                {error}
-              </div>
-            )}
-
-            <div className="w-full space-y-4">
-              <TextArea
-                className="min-h-[325px]"
-                name="service_account_json"
-                value={credentials}
-                placeholder="paste the content of your service account JSON here"
-                onChange={(e) => {
-                  setCredentials(e.target.value);
-                }}
-              />
-            </div>
+            <TextArea
+              className="font-mono min-h-[300px] text-[13px]"
+              name="service_account_json"
+              value={credentials}
+              placeholder="Paste service account JSON here"
+              onChange={(e) => setCredentials(e.target.value)}
+            />
 
             {needToSelectLocation && (
-              <div className="flex flex-col gap-y-4">
-                <div className="text-sm font-medium text-element-800">
-                  Select a location
-                </div>
+              <div className="flex flex-col gap-4">
+                <Page.SectionHeader title="Select Location" />
                 <RadioGroup
                   value={selectedLocation}
                   onValueChange={setSelectedLocation}
                 >
-                  <div className="flex flex-col items-start gap-y-2">
-                    {Object.entries(locations).map(([location, tables]) => (
-                      <RadioGroupCustomItem
-                        key={location}
-                        id={location}
-                        value={location}
-                        customItem={
-                          <Tooltip
-                            label={
-                              <Label htmlFor={location}>
-                                This location contains {tables.length} tables
-                                that can be connected :{" "}
-                                <span className="text-xs text-gray-500">
-                                  {tables.join(", ")}
-                                </span>
-                              </Label>
-                            }
-                            trigger={
-                              <div className="flex items-center gap-1">
-                                <b>{location}</b> - {tables.length} tables{" "}
-                                <InformationCircleIcon />
-                              </div>
-                            }
-                          />
-                        }
-                      />
-                    ))}
-                  </div>
+                  {Object.entries(locations).map(([location, tables]) => (
+                    <RadioGroupCustomItem
+                      key={location}
+                      id={location}
+                      value={location}
+                      customItem={
+                        <Tooltip
+                          label={
+                            <Label htmlFor={location}>
+                              This location contains {tables.length} tables that
+                              can be connected :{" "}
+                              <span className="text-xs text-gray-500">
+                                {tables.join(", ")}
+                              </span>
+                            </Label>
+                          }
+                          trigger={
+                            <div className="flex items-center gap-1">
+                              <b>{location}</b> - {tables.length} tables{" "}
+                              <InformationCircleIcon />
+                            </div>
+                          }
+                        />
+                      }
+                    />
+                  ))}
                 </RadioGroup>
               </div>
             )}
-
-            <div className="flex justify-center pt-2">
-              <div className="flex gap-2">
-                <Button
-                  variant="highlight"
-                  size="md"
-                  icon={CloudArrowLeftRightIcon}
-                  onClick={() => {
-                    setIsLoading(true);
-                    if (dataSourceToUpdate) {
-                      void updateBigQueryConnection();
-                    } else {
-                      void createBigQueryConnection();
-                    }
-                  }}
-                  disabled={
-                    isLoading ||
-                    isLocationsLoading ||
-                    !credentialsState.valid ||
-                    !selectedLocation
-                  }
-                  label={
-                    isLoading
-                      ? "Connecting..."
-                      : dataSourceToUpdate
-                        ? "Update connection"
-                        : "Connect and select tables"
-                  }
-                />
-              </div>
-            </div>
-          </Page.Vertical>
-        </div>
-      </Page>
-    </Modal>
+          </div>
+        </SheetContainer>
+        <SheetFooter
+          leftButtonProps={{
+            label: "Cancel",
+            variant: "outline",
+          }}
+          rightButtonProps={{
+            label: isLoading
+              ? "Connecting..."
+              : dataSourceToUpdate
+                ? "Update Connection"
+                : "Connect Tables",
+            icon: CloudArrowLeftRightIcon,
+            onClick: () => {
+              setIsLoading(true);
+              dataSourceToUpdate
+                ? void updateBigQueryConnection()
+                : void createBigQueryConnection();
+            },
+            disabled:
+              isLoading ||
+              isLocationsLoading ||
+              !credentialsState.valid ||
+              !selectedLocation,
+            size: "md",
+          }}
+        />
+      </SheetContent>
+    </Sheet>
   );
 }

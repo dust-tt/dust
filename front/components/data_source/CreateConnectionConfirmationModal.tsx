@@ -72,17 +72,14 @@ export function CreateConnectionConfirmationModal({
                 title={`Connecting ${connectorProviderConfiguration.name}`}
                 icon={connectorProviderConfiguration.logoComponent}
               />
-              <a
+              <Button
+                label="Read our guide"
+                size="xs"
+                variant="outline"
                 href={connectorProviderConfiguration.guideLink ?? ""}
                 target="_blank"
-              >
-                <Button
-                  label="Read our guide"
-                  size="xs"
-                  variant="outline"
-                  icon={BookOpenIcon}
-                />
-              </a>
+                icon={BookOpenIcon}
+              />
               {connectorProviderConfiguration.connectorProvider ===
                 "google_drive" && (
                 <>
