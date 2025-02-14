@@ -4,6 +4,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  Input,
+  Label,
 } from "@dust-tt/sparkle";
 import type {
   AppType,
@@ -113,7 +115,7 @@ export default function Search({
       onBlockDown={onBlockDown}
       onBlockNew={onBlockNew}
     >
-      <div className="mx-4 flex w-full flex-col">
+      <div className="flex w-full flex-col gap-4">
         <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
           <div className="flex flex-initial">provider:</div>
           {/* Owner has zero search providers */}
@@ -164,45 +166,26 @@ export default function Search({
             </DropdownMenu>
           )}
         </div>
-        <div className="flex flex-col xl:flex-row xl:space-x-2">
-          <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
-            <div className="flex flex-initial">num:</div>
-            <div className="flex flex-initial font-normal">
-              <input
-                type="text"
-                className={classNames(
-                  "block w-8 flex-1 rounded-md px-1 py-1 text-sm font-normal",
-                  readOnly
-                    ? "border-white ring-0 focus:border-white focus:ring-0"
-                    : "border-white focus:border-gray-300 focus:ring-0"
-                )}
-                readOnly={readOnly}
-                value={block.spec.num}
-                onChange={(e) => handleNumChange(e.target.value)}
-              />
-            </div>
-          </div>
+        <div className="flex flex-col gap-2">
+          <Label>Num</Label>
+          <Input
+            type="text"
+            placeholder=""
+            readOnly={readOnly}
+            value={block.spec.num}
+            onChange={(e) => handleNumChange(e.target.value)}
+          />
         </div>
-        <div className="flex flex-col space-y-1 text-sm font-medium leading-8 text-gray-700">
-          <div className="flex flex-initial flex-row items-center space-x-1">
-            <div className="flex flex-initial items-center">query:</div>
-          </div>
+        <div className="flex flex-col gap-2">
+          <Label>Query</Label>
 
-          <div className="flex w-full font-normal">
-            <input
-              type="text"
-              placeholder=""
-              className={classNames(
-                "font-mono block w-full resize-none bg-slate-100 px-1 py-1 text-[13px] font-normal",
-                readOnly
-                  ? "border-white ring-0 focus:border-white focus:ring-0"
-                  : "border-white focus:border-white focus:ring-0"
-              )}
-              readOnly={readOnly}
-              value={block.spec.query}
-              onChange={(e) => handleQueryChange(e.target.value)}
-            />
-          </div>
+          <Input
+            type="text"
+            placeholder=""
+            readOnly={readOnly}
+            value={block.spec.query}
+            onChange={(e) => handleQueryChange(e.target.value)}
+          />
         </div>
       </div>
     </Block>

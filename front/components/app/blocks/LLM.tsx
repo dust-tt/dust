@@ -1,5 +1,6 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
+import { Input, Label } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type {
   AppType,
@@ -151,6 +152,8 @@ export default function LLM({
 
   const [newStop, setNewStop] = useState("");
 
+  const theme = localStorage.getItem("theme");
+
   return (
     <Block
       owner={owner}
@@ -172,7 +175,7 @@ export default function LLM({
       <div className="mx-4 flex w-full flex-col">
         <div className="flex flex-col xl:flex-row xl:space-x-2">
           <div className="mr-2 flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
-            <div className="mr-1 flex flex-initial">model:</div>
+            <Label>Model</Label>
             <ModelPicker
               owner={owner}
               readOnly={readOnly}
@@ -189,16 +192,10 @@ export default function LLM({
             />
           </div>
           <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
-            <div className="flex flex-initial">temperature:</div>
+            <Label>Temperature</Label>
             <div className="flex flex-initial font-normal">
-              <input
+              <Input
                 type="text"
-                className={classNames(
-                  "block w-8 flex-1 rounded-md px-1 py-1 text-sm font-normal",
-                  readOnly
-                    ? "border-white ring-0 focus:border-white focus:ring-0"
-                    : "border-white focus:border-gray-300 focus:ring-0"
-                )}
                 readOnly={readOnly}
                 value={block.spec.temperature}
                 onChange={(e) => handleTemperatureChange(e.target.value)}
@@ -208,14 +205,8 @@ export default function LLM({
           <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
             <div className="flex flex-initial">max tokens:</div>
             <div className="flex flex-initial font-normal">
-              <input
+              <Input
                 type="text"
-                className={classNames(
-                  "block w-12 flex-1 rounded-md px-1 py-1 text-sm font-normal",
-                  readOnly
-                    ? "border-white ring-0 focus:border-white focus:ring-0"
-                    : "border-white focus:border-gray-300 focus:ring-0"
-                )}
                 spellCheck={false}
                 readOnly={readOnly}
                 value={block.spec.max_tokens}
@@ -224,7 +215,7 @@ export default function LLM({
             </div>
           </div>
           <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
-            <div className="flex flex-initial">stop:</div>
+            <Label>Stop</Label>
             <div className="flex w-full font-normal">
               <div
                 className={classNames(
@@ -244,18 +235,11 @@ export default function LLM({
                   )}
                 </div>
                 {readOnly ? null : (
-                  <input
+                  <Input
                     type="text"
                     placeholder="add"
                     value={newStop}
                     onChange={(e) => setNewStop(e.target.value)}
-                    className={classNames(
-                      "ml-1 flex w-20 flex-1 rounded-md px-1 py-1 text-sm font-normal ring-0",
-                      "placeholder-gray-300",
-                      readOnly
-                        ? "border-white ring-0 focus:border-white focus:ring-0"
-                        : "border-white focus:border-gray-300 focus:ring-0"
-                    )}
                     readOnly={readOnly}
                     onBlur={(e) => {
                       if (e.target.value.trim().length > 0) {
@@ -292,7 +276,7 @@ export default function LLM({
               <span>
                 <ChevronDownIcon className="mr-1 mt-0.5 h-4 w-4" />
               </span>
-              advanced
+              Advanced
             </div>
           ) : (
             <div
@@ -302,7 +286,7 @@ export default function LLM({
               <span>
                 <ChevronRightIcon className="mr-1 mt-0.5 h-4 w-4" />
               </span>
-              advanced
+              Advanced
             </div>
           )}
           {advancedExpanded ? (
@@ -310,14 +294,8 @@ export default function LLM({
               <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
                 <div className="flex flex-initial">frequency_penalty:</div>
                 <div className="flex flex-initial font-normal">
-                  <input
+                  <Input
                     type="text"
-                    className={classNames(
-                      "block w-8 flex-1 rounded-md px-1 py-1 text-sm font-normal",
-                      readOnly
-                        ? "border-white ring-0 focus:border-white focus:ring-0"
-                        : "border-white focus:border-gray-300 focus:ring-0"
-                    )}
                     spellCheck={false}
                     readOnly={readOnly}
                     value={block.spec.frequency_penalty}
@@ -330,14 +308,8 @@ export default function LLM({
               <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
                 <div className="flex flex-initial">presence_penalty:</div>
                 <div className="flex flex-initial font-normal">
-                  <input
+                  <Input
                     type="text"
-                    className={classNames(
-                      "block w-8 flex-1 rounded-md px-1 py-1 text-sm font-normal",
-                      readOnly
-                        ? "border-white ring-0 focus:border-white focus:ring-0"
-                        : "border-white focus:border-gray-300 focus:ring-0"
-                    )}
                     spellCheck={false}
                     readOnly={readOnly}
                     value={block.spec.presence_penalty}
@@ -350,14 +322,8 @@ export default function LLM({
               <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
                 <div className="flex flex-initial">top_p:</div>
                 <div className="flex flex-initial font-normal">
-                  <input
+                  <Input
                     type="text"
-                    className={classNames(
-                      "block w-8 flex-1 rounded-md px-1 py-1 text-sm font-normal",
-                      readOnly
-                        ? "border-white ring-0 focus:border-white focus:ring-0"
-                        : "border-white focus:border-gray-300 focus:ring-0"
-                    )}
                     spellCheck={false}
                     readOnly={readOnly}
                     value={block.spec.top_p}
@@ -368,14 +334,8 @@ export default function LLM({
               <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
                 <div className="flex flex-initial">top_logprobs:</div>
                 <div className="flex flex-initial font-normal">
-                  <input
+                  <Input
                     type="text"
-                    className={classNames(
-                      "block w-8 flex-1 rounded-md px-1 py-1 text-sm font-normal",
-                      readOnly
-                        ? "border-white ring-0 focus:border-white focus:ring-0"
-                        : "border-white focus:border-gray-300 focus:ring-0"
-                    )}
                     spellCheck={false}
                     readOnly={readOnly}
                     value={block.spec.top_logprobs}
@@ -459,14 +419,8 @@ export default function LLM({
                 <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
                   <div className="flex flex-initial">count:</div>
                   <div className="flex flex-initial font-normal">
-                    <input
+                    <Input
                       type="text"
-                      className={classNames(
-                        "block w-8 flex-1 px-1 py-1 text-sm font-normal",
-                        readOnly
-                          ? "border-white ring-0 focus:border-white focus:ring-0"
-                          : "border-white focus:border-gray-300 focus:ring-0"
-                      )}
                       spellCheck={false}
                       readOnly={readOnly}
                       value={block.spec.few_shot_count}
@@ -483,29 +437,24 @@ export default function LLM({
           <div className="flex flex-initial items-center">prompt:</div>
           <div className="flex w-full font-normal">
             <div className="w-full leading-5">
-              <div
-                className={classNames("border border-slate-100 bg-slate-100")}
+              <CodeEditor
+                data-color-mode={theme === "dark" ? "dark" : "light"}
+                readOnly={readOnly}
+                value={block.spec.prompt}
+                language="jinja2"
+                placeholder=""
+                onChange={(e) => handlePromptChange(e.target.value)}
+                padding={3}
+                minHeight={80}
+                className="rounded-lg bg-slate-100 dark:bg-slate-100-night"
                 style={{
-                  minHeight: "48px",
+                  color: "rgb(55 65 81)",
+                  fontSize: 13,
+                  fontFamily:
+                    "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+                  backgroundColor: "rgb(241 245 249)",
                 }}
-              >
-                <CodeEditor
-                  data-color-mode="light"
-                  readOnly={readOnly}
-                  value={block.spec.prompt}
-                  language="jinja2"
-                  placeholder=""
-                  onChange={(e) => handlePromptChange(e.target.value)}
-                  padding={3}
-                  style={{
-                    color: "rgb(55 65 81)",
-                    fontSize: 13,
-                    fontFamily:
-                      "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
-                    backgroundColor: "rgb(241 245 249)",
-                  }}
-                />
-              </div>
+              />
             </div>
           </div>
         </div>

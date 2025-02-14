@@ -1,6 +1,6 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
-import { Button, PlusIcon, XMarkIcon } from "@dust-tt/sparkle";
+import { Button, Label, PlusIcon, XMarkIcon } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type {
   AppType,
@@ -89,9 +89,7 @@ export function TablesManager({
 
   return (
     <div className="pb-2">
-      <div className="mr-1 flex pt-1 text-sm font-medium text-gray-700">
-        Table:
-      </div>
+      <Label>Table</Label>
       {block.config.tables?.map((table: TableConfig, index: number) => (
         <div key={index}>
           <div className="flex flex-col items-center xl:flex-row">
@@ -153,7 +151,10 @@ export function TablesManager({
               <div>
                 <Button
                   onClick={() => removeTable(index)}
-                  className="text-slate-400 hover:text-muted-foreground"
+                  className={classNames(
+                    "text-slate-400 dark:text-slate-400",
+                    "hover:text-muted-foreground dark:hover:text-muted-foreground"
+                  )}
                   icon={XMarkIcon}
                   size="xs"
                   variant="secondary"
@@ -213,6 +214,7 @@ export default function Database({
   onBlockDown: () => void;
   onBlockNew: (blockType: BlockType | "map_reduce" | "while_end") => void;
 }>) {
+  const theme = localStorage.getItem("theme");
   return (
     <Block
       owner={owner}
@@ -241,39 +243,29 @@ export default function Database({
         />
 
         <div>
-          <div className="flex pb-2 text-sm font-medium text-gray-700">
-            query:
-          </div>
-          <div className="flex w-full font-normal">
-            <div className="w-full leading-5">
-              <div
-                className={classNames("border border-slate-100 bg-slate-100")}
-                style={{
-                  minHeight: "48px",
-                }}
-              >
-                <CodeEditor
-                  data-color-mode="light"
-                  readOnly={readOnly}
-                  value={block.spec.query}
-                  language="jinja2"
-                  placeholder=""
-                  onChange={(e) => {
-                    const b = shallowBlockClone(block);
-                    b.spec.query = e.target.value;
-                    onBlockUpdate(b);
-                  }}
-                  padding={3}
-                  style={{
-                    color: "rgb(55 65 81)",
-                    fontSize: 13,
-                    fontFamily:
-                      "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
-                    backgroundColor: "rgb(241 245 249)",
-                  }}
-                />
-              </div>
-            </div>
+          <Label>Query</Label>
+          <div className="w-full font-normal">
+            <CodeEditor
+              data-color-mode={theme === "dark" ? "dark" : "light"}
+              readOnly={readOnly}
+              value={block.spec.query}
+              language="jinja2"
+              placeholder=""
+              onChange={(e) => {
+                const b = shallowBlockClone(block);
+                b.spec.query = e.target.value;
+                onBlockUpdate(b);
+              }}
+              padding={3}
+              minHeight={80}
+              className="rounded-lg bg-slate-100 dark:bg-slate-100-night"
+              style={{
+                color: "rgb(55 65 81)",
+                fontSize: 13,
+                fontFamily:
+                  "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+              }}
+            />
           </div>
         </div>
       </div>

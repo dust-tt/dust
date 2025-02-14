@@ -1,4 +1,4 @@
-import { ChevronDownIcon, ChevronRightIcon } from "@dust-tt/sparkle";
+import { Button, Checkbox, Collapsible, Input, Label } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type {
   AppType,
@@ -6,12 +6,10 @@ import type {
   SpecificationType,
 } from "@dust-tt/types";
 import type { BlockType, RunType } from "@dust-tt/types";
-import Link from "next/link";
-import { useState } from "react";
 
 import { filterServiceProviders } from "@app/lib/providers";
 import { useProviders } from "@app/lib/swr/apps";
-import { classNames, shallowBlockClone } from "@app/lib/utils";
+import { shallowBlockClone } from "@app/lib/utils";
 
 import Block from "./Block";
 
@@ -119,8 +117,6 @@ export default function Browser({
     onBlockUpdate(b);
   };
 
-  const [advancedExpanded, setAdvancedExpanded] = useState(false);
-
   return (
     <Block
       owner={owner}
@@ -139,184 +135,96 @@ export default function Browser({
       onBlockDown={onBlockDown}
       onBlockNew={onBlockNew}
     >
-      <div className="mx-4 flex w-full flex-col">
-        <div className="flex flex-col text-sm font-medium leading-8 text-gray-500">
-          {advancedExpanded ? (
-            <div
-              onClick={() => setAdvancedExpanded(false)}
-              className="-ml-5 flex w-24 flex-initial cursor-pointer items-center font-bold"
-            >
-              <span>
-                <ChevronDownIcon className="mr-1 mt-0.5 h-4 w-4" />
-              </span>
-              advanced
-            </div>
-          ) : (
-            <div
-              onClick={() => setAdvancedExpanded(true)}
-              className="-ml-5 flex w-24 flex-initial cursor-pointer items-center font-bold"
-            >
-              <span>
-                <ChevronRightIcon className="mr-1 mt-0.5 h-4 w-4" />
-              </span>
-              advanced
-            </div>
-          )}
-          {advancedExpanded ? (
-            <div className="flex flex-col">
-              <div className="flex flex-col xl:flex-row xl:space-x-2">
-                <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
-                  <div className="flex flex-initial">error as output:</div>
-                  <div className="flex flex-initial font-normal">
-                    <input
-                      type="checkbox"
-                      className={classNames(
-                        "ml-1 mr-4 h-4 w-4 rounded border-gray-300 bg-gray-100 text-action-600 focus:ring-2 focus:ring-white",
-                        readOnly ? "" : "cursor-pointer"
-                      )}
-                      checked={block.config.error_as_output}
-                      onClick={(e) => {
-                        if (readOnly) {
-                          e.preventDefault();
-                        }
-                      }}
-                      onChange={(e) => {
-                        handleErrorAsOutputChange(e.target.checked);
-                      }}
-                    />
-                  </div>
-                </div>
-                <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
-                  <div className="flex flex-initial">timeout:</div>
-                  <div className="flex flex-initial font-normal">
-                    <input
-                      type="text"
-                      className={classNames(
-                        "block w-16 flex-1 rounded-md px-1 py-1 text-sm font-normal",
-                        readOnly
-                          ? "border-white ring-0 focus:border-white focus:ring-0"
-                          : "border-white focus:border-gray-300 focus:ring-0"
-                      )}
-                      spellCheck={false}
-                      readOnly={readOnly}
-                      value={block.spec.timeout}
-                      onChange={(e) => handleTimeoutChange(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
-                  <div className="flex flex-initial">wait until:</div>
-                  <div className="flex flex-initial font-normal">
-                    <input
-                      type="text"
-                      className={classNames(
-                        "block w-32 flex-1 rounded-md px-1 py-1 text-sm font-normal",
-                        readOnly
-                          ? "border-white ring-0 focus:border-white focus:ring-0"
-                          : "border-white focus:border-gray-300 focus:ring-0"
-                      )}
-                      spellCheck={false}
-                      readOnly={readOnly}
-                      value={block.spec.wait_until}
-                      onChange={(e) => handleWaitUntilChange(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <div className="flex flex-1 flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
-                  <div className="flex flex-initial">wait for:</div>
-                  <div className="flex flex-1 font-normal">
-                    <input
-                      type="text"
-                      placeholder=""
-                      className={classNames(
-                        "block w-32 flex-1 rounded-md px-1 py-1 text-sm font-normal",
-                        readOnly
-                          ? "border-white ring-0 focus:border-white focus:ring-0"
-                          : "border-white focus:border-gray-300 focus:ring-0"
-                      )}
-                      spellCheck={false}
-                      readOnly={readOnly}
-                      value={block.spec.wait_for}
-                      onChange={(e) => handleWaitForChange(e.target.value)}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : null}
-        </div>
-
-        <div className="flex flex-col space-y-1 text-sm font-medium leading-8 text-gray-700">
-          <div className="flex flex-initial flex-row items-center space-x-1">
-            <div className="flex flex-initial items-center">
-              URL (with scheme):
-            </div>
-            {!isProvidersLoading && !browserlessAPIProvider && !readOnly ? (
+      <div className="flex w-full flex-col gap-4 pt-2 text-sm">
+        <div className="flex w-full flex-col gap-2">
+          <div className="flex flex-row items-center gap-2">
+            <Label>URL (with scheme)</Label>
+            {!isProvidersLoading && !browserlessAPIProvider && !readOnly && (
               <div className="px-2">
-                {isAdmin ? (
-                  <Link
-                    href={`/w/${owner.sId}/developers/providers`}
-                    className={classNames(
-                      "inline-flex items-center rounded-md py-1 text-sm font-normal",
-                      "border px-3",
-                      readOnly
-                        ? "border-white text-gray-300"
-                        : "border-orange-400 text-gray-700",
-                      "focus:outline-none focus:ring-0"
-                    )}
-                  >
-                    Setup Browserless API
-                  </Link>
-                ) : (
-                  <div
-                    className={classNames(
-                      "inline-flex items-center rounded-md py-1 text-sm font-normal",
-                      "border px-3",
-                      "border-white text-gray-300"
-                    )}
-                  >
-                    Browserless API not available
-                  </div>
-                )}
+                <Button
+                  href={`/w/${owner.sId}/developers/providers`}
+                  variant="warning"
+                  label={
+                    isAdmin
+                      ? "Setup Browserless API"
+                      : "Browserless API not available"
+                  }
+                  readOnly={!isAdmin}
+                  size="xs"
+                />
               </div>
-            ) : null}
+            )}
           </div>
-          <div className="flex w-full font-normal">
-            <input
-              type="text"
-              placeholder=""
-              className={classNames(
-                "font-mono block w-full resize-none bg-slate-100 px-1 py-1 text-[13px] font-normal",
-                readOnly
-                  ? "border-white ring-0 focus:border-white focus:ring-0"
-                  : "border-white focus:border-white focus:ring-0"
-              )}
-              spellCheck={false}
-              readOnly={readOnly}
-              value={block.spec.url}
-              onChange={(e) => handleUrlChange(e.target.value)}
-            />
-          </div>
-
-          <div className="flex flex-initial flex-row items-center space-x-1">
-            <div className="flex flex-initial items-center">CSS selector:</div>
-          </div>
-          <div className="flex w-full font-normal">
-            <input
-              type="text"
-              placeholder=""
-              className={classNames(
-                "font-mono block w-full resize-none bg-slate-100 px-1 py-1 text-[13px] font-normal",
-                readOnly
-                  ? "border-white ring-0 focus:border-white focus:ring-0"
-                  : "border-white focus:border-white focus:ring-0"
-              )}
-              readOnly={readOnly}
-              value={block.spec.selector}
-              onChange={(e) => handleSelectorChange(e.target.value)}
-            />
-          </div>
+          <Input
+            type="text"
+            placeholder=""
+            spellCheck={false}
+            readOnly={readOnly}
+            value={block.spec.url}
+            onChange={(e) => handleUrlChange(e.target.value)}
+          />
         </div>
+
+        <div className="flex w-full flex-col gap-2">
+          <Label>CSS selector</Label>
+          <Input
+            type="text"
+            placeholder=""
+            readOnly={readOnly}
+            value={block.spec.selector}
+            onChange={(e) => handleSelectorChange(e.target.value)}
+          />
+        </div>
+
+        <Collapsible defaultOpen={false}>
+          <Collapsible.Button label="Advanced" />
+          <Collapsible.Panel>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+              <div className="flex items-center space-x-2">
+                <Label className="whitespace-nowrap">Error as output</Label>
+                <Checkbox
+                  checked={block.config.error_as_output}
+                  onChange={(checked) => handleErrorAsOutputChange(!!checked)}
+                  disabled={readOnly}
+                />
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Label className="whitespace-nowrap">Timeout</Label>
+                <Input
+                  type="text"
+                  readOnly={readOnly}
+                  spellCheck={false}
+                  value={block.spec.timeout}
+                  onChange={(e) => handleTimeoutChange(e.target.value)}
+                />
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Label className="whitespace-nowrap">Wait until</Label>
+                <Input
+                  type="text"
+                  spellCheck={false}
+                  readOnly={readOnly}
+                  value={block.spec.wait_until}
+                  onChange={(e) => handleWaitUntilChange(e.target.value)}
+                />
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Label className="whitespace-nowrap">Wait for</Label>
+                <Input
+                  type="text"
+                  placeholder=""
+                  spellCheck={false}
+                  readOnly={readOnly}
+                  value={block.spec.wait_for}
+                  onChange={(e) => handleWaitForChange(e.target.value)}
+                />
+              </div>
+            </div>
+          </Collapsible.Panel>
+        </Collapsible>
       </div>
     </Block>
   );

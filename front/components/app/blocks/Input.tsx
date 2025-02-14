@@ -1,6 +1,7 @@
 import {
   Button,
   EyeIcon,
+  Label,
   PencilSquareIcon,
   Sheet,
   SheetContainer,
@@ -128,7 +129,7 @@ export default function Input({
           <div>
             {!((!block.config || !block.config.dataset) && readOnly) ? (
               <div className="flex flex-row items-center space-x-2 text-sm font-medium leading-8 text-gray-700">
-                Dataset:&nbsp;
+                <Label>Dataset</Label>
                 <DatasetPicker
                   owner={owner}
                   app={app}

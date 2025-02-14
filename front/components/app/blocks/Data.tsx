@@ -1,4 +1,4 @@
-import { Button, PencilSquareIcon } from "@dust-tt/sparkle";
+import { Button, Label, PencilSquareIcon } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type {
   AppType,
@@ -67,9 +67,9 @@ export default function Data({
       onBlockNew={onBlockNew}
       canUseCache={false}
     >
-      <div className="mx-4 flex flex-col sm:flex-row sm:space-x-2">
-        <div className="flex flex-row items-center space-x-2 text-sm font-medium leading-8 text-gray-700">
-          <div className="flex flex-initial">dataset:</div>
+      <div className="flex flex-col sm:flex-row">
+        <div className="flex flex-row items-center text-sm font-medium leading-8 text-gray-700">
+          <Label>Dataset</Label>
           {block.spec.dataset_id && block.spec.hash ? (
             <div className="flex items-center">
               {block.spec.dataset_id}
