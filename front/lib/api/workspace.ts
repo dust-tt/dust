@@ -532,7 +532,7 @@ export async function updateWorkspaceToBusinessPlan(
 
     if (!subscription || !subscription.sId) {
       throw new Error(
-        `Cannot subscribe to ${planCode}: Workspace has no subscription..`
+        `Cannot subscribe to ${planCode}: Workspace has no subscription.`
       );
     }
     await subscription.update({ planId: newPlan.id });
