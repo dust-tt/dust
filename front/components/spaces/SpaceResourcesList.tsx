@@ -1,4 +1,4 @@
-import type { DropdownMenuItemProps, MenuItem } from "@dust-tt/sparkle";
+import type { MenuItem } from "@dust-tt/sparkle";
 import {
   Button,
   Chip,
@@ -26,7 +26,6 @@ import type {
 import { isWebsiteOrFolderCategory } from "@dust-tt/types";
 import type { ColumnDef, SortingState } from "@tanstack/react-table";
 import { useRouter } from "next/router";
-import type { MouseEventHandler } from "react";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
@@ -38,6 +37,7 @@ import { AddConnectionMenu } from "@app/components/spaces/AddConnectionMenu";
 import { EditSpaceManagedDataSourcesViews } from "@app/components/spaces/EditSpaceManagedDatasourcesViews";
 import { EditSpaceStaticDatasourcesViews } from "@app/components/spaces/EditSpaceStaticDatasourcesViews";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
+import { ViewFolderAPIModal } from "@app/components/ViewFolderAPIModal";
 import {
   getConnectorProviderLogoWithFallback,
   isConnectorPermissionsEditable,
@@ -50,15 +50,6 @@ import {
 } from "@app/lib/swr/spaces";
 import { classNames } from "@app/lib/utils";
 
-import { ViewFolderAPIModal } from "../ViewFolderAPIModal";
-
-type MoreMenuItem = Omit<DropdownMenuItemProps, "children" | "onClick"> & {
-  label: string;
-  variant?: "default" | "warning";
-  onClick?: MouseEventHandler<HTMLDivElement>;
-  children?: undefined;
-};
-
 export interface RowData {
   dataSourceView: DataSourceViewsWithDetails;
   label: string;
@@ -68,7 +59,7 @@ export interface RowData {
   isLoading?: boolean;
   buttonOnClick?: (e: MouseEvent) => void;
   onClick?: () => void;
-  menuItems?: MenuItem[];
+  menuItems?: MenuItem[]; // changed from moreMenuItems
 }
 
 type StringColumnDef = ColumnDef<RowData, string>;
@@ -165,9 +156,6 @@ function getTableColumns(
   // The "Connect" or "Manage" button
   const actionColumn: ColumnDef<RowData, unknown> = {
     id: "action",
-    // meta: {
-    //   className: "w-28",
-    // },
     cell: (ctx) => {
       const { dataSourceView, isLoading, isAdmin, buttonOnClick } =
         ctx.row.original;
@@ -313,11 +301,11 @@ export const SpaceResourcesList = ({
     return spaceDataSourceViews.map((dataSourceView) => {
       const provider = dataSourceView.dataSource.connectorProvider;
 
-      const moreMenuItems: MoreMenuItem[] = [];
-
+      const menuItems: MenuItem[] = [];
       if (isWebsiteOrFolder && canWriteInSpace) {
-        moreMenuItems.push({
+        menuItems.push({
           label: "Edit",
+          kind: "item",
           icon: PencilSquareIcon,
           onClick: (e) => {
             e.stopPropagation();
@@ -326,8 +314,9 @@ export const SpaceResourcesList = ({
           },
         });
         if (isFolder) {
-          moreMenuItems.push({
+          menuItems.push({
             label: "API",
+            kind: "item",
             icon: CubeIcon,
             onClick: (e) => {
               e.stopPropagation();
@@ -336,9 +325,10 @@ export const SpaceResourcesList = ({
             },
           });
         }
-        moreMenuItems.push({
+        menuItems.push({
           label: "Delete",
           icon: TrashIcon,
+          kind: "item",
           variant: "warning",
           onClick: (e) => {
             e.stopPropagation();
@@ -355,7 +345,7 @@ export const SpaceResourcesList = ({
         workspaceId: owner.sId,
         isAdmin,
         isLoading: provider ? isLoadingByProvider[provider] : false,
-        moreMenuItems,
+        menuItems,
         buttonOnClick: (e) => {
           e.stopPropagation();
           setSelectedDataSourceView(dataSourceView);

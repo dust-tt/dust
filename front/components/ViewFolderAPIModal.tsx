@@ -1,6 +1,15 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
-import { Button, ClipboardIcon, Modal, Page } from "@dust-tt/sparkle";
+import {
+  Button,
+  ClipboardIcon,
+  Page,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@dust-tt/sparkle";
 import type { DataSourceType, SpaceType, WorkspaceType } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import dynamic from "next/dynamic";
@@ -71,16 +80,13 @@ export function ViewFolderAPIModal({
   };
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      hasChanged={false}
-      variant="side-sm"
-      title={"Data source API"}
-    >
-      <Page variant="modal">
-        <div className="w-full">
-          <Page.Vertical sizing="grow">
+    <Sheet open={isOpen} onOpenChange={onClose}>
+      <SheetContent>
+        <SheetHeader>
+          <SheetTitle>Data source API</SheetTitle>
+        </SheetHeader>
+        <SheetContainer>
+          <div className="flex flex-col gap-6">
             <Page.P>
               <ul className="text-gray-500">
                 <li>
@@ -95,31 +101,29 @@ export function ViewFolderAPIModal({
 
             <Page.Separator />
 
-            <Page.SectionHeader title="Upsert document" />
-            <Page.P>
-              Use the following cURL command to upsert a document to folder{" "}
-              <span className="italic">{dataSource.name}</span>:
-            </Page.P>
-            <CodeEditor
-              data-color-mode="light"
-              readOnly={true}
-              value={`$ ${cURLRequest("upsert")}`}
-              language="shell"
-              padding={15}
-              className="font-mono mt-5 rounded-md bg-gray-700 px-4 py-4 text-[13px] text-white"
-              style={{
-                fontSize: 13,
-                fontFamily:
-                  "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
-                backgroundColor: "rgb(241 245 249)",
-                width: "100%",
-                marginTop: "0rem",
-              }}
-            />
-
-            <div className="flex w-full flex-row items-end">
-              <div className="flex-grow"></div>
-              <div className="flex">
+            <div>
+              <Page.SectionHeader title="Upsert document" />
+              <Page.P>
+                Use the following cURL command to upsert a document to folder{" "}
+                <span className="italic">{dataSource.name}</span>:
+              </Page.P>
+              <CodeEditor
+                data-color-mode="light"
+                readOnly={true}
+                value={`$ ${cURLRequest("upsert")}`}
+                language="shell"
+                padding={15}
+                className="font-mono mt-5 rounded-md bg-gray-700 px-4 py-4 text-[13px] text-white"
+                style={{
+                  fontSize: 13,
+                  fontFamily:
+                    "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+                  backgroundColor: "rgb(241 245 249)",
+                  width: "100%",
+                  marginTop: "0rem",
+                }}
+              />
+              <div className="mt-2 flex w-full justify-end">
                 <Button
                   variant="outline"
                   onClick={() => handleCopyClick("upsert")}
@@ -128,32 +132,32 @@ export function ViewFolderAPIModal({
                 />
               </div>
             </div>
+
             <Page.Separator />
 
-            <Page.SectionHeader title="Search" />
-            <Page.P>
-              Use the following cURL command to search in folder{" "}
-              <span className="italic">{dataSource.name}</span>:
-            </Page.P>
-            <CodeEditor
-              data-color-mode="light"
-              readOnly={true}
-              value={`$ ${cURLRequest("search")}`}
-              language="shell"
-              padding={15}
-              className="font-mono mt-5 rounded-md bg-gray-700 px-4 py-4 text-[13px] text-white"
-              style={{
-                fontSize: 13,
-                fontFamily:
-                  "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
-                backgroundColor: "rgb(241 245 249)",
-                width: "100%",
-                marginTop: "0rem",
-              }}
-            />
-            <div className="flex w-full flex-row items-end">
-              <div className="flex-grow"></div>
-              <div className="flex">
+            <div>
+              <Page.SectionHeader title="Search" />
+              <Page.P>
+                Use the following cURL command to search in folder{" "}
+                <span className="italic">{dataSource.name}</span>:
+              </Page.P>
+              <CodeEditor
+                data-color-mode="light"
+                readOnly={true}
+                value={`$ ${cURLRequest("search")}`}
+                language="shell"
+                padding={15}
+                className="font-mono mt-5 rounded-md bg-gray-700 px-4 py-4 text-[13px] text-white"
+                style={{
+                  fontSize: 13,
+                  fontFamily:
+                    "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+                  backgroundColor: "rgb(241 245 249)",
+                  width: "100%",
+                  marginTop: "0rem",
+                }}
+              />
+              <div className="mt-2 flex w-full justify-end">
                 <Button
                   variant="outline"
                   onClick={() => handleCopyClick("search")}
@@ -165,44 +169,48 @@ export function ViewFolderAPIModal({
 
             <Page.Separator />
 
-            <Page.SectionHeader title="API Keys" />
-            <Page.P>
-              <div className="pb-2">
-                {owner.role === "admin" ? (
-                  <Link
-                    href={`/w/${owner.sId}/developers/api-keys`}
-                    className="py-1 font-bold text-action-600"
-                  >
-                    Manage workspace API keys
-                  </Link>
-                ) : (
-                  <span>API keys are managed by workspace admins.</span>
-                )}
-              </div>
-              <span>
-                Handle API keys with care as they provide access to your company
-                data.
-              </span>
-            </Page.P>
+            <div>
+              <Page.SectionHeader title="API Keys" />
+              <Page.P>
+                <div className="pb-2">
+                  {owner.role === "admin" ? (
+                    <Link
+                      href={`/w/${owner.sId}/developers/api-keys`}
+                      className="py-1 font-bold text-action-600"
+                    >
+                      Manage workspace API keys
+                    </Link>
+                  ) : (
+                    <span>API keys are managed by workspace admins.</span>
+                  )}
+                </div>
+                <span>
+                  Handle API keys with care as they provide access to your
+                  company data.
+                </span>
+              </Page.P>
+            </div>
 
             <Page.Separator />
 
-            <Page.SectionHeader title="Documentation" />
-            <Page.P>
-              For a detailed documentation of the Data source API, please refer
-              to the{" "}
-              <Link
-                href={
-                  "https://docs.dust.tt/reference/get_api-v1-w-wid-vaults-vid-data-sources-dsid-documents-documentid"
-                }
-                className="py-1 font-bold text-action-600"
-              >
-                API Reference
-              </Link>
-            </Page.P>
-          </Page.Vertical>
-        </div>
-      </Page>
-    </Modal>
+            <div>
+              <Page.SectionHeader title="Documentation" />
+              <Page.P>
+                For a detailed documentation of the Data source API, please
+                refer to the{" "}
+                <Link
+                  href={
+                    "https://docs.dust.tt/reference/get_api-v1-w-wid-vaults-vid-data-sources-dsid-documents-documentid"
+                  }
+                  className="py-1 font-bold text-action-600"
+                >
+                  API Reference
+                </Link>
+              </Page.P>
+            </div>
+          </div>
+        </SheetContainer>
+      </SheetContent>
+    </Sheet>
   );
 }

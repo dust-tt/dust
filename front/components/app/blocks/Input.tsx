@@ -1,8 +1,13 @@
 import {
   Button,
   EyeIcon,
-  Modal,
   PencilSquareIcon,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
   useSendNotification,
 } from "@dust-tt/sparkle";
 import type {
@@ -146,45 +151,61 @@ export default function Input({
             ) : null}
           </div>
 
-          {dataset && dataset.schema ? (
-            <Modal
-              isOpen={isDatasetModalOpen}
-              onClose={() => setIsDatasetModalOpen(false)}
-              onSave={() => onDatasetDataModalSave()}
-              hasChanged={datasetModalData != null}
-              variant="side-md"
-              title={block.config.dataset}
-            >
-              {readOnly ? null : (
-                <Button
-                  className="ml-1 mt-2"
-                  variant="outline"
-                  onClick={() => {
-                    window.location.href = `/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/datasets/${block.config.dataset}`;
-                  }}
-                  icon={PencilSquareIcon}
-                  label="Edit schema"
-                />
-              )}
-              <DatasetView
-                readOnly={readOnly}
-                datasets={[dataset]}
-                dataset={dataset}
-                schema={dataset.schema}
-                onUpdate={(
-                  initializing: boolean,
-                  valid: boolean,
-                  currentDatasetInEditor: DatasetType
-                ) => {
-                  if (!initializing && valid) {
-                    setDatasetModalData(currentDatasetInEditor);
-                  }
-                }}
-                nameDisabled={true}
-                viewType="block"
-              />
-            </Modal>
-          ) : null}
+          <Sheet
+            open={isDatasetModalOpen}
+            onOpenChange={(open) => setIsDatasetModalOpen(open)}
+          >
+            <SheetContent size="lg">
+              {dataset && dataset.schema ? (
+                <>
+                  <SheetHeader>
+                    <SheetTitle>{block.config.dataset}</SheetTitle>
+                  </SheetHeader>
+                  <SheetContainer>
+                    {!readOnly && (
+                      <Button
+                        className="mb-4 ml-1"
+                        variant="outline"
+                        onClick={() => {
+                          window.location.href = `/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/datasets/${block.config.dataset}`;
+                        }}
+                        icon={PencilSquareIcon}
+                        label="Edit schema"
+                      />
+                    )}
+                    <DatasetView
+                      readOnly={readOnly}
+                      datasets={[dataset]}
+                      dataset={dataset}
+                      schema={dataset.schema}
+                      onUpdate={(
+                        initializing: boolean,
+                        valid: boolean,
+                        currentDatasetInEditor: DatasetType
+                      ) => {
+                        if (!initializing && valid) {
+                          setDatasetModalData(currentDatasetInEditor);
+                        }
+                      }}
+                      nameDisabled={true}
+                      viewType="block"
+                    />
+                  </SheetContainer>
+                  <SheetFooter
+                    leftButtonProps={{
+                      label: "Cancel",
+                      variant: "outline",
+                    }}
+                    rightButtonProps={{
+                      label: "Save",
+                      onClick: onDatasetDataModalSave,
+                      disabled: !datasetModalData,
+                    }}
+                  />
+                </>
+              ) : null}
+            </SheetContent>
+          </Sheet>
         </div>
       ) : null}
     </Block>
