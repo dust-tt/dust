@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
   EyeIcon,
   Input,
-  Page,
+  LockIcon,
   SliderToggle,
   TableIcon,
 } from "@dust-tt/sparkle";
@@ -376,32 +376,15 @@ const DataSourcePage = ({
   };
 
   return (
-    <div className="mx-auto max-w-4xl">
-      <div className="px-8 py-8"></div>
-      <Page.Vertical align="stretch">
-        <div className="flex flex-row gap-2">
-          <Page.SectionHeader title={`${owner.name} → ${dataSource.name}`} />
-        </div>
-
-        <div className="flex flex-row gap-2 text-sm font-bold text-action-500">
-          <Link href={`/poke/${owner.sId}`}>&laquo; workspace </Link>
-          <div
-            className="cursor-pointer"
-            onClick={() => {
-              if (
-                window.confirm(
-                  "Are you sure you want to access this sensible user data? (Access will be logged)"
-                )
-              ) {
-                void router.push(
-                  `/poke/${owner.sId}/data_sources/${dataSource.sId}/search`
-                );
-              }
-            }}
-          >
-            🔒 search data
-          </div>
-        </div>
+    <div className="flex flex-row gap-x-6">
+      <ViewDataSourceTable
+        dataSource={dataSource}
+        temporalWorkspace={temporalWorkspace}
+        coreDataSource={coreDataSource}
+        connector={connector}
+        temporalRunningWorkflows={temporalRunningWorkflows}
+      />
+      <div className="mt-4 flex grow flex-col gap-y-4">
         <PluginList
           resourceType="data_sources"
           workspaceResource={{
@@ -409,12 +392,21 @@ const DataSourcePage = ({
             resourceId: dataSource.sId,
           }}
         />
-        <ViewDataSourceTable
-          dataSource={dataSource}
-          temporalWorkspace={temporalWorkspace}
-          coreDataSource={coreDataSource}
-          connector={connector}
-          temporalRunningWorkflows={temporalRunningWorkflows}
+        <Button
+          variant="outline"
+          onClick={() => {
+            if (
+              window.confirm(
+                "Are you sure you want to access this sensible user data? (Access will be logged)"
+              )
+            ) {
+              void router.push(
+                `/poke/${owner.sId}/data_sources/${dataSource.sId}/search`
+              );
+            }
+          }}
+          label="Search Data"
+          icon={LockIcon}
         />
 
         {dataSource.connectorProvider === "slack" && (
@@ -683,7 +675,7 @@ const DataSourcePage = ({
             permissionFilter="read"
           />
         )}
-      </Page.Vertical>
+      </div>
     </div>
   );
 };
