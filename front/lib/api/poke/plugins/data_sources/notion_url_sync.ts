@@ -1,16 +1,16 @@
+import type { Result } from "@dust-tt/types";
 import {
   concurrentExecutor,
   ConnectorsAPI,
-  DataSourceType,
   Err,
   NotionFindUrlResponseSchema,
   Ok,
-  Result,
 } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 
 import config from "@app/lib/api/config";
-import { createPlugin, PluginResponse } from "@app/lib/api/poke/types";
+import type { PluginResponse } from "@app/lib/api/poke/types";
+import { createPlugin } from "@app/lib/api/poke/types";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 
@@ -78,13 +78,13 @@ export const notionUrlSyncPlugin = createPlugin(
     }
 
     if (operation === "Sync urls") {
-      return await syncNotionUrls({
+      return syncNotionUrls({
         urlsArray,
         dataSourceId,
         workspaceId: auth.getNonNullableWorkspace().sId,
       });
     } else if (operation === "Delete urls") {
-      return await deleteUrls({
+      return deleteUrls({
         urlsArray,
         dataSourceId,
         workspaceId: auth.getNonNullableWorkspace().sId,
