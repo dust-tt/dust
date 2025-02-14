@@ -20,7 +20,7 @@ const SvgFireworks = (props: SVGProps<SVGSVGElement>) => (
     </g>
     <defs>
       <clipPath id="Fireworks_svg__a">
-        <path fill="#fff" d="M0 0h24v24H0z" />
+        <rect width={24} height={24} fill="#fff" rx={4} />
       </clipPath>
       <clipPath id="Fireworks_svg__b">
         <path fill="#fff" d="M2 6h20v10H2z" />
