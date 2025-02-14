@@ -9,7 +9,6 @@ import {
 import { isLeft } from "fp-ts/lib/Either";
 
 import config from "@app/lib/api/config";
-import type { PluginResponse } from "@app/lib/api/poke/types";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
@@ -132,7 +131,7 @@ export async function syncNotionUrls({
     logger
   );
 
-  return await concurrentExecutor(
+  return concurrentExecutor(
     urlsArray,
     async (
       url: string
@@ -213,7 +212,7 @@ export async function deleteUrls({
     logger
   );
 
-  return await concurrentExecutor(
+  return concurrentExecutor(
     urlsArray,
     async (url) => {
       const checkUrlRes = await connectorsAPI.admin({

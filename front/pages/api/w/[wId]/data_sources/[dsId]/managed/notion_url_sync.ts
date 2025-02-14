@@ -5,12 +5,15 @@ import { fromError } from "zod-validation-error";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { syncNotionUrls } from "@app/lib/api/poke/plugins/data_sources/notion_url_sync";
+import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { apiError } from "@app/logger/withlogging";
 
-type PostNotionSyncResponseBody = { success: true } | { error: string };
+type PostNotionSyncResponseBody =
+  | { success: boolean; urls: { url: string; timestamp: number }[] }
+  | { error: string };
 
 // zod type for payload
 const PostNotionSyncPayload = z.object({
@@ -74,7 +77,16 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      return res.status(200).json({ success: true });
+      // get the last 50 synced urls
+      const redisKey = getRedisKeyForNotionUrlSync(owner.sId);
+      const urlAndTimestamps = await runOnRedis(
+        { origin: "notion_url_sync" },
+        async (redis) => {
+          const urls = await redis.zRange(redisKey, 0, 49);
+          return urls;
+        }
+      );
+      return res.status(200).json({ success: true, urls: urlAndTimestamps });
     case "POST":
       const bodyValidation = PostNotionSyncPayload.safeParse(req.body);
 
@@ -96,27 +108,40 @@ async function handler(
         workspaceId: owner.sId,
       });
 
-      if (result.isErr()) {
+      // Store the last 50 synced urls (expires in 1 day if no URL is synced)
+      await runOnRedis({ origin: "notion_url_sync" }, async (redis) => {
+        const redisKey = getRedisKeyForNotionUrlSync(owner.sId);
+
+        await redis.zAdd(
+          redisKey,
+          result
+            .filter((r) => r.isOk())
+            .map(({ value }) => ({
+              score: value.timestamp,
+              value: value.url,
+            }))
+        );
+
+        await redis.expire(redisKey, 24 * 60 * 60);
+
+        // Delete the oldest URL if the list has more than 30 items
+        const count = await redis.zCard(redisKey);
+        if (count > 30) {
+          await redis.zRemRangeByRank(redisKey, 0, count - 30);
+        }
+      });
+
+      if (result.some((r) => r.isErr())) {
         return apiError(req, res, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: result.error.message,
+            message: result
+              .map((r) => (r.isErr() ? r.error.message : r.value))
+              .join("\n"),
           },
         });
       }
-
-      // Store synced URLs with timestamp as score
-      const redisKey = `workspace:${owner.sId}:synced_urls`;
-      const now = Date.now();
-
-      await redis.zAdd(
-        redisKey,
-        urls.map((url) => ({
-          score: now,
-          value: url,
-        }))
-      );
 
       res.status(200).json({ success: true });
       return;
@@ -131,6 +156,10 @@ async function handler(
         },
       });
   }
+}
+
+function getRedisKeyForNotionUrlSync(workspaceId: string) {
+  return `workspace:${workspaceId}:synced_urls`;
 }
 
 export default withSessionAuthenticationForWorkspace(handler);
