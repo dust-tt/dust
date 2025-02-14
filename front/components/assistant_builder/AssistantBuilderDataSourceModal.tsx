@@ -94,7 +94,6 @@ export default function AssistantBuilderDataSourceModal({
       open={isOpen}
       onOpenChange={(open) => {
         if (!open) {
-          setSelectionConfigurations(initialDataSourceConfigurations);
           setOpen(false);
         }
       }}
