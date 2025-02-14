@@ -84,32 +84,40 @@ export function UserMessage({
     }
   }
   const buttons = [];
-  if (message.previousVersionMessageId) {
+  if (message.previousVersionMessageId || message.nextVersionMessageId) {
     buttons.push(
       <Button
         key="previous-msg-button"
         tooltip="Previous"
         variant="ghost"
         size="xs"
-        onClick={async () => {
-          await previous();
-        }}
+        onClick={
+          message.previousVersionMessageId
+            ? async () => {
+                await previous();
+              }
+            : undefined
+        }
+        disabled={!message.previousVersionMessageId}
         icon={ArrowLeftIcon}
         className="text-muted-foreground"
       />
     );
-  }
 
-  if (message.nextVersionMessageId) {
     buttons.push(
       <Button
         key="next-msg-button"
         tooltip="Next"
         variant="ghost"
         size="xs"
-        onClick={async () => {
-          await next();
-        }}
+        onClick={
+          message.nextVersionMessageId
+            ? async () => {
+                await next();
+              }
+            : undefined
+        }
+        disabled={!message.nextVersionMessageId}
         icon={ArrowRightIcon}
         className="text-muted-foreground"
       />
