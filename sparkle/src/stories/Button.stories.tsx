@@ -70,10 +70,16 @@ const meta = {
       control: "text",
     },
   },
+  render: (args) => {
+    if (args.size === "mini" && !args.icon) {
+      args.icon = ICONS.PlusIcon;
+    }
+    return <Button {...args} />;
+  },
 } satisfies Meta<typeof Button>;
 
 export default meta;
-type Story = StoryObj<typeof Button>;
+type Story = StoryObj<typeof meta>;
 
 export const ExampleButton: Story = {
   args: {
@@ -88,57 +94,6 @@ export const ExampleButton: Story = {
     counterValue: "4",
   },
 };
-
-export const WithCounter: Story = {
-  args: {
-    variant: "primary",
-    label: "Notifications",
-    size: "sm",
-    isCounter: true,
-    counterValue: "4",
-  },
-};
-
-export const WithLargeCounter: Story = {
-  args: {
-    variant: "primary",
-    label: "Messages",
-    size: "sm",
-    isCounter: true,
-    counterValue: "150", // Will display as "99+"
-  },
-};
-
-export const CounterVariants = () => (
-  <div className="s-flex s-flex-col s-gap-4">
-    <div className="s-flex s-gap-4">
-      <Button variant="primary" label="Primary" isCounter counterValue="4" />
-      <Button
-        variant="highlight"
-        label="Highlight"
-        isCounter
-        counterValue="4"
-      />
-      <Button variant="warning" label="Warning" isCounter counterValue="4" />
-      <Button variant="outline" label="Outline" isCounter counterValue="4" />
-      <Button variant="ghost" label="Ghost" isCounter counterValue="4" />
-      <Button
-        variant="ghost-secondary"
-        label="Ghost Secondary"
-        isCounter
-        counterValue="4"
-      />
-    </div>
-  </div>
-);
-
-export const CounterSizes = () => (
-  <div className="s-flex s-gap-4">
-    <Button size="xs" label="Extra Small" isCounter counterValue="4" />
-    <Button size="sm" label="Small" isCounter counterValue="4" />
-    <Button size="md" label="Medium" isCounter counterValue="4" />
-  </div>
-);
 
 export const MiniButton: Story = {
   render: () => <Button size="mini" icon={PlusIcon} />,
