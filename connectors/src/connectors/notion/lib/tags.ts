@@ -1,6 +1,7 @@
-import { NOTION_TAG_LIMITS } from "@connectors/connectors/notion/lib/constants";
-import type { parsePageProperties } from "@connectors/connectors/notion/lib/notion_api";
+import type { LoggerInterface } from "@dust-tt/client";
 
+import type { parsePageProperties } from "@connectors/connectors/notion/lib/notion_api";
+import { filterCustomTags } from "@connectors/connectors/shared/tags";
 export function getTagsForPage({
   title,
   author,
@@ -8,6 +9,7 @@ export function getTagsForPage({
   updatedTime,
   createdTime,
   parsedProperties,
+  logger,
 }: {
   title?: string | null;
   author: string;
@@ -15,6 +17,7 @@ export function getTagsForPage({
   updatedTime: number;
   createdTime: number;
   parsedProperties: ReturnType<typeof parsePageProperties>;
+  logger: LoggerInterface;
 }): string[] {
   const tags: string[] = [];
   if (title) {
@@ -27,15 +30,11 @@ export function getTagsForPage({
     if (property.key.startsWith("__dust") && property.value?.length) {
       if (!Array.isArray(property.value)) {
         const tag = `${property.key}:${property.value}`;
-        if (tag.length <= NOTION_TAG_LIMITS.MAX_TAG_LENGTH) {
-          customTags.push(tag);
-        }
+        customTags.push(tag);
       } else {
         for (const v of property.value) {
           const tag = `${property.key}:${v}`;
-          if (tag.length <= NOTION_TAG_LIMITS.MAX_TAG_LENGTH) {
-            customTags.push(tag);
-          }
+          customTags.push(tag);
         }
       }
     }
@@ -43,14 +42,10 @@ export function getTagsForPage({
     // Handle Tags property values
     if (property.key.toLowerCase() === "tags" && property.value?.length) {
       if (!Array.isArray(property.value)) {
-        if (property.value.length <= NOTION_TAG_LIMITS.MAX_TAG_LENGTH) {
-          customTags.push(property.value);
-        }
+        customTags.push(property.value);
       } else {
         for (const v of property.value) {
-          if (v.length <= NOTION_TAG_LIMITS.MAX_TAG_LENGTH) {
-            customTags.push(v);
-          }
+          customTags.push(v);
         }
       }
     }
@@ -64,7 +59,5 @@ export function getTagsForPage({
     `updatedAt:${updatedTime}`,
   ];
 
-  return tags
-    .concat(systemTags)
-    .concat(customTags.slice(0, NOTION_TAG_LIMITS.MAX_CUSTOM_TAGS_COUNT));
+  return tags.concat(systemTags).concat(filterCustomTags(customTags, logger));
 }

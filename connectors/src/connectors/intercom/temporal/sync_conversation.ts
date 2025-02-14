@@ -15,6 +15,7 @@ import {
   getTeamInternalId,
   getTeamsInternalId,
 } from "@connectors/connectors/intercom/lib/utils";
+import { filterCustomTags } from "@connectors/connectors/shared/tags";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
   deleteDataSourceDocument,
@@ -286,23 +287,31 @@ export async function syncConversation({
   );
 
   // Datasource TAGS
-  const datasourceTags = [
+  const systemTags = [
     `title:${convoTitle}`,
     `createdAt:${createdAtDate.getTime()}`,
     `updatedAt:${updatedAtDate.getTime()}`,
   ];
+
   Object.entries(customAttributes).forEach(([name, value]) => {
     if (
       (typeof value === "string" && value.length > 0) ||
       typeof value === "number" ||
       typeof value === "boolean"
     ) {
-      datasourceTags.push(`attribute:${name}:${value}`);
+      systemTags.push(`attribute:${name}:${value}`);
     }
   });
+
+  const customTags: string[] = [];
   tags.forEach((tag) => {
-    datasourceTags.push(`tag:${tag.name}`);
+    customTags.push(`tag:${tag.name}`);
   });
+
+  const datasourceTags = [
+    ...systemTags,
+    ...filterCustomTags(customTags, logger),
+  ];
 
   // parents in the Core datasource map the internal ids that are used in the permission system
   // they self reference the document id

@@ -23,6 +23,7 @@ import {
   handleTextExtraction,
   handleTextFile,
 } from "@connectors/connectors/shared/file";
+import { filterCustomTags } from "@connectors/connectors/shared/tags";
 import {
   MAX_DOCUMENT_TXT_LEN,
   MAX_FILE_SIZE_TO_DOWNLOAD,
@@ -41,7 +42,6 @@ import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
-
 async function handleGoogleDriveExport(
   oauth2client: OAuth2Client,
   file: GoogleDriveObjectType,
@@ -499,7 +499,7 @@ async function upsertGdriveDocument(
   }
   tags.push(`mimeType:${file.mimeType}`);
 
-  tags.push(...file.labels);
+  tags.push(...filterCustomTags(file.labels, localLogger));
 
   const documentLen = documentContent ? sectionLength(documentContent) : 0;
 

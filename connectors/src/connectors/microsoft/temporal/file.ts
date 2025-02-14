@@ -25,6 +25,7 @@ import {
   handleTextExtraction,
   handleTextFile,
 } from "@connectors/connectors/shared/file";
+import { filterCustomTags } from "@connectors/connectors/shared/tags";
 import {
   deleteDataSourceDocument,
   deleteDataSourceFolder,
@@ -272,7 +273,7 @@ export async function syncOneFile({
 
     tags.push(`mimeType:${file.file.mimeType}`);
 
-    tags.push(...columns);
+    tags.push(...filterCustomTags(columns, localLogger));
 
     if (result.isErr()) {
       if (fileResource) {

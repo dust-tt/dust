@@ -24,6 +24,7 @@ import {
   makeSpaceInternalId,
 } from "@connectors/connectors/confluence/lib/internal_ids";
 import { makeConfluenceDocumentUrl } from "@connectors/connectors/confluence/temporal/workflow_ids";
+import { filterCustomTags } from "@connectors/connectors/shared/tags";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import type { UpsertDataSourceDocumentParams } from "@connectors/lib/data_sources";
@@ -50,7 +51,6 @@ import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
-
 /**
  * This type represents the ID that should be passed as parentId to a content node to hide it from the UI.
  * This behavior is typically used to hide content nodes whose position in the ContentNodeTree cannot be resolved at time of upsertion.
@@ -302,8 +302,8 @@ async function upsertConfluencePageToDataSource({
       );
     }
 
-    // Use label names for tags instead of IDs, limit to 32 tags
-    const customTags = page.labels.results.slice(0, 32).map((l) => l.name);
+    // Use label names for tags instead of IDs
+    const customTags = page.labels.results.map((l) => l.name);
 
     const tags = [
       `createdAt:${pageCreatedAt.getTime()}`,
@@ -311,7 +311,7 @@ async function upsertConfluencePageToDataSource({
       `title:${page.title}`,
       `updatedAt:${lastPageVersionCreatedAt.getTime()}`,
       `version:${page.version.number}`,
-      ...customTags,
+      ...filterCustomTags(customTags, localLogger),
     ];
 
     const renderedPage = await renderDocumentTitleAndContent({

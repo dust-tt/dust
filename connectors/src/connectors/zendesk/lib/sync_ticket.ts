@@ -7,6 +7,7 @@ import type {
   ZendeskFetchedTicketComment,
   ZendeskFetchedUser,
 } from "@connectors/@types/node-zendesk";
+import { filterCustomTags } from "@connectors/connectors/shared/tags";
 import { getTicketInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
 import {
   deleteDataSourceDocument,
@@ -228,10 +229,10 @@ ${comments
       documentUrl: ticketUrl,
       timestampMs: updatedAtDate.getTime(),
       tags: [
-        ...ticket.tags,
         `title:${ticket.subject}`,
         `updatedAt:${updatedAtDate.getTime()}`,
         `createdAt:${createdAtDate.getTime()}`,
+        ...filterCustomTags(ticket.tags, logger),
       ],
       parents,
       parentId: parents[1],
