@@ -3,7 +3,7 @@ import { Err, Ok } from "@dust-tt/types";
 import { resetMessageRateLimitForWorkspace } from "@app/lib/api/assistant/rate_limits";
 import { createPlugin } from "@app/lib/api/poke/types";
 
-export const resetMessageRateLimit = createPlugin(
+export const resetMessageRateLimitPlugin = createPlugin(
   {
     id: "reset-message-rate-limit",
     name: "Reset Message Rate Limit",

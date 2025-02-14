@@ -1,4 +1,4 @@
-import { Tooltip } from "@dust-tt/sparkle";
+import { ScrollArea, Tooltip } from "@dust-tt/sparkle";
 import type { PluginWorkspaceResource } from "@dust-tt/types";
 import React, { useState } from "react";
 
@@ -63,25 +63,31 @@ export function PluginList({
         <h2 className="text-md font-bold">Plugins :</h2>
       </div>
 
-      <div
-        className="grid w-full gap-3 p-4"
-        // 11rem is the fixed width of the card.
-        style={{ gridTemplateColumns: "repeat(auto-fill, minmax(11rem, 1fr))" }}
-      >
-        {plugins.map((plugin) => (
-          <Tooltip
-            key={plugin.id}
-            trigger={
-              <PluginCard
+      <ScrollArea className="h-80">
+        <div
+          className="grid w-full gap-3 p-4"
+          // 11rem is the fixed width of the card.
+          style={{
+            gridTemplateColumns: "repeat(auto-fill, minmax(11rem, 1fr))",
+          }}
+        >
+          {plugins
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .map((plugin) => (
+              <Tooltip
                 key={plugin.id}
-                plugin={plugin}
-                onClick={() => handlePluginSelect(plugin)}
+                trigger={
+                  <PluginCard
+                    key={plugin.id}
+                    plugin={plugin}
+                    onClick={() => handlePluginSelect(plugin)}
+                  />
+                }
+                label={plugin.description}
               />
-            }
-            label={plugin.description}
-          />
-        ))}
-      </div>
+            ))}
+        </div>
+      </ScrollArea>
       {selectedPlugin && (
         <RunPluginDialog
           plugin={selectedPlugin}
