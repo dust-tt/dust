@@ -58,6 +58,7 @@ async function handler(
         await LabsTranscriptsConfigurationResource.findByWorkspaceAndProvider({
           auth,
           provider,
+          isDefaultWorkspaceConfiguration: true,
         });
 
       if (!transcriptsConfiguration) {
