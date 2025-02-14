@@ -179,7 +179,7 @@ export default function Browser({
         <Collapsible defaultOpen={false}>
           <Collapsible.Button label="Advanced" />
           <Collapsible.Panel>
-            <div className="flex flex-row items-center space-x-4">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
               <div className="flex items-center space-x-2">
                 <Label className="whitespace-nowrap">Error as output</Label>
                 <Checkbox
