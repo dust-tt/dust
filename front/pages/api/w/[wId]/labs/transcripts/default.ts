@@ -1,4 +1,5 @@
 import type { WithAPIErrorResponse } from "@dust-tt/types";
+import { isProviderWithWorkspaceConfiguration } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -10,8 +11,6 @@ import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_tr
 import { apiError } from "@app/logger/withlogging";
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
 import { acceptableTranscriptProvidersCodec } from "@app/pages/api/w/[wId]/labs/transcripts";
-
-const PROVIDERS_WITH_WORKSPACE_CONFIGURATIONS = ["gong", "modjo"];
 
 export const GetDefaultTranscriptsConfigurationBodySchema = t.type({
   provider: acceptableTranscriptProvidersCodec,
@@ -58,6 +57,7 @@ async function handler(
         await LabsTranscriptsConfigurationResource.findByWorkspaceAndProvider({
           auth,
           provider,
+          isDefaultWorkspaceConfiguration: true,
         });
 
       if (!transcriptsConfiguration) {
@@ -67,11 +67,7 @@ async function handler(
       }
 
       // Whitelist providers that allow workspace-wide configuration.
-      if (
-        !PROVIDERS_WITH_WORKSPACE_CONFIGURATIONS.includes(
-          transcriptsConfiguration.provider
-        )
-      ) {
+      if (!isProviderWithWorkspaceConfiguration(provider)) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
