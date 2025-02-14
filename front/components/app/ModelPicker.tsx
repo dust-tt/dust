@@ -85,6 +85,7 @@ export default function ModelPicker({
           <Button
             href={`/w/${owner.sId}/developers/providers`}
             label={isProvidersLoading ? "Loading..." : "Setup provider"}
+            size="xs"
           />
         ) : (
           <div className="inline-flex items-center rounded-md border border-white px-3 py-1 text-sm font-normal text-gray-300">
