@@ -248,7 +248,7 @@ function RawObjectsModal({
         }
       }}
     >
-      <DialogContent className="h-[800px]">
+      <DialogContent size="xl">
         <DialogHeader>
           <DialogTitle>Data source raw objects</DialogTitle>
         </DialogHeader>
