@@ -14,9 +14,10 @@ import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
-import { Subscription } from "@app/lib/models/plan";
+import { Plan, Subscription } from "@app/lib/models/plan";
 import { Workspace } from "@app/lib/models/workspace";
 import { WorkspaceHasDomain } from "@app/lib/models/workspace_has_domain";
+import { PRO_PLAN_SEAT_39_CODE } from "@app/lib/plans/plan_codes";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
 import type { MembershipsPaginationParams } from "@app/lib/resources/membership_resource";
@@ -481,4 +482,61 @@ export async function updateExtensionConfiguration(
   }
 
   return new Ok(undefined);
+}
+
+export async function updateWorkspaceToBusinessPlan(
+  auth: Authenticator,
+  workspace: LightWorkspaceType
+): Promise<Result<LightWorkspaceType, Error>> {
+  if (!auth.isDustSuperUser()) {
+    throw new Error("Cannot upgrade workspace to plan: not allowed.");
+  }
+
+  const isBusinessMetadata = workspace.metadata?.isBusiness === true;
+  const subscription = await Subscription.findOne({
+    where: { workspaceId: workspace.id, status: "active" },
+    include: ["plan"],
+  });
+  const isBusinessPlan = subscription?.plan.code === PRO_PLAN_SEAT_39_CODE;
+
+  // Check if already fully on business plan with both metadata and subscription correct.
+  if (isBusinessMetadata && isBusinessPlan) {
+    return new Err(new Error("Workspace is already on business plan."));
+  }
+
+  // Handle inconsistent states where only one of the two is set.
+  if (!isBusinessMetadata) {
+    await Workspace.update(
+      {
+        metadata: {
+          ...workspace.metadata,
+          isBusiness: true,
+        },
+      },
+      {
+        where: { sId: workspace.sId },
+      }
+    );
+  }
+
+  if (!isBusinessPlan) {
+    const planCode = PRO_PLAN_SEAT_39_CODE;
+    const newPlan = await Plan.findOne({
+      where: { code: planCode },
+    });
+    if (!newPlan) {
+      throw new Error(
+        `Cannot upgrade workspace to plan ${planCode}: plan not found.`
+      );
+    }
+
+    if (!subscription || !subscription.sId) {
+      throw new Error(
+        `Cannot subscribe to ${planCode}: Workspace has no subscription..`
+      );
+    }
+    await subscription.update({ planId: newPlan.id });
+  }
+
+  return new Ok(renderLightWorkspaceType({ workspace }));
 }
