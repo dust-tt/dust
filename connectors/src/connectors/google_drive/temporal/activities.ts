@@ -517,7 +517,7 @@ export async function incrementalSync(
           driveFile,
           startSyncTs
         );
-        const localFile = await GoogleDriveFiles.findOne({
+        const localFolder = await GoogleDriveFiles.findOne({
           where: {
             connectorId: connectorId,
             driveFileId: change.file.id,
@@ -526,11 +526,11 @@ export async function incrementalSync(
 
         const parents = parentGoogleIds.map((parent) => getInternalId(parent));
 
-        if (localFile && localFile.parentId !== parentGoogleIds[1]) {
+        if (localFolder && localFolder.parentId !== parentGoogleIds[1]) {
           logger.info(
             {
               fileId: change.file.id,
-              localParentId: localFile.parentId,
+              localParentId: localFolder.parentId,
               parentId: parentGoogleIds[1],
             },
             "Folder moved"
@@ -539,14 +539,14 @@ export async function incrementalSync(
           const queue = new PQueue({ concurrency: 10 });
           await recurseUpdateParents(
             connector,
-            localFile,
+            localFolder,
             parents,
             queue,
             localLogger
           );
         }
 
-        if (!localFile) {
+        if (!localFolder) {
           localLogger.info(
             { folderId: driveFile.id },
             "Adding new folder to sync"
