@@ -8,6 +8,7 @@ import {
   postMessage,
   streamAgentAnswer,
 } from "./api.js";
+import { logToFile, logJson, logError, logFatalError } from "./config.js";
 
 const { dustAPI, dustConfig } = await getDustAPI();
 
@@ -24,91 +25,107 @@ async function askAgent(
   let userMessageId: string;
   let conversation: ConversationPublicType;
 
-  if (!conversationId) {
-    // Create new conversation with initial message
-    console.log("Creating new conversation with message:", message);
-    const conversationResult = await postConversation({
-      dustAPI: dustAPI,
-      messageData: {
-        input: message,
-        mentions: [{ configurationId: dustConfig.agentId }],
-      },
-    });
+  try {
+    if (!conversationId) {
+      // Create new conversation with initial message
+      await logToFile(`Creating new conversation with message: ${message}`);
+      const conversationResult = await postConversation({
+        dustAPI: dustAPI,
+        messageData: {
+          input: message,
+          mentions: [{ configurationId: dustConfig.agentId }],
+        },
+      });
 
-    if (!conversationResult.isOk()) {
-      throw new Error(
-        `Failed to create conversation: ${conversationResult.error.message}`
-      );
+      if (!conversationResult.isOk()) {
+        const error = `Failed to create conversation: ${conversationResult.error.message}`;
+        await logError(error);
+        throw new Error(error);
+      }
+
+      conversation = conversationResult.value;
+      userMessageId = conversation.content[0][0].sId;
+      await logJson("Created conversation", {
+        conversationId: conversation.sId,
+        userMessageId,
+        content: conversation.content,
+      });
+    } else {
+      // Post to existing conversation
+      await logJson("Posting to existing conversation", {
+        conversationId,
+        message,
+      });
+      const messageResult = await postMessage({
+        dustAPI: dustAPI,
+        conversationId,
+        messageData: {
+          input: message,
+          mentions: [{ configurationId: dustConfig.agentId }],
+        },
+      });
+
+      if (!messageResult.isOk()) {
+        const error = `Failed to post message: ${messageResult.error.message}`;
+        await logError(error);
+        throw new Error(error);
+      }
+
+      // Get the conversation to stream the agent's answer
+      const conversationResult = await dustAPI.getConversation({
+        conversationId,
+      });
+
+      if (!conversationResult.isOk()) {
+        const error = `Failed to get conversation: ${conversationResult.error.message}`;
+        await logError(error);
+        throw new Error(error);
+      }
+
+      conversation = conversationResult.value;
+      userMessageId = messageResult.value.message.sId;
+      await logJson("Posted message", {
+        conversationId,
+        userMessageId,
+        messageContent: messageResult.value.message,
+        conversation: conversation.content,
+      });
     }
 
-    conversation = conversationResult.value;
-    userMessageId = conversation.content[0][0].sId;
-    console.log("Created conversation:", {
+    // Get agent's response
+    await logJson("Getting agent response for", {
+      userMessageId,
       conversationId: conversation.sId,
-      userMessageId,
-      content: conversation.content,
     });
-  } else {
-    // Post to existing conversation
-    console.log("Posting to existing conversation:", {
-      conversationId,
-      message,
-    });
-    const messageResult = await postMessage({
+    const agentResult = await streamAgentAnswer({
       dustAPI: dustAPI,
-      conversationId,
-      messageData: {
-        input: message,
-        mentions: [{ configurationId: dustConfig.agentId }],
-      },
-    });
-
-    if (!messageResult.isOk()) {
-      throw new Error(`Failed to post message: ${messageResult.error.message}`);
-    }
-
-    // Get the conversation to stream the agent's answer
-    const conversationResult = await dustAPI.getConversation({
-      conversationId,
-    });
-
-    if (!conversationResult.isOk()) {
-      throw new Error(
-        `Failed to get conversation: ${conversationResult.error.message}`
-      );
-    }
-
-    conversation = conversationResult.value;
-    userMessageId = messageResult.value.message.sId;
-    console.log("Posted message:", {
-      conversationId,
+      conversation,
       userMessageId,
-      messageContent: messageResult.value.message,
-      conversation: conversation.content,
     });
-  }
 
-  // Get agent's response
-  console.log("Getting agent response for:", {
-    userMessageId,
-    conversationId: conversation.sId,
-  });
-  const agentResult = await streamAgentAnswer({
-    dustAPI: dustAPI,
-    conversation,
-    userMessageId,
-  });
+    if (!agentResult.isOk()) {
+      const error = `Failed to get agent's answer: ${agentResult.error.message}`;
+      await logError(error);
+      throw new Error(error);
+    }
 
-  if (!agentResult.isOk()) {
-    throw new Error(
-      `Failed to get agent's answer: ${agentResult.error.message}`
+    await logToFile(
+      `Successfully received agent response for conversation ${conversation.sId}`
     );
-  }
 
-  return {
-    conversationId: conversation.sId,
-    message: agentResult.value,
-  };
+    await logJson("Agent response", {
+      conversationId: conversation.sId,
+      message: agentResult.value,
+    });
+
+    return {
+      conversationId: conversation.sId,
+      message: agentResult.value,
+    };
+  } catch (error) {
+    await logFatalError(error);
+    throw error;
+  }
 }
 
 server.tool(

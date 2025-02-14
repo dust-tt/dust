@@ -1,5 +1,5 @@
 import { homedir } from "os";
-import { mkdir, readFile, writeFile } from "fs/promises";
+import { mkdir, readFile, writeFile, appendFile } from "fs/promises";
 import { join } from "path";
 
 export interface TokenData {
@@ -16,6 +16,7 @@ export interface DustConfig {
 const CONFIG_DIR = join(homedir(), ".config", "dust-mcp");
 const TOKEN_FILE = join(CONFIG_DIR, "auth.json");
 const CONFIG_FILE = join(CONFIG_DIR, "config.json");
+const LOG_FILE = join(CONFIG_DIR, "agent.log");
 
 export async function ensureConfigDir(): Promise<void> {
   try {
@@ -70,4 +71,24 @@ export async function loadDustConfig(): Promise<DustConfig | null> {
     }
     throw error;
   }
+}
+
+export async function logToFile(message: string): Promise<void> {
+  await ensureConfigDir();
+  const timestamp = new Date().toISOString();
+  const logMessage = `[${timestamp}] ${message}\n`;
+  await appendFile(LOG_FILE, logMessage);
+  console.log(logMessage.trim()); // Also log to console
+}
+
+export async function logJson(prefix: string, data: any): Promise<void> {
+  await logToFile(`${prefix}: ${JSON.stringify(data, null, 2)}`);
+}
+
+export async function logError(error: string): Promise<void> {
+  await logToFile(`ERROR: ${error}`);
+}
+
+export async function logFatalError(error: unknown): Promise<void> {
+  await logToFile(`FATAL ERROR: ${error}`);
 }
