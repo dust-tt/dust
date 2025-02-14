@@ -42,10 +42,8 @@ function getVisualForFileContentNode(node: ContentNode & { type: "file" }) {
   return DocumentIcon;
 }
 
-export function getVisualForContentNode(
-  node: ContentNode,
-  useMimeType = false
-) {
+// TODO(nodes-core) clean this up to always rely on the mime type.
+export function getVisualForContentNode(node: ContentNode, useMimeType = true) {
   if (useMimeType) {
     return getVisualForContentNodeBasedOnMimeType(node);
   } else {

@@ -80,7 +80,13 @@ function ProcessActionQuery({ action }: { action: ProcessActionType }) {
 }
 
 function makeQueryDescription(action: ProcessActionType) {
-  const { relativeTimeFrame } = action.params;
+  const { relativeTimeFrame, tagsIn, tagsNot } = action.params;
+
+  const tagsInAsString = tagsIn ? `, with tags ${tagsIn?.join(", ")}` : "";
+  const tagsNotAsString =
+    tagsNot && tagsNot.length > 0
+      ? `, excluding tags ${tagsNot?.join(", ")}`
+      : "";
 
   const timeFrameAsString = relativeTimeFrame
     ? "the last " +
@@ -90,9 +96,9 @@ function makeQueryDescription(action: ProcessActionType) {
     : "all time";
 
   if (action.outputs?.total_documents) {
-    return `Extracted from ${action.outputs?.total_documents} documents over ${timeFrameAsString}.`;
+    return `Extracted from ${action.outputs?.total_documents} documents over ${timeFrameAsString}${tagsInAsString}${tagsNotAsString}.`;
   } else {
-    return `Extracted from documents over ${timeFrameAsString}.`;
+    return `Extracted from documents over ${timeFrameAsString}${tagsInAsString}${tagsNotAsString}.`;
   }
 }
 

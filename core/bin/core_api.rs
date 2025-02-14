@@ -2205,6 +2205,33 @@ async fn data_sources_delete(
 }
 
 #[derive(serde::Deserialize)]
+struct DatabasesTablesValidateCSVContentPayload {
+    upsert_queue_bucket_path: String,
+}
+
+async fn tables_validate_csv_content(
+    Json(payload): Json<DatabasesTablesValidateCSVContentPayload>,
+) -> (StatusCode, Json<APIResponse>) {
+    match LocalTable::validate_csv_content(&payload.upsert_queue_bucket_path).await {
+        Ok(schema) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!({
+                    "schema": schema,
+                })),
+            }),
+        ),
+        Err(e) => error_response(
+            StatusCode::BAD_REQUEST,
+            "internal_csv_content",
+            "Failed to validate the CSV content",
+            Some(e),
+        ),
+    }
+}
+
+#[derive(serde::Deserialize)]
 struct DatabasesTablesUpsertPayload {
     table_id: String,
     name: String,
@@ -3740,6 +3767,10 @@ fn main() {
             delete(data_sources_delete),
         )
         // Databases
+        .route(
+            "/projects/:project_id/data_sources/:data_source_id/tables/validate_csv_content",
+            post(tables_validate_csv_content),
+        )
         .route(
             "/projects/:project_id/data_sources/:data_source_id/tables",
             post(tables_upsert),

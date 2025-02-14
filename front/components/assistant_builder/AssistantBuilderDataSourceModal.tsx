@@ -14,7 +14,7 @@ import type {
 } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import type { SetStateAction } from "react";
-import { useCallback, useContext, useMemo, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
@@ -50,6 +50,12 @@ export default function AssistantBuilderDataSourceModal({
     useState<DataSourceViewSelectionConfigurations>(
       initialDataSourceConfigurations
     );
+
+  useEffect(() => {
+    if (isOpen) {
+      setSelectionConfigurations(initialDataSourceConfigurations);
+    }
+  }, [isOpen, initialDataSourceConfigurations]);
 
   useNavigationLock(true, {
     title: "Warning",
@@ -88,7 +94,6 @@ export default function AssistantBuilderDataSourceModal({
       open={isOpen}
       onOpenChange={(open) => {
         if (!open) {
-          setSelectionConfigurations(initialDataSourceConfigurations);
           setOpen(false);
         }
       }}

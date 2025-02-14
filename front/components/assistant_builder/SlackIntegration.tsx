@@ -1,8 +1,12 @@
 import {
   ContentMessage,
   InformationCircleIcon,
-  Modal,
-  Page,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
 } from "@dust-tt/sparkle";
 import type {
   ContentNode,
@@ -159,51 +163,57 @@ export function SlackAssistantDefaultManager({
   };
 
   return (
-    <>
-      <Modal
-        hasChanged={hasChanged}
-        isOpen={show}
-        onClose={onClose}
-        onSave={saveChanges}
-        title="Slack Integration"
-        variant="side-sm"
-      >
-        <div className="pt-8">
-          <Page.Vertical gap="lg" align="stretch">
-            <div className="flex flex-col gap-y-2">
-              <div className="text-sm font-normal text-foreground dark:text-foreground-night">
-                Set this assistant as the default assistant on one or several of
-                your Slack channels. It will answer by default when the{" "}
-                <span className="font-bold">{assistantHandle}</span> Slack bot
-                is mentionned in these channels.
-              </div>
-
-              {!isAdmin(owner) && (
-                <ContentMessage
-                  size="md"
-                  variant="pink"
-                  title="Admin Access Required"
-                  icon={InformationCircleIcon}
-                >
-                  <p>
-                    Only administrators can enable default assistants for
-                    specific Slack channels.
-                  </p>
-                </ContentMessage>
-              )}
-
-              {isAdmin(owner) && (
-                <SlackIntegration
-                  existingSelection={existingSelection}
-                  onSelectionChange={handleSelectionChange}
-                  owner={owner}
-                  slackDataSource={slackDataSource}
-                />
-              )}
+    <Sheet open={show} onOpenChange={onClose}>
+      <SheetContent>
+        <SheetHeader>
+          <SheetTitle>Slack Integration</SheetTitle>
+        </SheetHeader>
+        <SheetContainer>
+          <div className="flex flex-col gap-4">
+            <div className="text-sm font-normal text-foreground dark:text-foreground-night">
+              Set this assistant as the default assistant on one or several of
+              your Slack channels. It will answer by default when the{" "}
+              <span className="font-bold">{assistantHandle}</span> Slack bot is
+              mentionned in these channels.
             </div>
-          </Page.Vertical>
-        </div>
-      </Modal>
-    </>
+
+            {!isAdmin(owner) && (
+              <ContentMessage
+                size="md"
+                variant="pink"
+                title="Admin Access Required"
+                icon={InformationCircleIcon}
+              >
+                <p>
+                  Only administrators can enable default assistants for specific
+                  Slack channels.
+                </p>
+              </ContentMessage>
+            )}
+
+            {isAdmin(owner) && (
+              <SlackIntegration
+                existingSelection={existingSelection}
+                onSelectionChange={handleSelectionChange}
+                owner={owner}
+                slackDataSource={slackDataSource}
+              />
+            )}
+          </div>
+        </SheetContainer>
+        <SheetFooter
+          leftButtonProps={{
+            label: "Cancel",
+            onClick: onClose,
+            variant: "outline",
+          }}
+          rightButtonProps={{
+            label: "Save",
+            onClick: saveChanges,
+            disabled: !hasChanged,
+          }}
+        />
+      </SheetContent>
+    </Sheet>
   );
 }

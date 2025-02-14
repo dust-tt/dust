@@ -88,14 +88,14 @@ async fn delete_orphaned_points_for_data_source(
                 "finished processing data_source_internal_id: {}",
                 data_source_internal_id
             );
-            return Ok(());
+            Ok(())
         }
         None => {
             eprintln!(
                 "data source not found for data_source_internal_id: {}",
                 data_source_internal_id
             );
-            return Ok(());
+            Ok(())
         }
     }
 }
@@ -103,9 +103,14 @@ async fn delete_orphaned_points_for_data_source(
 #[tokio::main]
 async fn main() -> Result<()> {
     let args: Vec<String> = env::args().collect();
-    if args.len() != 2 {
+    if args.len() < 2 {
         return Err(anyhow!("Usage: {} <csv_file>", args[0]));
     }
+    let col_offset = if args.len() >= 3 && args[3] == "--skip-date-column" {
+        1
+    } else {
+        0
+    };
 
     let csv_file = &args[1];
     let mut rdr = Reader::from_reader(File::open(csv_file)?);
@@ -114,8 +119,8 @@ async fn main() -> Result<()> {
 
     for result in rdr.records() {
         let record = result?;
-        let data_source_internal_id = record[0].to_string();
-        let document_id = record[1].to_string();
+        let data_source_internal_id = record[col_offset].trim_matches('"').to_string();
+        let document_id = record[col_offset + 1].to_string();
 
         grouped_data
             .entry(data_source_internal_id)
@@ -125,7 +130,7 @@ async fn main() -> Result<()> {
 
     let qdrant_clients = QdrantClients::build().await?;
 
-    let store: Box<dyn Store + Sync + Send> = match std::env::var("CORE_DATABASE_URI") {
+    let store: Box<dyn Store + Sync + Send> = match env::var("CORE_DATABASE_URI") {
         Ok(db_uri) => {
             let store = postgres::PostgresStore::new(&db_uri).await?;
             Box::new(store)

@@ -36,6 +36,7 @@ pub enum SortDirection {
 pub enum TagsQueryType {
     Exact,
     Prefix,
+    Match,
 }
 
 #[derive(serde::Deserialize, Debug)]
@@ -392,9 +393,10 @@ impl SearchStore for ElasticsearchSearchStore {
         };
         let bool_query = match query.clone() {
             None => bool_query,
-            Some(p) => match query_type {
-                TagsQueryType::Exact => bool_query.must(Query::term("tags.keyword", p)),
-                TagsQueryType::Prefix => bool_query.must(Query::match_phrase("tags.edge", p)),
+            Some(query) => match query_type {
+                TagsQueryType::Exact => bool_query.must(Query::term("tags.keyword", query)),
+                TagsQueryType::Prefix => bool_query.must(Query::match_phrase("tags.edge", query)),
+                TagsQueryType::Match => bool_query.must(Query::r#match("tags.edge", query)),
             },
         };
         let aggregate = Aggregation::terms("tags.keyword");
@@ -402,8 +404,9 @@ impl SearchStore for ElasticsearchSearchStore {
             None => aggregate,
             Some(p) => match query_type {
                 TagsQueryType::Exact => aggregate.include(p),
-                // Prefix will be filtered in the code, as it needs to be filtered case insensitive
+                // Prefix/match will be filtered in the code, as it needs to be filtered case insensitive
                 TagsQueryType::Prefix => aggregate,
+                TagsQueryType::Match => aggregate,
             },
         };
         let aggregate =
@@ -433,7 +436,7 @@ impl SearchStore for ElasticsearchSearchStore {
                             .as_str()
                             .map(|key| {
                                 match query_type {
-                                    // For prefix query - only include if key matches query (case insensitive)
+                                    // For prefix/match query - only include if key matches query (case insensitive)
                                     TagsQueryType::Prefix => {
                                         if let Some(q) = query.as_ref() {
                                             if !key.to_lowercase().starts_with(&q.to_lowercase()) {
@@ -441,6 +444,14 @@ impl SearchStore for ElasticsearchSearchStore {
                                             }
                                         }
                                     }
+                                    TagsQueryType::Match => {
+                                        if let Some(q) = query.as_ref() {
+                                            if !key.to_lowercase().contains(&q.to_lowercase()) {
+                                                return None;
+                                            }
+                                        }
+                                    }
+
                                     // Exact query is already filtered in the aggregation
                                     TagsQueryType::Exact => {}
                                 }

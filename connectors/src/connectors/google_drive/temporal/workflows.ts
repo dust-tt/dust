@@ -209,13 +209,40 @@ export async function googleDriveIncrementalSync(
     }
 
     do {
-      nextPageToken = await incrementalSync(
+      const syncRes = await incrementalSync(
         connectorId,
         googleDrive.id,
         googleDrive.isShared,
         startSyncTs,
         nextPageToken
       );
+
+      let foldersToBrowse: string[] = [];
+
+      if (syncRes) {
+        foldersToBrowse = syncRes.newFolders;
+        nextPageToken = syncRes.nextPageToken;
+      }
+
+      if (foldersToBrowse.length > 0) {
+        await executeChild(googleDriveFullSync, {
+          workflowId: `googleDrive-newFolderSync-${startSyncTs}-${connectorId}`,
+          searchAttributes: {
+            connectorId: [connectorId],
+          },
+          args: [
+            {
+              connectorId: connectorId,
+              garbageCollect: false,
+              foldersToBrowse,
+              totalCount: 0,
+              startSyncTs: startSyncTs,
+              mimeTypeFilter: undefined,
+            },
+          ],
+          memo: workflowInfo().memo,
+        });
+      }
 
       // Will restart exactly where it was.
       if (workflowInfo().historyLength > 4000) {

@@ -108,7 +108,7 @@ export async function fetchAgentRetrievalActionConfigurations({
   return actionsByConfigurationId;
 }
 
-function getDataSource(
+export function getDataSource(
   dataSourceConfig: AgentDataSourceConfiguration
 ): DataSourceConfiguration {
   const { dataSourceView } = dataSourceConfig;

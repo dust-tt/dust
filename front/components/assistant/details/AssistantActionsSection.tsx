@@ -1,25 +1,35 @@
 import {
   BracesIcon,
+  Button,
   ChatBubbleThoughtIcon,
+  Chip,
   CommandLineIcon,
   ExternalLinkIcon,
   FolderIcon,
   GithubIcon,
   Icon,
   IconButton,
+  Label,
   PlanetIcon,
+  PopoverContent,
+  PopoverRoot,
+  PopoverTrigger,
+  SparklesIcon,
   Tree,
 } from "@dust-tt/sparkle";
 import type {
   AgentActionConfigurationType,
   AgentConfigurationType,
+  ConnectorProvider,
   ContentNodesViewType,
   DataSourceConfiguration,
+  DataSourceTag,
   DataSourceViewType,
   DustAppRunConfigurationType,
   LightWorkspaceType,
   RetrievalConfigurationType,
   TablesQueryConfigurationType,
+  TagsFilter,
 } from "@dust-tt/types";
 import {
   assertNever,
@@ -389,6 +399,15 @@ function DataSourceViewsSection({
               label={dataSourceName}
               visual={dsLogo ?? FolderIcon}
               className="whitespace-nowrap"
+              actions={
+                <RetrievalActionTagsFilterPopover
+                  dustAPIDataSourceId={dsConfig.dataSourceViewId}
+                  tagsFilter={dsConfig.filter.tags ?? null}
+                  connectorProvider={
+                    dataSourceView?.dataSource.connectorProvider ?? null
+                  }
+                />
+              }
             >
               {dataSourceView && isAllSelected && (
                 <DataSourceViewPermissionTree
@@ -416,6 +435,91 @@ function DataSourceViewsSection({
         })}
       </Tree>
     </div>
+  );
+}
+
+function RetrievalActionTagsFilterPopover({
+  dustAPIDataSourceId,
+  tagsFilter,
+  connectorProvider,
+}: {
+  dustAPIDataSourceId: string;
+  tagsFilter: TagsFilter;
+  connectorProvider: ConnectorProvider | null;
+}) {
+  if (tagsFilter === null) {
+    return null;
+  }
+
+  const tagsAuto: boolean = tagsFilter === "auto";
+  const tagsIn: DataSourceTag[] = [];
+  const tagsNot: DataSourceTag[] = [];
+
+  if (tagsFilter !== "auto") {
+    tagsIn.push(
+      ...tagsFilter.in.map((tag) => ({
+        tag,
+        dustAPIDataSourceId,
+        connectorProvider,
+      }))
+    );
+    if (tagsFilter.not) {
+      tagsNot.push(
+        ...tagsFilter.not.map((tag) => ({
+          tag,
+          dustAPIDataSourceId,
+          connectorProvider,
+        }))
+      );
+    }
+  }
+
+  const tagsLabel = tagsAuto
+    ? "Filters"
+    : `Filters (${tagsIn.length + tagsNot.length})`;
+
+  return (
+    <PopoverRoot modal={true}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" label={tagsLabel} isSelect />
+      </PopoverTrigger>
+      <PopoverContent>
+        <div className="flex flex-col gap-8">
+          {tagsIn.length > 0 && (
+            <div className="flex flex-col gap-2">
+              <Label>Must have labels</Label>
+              <div className="flex flex-row flex-wrap gap-1">
+                {tagsIn.map((tag) => (
+                  <Chip key={tag.tag} label={tag.tag} color="slate" />
+                ))}
+              </div>
+            </div>
+          )}
+          {tagsNot.length > 0 && (
+            <div className="flex flex-col gap-2">
+              <Label>Must not have labels</Label>
+              <div className="flex flex-row flex-wrap gap-1">
+                {tagsNot.map((tag) => (
+                  <Chip key={tag.tag} label={tag.tag} color="red" />
+                ))}
+              </div>
+            </div>
+          )}
+          {tagsAuto && (
+            <div className="flex flex-col gap-2">
+              <div className="flex flex-row flex-wrap gap-1">
+                <Chip
+                  color="emerald"
+                  label="Dynamic filtering activated."
+                  icon={SparklesIcon}
+                  isBusy
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      </PopoverContent>
+    </PopoverRoot>
   );
 }
 

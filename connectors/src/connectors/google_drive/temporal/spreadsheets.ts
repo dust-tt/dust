@@ -60,7 +60,8 @@ async function upsertGdriveTable(
   connector: ConnectorResource,
   sheet: Sheet,
   parents: string[],
-  rows: string[][]
+  rows: string[][],
+  tags: string[]
 ) {
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
@@ -95,6 +96,7 @@ async function upsertGdriveTable(
       title: `${spreadsheet.title} - ${title}`,
       mimeType: "application/vnd.google-apps.spreadsheet",
       sourceUrl: getSourceUrlForGoogleDriveSheet(sheet),
+      tags,
     })
   );
 }
@@ -167,7 +169,8 @@ function getValidRows(allRows: string[][], loggerArgs: object): string[][] {
 async function processSheet(
   connector: ConnectorResource,
   sheet: Sheet,
-  parents: string[]
+  parents: string[],
+  tags: string[]
 ): Promise<boolean> {
   if (!sheet.values) {
     return false;
@@ -193,7 +196,7 @@ async function processSheet(
   // Assuming the first line as headers, at least one additional data line is required.
   if (rows.length > 1) {
     try {
-      await upsertGdriveTable(connector, sheet, parents, rows);
+      await upsertGdriveTable(connector, sheet, parents, rows, tags);
     } catch (err) {
       if (err instanceof TablesError) {
         logger.warn(
@@ -519,7 +522,12 @@ export async function syncSpreadSheet(
 
       const successfulSheetIdImports: number[] = [];
       for (const sheet of sheets) {
-        const isImported = await processSheet(connector, sheet, parents);
+        const isImported = await processSheet(
+          connector,
+          sheet,
+          parents,
+          file.labels
+        );
         if (isImported) {
           successfulSheetIdImports.push(sheet.id);
         }

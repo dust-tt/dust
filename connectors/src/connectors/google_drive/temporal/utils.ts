@@ -1,4 +1,4 @@
-import { cacheWithRedis } from "@dust-tt/types";
+import { cacheWithRedis, removeNulls } from "@dust-tt/types";
 import type { drive_v3 } from "googleapis";
 import { google } from "googleapis";
 import type { GaxiosError, GaxiosResponse } from "googleapis-common";
@@ -51,6 +51,67 @@ export const getMyDriveIdCached = cacheWithRedis(
   60 * 10 * 1000 // 10 minutes
 );
 
+// Turn the labels into a string array of formatted string such as labelTitle:labelValue
+const getLabelsNamesFromLabels = async (
+  file: drive_v3.Schema$File,
+  authCredentials: OAuth2Client
+) => {
+  const labelInfo = file.labelInfo;
+  if (!labelInfo) {
+    return [];
+  }
+  const labels = await getCachedLabels(authCredentials);
+
+  return removeNulls(
+    labelInfo.labels?.flatMap((l) => {
+      const labelDef = labels.find((def) => def.id === l.id);
+      if (!labelDef || !labelDef.properties?.title) {
+        return null;
+      }
+
+      const title: string = labelDef.properties.title;
+
+      for (const f of Object.values(l.fields ?? {})) {
+        if (!f.valueType) {
+          continue;
+        }
+
+        const fieldDef = labelDef.fields?.find((def) => def.id === f.id);
+        if (!fieldDef) {
+          continue;
+        }
+
+        switch (f.valueType) {
+          case "text":
+            return (f.text ?? []).map((t) => `${title}:${t}`);
+          case "dateString":
+            return (f.dateString ?? []).map((d) => `${title}:${d}`);
+          case "integer":
+            return (f.integer ?? []).map((i) => `${title}:${i}`);
+          case "selection":
+            // In case of selection, we get ID's of the selection choice, to find out the values, we need to lookup in the field definition
+            return removeNulls(
+              (f.selection ?? []).map((s) => {
+                const choice = fieldDef.selectionOptions?.choices?.find(
+                  (c) => c.id === s
+                );
+                return choice?.properties?.displayName;
+              })
+            ).map((o) => `${title}:${o}`);
+          case "user":
+            // Ignore on purpose
+            return null;
+          default:
+            logger.warn({ valueType: f.valueType }, "Unknown field type");
+            return null;
+        }
+      }
+
+      return null;
+    }) ?? []
+  );
+};
+
 export async function driveObjectToDustType(
   file: drive_v3.Schema$File,
   authCredentials: OAuth2Client
@@ -64,7 +125,11 @@ export async function driveObjectToDustType(
   ) {
     throw new Error("Invalid file. File is: " + JSON.stringify(file));
   }
+
   const drive = await getDriveClient(authCredentials);
+
+  const labels = await getLabelsNamesFromLabels(file, authCredentials);
+
   if (!file.driveId) {
     // There is no driveId, the object is stored in "My Drive".
     return {
@@ -87,6 +152,7 @@ export async function driveObjectToDustType(
       capabilities: {
         canDownload: file.capabilities.canDownload,
       },
+      labels: labels,
     };
   } else if (file.driveId == file.id) {
     // We are dealing with a Google Drive object. We need a query to the Drive API to get the actual Drive name.
@@ -112,6 +178,7 @@ export async function driveObjectToDustType(
       capabilities: {
         canDownload: false,
       },
+      labels: labels,
     };
   } else {
     // We are dealing with a file in a shared drive.
@@ -135,6 +202,7 @@ export async function driveObjectToDustType(
       capabilities: {
         canDownload: file.capabilities.canDownload,
       },
+      labels: labels,
     };
   }
 }
@@ -178,4 +246,41 @@ export async function getDriveClient(
   }
 
   throw new Error("Invalid auth_credentials type");
+}
+
+export const getCachedLabels = cacheWithRedis(
+  _getLabels,
+  (authCredentials) => {
+    if (!authCredentials.credentials.access_token) {
+      throw new Error("No access token in auth credentials");
+    }
+    return authCredentials.credentials.access_token;
+  },
+  60 * 10 * 1000 // 10 minutes
+);
+
+// Get the list of published labels
+export async function _getLabels(authCredentials: OAuth2Client) {
+  try {
+    const driveLabels = google.drivelabels({
+      version: "v2",
+      auth: authCredentials,
+    });
+    const r = await driveLabels.labels.list({
+      pageSize: 200,
+      publishedOnly: true,
+      view: "LABEL_VIEW_FULL",
+    });
+
+    return removeNulls(r.data.labels?.map((l) => (l.id ? l : null)) ?? []);
+  } catch (e) {
+    // Warning for now as getting labels requires re-auth the google drive app with a new scope.
+    logger.warn(
+      {
+        error: e,
+      },
+      "Error getting labels"
+    );
+  }
+  return [];
 }

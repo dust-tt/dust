@@ -81,6 +81,7 @@ const PROVIDER_STRATEGIES: Record<
           : [
               "https://www.googleapis.com/auth/drive.metadata.readonly",
               "https://www.googleapis.com/auth/drive.readonly",
+              "https://www.googleapis.com/auth/drive.labels.readonly",
             ];
       const qs = querystring.stringify({
         response_type: "code",
@@ -307,6 +308,48 @@ const PROVIDER_STRATEGIES: Record<
       }
       // Ensure the string is less than 63 characters.
       return isValidZendeskSubdomain(extraConfig.zendesk_subdomain);
+    },
+  },
+  salesforce: {
+    setupUri: (connection) => {
+      if (!connection.metadata.instance_url) {
+        throw new Error("Missing Salesforce instance URL");
+      }
+      if (
+        !connection.metadata.code_verifier ||
+        !connection.metadata.code_challenge
+      ) {
+        throw new Error("Missing PKCE code verifier or challenge");
+      }
+
+      return (
+        `${connection.metadata.instance_url}/services/oauth2/authorize` +
+        `?response_type=code` +
+        `&client_id=${config.getOAuthSalesforceClientId()}` +
+        `&state=${connection.connection_id}` +
+        `&redirect_uri=${encodeURIComponent(finalizeUriForProvider("salesforce"))}` +
+        `&code_challenge=${connection.metadata.code_challenge}` +
+        `&code_challenge_method=S256`
+      );
+    },
+    codeFromQuery: (query) => {
+      return getStringFromQuery(query, "code");
+    },
+    connectionIdFromQuery: (query) => {
+      return getStringFromQuery(query, "state");
+    },
+    isExtraConfigValid: (extraConfig) => {
+      if (!extraConfig.instance_url) {
+        return false;
+      }
+      try {
+        const url = new URL(extraConfig.instance_url);
+        return (
+          url.protocol === "https:" && url.hostname.endsWith(".salesforce.com")
+        );
+      } catch {
+        return false;
+      }
     },
   },
 };

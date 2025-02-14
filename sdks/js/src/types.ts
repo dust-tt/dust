@@ -107,6 +107,10 @@ export const supportedOtherFileFormats = {
     ".ppt",
     ".pptx",
   ],
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [
+    ".xlsx",
+  ],
+  "application/vnd.ms-excel": [".xls"],
   "application/pdf": [".pdf"],
   "text/comma-separated-values": [".csv"],
   "text/csv": [".csv"],
@@ -276,6 +280,7 @@ const ConnectorProvidersSchema = FlexibleEnumSchema<
   | "snowflake"
   | "zendesk"
   | "bigquery"
+  | "salesforce"
 >();
 export type ConnectorProvider = z.infer<typeof ConnectorProvidersSchema>;
 
@@ -780,13 +785,13 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "google_ai_studio_experimental_models_feature"
   | "snowflake_connector_feature"
   | "index_private_slack_channel"
-  | "conversations_jit_actions"
   | "disable_run_logs"
   | "show_debug_tools"
   | "labs_github_actions"
   | "deepseek_r1_global_agent_feature"
-  | "bigquery_feature"
   | "tags_filters"
+  | "salesforce_feature"
+  | "advanced_notion_management"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -2213,6 +2218,7 @@ export const UpsertTableFromCsvRequestSchema = z.object({
   sourceUrl: z.string().nullable().optional(),
   tableId: z.string(),
   csv: z.string().optional(),
+  fileId: z.string().optional(),
 });
 
 export type UpsertTableFromCsvRequestType = z.infer<
@@ -2376,11 +2382,13 @@ const FileTypeUseCaseSchema = FlexibleEnumSchema<
 >();
 
 export const FileTypeSchema = z.object({
+  // TODO(spolu): move this to ModelIdSchema
+  id: z.string(),
+  sId: z.string(),
   contentType: z.string(),
   downloadUrl: z.string().optional(),
   fileName: z.string(),
   fileSize: z.number(),
-  id: z.string(),
   status: FileTypeStatusSchema,
   uploadUrl: z.string().optional(),
   publicUrl: z.string().optional(),

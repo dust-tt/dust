@@ -1,7 +1,9 @@
 import {
   ArrowRightIcon,
   Button,
+  Div3D,
   GithubIcon,
+  Hover3D,
   Icon,
   LinkedinIcon,
   Separator,
@@ -64,12 +66,33 @@ const PEOPLE: Record<
     linkedIn: "https://www.linkedin.com/in/hfontanier/",
     github: "https://github.com/fontanierh",
   },
-  PopDaph: {
+  pr: {
+    name: "Philippe Rolet",
+    title: "Software Engineer",
+    image: "https://avatars.githubusercontent.com/u/5437393",
+    linkedIn: "https://www.linkedin.com/in/philipperolet/",
+    github: "https://github.com/philipperolet",
+  },
+  ed: {
+    name: "Edouard Wautier",
+    title: "Principal Designer",
+    image: "https://avatars.githubusercontent.com/u/4435185",
+    linkedIn: "https://www.linkedin.com/in/edouardwautier/",
+    github: "https://github.com/Duncid",
+  },
+  popdaph: {
     name: "Daphné Popin",
     title: "Software Engineer",
     image: "https://avatars.githubusercontent.com/u/3803406",
     linkedIn: "https://www.linkedin.com/in/popdaph/",
     github: "https://www.linkedin.com/in/popdaph/",
+  },
+  yutcam: {
+    name: "Pauline Pham",
+    title: "Operations",
+    image: "https://avatars.githubusercontent.com/u/33726902",
+    linkedIn: "https://www.linkedin.com/in/pauline-pham1",
+    github: "https://github.com/Yutcam",
   },
   flvndvd: {
     name: "Flavien David",
@@ -78,13 +101,6 @@ const PEOPLE: Record<
     linkedIn: "https://www.linkedin.com/in/flavien-david/",
     github: "https://github.com/flvndvd",
   },
-  tdraier: {
-    name: "Thomas Draier",
-    title: "Software Engineer",
-    image: "https://avatars.githubusercontent.com/u/729255",
-    linkedIn: "https://www.linkedin.com/in/tdraier/",
-    github: "https://github.com/tdraier",
-  },
   nchinot: {
     name: "Nicolas Chinot",
     title: "US GM",
@@ -92,12 +108,75 @@ const PEOPLE: Record<
     linkedIn: "https://www.linkedin.com/in/nicolaschinot/",
     github: "https://github.com/nchinot",
   },
-  "aubin-tchoi": {
+  albandum: {
+    name: "Alban Dumouilla",
+    title: "Acceleration Engineer",
+    image: "https://avatars.githubusercontent.com/u/1189312?v=4",
+    github: "https://github.com/albandum",
+    linkedIn: "https://www.linkedin.com/in/albandumouilla",
+  },
+  clementb: {
+    name: "Clément Bruneau",
+    title: "Sales",
+    image: "https://avatars.githubusercontent.com/u/120678252?v=4",
+    github: "https://github.com/clmrn",
+    linkedIn: "https://www.linkedin.com/in/bruneauclement",
+  },
+  jbelveze: {
+    name: "Jules Belveze",
+    title: "Software Engineer",
+    image: "https://avatars.githubusercontent.com/u/32683010",
+    github: "https://github.com/JulesBelveze",
+    linkedIn: "https://www.linkedin.com/in/jules-belveze",
+  },
+  tdraier: {
+    name: "Thomas Draier",
+    title: "Software Engineer",
+    image: "https://avatars.githubusercontent.com/u/729255",
+    linkedIn: "https://www.linkedin.com/in/tdraier/",
+    github: "https://github.com/tdraier",
+  },
+  fraggle: {
+    name: "Sébastien Flory",
+    title: "Software Engineer",
+    image: "https://avatars.githubusercontent.com/u/24419?v=4",
+    github: "https://github.com/Fraggle",
+    linkedIn: "https://www.linkedin.com/in/fraggle/",
+  },
+  adugre: {
+    name: "Adèle Dugré",
+    title: "EMEA Customer Success",
+    image: "https://avatars.githubusercontent.com/u/180963192",
+    linkedIn: "https://www.linkedin.com/in/ad%C3%A8le-dugr%C3%A9-7484a120/",
+    github: "https://github.com/Adugre",
+  },
+  atchoi: {
     name: "Aubin Tchoi",
     title: "Software Engineer",
     image: "https://avatars.githubusercontent.com/u/60398825",
     github: "https://github.com/aubin-tchoi",
     linkedIn: "https://www.linkedin.com/in/aubin-tchoi",
+  },
+  apinot: {
+    name: "Alexandre Pinot",
+    title: "Product Designer",
+    image: "https://avatars.githubusercontent.com/u/32997243?v=4",
+    github: "https://github.com/pinotalexandre",
+    linkedIn: "https://www.linkedin.com/in/pinotalexandre/",
+  },
+  ahammour: {
+    name: "Abboud Hammour",
+    title: "Customer Success",
+    image: "https://avatars.githubusercontent.com/u/170936020?v=4",
+    github: "https://github.com/ahammour",
+    linkedIn: "https://www.linkedin.com/in/abboud-hammour/",
+  },
+  adeltombe: {
+    name: "Amelie Deltombe",
+    title: "Marketing",
+    image: "https://avatars.githubusercontent.com/u/183381801?v=4",
+    github: "https://github.com/ameliedrhub",
+    linkedIn: "https://www.linkedin.com/in/ameliedeltombe/",
   },
 };
 
@@ -193,7 +272,17 @@ export default function About() {
           </div>
           <div className="flex flex-row justify-center pt-4">
             <div className="max-w-4xl">
-              <img src="/static/landing/about/about_visual.png" />
+              <Hover3D depth={-20} perspective={1000} className="relative">
+                <Div3D depth={-10} className="absolute top-0">
+                  <img src="/static/landing/about/2.png" />
+                </Div3D>
+                <Div3D depth={40}>
+                  <img src="/static/landing/about/1.png" />
+                </Div3D>
+                <Div3D depth={70} className="absolute top-0">
+                  <img src="/static/landing/about/3.png" />
+                </Div3D>
+              </Hover3D>
             </div>
           </div>
         </div>

@@ -119,6 +119,7 @@ export const GoogleDriveCommandSchema = t.type({
     t.literal("skip-file"),
     t.literal("register-webhook"),
     t.literal("register-all-webhooks"),
+    t.literal("list-labels"),
   ]),
   args: t.record(
     t.string,
@@ -325,6 +326,7 @@ export const MicrosoftCommandSchema = t.type({
   command: t.union([
     t.literal("garbage-collect-all"),
     t.literal("check-file"),
+    t.literal("list-columns"),
     t.literal("start-incremental-sync"),
     t.literal("restart-all-incremental-sync-workflows"),
     t.literal("skip-file"),

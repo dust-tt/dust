@@ -535,7 +535,7 @@ impl DataSource {
         remove_tags: Vec<String>,
     ) -> Result<Vec<String>> {
         let new_tags = store
-            .update_data_source_document_tags(
+            .update_data_source_node_tags(
                 &self.project,
                 &self.data_source_id(),
                 &document_id.to_string(),

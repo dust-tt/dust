@@ -83,9 +83,11 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
   static async findByWorkspaceAndProvider({
     auth,
     provider,
+    isDefaultWorkspaceConfiguration,
   }: {
     auth: Authenticator;
     provider: LabsTranscriptsProviderType;
+    isDefaultWorkspaceConfiguration?: boolean;
   }): Promise<LabsTranscriptsConfigurationResource | null> {
     const owner = auth.workspace();
 
@@ -97,6 +99,9 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
       where: {
         workspaceId: owner.id,
         provider,
+        ...(isDefaultWorkspaceConfiguration
+          ? { isDefaultWorkspaceConfiguration: true }
+          : {}),
       },
     });
 

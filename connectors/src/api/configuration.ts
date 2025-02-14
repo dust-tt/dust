@@ -75,6 +75,10 @@ const _patchConnectorConfiguration = async (
         `Connector type ${connector.type} does not support configuration patching`
       );
     }
+    // TODO(salesforce): implement this
+    case "salesforce": {
+      throw new Error(`Connector type ${connector.type} NOT IMPLEMENTED YET`);
+    }
 
     default: {
       assertNever(connector.type);

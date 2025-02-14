@@ -24,6 +24,7 @@ pub mod data_sources {
     pub mod splitter;
 }
 pub mod databases {
+    pub mod csv;
     pub mod database;
     pub mod table;
     pub mod table_schema;
@@ -118,6 +119,7 @@ pub mod oauth {
         pub mod microsoft;
         pub mod mock;
         pub mod notion;
+        pub mod salesforce;
         pub mod slack;
         pub mod utils;
         pub mod zendesk;

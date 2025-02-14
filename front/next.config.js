@@ -43,7 +43,7 @@ module.exports = {
       {
         source: "/terms",
         destination:
-          "https://dust-tt.notion.site/Terms-of-Use-ff8665f52c454e0daf02195ec0d6bafb",
+          "https://dust-tt.notion.site/17bb854ffc674e1ba729d1a10837e50d?v=de92d1770a344beeafe9f701e78ad8f3",
         permanent: true,
       },
       {

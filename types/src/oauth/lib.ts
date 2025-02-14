@@ -22,6 +22,7 @@ export const OAUTH_PROVIDERS = [
   "gong",
   "microsoft",
   "zendesk",
+  "salesforce",
 ] as const;
 
 export type OAuthProvider = (typeof OAUTH_PROVIDERS)[number];
@@ -60,6 +61,14 @@ export function isValidZendeskSubdomain(s: unknown): s is string {
 
 // Credentials Providers
 
+export const PROVIDERS_WITH_WORKSPACE_CONFIGURATIONS = [
+  "gong",
+  "modjo",
+] as const;
+
+export type ProvidersWithWorkspaceConfigurations =
+  (typeof PROVIDERS_WITH_WORKSPACE_CONFIGURATIONS)[number];
+
 export const CREDENTIALS_PROVIDERS = [
   "snowflake",
   "modjo",
@@ -69,6 +78,14 @@ export type CredentialsProvider = (typeof CREDENTIALS_PROVIDERS)[number];
 
 export function isCredentialProvider(obj: unknown): obj is CredentialsProvider {
   return CREDENTIALS_PROVIDERS.includes(obj as CredentialsProvider);
+}
+
+export function isProviderWithWorkspaceConfiguration(
+  obj: unknown
+): obj is ProvidersWithWorkspaceConfigurations {
+  return PROVIDERS_WITH_WORKSPACE_CONFIGURATIONS.includes(
+    obj as ProvidersWithWorkspaceConfigurations
+  );
 }
 
 // Credentials
