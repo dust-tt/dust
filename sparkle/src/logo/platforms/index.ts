@@ -38,3 +38,4 @@ export { default as SnowflakeLogo } from "./Snowflake";
 export { default as TogetheraiLogo } from "./Togetherai";
 export { default as ZapierLogo } from "./Zapier";
 export { default as ZendeskLogo } from "./Zendesk";
+export { default as ZendeskWhiteLogo } from "./ZendeskWhite";

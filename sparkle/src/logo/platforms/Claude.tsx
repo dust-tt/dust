@@ -21,7 +21,7 @@ const SvgClaude = (props: SVGProps<SVGSVGElement>) => (
     </g>
     <defs>
       <clipPath id="Claude_svg__a">
-        <path fill="#fff" d="M0 0h24v24H0z" />
+        <rect width={24} height={24} fill="#fff" rx={4} />
       </clipPath>
     </defs>
   </svg>
