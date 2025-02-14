@@ -293,21 +293,8 @@ async function upsertConfluencePageToDataSource({
       dataSourceConfig,
       markdown
     );
-    const renderedPage = await renderDocumentTitleAndContent({
-      dataSourceConfig,
-      title: `Page ${page.title} Space ${spaceName}`,
-      createdAt: pageCreatedAt,
-      updatedAt: lastPageVersionCreatedAt,
-      content: renderedMarkdown,
-    });
 
-    const documentId = makePageInternalId(page.id);
-    const documentUrl = makeConfluenceDocumentUrl({
-      baseUrl: confluenceConfig.url,
-      suffix: page._links.tinyui,
-    });
-
-    // We log the number of labels to help define the importance of labels in the future.
+    // Log labels info
     if (page.labels.results.length > 0) {
       localLogger.info(
         { labelsCount: page.labels.results.length },
@@ -315,10 +302,8 @@ async function upsertConfluencePageToDataSource({
       );
     }
 
-    // Limit to 10 custom tags.
-    const customTags = page.labels.results
-      .slice(0, 10)
-      .map((l) => `labels:${l.id}`);
+    // Use label names for tags instead of IDs, limit to 32 tags
+    const customTags = page.labels.results.slice(0, 32).map((l) => l.name);
 
     const tags = [
       `createdAt:${pageCreatedAt.getTime()}`,
@@ -328,6 +313,23 @@ async function upsertConfluencePageToDataSource({
       `version:${page.version.number}`,
       ...customTags,
     ];
+
+    const renderedPage = await renderDocumentTitleAndContent({
+      dataSourceConfig,
+      title: `Page ${page.title}`,
+      createdAt: pageCreatedAt,
+      updatedAt: lastPageVersionCreatedAt,
+      content: renderedMarkdown,
+      additionalPrefixes: {
+        labels: page.labels.results.map((l) => l.name).join(", ") || "none",
+      },
+    });
+
+    const documentId = makePageInternalId(page.id);
+    const documentUrl = makeConfluenceDocumentUrl({
+      baseUrl: confluenceConfig.url,
+      suffix: page._links.tinyui,
+    });
 
     await upsertDataSourceDocument({
       dataSourceConfig,
