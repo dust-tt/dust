@@ -134,8 +134,8 @@ export async function getFilesAndFolders(
 
   const endpoint =
     nodeType === "drive"
-      ? `${parentResourcePath}/root/children`
-      : `${parentResourcePath}/children`;
+      ? `${parentResourcePath}/root/children?$expand=listItem($expand=fields)`
+      : `${parentResourcePath}/children?$expand=listItem($expand=fields)`;
 
   const res = nextLink
     ? await clientApiGet(client, nextLink)
@@ -181,8 +181,9 @@ export async function getDeltaResults({
 
   const deltaPath =
     (nodeType === "folder"
-      ? itemAPIPath + "/delta"
-      : itemAPIPath + "/root/delta") + (token ? `?token=${token}` : "");
+      ? itemAPIPath + "/delta?$expand=listItem($expand=fields)"
+      : itemAPIPath + "/root/delta?$expand=listItem($expand=fields)") +
+    (token ? `&token=${token}` : "");
 
   const res = nextLink
     ? await clientApiGet(client, nextLink)

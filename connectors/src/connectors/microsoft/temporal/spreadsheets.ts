@@ -12,6 +12,7 @@ import {
   getWorksheets,
   wrapMicrosoftGraphAPIWithResult,
 } from "@connectors/connectors/microsoft/lib/graph_api";
+import { getColumnsFromListItem } from "@connectors/connectors/microsoft/lib/utils";
 import { getParents } from "@connectors/connectors/microsoft/temporal/file";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
@@ -77,7 +78,8 @@ async function upsertMSTable(
   spreadsheet: microsoftgraph.DriveItem,
   worksheet: microsoftgraph.WorkbookWorksheet,
   parents: [string, string, ...string[]],
-  rows: string[][]
+  rows: string[][],
+  tags: string[]
 ) {
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
@@ -112,6 +114,7 @@ async function upsertMSTable(
       // At our current comprehension, there are no easily findable source url to
       // directly access the worksheet, so we link to the parent spreadsheet
       sourceUrl: spreadsheet.webUrl ?? undefined,
+      tags,
     })
   );
 }
@@ -200,6 +203,11 @@ async function processSheet({
       })),
     ];
 
+    const tags = await getColumnsFromListItem(
+      spreadsheet,
+      await getClient(connector.connectionId)
+    );
+
     try {
       await upsertMSTable(
         connector,
@@ -207,7 +215,8 @@ async function processSheet({
         spreadsheet,
         worksheet,
         parents,
-        rows
+        rows,
+        tags
       );
     } catch (err) {
       logger.error(
