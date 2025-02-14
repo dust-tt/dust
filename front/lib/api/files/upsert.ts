@@ -265,8 +265,7 @@ const upsertTableToDatasource: ProcessingFunction = async (
     });
   }
 
-  // Note from seb : it would be better to merge useCase and useCaseMetadata to be able to specify
-  // what each use case is able to do / requires via typing.
+  // Note from seb : it would be better to merge useCase and useCaseMetadata to be able to specify what each use case is able to do / requires via typing.
   if (file.useCaseMetadata) {
     await file.setUseCaseMetadata({
       ...file.useCaseMetadata,
@@ -284,8 +283,7 @@ const upsertExcelToDatasource: ProcessingFunction = async (
   auth,
   { file, content, dataSource, upsertArgs }
 ) => {
-  // Excel files are processed in a special way, we need to extract the content of each worksheet
-  // and upsert it as a separate table.
+  // Excel files are processed in a special way, we need to extract the content of each worksheet and upsert it as a separate table.
   let worksheetName: string | undefined;
   let worksheetContent: string | undefined;
 
@@ -350,7 +348,7 @@ type ProcessingFunction = (
     dataSource: DataSourceResource;
     upsertArgs?: UpsertDocumentArgs | UpsertTableArgs;
   }
-) => Promise<Result<{ snippet: string | null }, Error>>;
+) => Promise<Result<undefined, Error>>;
 
 const getProcessingFunction = ({
   contentType,
@@ -440,7 +438,7 @@ const maybeApplyProcessing: ProcessingFunction = async (
     );
   }
 
-  return new Ok({ snippet: null });
+  return new Ok(undefined);
 };
 
 export async function processAndUpsertToDataSource(
