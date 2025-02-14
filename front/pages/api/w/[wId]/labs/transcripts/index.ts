@@ -1,5 +1,9 @@
 import type { WithAPIErrorResponse } from "@dust-tt/types";
-import { isCredentialProvider, OAuthAPI } from "@dust-tt/types";
+import {
+  isCredentialProvider,
+  isProviderWithWorkspaceConfiguration,
+  OAuthAPI,
+} from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -171,7 +175,7 @@ async function handler(
 
       let isDefaultWorkspaceConfiguration = false;
 
-      if (isCredentialProvider(provider)) {
+      if (isProviderWithWorkspaceConfiguration(provider)) {
         const currentDefaultConfiguration =
           await LabsTranscriptsConfigurationResource.findByWorkspaceAndProvider(
             {
