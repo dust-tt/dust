@@ -785,16 +785,19 @@ export async function* postUserMessage(
       // connection pool, resulting in a deadlock.
       await getConversationRankVersionLock(conversation, t);
 
-      let nextMessageRank =
-        ((await Message.max<number | null, Message>("rank", {
-          where: {
-            conversationId: conversation.id,
-            threadVersions: {
-              [Op.contains]: [conversation.currentThreadVersion],
-            },
+      const lastMessage = await Message.findOne({
+        attributes: ["id", "rank"],
+        where: {
+          conversationId: conversation.id,
+          threadVersions: {
+            [Op.contains]: [conversation.currentThreadVersion],
           },
-          transaction: t,
-        })) ?? -1) + 1;
+        },
+        order: [["rank", "DESC"]],
+        transaction: t,
+      });
+
+      let nextMessageRank = lastMessage ? lastMessage.rank + 1 : 0;
 
       async function createMessageAndUserMessage(workspace: WorkspaceType) {
         return Message.create(
@@ -803,7 +806,7 @@ export async function* postUserMessage(
             rank: nextMessageRank++,
             threadVersions: [conversation.currentThreadVersion],
             conversationId: conversation.id,
-            parentId: null,
+            parentId: lastMessage?.id,
             userMessageId: (
               await UserMessage.create(
                 {
@@ -1234,19 +1237,13 @@ export async function* editUserMessage(
         transaction: t,
       });
       const lastVersion = newestMessage?.version ?? 0;
-      const isLastMessage = conversation.content[
-        conversation.content.length - 1
-      ].some((m) => m.sId === message.sId);
-      let newThreadVersion: number | undefined = undefined;
-      if (!isLastMessage) {
-        const maxThreadVersions: number = await Message.max("threadVersions", {
-          where: {
-            conversationId: conversation.id,
-          },
-          transaction: t,
-        });
-        newThreadVersion = Number(maxThreadVersions) + 1;
-      }
+      const maxThreadVersions: number = await Message.max("threadVersions", {
+        where: {
+          conversationId: conversation.id,
+        },
+        transaction: t,
+      });
+      const newThreadVersion = Number(maxThreadVersions) + 1;
       const userMessageRow = messageRow.userMessage;
       // adding messageRow as param otherwise Ts doesn't get it can't be null
       async function createMessageAndUserMessage(
@@ -1295,7 +1292,7 @@ export async function* editUserMessage(
             rank: messageRow.rank,
             conversationId: conversation.id,
             parentId: messageRow.parentId,
-            previousVersionMessageId: messageRow.id,
+            previousVersionMessageId: newestMessage?.id,
             version: lastVersion + 1,
             threadVersions: [
               newThreadVersion ?? conversation.currentThreadVersion,
@@ -1337,7 +1334,7 @@ export async function* editUserMessage(
           {
             where: {
               conversationId: conversation.id,
-              id: messageRow.id,
+              id: newestMessage?.id,
             },
             transaction: t,
             hooks: false,
@@ -1644,7 +1641,6 @@ export async function* retryAgentMessage(
           "Invalid agent message retry request, this message was already retried."
         );
       }
-      console.log("==================3");
       const agentMessageRow = await AgentMessage.create(
         {
           status: "created",
@@ -1860,20 +1856,24 @@ export async function postNewContentFragment(
         }
       })();
 
-      const nextMessageRank =
-        ((await Message.max<number | null, Message>("rank", {
-          where: {
-            conversationId: conversation.id,
-            threadVersions: {
-              [Op.contains]: [conversation.currentThreadVersion],
-            },
+      const lastMessage = await Message.findOne({
+        attributes: ["id", "rank"],
+        where: {
+          conversationId: conversation.id,
+          threadVersions: {
+            [Op.contains]: [conversation.currentThreadVersion],
           },
-          transaction: t,
-        })) ?? -1) + 1;
+        },
+        order: [["rank", "DESC"]],
+        transaction: t,
+      });
+
+      const nextMessageRank = lastMessage ? lastMessage.rank + 1 : 0;
       const messageRow = await Message.create(
         {
           sId: messageId,
           rank: nextMessageRank,
+          parentId: lastMessage?.id,
           threadVersions: [conversation.currentThreadVersion],
           conversationId: conversation.id,
           contentFragmentId: contentFragment.id,

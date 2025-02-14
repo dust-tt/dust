@@ -457,7 +457,8 @@ Message.init(
         fields: ["sId"],
       },
       {
-        fields: ["conversationId", "rank", "version"],
+        unique: true,
+        fields: ["conversationId", "rank", "version", "parentId"],
         using: "btree",
       },
       {
