@@ -193,9 +193,11 @@ export async function syncTicket({
       updatedAt: updatedAtDate,
       additionalPrefixes: {
         ...metadata,
-        labels: ticket.tags.join(", ") || "none",
-        customFields:
-          ticket.custom_fields.map(({ value }) => value).join(", ") || "none",
+        labels:
+          [
+            ...ticket.tags,
+            ...ticket.custom_fields.map(({ value }) => value),
+          ].join(", ") || "none",
       },
     });
 
