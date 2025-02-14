@@ -24,6 +24,7 @@ pub mod data_sources {
     pub mod splitter;
 }
 pub mod databases {
+    pub mod csv;
     pub mod database;
     pub mod table;
     pub mod table_schema;

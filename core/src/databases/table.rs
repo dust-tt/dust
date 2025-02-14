@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
+use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
 use futures::future::try_join_all;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -584,6 +585,22 @@ impl LocalTable {
 
         Ok(schema)
     }
+
+    pub async fn validate_csv_content(upsert_queue_bucket_path: &str) -> Result<TableSchema> {
+        // let bucket = LocalTable::get_upsert_queue_bucket().await?;
+        // let stream = Object::download_streamed(&bucket, upsert_queue_bucket_path).await?;
+        // let reader = csv_async::AsyncReaderBuilder::new()
+        //     .has_headers(true)
+        //     .create_reader(stream);
+        unimplemented!("validate_csv_content")
+        // let file = File::from_id(file_id).await?;
+        // let content = file.get_content().await?;
+        // let rows = csv::Reader::from_reader(content.as_bytes())
+        //     .deserialize()
+        //     .collect::<Result<Vec<Row>, _>>()?;
+        // let schema = TableSchema::from_rows_async(rows.clone()).await?;
+        // Ok((rows, schema))
+    }
 }
 
 impl Filterable for Table {
@@ -609,13 +626,89 @@ impl Filterable for Table {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Row {
-    row_id: String,
-    value: Value,
+    pub row_id: String,
+    pub value: Value,
 }
 
 impl Row {
     pub fn new(row_id: String, value: Value) -> Self {
         Row { row_id, value }
+    }
+
+    /// This method implements our interpretation of CSVs into Table rows.
+    pub fn from_csv_record(
+        headers: &Vec<String>,
+        record: Vec<&str>,
+        row_idx: usize,
+    ) -> Result<Row> {
+        let mut value_map = serde_json::Map::new();
+
+        for (i, field) in record.iter().enumerate() {
+            if i >= headers.len() {
+                break;
+            }
+
+            let header = &headers[i];
+            let trimmed = field.trim();
+
+            if header == "__dust_id" {
+                continue;
+            }
+
+            let parsed_value = if trimmed.is_empty() {
+                Value::Null
+            } else if let Ok(num) = trimmed.parse::<f64>() {
+                // Numbers
+                Value::Number(serde_json::Number::from_f64(num).unwrap())
+            } else if let Ok(bool_val) = trimmed.parse::<bool>() {
+                // Booleans
+                Value::Bool(bool_val)
+            } else {
+                // Various datetime formats
+                let dt: Option<DateTime<Utc>> = [
+                    // RFC3339
+                    DateTime::parse_from_rfc3339(trimmed).map(|dt| dt.into()),
+                    // RFC2822
+                    DateTime::parse_from_rfc2822(trimmed).map(|dt| dt.into()),
+                    // Google Spreadsheet format
+                    DateTime::parse_from_str(trimmed, "%d-%b-%Y").map(|dt| dt.into()),
+                    // SQL
+                    DateTime::parse_from_str(trimmed, "%Y-%m-%d %H:%M:%S").map(|dt| dt.into()),
+                    // HTTP date
+                    DateTime::parse_from_str(trimmed, "%a, %d %b %Y %H:%M:%S GMT")
+                        .map(|dt| dt.into()),
+                ]
+                .iter()
+                .find_map(|result| result.ok());
+
+                if let Some(datetime) = dt {
+                    let mut dt_obj = serde_json::Map::new();
+                    dt_obj.insert("type".to_string(), Value::String("datetime".to_string()));
+                    dt_obj.insert(
+                        "epoch".to_string(),
+                        Value::Number(serde_json::Number::from(datetime.timestamp_millis())),
+                    );
+                    dt_obj.insert(
+                        "string_value".to_string(),
+                        Value::String(trimmed.to_string()),
+                    );
+                    Value::Object(dt_obj)
+                } else {
+                    Value::String(trimmed.to_string())
+                }
+            };
+
+            value_map.insert(header.clone(), parsed_value);
+        }
+
+        let row_id = if let Some(pos) = headers.iter().position(|h| h == "__dust_id") {
+            record.get(pos).map(|id| id.trim().to_string())
+        } else {
+            None
+        }
+        .unwrap_or_else(|| row_idx.to_string());
+
+        Ok(Row::new(row_id, Value::Object(value_map)))
     }
 
     pub fn row_id(&self) -> &str {
