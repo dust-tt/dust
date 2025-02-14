@@ -104,7 +104,7 @@ export function ViewAppAPIModal({
               ? "You need to run this app at least once successfully to view the endpoint"
               : "View how to run this app programmatically"
           }
-          label="API"
+          label="Use with API"
           variant="primary"
           disabled={disabled}
         />

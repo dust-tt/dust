@@ -88,15 +88,24 @@ export function ViewFolderAPIModal({
         <SheetContainer>
           <div className="flex flex-col gap-6">
             <Page.P>
-              <ul className="text-gray-500">
-                <li>
-                  spaceId: <span className="font-bold">{space.sId}</span>{" "}
-                </li>
-                <li>
-                  dataSourceId:{" "}
-                  <span className="font-bold">{dataSource.sId}</span>
-                </li>
-              </ul>
+              <div className="rounded-lg bg-structure-50 p-4 shadow-sm">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-element-700">Space ID:</span>
+                    <code className="font-mono rounded bg-white px-2 py-1 text-sm font-bold text-element-900 shadow-sm">
+                      {space.sId}
+                    </code>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-element-700">
+                      Data Source ID:
+                    </span>
+                    <code className="font-mono rounded bg-white px-2 py-1 text-sm font-bold text-element-900 shadow-sm">
+                      {dataSource.sId}
+                    </code>
+                  </div>
+                </div>
+              </div>
             </Page.P>
 
             <Page.Separator />
@@ -199,9 +208,7 @@ export function ViewFolderAPIModal({
                 For a detailed documentation of the Data source API, please
                 refer to the{" "}
                 <Link
-                  href={
-                    "https://docs.dust.tt/reference/get_api-v1-w-wid-vaults-vid-data-sources-dsid-documents-documentid"
-                  }
+                  href={"https://docs.dust.tt/reference/"}
                   className="py-1 font-bold text-action-600"
                 >
                   API Reference

@@ -269,6 +269,21 @@ export const getMenuItems = (
     }
   }
 
+  if (
+    dataSourceView.kind === "default" &&
+    dataSourceView.category === "folder"
+  ) {
+    actions.push({
+      kind: "item",
+      label: "Copy DataSource ID",
+      icon: PencilSquareIcon,
+      onClick: (e: ReactMouseEvent) => {
+        e.stopPropagation();
+        void navigator.clipboard.writeText(dataSourceView.dataSource.sId);
+      },
+    });
+  }
+
   return actions;
 };
 
