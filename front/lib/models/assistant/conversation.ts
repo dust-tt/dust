@@ -56,7 +56,7 @@ Conversation.init(
       defaultValue: "unlisted",
     },
     currentThreadVersion: {
-      type: DataTypes.BIGINT,
+      type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 0,
     },
@@ -443,7 +443,7 @@ Message.init(
       allowNull: true,
     },
     threadVersions: {
-      type: DataTypes.ARRAY(DataTypes.BIGINT),
+      type: DataTypes.ARRAY(DataTypes.INTEGER),
       allowNull: true,
       defaultValue: [0],
     },

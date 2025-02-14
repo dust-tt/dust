@@ -18,7 +18,6 @@ import {
 } from "@dust-tt/types";
 import React, {
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -27,7 +26,6 @@ import React, {
 import { useInView } from "react-intersection-observer";
 
 import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
-import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
 import MessageGroup from "@app/components/assistant/conversation/MessageGroup";
 import { useEventSource } from "@app/hooks/useEventSource";

@@ -1,14 +1,10 @@
-import {
-  Button,
-  cn,
-  RainbowEffect,
-  StopIcon,
-  useSendNotification,
-} from "@dust-tt/sparkle";
-import type { AgentMention, MentionType, Result } from "@dust-tt/types";
-import type { UploadedContentFragment } from "@dust-tt/types";
+import { Button, cn, RainbowEffect, StopIcon } from "@dust-tt/sparkle";
 import type {
+  AgentMention,
   LightAgentConfigurationType,
+  MentionType,
+  Result,
+  UploadedContentFragment,
   WorkspaceType,
 } from "@dust-tt/types";
 import { compareAgentsForSort } from "@dust-tt/types";
@@ -17,11 +13,10 @@ import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useFileDrop } from "@app/components/assistant/conversation/FileUploaderContext";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBarCitations } from "@app/components/assistant/conversation/input_bar/InputBarCitations";
-import type {
-  InputBarAction,
-  InputBarContainerProps,
+import type { InputBarContainerProps } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
+import InputBarContainer, {
+  INPUT_BAR_ACTIONS,
 } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
-import InputBarContainer from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import type { DustError } from "@app/lib/error";
@@ -29,12 +24,7 @@ import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { useConversation } from "@app/lib/swr/conversations";
 import { classNames } from "@app/lib/utils";
 
-const DEFAULT_INPUT_BAR_ACTIONS: InputBarAction[] = [
-  "attachment",
-  "assistants-list",
-  "assistants-list-with-actions",
-  "fullscreen",
-];
+const DEFAULT_INPUT_BAR_ACTIONS = [...INPUT_BAR_ACTIONS];
 
 /**
  *

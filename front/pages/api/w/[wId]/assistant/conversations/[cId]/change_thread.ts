@@ -61,6 +61,7 @@ async function handler(
 
   switch (req.method) {
     case "POST": {
+      //TODO parse with iots, clean up code
       const { id, direction } = req.query;
       const message = await Message.findOne({
         where: {

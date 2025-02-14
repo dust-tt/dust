@@ -1,4 +1,4 @@
-import type { AgentMention, UserMessageType } from "@dust-tt/types";
+import type { AgentMention } from "@dust-tt/types";
 import { createContext, useState } from "react";
 
 export const InputBarContext = createContext<{

@@ -878,7 +878,6 @@ export async function* postUserMessage(
                 },
                 { transaction: t }
               );
-              console.log("==================2");
 
               const agentMessageRow = await AgentMessage.create(
                 {
