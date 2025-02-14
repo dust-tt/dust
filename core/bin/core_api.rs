@@ -2206,15 +2206,13 @@ async fn data_sources_delete(
 
 #[derive(serde::Deserialize)]
 struct DatabasesTablesValidateCSVContentPayload {
-    file_id: String,
+    upsert_queue_bucket_path: String,
 }
 
 async fn tables_validate_csv_content(
-    Path((project_id, data_source_id)): Path<(i64, String)>,
-    State(state): State<Arc<APIState>>,
     Json(payload): Json<DatabasesTablesValidateCSVContentPayload>,
 ) -> (StatusCode, Json<APIResponse>) {
-    match LocalTable::validate_csv_content(&payload.file_id).await {
+    match LocalTable::validate_csv_content(&payload.upsert_queue_bucket_path).await {
         Ok(schema) => (
             StatusCode::OK,
             Json(APIResponse {

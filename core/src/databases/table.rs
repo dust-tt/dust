@@ -9,7 +9,7 @@ use tracing::info;
 
 use crate::{
     data_sources::node::{Node, NodeType, ProviderVisibility},
-    databases::{database::HasValue, table_schema::TableSchema},
+    databases::{csv::UpsertQueueCSVContent, database::HasValue, table_schema::TableSchema},
     databases_store::store::DatabasesStore,
     project::Project,
     search_filter::{Filterable, SearchFilter},
@@ -587,19 +587,16 @@ impl LocalTable {
     }
 
     pub async fn validate_csv_content(upsert_queue_bucket_path: &str) -> Result<TableSchema> {
-        // let bucket = LocalTable::get_upsert_queue_bucket().await?;
-        // let stream = Object::download_streamed(&bucket, upsert_queue_bucket_path).await?;
-        // let reader = csv_async::AsyncReaderBuilder::new()
-        //     .has_headers(true)
-        //     .create_reader(stream);
-        unimplemented!("validate_csv_content")
-        // let file = File::from_id(file_id).await?;
-        // let content = file.get_content().await?;
-        // let rows = csv::Reader::from_reader(content.as_bytes())
-        //     .deserialize()
-        //     .collect::<Result<Vec<Row>, _>>()?;
-        // let schema = TableSchema::from_rows_async(rows.clone()).await?;
-        // Ok((rows, schema))
+        let rows = Arc::new(
+            UpsertQueueCSVContent {
+                upsert_queue_bucket_path: upsert_queue_bucket_path.to_string(),
+            }
+            .parse()
+            .await?,
+        );
+
+        let schema = TableSchema::from_rows_async(rows).await?;
+        Ok(schema)
     }
 }
 
