@@ -1,5 +1,6 @@
-import { NotificationType, TextArea, Button } from "@dust-tt/sparkle";
-import { WorkspaceType, DataSourceType } from "@dust-tt/types";
+import type { NotificationType } from "@dust-tt/sparkle";
+import { Button, TextArea } from "@dust-tt/sparkle";
+import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
 import { useState } from "react";
 
 export function AdvancedNotionManagement({
