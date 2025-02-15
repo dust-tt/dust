@@ -14,6 +14,7 @@ import {
   TableIcon,
 } from "@dust-tt/sparkle";
 import type {
+  ConnectorType,
   CoreAPIDataSource,
   DataSourceType,
   GroupType,
@@ -21,15 +22,15 @@ import type {
   NotionFindUrlResponseType,
   SlackAutoReadPattern,
   SlackbotWhitelistType,
+  WorkspaceType,
+  ZendeskFetchTicketResponseType,
 } from "@dust-tt/types";
-import type { WorkspaceType } from "@dust-tt/types";
-import type { ConnectorType } from "@dust-tt/types";
 import {
   ConnectorsAPI,
+  CoreAPI,
   isSlackAutoReadPatterns,
   safeParseJSON,
 } from "@dust-tt/types";
-import { CoreAPI } from "@dust-tt/types";
 import { JsonViewer } from "@textea/json-viewer";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
@@ -408,7 +409,6 @@ const DataSourcePage = ({
           label="Search Data"
           icon={LockIcon}
         />
-
         {dataSource.connectorProvider === "slack" && (
           <>
             <ConfigToggle
@@ -435,6 +435,9 @@ const DataSourcePage = ({
         )}
         {dataSource.connectorProvider === "notion" && (
           <NotionUrlCheckOrFind owner={owner} dsId={dataSource.sId} />
+        )}
+        {dataSource.connectorProvider === "zendesk" && (
+          <ZendeskTicketCheck owner={owner} dsId={dataSource.sId} />
         )}
         {dataSource.connectorProvider === "google_drive" && (
           <>
@@ -503,7 +506,6 @@ const DataSourcePage = ({
             featureKey="githubCodeSyncEnabled"
           />
         )}
-
         {!dataSource.connectorId ? (
           <>
             <div className="mt-4 flex flex-row">
@@ -718,6 +720,36 @@ async function handleCheckOrFindNotionUrl(
   return res.json();
 }
 
+async function handleCheckZendeskTicket(args: {
+  brandId: number;
+  ticketId: number;
+  wId: string;
+  dsId: string;
+}): Promise<ZendeskFetchTicketResponseType | null> {
+  const res = await fetch(`/api/poke/admin`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      majorCommand: "zendesk",
+      command: "fetch-ticket",
+      args,
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    alert(
+      `Failed to check Zendesk ticket: ${
+        err.error?.connectors_error?.message
+      }\n\n${JSON.stringify(err)}`
+    );
+    return null;
+  }
+  return res.json();
+}
+
 async function handleWhitelistBot({
   botName,
   wId,
@@ -908,6 +940,82 @@ function NotionUrlCheckOrFind({
                 </span>
               </div>
             )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ZendeskTicketCheck({
+  owner,
+  dsId,
+}: {
+  owner: WorkspaceType;
+  dsId: string;
+}) {
+  const [brandId, setBrandId] = useState<number | null>(null);
+  const [ticketId, setTicketId] = useState<number | null>(null);
+  const [ticketDetails, setTicketDetails] =
+    useState<ZendeskFetchTicketResponseType | null>(null);
+
+  return (
+    <div className="mb-2 flex flex-col gap-2 rounded-md border px-2 py-2 text-sm text-gray-600 dark:text-gray-400">
+      <div className="flex items-center gap-2">
+        <div>Notion URL</div>
+        <div className="grow">
+          <Input
+            type="number"
+            placeholder="Brand ID"
+            onChange={(e) => setBrandId(parseInt(e.target.value, 10))}
+            value={brandId?.toString()}
+          />
+          <Input
+            type="number"
+            placeholder="Ticket ID"
+            onChange={(e) => setTicketId(parseInt(e.target.value, 10))}
+            value={ticketId?.toString()}
+          />
+        </div>
+        <Button
+          variant="outline"
+          label="Check"
+          disabled={!ticketId || !brandId}
+          onClick={async () => {
+            if (brandId && ticketId) {
+              setTicketDetails(
+                await handleCheckZendeskTicket({
+                  brandId,
+                  ticketId,
+                  wId: owner.sId,
+                  dsId,
+                })
+              );
+            }
+          }}
+        />
+      </div>
+      <div className="text-gray-800 dark:text-gray-200">
+        {ticketDetails && (
+          <div className="flex flex-col gap-2 rounded-md border pt-2 text-lg">
+            <span
+              className={classNames(
+                "font-bold",
+                ticketDetails.isTicketOnDb ? "text-emerald-800" : "text-red-800"
+              )}
+            >
+              {ticketDetails.isTicketOnDb
+                ? "Ticket synced"
+                : "Ticket not synced"}
+            </span>
+            {
+              <div>
+                <span className="font-bold">Details:</span>{" "}
+                <span>
+                  <JsonViewer value={ticketDetails.ticket} rootName={false} />
+                </span>
+              </div>
+            }
           </div>
         )}
       </div>
