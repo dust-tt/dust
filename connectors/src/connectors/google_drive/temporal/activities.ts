@@ -603,12 +603,17 @@ async function recurseUpdateParents(
   queue: PQueue,
   logger: Logger
 ) {
+  await heartbeat();
   const children = await GoogleDriveFiles.findAll({
     where: {
       connectorId: connector.id,
       parentId: file.driveFileId,
     },
   });
+  logger.info(
+    { fileId: file.driveFileId, count: children.length },
+    "Updating parents"
+  );
 
   // Use the queue for all child operations
   await Promise.all(
