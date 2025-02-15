@@ -252,7 +252,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                   <DropdownMenuTrigger asChild>
                     <Button size="sm" icon={MoreIcon} variant="outline" />
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent mountPortal={false}>
+                  <DropdownMenuContent>
                     <DropdownMenuLabel>Assistants</DropdownMenuLabel>
                     <DropdownMenuItem
                       href={`/w/${owner.sId}/builder/assistants/create`}
