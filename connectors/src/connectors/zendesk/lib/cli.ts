@@ -100,6 +100,9 @@ export const zendesk = async ({
         subdomain,
         accessToken,
       });
+      if (!brandSubdomain) {
+        throw new Error(`Brand ${brandId} not found in Zendesk.`);
+      }
 
       const ticketCount = await fetchZendeskTicketCount({
         brandSubdomain,
@@ -135,6 +138,12 @@ export const zendesk = async ({
       if (!ticketId) {
         throw new Error(`Missing --ticketId argument`);
       }
+      const ticketOnDb = await ZendeskTicketResource.fetchByTicketId({
+        connectorId: connector.id,
+        brandId,
+        ticketId,
+      });
+
       const { accessToken, subdomain } =
         await getZendeskSubdomainAndAccessToken(connector.connectionId);
       const brandSubdomain = await getZendeskBrandSubdomain({
@@ -143,17 +152,19 @@ export const zendesk = async ({
         subdomain,
         accessToken,
       });
+      if (!brandSubdomain) {
+        return {
+          ticket: null,
+          isTicketOnDb: ticketOnDb !== null,
+        };
+      }
 
       const ticket = await fetchZendeskTicket({
         accessToken,
         ticketId,
         brandSubdomain,
       });
-      const ticketOnDb = await ZendeskTicketResource.fetchByTicketId({
-        connectorId: connector.id,
-        brandId,
-        ticketId,
-      });
+
       return {
         ticket: ticket as { [key: string]: unknown } | null,
         isTicketOnDb: ticketOnDb !== null,
