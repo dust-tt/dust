@@ -13,6 +13,7 @@ import {
   LockIcon,
   MagnifyingGlassIcon,
   SliderToggle,
+  Spinner,
   TableIcon,
 } from "@dust-tt/sparkle";
 import type {
@@ -960,6 +961,7 @@ function ZendeskTicketCheck({
   const [ticketId, setTicketId] = useState<number | null>(null);
   const [ticketDetails, setTicketDetails] =
     useState<ZendeskFetchTicketResponseType | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   return (
     <div className="mb-2 flex flex-col gap-2 rounded-md border px-2 py-2 text-sm text-gray-600">
@@ -986,11 +988,12 @@ function ZendeskTicketCheck({
         </div>
         <Button
           variant="outline"
-          icon={MagnifyingGlassIcon}
-          label="Check"
-          disabled={!ticketId || !brandId}
+          icon={isLoading ? Spinner : MagnifyingGlassIcon}
+          label={isLoading ? undefined : "Check"}
+          disabled={!ticketId || !brandId || isLoading}
           onClick={async () => {
             if (brandId && ticketId) {
+              setIsLoading(true);
               setTicketDetails(
                 await handleCheckZendeskTicket({
                   brandId,
@@ -999,6 +1002,7 @@ function ZendeskTicketCheck({
                   dsId,
                 })
               );
+              setIsLoading(false);
             }
           }}
         />
