@@ -962,20 +962,25 @@ function ZendeskTicketCheck({
   return (
     <div className="mb-2 flex flex-col gap-2 rounded-md border px-2 py-2 text-sm text-gray-600 dark:text-gray-400">
       <div className="flex items-center gap-2">
-        <div>Notion URL</div>
-        <div className="grow">
-          <Input
-            type="number"
-            placeholder="Brand ID"
-            onChange={(e) => setBrandId(parseInt(e.target.value, 10))}
-            value={brandId?.toString()}
-          />
-          <Input
-            type="number"
-            placeholder="Ticket ID"
-            onChange={(e) => setTicketId(parseInt(e.target.value, 10))}
-            value={ticketId?.toString()}
-          />
+        <div>Brand ID / Ticket ID</div>
+        <div className="flex max-w-md grow items-center gap-4">
+          <div className="flex-1">
+            <Input
+              type="number"
+              placeholder="Brand ID"
+              onChange={(e) => setBrandId(parseInt(e.target.value, 10))}
+              value={brandId?.toString()}
+            />
+          </div>
+          <div className="text-center text-gray-600">/</div>
+          <div className="flex-1">
+            <Input
+              type="number"
+              placeholder="Ticket ID"
+              onChange={(e) => setTicketId(parseInt(e.target.value, 10))}
+              value={ticketId?.toString()}
+            />
+          </div>
         </div>
         <Button
           variant="outline"
