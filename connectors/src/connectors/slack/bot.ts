@@ -108,6 +108,13 @@ export async function botAnswerMessage(
   }
   const { slackConfig, connector } = connectorRes.value;
 
+  // If we do not have a valid token, we won't be able to post the message anyway.
+  if (connector.isPaused() && connector.errorType === "oauth_token_revoked") {
+    return new Err(
+      new Error("Connector is paused due to an oauth_token_revoked error.")
+    );
+  }
+
   try {
     const res = await answerMessage(
       message,
