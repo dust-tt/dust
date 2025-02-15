@@ -739,7 +739,6 @@ impl LLM for OpenAILLM {
             }
         }
 
-        // [o1] Hack for OpenAI `o1*` models to not use streaming.
         let model_is_o1 = self.id.as_str().starts_with("o1");
         let (c, request_id) = if event_sender.is_some() {
             if n > 1 {
@@ -958,8 +957,8 @@ impl LLM for OpenAILLM {
             top_logprobs,
             extras,
             event_sender,
-            false, // don't disable provider streaming
-            // Some models (o1-mini) don't support system messages.
+            false,
+            // Some models (o1-mini) don't support any system messages.
             if remove_system_messages {
                 TransformSystemMessages::Remove
             // Other reasoning models replace system messages with developer messages.
