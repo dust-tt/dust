@@ -216,7 +216,7 @@ function useTagSearch({
     try {
       const tags = await searchTags({
         query,
-        queryType: "prefix",
+        queryType: "match",
         dataSources: dustAPIDataSourceIds,
       });
       const formattedTags: DataSourceTag[] = [];

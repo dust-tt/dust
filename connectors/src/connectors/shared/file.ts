@@ -46,6 +46,7 @@ export async function handleCsvFile({
   provider,
   connectorId,
   parents,
+  tags,
 }: {
   data: ArrayBuffer;
   tableId: string;
@@ -56,6 +57,7 @@ export async function handleCsvFile({
   provider: ConnectorProvider;
   connectorId: ModelId;
   parents: string[];
+  tags: string[];
 }): Promise<Result<null, Error>> {
   if (data.byteLength > 4 * maxDocumentLen) {
     localLogger.info({}, "File too big to be chunked. Skipping");
@@ -85,6 +87,7 @@ export async function handleCsvFile({
         parentId: parents[1] || null,
         title: fileName,
         mimeType: "text/csv",
+        tags,
       })
     );
   } catch (err) {

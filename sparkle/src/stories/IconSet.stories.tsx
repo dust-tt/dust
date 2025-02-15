@@ -1,7 +1,14 @@
 import React from "react";
 
-import * as SolidIcons from "../icons/solid";
+import * as SolidIcons from "@sparkle/icons";
+
 import { Icon } from "../index_with_tw_base";
+
+type IconModule = {
+  [key: string]: React.ComponentType<{ className?: string }> & {
+    default?: React.ComponentType<{ className?: string }>;
+  };
+};
 
 export default {
   title: "Assets/Icons",
@@ -21,20 +28,22 @@ const itemStyle = {
   width: "100%",
 };
 
-export const SolidIconSet = () => (
+export const IconSet = () => (
   <div style={gridStyle}>
-    {Object.entries(SolidIcons).map(([iconName, IconComponent]) => {
-      const CurrentIcon = (
-        "default" in IconComponent ? IconComponent.default : IconComponent
-      ) as React.ComponentType<{ className?: string | undefined }>;
-      return (
-        <div key={iconName}>
-          <Icon visual={CurrentIcon} size="md" />
-          <div style={itemStyle as React.CSSProperties} className="s-text-sm">
-            {iconName}
+    {Object.entries(SolidIcons as IconModule).map(
+      ([iconName, IconComponent]) => {
+        const CurrentIcon = (
+          "default" in IconComponent ? IconComponent.default : IconComponent
+        ) as React.ComponentType<{ className?: string }>;
+        return (
+          <div key={iconName}>
+            <Icon visual={CurrentIcon} size="md" />
+            <div style={itemStyle as React.CSSProperties} className="s-text-sm">
+              {iconName}
+            </div>
           </div>
-        </div>
-      );
-    })}
+        );
+      }
+    )}
   </div>
 );

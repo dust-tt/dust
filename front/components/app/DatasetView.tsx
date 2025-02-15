@@ -4,6 +4,8 @@ import {
   ArrowDownOnSquareIcon,
   ArrowUpOnSquareIcon,
   Button,
+  Input,
+  Label,
   PlusCircleIcon,
   PlusIcon,
   XCircleIcon,
@@ -519,65 +521,46 @@ export default function DatasetView({
     datasetTypes,
   ]);
 
+  const theme = localStorage.getItem("theme");
+
   return (
     <div>
       <div className="mt-2 grid gap-x-4 gap-y-4 sm:grid-cols-5">
         {viewType == "full" && (
           <>
             <div className="sm:col-span-1">
-              <label
-                htmlFor="datasetName"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Dataset Name
-              </label>
-              <div className="mt-1 flex rounded-md shadow-sm">
-                <input
-                  disabled={readOnly || nameDisabled}
-                  type="text"
-                  name="name"
-                  id="datasetName"
-                  className={classNames(
-                    "block w-full min-w-0 flex-1 rounded-md sm:text-sm",
-                    datasetNameError
-                      ? "border-gray-300 border-red-500 focus:border-red-500 focus:ring-red-500"
-                      : "border-gray-300 focus:border-action-500 focus:ring-action-500"
-                  )}
-                  value={datasetName}
-                  onChange={(e) => setDatasetName(e.target.value)}
-                />
-              </div>
+              <Label>Dataset Name</Label>
+              <Input
+                disabled={readOnly || nameDisabled}
+                type="text"
+                name="name"
+                id="datasetName"
+                value={datasetName}
+                onChange={(e) => setDatasetName(e.target.value)}
+                message={datasetNameError}
+                messageStatus={datasetNameError ? "error" : "default"}
+              />
             </div>
 
             <div className="sm:col-span-4">
-              <div className="flex justify-between">
-                <label
-                  htmlFor="datasetDescription"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Description
-                </label>
-                <div className="text-sm font-normal text-gray-400">
-                  optional
-                </div>
-              </div>
-              <div className="mt-1 flex rounded-md shadow-sm">
-                <input
-                  disabled={readOnly}
-                  type="text"
-                  name="description"
-                  id="datasetDescription"
-                  className="block w-full min-w-0 flex-1 rounded-md border-gray-300 focus:border-action-500 focus:ring-action-500 sm:text-sm"
-                  value={datasetDescription || ""}
-                  onChange={(e) => setDatasetDescription(e.target.value)}
-                />
-              </div>
+              <Label>Description</Label>
+              <Input
+                disabled={readOnly}
+                type="text"
+                name="description"
+                id="datasetDescription"
+                className="w-full"
+                value={datasetDescription || ""}
+                onChange={(e) => setDatasetDescription(e.target.value)}
+                message="Optional"
+                messageStatus="default"
+              />
             </div>
 
             <div className="mt-4 sm:col-span-5">
-              <h3 className="text-sm font-medium text-gray-700">Schema</h3>
+              <Label>Schema</Label>
               {!readOnly ? (
-                <p className="mt-2 text-sm text-gray-500">
+                <p className="mt-2 text-sm text-foreground dark:text-foreground-night">
                   Set the properties and types to ensure your dataset is valid
                   when you update it. The properties descriptions are used to
                   generate the inputs to your app when run from an Assistant.
@@ -590,20 +573,15 @@ export default function DatasetView({
                 {datasetKeys.map((k, j) => (
                   <div key={j} className="grid sm:grid-cols-10">
                     <div className="sm:col-span-3">
-                      <div className="group flex items-center bg-slate-300">
+                      <div className="group flex items-center bg-slate-300 dark:bg-slate-300-night">
                         <div className="flex flex-1">
-                          <input
-                            className={classNames(
-                              "font-mono w-full border-0 bg-slate-300 px-1 py-1 text-[13px] font-bold outline-none focus:outline-none",
-                              readOnly
-                                ? "border-white ring-0 focus:border-white focus:ring-0"
-                                : "border-white ring-0 focus:border-gray-300 focus:ring-0"
-                            )}
+                          <Input
                             readOnly={readOnly}
                             value={k}
                             onChange={(e) => {
                               handleKeyUpdate(j, e.target.value);
                             }}
+                            className="border-0 bg-transparent focus:border-0 focus:ring-0 dark:bg-transparent"
                           />
                         </div>
                         {!readOnly ? (
@@ -630,7 +608,7 @@ export default function DatasetView({
                         ) : null}
                       </div>
                     </div>
-                    <div className="bg-slate-100 sm:col-span-7">
+                    <div className="bg-slate-100 dark:bg-slate-100-night sm:col-span-7">
                       {readOnly ? (
                         <span className="block cursor-pointer whitespace-nowrap px-4 py-2 text-sm text-gray-700">
                           {datasetTypes[j] ? datasetTypes[j] : "string"}
@@ -638,34 +616,34 @@ export default function DatasetView({
                       ) : (
                         <div className="inline-flex" role="group">
                           {DATASET_DATA_TYPES.map((type) => (
-                            <button
+                            <Button
                               key={type}
                               type="button"
+                              label={type == "json" ? "JSON" : type}
                               disabled={readOnly}
-                              className={classNames(
-                                datasetTypes && datasetTypes[j] == type
-                                  ? "font-semibold text-gray-900 underline underline-offset-4"
-                                  : "font-normal text-gray-700 hover:text-gray-900",
-                                "font-mono px-1 py-1 text-[13px]"
-                              )}
                               onClick={() => {
                                 const types = [...datasetTypes];
                                 types[j] = type;
                                 setDatasetTypes(types);
                               }}
-                            >
-                              {type == "json" ? "JSON" : type}
-                            </button>
+                              variant={
+                                datasetTypes && datasetTypes[j] == type
+                                  ? "outline"
+                                  : "ghost"
+                              }
+                            />
                           ))}
                         </div>
                       )}
                     </div>
-                    <div className="bg-slate-100 sm:col-span-10">
+                    <div className="bg-slate-100 dark:bg-slate-100-night sm:col-span-10">
                       <TextareaAutosize
                         minRows={1}
                         className={classNames(
                           "font-mono w-full resize-none border-0 bg-transparent px-1 py-0 text-[13px] font-normal italic placeholder-gray-400 ring-0 focus:ring-0",
-                          readOnly ? "text-gray-500" : "text-gray-700"
+                          readOnly
+                            ? "text-gray-500"
+                            : "dark:text-gray-700-night text-gray-700"
                         )}
                         readOnly={readOnly}
                         placeholder="Property description"
@@ -694,9 +672,9 @@ export default function DatasetView({
             </p>
           ) : (
             <>
-              <h3 className="text-sm font-medium text-gray-700">Data</h3>
+              <Label>Data</Label>
               {!readOnly ? (
-                <p className="mt-2 text-sm text-gray-500">
+                <p className="mt-2 text-sm text-foreground dark:text-foreground-night">
                   Add and edit your dataset entries below. You can insert or
                   remove entries using buttons on the right.
                 </p>
@@ -711,35 +689,37 @@ export default function DatasetView({
                     {datasetKeys.map((k, j) => (
                       <div key={j} className="grid grid-cols-10">
                         <div className="col-span-3">
-                          <div className="group flex items-center bg-slate-300">
-                            <input
-                              className={classNames(
-                                "font-mono flex-1 border-0 bg-slate-300 px-1 py-1 text-[13px] outline-none focus:outline-none",
-                                readOnly
-                                  ? "border-white ring-0 focus:border-white focus:ring-0"
-                                  : "border-white ring-0 focus:border-gray-300 focus:ring-0"
-                              )}
+                          <div className="group flex items-center bg-slate-300 dark:bg-slate-300-night">
+                            <Input
                               readOnly={true}
                               value={k}
+                              className={classNames(
+                                "border-0 dark:border-0",
+                                "bg-transparent dark:bg-transparent",
+                                "focus:border-0 dark:focus:border-0",
+                                "focus:ring-0 dark:focus:ring-0"
+                              )}
                             />
                           </div>
                         </div>
                         <div
                           className={classNames(
-                            "font-mono col-span-7 inline-grid resize-none space-y-0 border bg-slate-100 px-0 py-0 text-[13px]",
+                            "font-mono col-span-7 inline-grid resize-none space-y-0 border bg-slate-100 px-0 py-0 text-[13px] dark:bg-slate-100-night",
                             d[k] === "" ||
                               !datasetTypes[datasetKeys.indexOf(k)] ||
                               isTypeValidForDataset(
                                 getValueType(d[k]),
                                 datasetTypes[datasetKeys.indexOf(k)]
                               )
-                              ? "border-slate-100"
+                              ? "border-slate-100 dark:border-slate-100-night"
                               : "border-red-500"
                           )}
                         >
                           {datasetTypes[datasetKeys.indexOf(k)] === "json" ? (
                             <CodeEditor
-                              data-color-mode="light"
+                              data-color-mode={
+                                theme === "dark" ? "dark" : "light"
+                              }
                               readOnly={readOnly}
                               value={
                                 typeof d[k] === "string"
@@ -751,12 +731,11 @@ export default function DatasetView({
                                 handleValueChange(i, k, e.target.value);
                               }}
                               padding={4}
-                              className="bg-slate-100"
+                              className="rounded-lg bg-slate-100 dark:bg-slate-100-night"
                               style={{
                                 fontSize: 13,
                                 fontFamily:
                                   "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
-                                backgroundColor: "rgb(241 245 249)",
                               }}
                             />
                           ) : (
@@ -764,7 +743,9 @@ export default function DatasetView({
                               minRows={1}
                               className={classNames(
                                 "font-mono w-full resize-none border-0 bg-transparent px-1 py-0 text-[13px] font-normal ring-0 focus:ring-0",
-                                readOnly ? "text-gray-500" : "text-gray-700"
+                                readOnly
+                                  ? "text-gray-500"
+                                  : "text-gray-700 dark:text-gray-600"
                               )}
                               readOnly={readOnly}
                               value={d[k]}
@@ -781,7 +762,7 @@ export default function DatasetView({
                         {datasetData.length > 1 ? (
                           <div className="flex-initial">
                             <XCircleIcon
-                              className="h-4 w-4 cursor-pointer text-gray-300 hover:text-red-500"
+                              className="dark:text-gray-300-night h-4 w-4 cursor-pointer text-gray-300 hover:text-red-500"
                               onClick={() => {
                                 handleDeleteEntry(i);
                               }}
@@ -790,7 +771,7 @@ export default function DatasetView({
                         ) : null}
                         <div className="flex-initial">
                           <PlusCircleIcon
-                            className="h-5 w-5 cursor-pointer text-gray-300 hover:text-emerald-500"
+                            className="dark:text-gray-300-night h-5 w-5 cursor-pointer text-gray-300 hover:text-emerald-500"
                             onClick={() => {
                               handleNewEntry(i);
                             }}
@@ -841,7 +822,7 @@ export default function DatasetView({
                   />
                 </div>
                 <div className="ml-2 flex-initial">
-                  <input
+                  <Input
                     className="hidden"
                     type="file"
                     accept=".jsonl"
@@ -851,7 +832,7 @@ export default function DatasetView({
                         handleFileUpload(e.target.files[0]);
                       }
                     }}
-                  ></input>
+                  />
                   {!readOnly ? (
                     <Button
                       variant="ghost"

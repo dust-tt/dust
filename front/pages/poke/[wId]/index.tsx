@@ -30,6 +30,7 @@ import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 import React from "react";
 
+import { AppDataTable } from "@app/components/poke/apps/table";
 import { AssistantsDataTable } from "@app/components/poke/assistants/table";
 import { DataSourceViewsDataTable } from "@app/components/poke/data_source_views/table";
 import { DataSourceDataTable } from "@app/components/poke/data_sources/table";
@@ -241,6 +242,7 @@ const WorkspacePage = ({
             <DataSourceViewsDataTable owner={owner} />
             <SpaceDataTable owner={owner} />
             <AssistantsDataTable owner={owner} />
+            <AppDataTable owner={owner} />
             <FeatureFlagsDataTable
               owner={owner}
               whitelistableFeatures={whitelistableFeatures}

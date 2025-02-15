@@ -1,6 +1,6 @@
 import type { SVGProps } from "react";
 import * as React from "react";
-const SvgStarStrokeIcon = (props: SVGProps<SVGSVGElement>) => (
+const SvgStarStroke = (props: SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="1em"
@@ -15,4 +15,4 @@ const SvgStarStrokeIcon = (props: SVGProps<SVGSVGElement>) => (
     />
   </svg>
 );
-export default SvgStarStrokeIcon;
+export default SvgStarStroke;

@@ -37,6 +37,7 @@ export {
   ConversationMessageContent,
   ConversationMessageHeader,
 } from "./ConversationMessage";
+export { Counter } from "./Counter";
 export type { DataTableMoreButtonProps, MenuItem } from "./DataTable";
 export { DataTable } from "./DataTable";
 export {
@@ -72,7 +73,6 @@ export {
   DropdownMenuTrigger,
 } from "./Dropdown";
 export { default as DropzoneOverlay } from "./DropzoneOverlay";
-export { ElementModal } from "./ElementModal";
 export type { EmojiMartData } from "./EmojiPicker";
 export { DataEmojiMart, EmojiPicker } from "./EmojiPicker";
 export { EmptyCTA, EmptyCTAButton } from "./EmptyCTA";
@@ -88,7 +88,6 @@ export type { LinkWrapperProps } from "./LinkWrapper";
 export { LinkWrapper } from "./LinkWrapper";
 export { LoadingBlock } from "./LoadingBlock";
 export * from "./markdown";
-export { Modal } from "./Modal";
 export * from "./NavigationList";
 export type { NotificationType } from "./Notification";
 export { Notification, useSendNotification } from "./Notification";

@@ -12,7 +12,11 @@ import {
   getItem,
   getParentReferenceInternalId,
 } from "@connectors/connectors/microsoft/lib/graph_api";
-import { typeAndPathFromInternalId } from "@connectors/connectors/microsoft/lib/utils";
+import {
+  _getListColumns,
+  getListNameFromWebUrl,
+  typeAndPathFromInternalId,
+} from "@connectors/connectors/microsoft/lib/utils";
 import { launchMicrosoftIncrementalSyncWorkflow } from "@connectors/connectors/microsoft/temporal/client";
 import { throwOnError } from "@connectors/lib/cli";
 import { terminateWorkflow } from "@connectors/lib/temporal";
@@ -97,6 +101,25 @@ export const microsoft = async ({
       };
 
       return { status: 200, content, type: typeof content };
+    }
+
+    case "list-columns": {
+      const connector = await getConnector(args);
+      if (!args.webUrl) {
+        throw new Error("Missing --webUrl argument");
+      }
+      if (!args.siteId) {
+        throw new Error("Missing --siteId argument");
+      }
+
+      const listName = getListNameFromWebUrl(args.webUrl);
+      const client = await getClient(connector.connectionId);
+      const columns = await _getListColumns({
+        client,
+        listName,
+        siteId: args.siteId,
+      });
+      return { status: 200, content: columns, type: typeof columns };
     }
 
     case "start-incremental-sync": {

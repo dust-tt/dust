@@ -785,14 +785,13 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "google_ai_studio_experimental_models_feature"
   | "snowflake_connector_feature"
   | "index_private_slack_channel"
-  | "conversations_jit_actions"
   | "disable_run_logs"
   | "show_debug_tools"
   | "labs_github_actions"
   | "deepseek_r1_global_agent_feature"
-  | "bigquery_feature"
   | "tags_filters"
   | "salesforce_feature"
+  | "advanced_notion_management"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -2383,11 +2382,13 @@ const FileTypeUseCaseSchema = FlexibleEnumSchema<
 >();
 
 export const FileTypeSchema = z.object({
+  // TODO(spolu): move this to ModelIdSchema
+  id: z.string(),
+  sId: z.string(),
   contentType: z.string(),
   downloadUrl: z.string().optional(),
   fileName: z.string(),
   fileSize: z.number(),
-  id: z.string(),
   status: FileTypeStatusSchema,
   uploadUrl: z.string().optional(),
   publicUrl: z.string().optional(),

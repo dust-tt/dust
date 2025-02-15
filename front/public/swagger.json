@@ -1288,8 +1288,13 @@
                     "file": {
                       "type": "object",
                       "properties": {
+                        "sId": {
+                          "type": "string",
+                          "description": "Unique string identifier for the file"
+                        },
                         "uploadUrl": {
-                          "type": "string"
+                          "type": "string",
+                          "description": "Upload URL for the file"
                         }
                       }
                     }

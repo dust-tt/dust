@@ -3,6 +3,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 
 import {
+  Counter,
   Icon,
   LinkWrapper,
   LinkWrapperProps,
@@ -138,7 +139,6 @@ export interface MetaButtonProps
 const MetaButton = React.forwardRef<HTMLButtonElement, MetaButtonProps>(
   ({ className, asChild = false, children, ...props }, ref) => {
     const Comp = asChild ? Slot : "button";
-
     return (
       <Comp className={className} ref={ref} {...props}>
         {children}
@@ -154,6 +154,8 @@ type CommonButtonProps = Omit<MetaButtonProps, "children"> &
     isLoading?: boolean;
     isPulsing?: boolean;
     tooltip?: string;
+    isCounter?: boolean;
+    counterValue?: string;
   };
 
 export type MiniButtonProps = CommonButtonProps & {
@@ -181,6 +183,8 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       tooltip,
       isSelect = false,
       isPulsing = false,
+      isCounter = false,
+      counterValue,
       size = "sm",
       href,
       target,
@@ -193,7 +197,6 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const iconsSize = size === "mini" ? "sm" : size;
-
     const spinnerVariant = isLoading
       ? (variant && spinnerVariantsMapIsLoading[variant]) || "slate400"
       : (variant && spinnerVariantsMap[variant]) || "slate400";
@@ -201,6 +204,9 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const renderIcon = (visual: React.ComponentType, extraClass = "") => (
       <Icon visual={visual} size={iconsSize} className={extraClass} />
     );
+
+    const showCounter = isCounter && counterValue != null;
+    const showContainer = label || showCounter;
 
     const content = (
       <>
@@ -211,7 +217,20 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         ) : (
           icon && renderIcon(icon, "-s-mx-0.5")
         )}
-        {label}
+
+        {showContainer && (
+          <div className="s-flex s-items-center s-gap-2">
+            {label}
+            {showCounter && (
+              <Counter
+                value={Number(counterValue)}
+                variant={variant || "primary"}
+                size={size === "mini" ? "xs" : size}
+                isInButton={true}
+              />
+            )}
+          </div>
+        )}
         {isSelect && renderIcon(ChevronDownIcon, isLoading ? "" : "-s-mr-1")}
       </>
     );

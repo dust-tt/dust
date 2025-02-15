@@ -6,6 +6,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  Input,
+  Label,
 } from "@dust-tt/sparkle";
 import type {
   AppType,
@@ -18,7 +20,7 @@ import type {
 import dynamic from "next/dynamic";
 import { useEffect } from "react";
 
-import { classNames, shallowBlockClone } from "@app/lib/utils";
+import { shallowBlockClone } from "@app/lib/utils";
 
 import Block from "./Block";
 
@@ -105,6 +107,8 @@ export default function Curl({
     }
   });
 
+  const theme = localStorage.getItem("theme");
+
   return (
     <Block
       owner={owner}
@@ -123,9 +127,9 @@ export default function Curl({
       onBlockDown={onBlockDown}
       onBlockNew={onBlockNew}
     >
-      <div className="mx-4 flex w-full flex-col">
-        <div className="mt-1 flex flex-row space-x-2">
-          <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
+      <div className="flex w-full flex-col gap-4 pt-2">
+        <div className="flex flex-row gap-2">
+          <div className="flex flex-row items-center space-x-1 text-sm">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -150,32 +154,25 @@ export default function Curl({
               )}
             </DropdownMenu>
           </div>
-          <div className="flex w-full flex-1 flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
+          <div className="flex w-full flex-1 flex-row items-center gap-2 text-sm font-medium">
             <div className="flex flex-1 font-normal">
               <div className="flex flex-1 rounded-md">
-                <span
-                  className={classNames(
-                    readOnly ? "cursor-default" : "cursor-pointer",
-                    "inline-flex items-center rounded-l-md border border-r-0 border-gray-300 bg-gray-50 px-1 text-sm text-gray-500"
-                  )}
+                <Button
+                  variant="ghost-secondary"
+                  size="sm"
+                  disabled={readOnly}
+                  className="rounded-l-md rounded-r-none border border-r-0"
                   onClick={() => {
                     if (!readOnly) {
-                      if (block.spec.scheme == "https") {
-                        handleSchemeChange("http");
-                      } else {
-                        handleSchemeChange("https");
-                      }
+                      handleSchemeChange(
+                        block.spec.scheme === "https" ? "http" : "https"
+                      );
                     }
                   }}
-                >
-                  {block.spec.scheme}://
-                </span>
-                <input
-                  type="text"
-                  className={classNames(
-                    "block flex-1 rounded-none rounded-r-md py-1 pl-1 text-sm font-normal",
-                    "border-gray-300 focus:border-gray-300 focus:ring-0"
-                  )}
+                  label={`${block.spec.scheme}://`}
+                />
+                <Input
+                  className="h-full flex-1 rounded-l-none"
                   readOnly={readOnly}
                   value={block.spec.url}
                   onChange={(e) => handleUrlChange(e.target.value)}
@@ -184,61 +181,47 @@ export default function Curl({
             </div>
           </div>
         </div>
-        <div className="flex flex-col space-y-1 text-sm font-medium leading-8 text-gray-700">
-          <div className="flex flex-initial items-center">headers :</div>
+        <div className="flex flex-col gap-2 text-sm">
+          <Label>Headers</Label>
           <div className="flex w-full font-normal">
-            <div className="w-full leading-4">
-              <div
-                className={classNames(
-                  "border bg-slate-100",
-                  "border-slate-100"
-                )}
-              >
-                <CodeEditor
-                  data-color-mode="light"
-                  readOnly={readOnly}
-                  value={block.spec.headers_code}
-                  language="js"
-                  placeholder=""
-                  onChange={(e) => handleHeadersCodeChange(e.target.value)}
-                  padding={15}
-                  style={{
-                    fontSize: 12,
-                    fontFamily:
-                      "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
-                    backgroundColor: "rgb(241 245 249)",
-                  }}
-                />
-              </div>
+            <div className="w-full">
+              <CodeEditor
+                data-color-mode="light"
+                readOnly={readOnly}
+                value={block.spec.headers_code}
+                language="js"
+                placeholder=""
+                onChange={(e) => handleHeadersCodeChange(e.target.value)}
+                padding={15}
+                className="rounded-lg bg-slate-100 dark:bg-slate-100-night"
+                style={{
+                  fontSize: 12,
+                  fontFamily:
+                    "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+                }}
+              />
             </div>
           </div>
         </div>
-        <div className="flex flex-col text-sm font-medium leading-8 text-gray-500">
-          <div className="flex flex-initial items-center">body :</div>
+        <div className="flex flex-col gap-2 text-sm">
+          <Label>Body</Label>
           <div className="flex w-full font-normal">
-            <div className="w-full leading-4">
-              <div
-                className={classNames(
-                  "border bg-slate-100",
-                  "border-slate-100"
-                )}
-              >
-                <CodeEditor
-                  data-color-mode="light"
-                  readOnly={readOnly}
-                  value={block.spec.body_code}
-                  language="js"
-                  placeholder=""
-                  onChange={(e) => handleBodyCodeChange(e.target.value)}
-                  padding={15}
-                  style={{
-                    fontSize: 12,
-                    fontFamily:
-                      "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
-                    backgroundColor: "rgb(241 245 249)",
-                  }}
-                />
-              </div>
+            <div className="w-full">
+              <CodeEditor
+                data-color-mode={theme === "dark" ? "dark" : "light"}
+                readOnly={readOnly}
+                value={block.spec.body_code}
+                language="js"
+                placeholder=""
+                onChange={(e) => handleBodyCodeChange(e.target.value)}
+                padding={15}
+                className="rounded-lg bg-slate-100 dark:bg-slate-100-night"
+                style={{
+                  fontSize: 12,
+                  fontFamily:
+                    "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+                }}
+              />
             </div>
           </div>
         </div>

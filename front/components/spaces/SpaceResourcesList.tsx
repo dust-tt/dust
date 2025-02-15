@@ -315,7 +315,7 @@ export const SpaceResourcesList = ({
         });
         if (isFolder) {
           menuItems.push({
-            label: "API",
+            label: "Use from API",
             kind: "item",
             icon: CubeIcon,
             onClick: (e) => {
