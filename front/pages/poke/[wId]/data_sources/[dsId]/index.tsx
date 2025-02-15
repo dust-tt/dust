@@ -1,5 +1,6 @@
 import {
   Button,
+  Chip,
   ContextItem,
   DocumentTextIcon,
   DropdownMenu,
@@ -1003,24 +1004,24 @@ function ZendeskTicketCheck({
       <div className="text-gray-800 dark:text-gray-200">
         {ticketDetails && (
           <div className="flex flex-col gap-2 rounded-md border pt-2 text-lg">
-            <span
-              className={classNames(
-                "font-bold",
-                ticketDetails.isTicketOnDb ? "text-emerald-800" : "text-red-800"
-              )}
-            >
-              {ticketDetails.isTicketOnDb
-                ? "Ticket synced"
-                : "Ticket not synced"}
-            </span>
-            {
+            {ticketDetails.ticket && (
               <div>
                 <span className="font-bold">Details:</span>{" "}
                 <span>
                   <JsonViewer value={ticketDetails.ticket} rootName={false} />
                 </span>
               </div>
-            }
+            )}
+            <div className="mb-4 mt-2 flex justify-center gap-2">
+              <Chip
+                label={ticketDetails.ticket ? "Found" : "Not Found"}
+                color={ticketDetails.ticket ? "emerald" : "warning"}
+              />
+              <Chip
+                label={ticketDetails.isTicketOnDb ? "Synced" : "Not synced"}
+                color={ticketDetails.isTicketOnDb ? "purple" : "warning"}
+              />
+            </div>
           </div>
         )}
       </div>
