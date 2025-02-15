@@ -140,82 +140,84 @@ const InputBarContainer = ({
         )}
       />
 
-      <div className="flex flex-row items-end justify-between gap-2 self-stretch pb-3 pr-3 sm:flex-col sm:border-0">
-        <div className="flex items-center py-0 sm:py-3.5">
-          {fileUploaderService && actions.includes("attachment") && (
-            <>
-              <input
-                accept={getSupportedFileExtensions().join(",")}
-                onChange={async (e) => {
-                  await fileUploaderService.handleFileChange(e);
-                  if (fileInputRef.current) {
-                    fileInputRef.current.value = "";
-                  }
-                  editorService.focusEnd();
-                }}
-                ref={fileInputRef}
-                style={{ display: "none" }}
-                type="file"
-                multiple={true}
-              />
-              <Button
-                variant="ghost-secondary"
-                icon={AttachmentIcon}
+      {(!hideSendButton || actions.length > 0) && (
+        <div className="flex flex-row items-end justify-between gap-2 self-stretch pb-3 pr-3 sm:flex-col sm:border-0">
+          <div className="flex items-center py-0 sm:py-3.5">
+            {fileUploaderService && actions.includes("attachment") && (
+              <>
+                <input
+                  accept={getSupportedFileExtensions().join(",")}
+                  onChange={async (e) => {
+                    await fileUploaderService.handleFileChange(e);
+                    if (fileInputRef.current) {
+                      fileInputRef.current.value = "";
+                    }
+                    editorService.focusEnd();
+                  }}
+                  ref={fileInputRef}
+                  style={{ display: "none" }}
+                  type="file"
+                  multiple={true}
+                />
+                <Button
+                  variant="ghost-secondary"
+                  icon={AttachmentIcon}
+                  size="xs"
+                  tooltip={`Add a document to the conversation (${getSupportedFileExtensions().join(", ")}).`}
+                  onClick={() => {
+                    fileInputRef.current?.click();
+                  }}
+                />
+              </>
+            )}
+            {(actions.includes("assistants-list") ||
+              actions.includes("assistants-list-with-actions")) && (
+              <AssistantPicker
+                owner={owner}
                 size="xs"
-                tooltip={`Add a document to the conversation (${getSupportedFileExtensions().join(", ")}).`}
-                onClick={() => {
-                  fileInputRef.current?.click();
+                onItemClick={(c) => {
+                  editorService.insertMention({ id: c.sId, label: c.name });
                 }}
+                assistants={allAssistants}
+                showFooterButtons={actions.includes(
+                  "assistants-list-with-actions"
+                )}
               />
-            </>
-          )}
-          {(actions.includes("assistants-list") ||
-            actions.includes("assistants-list-with-actions")) && (
-            <AssistantPicker
-              owner={owner}
-              size="xs"
-              onItemClick={(c) => {
-                editorService.insertMention({ id: c.sId, label: c.name });
+            )}
+            {actions.includes("fullscreen") && (
+              <div className="hidden sm:flex">
+                <Button
+                  variant="ghost-secondary"
+                  icon={isExpanded ? FullscreenExitIcon : FullscreenIcon}
+                  size="xs"
+                  onClick={handleExpansionToggle}
+                />
+              </div>
+            )}
+          </div>
+          {!hideSendButton && (
+            <Button
+              size="sm"
+              isLoading={disableSendButton}
+              icon={ArrowUpIcon}
+              variant="highlight"
+              disabled={editorService.isEmpty() || disableSendButton}
+              onClick={async () => {
+                const jsonContent = editorService.getTextAndMentions();
+                onEnterKeyDown(
+                  editorService.isEmpty(),
+                  jsonContent,
+                  () => {
+                    editorService.clearEditor();
+                    resetEditorContainerSize();
+                  },
+                  editorService.setLoading
+                );
               }}
-              assistants={allAssistants}
-              showFooterButtons={actions.includes(
-                "assistants-list-with-actions"
-              )}
             />
           )}
-          {actions.includes("fullscreen") && (
-            <div className="hidden sm:flex">
-              <Button
-                variant="ghost-secondary"
-                icon={isExpanded ? FullscreenExitIcon : FullscreenIcon}
-                size="xs"
-                onClick={handleExpansionToggle}
-              />
-            </div>
-          )}
         </div>
-        {!hideSendButton && (
-          <Button
-            size="sm"
-            isLoading={disableSendButton}
-            icon={ArrowUpIcon}
-            variant="highlight"
-            disabled={editorService.isEmpty() || disableSendButton}
-            onClick={async () => {
-              const jsonContent = editorService.getTextAndMentions();
-              onEnterKeyDown(
-                editorService.isEmpty(),
-                jsonContent,
-                () => {
-                  editorService.clearEditor();
-                  resetEditorContainerSize();
-                },
-                editorService.setLoading
-              );
-            }}
-          />
-        )}
-      </div>
+      )}
     </div>
   );
 };

@@ -251,7 +251,7 @@ export function UserMessage({
         {isEditing ? (
           <InputBarContainer
             editMessage={message}
-            className="w-full p-0 py-0 sm:py-0"
+            className="w-full p-0 py-0 sm:py-0 sm:leading-7"
             editorServiceRef={editorServiceRef}
             selectedAssistant={null}
             onEnterKeyDown={submitEdit}
