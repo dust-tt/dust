@@ -938,9 +938,7 @@ impl LLM for OpenAILLM {
     ) -> Result<LLMChatGeneration> {
         let is_reasoning_model =
             self.id.as_str().starts_with("o3") || self.id.as_str().starts_with("o1");
-        // o1 and o1-mini do not support streaming.
-        let model_supports_streaming = !self.id.as_str().starts_with("o1");
-        // o1-mini specifically does not supoport any type of system messages.
+        // o1-mini specifically does not support any type of system messages.
         let remove_system_messages = self.id.as_str().starts_with("o1-mini");
         openai_compatible_chat_completion(
             self.chat_uri()?,
@@ -960,13 +958,13 @@ impl LLM for OpenAILLM {
             top_logprobs,
             extras,
             event_sender,
-            !model_supports_streaming, // disable provider streaming
-            // Some models (o1-mini) don't support any system messages.
+            false, // don't disable provider streaming
+            // Some models (o1-mini) don't support system messages.
             if remove_system_messages {
                 TransformSystemMessages::Remove
             // Other reasoning models replace system messages with developer messages.
             } else if is_reasoning_model {
-                TransformSystemMessages::ReplaceWithDeveloper
+                TransformSystemMessages::ReplaceWithDeveloper 
             // Standard non-reasoning models use regular system messages.
             } else {
                 TransformSystemMessages::Keep
