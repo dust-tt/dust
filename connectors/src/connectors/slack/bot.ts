@@ -132,11 +132,11 @@ export async function botAnswerMessage(
     const slackClient = await getSlackClient(connector.id);
     await slackClient.chat.postMessage({
       channel: slackChannel,
-      text: "An unexpected error occured. Our team has been notified",
+      text: "An unexpected error occurred. Our team has been notified",
       thread_ts: slackMessageTs,
     });
 
-    return new Err(new Error("An unexpected error occured"));
+    return new Err(new Error("An unexpected error occurred"));
   }
 }
 
