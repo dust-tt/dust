@@ -741,7 +741,7 @@ impl LLM for OpenAILLM {
 
         // [o1] Hack for OpenAI `o1*` models to not use streaming.
         let model_is_o1 = self.id.as_str().starts_with("o1");
-        let (c, request_id) = if !model_is_o1 && event_sender.is_some() {
+        let (c, request_id) = if event_sender.is_some() {
             if n > 1 {
                 return Err(anyhow!(
                     "Generating multiple variations in streaming mode is not supported."
@@ -964,7 +964,7 @@ impl LLM for OpenAILLM {
                 TransformSystemMessages::Remove
             // Other reasoning models replace system messages with developer messages.
             } else if is_reasoning_model {
-                TransformSystemMessages::ReplaceWithDeveloper 
+                TransformSystemMessages::ReplaceWithDeveloper
             // Standard non-reasoning models use regular system messages.
             } else {
                 TransformSystemMessages::Keep
