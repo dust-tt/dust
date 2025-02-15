@@ -141,7 +141,7 @@ export const SearchInputWithPopover = forwardRef<
         </PopoverTrigger>
         <PopoverContent
           className={cn(
-            "s-rounded-lg s-border s-bg-background s-shadow-md dark:s-bg-background-night",
+            "s-w-[--radix-popover-trigger-width] s-rounded-lg s-border s-bg-background s-shadow-md dark:s-bg-background-night",
             contentClassName
           )}
           sideOffset={0}
