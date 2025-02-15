@@ -961,7 +961,7 @@ function ZendeskTicketCheck({
     useState<ZendeskFetchTicketResponseType | null>(null);
 
   return (
-    <div className="mb-2 flex flex-col gap-2 rounded-md border px-2 py-2 text-sm text-gray-600 dark:text-gray-400">
+    <div className="mb-2 flex flex-col gap-2 rounded-md border px-2 py-2 text-sm text-gray-600">
       <div className="flex items-center gap-2">
         <div>Brand ID / Ticket ID</div>
         <div className="flex max-w-md grow items-center gap-4">
@@ -1001,7 +1001,7 @@ function ZendeskTicketCheck({
           }}
         />
       </div>
-      <div className="text-gray-800 dark:text-gray-200">
+      <div className="text-gray-800">
         {ticketDetails && (
           <div className="flex flex-col gap-2 rounded-md border pt-2 text-lg">
             {ticketDetails.ticket && (
