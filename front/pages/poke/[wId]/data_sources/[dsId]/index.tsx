@@ -1012,12 +1012,12 @@ function ZendeskTicketCheck({
           <div className="flex flex-col gap-2 rounded-md border pt-2 text-lg">
             <div className="mb-4 ml-4 mt-2 flex gap-2">
               <Chip
-                label={ticketDetails.ticket ? "Found" : "Not Found"}
-                color={ticketDetails.ticket ? "emerald" : "warning"}
+                label={ticketDetails.isTicketOnDb ? "Synced" : "Not synced"}
+                color={ticketDetails.isTicketOnDb ? "purple" : "pink"}
               />
               <Chip
-                label={ticketDetails.isTicketOnDb ? "Synced" : "Not synced"}
-                color={ticketDetails.isTicketOnDb ? "purple" : "warning"}
+                label={ticketDetails.ticket ? "Found" : "Not Found"}
+                color={ticketDetails.ticket ? "emerald" : "warning"}
               />
             </div>
             {ticketDetails.ticket && (
