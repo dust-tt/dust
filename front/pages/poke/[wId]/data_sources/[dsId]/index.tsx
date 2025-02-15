@@ -11,6 +11,7 @@ import {
   EyeIcon,
   Input,
   LockIcon,
+  MagnifyingGlassIcon,
   SliderToggle,
   TableIcon,
 } from "@dust-tt/sparkle";
@@ -962,9 +963,9 @@ function ZendeskTicketCheck({
 
   return (
     <div className="mb-2 flex flex-col gap-2 rounded-md border px-2 py-2 text-sm text-gray-600">
-      <div className="flex items-center gap-2">
+      <div className="ml-2 flex items-center gap-2">
         <div>Brand ID / Ticket ID</div>
-        <div className="flex max-w-md grow items-center gap-4">
+        <div className="ml-6 flex max-w-md grow items-center gap-4">
           <div className="flex-1">
             <Input
               type="number"
@@ -985,6 +986,7 @@ function ZendeskTicketCheck({
         </div>
         <Button
           variant="outline"
+          icon={MagnifyingGlassIcon}
           label="Check"
           disabled={!ticketId || !brandId}
           onClick={async () => {
@@ -1004,15 +1006,7 @@ function ZendeskTicketCheck({
       <div className="text-gray-800">
         {ticketDetails && (
           <div className="flex flex-col gap-2 rounded-md border pt-2 text-lg">
-            {ticketDetails.ticket && (
-              <div>
-                <span className="font-bold">Details:</span>{" "}
-                <span>
-                  <JsonViewer value={ticketDetails.ticket} rootName={false} />
-                </span>
-              </div>
-            )}
-            <div className="mb-4 mt-2 flex justify-center gap-2">
+            <div className="mb-4 ml-4 mt-2 flex gap-2">
               <Chip
                 label={ticketDetails.ticket ? "Found" : "Not Found"}
                 color={ticketDetails.ticket ? "emerald" : "warning"}
@@ -1022,6 +1016,12 @@ function ZendeskTicketCheck({
                 color={ticketDetails.isTicketOnDb ? "purple" : "warning"}
               />
             </div>
+            {ticketDetails.ticket && (
+              <div className="ml-4 pt-2 text-xs text-element-700">
+                <div className="mb-1 font-bold">Details</div>
+                <JsonViewer value={ticketDetails.ticket} rootName={false} />
+              </div>
+            )}
           </div>
         )}
       </div>
