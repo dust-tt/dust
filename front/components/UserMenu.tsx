@@ -69,6 +69,8 @@ export function UserMenu({
     [owner, sendNotification, user, featureFlags]
   );
 
+  const theme = localStorage.getItem("theme") || "light";
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger>
@@ -160,7 +162,7 @@ export function UserMenu({
             <DropdownMenuSub>
               <DropdownMenuSubTrigger label="Theme" icon={ImageIcon} />
               <DropdownMenuSubContent>
-                <DropdownMenuRadioGroup>
+                <DropdownMenuRadioGroup value={theme}>
                   <DropdownMenuRadioItem
                     value="light"
                     label="Light"
