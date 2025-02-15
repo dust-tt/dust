@@ -26,6 +26,7 @@ import type { MessageElement } from "@slack/web-api/dist/response/ConversationsH
 import removeMarkdown from "remove-markdown";
 import jaroWinkler from "talisman/metrics/jaro-winkler";
 
+import { getConnectorManager } from "@connectors/connectors";
 import {
   makeErrorBlock,
   makeMessageUpdateBlocksAndText,
@@ -49,10 +50,12 @@ import {
 } from "@connectors/connectors/slack/lib/workspace_limits";
 import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import {
   SlackChannel,
   SlackChatBotMessage,
 } from "@connectors/lib/models/slack";
+import { syncFailed } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
@@ -128,6 +131,26 @@ export async function botAnswerMessage(
 
     return new Ok(undefined);
   } catch (e) {
+    if (e instanceof ExternalOAuthTokenError) {
+      // Mark the connector as errored so that the user is notified in the Connection Admin UI.
+      await syncFailed(connector.id, "oauth_token_revoked");
+      // Pause the connector.
+      const connectorManager = getConnectorManager({
+        connectorId: connector.id,
+        connectorProvider: connector.type,
+      });
+      if (connectorManager) {
+        await connectorManager.pause();
+      } else {
+        logger.error(
+          { connectorId: connector.id },
+          `Connector manager not found for connector`
+        );
+      }
+      return new Err(
+        new Error("Invalid Slack auth, the bot cannot answer the message.")
+      );
+    }
     logger.error(
       {
         error: e,
