@@ -11,18 +11,25 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { apiError } from "@app/logger/withlogging";
 
-type PostNotionSyncResponseBody =
-  | { success: boolean; urls: { url: string; timestamp: number }[] }
-  | { error: string };
+type PostNotionSyncResponseBody = { success: true } | { error: string };
 
-// zod type for payload
+type GetNotionSyncResponseBody = {
+  lastSyncedUrls: { url: string; timestamp: number }[];
+};
+
 const PostNotionSyncPayload = z.object({
   urls: z.array(z.string()),
 });
 
+const RECENT_URLS_COUNT = 50;
+
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<PostNotionSyncResponseBody | void>>,
+  res: NextApiResponse<
+    WithAPIErrorResponse<
+      GetNotionSyncResponseBody | PostNotionSyncResponseBody | void
+    >
+  >,
   auth: Authenticator
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
@@ -78,15 +85,22 @@ async function handler(
   switch (req.method) {
     case "GET":
       // get the last 50 synced urls
-      const redisKey = getRedisKeyForNotionUrlSync(owner.sId);
+      /*const redisKey = getRedisKeyForNotionUrlSync(owner.sId);
       const urlAndTimestamps = await runOnRedis(
         { origin: "notion_url_sync" },
         async (redis) => {
           const urls = await redis.zRange(redisKey, 0, 49);
           return urls;
         }
-      );
-      return res.status(200).json({ success: true, urls: urlAndTimestamps });
+      );*/
+
+      const lastSyncedUrls: GetNotionSyncResponseBody["lastSyncedUrls"] = [
+        { url: "From endpoint", timestamp: Date.now() },
+        { url: "https://www.notion.so/...", timestamp: Date.now() },
+        { url: "https://www.notion.so/...", timestamp: Date.now() },
+      ];
+
+      return res.status(200).json({ lastSyncedUrls });
     case "POST":
       const bodyValidation = PostNotionSyncPayload.safeParse(req.body);
 
@@ -108,7 +122,7 @@ async function handler(
         workspaceId: owner.sId,
       });
 
-      // Store the last 50 synced urls (expires in 1 day if no URL is synced)
+      // Store the last RECENT_URLS_COUNT synced urls (expires in 1 day if no URL is synced)
       await runOnRedis({ origin: "notion_url_sync" }, async (redis) => {
         const redisKey = getRedisKeyForNotionUrlSync(owner.sId);
 
@@ -124,10 +138,10 @@ async function handler(
 
         await redis.expire(redisKey, 24 * 60 * 60);
 
-        // Delete the oldest URL if the list has more than 30 items
+        // Delete the oldest URL if the list has more than RECENT_URLS_COUNT items
         const count = await redis.zCard(redisKey);
-        if (count > 30) {
-          await redis.zRemRangeByRank(redisKey, 0, count - 30);
+        if (count > RECENT_URLS_COUNT) {
+          await redis.zRemRangeByRank(redisKey, 0, count - RECENT_URLS_COUNT);
         }
       });
 

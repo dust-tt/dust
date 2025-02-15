@@ -59,3 +59,23 @@ export function useTagSearchEndpoint({
 
   return { searchTags };
 }
+
+export function useNotionLastSyncedUrls({
+  owner,
+  dataSource,
+}: {
+  owner: LightWorkspaceType;
+  dataSource: DataSourceType;
+}) {
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/notion_url_sync`,
+    fetcher
+  );
+
+  return {
+    lastSyncedUrls: data?.lastSyncedUrls,
+    isLoading: !error && !data,
+    isError: error,
+    mutate,
+  };
+}

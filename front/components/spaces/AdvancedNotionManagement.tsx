@@ -1,3 +1,4 @@
+import { useNotionLastSyncedUrls } from "@app/lib/swr/data_sources";
 import type {
   DropdownMenu,
   DropdownMenuItemProps,
@@ -52,11 +53,10 @@ export function AdvancedNotionManagement({
     return true;
   };
 
-  const {
-    lastSyncedUrls,
-    isLoading,
-  }: { lastSyncedUrls: TableData[]; isLoading: boolean } =
-    useNotionLastSyncedUrls();
+  const { lastSyncedUrls, isLoading } = useNotionLastSyncedUrls({
+    owner,
+    dataSource,
+  });
 
   const columns = [
     {
@@ -116,6 +116,7 @@ export function AdvancedNotionManagement({
     }
     setSyncing(false);
   }
+  console.log("rendering", isLoading, lastSyncedUrls);
 
   return (
     <>
@@ -144,7 +145,7 @@ export function AdvancedNotionManagement({
         />
       </div>
       {/* List of the last 50 synced URLs */}
-      {lastSyncedUrls.length > 0 && (
+      {!isLoading && lastSyncedUrls.length > 0 && (
         <>
           <div className="p-1">Recently synced URLs</div>
           <DataTable columns={columns} data={lastSyncedUrls} />
@@ -152,14 +153,4 @@ export function AdvancedNotionManagement({
       )}
     </>
   );
-}
-function useNotionLastSyncedUrls(): { lastSyncedUrls: any; isLoading: any } {
-  return {
-    lastSyncedUrls: [
-      { url: "TODO", timestamp: new Date() },
-      { url: "https://www.notion.so/...", timestamp: new Date() },
-      { url: "https://www.notion.so/...", timestamp: new Date() },
-    ],
-    isLoading: false,
-  };
 }
