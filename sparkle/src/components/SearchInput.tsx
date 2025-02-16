@@ -1,6 +1,16 @@
 import React, { forwardRef } from "react";
 
-import { Button, Icon, Input, Spinner } from "@sparkle/components";
+import {
+  Button,
+  Icon,
+  Input,
+  PopoverContent,
+  PopoverRoot,
+  PopoverTrigger,
+  ScrollArea,
+  ScrollBar,
+  Spinner,
+} from "@sparkle/components";
 import { MagnifyingGlassIcon, XMarkIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 
@@ -85,3 +95,74 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
 );
 
 SearchInput.displayName = "SearchInput";
+
+export interface SearchInputWithPopoverProps extends SearchInputProps {
+  children: React.ReactNode;
+  contentClassName?: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+export const SearchInputWithPopover = forwardRef<
+  HTMLInputElement,
+  SearchInputWithPopoverProps
+>(
+  (
+    {
+      children,
+      contentClassName,
+      className,
+      open,
+      onOpenChange,
+      value,
+      onChange,
+      ...searchInputProps
+    },
+    ref
+  ) => {
+    return (
+      <PopoverRoot modal={false} open={open} onOpenChange={onOpenChange}>
+        <PopoverTrigger asChild>
+          <SearchInput
+            ref={ref}
+            className={cn("s-w-full", className)}
+            value={value}
+            onChange={(newValue) => {
+              onChange?.(newValue);
+              if (newValue && !open) {
+                onOpenChange(true);
+              }
+            }}
+            {...searchInputProps}
+            aria-expanded={open}
+            aria-haspopup="listbox"
+            aria-controls="search-popover-content"
+          />
+        </PopoverTrigger>
+        <PopoverContent
+          className={cn(
+            "s-w-[--radix-popover-trigger-width] s-rounded-lg s-border s-bg-background s-shadow-md dark:s-bg-background-night",
+            contentClassName
+          )}
+          sideOffset={0}
+          align="start"
+          id="search-popover-content"
+          onOpenAutoFocus={(e) => e.preventDefault()}
+          onCloseAutoFocus={(e) => e.preventDefault()}
+          onInteractOutside={() => onOpenChange(false)}
+        >
+          <ScrollArea
+            role="listbox"
+            className="s-flex s-max-h-72 s-flex-col"
+            hideScrollBar
+          >
+            {children}
+            <ScrollBar className="py-0" />
+          </ScrollArea>
+        </PopoverContent>
+      </PopoverRoot>
+    );
+  }
+);
+
+SearchInputWithPopover.displayName = "SearchInputWithPopover";
