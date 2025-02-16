@@ -1226,11 +1226,11 @@ export async function* editUserMessage(
           "Unexpected: Message or UserMessage to edit not found in DB"
         );
       }
-      //TODO==> correctly get last version of the message
       const newestMessage = await Message.findOne({
         where: {
           rank: messageRow.rank,
           conversationId: conversation.id,
+          parentId: messageRow.parentId,
         },
         order: [["version", "DESC"]],
         transaction: t,
