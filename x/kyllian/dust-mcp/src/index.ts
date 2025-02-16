@@ -8,17 +8,17 @@ import {
   postMessage,
   streamAgentAnswer,
 } from "./api.js";
-import { logToFile, logJson, logError, logFatalError } from "./config.js";
-
-const { dustAPI, dustConfig } = await getDustAPI();
-
-const server = new McpServer({
-  name: "dust-mcp-server",
-  version: "1.0.0",
-});
+import {
+  DustConfig,
+  logError,
+  logFatalError,
+  logJson,
+  logToFile,
+} from "./config.js";
 
 async function askAgent(
   dustAPI: DustAPI,
+  dustConfig: DustConfig,
   conversationId: string | undefined,
   message: string
 ) {
@@ -128,31 +128,47 @@ async function askAgent(
   }
 }
 
-server.tool(
-  "ask-agent",
-  "Ask a question to a Dust agent", // TODO(kyllian): Get and use real description of the agent
-  {
-    conversationId: z
-      .string()
-      .optional()
-      .describe("Optional existing conversation ID"),
-    message: z.string().describe("Message to send to the agent"),
-  },
-  async ({ conversationId, message }) => {
-    const result = await askAgent(dustAPI, conversationId, message);
-    return {
-      content: [
-        {
-          type: "text",
-          text: result.message.content || "No response from agent",
-        },
-      ],
-      conversationId: result.conversationId,
-    };
-  }
-);
-
 async function main() {
+  // Initialize the Dust API
+  const { dustAPI, dustConfig } = await getDustAPI();
+
+  // Initialize the MCP server
+  const server = new McpServer({
+    name: "dust-mcp-server",
+    version: "1.0.0",
+  });
+
+  // Register the ask-agent tool
+  server.tool(
+    "ask-agent",
+    "Ask a question to a Dust agent",
+    {
+      conversationId: z
+        .string()
+        .optional()
+        .describe("Optional existing conversation ID"),
+      message: z.string().describe("Message to send to the agent"),
+    },
+    async ({ conversationId, message }) => {
+      const result = await askAgent(
+        dustAPI,
+        dustConfig,
+        conversationId,
+        message
+      );
+      return {
+        content: [
+          {
+            type: "text",
+            text: result.message.content || "No response from agent",
+          },
+        ],
+        conversationId: result.conversationId,
+      };
+    }
+  );
+
+  // Set up and start the server
   const transport = new StdioServerTransport();
   await server.connect(transport);
   console.error("Dust MCP Server running on stdio");
