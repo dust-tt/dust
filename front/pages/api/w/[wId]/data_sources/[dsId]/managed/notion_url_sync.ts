@@ -1,6 +1,9 @@
-import type { WithAPIErrorResponse } from "@dust-tt/types";
+import type {GetPostNotionSyncResponseBody, WithAPIErrorResponse} from "@dust-tt/types";
+import {
+  PostNotionSyncPayloadSchema
+} from "@dust-tt/types";
+import { isLeft } from "fp-ts/lib/Either";
 import type { NextApiRequest, NextApiResponse } from "next";
-import * as z from "zod";
 import { fromError } from "zod-validation-error";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -11,25 +14,11 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { apiError } from "@app/logger/withlogging";
 
-type PostNotionSyncResponseBody = { success: true } | { error: string };
-
-type GetNotionSyncResponseBody = {
-  lastSyncedUrls: { url: string; timestamp: number }[];
-};
-
-const PostNotionSyncPayload = z.object({
-  urls: z.array(z.string()),
-});
-
 const RECENT_URLS_COUNT = 50;
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<
-    WithAPIErrorResponse<
-      GetNotionSyncResponseBody | PostNotionSyncResponseBody | void
-    >
-  >,
+  res: NextApiResponse<WithAPIErrorResponse<GetPostNotionSyncResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
@@ -94,33 +83,75 @@ async function handler(
         }
       );*/
 
-      const lastSyncedUrls: GetNotionSyncResponseBody["lastSyncedUrls"] = [
-        { url: "From endpoint", timestamp: Date.now() },
-        { url: "https://www.notion.so/...", timestamp: Date.now() },
-        { url: "https://www.notion.so/...", timestamp: Date.now() },
+      const lastSyncedUrls: GetPostNotionSyncResponseBody["syncResults"] = [
+        { url: "From endpoint", timestamp: Date.now(), success: true },
+        {
+          url: "https://www.notion.so/1...",
+          timestamp: Date.now(),
+          success: false,
+          error_message: "Error 1",
+        },
+        {
+          url: "https://www.notion.so/2...",
+          timestamp: Date.now(),
+          success: true,
+        },
+        {
+          url: "https://www.notion.so/3...",
+          timestamp: Date.now(),
+          success: false,
+          error_message: "Error 3",
+        },
+        {
+          url: "https://www.notion.so/4...",
+          timestamp: Date.now(),
+          success: true,
+        },
+        {
+          url: "https://www.notion.so/5...",
+          timestamp: Date.now(),
+          success: true,
+        },
+        {
+          url: "https://www.notion.so/6...",
+          timestamp: Date.now(),
+          success: true,
+        },
+        {
+          url: "https://www.notion.so/7...",
+          timestamp: Date.now(),
+          success: true,
+        },
       ];
 
-      return res.status(200).json({ lastSyncedUrls });
+      return res.status(200).json({ syncResults: lastSyncedUrls });
     case "POST":
-      const bodyValidation = PostNotionSyncPayload.safeParse(req.body);
+      const bodyValidation = PostNotionSyncPayloadSchema.decode(req.body);
 
-      if (bodyValidation.error) {
+      if (isLeft(bodyValidation)) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: fromError(bodyValidation.error).toString(),
+            message: fromError(bodyValidation.left).toString(),
           },
         });
       }
 
-      const { urls } = bodyValidation.data;
+      const { urls } = bodyValidation.right;
 
-      const result = await syncNotionUrls({
-        urlsArray: urls,
-        dataSourceId: dsId,
-        workspaceId: owner.sId,
-      });
+      const syncResults = (
+        await syncNotionUrls({
+          urlsArray: urls,
+          dataSourceId: dsId,
+          workspaceId: owner.sId,
+        })
+      ).map((urlResult) => ({
+        url: urlResult.url,
+        timestamp: urlResult.timestamp,
+        success: urlResult.success,
+        ...(urlResult.error && { error_message: urlResult.error.message }),
+      }));
 
       // Store the last RECENT_URLS_COUNT synced urls (expires in 1 day if no URL is synced)
       await runOnRedis({ origin: "notion_url_sync" }, async (redis) => {
@@ -128,12 +159,10 @@ async function handler(
 
         await redis.zAdd(
           redisKey,
-          result
-            .filter((r) => r.isOk())
-            .map(({ value }) => ({
-              score: value.timestamp,
-              value: value.url,
-            }))
+          syncResults.map((urlResult) => ({
+            score: urlResult.timestamp,
+            value: JSON.stringify(urlResult),
+          }))
         );
 
         await redis.expire(redisKey, 24 * 60 * 60);
@@ -145,19 +174,7 @@ async function handler(
         }
       });
 
-      if (result.some((r) => r.isErr())) {
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: result
-              .map((r) => (r.isErr() ? r.error.message : r.value))
-              .join("\n"),
-          },
-        });
-      }
-
-      res.status(200).json({ success: true });
+      res.status(200).json({ syncResults });
       return;
 
     default:

@@ -1,17 +1,30 @@
-import { useNotionLastSyncedUrls } from "@app/lib/swr/data_sources";
 import type {
   DropdownMenu,
   DropdownMenuItemProps,
   NotificationType,
 } from "@dust-tt/sparkle";
-import { Button, DataTable, TextArea } from "@dust-tt/sparkle";
+import {
+  Button,
+  CheckCircleIcon,
+  DataTable,
+  Icon,
+  TextArea,
+  Tooltip,
+  XCircleIcon,
+} from "@dust-tt/sparkle";
 import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
-import { CellContext } from "@tanstack/react-table";
+import { GetPostNotionSyncResponseBodySchema } from "@dust-tt/types";
+import type { CellContext } from "@tanstack/react-table";
+import { isLeft } from "fp-ts/lib/Either";
 import { useMemo, useState } from "react";
+
+import { useNotionLastSyncedUrls } from "@app/lib/swr/data_sources";
 
 interface TableData {
   url: string;
   timestamp: number;
+  success: boolean;
+  error_message?: string;
   onClick?: () => void;
   moreMenuItems?: DropdownMenuItemProps[];
   dropdownMenuProps?: React.ComponentPropsWithoutRef<typeof DropdownMenu>;
@@ -53,7 +66,7 @@ export function AdvancedNotionManagement({
     return true;
   };
 
-  const { lastSyncedUrls, isLoading } = useNotionLastSyncedUrls({
+  const { lastSyncedUrls, isLoading, mutate } = useNotionLastSyncedUrls({
     owner,
     dataSource,
   });
@@ -73,8 +86,50 @@ export function AdvancedNotionManagement({
           </div>
         </DataTable.CellContent>
       ),
+      meta: {
+        className: "w-16",
+      },
     },
     { header: "URL", accessorKey: "url" },
+    {
+      header: "Status",
+      accessorKey: "success",
+      cell: (info: CellContext<TableData, boolean>) => (
+        <DataTable.CellContent>
+          {info.row.original.success ? (
+            <Icon
+              visual={CheckCircleIcon}
+              size="sm"
+              className="text-success-500"
+            />
+          ) : (
+            <Icon visual={XCircleIcon} size="sm" className="text-warning-500" />
+          )}
+        </DataTable.CellContent>
+      ),
+      meta: {
+        className: "w-16",
+      },
+    },
+    {
+      header: "Error",
+      accessorKey: "error_message",
+      cell: (info: CellContext<TableData, string>) => (
+        <DataTable.CellContent>
+          <Tooltip
+            trigger={
+              <span className="truncate">
+                {info.row.original.error_message}
+              </span>
+            }
+            label={info.row.original.error_message}
+          />
+        </DataTable.CellContent>
+      ),
+      meta: {
+        className: "w-32",
+      },
+    },
   ];
 
   async function syncURLs() {
@@ -101,11 +156,39 @@ export function AdvancedNotionManagement({
           const error: { error: { message: string } } = await r.json();
           throw new Error(error.error.message);
         }
-        sendNotification({
-          type: "success",
-          title: "Sync started",
-          description: "The Notion URLs should be synced shortly.",
-        });
+        const response = GetPostNotionSyncResponseBodySchema.decode(
+          await r.json()
+        );
+        if (isLeft(response)) {
+          sendNotification({
+            type: "error",
+            title: "Error syncing Notion URLs",
+            description:
+              "An unexpected error occurred while syncing Notion URLs.",
+          });
+          return;
+        }
+
+        const { syncResults } = response.right;
+
+        const successCount = syncResults.filter(
+          (result) => result.success
+        ).length;
+
+        if (successCount === syncResults.length) {
+          sendNotification({
+            type: "success",
+            title: "Sync started",
+            description: "The Notion URLs should be synced shortly.",
+          });
+        } else {
+          sendNotification({
+            type: "error",
+            title: `Synced ${successCount} of ${syncResults.length} URLs`,
+            description: "Some URLs were not synced due to errors.",
+          });
+        }
+        mutate();
       }
     } catch (e) {
       sendNotification({

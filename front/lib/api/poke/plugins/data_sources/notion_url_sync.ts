@@ -82,10 +82,10 @@ export const notionUrlSyncPlugin = createPlugin(
         dataSourceId,
         workspaceId: auth.getNonNullableWorkspace().sId,
       });
-      if (res.some((r) => r.isErr())) {
+      if (res.some((r) => !r.success)) {
         return new Err(
           new Error(
-            res.map((r) => (r.isErr() ? r.error.message : r.value)).join("\n")
+            res.map((r) => (r.success ? r.url : r.error?.message)).join("\n")
           )
         );
       }
@@ -100,10 +100,10 @@ export const notionUrlSyncPlugin = createPlugin(
         dataSourceId,
         workspaceId: auth.getNonNullableWorkspace().sId,
       });
-      if (res.some((r) => r.isErr())) {
+      if (res.some((r) => !r.success)) {
         return new Err(
           new Error(
-            res.map((r) => (r.isErr() ? r.error.message : r.value)).join("\n")
+            res.map((r) => (r.success ? r.url : r.error?.message)).join("\n")
           )
         );
       }
@@ -125,7 +125,9 @@ export async function syncNotionUrls({
   urlsArray: string[];
   dataSourceId: string;
   workspaceId: string;
-}): Promise<Result<{ url: string; timestamp: number }, Error>[]> {
+}): Promise<
+  { url: string; timestamp: number; success: boolean; error?: Error }[]
+> {
   const connectorsAPI = new ConnectorsAPI(
     config.getConnectorsAPIConfig(),
     logger
@@ -135,7 +137,12 @@ export async function syncNotionUrls({
     urlsArray,
     async (
       url: string
-    ): Promise<Result<{ url: string; timestamp: number }, Error>> => {
+    ): Promise<{
+      url: string;
+      timestamp: number;
+      success: boolean;
+      error?: Error;
+    }> => {
       const checkUrlRes = await connectorsAPI.admin({
         majorCommand: "notion",
         command: "check-url",
@@ -147,14 +154,22 @@ export async function syncNotionUrls({
       });
 
       if (checkUrlRes.isErr()) {
-        return new Err(new Error(checkUrlRes.error.message));
+        return {
+          url,
+          timestamp: Date.now(),
+          success: false,
+          error: new Error(checkUrlRes.error.message),
+        };
       }
 
       const decoded = NotionFindUrlResponseSchema.decode(checkUrlRes.value);
       if (isLeft(decoded)) {
-        return new Err(
-          new Error("Unreachable: Invalid response from dust API")
-        );
+        return {
+          url,
+          timestamp: Date.now(),
+          success: false,
+          error: new Error("Unreachable: Invalid response from dust API"),
+        };
       }
 
       const { page, db } = decoded.right;
@@ -170,10 +185,14 @@ export async function syncNotionUrls({
         });
 
         if (upsertPageRes.isErr()) {
-          return new Err(new Error(upsertPageRes.error.message));
+          return {
+            url,
+            timestamp: Date.now(),
+            success: false,
+            error: new Error(upsertPageRes.error.message),
+          };
         }
-
-        return new Ok({ url, timestamp: Date.now() });
+        return { url, timestamp: Date.now(), success: true };
       } else if (db) {
         const upsertDbRes = await connectorsAPI.admin({
           majorCommand: "notion",
@@ -186,12 +205,22 @@ export async function syncNotionUrls({
         });
 
         if (upsertDbRes.isErr()) {
-          return new Err(new Error(upsertDbRes.error.message));
+          return {
+            url,
+            timestamp: Date.now(),
+            success: false,
+            error: new Error(upsertDbRes.error.message),
+          };
         }
 
-        return new Ok({ url, timestamp: Date.now() });
+        return { url, timestamp: Date.now(), success: true };
       } else {
-        return new Err(new Error(`No page or database found for url ${url}`));
+        return {
+          url,
+          timestamp: Date.now(),
+          success: false,
+          error: new Error(`No page or database found for url ${url}`),
+        };
       }
     },
     { concurrency: 8 }
@@ -206,7 +235,9 @@ export async function deleteUrls({
   urlsArray: string[];
   dataSourceId: string;
   workspaceId: string;
-}): Promise<Result<{ url: string; timestamp: number }, Error>[]> {
+}): Promise<
+  { url: string; timestamp: number; success: boolean; error?: Error }[]
+> {
   const connectorsAPI = new ConnectorsAPI(
     config.getConnectorsAPIConfig(),
     logger
@@ -226,7 +257,12 @@ export async function deleteUrls({
       });
 
       if (checkUrlRes.isErr()) {
-        return new Err(new Error(checkUrlRes.error.message));
+        return {
+          url,
+          timestamp: Date.now(),
+          success: false,
+          error: new Error(checkUrlRes.error.message),
+        };
       }
 
       const { page, db } = checkUrlRes.value as {
@@ -235,11 +271,14 @@ export async function deleteUrls({
       };
 
       if ((page && !page.in_trash) || (db && !db.in_trash)) {
-        return new Err(
-          new Error(
+        return {
+          url,
+          timestamp: Date.now(),
+          success: false,
+          error: new Error(
             `URL ${url} still available on Notion, should not be deleted.`
-          )
-        );
+          ),
+        };
       }
 
       const deleteUrlRes = await connectorsAPI.admin({
@@ -253,14 +292,17 @@ export async function deleteUrls({
       });
 
       if (deleteUrlRes.isErr()) {
-        return new Err(
-          new Error(
+        return {
+          url,
+          timestamp: Date.now(),
+          success: false,
+          error: new Error(
             `Could not delete url ${url}: ${deleteUrlRes.error.message}`
-          )
-        );
+          ),
+        };
       }
 
-      return new Ok({ url, timestamp: Date.now() });
+      return { url, timestamp: Date.now(), success: true };
     },
     { concurrency: 8 }
   );

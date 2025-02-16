@@ -1,5 +1,6 @@
 import type {
   DataSourceType,
+  GetPostNotionSyncResponseBody,
   LightWorkspaceType,
   TagSearchParams,
   TagSearchResult,
@@ -66,15 +67,20 @@ export function useNotionLastSyncedUrls({
 }: {
   owner: LightWorkspaceType;
   dataSource: DataSourceType;
-}) {
-  const { data, error, mutate } = useSWRWithDefaults(
+}): {
+  lastSyncedUrls: GetPostNotionSyncResponseBody["syncResults"];
+  isLoading: boolean;
+  isError: boolean;
+  mutate: () => Promise<void>;
+} {
+  const { data, error, mutate, isLoading } = useSWRWithDefaults(
     `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/notion_url_sync`,
     fetcher
   );
 
   return {
-    lastSyncedUrls: data?.lastSyncedUrls,
-    isLoading: !error && !data,
+    lastSyncedUrls: data?.syncResults,
+    isLoading,
     isError: error,
     mutate,
   };
