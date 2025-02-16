@@ -80,6 +80,8 @@ const switchAction = async () => {
 };
 
 const serverAction = async () => {
+  await loginAction();
+
   try {
     await startServer();
   } catch (error) {
