@@ -28,6 +28,7 @@ import {
   ZendeskConfigurationResource,
   ZendeskTicketResource,
 } from "@connectors/resources/zendesk_resources";
+import { extractMetadataFromDocumentUrl } from "@connectors/connectors/zendesk/lib/sync_ticket";
 
 export const zendesk = async ({
   command,
@@ -130,6 +131,36 @@ export const zendesk = async ({
       return { success: true };
     }
     case "fetch-ticket": {
+      const { accessToken, subdomain } =
+        await getZendeskSubdomainAndAccessToken(connector.connectionId);
+
+      if (args.ticketUrl) {
+        const { brandSubdomain, ticketId } = extractMetadataFromDocumentUrl(
+          args.ticketUrl
+        );
+        const ticket = await fetchZendeskTicket({
+          accessToken,
+          ticketId,
+          brandSubdomain,
+        });
+        const brand = await ZendeskBrandResource.fetchByBrandSubdomain({
+          connectorId: connector.id,
+          subdomain: brandSubdomain,
+        });
+        const ticketOnDb = brand
+          ? await ZendeskTicketResource.fetchByTicketId({
+              connectorId: connector.id,
+              brandId: brand.brandId,
+              ticketId,
+            })
+          : null;
+
+        return {
+          ticket: ticket as { [key: string]: unknown } | null,
+          isTicketOnDb: ticketOnDb !== null,
+        };
+      }
+
       const brandId = args.brandId ? Number(args.brandId) : null;
       if (!brandId) {
         throw new Error(`Missing --brandId argument`);
@@ -144,8 +175,6 @@ export const zendesk = async ({
         ticketId,
       });
 
-      const { accessToken, subdomain } =
-        await getZendeskSubdomainAndAccessToken(connector.connectionId);
       const brandSubdomain = await getZendeskBrandSubdomain({
         connectorId: connector.id,
         brandId,

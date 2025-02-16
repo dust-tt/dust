@@ -723,12 +723,11 @@ async function handleCheckOrFindNotionUrl(
   return res.json();
 }
 
-async function handleCheckZendeskTicket(args: {
-  brandId: number;
-  ticketId: number;
-  wId: string;
-  dsId: string;
-}): Promise<ZendeskFetchTicketResponseType | null> {
+async function handleCheckZendeskTicket(
+  args:
+    | { brandId: number; ticketId: number; wId: string; dsId: string }
+    | { ticketUrl: string; wId: string; dsId: string }
+): Promise<ZendeskFetchTicketResponseType | null> {
   const res = await fetch(`/api/poke/admin`, {
     method: "POST",
     headers: {
@@ -959,15 +958,19 @@ function ZendeskTicketCheck({
 }) {
   const [brandId, setBrandId] = useState<number | null>(null);
   const [ticketId, setTicketId] = useState<number | null>(null);
+  const [ticketUrl, setTicketUrl] = useState<string | null>(null);
+
   const [ticketDetails, setTicketDetails] =
     useState<ZendeskFetchTicketResponseType | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+
+  const [idsIsLoading, setIdsIsLoading] = useState(false);
+  const [urlIsLoading, setUrlIsLoading] = useState(false);
 
   return (
     <div className="mb-2 flex flex-col gap-2 rounded-md border px-2 py-2 text-sm text-gray-600">
       <div className="ml-2 flex items-center gap-2">
-        <div>Brand ID / Ticket ID</div>
-        <div className="ml-6 flex max-w-md grow items-center gap-4">
+        <div className="w-32">Brand / Ticket IDs</div>
+        <div className="flex max-w-md grow items-center gap-4">
           <div className="flex-1">
             <Input
               type="number"
@@ -988,12 +991,12 @@ function ZendeskTicketCheck({
         </div>
         <Button
           variant="outline"
-          icon={isLoading ? Spinner : MagnifyingGlassIcon}
-          label={isLoading ? undefined : "Check"}
-          disabled={!ticketId || !brandId || isLoading}
+          icon={idsIsLoading ? Spinner : MagnifyingGlassIcon}
+          label={idsIsLoading ? undefined : "Check"}
+          disabled={!ticketId || !brandId || idsIsLoading}
           onClick={async () => {
             if (brandId && ticketId) {
-              setIsLoading(true);
+              setIdsIsLoading(true);
               setTicketDetails(
                 await handleCheckZendeskTicket({
                   brandId,
@@ -1002,7 +1005,37 @@ function ZendeskTicketCheck({
                   dsId,
                 })
               );
-              setIsLoading(false);
+              setIdsIsLoading(false);
+            }
+          }}
+        />
+      </div>
+      <div className="ml-2 mt-4 flex items-center gap-2">
+        <div className="w-32">Ticket URL</div>
+        <div className="max-w-md flex-1 grow items-center gap-4">
+          <Input
+            type="text"
+            placeholder="Ticket URL"
+            onChange={(e) => setTicketUrl(e.target.value)}
+            value={ticketUrl ?? ""}
+          />
+        </div>
+        <Button
+          variant="outline"
+          icon={urlIsLoading ? Spinner : MagnifyingGlassIcon}
+          label={urlIsLoading ? undefined : "Check"}
+          disabled={!ticketUrl || urlIsLoading}
+          onClick={async () => {
+            if (ticketUrl) {
+              setUrlIsLoading(true);
+              setTicketDetails(
+                await handleCheckZendeskTicket({
+                  ticketUrl,
+                  wId: owner.sId,
+                  dsId,
+                })
+              );
+              setUrlIsLoading(false);
             }
           }}
         />

@@ -284,6 +284,7 @@ export const ZendeskCommandSchema = t.type({
     query: t.union([t.string, t.undefined]),
     forceResync: t.union([t.literal("true"), t.undefined]),
     ticketId: t.union([t.number, t.undefined]),
+    ticketUrl: t.union([t.string, t.undefined]),
   }),
 });
 export type ZendeskCommandType = t.TypeOf<typeof ZendeskCommandSchema>;
