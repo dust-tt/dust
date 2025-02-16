@@ -605,6 +605,7 @@ async function recurseUpdateParents(
     where: {
       connectorId: connector.id,
       parentId: file.driveFileId,
+      skipReason: null,
     },
   });
 
