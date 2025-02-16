@@ -126,9 +126,21 @@ export async function botAnswerMessage(
     if (e instanceof ExternalOAuthTokenError) {
       // Mark the connector as errored so that the user is notified in the Connection Admin UI.
       await syncFailed(connector.id, "oauth_token_revoked");
-      return new Err(
-        new Error("Invalid Slack auth, the bot cannot answer the message.")
-      );
+      try {
+        const slackClient = await getSlackClient(connector.id);
+        await slackClient.chat.postMessage({
+          channel: slackChannel,
+          text: "Authorization error, please re-authenticate Slack in Connection Admin.",
+          thread_ts: slackMessageTs,
+        });
+
+        return new Ok(undefined);
+      } catch (e) {
+        if (e instanceof ExternalOAuthTokenError) {
+          return new Ok(undefined);
+        }
+        return new Err(new Error("Could not post message occurred"));
+      }
     }
     logger.error(
       {
