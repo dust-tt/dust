@@ -209,6 +209,7 @@ export function getCitationsCount({
     case "github_get_pull_request_configuration":
     case "github_create_issue_configuration":
     case "reasoning_configuration":
+    case "mcp_configuration":
       return 0;
     default:
       assertNever(action);

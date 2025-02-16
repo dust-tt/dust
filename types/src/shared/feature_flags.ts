@@ -22,6 +22,7 @@ export const WHITELISTABLE_FEATURES = [
   "search_knowledge_builder",
   "attach_from_datasources",
   "hybrid_events",
+  "mcp_client_feature",
 ] as const;
 export type WhitelistableFeature = (typeof WHITELISTABLE_FEATURES)[number];
 export function isWhitelistableFeature(

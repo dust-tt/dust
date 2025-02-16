@@ -15,6 +15,7 @@ import {
   AgentGithubGetPullRequestAction,
 } from "@app/lib/models/assistant/actions/github";
 import { AgentGithubConfiguration } from "@app/lib/models/assistant/actions/github";
+import { AgentMCPAction } from "@app/lib/models/assistant/actions/mcp";
 import {
   AgentProcessAction,
   AgentProcessConfiguration,
@@ -178,6 +179,7 @@ async function main() {
   await AgentGithubGetPullRequestAction.sync({ alter: true });
   await AgentGithubCreateIssueAction.sync({ alter: true });
   await AgentReasoningAction.sync({ alter: true });
+  await AgentMCPAction.sync({ alter: true });
 
   await RetrievalDocument.sync({ alter: true });
   await RetrievalDocumentChunk.sync({ alter: true });

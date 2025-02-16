@@ -15,6 +15,7 @@ import { LightAgentConfigurationType } from "../../front/assistant/agent";
 import { UserType, WorkspaceType } from "../../front/user";
 import { ModelId } from "../../shared/model_id";
 import { ContentFragmentType } from "../content_fragment";
+import { MCPActionType } from "./actions/mcp";
 
 /**
  * Mentions
@@ -131,7 +132,8 @@ export type GithubAgentActionType =
 export type AgentActionType =
   | ConfigurableAgentActionType
   | ConversationAgentActionType
-  | GithubAgentActionType;
+  | GithubAgentActionType
+  | MCPActionType;
 
 export type AgentMessageStatus =
   | "created"
@@ -151,6 +153,7 @@ export const ACTION_RUNNING_LABELS: Record<AgentActionType["type"], string> = {
   github_get_pull_request_action: "Retrieving pull request",
   github_create_issue_action: "Creating issue",
   reasoning_action: "Reasoning",
+  mcp_action: "Executing tool",
 };
 
 /**

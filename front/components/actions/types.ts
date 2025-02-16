@@ -6,6 +6,7 @@ import { ConversationIncludeFileActionDetails } from "@app/components/actions/co
 import { DustAppRunActionDetails } from "@app/components/actions/dust_app_run/DustAppRunActionDetails";
 import { GithubCreateIssueActionDetails } from "@app/components/actions/github/GithubCreateIssueActionDetails";
 import { GithubGetPullRequestActionDetails } from "@app/components/actions/github/GithubGetPullRequestActionDetails";
+import { MCPActionDetails } from "@app/components/actions/mcp/MCPActionDetails";
 import { ProcessActionDetails } from "@app/components/actions/process/ProcessActionDetails";
 import { ReasoningActionDetails } from "@app/components/actions/reasoning/ReasoningActionDetails";
 import { RetrievalActionDetails } from "@app/components/actions/retrieval/RetrievalActionDetails";
@@ -75,6 +76,10 @@ const actionsSpecification: ActionSpecifications = {
   reasoning_action: {
     detailsComponent: ReasoningActionDetails,
     runningLabel: ACTION_RUNNING_LABELS.reasoning_action,
+  },
+  mcp_action: {
+    detailsComponent: MCPActionDetails,
+    runningLabel: ACTION_RUNNING_LABELS.mcp_action,
   },
 };
 

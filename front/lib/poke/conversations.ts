@@ -143,6 +143,7 @@ export async function getPokeConversation(
                   case "github_get_pull_request_action":
                   case "github_create_issue_action":
                   case "reasoning_action":
+                  case "mcp_action":
                     // TODO(REASONING TOOL): reasoning_action
                     // Theses actions do not call a dust app
                     break;

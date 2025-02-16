@@ -1939,6 +1939,7 @@ async function* streamRunAgentEvents(
       case "reasoning_started":
       case "reasoning_thinking":
       case "reasoning_tokens":
+      case "mcp_params":
         yield event;
         break;
 

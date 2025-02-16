@@ -529,6 +529,12 @@ const ReasoningActionTypeSchema = BaseActionSchema.extend({
 });
 type ReasoningActionPublicType = z.infer<typeof ReasoningActionTypeSchema>;
 
+const MCPActionTypeSchema = BaseActionSchema.extend({
+  agentMessageId: ModelIdSchema,
+  params: z.unknown(),
+  type: z.literal("mcp_action"),
+});
+
 const ConversationIncludeFileActionTypeSchema = BaseActionSchema.extend({
   agentMessageId: ModelIdSchema,
   params: z.object({
@@ -795,6 +801,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "search_knowledge_builder"
   | "attach_from_datasources"
   | "hybrid_events"
+  | "mcp_client_feature"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -1028,6 +1035,7 @@ const AgentActionTypeSchema = z.union([
   GithubGetPullRequestActionSchema,
   GithubCreateIssueActionSchema,
   ReasoningActionTypeSchema,
+  MCPActionTypeSchema,
 ]);
 export type AgentActionPublicType = z.infer<typeof AgentActionTypeSchema>;
 
@@ -1257,6 +1265,14 @@ const ReasoningTokensEventSchema = z.object({
   classification: TokensClassificationSchema,
 });
 
+const MCPParamsEventSchema = z.object({
+  type: z.literal("mcp_params"),
+  created: z.number(),
+  configurationId: z.string(),
+  messageId: z.string(),
+  action: MCPActionTypeSchema,
+});
+
 const AgentErrorEventSchema = z.object({
   type: z.literal("agent_error"),
   created: z.number(),
@@ -1285,7 +1301,9 @@ const AgentActionSpecificEventSchema = z.union([
   ReasoningStartedEventSchema,
   ReasoningThinkingEventSchema,
   ReasoningTokensEventSchema,
+  MCPParamsEventSchema,
 ]);
+
 export type AgentActionSpecificEvent = z.infer<
   typeof AgentActionSpecificEventSchema
 >;
