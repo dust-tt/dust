@@ -1,6 +1,7 @@
 import { Command } from "commander";
-import { login, logout, isLoggedIn } from "./auth.js";
 import { getDustAPI } from "./api.js";
+import { isLoggedIn, login, logout } from "./auth.js";
+import { startServer } from "./server.js";
 
 const loginAction = async () => {
   try {
@@ -78,6 +79,15 @@ const switchAction = async () => {
   await loginAction();
 };
 
+const serverAction = async () => {
+  try {
+    await startServer();
+  } catch (error) {
+    console.error("Server failed to start:", error);
+    process.exit(1);
+  }
+};
+
 async function main() {
   const program = new Command();
 
@@ -105,10 +115,15 @@ async function main() {
     .description("switch active Dust account")
     .action(switchAction);
 
+  program
+    .command("server")
+    .description("start the Dust MCP server")
+    .action(serverAction);
+
   await program.parseAsync(process.argv);
 }
 
 main().catch((error) => {
-  console.error("Fatal error in main():", error);
+  console.error("Fatal error:", error);
   process.exit(1);
 });
