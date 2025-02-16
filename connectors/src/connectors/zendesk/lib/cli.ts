@@ -135,9 +135,20 @@ export const zendesk = async ({
         await getZendeskSubdomainAndAccessToken(connector.connectionId);
 
       if (args.ticketUrl) {
-        const { brandSubdomain, ticketId } = extractMetadataFromDocumentUrl(
-          args.ticketUrl
-        );
+        let brandSubdomain, ticketId;
+        try {
+          const {
+            brandSubdomain: extractedSubdomain,
+            ticketId: extractedTicketId,
+          } = extractMetadataFromDocumentUrl(args.ticketUrl);
+          brandSubdomain = extractedSubdomain;
+          ticketId = extractedTicketId;
+        } catch (e) {
+          return {
+            ticket: null,
+            isTicketOnDb: false,
+          };
+        }
         const ticket = await fetchZendeskTicket({
           accessToken,
           ticketId,
