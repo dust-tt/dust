@@ -15,6 +15,7 @@ import {
   SliderToggle,
   Spinner,
   TableIcon,
+  Tooltip,
 } from "@dust-tt/sparkle";
 import type {
   ConnectorType,
@@ -1044,13 +1045,35 @@ function ZendeskTicketCheck({
         {ticketDetails && (
           <div className="flex flex-col gap-2 rounded-md border pt-2 text-lg">
             <div className="mb-4 ml-4 mt-2 flex gap-2">
-              <Chip
-                label={ticketDetails.isTicketOnDb ? "Synced" : "Not synced"}
-                color={ticketDetails.isTicketOnDb ? "purple" : "pink"}
+              <Tooltip
+                label={
+                  ticketDetails.isTicketOnDb
+                    ? "The ticket is synced with Dust."
+                    : "The ticket is not synced with Dust."
+                }
+                className="max-w-md"
+                trigger={
+                  <Chip
+                    label={ticketDetails.isTicketOnDb ? "Synced" : "Not synced"}
+                    color={ticketDetails.isTicketOnDb ? "purple" : "pink"}
+                  />
+                }
               />
-              <Chip
-                label={ticketDetails.ticket ? "Found" : "Not Found"}
-                color={ticketDetails.ticket ? "emerald" : "warning"}
+              <Tooltip
+                label={
+                  ticketDetails.ticket
+                    ? "The ticket can be found on Zendesk."
+                    : ticketUrl
+                      ? "The URL is malformed or does not lead to an existing ticket."
+                      : "The ticket or the brand was not found."
+                }
+                className="max-w-md"
+                trigger={
+                  <Chip
+                    label={ticketDetails.ticket ? "Found" : "Not Found"}
+                    color={ticketDetails.ticket ? "emerald" : "warning"}
+                  />
+                }
               />
             </div>
             {ticketDetails.ticket && (
