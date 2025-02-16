@@ -62,11 +62,23 @@ export default function AppLayout({
 
   useEffect(() => {
     const theme = localStorage.getItem("theme");
-    if (theme === "dark") {
-      document.body.classList.add("dark", "s-dark");
-    } else {
-      document.body.classList.remove("dark", "s-dark");
-    }
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+
+    const setDarkMode = (isDark: boolean) => {
+      document.body.classList.toggle("dark", isDark);
+      document.body.classList.toggle("s-dark", isDark);
+    };
+
+    const handleSystemChange = (e: MediaQueryListEvent) => {
+      if (theme === "system") {
+        setDarkMode(e.matches);
+      }
+    };
+
+    setDarkMode(theme === "dark" || (theme === "system" && mediaQuery.matches));
+
+    mediaQuery.addEventListener("change", handleSystemChange);
+    return () => mediaQuery.removeEventListener("change", handleSystemChange);
   }, []);
 
   useEffect(() => {
@@ -163,7 +175,7 @@ export default function AppLayout({
           >
             <div
               className={classNames(
-                "flex w-full flex-col border-b border-primary-50 pl-12 lg:pl-0",
+                "flex w-full flex-col pl-12 lg:pl-0",
                 !hideSidebar
                   ? "border-b border-structure-300/30 bg-white/80 backdrop-blur dark:border-structure-300-night/30 dark:bg-black/80"
                   : "",

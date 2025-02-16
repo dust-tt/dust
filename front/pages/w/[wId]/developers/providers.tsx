@@ -122,7 +122,10 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
               title="Model Providers"
               description="Model providers available to your Dust apps."
             />
-            <ul role="list" className="divide-y divide-structure-200 pt-4">
+            <ul
+              role="list"
+              className="divide-y divide-structure-200 pt-4 dark:divide-structure-200-night"
+            >
               {filteredProviders.map((provider) => (
                 <ProviderListItem
                   key={provider.providerId}
@@ -143,7 +146,10 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
               title="Service Providers"
               description="Service providers enable your Dust Apps to query external data or write to external services."
             />
-            <ul role="list" className="divide-y divide-structure-200 pt-4">
+            <ul
+              role="list"
+              className="divide-y divide-structure-200 pt-4 dark:divide-structure-200-night"
+            >
               {serviceProviders.map((provider) => (
                 <ProviderListItem
                   key={provider.providerId}
