@@ -17,7 +17,7 @@ import { AuthenticationClient } from "auth0";
 import crypto from "crypto";
 import express, { Request, Response } from "express";
 import open from "open";
-import { saveTokens, TokenData } from "./config.js";
+import { saveTokens, loadTokens, removeTokens, TokenData } from "./config.js";
 
 const AUTH0_DOMAIN = "dust-dev.eu.auth0.com";
 const AUTH0_CLIENT_ID = "XktEiKkdrADjGID13OXc5sDAaxa2WUJG";
@@ -53,7 +53,7 @@ export const generatePKCE = async (): Promise<{
   return { codeVerifier, codeChallenge };
 };
 
-export async function authenticate(): Promise<TokenData> {
+export async function login(): Promise<TokenData> {
   return new Promise(async (resolve, reject) => {
     const app = express();
     let server = app.listen(3333);
@@ -114,4 +114,19 @@ export async function authenticate(): Promise<TokenData> {
 
     open(authUrl);
   });
+}
+
+export async function logout(): Promise<void> {
+  await removeTokens();
+}
+
+export async function isLoggedIn(): Promise<boolean> {
+  const tokens = await loadTokens();
+  if (!tokens) {
+    return false;
+  }
+
+  // Check if token is expired (with 5 minute buffer)
+  const now = Date.now();
+  return tokens.expiresAt > now + 5 * 60 * 1000;
 }

@@ -1,6 +1,5 @@
 import { Command } from "commander";
-import { authenticate } from "./auth.js";
-import { isAuthenticated } from "./config.js";
+import { login, logout, isLoggedIn } from "./auth.js";
 
 const program = new Command();
 
@@ -15,19 +14,36 @@ auth
   .description("login to Dust")
   .action(async () => {
     try {
-      const alreadyAuthenticated = await isAuthenticated();
-      if (alreadyAuthenticated) {
-        console.log("You are already authenticated.");
+      const isUserLoggedIn = await isLoggedIn();
+      if (isUserLoggedIn) {
+        console.log("You are already logged in.");
         return;
       }
 
-      console.log("Authenticating with Dust...");
-      await authenticate();
-      console.log(
-        "Authentication successful! Your credentials have been saved."
-      );
+      console.log("Logging in to Dust...");
+      await login();
+      console.log("Login successful! Your credentials have been saved.");
     } catch (error) {
-      console.error("Authentication failed:", error);
+      console.error("Login failed:", error);
+      process.exit(1);
+    }
+  });
+
+auth
+  .command("logout")
+  .description("logout from Dust")
+  .action(async () => {
+    try {
+      const isUserLoggedIn = await isLoggedIn();
+      if (!isUserLoggedIn) {
+        console.log("You are not currently logged in.");
+        return;
+      }
+
+      await logout();
+      console.log("Successfully logged out.");
+    } catch (error) {
+      console.error("Logout failed:", error);
       process.exit(1);
     }
   });
