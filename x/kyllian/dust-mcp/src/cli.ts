@@ -2,12 +2,6 @@ import { Command } from "commander";
 import { login, logout, isLoggedIn } from "./auth.js";
 import { getDustAPI } from "./api.js";
 
-const program = new Command();
-
-program.name("dust-mcp").description("Dust MCP CLI").version("1.0.0");
-
-const auth = program.command("auth").description("Authenticate with Dust");
-
 const loginAction = async () => {
   try {
     const isUserLoggedIn = await isLoggedIn();
@@ -41,63 +35,80 @@ const logoutAction = async () => {
   }
 };
 
-auth
-  .command("login")
-  .description("log in to a Dust account")
-  .action(loginAction);
+const statusAction = async () => {
+  try {
+    const isUserLoggedIn = await isLoggedIn();
+    if (!isUserLoggedIn) {
+      console.log("You are not currently logged in.");
+      return;
+    }
 
-auth
-  .command("logout")
-  .description("log out of a Dust account")
-  .action(logoutAction);
+    const { dustAPI, dustConfig } = await getDustAPI();
+    const userRes = await dustAPI.me();
 
-auth
-  .command("status")
-  .description("display active Dust account")
-  .action(async () => {
-    try {
-      const isUserLoggedIn = await isLoggedIn();
-      if (!isUserLoggedIn) {
-        console.log("You are not currently logged in.");
-        return;
-      }
-
-      const { dustAPI, dustConfig } = await getDustAPI();
-      const userRes = await dustAPI.me();
-
-      if (!userRes.isOk()) {
-        console.error("Failed to get user information:", userRes.error.message);
-        process.exit(1);
-      }
-
-      const user = userRes.value;
-      const currentWorkspace = user.workspaces.find(
-        (w) => w.sId === dustConfig.workspaceId
-      );
-
-      console.log("Currently logged in as:");
-      console.log(`  ${user.fullName} <${user.email}>`);
-
-      if (!currentWorkspace) {
-        console.error("Failed to find current workspace in user workspaces");
-        process.exit(1);
-      }
-
-      console.log(
-        `  - Workspace: ${currentWorkspace.name} [${currentWorkspace.sId}]`
-      );
-    } catch (error) {
-      console.error("Failed to get status:", error);
+    if (!userRes.isOk()) {
+      console.error("Failed to get user information:", userRes.error.message);
       process.exit(1);
     }
-  });
 
-auth
-  .command("switch")
-  .description("switch active Dust account")
-  .action(async () => {
-    await logoutAction();
-    await loginAction();
-  });
+    const user = userRes.value;
+    const currentWorkspace = user.workspaces.find(
+      (w) => w.sId === dustConfig.workspaceId
+    );
 
-program.parse(process.argv);
+    console.log("Currently logged in as:");
+    console.log(`  ${user.fullName} <${user.email}>`);
+
+    if (!currentWorkspace) {
+      console.error("Failed to find current workspace in user workspaces");
+      process.exit(1);
+    }
+
+    console.log(
+      `  - Workspace: ${currentWorkspace.name} [${currentWorkspace.sId}]`
+    );
+  } catch (error) {
+    console.error("Failed to get status:", error);
+    process.exit(1);
+  }
+};
+
+const switchAction = async () => {
+  await logoutAction();
+  await loginAction();
+};
+
+async function main() {
+  const program = new Command();
+
+  program.name("dust-mcp").description("Dust MCP CLI").version("1.0.0");
+
+  const auth = program.command("auth").description("Authenticate with Dust");
+
+  auth
+    .command("login")
+    .description("log in to a Dust account")
+    .action(loginAction);
+
+  auth
+    .command("logout")
+    .description("log out of a Dust account")
+    .action(logoutAction);
+
+  auth
+    .command("status")
+    .description("display active Dust account")
+    .action(statusAction);
+
+  auth
+    .command("switch")
+    .description("switch active Dust account")
+    .action(switchAction);
+
+  await program.parseAsync(process.argv);
+}
+
+main().catch((error) => {
+  console.error("Fatal error in main():", error);
+  process.exit(1);
+});
