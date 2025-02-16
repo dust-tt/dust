@@ -880,6 +880,10 @@ async function makeContentFragments(
 
     channelName = channel.channel.name;
   } catch (e) {
+    // We were missing the "im:read" scope, so we fallback to the "Unknown" channel name
+    // because we would trigger an oauth error otherwise.
+    // We now ask for the "im:read" scope since 17/02/2025
+    // We can remove this fallback in a few months.
     channelName = "Unknown";
     logger.warn(
       {
