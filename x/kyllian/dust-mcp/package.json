@@ -4,8 +4,7 @@
   "type": "module",
   "main": "index.js",
   "bin": {
-    "dust-mcp": "./dist/cli.js",
-    "dust-mcp-server": "./dist/index.js"
+    "dust-mcp": "./dist/cli.js"
   },
   "scripts": {
     "build": "tsc",
