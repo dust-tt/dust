@@ -3,17 +3,18 @@ import { getDustAPI } from "./api.js";
 import { isLoggedIn, login, logout } from "./auth.js";
 import { startServer } from "./server.js";
 
-const loginAction = async () => {
+const loginAction = async (quiet = false) => {
   try {
     const isUserLoggedIn = await isLoggedIn();
     if (isUserLoggedIn) {
-      console.log("You are already logged in.");
+      if (!quiet) console.log("You are already logged in.");
       return;
     }
 
-    console.log("Logging in to Dust...");
+    if (!quiet) console.log("Logging in to Dust...");
     await login();
-    console.log("Login successful! Your credentials have been saved.");
+    if (!quiet)
+      console.log("Login successful! Your credentials have been saved.");
   } catch (error) {
     console.error("Login failed:", error);
     process.exit(1);
@@ -80,7 +81,7 @@ const switchAction = async () => {
 };
 
 const serverAction = async () => {
-  await loginAction();
+  await loginAction(true);
 
   try {
     await startServer();
