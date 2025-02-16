@@ -15,11 +15,11 @@ auth
   .description("login to Dust")
   .action(async () => {
     try {
-      // const alreadyAuthenticated = await isAuthenticated();
-      // if (alreadyAuthenticated) {
-      //   console.log("You are already authenticated.");
-      //   return;
-      // }
+      const alreadyAuthenticated = await isAuthenticated();
+      if (alreadyAuthenticated) {
+        console.log("You are already authenticated.");
+        return;
+      }
 
       console.log("Authenticating with Dust...");
       await authenticate();
