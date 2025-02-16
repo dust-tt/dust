@@ -111,7 +111,7 @@ export {
   ResizablePanelGroup,
 } from "./Resizable";
 export { ScrollArea, ScrollBar } from "./ScrollArea";
-export { SearchInput } from "./SearchInput";
+export { SearchInput, SearchInputWithPopover } from "./SearchInput";
 export { Separator } from "./Separator";
 export {
   Sheet,

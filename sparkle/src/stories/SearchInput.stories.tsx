@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import React from "react";
+import React, { useState } from "react";
 
-import { SearchInput } from "../index_with_tw_base";
+import { SearchInput, SearchInputWithPopover } from "../index_with_tw_base";
 
 const meta = {
   title: "Components/SearchInput",
@@ -67,3 +67,44 @@ export const ExampleSearchInput: Story = {
     );
   },
 };
+
+export function SearchInputWithPopoverScrollableExample() {
+  const [value, setValue] = useState("");
+  const [open, setOpen] = useState(false);
+  const items = Array.from({ length: 50 }).map((_, i) => `Item ${i + 1}`);
+
+  const filteredItems = items.filter((item) =>
+    item.toLowerCase().includes(value.toLowerCase())
+  );
+
+  return (
+    <SearchInputWithPopover
+      name="search"
+      placeholder="Type to search..."
+      value={value}
+      onChange={setValue}
+      open={open}
+      onOpenChange={setOpen}
+    >
+      {filteredItems.length > 0 ? (
+        filteredItems.map((item) => (
+          <div
+            key={item}
+            role="option"
+            className="s-cursor-pointer s-py-2 hover:s-bg-primary-100 dark:hover:s-bg-primary-100-night"
+            onClick={() => {
+              setValue(item);
+              setOpen(false);
+            }}
+          >
+            {item}
+          </div>
+        ))
+      ) : (
+        <div className="s-px-4 s-py-2 s-text-muted-foreground">
+          No results found
+        </div>
+      )}
+    </SearchInputWithPopover>
+  );
+}
