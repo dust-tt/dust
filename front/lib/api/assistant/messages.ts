@@ -15,6 +15,7 @@ import { Op, Sequelize } from "sequelize";
 
 import { browseActionTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/browse";
 import { dustAppRunTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/dust_app_run";
+import { mcpActionTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/mcp";
 import { reasoningActionTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/reasoning";
 import { tableQueryTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/tables_query";
 import { websearchActionTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/websearch";
@@ -133,6 +134,7 @@ async function batchRenderAgentMessages(
     agentGithubGetPullRequestActions,
     agentGithubCreateIssueActions,
     agentReasoningActions,
+    agentMcpActions,
   ] = await Promise.all([
     (async () => {
       const agentConfigurationIds: string[] = agentMessages.reduce(
@@ -169,6 +171,7 @@ async function batchRenderAgentMessages(
     (async () =>
       githubCreateIssueActionTypesFromAgentMessageIds(agentMessageIds))(),
     (async () => reasoningActionTypesFromAgentMessageIds(agentMessageIds))(),
+    (async () => mcpActionTypesFromAgentMessageIds(agentMessageIds))(),
   ]);
 
   if (!agentConfigurations) {
@@ -200,6 +203,7 @@ async function batchRenderAgentMessages(
           agentGithubGetPullRequestActions,
           agentGithubCreateIssueActions,
           agentReasoningActions,
+          agentMcpActions,
         ]
           .flat()
           .filter((a) => a.agentMessageId === agentMessage.id)

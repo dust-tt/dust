@@ -26,6 +26,7 @@ import {
   isDustAppRunConfiguration,
   isGithubCreateIssueConfiguration,
   isGithubGetPullRequestConfiguration,
+  isMCPConfiguration,
   isProcessConfiguration,
   isReasoningConfiguration,
   isRetrievalConfiguration,
@@ -50,6 +51,7 @@ import {
   renderConversationForModel,
 } from "@app/lib/api/assistant/generation";
 import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
+import { getMCPActions } from "@app/lib/api/assistant/mcp_actions";
 import config from "@app/lib/api/config";
 import { getRedisClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
@@ -368,8 +370,11 @@ async function* runMultiActionsAgent(
     conversation,
   });
 
+  const mcpActions = await getMCPActions(auth);
+
   if (!isLastGenerationIteration) {
     availableActions = availableActions.concat(jitActions);
+    availableActions = availableActions.concat(mcpActions);
   }
 
   const prompt = await constructPromptMultiActions(auth, {
@@ -1352,6 +1357,50 @@ async function* runAction(
           yield event;
           break;
         case "reasoning_success":
+          yield {
+            type: "agent_action_success",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            action: event.action,
+          };
+          agentMessage.actions.push(event.action);
+          break;
+        default:
+          assertNever(event);
+      }
+    }
+  } else if (isMCPConfiguration(actionConfiguration)) {
+    // Note from seb: seems like we are not very DRY to get the runner for the action configuration
+    const eventStream = getRunnerForActionConfiguration(
+      actionConfiguration
+    ).run(auth, {
+      agentConfiguration: configuration,
+      conversation,
+      agentMessage,
+      rawInputs: inputs,
+      functionCallId,
+      step,
+    });
+
+    for await (const event of eventStream) {
+      switch (event.type) {
+        case "mcp_params":
+          yield event;
+          break;
+        case "mcp_error":
+          yield {
+            type: "agent_error",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            error: {
+              code: event.error.code,
+              message: event.error.message,
+            },
+          };
+          return;
+        case "mcp_success":
           yield {
             type: "agent_action_success",
             created: event.created,

@@ -20,6 +20,7 @@ export const WHITELISTABLE_FEATURES = [
   "tags_filters",
   "salesforce_feature",
   "advanced_notion_management",
+  "mcp_client_feature",
 ] as const;
 export type WhitelistableFeature = (typeof WHITELISTABLE_FEATURES)[number];
 export function isWhitelistableFeature(
