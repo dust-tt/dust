@@ -1,0 +1,29 @@
+{
+  "name": "vibe-coding",
+  "module": "src/index.ts",
+  "type": "module",
+  "version": "1.0.0",
+  "description": "",
+  "main": "dist/index.js",
+  "scripts": {
+    "start": "bun src/index.ts",
+    "cli": "bun run src/cli.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@mendable/firecrawl-js": "^0.0.36",
+    "chalk": "^4.1.2",
+    "commander": "^13.1.0",
+    "dotenv": "^16.4.7",
+    "google-search-results-nodejs": "^2.1.0",
+    "openai": "^4.83.0",
+    "ora": "^5.4.1",
+    "tiktoken": "^1.0.20"
+  },
+  "devDependencies": {
+    "bun-types": "latest"
+  }
+}
