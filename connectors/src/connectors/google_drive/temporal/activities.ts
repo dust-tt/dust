@@ -535,13 +535,18 @@ export async function incrementalSync(
             },
             "Folder moved"
           );
-
-          await recurseUpdateParents(
-            connector,
-            localFolder,
-            parents,
-            localLogger
-          );
+          if (localFolder.skipReason) {
+            localLogger.info(
+              `Google Drive folder skipped with skip reason ${localFolder.skipReason}`
+            );
+          } else {
+            await recurseUpdateParents(
+              connector,
+              localFolder,
+              parents,
+              localLogger
+            );
+          }
         }
 
         if (!localFolder) {
@@ -605,6 +610,7 @@ async function recurseUpdateParents(
     where: {
       connectorId: connector.id,
       parentId: file.driveFileId,
+      skipReason: null,
     },
   });
 
