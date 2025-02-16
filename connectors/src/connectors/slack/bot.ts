@@ -25,6 +25,7 @@ import type { WebClient } from "@slack/web-api";
 import type { MessageElement } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
 import removeMarkdown from "remove-markdown";
 import jaroWinkler from "talisman/metrics/jaro-winkler";
+
 import {
   makeErrorBlock,
   makeMessageUpdateBlocksAndText,
