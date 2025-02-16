@@ -144,6 +144,7 @@ const PROVIDER_STRATEGIES: Record<
         "team:read",
         "users:read",
         "users:read.email",
+        "im:read",
         "mpim:history",
         "files:read",
       ];
