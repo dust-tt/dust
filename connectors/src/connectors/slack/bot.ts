@@ -25,8 +25,6 @@ import type { WebClient } from "@slack/web-api";
 import type { MessageElement } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
 import removeMarkdown from "remove-markdown";
 import jaroWinkler from "talisman/metrics/jaro-winkler";
-
-import { getConnectorManager } from "@connectors/connectors";
 import {
   makeErrorBlock,
   makeMessageUpdateBlocksAndText,
@@ -134,19 +132,6 @@ export async function botAnswerMessage(
     if (e instanceof ExternalOAuthTokenError) {
       // Mark the connector as errored so that the user is notified in the Connection Admin UI.
       await syncFailed(connector.id, "oauth_token_revoked");
-      // Pause the connector.
-      const connectorManager = getConnectorManager({
-        connectorId: connector.id,
-        connectorProvider: connector.type,
-      });
-      if (connectorManager) {
-        await connectorManager.pause();
-      } else {
-        logger.error(
-          { connectorId: connector.id },
-          `Connector manager not found for connector`
-        );
-      }
       return new Err(
         new Error("Invalid Slack auth, the bot cannot answer the message.")
       );
