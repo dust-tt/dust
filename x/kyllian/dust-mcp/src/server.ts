@@ -146,7 +146,9 @@ export async function startServer() {
       conversationId: z
         .string()
         .optional()
-        .describe("Optional existing conversation ID"),
+        .describe(
+          "Existing conversation ID - must be provided to continue a conversation"
+        ),
       message: z.string().describe("Message to send to the agent"),
     },
     async ({ conversationId, message }) => {
