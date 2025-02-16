@@ -4,6 +4,7 @@ import {
   DriveLogo,
   FolderIcon,
   GithubLogo,
+  GithubWhiteLogo,
   GlobeAltIcon,
   IntercomLogo,
   MicrosoftLogo,
@@ -12,6 +13,7 @@ import {
   SlackLogo,
   SnowflakeLogo,
   ZendeskLogo,
+  ZendeskWhiteLogo,
 } from "@dust-tt/sparkle";
 import type {
   ConnectorPermission,
@@ -42,7 +44,9 @@ export type ConnectorProviderConfiguration = {
   status: "preview" | "built" | "rolling_out";
   rollingOutFlag?: WhitelistableFeature;
   hide: boolean;
-  logoComponent: (props: React.SVGProps<SVGSVGElement>) => React.JSX.Element;
+  getLogoComponent: (
+    isDark?: boolean
+  ) => (props: React.SVGProps<SVGSVGElement>) => React.JSX.Element;
   optionsComponent?: (props: ConnectorOptionsProps) => React.JSX.Element;
   description: string;
   mismatchError: string;
@@ -86,7 +90,9 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     mismatchError: `You cannot select another Confluence Domain.\nPlease contact us at support@dust.tt if you initially selected the wrong Domain.`,
     guideLink: "https://docs.dust.tt/docs/confluence-connection",
     selectLabel: "Select pages",
-    logoComponent: ConfluenceLogo,
+    getLogoComponent: () => {
+      return ConfluenceLogo;
+    },
     isNested: true,
     isSearchEnabled: false,
     permissions: {
@@ -106,7 +112,9 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     mismatchError: `You cannot select another Notion Workspace.\nPlease contact us at support@dust.tt if you initially selected a wrong Workspace.`,
     guideLink: "https://docs.dust.tt/docs/notion-connection",
     selectLabel: "Synchronized content",
-    logoComponent: NotionLogo,
+    getLogoComponent: () => {
+      return NotionLogo;
+    },
     isNested: true,
     isSearchEnabled: false,
     permissions: {
@@ -127,7 +135,9 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     mismatchError: `You cannot select another Google Drive Domain.\nPlease contact us at support@dust.tt if you initially selected a wrong shared Drive.`,
     guideLink: "https://docs.dust.tt/docs/google-drive-connection",
     selectLabel: "Select folders and files",
-    logoComponent: DriveLogo,
+    getLogoComponent: () => {
+      return DriveLogo;
+    },
     isNested: true,
     isSearchEnabled: false,
     permissions: {
@@ -147,7 +157,9 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     mismatchError: `You cannot select another Slack Team.\nPlease contact us at support@dust.tt if you initially selected the wrong Team.`,
     guideLink: "https://docs.dust.tt/docs/slack-connection",
     selectLabel: "Select channels",
-    logoComponent: SlackLogo,
+    getLogoComponent: () => {
+      return SlackLogo;
+    },
     optionsComponent: SlackBotEnableView,
     isNested: false,
     isSearchEnabled: true,
@@ -169,7 +181,9 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     mismatchError: `You cannot select another GitHub Organization.\nPlease contact us at support@dust.tt if you initially selected a wrong Organization or if you completely uninstalled the GitHub app.`,
     guideLink: "https://docs.dust.tt/docs/github-connection",
     selectLabel: "Synchronized content",
-    logoComponent: GithubLogo,
+    getLogoComponent: (isDark?: boolean) => {
+      return isDark ? GithubWhiteLogo : GithubLogo;
+    },
     optionsComponent: GithubCodeEnableView,
     isNested: true,
     isSearchEnabled: false,
@@ -191,7 +205,9 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     mismatchError: `You cannot select another Intercom Workspace.\nPlease contact us at support@dust.tt if you initially selected a wrong Workspace.`,
     guideLink: "https://docs.dust.tt/docs/intercom-connection",
     selectLabel: "Select pages",
-    logoComponent: IntercomLogo,
+    getLogoComponent: () => {
+      return IntercomLogo;
+    },
     optionsComponent: IntercomConfigView,
     isNested: true,
     isSearchEnabled: false,
@@ -213,7 +229,9 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     mismatchError: `You cannot select another Microsoft account.\nPlease contact us at support@dust.tt if you initially selected a wrong account.`,
     guideLink: "https://docs.dust.tt/docs/microsoft-connection",
     selectLabel: "Select folders and files",
-    logoComponent: MicrosoftLogo,
+    getLogoComponent: () => {
+      return MicrosoftLogo;
+    },
     isNested: true,
     isSearchEnabled: false,
     permissions: {
@@ -231,7 +249,9 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     limitations: null,
     mismatchError: `You cannot change the URL. Please add a new Public URL instead.`,
     guideLink: "https://docs.dust.tt/docs/website-connection",
-    logoComponent: GlobeAltIcon,
+    getLogoComponent: () => {
+      return GlobeAltIcon;
+    },
     isNested: true,
     isSearchEnabled: false,
     permissions: {
@@ -248,7 +268,9 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     description: "Query a Snowflake database.",
     limitations: null,
     mismatchError: `You cannot change the Snowflake account. Please add a new Snowflake connection instead.`,
-    logoComponent: SnowflakeLogo,
+    getLogoComponent: () => {
+      return SnowflakeLogo;
+    },
     isNested: true,
     isSearchEnabled: false,
     guideLink: "https://docs.dust.tt/docs/snowflake-connection",
@@ -270,7 +292,9 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       "Dust will index the content accessible to the authorized account only. Attachments are not indexed.",
     mismatchError: `You cannot select another Zendesk Workspace.\nPlease contact us at support@dust.tt if you initially selected a wrong Workspace.`,
     guideLink: "https://docs.dust.tt/docs/zendesk-connection",
-    logoComponent: ZendeskLogo,
+    getLogoComponent: (isDark?: boolean) => {
+      return isDark ? ZendeskWhiteLogo : ZendeskLogo;
+    },
     isNested: true,
     isSearchEnabled: false,
     permissions: {
@@ -287,7 +311,9 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     description: "Query a BigQuery database.",
     limitations: null,
     mismatchError: `You cannot change the BigQuery project. Please add a new BigQuery connection instead.`,
-    logoComponent: BigQueryLogo,
+    getLogoComponent: () => {
+      return BigQueryLogo;
+    },
     isNested: true,
     isSearchEnabled: false,
     guideLink: "https://docs.dust.tt/docs/bigquery",
@@ -308,7 +334,9 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       "Authorize access to your Salesforce organization, in order to query your Salesforce data from Dust.",
     limitations: null,
     mismatchError: `You cannot change the Salesforce instance URL. Please add a new Salesforce connection instead.`,
-    logoComponent: SalesforceLogo,
+    getLogoComponent: () => {
+      return SalesforceLogo;
+    },
     isNested: true,
     isSearchEnabled: false,
     permissions: {
@@ -331,14 +359,19 @@ export const REMOTE_DATABASE_CONNECTOR_PROVIDERS: ConnectorProvider[] = [
   "bigquery",
 ];
 
-export function getConnectorProviderLogoWithFallback(
-  provider: ConnectorProvider | null,
-  fallback: ComponentType = FolderIcon
-): ComponentType {
+export function getConnectorProviderLogoWithFallback({
+  provider,
+  fallback = FolderIcon,
+  isDark,
+}: {
+  provider: ConnectorProvider | null;
+  fallback?: ComponentType;
+  isDark?: boolean;
+}): ComponentType {
   if (!provider) {
     return fallback;
   }
-  return CONNECTOR_CONFIGURATIONS[provider].logoComponent;
+  return CONNECTOR_CONFIGURATIONS[provider].getLogoComponent(isDark);
 }
 
 export const isValidConnectorSuffix = (suffix: string): boolean => {

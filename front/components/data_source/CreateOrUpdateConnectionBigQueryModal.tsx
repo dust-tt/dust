@@ -34,6 +34,7 @@ import { isRight } from "fp-ts/lib/Either";
 import { formatValidationErrors } from "io-ts-reporters";
 import React, { useEffect, useMemo, useState } from "react";
 
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
 import { useBigQueryLocations } from "@app/lib/swr/bigquery";
 import type { PostCredentialsBody } from "@app/pages/api/w/[wId]/credentials";
@@ -63,6 +64,7 @@ export function CreateOrUpdateConnectionBigQueryModal({
   onSuccess: _onSuccess,
   dataSourceToUpdate,
 }: CreateOrUpdateConnectionBigQueryModalProps) {
+  const { isDark } = useTheme();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [credentials, setCredentials] = useState<string>("");
@@ -284,7 +286,9 @@ export function CreateOrUpdateConnectionBigQueryModal({
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
             <span className="[&>svg]:h-6 [&>svg]:w-6">
-              <Icon visual={connectorProviderConfiguration.logoComponent} />
+              <Icon
+                visual={connectorProviderConfiguration.getLogoComponent(isDark)}
+              />
             </span>
             Connecting {connectorProviderConfiguration.name}
           </SheetTitle>

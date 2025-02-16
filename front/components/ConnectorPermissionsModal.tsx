@@ -59,6 +59,7 @@ import { RequestDataSourceModal } from "@app/components/data_source/RequestDataS
 import { setupConnection } from "@app/components/spaces/AddConnectionMenu";
 import { AdvancedNotionManagement } from "@app/components/spaces/AdvancedNotionManagement";
 import { ConnectorDataUpdatedModal } from "@app/components/spaces/ConnectorDataUpdatedModal";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import {
   CONNECTOR_CONFIGURATIONS,
   isConnectorPermissionsEditable,
@@ -225,6 +226,7 @@ function DataSourceEditionModal({
   onEditPermissionsClick,
   owner,
 }: DataSourceEditionModalProps) {
+  const { isDark } = useTheme();
   const [extraConfig, setExtraConfig] = useState<Record<string, string>>({});
   const { user } = useUser();
 
@@ -268,7 +270,10 @@ function DataSourceEditionModal({
       <>
         <div className="mt-4 flex flex-col">
           <div className="flex items-center gap-2">
-            <Icon visual={connectorConfiguration.logoComponent} size="md" />
+            <Icon
+              visual={connectorConfiguration.getLogoComponent(isDark)}
+              size="md"
+            />
             <Page.SectionHeader
               title={`${connectorConfiguration.name} data & permissions`}
             />
@@ -422,6 +427,7 @@ function DataSourceDeletionModal({
   onClose,
   owner,
 }: DataSourceDeletionModalProps) {
+  const { isDark } = useTheme();
   const [isLoading, setIsLoading] = useState(false);
   const sendNotification = useSendNotification();
   const { user } = useUser();
@@ -475,7 +481,10 @@ function DataSourceDeletionModal({
       <>
         <div className="mt-4 flex flex-col">
           <div className="flex items-center gap-2">
-            <Icon visual={connectorConfiguration.logoComponent} size="md" />
+            <Icon
+              visual={connectorConfiguration.getLogoComponent(isDark)}
+              size="md"
+            />
             <Page.SectionHeader
               title={`Deleting ${connectorConfiguration.name} connection`}
             />

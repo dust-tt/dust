@@ -48,7 +48,8 @@ import React, {
 } from "react";
 
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
-import { MODEL_PROVIDER_LOGOS } from "@app/components/providers/types";
+import { getModelProviderLogo } from "@app/components/providers/types";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { ParagraphExtension } from "@app/components/text_editor/extensions";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import {
@@ -401,6 +402,7 @@ interface ModelListProps {
 }
 
 function ModelList({ modelConfigs, onClick }: ModelListProps) {
+  const { isDark } = useTheme();
   const handleClick = (modelConfig: ModelConfigurationType) => {
     onClick({
       modelId: modelConfig.modelId,
@@ -414,7 +416,7 @@ function ModelList({ modelConfigs, onClick }: ModelListProps) {
       {modelConfigs.map((modelConfig) => (
         <DropdownMenuItem
           key={modelConfig.modelId}
-          icon={MODEL_PROVIDER_LOGOS[modelConfig.providerId]}
+          icon={getModelProviderLogo(modelConfig.providerId, isDark)}
           description={modelConfig.shortDescription}
           label={modelConfig.displayName}
           onClick={() => handleClick(modelConfig)}

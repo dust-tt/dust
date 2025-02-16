@@ -21,10 +21,11 @@ import { isEqual, uniqBy } from "lodash";
 import { useCallback, useMemo, useState } from "react";
 
 import {
-  MODEL_PROVIDER_LOGOS,
+  getModelProviderLogo,
   REASONING_MODEL_CONFIGS,
   USED_MODEL_CONFIGS,
 } from "@app/components/providers/types";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 
 type ProviderStates = Record<ModelProviderIdType, boolean>;
 
@@ -59,6 +60,7 @@ interface ProviderManagementModalProps {
 export function ProviderManagementModal({
   owner,
 }: ProviderManagementModalProps) {
+  const { isDark } = useTheme();
   const sendNotifications = useSendNotification();
 
   const initialProviderStates: ProviderStates = useMemo(() => {
@@ -176,7 +178,7 @@ export function ProviderManagementModal({
           <div className="flex flex-col gap-4">
             <ContextItem.List>
               {MODEL_PROVIDER_IDS.map((provider) => {
-                const LogoComponent = MODEL_PROVIDER_LOGOS[provider];
+                const LogoComponent = getModelProviderLogo(provider, isDark);
                 if (!modelProviders[provider]) {
                   return null;
                 }
