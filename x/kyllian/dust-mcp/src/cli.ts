@@ -6,9 +6,13 @@ const program = new Command();
 
 program.name("dust-mcp").description("Dust MCP CLI").version("1.0.0");
 
-program
+const auth = program
   .command("auth")
-  .description("Authenticate with Dust")
+  .description("authentication related commands");
+
+auth
+  .command("login")
+  .description("login to Dust")
   .action(async () => {
     try {
       // const alreadyAuthenticated = await isAuthenticated();
