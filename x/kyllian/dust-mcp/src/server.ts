@@ -4,21 +4,16 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import {
   getDustAPI,
+  listAgents,
   postConversation,
   postMessage,
   streamAgentAnswer,
 } from "./api.js";
-import {
-  DustConfig,
-  logError,
-  logFatalError,
-  logJson,
-  logToFile,
-} from "./config.js";
+import { logError, logFatalError, logJson, logToFile } from "./config.js";
 
 async function askAgent(
   dustAPI: DustAPI,
-  dustConfig: DustConfig,
+  agentId: string,
   conversationId: string | undefined,
   message: string
 ) {
@@ -33,7 +28,7 @@ async function askAgent(
         dustAPI: dustAPI,
         messageData: {
           input: message,
-          mentions: [{ configurationId: dustConfig.agentId }],
+          mentions: [{ configurationId: agentId }],
         },
       });
 
@@ -61,7 +56,7 @@ async function askAgent(
         conversationId,
         messageData: {
           input: message,
-          mentions: [{ configurationId: dustConfig.agentId }],
+          mentions: [{ configurationId: agentId }],
         },
       });
 
@@ -130,7 +125,12 @@ async function askAgent(
 
 export async function startServer() {
   // Initialize the Dust API
-  const { dustAPI, dustConfig } = await getDustAPI();
+  const { dustAPI } = await getDustAPI();
+
+  const agentsResult = await listAgents({ dustAPI });
+  if (!agentsResult.isOk()) {
+    throw new Error(`Failed to list agents: ${agentsResult.error.message}`);
+  }
 
   // Initialize the MCP server
   const server = new McpServer({
@@ -138,37 +138,40 @@ export async function startServer() {
     version: "1.0.0",
   });
 
-  // Register the ask-agent tool
-  server.tool(
-    "ask-agent",
-    "Ask a question to a Dust agent",
-    {
-      conversationId: z
-        .string()
-        .optional()
-        .describe(
-          "Existing conversation ID - must be provided to continue a conversation"
-        ),
-      message: z.string().describe("Message to send to the agent"),
-    },
-    async ({ conversationId, message }) => {
-      const result = await askAgent(
-        dustAPI,
-        dustConfig,
-        conversationId,
-        message
-      );
-      return {
-        content: [
-          {
-            type: "text",
-            text: result.message.content || "No response from agent",
-          },
-        ],
-        conversationId: result.conversationId,
-      };
-    }
-  );
+  // Register each agent as a tool
+  for (const agent of agentsResult.value) {
+    console.error(`Registering tool ${agent.name}`);
+    server.tool(
+      agent.name,
+      agent.description,
+      {
+        conversationId: z
+          .string()
+          .optional()
+          .describe(
+            "Existing conversation ID - must be provided to continue a conversation"
+          ),
+        message: z.string().describe("Message to send to the agent"),
+      },
+      async ({ conversationId, message }) => {
+        const result = await askAgent(
+          dustAPI,
+          agent.sId,
+          conversationId,
+          message
+        );
+        return {
+          content: [
+            {
+              type: "text",
+              text: result.message.content || "No response from agent",
+            },
+          ],
+          conversationId: result.conversationId,
+        };
+      }
+    );
+  }
 
   // Set up and start the server
   const transport = new StdioServerTransport();

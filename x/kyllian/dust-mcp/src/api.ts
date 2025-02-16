@@ -1,4 +1,5 @@
 import type {
+  AgentConfigurationViewType,
   AgentMentionType,
   AgentMessagePublicType,
   ContentFragmentType,
@@ -244,4 +245,38 @@ export async function streamAgentAnswer({
     title: "Failed to get agent's answer.",
     message: "Stream ended without a complete response.",
   });
+}
+
+export async function listAgents({
+  dustAPI,
+  view = "workspace",
+}: {
+  dustAPI: DustAPI;
+  view?: AgentConfigurationViewType;
+}): Promise<
+  Result<
+    { sId: string; name: string; description: string }[],
+    SubmitMessageError
+  >
+> {
+  const res = await dustAPI.getAgentConfigurations({
+    view,
+    includes: [],
+  });
+
+  if (!res.isOk()) {
+    return new Err({
+      type: "message_send_error",
+      title: "Failed to list assistants.",
+      message: res.error.message || "Please try again or contact us.",
+    });
+  }
+
+  return new Ok(
+    res.value.map((agent) => ({
+      sId: agent.sId,
+      name: agent.name,
+      description: agent.description,
+    }))
+  );
 }
