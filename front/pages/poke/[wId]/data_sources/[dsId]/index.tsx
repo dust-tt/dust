@@ -1015,7 +1015,7 @@ function ZendeskTicketCheck({
         <div className="max-w-md flex-1 grow items-center gap-4">
           <Input
             type="text"
-            placeholder="Ticket URL"
+            placeholder="https://{subdomain}.zendesk.com/tickets/{ticket_id}"
             onChange={(e) => setTicketUrl(e.target.value)}
             value={ticketUrl ?? ""}
           />
