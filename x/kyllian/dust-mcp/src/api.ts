@@ -97,6 +97,7 @@ export async function postConversation({
     message: {
       content: input,
       context: {
+        // TODO(kyllian): Replace this as it doesn't have anything to do with Cursor. Either replace with the user's information or MCP client.
         username: "Cursor",
         fullName: "Cursor: The AI Code Editor",
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
@@ -164,6 +165,7 @@ export async function postMessage({
     message: {
       content: input,
       context: {
+        // TODO(kyllian): Replace this as it doesn't have anything to do with Cursor. Either replace with the user's information or MCP client.
         username: "Cursor",
         fullName: "Cursor: The AI Code Editor",
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
