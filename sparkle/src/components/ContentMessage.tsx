@@ -30,7 +30,7 @@ const contentMessageVariants = cva(
         emerald: "s-bg-emerald-100 dark:s-bg-emerald-100-night",
         amber: "s-bg-amber-100 dark:s-bg-amber-100-night",
         slate:
-          "s-bg-muted-background dark:s-bg-muted-background-night s-border s-border-border",
+          "s-bg-muted-background dark:s-bg-muted-background-night s-border s-border-border dark:s-border-border-night",
         purple: "s-bg-purple-100 dark:s-bg-purple-100-night",
         warning: "s-bg-warning-100 dark:s-bg-warning-100-night",
         sky: "s-bg-sky-100 dark:s-bg-sky-100-night",
