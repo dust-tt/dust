@@ -4,8 +4,7 @@ import type {
   ContentNodesViewType,
   Result,
 } from "@dust-tt/types";
-import { assertNever, Err, Ok } from "@dust-tt/types";
-import { MIME_TYPES } from "@dust-tt/types/src";
+import { assertNever, Err, MIME_TYPES, Ok } from "@dust-tt/types";
 import { Op } from "sequelize";
 
 import type { GithubRepo } from "@connectors/connectors/github/lib/github_api";
