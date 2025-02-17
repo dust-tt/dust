@@ -446,6 +446,8 @@ export async function rowsFromCsv({
             DateTime.fromSQL,
             // Google Spreadsheet date format parser.
             (text: string) => DateTime.fromFormat(text, "d-MMM-yyyy"),
+            // Full month name format parser
+            (text: string) => DateTime.fromFormat(text, "LLLL dd, yyyy"),
           ];
           const trimmedV = v.trim();
           for (const parse of dateParsers) {
