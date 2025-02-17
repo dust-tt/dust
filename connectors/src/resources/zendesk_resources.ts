@@ -210,6 +210,19 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     return blob && new this(this.model, blob.get());
   }
 
+  static async fetchByBrandSubdomain({
+    connectorId,
+    subdomain,
+  }: {
+    connectorId: number;
+    subdomain: string;
+  }): Promise<ZendeskBrandResource | null> {
+    const blob = await ZendeskBrand.findOne({
+      where: { connectorId, subdomain },
+    });
+    return blob && new this(this.model, blob.get());
+  }
+
   static async fetchByBrandIds({
     connectorId,
     brandIds,

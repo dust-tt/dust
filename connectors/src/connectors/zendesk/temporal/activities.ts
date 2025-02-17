@@ -354,6 +354,10 @@ export async function syncZendeskCategoryBatchActivity({
     accessToken,
     subdomain,
   });
+  if (!brandSubdomain) {
+    throw new Error(`Brand ${brandId} not found in Zendesk.`);
+  }
+
   const brandInDb = await ZendeskBrandResource.fetchByBrandId({
     connectorId,
     brandId,
@@ -444,6 +448,9 @@ export async function syncZendeskCategoryActivity({
     subdomain,
     brandId,
   });
+  if (!brandSubdomain) {
+    throw new Error(`Brand ${brandId} not found in Zendesk.`);
+  }
 
   // if the category is not on Zendesk anymore, we remove its permissions
   const fetchedCategory = await fetchZendeskCategory({
@@ -627,6 +634,9 @@ export async function syncZendeskTicketBatchActivity({
     accessToken,
     subdomain,
   });
+  if (!brandSubdomain) {
+    throw new Error(`Brand ${brandId} not found in Zendesk.`);
+  }
 
   const startTime =
     Math.floor(currentSyncDateMs / 1000) -
