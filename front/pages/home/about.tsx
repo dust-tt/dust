@@ -122,6 +122,13 @@ const PEOPLE: Record<
     github: "https://github.com/clmrn",
     linkedIn: "https://www.linkedin.com/in/bruneauclement",
   },
+  tmartin: {
+    name: "Thibault Martin",
+    title: "Operations",
+    image: "https://avatars.githubusercontent.com/u/168569391?v=4",
+    github: "https://github.com/thib-martin",
+    linkedIn: "https://www.linkedin.com/in/thibault-martin-27b19b5a/",
+  },
   jbelveze: {
     name: "Jules Belveze",
     title: "Software Engineer",
@@ -177,6 +184,13 @@ const PEOPLE: Record<
     image: "https://avatars.githubusercontent.com/u/183381801?v=4",
     github: "https://github.com/ameliedrhub",
     linkedIn: "https://www.linkedin.com/in/ameliedeltombe/",
+  },
+  tvanneufville: {
+    name: "Theo Vanneufville",
+    title: "Operations",
+    image: "https://avatars.githubusercontent.com/u/190379594?v=4",
+    github: "https://github.com/theo-vanneufville",
+    linkedIn: "https://www.linkedin.com/in/th%C3%A9o-vanneufville-aab050193/",
   },
 };
 
@@ -306,8 +320,8 @@ export default function About() {
               </P>
               <P>
                 Like Windows provided universal UI primitives that made
-                applications more productive, we proviude universal AI
-                primitives that make enterprise workflows more intelligent.
+                applications more productive, we provide universal AI primitives
+                that make enterprise workflows more intelligent.
               </P>
               <P>
                 Our infrastructure connects models to company data, turning raw
