@@ -94,13 +94,11 @@ export function AdvancedNotionManagement({
       accessorKey: "timestamp",
       cell: (info: CellContext<TableData, string>) => (
         <DataTable.CellContent>
-          <div>
-            {new Date(info.row.original.timestamp).toLocaleTimeString("en-US", {
-              hour: "2-digit",
-              minute: "2-digit",
-              hour12: false,
-            })}
-          </div>
+          {new Date(info.row.original.timestamp).toLocaleTimeString("en-US", {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+          })}
         </DataTable.CellContent>
       ),
       meta: {
@@ -216,7 +214,6 @@ export function AdvancedNotionManagement({
     }
     setSyncing(false);
   }
-  console.log("rendering", isLoading, lastSyncedUrls);
 
   return (
     <>

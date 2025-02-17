@@ -15,7 +15,7 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { apiError } from "@app/logger/withlogging";
 
-const RECENT_URLS_COUNT = 50;
+const RECENT_URLS_COUNT = 100;
 
 async function handler(
   req: NextApiRequest,
@@ -78,7 +78,7 @@ async function handler(
       const redisKey = getRedisKeyForNotionUrlSync(owner.sId);
       const lastSyncedUrls = (
         await runOnRedis({ origin: "notion_url_sync" }, async (redis) => {
-          const urls = await redis.zRange(redisKey, 0, 49, {
+          const urls = await redis.zRange(redisKey, 0, RECENT_URLS_COUNT - 1, {
             REV: true,
           });
           return urls;

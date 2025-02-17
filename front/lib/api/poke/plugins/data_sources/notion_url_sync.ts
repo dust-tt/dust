@@ -115,6 +115,12 @@ export const notionUrlSyncPlugin = createPlugin(
     }
   }
 );
+type URLOperationResult = {
+  url: string;
+  timestamp: number;
+  success: boolean;
+  error?: Error;
+};
 
 export async function syncNotionUrls({
   urlsArray,
@@ -124,9 +130,7 @@ export async function syncNotionUrls({
   urlsArray: string[];
   dataSourceId: string;
   workspaceId: string;
-}): Promise<
-  { url: string; timestamp: number; success: boolean; error?: Error }[]
-> {
+}): Promise<URLOperationResult[]> {
   const connectorsAPI = new ConnectorsAPI(
     config.getConnectorsAPIConfig(),
     logger
@@ -134,14 +138,7 @@ export async function syncNotionUrls({
 
   return concurrentExecutor(
     urlsArray,
-    async (
-      url: string
-    ): Promise<{
-      url: string;
-      timestamp: number;
-      success: boolean;
-      error?: Error;
-    }> => {
+    async (url: string): Promise<URLOperationResult> => {
       const checkUrlRes = await connectorsAPI.admin({
         majorCommand: "notion",
         command: "check-url",
@@ -234,9 +231,7 @@ export async function deleteUrls({
   urlsArray: string[];
   dataSourceId: string;
   workspaceId: string;
-}): Promise<
-  { url: string; timestamp: number; success: boolean; error?: Error }[]
-> {
+}): Promise<URLOperationResult[]> {
   const connectorsAPI = new ConnectorsAPI(
     config.getConnectorsAPIConfig(),
     logger
