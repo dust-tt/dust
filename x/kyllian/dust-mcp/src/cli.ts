@@ -103,7 +103,7 @@ async function main() {
   auth
     .command("login")
     .description("log in to a Dust account")
-    .action(loginAction);
+    .action(() => loginAction());
 
   auth
     .command("logout")
