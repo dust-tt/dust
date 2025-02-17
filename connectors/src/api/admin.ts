@@ -44,6 +44,10 @@ const whitelistedCommands = [
     majorCommand: "connectors",
     command: "clear-error",
   },
+  {
+    majorCommand: "zendesk",
+    command: "fetch-ticket",
+  },
 ];
 
 const _adminAPIHandler = async (

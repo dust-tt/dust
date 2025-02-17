@@ -28,6 +28,7 @@ import {
   ZendeskConfigurationResource,
   ZendeskTicketResource,
 } from "@connectors/resources/zendesk_resources";
+import { extractMetadataFromDocumentUrl } from "@connectors/connectors/zendesk/lib/sync_ticket";
 
 export const zendesk = async ({
   command,
@@ -41,19 +42,35 @@ export const zendesk = async ({
 > => {
   const logger = topLogger.child({ majorCommand: "zendesk", command, args });
 
-  const connectorId = args.connectorId ? args.connectorId.toString() : null;
-  const connector = connectorId
-    ? await ConnectorResource.fetchById(connectorId)
-    : null;
-  if (connector && connector.type !== "zendesk") {
+  let connector;
+  if (args.wId && args.dsId) {
+    connector = await ConnectorResource.findByDataSource({
+      workspaceId: args.wId,
+      dataSourceId: args.dsId,
+    });
+    if (!connector) {
+      throw new Error(
+        `Connector not found for workspace ${args.wId} and data source ${args.dsId}.`
+      );
+    }
+  } else if (args.connectorId) {
+    connector = await ConnectorResource.fetchById(args.connectorId);
+    if (!connector) {
+      throw new Error(`Connector ${args.connectorId} not found.`);
+    }
+  } else {
+    throw new Error(
+      "Either the workspace and dataSource IDs or the connector ID are required."
+    );
+  }
+  const connectorId = connector.id;
+
+  if (connector.type !== "zendesk") {
     throw new Error(`Connector ${args.connectorId} is not of type zendesk`);
   }
 
   switch (command) {
     case "check-is-admin": {
-      if (!connector) {
-        throw new Error(`Connector ${connectorId} not found`);
-      }
       const user = await fetchZendeskCurrentUser(
         await getZendeskSubdomainAndAccessToken(connector.connectionId)
       );
@@ -65,9 +82,6 @@ export const zendesk = async ({
       };
     }
     case "count-tickets": {
-      if (!connector) {
-        throw new Error(`Connector ${connectorId} not found`);
-      }
       const brandId = args.brandId ? Number(args.brandId) : null;
       if (!brandId) {
         throw new Error(`Missing --brandId argument`);
@@ -87,6 +101,9 @@ export const zendesk = async ({
         subdomain,
         accessToken,
       });
+      if (!brandSubdomain) {
+        throw new Error(`Brand ${brandId} not found in Zendesk.`);
+      }
 
       const ticketCount = await fetchZendeskTicketCount({
         brandSubdomain,
@@ -101,9 +118,6 @@ export const zendesk = async ({
       return { ticketCount };
     }
     case "resync-tickets": {
-      if (!connector) {
-        throw new Error(`Connector ${connectorId} not found`);
-      }
       const result = await launchZendeskTicketReSyncWorkflow(connector, {
         forceResync: args.forceResync === "true",
       });
@@ -117,9 +131,47 @@ export const zendesk = async ({
       return { success: true };
     }
     case "fetch-ticket": {
-      if (!connector) {
-        throw new Error(`Connector ${connectorId} not found`);
+      const { accessToken, subdomain } =
+        await getZendeskSubdomainAndAccessToken(connector.connectionId);
+
+      if (args.ticketUrl) {
+        let brandSubdomain, ticketId;
+        try {
+          const {
+            brandSubdomain: extractedSubdomain,
+            ticketId: extractedTicketId,
+          } = extractMetadataFromDocumentUrl(args.ticketUrl);
+          brandSubdomain = extractedSubdomain;
+          ticketId = extractedTicketId;
+        } catch (e) {
+          return {
+            ticket: null,
+            isTicketOnDb: false,
+          };
+        }
+        const ticket = await fetchZendeskTicket({
+          accessToken,
+          ticketId,
+          brandSubdomain,
+        });
+        const brand = await ZendeskBrandResource.fetchByBrandSubdomain({
+          connectorId: connector.id,
+          subdomain: brandSubdomain,
+        });
+        const ticketOnDb = brand
+          ? await ZendeskTicketResource.fetchByTicketId({
+              connectorId: connector.id,
+              brandId: brand.brandId,
+              ticketId,
+            })
+          : null;
+
+        return {
+          ticket: ticket as { [key: string]: unknown } | null,
+          isTicketOnDb: ticketOnDb !== null,
+        };
       }
+
       const brandId = args.brandId ? Number(args.brandId) : null;
       if (!brandId) {
         throw new Error(`Missing --brandId argument`);
@@ -128,34 +180,37 @@ export const zendesk = async ({
       if (!ticketId) {
         throw new Error(`Missing --ticketId argument`);
       }
-      const { accessToken, subdomain } =
-        await getZendeskSubdomainAndAccessToken(connector.connectionId);
+      const ticketOnDb = await ZendeskTicketResource.fetchByTicketId({
+        connectorId: connector.id,
+        brandId,
+        ticketId,
+      });
+
       const brandSubdomain = await getZendeskBrandSubdomain({
         connectorId: connector.id,
         brandId,
         subdomain,
         accessToken,
       });
+      if (!brandSubdomain) {
+        return {
+          ticket: null,
+          isTicketOnDb: ticketOnDb !== null,
+        };
+      }
 
       const ticket = await fetchZendeskTicket({
         accessToken,
         ticketId,
         brandSubdomain,
       });
-      const ticketOnDb = await ZendeskTicketResource.fetchByTicketId({
-        connectorId: connector.id,
-        brandId,
-        ticketId,
-      });
+
       return {
         ticket: ticket as { [key: string]: unknown } | null,
         isTicketOnDb: ticketOnDb !== null,
       };
     }
     case "fetch-brand": {
-      if (!connector) {
-        throw new Error(`Connector ${connectorId} not found`);
-      }
       const brandId = args.brandId ? args.brandId : null;
       if (!brandId) {
         throw new Error(`Missing --brandId argument`);
@@ -175,9 +230,6 @@ export const zendesk = async ({
       };
     }
     case "resync-help-centers": {
-      if (!connector) {
-        throw new Error(`Connector ${connectorId} not found`);
-      }
       const helpCenterBrandIds =
         await ZendeskBrandResource.fetchHelpCenterReadAllowedBrandIds(
           connector.id
@@ -210,15 +262,12 @@ export const zendesk = async ({
     // Resyncs the metadata of a brand already in DB.
     // Can be used to sync the data_sources_folders relative to the brand.
     case "resync-brand-metadata": {
-      if (!connectorId) {
-        throw new Error(`Missing --connectorId argument`);
-      }
       const brandId = args.brandId ? args.brandId : null;
       if (!brandId) {
         throw new Error(`Missing --brandId argument`);
       }
       await syncZendeskBrandActivity({
-        connectorId: parseInt(connectorId, 10),
+        connectorId: connectorId,
         brandId,
         currentSyncDateMs: Date.now(),
       });

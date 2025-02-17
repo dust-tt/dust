@@ -21,6 +21,27 @@ import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const turndownService = new TurndownService();
 
+function apiUrlToDocumentUrl(apiUrl: string): string {
+  return apiUrl.replace("/api/v2/", "/").replace(".json", "");
+}
+
+export function extractMetadataFromDocumentUrl(ticketUrl: string): {
+  brandSubdomain: string;
+  ticketId: number;
+} {
+  // Format: https://${subdomain}.zendesk.com/tickets/${ticketId}.
+  const match = ticketUrl.match(
+    /^https:\/\/([^.]+)\.zendesk\.com\/tickets\/#?(\d+)/
+  );
+  if (!match || !match[1] || !match[2]) {
+    throw new Error(`Invalid ticket URL: ${ticketUrl}`);
+  }
+  return {
+    brandSubdomain: match[1],
+    ticketId: parseInt(match[2], 10),
+  };
+}
+
 /**
  * Deletes a ticket from the db and the data sources.
  */
@@ -95,7 +116,7 @@ export async function syncTicket({
   // if they were never attended in the Agent Workspace their subject is not populated.
   ticket.subject ||= "No subject";
 
-  const ticketUrl = ticket.url.replace("/api/v2/", "/").replace(".json", ""); // converting the API URL into the web URL;
+  const ticketUrl = apiUrlToDocumentUrl(ticket.url);
   if (!ticketInDb) {
     ticketInDb = await ZendeskTicketResource.makeNew({
       blob: {

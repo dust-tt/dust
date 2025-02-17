@@ -277,11 +277,14 @@ export const ZendeskCommandSchema = t.type({
     t.literal("resync-brand-metadata"),
   ]),
   args: t.type({
+    wId: t.union([t.string, t.undefined]),
+    dsId: t.union([t.string, t.undefined]),
     connectorId: t.union([t.number, t.undefined]),
     brandId: t.union([t.number, t.undefined]),
     query: t.union([t.string, t.undefined]),
     forceResync: t.union([t.literal("true"), t.undefined]),
     ticketId: t.union([t.number, t.undefined]),
+    ticketUrl: t.union([t.string, t.undefined]),
   }),
 });
 export type ZendeskCommandType = t.TypeOf<typeof ZendeskCommandSchema>;

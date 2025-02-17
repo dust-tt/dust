@@ -227,6 +227,9 @@ export async function syncZendeskTicketUpdateBatchActivity({
     subdomain,
     accessToken,
   });
+  if (!brandSubdomain) {
+    throw new Error(`Brand ${brandId} not found in Zendesk.`);
+  }
 
   const { tickets, hasMore, nextLink } = await fetchZendeskTickets(
     accessToken,

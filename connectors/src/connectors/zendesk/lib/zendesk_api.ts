@@ -74,7 +74,7 @@ export async function getZendeskBrandSubdomain({
   brandId: number;
   subdomain: string;
   accessToken: string;
-}): Promise<string> {
+}): Promise<string | null> {
   const brandInDb = await ZendeskBrandResource.fetchByBrandId({
     connectorId,
     brandId,
@@ -84,7 +84,7 @@ export async function getZendeskBrandSubdomain({
   }
   const brand = await fetchZendeskBrand({ subdomain, accessToken, brandId });
   if (!brand) {
-    throw new Error(`Brand ${brandId} not found in Zendesk.`);
+    return null;
   }
   return brand.subdomain;
 }
