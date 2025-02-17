@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import { Command } from "commander";
 import { getDustAPI } from "./api.js";
 import { isLoggedIn, login, logout } from "./auth.js";
