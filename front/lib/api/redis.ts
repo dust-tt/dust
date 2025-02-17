@@ -17,7 +17,8 @@ type RedisUsageTagsType =
   | "retry_agent_message"
   | "update_authors"
   | "user_message_events"
-  | "reasoning_generation";
+  | "reasoning_generation"
+  | "notion_url_sync";
 
 export async function getRedisClient({
   origin,
