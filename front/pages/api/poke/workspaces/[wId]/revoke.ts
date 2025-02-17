@@ -3,6 +3,7 @@ import { assertNever } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
+import { revokeAndTrackMembership } from "@app/lib/api/membership";
 import { getUserForWorkspace } from "@app/lib/api/user";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -60,10 +61,7 @@ async function handler(
         });
       }
 
-      const revokeResult = await MembershipResource.revokeMembership({
-        user,
-        workspace: owner,
-      });
+      const revokeResult = await revokeAndTrackMembership(owner, user);
 
       if (revokeResult.isErr()) {
         switch (revokeResult.error.type) {
@@ -82,18 +80,6 @@ async function handler(
             assertNever(revokeResult.error.type);
         }
       }
-
-      if (revokeResult.isOk()) {
-        void ServerSideTracking.trackRevokeMembership({
-          user: user.toJSON(),
-          workspace: owner,
-          role: revokeResult.value.role,
-          startAt: revokeResult.value.startAt,
-          endAt: revokeResult.value.endAt,
-        });
-      }
-
-      await launchUpdateUsageWorkflow({ workspaceId: owner.sId });
 
       return res.status(200).json({ success: true });
 

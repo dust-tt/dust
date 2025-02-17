@@ -6,6 +6,7 @@ import { assertNever, isMembershipRoleType } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { revokeAndTrackMembership } from "@app/lib/api/membership";
 import { getUserForWorkspace } from "@app/lib/api/user";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -69,10 +70,7 @@ async function handler(
     case "POST":
       // TODO(@fontanierh): use DELETE for revoking membership
       if (req.body.role === "revoked") {
-        const revokeResult = await MembershipResource.revokeMembership({
-          user,
-          workspace: owner,
-        });
+        const revokeResult = await revokeAndTrackMembership(owner, user);
 
         if (revokeResult.isErr()) {
           switch (revokeResult.error.type) {
