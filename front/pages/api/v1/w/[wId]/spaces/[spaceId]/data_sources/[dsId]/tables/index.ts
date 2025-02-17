@@ -110,14 +110,6 @@ import { apiError } from "@app/logger/withlogging";
  *                 items:
  *                   type: string
  *                 description: Tags associated with the table
- *               parents:
- *                 type: array
- *                 items:
- *                   type: string
- *                   description: 'Reserved for internal use, should not be set. Table and ancestor ids, with the following convention: parents[0] === table_id, parents[1] === parent_id, and then ancestors ids in order'
- *               parent_id:
- *                 type: string
- *                 description: 'Reserved for internal use, should not be set. ID of the direct parent to associate with the table'
  *               mime_type:
  *                 type: string
  *                 description: 'Reserved for internal use, should not be set. Mime type of the table'
