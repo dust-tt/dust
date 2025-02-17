@@ -148,14 +148,6 @@ export const config = {
  *                 items:
  *                   type: string
  *                 description: Tags to associate with the document.
- *               parent_id:
- *                 type: string
- *                 description: 'Reserved for internal use, should not be set. Document ID of the direct parent to associate with the document.'
- *               parents:
- *                 type: array
- *                 items:
- *                   type: string
- *                 description: 'Reserved for internal use, should not be set. Document and ancestor ids, with the following convention: parents[0] === documentId, parents[1] === parent_id, and then ancestors ids in order.'
  *               timestamp:
  *                 type: number
  *                 description: Reserved for internal use, should not be set. Unix timestamp (in seconds) of the time the document was last updated (e.g. 1698225000).
