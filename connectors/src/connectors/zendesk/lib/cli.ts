@@ -7,6 +7,7 @@ import type {
   ZendeskFetchTicketResponseType,
 } from "@dust-tt/types";
 
+import { extractMetadataFromDocumentUrl } from "@connectors/connectors/zendesk/lib/sync_ticket";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
   fetchZendeskBrand,
@@ -28,7 +29,6 @@ import {
   ZendeskConfigurationResource,
   ZendeskTicketResource,
 } from "@connectors/resources/zendesk_resources";
-import { extractMetadataFromDocumentUrl } from "@connectors/connectors/zendesk/lib/sync_ticket";
 
 export const zendesk = async ({
   command,
