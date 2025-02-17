@@ -166,60 +166,21 @@ export async function syncTicket({
       "[Zendesk] Upserting ticket."
     );
 
-    const metadata = [
-      `Ticket ID: ${ticket.id}`,
-      `Subject: ${ticket.subject}`,
-      `Created At: ${createdAtDate.toISOString()}`,
-      `Updated At: ${updatedAtDate.toISOString()}`,
-      `Status: ${ticket.status}`,
-      ticket.priority ? `Priority: ${ticket.priority}` : null,
-      ticket.type ? `Type: ${ticket.type}` : null,
-      ticket.via ? `Channel: ${ticket.via.channel}` : null,
-      ticket.requester
-        ? `Requester: ${ticket.requester.name} (${ticket.requester.email})`
-        : null,
-      ticket.assignee_id ? `Assignee ID: ${ticket.assignee_id}` : "Unassigned",
-      `Organization ID: ${ticket.organization_id || "N/A"}`,
-      `Group ID: ${ticket.group_id || "N/A"}`,
-      `Tags: ${ticket.tags.length ? ticket.tags.join(", ") : "No tags"}`,
-      ticket.due_at
-        ? `Due Date: ${new Date(ticket.due_at).toISOString()}`
-        : null,
-      ticket.satisfaction_rating
-        ? `Satisfaction Rating: ${ticket.satisfaction_rating.score}`
-        : null,
-      ticket.satisfaction_rating?.comment
-        ? `Satisfaction Comment: ${ticket.satisfaction_rating.comment}`
-        : null,
-      `Has Incidents: ${ticket.has_incidents ? "Yes" : "No"}`,
-      ticket.problem_id ? `Related Problem ID: ${ticket.problem_id}` : null,
-      `Custom Fields:`,
-      ...ticket.custom_fields.map(
-        (field) => `  - Field ${field.id}: ${field.value || "N/A"}`
-      ),
-    ]
-      .filter(Boolean)
-      .join("\n");
-
-    const ticketContent = `
-${metadata}
-
-Conversation:
-${comments
-  .map((comment) => {
-    let author;
-    try {
-      author = users.find((user) => user.id === comment.author_id);
-    } catch (e) {
-      logger.warn(
-        { connectorId, e, usersType: typeof users, ...loggerArgs },
-        "[Zendesk] Error finding the author of a comment."
-      );
-      author = null;
-    }
-    return `[${comment?.created_at}] ${author ? `${author.name} (${author.email})` : "Unknown User"}:\n${(comment.plain_body || comment.body).replace(/[\u2028\u2029]/g, "")}`; // removing line and paragraph separators
-  })
-  .join("\n")}
+    const ticketContent = `Conversation:\n${comments
+      .map((comment) => {
+        let author;
+        try {
+          author = users.find((user) => user.id === comment.author_id);
+        } catch (e) {
+          logger.warn(
+            { connectorId, e, usersType: typeof users, ...loggerArgs },
+            "[Zendesk] Error finding the author of a comment."
+          );
+          author = null;
+        }
+        return `[${comment?.created_at}] ${author ? `${author.name} (${author.email})` : "Unknown User"}:\n${(comment.plain_body || comment.body).replace(/[\u2028\u2029]/g, "")}`; // removing line and paragraph separators
+      })
+      .join("\n")}
 `.trim();
 
     const ticketContentInMarkdown = turndownService.turndown(ticketContent);
@@ -228,12 +189,35 @@ ${comments
       dataSourceConfig,
       ticketContentInMarkdown
     );
+
+    const metadata = {
+      priority: ticket.priority,
+      ticketType: ticket.type,
+      channel: ticket.via?.channel,
+      status: ticket.status,
+      ...(ticket.group_id ? { groupId: ticket.group_id.toString() } : {}),
+      ...(ticket.organization_id
+        ? { organizationId: ticket.organization_id.toString() }
+        : {}),
+      ...(ticket.due_at
+        ? { dueDate: `${new Date(ticket.due_at).toISOString()}` }
+        : {}),
+      satisfactionRating: ticket.satisfaction_rating.score,
+      hasIncidents: ticket.has_incidents ? "Yes" : "No",
+    };
+
     const documentContent = await renderDocumentTitleAndContent({
       dataSourceConfig,
       title: ticket.subject,
       content: renderedMarkdown,
       createdAt: createdAtDate,
       updatedAt: updatedAtDate,
+      additionalPrefixes: {
+        ...metadata,
+        labels: ticket.tags.join(", ") || "none",
+        customFields:
+          ticket.custom_fields.map(({ value }) => value).join(", ") || "none",
+      },
     });
 
     const documentId = getTicketInternalId({
@@ -241,6 +225,11 @@ ${comments
       brandId,
       ticketId: ticket.id,
     });
+
+    const metadataAsTags = [];
+    for (const [key, value] of Object.entries(metadata)) {
+      metadataAsTags.push(`${key}:${value}`);
+    }
 
     const parents = ticketInDb.getParentInternalIds(connectorId);
     await upsertDataSourceDocument({
@@ -253,6 +242,8 @@ ${comments
         `title:${ticket.subject}`,
         `updatedAt:${updatedAtDate.getTime()}`,
         `createdAt:${createdAtDate.getTime()}`,
+        ...metadataAsTags,
+        ...ticket.custom_fields.map(({ id, value }) => `${id}:${value}`),
         ...filterCustomTags(ticket.tags, logger),
       ],
       parents,
