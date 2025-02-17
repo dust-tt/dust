@@ -86,48 +86,6 @@ async function handler(
       ).map((result): GetPostNotionSyncResponseBody["syncResults"][number] =>
         JSON.parse(result)
       );
-
-      /*const lastSyncedUrls: GetPostNotionSyncResponseBody["syncResults"] = [
-        { url: "From endpoint", timestamp: Date.now(), success: true },
-        {
-          url: "https://www.notion.so/1...",
-          timestamp: Date.now(),
-          success: false,
-          error_message: "Error 1",
-        },
-        {
-          url: "https://www.notion.so/2...",
-          timestamp: Date.now(),
-          success: true,
-        },
-        {
-          url: "https://www.notion.so/3...",
-          timestamp: Date.now(),
-          success: false,
-          error_message: "Error 3",
-        },
-        {
-          url: "https://www.notion.so/4...",
-          timestamp: Date.now(),
-          success: true,
-        },
-        {
-          url: "https://www.notion.so/5...",
-          timestamp: Date.now(),
-          success: true,
-        },
-        {
-          url: "https://www.notion.so/6...",
-          timestamp: Date.now(),
-          success: true,
-        },
-        {
-          url: "https://www.notion.so/7...",
-          timestamp: Date.now(),
-          success: true,
-        },
-      ];*/
-
       return res.status(200).json({ syncResults: lastSyncedUrls });
     case "POST":
       const bodyValidation = PostNotionSyncPayloadSchema.decode(req.body);
