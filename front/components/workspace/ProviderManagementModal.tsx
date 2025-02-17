@@ -153,9 +153,9 @@ export function ProviderManagementModal({
           <SheetTitle>Manage Providers</SheetTitle>
         </SheetHeader>
         <SheetContainer>
-          <div className="mt-8 divide-y divide-gray-200">
+          <div className="dark:divide-gray-200-night mt-8 divide-y divide-gray-200">
             <div className="flex items-center justify-between px-4 pb-4">
-              <span className="text-left font-bold text-foreground">
+              <span className="text-left font-bold text-foreground dark:text-foreground-night">
                 Make all providers available
               </span>
               <SliderToggle

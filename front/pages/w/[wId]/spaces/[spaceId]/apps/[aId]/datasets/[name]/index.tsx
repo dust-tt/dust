@@ -198,7 +198,7 @@ export default function ViewDatasetView({
         <div className="mt-8 flex flex-col">
           <div className="flex flex-1">
             <div className="mb-8 w-full">
-              <div className="space-y-6 divide-y divide-gray-200">
+              <div className="dark:divide-gray-200-night space-y-6 divide-y divide-gray-200">
                 <DatasetView
                   readOnly={readOnly}
                   datasets={[] as DatasetType[]}
