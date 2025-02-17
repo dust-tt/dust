@@ -190,21 +190,21 @@ export async function syncTicket({
       ticketContentInMarkdown
     );
 
-    const metadata = {
-      priority: ticket.priority,
-      ticketType: ticket.type,
-      channel: ticket.via?.channel,
-      status: ticket.status,
-      ...(ticket.group_id ? { groupId: ticket.group_id.toString() } : {}),
+    const metadata = [
+      `priority:${ticket.priority}`,
+      `ticketType:${ticket.type}`,
+      `channel:${ticket.via?.channel}`,
+      `status:${ticket.status}`,
+      ...(ticket.group_id ? [`groupId:${ticket.group_id}`] : []),
       ...(ticket.organization_id
-        ? { organizationId: ticket.organization_id.toString() }
-        : {}),
+        ? [`organizationId:${ticket.organization_id}`]
+        : []),
       ...(ticket.due_at
-        ? { dueDate: `${new Date(ticket.due_at).toISOString()}` }
-        : {}),
-      satisfactionRating: ticket.satisfaction_rating.score,
-      hasIncidents: ticket.has_incidents ? "Yes" : "No",
-    };
+        ? [`dueDate:${new Date(ticket.due_at).toISOString()}`]
+        : []),
+      `satisfactionRating:${ticket.satisfaction_rating.score}`,
+      `hasIncidents:${ticket.has_incidents ? "Yes" : "No"}`,
+    ];
 
     const documentContent = await renderDocumentTitleAndContent({
       dataSourceConfig,
@@ -213,7 +213,7 @@ export async function syncTicket({
       createdAt: createdAtDate,
       updatedAt: updatedAtDate,
       additionalPrefixes: {
-        ...metadata,
+        metadata: metadata.join(", "),
         labels: ticket.tags.join(", ") || "none",
         customFields:
           ticket.custom_fields.map(({ value }) => value).join(", ") || "none",
@@ -226,11 +226,6 @@ export async function syncTicket({
       ticketId: ticket.id,
     });
 
-    const metadataAsTags = [];
-    for (const [key, value] of Object.entries(metadata)) {
-      metadataAsTags.push(`${key}:${value}`);
-    }
-
     const parents = ticketInDb.getParentInternalIds(connectorId);
     await upsertDataSourceDocument({
       dataSourceConfig,
@@ -242,7 +237,7 @@ export async function syncTicket({
         `title:${ticket.subject}`,
         `updatedAt:${updatedAtDate.getTime()}`,
         `createdAt:${createdAtDate.getTime()}`,
-        ...metadataAsTags,
+        ...metadata,
         ...ticket.custom_fields.map(({ id, value }) => `${id}:${value}`),
         ...filterCustomTags(ticket.tags, logger),
       ],
