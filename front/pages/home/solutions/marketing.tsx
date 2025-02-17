@@ -102,7 +102,7 @@ export default function Marketing() {
               assistantBlocks: [
                 assistantExamples[0],
                 assistantExamples[1],
-                assistantExamples[6],
+                assistantExamples[3],
               ],
             },
           ]}
@@ -151,8 +151,8 @@ export default function Marketing() {
                 },
               ],
               assistantBlocks: [
+                assistantExamples[2],
                 assistantExamples[4],
-                assistantExamples[3],
                 assistantExamples[5],
               ],
             },
@@ -216,6 +216,28 @@ const assistantExamples: SolutionSectionAssistantBlockProps[] = [
       </>
     ),
   },
+  {
+    emoji: "⭐️",
+    name: "@marketing",
+    backgroundColor: "bg-pink-300",
+    description: (
+      <>
+        Answer any question about your&nbsp;team's marketing knowledge base.
+        Resurface past ideas and&nbsp;create new ones
+      </>
+    ),
+  },
+  {
+    emoji: "🧐",
+    name: "@competitive",
+    backgroundColor: "bg-pink-300",
+    description: (
+      <>
+        Tracks competitors websites to highlight changes and pro-actively detect
+        market positioning opportunities
+      </>
+    ),
+  },
 ];
 
 export function MarketingCaroussel() {
@@ -224,7 +246,7 @@ export function MarketingCaroussel() {
       title={pageSettings.uptitle}
       subtitle={pageSettings.title}
       description={pageSettings.description}
-      assistants={assistantExamples}
+      assistants={assistantExamples.slice(0, 4)}
       from={pageSettings.from}
       to={pageSettings.to}
       border="border-pink-100/60"
