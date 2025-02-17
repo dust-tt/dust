@@ -1,28 +1,20 @@
-// This is a temporary implementation of authentication.
-// It uses the Auth0 OAuth 2.0 flow with PKCE.
-
-// NOTE: Current implementation of auth0 is expecting a client secret.
-// It is fixed by commenting out the following code in `x/kyllian/dust-mcp/node_modules/auth0/dist/esm/auth/client-authentication.js`:
-// ```
-// if ((!payload.client_secret || payload.client_secret.trim().length === 0) &&
-//     (!payload.client_assertion || payload.client_assertion.trim().length === 0) &&
-//     !useMTLS) {
-//     throw new Error('The client_secret or client_assertion field is required, or it should be mTLS request.');
-// }
-// ```
-
-// TODO(kyllian): Replace with a custom implementation of PKCE.
-
-import { AuthenticationClient } from "auth0";
 import crypto from "crypto";
 import express, { Request, Response } from "express";
 import open from "open";
-import { saveTokens, loadTokens, removeTokens, TokenData } from "./config.js";
+import { loadTokens, removeTokens, saveTokens, TokenData } from "./config.js";
 
 const AUTH0_DOMAIN = "dust-dev.eu.auth0.com";
 const AUTH0_CLIENT_ID = "XktEiKkdrADjGID13OXc5sDAaxa2WUJG";
 const REDIRECT_URI = "http://localhost:3333/callback";
 const DUST_API_AUDIENCE = "https://dust-dev.tt/api/v1";
+
+interface Auth0AuthorizeResponse {
+  access_token: string;
+  refresh_token: string;
+  scope: string;
+  expires_in: number;
+  token_type: string;
+}
 
 const base64URLEncode = (buffer: ArrayBuffer): string => {
   return btoa(String.fromCharCode(...new Uint8Array(buffer)))
@@ -53,6 +45,35 @@ export const generatePKCE = async (): Promise<{
   return { codeVerifier, codeChallenge };
 };
 
+async function exchangeCodeForTokens(
+  code: string,
+  codeVerifier: string
+): Promise<Auth0AuthorizeResponse> {
+  const tokenEndpoint = `https://${AUTH0_DOMAIN}/oauth/token`;
+  const response = await fetch(tokenEndpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      grant_type: "authorization_code",
+      client_id: AUTH0_CLIENT_ID,
+      code_verifier: codeVerifier,
+      code: code,
+      redirect_uri: REDIRECT_URI,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(
+      `Failed to exchange code for tokens: ${JSON.stringify(error)}`
+    );
+  }
+
+  return response.json();
+}
+
 export async function login(): Promise<TokenData> {
   return new Promise(async (resolve, reject) => {
     const app = express();
@@ -82,21 +103,15 @@ export async function login(): Promise<TokenData> {
           throw new Error("No code received from Auth0");
         }
 
-        const auth0 = new AuthenticationClient({
-          domain: AUTH0_DOMAIN,
-          clientId: AUTH0_CLIENT_ID,
-        });
-
-        const tokenSet = await auth0.oauth.authorizationCodeGrantWithPKCE({
-          code: code as string,
-          redirect_uri: REDIRECT_URI,
-          code_verifier: codeVerifier,
-        });
+        const authResponse = await exchangeCodeForTokens(
+          code as string,
+          codeVerifier
+        );
 
         const tokens: TokenData = {
-          accessToken: tokenSet.data.access_token,
-          refreshToken: tokenSet.data.refresh_token,
-          expiresAt: Date.now() + tokenSet.data.expires_in * 1000,
+          accessToken: authResponse.access_token,
+          refreshToken: authResponse.refresh_token,
+          expiresAt: Date.now() + authResponse.expires_in * 1000,
         };
 
         await saveTokens(tokens);
