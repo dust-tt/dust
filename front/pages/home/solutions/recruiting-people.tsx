@@ -129,7 +129,7 @@ export default function RecruitingPeople() {
                   ],
                 },
               ],
-              assistantBlocks: [assistantExamples[7], assistantExamples[6]],
+              assistantBlocks: [assistantExamples[4], assistantExamples[3]],
             },
           ]}
         />
@@ -176,8 +176,8 @@ export default function RecruitingPeople() {
               ],
               assistantBlocks: [
                 assistantExamples[2],
-                assistantExamples[3],
-                assistantExamples[4],
+                assistantExamples[5],
+                assistantExamples[7],
               ],
             },
           ]}
@@ -245,6 +245,48 @@ const assistantExamples: SolutionSectionAssistantBlockProps[] = [
       </>
     ),
   },
+  {
+    emoji: "🧑‍🏫",
+    name: "@trainingDraft",
+    backgroundColor: "bg-amber-300",
+    description: (
+      <>Designs training modules and&nbsp;crafts employee development plans</>
+    ),
+  },
+  {
+    emoji: "🔬",
+    name: "@screeningPrep",
+    backgroundColor: "bg-amber-300",
+    description: (
+      <>
+        Provides a&nbsp;suggested analysis of&nbsp;a candidate CV given
+        a&nbsp;role description to&nbsp;highlight questions for a&nbsp;screening
+        interview
+      </>
+    ),
+  },
+  {
+    emoji: "💬",
+    name: "@hiringQuestions",
+    backgroundColor: "bg-amber-300",
+    description: (
+      <>
+        Suggests interviews questions based on&nbsp;roles, stage of&nbsp;the
+        interview and&nbsp;the company's culture
+      </>
+    ),
+  },
+  {
+    emoji: "🧐",
+    name: "@candidateInfo",
+    backgroundColor: "bg-amber-300",
+    description: (
+      <>
+        Summarize available information about a&nbsp;candidate based
+        on&nbsp;your&nbsp;company database
+      </>
+    ),
+  },
 ];
 
 export function RecruitingCaroussel() {
@@ -253,7 +295,7 @@ export function RecruitingCaroussel() {
       title={pageSettings.uptitle}
       subtitle={pageSettings.title}
       description={pageSettings.description}
-      assistants={assistantExamples}
+      assistants={assistantExamples.slice(0, 4)}
       from={pageSettings.from}
       to={pageSettings.to}
       border="border-pink-100/60"

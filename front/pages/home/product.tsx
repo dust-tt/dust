@@ -1,7 +1,6 @@
 import { Button, RocketIcon } from "@dust-tt/sparkle";
 import Link from "next/link";
 import type { ReactElement } from "react";
-import React from "react";
 
 import { CapabilitySection } from "@app/components/home/content/Product/CapabilitySection";
 import { ExtensibilitySection } from "@app/components/home/content/Product/ExtensibilitySection";
@@ -43,10 +42,10 @@ export function Landing() {
       <ExtensibilitySection />
       <SecuritySection />
       <QuoteSection
-        quote="Dust is so easy to use!"
-        name="Aymeric Augustin"
-        title="CTO at Qonto"
-        logo="/static/landing/logos/qonto.png"
+        quote="Dust is the most impactful software we've adopted since building Clay. It delivers immediate value while continuously getting smarter and more valuable over time"
+        name="Everett Berry"
+        title="Head of GTM Engineering at Clay"
+        logo="/static/landing/logos/clay.png"
       />
       <div
         className={classNames(

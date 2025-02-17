@@ -1,6 +1,5 @@
 import { Button, Hover3D, RocketIcon } from "@dust-tt/sparkle";
 import Link from "next/link";
-import React from "react";
 
 import { H1, P } from "@app/components/home/ContentComponents";
 import TrustedBy from "@app/components/home/TrustedBy";
@@ -33,12 +32,15 @@ export function ProductIntroSection() {
       <div className="flex flex-col gap-16">
         <div className="flex flex-col items-center gap-16 md:flex-row">
           <div className="flex flex-col gap-8">
-            <H1 className="text-red-400">The OS of your AI Enterprise</H1>
+            <H1 className="text-red-400">
+              Accelerate your entire organization with AI
+            </H1>
             <div className="w-full md:hidden">
               <MainVisual />
             </div>
             <P size="lg" className="text-slate-50">
-              Craft AI assistants that are super great.
+              Build your team of AI agents: secure, connected to your data and
+              customizable to your needs.
             </P>
             <div className="flex justify-center gap-4 sm:justify-start">
               <Link href="/home/pricing" shallow={true}>
