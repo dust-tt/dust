@@ -27,6 +27,7 @@ import type {
   TreeSelectionModelUpdater,
 } from "@app/components/ContentNodeTree";
 import { ContentNodeTree } from "@app/components/ContentNodeTree";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { orderDatasourceViewByImportance } from "@app/lib/connectors";
 import {
@@ -331,12 +332,13 @@ export function DataSourceViewSelector({
   defaultCollapsed = true,
   useCase,
 }: DataSourceViewSelectorProps) {
+  const { isDark } = useTheme();
   const dataSourceView = selectionConfiguration.dataSourceView;
 
-  const LogoComponent = getConnectorProviderLogoWithFallback(
-    dataSourceView.dataSource.connectorProvider,
-    FolderIcon
-  );
+  const LogoComponent = getConnectorProviderLogoWithFallback({
+    provider: dataSourceView.dataSource.connectorProvider,
+    isDark,
+  });
 
   const internalIds = selectionConfiguration.selectedResources.map(
     (r) => r.internalId

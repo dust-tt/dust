@@ -23,6 +23,7 @@ import { useRouter } from "next/router";
 import type { ComponentType, ReactElement } from "react";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { usePersistedNavigationSelection } from "@app/hooks/usePersistedNavigationSelection";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
@@ -447,6 +448,7 @@ const SpaceDataSourceViewItem = ({
   space: SpaceType;
   node?: DataSourceViewContentNode;
 }): ReactElement => {
+  const { isDark } = useTheme();
   const { setNavigationSelection } = usePersistedNavigationSelection();
   const router = useRouter();
   const [isExpanded, setIsExpanded] = useState(false);
@@ -491,10 +493,10 @@ const SpaceDataSourceViewItem = ({
 
   const LogoComponent = node
     ? getVisualForContentNode(node)
-    : getConnectorProviderLogoWithFallback(
-        item.dataSource.connectorProvider,
-        FolderIcon
-      );
+    : getConnectorProviderLogoWithFallback({
+        provider: item.dataSource.connectorProvider,
+        isDark,
+      });
 
   const dataSourceViewPath = node
     ? `${basePath}?parentId=${node?.internalId}`

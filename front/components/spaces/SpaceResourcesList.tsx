@@ -6,7 +6,6 @@ import {
   Cog6ToothIcon,
   CubeIcon,
   DataTable,
-  FolderIcon,
   PencilSquareIcon,
   SearchInput,
   Spinner,
@@ -37,6 +36,7 @@ import { AddConnectionMenu } from "@app/components/spaces/AddConnectionMenu";
 import { EditSpaceManagedDataSourcesViews } from "@app/components/spaces/EditSpaceManagedDatasourcesViews";
 import { EditSpaceStaticDatasourcesViews } from "@app/components/spaces/EditSpaceStaticDatasourcesViews";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { ViewFolderAPIModal } from "@app/components/ViewFolderAPIModal";
 import {
   getConnectorProviderLogoWithFallback,
@@ -246,6 +246,7 @@ export const SpaceResourcesList = ({
   onSelect,
   integrations,
 }: SpaceResourcesListProps) => {
+  const { isDark } = useTheme();
   const [assistantName, setAssistantName] = useState<string | null>(null);
   const { sId: assistantSId } = useAgentConfigurationSIdLookup({
     workspaceId: owner.sId,
@@ -341,7 +342,7 @@ export const SpaceResourcesList = ({
       return {
         dataSourceView,
         label: getDataSourceNameFromView(dataSourceView),
-        icon: getConnectorProviderLogoWithFallback(provider, FolderIcon),
+        icon: getConnectorProviderLogoWithFallback({ provider, isDark }),
         workspaceId: owner.sId,
         isAdmin,
         isLoading: provider ? isLoadingByProvider[provider] : false,

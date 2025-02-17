@@ -2,7 +2,6 @@ import {
   BracesIcon,
   Button,
   ExternalLinkIcon,
-  FolderIcon,
   IconButton,
   Tree,
 } from "@dust-tt/sparkle";
@@ -19,6 +18,7 @@ import { DataSourceTagsFilterDropdown } from "@app/components/assistant_builder/
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { DataSourceViewPermissionTree } from "@app/components/DataSourceViewPermissionTree";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { orderDatasourceViewSelectionConfigurationByImportance } from "@app/lib/connectors";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
@@ -44,6 +44,7 @@ export default function DataSourceSelectionSection({
   owner,
   viewType,
 }: DataSourceSelectionSectionProps) {
+  const { isDark } = useTheme();
   const { dataSourceViews } = useContext(AssistantBuilderContext);
   const [documentToDisplay, setDocumentToDisplay] = useState<string | null>(
     null
@@ -94,10 +95,10 @@ export default function DataSourceSelectionSection({
             {orderDatasourceViewSelectionConfigurationByImportance(
               Object.values(dataSourceConfigurations)
             ).map((dsConfig) => {
-              const LogoComponent = getConnectorProviderLogoWithFallback(
-                dsConfig.dataSourceView.dataSource.connectorProvider,
-                FolderIcon
-              );
+              const LogoComponent = getConnectorProviderLogoWithFallback({
+                provider: dsConfig.dataSourceView.dataSource.connectorProvider,
+                isDark,
+              });
 
               return (
                 <Tree.Item

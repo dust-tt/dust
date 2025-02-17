@@ -49,6 +49,7 @@ import { useMemo, useState } from "react";
 
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { DataSourceViewPermissionTree } from "@app/components/DataSourceViewPermissionTree";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { getContentNodeInternalIdFromTableId } from "@app/lib/api/content_nodes";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
@@ -355,6 +356,7 @@ function DataSourceViewsSection({
   dataSourceConfigurations,
   viewType,
 }: DataSourceViewsSectionProps) {
+  const { isDark } = useTheme();
   const [documentToDisplay, setDocumentToDisplay] = useState<string | null>(
     null
   );
@@ -383,10 +385,10 @@ function DataSourceViewsSection({
 
           if (dataSourceView) {
             const { dataSource } = dataSourceView;
-            dsLogo = getConnectorProviderLogoWithFallback(
-              dataSource.connectorProvider,
-              FolderIcon
-            );
+            dsLogo = getConnectorProviderLogoWithFallback({
+              provider: dataSource.connectorProvider,
+              isDark,
+            });
             dataSourceName = getDisplayNameForDataSource(dataSource);
           }
 
