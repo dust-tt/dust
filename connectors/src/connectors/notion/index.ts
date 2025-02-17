@@ -475,6 +475,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
         expandable,
         permission: "read",
         lastUpdatedAt: page.lastUpsertedTs?.getTime() || null,
+        mimeType: MIME_TYPES.NOTION.PAGE,
       };
     };
 
@@ -497,6 +498,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
         expandable: true,
         permission: "read",
         lastUpdatedAt: db.structuredDataUpsertedTs?.getTime() ?? null,
+        mimeType: MIME_TYPES.NOTION.DATABASE,
       };
     };
 
@@ -518,6 +520,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
           expandable: true,
           permission: "read",
           lastUpdatedAt: null,
+          mimeType: MIME_TYPES.NOTION.UNKNOWN_FOLDER,
         });
       }
     }
@@ -567,6 +570,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
         expandable: Boolean(hasChildrenByPageId[page.notionPageId]),
         permission: "read",
         lastUpdatedAt: page.lastUpsertedTs?.getTime() || null,
+        mimeType: MIME_TYPES.NOTION.PAGE,
       }))
     );
 
@@ -582,6 +586,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       expandable: true,
       permission: "read",
       lastUpdatedAt: null,
+      mimeType: MIME_TYPES.NOTION.DATABASE,
     }));
 
     const contentNodes = pageNodes.concat(dbNodes);
@@ -599,6 +604,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
           expandable: true,
           permission: "read",
           lastUpdatedAt: null,
+          mimeType: MIME_TYPES.NOTION.UNKNOWN_FOLDER,
         });
       }
     }
