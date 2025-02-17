@@ -555,7 +555,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     const coreParents = new Set(
       coreRes.value.nodes.map((node) => node.node_id)
     );
-    if (!parentsToAdd.every((parent) => coreParents.has(parent))) {
+    if (parentsToAdd.some((parent) => !coreParents.has(parent))) {
       return new Err(
         new Error("Some parents do not exist in this data source view.")
       );
