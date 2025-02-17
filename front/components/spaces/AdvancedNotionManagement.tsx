@@ -16,7 +16,7 @@ import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
 import { GetPostNotionSyncResponseBodySchema } from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
 import { isLeft } from "fp-ts/lib/Either";
-import { useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 
 import { useNotionLastSyncedUrls } from "@app/lib/swr/data_sources";
 
@@ -48,40 +48,45 @@ export function AdvancedNotionManagement({
     dataSource,
   });
 
-  const validateUrls = (urls: string[]) => {
-    if (urls.length > 10) {
-      setError("You can only enter up to 10 URLs");
-      return false;
-    }
-    if (urls.filter((url) => url.trim()).length === 0) {
-      setError("You must enter at least one URL");
-      return false;
-    }
-    if (!urls.every((url) => url.includes("notion.so") && URL.canParse(url))) {
-      setError(
-        `Invalid Notion URL format: ${
-          urls.filter(
-            (url) => !url.includes("notion.so") || !URL.canParse(url)
-          )[0]
-        }`
+  const validateUrls = useCallback(
+    (urls: string[]) => {
+      if (urls.length > 10) {
+        setError("You can only enter up to 10 URLs");
+        return false;
+      }
+      if (urls.filter((url) => url.trim()).length === 0) {
+        setError("You must enter at least one URL");
+        return false;
+      }
+      if (
+        !urls.every((url) => url.includes("notion.so") && URL.canParse(url))
+      ) {
+        setError(
+          `Invalid Notion URL format: ${
+            urls.filter(
+              (url) => !url.includes("notion.so") || !URL.canParse(url)
+            )[0]
+          }`
+        );
+        return false;
+      }
+      const urlsSyncedLessThan20MinutesAgo = lastSyncedUrls.filter(
+        (l) => l.timestamp > Date.now() - 20 * 60 * 1000
       );
-      return false;
-    }
-    const urlsSyncedLessThan20MinutesAgo = lastSyncedUrls.filter(
-      (l) => l.timestamp > Date.now() - 20 * 60 * 1000
-    );
 
-    if (
-      urls.some((url) =>
-        urlsSyncedLessThan20MinutesAgo.some((l) => l.url === url)
-      )
-    ) {
-      setError("One or more URL(s) were synced less than 20 minutes ago");
-      return false;
-    }
-    setError(undefined);
-    return true;
-  };
+      if (
+        urls.some((url) =>
+          urlsSyncedLessThan20MinutesAgo.some((l) => l.url === url)
+        )
+      ) {
+        setError("One or more URL(s) were synced less than 20 minutes ago");
+        return false;
+      }
+      setError(undefined);
+      return true;
+    },
+    [lastSyncedUrls]
+  );
 
   const columns = [
     {

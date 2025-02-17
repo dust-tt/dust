@@ -1,4 +1,3 @@
-import type { Result } from "@dust-tt/types";
 import {
   concurrentExecutor,
   ConnectorsAPI,
