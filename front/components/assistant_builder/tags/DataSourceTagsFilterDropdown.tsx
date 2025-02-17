@@ -122,7 +122,7 @@ export function DataSourceTagsFilterDropdown({
           handleSearchInputChange("", "not");
         }
       }}
-      modal={true}
+      modal={false}
     >
       <PopoverTrigger asChild>
         <Button variant="outline" size="sm" label={tagsLabels} isSelect />

@@ -1,16 +1,17 @@
 import {
+  Button,
   Chip,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuPortal,
-  DropdownMenuTrigger,
+  cn,
+  PopoverContent,
+  PopoverRoot,
+  PopoverTrigger,
   ScrollArea,
+  ScrollBar,
   SearchInput,
 } from "@dust-tt/sparkle";
 import type { DataSourceTag } from "@dust-tt/types";
-import React from "react";
-import { useRef } from "react";
+import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
+import React, { forwardRef } from "react";
 
 export interface TagSearchProps {
   searchInputValue: string;
@@ -35,80 +36,60 @@ export const TagSearchInput = ({
   isLoading,
   disabled = false,
 }: TagSearchProps) => {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  React.useEffect(() => {
-    const input = inputRef.current;
-    if (!input) {
-      return;
-    }
-
-    const preventSelection = () => {
-      const len = input.value.length;
-      requestAnimationFrame(() => {
-        input.setSelectionRange(len, len);
-      });
-    };
-
-    input.addEventListener("focus", preventSelection);
-    return () => input.removeEventListener("focus", preventSelection);
-  }, []);
-
   return (
     <div className="flex flex-col gap-3">
-      <div className="relative w-full" ref={containerRef}>
-        <SearchInput
-          name="tag-search"
-          ref={inputRef}
-          value={searchInputValue}
-          onChange={(value) => setSearchInputValue(value)}
-          onKeyDown={(e) => {
-            if (
-              (e.key === "Backspace" && !searchInputValue) ||
-              e.key === "Escape"
-            ) {
-              e.preventDefault();
-              inputRef.current?.focus();
-            }
-          }}
-          placeholder="Search labels..."
-          className="w-full"
-          isLoading={isLoading}
-          disabled={disabled}
-        />
-        <DropdownMenu
-          open={
-            availableTags.length > 0 ||
-            (searchInputValue.length > 0 && !isLoading)
+      <SearchInputWithPopover
+        name="tag-search"
+        placeholder="Search labels..."
+        value={searchInputValue}
+        onChange={(value) => setSearchInputValue(value)}
+        open={
+          availableTags.length > 0 ||
+          (searchInputValue.length > 0 && !isLoading)
+        }
+        onOpenChange={(open) => {
+          if (!open) {
+            setSearchInputValue("");
           }
-        >
-          <DropdownMenuTrigger asChild>
-            <div className="absolute h-0 w-0 p-0" />
-          </DropdownMenuTrigger>
-          <DropdownMenuPortal>
-            <DropdownMenuContent align="start">
-              <ScrollArea>
-                {availableTags.length > 0 ? (
-                  availableTags.map((tag, i) => (
-                    <DropdownMenuItem
-                      key={`${tag.tag}-${i}`}
-                      label={tag.tag}
-                      onClick={() => {
-                        onTagAdd(tag);
-                        setSearchInputValue("");
-                        inputRef.current?.focus();
-                      }}
-                    />
-                  ))
-                ) : (
-                  <DropdownMenuItem label="No results" disabled />
-                )}
-              </ScrollArea>
-            </DropdownMenuContent>
-          </DropdownMenuPortal>
-        </DropdownMenu>
-      </div>
+        }}
+        isLoading={isLoading}
+        disabled={disabled}
+      >
+        <div className="flex flex-col gap-2 pr-4">
+          {availableTags.length > 0 ? (
+            availableTags.map((tag, i) => (
+              <Button
+                key={`${tag.tag}-${i}`}
+                variant="ghost"
+                label={tag.tag}
+                size="sm"
+                className="justify-start"
+                onClick={() => {
+                  onTagAdd(tag);
+                  setSearchInputValue("");
+                }}
+              />
+              // <div
+              //   key={`${tag.tag}-${i}`}
+              //   className="cursor-pointer py-2 hover:bg-primary-100 dark:hover:bg-primary-100-night"
+              //   onClick={() => {
+              //     onTagAdd(tag);
+              //     setSearchInputValue("");
+              //   }}
+              // >
+              //   {tag.tag}
+              // </div>
+            ))
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              label="No results found"
+              disabled
+            />
+          )}
+        </div>
+      </SearchInputWithPopover>
 
       <div className="flex flex-wrap gap-2">
         {selectedTags.map((tag, i) => (
@@ -124,3 +105,98 @@ export const TagSearchInput = ({
     </div>
   );
 };
+
+export interface SearchInputProps {
+  placeholder?: string;
+  value: string | null;
+  onChange: (value: string) => void;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+  onFocus?: () => void;
+  name: string;
+  disabled?: boolean;
+  isLoading?: boolean;
+  className?: string;
+}
+
+export interface SearchInputWithPopoverProps extends SearchInputProps {
+  children: React.ReactNode;
+  contentClassName?: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+export const SearchInputWithPopover = forwardRef<
+  HTMLInputElement,
+  SearchInputWithPopoverProps
+>(
+  (
+    {
+      children,
+      contentClassName,
+      className,
+      open,
+      onOpenChange,
+      value,
+      onChange,
+      ...searchInputProps
+    },
+    ref
+  ) => {
+    return (
+      <PopoverRoot modal={false} open={open} onOpenChange={onOpenChange}>
+        <PopoverTrigger asChild>
+          <SearchInput
+            ref={ref}
+            className={cn("s-w-full", className)}
+            value={value}
+            onChange={(newValue) => {
+              onChange?.(newValue);
+              if (newValue && !open) {
+                onOpenChange(true);
+              }
+            }}
+            {...searchInputProps}
+            aria-expanded={open}
+            aria-haspopup="listbox"
+            aria-controls="search-popover-content"
+          />
+        </PopoverTrigger>
+        <PopoverContent
+          mountPortal={false}
+          className={cn(
+            "w-[--radix-popover-trigger-width] rounded-lg border bg-background shadow-md dark:bg-background-night",
+            contentClassName
+          )}
+          sideOffset={0}
+          style={{ pointerEvents: "all" }}
+          align="start"
+          id="search-popover-content"
+          onOpenAutoFocus={(e) => e.preventDefault()}
+          onCloseAutoFocus={(e) => e.preventDefault()}
+          onInteractOutside={() => onOpenChange(false)}
+        >
+          <ScrollArea
+            className="max-h-72"
+            style={{
+              position: "relative",
+              height: "288px", // 72 * 4px (Tailwind's default)
+            }}
+          >
+            <ScrollAreaPrimitive.Viewport
+              className="h-full w-full"
+              style={{
+                overflow: "auto",
+                WebkitOverflowScrolling: "touch",
+              }}
+            >
+              {children}
+            </ScrollAreaPrimitive.Viewport>
+            <ScrollBar className="py-0" />
+          </ScrollArea>
+        </PopoverContent>
+      </PopoverRoot>
+    );
+  }
+);
+
+SearchInputWithPopover.displayName = "SearchInputWithPopover";
