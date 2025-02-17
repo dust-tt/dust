@@ -100,7 +100,7 @@ export async function postConversation({
       context: {
         username: user.username,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
-        fullName: "Dust MCP",
+        fullName: user.fullName,
         email: user.email,
         profilePictureUrl: user.image,
         origin: "api",
@@ -163,7 +163,7 @@ export async function postMessage({
       context: {
         username: user.username,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
-        fullName: "Dust MCP",
+        fullName: user.fullName,
         email: user.email,
         profilePictureUrl: user.image,
         origin: "api",
