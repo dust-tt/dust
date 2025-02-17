@@ -27,6 +27,7 @@ import type {
 import { Op } from "sequelize";
 
 import { getDataSourceViewUsage } from "@app/lib/api/agent_data_sources";
+import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { isFolder, isWebsite } from "@app/lib/data_sources";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
@@ -48,8 +49,6 @@ import {
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import logger from "@app/logger/logger";
-import config from "@app/lib/api/config";
-import { makeCoreDataSourceViewFilter } from "@app/lib/api/data_source_view";
 
 const getDataSourceCategory = (
   dataSourceResource: DataSourceResource
@@ -538,7 +537,12 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
 
     const coreRes = await coreAPI.searchNodes({
       filter: {
-        data_source_views: [makeCoreDataSourceViewFilter(this)],
+        data_source_views: [
+          {
+            data_source_id: this.dataSource.dustAPIDataSourceId,
+            view_filter: [],
+          },
+        ],
         node_ids: parentsToAdd,
       },
     });
