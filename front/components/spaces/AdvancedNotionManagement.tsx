@@ -258,7 +258,13 @@ export function AdvancedNotionManagement({
             icon indicates sync successfully started, but URLs may take up to 20
             minutes to sync fully.
           </div>
-          <DataTable columns={columns} data={lastSyncedUrls} />
+          <DataTable
+            columns={columns}
+            data={lastSyncedUrls.map((url) => ({
+              ...url,
+              url: url.url.replace(/^.*?notion\.so\//, ""),
+            }))}
+          />
         </>
       )}
     </>
