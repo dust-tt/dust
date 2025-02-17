@@ -8,10 +8,10 @@ import { AgentBrowseAction } from "@app/lib/models/assistant/actions/browse";
 import { AgentConversationIncludeFileAction } from "@app/lib/models/assistant/actions/conversation/include_file";
 import { AgentDustAppRunAction } from "@app/lib/models/assistant/actions/dust_app_run";
 import { AgentProcessAction } from "@app/lib/models/assistant/actions/process";
+import { AgentReasoningAction } from "@app/lib/models/assistant/actions/reasoning";
 import { AgentRetrievalAction } from "@app/lib/models/assistant/actions/retrieval";
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import { AgentWebsearchAction } from "@app/lib/models/assistant/actions/websearch";
-import { AgentReasoningAction } from "@app/lib/models/assistant/actions/reasoning";
 import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import {
   AgentMessage,
