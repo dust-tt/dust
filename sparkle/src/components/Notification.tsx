@@ -78,25 +78,29 @@ function NotificationContent({ type, title, description }: NotificationType) {
 
 export const Notification = {
   Area: ({ children }: { children: React.ReactNode }) => {
-    const sendNotification = React.useCallback((notification: NotificationType) => {
-      toast.custom(() => (
-        <NotificationContent
-          type={notification.type}
-          title={notification.title}
-          description={notification.description}
-        />
-      ), {
-        duration: NOTIFICATION_DELAY,
-      });
-    }, []);
+    const sendNotification = React.useCallback(
+      (notification: NotificationType) => {
+        toast.custom(
+          () => (
+            <NotificationContent
+              type={notification.type}
+              title={notification.title}
+              description={notification.description}
+            />
+          ),
+          {
+            duration: NOTIFICATION_DELAY,
+          }
+        );
+      },
+      []
+    );
 
     return (
       <NotificationsContext.Provider value={sendNotification}>
         {children}
         <Toaster
-          position="bottom-right"
           toastOptions={{
-            unstyled: true,
             className: cn(
               "s-transition-all s-duration-300",
               "data-[state=open]:s-animate-in data-[state=closed]:s-animate-out",
@@ -105,9 +109,12 @@ export const Notification = {
               "data-[state=open]:s-slide-in-from-right-full"
             ),
           }}
+          className="s-flex s-flex-col s-items-end"
           duration={NOTIFICATION_DELAY}
           visibleToasts={9}
           closeButton={false}
+          expand={false}
+          invert={false}
         />
       </NotificationsContext.Provider>
     );
