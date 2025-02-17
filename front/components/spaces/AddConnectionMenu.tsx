@@ -38,6 +38,7 @@ import { useCallback, useState } from "react";
 import { CreateConnectionConfirmationModal } from "@app/components/data_source/CreateConnectionConfirmationModal";
 import { CreateOrUpdateConnectionBigQueryModal } from "@app/components/data_source/CreateOrUpdateConnectionBigQueryModal";
 import { CreateOrUpdateConnectionSnowflakeModal } from "@app/components/data_source/CreateOrUpdateConnectionSnowflakeModal";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import {
   CONNECTOR_CONFIGURATIONS,
   getConnectorProviderLogoWithFallback,
@@ -117,6 +118,7 @@ export const AddConnectionMenu = ({
   });
 
   const router = useRouter();
+  const { isDark } = useTheme();
   const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
   const { systemSpace } = useSystemSpace({ workspaceId: owner.sId });
 
@@ -489,7 +491,10 @@ export const AddConnectionMenu = ({
               <DropdownMenuItem
                 key={i.connectorProvider}
                 label={CONNECTOR_CONFIGURATIONS[i.connectorProvider].name}
-                icon={getConnectorProviderLogoWithFallback(i.connectorProvider)}
+                icon={getConnectorProviderLogoWithFallback({
+                  provider: i.connectorProvider,
+                  isDark,
+                })}
                 onClick={() => {
                   handleConnectionClick(i);
                 }}

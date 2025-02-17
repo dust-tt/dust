@@ -15,6 +15,7 @@ import { WrenchScrewdriverIcon } from "@heroicons/react/20/solid";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
 
 type CreateConnectionConfirmationModalProps = {
@@ -30,6 +31,7 @@ export function CreateConnectionConfirmationModal({
   onClose,
   onConfirm,
 }: CreateConnectionConfirmationModalProps) {
+  const { isDark } = useTheme();
   const [isLoading, setIsLoading] = useState(false);
   const [extraConfig, setExtraConfig] = useState<Record<string, string>>({});
 
@@ -70,7 +72,7 @@ export function CreateConnectionConfirmationModal({
             <Page.Vertical gap="lg" align="stretch">
               <Page.Header
                 title={`Connecting ${connectorProviderConfiguration.name}`}
-                icon={connectorProviderConfiguration.logoComponent}
+                icon={connectorProviderConfiguration.getLogoComponent(isDark)}
               />
               <Button
                 label="Read our guide"

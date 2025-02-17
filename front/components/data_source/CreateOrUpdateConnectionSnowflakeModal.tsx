@@ -22,6 +22,7 @@ import type {
 import { isConnectorsAPIError } from "@dust-tt/types";
 import { useState } from "react";
 
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
 
 type CreateOrUpdateConnectionSnowflakeModalProps = {
@@ -49,6 +50,7 @@ export function CreateOrUpdateConnectionSnowflakeModal({
   onSuccess: _onSuccess,
   dataSourceToUpdate,
 }: CreateOrUpdateConnectionSnowflakeModalProps) {
+  const { isDark } = useTheme();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [credentials, setCredentials] = useState<SnowflakeCredentials>({
@@ -214,7 +216,9 @@ export function CreateOrUpdateConnectionSnowflakeModal({
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
             <span className="[&>svg]:h-6 [&>svg]:w-6">
-              <Icon visual={connectorProviderConfiguration.logoComponent} />
+              <Icon
+                visual={connectorProviderConfiguration.getLogoComponent(isDark)}
+              />
             </span>
             Connecting {connectorProviderConfiguration.name}
           </SheetTitle>

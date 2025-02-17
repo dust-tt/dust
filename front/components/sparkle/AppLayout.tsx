@@ -8,6 +8,7 @@ import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/con
 import type { SidebarNavigation } from "@app/components/navigation/config";
 import { Navigation } from "@app/components/navigation/Navigation";
 import { QuickStartGuide } from "@app/components/QuickStartGuide";
+import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
 import { useAppKeyboardShortcuts } from "@app/hooks/useAppKeyboardShortcuts";
 import { useUser } from "@app/lib/swr/user";
 import { classNames } from "@app/lib/utils";
@@ -61,27 +62,6 @@ export default function AppLayout({
   }, []);
 
   useEffect(() => {
-    const theme = localStorage.getItem("theme");
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-
-    const setDarkMode = (isDark: boolean) => {
-      document.body.classList.toggle("dark", isDark);
-      document.body.classList.toggle("s-dark", isDark);
-    };
-
-    const handleSystemChange = (e: MediaQueryListEvent) => {
-      if (theme === "system") {
-        setDarkMode(e.matches);
-      }
-    };
-
-    setDarkMode(theme === "dark" || (theme === "system" && mediaQuery.matches));
-
-    mediaQuery.addEventListener("change", handleSystemChange);
-    return () => mediaQuery.removeEventListener("change", handleSystemChange);
-  }, []);
-
-  useEffect(() => {
     if (typeof window !== "undefined" && user?.sId) {
       // Identify the user with GTM
       window.dataLayer = window.dataLayer || [];
@@ -101,7 +81,7 @@ export default function AppLayout({
   }, [user?.email, user?.fullName, user?.sId]);
 
   return (
-    <>
+    <ThemeProvider>
       <Head>
         <title>{pageTitle ? pageTitle : `Dust - ${owner.name}`}</title>
         <link rel="shortcut icon" href="/static/favicon.png" />
@@ -209,6 +189,6 @@ export default function AppLayout({
               })(window,document,'script','dataLayer','${process.env.NEXT_PUBLIC_GTM_TRACKING_ID}');
             `}
       </Script>
-    </>
+    </ThemeProvider>
   );
 }

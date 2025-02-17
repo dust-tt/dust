@@ -21,6 +21,7 @@ import { useRouter } from "next/router";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -59,6 +60,7 @@ export default function EditDustAssistant({
   globalSpace,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
+  const { isDark } = useTheme();
   const sendNotification = useSendNotification();
 
   const {
@@ -235,10 +237,11 @@ export default function EditDustAssistant({
                         title={getDisplayNameForDataSource(dsView.dataSource)}
                         visual={
                           <ContextItem.Visual
-                            visual={getConnectorProviderLogoWithFallback(
-                              dsView.dataSource.connectorProvider,
-                              CloudArrowDownIcon
-                            )}
+                            visual={getConnectorProviderLogoWithFallback({
+                              provider: dsView.dataSource.connectorProvider,
+                              fallback: CloudArrowDownIcon,
+                              isDark,
+                            })}
                           />
                         }
                         action={
