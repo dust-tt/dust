@@ -76,8 +76,6 @@ interface GetContentNodesForDataSourceViewParams {
   // TODO(nodes-core): remove offset pagination upon project cleanup
   pagination?: CursorPaginationParams | OffsetPaginationParams;
   viewType: ContentNodesViewType;
-  // If onlyCoreAPI is true, the function will only use the Core API to fetch the content nodes.
-  onlyCoreAPI?: boolean;
 }
 
 interface GetContentNodesForDataSourceViewResult {

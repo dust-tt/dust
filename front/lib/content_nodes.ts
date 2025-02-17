@@ -42,44 +42,7 @@ function getVisualForFileContentNode(node: ContentNode & { type: "file" }) {
   return DocumentIcon;
 }
 
-// TODO(nodes-core) clean this up to always rely on the mime type.
-export function getVisualForContentNode(node: ContentNode, useMimeType = true) {
-  if (useMimeType) {
-    return getVisualForContentNodeBasedOnMimeType(node);
-  } else {
-    return getVisualForContentNodeBasedOnType(node);
-  }
-}
-
-function getVisualForContentNodeBasedOnType(node: ContentNode) {
-  switch (node.type) {
-    case "channel":
-      if (node.providerVisibility === "private") {
-        return LockIcon;
-      }
-      return ChatBubbleLeftRightIcon;
-
-    case "database":
-      return Square3Stack3DIcon;
-
-    case "file":
-      return getVisualForFileContentNode(
-        node as ContentNode & { type: "file" }
-      );
-
-    case "folder":
-      return FolderIcon;
-
-    default:
-      assertNever(node.type);
-  }
-}
-
-function getVisualForContentNodeBasedOnMimeType(node: ContentNode) {
-  if (!node.mimeType) {
-    // Hotfix to allow using the connNodes param.
-    return getVisualForContentNodeBasedOnType(node);
-  }
+export function getVisualForContentNode(node: ContentNode) {
   if (CHANNEL_MIME_TYPES.includes(node.mimeType)) {
     if (node.providerVisibility === "private") {
       return LockIcon;
@@ -100,10 +63,11 @@ function getVisualForContentNodeBasedOnMimeType(node: ContentNode) {
       return Square3Stack3DIcon;
     case "folder":
       return FolderIcon;
-    // TODO(2025-01-24 aubin) once we remove the "channel" type, change this to case "file" and add an assertNever
-    default:
+    case "file":
       return getVisualForFileContentNode(
         node as ContentNode & { type: "file" }
       );
+    default:
+      assertNever(node.type);
   }
 }
