@@ -215,8 +215,6 @@ export async function syncTicket({
       additionalPrefixes: {
         metadata: metadata.join(", "),
         labels: ticket.tags.join(", ") || "none",
-        customFields:
-          ticket.custom_fields.map(({ value }) => value).join(", ") || "none",
       },
     });
 
@@ -238,7 +236,6 @@ export async function syncTicket({
         `updatedAt:${updatedAtDate.getTime()}`,
         `createdAt:${createdAtDate.getTime()}`,
         ...metadata,
-        ...ticket.custom_fields.map(({ id, value }) => `${id}:${value}`),
         ...filterCustomTags(ticket.tags, logger),
       ],
       parents,
