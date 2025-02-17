@@ -499,6 +499,28 @@ async function handler(
         });
       }
 
+      // Prohibit passing parents when not coming from connectors.
+      if (!auth.isSystemKey() && r.data.parents) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "Setting a custom hierarchy is not supported yet. Please omit the parents field.",
+          },
+        });
+      }
+      if (!auth.isSystemKey() && r.data.parent_id) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "Setting a custom hierarchy is not supported yet. Please omit the parent_id field.",
+          },
+        });
+      }
+
       // Enforce parents consistency: we expect users to either not pass them (recommended) or pass them correctly.
       const parentsDisclaimerMessage =
         "The use of the parents field is discouraged, this field is intended for internal uses only.";
