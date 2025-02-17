@@ -108,7 +108,7 @@ export function getChannelAsContentNode(
       nodeType: "channel",
     }),
     parentInternalId,
-    type: "channel",
+    type: "folder",
     title: channel.displayName || "unnamed",
     sourceUrl: channel.webUrl ?? null,
     lastUpdatedAt: null,

@@ -676,7 +676,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
       nodes.push({
         internalId: getTeamsInternalId(this.connectorId),
         parentInternalId: null,
-        type: "channel",
+        type: "folder",
         title: "Conversations",
         sourceUrl: null,
         expandable: true,
@@ -691,7 +691,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
       nodes.push({
         internalId: getTeamInternalId(this.connectorId, team.teamId),
         parentInternalId: getTeamsInternalId(this.connectorId),
-        type: "channel",
+        type: "folder",
         title: team.name,
         sourceUrl: null,
         expandable: false,
