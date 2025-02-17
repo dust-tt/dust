@@ -863,17 +863,34 @@ async function makeContentFragments(
       !slackBotMessages.find((sbm) => sbm.messageTs === m.ts)
   );
 
-  const channel = await slackClient.conversations.info({
-    channel: channelId,
-  });
+  let channelName: string | null = null;
+  try {
+    const channel = await slackClient.conversations.info({
+      channel: channelId,
+    });
 
-  if (channel.error) {
-    return new Err(
-      new Error(`Could not retrieve channel name: ${channel.error}`)
+    if (channel.error) {
+      return new Err(
+        new Error(`Could not retrieve channel name: ${channel.error}`)
+      );
+    }
+    if (!channel.channel || !channel.channel.name) {
+      return new Err(new Error("Could not retrieve channel name"));
+    }
+
+    channelName = channel.channel.name;
+  } catch (e) {
+    // We were missing the "im:read" scope, so we fallback to the "Unknown" channel name
+    // because we would trigger an oauth error otherwise.
+    // We now ask for the "im:read" scope since 17/02/2025
+    // We can remove this fallback in a few months.
+    channelName = "Unknown";
+    logger.warn(
+      {
+        error: e,
+      },
+      "Failed to retrieve channel name"
     );
-  }
-  if (!channel.channel || !channel.channel.name) {
-    return new Err(new Error("Could not retrieve channel name"));
   }
 
   let document: CoreAPIDataSourceDocumentSection | null = null;
@@ -890,7 +907,7 @@ async function makeContentFragments(
   } else {
     document = await formatMessagesForUpsert({
       dataSourceConfig: dataSourceConfigFromConnector(connector),
-      channelName: channel.channel.name,
+      channelName: channelName,
       messages: allMessages,
       isThread: true,
       connectorId: connector.id,
@@ -915,7 +932,7 @@ async function makeContentFragments(
     : `$url: ${url}\nNo messages previously sent in this thread.`;
 
   const contentType = "text/vnd.dust.attachment.slack.thread";
-  const fileName = `slack_thread-${channel.channel.name}-${threadTs}.txt`;
+  const fileName = `slack_thread-${channelName}-${threadTs}.txt`;
 
   const blob = new Blob([section]);
   const fileSize = blob.size;
@@ -934,7 +951,7 @@ async function makeContentFragments(
   }
 
   allContentFragments.push({
-    title: `Thread content from #${channel.channel.name}`,
+    title: `Thread content from #${channelName}`,
     url: url,
     fileId: fileRes.value.sId,
     context: null,
