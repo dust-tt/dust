@@ -308,7 +308,7 @@ export function APIKeys({
           </DialogContent>
         </Dialog>
       </Page.Horizontal>
-      <div className="space-y-4 divide-y divide-gray-200">
+      <div className="dark:divide-gray-200-night space-y-4 divide-y divide-gray-200">
         <ul role="list" className="pt-4">
           {keys
             .sort((a, b) => (b.status === "active" ? 1 : -1))
@@ -333,7 +333,8 @@ export function APIKeys({
                         <div>
                           <p
                             className={classNames(
-                              "font-mono truncate text-sm text-slate-700"
+                              "font-mono truncate text-sm",
+                              "text-slate-700 dark:text-slate-700-night"
                             )}
                           >
                             Name:{" "}
@@ -341,7 +342,8 @@ export function APIKeys({
                           </p>
                           <p
                             className={classNames(
-                              "font-mono truncate text-sm text-slate-700"
+                              "font-mono truncate text-sm",
+                              "text-slate-700 dark:text-slate-700-night"
                             )}
                           >
                             Domain:{" "}
@@ -352,7 +354,8 @@ export function APIKeys({
                           {key.groupId && (
                             <p
                               className={classNames(
-                                "font-mono truncate text-sm text-slate-700"
+                                "font-mono truncate text-sm",
+                                "text-slate-700 dark:text-slate-700-night"
                               )}
                             >
                               Scoped to space:{" "}
@@ -362,14 +365,24 @@ export function APIKeys({
                             </p>
                           )}
                           <pre className="text-sm">{key.secret}</pre>
-                          <p className="front-normal text-xs text-element-700">
+                          <p
+                            className={classNames(
+                              "front-normal text-xs",
+                              "text-element-700 dark:text-element-700-night"
+                            )}
+                          >
                             Created {key.creator ? `by ${key.creator} ` : ""}
                             {timeAgoFrom(key.createdAt, {
                               useLongFormat: true,
                             })}{" "}
                             ago.
                           </p>
-                          <p className="front-normal text-xs text-element-700">
+                          <p
+                            className={classNames(
+                              "front-normal text-xs",
+                              "text-element-700 dark:text-element-700-night"
+                            )}
+                          >
                             {key.lastUsedAt ? (
                               <>
                                 Last used&nbsp;
