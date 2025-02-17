@@ -75,16 +75,19 @@ async function handler(
   switch (req.method) {
     case "GET":
       // get the last 50 synced urls
-      /*const redisKey = getRedisKeyForNotionUrlSync(owner.sId);
-      const urlAndTimestamps = await runOnRedis(
-        { origin: "notion_url_sync" },
-        async (redis) => {
-          const urls = await redis.zRange(redisKey, 0, 49);
+      const redisKey = getRedisKeyForNotionUrlSync(owner.sId);
+      const lastSyncedUrls = (
+        await runOnRedis({ origin: "notion_url_sync" }, async (redis) => {
+          const urls = await redis.zRange(redisKey, 0, 49, {
+            REV: true,
+          });
           return urls;
-        }
-      );*/
+        })
+      ).map((result): GetPostNotionSyncResponseBody["syncResults"][number] =>
+        JSON.parse(result)
+      );
 
-      const lastSyncedUrls: GetPostNotionSyncResponseBody["syncResults"] = [
+      /*const lastSyncedUrls: GetPostNotionSyncResponseBody["syncResults"] = [
         { url: "From endpoint", timestamp: Date.now(), success: true },
         {
           url: "https://www.notion.so/1...",
@@ -123,7 +126,7 @@ async function handler(
           timestamp: Date.now(),
           success: true,
         },
-      ];
+      ];*/
 
       return res.status(200).json({ syncResults: lastSyncedUrls });
     case "POST":

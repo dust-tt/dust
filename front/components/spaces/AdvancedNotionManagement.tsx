@@ -70,6 +70,7 @@ export function AdvancedNotionManagement({
     const urlsSyncedLessThan20MinutesAgo = lastSyncedUrls.filter(
       (l) => l.timestamp > Date.now() - 20 * 60 * 1000
     );
+
     if (
       urls.some((url) =>
         urlsSyncedLessThan20MinutesAgo.some((l) => l.url === url)
@@ -199,7 +200,7 @@ export function AdvancedNotionManagement({
             description: "Some URLs were not synced due to errors.",
           });
         }
-        mutate();
+        await mutate();
       }
     } catch (e) {
       sendNotification({
