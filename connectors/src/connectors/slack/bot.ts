@@ -123,6 +123,14 @@ export async function botAnswerMessage(
 
     return new Ok(undefined);
   } catch (e) {
+    logger.error(
+      {
+        error: e,
+        connectorId: connector.id,
+        slackTeamId,
+      },
+      "Unexpected exception answering to Slack Chat Bot message"
+    );
     if (e instanceof ExternalOAuthTokenError) {
       // Mark the connector as errored so that the user is notified in the Connection Admin UI.
       await syncFailed(connector.id, "oauth_token_revoked");
@@ -136,14 +144,6 @@ export async function botAnswerMessage(
 
       return new Ok(undefined);
     }
-    logger.error(
-      {
-        error: e,
-        connectorId: connector.id,
-        slackTeamId,
-      },
-      "Unexpected exception answering to Slack Chat Bot message"
-    );
     const slackClient = await getSlackClient(connector.id);
     await slackClient.chat.postMessage({
       channel: slackChannel,
