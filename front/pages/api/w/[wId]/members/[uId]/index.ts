@@ -89,18 +89,6 @@ async function handler(
               assertNever(revokeResult.error.type);
           }
         }
-
-        if (revokeResult.isOk()) {
-          void ServerSideTracking.trackRevokeMembership({
-            user: user.toJSON(),
-            workspace: owner,
-            role: revokeResult.value.role,
-            startAt: revokeResult.value.startAt,
-            endAt: revokeResult.value.endAt,
-          });
-        }
-
-        await launchUpdateUsageWorkflow({ workspaceId: owner.sId });
       } else {
         const role = req.body.role;
         if (!isMembershipRoleType(role)) {
