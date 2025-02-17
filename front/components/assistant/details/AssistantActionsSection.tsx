@@ -476,14 +476,25 @@ function RetrievalActionTagsFilterPopover({
     }
   }
 
-  const tagsLabel = tagsAuto
-    ? "Filters"
-    : `Filters (${tagsIn.length + tagsNot.length})`;
+  let tagsCounter: number | null = null;
+  let tagsLabel = "Filters";
+  if (tagsFilter === "auto") {
+    tagsLabel = "Filters (auto)";
+  } else if (tagsFilter) {
+    tagsCounter = tagsFilter.in.length + tagsFilter.not.length;
+  }
 
   return (
     <PopoverRoot modal={true}>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" label={tagsLabel} isSelect />
+        <Button
+          variant="outline"
+          size="sm"
+          label={tagsLabel}
+          isSelect
+          counterValue={tagsCounter ? tagsCounter.toString() : "auto"}
+          isCounter={tagsCounter !== null}
+        />
       </PopoverTrigger>
       <PopoverContent>
         <div className="flex flex-col gap-8">

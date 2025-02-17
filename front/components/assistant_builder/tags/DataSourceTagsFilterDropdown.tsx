@@ -107,11 +107,12 @@ export function DataSourceTagsFilterDropdown({
   };
 
   const tagsFilter = currentDataSourceConfiguration.tagsFilter;
-  let tagsLabels = "Filters";
+  let tagsCounter: number | null = null;
+  let tagsLabel = "Filters";
   if (tagsFilter === "auto") {
-    tagsLabels = "Filters (auto)";
+    tagsLabel = "Filters (auto)";
   } else if (tagsFilter) {
-    tagsLabels = `Filters (${tagsFilter.in.length + tagsFilter.not.length})`;
+    tagsCounter = tagsFilter.in.length + tagsFilter.not.length;
   }
 
   return (
@@ -125,7 +126,14 @@ export function DataSourceTagsFilterDropdown({
       modal={true}
     >
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" label={tagsLabels} isSelect />
+        <Button
+          variant="outline"
+          size="sm"
+          label={tagsLabel}
+          isSelect
+          counterValue={tagsCounter ? tagsCounter.toString() : "auto"}
+          isCounter={tagsCounter !== null}
+        />
       </PopoverTrigger>
       <PopoverContent className="w-[600px] max-w-[600px]">
         <div className="flex flex-col gap-8 p-2">
