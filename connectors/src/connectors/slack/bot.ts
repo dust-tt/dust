@@ -126,6 +126,7 @@ export async function botAnswerMessage(
     if (e instanceof ExternalOAuthTokenError) {
       // Mark the connector as errored so that the user is notified in the Connection Admin UI.
       await syncFailed(connector.id, "oauth_token_revoked");
+      // Send a custom message for the user to be informed about it.
       const slackClient = await getSlackClient(connector.id);
       await slackClient.chat.postMessage({
         channel: slackChannel,
