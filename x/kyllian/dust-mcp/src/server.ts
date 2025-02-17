@@ -10,6 +10,7 @@ import {
   streamAgentAnswer,
 } from "./api.js";
 import { logError, logFatalError, logJson, logToFile } from "./config.js";
+import { version } from "./version.js";
 
 async function askAgent(
   dustAPI: DustAPI,
@@ -135,7 +136,7 @@ export async function startServer() {
   // Initialize the MCP server
   const server = new McpServer({
     name: "dust-mcp-server",
-    version: "1.0.0",
+    version,
   });
 
   // Register each agent as a tool

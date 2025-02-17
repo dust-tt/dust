@@ -4,6 +4,7 @@ import { Command } from "commander";
 import { getDustAPI } from "./api.js";
 import { isLoggedIn, login, logout } from "./auth.js";
 import { startServer } from "./server.js";
+import { version } from "./version.js";
 
 const loginAction = async (quiet = false) => {
   try {
@@ -96,7 +97,7 @@ const serverAction = async () => {
 async function main() {
   const program = new Command();
 
-  program.name("dust-mcp").description("Dust MCP CLI").version("1.0.0");
+  program.name("dust-mcp").description("Dust MCP CLI").version(version);
 
   const auth = program.command("auth").description("Authenticate with Dust");
 
