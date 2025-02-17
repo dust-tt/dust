@@ -1,17 +1,6 @@
-import {
-  Button,
-  Chip,
-  cn,
-  PopoverContent,
-  PopoverRoot,
-  PopoverTrigger,
-  ScrollArea,
-  ScrollBar,
-  SearchInput,
-} from "@dust-tt/sparkle";
+import { Button, Chip, SearchInputWithPopover } from "@dust-tt/sparkle";
 import type { DataSourceTag } from "@dust-tt/types";
-import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
-import React, { forwardRef } from "react";
+import React from "react";
 
 export interface TagSearchProps {
   searchInputValue: string;
@@ -54,6 +43,7 @@ export const TagSearchInput = ({
         }}
         isLoading={isLoading}
         disabled={disabled}
+        mountPortal={false}
       >
         <div className="flex flex-col gap-2 pr-4">
           {availableTags.length > 0 ? (
@@ -69,16 +59,6 @@ export const TagSearchInput = ({
                   setSearchInputValue("");
                 }}
               />
-              // <div
-              //   key={`${tag.tag}-${i}`}
-              //   className="cursor-pointer py-2 hover:bg-primary-100 dark:hover:bg-primary-100-night"
-              //   onClick={() => {
-              //     onTagAdd(tag);
-              //     setSearchInputValue("");
-              //   }}
-              // >
-              //   {tag.tag}
-              // </div>
             ))
           ) : (
             <Button
@@ -105,98 +85,3 @@ export const TagSearchInput = ({
     </div>
   );
 };
-
-export interface SearchInputProps {
-  placeholder?: string;
-  value: string | null;
-  onChange: (value: string) => void;
-  onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
-  onFocus?: () => void;
-  name: string;
-  disabled?: boolean;
-  isLoading?: boolean;
-  className?: string;
-}
-
-export interface SearchInputWithPopoverProps extends SearchInputProps {
-  children: React.ReactNode;
-  contentClassName?: string;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}
-
-export const SearchInputWithPopover = forwardRef<
-  HTMLInputElement,
-  SearchInputWithPopoverProps
->(
-  (
-    {
-      children,
-      contentClassName,
-      className,
-      open,
-      onOpenChange,
-      value,
-      onChange,
-      ...searchInputProps
-    },
-    ref
-  ) => {
-    return (
-      <PopoverRoot modal={false} open={open} onOpenChange={onOpenChange}>
-        <PopoverTrigger asChild>
-          <SearchInput
-            ref={ref}
-            className={cn("s-w-full", className)}
-            value={value}
-            onChange={(newValue) => {
-              onChange?.(newValue);
-              if (newValue && !open) {
-                onOpenChange(true);
-              }
-            }}
-            {...searchInputProps}
-            aria-expanded={open}
-            aria-haspopup="listbox"
-            aria-controls="search-popover-content"
-          />
-        </PopoverTrigger>
-        <PopoverContent
-          mountPortal={false}
-          className={cn(
-            "w-[--radix-popover-trigger-width] rounded-lg border bg-background shadow-md dark:bg-background-night",
-            contentClassName
-          )}
-          sideOffset={0}
-          style={{ pointerEvents: "all" }}
-          align="start"
-          id="search-popover-content"
-          onOpenAutoFocus={(e) => e.preventDefault()}
-          onCloseAutoFocus={(e) => e.preventDefault()}
-          onInteractOutside={() => onOpenChange(false)}
-        >
-          <ScrollArea
-            className="max-h-72"
-            style={{
-              position: "relative",
-              height: "288px", // 72 * 4px (Tailwind's default)
-            }}
-          >
-            <ScrollAreaPrimitive.Viewport
-              className="h-full w-full"
-              style={{
-                overflow: "auto",
-                WebkitOverflowScrolling: "touch",
-              }}
-            >
-              {children}
-            </ScrollAreaPrimitive.Viewport>
-            <ScrollBar className="py-0" />
-          </ScrollArea>
-        </PopoverContent>
-      </PopoverRoot>
-    );
-  }
-);
-
-SearchInputWithPopover.displayName = "SearchInputWithPopover";
