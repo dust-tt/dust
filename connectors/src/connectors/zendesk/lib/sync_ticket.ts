@@ -215,7 +215,10 @@ export async function syncTicket({
       createdAt: createdAtDate,
       updatedAt: updatedAtDate,
       additionalPrefixes: {
-        metadata: metadata.join(", "),
+        metadata: metadata
+          // We remove IDs from the prefixes since they do not hold any semantic meaning.
+          .filter((field) => !["organizationId", "groupId"].includes(field))
+          .join(", "),
         labels: ticket.tags.join(", ") || "none",
       },
     });
