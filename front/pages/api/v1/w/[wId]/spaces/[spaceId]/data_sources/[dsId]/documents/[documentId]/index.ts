@@ -521,19 +521,18 @@ async function handler(
             },
           });
         }
-      }
-      if (
-        r.data.parents &&
-        (r.data.parents.length >= 2 || r.data.parent_id !== null) &&
-        r.data.parents[1] !== r.data.parent_id
-      ) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: `Invalid parent id: parents[1] and parent_id should be equal.\n${parentsDisclaimerMessage}`,
-          },
-        });
+        if (
+          (r.data.parents.length >= 2 || r.data.parent_id !== null) &&
+          r.data.parents[1] !== r.data.parent_id
+        ) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: `Invalid parent id: parents[1] and parent_id should be equal.\n${parentsDisclaimerMessage}`,
+            },
+          });
+        }
       }
 
       const documentId = req.query.documentId as string;
