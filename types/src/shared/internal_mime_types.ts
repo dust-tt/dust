@@ -112,7 +112,14 @@ export const MIME_TYPES = {
   }),
   ZENDESK: getMimeTypes({
     provider: "zendesk",
-    resourceTypes: ["HELP_CENTER", "CATEGORY", "ARTICLE", "TICKETS", "TICKET"],
+    resourceTypes: [
+      "BRAND",
+      "HELP_CENTER",
+      "CATEGORY",
+      "ARTICLE",
+      "TICKETS",
+      "TICKET",
+    ],
   }),
   BIGQUERY: getMimeTypes({
     provider: "bigquery",
