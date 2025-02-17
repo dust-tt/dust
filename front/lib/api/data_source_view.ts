@@ -208,7 +208,7 @@ function removeCatchAllFoldersIfEmpty(
   );
 }
 
-function makeCoreDataSourceViewFilter(
+export function makeCoreDataSourceViewFilter(
   dataSourceView: DataSourceViewResource | DataSourceViewType
 ): CoreAPIDatasourceViewFilter {
   return {
