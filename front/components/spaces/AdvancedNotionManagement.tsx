@@ -43,6 +43,11 @@ export function AdvancedNotionManagement({
   const [error, setError] = useState<string | undefined>(undefined);
   const [syncing, setSyncing] = useState(false);
 
+  const { lastSyncedUrls, isLoading, mutate } = useNotionLastSyncedUrls({
+    owner,
+    dataSource,
+  });
+
   const validateUrls = (urls: string[]) => {
     if (urls.length > 10) {
       setError("You can only enter up to 10 URLs");
@@ -62,14 +67,20 @@ export function AdvancedNotionManagement({
       );
       return false;
     }
+    const urlsSyncedLessThan20MinutesAgo = lastSyncedUrls.filter(
+      (l) => l.timestamp > Date.now() - 20 * 60 * 1000
+    );
+    if (
+      urls.some((url) =>
+        urlsSyncedLessThan20MinutesAgo.some((l) => l.url === url)
+      )
+    ) {
+      setError("One or more URL(s) were synced less than 20 minutes ago");
+      return false;
+    }
     setError(undefined);
     return true;
   };
-
-  const { lastSyncedUrls, isLoading, mutate } = useNotionLastSyncedUrls({
-    owner,
-    dataSource,
-  });
 
   const columns = [
     {
@@ -230,7 +241,17 @@ export function AdvancedNotionManagement({
       {/* List of the last 50 synced URLs */}
       {!isLoading && lastSyncedUrls.length > 0 && (
         <>
-          <div className="p-1">Recently synced URLs</div>
+          <div className="p-1 font-bold">Recently synced URLs</div>
+          <div className="p-1 text-xs">
+            An{" "}
+            <Icon
+              visual={CheckCircleIcon}
+              size="xs"
+              className="inline-block text-success-500"
+            />{" "}
+            icon indicates sync successfully started, but URLs may take up to 20
+            minutes to sync fully.
+          </div>
           <DataTable columns={columns} data={lastSyncedUrls} />
         </>
       )}

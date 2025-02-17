@@ -1,7 +1,8 @@
-import type {GetPostNotionSyncResponseBody, WithAPIErrorResponse} from "@dust-tt/types";
-import {
-  PostNotionSyncPayloadSchema
+import type {
+  GetPostNotionSyncResponseBody,
+  WithAPIErrorResponse,
 } from "@dust-tt/types";
+import { PostNotionSyncPayloadSchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
