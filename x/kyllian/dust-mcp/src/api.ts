@@ -79,17 +79,17 @@ export async function postConversation({
   visibility?: ConversationVisibility;
 }): Promise<Result<ConversationPublicType, SubmitMessageError>> {
   const { input, mentions } = messageData;
-  // const userRes = await dustAPI.me();
+  const userRes = await dustAPI.me();
 
-  // if (!userRes.isOk()) {
-  //   return new Err({
-  //     type: "user_not_found",
-  //     title: "User not found.",
-  //     message: "Please log in again.",
-  //   });
-  // }
+  if (!userRes.isOk()) {
+    return new Err({
+      type: "user_not_found",
+      title: "User not found.",
+      message: "Please log in again.",
+    });
+  }
 
-  // const user = userRes.value;
+  const user = userRes.value;
 
   // Create new conversation and post the initial message at the same time.
   const cRes = await dustAPI.createConversation({
@@ -98,17 +98,13 @@ export async function postConversation({
     message: {
       content: input,
       context: {
-        // TODO(kyllian): Replace this as it doesn't have anything to do with Cursor. Either replace with the user's information or MCP client.
-        username: "Cursor",
-        fullName: "Cursor: The AI Code Editor",
+        username: user.username,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
-        origin: "api",
-        // username: user.username,
-        // email: user.email,
-        // fullName: user.fullName,
-        // timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
-        // profilePictureUrl: user.image,
-        // origin: "api",
+        fullName: "Dust MCP",
+        email: user.email,
+        profilePictureUrl:
+          "https://dust.tt/static/systemavatar/dust_avatar_full.png",
+        origin: "api", // NOTE: Should we add a new origin for MCP?
       },
       mentions,
     },
@@ -149,34 +145,30 @@ export async function postMessage({
   >
 > {
   const { input, mentions } = messageData;
-  // const userRes = await dustAPI.me();
+  const userRes = await dustAPI.me();
 
-  // if (!userRes.isOk()) {
-  //   return new Err({
-  //     type: "user_not_found",
-  //     title: "User not found.",
-  //     message: "Please log in again.",
-  //   });
-  // }
+  if (!userRes.isOk()) {
+    return new Err({
+      type: "user_not_found",
+      title: "User not found.",
+      message: "Please log in again.",
+    });
+  }
 
-  // const user = userRes.value;
+  const user = userRes.value;
 
   const mRes = await dustAPI.postUserMessage({
     conversationId,
     message: {
       content: input,
       context: {
-        // TODO(kyllian): Replace this as it doesn't have anything to do with Cursor. Either replace with the user's information or MCP client.
-        username: "Cursor",
-        fullName: "Cursor: The AI Code Editor",
+        username: user.username,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
-        origin: "api",
-        // username: user.username,
-        // email: user.email,
-        // fullName: user.fullName,
-        // timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
-        // profilePictureUrl: user.image,
-        // origin: "api",
+        fullName: "Dust MCP",
+        email: user.email,
+        profilePictureUrl:
+          "https://dust.tt/static/systemavatar/dust_avatar_full.png",
+        origin: "api", // NOTE: Should we add a new origin for MCP?
       },
       mentions,
     },
