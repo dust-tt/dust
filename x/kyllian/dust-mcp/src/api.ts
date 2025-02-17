@@ -100,10 +100,9 @@ export async function postConversation({
       context: {
         username: user.username,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
-        fullName: "Dust MCP",
+        fullName: "Dust MCP", // NOTE: Should we use user's name or something referring to the MCP?
         email: user.email,
-        profilePictureUrl:
-          "https://dust.tt/static/systemavatar/dust_avatar_full.png",
+        profilePictureUrl: user.image,
         origin: "api", // NOTE: Should we add a new origin for MCP?
       },
       mentions,
@@ -164,10 +163,9 @@ export async function postMessage({
       context: {
         username: user.username,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
-        fullName: "Dust MCP",
+        fullName: "Dust MCP", // NOTE: Should we use user's name or something referring to the MCP?
         email: user.email,
-        profilePictureUrl:
-          "https://dust.tt/static/systemavatar/dust_avatar_full.png",
+        profilePictureUrl: user.image,
         origin: "api", // NOTE: Should we add a new origin for MCP?
       },
       mentions,
