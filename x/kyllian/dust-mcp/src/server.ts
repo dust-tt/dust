@@ -145,13 +145,13 @@ export async function startServer() {
       agent.name,
       agent.description,
       {
+        message: z.string().describe("Message to send to the agent"),
         conversationId: z
           .string()
           .optional()
           .describe(
             "Existing conversation ID - must be provided to continue a conversation"
           ),
-        message: z.string().describe("Message to send to the agent"),
       },
       async ({ conversationId, message }) => {
         const result = await askAgent(
