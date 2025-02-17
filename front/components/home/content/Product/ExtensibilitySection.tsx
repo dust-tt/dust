@@ -1,6 +1,5 @@
 import { Div3D, Hover3D } from "@dust-tt/sparkle";
 import Link from "next/link";
-import React from "react";
 
 import { ImgBlock } from "@app/components/home/ContentBlocks";
 import { A, Grid, H2, P } from "@app/components/home/ContentComponents";
@@ -78,16 +77,16 @@ export function ExtensibilitySection() {
               className={classNames("relative")}
             >
               <Div3D depth={-20}>
-                <img src="/static/landing/slack/slack1.png" />
+                <img src="/static/landing/support/support1.png" />
               </Div3D>
-              <Div3D depth={20} className="absolute top-0">
-                <img src="/static/landing/slack/slack2.png" />
+              <Div3D depth={0} className="absolute top-0">
+                <img src="/static/landing/support/support2.png" />
               </Div3D>
-              <Div3D depth={40} className="absolute top-0">
-                <img src="/static/landing/slack/slack3.png" />
+              <Div3D depth={15} className="absolute top-0">
+                <img src="/static/landing/support/support3.png" />
               </Div3D>
-              <Div3D depth={70} className="absolute top-0">
-                <img src="/static/landing/slack/slack4.png" />
+              <Div3D depth={60} className="absolute top-0">
+                <img src="/static/landing/support/support4.png" />
               </Div3D>
             </Hover3D>
           </ImgBlock>
@@ -105,17 +104,11 @@ export function ExtensibilitySection() {
               perspective={1000}
               className={classNames("relative")}
             >
-              <Div3D depth={-20}>
-                <img src="/static/landing/connect/connect1.png" />
+              <Div3D depth={-40}>
+                <img src="/static/landing/crm/crm1.png" />
               </Div3D>
               <Div3D depth={0} className="absolute top-0">
-                <img src="/static/landing/connect/connect2.png" />
-              </Div3D>
-              <Div3D depth={15} className="absolute top-0">
-                <img src="/static/landing/connect/connect3.png" />
-              </Div3D>
-              <Div3D depth={60} className="absolute top-0">
-                <img src="/static/landing/connect/connect4.png" />
+                <img src="/static/landing/crm/crm2.png" />
               </Div3D>
             </Hover3D>
           </ImgBlock>

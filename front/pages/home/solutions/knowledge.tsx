@@ -136,11 +136,7 @@ export default function Knowledge() {
                   ],
                 },
               ],
-              assistantBlocks: [
-                assistantExamples[3],
-                assistantExamples[4],
-                assistantExamples[5],
-              ],
+              assistantBlocks: [assistantExamples[3], assistantExamples[4]],
             },
           ]}
         />
@@ -181,13 +177,14 @@ const assistantExamples: SolutionSectionAssistantBlockProps[] = [
     ),
   },
   {
-    emoji: "🧑‍🍳",
-    name: "@LikeImAnEngineer",
+    emoji: "🔬",
+    name: "@docsUpdate",
     backgroundColor: "bg-sky-300",
     description: (
       <>
-        Translates internal memos focusing on&nbsp;the technical implications
-        and&nbsp;providing reminders on&nbsp;certain business priorities
+        Analyzes existing documentation in&nbsp;the context of&nbsp;internal
+        discussions on&nbsp;product launches to&nbsp;highlight update
+        requirements
       </>
     ),
   },
@@ -203,6 +200,17 @@ const assistantExamples: SolutionSectionAssistantBlockProps[] = [
       </>
     ),
   },
+  {
+    emoji: "🧑‍🍳",
+    name: "@LikeImAnEngineer",
+    backgroundColor: "bg-sky-300",
+    description: (
+      <>
+        Translates internal memos focusing on&nbsp;the technical implications
+        and&nbsp;providing reminders on&nbsp;certain business priorities
+      </>
+    ),
+  },
 ];
 
 export function KnowledgeCaroussel() {
@@ -211,7 +219,7 @@ export function KnowledgeCaroussel() {
       title={pageSettings.uptitle}
       subtitle={pageSettings.title}
       description={pageSettings.description}
-      assistants={assistantExamples}
+      assistants={assistantExamples.slice(0, 4)}
       from={pageSettings.from}
       to={pageSettings.to}
       border="border-pink-100/60"

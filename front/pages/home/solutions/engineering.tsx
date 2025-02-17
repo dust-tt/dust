@@ -99,7 +99,7 @@ export default function Engineering() {
               assistantBlocks: [
                 assistantExamples[0],
                 assistantExamples[1],
-                assistantExamples[2],
+                assistantExamples[5],
               ],
             },
           ]}
@@ -159,7 +159,7 @@ export default function Engineering() {
               assistantBlocks: [
                 assistantExamples[3],
                 assistantExamples[4],
-                assistantExamples[5],
+                assistantExamples[2],
               ],
             },
           ]}
@@ -219,6 +219,28 @@ const assistantExamples: SolutionSectionAssistantBlockProps[] = [
       </>
     ),
   },
+  {
+    emoji: "⭐️",
+    name: "@engGeneral",
+    backgroundColor: "bg-emerald-300",
+    description: (
+      <>
+        Answers general questions about code architecture and&nbsp;engineering
+        team processes
+      </>
+    ),
+  },
+  {
+    emoji: "🏴‍☠️",
+    name: "@codeGenius",
+    backgroundColor: "bg-emerald-300",
+    description: (
+      <>
+        Answers general questions about code to&nbsp;avoid a&nbsp;trip
+        to&nbsp;StackOverflow
+      </>
+    ),
+  },
 ];
 
 export function EngineeringCaroussel() {
@@ -227,7 +249,7 @@ export function EngineeringCaroussel() {
       title={pageSettings.uptitle}
       subtitle={pageSettings.title}
       description={pageSettings.description}
-      assistants={assistantExamples}
+      assistants={assistantExamples.slice(0, 4)}
       from={pageSettings.from}
       to={pageSettings.to}
       border="border-pink-100/60"
