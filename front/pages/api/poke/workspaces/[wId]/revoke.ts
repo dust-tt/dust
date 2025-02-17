@@ -7,10 +7,7 @@ import { revokeAndTrackMembership } from "@app/lib/api/membership";
 import { getUserForWorkspace } from "@app/lib/api/user";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { ServerSideTracking } from "@app/lib/tracking/server";
 import { apiError } from "@app/logger/withlogging";
-import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
 
 export type RevokeUserResponseBody = {
   success: true;

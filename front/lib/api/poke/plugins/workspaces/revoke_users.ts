@@ -3,7 +3,6 @@ import assert from "assert";
 
 import { revokeAndTrackMembership } from "@app/lib/api/membership";
 import { createPlugin } from "@app/lib/api/poke/types";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 
 export const revokeUsersPlugin = createPlugin(

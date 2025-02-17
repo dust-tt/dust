@@ -14,7 +14,6 @@ import { showDebugTools } from "@app/lib/development";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { apiError } from "@app/logger/withlogging";
-import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
 
 export type PostMemberResponseBody = {
   member: UserTypeWithWorkspaces;
