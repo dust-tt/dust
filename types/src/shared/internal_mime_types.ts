@@ -84,6 +84,7 @@ export const MIME_TYPES = {
       "CONVERSATION",
       "TEAM",
       "ARTICLE",
+      "HELP_CENTER",
     ],
   }),
   MICROSOFT: getMimeTypes({
