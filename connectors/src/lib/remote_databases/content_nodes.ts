@@ -1,5 +1,8 @@
-import type { ConnectorPermission, ContentNode } from "@dust-tt/types";
-import { MIME_TYPES } from "@dust-tt/types";
+import type {
+  ConnectorPermission,
+  ContentNode,
+  MIME_TYPES,
+} from "@dust-tt/types";
 
 /**
  * 3 types of nodes in a remote database content tree:
@@ -28,7 +31,8 @@ export const getContentNodeTypeFromInternalId = (
 
 export const getContentNodeFromInternalId = (
   internalId: string,
-  permission: ConnectorPermission = "none"
+  permission: ConnectorPermission = "none",
+  mimeTypes: typeof MIME_TYPES.BIGQUERY | typeof MIME_TYPES.SNOWFLAKE
 ): ContentNode => {
   const type = getContentNodeTypeFromInternalId(internalId);
   const [databaseName, schemaName, tableName] = internalId.split(".");
@@ -44,7 +48,7 @@ export const getContentNodeFromInternalId = (
       preventSelection: false,
       permission,
       lastUpdatedAt: null,
-      mimeType: MIME_TYPES.BIGQUERY.DATABASE,
+      mimeType: mimeTypes.DATABASE,
     };
   }
   if (type === "schema") {
@@ -58,7 +62,7 @@ export const getContentNodeFromInternalId = (
       preventSelection: false,
       permission,
       lastUpdatedAt: null,
-      mimeType: MIME_TYPES.BIGQUERY.SCHEMA,
+      mimeType: mimeTypes.SCHEMA,
     };
   }
   if (type === "table") {
@@ -72,7 +76,7 @@ export const getContentNodeFromInternalId = (
       preventSelection: false,
       permission,
       lastUpdatedAt: null,
-      mimeType: MIME_TYPES.BIGQUERY.TABLE,
+      mimeType: mimeTypes.TABLE,
     };
   }
   throw new Error(`Invalid internalId: ${internalId}`);
