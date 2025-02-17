@@ -1,7 +1,4 @@
-import {
-  AdminCommandType,
-  AdminResponseType,
-} from "../../connectors/admin/cli";
+import { AdminCommandType, AdminResponseType } from "../../connectors/admin/cli";
 import { ConnectorsAPIError, isConnectorsAPIError } from "../../connectors/api";
 import { UpdateConnectorConfigurationType } from "../../connectors/api_handlers/connector_configuration";
 import { ConnectorCreateRequestBody } from "../../connectors/api_handlers/create_connector";
@@ -110,7 +107,7 @@ export interface ContentNode {
   permission: ConnectorPermission;
   lastUpdatedAt: number | null;
   providerVisibility?: ProviderVisibility;
-  mimeType?: string;
+  mimeType: string;
 }
 
 export type ContentNodeWithParentIds = ContentNode & {
