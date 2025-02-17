@@ -674,6 +674,8 @@ impl Row {
                     // HTTP date
                     DateTime::parse_from_str(trimmed, "%a, %d %b %Y %H:%M:%S GMT")
                         .map(|dt| dt.into()),
+                    // Date with full month, zero-padded number, full year
+                    DateTime::parse_from_str(trimmed, "%B %d, %Y").map(|dt| dt.into()),
                 ]
                 .iter()
                 .find_map(|result| result.ok());
