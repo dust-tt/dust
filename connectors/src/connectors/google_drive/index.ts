@@ -414,6 +414,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
                 }))
                   ? "read"
                   : "none",
+                mimeType: MIME_TYPES.GOOGLE_DRIVE.FOLDER,
               };
             })
           );
@@ -429,6 +430,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
             lastUpdatedAt: null,
             expandable: true,
             permission: "none",
+            mimeType: MIME_TYPES.GOOGLE_DRIVE.SHARED_WITH_ME,
           });
 
           nodes.sort((a, b) => {
@@ -506,6 +508,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
                 }))
                   ? "read"
                   : "none",
+                mimeType: MIME_TYPES.GOOGLE_DRIVE.FOLDER,
               };
             })
           );

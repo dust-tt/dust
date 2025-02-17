@@ -236,6 +236,7 @@ async function getHelpCenterChildren(
           expandable: false,
           permission: "none",
           lastUpdatedAt: null,
+          mimeType: MIME_TYPES.ZENDESK.CATEGORY,
         }
     );
   }

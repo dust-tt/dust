@@ -48,6 +48,7 @@ export function getTeamsRootAsContentNode(): ContentNode {
     preventSelection: true,
     expandable: true,
     permission: "none",
+    mimeType: MIME_TYPES.MICROSOFT.FOLDER,
   };
 }
 export function getTeamAsContentNode(team: microsoftgraph.Team): ContentNode {
@@ -64,6 +65,7 @@ export function getTeamAsContentNode(team: microsoftgraph.Team): ContentNode {
     preventSelection: true,
     expandable: true,
     permission: "none",
+    mimeType: MIME_TYPES.MICROSOFT.FOLDER,
   };
 }
 
