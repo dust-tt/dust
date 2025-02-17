@@ -416,7 +416,7 @@ async function handler(
             status_code: 400,
             api_error: {
               type: "invalid_request_error",
-              message: `Invalid parents: parents[0] should be equal to document_id.`,
+              message: `Invalid parents: parents[0] should be equal to table_id.`,
             },
           });
         }
