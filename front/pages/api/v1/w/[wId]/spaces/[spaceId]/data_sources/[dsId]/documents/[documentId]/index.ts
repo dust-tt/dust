@@ -522,15 +522,13 @@ async function handler(
       }
 
       // Enforce parents consistency: we expect users to either not pass them (recommended) or pass them correctly.
-      const parentsDisclaimerMessage =
-        "The use of the parents field is discouraged, this field is intended for internal uses only.";
       if (r.data.parents) {
         if (r.data.parents.length === 0) {
           return apiError(req, res, {
             status_code: 400,
             api_error: {
               type: "invalid_request_error",
-              message: `Invalid parents: parents must have at least one element.\n${parentsDisclaimerMessage}`,
+              message: `Invalid parents: parents must have at least one element.`,
             },
           });
         }
@@ -539,7 +537,7 @@ async function handler(
             status_code: 400,
             api_error: {
               type: "invalid_request_error",
-              message: `Invalid parents: parents[0] should be equal to document_id.\n${parentsDisclaimerMessage}`,
+              message: `Invalid parents: parents[0] should be equal to document_id.`,
             },
           });
         }
@@ -551,7 +549,7 @@ async function handler(
             status_code: 400,
             api_error: {
               type: "invalid_request_error",
-              message: `Invalid parent id: parents[1] and parent_id should be equal.\n${parentsDisclaimerMessage}`,
+              message: `Invalid parent id: parents[1] and parent_id should be equal.`,
             },
           });
         }
