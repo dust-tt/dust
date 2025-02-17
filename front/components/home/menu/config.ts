@@ -280,10 +280,6 @@ const CompanyMenuConfig: MenuConfig = {
     },
     SocialMenuConfig.items[0],
     SocialMenuConfig.items[1],
-    {
-      title: "Legal",
-    },
-    LegalMenuConfig.items[1],
   ],
 };
 
