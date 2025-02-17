@@ -1,4 +1,5 @@
 import type { ConnectorPermission, ContentNode } from "@dust-tt/types";
+import { MIME_TYPES } from "@dust-tt/types";
 
 /**
  * 3 types of nodes in a remote database content tree:
@@ -43,6 +44,7 @@ export const getContentNodeFromInternalId = (
       preventSelection: false,
       permission,
       lastUpdatedAt: null,
+      mimeType: MIME_TYPES.BIGQUERY.DATABASE,
     };
   }
   if (type === "schema") {
@@ -56,6 +58,7 @@ export const getContentNodeFromInternalId = (
       preventSelection: false,
       permission,
       lastUpdatedAt: null,
+      mimeType: MIME_TYPES.BIGQUERY.SCHEMA,
     };
   }
   if (type === "table") {
@@ -69,6 +72,7 @@ export const getContentNodeFromInternalId = (
       preventSelection: false,
       permission,
       lastUpdatedAt: null,
+      mimeType: MIME_TYPES.BIGQUERY.TABLE,
     };
   }
   throw new Error(`Invalid internalId: ${internalId}`);
