@@ -101,6 +101,7 @@ export interface SearchInputWithPopoverProps extends SearchInputProps {
   contentClassName?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  mountPortal?: boolean;
 }
 
 export const SearchInputWithPopover = forwardRef<
@@ -116,6 +117,7 @@ export const SearchInputWithPopover = forwardRef<
       onOpenChange,
       value,
       onChange,
+      mountPortal = false,
       ...searchInputProps
     },
     ref
@@ -150,6 +152,7 @@ export const SearchInputWithPopover = forwardRef<
           onOpenAutoFocus={(e) => e.preventDefault()}
           onCloseAutoFocus={(e) => e.preventDefault()}
           onInteractOutside={() => onOpenChange(false)}
+          mountPortal={mountPortal}
         >
           <ScrollArea
             role="listbox"
