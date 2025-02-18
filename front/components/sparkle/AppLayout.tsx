@@ -145,7 +145,7 @@ export default function AppLayout({
           navChildren={navChildren}
           subNavigation={subNavigation}
         />
-        <div className="relative h-full w-full flex-1 flex-col overflow-x-hidden overflow-y-hidden dark:bg-black dark:text-white">
+        <div className="relative h-full w-full flex-1 flex-col overflow-x-hidden overflow-y-hidden dark:bg-slate-950 dark:text-slate-50">
           <main
             id={CONVERSATION_PARENT_SCROLL_DIV_ID.page}
             className={classNames(
@@ -157,7 +157,7 @@ export default function AppLayout({
               className={classNames(
                 "flex w-full flex-col pl-12 lg:pl-0",
                 !hideSidebar
-                  ? "border-b border-structure-300/30 bg-white/80 backdrop-blur dark:border-structure-300-night/30 dark:bg-black/80"
+                  ? "border-b border-structure-300/30 bg-white/80 backdrop-blur dark:border-structure-300-night/30 dark:bg-slate-950/80"
                   : "",
                 titleChildren ? "" : "lg:hidden"
               )}
