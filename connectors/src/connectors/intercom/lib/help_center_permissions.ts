@@ -368,7 +368,7 @@ export async function retrieveIntercomHelpCentersPermissions({
           helpCenter.helpCenterId
         ),
         parentInternalId: null,
-        type: "Table",
+        type: "Folder",
         title: helpCenter.name,
         sourceUrl: null,
         expandable: true,
@@ -381,7 +381,7 @@ export async function retrieveIntercomHelpCentersPermissions({
       nodes = helpCenters.map((helpCenter) => ({
         internalId: getHelpCenterInternalId(connectorId, helpCenter.id),
         parentInternalId: null,
-        type: "Table",
+        type: "Folder",
         title: helpCenter.display_name || "Help Center",
         sourceUrl: null,
         expandable: true,

@@ -624,7 +624,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
           helpCenter.helpCenterId
         ),
         parentInternalId: null,
-        type: "Table",
+        type: "Folder",
         title: helpCenter.name,
         sourceUrl: null,
         expandable: true,
