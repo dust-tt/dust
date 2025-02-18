@@ -14,11 +14,7 @@ import {
   FOLDERS_TO_HIDE_IF_EMPTY_MIME_TYPES,
   getContentNodeFromCoreNode,
 } from "@app/lib/api/content_nodes";
-import type {
-  CursorPaginationParams,
-  OffsetPaginationParams,
-} from "@app/lib/api/pagination";
-import { isCursorPaginationParams } from "@app/lib/api/pagination";
+import type { CursorPaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -28,8 +24,7 @@ import logger from "@app/logger/logger";
 interface GetContentNodesForDataSourceViewParams {
   internalIds?: string[];
   parentId?: string;
-  // TODO(nodes-core): remove offset pagination upon project cleanup
-  pagination?: CursorPaginationParams | OffsetPaginationParams;
+  pagination?: CursorPaginationParams;
   viewType: ContentNodesViewType;
 }
 
@@ -122,12 +117,7 @@ export async function getContentNodesForDataSourceView(
         ? undefined
         : ROOT_PARENT_ID);
 
-  // TODO(nodes-core): remove offset pagination upon project cleanup
-  let nextPageCursor: string | null = pagination
-    ? isCursorPaginationParams(pagination)
-      ? pagination.cursor
-      : null
-    : null;
+  let nextPageCursor: string | null = pagination ? pagination.cursor : null;
 
   let resultNodes: CoreAPIContentNode[] = [];
   do {

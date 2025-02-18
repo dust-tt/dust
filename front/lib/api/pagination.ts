@@ -84,41 +84,41 @@ export function getPaginationParams(
   return new Ok(queryValidation.right);
 }
 
-// Offset pagination.
+// Cursor pagination.
 
-const OffsetPaginationParamsCodec = t.type({
+const CursorPaginationParamsCodec = t.type({
   limit: LimitCodec,
-  offset: t.number,
+  cursor: t.string,
 });
 
-export interface OffsetPaginationParams {
+export interface CursorPaginationParams {
   limit: number;
-  offset: number;
+  cursor: string;
 }
 
-export function getOffsetPaginationParams(
+export function getCursorPaginationParams(
   req: NextApiRequest
-): Result<OffsetPaginationParams | undefined, InvalidPaginationParamsError> {
-  const { limit, offset } = req.query;
+): Result<CursorPaginationParams | undefined, InvalidPaginationParamsError> {
+  const { limit, cursor } = req.query;
   if (!req.query.limit) {
     return new Ok(undefined);
   }
 
-  if (typeof limit !== "string" || (offset && typeof offset !== "string")) {
+  if (typeof limit !== "string" || (cursor && typeof cursor !== "string")) {
     return new Err(
       new InvalidPaginationParamsError(
         "Invalid pagination parameters",
-        "limit and offset must be strings"
+        "limit and cursor must be strings"
       )
     );
   }
 
   const rawParams = {
-    limit: parseInt(limit),
-    offset: offset ? parseInt(offset) : 0,
+    limit: parseInt(limit, 10),
+    cursor,
   };
 
-  const queryValidation = OffsetPaginationParamsCodec.decode(rawParams);
+  const queryValidation = CursorPaginationParamsCodec.decode(rawParams);
 
   // Validate and decode the raw parameters.
   if (isLeft(queryValidation)) {
@@ -133,15 +133,4 @@ export function getOffsetPaginationParams(
   }
 
   return new Ok(queryValidation.right);
-}
-
-export interface CursorPaginationParams {
-  limit: number;
-  cursor: string;
-}
-
-export function isCursorPaginationParams(
-  pagination: CursorPaginationParams | OffsetPaginationParams
-): pagination is CursorPaginationParams {
-  return "cursor" in pagination;
 }
