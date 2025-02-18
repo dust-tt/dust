@@ -31,6 +31,7 @@ interface GetContentNodesForDataSourceViewParams {
 interface GetContentNodesForDataSourceViewResult {
   nodes: DataSourceViewContentNode[];
   total: number;
+  nextPageCursor: string | null;
 }
 
 function filterNodesByViewType(
