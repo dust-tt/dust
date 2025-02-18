@@ -2668,6 +2668,85 @@ async fn tables_update_parents(
 }
 
 #[derive(serde::Deserialize)]
+struct DatabasesTablesUpsertCSVContentPayload {
+    upsert_queue_bucket_csv_path: String,
+    truncate: Option<bool>,
+}
+
+async fn tables_csv_upsert(
+    Path((project_id, data_source_id, table_id)): Path<(i64, String, String)>,
+    State(state): State<Arc<APIState>>,
+    Json(payload): Json<DatabasesTablesUpsertCSVContentPayload>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+
+    match state
+        .store
+        .load_data_source_table(&project, &data_source_id, &table_id)
+        .await
+    {
+        Err(e) => {
+            return error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "internal_server_error",
+                "Failed to load table",
+                Some(e),
+            )
+        }
+        Ok(None) => {
+            return error_response(
+                StatusCode::NOT_FOUND,
+                "table_not_found",
+                &format!("No table found for id `{}`", table_id),
+                None,
+            )
+        }
+        Ok(Some(table)) => match LocalTable::from_table(table) {
+            Err(e) => {
+                return error_response(
+                    StatusCode::BAD_REQUEST,
+                    "invalid_table",
+                    "Table is not local",
+                    Some(e),
+                )
+            }
+            Ok(table) => {
+                match table
+                    .upsert_csv_content(
+                        state.store.clone(),
+                        state.databases_store.clone(),
+                        &payload.upsert_queue_bucket_csv_path,
+                        match payload.truncate {
+                            Some(v) => v,
+                            None => false,
+                        },
+                    )
+                    .await
+                {
+                    Err(e) => {
+                        return error_response(
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            "internal_server_error",
+                            "Failed to upsert rows",
+                            Some(e),
+                        )
+                    }
+                    Ok(_) => (
+                        StatusCode::OK,
+                        Json(APIResponse {
+                            error: None,
+                            response: Some(json!({
+                                "success": true,
+                            })),
+                        }),
+                    ),
+                }
+            }
+        },
+    }
+}
+
+#[derive(serde::Deserialize)]
 struct TablesRowsUpsertPayload {
     rows: Vec<Row>,
     truncate: Option<bool>,
@@ -3798,6 +3877,10 @@ fn main() {
         .route(
             "/projects/:project_id/data_sources/:data_source_id/tables/:table_id/rows",
             post(tables_rows_upsert),
+        )
+        .route(
+            "/projects/:project_id/data_sources/:data_source_id/tables/:table_id/csv",
+            post(tables_csv_upsert),
         )
         .route(
             "/projects/:project_id/data_sources/:data_source_id/tables/:table_id/rows/:row_id",
