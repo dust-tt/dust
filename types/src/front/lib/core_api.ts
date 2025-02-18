@@ -1439,6 +1439,44 @@ export class CoreAPI {
     return this._resultFromResponse(response);
   }
 
+  async tableUpsertCSVContent({
+    projectId,
+    dataSourceId,
+    tableId,
+    upsertQueueBucketCSVPath,
+    truncate,
+  }: {
+    projectId: string;
+    dataSourceId: string;
+    tableId: string;
+    upsertQueueBucketCSVPath: string;
+    truncate?: boolean;
+  }): Promise<
+    CoreAPIResponse<{
+      schema: CoreAPITableSchema;
+    }>
+  > {
+    const response = await this._fetchWithError(
+      `${this._url}/projects/${encodeURIComponent(
+        projectId
+      )}/data_sources/${encodeURIComponent(
+        dataSourceId
+      )}/tables/${encodeURIComponent(tableId)}/csv`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          upsert_queue_bucket_csv_path: upsertQueueBucketCSVPath,
+          truncate: truncate || false,
+        }),
+      }
+    );
+
+    return this._resultFromResponse(response);
+  }
+
   async getTableRow({
     projectId,
     dataSourceId,
