@@ -184,7 +184,7 @@ export async function agentMentionsCount(
     {
       replacements: {
         workspaceId,
-        agentConfigurationId: agentConfiguration?.sId,
+        agentConfigurationId: agentConfiguration?.sId ?? null,
       },
       type: QueryTypes.SELECT,
     }
