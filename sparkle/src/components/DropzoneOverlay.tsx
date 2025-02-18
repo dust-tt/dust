@@ -21,7 +21,7 @@ export default function DropzoneOverlay({
     <Icon
       visual={ArrowUpOnSquareIcon}
       size="lg"
-      className="s-text-white dark:s-text-black"
+      className="s-text-white dark:s-text-slate-950"
     />
   ),
 }: DropzoneOverlayProps) {
@@ -49,7 +49,7 @@ export default function DropzoneOverlay({
     <div
       className={cn(
         "s-absolute s-inset-0 s-z-50 s-flex s-h-full s-w-full s-flex-col s-items-center s-justify-center s-gap-0",
-        "s-bg-white/80 dark:s-bg-black/80",
+        "dark:s-bg-slate-90/80 s-bg-white/80",
         "s-text-element-800 dark:s-text-element-800-night"
       )}
       onMouseLeave={() => {
