@@ -28,7 +28,7 @@ export function AssistantBrowserContainer({
   });
 
   const handleAssistantClick = useCallback(
-    // On click, scroll to the input bar and set the selected assistant.
+    // On click, scroll to the input bar and set the selected agent.
     async (agent: LightAgentConfigurationType) => {
       const scrollContainerElement = document.getElementById(
         "assistant-input-header"
@@ -42,7 +42,7 @@ export function AssistantBrowserContainer({
 
       // If the input bar is already in view, set the mention directly. We leave a little margin, -2
       // instead of 0, since the autoscroll below can sometimes scroll a bit over 0, to -0.3 or
-      // -0.5, in which case if there is a clic on a visible assistant we still want this condition
+      // -0.5, in which case if there is a clic on a visible agent we still want this condition
       // to trigger.
       if (scrollDistance > -2) {
         return onAgentConfigurationClick(agent.sId);

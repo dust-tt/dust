@@ -219,7 +219,7 @@ export async function getManagedDataSourcePermissionsHandler(
       break;
     case "write":
       // We let builders get the write permissions of a connector.
-      // `write` is used for selection of default slack channel in the workspace assistant
+      // `write` is used for selection of default slack channel in the workspace agent
       // builder.
       if (!auth.isBuilder()) {
         return apiError(req, res, {

@@ -225,7 +225,7 @@ export default function SettingsView({
                   id="appDescription"
                   value={appDescription}
                   onChange={(e) => setAppDescription(e.target.value)}
-                  message="Description needed to use in Assistant Builder - helps assistants understand when to use your app."
+                  message="Description needed to use in Agent Builder - helps agents understand when to use your app."
                   messageStatus="default"
                 />
               </div>

@@ -43,7 +43,7 @@ export function BlogSection({
             <CarouselItem className="basis-full md:basis-1/2 lg:basis-1/3">
               <BlogBlock
                 title="Qonto partners with Dust to upgrade its customer experience"
-                content="Qonto streamlines operations with Dust's AI assistants, saving 50,000 hours yearly."
+                content="Qonto streamlines operations with Dust's AI agents, saving 50,000 hours yearly."
                 href="https://blog.dust.tt/qonto-dust-ai-partnership/"
               >
                 <img
@@ -67,7 +67,7 @@ export function BlogSection({
             <CarouselItem className="basis-full md:basis-1/2 lg:basis-1/3">
               <BlogBlock
                 title="How Vincent, Engineer at Alan, reduces project completion time by 20%"
-                content="Discover how Alan's Engineering team built Dust assistants to accelerate their workflows beyond coding."
+                content="Discover how Alan's Engineering team built Dust agents to accelerate their workflows beyond coding."
                 href="https://blog.dust.tt/integrating-ai-workflows-alan/"
               >
                 <img
@@ -90,8 +90,8 @@ export function BlogSection({
             </CarouselItem>
             <CarouselItem className="basis-full md:basis-1/2 lg:basis-1/3">
               <BlogBlock
-                title="Lifen uses Dust AI assistants to boost team productivity"
-                content="Lifen uses Dust AI assistants to boost team productivity and save hours of work each week."
+                title="Lifen uses Dust AI agents to boost team productivity"
+                content="Lifen uses Dust AI agents to boost team productivity and save hours of work each week."
                 href="https://blog.dust.tt/customer-story-lifen/"
               >
                 <img
@@ -103,7 +103,7 @@ export function BlogSection({
             <CarouselItem className="basis-full md:basis-1/2 lg:basis-1/3">
               <BlogBlock
                 title="PayFit Accelerates Content Creation and Knowledge Sharing with Dust"
-                content="PayFit boosts efficiency with instant AI assistants for knowledge sharing."
+                content="PayFit boosts efficiency with instant AI agents for knowledge sharing."
                 href="https://blog.dust.tt/dust-ai-payfit-efficiency/"
               >
                 <img
@@ -115,7 +115,7 @@ export function BlogSection({
             <CarouselItem className="basis-full md:basis-1/2 lg:basis-1/3">
               <BlogBlock
                 title="Kyriba accelerates innovation with Dust"
-                content="Kyriba saves thousands of hours by turning AI assistants into innovation catalysts."
+                content="Kyriba saves thousands of hours by turning AI agents into innovation catalysts."
                 href="https://blog.dust.tt/kyriba-accelerating-innovation-with-dust/"
               >
                 <img

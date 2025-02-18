@@ -29,7 +29,7 @@ async function handler(
       api_error: {
         type: "app_auth_error",
         message:
-          "Only the users that are `builders` for the current workspace can access an Assistant.",
+          "Only the users that are `builders` for the current workspace can access an agent.",
       },
     });
   }
@@ -60,7 +60,7 @@ async function handler(
           status_code: 404,
           api_error: {
             type: "global_agent_error",
-            message: "Couldn't update the settings for this global Assistant.",
+            message: "Couldn't update the settings for this global agent.",
           },
         });
       }

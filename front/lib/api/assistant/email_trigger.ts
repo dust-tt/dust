@@ -137,7 +137,7 @@ export async function userAndWorkspacesFromEmail({
       type: "workspace_not_found",
       message:
         `Failed to match a valid Dust workspace associated with email: ${email}. ` +
-        `Please sign up for Dust at https://dust.tt to interact with assistants over email.`,
+        `Please sign up for Dust at https://dust.tt to interact with agents over email.`,
     });
   }
 
@@ -212,7 +212,7 @@ export async function emailAssistantMatcher({
   if (matchingAgents.length === 0) {
     return new Err({
       type: "assistant_not_found",
-      message: `Failed to match a valid assistant with name prefix: '${agentPrefix}'.`,
+      message: `Failed to match a valid agent with name prefix: '${agentPrefix}'.`,
     });
   }
   const agentConfiguration = matchingAgents[0];
@@ -399,8 +399,7 @@ export async function triggerFromEmail({
     return new Err({
       type: "message_creation_error",
       message:
-        `Error interacting with assistant: ` +
-        messageRes.error.api_error.message,
+        `Error interacting with agent: ` + messageRes.error.api_error.message,
     });
   }
 
@@ -466,8 +465,8 @@ export async function replyToEmail({
   htmlContent: string;
 }) {
   const name = agentConfiguration
-    ? `Dust Assistant (${agentConfiguration.name})`
-    : "Dust Assistant";
+    ? `Dust Agent (${agentConfiguration.name})`
+    : "Dust Agent";
   const sender = agentConfiguration
     ? `${agentConfiguration.name}@${ASSISTANT_EMAIL_SUBDOMAIN}`
     : `assistants@${ASSISTANT_EMAIL_SUBDOMAIN}`;

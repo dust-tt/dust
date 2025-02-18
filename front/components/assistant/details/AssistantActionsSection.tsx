@@ -283,8 +283,8 @@ function renderOtherAction(
         <div className="flex gap-2 text-muted-foreground">
           <Icon visual={PlanetIcon} size="sm" />
           <div>
-            Assistant can navigate the web (browse any provided links, make a
-            google search, etc.) to answer.
+            Agent can navigate the web (browse any provided links, make a google
+            search, etc.) to answer.
           </div>
         </div>
       </ActionSection>
@@ -294,8 +294,8 @@ function renderOtherAction(
       <ActionSection title="Reasoning" key={`other-${index}`}>
         <Icon visual={ChatBubbleThoughtIcon} size="sm" />
         <div>
-          Assistant can perform step by step reasoning to solve complex
-          problems. Slow but powerful.
+          Agent can perform step by step reasoning to solve complex problems.
+          Slow but powerful.
         </div>
       </ActionSection>
     );
@@ -306,7 +306,7 @@ function renderOtherAction(
       <ActionSection title="Github" key={`other-${index}`}>
         <div className="flex gap-2 text-muted-foreground">
           <Icon visual={GithubIcon} size="sm" />
-          <div>Assistant can retrieve pull requests from Github.</div>
+          <div>Agent can retrieve pull requests from Github.</div>
         </div>
       </ActionSection>
     );
@@ -315,7 +315,7 @@ function renderOtherAction(
       <ActionSection title="Github" key={`other-${index}`}>
         <div className="flex gap-2 text-muted-foreground">
           <Icon visual={GithubIcon} size="sm" />
-          <div>Assistant can create issues on Github.</div>
+          <div>Agent can create issues on Github.</div>
         </div>
       </ActionSection>
     );

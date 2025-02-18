@@ -87,8 +87,8 @@ export default function RecruitingPeople() {
                   content: (
                     <>
                       Extract yourself from&nbsp;admin ping pong. Allow team
-                      members to&nbsp;interact with an&nbsp;assistant that
-                      answers common people-related questions in&nbsp;Slack
+                      members to&nbsp;interact with an&nbsp;agent that answers
+                      common people-related questions in&nbsp;Slack
                       and&nbsp;points to&nbsp;the right internal resources.
                     </>
                   ),

@@ -61,7 +61,7 @@ export function AssistantFavorites({ user }: AssistantFavoritesProps) {
       ) : (
         <div className="flex flex-col items-center pt-20 gap-4">
           <p className="text-slate-400">
-            Your favorite assistants will appear here
+            Your favorite agents will appear here
           </p>
           <Button
             label="Add favorites on Dust"

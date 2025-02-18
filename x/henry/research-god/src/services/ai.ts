@@ -167,7 +167,7 @@ export class AIService {
           {
             role: "system",
             content:
-              "You are a research planning assistant. Your task is to create an ordered list of top-level topics that will be explored sequentially to comprehensively answer a research query.",
+              "You are a research planning agent. Your task is to create an ordered list of top-level topics that will be explored sequentially to comprehensively answer a research query.",
           },
           {
             role: "user",
@@ -249,7 +249,7 @@ Remember: These are the main research topics that will guide our entire investig
           {
             role: "system",
             content:
-              "You are a search query planning assistant. Your job is to generate specific search engine queries that will help gather information about a sub-topic of a larger research topic. For each query, provide a clear explanation of what specific information it aims to find.",
+              "You are a search query planning agent. Your job is to generate specific search engine queries that will help gather information about a sub-topic of a larger research topic. For each query, provide a clear explanation of what specific information it aims to find.",
           },
           {
             role: "user",
@@ -326,7 +326,7 @@ Remember: These are the main research topics that will guide our entire investig
           {
             role: "system",
             content:
-              "You are a content analysis assistant. Your task is to extract relevant information from web content and identify both relevant URLs and potential follow-up search queries. Consider all previously gathered information to maintain context and avoid redundancy.",
+              "You are a content analysis agent. Your task is to extract relevant information from web content and identify both relevant URLs and potential follow-up search queries. Consider all previously gathered information to maintain context and avoid redundancy.",
           },
           {
             role: "user",
@@ -578,7 +578,7 @@ ${extract.content}
         messages: [
           {
             role: "system",
-            content: `You are a research assistant helping to explore a topic. Your task is to analyze the current state of research and pick the most promising next action from the available options.
+            content: `You are a research agent helping to explore a topic. Your task is to analyze the current state of research and pick the most promising next action from the available options.
             
 Each action in the research pool has a unique ID. You must return the ID of the single most promising action based on:
 
@@ -684,7 +684,7 @@ ${otherTopicsSection}`,
           {
             role: "system",
             content:
-              "You are a research planning assistant. Your task is to generate specific, focused questions that will help clarify and refine a research topic. The questions should help understand the user's specific interests, requirements, and desired scope.",
+              "You are a research planning agent. Your task is to generate specific, focused questions that will help clarify and refine a research topic. The questions should help understand the user's specific interests, requirements, and desired scope.",
           },
           {
             role: "user",
@@ -750,7 +750,7 @@ ${otherTopicsSection}`,
         messages: [
           {
             role: "system",
-            content: `You are a research report structuring assistant. Your task is to analyze the research intent and gathered content to propose a logical structure for the final report. Consider:
+            content: `You are a research report structuring agent. Your task is to analyze the research intent and gathered content to propose a logical structure for the final report. Consider:
 
 1. The original research intent and its scope
 2. The actual content gathered during research
@@ -870,7 +870,7 @@ Based on this research intent and the content we've gathered, propose a logical 
         messages: [
           {
             role: "system",
-            content: `You are a research report writing assistant. You have a PhD in the domain of the report. Your task is to write a detailed section of a research report based on the provided content. Consider:
+            content: `You are a research report writing agent. You have a PhD in the domain of the report. Your task is to write a detailed section of a research report based on the provided content. Consider:
 
 1. The section's role in the overall report structure
 2. Previously written sections for context

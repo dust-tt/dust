@@ -45,7 +45,7 @@ async function handler(
       status_code: 404,
       api_error: {
         type: "agent_configuration_not_found",
-        message: "The Assistant you're trying to access was not found.",
+        message: "The Agent you're trying to access was not found.",
       },
     });
   }
@@ -81,7 +81,7 @@ async function handler(
           status_code: 404,
           api_error: {
             type: "app_auth_error",
-            message: "Only builders can modify workspace assistants.",
+            message: "Only builders can modify workspace agent.",
           },
         });
       }
@@ -121,7 +121,7 @@ async function handler(
           status_code: 500,
           api_error: {
             type: "assistant_saving_error",
-            message: `Error updating assistant: ${agentConfigurationRes.error.message}`,
+            message: `Error updating agent: ${agentConfigurationRes.error.message}`,
           },
         });
       }
@@ -136,7 +136,7 @@ async function handler(
           status_code: 404,
           api_error: {
             type: "app_auth_error",
-            message: "Only builders can modify workspace assistants.",
+            message: "Only builders can modify workspace agent.",
           },
         });
       }
@@ -150,7 +150,7 @@ async function handler(
           status_code: 404,
           api_error: {
             type: "agent_configuration_not_found",
-            message: "The Assistant you're trying to delete was not found.",
+            message: "The agent you're trying to delete was not found.",
           },
         });
       }
