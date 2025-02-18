@@ -18,7 +18,7 @@ export const Container = React.forwardRef<HTMLDivElement, ContainerProps>(
       <div
         ref={ref}
         className={cn(
-          "s-mx-auto s-w-full s-bg-white s-@container dark:s-bg-muted-background-night",
+          "s-mx-auto s-w-full s-bg-white s-@container dark:s-bg-slate-950",
           className
         )}
         {...props}
