@@ -5,13 +5,7 @@ import type {
   Result,
   TrackerIdWorkspaceId,
 } from "@dust-tt/types";
-import {
-  ConnectorsAPI,
-  CoreAPI,
-  Err,
-  GPT_4O_MODEL_CONFIG,
-  Ok,
-} from "@dust-tt/types";
+import { CoreAPI, Err, GPT_4O_MODEL_CONFIG, Ok } from "@dust-tt/types";
 import _ from "lodash";
 
 import { isErrorWithRunId } from "@app/lib/actions/helpers";
