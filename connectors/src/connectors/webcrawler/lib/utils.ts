@@ -1,4 +1,4 @@
-import type { CoreAPIContentNodeType } from "@dust-tt/types";
+import type { ContentNodeType } from "@dust-tt/types";
 import { hash as blake3 } from "blake3";
 import dns from "dns";
 
@@ -14,9 +14,16 @@ export function stableIdForUrl({
   ressourceType,
 }: {
   url: string;
-  ressourceType: CoreAPIContentNodeType;
+  ressourceType: ContentNodeType;
 }) {
-  return Buffer.from(blake3(`${ressourceType}-${url}`)).toString("hex");
+  // LEGACY, due to a renaming of content node types, but ids must remain stable
+  const typePrefix =
+    ressourceType === "Document"
+      ? "file"
+      : ressourceType === "Table"
+        ? "database"
+        : "folder";
+  return Buffer.from(blake3(`${typePrefix}-${url}`)).toString("hex");
 }
 
 export function getParentsForPage(url: string, pageInItsOwnFolder: boolean) {

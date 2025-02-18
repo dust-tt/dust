@@ -1,4 +1,4 @@
-import type { ContentNode, CoreAPIContentNodeType } from "@dust-tt/types";
+import type { ContentNode, ContentNodeType } from "@dust-tt/types";
 import { MIME_TYPES } from "@dust-tt/types";
 
 import {
@@ -171,7 +171,7 @@ export function getMicrosoftNodeAsContentNode(
     (node.mimeType ===
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" &&
       expandWorksheet);
-  let type: CoreAPIContentNodeType;
+  let type: ContentNodeType;
   if (["drive", "folder"].includes(node.nodeType)) {
     type = "Folder";
   } else if (node.nodeType === "worksheet") {
