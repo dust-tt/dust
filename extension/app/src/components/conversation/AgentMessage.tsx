@@ -506,7 +506,7 @@ export function AgentMessage({
               );
             }}
             icon={ClipboardIcon}
-            className="text-muted-foreground"
+            className="text-muted-foreground dark:text-muted-foreground-night"
           />,
           <Button
             key="retry-msg-button"
@@ -517,7 +517,7 @@ export function AgentMessage({
               void retryHandler(agentMessageToRender);
             }}
             icon={ArrowPathIcon}
-            className="text-muted-foreground"
+            className="text-muted-foreground dark:text-muted-foreground-night"
             disabled={isRetryHandlerProcessing || shouldStream}
           />,
           // One cannot leave feedback on global agents.
@@ -526,7 +526,7 @@ export function AgentMessage({
             ? []
             : [
                 <div key="separator" className="flex items-center">
-                  <div className="h-5 w-px bg-border" />
+                  <div className="h-5 w-px bg-border dark:bg-border-night" />
                 </div>,
                 <FeedbackSelector
                   key="feedback-selector"
