@@ -121,6 +121,7 @@ jobs:
           region: ${{ inputs.regions }}
           component: ${{ inputs.component }}
           workload_identity_provider: "projects/357744735673/locations/global/workloadIdentityPools/github-pool-apps/providers/github-provider-apps"
+          depot_token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
 
       - name: Notify Failure
         if: failure()
