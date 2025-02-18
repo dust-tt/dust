@@ -21,6 +21,23 @@
           "lowercase",
           "edge_ngram_filter"
         ]
+      },
+      "tag_edge_analyzer": {
+        "type": "custom",
+        "tokenizer": "icu_tokenizer",
+        "filter": [
+          "tags_cleaner",
+          "lowercase",
+          "edge_ngram_filter"
+        ]
+      }
+    },
+    "normalizer": {
+      "tag_normalizer": {
+        "type": "custom",
+        "filter": [
+          "tags_cleaner"
+        ]
       }
     },
     "filter": {
@@ -33,6 +50,11 @@
         "type": "edge_ngram",
         "min_gram": 2,
         "max_gram": 20
+      },
+      "tags_cleaner": {
+        "type": "pattern_replace",
+        "pattern": "^(createdAt:|updatedAt:|title:).*",
+        "replacement": ""
       }
     }
   }
