@@ -410,6 +410,7 @@ function DataSourceViewsSection({
                   }
                 />
               }
+              areActionsFading={false}
             >
               {dataSourceView && isAllSelected && (
                 <DataSourceViewPermissionTree
@@ -480,7 +481,10 @@ function RetrievalActionTagsFilterPopover({
   let tagsLabel = "Filters";
   if (tagsFilter === "auto") {
     tagsLabel = "Filters (auto)";
-  } else if (tagsFilter) {
+  } else if (
+    tagsFilter &&
+    (tagsFilter.in.length > 0 || tagsFilter.not.length > 0)
+  ) {
     tagsCounter = tagsFilter.in.length + tagsFilter.not.length;
   }
 
@@ -489,7 +493,7 @@ function RetrievalActionTagsFilterPopover({
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          size="sm"
+          size="xs"
           label={tagsLabel}
           isSelect
           counterValue={tagsCounter ? tagsCounter.toString() : "auto"}
