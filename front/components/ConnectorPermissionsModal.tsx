@@ -54,6 +54,8 @@ import { useSWRConfig } from "swr";
 
 import type { ConfirmDataType } from "@app/components/Confirm";
 import { ConfirmContext } from "@app/components/Confirm";
+import type { ContentNodeTreeItemStatus } from "@app/components/ContentNodeTree";
+import { ContentNodeTree } from "@app/components/ContentNodeTree";
 import { CreateOrUpdateConnectionBigQueryModal } from "@app/components/data_source/CreateOrUpdateConnectionBigQueryModal";
 import { CreateOrUpdateConnectionSnowflakeModal } from "@app/components/data_source/CreateOrUpdateConnectionSnowflakeModal";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
@@ -78,9 +80,6 @@ import {
   useWorkspaceActiveSubscription,
 } from "@app/lib/swr/workspaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-
-import type { ContentNodeTreeItemStatus } from "./ContentNodeTree";
-import { ContentNodeTree } from "./ContentNodeTree";
 
 const getUseResourceHook =
   (owner: LightWorkspaceType, dataSource: DataSourceType) =>

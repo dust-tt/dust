@@ -13,7 +13,6 @@ import config from "@app/lib/api/config";
 import {
   FOLDERS_SELECTION_PREVENTED_MIME_TYPES,
   FOLDERS_TO_HIDE_IF_EMPTY_MIME_TYPES,
-  getContentNodeType,
   NON_EXPANDABLE_NODES_MIME_TYPES,
 } from "@app/lib/api/content_nodes";
 import type {
@@ -218,7 +217,7 @@ export async function getContentNodesForDataSourceView(
         lastUpdatedAt: node.timestamp,
         providerVisibility: node.provider_visibility,
         parentInternalIds: node.parents,
-        type: getContentNodeType(node),
+        type: node.node_type,
         expandable: expandable(node),
         mimeType: node.mime_type,
         preventSelection: FOLDERS_SELECTION_PREVENTED_MIME_TYPES.includes(

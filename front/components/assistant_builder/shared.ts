@@ -281,7 +281,7 @@ export function getTableIdForContentNode(
   dataSource: DataSourceType,
   contentNode: LightContentNode
 ): string {
-  if (contentNode.type !== "database") {
+  if (contentNode.type !== "Table") {
     throw new Error(`ContentNode type ${contentNode.type} is not supported`);
   }
 

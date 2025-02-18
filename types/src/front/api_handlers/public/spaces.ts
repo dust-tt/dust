@@ -1,6 +1,6 @@
 import * as t from "io-ts";
 
-import { ContentNodeType } from "../../lib/connectors_api";
+import { ContentNodeType } from "../../..";
 
 const ParentsToAddRemoveSchema = t.type({
   parentsToAdd: t.union([t.array(t.string), t.undefined]),

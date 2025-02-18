@@ -27,8 +27,7 @@ const getUseResourceHook =
       resources: res.nodes.map((n) => ({
         ...n,
         preventSelection:
-          n.preventSelection ||
-          (viewType === "tables" && n.type !== "database"),
+          n.preventSelection || (viewType === "tables" && n.type !== "Table"),
       })),
       isResourcesLoading: res.isNodesLoading,
       isResourcesError: res.isNodesError,

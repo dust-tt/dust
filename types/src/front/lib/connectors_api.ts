@@ -8,6 +8,7 @@ import { ConnectorCreateRequestBody } from "../../connectors/api_handlers/create
 import { UpdateConnectorRequestBody } from "../../connectors/api_handlers/update_connector";
 import { ConnectorConfiguration } from "../../connectors/configuration";
 import { ContentNodesViewType } from "../../connectors/content_nodes";
+import { ContentNodeType } from "../../core/content_node";
 import { ConnectorProvider, DataSourceType } from "../../front/data_source";
 import { LoggerInterface } from "../../shared/logger";
 import { Err, Ok, Result } from "../../shared/result";
@@ -55,7 +56,6 @@ export type ConnectorType = {
  * permission we handle is read. but we could have more complex permissions in the future.
  */
 export type ConnectorPermission = "read" | "write" | "read_write" | "none";
-export type ContentNodeType = "file" | "folder" | "database";
 // currently used for Slack, for which channels can be public or private
 export type ProviderVisibility = "public" | "private";
 
@@ -65,9 +65,9 @@ export type ProviderVisibility = "public" | "private";
  * This mapping is used to provide a numerical value representing the priority of each content node type.
  */
 export const contentNodeTypeSortOrder: Record<ContentNodeType, number> = {
-  folder: 1,
-  file: 2,
-  database: 3,
+  Folder: 1,
+  Document: 2,
+  Table: 3,
 };
 
 /**

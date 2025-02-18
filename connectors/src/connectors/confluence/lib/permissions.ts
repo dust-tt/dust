@@ -48,7 +48,7 @@ export function createContentNodeFromSpace(
   return {
     internalId: makeSpaceInternalId(spaceId),
     parentInternalId: null,
-    type: "folder",
+    type: "Folder",
     title: space.name || "Unnamed Space",
     sourceUrl: `${baseUrl}/wiki${urlSuffix}`,
     expandable: isExpandable,
@@ -70,7 +70,7 @@ export function createContentNodeFromPage(
       parent.type === "space"
         ? makeSpaceInternalId(parent.id)
         : makePageInternalId(parent.id),
-    type: "file",
+    type: "Document",
     title: page.title,
     sourceUrl: `${baseUrl}/wiki${page.externalUrl}`,
     expandable: isExpandable,

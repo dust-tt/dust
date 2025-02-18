@@ -167,7 +167,7 @@ export default function DataSourceSelectionSection({
                               size="xs"
                               icon={BracesIcon}
                               onClick={() => {
-                                if (node.type === "file") {
+                                if (node.type === "Document") {
                                   setDataSourceViewToDisplay(
                                     dsConfig.dataSourceView
                                   );
@@ -175,11 +175,11 @@ export default function DataSourceSelectionSection({
                                 }
                               }}
                               className={classNames(
-                                node.type === "file"
+                                node.type === "Document"
                                   ? ""
                                   : "pointer-events-none opacity-0"
                               )}
-                              disabled={node.type !== "file"}
+                              disabled={node.type !== "Document"}
                               variant="outline"
                             />
                           </div>
