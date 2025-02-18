@@ -1177,6 +1177,39 @@ export class CoreAPI {
     return this._resultFromResponse(response);
   }
 
+  async tableValidateCSVContent({
+    projectId,
+    dataSourceId,
+    upsertQueueBucketCSVPath,
+  }: {
+    projectId: string;
+    dataSourceId: string;
+    upsertQueueBucketCSVPath: string;
+  }): Promise<
+    CoreAPIResponse<{
+      schema: CoreAPITableSchema;
+    }>
+  > {
+    const response = await this._fetchWithError(
+      `${this._url}/projects/${encodeURIComponent(
+        projectId
+      )}/data_sources/${encodeURIComponent(
+        dataSourceId
+      )}/tables/validate_csv_content`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          upsert_queue_bucket_csv_path: upsertQueueBucketCSVPath,
+        }),
+      }
+    );
+
+    return this._resultFromResponse(response);
+  }
+
   async upsertTable({
     projectId,
     dataSourceId,
