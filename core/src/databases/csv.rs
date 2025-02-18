@@ -58,7 +58,7 @@ impl UpsertQueueCSVContent {
         let mut with_separators = String::new();
         let chars: Vec<char> = s.chars().collect();
         for (i, &c) in chars.iter().enumerate() {
-            if i > 0 && c.is_uppercase() || c.is_ascii_digit() {
+            if i > 0 && (c.is_uppercase() || c.is_ascii_digit()) {
                 if chars[i - 1].is_lowercase() {
                     with_separators.push('_');
                 }
@@ -87,7 +87,7 @@ impl UpsertQueueCSVContent {
             let slug = if curr == "__dust_id" {
                 curr.to_string()
             } else {
-                let s = Self::slugify(curr);
+                let s = Self::slugify(&curr.to_lowercase());
                 if s.is_empty() {
                     format!("col_{}", acc.len())
                 } else {
@@ -245,7 +245,7 @@ mod tests {
         assert_eq!(
             sanitized,
             vec![
-                "hello_world",
+                "helloworld",
                 "b_2fkls",
                 "æuu_cool_",
                 "_",
