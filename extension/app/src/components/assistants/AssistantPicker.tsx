@@ -54,7 +54,7 @@ export function AssistantPicker({
         ) : (
           <Button
             icon={RobotIcon}
-            className="text-muted-foreground"
+            className="text-muted-foreground dark:text-muted-foreground-night"
             variant="ghost"
             isSelect
             size={size}

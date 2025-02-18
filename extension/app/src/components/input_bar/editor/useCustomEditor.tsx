@@ -192,14 +192,14 @@ const useCustomEditor = ({
       MentionWithPaste.configure({
         HTMLAttributes: {
           class:
-            "min-w-0 px-0 py-0 border-none outline-none focus:outline-none focus:border-none ring-0 focus:ring-0 text-brand font-medium",
+            "min-w-0 px-0 py-0 border-none outline-none focus:outline-none focus:border-none ring-0 focus:ring-0 text-brand dark:text-brand-night font-medium",
         },
         suggestion: makeGetAssistantSuggestions(),
       }),
       Placeholder.configure({
         placeholder: "Ask a question or get some @help",
         emptyNodeClass:
-          "first:before:text-gray-400 first:before:float-left first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:h-0",
+          "first:before:text-gray-400 dark:first:before:text-gray-400-night first:before:float-left first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:h-0",
       }),
     ],
   });
