@@ -22,18 +22,11 @@ const preview: Preview = {
         ], // Define your order here
       },
     },
-    backgrounds: {
-      default: "dark",
-      values: [
-        { name: "light", value: "#ffffff" },
-        { name: "dark", value: "#1e293b" },
-      ],
-    },
     themes: {
       default: "light",
       list: [
         { name: "light", class: "", color: "#ffffff" },
-        { name: "dark", class: "s-dark", color: "#1e293b" },
+        { name: "dark", class: "s-dark", color: "s-bg-slate-800" },
       ],
     },
   },

@@ -32,29 +32,26 @@ const Example = () => {
   };
 
   return (
-    <div className="s-flex s-h-[500px] s-items-center">
-      <div className="s-flex s-w-[900px] s-flex-1 s-px-0">
-        <RainbowEffect
-          containerClassName="s-w-full"
-          className="s-w-full"
-          size={isFocused ? "large" : "medium"}
+    <div className="s-flex s-w-[900px] s-flex-1 s-px-0">
+      <RainbowEffect
+        containerClassName="s-w-full"
+        className="s-w-full"
+        size={isFocused ? "large" : "medium"}
+      >
+        <div
+          ref={divRef}
+          onClick={handleFocus}
+          className={cn(
+            "s-relative s-flex s-h-[120px] s-w-full s-flex-row s-p-5",
+            "s-rounded-3xl s-border s-border-border-dark/0 s-bg-primary-50 s-transition-all",
+            isFocused
+              ? "s-border-border-dark s-ring-2 s-ring-highlight-300 s-ring-offset-2"
+              : ""
+          )}
         >
-          <div
-            ref={divRef}
-            onClick={handleFocus}
-            className={cn(
-              "s-relative s-flex s-h-[120px] s-w-full s-flex-row s-p-5",
-              "s-rounded-3xl s-border s-border-border-dark/0 s-transition-all",
-              "s-bg-primary-50 dark:s-bg-primary-100-night",
-              isFocused
-                ? "s-border-border-dark s-ring-2 s-ring-highlight-300 s-ring-offset-2"
-                : ""
-            )}
-          >
-            Hello
-          </div>
-        </RainbowEffect>
-      </div>
+          Hello
+        </div>
+      </RainbowEffect>
     </div>
   );
 };
