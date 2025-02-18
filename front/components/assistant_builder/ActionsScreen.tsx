@@ -607,7 +607,8 @@ function NewActionModal({
     }, 500);
   };
 
-  const onModalSave = () => {
+  const onModalSave = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
     if (
       newAction &&
       !titleError &&
@@ -689,6 +690,10 @@ function NewActionModal({
           rightButtonProps={{
             label: "Save",
             onClick: onModalSave,
+            disabled:
+              titleError ||
+              !descriptionValid ||
+              (newAction && hasActionError(newAction)),
           }}
         />
       </SheetContent>
