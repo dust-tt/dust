@@ -614,7 +614,7 @@ pub const POSTGRES_TABLES: [&'static str; 16] = [
     );",
 ];
 
-pub const SQL_INDEXES: [&'static str; 33] = [
+pub const SQL_INDEXES: [&'static str; 34] = [
     "CREATE INDEX IF NOT EXISTS
        idx_specifications_project_created ON specifications (project, created);",
     "CREATE INDEX IF NOT EXISTS
@@ -687,7 +687,9 @@ pub const SQL_INDEXES: [&'static str; 33] = [
         idx_data_sources_nodes_parents_second ON data_sources_nodes (data_source, (parents[2]));",
     "CREATE INDEX IF NOT EXISTS
         idx_data_sources_nodes_parents_single ON data_sources_nodes (data_source, (array_length(parents, 1) = 1));",
-];
+    "CREATE INDEX IF NOT EXISTS
+        idx_data_sources_nodes_tags_array ON data_sources_nodes USING GIN (tags_array);",
+        ];
 
 pub const SQL_FUNCTIONS: [&'static str; 2] = [
     // SQL function to delete the project datasets / datasets_joins / datasets_points
