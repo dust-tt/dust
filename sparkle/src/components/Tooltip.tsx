@@ -22,7 +22,7 @@ const TooltipContent = React.forwardRef<
     sideOffset={sideOffset}
     className={classNames(
       "s-z-50 s-max-w-sm s-overflow-hidden s-whitespace-pre-wrap s-break-words s-rounded-md s-border",
-      "s-bg-white dark:s-bg-muted-background-night",
+      "s-bg-white dark:s-bg-slate-950",
       "s-text-foreground dark:s-text-foreground-night",
       "s-border-border dark:s-border-border-night",
       "s-px-3 s-py-1.5 s-text-sm s-shadow-md",

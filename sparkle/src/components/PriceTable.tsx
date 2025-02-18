@@ -120,7 +120,7 @@ export function PriceTable({
         }}
         className={classNames(
           "s-flex s-h-full s-flex-col s-overflow-hidden s-shadow-md",
-          "s-bg-white dark:s-bg-muted-background-night"
+          "s-bg-white dark:s-bg-structure-50-night"
         )}
       >
         {childrenWithProps}
