@@ -131,7 +131,7 @@ export function DataSourceTagsFilterDropdown({
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          size="sm"
+          size="xs"
           label={tagsLabel}
           isSelect
           counterValue={tagsCounter ? tagsCounter.toString() : "auto"}
