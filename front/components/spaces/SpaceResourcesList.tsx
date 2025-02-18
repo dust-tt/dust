@@ -364,6 +364,7 @@ export const SpaceResourcesList = ({
     canWriteInSpace,
     isFolder,
     onSelect,
+    isDark,
   ]);
 
   const onSelectedDataUpdated = useCallback(async () => {
