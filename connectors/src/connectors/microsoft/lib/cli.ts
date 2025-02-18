@@ -9,6 +9,7 @@ import type { DriveItem } from "@microsoft/microsoft-graph-types";
 import { getConnectorManager } from "@connectors/connectors";
 import { getClient } from "@connectors/connectors/microsoft";
 import {
+  clientApiGet,
   getItem,
   getParentReferenceInternalId,
 } from "@connectors/connectors/microsoft/lib/graph_api";
@@ -101,6 +102,14 @@ export const microsoft = async ({
       };
 
       return { status: 200, content, type: typeof content };
+    }
+
+    case "list-sites": {
+      const connector = await getConnector(args);
+      const client = await getClient(connector.connectionId);
+      const endpoint = "/sites";
+      const res = await clientApiGet(client, endpoint);
+      return { status: 200, content: res.value, type: typeof res.value };
     }
 
     case "list-columns": {

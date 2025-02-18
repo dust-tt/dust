@@ -330,6 +330,7 @@ export const MicrosoftCommandSchema = t.type({
   command: t.union([
     t.literal("garbage-collect-all"),
     t.literal("check-file"),
+    t.literal("list-sites"),
     t.literal("list-columns"),
     t.literal("start-incremental-sync"),
     t.literal("restart-all-incremental-sync-workflows"),
