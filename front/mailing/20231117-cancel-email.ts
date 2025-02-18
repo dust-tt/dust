@@ -30,7 +30,7 @@ export async function sendCancelSubscriptionEmail(
       <ul>
       <li>all users will be removed from the workspace except for the most tenured admin (more about this <a href="https://docs.dust.tt/docs/subscriptions#what-happens-when-we-cancel-our-dust-subscription">here</a>);</li>
       <li>connections will be removed and data safety deleted from Dust;</li>
-      <li>conversations, custom assistants, and data sources will still be accessible with limitations;</li>
+      <li>conversations, custom agents, and data sources will still be accessible with limitations;</li>
       <li>your usage of Dust will have the restrictions of the free plan.</li>
       </ul>
       <p>More details are available on <a href="https://docs.dust.tt/docs/subscriptions#what-happens-when-we-cancel-our-dust-subscription">our subscription cancelling FAQ</a>.</p>

@@ -353,7 +353,7 @@ async function* runMultiActionsAgent(
     return;
   }
 
-  let fallbackPrompt = "You are a conversational assistant";
+  let fallbackPrompt = "You are a conversational agent";
   if (
     agentConfiguration.actions.length ||
     agentConfiguration.visualizationEnabled
@@ -477,8 +477,8 @@ async function* runMultiActionsAgent(
         error: {
           code: "duplicate_specification_name",
           message:
-            `Duplicate action name in assistant configuration: ${spec.name}. ` +
-            "Your assistants actions must have unique names.",
+            `Duplicate action name in agent configuration: ${spec.name}. ` +
+            "Your agents actions must have unique names.",
         },
       } satisfies AgentErrorEvent;
 
@@ -623,7 +623,7 @@ async function* runMultiActionsAgent(
         messageId: agentMessage.sId,
         error: {
           code: "multi_actions_error",
-          message: `Error running assistant: ${event.content.message}`,
+          message: `Error running agent: ${event.content.message}`,
         },
       } satisfies AgentErrorEvent;
       return;
@@ -665,7 +665,7 @@ async function* runMultiActionsAgent(
           messageId: agentMessage.sId,
           error: {
             code: "multi_actions_error",
-            message: `Error running assistant: ${e.error}`,
+            message: `Error running agent: ${e.error}`,
           },
         } satisfies AgentErrorEvent;
         return;
@@ -734,7 +734,7 @@ async function* runMultiActionsAgent(
       error: {
         code: "tool_use_limit_reached",
         message:
-          "The assistant attempted to use too many tools. This model error can be safely retried.",
+          "The agent attempted to use too many tools. This model error can be safely retried.",
       },
     } satisfies AgentErrorEvent;
     return;
@@ -763,7 +763,7 @@ async function* runMultiActionsAgent(
         messageId: agentMessage.sId,
         error: {
           code: "action_not_found",
-          message: `The assistant attempted to run an invalid action (${a.name}). This model error can be safely retried.`,
+          message: `The agent attempted to run an invalid action (${a.name}). This model error can be safely retried.`,
         },
       } satisfies AgentErrorEvent;
       return;

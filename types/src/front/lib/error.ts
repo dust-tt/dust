@@ -62,7 +62,7 @@ export type APIErrorType =
   | "subscription_not_found"
   | "subscription_state_invalid"
   | "service_unavailable"
-  // Use by assistant creation / update
+  // Use by agent creation / update
   | "assistant_saving_error"
   // Used in the DustAPI client:
   | "unexpected_error_format"

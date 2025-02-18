@@ -34,16 +34,16 @@ export function QuickStartGuide() {
             </div>
             <div className="col-span-3 flex flex-col gap-2">
               <h5 className="text-xl font-semibold">
-                👋 Hello <span className="text-success-500">@assistants</span>
+                👋 Hello <span className="text-success-500">@agents</span>
               </h5>
               <p>
                 In Dust, you have access to{" "}
-                <strong>multiple AI&nbsp;assistants</strong>.
+                <strong>multiple AI&nbsp;agents</strong>.
               </p>
               <p>
-                You can call an assistant by typing <strong>"@"</strong> and the
-                name of the assistant. You can even call several assistants at
-                the same time or chain them in one conversation.
+                You can call an agent by typing <strong>"@"</strong> and the
+                name of the agent. You can even call several agents at the same
+                time or chain them in one conversation.
               </p>
             </div>
             <Image
@@ -55,32 +55,32 @@ export function QuickStartGuide() {
             />
             <div className="col-span-3 flex flex-col gap-4">
               <h5 className="text-xl font-semibold">
-                👩‍🎨🦸‍♀️🥷🧑‍🚀 Multiple Assistants
+                👩‍🎨🦸‍♀️🥷🧑‍🚀 Multiple Agents
               </h5>
               <p className="font-medium">
-                Specialized assistants can help answer questions, really well.
+                Specialized agents can help answer questions, really well.
               </p>
               <p>
-                Assistants in Dust can be provided by Dust, by your company
-                (Company assistants) or by your coworkers (Shared assistants).
+                Agents in Dust can be provided by Dust, by your company (Company
+                agents) or by your coworkers (Shared agents).
               </p>
               <p>
-                Specialized assistants generally combine a model with specific
+                Specialized agents generally combine a model with specific
                 instructions and access to knowledge.
               </p>
               <p>
-                Raw model assistants, without any particular instructions or
-                access to your company knowledge are also available, like{" "}
+                Raw model agents, without any particular instructions or access
+                to your company knowledge are also available, like{" "}
                 <span className="font-medium text-success-500">@gpt4</span>.
               </p>
             </div>
             <div className="col-span-3 flex flex-col gap-4">
               <h5 className="text-xl font-semibold">
-                🛠️ Build your own Assistants
+                🛠️ Build your own Agents
               </h5>
               <p className="font-medium">
-                Assistants start with an "instruction": a text telling what you
-                want them to do.
+                Agents start with an "instruction": a text telling what you want
+                them to do.
               </p>
               <p>
                 For instance,{" "}
@@ -94,7 +94,7 @@ export function QuickStartGuide() {
                 We call them <span className="font-medium">Data sources.</span>
               </p>
               <p>
-                With the right Data source, assistants can answer questions like{" "}
+                With the right Data source, agents can answer questions like{" "}
                 <span className="italic">
                   "Have we been working with company X"
                 </span>
@@ -110,7 +110,7 @@ export function QuickStartGuide() {
                 📚 What are Data sources?
               </h5>
               <p>
-                To augment your assistants with knowledge, you give them data in
+                To augment your agents with knowledge, you give them data in
                 three ways:
               </p>
             </div>

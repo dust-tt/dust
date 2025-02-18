@@ -217,7 +217,7 @@ export function getCitationsCount({
 
 /**
  * This is shared across action runners and used to compute the local step refsOffset (the current
- * refsOffset for the assistant actions up to the current step (`refsOffset`) to which we add the
+ * refsOffset for the agent actions up to the current step (`refsOffset`) to which we add the
  * actions that comes before the current action in the current step).
  *
  * @param agentConfiguration The agent configuration.

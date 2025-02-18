@@ -110,7 +110,7 @@ export function makeAssistantSelectionBlock(
           type: "static_select",
           placeholder: {
             type: "plain_text",
-            text: "Ask another assistant",
+            text: "Ask another agent",
             emoji: true,
           },
           options: agentConfigurations.map((ac) => {
@@ -144,7 +144,7 @@ export function makeFooterBlock(
   workspaceId: string
 ) {
   const assistantsUrl = makeDustAppUrl(`/w/${workspaceId}/assistant/new`);
-  const baseHeader = `<${assistantsUrl}|Browse assistants> | <${SLACK_HELP_URL}|Use Dust in Slack> | <${DUST_URL}|Learn more>`;
+  const baseHeader = `<${assistantsUrl}|Browse agents> | <${SLACK_HELP_URL}|Use Dust in Slack> | <${DUST_URL}|Learn more>`;
   return {
     type: "context",
     elements: [

@@ -95,7 +95,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       };
     }
     // We reset the scope according to the current flow. This ensures that cloning a workspace
-    // assistant with flow `personal_assistants` will initialize the assistant as private.
+    // agent with flow `personal_assistants` will initialize the agent as private.
     configuration.scope =
       flow === "personal_assistants" ? "private" : "workspace";
   } else if (templateId) {

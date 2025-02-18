@@ -190,7 +190,7 @@ export default function CreateAssistant({
       owner={owner}
       titleChildren={
         <AppLayoutSimpleCloseTitle
-          title={"Create an Assistant"}
+          title={"Create an Agent"}
           onClose={async () => {
             await appLayoutBack(owner, router);
           }}
@@ -207,7 +207,7 @@ export default function CreateAssistant({
               >
                 <Button
                   icon={DocumentIcon}
-                  label="New Assistant"
+                  label="New Agent"
                   data-gtm-label="assistantCreationButton"
                   data-gtm-location="assistantCreationPage"
                   size="md"

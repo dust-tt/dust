@@ -39,7 +39,7 @@ export default function SsoEnforced({
             </div>
             <p className="mt-16 font-objektiv text-4xl font-bold tracking-tighter text-slate-50 md:text-6xl">
               <span className="text-red-400 sm:font-objektiv md:font-objektiv">
-                Secure AI assistant
+                Secure AI agent
               </span>{" "}
               <br />
               with your company’s knowledge

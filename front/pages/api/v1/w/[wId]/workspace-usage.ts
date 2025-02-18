@@ -64,10 +64,10 @@ import { apiError } from "@app/logger/withlogging";
  *         description: |
  *           The name of the usage table to retrieve:
  *           - "users": The list of users categorized by their activity level.
- *           - "assistant_messages": The list of messages sent by users including the mentioned assistants.
+ *           - "assistant_messages": The list of messages sent by users including the mentioned agents.
  *           - "builders": The list of builders categorized by their activity level.
- *           - "assistants": The list of workspace assistants and their corresponding usage.
- *           - "feedbacks": The list of feedbacks given by users on the assistant messages.
+ *           - "assistants": The list of workspace agents and their corresponding usage.
+ *           - "feedbacks": The list of feedbacks given by users on the agent messages.
  *           - "all": A concatenation of all the above tables.
  *         schema:
  *           type: string

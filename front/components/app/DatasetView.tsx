@@ -563,7 +563,7 @@ export default function DatasetView({
                 <p className="mt-2 text-sm text-foreground dark:text-foreground-night">
                   Set the properties and types to ensure your dataset is valid
                   when you update it. The properties descriptions are used to
-                  generate the inputs to your app when run from an Assistant.
+                  generate the inputs to your app when run from an Agent.
                 </p>
               ) : null}
             </div>
@@ -667,8 +667,8 @@ export default function DatasetView({
                 Input data for test-running your app using the 'RUN' button.
               </strong>
               <br />
-              Running this app from the API or an assistant will use the input
-              data provided at runtime.
+              Running this app from the API or an agent will use the input data
+              provided at runtime.
             </p>
           ) : (
             <>

@@ -12,7 +12,7 @@ export function FutureSection() {
         <div className="col-span-12 mb-6">
           <div>
             <H2 from="from-sky-200" to="to-blue-400">
-              Your own AI assistants, powered by the best models
+              Your own AI agents, powered by the best models
             </H2>
             <P size="lg">
               Integrates with your internal&nbsp;data.

@@ -14,7 +14,7 @@ import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspa
 
 // Shared Github actions configuration. Github actions do not have any parameter for now (we might
 // want to allow pinnig the repo in the future). Their configuration is shared and used to track
-// which specific action is enabled for an assistant.
+// which specific action is enabled for an agent.
 export class AgentGithubConfiguration extends WorkspaceAwareModel<AgentGithubConfiguration> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;

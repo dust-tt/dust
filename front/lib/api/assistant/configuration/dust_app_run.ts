@@ -48,7 +48,7 @@ export async function fetchDustAppRunActionConfigurations(
       const dustApp = dustApps.find((app) => app.sId === c.appId);
 
       // If the dust app is not found (was deleted) we just skip the action. This is not ideal as it
-      // will change the behavior of the assistant without notice, but we don't want to crash or let
+      // will change the behavior of the agent without notice, but we don't want to crash or let
       // the app be used if it was deleted.
       if (dustApp) {
         actions.push({

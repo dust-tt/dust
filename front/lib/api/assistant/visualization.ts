@@ -84,7 +84,7 @@ import { triggerUserFileDownload } from "@dust/react-hooks";
 
 General example of a visualization component:
 
-In response of a user asking a plot of sine and cosine functions the following :::visualization directive can be inlined anywhere in the assistant response:
+In response of a user asking a plot of sine and cosine functions the following :::visualization directive can be inlined anywhere in the agent response:
 
 :::visualization
 import React from "react";

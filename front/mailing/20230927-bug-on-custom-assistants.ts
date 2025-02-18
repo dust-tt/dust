@@ -13,11 +13,11 @@ export const sendAPIUserEmail = async ({
   const msg = {
     to: user_email,
     from: "spolu@dust.tt",
-    subject: "[Dust] Resolved: access to your custom assistants",
+    subject: "[Dust] Resolved: access to your custom agents",
     html: `<p>Hi there—</p>
     <p>I'm Stan, a cofounder of Dust.</p>
-    <p>Thanks for trying us out. We noticed that you tried creating at least one custom assistant over the last few days. Due to an issue on our end, these assistants didn't show up in your workspace as a free user and you weren't able to start conversations with them.</p>
-    <p>Sincere apologies for that, it's not the experience we wanted you to have when giving us a spin. This is now fixed and you should be able to view, edit, and interact with your assistants, custom or not, in your workspace.</p>
+    <p>Thanks for trying us out. We noticed that you tried creating at least one custom agent over the last few days. Due to an issue on our end, these agents didn't show up in your workspace as a free user and you weren't able to start conversations with them.</p>
+    <p>Sincere apologies for that, it's not the experience we wanted you to have when giving us a spin. This is now fixed and you should be able to view, edit, and interact with your agents, custom or not, in your workspace.</p>
     <p>We're working hard to make Dust a useful tool for you and your team. If you have any thoughts or suggestions on what we should do better, please don't hesitate to let me know. Again, really appreciate you giving us a try.</p>
     <p>Stan</p>
 `,

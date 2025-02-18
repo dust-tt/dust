@@ -281,7 +281,7 @@ async function renderDataSourcesConfigurations(
               id: dataSourceView.workspaceId,
             },
           },
-          "Assistant Builder: Error fetching content nodes for documents."
+          "Agent Builder: Error fetching content nodes for documents."
         );
 
         return {
@@ -358,7 +358,7 @@ async function renderTableDataSourcesConfigurations(
                 id: dataSourceView.workspaceId,
               },
             },
-            "Assistant Builder: Error fetching content nodes for tables."
+            "Agent Builder: Error fetching content nodes for tables."
           );
 
           return {
