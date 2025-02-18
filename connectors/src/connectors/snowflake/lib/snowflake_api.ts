@@ -328,6 +328,7 @@ async function _checkRoleGrants(
         "MATERIALIZED_VIEW",
         "HYBRID_TABLE",
         "ICEBERG_TABLE",
+        "STREAM",
       ].includes(grantOn)
     ) {
       if (g.privilege !== "SELECT") {
@@ -351,11 +352,11 @@ async function _checkRoleGrants(
         "MODEL",
       ].includes(grantOn)
     ) {
-      if (g.privilege !== "USAGE") {
+      if (!["USAGE", "READ"].includes(g.privilege)) {
         return new Err(
           new TestConnectionError(
             "NOT_READONLY",
-            `Non-usage grant found on ${grantOn} "${g.name}": privilege=${g.privilege} (connection must be read-only).`
+            `Non-usage or read grant found on ${grantOn} "${g.name}": privilege=${g.privilege} (connection must be read-only).`
           )
         );
       }
