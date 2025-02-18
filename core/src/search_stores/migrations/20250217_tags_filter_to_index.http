@@ -1,0 +1,6 @@
+PUT core.data_sources_nodes/_settings
+{
+  "settings": {
+    "index.default_pipeline": "tag_filter"
+  }
+}
