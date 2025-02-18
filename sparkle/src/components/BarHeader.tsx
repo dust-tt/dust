@@ -36,8 +36,8 @@ export function BarHeader({
     <div
       className={classNames(
         "s-fixed s-left-0 s-right-0 s-top-0 s-z-30 s-flex s-h-16 s-flex-row s-items-center s-gap-3 s-border-b s-px-4 s-backdrop-blur",
-        "s-border-structure-300/30 s-bg-white/80",
-        "dark:s-border-structure-300-night/30 dark:s-bg-structure-50-night/80",
+        "s-border-structure-300/30 dark:s-border-structure-300-night/30",
+        "s-bg-white/80 dark:s-bg-structure-100-night/80",
         className
       )}
     >
