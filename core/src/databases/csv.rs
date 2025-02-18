@@ -7,9 +7,10 @@ use tokio::io::AsyncReadExt;
 
 use regex::Regex;
 use tokio_util::compat::TokioAsyncReadCompatExt;
+use tracing::info;
 use unicode_normalization::UnicodeNormalization;
 
-use crate::databases::table::Row;
+use crate::{databases::table::Row, utils};
 
 pub struct UpsertQueueCSVContent {
     pub upsert_queue_bucket_csv_path: String,
@@ -27,6 +28,7 @@ impl UpsertQueueCSVContent {
     }
 
     pub async fn parse(&self) -> Result<Vec<Row>> {
+        let now = utils::now();
         let bucket = Self::get_upsert_queue_bucket().await?;
         let path = &self.upsert_queue_bucket_csv_path;
 
@@ -38,9 +40,24 @@ impl UpsertQueueCSVContent {
         // We buffer the reader to make sure we yield the thread while processing.
         const CHUNK_SIZE: usize = 64 * 1024; // 64KB chunks
         let buffered = tokio::io::BufReader::with_capacity(CHUNK_SIZE, rdr);
+        let download_duration = utils::now() - now;
 
+        let now = utils::now();
         let (delimiter, rdr) = Self::find_delimiter(buffered).await?;
-        Self::csv_to_rows(rdr, delimiter).await
+        let delimiter_duration = utils::now() - now;
+
+        let now = utils::now();
+        let rows = Self::csv_to_rows(rdr, delimiter).await?;
+        let csv_to_rows_duration = utils::now() - now;
+
+        info!(
+            rows_count = rows.len(),
+            download_duration = download_duration,
+            delimiter_duration = delimiter_duration,
+            csv_to_rows_duration = csv_to_rows_duration,
+            "CSV parse"
+        );
+        Ok(rows)
     }
 
     fn slugify(text: &str) -> String {
