@@ -44,7 +44,7 @@ export function AgentMessageActionsDrawer({
         }
       }}
     >
-      <SheetContent size="lg">
+      <SheetContent size="xl">
         <SheetHeader>
           <SheetTitle>Breakdown of the tools used</SheetTitle>
         </SheetHeader>
