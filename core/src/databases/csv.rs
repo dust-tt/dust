@@ -275,7 +275,7 @@ mod tests {
         // Test first row
         assert_eq!(rows[0].row_id, "0");
         let value = rows[0].value.as_object().unwrap();
-        assert_eq!(value["hell_world"], 1.0);
+        assert_eq!(value["hellworld"], 1.0);
         assert_eq!(value["super_fast"], 2.23);
         assert_eq!(value["c_foo"], 3.0);
         let date = value["date"].as_object().unwrap();
@@ -286,7 +286,7 @@ mod tests {
         // Test second row
         assert_eq!(rows[1].row_id, "1");
         let value = rows[1].value.as_object().unwrap();
-        assert_eq!(value["hell_world"], 4.0);
+        assert_eq!(value["hellworld"], 4.0);
         assert_eq!(value["super_fast"], "hello world");
         assert_eq!(value["c_foo"], 6.0);
         let date = value["date"].as_object().unwrap();
