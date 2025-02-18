@@ -14,12 +14,12 @@ export const ROLES_DATA: Record<
   },
   builder: {
     description:
-      "Builders can create custom assistants and use advanced dev tools.",
+      "Builders can create custom agents and use advanced dev tools.",
     color: "amber",
   },
   user: {
     description:
-      "Members can use assistants provided by Dust as well as custom assistants created by their company.",
+      "Members can use agents provided by Dust as well as custom agents created by their company.",
     color: "emerald",
   },
 };

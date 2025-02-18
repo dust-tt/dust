@@ -90,7 +90,7 @@ conversations
       }
     }
     if (!candidate) {
-      throw new Error(`Now match for assistant "${assistant}"`);
+      throw new Error(`Now match for agent "${assistant}"`);
     }
 
     const content = await readStdin();

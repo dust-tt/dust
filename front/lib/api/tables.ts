@@ -49,7 +49,11 @@ type NotFoundError = {
   message: string;
 };
 
-type DetectedHeadersType = { header: string[]; rowIndex: number };
+type DetectedHeadersType = {
+  header: string[];
+  rowIndex: number;
+  firstRow: string[];
+};
 
 export type TableOperationError =
   | {
@@ -118,7 +122,7 @@ export async function deleteTable({
   }
   // We do not delete the related AgentTablesQueryConfigurationTable entry if any.
   // This is because the table might be created again with the same name and we want to keep the configuration.
-  // The Assistant Builder displays an error on the action card if it misses a table.
+  // The agent Builder displays an error on the action card if it misses a table.
 
   return new Ok(null);
 }
@@ -371,7 +375,12 @@ export async function rowsFromCsv({
 }: {
   auth: Authenticator;
   csv: string;
-}): Promise<Result<{ rows: CoreAPIRow[] }, CsvParsingError>> {
+}): Promise<
+  Result<
+    { detectedHeaders: DetectedHeadersType; rows: CoreAPIRow[] },
+    CsvParsingError
+  >
+> {
   const now = performance.now();
   const delimiter = await guessDelimiter(csv);
   if (!delimiter) {
@@ -383,14 +392,14 @@ export async function rowsFromCsv({
 
   // this differs with = {} in that it prevent errors when header values clash with object properties such as toString, constructor, ..
   const valuesByCol: Record<string, string[]> = Object.create(null);
-  let header, rowIndex;
+  let header, rowIndex, firstRow;
   try {
     const headerRes = await detectHeaders(csv, delimiter);
 
     if (headerRes.isErr()) {
       return headerRes;
     }
-    ({ header, rowIndex } = headerRes.value);
+    ({ header, rowIndex, firstRow } = headerRes.value);
 
     const parser = parse(csv, { delimiter });
     let i = 0;
@@ -446,6 +455,8 @@ export async function rowsFromCsv({
             DateTime.fromSQL,
             // Google Spreadsheet date format parser.
             (text: string) => DateTime.fromFormat(text, "d-MMM-yyyy"),
+            // Full month name format parser
+            (text: string) => DateTime.fromFormat(text, "LLLL dd, yyyy"),
           ];
           const trimmedV = v.trim();
           for (const parse of dateParsers) {
@@ -538,7 +549,7 @@ export async function rowsFromCsv({
     "Parsing CSV"
   );
 
-  return new Ok({ detectedHeaders: { header, rowIndex }, rows });
+  return new Ok({ detectedHeaders: { header, rowIndex, firstRow }, rows });
 }
 
 async function staticHeaderDetection(
@@ -561,7 +572,7 @@ async function staticHeaderDetection(
     return new Err({ type: "invalid_header", message: header.error.message });
   }
 
-  return new Ok({ header: header.value, rowIndex: 1 });
+  return new Ok({ header: header.value, rowIndex: 1, firstRow });
 }
 
 export async function detectHeaders(

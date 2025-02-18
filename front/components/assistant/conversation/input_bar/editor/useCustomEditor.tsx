@@ -239,7 +239,7 @@ const useCustomEditor = ({
   const editor = useEditor({
     autofocus: disableAutoFocus ? false : "end",
     enableInputRules: false, // Disable Markdown when typing.
-    enablePasteRules: [MentionWithPaste.name], // We don't want Markdown when pasting but we allow CustomMention extension as it will handle parsing @assistant-name from plain text back into a mention.
+    enablePasteRules: [MentionWithPaste.name], // We don't want Markdown when pasting but we allow CustomMention extension as it will handle parsing @agent-name from plain text back into a mention.
     content,
     extensions: [
       StarterKit.configure({

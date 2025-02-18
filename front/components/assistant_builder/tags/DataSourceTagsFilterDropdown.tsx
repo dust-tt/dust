@@ -98,6 +98,8 @@ export function DataSourceTagsFilterDropdown({
     } else if (backUpTagsFilter) {
       newDsc.tagsFilter = backUpTagsFilter;
       setBackUpTagsFilter(null);
+    } else {
+      newDsc.tagsFilter = null;
     }
 
     onSave({
@@ -107,11 +109,15 @@ export function DataSourceTagsFilterDropdown({
   };
 
   const tagsFilter = currentDataSourceConfiguration.tagsFilter;
-  let tagsLabels = "Filters";
+  let tagsCounter: number | null = null;
+  let tagsLabel = "Filters";
   if (tagsFilter === "auto") {
-    tagsLabels = "Filters (auto)";
-  } else if (tagsFilter) {
-    tagsLabels = `Filters (${tagsFilter.in.length + tagsFilter.not.length})`;
+    tagsLabel = "Filters (auto)";
+  } else if (
+    tagsFilter &&
+    (tagsFilter.in.length > 0 || tagsFilter.not.length > 0)
+  ) {
+    tagsCounter = tagsFilter.in.length + tagsFilter.not.length;
   }
 
   return (
@@ -125,7 +131,14 @@ export function DataSourceTagsFilterDropdown({
       modal={true}
     >
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" label={tagsLabels} isSelect />
+        <Button
+          variant="outline"
+          size="xs"
+          label={tagsLabel}
+          isSelect
+          counterValue={tagsCounter ? tagsCounter.toString() : "auto"}
+          isCounter={tagsCounter !== null}
+        />
       </PopoverTrigger>
       <PopoverContent className="w-[600px] max-w-[600px]">
         <div className="flex flex-col gap-8 p-2">

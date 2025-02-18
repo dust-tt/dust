@@ -1,6 +1,6 @@
 ## [Dust](https://dust.tt)
 
-Custom AI assistant platform to speed up your work.
+Custom AI agent platform to speed up your work.
 
 Check out our [user guides and developer platform](https://docs.dust.tt)
 

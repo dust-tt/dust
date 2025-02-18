@@ -79,14 +79,14 @@ export const ACTION_SPECIFICATIONS: Record<
   },
   GITHUB_GET_PULL_REQUEST: {
     label: "Retrieve pull request",
-    description: "Retrieve a pull request from Github",
+    description: "Retrieve a pull request from GitHub",
     cardIcon: GithubIcon,
     dropDownIcon: GithubIcon,
     flag: null,
   },
   GITHUB_CREATE_ISSUE: {
     label: "Create issue",
-    description: "Create an issue on Github",
+    description: "Create an issue on GitHub",
     cardIcon: GithubIcon,
     dropDownIcon: GithubIcon,
     flag: null,
@@ -217,7 +217,7 @@ export function getCitationsCount({
 
 /**
  * This is shared across action runners and used to compute the local step refsOffset (the current
- * refsOffset for the assistant actions up to the current step (`refsOffset`) to which we add the
+ * refsOffset for the agent actions up to the current step (`refsOffset`) to which we add the
  * actions that comes before the current action in the current step).
  *
  * @param agentConfiguration The agent configuration.

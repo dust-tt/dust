@@ -1,5 +1,6 @@
 import {
   Button,
+  Chip,
   ContextItem,
   DocumentTextIcon,
   DropdownMenu,
@@ -10,10 +11,14 @@ import {
   EyeIcon,
   Input,
   LockIcon,
+  MagnifyingGlassIcon,
   SliderToggle,
+  Spinner,
   TableIcon,
+  Tooltip,
 } from "@dust-tt/sparkle";
 import type {
+  ConnectorType,
   CoreAPIDataSource,
   DataSourceType,
   GroupType,
@@ -21,15 +26,15 @@ import type {
   NotionFindUrlResponseType,
   SlackAutoReadPattern,
   SlackbotWhitelistType,
+  WorkspaceType,
+  ZendeskFetchTicketResponseType,
 } from "@dust-tt/types";
-import type { WorkspaceType } from "@dust-tt/types";
-import type { ConnectorType } from "@dust-tt/types";
 import {
   ConnectorsAPI,
+  CoreAPI,
   isSlackAutoReadPatterns,
   safeParseJSON,
 } from "@dust-tt/types";
-import { CoreAPI } from "@dust-tt/types";
 import { JsonViewer } from "@textea/json-viewer";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
@@ -408,7 +413,6 @@ const DataSourcePage = ({
           label="Search Data"
           icon={LockIcon}
         />
-
         {dataSource.connectorProvider === "slack" && (
           <>
             <ConfigToggle
@@ -435,6 +439,9 @@ const DataSourcePage = ({
         )}
         {dataSource.connectorProvider === "notion" && (
           <NotionUrlCheckOrFind owner={owner} dsId={dataSource.sId} />
+        )}
+        {dataSource.connectorProvider === "zendesk" && (
+          <ZendeskTicketCheck owner={owner} dsId={dataSource.sId} />
         )}
         {dataSource.connectorProvider === "google_drive" && (
           <>
@@ -503,7 +510,6 @@ const DataSourcePage = ({
             featureKey="githubCodeSyncEnabled"
           />
         )}
-
         {!dataSource.connectorId ? (
           <>
             <div className="mt-4 flex flex-row">
@@ -718,6 +724,35 @@ async function handleCheckOrFindNotionUrl(
   return res.json();
 }
 
+async function handleCheckZendeskTicket(
+  args:
+    | { brandId: number; ticketId: number; wId: string; dsId: string }
+    | { ticketUrl: string; wId: string; dsId: string }
+): Promise<ZendeskFetchTicketResponseType | null> {
+  const res = await fetch(`/api/poke/admin`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      majorCommand: "zendesk",
+      command: "fetch-ticket",
+      args,
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    alert(
+      `Failed to check Zendesk ticket: ${
+        err.error?.connectors_error?.message
+      }\n\n${JSON.stringify(err)}`
+    );
+    return null;
+  }
+  return res.json();
+}
+
 async function handleWhitelistBot({
   botName,
   wId,
@@ -906,6 +941,145 @@ function NotionUrlCheckOrFind({
                     </>
                   )}
                 </span>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ZendeskTicketCheck({
+  owner,
+  dsId,
+}: {
+  owner: WorkspaceType;
+  dsId: string;
+}) {
+  const [brandId, setBrandId] = useState<number | null>(null);
+  const [ticketId, setTicketId] = useState<number | null>(null);
+  const [ticketUrl, setTicketUrl] = useState<string | null>(null);
+
+  const [ticketDetails, setTicketDetails] =
+    useState<ZendeskFetchTicketResponseType | null>(null);
+
+  const [idsIsLoading, setIdsIsLoading] = useState(false);
+  const [urlIsLoading, setUrlIsLoading] = useState(false);
+
+  return (
+    <div className="mb-2 flex flex-col gap-2 rounded-md border px-2 py-2 text-sm text-gray-600">
+      <div className="ml-2 flex items-center gap-2">
+        <div className="w-32">Brand / Ticket IDs</div>
+        <div className="flex max-w-md grow items-center gap-4">
+          <div className="flex-1">
+            <Input
+              type="number"
+              placeholder="Brand ID"
+              onChange={(e) => setBrandId(parseInt(e.target.value, 10))}
+              value={brandId?.toString()}
+            />
+          </div>
+          <div className="text-center text-gray-600">/</div>
+          <div className="flex-1">
+            <Input
+              type="number"
+              placeholder="Ticket ID"
+              onChange={(e) => setTicketId(parseInt(e.target.value, 10))}
+              value={ticketId?.toString()}
+            />
+          </div>
+        </div>
+        <Button
+          variant="outline"
+          icon={idsIsLoading ? Spinner : MagnifyingGlassIcon}
+          label={idsIsLoading ? undefined : "Check"}
+          disabled={!ticketId || !brandId || idsIsLoading}
+          onClick={async () => {
+            if (brandId && ticketId) {
+              setIdsIsLoading(true);
+              setTicketDetails(
+                await handleCheckZendeskTicket({
+                  brandId,
+                  ticketId,
+                  wId: owner.sId,
+                  dsId,
+                })
+              );
+              setIdsIsLoading(false);
+            }
+          }}
+        />
+      </div>
+      <div className="ml-2 mt-4 flex items-center gap-2">
+        <div className="w-32">Ticket URL</div>
+        <div className="max-w-md flex-1 grow items-center gap-4">
+          <Input
+            type="text"
+            placeholder="https://{subdomain}.zendesk.com/tickets/{ticket_id}"
+            onChange={(e) => setTicketUrl(e.target.value)}
+            value={ticketUrl ?? ""}
+          />
+        </div>
+        <Button
+          variant="outline"
+          icon={urlIsLoading ? Spinner : MagnifyingGlassIcon}
+          label={urlIsLoading ? undefined : "Check"}
+          disabled={!ticketUrl || urlIsLoading}
+          onClick={async () => {
+            if (ticketUrl) {
+              setUrlIsLoading(true);
+              setTicketDetails(
+                await handleCheckZendeskTicket({
+                  ticketUrl,
+                  wId: owner.sId,
+                  dsId,
+                })
+              );
+              setUrlIsLoading(false);
+            }
+          }}
+        />
+      </div>
+      <div className="text-gray-800">
+        {ticketDetails && (
+          <div className="flex flex-col gap-2 rounded-md border pt-2 text-lg">
+            <div className="mb-4 ml-4 mt-2 flex gap-2">
+              <Tooltip
+                label={
+                  ticketDetails.isTicketOnDb
+                    ? "The ticket is synced with Dust."
+                    : "The ticket is not synced with Dust."
+                }
+                className="max-w-md"
+                trigger={
+                  <Chip
+                    label={ticketDetails.isTicketOnDb ? "Synced" : "Not synced"}
+                    color={ticketDetails.isTicketOnDb ? "purple" : "pink"}
+                  />
+                }
+              />
+              <Tooltip
+                label={
+                  ticketDetails.ticket
+                    ? "The ticket can be found on Zendesk."
+                    : ticketUrl
+                      ? "The URL is malformed or does not lead to an existing ticket."
+                      : "The ticket or the brand was not found."
+                }
+                className="max-w-md"
+                trigger={
+                  <Chip
+                    label={ticketDetails.ticket ? "Found" : "Not Found"}
+                    color={ticketDetails.ticket ? "emerald" : "warning"}
+                  />
+                }
+              />
+            </div>
+            {ticketDetails.ticket && (
+              <div className="ml-4 pt-2 text-xs text-element-700">
+                <div className="mb-1 font-bold">Details</div>
+                <JsonViewer value={ticketDetails.ticket} rootName={false} />
               </div>
             )}
           </div>

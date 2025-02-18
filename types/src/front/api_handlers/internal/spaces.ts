@@ -1,5 +1,4 @@
 import * as t from "io-ts";
-
 const PostRestrictedSpace = t.type({
   memberIds: t.array(t.string),
   isRestricted: t.literal(true),
@@ -33,3 +32,26 @@ export const PatchSpaceRequestBodySchema = t.type({
 });
 
 export const PostDataSourceViewSchema = ContentSchema;
+
+export const PostNotionSyncPayloadSchema = t.type({
+  urls: t.array(t.string),
+});
+
+export const GetPostNotionSyncResponseBodySchema = t.type({
+  syncResults: t.array(
+    t.intersection([
+      t.type({
+        url: t.string,
+        timestamp: t.number,
+        success: t.boolean,
+      }),
+      t.partial({
+        error_message: t.string,
+      }),
+    ])
+  ),
+});
+
+export type GetPostNotionSyncResponseBody = t.TypeOf<
+  typeof GetPostNotionSyncResponseBodySchema
+>;

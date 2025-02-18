@@ -39,8 +39,9 @@ const sizeClasses: Record<DialogSizeType, string> = {
 
 const dialogVariants = cva(
   cn(
-    "s-fixed s-left-[50%] s-top-[50%] s-z-50 s-grid s-w-full s-overflow-hidden s-rounded-2xl s-border s-border-border s-translate-x-[-50%] s-translate-y-[-50%] s-border s-p-2 s-shadow-lg s-duration-200 data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-fade-out-0 data-[state=open]:s-fade-in-0 data-[state=closed]:s-zoom-out-95 data-[state=open]:s-zoom-in-95 data-[state=closed]:s-slide-out-to-left-1/2 data-[state=closed]:s-slide-out-to-top-[48%] data-[state=open]:s-slide-in-from-left-1/2 data-[state=open]:s-slide-in-from-top-[48%] s-sm:rounded-lg",
-    "s-bg-background dark:s-bg-background-night"
+    "s-fixed s-left-[50%] s-top-[50%] s-z-50 s-grid s-w-full s-overflow-hidden s-rounded-2xl s-border s-translate-x-[-50%] s-translate-y-[-50%] s-border s-p-2 s-shadow-lg s-duration-200 data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-fade-out-0 data-[state=open]:s-fade-in-0 data-[state=closed]:s-zoom-out-95 data-[state=open]:s-zoom-in-95 data-[state=closed]:s-slide-out-to-left-1/2 data-[state=closed]:s-slide-out-to-top-[48%] data-[state=open]:s-slide-in-from-left-1/2 data-[state=open]:s-slide-in-from-top-[48%] s-sm:rounded-lg",
+    "s-bg-background dark:s-bg-background-night",
+    "s-border-border dark:s-border-border-night"
   ),
   {
     variants: {

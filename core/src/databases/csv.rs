@@ -7,12 +7,13 @@ use tokio::io::AsyncReadExt;
 
 use regex::Regex;
 use tokio_util::compat::TokioAsyncReadCompatExt;
+use tracing::info;
 use unicode_normalization::UnicodeNormalization;
 
-use crate::databases::table::Row;
+use crate::{databases::table::Row, utils};
 
 pub struct UpsertQueueCSVContent {
-    pub upsert_queue_bucket_path: String,
+    pub upsert_queue_bucket_csv_path: String,
 }
 
 const MAX_TABLE_COLUMNS: usize = 512;
@@ -27,8 +28,9 @@ impl UpsertQueueCSVContent {
     }
 
     pub async fn parse(&self) -> Result<Vec<Row>> {
+        let now = utils::now();
         let bucket = Self::get_upsert_queue_bucket().await?;
-        let path = &self.upsert_queue_bucket_path;
+        let path = &self.upsert_queue_bucket_csv_path;
 
         // This is not the most efficient as we download the entire file here but we will
         // materialize it in memory as Vec<Row> anyway so that's not a massive difference.
@@ -38,9 +40,24 @@ impl UpsertQueueCSVContent {
         // We buffer the reader to make sure we yield the thread while processing.
         const CHUNK_SIZE: usize = 64 * 1024; // 64KB chunks
         let buffered = tokio::io::BufReader::with_capacity(CHUNK_SIZE, rdr);
+        let download_duration = utils::now() - now;
 
+        let now = utils::now();
         let (delimiter, rdr) = Self::find_delimiter(buffered).await?;
-        Self::csv_to_rows(rdr, delimiter).await
+        let delimiter_duration = utils::now() - now;
+
+        let now = utils::now();
+        let rows = Self::csv_to_rows(rdr, delimiter).await?;
+        let csv_to_rows_duration = utils::now() - now;
+
+        info!(
+            rows_count = rows.len(),
+            download_duration = download_duration,
+            delimiter_duration = delimiter_duration,
+            csv_to_rows_duration = csv_to_rows_duration,
+            "CSV parse"
+        );
+        Ok(rows)
     }
 
     fn slugify(text: &str) -> String {
@@ -58,7 +75,7 @@ impl UpsertQueueCSVContent {
         let mut with_separators = String::new();
         let chars: Vec<char> = s.chars().collect();
         for (i, &c) in chars.iter().enumerate() {
-            if i > 0 && c.is_uppercase() || c.is_ascii_digit() {
+            if i > 0 && (c.is_uppercase() || c.is_ascii_digit()) {
                 if chars[i - 1].is_lowercase() {
                     with_separators.push('_');
                 }
@@ -87,7 +104,7 @@ impl UpsertQueueCSVContent {
             let slug = if curr == "__dust_id" {
                 curr.to_string()
             } else {
-                let s = Self::slugify(curr);
+                let s = Self::slugify(&curr.to_lowercase());
                 if s.is_empty() {
                     format!("col_{}", acc.len())
                 } else {
@@ -245,7 +262,7 @@ mod tests {
         assert_eq!(
             sanitized,
             vec![
-                "hello_world",
+                "helloworld",
                 "b_2fkls",
                 "æuu_cool_",
                 "_",
@@ -275,7 +292,7 @@ mod tests {
         // Test first row
         assert_eq!(rows[0].row_id, "0");
         let value = rows[0].value.as_object().unwrap();
-        assert_eq!(value["hell_world"], 1.0);
+        assert_eq!(value["hellworld"], 1.0);
         assert_eq!(value["super_fast"], 2.23);
         assert_eq!(value["c_foo"], 3.0);
         let date = value["date"].as_object().unwrap();
@@ -286,7 +303,7 @@ mod tests {
         // Test second row
         assert_eq!(rows[1].row_id, "1");
         let value = rows[1].value.as_object().unwrap();
-        assert_eq!(value["hell_world"], 4.0);
+        assert_eq!(value["hellworld"], 4.0);
         assert_eq!(value["super_fast"], "hello world");
         assert_eq!(value["c_foo"], 6.0);
         let date = value["date"].as_object().unwrap();

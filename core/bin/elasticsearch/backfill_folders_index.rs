@@ -51,7 +51,7 @@ async fn list_data_source_nodes(
 
     let stmt = c
         .prepare(
-            "SELECT dsn.timestamp, dsn.title, dsn.mime_type, dsn.provider_visibility, dsn.parents, dsn.node_id, dsn.document, dsn.\"table\", dsn.folder, ds.data_source_id, ds.internal_id, dsn.source_url, dsn.id \
+            "SELECT dsn.timestamp, dsn.title, dsn.mime_type, dsn.provider_visibility, dsn.parents, dsn.node_id, dsn.document, dsn.\"table\", dsn.folder, dns.tags_array, ds.data_source_id, ds.internal_id, dsn.source_url, dsn.id \
                FROM data_sources_nodes dsn JOIN data_sources ds ON dsn.data_source = ds.id \
                WHERE dsn.id > $1 AND folder IS NOT NULL ORDER BY dsn.id ASC LIMIT $2",
         )
@@ -71,8 +71,9 @@ async fn list_data_source_nodes(
             let document_row_id = row.get::<_, Option<i64>>(6);
             let table_row_id = row.get::<_, Option<i64>>(7);
             let folder_row_id = row.get::<_, Option<i64>>(8);
-            let data_source_id: String = row.get::<_, String>(9);
-            let data_source_internal_id: String = row.get::<_, String>(10);
+            let tags_array: Vec<String> = row.get::<_, Vec<String>>(9);
+            let data_source_id: String = row.get::<_, String>(10);
+            let data_source_internal_id: String = row.get::<_, String>(11);
             let (node_type, element_row_id) = match (document_row_id, table_row_id, folder_row_id) {
                 (Some(id), None, None) => (NodeType::Document, id),
                 (None, Some(id), None) => (NodeType::Table, id),
@@ -94,7 +95,7 @@ async fn list_data_source_nodes(
                     parents.get(1).cloned(),
                     parents,
                     source_url,
-                    None,
+                    Some(tags_array),
                 ),
                 row_id,
                 element_row_id,

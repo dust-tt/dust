@@ -586,16 +586,27 @@ impl LocalTable {
         Ok(schema)
     }
 
-    pub async fn validate_csv_content(upsert_queue_bucket_path: &str) -> Result<TableSchema> {
+    pub async fn validate_csv_content(upsert_queue_bucket_csv_path: &str) -> Result<TableSchema> {
+        let now = utils::now();
         let rows = Arc::new(
             UpsertQueueCSVContent {
-                upsert_queue_bucket_path: upsert_queue_bucket_path.to_string(),
+                upsert_queue_bucket_csv_path: upsert_queue_bucket_csv_path.to_string(),
             }
             .parse()
             .await?,
         );
+        let csv_parse_duration = utils::now() - now;
 
+        let now = utils::now();
         let schema = TableSchema::from_rows_async(rows).await?;
+        let schema_duration = utils::now() - now;
+
+        info!(
+            csv_parse_duration = csv_parse_duration,
+            schema_duration = schema_duration,
+            "CSV validation"
+        );
+
         Ok(schema)
     }
 }
@@ -674,6 +685,8 @@ impl Row {
                     // HTTP date
                     DateTime::parse_from_str(trimmed, "%a, %d %b %Y %H:%M:%S GMT")
                         .map(|dt| dt.into()),
+                    // Date with full month, zero-padded number, full year
+                    DateTime::parse_from_str(trimmed, "%B %d, %Y").map(|dt| dt.into()),
                 ]
                 .iter()
                 .find_map(|result| result.ok());

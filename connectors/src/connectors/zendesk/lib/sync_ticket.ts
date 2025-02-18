@@ -21,6 +21,27 @@ import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const turndownService = new TurndownService();
 
+function apiUrlToDocumentUrl(apiUrl: string): string {
+  return apiUrl.replace("/api/v2/", "/").replace(".json", "");
+}
+
+export function extractMetadataFromDocumentUrl(ticketUrl: string): {
+  brandSubdomain: string;
+  ticketId: number;
+} {
+  // Format: https://${subdomain}.zendesk.com/tickets/${ticketId}.
+  const match = ticketUrl.match(
+    /^https:\/\/([^.]+)\.zendesk\.com\/tickets\/#?(\d+)/
+  );
+  if (!match || !match[1] || !match[2]) {
+    throw new Error(`Invalid ticket URL: ${ticketUrl}`);
+  }
+  return {
+    brandSubdomain: match[1],
+    ticketId: parseInt(match[2], 10),
+  };
+}
+
 /**
  * Deletes a ticket from the db and the data sources.
  */
@@ -95,7 +116,7 @@ export async function syncTicket({
   // if they were never attended in the Agent Workspace their subject is not populated.
   ticket.subject ||= "No subject";
 
-  const ticketUrl = ticket.url.replace("/api/v2/", "/").replace(".json", ""); // converting the API URL into the web URL;
+  const ticketUrl = apiUrlToDocumentUrl(ticket.url);
   if (!ticketInDb) {
     ticketInDb = await ZendeskTicketResource.makeNew({
       blob: {
@@ -145,60 +166,21 @@ export async function syncTicket({
       "[Zendesk] Upserting ticket."
     );
 
-    const metadata = [
-      `Ticket ID: ${ticket.id}`,
-      `Subject: ${ticket.subject}`,
-      `Created At: ${createdAtDate.toISOString()}`,
-      `Updated At: ${updatedAtDate.toISOString()}`,
-      `Status: ${ticket.status}`,
-      ticket.priority ? `Priority: ${ticket.priority}` : null,
-      ticket.type ? `Type: ${ticket.type}` : null,
-      ticket.via ? `Channel: ${ticket.via.channel}` : null,
-      ticket.requester
-        ? `Requester: ${ticket.requester.name} (${ticket.requester.email})`
-        : null,
-      ticket.assignee_id ? `Assignee ID: ${ticket.assignee_id}` : "Unassigned",
-      `Organization ID: ${ticket.organization_id || "N/A"}`,
-      `Group ID: ${ticket.group_id || "N/A"}`,
-      `Tags: ${ticket.tags.length ? ticket.tags.join(", ") : "No tags"}`,
-      ticket.due_at
-        ? `Due Date: ${new Date(ticket.due_at).toISOString()}`
-        : null,
-      ticket.satisfaction_rating
-        ? `Satisfaction Rating: ${ticket.satisfaction_rating.score}`
-        : null,
-      ticket.satisfaction_rating?.comment
-        ? `Satisfaction Comment: ${ticket.satisfaction_rating.comment}`
-        : null,
-      `Has Incidents: ${ticket.has_incidents ? "Yes" : "No"}`,
-      ticket.problem_id ? `Related Problem ID: ${ticket.problem_id}` : null,
-      `Custom Fields:`,
-      ...ticket.custom_fields.map(
-        (field) => `  - Field ${field.id}: ${field.value || "N/A"}`
-      ),
-    ]
-      .filter(Boolean)
-      .join("\n");
-
-    const ticketContent = `
-${metadata}
-
-Conversation:
-${comments
-  .map((comment) => {
-    let author;
-    try {
-      author = users.find((user) => user.id === comment.author_id);
-    } catch (e) {
-      logger.warn(
-        { connectorId, e, usersType: typeof users, ...loggerArgs },
-        "[Zendesk] Error finding the author of a comment."
-      );
-      author = null;
-    }
-    return `[${comment?.created_at}] ${author ? `${author.name} (${author.email})` : "Unknown User"}:\n${(comment.plain_body || comment.body).replace(/[\u2028\u2029]/g, "")}`; // removing line and paragraph separators
-  })
-  .join("\n")}
+    const ticketContent = `Conversation:\n${comments
+      .map((comment) => {
+        let author;
+        try {
+          author = users.find((user) => user.id === comment.author_id);
+        } catch (e) {
+          logger.warn(
+            { connectorId, e, usersType: typeof users, ...loggerArgs },
+            "[Zendesk] Error finding the author of a comment."
+          );
+          author = null;
+        }
+        return `[${comment?.created_at}] ${author ? `${author.name} (${author.email})` : "Unknown User"}:\n${(comment.plain_body || comment.body).replace(/[\u2028\u2029]/g, "")}`; // removing line and paragraph separators
+      })
+      .join("\n")}
 `.trim();
 
     const ticketContentInMarkdown = turndownService.turndown(ticketContent);
@@ -207,12 +189,38 @@ ${comments
       dataSourceConfig,
       ticketContentInMarkdown
     );
+
+    const metadata = [
+      `priority:${ticket.priority}`,
+      `ticketType:${ticket.type}`,
+      `channel:${ticket.via?.channel}`,
+      `status:${ticket.status}`,
+      ...(ticket.group_id ? [`groupId:${ticket.group_id}`] : []),
+      ...(ticket.organization_id
+        ? [`organizationId:${ticket.organization_id}`]
+        : []),
+      ...(ticket.due_at
+        ? [`dueDate:${new Date(ticket.due_at).toISOString()}`]
+        : []),
+      ...(ticket.satisfaction_rating.score !== "unoffered" // Special value when no rating was provided.
+        ? [`satisfactionRating:${ticket.satisfaction_rating.score}`]
+        : []),
+      `hasIncidents:${ticket.has_incidents ? "Yes" : "No"}`,
+    ];
+
     const documentContent = await renderDocumentTitleAndContent({
       dataSourceConfig,
       title: ticket.subject,
       content: renderedMarkdown,
       createdAt: createdAtDate,
       updatedAt: updatedAtDate,
+      additionalPrefixes: {
+        metadata: metadata
+          // We remove IDs from the prefixes since they do not hold any semantic meaning.
+          .filter((field) => !["organizationId", "groupId"].includes(field))
+          .join(", "),
+        labels: ticket.tags.join(", ") || "none",
+      },
     });
 
     const documentId = getTicketInternalId({
@@ -232,6 +240,7 @@ ${comments
         `title:${ticket.subject}`,
         `updatedAt:${updatedAtDate.getTime()}`,
         `createdAt:${createdAtDate.getTime()}`,
+        ...metadata,
         ...filterCustomTags(ticket.tags, logger),
       ],
       parents,

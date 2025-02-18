@@ -69,7 +69,7 @@ export function SlackBotEnableView({
               show={showNoSlackBotPopup}
               className="absolute bottom-8 right-0"
               chipLabel={`${plan.name} plan`}
-              description="Your plan does not allow for the Slack bot to be enabled. Upgrade your plan to chat with Dust assistants on Slack."
+              description="Your plan does not allow for the Slack bot to be enabled. Upgrade your plan to chat with Dust agents on Slack."
               buttonLabel="Check Dust plans"
               buttonClick={() => {
                 void router.push(`/w/${owner.sId}/subscription`);
@@ -83,7 +83,7 @@ export function SlackBotEnableView({
       >
         <ContextItem.Description>
           <div className="text-element-700">
-            You can ask questions to your assistants directly from Slack by
+            You can ask questions to your agents directly from Slack by
             mentioning @Dust.
           </div>
         </ContextItem.Description>

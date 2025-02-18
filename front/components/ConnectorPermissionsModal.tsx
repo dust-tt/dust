@@ -32,6 +32,7 @@ import type {
   ConnectorType,
   ContentNode,
   DataSourceType,
+  DataSourceViewType,
   LightWorkspaceType,
   UpdateConnectorRequestBody,
   WorkspaceType,
@@ -53,12 +54,15 @@ import { useSWRConfig } from "swr";
 
 import type { ConfirmDataType } from "@app/components/Confirm";
 import { ConfirmContext } from "@app/components/Confirm";
+import type { ContentNodeTreeItemStatus } from "@app/components/ContentNodeTree";
+import { ContentNodeTree } from "@app/components/ContentNodeTree";
 import { CreateOrUpdateConnectionBigQueryModal } from "@app/components/data_source/CreateOrUpdateConnectionBigQueryModal";
 import { CreateOrUpdateConnectionSnowflakeModal } from "@app/components/data_source/CreateOrUpdateConnectionSnowflakeModal";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import { setupConnection } from "@app/components/spaces/AddConnectionMenu";
 import { AdvancedNotionManagement } from "@app/components/spaces/AdvancedNotionManagement";
 import { ConnectorDataUpdatedModal } from "@app/components/spaces/ConnectorDataUpdatedModal";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import {
   CONNECTOR_CONFIGURATIONS,
   isConnectorPermissionsEditable,
@@ -68,6 +72,7 @@ import {
   isRemoteDatabase,
 } from "@app/lib/data_sources";
 import { useConnectorPermissions } from "@app/lib/swr/connectors";
+import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import { useSpaceDataSourceViews, useSystemSpace } from "@app/lib/swr/spaces";
 import { useUser } from "@app/lib/swr/user";
 import {
@@ -75,9 +80,6 @@ import {
   useWorkspaceActiveSubscription,
 } from "@app/lib/swr/workspaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-
-import type { ContentNodeTreeItemStatus } from "./ContentNodeTree";
-import { ContentNodeTree } from "./ContentNodeTree";
 
 const getUseResourceHook =
   (owner: LightWorkspaceType, dataSource: DataSourceType) =>
@@ -225,6 +227,7 @@ function DataSourceEditionModal({
   onEditPermissionsClick,
   owner,
 }: DataSourceEditionModalProps) {
+  const { isDark } = useTheme();
   const [extraConfig, setExtraConfig] = useState<Record<string, string>>({});
   const { user } = useUser();
 
@@ -268,7 +271,10 @@ function DataSourceEditionModal({
       <>
         <div className="mt-4 flex flex-col">
           <div className="flex items-center gap-2">
-            <Icon visual={connectorConfiguration.logoComponent} size="md" />
+            <Icon
+              visual={connectorConfiguration.getLogoComponent(isDark)}
+              size="md"
+            />
             <Page.SectionHeader
               title={`${connectorConfiguration.name} data & permissions`}
             />
@@ -281,7 +287,7 @@ function DataSourceEditionModal({
               </div>
               <div className="p-4 text-sm text-amber-900">
                 <b>Editing</b> can break the existing data structure in Dust and
-                Assistants using them.
+                Agents using them.
               </div>
 
               {connectorConfiguration.guideLink && (
@@ -335,8 +341,7 @@ function DataSourceEditionModal({
               icon={InformationCircleIcon}
             >
               Editing permission rights with a different account will likely
-              break the existing data structure in Dust and Assistants using
-              them.
+              break the existing data structure in Dust and Agents using them.
               {connectorConfiguration.guideLink && (
                 <div>
                   Read our{" "}
@@ -386,8 +391,8 @@ function DataSourceEditionModal({
               </DialogHeader>
               <DialogContainer>
                 The changes you are about to make may break existing{" "}
-                {connectorConfiguration.name} Data sources and the assistants
-                using them. Are you sure you want to continue?
+                {connectorConfiguration.name} Data sources and the agents using
+                them. Are you sure you want to continue?
               </DialogContainer>
               <DialogFooter
                 leftButtonProps={{
@@ -422,6 +427,7 @@ function DataSourceDeletionModal({
   onClose,
   owner,
 }: DataSourceDeletionModalProps) {
+  const { isDark } = useTheme();
   const [isLoading, setIsLoading] = useState(false);
   const sendNotification = useSendNotification();
   const { user } = useUser();
@@ -475,7 +481,10 @@ function DataSourceDeletionModal({
       <>
         <div className="mt-4 flex flex-col">
           <div className="flex items-center gap-2">
-            <Icon visual={connectorConfiguration.logoComponent} size="md" />
+            <Icon
+              visual={connectorConfiguration.getLogoComponent(isDark)}
+              size="md"
+            />
             <Page.SectionHeader
               title={`Deleting ${connectorConfiguration.name} connection`}
             />
@@ -486,7 +495,7 @@ function DataSourceDeletionModal({
               Important
             </div>
             <div className="p-4 text-sm text-amber-900">
-              <b>Deleting</b> will break Assistants using this data.
+              <b>Deleting</b> will break Agents using this data.
             </div>
           </div>
         </div>
@@ -525,9 +534,9 @@ function DataSourceDeletionModal({
               ) : (
                 <>
                   <DialogContainer>
-                    The changes you are about to make will break existing
-                    assistants using {connectorConfiguration.name}. Are you sure
-                    you want to continue?
+                    The changes you are about to make will break existing agents
+                    using {connectorConfiguration.name}. Are you sure you want
+                    to continue?
                   </DialogContainer>
                   <DialogFooter
                     leftButtonProps={{
@@ -554,7 +563,7 @@ function DataSourceDeletionModal({
 
 interface ConnectorPermissionsModalProps {
   connector: ConnectorType;
-  dataSource: DataSourceType;
+  dataSourceView: DataSourceViewType;
   isAdmin: boolean;
   isOpen: boolean;
   onClose: (save: boolean) => void;
@@ -565,7 +574,7 @@ interface ConnectorPermissionsModalProps {
 
 export function ConnectorPermissionsModal({
   connector,
-  dataSource,
+  dataSourceView,
   isAdmin,
   isOpen,
   onClose,
@@ -579,6 +588,8 @@ export function ConnectorPermissionsModal({
   const [selectedNodes, setSelectedNodes] = useState<
     Record<string, ContentNodeTreeItemStatus>
   >({});
+
+  const dataSource = dataSourceView.dataSource;
 
   const isDeletable =
     dataSource.connectorProvider &&
@@ -604,16 +615,14 @@ export function ConnectorPermissionsModal({
     [owner, dataSource]
   );
 
-  const { resources: allSelectedResources, isResourcesLoading } =
-    useConnectorPermissions({
-      dataSource,
-      filterPermission: "read",
+  const { nodes: allSelectedResources, isNodesLoading } =
+    useDataSourceViewContentNodes({
       owner,
-      parentId: null,
+      dataSourceView,
       viewType: "all",
-      includeParents: true,
       disabled: !canUpdatePermissions,
     });
+
   const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
   const advancedNotionManagement =
     dataSource.connectorProvider === "notion" &&
@@ -839,7 +848,7 @@ export function ConnectorPermissionsModal({
                       canUpdatePermissions ? selectedNodes : undefined
                     }
                     setSelectedNodes={
-                      canUpdatePermissions && !isResourcesLoading
+                      canUpdatePermissions && !isNodesLoading
                         ? setSelectedNodes
                         : undefined
                     }

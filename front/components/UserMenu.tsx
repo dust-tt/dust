@@ -179,6 +179,14 @@ export function UserMenu({
                       window.location.reload();
                     }}
                   />
+                  <DropdownMenuRadioItem
+                    value="system"
+                    label="System"
+                    onClick={() => {
+                      localStorage.setItem("theme", "system");
+                      window.location.reload();
+                    }}
+                  />
                 </DropdownMenuRadioGroup>
               </DropdownMenuSubContent>
             </DropdownMenuSub>

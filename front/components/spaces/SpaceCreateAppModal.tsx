@@ -66,7 +66,7 @@ export const SpaceCreateAppModal = ({
 
     if (!description || description.trim() === "") {
       descriptionError =
-        "A description is required for your app to be selectable in the Assistant Builder.";
+        "A description is required for your app to be selectable in the Agent Builder.";
     }
 
     setErrors({
@@ -149,7 +149,7 @@ export const SpaceCreateAppModal = ({
             <div>
               <Page.SectionHeader title="Description" />
               <TextArea
-                placeholder="This description guides assistants in understanding how to use
+                placeholder="This description guides agents in understanding how to use
                 your app effectively and determines its relevance in responding to user inquiries."
                 value={description ?? ""}
                 onChange={(e) => {

@@ -1,5 +1,4 @@
 import { Div3D, Hover3D } from "@dust-tt/sparkle";
-import React from "react";
 
 import { ImgBlock } from "@app/components/home/ContentBlocks";
 import { classNames } from "@app/lib/utils";
@@ -14,7 +13,7 @@ export function ValuePropSection() {
           Amplify your team's performance with new capabilities
         </H2>
         {/* <P size="lg">
-          Anyone on your&nbsp;team can create personalized&nbsp;assistants.
+          Anyone on your&nbsp;team can create personalized&nbsp;agents.
         </P> */}
       </div>
 
@@ -66,7 +65,7 @@ export function ValuePropSection() {
           </Hover3D>
         </ImgBlock>
         <ImgBlock
-          title={<>Analyse anything</>}
+          title={<>Analyze anything</>}
           content={
             <>
               From spreadsheets to data warehouses, Dust analyzes and visualize

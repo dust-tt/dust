@@ -1,9 +1,7 @@
-import { Checkbox } from "@dust-tt/sparkle";
 import type { PokeDataSourceViewType, WorkspaceType } from "@dust-tt/types";
 import { defaultSelectionConfiguration } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
-import { useState } from "react";
 
 import { DataSourceViewSelector } from "@app/components/data_source_view/DataSourceViewSelector";
 import { ViewDataSourceViewTable } from "@app/components/poke/data_source_views/view";
@@ -49,12 +47,9 @@ export default function DataSourceViewPage({
   dataSourceView,
   owner,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const [showConnectorsNodes, setShowConnectorsNodes] = useState(false);
-
   const useContentNodes = (params: DataSourceViewContentNodesProps) => {
     return usePokeDataSourceViewContentNodes({
       ...params,
-      showConnectorsNodes,
     });
   };
 
@@ -70,19 +65,6 @@ export default function DataSourceViewPage({
           }}
         />
         <div className="border-material-200 my-4 rounded-lg border p-4">
-          <div className="flex flex-row gap-2">
-            <Checkbox
-              label="Show nodes from core"
-              checked={showConnectorsNodes}
-              onCheckedChange={() =>
-                setShowConnectorsNodes(!showConnectorsNodes)
-              }
-            />
-            <div className="text-sm text-element-700">
-              Show diff between core/connectors
-            </div>
-          </div>
-
           <DataSourceViewSelector
             owner={owner}
             readonly

@@ -46,6 +46,7 @@ import {
   removeNulls,
 } from "@dust-tt/types";
 import { isEqual, sortBy } from "lodash";
+import _ from "lodash";
 import type { Transaction } from "sequelize";
 import { Op, Sequelize } from "sequelize";
 
@@ -244,57 +245,53 @@ export async function getUserConversations(
   }
 
   const participations = await ConversationParticipant.findAll({
-    attributes: ["userId", "updatedAt"],
+    attributes: ["userId", "updatedAt", "conversationId"],
     where: {
       userId: user.id,
       action: "posted",
     },
-    include: [
-      {
-        model: Conversation,
-        as: "conversation",
-        required: true,
-      },
-    ],
     order: [["updatedAt", "DESC"]],
   });
 
-  const conversations = participations.reduce<ConversationWithoutContentType[]>(
-    (acc, p) => {
-      if (!p.conversation) {
-        logger.error("Participation without conversation");
-        return acc;
-      }
-      if (
-        p.conversation.workspaceId !== owner.id ||
-        (p.conversation.visibility === "deleted" && !includeDeleted) ||
-        (p.conversation.visibility === "test" && !includeTest)
-      ) {
-        return acc;
-      }
-
-      const conversation: ConversationWithoutContentType = {
-        id: p.conversation.id,
-        created: p.conversation.createdAt.getTime(),
-        updated: p.updatedAt.getTime(),
-        sId: p.conversation.sId,
+  const conversations = (
+    await Conversation.findAll({
+      where: {
+        id: { [Op.in]: _.uniq(participations.map((p) => p.conversationId)) },
+        workspaceId: owner.id,
+        ...(includeDeleted ? {} : { visibility: { [Op.ne]: "deleted" } }),
+        ...(includeTest ? {} : { visibility: { [Op.ne]: "test" } }),
+      },
+    })
+  ).map(
+    (c) =>
+      ({
+        id: c.id,
+        created: c.createdAt.getTime(),
+        updated: c.updatedAt.getTime(),
+        sId: c.sId,
         owner,
-        title: p.conversation.title,
-        visibility: p.conversation.visibility,
-        currentThreadVersion: p.conversation.currentThreadVersion,
-        requestedGroupIds: getConversationRequestedGroupIdsFromModel(
-          owner,
-          p.conversation
-        ),
+        title: c.title,
+        visibility: c.visibility,
+        currentThreadVersion: c.currentThreadVersion,
+        requestedGroupIds: getConversationRequestedGroupIdsFromModel(owner, c),
         // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
         groupIds: [],
-      };
-
-      return [...acc, conversation];
-    },
-    []
+      }) satisfies ConversationWithoutContentType
   );
-  return conversations;
+
+  const conversationById = _.keyBy(conversations, "id");
+
+  return removeNulls(
+    participations.map((p) => {
+      const conv: ConversationWithoutContentType | null =
+        conversationById[p.conversationId];
+      if (!conv) {
+        logger.error("Participation without conversation");
+        return null;
+      }
+      return conv;
+    })
+  );
 }
 
 async function createOrUpdateParticipation({
@@ -753,7 +750,7 @@ export async function* postUserMessage(
           code: "provider_disabled",
           message:
             `Assistant ${agentConfig.name} is based on a model that was disabled ` +
-            `by your workspace admin. Please edit the assistant to use another model ` +
+            `by your workspace admin. Please edit the agent to use another model ` +
             `(advanced settings in the Instructions panel).`,
         },
       };
@@ -1191,7 +1188,7 @@ export async function* editUserMessage(
           code: "provider_disabled",
           message:
             `Assistant ${agentConfig.name} is based on a model that was disabled ` +
-            `by your workspace admin. Please edit the assistant to use another model ` +
+            `by your workspace admin. Please edit the agent to use another model ` +
             `(advanced settings in the Instructions panel).`,
         },
       };

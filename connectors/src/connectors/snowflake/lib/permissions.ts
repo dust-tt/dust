@@ -4,7 +4,13 @@ import type {
   Result,
   SnowflakeCredentials,
 } from "@dust-tt/types";
-import { Err, EXCLUDE_DATABASES, EXCLUDE_SCHEMAS, Ok } from "@dust-tt/types";
+import {
+  Err,
+  EXCLUDE_DATABASES,
+  EXCLUDE_SCHEMAS,
+  MIME_TYPES,
+  Ok,
+} from "@dust-tt/types";
 
 import {
   fetchDatabases,
@@ -58,7 +64,11 @@ export const fetchAvailableChildrenInSnowflake = async ({
         const permission = syncedDatabasesInternalIds.includes(internalId)
           ? "read"
           : "none";
-        return getContentNodeFromInternalId(internalId, permission);
+        return getContentNodeFromInternalId(
+          internalId,
+          permission,
+          MIME_TYPES.SNOWFLAKE
+        );
       })
     );
   }
@@ -89,7 +99,11 @@ export const fetchAvailableChildrenInSnowflake = async ({
         const permission = syncedSchemasInternalIds.includes(internalId)
           ? "read"
           : "none";
-        return getContentNodeFromInternalId(internalId, permission);
+        return getContentNodeFromInternalId(
+          internalId,
+          permission,
+          MIME_TYPES.SNOWFLAKE
+        );
       })
     );
   }
@@ -113,7 +127,11 @@ export const fetchAvailableChildrenInSnowflake = async ({
         const permission = syncedTablesInternalIds.includes(internalId)
           ? "read"
           : "none";
-        return getContentNodeFromInternalId(internalId, permission);
+        return getContentNodeFromInternalId(
+          internalId,
+          permission,
+          MIME_TYPES.SNOWFLAKE
+        );
       })
     );
   }
@@ -145,13 +163,21 @@ export const fetchReadNodes = async ({
 
   return new Ok([
     ...availableDatabases.map((db) =>
-      getContentNodeFromInternalId(db.internalId, "read")
+      getContentNodeFromInternalId(db.internalId, "read", MIME_TYPES.SNOWFLAKE)
     ),
     ...availableSchemas.map((schema) =>
-      getContentNodeFromInternalId(schema.internalId, "read")
+      getContentNodeFromInternalId(
+        schema.internalId,
+        "read",
+        MIME_TYPES.SNOWFLAKE
+      )
     ),
     ...availableTables.map((table) =>
-      getContentNodeFromInternalId(table.internalId, "read")
+      getContentNodeFromInternalId(
+        table.internalId,
+        "read",
+        MIME_TYPES.SNOWFLAKE
+      )
     ),
   ]);
 };
@@ -190,7 +216,11 @@ export const fetchSyncedChildren = async ({
         },
       });
       const schemaContentNodes = schemas.map((schema) =>
-        getContentNodeFromInternalId(schema.internalId, "read")
+        getContentNodeFromInternalId(
+          schema.internalId,
+          "read",
+          MIME_TYPES.SNOWFLAKE
+        )
       );
       return new Ok(schemaContentNodes);
     }
@@ -215,12 +245,22 @@ export const fetchSyncedChildren = async ({
       }),
     ]);
     const schemas = availableSchemas.map((schema) =>
-      getContentNodeFromInternalId(schema.internalId, "read")
+      getContentNodeFromInternalId(
+        schema.internalId,
+        "read",
+        MIME_TYPES.SNOWFLAKE
+      )
     );
     availableTables.forEach((table) => {
       const schemaToAdd = `${table.databaseName}.${table.schemaName}`;
       if (!schemas.find((s) => s.internalId === schemaToAdd)) {
-        schemas.push(getContentNodeFromInternalId(schemaToAdd, "none"));
+        schemas.push(
+          getContentNodeFromInternalId(
+            schemaToAdd,
+            "none",
+            MIME_TYPES.SNOWFLAKE
+          )
+        );
       }
     });
     return new Ok(schemas);
@@ -237,7 +277,11 @@ export const fetchSyncedChildren = async ({
       },
     });
     const tables = availableTables.map((table) =>
-      getContentNodeFromInternalId(table.internalId, "read")
+      getContentNodeFromInternalId(
+        table.internalId,
+        "read",
+        MIME_TYPES.SNOWFLAKE
+      )
     );
     return new Ok(tables);
   }
@@ -262,7 +306,11 @@ export const getBatchContentNodes = async ({
   const nodes: ContentNode[] = [];
   for (const internalId of internalIds) {
     if (tables.find((table) => table.internalId.startsWith(internalId))) {
-      const node = getContentNodeFromInternalId(internalId, "read");
+      const node = getContentNodeFromInternalId(
+        internalId,
+        "read",
+        MIME_TYPES.SNOWFLAKE
+      );
       nodes.push(node);
     }
   }
