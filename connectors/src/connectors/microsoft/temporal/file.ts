@@ -257,7 +257,7 @@ export async function syncOneFile({
       ? new Date(file.createdDateTime)
       : undefined;
 
-    const tags = [`title:${file.name}`];
+    const tags = file.name ? [`title:${file.name}`] : [];
 
     if (file.lastModifiedDateTime) {
       tags.push(`updatedAt:${file.lastModifiedDateTime}`);
