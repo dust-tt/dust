@@ -379,7 +379,7 @@ const RenderConversation = ({
         <div className="flex items-center px-2 py-2">
           <Checkbox
             id={`conversation-${conversation.sId}`}
-            className="bg-white dark:bg-black"
+            className="bg-white dark:bg-slate-950"
             checked={selectedConversations.includes(conversation)}
             onCheckedChange={() => toggleConversationSelection(conversation)}
           />
