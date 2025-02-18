@@ -1,10 +1,14 @@
-import { AdminCommandType, AdminResponseType } from "../../connectors/admin/cli";
+import {
+  AdminCommandType,
+  AdminResponseType,
+} from "../../connectors/admin/cli";
 import { ConnectorsAPIError, isConnectorsAPIError } from "../../connectors/api";
 import { UpdateConnectorConfigurationType } from "../../connectors/api_handlers/connector_configuration";
 import { ConnectorCreateRequestBody } from "../../connectors/api_handlers/create_connector";
 import { UpdateConnectorRequestBody } from "../../connectors/api_handlers/update_connector";
 import { ConnectorConfiguration } from "../../connectors/configuration";
 import { ContentNodesViewType } from "../../connectors/content_nodes";
+import { CoreAPIContentNodeType } from "../../core/content_node";
 import { ConnectorProvider, DataSourceType } from "../../front/data_source";
 import { LoggerInterface } from "../../shared/logger";
 import { Err, Ok, Result } from "../../shared/result";
@@ -52,7 +56,6 @@ export type ConnectorType = {
  * permission we handle is read. but we could have more complex permissions in the future.
  */
 export type ConnectorPermission = "read" | "write" | "read_write" | "none";
-export type ContentNodeType = "file" | "folder" | "database";
 // currently used for Slack, for which channels can be public or private
 export type ProviderVisibility = "public" | "private";
 
@@ -61,11 +64,12 @@ export type ProviderVisibility = "public" | "private";
  * The types are sorted in the following order: folder first, then file, database, and channel.
  * This mapping is used to provide a numerical value representing the priority of each content node type.
  */
-export const contentNodeTypeSortOrder: Record<ContentNodeType, number> = {
-  folder: 1,
-  file: 2,
-  database: 3,
-};
+export const contentNodeTypeSortOrder: Record<CoreAPIContentNodeType, number> =
+  {
+    Folder: 1,
+    Document: 2,
+    Table: 3,
+  };
 
 /**
  * A ContentNode represents a connector related node. As an example:
@@ -98,7 +102,7 @@ export interface ContentNode {
   internalId: string;
   // The direct parent ID of this content node
   parentInternalId: string | null;
-  type: ContentNodeType;
+  type: CoreAPIContentNodeType;
   title: string;
   sourceUrl: string | null;
   expandable: boolean;

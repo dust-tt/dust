@@ -1,6 +1,6 @@
 import * as t from "io-ts";
 
-import { ContentNodeType } from "../../lib/connectors_api";
+import { CoreAPIContentNodeType } from "../../..";
 
 const ParentsToAddRemoveSchema = t.type({
   parentsToAdd: t.union([t.array(t.string), t.undefined]),
@@ -28,7 +28,7 @@ export type LightContentNode = {
   preventSelection?: boolean;
   sourceUrl: string | null;
   title: string;
-  type: ContentNodeType;
+  type: CoreAPIContentNodeType;
 };
 
 export const DATA_SOURCE_VIEW_CATEGORIES = [

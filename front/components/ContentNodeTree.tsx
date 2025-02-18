@@ -249,14 +249,16 @@ function ContentNodeTreeChildren({
                     size="xs"
                     icon={BracesIcon}
                     onClick={() => {
-                      if (n.type === "file") {
+                      if (n.type === "Document") {
                         onDocumentViewClick(n.internalId);
                       }
                     }}
                     className={classNames(
-                      n.type === "file" ? "" : "pointer-events-none opacity-0"
+                      n.type === "Document"
+                        ? ""
+                        : "pointer-events-none opacity-0"
                     )}
-                    disabled={n.type !== "file"}
+                    disabled={n.type !== "Document"}
                     variant="outline"
                   />
                 )}

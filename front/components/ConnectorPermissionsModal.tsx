@@ -79,8 +79,8 @@ import {
 } from "@app/lib/swr/workspaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 
-import type { ContentNodeTreeItemStatus } from "./ContentNodeTree";
-import { ContentNodeTree } from "./ContentNodeTree";
+import type { ContentNodeTreeItemStatus } from "@app/components/ContentNodeTree";
+import { ContentNodeTree } from "@app/components/ContentNodeTree";
 
 const getUseResourceHook =
   (owner: LightWorkspaceType, dataSource: DataSourceType) =>
