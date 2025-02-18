@@ -338,7 +338,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
                 }),
                 permission: "read",
                 mimeType:
-                  type === "folder"
+                  type === "Folder"
                     ? MIME_TYPES.GOOGLE_DRIVE.FOLDER
                     : f.mimeType,
               };
@@ -355,7 +355,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
                     s.driveSheetId
                   ),
                   parentInternalId: getInternalId(s.driveFileId),
-                  type: "database" as const,
+                  type: "Table" as const,
                   title: s.name || "",
                   lastUpdatedAt: s.updatedAt.getTime() || null,
                   sourceUrl: null,
@@ -370,7 +370,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
           // Sorting nodes, folders first then alphabetically.
           nodes.sort((a, b) => {
             if (a.type !== b.type) {
-              return a.type === "folder" ? -1 : 1;
+              return a.type === "Folder" ? -1 : 1;
             }
             return a.title.localeCompare(b.title);
           });
@@ -398,7 +398,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
                 parentInternalId:
                   // note: if the parent is null, the drive object falls at top-level
                   driveObject.parent && getInternalId(driveObject.parent),
-                type: "folder" as const,
+                type: "Folder" as const,
                 title: driveObject.name,
                 sourceUrl: driveObject.webViewLink || null,
                 lastUpdatedAt: driveObject.updatedAtMs || null,
@@ -423,7 +423,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
           nodes.push({
             internalId: getInternalId(GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID),
             parentInternalId: null,
-            type: "folder" as const,
+            type: "Folder" as const,
             preventSelection: true,
             title: "Shared with me",
             sourceUrl: GOOGLE_DRIVE_SHARED_WITH_ME_WEB_URL,
@@ -492,7 +492,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
                 internalId: getInternalId(driveObject.id),
                 parentInternalId:
                   driveObject.parent && getInternalId(driveObject.parent),
-                type: "folder" as const,
+                type: "Folder" as const,
                 title: driveObject.name,
                 sourceUrl: driveObject.webViewLink || null,
                 expandable: await folderHasChildren(
@@ -689,7 +689,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
           }),
           permission: "read",
           mimeType:
-            type === "folder" ? MIME_TYPES.GOOGLE_DRIVE.FOLDER : f.mimeType,
+            type === "Folder" ? MIME_TYPES.GOOGLE_DRIVE.FOLDER : f.mimeType,
         };
       },
       { concurrency: 4 }
@@ -720,7 +720,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
         s.driveSheetId
       ),
       parentInternalId: getInternalId(s.driveFileId),
-      type: "database",
+      type: "Table",
       title: s.name || "",
       lastUpdatedAt: s.updatedAt.getTime() || null,
       sourceUrl: getSourceUrlForGoogleDriveSheet(s),
@@ -980,7 +980,7 @@ async function getFoldersAsContentNodes({
       return {
         internalId: getInternalId(f.folderId),
         parentInternalId: null,
-        type: "folder",
+        type: "Folder",
         title: fd.name || "",
         sourceUrl,
         lastUpdatedAt: fd.updatedAtMs || null,
