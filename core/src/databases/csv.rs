@@ -12,7 +12,7 @@ use unicode_normalization::UnicodeNormalization;
 use crate::databases::table::Row;
 
 pub struct UpsertQueueCSVContent {
-    pub upsert_queue_bucket_path: String,
+    pub upsert_queue_bucket_csv_path: String,
 }
 
 const MAX_TABLE_COLUMNS: usize = 512;
@@ -28,7 +28,7 @@ impl UpsertQueueCSVContent {
 
     pub async fn parse(&self) -> Result<Vec<Row>> {
         let bucket = Self::get_upsert_queue_bucket().await?;
-        let path = &self.upsert_queue_bucket_path;
+        let path = &self.upsert_queue_bucket_csv_path;
 
         // This is not the most efficient as we download the entire file here but we will
         // materialize it in memory as Vec<Row> anyway so that's not a massive difference.
