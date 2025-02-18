@@ -184,6 +184,7 @@ export async function updateParentsField(
       where: {
         driveFileId: file.driveFileId,
         connectorId: connector.id,
+        notUpsertedReason: null,
       },
     });
     for (const sheet of sheets) {
