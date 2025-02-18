@@ -323,7 +323,24 @@ export async function upsertDocument({
         }
       : section || null;
 
-  const nonNullTags = tags || [];
+  const nonNullTags = tags || [`title:${title}`];
+  const titleInTags = nonNullTags
+    .find((t) => t.startsWith("title:"))
+    ?.split(":")
+    .slice(1)
+    .join(":");
+
+  if (titleInTags && titleInTags !== title) {
+    logger.error(
+      { documentId, titleInTags, title },
+      "[CoreNodes] Inconsistency between tags and title."
+    );
+    // TODO(2025-02-18 aubin): uncomment what follows.
+    // new DustError(
+    //   "invalid_title_in_tags",
+    //   "Invalid tags: title passed in tags does not match the table title."
+    // )
+  }
 
   // Add selection of tags as prefix to the section if they are present.
   let tagsPrefix = "";
