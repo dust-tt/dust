@@ -59,17 +59,6 @@ export type ConnectorPermission = "read" | "write" | "read_write" | "none";
 // currently used for Slack, for which channels can be public or private
 export type ProviderVisibility = "public" | "private";
 
-/*
- * This constant defines the priority order for sorting content nodes by their type.
- * The types are sorted in the following order: folder first, then file, database, and channel.
- * This mapping is used to provide a numerical value representing the priority of each content node type.
- */
-export const contentNodeTypeSortOrder: Record<ContentNodeType, number> = {
-  Folder: 1,
-  Document: 2,
-  Table: 3,
-};
-
 /**
  * A ContentNode represents a connector related node. As an example:
  * - Notion: Top-level pages (possibly manually added lower level ones)
@@ -112,18 +101,9 @@ export interface ContentNode {
   mimeType: string;
 }
 
-export type ContentNodeWithParentIds = ContentNode & {
-  // A list of all parent IDs up to the root node, including the direct parent
-  // Note: When includeParents is true, this list will be populated
-  parentInternalIds: string[] | null;
-};
-
-type GetContentNodesReturnType<
-  IncludeParents extends boolean,
-  Key extends string
-> = IncludeParents extends true
-  ? ConnectorsAPIResponse<{ [K in Key]: ContentNodeWithParentIds[] }>
-  : ConnectorsAPIResponse<{ [K in Key]: ContentNode[] }>;
+type GetContentNodesReturnType<Key extends string> = ConnectorsAPIResponse<{
+  [K in Key]: ContentNode[];
+}>;
 
 export type GoogleDriveFolderType = {
   id: string;
@@ -314,19 +294,17 @@ export class ConnectorsAPI {
     return this._resultFromResponse(res);
   }
 
-  async getConnectorPermissions<IncludeParents extends boolean>({
+  async getConnectorPermissions({
     connectorId,
     filterPermission,
-    includeParents,
     parentId,
     viewType = "documents",
   }: {
     connectorId: string;
     filterPermission?: ConnectorPermission;
-    includeParents?: IncludeParents;
     parentId?: string;
     viewType?: ContentNodesViewType;
-  }): Promise<GetContentNodesReturnType<IncludeParents, "resources">> {
+  }): Promise<GetContentNodesReturnType<"resources">> {
     const queryParams = new URLSearchParams();
 
     if (parentId) {
@@ -335,10 +313,6 @@ export class ConnectorsAPI {
 
     if (filterPermission) {
       queryParams.append("filterPermission", filterPermission);
-    }
-
-    if (includeParents) {
-      queryParams.append("includeParents", "true");
     }
 
     const qs = queryParams.toString();
@@ -354,7 +328,7 @@ export class ConnectorsAPI {
 
     const response = await this._resultFromResponse(res);
 
-    return response as GetContentNodesReturnType<IncludeParents, "resources">;
+    return response as GetContentNodesReturnType<"resources">;
   }
 
   async setConnectorPermissions({
@@ -497,68 +471,6 @@ export class ConnectorsAPI {
     );
 
     return this._resultFromResponse(res);
-  }
-
-  async getContentNodesParents({
-    connectorId,
-    internalIds,
-  }: {
-    connectorId: string;
-    internalIds: string[];
-  }): Promise<
-    ConnectorsAPIResponse<{
-      nodes: {
-        internalId: string;
-        parents: string[];
-      }[];
-    }>
-  > {
-    const res = await this._fetchWithError(
-      `${this._url}/connectors/${encodeURIComponent(
-        connectorId
-      )}/content_nodes/parents`,
-      {
-        method: "POST",
-        headers: this.getDefaultHeaders(),
-        body: JSON.stringify({
-          internalIds,
-        }),
-      }
-    );
-
-    return this._resultFromResponse(res);
-  }
-
-  async getContentNodes<IncludeParents extends boolean>({
-    connectorId,
-    includeParents,
-    internalIds,
-    viewType = "documents",
-  }: {
-    connectorId: string;
-    includeParents?: IncludeParents;
-    internalIds: string[];
-    viewType?: ContentNodesViewType;
-  }): Promise<GetContentNodesReturnType<IncludeParents, "nodes">> {
-    const res = await this._fetchWithError(
-      `${this._url}/connectors/${encodeURIComponent(
-        connectorId
-      )}/content_nodes`,
-      {
-        keepalive: false,
-        method: "POST",
-        headers: this.getDefaultHeaders(),
-        body: JSON.stringify({
-          includeParents,
-          internalIds,
-          viewType,
-        }),
-      }
-    );
-
-    const response = await this._resultFromResponse(res);
-
-    return response as GetContentNodesReturnType<IncludeParents, "nodes">;
   }
 
   async linkSlackChannelsWithAgent({

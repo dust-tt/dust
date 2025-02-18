@@ -7,8 +7,6 @@ import { assertNever, isValidContentNodesViewType } from "@dust-tt/types";
 import type { Request, Response } from "express";
 
 import { getConnectorManager } from "@connectors/connectors";
-import { augmentContentNodesWithParentIds } from "@connectors/lib/api/content_nodes";
-import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
@@ -50,7 +48,7 @@ const _getConnectorPermissions = async (
     }
   }
 
-  const { includeParents, viewType } = req.query;
+  const { viewType } = req.query;
   if (
     !viewType ||
     typeof viewType !== "string" ||
@@ -123,28 +121,6 @@ const _getConnectorPermissions = async (
       default:
         assertNever(pRes.error.code);
     }
-  }
-
-  if (includeParents) {
-    const parentsRes = await augmentContentNodesWithParentIds(
-      connector,
-      pRes.value
-    );
-    if (parentsRes.isErr()) {
-      logger.error(parentsRes.error, "Failed to get content node parents.");
-
-      return apiError(req, res, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: parentsRes.error.message,
-        },
-      });
-    }
-
-    return res.status(200).json({
-      resources: parentsRes.value,
-    });
   }
 
   return res.status(200).json({

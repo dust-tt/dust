@@ -19,20 +19,19 @@ import type { GetConnectorResponseBody } from "@app/pages/api/w/[wId]/data_sourc
 import type { GetOrPostManagedDataSourceConfigResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/config/[key]";
 import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/permissions";
 
-interface UseConnectorPermissionsReturn<IncludeParents extends boolean> {
-  resources: GetDataSourcePermissionsResponseBody<IncludeParents>["resources"];
+interface UseConnectorPermissionsReturn {
+  resources: GetDataSourcePermissionsResponseBody["resources"];
   isResourcesLoading: boolean;
   isResourcesError: boolean;
   resourcesError: APIError | null;
 }
 
-export function useConnectorPermissions<IncludeParents extends boolean>({
+export function useConnectorPermissions({
   owner,
   dataSource,
   parentId,
   filterPermission,
   disabled,
-  includeParents,
   viewType,
 }: {
   owner: LightWorkspaceType;
@@ -40,15 +39,13 @@ export function useConnectorPermissions<IncludeParents extends boolean>({
   parentId: string | null;
   filterPermission: ConnectorPermission | null;
   disabled?: boolean;
-  includeParents?: IncludeParents;
   viewType?: ContentNodesViewType;
-}): UseConnectorPermissionsReturn<IncludeParents> {
+}): UseConnectorPermissionsReturn {
   const { featureFlags } = useFeatureFlags({
     workspaceId: owner.sId,
   });
-  const permissionsFetcher: Fetcher<
-    GetDataSourcePermissionsResponseBody<IncludeParents>
-  > = fetcher;
+  const permissionsFetcher: Fetcher<GetDataSourcePermissionsResponseBody> =
+    fetcher;
 
   let url = `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/permissions?viewType=${viewType}`;
   if (parentId) {
@@ -56,9 +53,6 @@ export function useConnectorPermissions<IncludeParents extends boolean>({
   }
   if (filterPermission) {
     url += `&filterPermission=${filterPermission}`;
-  }
-  if (includeParents) {
-    url += "&includeParents=true";
   }
 
   const { data, error } = useSWRWithDefaults(url, permissionsFetcher, {
