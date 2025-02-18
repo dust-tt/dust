@@ -82,7 +82,7 @@ const Content = () => {
 
   return isConversationsLoading ? (
     <div className="flex items-center justify-center m-4">
-      <Spinner variant="dark" size="xs" />
+      <Spinner size="xs" />
     </div>
   ) : (
     <ScrollArea className="h-[80vh]">
