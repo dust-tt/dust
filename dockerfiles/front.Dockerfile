@@ -16,7 +16,9 @@ RUN --mount=type=cache,target=/root/.npm \
     wait
 
 # Copy source code
-COPY . .
+COPY types/ ./types/
+COPY sdks/js/ ./sdks/js/
+COPY front/ ./front/
 
 # Build each project in order
 RUN cd types && npm run build
