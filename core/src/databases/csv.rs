@@ -191,6 +191,7 @@ impl UpsertQueueCSVContent {
     {
         let mut csv = AsyncReaderBuilder::new()
             .delimiter(delimiter)
+            .flexible(true)
             .create_reader(TokioAsyncReadCompatExt::compat(rdr));
 
         let headers = UpsertQueueCSVContent::sanitize_headers(
