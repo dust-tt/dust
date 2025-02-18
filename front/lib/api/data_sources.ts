@@ -41,6 +41,7 @@ import type { Transaction } from "sequelize";
 import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation/without_content";
 import { default as apiConfig, default as config } from "@app/lib/api/config";
 import { sendGitHubDeletionEmail } from "@app/lib/api/email";
+import { getFileContent } from "@app/lib/api/files/utils";
 import { rowsFromCsv, upsertTableFromCsv } from "@app/lib/api/tables";
 import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
@@ -56,7 +57,6 @@ import { ServerSideTracking } from "@app/lib/tracking/server";
 import { enqueueUpsertTable } from "@app/lib/upsert_queue";
 import logger from "@app/logger/logger";
 import { launchScrubDataSourceWorkflow } from "@app/poke/temporal/client";
-import { getFileContent } from "./files/utils";
 
 export async function getDataSources(
   auth: Authenticator,
