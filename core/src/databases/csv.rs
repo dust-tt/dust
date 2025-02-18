@@ -151,7 +151,7 @@ impl UpsertQueueCSVContent {
         let n = rdr.read(&mut buffer).await?;
         buffer.truncate(n);
 
-        let candidates = b",;\t|";
+        let candidates = b",;\t";
 
         let mut counts = vec![0; candidates.len()];
         let mut in_quotes = false;
