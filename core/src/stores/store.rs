@@ -597,7 +597,7 @@ pub const POSTGRES_TABLES: [&'static str; 16] = [
        provider_visibility          TEXT,
        parents                      TEXT[] NOT NULL,
        source_url                   TEXT,
-       tags_array                   TEXT[] NOT NULL,
+       tags_array                   TEXT[] NOT NULL DEFAULT array[]::text[],
        document                     BIGINT,
        \"table\"                    BIGINT,
        folder                       BIGINT,
