@@ -32,6 +32,7 @@ import type {
   ConnectorType,
   ContentNode,
   DataSourceType,
+  DataSourceViewType,
   LightWorkspaceType,
   UpdateConnectorRequestBody,
   WorkspaceType,
@@ -69,6 +70,7 @@ import {
   isRemoteDatabase,
 } from "@app/lib/data_sources";
 import { useConnectorPermissions } from "@app/lib/swr/connectors";
+import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import { useSpaceDataSourceViews, useSystemSpace } from "@app/lib/swr/spaces";
 import { useUser } from "@app/lib/swr/user";
 import {
@@ -562,7 +564,7 @@ function DataSourceDeletionModal({
 
 interface ConnectorPermissionsModalProps {
   connector: ConnectorType;
-  dataSource: DataSourceType;
+  dataSourceView: DataSourceViewType;
   isAdmin: boolean;
   isOpen: boolean;
   onClose: (save: boolean) => void;
@@ -573,7 +575,7 @@ interface ConnectorPermissionsModalProps {
 
 export function ConnectorPermissionsModal({
   connector,
-  dataSource,
+  dataSourceView,
   isAdmin,
   isOpen,
   onClose,
@@ -587,6 +589,8 @@ export function ConnectorPermissionsModal({
   const [selectedNodes, setSelectedNodes] = useState<
     Record<string, ContentNodeTreeItemStatus>
   >({});
+
+  const dataSource = dataSourceView.dataSource;
 
   const isDeletable =
     dataSource.connectorProvider &&
@@ -612,16 +616,14 @@ export function ConnectorPermissionsModal({
     [owner, dataSource]
   );
 
-  const { resources: allSelectedResources, isResourcesLoading } =
-    useConnectorPermissions({
-      dataSource,
-      filterPermission: "read",
+  const { nodes: allSelectedResources, isNodesLoading } =
+    useDataSourceViewContentNodes({
       owner,
-      parentId: null,
+      dataSourceView,
       viewType: "all",
-      includeParents: true,
       disabled: !canUpdatePermissions,
     });
+
   const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
   const advancedNotionManagement =
     dataSource.connectorProvider === "notion" &&
@@ -847,7 +849,7 @@ export function ConnectorPermissionsModal({
                       canUpdatePermissions ? selectedNodes : undefined
                     }
                     setSelectedNodes={
-                      canUpdatePermissions && !isResourcesLoading
+                      canUpdatePermissions && !isNodesLoading
                         ? setSelectedNodes
                         : undefined
                     }

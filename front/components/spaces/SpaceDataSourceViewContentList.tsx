@@ -578,7 +578,7 @@ export const SpaceDataSourceViewContentList = ({
                 <ConnectorPermissionsModal
                   owner={owner}
                   connector={connector}
-                  dataSource={dataSourceView.dataSource}
+                  dataSourceView={dataSourceView}
                   isOpen={showConnectorPermissionsModal}
                   onClose={(save) => {
                     setShowConnectorPermissionsModal(false);
