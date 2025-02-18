@@ -23,7 +23,7 @@ import type { Logger } from "@connectors/logger/logger";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 // We observed cases where tabular data was stored in ASCII in .txt files.
-const MAX_NUMBER_CHAR_RATIO = 0.75;
+const MAX_NUMBER_CHAR_RATIO = 0.66;
 
 export function handleTextFile(
   data: ArrayBuffer,
