@@ -730,9 +730,10 @@ export async function upsertTable({
           );
 
           const schemaHeaders = schema.map((s) => s.name);
+          const cleanedHeaders = headers.filter((h) => h !== "__dust_id");
           if (
-            schemaHeaders.length !== headers.length ||
-            !schemaHeaders.every((v, i) => v === headers[i])
+            schemaHeaders.length !== cleanedHeaders.length ||
+            !schemaHeaders.every((v, i) => v === cleanedHeaders[i])
           ) {
             logger.info(
               {
