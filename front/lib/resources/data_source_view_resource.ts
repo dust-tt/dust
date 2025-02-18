@@ -9,7 +9,13 @@ import type {
   Result,
   UserType,
 } from "@dust-tt/types";
-import { Err, formatUserFullName, Ok, removeNulls } from "@dust-tt/types";
+import {
+  CoreAPI,
+  Err,
+  formatUserFullName,
+  Ok,
+  removeNulls,
+} from "@dust-tt/types";
 import assert from "assert";
 import type {
   Attributes,
@@ -21,6 +27,7 @@ import type {
 import { Op } from "sequelize";
 
 import { getDataSourceViewUsage } from "@app/lib/api/agent_data_sources";
+import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { isFolder, isWebsite } from "@app/lib/data_sources";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
@@ -41,6 +48,7 @@ import {
   makeSId,
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import logger from "@app/logger/logger";
 
 const getDataSourceCategory = (
   dataSourceResource: DataSourceResource
@@ -521,6 +529,35 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     if (this.kind === "default") {
       return new Err(
         new Error("`parentsIn` cannot be set for default data source view")
+      );
+    }
+
+    // Check parentsToAdd  exist in core as part of this data source view.
+    const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+
+    const coreRes = await coreAPI.searchNodes({
+      filter: {
+        data_source_views: [
+          {
+            data_source_id: this.dataSource.dustAPIDataSourceId,
+            view_filter: [],
+          },
+        ],
+        node_ids: parentsToAdd,
+      },
+    });
+
+    if (coreRes.isErr()) {
+      return new Err(new Error(coreRes.error.message));
+    }
+
+    // set to avoid O(n**2) complexity in check below
+    const coreParents = new Set(
+      coreRes.value.nodes.map((node) => node.node_id)
+    );
+    if (parentsToAdd.some((parent) => !coreParents.has(parent))) {
+      return new Err(
+        new Error("Some parents do not exist in this data source view.")
       );
     }
 
