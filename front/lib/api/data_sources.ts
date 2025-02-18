@@ -324,7 +324,24 @@ export async function upsertDocument({
         }
       : section || null;
 
-  const nonNullTags = tags || [];
+  const nonNullTags = tags || [`title:${title}`];
+  const titleInTags = nonNullTags
+    .find((t) => t.startsWith("title:"))
+    ?.split(":")
+    .slice(1)
+    .join(":");
+
+  if (titleInTags && titleInTags !== title) {
+    logger.error(
+      { documentId, titleInTags, title },
+      "[CoreNodes] Inconsistency between tags and title."
+    );
+    // TODO(2025-02-18 aubin): uncomment what follows.
+    // new DustError(
+    //   "invalid_title_in_tags",
+    //   "Invalid tags: title passed in tags does not match the table title."
+    // )
+  }
 
   // Add selection of tags as prefix to the section if they are present.
   let tagsPrefix = "";
@@ -604,6 +621,28 @@ export async function upsertTable({
     });
   }
 
+  const tableTags = params.tags ?? [`title:${params.title}`];
+  const titleInTags = tableTags
+    .find((t) => t.startsWith("title:"))
+    ?.split(":")
+    .slice(1)
+    .join(":");
+
+  if (titleInTags && titleInTags !== params.title) {
+    logger.error(
+      { tableId, titleInTags, title: params.title },
+      "[CoreNodes] Inconsistency between tags and title."
+    );
+    // TODO(2025-02-18 aubin): uncomment what follows.
+    // return apiError(req, res, {
+    //   status_code: 400,
+    //   api_error: {
+    //     type: "invalid_request_error",
+    //     message: `Invalid tags: title passed in tags does not match the table title.`,
+    //   },
+    // });
+  }
+
   let standardizedSourceUrl: string | null = null;
   if (params.sourceUrl) {
     const { valid: isSourceUrlValid, standardized } = validateUrl(
@@ -756,7 +795,7 @@ export async function upsertTable({
         tableName: name,
         tableDescription: description,
         tableTimestamp: params.timestamp ?? null,
-        tableTags: params.tags ?? [],
+        tableTags,
         tableParentId,
         tableParents,
         csv: csv ?? null,
@@ -789,7 +828,7 @@ export async function upsertTable({
     tableName: name,
     tableDescription: description,
     tableTimestamp: params.timestamp ?? null,
-    tableTags: params.tags || [],
+    tableTags,
     tableParentId,
     tableParents,
     csv: csv ?? null,
