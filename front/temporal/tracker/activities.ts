@@ -553,21 +553,29 @@ async function getTrackersToRun(
       );
     }
 
-    const connectorsAPI = new ConnectorsAPI(
-      config.getConnectorsAPIConfig(),
-      logger
-    );
-    const parentsResult = await connectorsAPI.getContentNodesParents({
-      connectorId: dataSource.connectorId,
-      internalIds: [documentId],
+    const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+    const documentResult = await coreAPI.searchNodes({
+      filter: {
+        data_source_views: [
+          {
+            data_source_id: dataSource.dustAPIDataSourceId,
+            view_filter: [documentId],
+          },
+        ],
+        node_ids: [documentId],
+      },
+      options: {
+        limit: 1,
+      },
     });
-    if (parentsResult.isErr()) {
-      throw parentsResult.error;
+
+    if (documentResult.isErr()) {
+      throw documentResult.error;
     }
 
     docParentIds = [
       documentId,
-      ...parentsResult.value.nodes.flatMap((node) => node.parents),
+      ...documentResult.value.nodes.flatMap((node) => node.parents),
     ];
   }
 
