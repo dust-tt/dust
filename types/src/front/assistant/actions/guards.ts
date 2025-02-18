@@ -37,6 +37,7 @@ import {
   TemplateAgentConfigurationType,
 } from "../../../front/assistant/agent";
 import { AgentActionType } from "../../../front/assistant/conversation";
+import { MCPActionType, MCPConfigurationType } from "./mcp";
 
 export function isTablesQueryConfiguration(
   arg: unknown
@@ -206,6 +207,19 @@ export function isConversationIncludeFileConfigurationActionType(
   arg: AgentActionType
 ): arg is ConversationIncludeFileActionType {
   return arg.type === "conversation_include_file_action";
+}
+
+export function isMCPActionType(arg: AgentActionType): arg is MCPActionType {
+  return arg.type === "mcp_action";
+}
+
+export function isMCPConfiguration(arg: unknown): arg is MCPConfigurationType {
+  return (
+    !!arg &&
+    typeof arg === "object" &&
+    "type" in arg &&
+    arg.type === "mcp_configuration"
+  );
 }
 
 export function throwIfInvalidAgentConfiguration(

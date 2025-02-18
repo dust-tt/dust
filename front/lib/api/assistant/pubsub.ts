@@ -196,6 +196,7 @@ async function handleUserMessageEvents(
             case "reasoning_started":
             case "reasoning_thinking":
             case "reasoning_tokens":
+            case "mcp_params":
             case "agent_error":
             case "agent_action_success":
             case "generation_tokens":
@@ -355,6 +356,7 @@ export async function retryAgentMessageWithPubSub(
               case "reasoning_started":
               case "reasoning_thinking":
               case "reasoning_tokens":
+              case "mcp_params":
               case "agent_error":
               case "agent_action_success":
               case "generation_tokens":
