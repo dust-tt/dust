@@ -41,7 +41,8 @@ const stateVariantStyles: Record<InputStateType, string> = {
   ),
   disabled: cn(
     "disabled:s-cursor-not-allowed",
-    "disabled:s-text-muted-foreground dark:disabled:s-text-muted-foreground-night"
+    "disabled:s-text-muted-foreground dark:disabled:s-text-muted-foreground-night",
+    "disabled:s-border-border-dark dark:disabled:s-border-border-dark-night"
   ),
   error: cn(
     "s-border-border-warning/30 dark:s-border-border-warning-night/30",
