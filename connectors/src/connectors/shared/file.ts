@@ -33,7 +33,7 @@ export function handleTextFile(
     return new Err(new Error("file_too_big"));
   }
   const content = Buffer.from(data).toString("utf-8").trim();
-  const digitCount = (content.match(/\d/g) || []).length;
+  const digitCount = (content.match(/[\d\n\r]/g) || []).length;
   if (digitCount / content.length > MAX_NUMBER_CHAR_RATIO) {
     return new Err(new Error("too_many_digits"));
   }
