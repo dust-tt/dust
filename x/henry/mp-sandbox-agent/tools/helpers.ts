@@ -1,16 +1,19 @@
-import type { Tool } from "./types";
+import type { Tool, ToolOutput } from "./types";
 import { z } from "zod";
 
-export function defineTool<I extends z.ZodType<any>, O extends z.ZodType<any>>(
+export function defineTool<I extends z.ZodType, O extends z.ZodType>(
   description: string,
   input: I,
   output: O,
-  implementation: (args: z.infer<I>) => Promise<z.infer<O> | null>
+  fn: (
+    args: z.infer<I>,
+    extra: { log: (message: string) => void }
+  ) => Promise<ToolOutput<z.infer<O>>>
 ): Tool {
   return {
     description,
     input,
     output,
-    fn: implementation,
+    fn: fn as Tool["fn"],
   };
 }

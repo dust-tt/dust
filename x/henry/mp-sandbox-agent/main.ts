@@ -2,12 +2,13 @@
 import * as dotenv from "dotenv";
 import { fetchWeather } from "./tools/fetch_weather";
 import { Agent } from "./agent";
+import { scrapePages } from "./tools/scrape";
+import { searchWeb } from "./tools/serp";
 
 // Load environment variables from .env file
 dotenv.config();
 
-const apiKey = process.env.OPENAI_API_KEY;
-if (!apiKey) {
+if (!process.env.OPENAI_API_KEY) {
   throw new Error(
     "Please set the OPENAI_API_KEY environment variable in your .env file"
   );
@@ -23,22 +24,22 @@ async function main() {
   }
 
   // Initialize agent with a goal
-  const agent = await Agent.create(
-    "Help users get weather information for cities around the world",
-    apiKey as string
-  );
+  const agent = await Agent.create(request, process.env.OPENAI_API_KEY!);
 
   // Define available tools
   const tools = {
     fetch_weather: fetchWeather,
+    scrape_pages: scrapePages,
+    search_web: searchWeb,
   };
 
   // Run a step with the user's request
-  const { stdout, stderr } = await agent.step(tools, request);
+  let answer: string | null = null;
+  while (answer === null) {
+    answer = await agent.step(tools);
+  }
 
-  // Output results
-  if (stdout) console.log("\nOutput:", stdout);
-  if (stderr) console.log("\nErrors:", stderr);
+  console.log(answer);
 }
 
 main().catch((error) => {
