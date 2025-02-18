@@ -93,7 +93,7 @@ const CursorPaginationParamsCodec = t.type({
 
 export interface CursorPaginationParams {
   limit: number;
-  cursor: string;
+  cursor: string | null;
 }
 
 export function getCursorPaginationParams(

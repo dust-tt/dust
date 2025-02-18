@@ -25,6 +25,7 @@ const GetContentNodesOrChildrenRequestBody = t.type({
 export type GetDataSourceViewContentNodes = {
   nodes: DataSourceViewContentNode[];
   total: number;
+  nextPageCursor: string | null;
 };
 
 // This endpoints serves two purposes:
