@@ -30,7 +30,7 @@ export const sendIncidentEmail = async ({
     <ul>
     ${assistants.map((a) => `<li>${a.agentName}: <a href="${a.assistantBuilderURL}">${a.assistantBuilderURL}</a></li>`).join("\n")}
     </ul>
-    <p>We take the safety of your assitant configurations very seriously, a full incident report is availabe here[0]. As an editor of assistants, your contribution is key to the success of Dust, please simply reply to this email if you have any outstanding questions, we're here to help.</p>
+    <p>We take the safety of your assitant configurations very seriously, a full incident report is available here[0]. As an editor of assistants, your contribution is key to the success of Dust, please simply reply to this email if you have any outstanding questions, we're here to help.</p>
     <p>-stan</p>
     <p>[0] <a href="https://dust-tt.notion.site/Incident-L2-Table-Query-Configuration-Loss-5f68431d4f3d4542ae833b8900ea0cc1">https://dust-tt.notion.site/Incident-L2-Table-Query-Configuration-Loss-5f68431d4f3d4542ae833b8900ea0cc1</a>
 `,
