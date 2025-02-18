@@ -586,10 +586,10 @@ impl LocalTable {
         Ok(schema)
     }
 
-    pub async fn validate_csv_content(upsert_queue_bucket_path: &str) -> Result<TableSchema> {
+    pub async fn validate_csv_content(upsert_queue_bucket_csv_path: &str) -> Result<TableSchema> {
         let rows = Arc::new(
             UpsertQueueCSVContent {
-                upsert_queue_bucket_path: upsert_queue_bucket_path.to_string(),
+                upsert_queue_bucket_csv_path: upsert_queue_bucket_csv_path.to_string(),
             }
             .parse()
             .await?,
