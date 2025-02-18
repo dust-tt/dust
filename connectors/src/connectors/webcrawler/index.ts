@@ -9,6 +9,7 @@ import {
   DepthOptions,
   Err,
   isDepthOption,
+  MIME_TYPES,
   Ok,
   WEBCRAWLER_MAX_PAGES,
   WebCrawlerHeaderRedactedValue,
@@ -214,6 +215,7 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
             permission: "read",
             type: "folder",
             lastUpdatedAt: folder.updatedAt.getTime(),
+            mimeType: MIME_TYPES.WEBCRAWLER.FOLDER,
           };
         })
         .concat(
@@ -240,6 +242,7 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
               permission: "read",
               type: "file",
               lastUpdatedAt: page.updatedAt.getTime(),
+              mimeType: "text/html",
             };
           })
         )
@@ -280,6 +283,7 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
         permission: "read",
         type: "folder",
         lastUpdatedAt: folder.updatedAt.getTime(),
+        mimeType: MIME_TYPES.WEBCRAWLER.FOLDER,
       });
     });
     pages.forEach((page) => {
@@ -292,6 +296,7 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
         permission: "read",
         type: "file",
         lastUpdatedAt: page.updatedAt.getTime(),
+        mimeType: "text/html",
       });
     });
 

@@ -745,7 +745,7 @@ export async function* postUserMessage(
           code: "provider_disabled",
           message:
             `Assistant ${agentConfig.name} is based on a model that was disabled ` +
-            `by your workspace admin. Please edit the assistant to use another model ` +
+            `by your workspace admin. Please edit the agent to use another model ` +
             `(advanced settings in the Instructions panel).`,
         },
       };
@@ -1202,7 +1202,7 @@ export async function* editUserMessage(
           code: "provider_disabled",
           message:
             `Assistant ${agentConfig.name} is based on a model that was disabled ` +
-            `by your workspace admin. Please edit the assistant to use another model ` +
+            `by your workspace admin. Please edit the agent to use another model ` +
             `(advanced settings in the Instructions panel).`,
         },
       };

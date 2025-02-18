@@ -118,7 +118,7 @@ export async function deleteTable({
   }
   // We do not delete the related AgentTablesQueryConfigurationTable entry if any.
   // This is because the table might be created again with the same name and we want to keep the configuration.
-  // The Assistant Builder displays an error on the action card if it misses a table.
+  // The agent Builder displays an error on the action card if it misses a table.
 
   return new Ok(null);
 }
@@ -446,6 +446,8 @@ export async function rowsFromCsv({
             DateTime.fromSQL,
             // Google Spreadsheet date format parser.
             (text: string) => DateTime.fromFormat(text, "d-MMM-yyyy"),
+            // Full month name format parser
+            (text: string) => DateTime.fromFormat(text, "LLLL dd, yyyy"),
           ];
           const trimmedV = v.trim();
           for (const parse of dateParsers) {

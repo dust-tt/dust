@@ -16,7 +16,7 @@ import { apiError } from "@app/logger/withlogging";
  *     summary: Get agent configuration
  *     description: Retrieve the agent configuration identified by {sId} in the workspace identified by {wId}.
  *     tags:
- *       - Assistants
+ *       - Agents
  *     parameters:
  *       - in: path
  *         name: wId
@@ -56,7 +56,7 @@ import { apiError } from "@app/logger/withlogging";
  *     summary: Update agent configuration
  *     description: Update the agent configuration identified by {sId} in the workspace identified by {wId}.
  *     tags:
- *       - Assistants
+ *       - Agents
  *     parameters:
  *       - in: path
  *         name: wId

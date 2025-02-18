@@ -4,7 +4,7 @@ import type {
   ContentNodesViewType,
   Result,
 } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import { Err, MIME_TYPES, Ok } from "@dust-tt/types";
 import { Op } from "sequelize";
 
 import {
@@ -630,6 +630,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
         expandable: true,
         permission: helpCenter.permission,
         lastUpdatedAt: null,
+        mimeType: MIME_TYPES.INTERCOM.HELP_CENTER,
       });
     }
     for (const collection of collections) {
@@ -650,6 +651,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
         expandable: true,
         permission: collection.permission,
         lastUpdatedAt: collection.lastUpsertedTs?.getTime() || null,
+        mimeType: MIME_TYPES.INTERCOM.COLLECTION,
       });
     }
     for (const article of articles) {
@@ -670,13 +672,14 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
         expandable: false,
         permission: article.permission,
         lastUpdatedAt: article.lastUpsertedTs?.getTime() || null,
+        mimeType: MIME_TYPES.INTERCOM.ARTICLE,
       });
     }
     if (isAllConversations) {
       nodes.push({
         internalId: getTeamsInternalId(this.connectorId),
         parentInternalId: null,
-        type: "channel",
+        type: "folder",
         title: "Conversations",
         sourceUrl: null,
         expandable: true,
@@ -685,18 +688,20 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
             ? "read"
             : "none",
         lastUpdatedAt: null,
+        mimeType: MIME_TYPES.INTERCOM.TEAMS_FOLDER,
       });
     }
     for (const team of teams) {
       nodes.push({
         internalId: getTeamInternalId(this.connectorId, team.teamId),
         parentInternalId: getTeamsInternalId(this.connectorId),
-        type: "channel",
+        type: "folder",
         title: team.name,
         sourceUrl: null,
         expandable: false,
         permission: team.permission,
         lastUpdatedAt: null,
+        mimeType: MIME_TYPES.INTERCOM.TEAM,
       });
     }
 

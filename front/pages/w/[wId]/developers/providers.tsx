@@ -240,7 +240,7 @@ export default function ProvidersPage({
         <Page.Header
           title="Providers"
           icon={ShapesIcon}
-          description="Configure model and service providers to enable advanced capabilities in your Apps. Note: These providers are not used by Dust assistants at all, but are required for running your own custom Dust Apps."
+          description="Configure model and service providers to enable advanced capabilities in your Apps. Note: These providers are not used by Dust agents at all, but are required for running your own custom Dust Apps."
         />
         <Page.Vertical align="stretch" gap="md">
           <Providers owner={owner} />

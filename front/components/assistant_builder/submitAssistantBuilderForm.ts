@@ -330,8 +330,8 @@ export async function submitAssistantBuilderForm({
   // PATCH the linked slack channels if either:
   // - there were already linked channels
   // - there are newly selected channels
-  // If the user selected channels that were already routed to a different assistant, the current behavior is to
-  // unlink them from the previous assistant and link them to the this one.
+  // If the user selected channels that were already routed to a different agent, the current behavior is to
+  // unlink them from the previous agent and link them to the this one.
   if (
     selectedSlackChannels.length ||
     slackChannelsLinkedWithAgent.filter(

@@ -145,9 +145,6 @@ export default function Space({
         isAdmin={isAdmin}
         systemSpace={systemSpace}
         connector={connector}
-        // TODO(20250126, nodes-core): Remove this after project end
-        // if query param is true, show connectors nodes
-        showConnectorsNodes={router.query.connNodes === "true"}
       />
     </Page.Vertical>
   );

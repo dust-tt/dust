@@ -382,7 +382,7 @@ export const DocumentUploadOrEditModal = ({
                     <div>
                       <Page.SectionHeader
                         title="Associated URL"
-                        description="The URL of the associated document (if any). Will be used to link users to the original document in assistants citations."
+                        description="The URL of the associated document (if any). Will be used to link users to the original document in agents citations."
                       />
                     </div>
                     <div>

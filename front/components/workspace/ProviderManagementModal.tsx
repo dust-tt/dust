@@ -237,8 +237,7 @@ export function ProviderManagementModal({
           </div>
           <div className="px-4 pt-2 text-sm text-gray-500">
             Embedding models are used to create numerical representations of
-            your data powering the semantic search capabilities of your
-            assistants.
+            your data powering the semantic search capabilities of your agents.
           </div>
         </SheetContainer>
         <SheetFooter

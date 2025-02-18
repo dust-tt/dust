@@ -42,7 +42,7 @@ const ALL_AGENTS_TABS = [
   { label: "Personal", icon: LockIcon, id: "personal" },
   { label: "All", icon: RobotIcon, id: "all" },
   {
-    label: "Searching across all assistants",
+    label: "Searching across all agents",
     icon: MagnifyingGlassIcon,
     id: "search",
   },
@@ -151,7 +151,7 @@ export function AssistantBrowser({
         <div className="hidden sm:block">
           <div className="flex gap-2">
             <Button
-              tooltip="Create your own assistant"
+              tooltip="Create your own agent"
               href={`/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`}
               variant="primary"
               icon={PlusIcon}
@@ -163,7 +163,7 @@ export function AssistantBrowser({
 
             {isBuilder && (
               <Button
-                tooltip="Manage assistants"
+                tooltip="Manage agents"
                 href={`/w/${owner.sId}/builder/assistants/`}
                 variant="primary"
                 icon={RobotIcon}
@@ -177,7 +177,7 @@ export function AssistantBrowser({
         </div>
       </div>
 
-      {/* Assistant tabs */}
+      {/* Agent tabs */}
       <div className="w-full">
         <ScrollArea aria-orientation="horizontal">
           <Tabs value={viewTab} onValueChange={setSelectedTab}>
@@ -203,7 +203,7 @@ export function AssistantBrowser({
 
       {!viewTab && (
         <div className="my-12 text-center text-sm text-muted-foreground">
-          No assistants found. Try adjusting your search criteria.
+          No agents found. Try adjusting your search criteria.
         </div>
       )}
 

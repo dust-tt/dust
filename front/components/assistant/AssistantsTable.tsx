@@ -317,7 +317,7 @@ export function AssistantsTable({
                     kind: "item",
                   },
                   {
-                    label: "Copy assistant ID",
+                    label: "Copy agent ID",
                     "data-gtm-label": "assistantCopyButton",
                     "data-gtm-location": "assistantDetails",
                     icon: ClipboardIcon,

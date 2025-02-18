@@ -96,8 +96,8 @@ const renderSolutionSectionBlock = ({
         >
           <div className="text-sm uppercase text-slate-800/60">
             {Array.isArray(assistantBlocks)
-              ? "The assistants for the job:"
-              : "The assistant for the job:"}
+              ? "The agents for the job:"
+              : "The agent for the job:"}
           </div>
           <div className="flex grow basis-0 flex-col justify-start gap-8 md:flex-row">
             {renderAssistantBlocks()}

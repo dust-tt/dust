@@ -49,10 +49,12 @@ import {
 } from "@connectors/connectors/slack/lib/workspace_limits";
 import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import {
   SlackChannel,
   SlackChatBotMessage,
 } from "@connectors/lib/models/slack";
+import { syncFailed } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
@@ -129,14 +131,27 @@ export async function botAnswerMessage(
       },
       "Unexpected exception answering to Slack Chat Bot message"
     );
+    if (e instanceof ExternalOAuthTokenError) {
+      // Mark the connector as errored so that the user is notified in the Connection Admin UI.
+      await syncFailed(connector.id, "oauth_token_revoked");
+      // Send a custom message for the user to be informed about it.
+      const slackClient = await getSlackClient(connector.id);
+      await slackClient.chat.postMessage({
+        channel: slackChannel,
+        text: "Authorization error, please re-authenticate Slack in Connection Admin.",
+        thread_ts: slackMessageTs,
+      });
+
+      return new Ok(undefined);
+    }
     const slackClient = await getSlackClient(connector.id);
     await slackClient.chat.postMessage({
       channel: slackChannel,
-      text: "An unexpected error occured. Our team has been notified",
+      text: "An unexpected error occurred. Our team has been notified",
       thread_ts: slackMessageTs,
     });
 
-    return new Err(new Error("An unexpected error occured"));
+    return new Err(new Error("An unexpected error occurred"));
   }
 }
 
@@ -441,7 +456,7 @@ async function answerMessage(
     ) || [];
 
   // First we look at mention override
-  // (eg: a mention coming from the Slack assistant picker from slack).
+  // (eg: a mention coming from the Slack agent picker from slack).
   if (mentionOverride) {
     const agentConfig = activeAgentConfigurations.find(
       (ac) => ac.sId === mentionOverride
@@ -456,16 +471,14 @@ async function answerMessage(
         assistantName: agentConfig.name,
       };
     } else {
-      return new Err(
-        new SlackExternalUserError("Cannot find selected assistant.")
-      );
+      return new Err(new SlackExternalUserError("Cannot find selected agent."));
     }
   }
 
   if (mentionCandidates.length > 1) {
     return new Err(
       new SlackExternalUserError(
-        "Only one assistant at a time can be called through Slack."
+        "Only one agent at a time can be called through Slack."
       )
     );
   }
@@ -537,7 +550,7 @@ async function answerMessage(
         assistantName: agentConfigurationToMention.name,
       };
     } else {
-      // If no mention is found and no channel-based routing rule is found, we use the default assistant.
+      // If no mention is found and no channel-based routing rule is found, we use the default agent.
       let defaultAssistant: LightAgentConfigurationType | null = null;
       defaultAssistant =
         activeAgentConfigurations.find((ac) => ac.sId === "dust") || null;
@@ -549,7 +562,7 @@ async function answerMessage(
         return new Err(
           // not actually reachable, gpt-4 cannot be disabled.
           new SlackExternalUserError(
-            "No assistant has been configured to reply on Slack."
+            "No agent has been configured to reply on Slack."
           )
         );
       }

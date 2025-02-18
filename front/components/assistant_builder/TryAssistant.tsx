@@ -86,7 +86,7 @@ export function usePreviewAssistant({
       owner,
       builderState: {
         handle: builderState.handle,
-        description: "Draft Assistant",
+        description: "Draft Agent",
         instructions: builderState.instructions,
         avatarUrl: builderState.avatarUrl ?? getDefaultAvatarUrlForPreview(),
         scope: "private",
@@ -107,7 +107,7 @@ export function usePreviewAssistant({
 
     if (!aRes.isOk()) {
       sendNotification({
-        title: "Error saving Draft Assistant",
+        title: "Error saving Draft Agent",
         description: aRes.error.message,
         type: "error",
       });

@@ -47,7 +47,7 @@ export const ConversationExample = () => {
 
           <ConversationMessage
             type="agent"
-            name="@assistant"
+            name="@agent"
             pictureUrl="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg"
             buttons={[
               <Button

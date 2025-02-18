@@ -4,7 +4,7 @@ import type {
   ModelId,
   Result,
 } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import { Err, MIME_TYPES, Ok } from "@dust-tt/types";
 import { Op } from "sequelize";
 
 import { listConfluenceSpaces } from "@connectors/connectors/confluence/lib/confluence_api";
@@ -54,6 +54,7 @@ export function createContentNodeFromSpace(
     expandable: isExpandable,
     permission,
     lastUpdatedAt: null,
+    mimeType: MIME_TYPES.CONFLUENCE.SPACE,
   };
 }
 
@@ -75,6 +76,7 @@ export function createContentNodeFromPage(
     expandable: isExpandable,
     permission: "read",
     lastUpdatedAt: null,
+    mimeType: MIME_TYPES.CONFLUENCE.PAGE,
   };
 }
 
