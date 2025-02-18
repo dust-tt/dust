@@ -59,7 +59,7 @@ export async function retrieveSelectedNodes({
         connectorId,
         collection.helpCenterId
       ),
-      type: "folder",
+      type: "Folder",
       title: collection.name,
       sourceUrl: collection.url,
       expandable,
@@ -81,7 +81,7 @@ export async function retrieveSelectedNodes({
     teamsNodes.push({
       internalId: getTeamsInternalId(connectorId),
       parentInternalId: null,
-      type: "folder",
+      type: "Folder",
       title: "Conversations",
       sourceUrl: null,
       expandable: true,
@@ -101,7 +101,7 @@ export async function retrieveSelectedNodes({
     teamsNodes.push({
       internalId: getTeamInternalId(connectorId, team.teamId),
       parentInternalId: getTeamsInternalId(connectorId),
-      type: "folder",
+      type: "Folder",
       title: team.name,
       sourceUrl: null,
       expandable: false,

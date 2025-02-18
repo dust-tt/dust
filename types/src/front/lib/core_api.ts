@@ -1,9 +1,6 @@
 import { createParser } from "eventsource-parser";
 
-import {
-  CoreAPIContentNode,
-  CoreAPIContentNodeType,
-} from "../../core/content_node";
+import { ContentNodeType, CoreAPIContentNode } from "../../core/content_node";
 import {
   CoreAPIDataSource,
   CoreAPIDataSourceConfig,
@@ -217,7 +214,7 @@ export type CoreAPINodesSearchFilter = {
   data_source_views: CoreAPIDatasourceViewFilter[];
   node_ids?: string[];
   parent_id?: string;
-  node_types?: CoreAPIContentNodeType[];
+  node_types?: ContentNodeType[];
 };
 
 export interface CoreAPIUpsertDataSourceDocumentPayload {

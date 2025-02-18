@@ -16,20 +16,27 @@ export function stableIdForUrl({
   url: string;
   ressourceType: ContentNodeType;
 }) {
-  return Buffer.from(blake3(`${ressourceType}-${url}`)).toString("hex");
+  // LEGACY, due to a renaming of content node types, but ids must remain stable
+  const typePrefix =
+    ressourceType === "Document"
+      ? "file"
+      : ressourceType === "Table"
+        ? "database"
+        : "folder";
+  return Buffer.from(blake3(`${typePrefix}-${url}`)).toString("hex");
 }
 
 export function getParentsForPage(url: string, pageInItsOwnFolder: boolean) {
   const parents: string[] = [];
-  parents.push(stableIdForUrl({ url, ressourceType: "file" }));
+  parents.push(stableIdForUrl({ url, ressourceType: "Document" }));
   if (pageInItsOwnFolder) {
     parents.push(
-      stableIdForUrl({ url: normalizeFolderUrl(url), ressourceType: "folder" })
+      stableIdForUrl({ url: normalizeFolderUrl(url), ressourceType: "Folder" })
     );
   }
   parents.push(
     ...getAllFoldersForUrl(url).map((f) =>
-      stableIdForUrl({ url: f, ressourceType: "folder" })
+      stableIdForUrl({ url: f, ressourceType: "Folder" })
     )
   );
 

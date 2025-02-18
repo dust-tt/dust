@@ -1,8 +1,4 @@
-import type {
-  ContentNodeType,
-  CoreAPIContentNode,
-  DataSourceViewType,
-} from "@dust-tt/types";
+import type { DataSourceViewType } from "@dust-tt/types";
 import { assertNever, MIME_TYPES } from "@dust-tt/types";
 
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -55,21 +51,5 @@ export function getContentNodeInternalIdFromTableId(
 
     default:
       assertNever(dataSource.connectorProvider);
-  }
-}
-
-export function getContentNodeType(node: CoreAPIContentNode): ContentNodeType {
-  // this is approximate and will be cleaned up when we turn ContentNodeType into the same nodeType as in core
-  // the main point is that it correctly identifies documents as files as this is used in ContentNodeTree
-  // TODO(2025-01-27 aubin): clean this up
-  switch (node.node_type) {
-    case "Table":
-      return "database";
-    case "Folder":
-      return "folder";
-    case "Document":
-      return "file";
-    default:
-      assertNever(node.node_type);
   }
 }

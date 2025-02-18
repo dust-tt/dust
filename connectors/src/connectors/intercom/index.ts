@@ -624,7 +624,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
           helpCenter.helpCenterId
         ),
         parentInternalId: null,
-        type: "database",
+        type: "Table",
         title: helpCenter.name,
         sourceUrl: null,
         expandable: true,
@@ -645,7 +645,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
               collection.parentId
             )
           : null,
-        type: "folder",
+        type: "Folder",
         title: collection.name,
         sourceUrl: collection.url,
         expandable: true,
@@ -666,7 +666,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
               article.parentId
             )
           : null,
-        type: "file",
+        type: "Document",
         title: article.title,
         sourceUrl: article.url,
         expandable: false,
@@ -679,7 +679,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
       nodes.push({
         internalId: getTeamsInternalId(this.connectorId),
         parentInternalId: null,
-        type: "folder",
+        type: "Folder",
         title: "Conversations",
         sourceUrl: null,
         expandable: true,
@@ -695,7 +695,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
       nodes.push({
         internalId: getTeamInternalId(this.connectorId, team.teamId),
         parentInternalId: getTeamsInternalId(this.connectorId),
-        type: "folder",
+        type: "Folder",
         title: team.name,
         sourceUrl: null,
         expandable: false,

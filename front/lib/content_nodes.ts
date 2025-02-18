@@ -34,7 +34,7 @@ export const SPREADSHEET_MIME_TYPES = [
   MIME_TYPES.MICROSOFT.SPREADSHEET,
 ] as readonly string[];
 
-function getVisualForFileContentNode(node: ContentNode & { type: "file" }) {
+function getVisualForFileContentNode(node: ContentNode & { type: "Document" }) {
   if (node.expandable) {
     return DocumentPileIcon;
   }
@@ -53,19 +53,21 @@ export function getVisualForContentNode(node: ContentNode) {
     return Square3Stack3DIcon;
   }
   if (FILE_MIME_TYPES.includes(node.mimeType)) {
-    return getVisualForFileContentNode(node as ContentNode & { type: "file" });
+    return getVisualForFileContentNode(
+      node as ContentNode & { type: "Document" }
+    );
   }
   if (SPREADSHEET_MIME_TYPES.includes(node.mimeType)) {
     return FolderTableIcon;
   }
   switch (node.type) {
-    case "database":
+    case "Table":
       return Square3Stack3DIcon;
-    case "folder":
+    case "Folder":
       return FolderIcon;
-    case "file":
+    case "Document":
       return getVisualForFileContentNode(
-        node as ContentNode & { type: "file" }
+        node as ContentNode & { type: "Document" }
       );
     default:
       assertNever(node.type);
