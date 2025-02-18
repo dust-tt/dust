@@ -503,6 +503,23 @@ impl LocalTable {
         Ok(())
     }
 
+    pub async fn upsert_csv_content(
+        &self,
+        store: Box<dyn Store + Sync + Send>,
+        databases_store: Box<dyn DatabasesStore + Sync + Send>,
+        upsert_queue_bucket_csv_path: &str,
+        truncate: bool,
+    ) -> Result<()> {
+        let rows = UpsertQueueCSVContent {
+            upsert_queue_bucket_csv_path: upsert_queue_bucket_csv_path.to_string(),
+        }
+        .parse()
+        .await?;
+
+        self.upsert_rows(store, databases_store, rows, truncate)
+            .await
+    }
+
     pub async fn retrieve_row(
         &self,
         databases_store: Box<dyn DatabasesStore + Sync + Send>,
