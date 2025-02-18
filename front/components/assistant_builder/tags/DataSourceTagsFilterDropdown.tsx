@@ -98,6 +98,8 @@ export function DataSourceTagsFilterDropdown({
     } else if (backUpTagsFilter) {
       newDsc.tagsFilter = backUpTagsFilter;
       setBackUpTagsFilter(null);
+    } else {
+      newDsc.tagsFilter = null;
     }
 
     onSave({
