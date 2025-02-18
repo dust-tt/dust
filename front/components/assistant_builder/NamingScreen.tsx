@@ -381,7 +381,7 @@ export default function NamingScreen({
 
             <div>
               <Input
-                placeholder="SalesAssistant, FrenchTranslator, SupportCenter…"
+                placeholder="SalesAgent, FrenchTranslator, SupportCenter…"
                 value={builderState.handle}
                 onChange={(e) => {
                   setEdited(true);
