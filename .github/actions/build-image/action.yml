@@ -14,6 +14,9 @@ inputs:
   workload_identity_provider:
     description: "Workload Identity Provider"
     required: true
+  depot_token:
+    description: "Depot project token"
+    required: true
 
 runs:
   using: "composite"
@@ -34,7 +37,7 @@ runs:
     - name: "Setup Depot"
       uses: "depot/setup-action@v1"
       with:
-        project-token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
+        project-token: ${{ inputs.depot_token }}
 
     - name: "Build and Push"
       shell: bash
