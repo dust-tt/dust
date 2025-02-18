@@ -280,6 +280,11 @@ export async function confluenceSyncTopLevelChildPagesWorkflow(
       }
     }
 
+    // Only attempt to fetch children if the page has known children.
+    if (isPageRef && !current.hasChildren) {
+      continue;
+    }
+
     // Get child pages using either initial empty cursor or saved cursor.
     const { childPageRefs, nextPageCursor } =
       await confluenceGetActiveChildPageRefsActivity({
