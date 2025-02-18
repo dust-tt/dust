@@ -724,7 +724,7 @@ export async function upsertTable({
               {
                 firstRow: headersRes.value.firstRow,
                 error: schemaRes.error,
-                headers: headersRes.value,
+                headers: headersRes.value.header,
               },
               "[CSV-FILE] mismatch: schema error but headers are valid"
             );
@@ -760,16 +760,18 @@ export async function upsertTable({
         if (!schemaRes.isErr() && !headersRes.isErr()) {
           const schema = schemaRes.value.schema;
           const headers = headersRes.value.header;
+          const schemaHeaders = schema.map((s) => s.name);
+          const cleanedHeaders = headers.filter((h) => h !== "__dust_id");
+
           logger.info(
             {
-              schema: schema.map((s) => s.name),
               headers,
+              schemaHeaders,
+              schema: schema.map((s) => s.name),
             },
             "[CSV-FILE] Validated CSV content"
           );
 
-          const schemaHeaders = schema.map((s) => s.name);
-          const cleanedHeaders = headers.filter((h) => h !== "__dust_id");
           if (
             schemaHeaders.length !== cleanedHeaders.length ||
             !schemaHeaders.every((v, i) => v === cleanedHeaders[i])
@@ -778,6 +780,7 @@ export async function upsertTable({
               {
                 firstRow: headersRes.value.firstRow,
                 headers,
+                schemaHeaders,
                 schema: schemaRes.value.schema,
               },
               "[CSV-FILE] mismatch: headers and schema mismatch"
