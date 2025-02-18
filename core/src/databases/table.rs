@@ -587,6 +587,7 @@ impl LocalTable {
     }
 
     pub async fn validate_csv_content(upsert_queue_bucket_csv_path: &str) -> Result<TableSchema> {
+        let now = utils::now();
         let rows = Arc::new(
             UpsertQueueCSVContent {
                 upsert_queue_bucket_csv_path: upsert_queue_bucket_csv_path.to_string(),
@@ -594,8 +595,18 @@ impl LocalTable {
             .parse()
             .await?,
         );
+        let csv_parse_duration = utils::now() - now;
 
+        let now = utils::now();
         let schema = TableSchema::from_rows_async(rows).await?;
+        let schema_duration = utils::now() - now;
+
+        info!(
+            csv_parse_duration = csv_parse_duration,
+            schema_duration = schema_duration,
+            "CSV validation"
+        );
+
         Ok(schema)
     }
 }
