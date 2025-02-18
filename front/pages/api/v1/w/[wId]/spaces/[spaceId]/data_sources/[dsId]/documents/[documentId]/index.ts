@@ -569,7 +569,7 @@ async function handler(
         //   status_code: 400,
         //   api_error: {
         //     type: "invalid_request_error",
-        //     message: `Invalid parent id: parents[1] and parent_id should be equal.`,
+        //     message: `Invalid tags: title passed in tags does not match the document title.`,
         //   },
         // });
       }
