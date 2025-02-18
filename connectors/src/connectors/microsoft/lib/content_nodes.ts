@@ -1,11 +1,18 @@
 import type { ContentNode, ContentNodeType } from "@dust-tt/types";
 import { MIME_TYPES } from "@dust-tt/types";
+import type {
+  Channel,
+  Drive,
+  Site,
+  Team,
+} from "@microsoft/microsoft-graph-types";
 
 import {
   getDriveInternalId,
   getDriveItemInternalId,
   getSiteAPIPath,
 } from "@connectors/connectors/microsoft/lib/graph_api";
+import type { DriveItem } from "@connectors/connectors/microsoft/lib/types";
 import {
   internalIdFromTypeAndPath,
   typeAndPathFromInternalId,
@@ -51,7 +58,7 @@ export function getTeamsRootAsContentNode(): ContentNode {
     mimeType: MIME_TYPES.MICROSOFT.FOLDER,
   };
 }
-export function getTeamAsContentNode(team: microsoftgraph.Team): ContentNode {
+export function getTeamAsContentNode(team: Team): ContentNode {
   return {
     internalId: internalIdFromTypeAndPath({
       itemAPIPath: `/teams/${team.id}`,
@@ -70,7 +77,7 @@ export function getTeamAsContentNode(team: microsoftgraph.Team): ContentNode {
 }
 
 export function getSiteAsContentNode(
-  site: microsoftgraph.Site,
+  site: Site,
   parentInternalId?: string
 ): ContentNode {
   if (!site.id) {
@@ -95,7 +102,7 @@ export function getSiteAsContentNode(
 }
 
 export function getChannelAsContentNode(
-  channel: microsoftgraph.Channel,
+  channel: Channel,
   parentInternalId: string
 ): ContentNode {
   if (!channel.id) {
@@ -124,7 +131,7 @@ export function getChannelAsContentNode(
 }
 
 export function getDriveAsContentNode(
-  drive: microsoftgraph.Drive,
+  drive: Drive,
   parentInternalId: string
 ): ContentNode {
   if (!drive.id) {
@@ -144,7 +151,7 @@ export function getDriveAsContentNode(
   };
 }
 export function getFolderAsContentNode(
-  folder: microsoftgraph.DriveItem,
+  folder: DriveItem,
   parentInternalId: string
 ): ContentNode {
   return {

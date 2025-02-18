@@ -4,23 +4,23 @@ import type {
   MicrosoftCommandType,
 } from "@dust-tt/types";
 import { microsoftIncrementalSyncWorkflowId } from "@dust-tt/types";
-import type { DriveItem } from "@microsoft/microsoft-graph-types";
 
 import { getConnectorManager } from "@connectors/connectors";
 import { getClient } from "@connectors/connectors/microsoft";
 import {
-  clientApiGet,
   getItem,
   getParentReferenceInternalId,
 } from "@connectors/connectors/microsoft/lib/graph_api";
+import type { DriveItem } from "@connectors/connectors/microsoft/lib/types";
+import { DRIVE_ITEM_EXPANDS_AND_SELECTS } from "@connectors/connectors/microsoft/lib/types";
 import {
-  _getListColumns,
-  getListNameFromWebUrl,
+  getColumnsFromListItem,
   typeAndPathFromInternalId,
 } from "@connectors/connectors/microsoft/lib/utils";
 import { launchMicrosoftIncrementalSyncWorkflow } from "@connectors/connectors/microsoft/temporal/client";
 import { throwOnError } from "@connectors/lib/cli";
 import { terminateWorkflow } from "@connectors/lib/temporal";
+import logger from "@connectors/logger/logger";
 import { MicrosoftNodeResource } from "@connectors/resources/microsoft_resource";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
@@ -87,7 +87,14 @@ export const microsoft = async ({
       );
 
       const client = await getClient(connector.connectionId);
-      const driveItem = (await getItem(client, itemAPIPath)) as DriveItem;
+      const driveItem = (await getItem(
+        client,
+        itemAPIPath + nodeType === "file"
+          ? `?${DRIVE_ITEM_EXPANDS_AND_SELECTS}`
+          : ""
+      )) as DriveItem;
+
+      const columns = await getColumnsFromListItem(driveItem, client, logger);
 
       const microsoftNodeResource =
         await MicrosoftNodeResource.fetchByInternalId(
@@ -99,36 +106,10 @@ export const microsoft = async ({
         itemAPIPath,
         microsoftNodeResource: microsoftNodeResource?.toJSON(),
         driveItem,
+        columns,
       };
 
       return { status: 200, content, type: typeof content };
-    }
-
-    case "list-sites": {
-      const connector = await getConnector(args);
-      const client = await getClient(connector.connectionId);
-      const endpoint = "/sites";
-      const res = await clientApiGet(client, endpoint);
-      return { status: 200, content: res.value, type: typeof res.value };
-    }
-
-    case "list-columns": {
-      const connector = await getConnector(args);
-      if (!args.webUrl) {
-        throw new Error("Missing --webUrl argument");
-      }
-      if (!args.siteId) {
-        throw new Error("Missing --siteId argument");
-      }
-
-      const listName = getListNameFromWebUrl(args.webUrl);
-      const client = await getClient(connector.connectionId);
-      const columns = await _getListColumns({
-        client,
-        listName,
-        siteId: args.siteId,
-      });
-      return { status: 200, content: columns, type: typeof columns };
     }
 
     case "start-incremental-sync": {
@@ -169,7 +150,10 @@ export const microsoft = async ({
       }
 
       const client = await getClient(connector.connectionId);
-      const file = (await getItem(client, itemAPIPath)) as DriveItem;
+      const file = (await getItem(
+        client,
+        itemAPIPath + `?${DRIVE_ITEM_EXPANDS_AND_SELECTS}`
+      )) as DriveItem;
 
       if (!file) {
         throw new Error(
