@@ -28,9 +28,6 @@ struct Args {
     #[arg(long, help = "The cursor to start from", default_value = "0")]
     start_cursor: i64,
 
-    #[arg(long, help = "The data source id to backfill", default_value = "1")]
-    data_source_id: i64,
-
     #[arg(long, help = "The batch size", default_value = "100")]
     batch_size: usize,
 
@@ -55,7 +52,6 @@ async fn main() {
 
 async fn list_data_source_documents(
     pool: &Pool<PostgresConnectionManager<NoTls>>,
-    data_source_id: i64,
     id_cursor: i64,
     batch_size: i64,
 ) -> Result<Vec<(i64, String, Vec<String>, String, String)>, Box<dyn std::error::Error>> {
@@ -63,12 +59,10 @@ async fn list_data_source_documents(
 
     let q = "SELECT dsn.id, dsn.node_id, dsn.tags_array, ds.data_source_id, ds.internal_id \
             FROM data_sources_nodes dsn JOIN data_sources ds ON dsn.data_source = ds.id \
-            WHERE ds.id = $1 AND dsn.id > $2 ORDER BY dsn.id ASC LIMIT $3";
+            WHERE dsn.id > $1 ORDER BY dsn.id ASC LIMIT $2";
 
     let stmt = c.prepare(q).await?;
-    let rows = c
-        .query(&stmt, &[&data_source_id, &id_cursor, &batch_size])
-        .await?;
+    let rows = c.query(&stmt, &[&id_cursor, &batch_size]).await?;
 
     let nodes: Vec<(i64, String, Vec<String>, String, String)> = rows
         .iter()
@@ -91,7 +85,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let index_version = args.index_version;
     let batch_size = args.batch_size;
     let start_cursor = args.start_cursor;
-    let data_source_id = args.data_source_id;
+
     let url = std::env::var("ELASTICSEARCH_URL").expect("ELASTICSEARCH_URL must be set");
     let username =
         std::env::var("ELASTICSEARCH_USERNAME").expect("ELASTICSEARCH_USERNAME must be set");
@@ -140,7 +134,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let pool = store.raw_pool();
     let c = pool.get().await?;
     let last_id = c
-        .query_one("SELECT MAX(id) FROM data_sources_nodes", &[])
+        .query_one("SELECT MAX(id) FROM data_sources_documents", &[])
         .await?;
     let last_id: i64 = last_id.get(0);
     println!("Last id in data_sources_nodes: {}", last_id);
@@ -149,8 +143,8 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
             "Processing {} nodes, starting at id {}. ",
             batch_size, next_cursor
         );
-        let (nodes, next_id_cursor) =
-            get_node_batch(pool, data_source_id, next_cursor, batch_size).await?;
+        let (nodes, next_id_cursor) = get_node_batch(pool, next_cursor, batch_size).await?;
+
         next_cursor = match next_id_cursor {
             Some(cursor) => cursor,
             None => {
@@ -168,14 +162,11 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
             .flat_map(|node| {
                 [
                     json!({"update": {"_id": format!("{}__{}", node.4, node.1) }}),
-                    json!({"doc": {"tags": node.2.into_iter()
-                        .filter(|tag| !tag.starts_with("createdAt:"))
-                        .filter(|tag| !tag.starts_with("updatedAt:"))
-                        .filter(|tag| !tag.starts_with("title:"))
-                        .collect::<Vec<String>>()}}),
+                    json!({"doc": {"tags": node.2}}),
                 ]
             })
             .collect();
+
         let nodes_body: Vec<JsonBody<_>> = nodes_values.into_iter().map(|v| v.into()).collect();
 
         search_store
@@ -199,20 +190,14 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
 
 async fn get_node_batch(
     pool: &Pool<PostgresConnectionManager<NoTls>>,
-    data_source_id: i64,
     next_cursor: i64,
     batch_size: usize,
 ) -> Result<
     (Vec<(i64, String, Vec<String>, String, String)>, Option<i64>),
     Box<dyn std::error::Error>,
 > {
-    let nodes = list_data_source_documents(
-        &pool,
-        data_source_id,
-        next_cursor,
-        batch_size.try_into().unwrap(),
-    )
-    .await?;
+    let nodes =
+        list_data_source_documents(&pool, next_cursor, batch_size.try_into().unwrap()).await?;
     let last_node = nodes.last().cloned();
     let nodes_length = nodes.len();
     match last_node {
