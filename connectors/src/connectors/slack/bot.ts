@@ -49,12 +49,10 @@ import {
 } from "@connectors/connectors/slack/lib/workspace_limits";
 import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import {
   SlackChannel,
   SlackChatBotMessage,
 } from "@connectors/lib/models/slack";
-import { syncFailed } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
@@ -131,19 +129,6 @@ export async function botAnswerMessage(
       },
       "Unexpected exception answering to Slack Chat Bot message"
     );
-    if (e instanceof ExternalOAuthTokenError) {
-      // Mark the connector as errored so that the user is notified in the Connection Admin UI.
-      await syncFailed(connector.id, "oauth_token_revoked");
-      // Send a custom message for the user to be informed about it.
-      const slackClient = await getSlackClient(connector.id);
-      await slackClient.chat.postMessage({
-        channel: slackChannel,
-        text: "Authorization error, please re-authenticate Slack in Connection Admin.",
-        thread_ts: slackMessageTs,
-      });
-
-      return new Ok(undefined);
-    }
     const slackClient = await getSlackClient(connector.id);
     await slackClient.chat.postMessage({
       channel: slackChannel,
@@ -197,11 +182,11 @@ export async function botReplaceMention(
     const slackClient = await getSlackClient(connector.id);
     await slackClient.chat.postMessage({
       channel: slackChannel,
-      text: "An unexpected error occured. Our team has been notified.",
+      text: "An unexpected error occurred. Our team has been notified.",
       thread_ts: slackMessageTs,
     });
 
-    return new Err(new Error("An unexpected error occured"));
+    return new Err(new Error("An unexpected error occurred"));
   }
 }
 
@@ -224,7 +209,7 @@ async function processErrorResult(
     const errorMessage =
       res.error instanceof SlackExternalUserError
         ? res.error.message
-        : `An error occured : ${res.error.message}. Our team has been notified and will work on it as soon as possible.`;
+        : `An error occurred : ${res.error.message}. Our team has been notified and will work on it as soon as possible.`;
 
     const { slackChatBotMessage, mainMessage } =
       res.error instanceof SlackMessageError
