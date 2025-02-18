@@ -49,13 +49,14 @@ import { DustError } from "@app/lib/error";
 import { Lock } from "@app/lib/lock";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import type { FileResource } from "@app/lib/resources/file_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { enqueueUpsertTable } from "@app/lib/upsert_queue";
 import logger from "@app/logger/logger";
 import { launchScrubDataSourceWorkflow } from "@app/poke/temporal/client";
+import { getFileContent } from "./files/utils";
 
 export async function getDataSources(
   auth: Authenticator,
@@ -620,17 +621,130 @@ export async function upsertTable({
     standardizedSourceUrl = standardized;
   }
 
-  // TODO(spolu): [CSV-FILE] add a check with core based on fileId when provided
-
   if (async) {
-    // Ensure the CSV is valid before enqueuing the upsert.
-    const csvRowsRes = csv ? await rowsFromCsv({ auth, csv }) : null;
-    if (csvRowsRes?.isErr()) {
-      return new Err({
-        name: "dust_error",
-        code: "invalid_csv",
-        message: "Failed to parse CSV: " + csvRowsRes.error.message,
-      });
+    if (csv) {
+      // Ensure the CSV is valid before enqueuing the upsert.
+      const csvRowsRes = await rowsFromCsv({ auth, csv });
+      if (csvRowsRes.isErr()) {
+        return new Err({
+          name: "dust_error",
+          code: "invalid_csv",
+          message: "Failed to parse CSV: " + csvRowsRes.error.message,
+        });
+      }
+    }
+
+    if (fileId) {
+      const file = await FileResource.fetchById(auth, fileId);
+      if (file) {
+        const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+
+        const [schemaRes, headersRes] = await Promise.all([
+          coreAPI.tableValidateCSVContent({
+            projectId: dataSource.dustAPIProjectId,
+            dataSourceId: dataSource.dustAPIDataSourceId,
+            upsertQueueBucketCSVPath: file.getCloudStoragePath(
+              auth,
+              "processed"
+            ),
+          }),
+          (async () => {
+            // TODO(spolu): [CSV-FILE] Remove this leg and enforce core check
+            const content = await getFileContent(auth, file);
+            if (!content) {
+              return new Err({
+                name: "dust_error",
+                code: "invalid_request_error",
+                message: "The file provided is empty",
+              });
+            }
+            const csvRowsRes = await rowsFromCsv({ auth, csv: content });
+            if (csvRowsRes.isErr()) {
+              return new Err({
+                name: "dust_error",
+                code: "invalid_csv",
+                message: "Failed to parse CSV: " + csvRowsRes.error.message,
+              });
+            } else {
+              return new Ok(csvRowsRes.value.detectedHeaders);
+            }
+          })(),
+        ]);
+
+        if (schemaRes.isErr()) {
+          // TODO(spolu): [CSV-FILE] Enforce core check
+          logger.info(
+            {
+              error: schemaRes.error,
+            },
+            "[CSV-FILE] error validating CSV content"
+          );
+
+          if (!headersRes.isErr()) {
+            logger.info(
+              {
+                firstRow: headersRes.value.firstRow,
+                error: schemaRes.error,
+                headers: headersRes.value,
+              },
+              "[CSV-FILE] mismatch: schema error but headers are valid"
+            );
+          }
+        }
+
+        if (headersRes.isErr()) {
+          logger.info(
+            {
+              error: headersRes.error,
+            },
+            "[CSV-FILE] error detecting headers"
+          );
+
+          if (!schemaRes.isErr()) {
+            logger.info(
+              {
+                error: headersRes.error,
+                schema: schemaRes.value.schema,
+              },
+              "[CSV-FILE] mismatch: headers error but schema is valid"
+            );
+          }
+
+          // If we have a schema error, we return early.
+          return new Err({
+            name: "dust_error",
+            code: "invalid_csv",
+            message: headersRes.error.message,
+          });
+        }
+
+        if (!schemaRes.isErr() && !headersRes.isErr()) {
+          const schema = schemaRes.value.schema;
+          const headers = headersRes.value.header;
+          logger.info(
+            {
+              schema: schema.map((s) => s.name),
+              headers,
+            },
+            "[CSV-FILE] Validated CSV content"
+          );
+
+          const schemaHeaders = schema.map((s) => s.name);
+          if (
+            schemaHeaders.length !== headers.length ||
+            !schemaHeaders.every((v, i) => v === headers[i])
+          ) {
+            logger.info(
+              {
+                firstRow: headersRes.value.firstRow,
+                headers,
+                schema: schemaRes.value.schema,
+              },
+              "[CSV-FILE] mismatch: headers and schema mismatch"
+            );
+          }
+        }
+      }
     }
 
     const enqueueRes = await enqueueUpsertTable({

@@ -49,7 +49,11 @@ type NotFoundError = {
   message: string;
 };
 
-type DetectedHeadersType = { header: string[]; rowIndex: number };
+type DetectedHeadersType = {
+  header: string[];
+  rowIndex: number;
+  firstRow: string[];
+};
 
 export type TableOperationError =
   | {
@@ -371,7 +375,12 @@ export async function rowsFromCsv({
 }: {
   auth: Authenticator;
   csv: string;
-}): Promise<Result<{ rows: CoreAPIRow[] }, CsvParsingError>> {
+}): Promise<
+  Result<
+    { detectedHeaders: DetectedHeadersType; rows: CoreAPIRow[] },
+    CsvParsingError
+  >
+> {
   const now = performance.now();
   const delimiter = await guessDelimiter(csv);
   if (!delimiter) {
@@ -383,14 +392,14 @@ export async function rowsFromCsv({
 
   // this differs with = {} in that it prevent errors when header values clash with object properties such as toString, constructor, ..
   const valuesByCol: Record<string, string[]> = Object.create(null);
-  let header, rowIndex;
+  let header, rowIndex, firstRow;
   try {
     const headerRes = await detectHeaders(csv, delimiter);
 
     if (headerRes.isErr()) {
       return headerRes;
     }
-    ({ header, rowIndex } = headerRes.value);
+    ({ header, rowIndex, firstRow } = headerRes.value);
 
     const parser = parse(csv, { delimiter });
     let i = 0;
@@ -540,7 +549,7 @@ export async function rowsFromCsv({
     "Parsing CSV"
   );
 
-  return new Ok({ detectedHeaders: { header, rowIndex }, rows });
+  return new Ok({ detectedHeaders: { header, rowIndex, firstRow }, rows });
 }
 
 async function staticHeaderDetection(
@@ -563,7 +572,7 @@ async function staticHeaderDetection(
     return new Err({ type: "invalid_header", message: header.error.message });
   }
 
-  return new Ok({ header: header.value, rowIndex: 1 });
+  return new Ok({ header: header.value, rowIndex: 1, firstRow });
 }
 
 export async function detectHeaders(
