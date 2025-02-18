@@ -52,10 +52,11 @@
       "fields": {
         "edge": {
           "type": "text",
-          "analyzer": "edge_analyzer"
+          "analyzer": "tag_edge_analyzer"
         },
         "keyword": {
-          "type": "keyword"
+          "type": "keyword",
+          "normalizer": "tag_normalizer"
         }
       }
     }
