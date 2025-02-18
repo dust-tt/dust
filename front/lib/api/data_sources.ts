@@ -761,7 +761,6 @@ export async function upsertTable({
           const schema = schemaRes.value.schema;
           const headers = headersRes.value.header;
           const schemaHeaders = schema.map((s) => s.name);
-          const cleanedHeaders = headers.filter((h) => h !== "__dust_id");
 
           logger.info(
             {
@@ -772,10 +771,10 @@ export async function upsertTable({
             "[CSV-FILE] Validated CSV content"
           );
 
-          if (
-            schemaHeaders.length !== cleanedHeaders.length ||
-            !schemaHeaders.every((v, i) => v === cleanedHeaders[i])
-          ) {
+          // Schema headers does not include columns that have only null values, so we check that
+          // all schema headers are in the front computed headers and consider ouselves happy if
+          // that's the case.
+          if (!schemaHeaders.every((v) => v === headers.find((h) => h === v))) {
             logger.info(
               {
                 firstRow: headersRes.value.firstRow,
