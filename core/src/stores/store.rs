@@ -689,7 +689,7 @@ pub const SQL_INDEXES: [&'static str; 34] = [
         idx_data_sources_nodes_parents_single ON data_sources_nodes (data_source, (array_length(parents, 1) = 1));",
     "CREATE INDEX IF NOT EXISTS
         idx_data_sources_nodes_tags_array ON data_sources_nodes USING GIN (tags_array);",
-        ];
+];
 
 pub const SQL_FUNCTIONS: [&'static str; 2] = [
     // SQL function to delete the project datasets / datasets_joins / datasets_points
