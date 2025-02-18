@@ -2,28 +2,17 @@ import type {
   ContentNodesViewType,
   CoreAPIContentNode,
   CoreAPIDatasourceViewFilter,
-  CoreAPIError,
   DataSourceViewContentNode,
   DataSourceViewType,
   PatchDataSourceViewType,
   Result,
 } from "@dust-tt/types";
-import {
-  assertNever,
-  ConnectorsAPI,
-  CoreAPI,
-  Err,
-  Ok,
-  removeNulls,
-} from "@dust-tt/types";
-import assert from "assert";
+import { assertNever, CoreAPI, Err, Ok, removeNulls } from "@dust-tt/types";
 
 import config from "@app/lib/api/config";
 import {
-  computeNodesDiff,
   FOLDERS_SELECTION_PREVENTED_MIME_TYPES,
   FOLDERS_TO_HIDE_IF_EMPTY_MIME_TYPES,
-  getContentNodeInternalIdFromTableId,
   getContentNodeType,
   NON_EXPANDABLE_NODES_MIME_TYPES,
 } from "@app/lib/api/content_nodes";
@@ -37,9 +26,6 @@ import { SPREADSHEET_MIME_TYPES } from "@app/lib/content_nodes";
 import type { DustError } from "@app/lib/error";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
-
-// TODO(nodes-core): remove this upon project cleanup
-const DEFAULT_STATIC_DATA_SOURCE_PAGINATION_LIMIT = 10_000;
 
 export function filterAndCropContentNodesByView(
   dataSourceView: DataSourceViewResource,
@@ -90,88 +76,11 @@ interface GetContentNodesForDataSourceViewParams {
   // TODO(nodes-core): remove offset pagination upon project cleanup
   pagination?: CursorPaginationParams | OffsetPaginationParams;
   viewType: ContentNodesViewType;
-  // If onlyCoreAPI is true, the function will only use the Core API to fetch the content nodes.
-  onlyCoreAPI?: boolean;
 }
 
 interface GetContentNodesForDataSourceViewResult {
   nodes: DataSourceViewContentNode[];
   total: number;
-}
-
-async function getContentNodesForManagedDataSourceView(
-  dataSourceView: DataSourceViewResource | DataSourceViewType,
-  { internalIds, parentId, viewType }: GetContentNodesForDataSourceViewParams
-): Promise<Result<GetContentNodesForDataSourceViewResult, Error>> {
-  const { dataSource } = dataSourceView;
-
-  const connectorsAPI = new ConnectorsAPI(
-    config.getConnectorsAPIConfig(),
-    logger
-  );
-
-  assert(
-    dataSource.connectorId,
-    "Connector ID is required for managed data sources."
-  );
-
-  // If no internalIds nor parentIds are provided, get the root nodes of the data source view.
-  if (!internalIds && !parentId && dataSourceView.parentsIn) {
-    internalIds = dataSourceView.parentsIn;
-  }
-
-  // If no internalIds are provided, fetch the children of the parent node, or root nodes of data source.
-  if (!internalIds) {
-    const connectorsRes = await connectorsAPI.getConnectorPermissions({
-      connectorId: dataSource.connectorId,
-      filterPermission: "read",
-      includeParents: true,
-      // Passing an undefined parentInternalId will fetch the root nodes.
-      parentId,
-      viewType,
-    });
-
-    if (connectorsRes.isErr()) {
-      if (
-        [
-          "connector_rate_limit_error",
-          "connector_authorization_error",
-        ].includes(connectorsRes.error.type)
-      ) {
-        return new Err(new Error(connectorsRes.error.message));
-      }
-      return new Err(
-        new Error(
-          "An error occurred while fetching the resources' children content nodes."
-        )
-      );
-    }
-
-    return new Ok({
-      nodes: connectorsRes.value.resources,
-      // Connectors API does not support pagination yet, so the total is the length of the nodes.
-      total: connectorsRes.value.resources.length,
-    });
-  } else {
-    const connectorsRes = await connectorsAPI.getContentNodes({
-      connectorId: dataSource.connectorId,
-      includeParents: true,
-      internalIds,
-      viewType,
-    });
-    if (connectorsRes.isErr()) {
-      return new Err(
-        new Error(
-          "An error occurred while fetching the resources' content nodes."
-        )
-      );
-    }
-    return new Ok({
-      nodes: connectorsRes.value.nodes,
-      // Connectors API does not support pagination yet, so the total is the length of the nodes.
-      total: connectorsRes.value.nodes.length,
-    });
-  }
 }
 
 function filterNodesByViewType(
@@ -219,7 +128,7 @@ function makeCoreDataSourceViewFilter(
 
 const ROOT_PARENT_ID = "root";
 
-async function getContentNodesForDataSourceViewFromCore(
+export async function getContentNodesForDataSourceView(
   dataSourceView: DataSourceViewResource | DataSourceViewType,
   {
     internalIds,
@@ -319,241 +228,6 @@ async function getContentNodesForDataSourceViewFromCore(
     }),
     total: resultNodes.length,
     nextPageCursor: nextPageCursor,
-  });
-}
-
-// Static data sources are data sources that are not managed by a connector.
-// They are flat and do not have a hierarchy.
-async function getContentNodesForStaticDataSourceView(
-  dataSourceView: DataSourceViewResource,
-  { internalIds, pagination, viewType }: GetContentNodesForDataSourceViewParams
-): Promise<
-  Result<GetContentNodesForDataSourceViewResult, Error | CoreAPIError>
-> {
-  const { dataSource } = dataSourceView;
-
-  // Use a high pagination limit since the product UI doesn't support pagination yet,
-  // even though static data sources can contain many documents via API ingestion.
-  const paginationParams = pagination ?? {
-    // TODO(nodes-core): remove this upon project cleanup
-    limit: DEFAULT_STATIC_DATA_SOURCE_PAGINATION_LIMIT,
-    offset: 0,
-  };
-
-  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-
-  // Early return if there are no internalIds.
-  if (internalIds?.length === 0) {
-    return new Ok({
-      nodes: [],
-      total: 0,
-    });
-  }
-
-  if (viewType === "documents" || viewType === "all") {
-    if (isCursorPaginationParams(paginationParams)) {
-      throw new Error(
-        "Cursor pagination is not supported for static data sources. Note: this code path should be deleted at the end of the project nodes core (2025-02-03)."
-      );
-    }
-    const documentsRes = await coreAPI.getDataSourceDocuments(
-      {
-        dataSourceId: dataSource.dustAPIDataSourceId,
-        documentIds: internalIds,
-        projectId: dataSource.dustAPIProjectId,
-        viewFilter: dataSourceView.toViewFilter(),
-      },
-      paginationParams
-    );
-
-    if (documentsRes.isErr()) {
-      return documentsRes;
-    }
-
-    const documentsAsContentNodes: DataSourceViewContentNode[] =
-      documentsRes.value.documents.map((doc) => {
-        let title = doc.document_id;
-        for (const t of doc.tags) {
-          if (t.startsWith("title:")) {
-            title = t.slice(6);
-            break;
-          }
-        }
-        return {
-          expandable: false,
-          internalId: doc.document_id,
-          lastUpdatedAt: doc.timestamp,
-          parentInternalId: null,
-          parentInternalIds: [],
-          permission: "read",
-          preventSelection: false,
-          sourceUrl: doc.source_url ?? null,
-          title,
-          type: "file",
-        };
-      });
-
-    return new Ok({
-      nodes: documentsAsContentNodes,
-      total: documentsRes.value.total,
-    });
-  } else {
-    if (isCursorPaginationParams(paginationParams)) {
-      throw new Error(
-        "Cursor pagination is not supported for static data sources. Note: this code path should be deleted at the end of the project nodes core (2025-02-03)."
-      );
-    }
-    const tablesRes = await coreAPI.getTables(
-      {
-        dataSourceId: dataSource.dustAPIDataSourceId,
-        projectId: dataSource.dustAPIProjectId,
-        tableIds: internalIds,
-        viewFilter: dataSourceView.toViewFilter(),
-      },
-      paginationParams
-    );
-
-    if (tablesRes.isErr()) {
-      return tablesRes;
-    }
-
-    const tablesAsContentNodes: DataSourceViewContentNode[] =
-      tablesRes.value.tables.map((table) => ({
-        expandable: false,
-        internalId: getContentNodeInternalIdFromTableId(
-          dataSourceView,
-          table.table_id
-        ),
-        lastUpdatedAt: table.timestamp,
-        parentInternalId: null,
-        parentInternalIds: table.parents,
-        permission: "read",
-        preventSelection: false,
-        sourceUrl: null,
-        title: table.name,
-        type: "database",
-      }));
-
-    return new Ok({
-      nodes: tablesAsContentNodes,
-      total: tablesRes.value.total,
-    });
-  }
-}
-
-export async function getContentNodesForDataSourceView(
-  dataSourceView: DataSourceViewResource,
-  params: GetContentNodesForDataSourceViewParams,
-  showConnectorsNodes?: boolean
-): Promise<
-  Result<GetContentNodesForDataSourceViewResult, Error | CoreAPIError>
-> {
-  const { onlyCoreAPI = false } = params;
-
-  let connectorsContentNodesResult: GetContentNodesForDataSourceViewResult;
-
-  const connectorsStart = new Date();
-  if (dataSourceView.dataSource.connectorId && !onlyCoreAPI) {
-    const contentNodesRes = await getContentNodesForManagedDataSourceView(
-      dataSourceView,
-      params
-    );
-
-    if (contentNodesRes.isErr()) {
-      return contentNodesRes;
-    }
-
-    connectorsContentNodesResult = contentNodesRes.value;
-  } else {
-    const contentNodesRes = await getContentNodesForStaticDataSourceView(
-      dataSourceView,
-      params
-    );
-
-    if (contentNodesRes.isErr()) {
-      return contentNodesRes;
-    }
-
-    connectorsContentNodesResult = contentNodesRes.value;
-  }
-
-  const connectorsLatency = new Date().getTime() - connectorsStart.getTime();
-
-  const localLogger = logger.child({
-    dataSourceId: dataSourceView.dataSource.sId,
-    connectorId: dataSourceView.dataSource.connectorId,
-    dataSourceViewId: dataSourceView.sId,
-    provider: dataSourceView.dataSource.connectorProvider,
-    viewType: params.viewType,
-    isRootCall:
-      !params.parentId && !params.internalIds && !dataSourceView.parentsIn,
-    parentId: params.parentId,
-    internalIds: params.internalIds,
-    parentsIn: dataSourceView.parentsIn || undefined,
-  });
-
-  const coreStart = new Date();
-  const coreContentNodesRes = await getContentNodesForDataSourceViewFromCore(
-    dataSourceView,
-    params
-  );
-  const coreLatency = new Date().getTime() - coreStart.getTime();
-
-  // TODO(20250126, nodes-core): Remove this after project end
-  localLogger.info(
-    {
-      connectorsLatency,
-      coreLatency,
-      diff: coreLatency - connectorsLatency,
-    },
-    "[CoreNodes] Latency between connectors and core"
-  );
-
-  if (coreContentNodesRes.isErr()) {
-    localLogger.error(
-      { error: coreContentNodesRes.error, panic: true },
-      "[CoreNodes] Could not fetch content nodes from core"
-    );
-    return coreContentNodesRes;
-  }
-
-  const diff = computeNodesDiff({
-    connectorsContentNodes: connectorsContentNodesResult.nodes,
-    coreContentNodes: coreContentNodesRes.value.nodes,
-    provider: dataSourceView.dataSource.connectorProvider,
-    pagination: params.pagination,
-    localLogger,
-  });
-
-  if (showConnectorsNodes) {
-    if (diff.length == 0) {
-      diff.push({
-        internalId: "missing-connectors-nodes",
-        parentInternalId: null,
-        title: "ALL IS FINE",
-        type: "folder",
-        permission: "read",
-        lastUpdatedAt: new Date().getTime(),
-        parentInternalIds: [],
-        sourceUrl: null,
-        expandable: false,
-        preventSelection: false,
-      });
-    }
-    return new Ok({
-      nodes: filterAndCropContentNodesByView(dataSourceView, diff),
-      total: diff.length,
-    });
-  }
-
-  const contentNodesInView = filterAndCropContentNodesByView(
-    dataSourceView,
-    coreContentNodesRes.value.nodes
-  );
-
-  return new Ok({
-    nodes: contentNodesInView,
-    total: coreContentNodesRes.value.total,
   });
 }
 

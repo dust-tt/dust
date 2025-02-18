@@ -79,7 +79,7 @@ export async function retrieveSelectedNodes({
     teamsNodes.push({
       internalId: getTeamsInternalId(connectorId),
       parentInternalId: null,
-      type: "channel",
+      type: "folder",
       title: "Conversations",
       sourceUrl: null,
       expandable: true,

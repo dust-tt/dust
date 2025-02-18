@@ -53,12 +53,6 @@ export function getVisualForContentNode(node: ContentNode, useMimeType = true) {
 
 function getVisualForContentNodeBasedOnType(node: ContentNode) {
   switch (node.type) {
-    case "channel":
-      if (node.providerVisibility === "private") {
-        return LockIcon;
-      }
-      return ChatBubbleLeftRightIcon;
-
     case "database":
       return Square3Stack3DIcon;
 
@@ -100,10 +94,11 @@ function getVisualForContentNodeBasedOnMimeType(node: ContentNode) {
       return Square3Stack3DIcon;
     case "folder":
       return FolderIcon;
-    // TODO(2025-01-24 aubin) once we remove the "channel" type, change this to case "file" and add an assertNever
-    default:
+    case "file":
       return getVisualForFileContentNode(
         node as ContentNode & { type: "file" }
       );
+    default:
+      assertNever(node.type);
   }
 }
