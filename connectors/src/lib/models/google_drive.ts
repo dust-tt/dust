@@ -158,6 +158,7 @@ export class GoogleDriveSheet extends ConnectorBaseModel<GoogleDriveSheet> {
   declare driveFileId: string;
   declare driveSheetId: number;
   declare name: string;
+  declare notUpsertedReason: string | null;
 }
 GoogleDriveSheet.init(
   {
@@ -182,6 +183,10 @@ GoogleDriveSheet.init(
     name: {
       type: DataTypes.TEXT,
       allowNull: false,
+    },
+    notUpsertedReason: {
+      type: DataTypes.TEXT,
+      allowNull: true,
     },
   },
   {
