@@ -467,9 +467,8 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     );
   }
 
-  /**
-   * Caller of this method should call `ServerSideTracking.trackRevokeMembership`.
-   */
+  // Use `revokeAndTrackMembership` from `@app/lib/api/membership` instead which
+  // handles tracking and usage updates.
   static async revokeMembership({
     user,
     workspace,
