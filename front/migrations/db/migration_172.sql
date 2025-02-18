@@ -1,0 +1,1 @@
+CREATE INDEX CONCURRENTLY user_messages_user_id_idx ON user_messages ("userId");
