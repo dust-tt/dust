@@ -2,7 +2,6 @@
   "number_of_shards": 1,
   "number_of_replicas": 0,
   "refresh_interval": "30s",
-  "default_pipeline": "tag_filter",
   "analysis": {
     "analyzer": {
       "icu_analyzer": {
