@@ -5,7 +5,7 @@ import type {
 } from "@dust-tt/types";
 import _ from "lodash";
 import type { RedisClientType } from "redis";
-import { literal, Op, Sequelize } from "sequelize";
+import { literal, Op, QueryTypes, Sequelize } from "sequelize";
 
 import { getRedisClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
@@ -16,6 +16,7 @@ import {
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
 import { Workspace } from "@app/lib/models/workspace";
+import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
 import { getAssistantUsageData } from "@app/lib/workspace_usage";
 import { launchMentionsCountWorkflow } from "@app/temporal/mentions_count_queue/client";
 
@@ -146,67 +147,48 @@ export async function agentMentionsCount(
   agentConfiguration?: LightAgentConfigurationType,
   rankingUsageDays: number = RANKING_USAGE_DAYS
 ): Promise<AgentUsageCount[]> {
-  // We retrieve mentions from conversations in order to optimize the query
-  // Since we need to filter out by workspace id, retrieving mentions first
-  // would lead to retrieve every single messages
-  const mentions = await Conversation.findAll({
-    attributes: [
-      [
-        Sequelize.literal('"messages->mentions"."agentConfigurationId"'),
-        "agentConfigurationId",
-      ],
-      [
-        Sequelize.fn("COUNT", Sequelize.literal('"messages->mentions"."id"')),
-        "messageCount",
-      ],
-      [
-        Sequelize.fn("COUNT", Sequelize.literal("DISTINCT conversation.id")),
-        "conversationCount",
-      ],
-      [
-        Sequelize.fn(
-          "COUNT",
-          Sequelize.literal('DISTINCT "messages->userMessage"."userId"')
-        ),
-        "userCount",
-      ],
-    ],
-    where: {
-      workspaceId,
-    },
-    include: [
-      {
-        model: Message,
-        required: true,
-        attributes: [],
-        include: [
-          {
-            model: Mention,
-            as: "mentions",
-            required: true,
-            attributes: [],
-            where: {
-              ...(agentConfiguration
-                ? { agentConfigurationId: agentConfiguration.sId }
-                : {}),
-              createdAt: {
-                [Op.gt]: literal(`NOW() - INTERVAL '${rankingUsageDays} days'`),
-              },
-            },
-          },
-          {
-            model: UserMessage,
-            as: "userMessage",
-            required: true,
-            attributes: [],
-          },
-        ],
+  const readReplica = getFrontReplicaDbConnection();
+
+  if (typeof rankingUsageDays !== "number") {
+    // Prevent SQL injection
+    throw new Error("Invalid ranking usage days");
+  }
+
+  const mentions = await readReplica.query(
+    `
+    WITH message_counts AS (
+      SELECT 
+        mentions."agentConfigurationId",
+        COUNT(DISTINCT mentions.id) as message_count,
+        COUNT(DISTINCT c.id) as conversation_count, 
+        COUNT(DISTINCT um."userId") as user_count
+      FROM conversations c
+      INNER JOIN messages m ON m."conversationId" = c.id 
+      INNER JOIN mentions ON mentions."messageId" = m.id
+      INNER JOIN user_messages um ON um.id = m."userMessageId"
+      WHERE 
+        c."workspaceId" = :workspaceId
+        AND mentions."workspaceId" = :workspaceId
+        AND mentions."createdAt" > NOW() - INTERVAL '${rankingUsageDays} days'
+        AND ((:agentConfigurationId)::VARCHAR IS NULL OR mentions."agentConfigurationId" = :agentConfigurationId)
+      GROUP BY mentions."agentConfigurationId"
+      ORDER BY message_count DESC
+    )
+    SELECT 
+      "agentConfigurationId",
+      message_count as "messageCount",
+      conversation_count as "conversationCount",
+      user_count as "userCount"
+    FROM message_counts;
+    `,
+    {
+      replacements: {
+        workspaceId,
+        agentConfigurationId: agentConfiguration?.sId,
       },
-    ],
-    order: [["count", "DESC"]],
-    group: ['"messages->mentions"."agentConfigurationId"'],
-    raw: true,
-  });
+      type: QueryTypes.SELECT,
+    }
+  );
 
   return mentions.map((mention) => {
     const castMention = mention as unknown as {
