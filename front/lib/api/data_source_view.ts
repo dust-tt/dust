@@ -121,27 +121,25 @@ export async function getContentNodesForDataSourceView(
   let nextPageCursor: string | null = pagination ? pagination.cursor : null;
 
   let resultNodes: CoreAPIContentNode[] = [];
-  do {
-    const coreRes = await coreAPI.searchNodes({
-      filter: {
-        data_source_views: [makeCoreDataSourceViewFilter(dataSourceView)],
-        node_ids,
-        parent_id,
-      },
-      options: { limit, cursor: nextPageCursor ?? undefined },
-    });
+  const coreRes = await coreAPI.searchNodes({
+    filter: {
+      data_source_views: [makeCoreDataSourceViewFilter(dataSourceView)],
+      node_ids,
+      parent_id,
+    },
+    options: { limit, cursor: nextPageCursor ?? undefined },
+  });
 
-    if (coreRes.isErr()) {
-      return new Err(new Error(coreRes.error.message));
-    }
+  if (coreRes.isErr()) {
+    return new Err(new Error(coreRes.error.message));
+  }
 
-    const filteredNodes = removeCatchAllFoldersIfEmpty(
-      filterNodesByViewType(coreRes.value.nodes, viewType)
-    );
+  const filteredNodes = removeCatchAllFoldersIfEmpty(
+    filterNodesByViewType(coreRes.value.nodes, viewType)
+  );
 
-    resultNodes = [...resultNodes, ...filteredNodes].slice(0, limit);
-    nextPageCursor = coreRes.value.next_page_cursor;
-  } while (nextPageCursor && resultNodes.length < limit);
+  resultNodes = [...resultNodes, ...filteredNodes].slice(0, limit);
+  nextPageCursor = coreRes.value.next_page_cursor;
 
   const nodes = resultNodes.map((node) =>
     getContentNodeFromCoreNode(
