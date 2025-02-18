@@ -30,8 +30,8 @@ function NotificationContent({ type, title, description }: NotificationType) {
     <div
       className={cn(
         "s-pointer-events-auto s-flex s-max-w-[400px] s-flex-row s-items-center s-gap-2 s-rounded-xl s-border",
-        "s-border-structure-100 dark:s-border-structure-100-night",
-        "s-bg-structure-0 dark:s-bg-structure-0-night",
+        "s-border-structure-100 dark:s-border-structure-150-night",
+        "s-bg-structure-0 dark:s-bg-structure-100-night",
         "s-p-4 s-shadow-xl"
       )}
     >

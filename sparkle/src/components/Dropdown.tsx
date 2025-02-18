@@ -17,7 +17,7 @@ export const menuStyleClasses = {
   container: cn(
     "s-rounded-xl s-border-hovering s-p-1",
     "s-border dark:s-border-primary-600",
-    "s-bg-white dark:s-bg-slate-950",
+    "s-bg-white dark:s-bg-muted-background-night",
     "s-text-primary-950 dark:s-text-primary-950-night",
     "s-z-50 s-min-w-[8rem] s-overflow-hidden",
     "data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-fade-out-0 data-[state=open]:s-fade-in-0 data-[state=closed]:s-zoom-out-95 data-[state=open]:s-zoom-in-95 data-[side=bottom]:s-slide-in-from-top-2 data-[side=left]:s-slide-in-from-right-2 data-[side=right]:s-slide-in-from-left-2 data-[side=top]:s-slide-in-from-bottom-2"

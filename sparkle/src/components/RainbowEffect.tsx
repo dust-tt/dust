@@ -48,7 +48,8 @@ export function RainbowEffect({
   const selectedSize = sizeStyles[size];
 
   const rainbowClassBlur = cn(
-    "s-absolute s-bottom-[14%] s-left-1/2 s-z-0 s--translate-x-1/2 s-animate-rainbow s-bg-rainbow-gradient s-bg-[length:200%]",
+    "s-absolute s-bottom-[14%] s-left-1/2 s-z-0 s--translate-x-1/2 s-animate-rainbow s-bg-[length:200%]",
+    "s-bg-rainbow-gradient dark:s-bg-rainbow-gradient-night",
     "s-transition-all",
     selectedSize.height,
     selectedSize.width,
