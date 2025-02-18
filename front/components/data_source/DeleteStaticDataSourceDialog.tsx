@@ -53,9 +53,9 @@ export function DeleteStaticDataSourceDialog({
       return "No usage data available.";
     }
     if (usage.count > 0) {
-      return `${usage.count} assistants currently use "${name}": ${usage.agentNames.join(", ")}.`;
+      return `${usage.count} agents currently use "${name}": ${usage.agentNames.join(", ")}.`;
     }
-    return `No assistants are using "${name}".`;
+    return `No agents are using "${name}".`;
   }, [isUsageLoading, isUsageError, usage, name]);
 
   return (

@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Dust",
   "version": "0.0.6",
-  "description": "Get more done, faster, with the power of your assistants at your fingertips.",
+  "description": "Get more done, faster, with the power of your agents at your fingertips.",
   "icons": {
     "16": "images/dust16.png",
     "32": "images/dust32.png",

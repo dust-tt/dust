@@ -86,9 +86,9 @@ export default function DataAnalytics() {
                   content: [
                     <>
                       Turn .csv files, Notion databases, and Google Sheets into
-                      data sources for quantitative analyses with assistants
-                      that have a built-in understanding of your company’s
-                      business terminology.
+                      data sources for quantitative analyses with agents that
+                      have a built-in understanding of your company’s business
+                      terminology.
                     </>,
                   ],
                 },
@@ -122,7 +122,7 @@ export default function DataAnalytics() {
                     <>
                       Share up-to-date runbooks and internal documentation for
                       new data team members to ramp up efficiently and
-                      autonomously with conversational assistants.
+                      autonomously with conversational agents.
                     </>,
                   ],
                 },

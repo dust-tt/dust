@@ -534,7 +534,7 @@ function generateCsvFromQueryResult(
 /**
  * Check if a workspace is active during a trial based on the following conditions:
  *   - Existence of a connected data source
- *   - Existence of a custom assistant
+ *   - Existence of a custom agent
  *   - A conversation occurred within the past 7 days
  */
 export async function checkWorkspaceActivity(auth: Authenticator) {

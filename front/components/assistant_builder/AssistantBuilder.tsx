@@ -104,7 +104,7 @@ export default function AssistantBuilder({
   const [disableUnsavedChangesPrompt, setDisableUnsavedChangesPrompt] =
     useState(false);
 
-  // The 4 kind of errors that can be displayed in the assistant builder
+  // The 4 kind of errors that can be displayed in the agent builder
   const [assistantHandleError, setAssistantHandleError] = useState<
     string | null
   >(null);
@@ -339,7 +339,7 @@ export default function AssistantBuilder({
       if (res.isErr()) {
         setIsSavingOrDeleting(false);
         sendNotification({
-          title: "Error saving Assistant",
+          title: "Error saving Agent",
           description: res.error.message,
           type: "error",
         });
@@ -348,7 +348,7 @@ export default function AssistantBuilder({
           await mutateSlackChannels();
         }
         if (isBuilder(owner)) {
-          // Redirect to the assistant list once saved.
+          // Redirect to the agent list once saved.
           if (flow === "personal_assistants") {
             await router.push(
               `/w/${owner.sId}/assistant/new?selectedTab=personal`
@@ -369,7 +369,7 @@ export default function AssistantBuilder({
 
   const modalTitle = agentConfigurationId
     ? `Edit @${builderState.handle}`
-    : "New Assistant";
+    : "New Agent";
 
   return (
     <>
@@ -396,7 +396,7 @@ export default function AssistantBuilder({
               isSaving={isSavingOrDeleting}
               saveTooltip={
                 isSavingDisabled
-                  ? "Saving assistants is temporarily disabled and will be re-enabled shortly."
+                  ? "Saving agents is temporarily disabled and will be re-enabled shortly."
                   : undefined
               }
             />
@@ -530,7 +530,7 @@ export default function AssistantBuilder({
                     onClick={() => openRightPanelTab("Preview")}
                     size="sm"
                     variant="outline"
-                    tooltip="Preview your assistant"
+                    tooltip="Preview your agent"
                     className={cn(
                       isPreviewButtonAnimating && "animate-breathing-scale"
                     )}

@@ -128,7 +128,7 @@ export default function AssistantBuilderRightPanel({
               label="Preview"
               icon={ChatBubbleBottomCenterTextIcon}
             />
-            {/* The agentConfigurationId is truthy if not a new assistant */}
+            {/* The agentConfigurationId is truthy if not a new agent */}
             {agentConfigurationId && (
               <TabsTrigger
                 value="Performance"
@@ -333,7 +333,7 @@ const TemplateDropDownMenu = ({
             const confirmed = await confirm({
               title: "Are you sure you want to close the template?",
               message:
-                "Your assistant will remain as it is but will not display template's help any more.",
+                "Your agent will remain as it is but will not display template's help any more.",
               validateVariant: "warning",
             });
             if (confirmed) {
@@ -351,7 +351,7 @@ const TemplateDropDownMenu = ({
               const confirmed = await confirm({
                 title: "Are you sure?",
                 message:
-                  "You will lose the changes you have made to the assistant's instructions and go back to the template's default settings.",
+                  "You will lose the changes you have made to the agent's instructions and go back to the template's default settings.",
                 validateVariant: "warning",
               });
               if (confirmed) {
@@ -369,7 +369,7 @@ const TemplateDropDownMenu = ({
               const confirmed = await confirm({
                 title: "Are you sure?",
                 message:
-                  "You will lose the changes you have made to the assistant's tools.",
+                  "You will lose the changes you have made to the agent's tools.",
                 validateVariant: "warning",
               });
               if (confirmed) {

@@ -282,7 +282,7 @@ export function InstructionScreen({
           <Page.Header title="Instructions" />
           <Page.P>
             <span className="text-sm text-element-700 dark:text-element-700-night">
-              Command or guideline you provide to your assistant to direct its
+              Command or guideline you provide to your agent to direct its
               responses.
             </span>
           </Page.P>
@@ -624,7 +624,7 @@ function PromptHistory({
 
 const STATIC_SUGGESTIONS = [
   "Break down your instructions into steps to leverage the model's reasoning capabilities.",
-  "Give context on how you'd like the assistant to act, e.g. 'Act like a senior analyst'.",
+  "Give context on how you'd like the agent to act, e.g. 'Act like a senior analyst'.",
   "Add instructions on the format of the answer: tone of voice, answer in bullet points, in code blocks, etc...",
   "Try to be specific: tailor prompts with precise language to avoid ambiguity.",
 ];

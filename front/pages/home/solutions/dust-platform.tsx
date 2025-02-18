@@ -60,7 +60,7 @@ export default function DustPlatform() {
               <>
                 Dust Apps:
                 <br />
-                Expands your&nbsp;assistants' capabilities
+                Expands your&nbsp;agents' capabilities
               </>
             }
             content={[
@@ -106,7 +106,7 @@ export default function DustPlatform() {
             content={[
               <>
                 Dust's API enables programmatic interactions with all
-                of&nbsp;Dust including Data Sources and&nbsp;assistants
+                of&nbsp;Dust including Data Sources and&nbsp;agents
                 for&nbsp;advanced use&nbsp;cases.
               </>,
               <>

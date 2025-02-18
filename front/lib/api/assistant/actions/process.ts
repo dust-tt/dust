@@ -279,7 +279,7 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
       getDustProdAction("assistant-v2-process").config
     );
 
-    // Set the process action model configuration to the assistant model configuration.
+    // Set the process action model configuration to the agent model configuration.
     config.MODEL.provider_id = model.providerId;
     config.MODEL.model_id = model.modelId;
     config.MODEL.temperature = model.temperature;

@@ -456,7 +456,7 @@ async function answerMessage(
     ) || [];
 
   // First we look at mention override
-  // (eg: a mention coming from the Slack assistant picker from slack).
+  // (eg: a mention coming from the Slack agent picker from slack).
   if (mentionOverride) {
     const agentConfig = activeAgentConfigurations.find(
       (ac) => ac.sId === mentionOverride
@@ -471,16 +471,14 @@ async function answerMessage(
         assistantName: agentConfig.name,
       };
     } else {
-      return new Err(
-        new SlackExternalUserError("Cannot find selected assistant.")
-      );
+      return new Err(new SlackExternalUserError("Cannot find selected agent."));
     }
   }
 
   if (mentionCandidates.length > 1) {
     return new Err(
       new SlackExternalUserError(
-        "Only one assistant at a time can be called through Slack."
+        "Only one agent at a time can be called through Slack."
       )
     );
   }
@@ -552,7 +550,7 @@ async function answerMessage(
         assistantName: agentConfigurationToMention.name,
       };
     } else {
-      // If no mention is found and no channel-based routing rule is found, we use the default assistant.
+      // If no mention is found and no channel-based routing rule is found, we use the default agent.
       let defaultAssistant: LightAgentConfigurationType | null = null;
       defaultAssistant =
         activeAgentConfigurations.find((ac) => ac.sId === "dust") || null;
@@ -564,7 +562,7 @@ async function answerMessage(
         return new Err(
           // not actually reachable, gpt-4 cannot be disabled.
           new SlackExternalUserError(
-            "No assistant has been configured to reply on Slack."
+            "No agent has been configured to reply on Slack."
           )
         );
       }

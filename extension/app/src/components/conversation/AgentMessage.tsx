@@ -90,7 +90,7 @@ export const FeedbackSelectorPopoverContent = ({
   return (
     <div className="mb-4 mt-2 flex flex-col gap-2">
       <Page.P variant="secondary">
-        Your feedback is available to editors of the assistant.
+        Your feedback is available to editors of the agent.
       </Page.P>
     </div>
   );
@@ -145,7 +145,7 @@ interface AgentMessageProps {
 /**
  *
  * @param isInModal is the conversation happening in a side modal, i.e. when
- * testing an assistant? see conversation/Conversation.tsx
+ * testing an agent? see conversation/Conversation.tsx
  * @returns
  */
 export function AgentMessage({
@@ -598,7 +598,7 @@ export function AgentMessage({
           <AgentMessageActions agentMessage={agentMessage} owner={owner} />
 
           {agentMessage.chainOfThought?.length ? (
-            <ContentMessage title="Assistant thoughts" variant="slate">
+            <ContentMessage title="Agent thoughts" variant="slate">
               {agentMessage.chainOfThought}
             </ContentMessage>
           ) : null}

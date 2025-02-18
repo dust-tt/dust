@@ -168,7 +168,7 @@ export const BasicBarHeaderValidateSaveDisabledWithTooltip = () => (
       rightActions={
         <BarHeader.ButtonBar
           variant="validate"
-          saveTooltip="Saving assistants is temporarily disabled and will be re-enabled shortly"
+          saveTooltip="Saving agents is temporarily disabled and will be re-enabled shortly"
         />
       }
     />

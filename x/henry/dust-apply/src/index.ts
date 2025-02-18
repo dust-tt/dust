@@ -157,7 +157,7 @@ function extractConversationId(url: string): string {
   const match = url.match(/dust\.tt\/w\/[^/]+\/assistant\/([a-zA-Z0-9]+)/);
   if (!match)
     throw new Error(
-      "Invalid URL: must be a dust.tt assistant URL (format: dust.tt/w/<workspace>/assistant/<id>)"
+      "Invalid URL: must be a dust.tt agent URL (format: dust.tt/w/<workspace>/assistant/<id>)"
     );
   return match[1];
 }

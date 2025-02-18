@@ -196,7 +196,7 @@ export function isAgentMessageType(arg: MessageType): arg is AgentMessageType {
 
 /**
  * Visibility of a conversation. Test visibility is for conversations happening
- * when a user 'tests' an assistant not in their list using the "test" button:
+ * when a user 'tests' an agent not in their list using the "test" button:
  * those conversations do not show in users' histories.
  */
 export type ConversationVisibility =

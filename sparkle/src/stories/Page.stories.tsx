@@ -69,11 +69,11 @@ export const QIGExample = () => {
             Hello <br /> <span className="text-success-500">@mentions</span>
           </Page.H>
           <Page.P>
-            In Dust, you won't find just one AI assistant, but multiple ones.
+            In Dust, you won't find just one AI agent, but multiple ones.
           </Page.P>
           <Page.P>
-            You can call any assistant at any time by typing “@” and the name of
-            the assistant.
+            You can call any agent at any time by typing “@” and the name of the
+            agent.
           </Page.P>
         </Page.Vertical>
         <Page.Vertical sizing="grow">
@@ -85,17 +85,17 @@ export const QIGExample = () => {
           <Page.H>
             👩‍🎨🦸‍♀️🥷🧑‍🚀
             <br /> Why multiple
-            <br /> Assistants?
+            <br /> Agents?
           </Page.H>
 
           <Page.P>
-            The basic assistant is{" "}
+            The basic agent is{" "}
             <span className="font-bold text-success-500">@gpt4</span>. It is a
             raw model. “Raw” means it does not have particular instructions or
             access to knowledge.
           </Page.P>
           <Page.P>
-            You also have access to assistants that use a raw model (gpt4 for
+            You also have access to agents that use a raw model (gpt4 for
             instance), AND give them specific instructions and access to
             knowledge.{" "}
             <span className="font-bold">
@@ -103,8 +103,8 @@ export const QIGExample = () => {
             </span>
           </Page.P>
           <Page.P>
-            Assistants can be provided by Dust, by your company (Company
-            assistants), by your coworkers (Shared assistants).
+            Agents can be provided by Dust, by your company (Company agents), by
+            your coworkers (Shared agents).
           </Page.P>
         </Page.Vertical>
 
@@ -114,12 +114,12 @@ export const QIGExample = () => {
             <br />
             How to make
             <br />
-            an Assistant?
+            an Agent?
           </Page.H>
-          <Page.P>You can build Assistants!</Page.P>
+          <Page.P>You can build Agents!</Page.P>
           <Page.P>
-            Assistants starts with an “instruction”. A simple text, explaining
-            what you want them to do.
+            Agents start with an “instruction”. A simple text, explaining what
+            you want them to do.
           </Page.P>
           <Page.P>
             For instance, <span className="italic">“Act as a doctor”</span>,{" "}
@@ -132,7 +132,7 @@ export const QIGExample = () => {
             We call them <span className="font-bold">Data sources.</span>
           </Page.P>
           <Page.P>
-            With the right Data source, assistants can answer demands like
+            With the right Data source, agents can answer demands like
             <span className="italic">
               “Have we been working with company X”
             </span>
@@ -154,7 +154,7 @@ export const QIGExample = () => {
         </Page.H>
 
         <Page.P>
-          To augment your assistants with knowledge, you give them data.
+          To augment your agents with knowledge, you give them data.
           <br /> Data can comes in different ways in Dust.{" "}
           <span className="font-bold">Here are the three main ways:</span>
         </Page.P>
@@ -273,7 +273,7 @@ export const AssistantBuilder = () => {
             <Page.H variant="h4">Description</Page.H>
             <Page.P variant="secondary">
               The description helps your collaborators and Dust to understand
-              the purpose of the assistant. It must be descriptive and short.
+              the purpose of the agent. It must be descriptive and short.
             </Page.P>
           </Page.Layout>
         </Page.Layout>
@@ -312,8 +312,8 @@ export const AssistantBuilder = () => {
               Setting data sources is not an obligation.
             </Page.H>
             <Page.P variant="secondary">
-              By default, your assistant will follow your instructions and
-              answer based on commun knowledge.
+              By default, your agent will follow your instructions and answer
+              based on commun knowledge.
             </Page.P>
           </Page.Layout>
           <Page.Layout direction="vertical" gap="xs" sizing="grow">
@@ -333,20 +333,19 @@ export const HelpExample = () => {
   return (
     <Page>
       <Page.Header
-        title="Welcome to Assistant"
+        title="Welcome to Agent"
         icon={ChatBubbleBottomCenterTextIcon}
       />
       <Page.Layout direction="vertical" gap="xs" align="left">
         <Page.SectionHeader title="Getting started?" />
         <Page.P variant="secondary">
-          Using assistant is easy as asking a question to a friend or a
-          coworker.
+          Using agent is easy as asking a question to a friend or a coworker.
           <br />
           Try it out:
         </Page.P>
         <Button
           variant="primary"
-          label="Hey @helper, how do I use the assistant ?"
+          label="Hey @helper, how do I use the agent?"
           icon={ChatBubbleLeftRightIcon}
         />
       </Page.Layout>
@@ -354,7 +353,7 @@ export const HelpExample = () => {
       <Page.Layout direction="vertical" gap="xs">
         <Page.SectionHeader title="Meet your smart friends" />
         <Page.P variant="secondary">
-          Dust is not just a single assistant, it’s a full team at your service.{" "}
+          Dust is not just a single agent, it’s a full team at your service.{" "}
           <br />
           Each member has a set of specific set skills.
         </Page.P>
@@ -366,12 +365,12 @@ export const HelpExample = () => {
         <Page.Layout direction="fluid" gap="sm">
           <Button
             variant="outline"
-            label="Hey @helper, how do I use the assistant?"
+            label="Hey @helper, how do I use the agent?"
             icon={ChatBubbleLeftRightIcon}
           />
           <Button
             variant="outline"
-            label="Hey @helper, What is assistant not good at?"
+            label="Hey @helper, What is agent not good at?"
             icon={ChatBubbleLeftRightIcon}
           />
           <Button

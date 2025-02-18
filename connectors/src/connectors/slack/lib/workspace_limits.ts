@@ -210,7 +210,7 @@ export async function isBotAllowed(
 
     return new Err(
       new SlackExternalUserError(
-        "To enable custom interactions between Slack bots and Dust assistants, email us at support@dust.tt."
+        "To enable custom interactions between Slack bots and Dust agents, email us at support@dust.tt."
       )
     );
   }

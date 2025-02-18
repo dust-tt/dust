@@ -81,7 +81,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               sendNotification({
                 title: "Feedback submitted",
                 description:
-                  "Your comment has been submitted successfully to the Builder of this assistant. Thank you!",
+                  "Your comment has been submitted successfully to the Builder of this agent. Thank you!",
                 type: "success",
               });
             }

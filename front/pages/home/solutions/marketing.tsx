@@ -46,7 +46,7 @@ const pageSettings: pageSettingsProps = {
   to: "to-pink-500",
   description: (
     <>
-      Leverage AI assistants to&nbsp;gather market&nbsp;intelligence and
+      Leverage AI agents to&nbsp;gather market&nbsp;intelligence and
       customer&nbsp;insights, and to produce content faster.
     </>
   ),
@@ -80,7 +80,7 @@ export default function Marketing() {
                   title: <>Consistent content at&nbsp;last</>,
                   content: (
                     <>
-                      Uses assistants to&nbsp;ensure consistency across teams
+                      Uses agents to&nbsp;ensure consistency across teams
                       and&nbsp;customer touchpoints. Leverage
                       your&nbsp;carefully crafted brand voice guidelines
                       and&nbsp;past content to&nbsp;support a&nbsp;quick
@@ -124,8 +124,8 @@ export default function Marketing() {
                   ),
                   content: [
                     <>
-                      Leverage AI assistants to&nbsp;keep tabs on&nbsp;your
-                      market and&nbsp;its participants.
+                      Leverage AI agents to&nbsp;keep tabs on&nbsp;your market
+                      and&nbsp;its participants.
                     </>,
                     <>
                       Generate reports on&nbsp;competitors' moves to&nbsp;never

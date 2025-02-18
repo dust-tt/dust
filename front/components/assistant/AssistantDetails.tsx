@@ -92,7 +92,7 @@ function AssistantDetailsInfo({
           <ReadOnlyTextArea content={agentConfiguration.instructions} />
         </div>
       ) : (
-        "This assistant has no instructions."
+        "This agent has no instructions."
       )}
     </>
   );
@@ -298,7 +298,7 @@ export function AssistantDetails({
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-3 sm:flex-row">
         <Avatar
-          name="Assistant avatar"
+          name="Agent avatar"
           visual={agentConfiguration?.pictureUrl}
           size="lg"
         />
@@ -335,7 +335,7 @@ export function AssistantDetails({
       {agentConfiguration?.status === "archived" && (
         <ContentMessage
           variant="amber"
-          title="This assistant has been deleted."
+          title="This agent has been deleted."
           icon={InformationCircleIcon}
           size="md"
         >
@@ -394,8 +394,8 @@ export function AssistantDetails({
               icon={LockIcon}
               size="md"
             >
-              This is a private assistant that can't be shared with other
-              workspace members.
+              This is a private agent that can't be shared with other workspace
+              members.
             </ContentMessage>
           )}
         </SheetContainer>

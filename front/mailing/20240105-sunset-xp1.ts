@@ -28,7 +28,7 @@ First of all, thank you for being a long time user of XP1! We've evolved a lot s
 signed up for it. As a result, we'll be sunsetting XP1[0] on January the 15th, 2024 as we focus on
 team productivity vs single-player mode.
 
-Dust lets you amplify your team's potential with customizable and secure AI assistants.
+Dust lets you amplify your team's potential with customizable and secure AI agents.
 
 https://dust.tt.
 

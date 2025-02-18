@@ -139,7 +139,7 @@ export default function WorkspaceAssistants({
 
     if (!res.ok) {
       const data = await res.json();
-      window.alert(`Error toggling Assistant: ${data.error.message}`);
+      window.alert(`Error toggling agent: ${data.error.message}`);
       return;
     }
 
@@ -192,7 +192,7 @@ export default function WorkspaceAssistants({
           onClose={() => setShowDetails(null)}
         />
         <Page.Vertical gap="xl" align="stretch">
-          <Page.Header title="Manage Assistants" icon={RobotIcon} />
+          <Page.Header title="Manage Agents" icon={RobotIcon} />
           <Page.Vertical gap="md" align="stretch">
             <div className="flex flex-row gap-2">
               <SearchInput
@@ -211,7 +211,7 @@ export default function WorkspaceAssistants({
                   <Button
                     variant="primary"
                     icon={PlusIcon}
-                    label="Create an assistant"
+                    label="Create an agent"
                     data-gtm-label="assistantCreationButton"
                     data-gtm-location="assistantsWorkspace"
                   />
@@ -255,7 +255,7 @@ export default function WorkspaceAssistants({
                   <div className="pt-2">
                     <EmptyCallToAction
                       href={`/w/${owner.sId}/builder/assistants/create?flow=workspace_assistants`}
-                      label="Create an Assistant"
+                      label="Create an agent"
                       icon={PlusIcon}
                       data-gtm-label="assistantCreationButton"
                       data-gtm-location="assistantsWorkspace"

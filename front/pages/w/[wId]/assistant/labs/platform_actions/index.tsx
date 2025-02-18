@@ -123,7 +123,7 @@ export default function PlatformActionsConfiguration({
               <DialogTitle>Disconnect platform actions provider</DialogTitle>
             </DialogHeader>
             <DialogContainer>
-              This will prevent assistants from taking platform actions. You can
+              This will prevent agents from taking platform actions. You can
               reconnect at anytime.
             </DialogContainer>
             <DialogFooter
@@ -151,7 +151,7 @@ export default function PlatformActionsConfiguration({
           <Page.Header
             title="Platform actions"
             icon={CloudArrowLeftRightIcon}
-            description="Configure platform actions for your assistants"
+            description="Configure platform actions for your agents"
           />
           <Page.Layout direction="vertical">
             <Page.SectionHeader title="Github" />
@@ -178,7 +178,7 @@ export default function PlatformActionsConfiguration({
                   <>
                     <Page.P>
                       Connect to Github and select repositories where you want
-                      Dust assistants to take actions (create or modify issues,
+                      Dust agents to take actions (create or modify issues,
                       access or review pull-requests).
                     </Page.P>
                     <div>

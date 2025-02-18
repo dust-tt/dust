@@ -60,7 +60,7 @@ export async function sendCancelSubscriptionEmail(
       <ul>
       <li>all users will be removed from the workspace except for the most tenured admin (more about this <a href="https://docs.dust.tt/docs/subscriptions#what-happens-when-we-cancel-our-dust-subscription">here</a>);</li>
       <li>connections will be removed and data safety deleted from Dust;</li>
-      <li>conversations, custom assistants, and data sources will still be accessible with limitations;</li>
+      <li>conversations, custom agents, and data sources will still be accessible with limitations;</li>
       <li>your usage of Dust will have the <a href="https://dust.tt/w/${workspaceSId}/subscription">restrictions of the free plan</a>.</li>
       </ul>
       <p>Also note that if you have a data source (folder) with more than 50 MB of data, it will be deleted after the end of your billing period. </p>
@@ -100,7 +100,7 @@ export async function sendAdminSubscriptionPaymentFailedEmail(
     body: `
       <p>Your payment has failed. Please visit ${customerPortailUrl} to edit your payment information.</p>
       <p>
-        Please note: your workspace will be downgraded after 3 failed payment retries. This will trigger the removal of any feature attached to the paid plan you were on, and the permanent deletion of connections and the data associated with them. Any assistant that are linked to connections will also be removed.
+        Please note: your workspace will be downgraded after 3 failed payment retries. This will trigger the removal of any feature attached to the paid plan you were on, and the permanent deletion of connections and the data associated with them. Any agent that are linked to connections will also be removed.
       </p>
       <p>Please reply to this email if you have any questions.</p>`,
   });
@@ -148,7 +148,7 @@ export async function sendProactiveTrialCancelledEmail(
     body: `
       <p>I'm Gabriel, a cofounder of Dust. Thanks for trying us out with a free trial of the Pro Plan.</p>
 
-      <p>You've not used core features of the product (adding data sources, creating custom assistants) and you haven't used assistant conversations in the past 7 days.
+      <p>You've not used core features of the product (adding data sources, creating custom agents) and you haven't used agent conversations in the past 7 days.
       As a result, to avoid keeping your payment method on file while you may not intend to convert to our paid plan, we've cancelled your trial ahead of time and won't be charging you.</p>
 
       <p>If you did intend to continue on Dust, you can subscribe again. If you'd like to extend further, feel free to just email me.</p>

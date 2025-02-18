@@ -18,7 +18,7 @@ export const sendAPIUserEmail = async ({
     subject: "[Dust] Product Update 1",
     html: `<p>Hi!</p>
     <p style="max-width: 500px;">
-      <a href="https://dust.tt/w/${workspace_id}">Dust</a> makes work work better with custom AI assistants.
+      <a href="https://dust.tt/w/${workspace_id}">Dust</a> makes work work better with custom AI agents.
     </p>
     <p style="max-width: 500px;">
       The past month has been packed with powerful new features and upgrades.
@@ -26,22 +26,22 @@ export const sendAPIUserEmail = async ({
 
     <p style="max-width: 500px; padding-top: 20px;">
       <b>⛵️ Mistral Large Now Available</b><br/>
-      • You can now access Mistral Large via the new @mistral-large global assistant (you can also use it to build custom assistants).<br/>
+      • You can now access Mistral Large via the new @mistral-large global agent (you can also use it to build custom agents).<br/>
       • Mistral Large, is the latest and most advanced language model from Mistral.<br/>
       🔗 <a href="https://mistral.ai/news/mistral-large/">https://mistral.ai/news/mistral-large/</a>
     </p>
 
     <p style="max-width: 500px; padding-top: 20px;">
       <b>🧠 New Cutting-Edge Models from Anthropic</b><br/>
-      • Claude 3 Opus is now powering the @claude-3 global assistant, delivering a major performance boost over Claude 2.1.<br/>
+      • Claude 3 Opus is now powering the @claude-3 global agent, delivering a major performance boost over Claude 2.1.<br/>
       • Opus is Anthropic's most intelligent model, with best-in-market performance and a very lage context window (200k tokens).<br/>
-      • All custom assistants using Claude 2.1 have been automatically upgraded to Claude 3 Opus.<br/>
+      • All custom agents using Claude 2.1 have been automatically upgraded to Claude 3 Opus.<br/>
       🔗 <a href="https://www.anthropic.com/news/claude-3-family">https://www.anthropic.com/news/claude-3-family</a>
     </p>
 
     <p style="max-width: 500px; padding-top: 20px;">
       <b>📊 Introducing Table Queries</b><br/>
-      • Create custom assistants to perform quantitative queries on Notion databases, Google Sheets, and CSV.<br/>
+      • Create custom agents to perform quantitative queries on Notion databases, Google Sheets, and CSV.<br/>
       • Ask questions like "Show me top customers by revenue" and get back instant insights.<br/>
       • Enable everyone to make data-informed decisions without needing SQL or analytics expertise.<br/>
       🔗 <a href="https://blog.dust.tt/dusts-for-quantitative-analysis-with-llms/">https://blog.dust.tt/dusts-for-quantitative-analysis-with-llms/</a>
@@ -50,7 +50,7 @@ export const sendAPIUserEmail = async ({
     <p style="max-width: 500px; padding-top: 20px;">
       <b>📘 Confluence Connection</b><br/>
       • Connect your Confluence instance to Dust to sync global spaces and pages.<br/>
-      • Simply add Confluence as a data source and let your assistants tap into that collective wisdom.<br/>
+      • Simply add Confluence as a data source and let your agents tap into that collective wisdom.<br/>
     </p>
 
     <p style="max-width: 500px; padding-top: 20px;">
@@ -65,8 +65,8 @@ export const sendAPIUserEmail = async ({
     </p>
 
     <p style="max-width: 500px; padding-top: 20px;">
-      <b>🤖 Summon Assistants in Slack</b><br/>
-      • Interact with any Dust assistant right from Slack using the @dust ~assistantname or @dust +assistantname syntax. Bring the power of Dust to the tools you use every day.<br/>
+      <b>🤖 Summon Agents in Slack</b><br/>
+      • Interact with any Dust agent right from Slack using the @dust ~agentname or @dust +agentname syntax. Bring the power of Dust to the tools you use every day.<br/>
     </p>
 
     <p style="max-width: 500px; padding-top: 20px;">
@@ -76,13 +76,13 @@ export const sendAPIUserEmail = async ({
 
     <p style="max-width: 500px; padding-top: 20px;">
       <b>🏗️ Dust Builders Sessions #1</b><br/>
-      • Tune in on March 14th for our first Dust Sessions for Builders webinar! Folks from Alan, Pennylane, and Payfit will be demoing their innovative support and sales assistants.<br/>
+      • Tune in on March 14th for our first Dust Sessions for Builders webinar! Folks from Alan, Pennylane, and Payfit will be demoing their innovative support and sales agents.<br/>
       • Admin and Builders, save your spot now! Send an email to <a href="mailto:pauline@dust.tt">pauline@dust.tt</a>.
     </p>
 
     <p style="max-width: 500px; padding-top: 20px;">
       <b>➕ And more...</b><br/>
-      • Refreshed assistant details page and builder UX.<br/>
+      • Refreshed agent details page and builder UX.<br/>
       • Experimental instruction suggestions and website crawling settings.<br/>
       • New blog posts: <a href="https://blog.dust.tt/pennylane-dust-customer-support-journey/">How Eléonore improved the efficiency of Pennylane’s Care team thanks to Dust</a> and <a href="https://blog.dust.tt/why-dust/">Why Dust</a>.<br/>
     </p>

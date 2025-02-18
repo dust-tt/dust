@@ -362,13 +362,13 @@ export default function ActionsScreen({
             <Page.Header title="Tools & Data sources" />
             <Page.P>
               <span className="text-sm text-element-700">
-                Configure the tools that your assistant is able to use, such as{" "}
+                Configure the tools that your agent is able to use, such as{" "}
                 <span className="font-bold">searching</span> in your Data
                 Sources or <span className="font-bold">navigating</span> the
                 Web.
                 <br />
-                Before replying, the assistant can use multiple of those tools
-                to gather information and provide you with the best possible
+                Before replying, the agent can use multiple of those tools to
+                gather information and provide you with the best possible
                 answer.
               </span>
             </Page.P>
@@ -376,16 +376,16 @@ export default function ActionsScreen({
           <div className="flex flex-row gap-2">
             {isLegacyConfig && (
               <ContentMessage
-                title="Update Needed for Your Assistant!"
+                title="Update Needed for Your Agent!"
                 icon={InformationCircleIcon}
               >
                 <p>
-                  We're enhancing assistants to make them smarter and more
-                  versatile. You can now add multiple tools to an assistant,
-                  rather than being limited to a single action.
+                  We're enhancing agents to make them smarter and more
+                  versatile. You can now add multiple tools to an agent, rather
+                  than being limited to a single action.
                 </p>
                 <br />
-                <p>Update your assistant to unlock these new capabilities!</p>
+                <p>Update your agent to unlock these new capabilities!</p>
               </ContentMessage>
             )}
           </div>
@@ -463,7 +463,7 @@ export default function ActionsScreen({
             <Chip
               color="amber"
               size="sm"
-              label={`Based on the sources you selected, this assistant can only be used by users with access to space${nonGlobalSpacessUsedInActions.length > 1 ? "s" : ""} : ${nonGlobalSpacessUsedInActions.map((v) => v.name).join(", ")}.`}
+              label={`Based on the sources you selected, this agent can only be used by users with access to space${nonGlobalSpacessUsedInActions.length > 1 ? "s" : ""} : ${nonGlobalSpacessUsedInActions.map((v) => v.name).join(", ")}.`}
             />
           </div>
         )}
@@ -1036,8 +1036,8 @@ function ActionEditor({
               </div>
               <div className="text-sm text-element-600">
                 Provide a brief description (maximum 800 characters) of the data
-                content and context to help the assistant determine when to
-                utilize it effectively.
+                content and context to help the agent determine when to utilize
+                it effectively.
               </div>
             </div>
           ) : (
@@ -1293,7 +1293,7 @@ function Capabilities({
       <div className="mx-auto grid w-full grid-cols-1 gap-y-4 md:grid-cols-2">
         <Capability
           name="Web search & browse"
-          description="Assistant can search (Google) and retrieve information from specific websites."
+          description="Agent can search (Google) and retrieve information from specific websites."
           enabled={
             !!builderState.actions.find((a) => a.type === "WEB_NAVIGATION")
           }
@@ -1317,7 +1317,7 @@ function Capabilities({
 
         <Capability
           name="Data visualization"
-          description="Assistant can generate charts and graphs."
+          description="Agent can generate charts and graphs."
           enabled={builderState.visualizationEnabled}
           onEnable={() => {
             setEdited(true);
@@ -1338,7 +1338,7 @@ function Capabilities({
         {enableReasoningTool && (
           <Capability
             name="Reasoning"
-            description="Assistant can decide to trigger a reasoning model for complex tasks"
+            description="Agent can decide to trigger a reasoning model for complex tasks"
             enabled={!!builderState.actions.find((a) => a.type === "REASONING")}
             onEnable={() => {
               setEdited(true);
@@ -1367,7 +1367,7 @@ function Capabilities({
           <div className="mx-auto grid w-full grid-cols-1 md:grid-cols-2">
             <Capability
               name="Pull request retrieval"
-              description="Assistant can retrieve pull requests by number, including diffs"
+              description="Agent can retrieve pull requests by number, including diffs"
               enabled={
                 !!builderState.actions.find(
                   (a) => a.type === "GITHUB_GET_PULL_REQUEST"
@@ -1393,7 +1393,7 @@ function Capabilities({
 
             <Capability
               name="Issue creation"
-              description="Assistant can create issues"
+              description="Agent can create issues"
               enabled={
                 !!builderState.actions.find(
                   (a) => a.type === "GITHUB_CREATE_ISSUE"

@@ -32,12 +32,12 @@ async function handler(
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Invalid Assistant ID provided.",
+        message: "Invalid agent ID provided.",
       },
     });
   }
 
-  // Check that user has access to this assistant
+  // Check that user has access to this agent
   const assistant = await getAgentConfiguration(auth, aId);
   if (
     !assistant ||
@@ -48,7 +48,7 @@ async function handler(
       status_code: 404,
       api_error: {
         type: "agent_configuration_not_found",
-        message: "The Assistant you're trying to access was not found.",
+        message: "The agent you're trying to access was not found.",
       },
     });
   }
@@ -97,7 +97,7 @@ async function handler(
           status_code: 404,
           api_error: {
             type: "agent_configuration_not_found",
-            message: "The Assistant you're trying to access was not found.",
+            message: "The agent you're trying to access was not found.",
           },
         });
       }

@@ -61,39 +61,39 @@ export const SCOPE_INFO: Record<
 > = {
   workspace: {
     shortLabel: "Company",
-    label: "Company Assistant",
+    label: "Company Agent",
     color: "amber",
     icon: CompanyIcon,
     text: "Activated by default for all members of the workspace.",
     confirmationModalData: {
-      title: "Moving to Company Assistants",
-      text: "The assistant automatically appears in every member's 'My Assistants' list. It's editable by Admins and Builders only.",
+      title: "Moving to Company Agents",
+      text: "The agent automatically appears in every member's 'My Agents' list. It's editable by Admins and Builders only.",
       confirmText: "Move to Company",
       variant: "primary",
     },
   },
   published: {
     shortLabel: "Shared",
-    label: "Shared Assistant",
+    label: "Shared Agent",
     color: "pink",
     icon: UserGroupIcon,
     text: "Anyone in the workspace can view and edit.",
     confirmationModalData: {
-      title: "Moving to Shared Assistants",
-      text: "The assistant is editable and viewable by all workspace members.",
+      title: "Moving to Shared Agents",
+      text: "The agent is editable and viewable by all workspace members.",
       confirmText: "Move to Shared",
       variant: "primary",
     },
   },
   private: {
     shortLabel: "Personal",
-    label: "Personal Assistant",
+    label: "Personal Agent",
     color: "sky",
     icon: LockIcon,
     text: "Only I can view and edit.",
     confirmationModalData: {
-      title: "Moving to Personal Assistants",
-      text: `The assistant is only editable, viewable and usable by you.`,
+      title: "Moving to Personal Agents",
+      text: `The agent is only editable, viewable and usable by you.`,
       confirmText: "Move to Personal",
       variant: "warning",
       showUsage: true,
@@ -101,10 +101,10 @@ export const SCOPE_INFO: Record<
   },
   global: {
     shortLabel: "Default",
-    label: "Default Assistant",
+    label: "Default Agent",
     color: "slate",
     icon: DustIcon,
-    text: "Default assistants provided by Dust.",
+    text: "Default agents provided by Dust.",
     confirmationModalData: null,
   },
 } as const;
@@ -217,12 +217,10 @@ export function SharingButton({
                     </div>
                     <div className="text-sm text-element-700">
                       {slackChannelSelected.length === 0 ? (
-                        <>
-                          Set as default assistant for specific&nbsp;channels.
-                        </>
+                        <>Set as default agent for specific&nbsp;channels.</>
                       ) : (
                         <>
-                          Default assistant for{" "}
+                          Default agent for{" "}
                           {slackChannelSelected
                             .map((c) => c.slackChannelName)
                             .join(", ")}
@@ -312,7 +310,7 @@ interface SharingDropdownProps {
 }
 
 /*
- * Note: Non-builders cannot change to/from company assistant
+ * Note: Non-builders cannot change to/from company agent
  */
 export function SharingDropdown({
   owner,
@@ -345,10 +343,10 @@ export function SharingDropdown({
 
   // special case if changing setting from company to shared
   const companyToSharedModalData: ConfirmationModalDataType = {
-    title: "Moving to Shared Assistants",
+    title: "Moving to Shared Agents",
     text: `${
-      assistantName || "Assistant"
-    } will be editable by all members; it won't automatically appear in workspace member's 'My Assistants' list.`,
+      assistantName || "Agent"
+    } will be editable by all members; it won't automatically appear in workspace member's 'My Agents' list.`,
     confirmText: "Move to Shared",
     variant: "primary",
     showUsage: true,
@@ -370,9 +368,9 @@ export function SharingDropdown({
 
   const allowedToChange =
     !disabled &&
-    // never change global assistant
+    // never change global agent
     initialScope !== "global" &&
-    // only builders can change company assistants
+    // only builders can change company agents
     (isBuilder(owner) || initialScope !== "workspace");
 
   return (
@@ -418,7 +416,7 @@ export function SharingDropdown({
                 onClick={() => {
                   /**
                    * Skip confirmation modal in the following cases:
-                   * 1. Assistant is being created (agentConfiguration is null)
+                   * 1. Agent is being created (agentConfiguration is null)
                    * 2. Selection is unchanged (newScope === value)
                    * 3. Selection reverts to initial state (value === initialScope)
                    */
@@ -432,7 +430,7 @@ export function SharingDropdown({
                     return;
                   }
 
-                  // Show confirmation modal for scope changes on existing assistants
+                  // Show confirmation modal for scope changes on existing agents
                   setModalNewScope(entryScope as NonGlobalScope);
                 }}
               />

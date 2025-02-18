@@ -65,7 +65,7 @@ async function handler(
       status_code: 404,
       api_error: {
         type: "agent_configuration_not_found",
-        message: "The assistant you're trying to access was not found.",
+        message: "The agent you're trying to access was not found.",
       },
     });
   }
@@ -75,7 +75,7 @@ async function handler(
       status_code: 404,
       api_error: {
         type: "app_auth_error",
-        message: "Only builders can get assistant analytics.",
+        message: "Only builders can get agent analytics.",
       },
     });
   }

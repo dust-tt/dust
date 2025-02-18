@@ -13,7 +13,7 @@ export function ValuePropSection() {
           Amplify your team's performance with new capabilities
         </H2>
         {/* <P size="lg">
-          Anyone on your&nbsp;team can create personalized&nbsp;assistants.
+          Anyone on your&nbsp;team can create personalized&nbsp;agents.
         </P> */}
       </div>
 

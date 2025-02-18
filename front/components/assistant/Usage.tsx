@@ -57,10 +57,10 @@ export function assistantUsageMessage<T extends boolean>({
 
     return (
       asString ? (
-        `${assistantName ? "@" + assistantName : "This assistant"} has been used ${nb} time${pluralize(nb)} in the last ${usage.timePeriodSec / (60 * 60 * 24)} days.`
+        `${assistantName ? "@" + assistantName : "This agent"} has been used ${nb} time${pluralize(nb)} in the last ${usage.timePeriodSec / (60 * 60 * 24)} days.`
       ) : (
         <>
-          {assistantName ? "@" + assistantName : "This assistant"} has been used{" "}
+          {assistantName ? "@" + assistantName : "This agent"} has been used{" "}
           {messageCount} in the last {usage.timePeriodSec / (60 * 60 * 24)}{" "}
           days.
         </>

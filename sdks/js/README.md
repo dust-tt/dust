@@ -42,7 +42,7 @@ const dustAPI = new DustAPI(
 );
 ```
 
-### Get all assistants (aka "agents")
+### Get all agents
 
 ```js
 const r = await dustApi.getAgentConfigurations();

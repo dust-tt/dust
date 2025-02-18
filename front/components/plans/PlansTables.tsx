@@ -123,7 +123,7 @@ export function ProPriceTable({
       display: ["landing", "subscribe"],
     },
     {
-      label: "Custom assistants which can execute actions",
+      label: "Custom agents which can execute actions",
       variant: "check",
       display: ["landing", "subscribe"],
     },

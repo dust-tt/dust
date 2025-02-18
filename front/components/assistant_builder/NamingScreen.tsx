@@ -60,7 +60,7 @@ async function assistantHandleIsAvailable({
   if (checkUsernameTimeout.current) {
     clearTimeout(checkUsernameTimeout.current);
   }
-  // No check needed if the assistant doesn't change name
+  // No check needed if the agent doesn't change name
   if (handle === initialHandle) {
     return Promise.resolve(true);
   }
@@ -340,7 +340,7 @@ export default function NamingScreen({
             <div>
               <Page.SectionHeader title="Handle" />
               <div className="text-sm font-normal text-element-700">
-                Handles are used to mention (call) an assistant. They must be
+                Handles are used to mention (call) an agent. They must be
                 descriptive and unique.
               </div>
             </div>
@@ -381,7 +381,7 @@ export default function NamingScreen({
 
             <div>
               <Input
-                placeholder="SalesAssistant, FrenchTranslator, SupportCenter…"
+                placeholder="SalesAgent, FrenchTranslator, SupportCenter…"
                 value={builderState.handle}
                 onChange={(e) => {
                   setEdited(true);
@@ -416,7 +416,7 @@ export default function NamingScreen({
               <Page.SectionHeader title="Description" />
             </div>
             <div className="text-sm font-normal text-element-700">
-              Describe for others the assistant’s purpose.{" "}
+              Describe for others the agent’s purpose.{" "}
             </div>
           </div>
 

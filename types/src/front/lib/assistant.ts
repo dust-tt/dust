@@ -223,10 +223,10 @@ export type ModelConfigurationType = {
     incompleteDelimiterPatterns: RegExp[];
   };
 
-  // This meta-prompt is injected into the assistant's system instructions every time.
+  // This meta-prompt is injected into the agent's system instructions every time.
   metaPrompt?: string;
 
-  // This meta-prompt is injected into the assistant's system instructions if the assistant is in a tool-use context.
+  // This meta-prompt is injected into the agent's system instructions if the agent is in a tool-use context.
   toolUseMetaPrompt?: string;
 
   // Adjust the token count estimation by a ratio. Only needed for anthropic models, where the token count is higher than our estimate
@@ -1001,7 +1001,7 @@ const CUSTOM_ORDER: string[] = [
   GLOBAL_AGENTS_SID.HELPER,
 ];
 
-// This function implements our general strategy to sort agents to users (input bar, assistant list,
+// This function implements our general strategy to sort agents to users (input bar, agent list,
 // agent suggestions...).
 export function compareAgentsForSort(
   a: LightAgentConfigurationType,

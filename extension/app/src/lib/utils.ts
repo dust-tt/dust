@@ -153,7 +153,7 @@ export function filterAndSortAgents(
   return filtered;
 }
 
-// This function implements our general strategy to sort agents to users (input bar, assistant list,
+// This function implements our general strategy to sort agents to users (input bar, agent list,
 // agent suggestions...).
 export function compareAgentsForSort(
   a: LightAgentConfigurationType,

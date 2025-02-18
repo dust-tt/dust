@@ -111,9 +111,9 @@ export default function EditDustAssistant({
   ) => {
     if (agent.status === "disabled_missing_datasource") {
       sendNotification({
-        title: "Dust Assistant",
+        title: "Dust Agent",
         description:
-          "The Dust assistant requres at least one data source to be enabled.",
+          "The Dust agent requires at least one data source to be enabled.",
         type: "error",
       });
       return;
@@ -136,7 +136,7 @@ export default function EditDustAssistant({
 
     if (!res.ok) {
       const data = await res.json();
-      window.alert(`Error toggling Assistant: ${data.error.message}`);
+      window.alert(`Error toggling agent: ${data.error.message}`);
       return;
     }
 
@@ -176,7 +176,7 @@ export default function EditDustAssistant({
       owner={owner}
       titleChildren={
         <AppLayoutSimpleCloseTitle
-          title="Manage Dust Assistant"
+          title="Manage Dust Agent"
           onClose={async () => {
             await router.push(`/w/${owner.sId}/builder/assistants`);
           }}
@@ -185,9 +185,9 @@ export default function EditDustAssistant({
     >
       <div className="h-12" />
       <Page.Header
-        title="Dust Assistant"
+        title="Dust Agent"
         icon={LogoSquareColorLogo}
-        description="The Dust assistant is a general purpose assistant that has context on your company data."
+        description="The Dust agent is a general purpose agent that has context on your company data."
       />
       <div className="flex flex-col space-y-8 pb-8 pt-8">
         <div className="flex w-full flex-col gap-4">
@@ -195,11 +195,11 @@ export default function EditDustAssistant({
             <>
               <Page.SectionHeader
                 title="Availability"
-                description="The Dust assistant requires at least one data source to be enabled."
+                description="The Dust agent requires at least one data source to be enabled."
               />
 
               <ContextItem
-                title="Enable the Dust assistant for this workspace."
+                title="Enable the Dust agent for this workspace."
                 visual={
                   <Avatar
                     visual="https://dust.tt/static/systemavatar/dust_avatar_full.png"
@@ -226,7 +226,7 @@ export default function EditDustAssistant({
             <>
               <Page.SectionHeader
                 title="Data Sources and Connections"
-                description="Configure which Company Data connections and data sources will be searched by the Dust assistant."
+                description="Configure which Company Data connections and data sources will be searched by the Dust agent."
               />
               <>
                 {
@@ -271,7 +271,7 @@ export default function EditDustAssistant({
             <>
               <Page.SectionHeader
                 title="This workspace doesn't currently have any data sources."
-                description="Add Company Data connections or data sources to enable the Dust assistant."
+                description="Add Company Data connections or data sources to enable the Dust agent."
                 action={{
                   label: "Add data",
                   variant: "primary",

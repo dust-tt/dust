@@ -131,9 +131,9 @@ export function EditSpaceManagedDataSourcesViews({
               title="Warning"
               icon={InformationCircleIcon}
             >
-              Deleting these data sources will affect the assistants using them.
-              These assistants will no longer have access to this data and may
-              not work as expected.
+              Deleting these data sources will affect the agents using them.
+              These agents will no longer have access to this data and may not
+              work as expected.
             </ContentMessage>
 
             <div>
@@ -143,7 +143,7 @@ export function EditSpaceManagedDataSourcesViews({
                   <li key={view.sId} className="font-medium">
                     {getDisplayNameForDataSource(view.dataSource)}{" "}
                     <span className="italic text-muted-foreground">
-                      (used by {view.usage.count} assistant
+                      (used by {view.usage.count} agent
                       {view.usage.count > 1 ? "s" : ""})
                     </span>
                   </li>

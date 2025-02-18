@@ -250,7 +250,7 @@ export async function streamConversationToSlack(
           await slackClient.chat.postEphemeral({
             channel: slackChannelId,
             user: slackUserId,
-            text: "You can use another assistant by using the dropdown in slack.",
+            text: "You can use another agent by using the dropdown in slack.",
             blocks: makeAssistantSelectionBlock(
               agentConfigurations,
               JSON.stringify({

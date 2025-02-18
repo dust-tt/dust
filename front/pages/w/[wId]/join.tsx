@@ -179,7 +179,7 @@ export default function Join({
           </div>
 
           <p>
-            Dust is a platform giving you access to the best AI assistants. It's
+            Dust is a platform giving you access to the best AI agents. It's
             easy to use and it's a great place for teams to collaborate. Learn
             more about Dust on{" "}
             <Link

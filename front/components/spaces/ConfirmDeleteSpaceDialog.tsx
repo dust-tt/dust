@@ -32,8 +32,8 @@ export function ConfirmDeleteSpaceDialog({
     dataSourceUsage === undefined
       ? `Are you sure you want to permanently delete space ${getSpaceName(space)}?`
       : dataSourceUsage > 0
-        ? `${dataSourceUsage} assistants currently use space ${getSpaceName(space)}. Are you sure you want to delete?`
-        : `No assistants are using this ${getSpaceName(space)}. Confirm permanent deletion?`;
+        ? `${dataSourceUsage} agents currently use space ${getSpaceName(space)}. Are you sure you want to delete?`
+        : `No agents are using this ${getSpaceName(space)}. Confirm permanent deletion?`;
 
   return (
     <Dialog

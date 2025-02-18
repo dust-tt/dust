@@ -10,7 +10,7 @@ type PokeAgentConfigurationsProps = PokeConditionalFetchProps & {
 };
 
 /*
- * Agent configurations for poke. Currently only supports archived assistant.
+ * Agent configurations for poke. Currently only supports archived agent.
  * A null agentsGetView means no fetching
  */
 export function usePokeAgentConfigurations({

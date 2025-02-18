@@ -37,8 +37,8 @@ const userContent: Record<
 > = {
   user: {
     helpIceBreakers: [
-      "What are assistants?",
-      "What are the limitations of assistants?",
+      "What are agents?",
+      "What are the limitations of agents?",
     ],
   },
   builder: {
@@ -51,7 +51,7 @@ const userContent: Record<
   admin: {
     helpIceBreakers: [
       "How to invite a new user?",
-      "How to use assistants in Slack workflows?",
+      "How to use agents in Slack workflows?",
       "How to manage billing?",
     ],
   },

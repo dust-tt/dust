@@ -76,7 +76,7 @@ export const AssistantCardExample = () => (
         action={<AssistantCardMore onClick={() => console.log("hello")} />}
       />
       <AssistantCard
-        title={"SalesAssistantFranceExpatTralala"}
+        title={"SalesAgentFranceExpatTralala"}
         pictureUrl={"https://dust.tt/static/droidavatar/Droid_Yellow_2.jpg"}
         subtitle={"By: OpenAI"}
         description="Tech journalist providing insights on Accel's VC team expertise and notable deals."

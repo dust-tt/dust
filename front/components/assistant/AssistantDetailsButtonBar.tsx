@@ -84,7 +84,7 @@ export function AssistantDetailsButtonBar({
           </DropdownMenuTrigger>
           <DropdownMenuContent>
             <DropdownMenuItem
-              label="Copy assistant ID"
+              label="Copy agent ID"
               onClick={async (e) => {
                 e.stopPropagation();
                 await navigator.clipboard.writeText(agentConfiguration.sId);

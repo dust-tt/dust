@@ -171,8 +171,8 @@ export function SlackAssistantDefaultManager({
         <SheetContainer>
           <div className="flex flex-col gap-4">
             <div className="text-sm font-normal text-foreground dark:text-foreground-night">
-              Set this assistant as the default assistant on one or several of
-              your Slack channels. It will answer by default when the{" "}
+              Set this agent as the default agent on one or several of your
+              Slack channels. It will answer by default when the{" "}
               <span className="font-bold">{assistantHandle}</span> Slack bot is
               mentionned in these channels.
             </div>
@@ -185,7 +185,7 @@ export function SlackAssistantDefaultManager({
                 icon={InformationCircleIcon}
               >
                 <p>
-                  Only administrators can enable default assistants for specific
+                  Only administrators can enable default agents for specific
                   Slack channels.
                 </p>
               </ContentMessage>

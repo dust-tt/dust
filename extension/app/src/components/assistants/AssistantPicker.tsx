@@ -58,7 +58,7 @@ export function AssistantPicker({
             variant="ghost"
             isSelect
             size={size}
-            tooltip="Pick an assistant"
+            tooltip="Pick an agent"
             disabled={isLoading ?? false}
           />
         )}

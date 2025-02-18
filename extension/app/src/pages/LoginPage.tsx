@@ -53,7 +53,7 @@ export const LoginPage = () => {
             <Link to="https://dust.tt" target="_blank">
               <LogoHorizontalColorLogo className="h-12 w-48" />
             </Link>
-            <Page.SectionHeader title="Get more done, faster, with the power of your assistants at your fingertips." />
+            <Page.SectionHeader title="Get more done, faster, with the power of your agents at your fingertips." />
           </div>
           {authError && authError.code === "user_not_found" && (
             <>

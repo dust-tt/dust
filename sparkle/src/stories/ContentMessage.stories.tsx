@@ -69,7 +69,7 @@ export const Basic: Story = {
 
 export const WithList: Story = {
   args: {
-    title: "Assistant Thoughts",
+    title: "Agent Thoughts",
     variant: "slate",
     size: "md",
     children: (

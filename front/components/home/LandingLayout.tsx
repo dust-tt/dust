@@ -289,7 +289,7 @@ const Header = () => {
       <meta
         id="meta-description"
         name="description"
-        content="The way we work is changing. Break down knowledge silos and amplify team performance with data-augmented, customizable and secure AI assistants."
+        content="The way we work is changing. Break down knowledge silos and amplify team performance with data-augmented, customizable and secure AI agents."
       />
       <meta
         id="og-title"

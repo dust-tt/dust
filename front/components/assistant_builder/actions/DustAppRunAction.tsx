@@ -109,7 +109,7 @@ export function ActionDustAppRun({
       ) : (
         <>
           <div className="text-sm text-element-700">
-            The assistant will execute a{" "}
+            The agent will execute a{" "}
             <a
               className="font-bold"
               href="https://docs.dust.tt"

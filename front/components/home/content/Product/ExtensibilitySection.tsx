@@ -66,8 +66,8 @@ export function ExtensibilitySection() {
             content={
               <>
                 No ceiling on data connections. Leverage the API to import in
-                knowledge from any source and let assistants tackle more
-                ambitious use cases.
+                knowledge from any source and let agents tackle more ambitious
+                use cases.
               </>
             }
           >
@@ -94,8 +94,8 @@ export function ExtensibilitySection() {
             title={<>Build your own integrations</>}
             content={
               <>
-                Use our API to embed assistants in your apps or websites,
-                unlocking fully custom user experiences and deep automation.
+                Use our API to embed agents in your apps or websites, unlocking
+                fully custom user experiences and deep automation.
               </>
             }
           >

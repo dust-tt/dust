@@ -398,7 +398,7 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
         error: {
           code: "tables_query_error",
           message:
-            "The assistant does not have access to any tables. Please edit the assistant's Query Tables tool to add tables, or remove the tool.",
+            "The agent does not have access to any tables. Please edit the agent's Query Tables tool to add tables, or remove the tool.",
         },
       };
       return;

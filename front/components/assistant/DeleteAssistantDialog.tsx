@@ -52,10 +52,10 @@ export function DeleteAssistantDialog({
     >
       <DialogContent size="md" isAlertDialog>
         <DialogHeader hideButton>
-          <DialogTitle>Deleting the assistant</DialogTitle>
+          <DialogTitle>Deleting the agent</DialogTitle>
           <DialogDescription>
             {isPrivateAssistant ? (
-              "Deleting the assistant will be permanent."
+              "Deleting the agent will be permanent."
             ) : (
               <div>
                 <span className="font-bold">
@@ -67,7 +67,7 @@ export function DeleteAssistantDialog({
                       assistantName: agentConfiguration?.name ?? "",
                     })}
                 </span>{" "}
-                This will permanently delete the assistant for everyone.
+                This will permanently delete the agent for everyone.
               </div>
             )}
           </DialogDescription>
@@ -82,7 +82,7 @@ export function DeleteAssistantDialog({
           }}
           rightButtonProps={{
             label: isPrivateAssistant
-              ? "Delete the assistant"
+              ? "Delete the agent"
               : "Delete for everyone",
             variant: "warning",
             onClick: async () => {

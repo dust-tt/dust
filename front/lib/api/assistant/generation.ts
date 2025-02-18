@@ -402,7 +402,7 @@ export async function renderConversationForModel(
 
   while (
     selected.length > 0 &&
-    // Most model providers don't support starting by a function result or assistant message.
+    // Most model providers don't support starting by a function result or agent message.
     ["assistant", "function"].includes(selected[0].role)
   ) {
     const tokenCount = messagesCount[messages.length - selected.length];

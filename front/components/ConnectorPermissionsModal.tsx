@@ -286,7 +286,7 @@ function DataSourceEditionModal({
               </div>
               <div className="p-4 text-sm text-amber-900">
                 <b>Editing</b> can break the existing data structure in Dust and
-                Assistants using them.
+                Agents using them.
               </div>
 
               {connectorConfiguration.guideLink && (
@@ -340,8 +340,7 @@ function DataSourceEditionModal({
               icon={InformationCircleIcon}
             >
               Editing permission rights with a different account will likely
-              break the existing data structure in Dust and Assistants using
-              them.
+              break the existing data structure in Dust and Agents using them.
               {connectorConfiguration.guideLink && (
                 <div>
                   Read our{" "}
@@ -391,8 +390,8 @@ function DataSourceEditionModal({
               </DialogHeader>
               <DialogContainer>
                 The changes you are about to make may break existing{" "}
-                {connectorConfiguration.name} Data sources and the assistants
-                using them. Are you sure you want to continue?
+                {connectorConfiguration.name} Data sources and the agents using
+                them. Are you sure you want to continue?
               </DialogContainer>
               <DialogFooter
                 leftButtonProps={{
@@ -495,7 +494,7 @@ function DataSourceDeletionModal({
               Important
             </div>
             <div className="p-4 text-sm text-amber-900">
-              <b>Deleting</b> will break Assistants using this data.
+              <b>Deleting</b> will break Agents using this data.
             </div>
           </div>
         </div>
@@ -534,9 +533,9 @@ function DataSourceDeletionModal({
               ) : (
                 <>
                   <DialogContainer>
-                    The changes you are about to make will break existing
-                    assistants using {connectorConfiguration.name}. Are you sure
-                    you want to continue?
+                    The changes you are about to make will break existing agents
+                    using {connectorConfiguration.name}. Are you sure you want
+                    to continue?
                   </DialogContainer>
                   <DialogFooter
                     leftButtonProps={{

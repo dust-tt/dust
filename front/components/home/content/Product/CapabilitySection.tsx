@@ -10,22 +10,20 @@ export function CapabilitySection() {
     <div className="w-full">
       <div className="mb-6">
         <H2 from="from-amber-200" to="to-amber-400">
-          Tailor AI assistants to your team needs
+          Tailor AI agents to your team needs
         </H2>
         <P size="lg">
-          Anyone on your&nbsp;team can create personalized&nbsp;assistants.
+          Anyone on your&nbsp;team can create personalized&nbsp;agents.
         </P>
       </div>
 
       <div className="grid grid-cols-1 gap-12 sm:grid-cols-2 md:gap-24">
         <ImgBlock
-          title={
-            <>Build assistants with custom instructions and pre-built tools</>
-          }
+          title={<>Build agents with custom instructions and pre-built tools</>}
           content={
             <>
               Adapt instructions to your needs, with pre-built templates.
-              Empower assistants with specialized tools for data extraction,
+              Empower agents with specialized tools for data extraction,
               transformations, or advanced operations.
             </>
           }
@@ -54,7 +52,7 @@ export function CapabilitySection() {
           content={
             <>
               “Choose GPT-4, Anthropic, Gemini, Mistral, or any cutting-edge
-              model to ensure your assistants stay smartest.”
+              model to ensure your agents stay smartest.”
             </>
           }
         >
@@ -110,7 +108,7 @@ export function CapabilitySection() {
           title={<>Share with your team, collect feedback</>}
           content={
             <>
-              Empower those with a&nbsp;builder mindset to build assistants for
+              Empower those with a&nbsp;builder mindset to build agents for
               their teams and get actionable feedback.
             </>
           }

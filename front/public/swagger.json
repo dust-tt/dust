@@ -22,10 +22,10 @@
   "paths": {
     "/api/v1/w/{wId}/assistant/agent_configurations": {
       "get": {
-        "summary": "List assistants",
+        "summary": "List agents",
         "description": "Get the agent configurations for the workspace identified by {wId}.",
         "tags": [
-          "Assistants"
+          "Agents"
         ],
         "parameters": [
           {
@@ -112,7 +112,7 @@
         "summary": "Get agent configuration",
         "description": "Retrieve the agent configuration identified by {sId} in the workspace identified by {wId}.",
         "tags": [
-          "Assistants"
+          "Agents"
         ],
         "parameters": [
           {
@@ -176,7 +176,7 @@
         "summary": "Update agent configuration",
         "description": "Update the agent configuration identified by {sId} in the workspace identified by {wId}.",
         "tags": [
-          "Assistants"
+          "Agents"
         ],
         "parameters": [
           {
@@ -254,10 +254,10 @@
     },
     "/api/v1/w/{wId}/assistant/agent_configurations/search": {
       "get": {
-        "summary": "Search assistants by name",
+        "summary": "Search agents by name",
         "description": "Search for agent configurations by name in the workspace identified by {wId}.",
         "tags": [
-          "Assistants"
+          "Agents"
         ],
         "parameters": [
           {
@@ -3677,7 +3677,7 @@
             "in": "query",
             "name": "table",
             "required": true,
-            "description": "The name of the usage table to retrieve:\n- \"users\": The list of users categorized by their activity level.\n- \"assistant_messages\": The list of messages sent by users including the mentioned assistants.\n- \"builders\": The list of builders categorized by their activity level.\n- \"assistants\": The list of workspace assistants and their corresponding usage.\n- \"feedbacks\": The list of feedbacks given by users on the assistant messages.\n- \"all\": A concatenation of all the above tables.\n",
+            "description": "The name of the usage table to retrieve:\n- \"users\": The list of users categorized by their activity level.\n- \"assistant_messages\": The list of messages sent by users including the mentioned agents.\n- \"builders\": The list of builders categorized by their activity level.\n- \"assistants\": The list of workspace agents and their corresponding usage.\n- \"feedbacks\": The list of feedbacks given by users on the agent messages.\n- \"all\": A concatenation of all the above tables.\n",
             "schema": {
               "type": "string",
               "enum": [
@@ -4278,7 +4278,7 @@
           },
           "assistantDefaultSelected": {
             "type": "boolean",
-            "description": "Whether this datasource is selected by default for assistants",
+            "description": "Whether this datasource is selected by default for agents",
             "example": true
           }
         }

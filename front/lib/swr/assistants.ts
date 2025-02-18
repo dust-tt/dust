@@ -537,7 +537,7 @@ export function useUpdateAgentScope({
 
         if (res.ok) {
           sendNotification({
-            title: `Assistant sharing updated.`,
+            title: `Agent sharing updated.`,
             type: "success",
           });
           await mutateAgentConfigurations();
@@ -546,7 +546,7 @@ export function useUpdateAgentScope({
         } else {
           const data = await res.json();
           sendNotification({
-            title: `Error updating assistant sharing.`,
+            title: `Error updating agent sharing.`,
             description: data.error.message,
             type: "error",
           });
@@ -554,7 +554,7 @@ export function useUpdateAgentScope({
         }
       } catch (error) {
         sendNotification({
-          title: `Error updating assistant sharing.`,
+          title: `Error updating agent sharing.`,
           description: (error as Error).message || "An unknown error occurred",
           type: "error",
         });
@@ -634,7 +634,7 @@ export function useUpdateUserFavorite({
         }
       } catch (error) {
         sendNotification({
-          title: `Error updating assistant list.`,
+          title: `Error updating agent list.`,
           description: (error as Error).message || "An unknown error occurred",
           type: "error",
         });

@@ -38,7 +38,7 @@ export const PricingXS = () => {
               </>
             }
           />
-          <PriceTable.Item label="Unlimited custom assistants" />
+          <PriceTable.Item label="Unlimited custom agents" />
           <PriceTable.Item label="Advanced LLM models (gpt4, Claude, ...)" />
           <PriceTable.Item label="1 user" />
           <PriceTable.Item label="1 user" />
@@ -54,7 +54,7 @@ export const PricingXS = () => {
           </PriceTable.ActionContainer>
           <PriceTable.Item label="Unlimited members / workspace" />
           <PriceTable.Item label="Unlimited workspaces" />
-          <PriceTable.Item label="Unlimited custom assistants" />
+          <PriceTable.Item label="Unlimited custom agents" />
           <PriceTable.Item label="1 user" />
           <PriceTable.Item label="1 user" />
           <PriceTable.Item label="1 user" />
@@ -85,7 +85,7 @@ export const PricingSM = () => {
             <Button size="md" variant="primary" label="Select this plan" />
           </PriceTable.ActionContainer>
           <PriceTable.Item label="Unlimited members / workspace" />
-          <PriceTable.Item label="Unlimited custom assistants" />
+          <PriceTable.Item label="Unlimited custom agents" />
           <PriceTable.Item label="Advanced LLM models (gpt4, Claude, ...)" />
           <PriceTable.Item label="1 user" />
           <PriceTable.Item label="1 user" />
@@ -101,7 +101,7 @@ export const PricingSM = () => {
           </PriceTable.ActionContainer>
           <PriceTable.Item label="Unlimited members / workspace" />
           <PriceTable.Item label="Unlimited workspaces" />
-          <PriceTable.Item label="Unlimited custom assistants" />
+          <PriceTable.Item label="Unlimited custom agents" />
           <PriceTable.Item label="1 user" />
           <PriceTable.Item label="1 user" />
           <PriceTable.Item label="1 user" />
