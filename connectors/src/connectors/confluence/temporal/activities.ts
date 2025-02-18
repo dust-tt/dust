@@ -431,7 +431,7 @@ export async function confluenceCheckAndUpsertPageActivity({
   );
 
   // Check restrictions.
-  const hasReadRestrictions = await pageHasReadRestrictions(client, pageId);
+  const { hasReadRestrictions } = pageRef;
   if (hasReadRestrictions) {
     localLogger.info("Skipping restricted Confluence page.");
     return false;
@@ -712,8 +712,6 @@ export async function fetchAndUpsertRootPagesActivity(params: {
       allowedRootPageIds.push(rootPageRef.id);
     }
   }
-
-  console.log(">> allowedRootPageIds", allowedRootPageIds);
 
   return allowedRootPageIds;
 }
