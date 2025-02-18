@@ -763,10 +763,10 @@ export function retrievalTagsInputSpecification() {
     {
       name: "tagsIn",
       description:
-        "The list of tags to restrict the search based on the user request and past conversation context." +
-        "If multiple tags are provided, the search will return documents that have at least one of the tags." +
-        "You can't check that all tags are present, only that at least one is present." +
-        "If no tags are provided, the search will return all documents.",
+        "The list of labels to restrict the search based on the user request and past conversation context." +
+        "If multiple labels are provided, the search will return documents that have at least one of the labels." +
+        "You can't check that all labels are present, only that at least one is present." +
+        "If no labels are provided, the search will return all documents.",
       type: "array" as const,
       items: {
         type: "string" as const,
@@ -775,8 +775,8 @@ export function retrievalTagsInputSpecification() {
     {
       name: "tagsNot",
       description:
-        "The list of tags to exclude from the search based on the user request and past conversation context." +
-        "Any document having one of these tags will be excluded from the search.",
+        "The list of labels to exclude from the search based on the user request and past conversation context." +
+        "Any document having one of these labels will be excluded from the search.",
       type: "array" as const,
       items: {
         type: "string" as const,
