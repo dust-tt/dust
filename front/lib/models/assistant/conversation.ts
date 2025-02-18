@@ -459,7 +459,6 @@ Message.init(
       {
         unique: true,
         fields: ["conversationId", "rank", "version", "parentId"],
-        using: "btree",
       },
       {
         fields: ["agentMessageId"],
@@ -479,7 +478,7 @@ Message.init(
       },
     ],
     hooks: {
-      beforeValidate: async (message) => {
+      beforeValidate: (message) => {
         if (
           Number(!!message.userMessageId) +
             Number(!!message.agentMessageId) +
@@ -488,23 +487,6 @@ Message.init(
         ) {
           throw new Error(
             "Exactly one of userMessageId, agentMessageId, contentFragmentId must be non-null"
-          );
-        }
-
-        const existingMessage = await Message.findOne({
-          where: {
-            conversationId: message.conversationId,
-            rank: message.rank,
-            version: message.version,
-            threadVersions: {
-              [Op.overlap]: message.threadVersions,
-            },
-          },
-        });
-
-        if (existingMessage) {
-          throw new Error(
-            "Message already exists with same conversationId, rank, version and overlapping threadVersions"
           );
         }
       },

@@ -76,22 +76,10 @@ export function UserMessage({
     limit: 50,
   });
 
-  async function previous() {
+  async function switchThread(direction: "previous" | "next") {
     if (conversation) {
       await fetch(
-        `/api/w/${owner.sId}/assistant/conversations/${conversationId}/change_thread?id=${message.sId}&direction=previous`,
-        {
-          method: "POST",
-        }
-      );
-      void mutateMessages();
-    }
-  }
-
-  async function next() {
-    if (conversation) {
-      await fetch(
-        `/api/w/${owner.sId}/assistant/conversations/${conversationId}/change_thread?id=${message.sId}&direction=next`,
+        `/api/w/${owner.sId}/assistant/conversations/${conversationId}/change_thread?id=${message.sId}&direction=${direction}`,
         {
           method: "POST",
         }
@@ -186,7 +174,7 @@ export function UserMessage({
           onClick={
             message.previousVersionMessageId
               ? async () => {
-                  await previous();
+                  await switchThread("previous");
                 }
               : undefined
           }
@@ -205,7 +193,7 @@ export function UserMessage({
           onClick={
             message.nextVersionMessageId
               ? async () => {
-                  await next();
+                  await switchThread("next");
                 }
               : undefined
           }
@@ -237,49 +225,45 @@ export function UserMessage({
   );
 
   return (
-    <>
-      <ConversationMessage
-        pictureUrl={message.user?.image || message.context.profilePictureUrl}
-        name={message.context.fullName ?? undefined}
-        renderName={(name) => (
-          <div className="text-base font-medium">{name}</div>
-        )}
-        type="user"
-        buttons={buttons}
-        citations={citations}
-      >
-        {isEditing ? (
-          <InputBarContainer
-            editMessage={message}
-            className="w-full p-0 py-0 sm:py-0 sm:leading-7"
-            editorServiceRef={editorServiceRef}
-            selectedAssistant={null}
-            onEnterKeyDown={submitEdit}
-            actions={[]}
-            disableAutoFocus={false}
-            allAssistants={[]}
-            agentConfigurations={agentConfigurations}
-            owner={owner}
-            hideSendButton={true}
-            disableSendButton={false}
-          />
-        ) : (
-          <Markdown
-            content={message.content}
-            isStreaming={false}
-            isLastMessage={isLastMessage}
-            additionalMarkdownComponents={additionalMarkdownComponents}
-            additionalMarkdownPlugins={additionalMarkdownPlugins}
-          />
-        )}
-        {message.mentions.length === 0 && isLastMessage && (
-          <AgentSuggestion
-            conversationId={conversationId}
-            owner={owner}
-            userMessage={message}
-          />
-        )}
-      </ConversationMessage>
-    </>
+    <ConversationMessage
+      pictureUrl={message.user?.image || message.context.profilePictureUrl}
+      name={message.context.fullName ?? undefined}
+      renderName={(name) => <div className="text-base font-medium">{name}</div>}
+      type="user"
+      buttons={buttons}
+      citations={citations}
+    >
+      {isEditing ? (
+        <InputBarContainer
+          editMessage={message}
+          className="w-full p-0 py-0 sm:py-0 sm:leading-7"
+          editorServiceRef={editorServiceRef}
+          selectedAssistant={null}
+          onEnterKeyDown={submitEdit}
+          actions={[]}
+          disableAutoFocus={false}
+          allAssistants={[]}
+          agentConfigurations={agentConfigurations}
+          owner={owner}
+          hideSendButton={true}
+          disableSendButton={false}
+        />
+      ) : (
+        <Markdown
+          content={message.content}
+          isStreaming={false}
+          isLastMessage={isLastMessage}
+          additionalMarkdownComponents={additionalMarkdownComponents}
+          additionalMarkdownPlugins={additionalMarkdownPlugins}
+        />
+      )}
+      {message.mentions.length === 0 && isLastMessage && (
+        <AgentSuggestion
+          conversationId={conversationId}
+          owner={owner}
+          userMessage={message}
+        />
+      )}
+    </ConversationMessage>
   );
 }

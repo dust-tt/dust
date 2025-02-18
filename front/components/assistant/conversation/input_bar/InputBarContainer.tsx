@@ -27,7 +27,6 @@ import useCustomEditor, {
 } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import useHandleMentions from "@app/components/assistant/conversation/input_bar/editor/useHandleMentions";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
-import { classNames } from "@app/lib/utils";
 
 export const INPUT_BAR_ACTIONS = [
   "attachment",
@@ -130,7 +129,7 @@ const InputBarContainer = ({
     >
       <EditorContent
         editor={editor}
-        className={classNames(
+        className={cn(
           contentEditableClasses,
           "scrollbar-hide",
           "overflow-y-auto",
