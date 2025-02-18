@@ -1,6 +1,6 @@
 {
   "name": "@dust-tt/sparkle",
-  "version": "0.2.404",
+  "version": "0.2.405",
   "scripts": {
     "build": "rm -rf dist && npm run tailwind && npm run build:esm && npm run build:cjs",
     "tailwind": "tailwindcss -i ./src/styles/tailwind.css -o dist/sparkle.css",
@@ -127,6 +127,7 @@
     "remark-directive": "^2.0.1",
     "remark-gfm": "^3.0.1",
     "remark-math": "^5.1.1",
+    "sonner": "^1.7.4",
     "tailwind-merge": "^2.5.3",
     "tailwind-scrollbar-hide": "^1.1.7",
     "unist-util-visit": "^5.0.0"
