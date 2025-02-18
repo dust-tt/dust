@@ -2,7 +2,9 @@ import type {
   ConversationWithoutContentType,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
+import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
@@ -12,19 +14,14 @@ import type { Authenticator } from "@app/lib/auth";
 import { Conversation, Message } from "@app/lib/models/assistant/conversation";
 import { apiError } from "@app/logger/withlogging";
 
-export const PatchConversationsRequestBodySchema = t.type({
-  title: t.union([t.string, t.null]),
-  visibility: t.union([
-    t.literal("unlisted"),
-    t.literal("workspace"),
-    t.literal("deleted"),
-    t.literal("test"),
-  ]),
-});
-
 export type GetConversationsResponseBody = {
   conversation: ConversationWithoutContentType;
 };
+
+const PostChangeThreadBodySchema = t.type({
+  id: t.string,
+  direction: t.union([t.literal("previous"), t.literal("next")]),
+});
 
 async function handler(
   req: NextApiRequest,
@@ -40,7 +37,7 @@ async function handler(
       },
     });
   }
-
+  const workspace = auth.getNonNullableWorkspace();
   const conversationRes = await getConversationWithoutContent(
     auth,
     req.query.cId
@@ -54,49 +51,79 @@ async function handler(
 
   switch (req.method) {
     case "POST": {
-      //TODO parse with iots, clean up code
-      const { id, direction } = req.query;
+      const bodyValidation = PostChangeThreadBodySchema.decode(req.body);
+
+      if (isLeft(bodyValidation)) {
+        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid request body: ${pathError}`,
+          },
+        });
+      }
+
+      const { id, direction } = bodyValidation.right;
       const message = await Message.findOne({
         where: {
+          workspaceId: workspace.id,
           sId: id,
           conversationId: conversation.id,
         },
       });
 
-      if (message && message.nextVersionMessageId && direction === "next") {
-        const next = await Message.findOne({
-          where: { id: message.nextVersionMessageId },
+      if (!message) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid request body: message not found`,
+          },
         });
-        if (next) {
-          await Conversation.update(
-            {
-              currentThreadVersion: next.threadVersions[0],
-            },
-            {
-              where: { id: conversation.id },
-            }
-          );
-        }
       }
-      if (
-        message &&
-        message.previousVersionMessageId &&
-        direction === "previous"
-      ) {
-        const previous = await Message.findOne({
-          where: { id: message.previousVersionMessageId },
+
+      const newMessageId =
+        direction === "next"
+          ? message.nextVersionMessageId
+          : message.previousVersionMessageId;
+
+      if (!newMessageId) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid request body: no message`,
+          },
         });
-        if (previous) {
-          await Conversation.update(
-            {
-              currentThreadVersion: previous.threadVersions[0],
-            },
-            {
-              where: { id: conversation.id },
-            }
-          );
-        }
       }
+
+      const newMessage = await Message.findOne({
+        where: {
+          id: newMessageId,
+          workspaceId: workspace.id,
+          conversationId: conversation.id,
+        },
+      });
+      if (!newMessage) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid request body: no message`,
+          },
+        });
+      }
+
+      await Conversation.update(
+        {
+          currentThreadVersion: newMessage.threadVersions[0],
+        },
+        {
+          where: { id: conversation.id },
+        }
+      );
       return res.status(200).json({ success: true });
     }
 

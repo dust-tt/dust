@@ -79,9 +79,16 @@ export function UserMessage({
   async function switchThread(direction: "previous" | "next") {
     if (conversation) {
       await fetch(
-        `/api/w/${owner.sId}/assistant/conversations/${conversationId}/change_thread?id=${message.sId}&direction=${direction}`,
+        `/api/w/${owner.sId}/assistant/conversations/${conversationId}/change_thread`,
         {
           method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            id: message.sId,
+            direction,
+          }),
         }
       );
       void mutateMessages();
