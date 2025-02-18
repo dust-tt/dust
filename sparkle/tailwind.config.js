@@ -93,6 +93,7 @@ module.exports = {
       }),
       backgroundImage: {
         "rainbow-gradient": `linear-gradient(90deg, ${colors.sky[300]}, ${colors.purple[700]}, ${colors.blue[500]}, ${colors.indigo[300]}, ${colors.sky[600]}, ${colors.blue[500]}, ${colors.purple[300]})`,
+        "rainbow-gradient-night": `linear-gradient(90deg, ${colors.sky[400]}, ${colors.purple[600]}, ${colors.blue[400]}, ${colors.indigo[400]}, ${colors.sky[500]}, ${colors.blue[400]}, ${colors.purple[400]})`,
       },
       keyframes: {
         pulse: {
@@ -224,34 +225,34 @@ module.exports = {
         },
         border: {
           DEFAULT: colors.slate[100],
-          night: colors.slate[900],
+          night: colors.slate[800],
           dark: {
             DEFAULT: colors.slate[200],
-            night: colors.slate[800],
+            night: colors.slate[700],
           },
           darker: {
             DEFAULT: colors.slate[400],
-            night: colors.slate[600],
+            night: colors.slate[500],
           },
           focus: {
             DEFAULT: colors.blue[400],
-            night: colors.slate[600],
+            night: colors.slate[500],
           },
           warning: {
             DEFAULT: colors.red[300],
-            night: colors.slate[800],
+            night: colors.slate[700],
           },
         },
-        separator: { DEFAULT: "#E9EFF5", night: colors.slate[800] },
+        separator: { DEFAULT: "#E9EFF5", night: colors.slate[600] },
         ring: {
           DEFAULT: colors.blue[200],
-          night: colors.slate[700],
+          night: colors.slate[600],
           warning: {
             DEFAULT: colors.red[300],
-            night: colors.red[800],
+            night: colors.red[700],
           },
         },
-        background: { DEFAULT: colors.white, night: colors.slate[950] },
+        background: { DEFAULT: colors.white, night: colors.slate[800] },
         foreground: {
           DEFAULT: colors.slate[950],
           night: colors.slate[50],
@@ -263,14 +264,14 @@ module.exports = {
         },
         muted: {
           DEFAULT: "#F6F8FB",
-          night: colors.slate[900],
+          night: colors.slate[800],
           foreground: {
             DEFAULT: colors.slate[500],
-            night: colors.slate[400],
+            night: colors.slate[300],
           },
           background: {
             DEFAULT: "#F6F8FB",
-            night: colors.slate[900],
+            night: colors.slate[700],
           },
         },
         highlight: {
