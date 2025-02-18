@@ -47,12 +47,17 @@ export type Sheet = sheets_v4.Schema$ValueRange & {
   title: string;
 };
 
-async function upsertSheetInDb(connector: ConnectorResource, sheet: Sheet) {
+async function upsertSheetInDb(
+  connector: ConnectorResource,
+  sheet: Sheet,
+  upsertError: TablesError | null
+) {
   await GoogleDriveSheet.upsert({
     connectorId: connector.id,
     driveFileId: sheet.spreadsheet.id,
     driveSheetId: sheet.id,
     name: sheet.title,
+    notUpsertedReason: upsertError?.type || null,
   });
 }
 
@@ -62,7 +67,7 @@ async function upsertGdriveTable(
   parents: string[],
   rows: string[][],
   tags: string[]
-) {
+): Promise<TablesError | null> {
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
   const { id, spreadsheet, title } = sheet;
@@ -78,7 +83,7 @@ async function upsertGdriveTable(
 
   // Upserting is safe: Core truncates any previous table with the same Id before
   // the operation. Note: Renaming a sheet in Google Drive retains its original Id.
-  await ignoreTablesError("Google Drive GSheet", () =>
+  return ignoreTablesError("Google Drive GSheet", () =>
     upsertDataSourceTableFromCsv({
       dataSourceConfig,
       tableId,
@@ -195,8 +200,15 @@ async function processSheet(
   const rows = getValidRows(sheet.values, loggerArgs);
   // Assuming the first line as headers, at least one additional data line is required.
   if (rows.length > 1) {
+    let upsertError = null;
     try {
-      await upsertGdriveTable(connector, sheet, parents, rows, tags);
+      upsertError = await upsertGdriveTable(
+        connector,
+        sheet,
+        parents,
+        rows,
+        tags
+      );
     } catch (err) {
       if (err instanceof TablesError) {
         logger.warn(
@@ -213,7 +225,7 @@ async function processSheet(
       }
     }
 
-    await upsertSheetInDb(connector, sheet);
+    await upsertSheetInDb(connector, sheet, upsertError);
 
     return true;
   }
