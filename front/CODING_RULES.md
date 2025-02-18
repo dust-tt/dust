@@ -125,9 +125,10 @@ const r = someFunction(aId);
 ### [BACK10] Resource invariant: Resources must expose both `sId` and `id`
 
 Resources and associated types should consistently expose both `sId` (string) and `id` (ModelId) in
-their interfaces.  This pattern ensures consistency across the codebase and proper type safety.
+their interfaces. This pattern ensures consistency across the codebase and proper type safety.
 
 Example:
+
 ```
 // BAD
 interface ResourceType {
