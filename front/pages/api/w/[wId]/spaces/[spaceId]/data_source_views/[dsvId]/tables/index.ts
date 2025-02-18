@@ -51,8 +51,6 @@ async function handler(
         dataSourceView,
         {
           viewType: "tables",
-          // Use core api as ww want a flat list of all tables, even for managed datasources.
-          onlyCoreAPI: true,
           pagination,
         }
       );

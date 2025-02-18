@@ -55,7 +55,7 @@ export type ConnectorType = {
  * permission we handle is read. but we could have more complex permissions in the future.
  */
 export type ConnectorPermission = "read" | "write" | "read_write" | "none";
-export type ContentNodeType = "file" | "folder" | "database" | "channel";
+export type ContentNodeType = "file" | "folder" | "database";
 // currently used for Slack, for which channels can be public or private
 export type ProviderVisibility = "public" | "private";
 
@@ -68,7 +68,6 @@ export const contentNodeTypeSortOrder: Record<ContentNodeType, number> = {
   folder: 1,
   file: 2,
   database: 3,
-  channel: 4,
 };
 
 /**

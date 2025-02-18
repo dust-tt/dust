@@ -136,7 +136,7 @@ export async function retrieveIntercomConversationsPermissions({
       nodes.push({
         internalId: allTeamsInternalId,
         parentInternalId: null,
-        type: "channel",
+        type: "folder",
         title: `All closed conversations from the past ${conversationsSlidingWindow} days`,
         sourceUrl: null,
         expandable: true,
@@ -148,7 +148,7 @@ export async function retrieveIntercomConversationsPermissions({
       nodes.push({
         internalId: allTeamsInternalId,
         parentInternalId: null,
-        type: "channel",
+        type: "folder",
         title: `Closed conversations from the past ${conversationsSlidingWindow} days for the selected Teams`,
         sourceUrl: null,
         expandable: true,
@@ -179,7 +179,7 @@ export async function retrieveIntercomConversationsPermissions({
       nodes.push({
         internalId: allTeamsInternalId,
         parentInternalId: null,
-        type: "channel",
+        type: "folder",
         title: "Conversations",
         sourceUrl: null,
         expandable: true,

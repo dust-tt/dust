@@ -375,7 +375,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
             nodes.push({
               internalId: getDiscussionsInternalId(repoId),
               parentInternalId,
-              type: "channel",
+              type: "folder",
               title: "Discussions",
               sourceUrl: getDiscussionsUrl(repo.url),
               expandable: false,
@@ -637,7 +637,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       nodes.push({
         internalId: getDiscussionsInternalId(repoId),
         parentInternalId: getRepositoryInternalId(repoId),
-        type: "channel",
+        type: "folder",
         title: "Discussions",
         sourceUrl: getDiscussionsUrl(repo.url),
         expandable: false,

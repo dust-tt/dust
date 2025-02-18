@@ -45,7 +45,6 @@ export interface DataSourceViewContentNodesProps {
   pagination?: PaginationState;
   parentId?: string;
   viewType?: ContentNodesViewType;
-  showConnectorsNodes?: boolean;
 }
 
 export function usePokeDataSourceViewContentNodes({
@@ -56,7 +55,6 @@ export function usePokeDataSourceViewContentNodes({
   pagination,
   parentId,
   viewType,
-  showConnectorsNodes = false,
 }: DataSourceViewContentNodesProps): {
   isNodesError: boolean;
   isNodesLoading: boolean;
@@ -68,8 +66,6 @@ export function usePokeDataSourceViewContentNodes({
 } {
   const params = new URLSearchParams();
   appendPaginationParams(params, pagination);
-
-  params.set("connNodes", showConnectorsNodes ? "true" : "false");
 
   const url =
     dataSourceView && viewType

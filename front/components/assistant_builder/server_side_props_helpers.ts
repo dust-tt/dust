@@ -340,8 +340,6 @@ async function renderTableDataSourcesConfigurations(
           dataSourceView,
           {
             internalIds: sr.resources,
-            // We only want to fetch tables from the core API.
-            onlyCoreAPI: true,
             viewType: "tables",
           }
         );

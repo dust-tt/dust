@@ -402,7 +402,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
       const resources: ContentNode[] = slackChannels.map((ch) => ({
         internalId: slackChannelInternalIdFromSlackChannelId(ch.slackChannelId),
         parentInternalId: null,
-        type: "channel",
+        type: "folder",
         title: `#${ch.slackChannelName}`,
         sourceUrl: `https://app.slack.com/client/${slackConfig.slackTeamId}/${ch.slackChannelId}`,
         expandable: false,
@@ -623,7 +623,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
     const contentNodes: ContentNode[] = channels.map((ch) => ({
       internalId: slackChannelInternalIdFromSlackChannelId(ch.slackChannelId),
       parentInternalId: null,
-      type: "channel",
+      type: "folder",
       title: `#${ch.slackChannelName}`,
       sourceUrl: getSlackChannelSourceUrl(ch.slackChannelId, slackConfig),
       expandable: false,
