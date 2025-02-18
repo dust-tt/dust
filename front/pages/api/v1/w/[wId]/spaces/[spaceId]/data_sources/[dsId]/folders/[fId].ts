@@ -1,4 +1,8 @@
-import type { DeleteFolderResponseType, GetFolderResponseType, UpsertFolderResponseType } from "@dust-tt/client";
+import type {
+  DeleteFolderResponseType,
+  GetFolderResponseType,
+  UpsertFolderResponseType,
+} from "@dust-tt/client";
 import { UpsertDataSourceFolderRequestSchema } from "@dust-tt/client";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
