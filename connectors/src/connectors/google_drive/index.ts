@@ -9,6 +9,7 @@ import {
   getGoogleIdsFromSheetContentNodeInternalId,
   getGoogleSheetContentNodeInternalId,
   isGoogleSheetContentNodeInternalId,
+  MIME_TYPES,
   Ok,
   removeNulls,
 } from "@dust-tt/types";
@@ -336,6 +337,10 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
                   viewType,
                 }),
                 permission: "read",
+                mimeType:
+                  type === "folder"
+                    ? MIME_TYPES.GOOGLE_DRIVE.FOLDER
+                    : f.mimeType,
               };
             },
             { concurrency: 4 }
@@ -356,6 +361,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
                   sourceUrl: null,
                   expandable: false,
                   permission: "read",
+                  mimeType: "text/csv",
                 };
               })
             );
@@ -408,6 +414,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
                 }))
                   ? "read"
                   : "none",
+                mimeType: MIME_TYPES.GOOGLE_DRIVE.FOLDER,
               };
             })
           );
@@ -423,6 +430,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
             lastUpdatedAt: null,
             expandable: true,
             permission: "none",
+            mimeType: MIME_TYPES.GOOGLE_DRIVE.SHARED_WITH_ME,
           });
 
           nodes.sort((a, b) => {
@@ -500,6 +508,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
                 }))
                   ? "read"
                   : "none",
+                mimeType: MIME_TYPES.GOOGLE_DRIVE.FOLDER,
               };
             })
           );
@@ -679,6 +688,8 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
             viewType,
           }),
           permission: "read",
+          mimeType:
+            type === "folder" ? MIME_TYPES.GOOGLE_DRIVE.FOLDER : f.mimeType,
         };
       },
       { concurrency: 4 }
@@ -715,6 +726,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
       sourceUrl: getSourceUrlForGoogleDriveSheet(s),
       expandable: false,
       permission: "read",
+      mimeType: "text/csv",
     }));
 
     // Return the nodes in the same order as the input internalIds.
@@ -979,6 +991,7 @@ async function getFoldersAsContentNodes({
           viewType,
         }),
         permission: "read",
+        mimeType: MIME_TYPES.GOOGLE_DRIVE.FOLDER,
       };
     },
     { concurrency: 4 }

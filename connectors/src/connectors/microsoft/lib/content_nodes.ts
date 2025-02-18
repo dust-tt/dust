@@ -1,4 +1,5 @@
 import type { ContentNode, ContentNodeType } from "@dust-tt/types";
+import { MIME_TYPES } from "@dust-tt/types";
 
 import {
   getDriveInternalId,
@@ -29,6 +30,7 @@ export function getSitesRootAsContentNode(): ContentNode {
     preventSelection: true,
     expandable: true,
     permission: "none",
+    mimeType: MIME_TYPES.MICROSOFT.FOLDER,
   };
 }
 
@@ -46,6 +48,7 @@ export function getTeamsRootAsContentNode(): ContentNode {
     preventSelection: true,
     expandable: true,
     permission: "none",
+    mimeType: MIME_TYPES.MICROSOFT.FOLDER,
   };
 }
 export function getTeamAsContentNode(team: microsoftgraph.Team): ContentNode {
@@ -62,6 +65,7 @@ export function getTeamAsContentNode(team: microsoftgraph.Team): ContentNode {
     preventSelection: true,
     expandable: true,
     permission: "none",
+    mimeType: MIME_TYPES.MICROSOFT.FOLDER,
   };
 }
 
@@ -86,6 +90,7 @@ export function getSiteAsContentNode(
     preventSelection: true,
     expandable: true,
     permission: "none",
+    mimeType: MIME_TYPES.MICROSOFT.FOLDER,
   };
 }
 
@@ -114,6 +119,7 @@ export function getChannelAsContentNode(
     lastUpdatedAt: null,
     expandable: false,
     permission: "none",
+    mimeType: MIME_TYPES.MICROSOFT.FOLDER,
   };
 }
 
@@ -134,6 +140,7 @@ export function getDriveAsContentNode(
     lastUpdatedAt: null,
     expandable: true,
     permission: "none",
+    mimeType: MIME_TYPES.MICROSOFT.FOLDER,
   };
 }
 export function getFolderAsContentNode(
@@ -149,22 +156,7 @@ export function getFolderAsContentNode(
     lastUpdatedAt: null,
     expandable: true,
     permission: "none",
-  };
-}
-
-export function getFileAsContentNode(
-  file: microsoftgraph.DriveItem,
-  parentInternalId: string
-): ContentNode {
-  return {
-    internalId: getDriveItemInternalId(file),
-    parentInternalId,
-    type: "file",
-    title: file.name || "unnamed",
-    sourceUrl: file.webUrl ?? null,
-    lastUpdatedAt: null,
-    expandable: false,
-    permission: "none",
+    mimeType: MIME_TYPES.MICROSOFT.FOLDER,
   };
 }
 
@@ -199,5 +191,11 @@ export function getMicrosoftNodeAsContentNode(
     lastUpdatedAt: null,
     expandable: isExpandable,
     permission: "none",
+    mimeType:
+      type === "database"
+        ? MIME_TYPES.MICROSOFT.SPREADSHEET
+        : type === "folder"
+          ? MIME_TYPES.MICROSOFT.FOLDER
+          : node.mimeType || MIME_TYPES.MICROSOFT.FOLDER,
   };
 }

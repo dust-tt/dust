@@ -4,7 +4,7 @@ import type {
   ContentNodesViewType,
   Result,
 } from "@dust-tt/types";
-import { assertNever, Err, Ok } from "@dust-tt/types";
+import { assertNever, Err, MIME_TYPES, Ok } from "@dust-tt/types";
 import { Op } from "sequelize";
 
 import type { GithubRepo } from "@connectors/connectors/github/lib/github_api";
@@ -298,6 +298,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
             expandable: true,
             permission: "read",
             lastUpdatedAt: null,
+            mimeType: MIME_TYPES.GITHUB.REPOSITORY,
           }))
         );
       }
@@ -368,6 +369,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
               expandable: false,
               permission: "read",
               lastUpdatedAt: latestIssue.updatedAt.getTime(),
+              mimeType: MIME_TYPES.GITHUB.ISSUES,
             });
           }
 
@@ -381,6 +383,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
               expandable: false,
               permission: "read",
               lastUpdatedAt: latestDiscussion.updatedAt.getTime(),
+              mimeType: MIME_TYPES.GITHUB.DISCUSSIONS,
             });
           }
 
@@ -394,6 +397,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
               expandable: true,
               permission: "read",
               lastUpdatedAt: codeRepo.codeUpdatedAt.getTime(),
+              mimeType: MIME_TYPES.GITHUB.CODE_ROOT,
             });
           }
 
@@ -435,6 +439,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
               expandable: true,
               permission: "read",
               lastUpdatedAt: directory.codeUpdatedAt.getTime(),
+              mimeType: MIME_TYPES.GITHUB.CODE_DIRECTORY,
             });
           });
 
@@ -448,6 +453,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
               expandable: false,
               permission: "read",
               lastUpdatedAt: file.codeUpdatedAt.getTime(),
+              mimeType: MIME_TYPES.GITHUB.CODE_FILE,
             });
           });
 
@@ -609,6 +615,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         expandable: true,
         permission: "read",
         lastUpdatedAt: null,
+        mimeType: MIME_TYPES.GITHUB.REPOSITORY,
       });
     });
 
@@ -627,6 +634,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         expandable: false,
         permission: "read",
         lastUpdatedAt: null,
+        mimeType: MIME_TYPES.GITHUB.ISSUES,
       });
     });
     allDiscussionsFromRepoIds.forEach((repoId) => {
@@ -643,6 +651,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         expandable: false,
         permission: "read",
         lastUpdatedAt: null,
+        mimeType: MIME_TYPES.GITHUB.DISCUSSIONS,
       });
     });
 
@@ -661,6 +670,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         expandable: false,
         permission: "read",
         lastUpdatedAt: issue.updatedAt.getTime(),
+        mimeType: MIME_TYPES.GITHUB.ISSUE,
       });
     });
 
@@ -679,6 +689,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         expandable: false,
         permission: "read",
         lastUpdatedAt: discussion.updatedAt.getTime(),
+        mimeType: MIME_TYPES.GITHUB.DISCUSSION,
       });
     });
 
@@ -693,6 +704,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         expandable: true,
         permission: "read",
         lastUpdatedAt: codeRepo.codeUpdatedAt.getTime(),
+        mimeType: MIME_TYPES.GITHUB.CODE_ROOT,
       });
     });
 
@@ -707,6 +719,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         expandable: true,
         permission: "read",
         lastUpdatedAt: directory.codeUpdatedAt.getTime(),
+        mimeType: MIME_TYPES.GITHUB.CODE_DIRECTORY,
       });
     });
 
@@ -721,6 +734,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         expandable: false,
         permission: "read",
         lastUpdatedAt: file.codeUpdatedAt.getTime(),
+        mimeType: MIME_TYPES.GITHUB.CODE_FILE,
       });
     });
 
