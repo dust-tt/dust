@@ -761,6 +761,7 @@ export async function upsertTable({
           const schema = schemaRes.value.schema;
           const headers = headersRes.value.header;
           const schemaHeaders = schema.map((s) => s.name);
+          const headersSet = new Set(headers);
 
           logger.info(
             {
@@ -774,7 +775,7 @@ export async function upsertTable({
           // Schema headers does not include columns that have only null values, so we check that
           // all schema headers are in the front computed headers and consider ouselves happy if
           // that's the case.
-          if (!schemaHeaders.every((v) => v === headers.find((h) => h === v))) {
+          if (!schemaHeaders.every((v) => headersSet.has(v))) {
             logger.info(
               {
                 firstRow: headersRes.value.firstRow,
