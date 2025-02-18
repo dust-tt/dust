@@ -209,7 +209,7 @@ async function processErrorResult(
     const errorMessage =
       res.error instanceof SlackExternalUserError
         ? res.error.message
-        : `An error occured : ${res.error.message}. Our team has been notified and will work on it as soon as possible.`;
+        : `An error occurred : ${res.error.message}. Our team has been notified and will work on it as soon as possible.`;
 
     const { slackChatBotMessage, mainMessage } =
       res.error instanceof SlackMessageError
