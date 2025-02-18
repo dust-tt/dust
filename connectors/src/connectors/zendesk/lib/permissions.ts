@@ -4,7 +4,7 @@ import type {
   ContentNodesViewType,
   ModelId,
 } from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
+import { assertNever, MIME_TYPES } from "@dust-tt/types";
 import type { Client } from "node-zendesk";
 
 import {
@@ -101,6 +101,7 @@ async function getRootLevelContentNodes(
           expandable: true,
           permission: "none",
           lastUpdatedAt: null,
+          mimeType: MIME_TYPES.ZENDESK.BRAND,
         }
     );
   }
@@ -157,6 +158,7 @@ async function getBrandChildren(
       expandable: false,
       permission: "none",
       lastUpdatedAt: null,
+      mimeType: MIME_TYPES.ZENDESK.TICKETS,
     };
     nodes.push(ticketsNode);
 
@@ -176,6 +178,7 @@ async function getBrandChildren(
         expandable: true,
         permission: "none",
         lastUpdatedAt: null,
+        mimeType: MIME_TYPES.ZENDESK.HELP_CENTER,
       };
       nodes.push(helpCenterNode);
     }
@@ -233,6 +236,7 @@ async function getHelpCenterChildren(
           expandable: false,
           permission: "none",
           lastUpdatedAt: null,
+          mimeType: MIME_TYPES.ZENDESK.CATEGORY,
         }
     );
   }

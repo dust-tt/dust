@@ -4,7 +4,7 @@ import type {
   ModelId,
   Result,
 } from "@dust-tt/types";
-import { Err, EXCLUDE_SCHEMAS, Ok } from "@dust-tt/types";
+import { Err, EXCLUDE_SCHEMAS, MIME_TYPES, Ok } from "@dust-tt/types";
 
 import {
   fetchDatabases,
@@ -52,7 +52,11 @@ export const fetchAvailableChildrenInBigQuery = async ({
         const permission = syncedDatabasesInternalIds.includes(internalId)
           ? "read"
           : "none";
-        return getContentNodeFromInternalId(internalId, permission);
+        return getContentNodeFromInternalId(
+          internalId,
+          permission,
+          MIME_TYPES.BIGQUERY
+        );
       })
     );
   }
@@ -82,7 +86,11 @@ export const fetchAvailableChildrenInBigQuery = async ({
         const permission = syncedSchemasInternalIds.includes(internalId)
           ? "read"
           : "none";
-        return getContentNodeFromInternalId(internalId, permission);
+        return getContentNodeFromInternalId(
+          internalId,
+          permission,
+          MIME_TYPES.BIGQUERY
+        );
       })
     );
   }
@@ -106,7 +114,11 @@ export const fetchAvailableChildrenInBigQuery = async ({
         const permission = syncedTablesInternalIds.includes(internalId)
           ? "read"
           : "none";
-        return getContentNodeFromInternalId(internalId, permission);
+        return getContentNodeFromInternalId(
+          internalId,
+          permission,
+          MIME_TYPES.BIGQUERY
+        );
       })
     );
   }
@@ -138,13 +150,21 @@ export const fetchReadNodes = async ({
 
   return new Ok([
     ...availableDatabases.map((db) =>
-      getContentNodeFromInternalId(db.internalId, "read")
+      getContentNodeFromInternalId(db.internalId, "read", MIME_TYPES.BIGQUERY)
     ),
     ...availableSchemas.map((schema) =>
-      getContentNodeFromInternalId(schema.internalId, "read")
+      getContentNodeFromInternalId(
+        schema.internalId,
+        "read",
+        MIME_TYPES.BIGQUERY
+      )
     ),
     ...availableTables.map((table) =>
-      getContentNodeFromInternalId(table.internalId, "read")
+      getContentNodeFromInternalId(
+        table.internalId,
+        "read",
+        MIME_TYPES.BIGQUERY
+      )
     ),
   ]);
 };
@@ -183,7 +203,11 @@ export const fetchSyncedChildren = async ({
         },
       });
       const schemaContentNodes = schemas.map((schema) =>
-        getContentNodeFromInternalId(schema.internalId, "read")
+        getContentNodeFromInternalId(
+          schema.internalId,
+          "read",
+          MIME_TYPES.BIGQUERY
+        )
       );
       return new Ok(schemaContentNodes);
     }
@@ -208,12 +232,18 @@ export const fetchSyncedChildren = async ({
       }),
     ]);
     const schemas = availableSchemas.map((schema) =>
-      getContentNodeFromInternalId(schema.internalId, "read")
+      getContentNodeFromInternalId(
+        schema.internalId,
+        "read",
+        MIME_TYPES.BIGQUERY
+      )
     );
     availableTables.forEach((table) => {
       const schemaToAdd = `${table.databaseName}.${table.schemaName}`;
       if (!schemas.find((s) => s.internalId === schemaToAdd)) {
-        schemas.push(getContentNodeFromInternalId(schemaToAdd, "none"));
+        schemas.push(
+          getContentNodeFromInternalId(schemaToAdd, "none", MIME_TYPES.BIGQUERY)
+        );
       }
     });
     return new Ok(schemas);
@@ -230,7 +260,11 @@ export const fetchSyncedChildren = async ({
       },
     });
     const tables = availableTables.map((table) =>
-      getContentNodeFromInternalId(table.internalId, "read")
+      getContentNodeFromInternalId(
+        table.internalId,
+        "read",
+        MIME_TYPES.BIGQUERY
+      )
     );
     return new Ok(tables);
   }
@@ -255,7 +289,11 @@ export const getBatchContentNodes = async ({
   const nodes: ContentNode[] = [];
   for (const internalId of internalIds) {
     if (tables.find((table) => table.internalId.startsWith(internalId))) {
-      const node = getContentNodeFromInternalId(internalId, "read");
+      const node = getContentNodeFromInternalId(
+        internalId,
+        "read",
+        MIME_TYPES.BIGQUERY
+      );
       nodes.push(node);
     }
   }

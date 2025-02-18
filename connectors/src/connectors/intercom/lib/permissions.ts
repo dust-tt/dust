@@ -1,4 +1,5 @@
 import type { ContentNode, ModelId } from "@dust-tt/types";
+import { MIME_TYPES } from "@dust-tt/types";
 
 import {
   getHelpCenterCollectionInternalId,
@@ -64,6 +65,7 @@ export async function retrieveSelectedNodes({
       expandable,
       permission: collection.permission,
       lastUpdatedAt: collection.updatedAt.getTime() || null,
+      mimeType: MIME_TYPES.INTERCOM.COLLECTION,
     });
   });
 
@@ -85,6 +87,7 @@ export async function retrieveSelectedNodes({
       expandable: true,
       permission: "read",
       lastUpdatedAt: null,
+      mimeType: MIME_TYPES.INTERCOM.TEAMS_FOLDER,
     });
   }
 
@@ -104,6 +107,7 @@ export async function retrieveSelectedNodes({
       expandable: false,
       permission: team.permission,
       lastUpdatedAt: team.updatedAt.getTime() || null,
+      mimeType: MIME_TYPES.INTERCOM.TEAM,
     });
   });
 

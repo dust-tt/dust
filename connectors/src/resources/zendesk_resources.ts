@@ -1,5 +1,5 @@
 import type { ContentNode, Result } from "@dust-tt/types";
-import { Ok } from "@dust-tt/types";
+import { MIME_TYPES, Ok } from "@dust-tt/types";
 import type {
   Attributes,
   CreationAttributes,
@@ -321,6 +321,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
           ? "read"
           : "none",
       lastUpdatedAt: this.updatedAt.getTime(),
+      mimeType: MIME_TYPES.ZENDESK.BRAND,
     };
   }
 
@@ -338,6 +339,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
       expandable: true,
       permission: this.helpCenterPermission,
       lastUpdatedAt: null,
+      mimeType: MIME_TYPES.ZENDESK.HELP_CENTER,
     };
   }
 
@@ -358,6 +360,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
       expandable: expandable,
       permission: this.ticketsPermission,
       lastUpdatedAt: null,
+      mimeType: MIME_TYPES.ZENDESK.TICKETS,
     };
   }
 }
@@ -609,6 +612,7 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
       expandable: expandable,
       permission,
       lastUpdatedAt: this.updatedAt.getTime(),
+      mimeType: MIME_TYPES.ZENDESK.CATEGORY,
     };
   }
 
@@ -693,6 +697,7 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
       permission: this.permission,
       lastUpdatedAt: this.updatedAt.getTime(),
       preventSelection: true,
+      mimeType: MIME_TYPES.ZENDESK.TICKET,
     };
   }
 
@@ -894,6 +899,7 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
       permission: this.permission,
       lastUpdatedAt: this.updatedAt.getTime(),
       preventSelection: true,
+      mimeType: MIME_TYPES.ZENDESK.ARTICLE,
     };
   }
 

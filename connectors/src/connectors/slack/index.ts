@@ -9,6 +9,7 @@ import type {
 import {
   Err,
   isSlackAutoReadPatterns,
+  MIME_TYPES,
   Ok,
   safeParseJSON,
 } from "@dust-tt/types";
@@ -409,6 +410,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
         permission: ch.permission,
         lastUpdatedAt: null,
         providerVisibility: ch.private ? "private" : "public",
+        mimeType: MIME_TYPES.SLACK.CHANNEL,
       }));
 
       resources.sort((a, b) => {
@@ -630,6 +632,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
       permission: ch.permission,
       lastUpdatedAt: null,
       providerVisibility: ch.private ? "private" : "public",
+      mimeType: MIME_TYPES.SLACK.CHANNEL,
     }));
 
     return new Ok(contentNodes);

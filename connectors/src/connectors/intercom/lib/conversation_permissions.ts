@@ -4,6 +4,7 @@ import type {
   ContentNodesViewType,
   ModelId,
 } from "@dust-tt/types";
+import { MIME_TYPES } from "@dust-tt/types";
 
 import { getIntercomAccessToken } from "@connectors/connectors/intercom/lib/intercom_access_token";
 import {
@@ -143,6 +144,7 @@ export async function retrieveIntercomConversationsPermissions({
         preventSelection: false,
         permission: isAllConversationsSynced ? "read" : "none",
         lastUpdatedAt: null,
+        mimeType: MIME_TYPES.INTERCOM.TEAMS_FOLDER,
       });
     } else if (isRootLevel && hasTeamsWithReadPermission) {
       nodes.push({
@@ -155,6 +157,7 @@ export async function retrieveIntercomConversationsPermissions({
         preventSelection: false,
         permission: "read",
         lastUpdatedAt: null,
+        mimeType: MIME_TYPES.INTERCOM.TEAMS_FOLDER,
       });
     }
 
@@ -169,6 +172,7 @@ export async function retrieveIntercomConversationsPermissions({
           expandable: false,
           permission: team.permission,
           lastUpdatedAt: null,
+          mimeType: MIME_TYPES.INTERCOM.TEAM,
         });
       });
     }
@@ -186,6 +190,7 @@ export async function retrieveIntercomConversationsPermissions({
         preventSelection: false,
         permission: isAllConversationsSynced ? "read" : "none",
         lastUpdatedAt: null,
+        mimeType: MIME_TYPES.INTERCOM.TEAMS_FOLDER,
       });
     }
     if (parentInternalId === allTeamsInternalId) {
@@ -202,6 +207,7 @@ export async function retrieveIntercomConversationsPermissions({
           expandable: false,
           permission: isTeamInDb ? "read" : "none",
           lastUpdatedAt: null,
+          mimeType: MIME_TYPES.INTERCOM.TEAM,
         });
       });
     }
