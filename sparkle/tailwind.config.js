@@ -93,6 +93,7 @@ module.exports = {
       }),
       backgroundImage: {
         "rainbow-gradient": `linear-gradient(90deg, ${colors.sky[300]}, ${colors.purple[700]}, ${colors.blue[500]}, ${colors.indigo[300]}, ${colors.sky[600]}, ${colors.blue[500]}, ${colors.purple[300]})`,
+        "rainbow-gradient-night": `linear-gradient(90deg, ${colors.sky[400]}, ${colors.purple[600]}, ${colors.blue[400]}, ${colors.indigo[400]}, ${colors.sky[500]}, ${colors.blue[400]}, ${colors.purple[400]})`,
       },
       keyframes: {
         pulse: {
@@ -270,7 +271,7 @@ module.exports = {
           },
           background: {
             DEFAULT: "#F6F8FB",
-            night: colors.slate[900],
+            night: colors.slate[800],
           },
         },
         highlight: {

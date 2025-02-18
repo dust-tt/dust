@@ -50,7 +50,7 @@ const sizeClasses: Record<SheetSizeType, string> = {
 const sheetVariants = cva(
   cn(
     "s-fixed s-z-50 s-overflow-hidden s-flex s-flex-col s-h-full s-w-full",
-    "s-bg-background dark:s-bg-background-night",
+    "s-bg-background dark:s-bg-muted-background-night",
     "s-transition s-ease-in-out data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-duration-300 data-[state=open]:s-duration-500"
   ),
   {
@@ -121,7 +121,7 @@ const SheetHeader = ({
   <div
     className={cn(
       "s-z-50 s-flex s-flex-none s-flex-col s-gap-2 s-p-5 s-text-left",
-      "s-bg-background dark:s-bg-background-night",
+      "s-bg-background dark:s-bg-muted-background-night",
       className
     )}
     {...props}
