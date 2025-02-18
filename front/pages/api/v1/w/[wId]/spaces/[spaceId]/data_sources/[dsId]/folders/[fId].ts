@@ -1,8 +1,4 @@
-import type {
-  DeleteFolderResponseType,
-  GetFolderResponseType,
-  UpsertFolderResponseType,
-} from "@dust-tt/client";
+import type { DeleteFolderResponseType, GetFolderResponseType, UpsertFolderResponseType } from "@dust-tt/client";
 import { UpsertDataSourceFolderRequestSchema } from "@dust-tt/client";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
@@ -45,7 +41,6 @@ async function handler(
     });
   }
 
-  const owner = auth.getNonNullableWorkspace();
   const coreAPI = new CoreAPI(apiConfig.getCoreAPIConfig(), logger);
   if (!auth.isSystemKey()) {
     return apiError(req, res, {
