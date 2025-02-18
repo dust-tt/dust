@@ -244,8 +244,6 @@ export class ConfluenceClient {
   ): Promise<T> {
     const response = await (async () => {
       try {
-        console.log("Doing request", { endpoint, retryCount });
-
         return await fetch(`${this.apiUrl}${endpoint}`, {
           headers: {
             Authorization: `Bearer ${this.authToken}`,

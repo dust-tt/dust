@@ -190,6 +190,7 @@ export async function bulkFetchConfluencePageRefs(
       hasChildren: p.childTypes.page.value,
       hasReadRestrictions,
       id: p.id,
+      // Ancestors is an array of the page's ancestors, starting with the root page.
       parentId: p.ancestors[p.ancestors.length - 1]?.id ?? null,
       version: p.version.number,
     };
