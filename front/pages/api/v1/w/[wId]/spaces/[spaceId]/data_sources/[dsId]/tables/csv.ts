@@ -125,6 +125,7 @@ async function handler(
           case "invalid_parents":
           case "invalid_parent_id":
           case "invalid_url":
+          case "title_too_long":
           case "missing_csv":
             return apiError(req, res, {
               status_code: 400,

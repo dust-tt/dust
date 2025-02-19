@@ -46,6 +46,7 @@ import { rowsFromCsv, upsertTableFromCsv } from "@app/lib/api/tables";
 import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import { MAX_NODE_TITLE_LENGTH } from "@app/lib/content_nodes";
 import { DustError } from "@app/lib/error";
 import { Lock } from "@app/lib/lock";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -299,6 +300,16 @@ export async function upsertDocument({
     );
   }
 
+  // Enforce a max size on the title: since these will be synced in ES we don't support arbitrarily large titles.
+  if (title && title.length > MAX_NODE_TITLE_LENGTH) {
+    return new Err(
+      new DustError(
+        "title_too_long",
+        `Invalid title: title too long (max ${MAX_NODE_TITLE_LENGTH} characters).`
+      )
+    );
+  }
+
   let sourceUrl: string | null = null;
   if (source_url) {
     const { valid: isSourceUrlValid, standardized: standardizedSourceUrl } =
@@ -324,16 +335,19 @@ export async function upsertDocument({
         }
       : section || null;
 
-  const nonNullTags = tags || [`title:${title}`];
+  const nonNullTags = tags || [];
   const titleInTags = nonNullTags
     .find((t) => t.startsWith("title:"))
     ?.split(":")
     .slice(1)
     .join(":");
+  if (!titleInTags) {
+    nonNullTags.push(`title:${title}`);
+  }
 
   if (titleInTags && titleInTags !== title) {
     logger.error(
-      { documentId, titleInTags, title },
+      { dataSourceId: dataSource.sId, documentId, titleInTags, title },
       "[CoreNodes] Inconsistency between tags and title."
     );
     // TODO(2025-02-18 aubin): uncomment what follows.
@@ -571,6 +585,7 @@ export async function upsertTable({
         | "invalid_url"
         | "table_not_found"
         | "file_not_found"
+        | "title_too_long"
         | "invalid_parent_id"
         | "invalid_parents"
         | "internal_error";
@@ -621,16 +636,33 @@ export async function upsertTable({
     });
   }
 
-  const tableTags = params.tags ?? [`title:${params.title}`];
+  // Enforce a max size on the title: since these will be synced in ES we don't support arbitrarily large titles.
+  if (params.title && params.title.length > MAX_NODE_TITLE_LENGTH) {
+    return new Err({
+      name: "dust_error",
+      code: "title_too_long",
+      message: `Invalid title: title too long (max ${MAX_NODE_TITLE_LENGTH} characters).`,
+    });
+  }
+
+  const tableTags = params.tags ?? [];
   const titleInTags = tableTags
     .find((t) => t.startsWith("title:"))
     ?.split(":")
     .slice(1)
     .join(":");
+  if (!titleInTags) {
+    tableTags.push(`title:${params.title}`);
+  }
 
   if (titleInTags && titleInTags !== params.title) {
     logger.error(
-      { tableId, titleInTags, title: params.title },
+      {
+        dataSourceId: dataSource.sId,
+        tableId,
+        titleInTags,
+        title: params.title,
+      },
       "[CoreNodes] Inconsistency between tags and title."
     );
     // TODO(2025-02-18 aubin): uncomment what follows.
