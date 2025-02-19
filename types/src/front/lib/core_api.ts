@@ -153,6 +153,41 @@ export type CoreAPIRow = {
   value: Record<string, CoreAPIRowValue>;
 };
 
+export function isRowMatchingSchema(
+  row: CoreAPIRow,
+  schema: CoreAPITableSchema
+) {
+  for (const [k, v] of Object.entries(row.value)) {
+    if (v === null) {
+      continue;
+    }
+    const schemaEntry = schema.find((s) => s.name === k);
+    if (!schemaEntry) {
+      return false;
+    }
+
+    if (schemaEntry.value_type === "int" && typeof v !== "number") {
+      return false;
+    } else if (schemaEntry.value_type === "float" && typeof v !== "number") {
+      return false;
+    } else if (schemaEntry.value_type === "text" && typeof v !== "string") {
+      return false;
+    } else if (schemaEntry.value_type === "bool" && typeof v !== "boolean") {
+      return false;
+    } else if (
+      schemaEntry.value_type === "datetime" &&
+      (typeof v !== "object" ||
+        !v ||
+        typeof v.epoch !== "number" ||
+        (v.string_value && typeof v.string_value !== "string"))
+    ) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 export type CoreAPIQueryResult = {
   value: Record<string, unknown>;
 };
