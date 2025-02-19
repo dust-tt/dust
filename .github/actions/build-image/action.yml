@@ -42,11 +42,21 @@ runs:
       env:
         DEPOT_TOKEN: ${{ inputs.depot_token }}
       run: |
-        CONFIG_FILE=".github/configs/${{ inputs.region }}/.env.$(
-          if [[ ${{ inputs.component }} == *"qa"* ]]; then echo "qa";
-          elif [[ ${{ inputs.component }} == *"edge"* ]]; then echo "edge";
-          else echo "prod"; fi
-        )"
+        COMPONENT="${{ inputs.component }}"
+
+        # Determine environment and base component name
+        if [[ ${COMPONENT} == *"-qa" ]]; then
+          ENV="qa"
+          BASE_COMPONENT=${COMPONENT%-qa}
+        elif [[ ${COMPONENT} == *"-edge" ]]; then
+          ENV="edge"
+          BASE_COMPONENT=${COMPONENT%-edge}
+        else
+          ENV="prod"
+          BASE_COMPONENT=${COMPONENT}
+        fi
+
+        CONFIG_FILE=".github/configs/${{ inputs.region }}/.env.${ENV}"
 
         build_args=()
         while IFS='=' read -r key value; do
@@ -58,7 +68,7 @@ runs:
           --platform linux/amd64 \
           --cache-from type=gha,scope=${{ inputs.component }} \
           --cache-to type=gha,mode=max,scope=${{ inputs.component }} \
-          -f ./dockerfiles/${{ inputs.component }}.Dockerfile \
+          -f ./dockerfiles/${BASE_COMPONENT}.Dockerfile \
           -t ${{ inputs.region }}-docker.pkg.dev/${{ inputs.project_id }}/dust-images/${{ inputs.component }}:${GITHUB_SHA::7} \
           --build-arg COMMIT_HASH=${GITHUB_SHA::7} \
           ${build_args[@]} \
