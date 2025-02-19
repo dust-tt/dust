@@ -703,6 +703,14 @@ export async function upsertTable({
           message: "Failed to parse CSV: " + csvRowsRes.error.message,
         });
       }
+      logger.info(
+        {
+          workspaceId: owner.sId,
+          tableId,
+          method: "upsertTable",
+        },
+        "[CSV-FILE] Received direct CSV not file"
+      );
     }
 
     if (fileId) {
