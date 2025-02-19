@@ -72,7 +72,6 @@ import {
   isRemoteDatabase,
 } from "@app/lib/data_sources";
 import { useConnectorPermissions } from "@app/lib/swr/connectors";
-import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import { useSpaceDataSourceViews, useSystemSpace } from "@app/lib/swr/spaces";
 import { useUser } from "@app/lib/swr/user";
 import {
@@ -615,10 +614,12 @@ export function ConnectorPermissionsModal({
     [owner, dataSource]
   );
 
-  const { nodes: allSelectedResources, isNodesLoading } =
-    useDataSourceViewContentNodes({
+  const { resources: allSelectedResources, isResourcesLoading } =
+    useConnectorPermissions({
       owner,
-      dataSourceView,
+      dataSource,
+      filterPermission: "read",
+      parentId: null,
       viewType: "all",
       disabled: !canUpdatePermissions,
     });
@@ -636,7 +637,9 @@ export function ConnectorPermissionsModal({
           [r.internalId]: {
             isSelected: true,
             node: r,
-            parents: r.parentInternalIds || [],
+            // content nodes are not synced yet so we cannot access their parents via permissions
+            // this is not an issue for this component
+            parents: null,
           },
         }),
         {}
@@ -848,7 +851,7 @@ export function ConnectorPermissionsModal({
                       canUpdatePermissions ? selectedNodes : undefined
                     }
                     setSelectedNodes={
-                      canUpdatePermissions && !isNodesLoading
+                      canUpdatePermissions && !isResourcesLoading
                         ? setSelectedNodes
                         : undefined
                     }
