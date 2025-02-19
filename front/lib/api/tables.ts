@@ -3,6 +3,7 @@ import type {
   CoreAPIRow,
   CoreAPIRowValue,
   CoreAPITable,
+  CoreAPITableSchema,
   Result,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -11,6 +12,7 @@ import {
   Err,
   getSanitizedHeaders,
   guessDelimiter,
+  isRowMatchingSchema,
   Ok,
 } from "@dust-tt/types";
 import { CsvError, parse } from "csv-parse";
@@ -162,14 +164,15 @@ export async function upsertTableFromCsv({
 }): Promise<Result<{ table: CoreAPITable }, TableOperationError>> {
   const owner = auth.getNonNullableWorkspace();
 
-  if (csv) {
+  if (csv && !fileId) {
     logger.info(
       {
         workspaceId: owner.sId,
         tableId,
         tableName,
+        method: "upsertTableFromCsv",
       },
-      "Received direct CSV not file"
+      "[CSV-FILE] Received direct CSV not file"
     );
   }
 
@@ -179,6 +182,9 @@ export async function upsertTableFromCsv({
       message: "Invalid request body, parents[1] and parent_id should be equal",
     });
   }
+
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+  let fileSchema: CoreAPITableSchema | null = null;
 
   // TODO(spolu): [CSV-FILE] add ability to core to take a GCS file path directly
   if (fileId) {
@@ -206,6 +212,29 @@ export async function upsertTableFromCsv({
         message:
           "The file provided has not the expected `upsert_table` use-case",
       });
+    }
+
+    const schemaRes = await coreAPI.tableValidateCSVContent({
+      projectId: dataSource.dustAPIProjectId,
+      dataSourceId: dataSource.dustAPIDataSourceId,
+      upsertQueueBucketCSVPath: file.getCloudStoragePath(auth, "processed"),
+    });
+
+    if (schemaRes.isOk()) {
+      fileSchema = schemaRes.value.schema;
+    } else {
+      logger.warn(
+        {
+          projectId: dataSource.dustAPIProjectId,
+          dataSourceId: dataSource.dustAPIDataSourceId,
+          dataSourceName: dataSource.name,
+          workspaceId: owner.id,
+          fileId,
+          fileSchemaError: schemaRes.error,
+          error: schemaRes.error,
+        },
+        "[CSV-FILE] Failed to get file schema."
+      );
     }
 
     const content = await getFileContent(auth, file);
@@ -272,7 +301,6 @@ export async function upsertTableFromCsv({
     return new Err(errorDetails);
   }
 
-  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const tableRes = await coreAPI.upsertTable({
     projectId: dataSource.dustAPIProjectId,
     dataSourceId: dataSource.dustAPIDataSourceId,
@@ -311,6 +339,29 @@ export async function upsertTableFromCsv({
 
   if (csvRows) {
     const now = performance.now();
+
+    // TODO(spolu): [CSV-FILE] to remove. Validating that the schema match. Particularly interested
+    // in dates here.
+    if (fileSchema) {
+      csvRows.slice(0, 5).forEach((r) => {
+        if (!isRowMatchingSchema(r, fileSchema)) {
+          logger.info(
+            {
+              projectId: dataSource.dustAPIProjectId,
+              dataSourceId: dataSource.dustAPIDataSourceId,
+              dataSourceName: dataSource.name,
+              workspaceId: owner.id,
+              tableId,
+              tableName,
+              row: r,
+              schema: fileSchema,
+            },
+            "[CSV-FILE] mistmatch: row and schema"
+          );
+        }
+      });
+    }
+
     const rowsRes = await coreAPI.upsertTableRows({
       projectId: dataSource.dustAPIProjectId,
       dataSourceId: dataSource.dustAPIDataSourceId,
