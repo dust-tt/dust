@@ -165,7 +165,7 @@ jobs:
                 image_tag: '${{ needs.prepare.outputs.short_sha }}',
                 slack_thread_ts: "${{ needs.notify-start.outputs.thread_ts }}",
                 slack_channel: '${{ secrets.SLACK_CHANNEL_ID }}',
-                run_playwright: ${{ inputs.run_playwright_tests }},
+                run_playwright: '${{ inputs.run_playwright_tests }}',
                 playwright_sha: '${{ github.sha }}'
               }
             })
