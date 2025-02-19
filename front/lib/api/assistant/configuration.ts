@@ -534,6 +534,16 @@ async function fetchWorkspaceAgentConfigurationsForView(
       actions.push(...reasoningActionsConfigurations);
     }
 
+    const model: (typeof agentConfigurationType)["model"] = {
+      providerId: agent.providerId,
+      modelId: agent.modelId,
+      temperature: agent.temperature,
+    };
+
+    if (agent.reasoningEffort) {
+      model.reasoningEffort = agent.reasoningEffort;
+    }
+
     const agentConfigurationType: AgentConfigurationType = {
       id: agent.id,
       sId: agent.sId,
@@ -545,12 +555,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
       pictureUrl: agent.pictureUrl,
       description: agent.description,
       instructions: agent.instructions,
-      model: {
-        providerId: agent.providerId,
-        modelId: agent.modelId,
-        temperature: agent.temperature,
-        reasoningEffort: agent?.reasoningEffort ?? undefined,
-      },
+      model,
       status: agent.status,
       actions,
       versionAuthorId: agent.authorId,
