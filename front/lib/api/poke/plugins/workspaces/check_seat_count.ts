@@ -30,7 +30,7 @@ export const checkSeatCount = createPlugin(
 
     return new Ok({
       display: "text",
-      value: `Workspace ${workspace.name} upgrade to business plan.`,
+      value: res.value,
     });
   }
 );
