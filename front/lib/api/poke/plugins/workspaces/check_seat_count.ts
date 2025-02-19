@@ -7,8 +7,7 @@ export const checkSeatCount = createPlugin(
   {
     id: "check-seat-count",
     name: "Check the seat count",
-    description:
-      "Check the seat count between Stripe and Dust for PER_SEAT workspace.",
+    description: "Check the seat count between Stripe and Dust.",
     resourceTypes: ["workspaces"],
     args: {
       updateQuantity: {
