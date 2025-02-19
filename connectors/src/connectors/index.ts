@@ -18,6 +18,7 @@ import type {
 } from "@connectors/connectors/interface";
 import { MicrosoftConnectorManager } from "@connectors/connectors/microsoft";
 import { NotionConnectorManager } from "@connectors/connectors/notion";
+import { SalesforceConnectorManager } from "@connectors/connectors/salesforce";
 import { SlackConnectorManager } from "@connectors/connectors/slack";
 import { SnowflakeConnectorManager } from "@connectors/connectors/snowflake";
 import { WebcrawlerConnectorManager } from "@connectors/connectors/webcrawler";
@@ -67,7 +68,7 @@ export function getConnectorManager({
       return new BigQueryConnectorManager(connectorId);
     // TODO(salesforce): implement this
     case "salesforce":
-      throw new Error("Connector type salesforce NOT IMPLEMENTED YET");
+      return new SalesforceConnectorManager(connectorId);
     default:
       assertNever(connectorProvider);
   }
@@ -128,7 +129,7 @@ export function createConnector({
       return BigQueryConnectorManager.create(params);
     // TODO(salesforce): implement this
     case "salesforce":
-      throw new Error("Connector type salesforce NOT IMPLEMENTED YET");
+      return SalesforceConnectorManager.create(params);
     default:
       assertNever(connectorProvider);
   }

@@ -1,13 +1,16 @@
 import type { ContentNode, Result } from "@dust-tt/types";
-import { Ok } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
 
 import type {
-  ConnectorManagerError,
   CreateConnectorErrorCode,
   RetrievePermissionsErrorCode,
   UpdateConnectorErrorCode,
 } from "@connectors/connectors/interface";
+import { ConnectorManagerError } from "@connectors/connectors/interface";
 import { BaseConnectorManager } from "@connectors/connectors/interface";
+import { getSalesforceCredentials } from "@connectors/connectors/salesforce/lib/oauth";
+import { SalesforceConfigurationModel } from "@connectors/lib/models/salesforce";
+import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
@@ -50,15 +53,31 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
   }
 
   async clean(): Promise<Result<undefined, Error>> {
+    const connector = await ConnectorResource.fetchById(this.connectorId);
+    if (!connector) {
+      throw new Error(`Connector ${this.connectorId} not found`);
+    }
+
+    await SalesforceConfigurationModel.destroy({
+      where: {
+        connectorId: connector.id,
+      },
+    });
+
+    const res = await connector.delete();
+    if (res.isErr()) {
+      return res;
+    }
+
     // TODO(salesforce): implement this
 
-    throw new Error("Not implemented");
+    return new Ok(undefined);
   }
 
   async stop(): Promise<Result<undefined, Error>> {
     // TODO(salesforce): implement this
 
-    throw new Error("Not implemented");
+    return new Ok(undefined);
   }
 
   async resume(): Promise<Result<undefined, Error>> {
@@ -78,7 +97,23 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
   > {
     // TODO(salesforce): implement this
 
-    throw new Error("Not implemented");
+    const c = await ConnectorResource.fetchById(this.connectorId);
+    if (!c) {
+      logger.error({ connectorId: this.connectorId }, "Connector not found");
+      return new Err(
+        new ConnectorManagerError("CONNECTOR_NOT_FOUND", "Connector not found")
+      );
+    }
+
+    const connectionId = c.connectionId;
+
+    const { accessToken, instanceUrl } =
+      await getSalesforceCredentials(connectionId);
+
+    void accessToken;
+    void instanceUrl;
+
+    return new Ok([]);
   }
 
   async setPermissions(): Promise<Result<undefined, Error>> {
