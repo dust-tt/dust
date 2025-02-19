@@ -10,6 +10,9 @@ import {
 import type { ContentNode } from "@dust-tt/types";
 import { assertNever, MIME_TYPES } from "@dust-tt/types";
 
+// Since titles will be synced in ES we don't support arbitrarily large titles.
+export const MAX_NODE_TITLE_LENGTH = 512;
+
 // Mime types that should be represented with a Channel icon.
 export const CHANNEL_MIME_TYPES = [
   MIME_TYPES.GITHUB.DISCUSSIONS,

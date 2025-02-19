@@ -12,6 +12,7 @@ export type DustErrorCode =
   | "invalid_url"
   | "invalid_parents"
   | "invalid_parent_id"
+  | "title_too_long"
   | "invalid_title_in_tags"
   // Table
   | "missing_csv"
