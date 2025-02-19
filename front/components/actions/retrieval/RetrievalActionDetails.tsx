@@ -19,7 +19,7 @@ export function RetrievalActionDetails({
   const documentCitations = makeDocumentCitations(action.documents ?? []);
 
   const isIncludeAction = !action.params.query;
-
+  action.agentMessageId;
   return (
     <ActionDetailsWrapper
       actionName={isIncludeAction ? "Include data" : "Search data"}
@@ -98,7 +98,8 @@ function makeQueryDescription(action: RetrievalActionType) {
         ? `${relativeTimeFrame.duration} ${relativeTimeFrame.unit}s`
         : `${relativeTimeFrame.unit}`)
     : "across all time periods";
-  const tagsInAsString = tagsIn ? `, with labels ${tagsIn?.join(", ")}` : "";
+  const tagsInAsString =
+    tagsIn && tagsIn.length > 0 ? `, with labels ${tagsIn?.join(", ")}` : "";
   const tagsNotAsString =
     tagsNot && tagsNot.length > 0
       ? `, excluding labels ${tagsNot?.join(", ")}`
