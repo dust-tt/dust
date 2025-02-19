@@ -28,7 +28,8 @@ import {
   upsertDataSourceFolder,
   upsertDataSourceTableFromCsv,
 } from "@connectors/lib/data_sources";
-import { ProviderWorkflowError, TablesError } from "@connectors/lib/error";
+import type { TablesError } from "@connectors/lib/error";
+import { ProviderWorkflowError } from "@connectors/lib/error";
 import type { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
 import { GoogleDriveSheet } from "@connectors/lib/models/google_drive";
 import type { Logger } from "@connectors/logger/logger";
@@ -200,30 +201,13 @@ async function processSheet(
   const rows = getValidRows(sheet.values, loggerArgs);
   // Assuming the first line as headers, at least one additional data line is required.
   if (rows.length > 1) {
-    let upsertError = null;
-    try {
-      upsertError = await upsertGdriveTable(
-        connector,
-        sheet,
-        parents,
-        rows,
-        tags
-      );
-    } catch (err) {
-      if (err instanceof TablesError) {
-        logger.warn(
-          { ...loggerArgs, error: err },
-          "[Spreadsheet] Tables error - skipping (but not failing)."
-        );
-        return false;
-      } else {
-        logger.error(
-          { ...loggerArgs, error: err },
-          "[Spreadsheet] Failed to upsert table."
-        );
-        throw err;
-      }
-    }
+    const upsertError = await upsertGdriveTable(
+      connector,
+      sheet,
+      parents,
+      rows,
+      tags
+    );
 
     await upsertSheetInDb(connector, sheet, upsertError);
 
