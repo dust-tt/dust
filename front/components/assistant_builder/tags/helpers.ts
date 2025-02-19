@@ -10,7 +10,7 @@ export function getActionTags(
   dsConfig: DataSourceViewSelectionConfiguration,
   mode: "in" | "not"
 ): DataSourceTag[] {
-  if (!dsConfig.tagsFilter || dsConfig.tagsFilter === "auto") {
+  if (!dsConfig.tagsFilter) {
     return [];
   }
   const dscFilter =

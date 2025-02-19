@@ -4,7 +4,10 @@
 
 import { BaseAction } from "../../../front/assistant/actions/index";
 import { ConnectorProvider } from "../../../front/data_source";
-import { DataSourceViewType } from "../../../front/data_source_view";
+import {
+  DataSourceViewType,
+  TagsFilter,
+} from "../../../front/data_source_view";
 import { ModelId } from "../../../shared/model_id";
 import { ioTsEnum } from "../../../shared/utils/iots_utils";
 
@@ -31,7 +34,7 @@ export function isTimeFrame(arg: RetrievalTimeframe): arg is TimeFrame {
 
 export type DataSourceFilter = {
   parents: { in: string[]; not: string[] } | null;
-  tags?: { in: string[]; not: string[] } | "auto" | null;
+  tags?: TagsFilter;
 };
 
 export type DataSourceConfiguration = {

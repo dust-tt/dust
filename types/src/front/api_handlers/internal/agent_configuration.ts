@@ -65,8 +65,8 @@ const OptionalDataSourceFilterTagsCodec = t.partial({
     t.type({
       in: t.array(t.string),
       not: t.array(t.string),
+      mode: t.union([t.literal("custom"), t.literal("auto")]),
     }),
-    t.literal("auto"),
     t.null,
   ]),
 });

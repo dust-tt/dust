@@ -255,9 +255,13 @@ export function applyDataSourceFilters(
       assert(dsView, `Data source view ${ds.dataSourceViewId} not found`);
 
       const tagsIn =
-        ds.filter.tags === "auto" ? globalTagsIn : ds.filter.tags.in;
+        ds.filter.tags.mode === "auto"
+          ? [...(globalTagsIn ?? []), ...(ds.filter.tags.in ?? [])]
+          : ds.filter.tags.in;
       const tagsNot =
-        ds.filter.tags === "auto" ? globalTagsNot : ds.filter.tags.not;
+        ds.filter.tags.mode === "auto"
+          ? [...(globalTagsNot ?? []), ...(ds.filter.tags.not ?? [])]
+          : ds.filter.tags.not;
 
       if (tagsIn && tagsNot && (tagsIn.length > 0 || tagsNot.length > 0)) {
         config.DATASOURCE.filter.tags.in_map[
@@ -803,7 +807,11 @@ function retrievalActionSpecification({
     inputs.push(retrievalAutoTimeFrameInputSpecification());
   }
 
-  if (actionConfiguration.dataSources.some((ds) => ds.filter.tags === "auto")) {
+  if (
+    actionConfiguration.dataSources.some(
+      (ds) => ds.filter.tags?.mode === "auto"
+    )
+  ) {
     inputs.push(...retrievalTagsInputSpecification());
   }
 
