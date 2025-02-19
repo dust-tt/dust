@@ -333,6 +333,7 @@ export const MicrosoftCommandSchema = t.type({
     t.literal("start-incremental-sync"),
     t.literal("restart-all-incremental-sync-workflows"),
     t.literal("skip-file"),
+    t.literal("sync-node"),
     t.literal("get-parents"),
   ]),
   args: t.record(

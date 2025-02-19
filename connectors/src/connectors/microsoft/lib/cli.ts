@@ -17,6 +17,7 @@ import {
   getColumnsFromListItem,
   typeAndPathFromInternalId,
 } from "@connectors/connectors/microsoft/lib/utils";
+import { syncFiles } from "@connectors/connectors/microsoft/temporal/activities";
 import { launchMicrosoftIncrementalSyncWorkflow } from "@connectors/connectors/microsoft/temporal/client";
 import { throwOnError } from "@connectors/lib/cli";
 import { terminateWorkflow } from "@connectors/lib/temporal";
@@ -110,6 +111,78 @@ export const microsoft = async ({
       };
 
       return { status: 200, content, type: typeof content };
+    }
+
+    case "sync-node": {
+      const connector = await getConnector(args);
+      if (!args.internalId) {
+        throw new Error("Missing --internalId argument");
+      }
+
+      const node = await MicrosoftNodeResource.fetchByInternalId(
+        connector.id,
+        args.internalId
+      );
+
+      if (!node) {
+        throw new Error(
+          `Could not find node for internalId ${args.internalId}`
+        );
+      }
+
+      let parentInternalId = node.parentInternalId;
+      if (node.nodeType === "file") {
+        logger.info(`Node ${args.internalId} is a file, syncing its parent.`);
+
+        if (!parentInternalId) {
+          throw new Error(
+            `Node ${args.internalId} is a file, but has no parentInternalId`
+          );
+        }
+
+        const parent = await MicrosoftNodeResource.fetchByInternalId(
+          connector.id,
+          parentInternalId
+        );
+        if (!parent) {
+          throw new Error(
+            `Could not find parent node for internalId ${parentInternalId}`
+          );
+        }
+
+        if (parent.nodeType === "drive") {
+          throw new Error(
+            `Node ${args.internalId} is a file, but its parent is a drive. We only allow syncing files from a folder to avoid syncing the whole drive.`
+          );
+        }
+      } else {
+        parentInternalId = node.internalId;
+      }
+
+      const startSyncTs = Date.now();
+      let nextPageLink = undefined;
+      let totalCount = 0;
+      let nodeIdsToSync = [parentInternalId];
+      while (nodeIdsToSync.length > 0) {
+        const nodeId = nodeIdsToSync.pop();
+        if (!nodeId) {
+          break;
+        }
+
+        do {
+          const res = await syncFiles({
+            connectorId: connector.id,
+            parentInternalId: nodeId,
+            startSyncTs,
+            nextPageLink,
+          });
+          totalCount += res.count;
+          nodeIdsToSync = nodeIdsToSync.concat(res.childNodes);
+          nextPageLink = res.nextLink;
+        } while (nextPageLink);
+      }
+
+      return { status: 200, content: { totalCount }, type: typeof totalCount };
     }
 
     case "start-incremental-sync": {
