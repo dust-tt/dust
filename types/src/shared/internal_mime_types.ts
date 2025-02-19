@@ -128,6 +128,9 @@ export const MIME_TYPES = {
   }),
 };
 
+export type BigQueryMimeType =
+  (typeof MIME_TYPES.BIGQUERY)[keyof typeof MIME_TYPES.BIGQUERY];
+
 export type ConfluenceMimeType =
   (typeof MIME_TYPES.CONFLUENCE)[keyof typeof MIME_TYPES.CONFLUENCE];
 
@@ -159,6 +162,7 @@ export type ZendeskMimeType =
   (typeof MIME_TYPES.ZENDESK)[keyof typeof MIME_TYPES.ZENDESK];
 
 export type DustMimeType =
+  | BigQueryMimeType
   | ConfluenceMimeType
   | GithubMimeType
   | GoogleDriveMimeType
