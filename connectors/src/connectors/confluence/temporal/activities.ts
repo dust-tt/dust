@@ -288,65 +288,63 @@ async function upsertConfluencePageToDataSource({
   const pageCreatedAt = new Date(page.createdAt);
   const lastPageVersionCreatedAt = new Date(page.version.createdAt);
 
-  if (markdown) {
-    const renderedMarkdown = await renderMarkdownSection(
-      dataSourceConfig,
-      markdown
+  const renderedMarkdown = await renderMarkdownSection(
+    dataSourceConfig,
+    markdown
+  );
+
+  // Log labels info
+  if (page.labels.results.length > 0) {
+    localLogger.info(
+      { labelsCount: page.labels.results.length },
+      "Confluence page has labels."
     );
-
-    // Log labels info
-    if (page.labels.results.length > 0) {
-      localLogger.info(
-        { labelsCount: page.labels.results.length },
-        "Confluence page has labels."
-      );
-    }
-
-    // Use label names for tags instead of IDs
-    const customTags = page.labels.results.map((l) => l.name);
-
-    const tags = [
-      `createdAt:${pageCreatedAt.getTime()}`,
-      `space:${spaceName}`,
-      `title:${page.title}`,
-      `updatedAt:${lastPageVersionCreatedAt.getTime()}`,
-      `version:${page.version.number}`,
-      ...filterCustomTags(customTags, localLogger),
-    ];
-
-    const renderedPage = await renderDocumentTitleAndContent({
-      dataSourceConfig,
-      title: `Page ${page.title}`,
-      createdAt: pageCreatedAt,
-      updatedAt: lastPageVersionCreatedAt,
-      content: renderedMarkdown,
-      additionalPrefixes: {
-        labels: page.labels.results.map((l) => l.name).join(", ") || "none",
-      },
-    });
-
-    const documentId = makePageInternalId(page.id);
-    const documentUrl = makeConfluenceDocumentUrl({
-      baseUrl: confluenceConfig.url,
-      suffix: page._links.tinyui,
-    });
-
-    await upsertDataSourceDocument({
-      dataSourceConfig,
-      documentContent: renderedPage,
-      documentId,
-      documentUrl,
-      loggerArgs,
-      parents,
-      parentId: parents[1],
-      tags,
-      timestampMs: lastPageVersionCreatedAt.getTime(),
-      upsertContext: { sync_type: syncType },
-      title: page.title,
-      mimeType: MIME_TYPES.CONFLUENCE.PAGE,
-      async: true,
-    });
   }
+
+  // Use label names for tags instead of IDs
+  const customTags = page.labels.results.map((l) => l.name);
+
+  const tags = [
+    `createdAt:${pageCreatedAt.getTime()}`,
+    `space:${spaceName}`,
+    `title:${page.title}`,
+    `updatedAt:${lastPageVersionCreatedAt.getTime()}`,
+    `version:${page.version.number}`,
+    ...filterCustomTags(customTags, localLogger),
+  ];
+
+  const renderedPage = await renderDocumentTitleAndContent({
+    dataSourceConfig,
+    title: `Page ${page.title}`,
+    createdAt: pageCreatedAt,
+    updatedAt: lastPageVersionCreatedAt,
+    content: renderedMarkdown,
+    additionalPrefixes: {
+      labels: page.labels.results.map((l) => l.name).join(", ") || "none",
+    },
+  });
+
+  const documentId = makePageInternalId(page.id);
+  const documentUrl = makeConfluenceDocumentUrl({
+    baseUrl: confluenceConfig.url,
+    suffix: page._links.tinyui,
+  });
+
+  await upsertDataSourceDocument({
+    dataSourceConfig,
+    documentContent: renderedPage,
+    documentId,
+    documentUrl,
+    loggerArgs,
+    parents,
+    parentId: parents[1],
+    tags,
+    timestampMs: lastPageVersionCreatedAt.getTime(),
+    upsertContext: { sync_type: syncType },
+    title: page.title,
+    mimeType: MIME_TYPES.CONFLUENCE.PAGE,
+    async: true,
+  });
 }
 
 async function upsertConfluencePageInDb(
