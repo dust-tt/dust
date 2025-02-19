@@ -72,7 +72,7 @@ function isSnowflakeIncorrectCredentialsError(
   );
 }
 
-interface SnowflakeRoleNotFoundError extends SnowflakeError {
+interface SnowflakeRoleNotFoundError extends Error {
   name: "OperationFailedError";
   data: {
     errorCode: "390189";
@@ -83,12 +83,15 @@ interface SnowflakeRoleNotFoundError extends SnowflakeError {
 function isSnowflakeRoleNotFoundError(
   err: unknown
 ): err is SnowflakeRoleNotFoundError {
+  const maybeRoleError = err as {
+    name: "OperationFailedError";
+    code: "390189";
+  };
   return (
-    isSnowflakeError(err) &&
-    err.message.startsWith("Role") &&
-    err.message.includes(
-      "specified in the connect string does not exist or not authorized."
-    )
+    "name" in maybeRoleError &&
+    maybeRoleError.name === "OperationFailedError" &&
+    "code" in maybeRoleError &&
+    `${maybeRoleError.code}` === "390189"
   );
 }
 
