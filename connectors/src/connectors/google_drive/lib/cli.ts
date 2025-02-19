@@ -7,6 +7,7 @@ import { googleDriveIncrementalSyncWorkflowId } from "@dust-tt/types";
 
 import { getConnectorManager } from "@connectors/connectors";
 import {
+  fixParentsConsistency,
   getLocalParents,
   updateParentsField,
 } from "@connectors/connectors/google_drive/lib";
@@ -31,6 +32,7 @@ import { throwOnError } from "@connectors/lib/cli";
 import { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
 import { terminateWorkflow } from "@connectors/lib/temporal";
 import { default as topLogger } from "@connectors/logger/logger";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 const getConnector = async (args: GoogleDriveCommandType["args"]) => {
@@ -199,6 +201,32 @@ export const google_drive = async ({
         driveObject,
         now
       );
+      if (args.fix === "true") {
+        const connectorResource = await ConnectorResource.fetchById(
+          connector.id
+        );
+        if (!connectorResource) {
+          throw new Error("Connector not found");
+        }
+        const existingFile = await GoogleDriveFiles.findOne({
+          where: {
+            driveFileId: getDriveFileId(fileId),
+            connectorId: connector.id,
+          },
+        });
+        if (!existingFile) {
+          throw new Error("File not found");
+        }
+        await fixParentsConsistency({
+          connector: connectorResource,
+          files: [existingFile],
+          startSyncTs: 0,
+          logger,
+          checkFromGoogle: true,
+          execute: true,
+        });
+      }
+
       return { status: 200, content: parents, type: typeof parents };
     }
 
