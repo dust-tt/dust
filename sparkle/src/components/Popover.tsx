@@ -55,8 +55,14 @@ const PopoverContent = React.forwardRef<
       />
     );
 
+    const dialogElement = document.querySelector(
+      "[role=dialog][data-state=open]"
+    );
+
     return mountPortal ? (
-      <PopoverPrimitive.Portal container={mountPortalContainer}>
+      <PopoverPrimitive.Portal
+        container={mountPortalContainer || dialogElement}
+      >
         {content}
       </PopoverPrimitive.Portal>
     ) : (
