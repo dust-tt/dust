@@ -41,7 +41,6 @@ import type { Transaction } from "sequelize";
 import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation/without_content";
 import { default as apiConfig, default as config } from "@app/lib/api/config";
 import { sendGitHubDeletionEmail } from "@app/lib/api/email";
-import { getFileContent } from "@app/lib/api/files/utils";
 import { rowsFromCsv, upsertTableFromCsv } from "@app/lib/api/tables";
 import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
@@ -718,114 +717,19 @@ export async function upsertTable({
       if (file) {
         const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
-        const [schemaRes, headersRes] = await Promise.all([
-          coreAPI.tableValidateCSVContent({
-            projectId: dataSource.dustAPIProjectId,
-            dataSourceId: dataSource.dustAPIDataSourceId,
-            upsertQueueBucketCSVPath: file.getCloudStoragePath(
-              auth,
-              "processed"
-            ),
-          }),
-          (async () => {
-            // TODO(spolu): [CSV-FILE] Remove this leg and enforce core check
-            const content = await getFileContent(auth, file);
-            if (!content) {
-              return new Err({
-                name: "dust_error",
-                code: "invalid_request_error",
-                message: "The file provided is empty",
-              });
-            }
-            const csvRowsRes = await rowsFromCsv({ auth, csv: content });
-            if (csvRowsRes.isErr()) {
-              return new Err({
-                name: "dust_error",
-                code: "invalid_csv",
-                message: "Failed to parse CSV: " + csvRowsRes.error.message,
-              });
-            } else {
-              return new Ok(csvRowsRes.value.detectedHeaders);
-            }
-          })(),
-        ]);
+        const schemaRes = await coreAPI.tableValidateCSVContent({
+          projectId: dataSource.dustAPIProjectId,
+          dataSourceId: dataSource.dustAPIDataSourceId,
+          upsertQueueBucketCSVPath: file.getCloudStoragePath(auth, "processed"),
+        });
 
         if (schemaRes.isErr()) {
-          // TODO(spolu): [CSV-FILE] Enforce core check
-          logger.info(
-            {
-              error: schemaRes.error,
-            },
-            "[CSV-FILE] error validating CSV content"
-          );
-
-          if (!headersRes.isErr()) {
-            logger.info(
-              {
-                firstRow: headersRes.value.firstRow,
-                error: schemaRes.error,
-                headers: headersRes.value.header,
-              },
-              "[CSV-FILE] mismatch: schema error but headers are valid"
-            );
-          }
-        }
-
-        if (headersRes.isErr()) {
-          logger.info(
-            {
-              error: headersRes.error,
-            },
-            "[CSV-FILE] error detecting headers"
-          );
-
-          if (!schemaRes.isErr()) {
-            logger.info(
-              {
-                error: headersRes.error,
-                schema: schemaRes.value.schema,
-              },
-              "[CSV-FILE] mismatch: headers error but schema is valid"
-            );
-          }
-
           // If we have a schema error, we return early.
           return new Err({
             name: "dust_error",
             code: "invalid_csv",
-            message: headersRes.error.message,
+            message: schemaRes.error.message,
           });
-        }
-
-        if (!schemaRes.isErr() && !headersRes.isErr()) {
-          const schema = schemaRes.value.schema;
-          const headers = headersRes.value.header;
-          const schemaHeaders = schema.map((s) => s.name);
-          const headersSet = new Set(headers);
-
-          logger.info(
-            {
-              headers,
-              schemaHeaders,
-              schema: schema.map((s) => s.name),
-            },
-            "[CSV-FILE] Validated CSV content"
-          );
-
-          // Schema headers does not include columns that have only null values, so we check that
-          // all schema headers are in the front computed headers and consider ouselves happy if
-          // that's the case.
-          if (!schemaHeaders.every((v) => headersSet.has(v))) {
-            logger.info(
-              {
-                firstRow: headersRes.value.firstRow,
-                headers,
-                schemaHeaders,
-                schema: schemaRes.value.schema,
-              },
-              "[CSV-FILE] mismatch: headers and schema mismatch"
-            );
-          }
         }
       }
     }
