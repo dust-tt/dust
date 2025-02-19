@@ -162,6 +162,17 @@ export async function upsertTableFromCsv({
 }): Promise<Result<{ table: CoreAPITable }, TableOperationError>> {
   const owner = auth.getNonNullableWorkspace();
 
+  if (csv) {
+    logger.info(
+      {
+        workspaceId: owner.sId,
+        tableId,
+        tableName,
+      },
+      "Received direct CSV not file"
+    );
+  }
+
   if (tableParentId && tableParents && tableParents[1] !== tableParentId) {
     return new Err({
       type: "invalid_request_error",
