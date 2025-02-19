@@ -181,7 +181,7 @@ export function DataSourceTagsFilterDropdown({
           </div>
           <div className="flex flex-col gap-2">
             <Page.SectionHeader
-              title="In-conversation filtering"
+              title="Conversation filtering"
               description="Allow agents to determine filters to apply based on conversation context. This will override filtering settings above."
             />
           </div>
