@@ -16,7 +16,7 @@ import {
 } from "@app/lib/models/assistant/conversation";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { frontSequelize } from "@app/lib/resources/storage";
+import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 
 export interface WorkspaceUsageQueryResult {
@@ -93,7 +93,8 @@ export async function unsafeGetUsageData(
   workspace: WorkspaceType
 ): Promise<string> {
   const wId = workspace.sId;
-  const results = await frontSequelize.query<WorkspaceUsageQueryResult>(
+  const readReplica = getFrontReplicaDbConnection();
+  const results = await readReplica.query<WorkspaceUsageQueryResult>(
     `
       SELECT
         TO_CHAR(m."createdAt"::timestamp, 'YYYY-MM-DD HH24:MI:SS') AS "createdAt",
@@ -170,7 +171,8 @@ export async function getMessageUsageData(
   workspace: WorkspaceType
 ): Promise<string> {
   const wId = workspace.id;
-  const results = await frontSequelize.query<MessageUsageQueryResult>(
+  const readReplica = getFrontReplicaDbConnection();
+  const results = await readReplica.query<MessageUsageQueryResult>(
     `
       SELECT
         am."id" AS "message_id",
@@ -391,7 +393,8 @@ export async function getAssistantUsageData(
   agentConfiguration: AgentConfigurationType
 ): Promise<number> {
   const wId = workspace.id;
-  const mentions = await frontSequelize.query<{ messages: number }>(
+  const readReplica = getFrontReplicaDbConnection();
+  const mentions = await readReplica.query<{ messages: number }>(
     `
     SELECT COUNT(a."id") AS "messages"
     FROM "agent_messages" a
@@ -425,7 +428,8 @@ export async function getAssistantsUsageData(
   workspace: WorkspaceType
 ): Promise<string> {
   const wId = workspace.id;
-  const mentions = await frontSequelize.query<AgentUsageQueryResult>(
+  const readReplica = getFrontReplicaDbConnection();
+  const mentions = await readReplica.query<AgentUsageQueryResult>(
     `
     SELECT
       ac."name",
