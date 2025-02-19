@@ -340,6 +340,37 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_csv_with_dust_id() -> anyhow::Result<()> {
+        let csv = "hellWorld,super-fast,__dust_id,c/foo,DATE\n\
+                   1,2.23,foo0,3,2025-02-14T15:06:52.380Z\n\
+                   4,hello world,foo1,6,\"Fri, 14 Feb 2025 15:10:34 GMT\"";
+        let (delimiter, rdr) =
+            UpsertQueueCSVContent::find_delimiter(std::io::Cursor::new(csv)).await?;
+        let rows = UpsertQueueCSVContent::csv_to_rows(rdr, delimiter).await?;
+
+        assert_eq!(rows.len(), 2);
+
+        // Test that __dust_id is used to define the row ids.
+        assert_eq!(rows[0].row_id, "foo0");
+        assert_eq!(rows[1].row_id, "foo1");
+
+        // Test that __dust_id is not inserted.
+        let row_0_concatenated_keys = rows[0]
+            .value
+            .as_object()
+            .unwrap()
+            .keys()
+            .into_iter()
+            .map(|k| k.to_string())
+            .collect::<Vec<String>>()
+            .join(",");
+
+        assert_eq!(row_0_concatenated_keys, "hellworld,super_fast,c_foo,date");
+
+        Ok(())
+    }
+
+    #[tokio::test]
     async fn test_csv_errors() -> anyhow::Result<()> {
         // Test empty CSV
         let csv = "";
