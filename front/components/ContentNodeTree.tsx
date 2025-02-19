@@ -58,6 +58,7 @@ export type ContentNodeTreeItemStatus = {
   node: ContentNode;
   // when setting permissions on a connector, nodes that are to be selected /
   // unselected may not be synced yet so we cannot easily access their parents
+  // In that case parents is null
   // It is not an issue for this component(see ConnectorPermissionsModal.tsx)
   parents: string[] | null;
 };
