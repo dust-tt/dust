@@ -23,7 +23,7 @@ type UnderscoreToDash<T extends string> = T extends `${infer A}_${infer B}`
  * - The underscores in the provider name are stripped in the generated mime type.
  * - The underscores in the resource type are replaced with dashes in the generated mime type.
  */
-function getMimeTypes<
+function generateMimeTypes<
   P extends ConnectorProvider,
   T extends Uppercase<string>[]
 >({
@@ -53,11 +53,11 @@ function getMimeTypes<
 }
 
 export const MIME_TYPES = {
-  CONFLUENCE: getMimeTypes({
+  CONFLUENCE: generateMimeTypes({
     provider: "confluence",
     resourceTypes: ["SPACE", "PAGE"],
   }),
-  GITHUB: getMimeTypes({
+  GITHUB: generateMimeTypes({
     provider: "github",
     resourceTypes: [
       "REPOSITORY",
@@ -70,13 +70,13 @@ export const MIME_TYPES = {
       "DISCUSSION",
     ],
   }),
-  GOOGLE_DRIVE: getMimeTypes({
+  GOOGLE_DRIVE: generateMimeTypes({
     provider: "google_drive",
     // Spreadsheets are handled as data_source_folders for sheets
     // For other files and sheets, we keep Google's mime types
     resourceTypes: ["SHARED_WITH_ME", "FOLDER", "SPREADSHEET"],
   }),
-  INTERCOM: getMimeTypes({
+  INTERCOM: generateMimeTypes({
     provider: "intercom",
     resourceTypes: [
       "COLLECTION",
@@ -87,30 +87,30 @@ export const MIME_TYPES = {
       "HELP_CENTER",
     ],
   }),
-  MICROSOFT: getMimeTypes({
+  MICROSOFT: generateMimeTypes({
     provider: "microsoft",
     // for files, we keep Microsoft's mime types Spreadsheets, that contain many
     // sheet, resemble folders and are stored as such, but with the special
     // mimetype below
     resourceTypes: ["FOLDER", "SPREADSHEET"],
   }),
-  NOTION: getMimeTypes({
+  NOTION: generateMimeTypes({
     provider: "notion",
     resourceTypes: ["UNKNOWN_FOLDER", "SYNCING_FOLDER", "DATABASE", "PAGE"],
   }),
-  SLACK: getMimeTypes({
+  SLACK: generateMimeTypes({
     provider: "slack",
     resourceTypes: ["CHANNEL", "THREAD", "MESSAGES"],
   }),
-  SNOWFLAKE: getMimeTypes({
+  SNOWFLAKE: generateMimeTypes({
     provider: "snowflake",
     resourceTypes: ["DATABASE", "SCHEMA", "TABLE"],
   }),
-  WEBCRAWLER: getMimeTypes({
+  WEBCRAWLER: generateMimeTypes({
     provider: "webcrawler",
     resourceTypes: ["FOLDER"], // pages are upserted as text/html, not an internal mime type
   }),
-  ZENDESK: getMimeTypes({
+  ZENDESK: generateMimeTypes({
     provider: "zendesk",
     resourceTypes: [
       "BRAND",
@@ -121,7 +121,7 @@ export const MIME_TYPES = {
       "TICKET",
     ],
   }),
-  BIGQUERY: getMimeTypes({
+  BIGQUERY: generateMimeTypes({
     provider: "bigquery",
     resourceTypes: ["DATABASE", "SCHEMA", "TABLE"],
   }),
