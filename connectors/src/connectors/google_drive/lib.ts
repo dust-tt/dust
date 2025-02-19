@@ -184,6 +184,7 @@ export async function updateParentsField(
       where: {
         driveFileId: file.driveFileId,
         connectorId: connector.id,
+        notUpsertedReason: null,
       },
     });
     for (const sheet of sheets) {
@@ -191,12 +192,17 @@ export async function updateParentsField(
         sheet.driveFileId,
         sheet.driveSheetId
       );
-      await updateDataSourceTableParents({
-        dataSourceConfig,
-        tableId,
-        parents: [tableId, ...parentIds],
-        parentId: file.dustFileId,
-      });
+      // TODO(2025-02-19 aubin): remove this after the entries are unstuck.
+      try {
+        await updateDataSourceTableParents({
+          dataSourceConfig,
+          tableId,
+          parents: [tableId, ...parentIds],
+          parentId: file.dustFileId,
+        });
+      } catch (e) {
+        return;
+      }
     }
   } else {
     await updateDataSourceDocumentParents({

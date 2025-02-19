@@ -786,24 +786,25 @@ export async function upsertDataSourceRemoteTable({
  * Other errors are re-thrown.
  *
  * @param fn - Async function to execute that may throw a TablesError
- * @returns A boolean indicating if a TablesError was caught (true) or not (false)
+ * @returns The TablesError that was caught if any, null otherwise.
  * @throws Any non-TablesError that occurs during execution
  */
 
 export const ignoreTablesError = async (
   connectorName: string,
   fn: () => Promise<void>
-) => {
+): Promise<TablesError | null> => {
   try {
     await fn();
     logger.info(`[${connectorName}] Table upserted successfully.`);
+    return null;
   } catch (err) {
     if (err instanceof TablesError) {
       logger.warn(
         { error: err },
         "Invalid rows detected - skipping (but not failing)."
       );
-      return true;
+      return err;
     } else {
       logger.error(
         { error: err },

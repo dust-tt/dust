@@ -1,6 +1,7 @@
 import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
+import type { TablesErrorType } from "@connectors/lib/error";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import type { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
@@ -158,6 +159,7 @@ export class GoogleDriveSheet extends ConnectorBaseModel<GoogleDriveSheet> {
   declare driveFileId: string;
   declare driveSheetId: number;
   declare name: string;
+  declare notUpsertedReason: TablesErrorType | null;
 }
 GoogleDriveSheet.init(
   {
@@ -182,6 +184,10 @@ GoogleDriveSheet.init(
     name: {
       type: DataTypes.TEXT,
       allowNull: false,
+    },
+    notUpsertedReason: {
+      type: DataTypes.TEXT,
+      allowNull: true,
     },
   },
   {
