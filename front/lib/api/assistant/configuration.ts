@@ -13,7 +13,6 @@ import type {
   ModelIdType,
   ModelProviderIdType,
   ProcessSchemaPropertyType,
-  ProcessTagsFilter,
   Result,
   RetrievalQuery,
   RetrievalTimeframe,
