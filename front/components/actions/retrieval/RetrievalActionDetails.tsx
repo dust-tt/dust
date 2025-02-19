@@ -98,7 +98,8 @@ function makeQueryDescription(action: RetrievalActionType) {
         ? `${relativeTimeFrame.duration} ${relativeTimeFrame.unit}s`
         : `${relativeTimeFrame.unit}`)
     : "across all time periods";
-  const tagsInAsString = tagsIn ? `, with labels ${tagsIn?.join(", ")}` : "";
+  const tagsInAsString =
+    tagsIn && tagsIn.length > 0 ? `, with labels ${tagsIn?.join(", ")}` : "";
   const tagsNotAsString =
     tagsNot && tagsNot.length > 0
       ? `, excluding labels ${tagsNot?.join(", ")}`
