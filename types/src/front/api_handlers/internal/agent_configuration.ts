@@ -155,13 +155,6 @@ const ProcessActionConfigurationSchema = t.type({
       unit: TimeframeUnitCodec,
     }),
   ]),
-  // TODO(TAF) Refactor to use the same type as the retrieval action.
-  tagsFilter: t.union([
-    t.type({
-      in: t.array(t.string),
-    }),
-    t.null,
-  ]),
   schema: t.array(
     t.type({
       name: t.string,

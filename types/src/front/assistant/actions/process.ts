@@ -58,8 +58,6 @@ export type ProcessConfigurationType = {
 
   dataSources: DataSourceConfiguration[];
   relativeTimeFrame: RetrievalTimeframe;
-  // TODO(TAF): Remove this once tag filtering is rolled out
-  tagsFilter: ProcessTagsFilter | null;
   schema: ProcessSchemaPropertyType[];
 
   name: string;

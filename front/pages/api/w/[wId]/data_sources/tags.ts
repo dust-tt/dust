@@ -7,7 +7,6 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
@@ -31,19 +30,6 @@ async function handler(
       api_error: {
         type: "data_source_auth_error",
         message: "You are not authorized to fetch tags.",
-      },
-    });
-  }
-
-  const owner = auth.getNonNullableWorkspace();
-  const flags = await getFeatureFlags(owner);
-
-  if (!flags.includes("tags_filters")) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "feature_flag_not_found",
-        message: "The feature is not enabled for this workspace.",
       },
     });
   }
