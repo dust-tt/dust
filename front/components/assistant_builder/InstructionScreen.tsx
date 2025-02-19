@@ -4,35 +4,20 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuTrigger,
   Page,
-  Popover,
   ScrollArea,
-  ScrollBar,
   Spinner,
 } from "@dust-tt/sparkle";
 import type {
   APIError,
-  AssistantCreativityLevel,
   BuilderSuggestionsType,
   LightAgentConfigurationType,
   ModelConfigurationType,
-  ModelIdType,
   Result,
-  SupportedModel,
   WorkspaceType,
 } from "@dust-tt/types";
-import {
-  ASSISTANT_CREATIVITY_LEVEL_DISPLAY_NAMES,
-  ASSISTANT_CREATIVITY_LEVEL_TEMPERATURES,
-  CLAUDE_3_5_SONNET_20241022_MODEL_ID,
-  Err,
-  GPT_4O_MODEL_ID,
-  md5,
-  MISTRAL_LARGE_MODEL_ID,
-  Ok,
-} from "@dust-tt/types";
+import { Err, md5, Ok } from "@dust-tt/types";
 import { CharacterCount } from "@tiptap/extension-character-count";
 import Document from "@tiptap/extension-document";
 import { History } from "@tiptap/extension-history";
@@ -47,11 +32,9 @@ import React, {
   useState,
 } from "react";
 
+import { AdvancedSettings } from "@app/components/assistant_builder/AdvancedSettings";
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
-import { getModelProviderLogo } from "@app/components/providers/types";
-import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { ParagraphExtension } from "@app/components/text_editor/extensions";
-import { getSupportedModelConfig } from "@app/lib/assistant";
 import {
   plainTextFromTipTapContent,
   tipTapContentFromPlainText,
@@ -61,33 +44,6 @@ import { classNames } from "@app/lib/utils";
 import { debounce } from "@app/lib/utils/debounce";
 
 export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
-
-export const CREATIVITY_LEVELS = Object.entries(
-  ASSISTANT_CREATIVITY_LEVEL_TEMPERATURES
-).map(([k, v]) => ({
-  label:
-    ASSISTANT_CREATIVITY_LEVEL_DISPLAY_NAMES[k as AssistantCreativityLevel],
-  value: v,
-}));
-
-const BEST_PERFORMING_MODELS_ID: ModelIdType[] = [
-  GPT_4O_MODEL_ID,
-  CLAUDE_3_5_SONNET_20241022_MODEL_ID,
-  MISTRAL_LARGE_MODEL_ID,
-] as const;
-
-function isBestPerformingModel(modelId: ModelIdType) {
-  return BEST_PERFORMING_MODELS_ID.includes(modelId);
-}
-
-const getCreativityLevelFromTemperature = (temperature: number) => {
-  const closest = CREATIVITY_LEVELS.reduce((prev, curr) =>
-    Math.abs(curr.value - temperature) < Math.abs(prev.value - temperature)
-      ? curr
-      : prev
-  );
-  return closest;
-};
 
 const useInstructionEditorService = (editor: Editor | null) => {
   const editorService = useMemo(() => {
@@ -395,174 +351,6 @@ const InstructionsCharacterCount = ({
     </span>
   );
 };
-
-interface ModelListProps {
-  modelConfigs: ModelConfigurationType[];
-  onClick: (modelSettings: SupportedModel) => void;
-}
-
-function ModelList({ modelConfigs, onClick }: ModelListProps) {
-  const { isDark } = useTheme();
-  const handleClick = (modelConfig: ModelConfigurationType) => {
-    onClick({
-      modelId: modelConfig.modelId,
-      providerId: modelConfig.providerId,
-      reasoningEffort: modelConfig.reasoningEffort,
-    });
-  };
-
-  return (
-    <>
-      {modelConfigs.map((modelConfig) => (
-        <DropdownMenuItem
-          key={modelConfig.modelId}
-          icon={getModelProviderLogo(modelConfig.providerId, isDark)}
-          description={modelConfig.shortDescription}
-          label={modelConfig.displayName}
-          onClick={() => handleClick(modelConfig)}
-        />
-      ))}
-    </>
-  );
-}
-
-export function AdvancedSettings({
-  generationSettings,
-  setGenerationSettings,
-  models,
-}: {
-  generationSettings: AssistantBuilderState["generationSettings"];
-  setGenerationSettings: (
-    generationSettingsSettings: AssistantBuilderState["generationSettings"]
-  ) => void;
-  models: ModelConfigurationType[];
-}) {
-  if (!models) {
-    return null;
-  }
-
-  const supportedModelConfig = getSupportedModelConfig(
-    generationSettings.modelSettings
-  );
-  if (!supportedModelConfig) {
-    // unreachable
-    alert("Unsupported model");
-  }
-
-  const bestPerformingModelConfigs: ModelConfigurationType[] = [];
-  const otherModelConfigs: ModelConfigurationType[] = [];
-  for (const modelConfig of models) {
-    if (isBestPerformingModel(modelConfig.modelId)) {
-      bestPerformingModelConfigs.push(modelConfig);
-    } else {
-      otherModelConfigs.push(modelConfig);
-    }
-  }
-
-  return (
-    <Popover
-      popoverTriggerAsChild
-      trigger={
-        <Button
-          label="Advanced settings"
-          variant="outline"
-          size="sm"
-          isSelect
-        />
-      }
-      content={
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col items-end gap-2">
-            <div
-              className={classNames(
-                "w-full grow text-sm font-bold",
-                "text-element-800 dark:text-element-800-night"
-              )}
-            >
-              Model selection
-            </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  isSelect
-                  label={
-                    getSupportedModelConfig(generationSettings.modelSettings)
-                      .displayName
-                  }
-                  variant="outline"
-                  size="sm"
-                />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuLabel label="Best performing models" />
-                <ScrollArea className="flex max-h-72 flex-col" hideScrollBar>
-                  <ModelList
-                    modelConfigs={bestPerformingModelConfigs}
-                    onClick={(modelSettings) => {
-                      setGenerationSettings({
-                        ...generationSettings,
-                        modelSettings,
-                      });
-                    }}
-                  />
-                  <DropdownMenuLabel label="Other models" />
-                  <ModelList
-                    modelConfigs={otherModelConfigs}
-                    onClick={(modelSettings) => {
-                      setGenerationSettings({
-                        ...generationSettings,
-                        modelSettings,
-                      });
-                    }}
-                  />
-                  <ScrollBar className="py-0" />
-                </ScrollArea>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-          <div className="flex flex-col items-end gap-2">
-            <div
-              className={classNames(
-                "w-full grow text-sm font-bold",
-                "text-element-800 dark:text-element-800-night"
-              )}
-            >
-              Creativity level
-            </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  isSelect
-                  label={
-                    getCreativityLevelFromTemperature(
-                      generationSettings?.temperature
-                    ).label
-                  }
-                  variant="outline"
-                  size="sm"
-                />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                {CREATIVITY_LEVELS.map(({ label, value }) => (
-                  <DropdownMenuItem
-                    key={label}
-                    label={label}
-                    onClick={() => {
-                      setGenerationSettings({
-                        ...generationSettings,
-                        temperature: value,
-                      });
-                    }}
-                  />
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-      }
-    />
-  );
-}
 
 function PromptHistory({
   history,
