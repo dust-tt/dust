@@ -162,11 +162,7 @@ export async function confluenceSpaceSyncWorkflow(
 
   await confluenceUpsertSpaceFolderActivity({
     connectorId,
-    space: {
-      id: spaceId,
-      name: space.name,
-      key: space.key,
-    },
+    space,
     baseUrl,
   });
 
