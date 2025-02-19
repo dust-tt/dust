@@ -324,12 +324,15 @@ export async function upsertDocument({
         }
       : section || null;
 
-  const nonNullTags = tags || [`title:${title}`];
+  const nonNullTags = tags || [];
   const titleInTags = nonNullTags
     .find((t) => t.startsWith("title:"))
     ?.split(":")
     .slice(1)
     .join(":");
+  if (!titleInTags) {
+    nonNullTags.push(`title:${title}`);
+  }
 
   if (
     titleInTags &&
@@ -625,12 +628,15 @@ export async function upsertTable({
     });
   }
 
-  const tableTags = params.tags ?? [`title:${params.title}`];
+  const tableTags = params.tags ?? [];
   const titleInTags = tableTags
     .find((t) => t.startsWith("title:"))
     ?.split(":")
     .slice(1)
     .join(":");
+  if (!titleInTags) {
+    tableTags.push(`title:${params.title}`);
+  }
 
   if (
     titleInTags &&

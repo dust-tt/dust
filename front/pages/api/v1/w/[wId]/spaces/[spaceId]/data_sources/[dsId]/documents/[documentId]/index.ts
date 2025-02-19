@@ -552,12 +552,15 @@ async function handler(
       const title = r.data.title ?? "Untitled document";
       const mimeType = r.data.mime_type ?? "application/octet-stream";
 
-      const tags = r.data.tags || [`title:${title}`];
+      const tags = r.data.tags || [];
       const titleInTags = tags
         .find((t) => t.startsWith("title:"))
         ?.split(":")
         .slice(1)
         .join(":");
+      if (!titleInTags) {
+        tags.push(`title:${title}`);
+      }
 
       if (
         titleInTags &&
