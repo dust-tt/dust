@@ -78,14 +78,6 @@ export async function fetchAgentProcessActionConfigurations({
         type: "process_configuration",
         dataSources: dataSourceConfig.map(getDataSource),
         relativeTimeFrame: renderRetrievalTimeframeType(processConfig),
-        // TODO(TAF): Remove this once tag filtering is rolled out
-
-        tagsFilter:
-          processConfig.tagsIn !== null
-            ? {
-                in: processConfig.tagsIn,
-              }
-            : null,
         schema: processConfig.schema,
         name: processConfig.name || DEFAULT_PROCESS_ACTION_NAME,
         description: processConfig.description,
