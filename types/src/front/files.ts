@@ -39,9 +39,9 @@ export type FileFormatCategory = "image" | "data" | "code" | "delimited";
 
 // Define max sizes for each category.
 export const MAX_FILE_SIZES: Record<FileFormatCategory, number> = {
-  data: 30 * 1024 * 1024, // 30MB.
-  code: 30 * 1024 * 1024, // 30MB.
-  delimited: 30 * 1024 * 1024, // 30MB.
+  data: 50 * 1024 * 1024, // 50MB.
+  code: 50 * 1024 * 1024, // 50MB.
+  delimited: 50 * 1024 * 1024, // 50MB.
   image: 5 * 1024 * 1024, // 5 MB
 };
 
