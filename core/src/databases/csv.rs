@@ -64,6 +64,8 @@ impl UpsertQueueCSVContent {
         lazy_static! {
             static ref DIACRITICS: Regex = Regex::new(r"[\u{0300}-\u{036f}]").unwrap();
             static ref UNDERSCORES: Regex = Regex::new(r"_+").unwrap();
+            static ref WHITESPACE: Regex = Regex::new(r"\s+").unwrap();
+            static ref NON_ASCII: Regex = Regex::new(r"[^a-zA-Z0-9_]").unwrap();
         }
 
         let s = text
@@ -83,15 +85,13 @@ impl UpsertQueueCSVContent {
             with_separators.push(c);
         }
 
-        let s = with_separators
-            .to_lowercase()
-            .trim()
-            .split_whitespace()
-            .collect::<Vec<_>>()
-            .join("_") // Replace spaces with _
-            .chars()
-            .map(|c| if c.is_alphanumeric() { c } else { '_' }) // Replace non-word chars
-            .collect::<String>();
+        let s = with_separators.to_lowercase().trim().to_string();
+        let s = WHITESPACE.replace_all(&s, "_").to_string();
+        let s = NON_ASCII.replace_all(&s, "_").to_string();
+        // let s = s
+        //     .chars()
+        //     .map(|c| if c.is_alphanumeric() { c } else { '_' }) // Replace non-word chars
+        //     .collect::<String>();
 
         UNDERSCORES.replace_all(&s, "_").to_string()
     }
@@ -246,6 +246,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_sanitize_headers() -> anyhow::Result<()> {
+        // This test covers alignment of the slugification we were doing in front before moving
+        // this logic to core. It's important to preserve it as non truncated upserts would be
+        // impacted by a change of headers.
         let headers = vec![
             "helloWorld",
             "b,.,2Fkls",
@@ -258,6 +261,13 @@ mod tests {
             "a",
             "",
             "a",
+            "Тип задачи",
+            "Примечания",
+            "",
+            "重要度",
+            "入出荷数量(+ or -) の COU",
+            "旧_Offered price per video(2024.7)",
+            "🦄 IG User ID",
         ];
         let sanitized = UpsertQueueCSVContent::sanitize_headers(headers)?;
         assert_eq!(
@@ -265,7 +275,7 @@ mod tests {
             vec![
                 "helloworld",
                 "b_2fkls",
-                "æuu_cool_",
+                "_uu_cool_",
                 "_",
                 "a",
                 "c_d_",
@@ -273,7 +283,14 @@ mod tests {
                 "__dust_id",
                 "a_2",
                 "col_9",
-                "a_3"
+                "a_3",
+                "_3",
+                "_4",
+                "col_13",
+                "_5",
+                "_or_cou",
+                "_offered_price_per_video_2024_7_",
+                "_ig_user_id"
             ]
         );
         Ok(())
